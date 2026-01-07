@@ -1,0 +1,107 @@
+.content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 100px;
+}
+
+.textColumn {
+    flex: 1;
+}
+
+.title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-gray);
+    margin-bottom: 20px;
+}
+
+.blue {
+    color: var(--primary-blue);
+}
+
+.tagline {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    line-height: 1.1;
+    margin-bottom: 30px;
+}
+
+.description {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--text-gray);
+}
+
+.stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 40px;
+}
+
+.statNum {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+}
+
+.statLabel {
+    font-size: 0.9rem;
+}
+
+.imageColumn {
+    flex: 1.2;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.imageWrapper {
+    position: relative;
+    z-index: 2;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+    width: 80%;
+}
+
+.mainImg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.small {
+    position: absolute;
+    top: 50%;
+    right: -20px;
+    width: 50%;
+    z-index: 3;
+}
+
+.decoCircle {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    width: 300px;
+    height: 300px;
+    background: var(--light-blue);
+    border-radius: 50%;
+    z-index: 0;
+    opacity: 0.5;
+}
+
+@media (max-width: 992px) {
+    .content {
+        flex-direction: column;
+        gap: 50px;
+    }
+
+    .imageColumn {
+        width: 100%;
+    }
+}

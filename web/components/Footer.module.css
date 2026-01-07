@@ -1,0 +1,114 @@
+.footer {
+    background: #111;
+    color: #888;
+    padding: 100px 0 40px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    gap: 60px;
+    margin-bottom: 80px;
+}
+
+.brand .logo {
+    font-size: 2rem;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 25px;
+}
+
+.blue {
+    color: var(--accent-blue);
+}
+
+.desc {
+    line-height: 1.8;
+    margin-bottom: 30px;
+}
+
+.social {
+    display: flex;
+    gap: 15px;
+}
+
+.social span {
+    width: 40px;
+    height: 40px;
+    background: #222;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+    transition: background 0.3s;
+    cursor: pointer;
+}
+
+.social span:hover {
+    background: var(--primary-blue);
+}
+
+.links h4,
+.contact h4 {
+    color: white;
+    margin-bottom: 25px;
+    font-size: 1.1rem;
+}
+
+.links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.links a {
+    transition: color 0.3s;
+}
+
+.links a:hover {
+    color: white;
+}
+
+.contact p {
+    margin-bottom: 15px;
+}
+
+.tel {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.bottom {
+    border-top: 1px solid #222;
+    padding-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.legal span {
+    margin-left: 20px;
+    cursor: pointer;
+}
+
+@media (max-width: 992px) {
+    .grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bottom {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+}

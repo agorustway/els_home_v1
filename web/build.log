@@ -1,0 +1,29 @@
+
+> web@0.1.0 build
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./components/Footer.module.css
+Transforming CSS failed
+Selector "address" is not pure. Pure selectors must contain at least one local class or id.
+
+Import traces:
+  Client Component Browser:
+    ./components/Footer.module.css [Client Component Browser]
+    ./components/Footer.js [Client Component Browser]
+    ./app/page.js [Client Component Browser]
+    ./app/page.js [Server Component]
+
+  Client Component SSR:
+    ./components/Footer.module.css [Client Component SSR]
+    ./components/Footer.js [Client Component SSR]
+    ./app/page.js [Client Component SSR]
+    ./app/page.js [Server Component]
+
+
+    at ignore-listed frames

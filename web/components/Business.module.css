@@ -1,0 +1,91 @@
+.businessSection {
+    background: #f8fbff;
+    padding: 120px 0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 40px;
+}
+
+.card {
+    background: var(--white);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.imageBox {
+    height: 240px;
+    overflow: hidden;
+    position: relative;
+}
+
+.img {
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card:hover .img {
+    transform: scale(1.1);
+}
+
+.imgOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.4));
+}
+
+.contentBox {
+    padding: 30px;
+    position: relative;
+    flex: 1;
+}
+
+.number {
+    position: absolute;
+    top: -20px;
+    right: 30px;
+    font-size: 3rem;
+    font-weight: 900;
+    color: rgba(0, 86, 179, 0.05);
+    z-index: 0;
+}
+
+.contentBox h3 {
+    font-size: 1.4rem;
+    color: var(--text-dark);
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.contentBox p {
+    color: var(--text-gray);
+    margin-bottom: 25px;
+    line-height: 1.7;
+    font-size: 0.95rem;
+    z-index: 1;
+    position: relative;
+}
+
+.link {
+    color: var(--primary-blue);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: inline-block;
+    z-index: 1;
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
