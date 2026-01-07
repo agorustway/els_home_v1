@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -19,6 +20,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <Script
+          id="naver-map-sdk"
+          strategy="beforeInteractive"
+          src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=hxoj79osnj"
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
       </body>
