@@ -45,7 +45,7 @@ export default function Intro() {
                             className={styles.imageWrapper}
                         >
                             <Image
-                                src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80"
+                                src="/images/container_logistics.png"
                                 alt="Logistics Center"
                                 width={600}
                                 height={400}
@@ -58,7 +58,7 @@ export default function Intro() {
                             className={`${styles.imageWrapper} ${styles.small}`}
                         >
                             <Image
-                                src="https://images.unsplash.com/photo-1519003306447-425030491764?auto=format&fit=crop&w=800&q=80"
+                                src="/images/steel_logistics.png"
                                 alt="Transportation"
                                 width={600}
                                 height={400}

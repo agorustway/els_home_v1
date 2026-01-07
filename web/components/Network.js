@@ -1,51 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import styles from './Network.module.css';
+import { locations } from '../constants/locations';
 
-const locations = [
-    {
-        name: '서울 본사 (HQ)',
-        lat: 37.4877,
-        lng: 127.0195,
-        addr: '서울특별시 서초구 효령로 424 대명빌딩 2F',
-        role: '종합 물류 전략 및 컨트롤 타워'
-    },
-    {
-        name: '아산지점 (CY)',
-        lat: 36.9243,
-        lng: 127.0570,
-        addr: '충남 아산시 둔포면 아산밸리중앙로 79-6 501호',
-        role: '메인 컨테이너 터미널 (5,000평 운영)'
-    },
-    {
-        name: '중부지점 (ICD)',
-        lat: 36.5450,
-        lng: 127.3505,
-        addr: '세종시 연동면 연청로 745-86 중부ICD',
-        role: '중부권 내륙 컨테이너 기지 (1,000평)'
-    },
-    {
-        name: '서산/당진지점',
-        lat: 36.9762,
-        lng: 126.6867,
-        addr: '충남 당진시 송산면 가곡로 21, 2층',
-        role: '수출입 철강 및 자동차 부품 전담'
-    },
-    {
-        name: '울산지점',
-        lat: 35.5384,
-        lng: 129.3114,
-        addr: '울산광역시 북구 효자로 123',
-        role: '자동차 KD부품 포장 및 물류 거점'
-    },
-    {
-        name: '영천/금호/임고지점',
-        lat: 35.9168,
-        lng: 128.8834,
-        addr: '경북 영천시 금호읍 금창로 208-8',
-        role: '핵심 부품 제조 및 도급 운영'
-    }
-];
 
 export default function Network() {
     const mapRef = useRef(null);

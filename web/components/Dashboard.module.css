@@ -1,0 +1,273 @@
+.dashboard {
+    background: #f8fbff;
+    padding: 120px 0;
+    color: var(--text-dark);
+    overflow: hidden;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 70px;
+}
+
+.tag {
+    color: var(--primary-blue);
+    font-weight: 800;
+    font-size: 0.8rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.title {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    color: #111;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 30px;
+    height: 520px;
+}
+
+/* Card Common Styles */
+.card {
+    background: #ffffff;
+    border: 1px solid #eef2f8;
+    border-radius: 40px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 50, 150, 0.04);
+}
+
+.cardTitle {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 35px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #444;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.liveDot {
+    width: 10px;
+    height: 10px;
+    background: #2ecc71;
+    border-radius: 50%;
+    animation: blink 1.5s infinite;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+}
+
+@keyframes blink {
+    0% {
+        opacity: 0.4;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    100% {
+        opacity: 0.4;
+        transform: scale(0.9);
+    }
+}
+
+/* Stats Section */
+.statsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    flex: 1;
+}
+
+.statItem {
+    background: #fbfcfe;
+    border: 1px solid #f0f4f9;
+    border-radius: 25px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.statItem:hover {
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
+    transform: translateY(-5px);
+}
+
+.statValue {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--primary-blue);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -1px;
+}
+
+.statLabel {
+    font-size: 0.85rem;
+    color: #999;
+    margin-top: 8px;
+    font-weight: 700;
+}
+
+/* Status Center */
+.statusCenter {
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    flex: 1;
+}
+
+.waveContainer {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.wave {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: waveAnim 4s infinite cubic-bezier(0.36, 0.11, 0.89, 0.32);
+    opacity: 0;
+}
+
+.wave:nth-child(2) {
+    animation-delay: 1.3s;
+}
+
+.wave:nth-child(3) {
+    animation-delay: 2.6s;
+}
+
+@keyframes waveAnim {
+    0% {
+        transform: scale(0.6);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: scale(1.3);
+        opacity: 0;
+    }
+}
+
+.centerContent {
+    z-index: 2;
+    text-align: center;
+}
+
+.percent {
+    font-size: 3.2rem;
+    font-weight: 900;
+    line-height: 1;
+    color: #111;
+}
+
+.percentLabel {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 700;
+    margin-top: 12px;
+}
+
+/* Log Section */
+.logContainer {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    margin-top: -10px;
+}
+
+.logList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.logItem {
+    padding: 16px 20px;
+    background: #fbfcfe;
+    border: 1px solid #f0f4f9;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: flex-start;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.logTime {
+    color: var(--primary-blue);
+    font-weight: 800;
+    margin-right: 15px;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+.logMsg {
+    color: #444;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.logMsg strong {
+    color: #111;
+    font-weight: 800;
+}
+
+.fader {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to top, #ffffff, transparent);
+    pointer-events: none;
+}
+
+@media (max-width: 1100px) {
+    .grid {
+        grid-template-columns: 1fr 1fr;
+        height: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .title {
+        font-size: 2.2rem;
+    }
+}

@@ -5,22 +5,22 @@ import styles from './Hero.module.css';
 
 const slides = [
     {
-        image: 'https://images.unsplash.com/photo-1494412574643-35d324698420?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+        image: '/images/hero_logistics.png',
         title: 'Precision Logistics Solution',
         subtitle: '최상의 운송 품질과 전문적인 물류 솔루션을 제공합니다',
     },
     {
-        image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+        image: '/images/hero_cy.png',
         title: 'Strategic CY Operations',
         subtitle: '아산 및 중부 전용 DEPOT(CY) 운영을 통한 독보적 물류 인프라',
     },
     {
-        image: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+        image: '/images/container_logistics.png',
         title: 'Automotive Parts Expert',
         subtitle: '현대/기아자동차 KD부품 포장 및 생산 도급 서비스의 신뢰받는 파트너',
     },
     {
-        image: 'https://images.unsplash.com/photo-1519003306447-425030491764?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+        image: '/images/steel_logistics.png',
         title: 'Integrated SCM Partner',
         subtitle: '품질, 상생, 윤리 경영을 바탕으로 고객의 공감을 실현합니다',
     }
