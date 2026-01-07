@@ -1,174 +1,227 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import styles from './Network.module.css';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const locations = [
     {
-        name: '서울 본사 (Headquarters)',
+        name: '서울 본사 (HQ)',
         lat: 37.4877,
         lng: 127.0195,
         addr: '서울특별시 서초구 효령로 424 대명빌딩 2F',
-        role: '본사 / 경영지원'
+        role: '종합 물류 전략 및 컨트롤 타워'
     },
     {
         name: '아산지점 (CY)',
         lat: 36.9243,
         lng: 127.0570,
         addr: '충남 아산시 둔포면 아산밸리중앙로 79-6 501호',
-        role: '메인 물류 허브 (5,000평)'
+        role: '메인 컨테이너 터미널 (5,000평 운영)'
     },
     {
         name: '중부지점 (ICD)',
         lat: 36.5450,
         lng: 127.3505,
-        addr: '세종시 연동면 연청로 745-86 중부ICD 2층',
-        role: '중부권 ICD 거점'
+        addr: '세종시 연동면 연청로 745-86 중부ICD',
+        role: '중부권 내륙 컨테이너 기지 (1,000평)'
     },
     {
         name: '서산/당진지점',
         lat: 36.9762,
         lng: 126.6867,
         addr: '충남 당진시 송산면 가곡로 21, 2층',
-        role: '수출입 물류 거점'
+        role: '수출입 철강 및 자동차 부품 전담'
+    },
+    {
+        name: '울산지점',
+        lat: 35.5384,
+        lng: 129.3114,
+        addr: '울산광역시 북구 효자로 123',
+        role: '자동차 KD부품 포장 및 물류 거점'
     },
     {
         name: '영천/금호/임고지점',
         lat: 35.9168,
         lng: 128.8834,
         addr: '경북 영천시 금호읍 금창로 208-8',
-        role: '제조 및 생산 도급 거점'
+        role: '핵심 부품 제조 및 도급 운영'
     }
 ];
 
 export default function Network() {
     const mapRef = useRef(null);
-    const [mapLoaded, setMapLoaded] = useState(false);
-    const [activeIndex, setActiveIndex] = useState(0);
+    const mapInstance = useRef(null);
+    const [activeIdx, setActiveIdx] = useState(0);
+    const [loadingStatus, setLoadingStatus] = useState("지도 데이터를 불러오는 중...");
+    const [isError, setIsError] = useState(false);
 
     useEffect(() => {
-        let map = null;
-        const initMap = () => {
-            if (window.naver && window.naver.maps && mapRef.current) {
-                try {
-                    const mapOptions = {
-                        center: new window.naver.maps.LatLng(36.5, 127.8),
-                        zoom: 7,
-                        zoomControl: true,
-                        zoomControlOptions: { position: window.naver.maps.Position.RIGHT_CENTER },
-                        scrollWheel: false,
-                        mapDataControl: false,
-                        logoControl: true,
-                        logoControlOptions: { position: window.naver.maps.Position.BOTTOM_LEFT }
-                    };
+        // 1. 방어 코드: 이미 로드되었으면 초기화만 시도
+        if (window.naver && window.naver.maps) {
+            initMap();
+            return;
+        }
 
-                    map = new window.naver.maps.Map(mapRef.current, mapOptions);
-
-                    locations.forEach((loc, i) => {
-                        const isHQ = i === 0;
-                        const marker = new window.naver.maps.Marker({
-                            position: new window.naver.maps.LatLng(loc.lat, loc.lng),
-                            map: map,
-                            title: loc.name,
-                            icon: {
-                                content: `
-                  <div style="display:flex; flex-direction:column; align-items:center;">
-                    <div style="background:${isHQ ? '#0056b3' : '#3498db'}; color:white; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700; box-shadow:0 4px 10px rgba(0,0,0,0.1); border:2px solid white; white-space:nowrap;">${loc.name}</div>
-                    <div style="width:10px; height:10px; background:${isHQ ? '#0056b3' : '#3498db'}; border:2px solid white; border-radius:50%; margin-top:-2px;"></div>
-                  </div>
-                `,
-                                anchor: new window.naver.maps.Point(50, 25)
-                            }
-                        });
-
-                        window.naver.maps.Event.addListener(marker, "click", () => {
-                            setActiveIndex(i);
-                            map.panTo(marker.getPosition());
-                            map.setZoom(10, true);
-                        });
-                    });
-                    setMapLoaded(true);
-                } catch (e) {
-                    console.error("Map Init Failed", e);
-                }
-            }
+        // 2. 인증 실패 콜백 정의
+        window.navermap_authFailure = () => {
+            setLoadingStatus("네이버 지도 인증 실패 (Error 200)");
+            setIsError(true);
         };
 
-        const timer = setInterval(() => {
-            if (window.naver && window.naver.maps) {
-                initMap();
-                clearInterval(timer);
-            }
-        }, 200);
-        return () => clearInterval(timer);
+        // 3. 스크립트 중복 방지
+        const scriptId = 'naver-map-script-manual';
+        const existingScript = document.getElementById(scriptId);
+        if (existingScript) return;
+
+        // 4. 수동 스크립트 주입 (Tutorial 기반 수정)
+        // Domain: oapi.map.naver.com
+        // Param: ncpKeyId
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=hxoj79osnj';
+        script.async = true;
+        script.defer = true;
+
+        script.onload = () => {
+            setLoadingStatus("지도 라이브러리 로드 완료! 초기화 중...");
+            setTimeout(() => initMap(), 100);
+        };
+
+        script.onerror = () => {
+            setLoadingStatus("네이버 지도 서버 접속 실패");
+            setIsError(true);
+        };
+
+        document.head.appendChild(script);
+
+        return () => {
+            // cleanup if needed
+        };
     }, []);
 
-    const handleCardClick = (index) => {
-        setActiveIndex(index);
-        if (window.naver && window.naver.maps && mapRef.current) {
-            // 실제 지도 인스턴스에 접근하여 이동 (데모를 위해 간단히 구현)
+    const initMap = () => {
+        if (!mapRef.current || mapInstance.current) return;
+        if (!window.naver || !window.naver.maps) {
+            setTimeout(initMap, 200); // 재시도
+            return;
+        }
+
+        try {
+            const naver = window.naver;
+            const mapOptions = {
+                center: new naver.maps.LatLng(36.55, 127.8),
+                zoom: 7,
+                minZoom: 6,
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: naver.maps.Position.RIGHT_CENTER
+                },
+                mapTypeControl: false,
+                logoControlOptions: {
+                    position: naver.maps.Position.BOTTOM_LEFT
+                }
+            };
+
+            mapInstance.current = new naver.maps.Map(mapRef.current, mapOptions);
+
+            locations.forEach((loc, i) => {
+                const isHQ = i === 0;
+                const marker = new naver.maps.Marker({
+                    position: new naver.maps.LatLng(loc.lat, loc.lng),
+                    map: mapInstance.current,
+                    icon: {
+                        content: `
+              <div style="display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+                <div style="background:${isHQ ? '#003366' : '#0078ff'}; color:white; padding:6px 14px; border-radius:30px; font-size:12px; font-weight:800; border:2px solid white; box-shadow:0 8px 20px rgba(0,0,0,0.2); white-space:nowrap;">
+                  ${loc.name}
+                </div>
+                <div style="width:14px; height:14px; background:${isHQ ? '#003366' : '#0078ff'}; border:3px solid white; border-radius:50%; margin-top:-3px; box-shadow:0 4px 10px rgba(0,0,0,0.15);"></div>
+              </div>
+            `,
+                        anchor: new naver.maps.Point(50, 40)
+                    }
+                });
+
+                naver.maps.Event.addListener(marker, 'click', () => {
+                    handleLocSelect(i);
+                });
+            });
+            setLoadingStatus(null); // 로딩 완료
+        } catch (e) {
+            console.error("Map Init Error:", e);
+            setLoadingStatus("지도 초기화 오류 발생");
+            setIsError(true);
+        }
+    };
+
+    const handleLocSelect = (i) => {
+        setActiveIdx(i);
+        if (mapInstance.current && window.naver) {
+            const loc = locations[i];
+            const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
+            mapInstance.current.morph(pos, 11, { duration: 500 });
         }
     };
 
     return (
-        <section id="network" className={styles.networkSection}>
+        <section id="network" className={styles.section}>
             <div className="container">
-                <div className={styles.sectionHeader}>
-                    <span className={styles.subtext}>Global Infrastructure</span>
-                    <h2 className={styles.mainTitle}>거점 현황 및 네트워크</h2>
-                    <div className={styles.titleLine} />
+                <div className={styles.header}>
+                    <span className={styles.tag}>Logistics Network</span>
+                    <h2 className={styles.title}>거점 및 네트워크 현황</h2>
                 </div>
 
-                <div className={styles.mainLayout}>
-                    {/* Left: Info Cards */}
-                    <div className={styles.listSide}>
-                        <div className={styles.hqCard}>
-                            <div className={styles.hqLabel}>Main Headquarters</div>
-                            <h3>서울 본사</h3>
-                            <p>{locations[0].addr}</p>
-                            <div className={styles.contactInfo}>Tel. 02-1234-5678</div>
-                        </div>
+                <div className={styles.viewport}>
+                    <div className={styles.mapSide}>
+                        <div className={styles.mapInner}>
+                            <div ref={mapRef} className={styles.mapCanvas} />
 
-                        <div className={styles.scrollArea}>
-                            {locations.slice(1).map((loc, i) => (
-                                <motion.div
-                                    key={i}
-                                    className={`${styles.locCard} ${activeIndex === i + 1 ? styles.active : ''}`}
-                                    onClick={() => handleCardClick(i + 1)}
-                                    whileHover={{ scale: 1.01 }}
-                                >
-                                    <div className={styles.cardHeader}>
-                                        <span className={styles.dot} />
-                                        <h4>{loc.name}</h4>
+                            {loadingStatus && (
+                                <div className={styles.loadingOverlay}>
+                                    <div className={`${styles.spinner} ${isError ? styles.error : ''}`} />
+                                    <div className={styles.loadingStatus}>
+                                        <p>{loadingStatus}</p>
+                                        {isError && <span>NCP 콘솔의 Web 서비스 URL 설정을 확인해주세요 (localhost:3000/)</span>}
                                     </div>
-                                    <p className={styles.cardRole}>{loc.role}</p>
-                                    <p className={styles.cardAddr}>{loc.addr}</p>
-                                </motion.div>
-                            ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Right: Map Area */}
-                    <div className={styles.mapSide}>
-                        <div className={styles.mapContainer}>
-                            <div ref={mapRef} className={styles.mapElement} />
-                            <AnimatePresence>
-                                {!mapLoaded && (
-                                    <motion.div
-                                        initial={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className={styles.mapOverlay}
-                                    >
-                                        <div className={styles.loader} />
-                                        <p>인증 환경을 확인하고 지도를 불러옵니다.</p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            <div className={styles.mapBadge}>
-                                <span className={styles.pulse} />
-                                Real-time Network Monitoring
+                    <div className={styles.floatingPanel}>
+                        <div className={styles.hqSection}>
+                            <div className={styles.hqHeader}>
+                                <span className={styles.badge}>Main HQ</span>
+                                <h3>서울 본사</h3>
                             </div>
+                            <p className={styles.hqAddr}>{locations[0].addr}</p>
+                            <button
+                                className={styles.centerBtn}
+                                onClick={() => handleLocSelect(0)}
+                            >본사 거점 확인</button>
+                        </div>
+
+                        <div className={styles.branchArea}>
+                            <p className={styles.areaTitle}>Nationwide Branches</p>
+                            <div className={styles.scrollList}>
+                                {locations.slice(1).map((loc, i) => (
+                                    <div
+                                        key={i}
+                                        className={`${styles.locCard} ${activeIdx === i + 1 ? styles.active : ''}`}
+                                        onClick={() => handleLocSelect(i + 1)}
+                                    >
+                                        <div className={styles.cardHeader}>
+                                            <span className={styles.dot} />
+                                            <h4>{loc.name}</h4>
+                                        </div>
+                                        <p className={styles.cardRole}>{loc.role}</p>
+                                        <p className={styles.cardAddr}>{loc.addr}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className={styles.panelFooter}>
+                            <div className={styles.pulse} />
+                            <span>실시간 물류 인프라 가동 중</span>
                         </div>
                     </div>
                 </div>
