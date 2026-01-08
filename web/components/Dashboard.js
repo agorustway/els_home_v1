@@ -79,7 +79,7 @@ export default function Dashboard() {
             <div className="container">
                 <div className={styles.header}>
                     <span className={styles.tag}>Live Dashboard</span>
-                    <h2 className={styles.title}>실시간 운영 현황</h2>
+                    <h2 className={styles.title}>라이브 대시보드</h2>
                 </div>
 
                 <div className={styles.grid}>
