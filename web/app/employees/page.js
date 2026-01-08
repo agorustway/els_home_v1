@@ -53,173 +53,175 @@ export default function EmployeesPage() {
     ];
 
     return (
-        <div className={styles.page}>
+        <>
             <Header />
-            <main>
-                {/* 1. Hero / Philosophy */}
-                <section className={styles.hero}>
-                    <div className="container">
-                        <motion.span
-                            className={styles.tag}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                        >
-                            Employee Happiness
-                        </motion.span>
-                        <motion.h1
-                            className={styles.title}
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                        >
-                            당신의 가치가 곧<br />우리의 경쟁력입니다
-                        </motion.h1>
-                        <motion.p
-                            className={styles.introText}
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            이엘에스솔루션은 <strong>임직원의 건강과 삶의 질을 높이는 것</strong>을 기업 경영의 최우선 가치로 생각합니다. 인격적 존중과 안전한 환경 속에서 더 큰 내일을 함께 그립니다.
-                        </motion.p>
-                        <motion.div
-                            className={styles.commitment}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            모든 구성원의 인간적 존엄을 지키고, 부당한 권리침해 사실 발생시 철저한 구제와 회복을 약속합니다.
-                        </motion.div>
-                    </div>
-                </section>
-
-                {/* 2. Satisfaction Management - Premium Image Redesign */}
-                <section id="satisfaction" className={styles.satisfactionSection}>
-                    <div className="container">
-                        <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
-                        <div className={styles.satisfactionList}>
-                            {[
-                                {
-                                    ...satisfactionPoints[0],
-                                    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
-                                },
-                                {
-                                    ...satisfactionPoints[1],
-                                    image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80"
-                                },
-                                {
-                                    ...satisfactionPoints[2],
-                                    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
-                                }
-                            ].map((point, i) => (
-                                <motion.div
-                                    key={i}
-                                    className={styles.satItem}
-                                    initial={{ opacity: 0, y: 50 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.8, delay: i * 0.1 }}
-                                >
-                                    <div className={styles.satVisual}>
-                                        <img src={point.image} alt={point.topic} className={styles.satImage} />
-                                        <div className={styles.satOverlay}>
-                                            <h3>{point.topic}</h3>
-                                        </div>
-                                    </div>
-                                    <div className={styles.satContent}>
-                                        <h3>{point.topic}</h3>
-                                        <p>{point.description}</p>
-                                    </div>
-                                </motion.div>
-                            ))}
+            <div className={styles.page}>
+                <main>
+                    {/* 1. Hero / Philosophy */}
+                    <section className={styles.hero}>
+                        <div className="container">
+                            <motion.span
+                                className={styles.tag}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                            >
+                                Employee Happiness
+                            </motion.span>
+                            <motion.h1
+                                className={styles.title}
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                당신의 가치가 곧<br />우리의 경쟁력입니다
+                            </motion.h1>
+                            <motion.p
+                                className={styles.introText}
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                이엘에스솔루션은 <strong>임직원의 건강과 삶의 질을 높이는 것</strong>을 기업 경영의 최우선 가치로 생각합니다. 인격적 존중과 안전한 환경 속에서 더 큰 내일을 함께 그립니다.
+                            </motion.p>
+                            <motion.div
+                                className={styles.commitment}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                모든 구성원의 인간적 존엄을 지키고, 부당한 권리침해 사실 발생시 철저한 구제와 회복을 약속합니다.
+                            </motion.div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* 3. Grievance Procedure - Dark Theme Distinction */}
-                <section id="grievance" className={styles.procedureSection}>
-                    <div className="container">
-                        <h2 className={styles.sectionTitle}>인권·윤리 침해 및 고충 처리 절차</h2>
-                        <div className={styles.procedureContainer}>
-                            <p className={styles.procedureDefinition}>
-                                직장 내 괴롭힘, 차별, 지위를 이용한 압력 등<br />
-                                법적으로 보장된 권리 침해 사항에 대한 철저한 구제 체계를 가동합니다.
-                            </p>
-                            <div className={styles.procedureGrid}>
-                                {procedures.map((item, i) => (
+                    {/* 2. Satisfaction Management - Premium Image Redesign */}
+                    <section id="satisfaction" className={styles.satisfactionSection}>
+                        <div className="container">
+                            <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
+                            <div className={styles.satisfactionList}>
+                                {[
+                                    {
+                                        ...satisfactionPoints[0],
+                                        image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
+                                    },
+                                    {
+                                        ...satisfactionPoints[1],
+                                        image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80"
+                                    },
+                                    {
+                                        ...satisfactionPoints[2],
+                                        image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
+                                    }
+                                ].map((point, i) => (
                                     <motion.div
                                         key={i}
-                                        className={styles.stepCard}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        whileInView={{ opacity: 1, scale: 1 }}
+                                        className={styles.satItem}
+                                        initial={{ opacity: 0, y: 50 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
                                         viewport={{ once: true }}
-                                        transition={{ delay: i * 0.1 }}
+                                        transition={{ duration: 0.8, delay: i * 0.1 }}
                                     >
-                                        <span className={styles.stepNum}>STEP {item.step}</span>
-                                        <h3 className={styles.stepTitle}>{item.title}</h3>
-                                        <p className={styles.stepDesc}>{item.content}</p>
+                                        <div className={styles.satVisual}>
+                                            <img src={point.image} alt={point.topic} className={styles.satImage} />
+                                            <div className={styles.satOverlay}>
+                                                <h3>{point.topic}</h3>
+                                            </div>
+                                        </div>
+                                        <div className={styles.satContent}>
+                                            <h3>{point.topic}</h3>
+                                            <p>{point.description}</p>
+                                        </div>
                                     </motion.div>
                                 ))}
                             </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* 4. Roadmap & Future */}
-                <section className={styles.roadmapSection}>
-                    <div className="container">
-                        <h2 className={styles.sectionTitle}>지속가능한 일터 조성 계획</h2>
-                        <div className={styles.roadmapList}>
-                            {roadmapItems.map((item, i) => (
-                                <motion.div
-                                    key={i}
-                                    className={styles.roadmapItem}
-                                    initial={{ opacity: 0, x: -30 }}
-                                    whileInView={{ opacity: 1, x: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1 }}
-                                >
-                                    {item}
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                {/* 5. NAS - Final Separate Section */}
-                <section id="nas" className={styles.nasSection}>
-                    <div className="container">
-                        <motion.div
-                            className={styles.nasBox}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            viewport={{ once: true }}
-                        >
-                            <div className={styles.nasInfo}>
-                                <h3>NAS 시스템 접속</h3>
-                                <p>임직원 전용 데이터 센터 및 파일 공유 시스템 (External Server)</p>
+                    {/* 3. Grievance Procedure - Dark Theme Distinction */}
+                    <section id="grievance" className={styles.procedureSection}>
+                        <div className="container">
+                            <h2 className={styles.sectionTitle}>인권·윤리 침해 및 고충 처리 절차</h2>
+                            <div className={styles.procedureContainer}>
+                                <p className={styles.procedureDefinition}>
+                                    직장 내 괴롭힘, 차별, 지위를 이용한 압력 등<br />
+                                    법적으로 보장된 권리 침해 사항에 대한 철저한 구제 체계를 가동합니다.
+                                </p>
+                                <div className={styles.procedureGrid}>
+                                    {procedures.map((item, i) => (
+                                        <motion.div
+                                            key={i}
+                                            className={styles.stepCard}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            whileInView={{ opacity: 1, scale: 1 }}
+                                            viewport={{ once: true }}
+                                            transition={{ delay: i * 0.1 }}
+                                        >
+                                            <span className={styles.stepNum}>STEP {item.step}</span>
+                                            <h3 className={styles.stepTitle}>{item.title}</h3>
+                                            <p className={styles.stepDesc}>{item.content}</p>
+                                        </motion.div>
+                                    ))}
+                                </div>
                             </div>
-                            <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.nasBtn}>
-                                서버 접속하기
-                            </a>
-                        </motion.div>
-                    </div>
-                </section>
+                        </div>
+                    </section>
 
-                {/* 6. Closing Metaphor */}
-                <section className={styles.metaphorSection}>
-                    <div className="container">
-                        <motion.p
-                            className={styles.metaphorText}
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
-                        >
-                            "이엘에스솔루션의 고충 처리 시스템은 구성원의 마음을 보듬는 <strong>'안전 로프'</strong>입니다."
-                        </motion.p>
-                    </div>
-                </section>
-            </main>
-            <Footer />
-        </div>
+                    {/* 4. Roadmap & Future */}
+                    <section className={styles.roadmapSection}>
+                        <div className="container">
+                            <h2 className={styles.sectionTitle}>지속가능한 일터 조성 계획</h2>
+                            <div className={styles.roadmapList}>
+                                {roadmapItems.map((item, i) => (
+                                    <motion.div
+                                        key={i}
+                                        className={styles.roadmapItem}
+                                        initial={{ opacity: 0, x: -30 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1 }}
+                                    >
+                                        {item}
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 5. NAS - Final Separate Section */}
+                    <section id="nas" className={styles.nasSection}>
+                        <div className="container">
+                            <motion.div
+                                className={styles.nasBox}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                            >
+                                <div className={styles.nasInfo}>
+                                    <h3>NAS 시스템 접속</h3>
+                                    <p>임직원 전용 데이터 센터 및 파일 공유 시스템 (External Server)</p>
+                                </div>
+                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.nasBtn}>
+                                    서버 접속하기
+                                </a>
+                            </motion.div>
+                        </div>
+                    </section>
+
+                    {/* 6. Closing Metaphor */}
+                    <section className={styles.metaphorSection}>
+                        <div className="container">
+                            <motion.p
+                                className={styles.metaphorText}
+                                initial={{ opacity: 0 }}
+                                whileInView={{ opacity: 1 }}
+                            >
+                                "이엘에스솔루션의 고충 처리 시스템은 구성원의 마음을 보듬는 <strong>'안전 로프'</strong>입니다."
+                            </motion.p>
+                        </div>
+                    </section>
+                </main>
+                <Footer />
+            </div>
+        </>
     );
 }

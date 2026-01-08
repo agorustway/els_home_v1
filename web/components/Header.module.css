@@ -31,7 +31,7 @@
 }
 
 .logoImage {
-    height: 22px;
+    height: 32px;
     width: auto;
     display: block;
     transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -40,7 +40,7 @@
 }
 
 .header.scrolled .logoImage {
-    height: 19px;
+    height: 27px;
     filter: none;
     /* Return to original color when scrolled on white background */
 }

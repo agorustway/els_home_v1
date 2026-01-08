@@ -280,6 +280,22 @@
     line-height: 1.5;
 }
 
+.cardTel {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 6px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hqSection .cardTel {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 25px;
+}
+
+
 .panelFooter {
     padding: 25px 40px;
     border-top: 1px solid rgba(0, 0, 0, 0.03);

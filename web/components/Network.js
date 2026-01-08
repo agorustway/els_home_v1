@@ -159,6 +159,11 @@ export default function Network() {
                                 <h3>서울 본사</h3>
                             </div>
                             <p className={styles.hqAddr}>{locations[0].addr}</p>
+                            {locations[0].tel && (
+                                <p className={styles.cardTel}>
+                                    <span style={{ color: 'var(--primary-blue)' }}>TEL.</span> {locations[0].tel}
+                                </p>
+                            )}
                             <div className={styles.btnGroup}>
                                 <button
                                     className={styles.centerBtn}
@@ -186,6 +191,11 @@ export default function Network() {
                                         </div>
                                         <p className={styles.cardRole}>{loc.role}</p>
                                         <p className={styles.cardAddr}>{loc.addr}</p>
+                                        {loc.tel && (
+                                            <p className={styles.cardTel}>
+                                                <span style={{ color: 'var(--primary-blue)' }}>TEL.</span> {loc.tel}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                             </div>
