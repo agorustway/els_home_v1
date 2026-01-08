@@ -6,9 +6,9 @@ export default function Footer() {
             <div className="container">
                 <div className={styles.top}>
                     <div className={styles.brand}>
-                        <div className={styles.logoWrapper}>
+                        <a href="/" className={styles.logoWrapper}>
                             <img src="/images/logo.png" alt="ELS SOLUTION logo" className={styles.footerLogo} />
-                        </div>
+                        </a>
                         <p className={styles.desc}>
                             품질, 상생, 윤리, CS경영을 통해 <br />
                             고객의 가치를 최우선으로 생각하는 <br />
