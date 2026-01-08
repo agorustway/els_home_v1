@@ -13,7 +13,7 @@ export default function Vision() {
     return (
         <section id="vision" className="section">
             <div className="container">
-                <h2 className="sectionTitle">경영이념 및 비전</h2>
+                <h2 className="sectionTitle">경영이념</h2>
 
                 <div style={{ textAlign: 'center', marginBottom: '60px' }}>
                     <motion.div
