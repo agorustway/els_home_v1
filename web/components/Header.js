@@ -18,8 +18,7 @@ export default function Header() {
             <div className="container">
                 <div className={styles.inner}>
                     <div className={styles.logo}>
-                        <span className={styles.logoText}>ELS</span>
-                        <span className={styles.logoSub}>SOLUTION</span>
+                        <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} />
                     </div>
                     <nav className={styles.nav}>
                         <a href="#intro">About</a>

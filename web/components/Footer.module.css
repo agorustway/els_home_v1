@@ -1,108 +1,143 @@
 .footer {
-    background: #111;
-    color: #888;
-    padding: 100px 0 40px;
+    background: #0a0b0d;
+    /* Richer dark color */
+    color: #a0a0a0;
+    padding: 100px 0 60px;
+    font-family: 'Inter', sans-serif;
 }
 
-.grid {
+.top {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.5fr;
-    gap: 60px;
+    grid-template-columns: 1.5fr 2fr;
+    gap: 80px;
     margin-bottom: 80px;
 }
 
-.brand .logo {
-    font-size: 2rem;
-    font-weight: 900;
-    color: white;
-    margin-bottom: 25px;
+.brand {
+    display: flex;
+    flex-direction: column;
 }
 
-.blue {
-    color: var(--accent-blue);
+.logoWrapper {
+    height: 40px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+}
+
+.footerLogo {
+    height: 28px;
+    width: auto;
+    display: block;
+    filter: brightness(0) invert(1);
 }
 
 .desc {
     line-height: 1.8;
-    margin-bottom: 30px;
+    font-size: 0.95rem;
+    color: #888;
 }
 
-.social {
-    display: flex;
-    gap: 15px;
+.infoArea {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
 }
 
-.social span {
-    width: 40px;
+.heading {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 700;
     height: 40px;
-    background: #222;
-    border-radius: 50%;
+    margin-bottom: 30px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.8rem;
-    transition: background 0.3s;
-    cursor: pointer;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.social span:hover {
-    background: var(--primary-blue);
+.infoCol {
+    display: flex;
+    flex-direction: column;
 }
 
-.links h4,
-.contact h4 {
-    color: white;
-    margin-bottom: 25px;
-    font-size: 1.1rem;
+.clientList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-.links {
+.clientList li {
+    font-size: 0.9rem;
+    line-height: 2.2;
+    transition: color 0.3s;
+}
+
+.clientList li:hover {
+    color: #ffffff;
+}
+
+.contactItems {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-.links a {
-    transition: color 0.3s;
-}
-
-.links a:hover {
-    color: white;
-}
-
-.contact p {
-    margin-bottom: 15px;
+.address,
+.sector {
+    font-size: 0.9rem;
+    line-height: 1.6;
 }
 
 .tel {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: white;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
 }
 
 .bottom {
-    border-top: 1px solid #222;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     padding-top: 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    color: #666;
 }
 
-.legal span {
-    margin-left: 20px;
-    cursor: pointer;
+.copyright strong {
+    color: #999;
+}
+
+.legal {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.legal a {
+    transition: color 0.3s;
+}
+
+.legal a:hover {
+    color: #ffffff;
+}
+
+.divider {
+    color: #333;
+    font-size: 0.7rem;
 }
 
 @media (max-width: 992px) {
-    .grid {
-        grid-template-columns: 1fr 1fr;
+    .top {
+        grid-template-columns: 1fr;
+        gap: 60px;
     }
 }
 
 @media (max-width: 768px) {
-    .grid {
+    .infoArea {
         grid-template-columns: 1fr;
     }
 

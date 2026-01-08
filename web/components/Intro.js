@@ -15,7 +15,7 @@ export default function Intro() {
                         className={styles.textColumn}
                     >
                         <h2 className={styles.title}>회사 소개 <span className={styles.blue}>Company Profile</span></h2>
-                        <h3 className={styles.tagline} style={{ fontSize: '2.5rem' }}>(주)이엘에스솔루션</h3>
+                        <h3 className={styles.tagline} style={{ fontSize: '2.5rem' }}>이엘에스솔루션</h3>
                         <div className={styles.description}>
                             <p>
                                 2013년 설립 이후 우수물류기업으로 꾸준히 성장하고 있는 <br />

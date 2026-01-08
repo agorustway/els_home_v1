@@ -26,14 +26,23 @@
 }
 
 .logo {
-    font-size: 1.8rem;
-    font-weight: 900;
-    letter-spacing: -1px;
+    display: flex;
+    align-items: center;
 }
 
-.logoSub {
-    color: var(--accent-blue);
-    margin-left: 5px;
+.logoImage {
+    height: 32px;
+    width: auto;
+    display: block;
+    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    filter: brightness(0) invert(1);
+    /* Assume original image might be dark, making it white for hero */
+}
+
+.header.scrolled .logoImage {
+    height: 27px;
+    filter: none;
+    /* Return to original color when scrolled on white background */
 }
 
 .nav {

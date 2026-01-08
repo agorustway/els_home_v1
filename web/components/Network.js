@@ -65,8 +65,8 @@ export default function Network() {
         try {
             const naver = window.naver;
             const mapOptions = {
-                center: new naver.maps.LatLng(36.55, 127.8),
-                zoom: 7,
+                center: new naver.maps.LatLng(36.2, 126.9),
+                zoom: 8,
                 minZoom: 6,
                 zoomControl: true,
                 zoomControlOptions: {
@@ -115,7 +115,15 @@ export default function Network() {
         if (mapInstance.current && window.naver) {
             const loc = locations[i];
             const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
-            mapInstance.current.morph(pos, 11, { duration: 500 });
+            mapInstance.current.morph(pos, 14, { duration: 500 });
+        }
+    };
+
+    const handleReset = () => {
+        setActiveIdx(0); // Keep HQ as default or set to -1
+        if (mapInstance.current && window.naver) {
+            const pos = new window.naver.maps.LatLng(36.2, 126.9);
+            mapInstance.current.morph(pos, 8, { duration: 500 });
         }
     };
 
@@ -124,7 +132,7 @@ export default function Network() {
             <div className="container">
                 <div className={styles.header}>
                     <span className={styles.tag}>Logistics Network</span>
-                    <h2 className={styles.title}>거점 및 네트워크 현황</h2>
+                    <h2 className={styles.title}>네트워크</h2>
                 </div>
 
                 <div className={styles.viewport}>
@@ -147,14 +155,20 @@ export default function Network() {
                     <div className={styles.floatingPanel}>
                         <div className={styles.hqSection}>
                             <div className={styles.hqHeader}>
-                                <span className={styles.badge}>Main HQ</span>
+                                <span className={styles.badge}>HQ</span>
                                 <h3>서울 본사</h3>
                             </div>
                             <p className={styles.hqAddr}>{locations[0].addr}</p>
-                            <button
-                                className={styles.centerBtn}
-                                onClick={() => handleLocSelect(0)}
-                            >본사 거점 확인</button>
+                            <div className={styles.btnGroup}>
+                                <button
+                                    className={styles.centerBtn}
+                                    onClick={() => handleLocSelect(0)}
+                                >본사</button>
+                                <button
+                                    className={styles.resetBtn}
+                                    onClick={handleReset}
+                                >전지점</button>
+                            </div>
                         </div>
 
                         <div className={styles.branchArea}>
