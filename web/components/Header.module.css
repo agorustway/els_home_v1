@@ -31,7 +31,7 @@
 }
 
 .logoImage {
-    height: 32px;
+    height: 22px;
     width: auto;
     display: block;
     transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -40,7 +40,7 @@
 }
 
 .header.scrolled .logoImage {
-    height: 27px;
+    height: 19px;
     filter: none;
     /* Return to original color when scrolled on white background */
 }
@@ -48,7 +48,7 @@
 .nav {
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 30px;
 }
 
 .nav a {
@@ -73,6 +73,74 @@
 .contactBtn:hover {
     transform: translateY(-2px);
     background: var(--secondary-blue);
+}
+
+.empBtn {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white !important;
+    padding: 10px 25px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    background: transparent;
+}
+
+.header.scrolled .empBtn {
+    border-color: var(--primary-blue);
+    color: var(--primary-blue) !important;
+}
+
+.empBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.header.scrolled .empBtn:hover {
+    background: var(--primary-blue);
+    color: white !important;
+}
+
+/* Dropdown */
+.hasDropdown {
+    position: relative;
+    cursor: pointer;
+}
+
+.dropdown {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #fff;
+    min-width: 200px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    padding: 10px 0;
+    z-index: 100;
+}
+
+.hasDropdown:hover .dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.dropdownItem {
+    display: block;
+    padding: 12px 25px;
+    font-size: 0.85rem;
+    color: #444 !important;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.dropdownItem:hover {
+    color: var(--primary-blue) !important;
+    background: #f8fbff;
 }
 
 @media (max-width: 992px) {
