@@ -31,9 +31,9 @@ export default function Header() {
                             </div>
                         </div>
                         <a href="/services">서비스</a>
-                        <a href="/dashboard">라이브 대시보드</a>
+                        <a href="/dashboard">실적현황</a>
                         <a href="/network">네트워크</a>
-                        <a href="/#contact" className={styles.contactBtn}>문의하기</a>
+                        <a href="/contact" className={styles.contactBtn}>문의하기</a>
                         <div className={styles.hasDropdown}>
                             <a href="/employees" className={styles.empBtn}>임직원전용</a>
                             <div className={styles.dropdown}>

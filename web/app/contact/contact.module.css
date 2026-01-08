@@ -1,0 +1,271 @@
+.contactPage {
+    background: #fcfdfe;
+    min-height: 100vh;
+}
+
+.section {
+    padding: 100px 0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 50px;
+    align-items: start;
+}
+
+/* Form Styles */
+.formWrapper {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 30px;
+    box-shadow: 0 20px 50px rgba(0, 50, 150, 0.05);
+    border: 1px solid #f0f4f9;
+}
+
+.formTitle {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 30px;
+    color: #111;
+    letter-spacing: -1px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inputGroup label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #666;
+}
+
+.input,
+.textarea {
+    padding: 15px 20px;
+    border-radius: 12px;
+    border: 2px solid #edf2f7;
+    background: #fbfcfe;
+    font-size: 1rem;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.input:focus,
+.textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 86, 179, 0.05);
+}
+
+.textarea {
+    resize: none;
+    height: 150px;
+}
+
+.submitBtn {
+    background: var(--primary-blue);
+    color: white;
+    padding: 16px;
+    border-radius: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.submitBtn:hover {
+    background: var(--secondary-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 86, 179, 0.2);
+}
+
+/* Board Styles */
+.boardWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.boardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.boardTitle {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #111;
+}
+
+.boardCount {
+    font-size: 0.9rem;
+    color: #999;
+    font-weight: 600;
+}
+
+.postList {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.postCard {
+    background: #fff;
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid #eef2f8;
+    transition: all 0.3s;
+}
+
+.postCard:hover {
+    transform: translateX(5px);
+    border-color: var(--accent-blue);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+}
+
+.postThumb {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.postAuthor {
+    font-weight: 800;
+    color: var(--primary-blue);
+    font-size: 0.95rem;
+}
+
+.postDate {
+    font-size: 0.8rem;
+    color: #bbb;
+}
+
+.postContent {
+    font-size: 1rem;
+    color: #444;
+    line-height: 1.6;
+}
+
+/* Report Styles */
+.reportContainer {
+    margin-top: 60px;
+    padding: 60px 40px;
+    background: #0f172a;
+    border-radius: 40px;
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.reportBadge {
+    background: #ef4444;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+.reportTitle {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 15px;
+    letter-spacing: -1px;
+}
+
+.reportDesc {
+    color: #94a3b8;
+    font-size: 1.1rem;
+    margin-bottom: 40px;
+    line-height: 1.6;
+}
+
+.reportForm {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.reportTextarea {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    color: white;
+    font-size: 1rem;
+    min-height: 120px;
+    resize: none;
+    transition: all 0.3s;
+}
+
+.reportTextarea:focus {
+    outline: none;
+    border-color: #ef4444;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.reportSubmit {
+    background: #ef4444;
+    color: white;
+    padding: 18px;
+    border-radius: 15px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.reportSubmit:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+}
+
+@media (max-width: 1024px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .section {
+        padding: 60px 0;
+    }
+
+    .formWrapper {
+        padding: 30px 20px;
+    }
+
+    .formTitle {
+        font-size: 1.5rem;
+    }
+
+    .reportTitle {
+        font-size: 1.8rem;
+    }
+
+    .reportContainer {
+        padding: 40px 20px;
+        margin-top: 40px;
+    }
+}

@@ -9,7 +9,7 @@ export default function DashboardPage() {
         <>
             <Header />
             <SubPageHero
-                title="라이브 대시보드"
+                title="실적현황"
                 subtitle="실시간 물류 현황 및 지표 데이터"
                 bgImage="/images/hero_logistics.png"
             />
