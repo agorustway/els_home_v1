@@ -6,6 +6,7 @@ import Intro from '../components/Intro';
 import History from '../components/History';
 import Organization from '../components/Organization';
 import Vision from '../components/Vision';
+import ESG from '../components/ESG';
 import Dashboard from '../components/Dashboard';
 import Network from '../components/Network';
 import Business from '../components/Business';
@@ -40,6 +41,7 @@ export default function Home() {
         <div className="animate-section"><Intro /></div>
         <div className="animate-section"><Business /></div>
         <div className="animate-section"><Vision /></div>
+        <div className="animate-section"><ESG /></div>
         <div className="animate-section" style={{ background: '#f8fbff' }}><Organization /></div>
         <div className="animate-section"><History /></div>
         <div className="animate-section"><Dashboard /></div>

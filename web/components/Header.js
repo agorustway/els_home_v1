@@ -24,6 +24,7 @@ export default function Header() {
                         <a href="#intro">About</a>
                         <a href="#business">Services</a>
                         <a href="#vision">Vision</a>
+                        <a href="#esg">ESG</a>
                         <a href="#organization">Team</a>
                         <a href="#network">Network</a>
                         <a href="#contact" className={styles.contactBtn}>Contact Us</a>
