@@ -49,6 +49,8 @@ export default function Hero() {
                     style={{ backgroundImage: `url(${slides[current].image})` }}
                 >
                     <div className={styles.overlay}></div>
+                    <div className={styles.scanlines}></div>
+                    <div className={styles.vignette}></div>
                 </motion.div>
             </AnimatePresence>
 
