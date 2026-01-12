@@ -39,7 +39,7 @@ export default function Header() {
                             <div className={styles.dropdown}>
                                 <a href="/employees#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
                                 <a href="/employees#grievance" className={styles.dropdownItem}>고충상담</a>
-                                <a href="https://elssolution.synology.me" target="_blank" className={styles.dropdownItem}>직원용 NAS접속</a>
+                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem}>직원용 NAS접속</a>
                             </div>
                         </div>
                     </nav>

@@ -68,10 +68,14 @@ export default function Network() {
                 center: new naver.maps.LatLng(36.2, 126.9),
                 zoom: 8,
                 minZoom: 6,
-                zoomControl: true,
-                zoomControlOptions: {
-                    position: naver.maps.Position.RIGHT_CENTER
-                },
+                zoomControl: false, // Disable default zoom control
+                scrollWheel: false, // Disable scroll zoom
+                draggable: false, // Disable drag to pan
+                pinchZoom: false, // Disable pinch zoom
+                keyboardShortcuts: false,
+                disableDoubleTapZoom: true,
+                disableDoubleClickZoom: true,
+                disableTwoFingerTapZoom: true,
                 mapTypeControl: false,
                 logoControlOptions: {
                     position: naver.maps.Position.BOTTOM_LEFT
@@ -127,6 +131,19 @@ export default function Network() {
         }
     };
 
+    const handleZoom = (delta) => {
+        if (mapInstance.current) {
+            const currentZoom = mapInstance.current.getZoom();
+            mapInstance.current.setZoom(currentZoom + delta, true);
+        }
+    };
+
+    const handlePan = (dx, dy) => {
+        if (mapInstance.current) {
+            mapInstance.current.panBy(new window.naver.maps.Point(dx, dy));
+        }
+    };
+
     return (
         <section id="network" className={styles.section}>
             <div className="container">
@@ -139,6 +156,33 @@ export default function Network() {
                     <div className={styles.mapSide}>
                         <div className={styles.mapInner}>
                             <div ref={mapRef} className={styles.mapCanvas} />
+
+                            <div className={styles.mapControls}>
+                                <div className={styles.panControls}>
+                                    <button onClick={() => handlePan(0, -100)} className={styles.controlBtn} title="위로 이동">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+                                    </button>
+                                    <div className={styles.midPan}>
+                                        <button onClick={() => handlePan(-100, 0)} className={styles.controlBtn} title="왼쪽으로 이동">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                        </button>
+                                        <button onClick={() => handlePan(100, 0)} className={styles.controlBtn} title="오른쪽으로 이동">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                        </button>
+                                    </div>
+                                    <button onClick={() => handlePan(0, 100)} className={styles.controlBtn} title="아래로 이동">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                    </button>
+                                </div>
+                                <div className={styles.zoomControls}>
+                                    <button onClick={() => handleZoom(1)} className={styles.controlBtn} title="확대">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                                    </button>
+                                    <button onClick={() => handleZoom(-1)} className={styles.controlBtn} title="축소">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /></svg>
+                                    </button>
+                                </div>
+                            </div>
 
                             {loadingStatus && (
                                 <div className={styles.loadingOverlay}>

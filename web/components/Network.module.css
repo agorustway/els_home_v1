@@ -350,4 +350,66 @@
     .hqSection {
         border-radius: 0;
     }
+
+    .mapControls {
+        bottom: 20px;
+        right: 20px;
+        gap: 15px;
+    }
+}
+
+.mapControls {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Center align pan and zoom blocks */
+    gap: 20px;
+    z-index: 15;
+}
+
+.panControls,
+.zoomControls {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.midPan {
+    display: flex;
+    gap: 0;
+}
+
+.controlBtn {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    color: #444;
+    transition: all 0.2s;
+}
+
+.controlBtn:hover {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.controlBtn svg {
+    display: block;
+}
+
+.panControls button {
+    align-self: center;
 }
