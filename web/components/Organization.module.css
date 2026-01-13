@@ -1,110 +1,211 @@
+/* Base Section Style */
+.section {
+    padding: 120px 0;
+}
+
 .bg {
-    background-color: #f8fbff;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
 }
 
-.chartContainer {
-    position: relative;
+/* Chart Layout */
+.chartWrapper {
     width: 100%;
-    max-width: 1000px;
-    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    padding: 40px 0;
 }
 
-.svgLines {
+.tree {
+    width: 100%;
+}
+
+.tree * {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tree ul {
+    padding-top: 40px;
+    position: relative;
+    transition: all 0.5s;
+    display: flex;
+    justify-content: center;
+}
+
+.tree li {
+    float: left;
+    text-align: center;
+    list-style-type: none;
+    position: relative;
+    padding: 20px 5px 0 5px;
+    transition: all 0.5s;
+}
+
+/* Connector Lines */
+.tree li::before,
+.tree li::after {
+    content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    width: 100%;
-    height: 200px;
-    pointer-events: none;
+    right: 50%;
+    border-top: 2px solid #e0e6ed;
+    width: 50%;
+    height: 20px;
 }
 
-.nodeWrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 60px;
+.tree li::after {
+    right: auto;
+    left: 50%;
+    border-left: 2px solid #e0e6ed;
 }
 
+/* Remove markers from connectors */
+.tree li:only-child::after,
+.tree li:only-child::before {
+    display: none;
+}
+
+.tree li:only-child {
+    padding-top: 0;
+}
+
+.tree li:first-child::before,
+.tree li:last-child::after {
+    border: 0 none;
+}
+
+.tree li:last-child::before {
+    border-right: 2px solid #e0e6ed;
+    border-radius: 0 5px 0 0;
+}
+
+.tree li:first-child::after {
+    border-radius: 5px 0 0 0;
+}
+
+.tree ul ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    border-left: 2px solid #e0e6ed;
+    width: 0;
+    height: 20px;
+}
+
+/* Node Styles */
 .ceoNode {
-    background: var(--primary-blue);
+    display: inline-block;
+    background: #111;
     color: white;
-    padding: 12px 50px;
-    border-radius: 4px;
-    font-weight: 700;
-    box-shadow: 0 4px 15px rgba(0, 86, 179, 0.2);
-    margin-bottom: 70px;
-    z-index: 10;
+    padding: 25px 50px;
+    border-radius: 20px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.departments {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    gap: 20px;
+.ceoNode:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 86, 179, 0.15);
+    background: var(--primary-blue);
 }
 
 .deptNode {
-    flex: 1;
+    display: inline-block;
     background: white;
-    padding: 20px;
-    border-radius: 10px;
-    border-top: 4px solid #ddd;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
-    text-align: center;
-    z-index: 5;
+    padding: 30px;
+    border-radius: 25px;
+    width: 260px;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    border: 2px solid #f0f4f8;
 }
 
-.deptNode.primary {
-    border-top-color: var(--primary-blue);
+.deptNode.highlight {
+    border-color: rgba(0, 120, 255, 0.2);
+    background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
 }
 
-.deptNode h4 {
-    margin-bottom: 10px;
-    color: var(--text-dark);
+.deptNode:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-blue);
+    box-shadow: 0 20px 40px rgba(0, 120, 255, 0.08);
 }
 
-.deptNode p {
-    font-size: 0.85rem;
-    color: var(--text-gray);
-}
-
-.manpowerGrid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    margin-top: 40px;
-}
-
-.manPowerCard {
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    text-align: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
-}
-
-.mpCount {
+.nodeLabel {
     display: block;
-    font-size: 1.5rem;
+    font-size: 0.7rem;
     font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
     color: var(--primary-blue);
 }
 
-.mpLabel {
-    font-size: 0.85rem;
-    color: var(--text-gray);
+.ceoNode .nodeLabel {
+    color: rgba(255, 255, 255, 0.5);
 }
 
-@media (max-width: 768px) {
-    .svgLines {
+.nodeTitle {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 15px;
+}
+
+.subTeams {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #f0f4f8;
+}
+
+.subTeams span {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #666;
+    background: #f8fafc;
+    padding: 4px 12px;
+    border-radius: 30px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+    .tree ul {
+        flex-direction: column;
+        align-items: center;
+        padding-top: 0;
+    }
+
+    .tree li {
+        width: 100%;
+        padding: 40px 0 0 0;
+    }
+
+    .tree li::before,
+    .tree li::after,
+    .tree ul ul::before {
         display: none;
     }
 
-    .departments {
-        flex-direction: column;
+    .tree li::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        height: 40px;
+        width: 2px;
+        background: #e0e6ed;
     }
 
-    .manpowerGrid {
-        grid-template-columns: 1fr 1fr;
+    .deptNode {
+        width: 90%;
+        max-width: 350px;
     }
 }
