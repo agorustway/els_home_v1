@@ -64,9 +64,11 @@ export default function Network() {
 
         try {
             const naver = window.naver;
+            const isMobile = window.innerWidth <= 768;
+
             const mapOptions = {
-                center: new naver.maps.LatLng(36.2, 126.9),
-                zoom: 8,
+                center: isMobile ? new naver.maps.LatLng(36.5, 127.8) : new naver.maps.LatLng(36.2, 126.9),
+                zoom: isMobile ? 7 : 8,
                 minZoom: 6,
                 zoomControl: false, // Disable default zoom control
                 scrollWheel: false, // Disable scroll zoom
@@ -124,10 +126,12 @@ export default function Network() {
     };
 
     const handleReset = () => {
-        setActiveIdx(0); // Keep HQ as default or set to -1
+        setActiveIdx(0);
         if (mapInstance.current && window.naver) {
-            const pos = new window.naver.maps.LatLng(36.2, 126.9);
-            mapInstance.current.morph(pos, 8, { duration: 500 });
+            const isMobile = window.innerWidth <= 768;
+            const pos = isMobile ? new window.naver.maps.LatLng(36.5, 127.8) : new window.naver.maps.LatLng(36.2, 126.9);
+            const zoom = isMobile ? 7 : 8;
+            mapInstance.current.morph(pos, zoom, { duration: 500 });
         }
     };
 
