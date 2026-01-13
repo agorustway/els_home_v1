@@ -370,11 +370,31 @@
 
     .mapControls {
         position: absolute;
-        /* Relative to .mapInner */
-        bottom: 20px;
-        right: 20px;
-        gap: 10px;
+        bottom: 15px;
+        right: 15px;
+        display: flex;
+        flex-direction: row;
+        /* Horizontal for mobile */
+        align-items: flex-end;
+        gap: 8px;
         z-index: 15;
+    }
+
+    .panControls,
+    .zoomControls {
+        flex-direction: row;
+        /* Individual buttons also horizontal */
+        align-items: center;
+        padding: 4px;
+    }
+
+    .midPan {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .panControls button {
+        align-self: center;
     }
 
     .controlBtn {
