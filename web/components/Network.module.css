@@ -334,76 +334,7 @@
     }
 }
 
-@media (max-width: 1024px) {
-    .viewport {
-        height: auto;
-        display: flex;
-        flex-direction: column;
-        border-radius: 30px;
-    }
-
-    .mapSide {
-        height: 450px;
-        order: 1;
-    }
-
-    .floatingPanel {
-        position: relative;
-        top: 0;
-        left: 0;
-        width: 100%;
-        max-height: none;
-        border-radius: 0;
-        box-shadow: none;
-        order: 2;
-        border-top: 1px solid #eee;
-    }
-
-    .hqSection {
-        border-radius: 0;
-        padding: 30px;
-    }
-
-    .branchArea {
-        padding: 25px 30px;
-    }
-
-    .mapControls {
-        position: absolute;
-        bottom: 15px;
-        right: 15px;
-        display: flex;
-        flex-direction: row;
-        /* Horizontal for mobile */
-        align-items: flex-end;
-        gap: 8px;
-        z-index: 15;
-    }
-
-    .panControls,
-    .zoomControls {
-        flex-direction: row;
-        /* Individual buttons also horizontal */
-        align-items: center;
-        padding: 4px;
-    }
-
-    .midPan {
-        display: flex;
-        flex-direction: row;
-    }
-
-    .panControls button {
-        align-self: center;
-    }
-
-    .controlBtn {
-        width: 34px;
-        height: 34px;
-        background: rgba(255, 255, 255, 0.9);
-    }
-}
-
+/* Base Maps Controls (Desktop default) */
 .mapControls {
     position: absolute;
     bottom: 30px;
@@ -411,7 +342,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Center align pan and zoom blocks */
     gap: 20px;
     z-index: 15;
 }
@@ -458,4 +388,72 @@
 
 .panControls button {
     align-self: center;
+}
+
+/* Mobile Overrides (MUST AT THE END TO PREVENT OVERRIDING) */
+@media (max-width: 1024px) {
+    .viewport {
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        border-radius: 30px;
+    }
+
+    .mapSide {
+        height: 450px;
+        order: 1;
+    }
+
+    .floatingPanel {
+        position: relative;
+        top: 0;
+        left: 0;
+        width: 100%;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+        order: 2;
+        border-top: 1px solid #eee;
+    }
+
+    .hqSection {
+        border-radius: 0;
+        padding: 30px;
+    }
+
+    .branchArea {
+        padding: 25px 30px;
+    }
+
+    .mapControls {
+        bottom: 15px;
+        right: 15px;
+        flex-direction: row;
+        /* Horizontal for mobile */
+        align-items: center;
+        gap: 8px;
+    }
+
+    .panControls,
+    .zoomControls {
+        flex-direction: row;
+        /* Horizontal buttons for mobile */
+        border-radius: 10px;
+        padding: 4px;
+    }
+
+    .panControls {
+        align-items: center;
+    }
+
+    .midPan {
+        flex-direction: row;
+        gap: 0;
+    }
+
+    .controlBtn {
+        width: 34px;
+        height: 34px;
+        background: rgba(255, 255, 255, 0.9);
+    }
 }
