@@ -119,9 +119,15 @@ export default function Network() {
     const handleLocSelect = (i) => {
         setActiveIdx(i);
         if (mapInstance.current && window.naver) {
+            const isMobile = window.innerWidth <= 768;
             const loc = locations[i];
             const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
             mapInstance.current.morph(pos, 14, { duration: 500 });
+
+            // On mobile, scroll up to the map so user can see the movement
+            if (isMobile && mapRef.current) {
+                mapRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     };
 
