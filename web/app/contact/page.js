@@ -13,31 +13,79 @@ export default function ContactPage() {
         { id: 3, author: '익명3', content: '조직도에서 영업팀 연락처가 안보이는데 어디서 확인 가능한가요?', date: '2026-01-05' },
     ]);
 
-    const [newContent, setNewContent] = useState('');
+    const [formData, setFormData] = useState({
+        content: '',
+        contact: ''
+    });
     const [reportContent, setReportContent] = useState('');
+    const [inquiryStatus, setInquiryStatus] = useState('idle'); // idle, submitting, success, error
+    const [reportStatus, setReportStatus] = useState('idle'); // idle, submitting, success, error
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newContent.trim()) return;
+        if (!formData.content.trim()) return;
+        setInquiryStatus('submitting');
 
-        const newPost = {
-            id: Date.now(),
-            author: `익명${posts.length + 1}`,
-            content: newContent,
-            date: new Date().toISOString().split('T')[0]
-        };
+        try {
+            const response = await fetch('/api/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category: '고객 문의',
+                    content: formData.content,
+                    contact: formData.contact || '홈페이지 익명 문의'
+                }),
+            });
 
-        setPosts([newPost, ...posts]);
-        setNewContent('');
+            if (response.ok) {
+                const newPost = {
+                    id: Date.now(),
+                    author: formData.contact ? formData.contact.substring(0, 5) : `익명${posts.length + 1}`,
+                    content: formData.content,
+                    date: new Date().toISOString().split('T')[0]
+                };
+
+                setPosts([newPost, ...posts]);
+                setFormData({ content: '', contact: '' });
+                setInquiryStatus('success');
+                setTimeout(() => setInquiryStatus('idle'), 5000);
+            } else {
+                setInquiryStatus('error');
+            }
+        } catch (error) {
+            console.error('Inquiry error:', error);
+            setInquiryStatus('error');
+        }
     };
 
-    const handleReport = (e) => {
+    const handleReport = async (e) => {
         e.preventDefault();
         if (!reportContent.trim()) return;
+        setReportStatus('submitting');
 
-        // 차후 EMAIL 발송 로직이 들어갈 자리
-        alert('익명 제보가 접수되었습니다. 담당 관리자에게 즉시 이메일로 전달됩니다.');
-        setReportContent('');
+        try {
+            const response = await fetch('/api/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category: '부조리 및 인권 침해 제보',
+                    title: '문의하기 페이지 제보',
+                    content: reportContent,
+                    contact: '홈페이지 익명 제보'
+                }),
+            });
+
+            if (response.ok) {
+                setReportContent('');
+                setReportStatus('success');
+                setTimeout(() => setReportStatus('idle'), 3000);
+            } else {
+                setReportStatus('error');
+            }
+        } catch (error) {
+            console.error('Report error:', error);
+            setReportStatus('error');
+        }
     };
 
     return (
@@ -62,16 +110,34 @@ export default function ContactPage() {
                             <h2 className={styles.formTitle}>문의 내용 작성</h2>
                             <form className={styles.form} onSubmit={handleSubmit}>
                                 <div className={styles.inputGroup}>
+                                    <label>성함 및 연락처 (선택)</label>
+                                    <input
+                                        type="text"
+                                        className={styles.input}
+                                        placeholder="답변 받으실 정보를 입력해주세요."
+                                        value={formData.contact}
+                                        onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                                    />
+                                </div>
+                                <div className={styles.inputGroup}>
                                     <label>문의 내용</label>
                                     <textarea
                                         className={styles.textarea}
-                                        placeholder="문의사항이나 의견을 자유롭게 남겨주세요. (익명)"
-                                        value={newContent}
-                                        onChange={(e) => setNewContent(e.target.value)}
+                                        placeholder="문의사항이나 의견을 자유롭게 남겨주세요."
+                                        value={formData.content}
+                                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                                         required
                                     />
                                 </div>
-                                <button type="submit" className={styles.submitBtn}>등록하기</button>
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtn}
+                                    disabled={inquiryStatus === 'submitting'}
+                                >
+                                    {inquiryStatus === 'submitting' ? '등록 중...' : '등록하기'}
+                                </button>
+                                {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 등록되고 관리자에게 메일이 발송되었습니다.</p>}
+                                {inquiryStatus === 'error' && <p className={styles.errorMsg}>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>}
                             </form>
                         </motion.div>
 
@@ -127,7 +193,15 @@ export default function ContactPage() {
                                 onChange={(e) => setReportContent(e.target.value)}
                                 required
                             />
-                            <button type="submit" className={styles.reportSubmit}>제보하기</button>
+                            <button
+                                type="submit"
+                                className={styles.reportSubmit}
+                                disabled={reportStatus === 'submitting'}
+                            >
+                                {reportStatus === 'submitting' ? '제출 중...' : '제보하기'}
+                            </button>
+                            {reportStatus === 'success' && <p className={styles.reportSuccessMsg}>제보가 안전하게 접수되어 관리자에게 전달되었습니다.</p>}
+                            {reportStatus === 'error' && <p className={styles.reportErrorMsg}>제출 중 오류가 발생했습니다. 다시 시도해주세요.</p>}
                         </form>
                     </motion.div>
                 </div>

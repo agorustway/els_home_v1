@@ -365,3 +365,129 @@
         font-size: 2.8rem;
     }
 }
+
+/* Report Form Section */
+.reportSection {
+    padding: 160px 0;
+    background: #f8fbff;
+}
+
+.reportContainer {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 60px;
+    border-radius: 40px;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.04);
+}
+
+.reportTitle {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 15px;
+    text-align: center;
+    color: #111;
+}
+
+.reportDesc {
+    text-align: center;
+    color: #666;
+    margin-bottom: 50px;
+    font-size: 1.1rem;
+}
+
+.reportForm {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.formGroup label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+    padding-left: 5px;
+}
+
+.formInput,
+.formSelect,
+.formTextarea {
+    padding: 18px 25px;
+    border-radius: 15px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 1rem;
+    transition: all 0.3s;
+    outline: none;
+}
+
+.formInput:focus,
+.formSelect:focus,
+.formTextarea:focus {
+    border-color: var(--primary-blue);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.1);
+}
+
+.formTextarea {
+    min-height: 200px;
+    resize: vertical;
+}
+
+.submitBtn {
+    margin-top: 20px;
+    padding: 22px;
+    background: var(--primary-blue);
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 15px 30px rgba(0, 102, 255, 0.2);
+}
+
+.submitBtn:hover:not(:disabled) {
+    background: #004ecc;
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(0, 102, 255, 0.3);
+}
+
+.submitBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.statusMessage {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.statusMessage.success {
+    background: #f0fff4;
+    color: #2f855a;
+    border: 1px solid #c6f6d5;
+}
+
+.statusMessage.error {
+    background: #fff5f5;
+    color: #c53030;
+    border: 1px solid #fed7d7;
+}
+
+@media (max-width: 1024px) {
+    .reportContainer {
+        padding: 40px 20px;
+        border-radius: 30px;
+    }
+}

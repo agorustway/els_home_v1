@@ -1,10 +1,52 @@
 'use client';
+import { useState } from 'react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import styles from './employees.module.css';
 import { motion } from 'framer-motion';
 
 export default function EmployeesPage() {
+    const [formData, setFormData] = useState({
+        category: '직장 내 괴롭힘',
+        title: '',
+        content: '',
+        contact: ''
+    });
+    const [status, setStatus] = useState('idle'); // idle, submitting, success, error
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setStatus('submitting');
+
+        try {
+            const response = await fetch('/api/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            if (response.ok) {
+                setStatus('success');
+                setFormData({
+                    category: '직장 내 괴롭힘',
+                    title: '',
+                    content: '',
+                    contact: ''
+                });
+            } else {
+                setStatus('error');
+            }
+        } catch (error) {
+            console.error('Submit error:', error);
+            setStatus('error');
+        }
+    };
+
     const satisfactionPoints = [
         {
             topic: "건강 및 삶의 질 향상",
@@ -163,6 +205,100 @@ export default function EmployeesPage() {
                                     ))}
                                 </div>
                             </div>
+                        </div>
+                    </section>
+
+                    {/* 3.5 Report Form Section */}
+                    <section id="report" className={styles.reportSection}>
+                        <div className="container">
+                            <motion.div
+                                className={styles.reportContainer}
+                                initial={{ opacity: 0, y: 50 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                            >
+                                <h2 className={styles.reportTitle}>부조리 및 인권침해 제보</h2>
+                                <p className={styles.reportDesc}>접수된 내용은 철저히 보안이 유지되며, 신속하게 검토 후 조치하겠습니다.</p>
+
+                                <form className={styles.reportForm} onSubmit={handleSubmit}>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="category">제보 유형</label>
+                                        <select
+                                            id="category"
+                                            name="category"
+                                            required
+                                            className={styles.formSelect}
+                                            value={formData.category}
+                                            onChange={handleChange}
+                                        >
+                                            <option value="직장 내 괴롭힘">직장 내 괴롭힘</option>
+                                            <option value="성희롱/성폭력">성희롱/성폭력</option>
+                                            <option value="차별 행위">차별 행위</option>
+                                            <option value="부정부패/비리">부정부패/비리</option>
+                                            <option value="기타 인권침해">기타 인권침해</option>
+                                        </select>
+                                    </div>
+
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="title">제보 제목</label>
+                                        <input
+                                            type="text"
+                                            id="title"
+                                            name="title"
+                                            placeholder="제목을 입력해주세요"
+                                            required
+                                            className={styles.formInput}
+                                            value={formData.title}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="content">상세 내용</label>
+                                        <textarea
+                                            id="content"
+                                            name="content"
+                                            placeholder="발생 일시, 장소, 대상, 상세 내용 등을 구체적으로 작성해주세요."
+                                            required
+                                            className={styles.formTextarea}
+                                            value={formData.content}
+                                            onChange={handleChange}
+                                        ></textarea>
+                                    </div>
+
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="contact">연락처 및 성함 (선택사항 - 미입력 시 익명 접수)</label>
+                                        <input
+                                            type="text"
+                                            id="contact"
+                                            name="contact"
+                                            placeholder="답변을 받으실 연락처 또는 성함을 입력해주세요."
+                                            className={styles.formInput}
+                                            value={formData.contact}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className={styles.submitBtn}
+                                        disabled={status === 'submitting'}
+                                    >
+                                        {status === 'submitting' ? '제출 중...' : '제보하기'}
+                                    </button>
+
+                                    {status === 'success' && (
+                                        <div className={`${styles.statusMessage} ${styles.success}`}>
+                                            제보가 성공적으로 접수되었습니다. 보호와 보안을 최우선으로 검토하겠습니다.
+                                        </div>
+                                    )}
+                                    {status === 'error' && (
+                                        <div className={`${styles.statusMessage} ${styles.error}`}>
+                                            제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주시거나 관리자에게 문의바랍니다.
+                                        </div>
+                                    )}
+                                </form>
+                            </motion.div>
                         </div>
                     </section>
 

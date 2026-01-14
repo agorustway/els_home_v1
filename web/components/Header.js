@@ -62,6 +62,7 @@ export default function Header() {
                             <div className={styles.dropdown}>
                                 <a href="/employees#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
                                 <a href="/employees#grievance" className={styles.dropdownItem}>고충상담</a>
+                                <a href="/employees#report" className={styles.dropdownItem}>부조리 및 인권침해 제보</a>
                                 <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem}>직원용 NAS접속</a>
                             </div>
                         </div>
@@ -114,6 +115,7 @@ export default function Header() {
                                     <a href="/employees" onClick={handleLinkClick}>임직원 홈</a>
                                     <a href="/employees#satisfaction" onClick={handleLinkClick}>직원만족도 조사</a>
                                     <a href="/employees#grievance" onClick={handleLinkClick}>고충상담</a>
+                                    <a href="/employees#report" onClick={handleLinkClick}>부조리 및 인권침해 제보</a>
                                     <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>NAS 접속</a>
                                 </div>
                             </div>
