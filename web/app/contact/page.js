@@ -37,6 +37,8 @@ export default function ContactPage() {
                 }),
             });
 
+            const result = await response.json();
+
             if (response.ok) {
                 const newPost = {
                     id: Date.now(),
@@ -50,6 +52,7 @@ export default function ContactPage() {
                 setInquiryStatus('success');
                 setTimeout(() => setInquiryStatus('idle'), 5000);
             } else {
+                console.error('Inquiry error:', result.error);
                 setInquiryStatus('error');
             }
         } catch (error) {
@@ -75,11 +78,14 @@ export default function ContactPage() {
                 }),
             });
 
+            const result = await response.json();
+
             if (response.ok) {
                 setReportContent('');
                 setReportStatus('success');
                 setTimeout(() => setReportStatus('idle'), 3000);
             } else {
+                console.error('Report error:', result.error);
                 setReportStatus('error');
             }
         } catch (error) {

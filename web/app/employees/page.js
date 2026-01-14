@@ -30,6 +30,8 @@ export default function EmployeesPage() {
                 body: JSON.stringify(formData),
             });
 
+            const result = await response.json();
+
             if (response.ok) {
                 setStatus('success');
                 setFormData({
@@ -39,7 +41,9 @@ export default function EmployeesPage() {
                     contact: ''
                 });
             } else {
+                console.error('Submit error:', result.error);
                 setStatus('error');
+                // 에러 메시지를 상태에 저장하여 사용자에게 보여줄 수도 있습니다.
             }
         } catch (error) {
             console.error('Submit error:', error);
