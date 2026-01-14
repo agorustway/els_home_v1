@@ -10,6 +10,7 @@ export default function Network() {
     const [activeIdx, setActiveIdx] = useState(0);
     const [loadingStatus, setLoadingStatus] = useState("지도 데이터를 불러오는 중...");
     const [isError, setIsError] = useState(false);
+    const [copyFeedback, setCopyFeedback] = useState("");
 
     useEffect(() => {
         // 1. 방어 코드: 이미 로드되었으면 초기화만 시도
@@ -154,6 +155,24 @@ export default function Network() {
         }
     };
 
+    const copyToClipboard = (text, type = 'address') => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopyFeedback(type === 'address' ? "주소가 복사되었습니다" : "전화번호가 복사되었습니다");
+            setTimeout(() => setCopyFeedback(""), 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    };
+
+    const handleTelClick = (e, tel) => {
+        const isMobile = window.innerWidth <= 768;
+        if (!isMobile) {
+            e.preventDefault();
+            e.stopPropagation();
+            copyToClipboard(tel, 'tel');
+        }
+    };
+
     return (
         <section id="network" className={styles.section}>
             <div className="container">
@@ -212,10 +231,26 @@ export default function Network() {
                                 <span className={styles.badge}>HQ</span>
                                 <h3>서울 본사</h3>
                             </div>
-                            <p className={styles.hqAddr}>{locations[0].addr}</p>
+                            <p
+                                className={styles.hqAddr}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyToClipboard(locations[0].addr);
+                                }}
+                                title="클릭하여 주소 복사"
+                            >
+                                {locations[0].addr}
+                            </p>
                             {locations[0].tel && (
                                 <p className={styles.cardTel}>
-                                    <span style={{ color: 'var(--primary-blue)' }}>TEL.</span> {locations[0].tel}
+                                    <span style={{ color: 'var(--primary-blue)' }}>TEL.</span>
+                                    <a
+                                        href={`tel:${locations[0].tel}`}
+                                        className={styles.telLink}
+                                        onClick={(e) => handleTelClick(e, locations[0].tel)}
+                                    >
+                                        {locations[0].tel}
+                                    </a>
                                 </p>
                             )}
                             <div className={styles.btnGroup}>
@@ -244,10 +279,26 @@ export default function Network() {
                                             <h4>{loc.name}</h4>
                                         </div>
                                         <p className={styles.cardRole}>{loc.role}</p>
-                                        <p className={styles.cardAddr}>{loc.addr}</p>
+                                        <p
+                                            className={styles.cardAddr}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                copyToClipboard(loc.addr);
+                                            }}
+                                            title="클릭하여 주소 복사"
+                                        >
+                                            {loc.addr}
+                                        </p>
                                         {loc.tel && (
                                             <p className={styles.cardTel}>
-                                                <span style={{ color: 'var(--primary-blue)' }}>TEL.</span> {loc.tel}
+                                                <span style={{ color: 'var(--primary-blue)' }}>TEL.</span>
+                                                <a
+                                                    href={`tel:${loc.tel}`}
+                                                    className={styles.telLink}
+                                                    onClick={(e) => handleTelClick(e, loc.tel)}
+                                                >
+                                                    {loc.tel}
+                                                </a>
                                             </p>
                                         )}
                                     </div>
@@ -261,6 +312,13 @@ export default function Network() {
                     </div>
                 </div>
             </div>
+
+            {/* Copy Feedback Toast */}
+            {copyFeedback && (
+                <div className={styles.toast}>
+                    {copyFeedback}
+                </div>
+            )}
         </section>
     );
 }
