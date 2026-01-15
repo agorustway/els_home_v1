@@ -68,7 +68,7 @@ export default function Header({ darkVariant = false }) {
                                 <div className={styles.dropdownDivider}></div>
                                 <div className={styles.dropdownLabel}>지점별 메뉴</div>
                                 <a href="/employees/branches/asan" className={styles.dropdownItem}>아산지점</a>
-                                <a href="/employees/branches/asan/menu" className={styles.dropdownSubItem}>└ 식단선택 (룰렛/사다리)</a>
+                                <a href="/employees/branches/asan/menu" className={styles.dropdownSubItem}>식단선택</a>
                                 <a href="/employees/branches/jungbu" className={styles.dropdownItem}>중부지점</a>
                                 <a href="/employees/branches/dangjin" className={styles.dropdownItem}>당진지점</a>
                                 <a href="/employees/branches/yesan" className={styles.dropdownItem}>예산지점</a>
@@ -131,7 +131,7 @@ export default function Header({ darkVariant = false }) {
                                     <div className={styles.mobileSubDivider}></div>
                                     <div className={styles.mobileSubLabel}>지점별 메뉴</div>
                                     <a href="/employees/branches/asan" onClick={handleLinkClick}>아산지점</a>
-                                    <a href="/employees/branches/asan/menu" onClick={handleLinkClick} style={{ paddingLeft: '30px', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>└ 식단선택 (룰렛/사다리)</a>
+                                    <a href="/employees/branches/asan/menu" onClick={handleLinkClick} style={{ paddingLeft: '30px', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>식단선택</a>
                                     <a href="/employees/branches/jungbu" onClick={handleLinkClick}>중부지점</a>
                                     <a href="/employees/branches/dangjin" onClick={handleLinkClick}>당진지점</a>
                                     <a href="/employees/branches/yesan" onClick={handleLinkClick}>예산지점</a>

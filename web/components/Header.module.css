@@ -25,6 +25,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
 }
 
 .logo {
@@ -133,7 +134,7 @@
     left: 50%;
     transform: translateX(-50%) translateY(10px);
     background: #fff;
-    min-width: 200px;
+    min-width: 220px;
     border-radius: 15px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     opacity: 0;
@@ -196,8 +197,8 @@
     color: var(--primary-blue) !important;
 }
 
-/* Mobile Nav Toggler */
-.menuBtn {
+/* Mobile Navigation */
+.mobileToggle {
     display: none;
     flex-direction: column;
     gap: 6px;
@@ -206,72 +207,134 @@
     cursor: pointer;
     z-index: 1001;
     padding: 10px;
+    margin-right: -10px;
 }
 
-.menuBtn span {
+.mobileToggle span {
     display: block;
-    width: 28px;
+    width: 26px;
     height: 2px;
     background: currentColor;
     transition: all 0.3s;
+    border-radius: 2px;
+}
+
+.mobileToggle.active span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.mobileToggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobileToggle.active span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
 }
 
 .mobileNav {
     position: fixed;
     top: 0;
     right: -100%;
-    width: 80%;
+    width: 85%;
+    max-width: 400px;
     height: 100vh;
     background: #fff;
     z-index: 1000;
-    padding: 120px 40px 40px;
-    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    padding: 100px 30px 40px;
+    transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
     display: flex;
     flex-direction: column;
-    gap: 25px;
-    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
+    box-shadow: -10px 0 50px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
 }
 
-.mobileNav.open {
+.mobileNavOpen {
     right: 0;
 }
 
-.mobileNav a {
-    color: #1a1a1a !important;
-    font-size: 1.2rem;
-    font-weight: 700;
-    text-shadow: none !important;
-}
-
-.mobileSubList {
+.mobileNavLinks {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding-left: 20px;
-    margin-top: 10px;
+    gap: 10px;
 }
 
-.mobileSubList a {
+.mobileLink {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a1a1a !important;
+    border-bottom: 1px solid #f0f0f0;
+    background: transparent;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mobileLink svg {
+    transition: transform 0.3s;
+}
+
+.activeSub svg {
+    transform: rotate(180deg);
+}
+
+.mobileSub {
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    display: flex;
+    flex-direction: column;
+    background: #fcfdfe;
+    border-radius: 12px;
+}
+
+.showSub {
+    max-height: 800px;
+    padding: 15px 0;
+    margin-bottom: 10px;
+}
+
+.mobileSub a {
+    padding: 10px 20px;
     font-size: 1rem;
     font-weight: 500;
-    color: #666 !important;
+    color: #555 !important;
+    display: block;
 }
 
 .mobileSubDivider {
     height: 1px;
     background: #eee;
-    margin: 15px 0 5px;
+    margin: 10px 20px;
 }
 
 .mobileSubLabel {
+    padding: 10px 20px 5px;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #ccc;
+    color: #bbb;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 5px;
 }
 
+.mobileContactBtn {
+    margin-top: 30px;
+    background: var(--primary-blue);
+    color: #fff !important;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(0, 86, 179, 0.2);
+}
+
+/* Overlay for body when menu is open */
 .overlay {
     position: fixed;
     top: 0;
@@ -286,7 +349,7 @@
     transition: all 0.3s;
 }
 
-.overlay.open {
+.overlayOpen {
     opacity: 1;
     visibility: visible;
 }
@@ -297,19 +360,12 @@
         display: none;
     }
 
-    .menuBtn {
+    .mobileToggle {
         display: flex;
     }
 
-    .menuBtn.open span:nth-child(1) {
-        transform: translateY(8px) rotate(45deg);
-    }
-
-    .menuBtn.open span:nth-child(2) {
-        opacity: 0;
-    }
-
-    .menuBtn.open span:nth-child(3) {
-        transform: translateY(-8px) rotate(-45deg);
+    .header {
+        height: 70px;
+        /* Force consistent mobile height */
     }
 }

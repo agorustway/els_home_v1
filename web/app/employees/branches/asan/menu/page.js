@@ -7,6 +7,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const DEFAULT_NAMES = ['김종화', '박승철', '최병훈', '김명주', '박승기', '김송미', '임지언'];
 
+// Top 25 Carriers (3-letter codes)
+const CARRIER_CODES = [
+    'APL', 'CMA', 'CNC', 'COS', 'EMC',
+    'HAS', 'ZIM', 'HLC', 'HMM', 'HSD',
+    'YML', 'KMD', 'KMS', 'MAE', 'MSC',
+    'ONE', 'OOL', 'PCL', 'SIT', 'SKR',
+    'SML', 'SNK', 'TCL', 'WDF', 'WHL',
+];
+
 export default function AsanMenuChoicePage({ params }) {
     const resolvedParams = use(params);
 
@@ -18,7 +27,21 @@ export default function AsanMenuChoicePage({ params }) {
     const [rotation, setRotation] = useState(0);
     const [spinDuration, setSpinDuration] = useState(5);
     const canvasRef = useRef(null);
-    const timerRef = useRef(null);
+    const rouletteTimerRef = useRef(null);
+    const ladderTimerRef = useRef(null);
+    const spinStartRotation = useRef(0);
+    const spinStartTime = useRef(0);
+    const spinTargetRotation = useRef(0);
+
+    // Reset game states when switching games to prevent residue behavior
+    useEffect(() => {
+        setIsSpinning(false);
+        setIsLadderRunning(false);
+        setWinner(null);
+        setActivePaths([]);
+        if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
+        if (ladderTimerRef.current) clearTimeout(ladderTimerRef.current);
+    }, [activeGame]);
 
     // Ladder States
     const [winnerCount, setWinnerCount] = useState(1);
@@ -26,6 +49,19 @@ export default function AsanMenuChoicePage({ params }) {
     const [isLadderRunning, setIsLadderRunning] = useState(false);
     const [activePaths, setActivePaths] = useState([]);
     const [ladderResults, setLadderResults] = useState([]);
+
+    // Bingo States
+    const [bingoGrid, setBingoGrid] = useState([]);
+    const [bingoCount, setBingoCount] = useState(0);
+    const [showBingoWin, setShowBingoWin] = useState(false);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
+            if (ladderTimerRef.current) clearTimeout(ladderTimerRef.current);
+        };
+    }, []);
 
     // Roulette Logic
     const drawRoulette = () => {
@@ -95,9 +131,28 @@ export default function AsanMenuChoicePage({ params }) {
 
     const spinRoulette = () => {
         if (isSpinning) {
-            if (timerRef.current) clearTimeout(timerRef.current);
-            setSpinDuration(0.3);
-            handleRouletteEnd(rotation);
+            if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
+
+            // Calculate approximate current rotation to make the stop feel natural
+            const elapsed = (Date.now() - spinStartTime.current) / 1000;
+            const progress = Math.min(elapsed / 5, 1);
+
+            // Rough approximation of the cubic-bezier(0.1, 0, 0.1, 1)
+            // This curve is very fast at start and slows down for a long time
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+            const currentGuess = spinStartRotation.current + (spinTargetRotation.current - spinStartRotation.current) * easedProgress;
+
+            // Set a new target about 1.5 to 2 full turns ahead of estimated current position for a "braking" feel
+            const stopRotation = currentGuess + 540 + Math.random() * 360;
+            const stopDuration = 2.5; // Slow down clearly over 2.5 seconds
+
+            setSpinDuration(stopDuration);
+            setRotation(stopRotation);
+
+            rouletteTimerRef.current = setTimeout(() => {
+                handleRouletteEnd(stopRotation);
+            }, 2500);
             return;
         }
 
@@ -106,19 +161,22 @@ export default function AsanMenuChoicePage({ params }) {
         setIsSpinning(true);
         setWinner(null);
         setSpinDuration(5);
+        spinStartTime.current = Date.now();
+        spinStartRotation.current = rotation;
 
-        const additionalSpins = 5 + Math.floor(Math.random() * 5);
+        const additionalSpins = 8 + Math.floor(Math.random() * 5);
         const randomDegree = Math.floor(Math.random() * 360);
         const totalRotation = rotation + (additionalSpins * 360) + randomDegree;
 
+        spinTargetRotation.current = totalRotation;
         setRotation(totalRotation);
 
-        timerRef.current = setTimeout(() => {
+        rouletteTimerRef.current = setTimeout(() => {
             handleRouletteEnd(totalRotation);
         }, 5000);
     };
 
-    // Improved Ladder Logic
+    // Ladder Logic
     const generateLadder = () => {
         const lines = names.length;
         if (lines < 2) return;
@@ -191,15 +249,90 @@ export default function AsanMenuChoicePage({ params }) {
 
         setActivePaths(prev => [...prev.filter(p => p.startIndex !== startIndex), newPathObj]);
 
-        setTimeout(() => {
+        if (ladderTimerRef.current) clearTimeout(ladderTimerRef.current);
+        ladderTimerRef.current = setTimeout(() => {
             setIsLadderRunning(false);
             setActivePaths(prev => prev.map(p =>
                 p.startIndex === startIndex
                     ? { ...p, isFinished: true, isWinner: ladderResults[currentPos].includes('당첨') }
                     : p
             ));
+            ladderTimerRef.current = null;
         }, 4200);
     };
+
+    // Bingo Logic
+    const initBingo = () => {
+        const shuffled = [...CARRIER_CODES].sort(() => Math.random() - 0.5);
+        const grid = shuffled.map(code => ({ code, marked: false, isWinLine: false }));
+        setBingoGrid(grid);
+        setBingoCount(0);
+        setShowBingoWin(false);
+    };
+
+    const toggleBingoCell = (index) => {
+        if (showBingoWin) return;
+        const newGrid = [...bingoGrid];
+        newGrid[index].marked = !newGrid[index].marked;
+
+        // Check for Bingo lines
+        let lines = 0;
+        const winCells = new Set();
+
+        // Rows
+        for (let i = 0; i < 5; i++) {
+            let rowFull = true;
+            for (let j = 0; j < 5; j++) {
+                if (!newGrid[i * 5 + j].marked) rowFull = false;
+            }
+            if (rowFull) {
+                lines++;
+                for (let j = 0; j < 5; j++) winCells.add(i * 5 + j);
+            }
+        }
+
+        // Columns
+        for (let j = 0; j < 5; j++) {
+            let colFull = true;
+            for (let i = 0; i < 5; i++) {
+                if (!newGrid[i * 5 + j].marked) colFull = false;
+            }
+            if (colFull) {
+                lines++;
+                for (let i = 0; i < 5; i++) winCells.add(i * 5 + j);
+            }
+        }
+
+        // Diagonals
+        let diag1Full = true;
+        for (let i = 0; i < 5; i++) if (!newGrid[i * 5 + i].marked) diag1Full = false;
+        if (diag1Full) {
+            lines++;
+            for (let i = 0; i < 5; i++) winCells.add(i * 5 + i);
+        }
+
+        let diag2Full = true;
+        for (let i = 0; i < 5; i++) if (!newGrid[i * 5 + (4 - i)].marked) diag2Full = false;
+        if (diag2Full) {
+            lines++;
+            for (let i = 0; i < 5; i++) winCells.add(i * 5 + (4 - i));
+        }
+
+        // Update grid win state
+        newGrid.forEach((cell, idx) => {
+            cell.isWinLine = winCells.has(idx);
+        });
+
+        setBingoGrid(newGrid);
+        setBingoCount(lines);
+        if (lines >= 5) setShowBingoWin(true);
+    };
+
+    useEffect(() => {
+        if (activeGame === 'bingo' && bingoGrid.length === 0) {
+            initBingo();
+        }
+    }, [activeGame]);
 
     const addName = (e) => {
         e.preventDefault();
@@ -221,14 +354,14 @@ export default function AsanMenuChoicePage({ params }) {
             <div className={styles.page}>
                 <main className={styles.container}>
                     <motion.div className={styles.hero} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-                        <h1>아산지점 식단선택 시스템</h1>
-                        <p>오늘의 당첨자는 누구일까요?</p>
+                        <h1>아산지점 식단선택 게임</h1>
+                        <p>동료들과 즐거운 시간 보내세요!</p>
                     </motion.div>
 
                     <div className={styles.layout}>
                         <aside className={styles.sidebar}>
                             <div className={styles.card}>
-                                <h3>참여자 명단 ({names.length})</h3>
+                                <h3>게임 참여자 ({names.length})</h3>
                                 <form onSubmit={addName} className={styles.addForm}>
                                     <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="이름 추가" />
                                     <button type="submit">추가</button>
@@ -249,6 +382,7 @@ export default function AsanMenuChoicePage({ params }) {
                             <div className={styles.tabs}>
                                 <button className={activeGame === 'roulette' ? styles.activeTab : ''} onClick={() => setActiveGame('roulette')}>🎡 룰렛</button>
                                 <button className={activeGame === 'ladder' ? styles.activeTab : ''} onClick={() => { setActiveGame('ladder'); if (!ladderData) generateLadder(); }}>🪜 사다리</button>
+                                <button className={activeGame === 'bingo' ? styles.activeTab : ''} onClick={() => setActiveGame('bingo')}>🔢 빙고</button>
                             </div>
 
                             <div className={styles.gameContainer}>
@@ -344,7 +478,6 @@ export default function AsanMenuChoicePage({ params }) {
                                                     ))}
                                                 </svg>
 
-                                                {/* Animated Animal Icons with Precise Path Tracking */}
                                                 {activePaths.map((p, idx) => {
                                                     const keyframesX = p.path.map(([line, y]) => `${(line / (names.length - 1)) * 100}%`);
                                                     const keyframesY = p.path.map(([line, y]) => `${y}%`);
@@ -361,7 +494,7 @@ export default function AsanMenuChoicePage({ params }) {
                                                             transition={{ duration: 4, ease: "linear" }}
                                                         >
                                                             <div className={styles.animalFace}>
-                                                                {p.isFinished ? (p.isWinner ? '😆' : '😭') : p.animal}
+                                                                {p.isFinished ? (p.isWinner ? '😭' : '😆') : p.animal}
                                                             </div>
                                                         </motion.div>
                                                     );
@@ -374,6 +507,74 @@ export default function AsanMenuChoicePage({ params }) {
                                                 ))}
                                             </div>
                                         </div>
+                                    </div>
+                                )}
+
+                                {activeGame === 'bingo' && (
+                                    <div className={styles.bingoContainer}>
+                                        <div className={styles.bingoBox}>
+                                            <div className={styles.bingoHeader}>
+                                                <h2>🚢 선사코드 5x5 빙고</h2>
+                                                <p>국제 선사코드(3자리)를 클릭하여 5빙고를 완성하세요!</p>
+                                                <div className={styles.bingoActions}>
+                                                    <button className={styles.regenerateBtn} onClick={initBingo}>빙고판 재구성</button>
+                                                </div>
+                                            </div>
+
+                                            <div className={styles.bingoGrid}>
+                                                {bingoGrid.map((cell, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={`${styles.bingoCell} ${cell.marked ? styles.marked : ''} ${cell.isWinLine ? styles.win : ''}`}
+                                                        onClick={() => toggleBingoCell(idx)}
+                                                    >
+                                                        {cell.code}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className={styles.bingoCount}>
+                                                {bingoCount} BINGO
+                                            </div>
+
+                                            <AnimatePresence>
+                                                {showBingoWin && (
+                                                    <motion.div
+                                                        className={styles.bingoWinOverlay}
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                    >
+                                                        <div className={styles.bingoWinContent}>
+                                                            <h2 style={{ fontSize: '4rem', marginBottom: '20px' }}>👑 BINGO!</h2>
+                                                            <p style={{ fontSize: '1.5rem', marginBottom: '30px' }}>축하합니다! 5빙고를 달성했습니다.</p>
+                                                            <button className={styles.closeBtn} onClick={() => setShowBingoWin(false)}>계속하기</button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        <aside className={styles.bingoManual}>
+                                            <h3>게임설명서</h3>
+                                            <div className={styles.manualList}>
+                                                <div className={styles.manualItem}>
+                                                    <span className={styles.manualNum}>1</span>
+                                                    <p>무작위로 배치된 선사코드(3자리) 중 부르는 코드를 클릭하여 체크하세요.</p>
+                                                </div>
+                                                <div className={styles.manualItem}>
+                                                    <span className={styles.manualNum}>2</span>
+                                                    <p>체크된 칸들이 가로, 세로, 대각선으로 한 줄이 되면 1빙고가 완성됩니다.</p>
+                                                </div>
+                                                <div className={styles.manualItem}>
+                                                    <span className={styles.manualNum}>3</span>
+                                                    <p>총 5줄의 빙고를 먼저 완성하여 '5 BINGO'가 되면 승리합니다!</p>
+                                                </div>
+                                                <div className={styles.manualItem}>
+                                                    <span className={styles.manualNum}>4</span>
+                                                    <p>동료들과 함께 누가 먼저 5빙고를 외치는지 대결해 보세요.</p>
+                                                </div>
+                                            </div>
+                                        </aside>
                                     </div>
                                 )}
                             </div>
