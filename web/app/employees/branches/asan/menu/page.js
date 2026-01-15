@@ -55,6 +55,16 @@ export default function AsanMenuChoicePage({ params }) {
     const [bingoCount, setBingoCount] = useState(0);
     const [showBingoWin, setShowBingoWin] = useState(false);
 
+    // History Log
+    const [history, setHistory] = useState([]);
+
+    const addToHistory = (game, result) => {
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ` +
+            `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        setHistory(prev => [{ timestamp, game, result }, ...prev].slice(0, 50)); // Keep last 50
+    };
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -125,6 +135,7 @@ export default function AsanMenuChoicePage({ params }) {
         const winnerIndex = Math.floor(targetAngle / segmentAngle);
 
         setWinner(names[winnerIndex]);
+        addToHistory('🎡 룰렛', `${names[winnerIndex]} 당첨!`);
         setIsSpinning(false);
         setSpinDuration(5);
     };
@@ -133,26 +144,21 @@ export default function AsanMenuChoicePage({ params }) {
         if (isSpinning) {
             if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
 
-            // Calculate approximate current rotation to make the stop feel natural
             const elapsed = (Date.now() - spinStartTime.current) / 1000;
             const progress = Math.min(elapsed / 5, 1);
-
-            // Rough approximation of the cubic-bezier(0.1, 0, 0.1, 1)
-            // This curve is very fast at start and slows down for a long time
             const easedProgress = 1 - Math.pow(1 - progress, 3);
-
             const currentGuess = spinStartRotation.current + (spinTargetRotation.current - spinStartRotation.current) * easedProgress;
 
-            // Set a new target about 1.5 to 2 full turns ahead of estimated current position for a "braking" feel
-            const stopRotation = currentGuess + 540 + Math.random() * 360;
-            const stopDuration = 2.5; // Slow down clearly over 2.5 seconds
+            // Natural "braking" with high randomness
+            const stopRotation = currentGuess + 720 + Math.random() * 720; // 2~4 more turns
+            const stopDuration = 3;
 
             setSpinDuration(stopDuration);
             setRotation(stopRotation);
 
             rouletteTimerRef.current = setTimeout(() => {
                 handleRouletteEnd(stopRotation);
-            }, 2500);
+            }, 3000);
             return;
         }
 
@@ -164,8 +170,9 @@ export default function AsanMenuChoicePage({ params }) {
         spinStartTime.current = Date.now();
         spinStartRotation.current = rotation;
 
-        const additionalSpins = 8 + Math.floor(Math.random() * 5);
-        const randomDegree = Math.floor(Math.random() * 360);
+        // Wider range of spins for better parity (10 to 20 full loops)
+        const additionalSpins = 10 + Math.floor(Math.random() * 10);
+        const randomDegree = Math.random() * 360; // Float for sub-degree precision
         const totalRotation = rotation + (additionalSpins * 360) + randomDegree;
 
         spinTargetRotation.current = totalRotation;
@@ -180,12 +187,15 @@ export default function AsanMenuChoicePage({ params }) {
     const generateLadder = () => {
         const lines = names.length;
         if (lines < 2) return;
-        const steps = 15;
+
+        // Increase mixing steps from 15 to 22 for better chaos
+        const steps = 22;
         const matrix = Array.from({ length: steps }, () => Array(lines - 1).fill(false));
 
         for (let i = 1; i < steps - 1; i++) {
             for (let j = 0; j < lines - 1; j++) {
-                if (Math.random() > 0.6) {
+                // Higher line density (55%) for more column switching
+                if (Math.random() > 0.45) {
                     if (j === 0 || !matrix[i][j - 1]) {
                         matrix[i][j] = true;
                     }
@@ -193,15 +203,19 @@ export default function AsanMenuChoicePage({ params }) {
             }
         }
 
+        // Robust winner distribution using independent bottom-index randomization
         const results = Array(lines).fill('꽝');
-        const winners = [];
+        const indices = Array.from({ length: lines }, (_, i) => i);
+
+        // Fisher-Yates Shuffle for the goal positions
+        for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+
         const maxWinners = Math.min(winnerCount, lines - 1);
-        while (winners.length < maxWinners) {
-            const r = Math.floor(Math.random() * lines);
-            if (!winners.includes(r)) {
-                winners.push(r);
-                results[r] = '당첨! 🎉';
-            }
+        for (let i = 0; i < maxWinners; i++) {
+            results[indices[i]] = '당첨! 🎉';
         }
 
         setLadderData(matrix);
@@ -252,9 +266,13 @@ export default function AsanMenuChoicePage({ params }) {
         if (ladderTimerRef.current) clearTimeout(ladderTimerRef.current);
         ladderTimerRef.current = setTimeout(() => {
             setIsLadderRunning(false);
+            const isWinner = ladderResults[currentPos].includes('당첨');
+
+            addToHistory('🪜 사다리', `${names[startIndex]} -> ${isWinner ? '당첨! 🎉' : '꽝'}`);
+
             setActivePaths(prev => prev.map(p =>
                 p.startIndex === startIndex
-                    ? { ...p, isFinished: true, isWinner: ladderResults[currentPos].includes('당첨') }
+                    ? { ...p, isFinished: true, isWinner: isWinner }
                     : p
             ));
             ladderTimerRef.current = null;
@@ -375,6 +393,28 @@ export default function AsanMenuChoicePage({ params }) {
                                     ))}
                                 </div>
                                 <button className={styles.resetBtn} onClick={() => { setNames(DEFAULT_NAMES); setLadderData(null); }}>기본값 복원</button>
+                            </div>
+
+                            <div className={`${styles.card} ${styles.historyCard}`}>
+                                <h3>최근 기록</h3>
+                                <div className={styles.historyList}>
+                                    {history.length === 0 ? (
+                                        <p className={styles.emptyHistory}>기록이 없습니다.</p>
+                                    ) : (
+                                        history.map((h, i) => (
+                                            <div key={i} className={styles.historyItem}>
+                                                <div className={styles.historyMeta}>
+                                                    <span className={styles.historyGame}>{h.game}</span>
+                                                    <span className={styles.historyTime}>{h.timestamp}</span>
+                                                </div>
+                                                <div className={styles.historyResult}>{h.result}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                {history.length > 0 && (
+                                    <button className={styles.clearHistoryBtn} onClick={() => setHistory([])}>전체 삭제</button>
+                                )}
                             </div>
                         </aside>
 

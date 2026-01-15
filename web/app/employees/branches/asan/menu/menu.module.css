@@ -107,6 +107,100 @@
     border-radius: 10px;
 }
 
+/* History Card */
+.historyCard {
+    margin-top: 20px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+    padding: 20px !important;
+}
+
+.historyList {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 5px;
+}
+
+.historyList::-webkit-scrollbar {
+    width: 4px;
+}
+
+.historyList::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 4px;
+}
+
+.emptyHistory {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding: 20px 0;
+}
+
+.historyItem {
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #f1f5f9;
+    transition: all 0.2s;
+}
+
+.historyItem:hover {
+    border-color: #e2e8f0;
+    background: #fff;
+    transform: translateX(2px);
+}
+
+.historyMeta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.historyGame {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+    background: #eff6ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.historyTime {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+.historyResult {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.clearHistoryBtn {
+    width: 100%;
+    margin-top: 15px;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid #fee2e2;
+    color: #ef4444;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clearHistoryBtn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
 /* Main Area */
 .tabs {
     display: flex;
