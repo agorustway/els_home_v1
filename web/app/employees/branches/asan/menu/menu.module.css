@@ -1,0 +1,389 @@
+.page {
+    background: #f8fafc;
+    min-height: 100vh;
+}
+
+.container {
+    padding-top: 100px;
+    padding-bottom: 80px;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 10px;
+}
+
+.hero p {
+    color: #64748b;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 40px;
+}
+
+/* Sidebar */
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: #1e293b;
+}
+
+.addForm {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.addForm input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    outline: none;
+}
+
+.addForm button {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.nameList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.nameTag {
+    background: #f1f5f9;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nameTag button {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+}
+
+.resetBtn {
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed #cbd5e1;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 10px;
+}
+
+/* Main Area */
+.tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.tabs button {
+    flex: 1;
+    padding: 15px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    font-weight: 800;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.tabs .activeTab {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.gameContainer {
+    background: white;
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    min-height: 600px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Roulette */
+.rouletteBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+}
+
+.rouletteWrapper {
+    position: relative;
+}
+
+.pointerContainer {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.pointerRed {
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 30px solid #ef4444;
+}
+
+.spinBtn {
+    background: #0f172a;
+    color: white;
+    border: none;
+    padding: 18px 60px;
+    border-radius: 50px;
+    font-size: 1.3rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.spinBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+.spinBtn.spinning {
+    background: #ef4444;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.resultOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.resultCard {
+    background: white;
+    padding: 50px;
+    border-radius: 30px;
+    text-align: center;
+}
+
+.resultCard h2 {
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--primary-blue);
+    margin-bottom: 40px;
+    letter-spacing: -2px;
+}
+
+.closeBtn {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.closeBtn:hover {
+    transform: translateY(-2px);
+    background: #1d4ed8;
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+}
+
+/* Ladder Game - Improved styles */
+.ladderBox {
+    width: 100%;
+}
+
+.ladderHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.ladderSettings {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.winnerInput {
+    width: 60px;
+    padding: 8px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.regenerateBtn {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ladderContent {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.ladderHeaderRow,
+.ladderFooterRow {
+    display: flex;
+    justify-content: space-around;
+}
+
+.ladderStartNode {
+    width: 100px;
+    padding: 12px 0;
+    background: #f1f5f9;
+    border-radius: 12px;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.ladderEndNode {
+    width: 100px;
+    text-align: center;
+    font-weight: 900;
+    color: #475569;
+    padding: 20px 0;
+}
+
+.ladderBoard {
+    height: 450px;
+    position: relative;
+    padding: 0;
+    margin: 10px 0;
+}
+
+.ladderSvgBackground,
+.ladderSvgOverlay {
+    position: absolute;
+    left: 50px;
+    right: 50px;
+    width: calc(100% - 100px);
+    height: 100%;
+    pointer-events: none;
+}
+
+.bgLineV {
+    stroke: #e2e8f0;
+    stroke-width: 3;
+}
+
+.bgLineH {
+    stroke: #e2e8f0;
+    stroke-width: 3;
+}
+
+.activePath {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.animalIcon {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    z-index: 50;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Translate to center the icon on the line */
+    transform: translate(-50%, -50%);
+}
+
+.animalFace {
+    font-size: 2.2rem;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    animation: bounce 0.4s infinite alternate ease-in-out;
+}
+
+@keyframes bounce {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-8px);
+    }
+}
+
+@media (max-width: 1024px) {
+    .layout {
+        grid-template-columns: 1fr;
+        padding: 0 20px;
+    }
+}

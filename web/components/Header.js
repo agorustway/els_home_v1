@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import styles from './Header.module.css';
 
-export default function Header() {
+export default function Header({ darkVariant = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -34,8 +34,10 @@ export default function Header() {
         document.body.style.overflow = 'unset';
     };
 
+    const isDarkHeader = scrolled || darkVariant;
+
     return (
-        <header className={`${styles.header} ${scrolled ? styles.scrolled : ''}`}>
+        <header className={`${styles.header} ${isDarkHeader ? styles.scrolled : ''} ${darkVariant && !scrolled ? styles.darkVariant : ''}`}>
             <div className="container">
                 <div className={styles.inner}>
                     <a href="/" className={styles.logo} onClick={handleLinkClick}>
@@ -63,6 +65,14 @@ export default function Header() {
                                 <a href="/employees#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
                                 <a href="/employees#grievance" className={styles.dropdownItem}>고충상담</a>
                                 <a href="/employees#report" className={styles.dropdownItem}>부조리 및 인권침해 제보</a>
+                                <div className={styles.dropdownDivider}></div>
+                                <div className={styles.dropdownLabel}>지점별 메뉴</div>
+                                <a href="/employees/branches/asan" className={styles.dropdownItem}>아산지점</a>
+                                <a href="/employees/branches/asan/menu" className={styles.dropdownSubItem}>└ 식단선택 (룰렛/사다리)</a>
+                                <a href="/employees/branches/jungbu" className={styles.dropdownItem}>중부지점</a>
+                                <a href="/employees/branches/dangjin" className={styles.dropdownItem}>당진지점</a>
+                                <a href="/employees/branches/yesan" className={styles.dropdownItem}>예산지점</a>
+                                <div className={styles.dropdownDivider}></div>
                                 <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem}>직원용 NAS접속</a>
                             </div>
                         </div>
@@ -113,9 +123,19 @@ export default function Header() {
                                 </button>
                                 <div className={`${styles.mobileSub} ${activeDropdown === 'emp' ? styles.showSub : ''}`}>
                                     <a href="/employees" onClick={handleLinkClick}>임직원 홈</a>
+                                    <div className={styles.mobileSubDivider}></div>
+                                    <div className={styles.mobileSubLabel}>관리 프로그램</div>
                                     <a href="/employees#satisfaction" onClick={handleLinkClick}>직원만족도 조사</a>
                                     <a href="/employees#grievance" onClick={handleLinkClick}>고충상담</a>
                                     <a href="/employees#report" onClick={handleLinkClick}>부조리 및 인권침해 제보</a>
+                                    <div className={styles.mobileSubDivider}></div>
+                                    <div className={styles.mobileSubLabel}>지점별 메뉴</div>
+                                    <a href="/employees/branches/asan" onClick={handleLinkClick}>아산지점</a>
+                                    <a href="/employees/branches/asan/menu" onClick={handleLinkClick} style={{ paddingLeft: '30px', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>└ 식단선택 (룰렛/사다리)</a>
+                                    <a href="/employees/branches/jungbu" onClick={handleLinkClick}>중부지점</a>
+                                    <a href="/employees/branches/dangjin" onClick={handleLinkClick}>당진지점</a>
+                                    <a href="/employees/branches/yesan" onClick={handleLinkClick}>예산지점</a>
+                                    <div className={styles.mobileSubDivider}></div>
                                     <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>NAS 접속</a>
                                 </div>
                             </div>
