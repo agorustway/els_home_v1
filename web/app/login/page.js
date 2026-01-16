@@ -38,7 +38,7 @@ function LoginForm() {
             >
                 <div className={styles.header}>
                     <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logo} />
-                    <h1>관리자/임직원 로그인</h1>
+                    <h1>로그인</h1>
                     <p>이엘에스솔루션 서비스 이용을 위해 로그인해 주세요.</p>
                 </div>
 

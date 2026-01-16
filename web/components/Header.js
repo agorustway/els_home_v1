@@ -87,6 +87,19 @@ export default function Header({ darkVariant = false }) {
                                 <a href="/esg" className={styles.dropdownItem}>ESG</a>
                                 <a href="/team" className={styles.dropdownItem}>조직도</a>
                                 <a href="/history" className={styles.dropdownItem}>연혁</a>
+                                <div className={styles.dropdownDivider}></div>
+                                <div className={styles.hasSubDropdown}>
+                                    <a href="#" className={styles.dropdownItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={(e) => e.preventDefault()}>
+                                        사원복지
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
+                                    </a>
+                                    <div className={styles.subDropdown}>
+                                        <a href="/welfare#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
+                                        <a href="/welfare#grievance" className={styles.dropdownItem}>고충상담</a>
+                                        <a href="/welfare#roadmap" className={styles.dropdownItem}>지속가능 일터</a>
+                                        <a href="/welfare#report" className={styles.dropdownItem}>부조리/인권침해 제보</a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <a href="/services">서비스</a>
@@ -112,21 +125,20 @@ export default function Header({ darkVariant = false }) {
                                 <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem}>NAS 시스템</a>
                                 <div className={styles.dropdownDivider}></div>
 
-                                {/* 직원 지원 */}
-                                <div className={styles.dropdownLabel}>직원 지원</div>
-                                <a href="/employees#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
-                                <a href="/employees#grievance" className={styles.dropdownItem}>고충상담</a>
-                                <a href="/employees#roadmap" className={styles.dropdownItem}>지속가능 일터</a>
-                                <a href="/employees#report" className={styles.dropdownItem}>부조리/인권침해 제보</a>
-                                <div className={styles.dropdownDivider}></div>
-
                                 {/* 지점 */}
-                                <div className={styles.dropdownLabel}>지점별 서비스</div>
-                                <a href="/employees/branches/asan" className={styles.dropdownItem}>아산지점</a>
-                                <a href="/employees/branches/asan/menu" className={styles.dropdownSubItem}>└ 식단선택</a>
-                                <a href="/employees/branches/jungbu" className={styles.dropdownItem}>중부지점</a>
-                                <a href="/employees/branches/dangjin" className={styles.dropdownItem}>당진지점</a>
-                                <a href="/employees/branches/yesan" className={styles.dropdownItem}>예산지점</a>
+                                <div className={styles.hasSubDropdown}>
+                                    <a href="#" className={styles.dropdownItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={(e) => e.preventDefault()}>
+                                        지점별 서비스
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
+                                    </a>
+                                    <div className={styles.subDropdown}>
+                                        <a href="/employees/branches/asan" className={styles.dropdownItem}>아산지점</a>
+                                        <a href="/employees/branches/asan/menu" className={styles.dropdownSubItem}>└ 식단선택</a>
+                                        <a href="/employees/branches/jungbu" className={styles.dropdownItem}>중부지점</a>
+                                        <a href="/employees/branches/dangjin" className={styles.dropdownItem}>당진지점</a>
+                                        <a href="/employees/branches/yesan" className={styles.dropdownItem}>예산지점</a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </nav>
@@ -159,6 +171,12 @@ export default function Header({ darkVariant = false }) {
                                     <a href="/esg" onClick={handleLinkClick}>ESG</a>
                                     <a href="/team" onClick={handleLinkClick}>조직도</a>
                                     <a href="/history" onClick={handleLinkClick}>연혁</a>
+                                    <div className={styles.mobileSubDivider}></div>
+                                    <div style={{ padding: '10px 20px', fontWeight: '700', color: '#1a1a1a', fontSize: '1rem' }}>사원복지</div>
+                                    <a href="/welfare#satisfaction" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 직원만족도 조사</a>
+                                    <a href="/welfare#grievance" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 고충상담</a>
+                                    <a href="/welfare#roadmap" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 지속가능 일터</a>
+                                    <a href="/welfare#report" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 부조리/인권침해 제보</a>
                                 </div>
                             </div>
 
@@ -185,19 +203,14 @@ export default function Header({ darkVariant = false }) {
                                     <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>NAS 시스템</a>
                                     <div className={styles.mobileSubDivider}></div>
 
-                                    <div className={styles.mobileSubLabel}>직원 지원</div>
-                                    <a href="/employees#satisfaction" onClick={handleLinkClick}>직원만족도 조사</a>
-                                    <a href="/employees#grievance" onClick={handleLinkClick}>고충상담</a>
-                                    <a href="/employees#roadmap" onClick={handleLinkClick}>지속가능 일터</a>
-                                    <a href="/employees#report" onClick={handleLinkClick}>부조리/인권제보</a>
                                     <div className={styles.mobileSubDivider}></div>
 
-                                    <div className={styles.mobileSubLabel}>지점별 서비스</div>
-                                    <a href="/employees/branches/asan" onClick={handleLinkClick}>아산지점</a>
-                                    <a href="/employees/branches/asan/menu" onClick={handleLinkClick} style={{ paddingLeft: '30px', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>└ 식단선택</a>
-                                    <a href="/employees/branches/jungbu" onClick={handleLinkClick}>중부지점</a>
-                                    <a href="/employees/branches/dangjin" onClick={handleLinkClick}>당진지점</a>
-                                    <a href="/employees/branches/yesan" onClick={handleLinkClick}>예산지점</a>
+                                    <div style={{ padding: '10px 20px', fontWeight: '700', color: '#1a1a1a', fontSize: '1rem' }}>지점별 서비스</div>
+                                    <a href="/employees/branches/asan" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 아산지점</a>
+                                    <a href="/employees/branches/asan/menu" onClick={handleLinkClick} style={{ paddingLeft: '50px', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>└ 식단선택</a>
+                                    <a href="/employees/branches/jungbu" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 중부지점</a>
+                                    <a href="/employees/branches/dangjin" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 당진지점</a>
+                                    <a href="/employees/branches/yesan" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 예산지점</a>
                                 </div>
                             </div>
                             <a href="/contact" className={styles.mobileContactBtn} onClick={handleLinkClick}>문의하기</a>

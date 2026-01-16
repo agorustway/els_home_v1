@@ -1,12 +1,12 @@
 .page {
     min-height: 100vh;
-    background: #fff;
+    background: #f8fbff;
     color: #111;
 }
 
 .hero {
-    padding: 140px 0 100px;
-    background: linear-gradient(135deg, #091220 0%, #002b5c 100%);
+    padding: 160px 0 80px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     text-align: center;
     color: #fff;
     position: relative;
@@ -19,8 +19,8 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 100px;
-    background: linear-gradient(to top, #fff, transparent);
+    height: 60px;
+    background: linear-gradient(to top, #f8fbff, transparent);
 }
 
 .tag {
@@ -30,464 +30,175 @@
     letter-spacing: 4px;
     text-transform: uppercase;
     display: block;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
 }
 
 .title {
-    font-size: 4rem;
-    font-weight: 950;
-    letter-spacing: -2.5px;
-    margin-bottom: 35px;
-    line-height: 1.1;
-    color: #fff;
-}
-
-.introText {
-    max-width: 900px;
-    margin: 0 auto;
-    font-size: 1.35rem;
-    line-height: 1.8;
-    color: rgba(255, 255, 255, 0.8);
-    word-break: keep-all;
-}
-
-.introText strong {
-    color: #0084ff;
-    font-weight: 800;
-}
-
-.commitment {
-    margin-top: 50px;
-    padding: 40px;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-radius: 30px;
-    display: inline-block;
-    max-width: 850px;
-    font-size: 1.15rem;
-    color: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    line-height: 1.7;
-}
-
-/* Satisfaction Section - Redesigned */
-.satisfactionSection {
-    padding: 160px 0;
-    background: #fff;
-}
-
-.sectionTitle {
-    font-size: 3rem;
-    font-weight: 950;
-    text-align: center;
-    margin-bottom: 80px;
+    font-size: 3.5rem;
+    font-weight: 900;
     letter-spacing: -1.5px;
-    position: relative;
+    margin-bottom: 20px;
+    color: #fff;
+    line-height: 1.2;
 }
 
-.sectionTitle::after {
-    content: '';
-    display: block;
-    width: 60px;
-    height: 5px;
-    background: var(--primary-blue);
-    margin: 25px auto 0;
-    border-radius: 100px;
+.desc {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 600px;
+    margin: 0 auto;
 }
 
-.satisfactionList {
+/* Portal Content */
+.portalSection {
+    padding: 60px 0 120px;
+}
+
+.gridContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    margin-bottom: 60px;
+}
+
+.card {
+    background: #fff;
+    border-radius: 25px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     display: flex;
     flex-direction: column;
-    gap: 60px;
-    max-width: 1100px;
-    margin: 0 auto;
-}
-
-.satItem {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 40px;
-    align-items: center;
-}
-
-.satItem:nth-child(even) {
-    direction: rtl;
-}
-
-.satItem:nth-child(even) .satContent {
-    direction: ltr;
-}
-
-.satVisual {
-    height: 300px;
-    border-radius: 30px;
+    justify-content: space-between;
+    text-decoration: none;
+    color: inherit;
     position: relative;
     overflow: hidden;
-    background: #000;
 }
 
-.satImage {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.8;
-    transition: transform 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 50px rgba(0, 86, 179, 0.1);
+    border-color: rgba(0, 102, 255, 0.1);
 }
 
-.satItem:hover .satImage {
-    transform: scale(1.1);
-}
-
-.satOverlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 40%, rgba(0, 0, 0, 0.8));
+.cardIcon {
+    width: 60px;
+    height: 60px;
+    background: #f0f7ff;
+    border-radius: 20px;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 30px;
-    color: #fff;
-}
-
-.satOverlay h3 {
-    font-size: 1.5rem;
-    font-weight: 900;
-    margin-bottom: 5px;
-    color: #fff !important;
-}
-
-.satOverlay p {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-.satContent {
-    padding: 0;
-}
-
-.satContent h3 {
+    align-items: center;
+    justify-content: center;
     font-size: 1.8rem;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: #111;
-    letter-spacing: -0.5px;
+    margin-bottom: 25px;
+    color: var(--primary-blue);
+    transition: all 0.3s;
 }
 
-
-
-.satContent p {
-    font-size: 1.15rem;
-    line-height: 1.8;
-    color: #555;
-}
-
-/* Grievance Procedure - Clear Distinction */
-.procedureSection {
-    padding: 160px 0;
-    background: #091220;
+.card:hover .cardIcon {
+    background: var(--primary-blue);
     color: #fff;
+    transform: rotate(-5deg) scale(1.1);
 }
 
-.procedureSection .sectionTitle {
-    color: #fff;
-}
-
-.procedureContainer {
-    max-width: 1100px;
-    margin: 0 auto;
-}
-
-.procedureDefinition {
-    text-align: center;
+.cardTitle {
     font-size: 1.4rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 80px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: #1e293b;
+}
+
+.cardDesc {
+    font-size: 0.95rem;
+    color: #64748b;
     line-height: 1.6;
 }
 
-.procedureGrid {
+.arrow {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s;
+    color: var(--primary-blue);
+}
+
+.card:hover .arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Section Divider */
+.sectionLabel {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #334155;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.sectionLabel::after {
+    content: '';
+    height: 1px;
+    flex-grow: 1;
+    background: #e2e8f0;
+}
+
+/* Branch List */
+.branchGrid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
 }
 
-.stepCard {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 40px;
-    border-radius: 35px;
-    transition: all 0.4s;
-}
-
-.stepCard:hover {
-    background: rgba(255, 255, 255, 0.08);
-    transform: translateY(-10px);
-}
-
-.stepNum {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--accent-blue);
-    margin-bottom: 15px;
-    display: block;
-}
-
-.stepTitle {
-    font-size: 1.3rem;
-    font-weight: 900;
-    margin-bottom: 20px;
-    color: #fff;
-}
-
-.stepDesc {
-    font-size: 0.95rem;
-    line-height: 1.7;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-/* Roadmap */
-.roadmapSection {
-    padding: 160px 0;
+.branchCard {
     background: #fff;
-}
-
-.roadmapList {
-    max-width: 800px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.roadmapItem {
-    padding: 30px 40px;
-    background: #fbfcfe;
-    border-radius: 25px;
-    border: 1px solid #f0f4f9;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #111;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-/* NAS - Separate Final Page Block */
-.nasSection {
-    background: #f0f4f8;
-    padding: 160px 0;
-}
-
-.nasBox {
-    background: #fff;
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 80px;
-    border-radius: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.06);
-}
-
-.nasInfo h3 {
-    font-size: 2.5rem;
-    font-weight: 950;
-    margin-bottom: 20px;
-    color: #111;
-}
-
-.nasInfo p {
-    font-size: 1.1rem;
-    color: #666;
-}
-
-.nasBtn {
-    padding: 24px 60px;
-    background: var(--primary-blue);
-    color: #fff;
-    text-decoration: none;
-    border-radius: 100px;
-    font-weight: 800;
-    font-size: 1.2rem;
-    transition: all 0.3s;
-    box-shadow: 0 15px 30px rgba(0, 102, 255, 0.2);
-}
-
-.nasBtn:hover {
-    transform: translateY(-5px);
-    background: #004ecc;
-    box-shadow: 0 20px 40px rgba(0, 102, 255, 0.3);
-}
-
-/* Metaphor */
-.metaphorSection {
-    background: #091220;
-    padding: 120px 0;
+    padding: 30px;
+    border-radius: 20px;
     text-align: center;
+    border: 1px solid #f1f5f9;
+    text-decoration: none;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
-.metaphorText {
-    font-size: 2.2rem;
+.branchCard:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-blue);
+    box-shadow: 0 15px 30px rgba(0, 102, 255, 0.08);
+}
+
+.branchName {
+    font-size: 1.15rem;
     font-weight: 800;
-    color: #fff;
-    max-width: 1000px;
-    margin: 0 auto;
-    line-height: 1.5;
+    color: #334155;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.branchEng {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 @media (max-width: 1024px) {
-    .satItem {
-        grid-template-columns: 1fr;
-        gap: 30px;
-        text-align: center;
-    }
-
-    .satItem:nth-child(even) {
-        direction: ltr;
-    }
-
-    .procedureGrid {
+    .gridContainer {
         grid-template-columns: 1fr;
     }
 
-    .nasBox {
-        flex-direction: column;
-        padding: 60px 30px;
-        text-align: center;
-        gap: 40px;
+    .branchGrid {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .title {
-        font-size: 2.8rem;
-    }
-}
-
-/* Report Form Section */
-.reportSection {
-    padding: 160px 0;
-    background: #f8fbff;
-}
-
-.reportContainer {
-    max-width: 800px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 60px;
-    border-radius: 40px;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.04);
-}
-
-.reportTitle {
-    font-size: 2.2rem;
-    font-weight: 900;
-    margin-bottom: 15px;
-    text-align: center;
-    color: #111;
-}
-
-.reportDesc {
-    text-align: center;
-    color: #666;
-    margin-bottom: 50px;
-    font-size: 1.1rem;
-}
-
-.reportForm {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-}
-
-.formGroup {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.formGroup label {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #333;
-    padding-left: 5px;
-}
-
-.formInput,
-.formSelect,
-.formTextarea {
-    padding: 18px 25px;
-    border-radius: 15px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    font-size: 1rem;
-    transition: all 0.3s;
-    outline: none;
-}
-
-.formInput:focus,
-.formSelect:focus,
-.formTextarea:focus {
-    border-color: var(--primary-blue);
-    background: #fff;
-    box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.1);
-}
-
-.formTextarea {
-    min-height: 200px;
-    resize: vertical;
-}
-
-.submitBtn {
-    margin-top: 20px;
-    padding: 22px;
-    background: var(--primary-blue);
-    color: #fff;
-    border: none;
-    border-radius: 100px;
-    font-size: 1.15rem;
-    font-weight: 800;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 15px 30px rgba(0, 102, 255, 0.2);
-}
-
-.submitBtn:hover:not(:disabled) {
-    background: #004ecc;
-    transform: translateY(-3px);
-    box-shadow: 0 20px 40px rgba(0, 102, 255, 0.3);
-}
-
-.submitBtn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.statusMessage {
-    margin-top: 20px;
-    padding: 15px;
-    border-radius: 12px;
-    text-align: center;
-    font-weight: 700;
-}
-
-.statusMessage.success {
-    background: #f0fff4;
-    color: #2f855a;
-    border: 1px solid #c6f6d5;
-}
-
-.statusMessage.error {
-    background: #fff5f5;
-    color: #c53030;
-    border: 1px solid #fed7d7;
-}
-
-@media (max-width: 1024px) {
-    .reportContainer {
-        padding: 40px 20px;
-        border-radius: 30px;
+        font-size: 2.5rem;
     }
 }

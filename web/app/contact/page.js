@@ -306,29 +306,22 @@ export default function ContactPage() {
                                                 <motion.div
                                                     key={inquiry.id}
                                                     className={styles.postCard}
-                                                    initial={{ opacity: 0, y: 20 }}
+                                                    initial={{ opacity: 0, y: 10 }}
                                                     animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    exit={{ opacity: 0, scale: 0.98 }}
                                                     layout
                                                 >
-                                                    <div className={styles.postThumb}>
-                                                        <span className={styles.postAuthor}>
-                                                            {user ? inquiry.user_name : '문의 내역'}
-                                                        </span>
-                                                        {badge && (
-                                                            <span
-                                                                className={styles.statusBadge}
-                                                                style={{ backgroundColor: badge.color }}
-                                                            >
-                                                                {badge.text}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <h4 className={styles.postSubject}>{inquiry.subject}</h4>
-                                                    {user && inquiry.message && (
-                                                        <p className={styles.postContent}>{inquiry.message}</p>
-                                                    )}
                                                     <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
+                                                    <h4 className={styles.postSubject}>{inquiry.subject}</h4>
+
+                                                    {badge && (
+                                                        <span
+                                                            className={styles.statusBadge}
+                                                            style={{ backgroundColor: badge.color }}
+                                                        >
+                                                            {badge.text}
+                                                        </span>
+                                                    )}
                                                 </motion.div>
                                             );
                                         })}

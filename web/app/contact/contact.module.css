@@ -120,62 +120,59 @@
 .postList {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
 }
 
 .postCard {
     background: #fff;
-    padding: 25px;
-    border-radius: 20px;
+    padding: 18px 24px;
+    border-radius: 16px;
     border: 1px solid #eef2f8;
-    transition: all 0.3s;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
 }
 
 .postCard:hover {
-    transform: translateX(5px);
-    border-color: var(--accent-blue);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
-}
-
-.postThumb {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 12px;
-}
-
-.postAuthor {
-    font-weight: 800;
-    color: var(--primary-blue);
-    font-size: 0.95rem;
+    transform: translateY(-2px);
+    border-color: var(--primary-blue);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .postDate {
-    font-size: 0.8rem;
-    color: #bbb;
-    display: block;
-    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    font-family: monospace;
+    /* Optional: for alignment */
+    min-width: 90px;
 }
 
 .postSubject {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #1e3a8a;
-    margin-bottom: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    margin: 0;
 }
 
-.postContent {
-    font-size: 0.95rem;
-    color: #64748b;
-    line-height: 1.6;
+.postCard:hover .postSubject {
+    color: var(--primary-blue);
+    font-weight: 600;
 }
 
 .statusBadge {
     font-size: 0.75rem;
     font-weight: 700;
     color: white;
-    padding: 4px 12px;
-    border-radius: 12px;
-    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 100px;
+    white-space: nowrap;
 }
 
 .loginRequired {

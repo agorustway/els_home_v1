@@ -7,7 +7,8 @@ const menuItems = [
     { name: '비전', path: '/vision' },
     { name: 'ESG', path: '/esg' },
     { name: '조직도', path: '/team' },
-    { name: '연혁', path: '/history' }
+    { name: '연혁', path: '/history' },
+    { name: '사원복지', path: '/welfare' }
 ];
 
 export default function SubNav() {
