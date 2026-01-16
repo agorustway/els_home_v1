@@ -1,18 +1,40 @@
 'use client';
 import { useState, useEffect } from 'react';
 import styles from './Header.module.css';
+import { createClient } from '../utils/supabase/client';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Header({ darkVariant = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
+    const [user, setUser] = useState(null);
+    const supabase = createClient();
+    const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 50);
         };
         window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        // Fetch user session
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+        };
+        getUser();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            subscription.unsubscribe();
+        };
     }, []);
 
     const toggleMenu = () => {
@@ -32,6 +54,15 @@ export default function Header({ darkVariant = false }) {
     const handleLinkClick = () => {
         setMenuOpen(false);
         document.body.style.overflow = 'unset';
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.refresh();
+    };
+
+    const handleLoginClick = () => {
+        router.push(`/login?next=${encodeURIComponent(pathname)}`);
     };
 
     const isDarkHeader = scrolled || darkVariant;
@@ -59,12 +90,20 @@ export default function Header({ darkVariant = false }) {
                         <a href="/dashboard">실적현황</a>
                         <a href="/network">네트워크</a>
                         <a href="/contact" className={styles.contactBtn}>문의하기</a>
+                        {user ? (
+                            <button onClick={handleLogout} className={styles.authBtn}>로그아웃</button>
+                        ) : (
+                            <button onClick={handleLoginClick} className={styles.authBtn}>로그인</button>
+                        )}
                         <div className={styles.hasDropdown}>
                             <a href="/employees" className={styles.empBtn}>임직원전용</a>
                             <div className={styles.dropdown}>
+                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem} style={{ fontWeight: '800', color: 'var(--primary-blue)' }}>직원용 NAS접속</a>
+                                <div className={styles.dropdownDivider}></div>
                                 <a href="/employees#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
                                 <a href="/employees#grievance" className={styles.dropdownItem}>고충상담</a>
-                                <a href="/employees#report" className={styles.dropdownItem}>부조리 및 인권침해 제보</a>
+                                <a href="/employees#roadmap" className={styles.dropdownItem}>지속가능 일터 계획</a>
+                                <a href="/employees#report" className={styles.dropdownItem}>부조리/인권침해 제보</a>
                                 <div className={styles.dropdownDivider}></div>
                                 <div className={styles.dropdownLabel}>지점별 메뉴</div>
                                 <a href="/employees/branches/asan" className={styles.dropdownItem}>아산지점</a>
@@ -72,8 +111,6 @@ export default function Header({ darkVariant = false }) {
                                 <a href="/employees/branches/jungbu" className={styles.dropdownItem}>중부지점</a>
                                 <a href="/employees/branches/dangjin" className={styles.dropdownItem}>당진지점</a>
                                 <a href="/employees/branches/yesan" className={styles.dropdownItem}>예산지점</a>
-                                <div className={styles.dropdownDivider}></div>
-                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem}>직원용 NAS접속</a>
                             </div>
                         </div>
                     </nav>
@@ -124,10 +161,13 @@ export default function Header({ darkVariant = false }) {
                                 <div className={`${styles.mobileSub} ${activeDropdown === 'emp' ? styles.showSub : ''}`}>
                                     <a href="/employees" onClick={handleLinkClick}>임직원 홈</a>
                                     <div className={styles.mobileSubDivider}></div>
+                                    <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick} style={{ color: 'var(--primary-blue)', fontWeight: '800' }}>NAS 접속</a>
+                                    <div className={styles.mobileSubDivider}></div>
                                     <div className={styles.mobileSubLabel}>관리 프로그램</div>
                                     <a href="/employees#satisfaction" onClick={handleLinkClick}>직원만족도 조사</a>
                                     <a href="/employees#grievance" onClick={handleLinkClick}>고충상담</a>
-                                    <a href="/employees#report" onClick={handleLinkClick}>부조리 및 인권침해 제보</a>
+                                    <a href="/employees#roadmap" onClick={handleLinkClick}>지속가능 일터 계획</a>
+                                    <a href="/employees#report" onClick={handleLinkClick}>부조리/인권제보</a>
                                     <div className={styles.mobileSubDivider}></div>
                                     <div className={styles.mobileSubLabel}>지점별 메뉴</div>
                                     <a href="/employees/branches/asan" onClick={handleLinkClick}>아산지점</a>
@@ -135,11 +175,14 @@ export default function Header({ darkVariant = false }) {
                                     <a href="/employees/branches/jungbu" onClick={handleLinkClick}>중부지점</a>
                                     <a href="/employees/branches/dangjin" onClick={handleLinkClick}>당진지점</a>
                                     <a href="/employees/branches/yesan" onClick={handleLinkClick}>예산지점</a>
-                                    <div className={styles.mobileSubDivider}></div>
-                                    <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>NAS 접속</a>
                                 </div>
                             </div>
                             <a href="/contact" className={styles.mobileContactBtn} onClick={handleLinkClick}>문의하기</a>
+                            {user ? (
+                                <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
+                            ) : (
+                                <button onClick={handleLoginClick} className={styles.mobileAuthBtn}>로그인</button>
+                            )}
                         </div>
                     </div>
                 </div>

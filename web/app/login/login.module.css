@@ -1,0 +1,122 @@
+.loginPage {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+    padding: 20px;
+}
+
+.loginCard {
+    background: white;
+    padding: 50px 40px;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(37, 99, 235, 0.08);
+    width: 100%;
+    max-width: 440px;
+    text-align: center;
+}
+
+.header {
+    margin-bottom: 40px;
+}
+
+.logo {
+    height: 40px;
+    margin-bottom: 24px;
+    object-fit: contain;
+}
+
+.header h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1e3a8a;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+}
+
+.header p {
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.buttonGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 40px;
+}
+
+.googleBtn,
+.kakaoBtn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #334155;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.googleBtn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.kakaoBtn {
+    background: #FEE500;
+    border: none;
+    color: #3C1E1E;
+}
+
+.kakaoBtn:hover {
+    background: #FADA0A;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(254, 229, 0, 0.3);
+}
+
+.googleBtn img,
+.kakaoBtn img {
+    width: 20px;
+    height: 20px;
+}
+
+.footer {
+    border-top: 1px solid #f1f5f9;
+    padding-top: 24px;
+}
+
+.footer p {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 16px;
+}
+
+.backHome {
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.backHome:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+    .loginCard {
+        padding: 40px 24px;
+    }
+}

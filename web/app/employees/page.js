@@ -140,7 +140,27 @@ export default function EmployeesPage() {
                         </div>
                     </section>
 
-                    {/* 2. Satisfaction Management - Premium Image Redesign */}
+                    {/* 2. NAS - Final Separate Section - Moved to top priority */}
+                    <section id="nas" className={styles.nasSection}>
+                        <div className="container">
+                            <motion.div
+                                className={styles.nasBox}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                            >
+                                <div className={styles.nasInfo}>
+                                    <h3>NAS 시스템 접속</h3>
+                                    <p>임직원 전용 데이터 센터 및 파일 공유 시스템 (External Server)</p>
+                                </div>
+                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.nasBtn}>
+                                    서버 접속하기
+                                </a>
+                            </motion.div>
+                        </div>
+                    </section>
+
+                    {/* 3. Satisfaction Management - Premium Image Redesign */}
                     <section id="satisfaction" className={styles.satisfactionSection}>
                         <div className="container">
                             <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
@@ -212,7 +232,28 @@ export default function EmployeesPage() {
                         </div>
                     </section>
 
-                    {/* 3.5 Report Form Section */}
+                    {/* 4. Roadmap & Future - Moved up */}
+                    <section id="roadmap" className={styles.roadmapSection}>
+                        <div className="container">
+                            <h2 className={styles.sectionTitle}>지속가능한 일터 조성 계획</h2>
+                            <div className={styles.roadmapList}>
+                                {roadmapItems.map((item, i) => (
+                                    <motion.div
+                                        key={i}
+                                        className={styles.roadmapItem}
+                                        initial={{ opacity: 0, x: -30 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1 }}
+                                    >
+                                        {item}
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 5. Report Form Section - Moved down */}
                     <section id="report" className={styles.reportSection}>
                         <div className="container">
                             <motion.div
@@ -306,47 +347,6 @@ export default function EmployeesPage() {
                         </div>
                     </section>
 
-                    {/* 4. Roadmap & Future */}
-                    <section className={styles.roadmapSection}>
-                        <div className="container">
-                            <h2 className={styles.sectionTitle}>지속가능한 일터 조성 계획</h2>
-                            <div className={styles.roadmapList}>
-                                {roadmapItems.map((item, i) => (
-                                    <motion.div
-                                        key={i}
-                                        className={styles.roadmapItem}
-                                        initial={{ opacity: 0, x: -30 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: i * 0.1 }}
-                                    >
-                                        {item}
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* 5. NAS - Final Separate Section */}
-                    <section id="nas" className={styles.nasSection}>
-                        <div className="container">
-                            <motion.div
-                                className={styles.nasBox}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                            >
-                                <div className={styles.nasInfo}>
-                                    <h3>NAS 시스템 접속</h3>
-                                    <p>임직원 전용 데이터 센터 및 파일 공유 시스템 (External Server)</p>
-                                </div>
-                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.nasBtn}>
-                                    서버 접속하기
-                                </a>
-                            </motion.div>
-                        </div>
-                    </section>
-
                     {/* 6. Closing Metaphor */}
                     <section className={styles.metaphorSection}>
                         <div className="container">
@@ -355,7 +355,7 @@ export default function EmployeesPage() {
                                 initial={{ opacity: 0 }}
                                 whileInView={{ opacity: 1 }}
                             >
-                                "이엘에스솔루션의 고충 처리 시스템은 구성원의 마음을 보듬는 <strong>'안전 로프'</strong>입니다."
+                                "우리의 고충 처리 시스템은 구성원을 지키는 <strong>'안전 로프'</strong>입니다."
                             </motion.p>
                         </div>
                     </section>
