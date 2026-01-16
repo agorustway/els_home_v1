@@ -12,7 +12,7 @@ export default function IntroPage() {
             <SubPageHero
                 title="회사소개"
                 subtitle="고객공감 서비스를 실현하는 운송 및 제조 서비스 전문 기업"
-                bgImage="/images/hero_logistics.png"
+                bgImage="/images/office_intro.png"
             />
             <SubNav />
             <main>
