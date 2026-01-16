@@ -11,6 +11,9 @@ import { createClient } from '../../utils/supabase/client';
 export default function ContactPage() {
     const [user, setUser] = useState(null);
     const [inquiries, setInquiries] = useState([]);
+    const [selectedInquiry, setSelectedInquiry] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({ subject: '', message: '' });
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const supabase = createClient();
@@ -188,6 +191,70 @@ export default function ContactPage() {
         return badges[status] || badges.pending;
     };
 
+    const handleInquiryClick = (inquiry) => {
+        if (!user) {
+            if (confirm('로그인이 필요한 서비스입니다. 로그인 페이지로 이동하시겠습니까?')) {
+                router.push(`/login?next=/contact`);
+            }
+            return;
+        }
+
+        setSelectedInquiry(inquiry);
+        setEditForm({ subject: inquiry.subject, message: inquiry.message || '' });
+        setIsEditing(false);
+    };
+
+    const handleUpdate = async () => {
+        if (!editForm.subject.trim() || !editForm.message.trim()) {
+            alert('제목과 내용을 입력해주세요.');
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('inquiries')
+                .update({
+                    subject: editForm.subject,
+                    message: editForm.message,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', selectedInquiry.id)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            setInquiries(inquiries.map(iq =>
+                iq.id === selectedInquiry.id ? { ...iq, ...editForm } : iq
+            ));
+            setSelectedInquiry(null);
+            alert('문의 내용이 수정되었습니다.');
+        } catch (error) {
+            console.error('Update error:', error);
+            alert('수정 중 오류가 발생했습니다.');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('정말 삭제하시겠습니까? 삭제된 내역은 복구할 수 없습니다.')) return;
+
+        try {
+            const { error } = await supabase
+                .from('inquiries')
+                .delete()
+                .eq('id', selectedInquiry.id)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            setInquiries(inquiries.filter(iq => iq.id !== selectedInquiry.id));
+            setSelectedInquiry(null);
+            alert('삭제되었습니다.');
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        }
+    };
+
     return (
         <div className={styles.contactPage}>
             <Header />
@@ -310,6 +377,7 @@ export default function ContactPage() {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, scale: 0.98 }}
                                                     layout
+                                                    onClick={() => handleInquiryClick(inquiry)}
                                                 >
                                                     <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
                                                     <h4 className={styles.postSubject}>{inquiry.subject}</h4>
@@ -367,7 +435,70 @@ export default function ContactPage() {
                 </div>
             </section>
 
+            <AnimatePresence>
+                {selectedInquiry && (
+                    <div className={styles.modalOverlay} onClick={() => setSelectedInquiry(null)}>
+                        <motion.div
+                            className={styles.modal}
+                            onClick={e => e.stopPropagation()}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                        >
+                            <div className={styles.modalHeader}>
+                                <div>
+                                    <div className={styles.modalMeta}>
+                                        {formatDate(selectedInquiry.created_at)} · {getStatusBadge(selectedInquiry.status).text}
+                                    </div>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            className={styles.modalInput}
+                                            value={editForm.subject}
+                                            onChange={e => setEditForm({ ...editForm, subject: e.target.value })}
+                                        />
+                                    ) : (
+                                        <h3 className={styles.modalTitle}>{selectedInquiry.subject}</h3>
+                                    )}
+                                </div>
+                                <button className={styles.closeBtn} onClick={() => setSelectedInquiry(null)}>&times;</button>
+                            </div>
+
+                            <div className={styles.modalBody}>
+                                {isEditing ? (
+                                    <textarea
+                                        className={styles.modalTextarea}
+                                        value={editForm.message}
+                                        onChange={e => setEditForm({ ...editForm, message: e.target.value })}
+                                    />
+                                ) : (
+                                    <div className={styles.modalContent}>{selectedInquiry.message}</div>
+                                )}
+                            </div>
+
+                            <div className={styles.modalActions}>
+                                {isEditing ? (
+                                    <>
+                                        <button className={`${styles.modalBtn} ${styles.btnSecondary}`} onClick={() => setIsEditing(false)}>취소</button>
+                                        <button className={`${styles.modalBtn} ${styles.btnPrimary}`} onClick={handleUpdate}>저장</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        {user && user.id === selectedInquiry.user_id && (
+                                            <button className={`${styles.modalBtn} ${styles.btnDanger}`} onClick={handleDelete}>삭제</button>
+                                        )}
+                                        {user && user.id === selectedInquiry.user_id && (
+                                            <button className={`${styles.modalBtn} ${styles.btnPrimary}`} onClick={() => setIsEditing(true)}>수정</button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             <Footer />
-        </div>
+        </div >
     );
 }

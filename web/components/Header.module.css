@@ -50,7 +50,7 @@
 .nav {
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 15px;
 }
 
 .nav a {
@@ -83,9 +83,10 @@
 .contactBtn {
     background: var(--primary-blue);
     color: white !important;
-    padding: 10px 25px;
+    padding: 8px 18px;
     border-radius: 50px;
     font-size: 0.85rem;
+    font-weight: 700;
     transition: transform 0.3s, background 0.3s;
 }
 
@@ -100,7 +101,7 @@
     padding: 8px 18px;
     border-radius: 50px;
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
     color: white !important;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -127,9 +128,10 @@
 .empBtn {
     border: 1px solid rgba(255, 255, 255, 0.4);
     color: white !important;
-    padding: 10px 25px;
+    padding: 8px 18px;
     border-radius: 50px;
     font-size: 0.85rem;
+    font-weight: 700;
     transition: all 0.3s;
     background: transparent;
 }
@@ -164,13 +166,13 @@
     left: 50%;
     transform: translateX(-50%) translateY(10px);
     background: #fff;
-    min-width: 220px;
-    border-radius: 15px;
+    min-width: 160px;
+    border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    padding: 10px 0;
+    padding: 8px 0;
     z-index: 100;
 }
 
@@ -182,9 +184,9 @@
 
 .dropdownItem {
     display: block;
-    padding: 12px 25px;
+    padding: 8px 20px;
     color: #444 !important;
-    font-size: 0.9rem !important;
+    font-size: 0.85rem !important;
     font-weight: 500 !important;
     text-shadow: none !important;
     transition: all 0.2s;
@@ -200,7 +202,7 @@
 .dropdownDivider {
     height: 1px;
     background: #eee;
-    margin: 8px 0;
+    margin: 5px 0;
 }
 
 .dropdownLabel {
@@ -214,9 +216,9 @@
 
 .dropdownSubItem {
     display: block;
-    padding: 10px 25px 10px 40px;
+    padding: 8px 20px 8px 35px;
     color: #666 !important;
-    font-size: 0.85rem !important;
+    font-size: 0.8rem !important;
     font-weight: 500 !important;
     text-shadow: none !important;
     transition: all 0.2s;
