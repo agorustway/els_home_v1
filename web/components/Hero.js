@@ -5,7 +5,7 @@ import styles from './Hero.module.css';
 
 const slides = [
     {
-        image: '/images/hero_logistics.png',
+        image: '/images/office_intro.png',
         title: 'Precision Logistics Solution',
         subtitle: '최상의 운송 품질과 전문적인 물류 솔루션을 제공합니다',
     },
