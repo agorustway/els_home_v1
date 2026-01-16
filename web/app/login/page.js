@@ -1,10 +1,11 @@
 'use client';
+import { Suspense } from 'react';
 import { createClient } from '../../utils/supabase/client';
 import { useSearchParams } from 'next/navigation';
 import styles from './login.module.css';
 import { motion } from 'framer-motion';
 
-export default function LoginPage() {
+function LoginForm() {
     const searchParams = useSearchParams();
     const next = searchParams.get('next') || '/';
     const supabase = createClient();
@@ -65,5 +66,19 @@ export default function LoginPage() {
                 </div>
             </motion.div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className={styles.loginPage}>
+                <div className={styles.loginCard}>
+                    <p>로딩 중...</p>
+                </div>
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }
