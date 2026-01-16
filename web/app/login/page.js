@@ -10,6 +10,11 @@ export default function LoginPage() {
     const supabase = createClient();
 
     const handleLogin = async (provider) => {
+        if (provider === 'kakao') {
+            alert('카카오 로그인은 현재 개발 중입니다.\n구글 로그인을 이용해 주세요.');
+            return;
+        }
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
             options: {

@@ -2,8 +2,30 @@
 import Image from 'next/image';
 import styles from './Intro.module.css';
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 
 export default function Intro() {
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) {
+        return (
+            <section id="intro" className="section" style={{ overflow: 'hidden' }}>
+                <div className="container">
+                    <div className={styles.content}>
+                        <div className={styles.textColumn}>
+                            <h2 className={styles.title}>회사 소개 <span className={styles.blue}>Company Profile</span></h2>
+                            <h3 className={styles.tagline} style={{ fontSize: '2.5rem' }}>이엘에스솔루션</h3>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     return (
         <section id="intro" className="section" style={{ overflow: 'hidden' }}>
             <div className="container">

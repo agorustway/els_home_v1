@@ -152,12 +152,85 @@
 .postDate {
     font-size: 0.8rem;
     color: #bbb;
+    display: block;
+    margin-top: 10px;
+}
+
+.postSubject {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 8px;
 }
 
 .postContent {
-    font-size: 1rem;
-    color: #444;
+    font-size: 0.95rem;
+    color: #64748b;
     line-height: 1.6;
+}
+
+.statusBadge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.loginRequired {
+    text-align: center;
+    padding: 60px 20px;
+    background: #f8fafc;
+    border-radius: 20px;
+    border: 2px dashed #cbd5e1;
+}
+
+.loginRequired p {
+    font-size: 1.1rem;
+    color: #64748b;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.loginBtn {
+    background: var(--primary-blue);
+    color: white;
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1rem;
+}
+
+.loginBtn:hover {
+    background: var(--secondary-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 86, 179, 0.2);
+}
+
+.emptyState {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+    font-size: 1rem;
+}
+
+.publicList {
+    margin-bottom: 20px;
+}
+
+.publicNotice {
+    background: #eff6ff;
+    color: #1e40af;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #bfdbfe;
 }
 
 /* Report Styles */

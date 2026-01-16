@@ -1,63 +1,143 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import SubPageHero from '../../components/SubPageHero';
 import styles from './contact.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '../../utils/supabase/client';
 
 export default function ContactPage() {
-    const [posts, setPosts] = useState([
-        { id: 1, author: '익명1', content: '운송 견적 문의드립니다. 아산에서 서울까지 컨테이너 2대 분량입니다.', date: '2026-01-08' },
-        { id: 2, author: '익명2', content: '홈페이지 디자인이 깔끔하고 좋네요. 응원합니다!', date: '2026-01-07' },
-        { id: 3, author: '익명3', content: '조직도에서 영업팀 연락처가 안보이는데 어디서 확인 가능한가요?', date: '2026-01-05' },
-    ]);
+    const [user, setUser] = useState(null);
+    const [inquiries, setInquiries] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+    const supabase = createClient();
 
     const [formData, setFormData] = useState({
-        content: '',
-        contact: ''
+        company_name: '',
+        phone: '',
+        subject: '',
+        message: ''
     });
     const [reportContent, setReportContent] = useState('');
-    const [inquiryStatus, setInquiryStatus] = useState('idle'); // idle, submitting, success, error
-    const [reportStatus, setReportStatus] = useState('idle'); // idle, submitting, success, error
+    const [inquiryStatus, setInquiryStatus] = useState('idle');
+    const [reportStatus, setReportStatus] = useState('idle');
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+            if (user) {
+                fetchInquiries(user.id);
+            } else {
+                setLoading(false);
+            }
+        };
+        getUser();
+
+        // Fetch public inquiries for all users
+        fetchPublicInquiries();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user ?? null);
+            if (session?.user) {
+                fetchInquiries(session.user.id);
+            } else {
+                fetchPublicInquiries();
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const fetchPublicInquiries = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('inquiries')
+                .select('id, subject, created_at')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (error) throw error;
+            setInquiries(data || []);
+        } catch (error) {
+            console.error('Error fetching public inquiries:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchInquiries = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from('inquiries')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (error) throw error;
+            setInquiries(data || []);
+        } catch (error) {
+            console.error('Error fetching inquiries:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.content.trim()) return;
+        if (!user) {
+            alert('로그인이 필요합니다.');
+            router.push(`/login?next=/contact`);
+            return;
+        }
+
+        if (!formData.subject.trim() || !formData.message.trim()) return;
         setInquiryStatus('submitting');
 
         try {
-            const response = await fetch('/api/report', {
+            const { data, error } = await supabase
+                .from('inquiries')
+                .insert([
+                    {
+                        user_id: user.id,
+                        user_email: user.email,
+                        user_name: user.user_metadata?.full_name || user.email.split('@')[0],
+                        company_name: formData.company_name,
+                        phone: formData.phone,
+                        subject: formData.subject,
+                        message: formData.message,
+                        status: 'pending'
+                    }
+                ])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // 이메일 발송 (기존 API 활용)
+            await fetch('/api/report', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     category: '고객 문의',
-                    content: formData.content,
-                    contact: formData.contact || '홈페이지 익명 문의'
+                    title: formData.subject,
+                    content: formData.message,
+                    contact: `${user.email} / ${formData.phone || 'N/A'}`
                 }),
             });
 
-            const result = await response.json();
-
-            if (response.ok) {
-                const newPost = {
-                    id: Date.now(),
-                    author: formData.contact ? formData.contact.substring(0, 5) : `익명${posts.length + 1}`,
-                    content: formData.content,
-                    date: new Date().toISOString().split('T')[0]
-                };
-
-                setPosts([newPost, ...posts]);
-                setFormData({ content: '', contact: '' });
-                setInquiryStatus('success');
-                setTimeout(() => setInquiryStatus('idle'), 5000);
-            } else {
-                console.error('Inquiry error:', result.error);
-                setInquiryStatus('error');
-            }
+            setInquiries([data, ...inquiries]);
+            setFormData({ company_name: '', phone: '', subject: '', message: '' });
+            setInquiryStatus('success');
+            setTimeout(() => setInquiryStatus('idle'), 5000);
         } catch (error) {
             console.error('Inquiry error:', error);
             setInquiryStatus('error');
+            setTimeout(() => setInquiryStatus('idle'), 3000);
         }
     };
 
@@ -94,6 +174,20 @@ export default function ContactPage() {
         }
     };
 
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    };
+
+    const getStatusBadge = (status) => {
+        const badges = {
+            pending: { text: '대기중', color: '#94a3b8' },
+            in_progress: { text: '처리중', color: '#3b82f6' },
+            completed: { text: '완료', color: '#10b981' }
+        };
+        return badges[status] || badges.pending;
+    };
+
     return (
         <div className={styles.contactPage}>
             <Header />
@@ -114,66 +208,133 @@ export default function ContactPage() {
                             viewport={{ once: true }}
                         >
                             <h2 className={styles.formTitle}>문의 내용 작성</h2>
-                            <form className={styles.form} onSubmit={handleSubmit}>
-                                <div className={styles.inputGroup}>
-                                    <label>성함 및 연락처 (선택)</label>
-                                    <input
-                                        type="text"
-                                        className={styles.input}
-                                        placeholder="답변 받으실 정보를 입력해주세요."
-                                        value={formData.contact}
-                                        onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                                    />
+                            {!user ? (
+                                <div className={styles.loginRequired}>
+                                    <p>🔒 문의 작성은 로그인이 필요합니다.</p>
+                                    <button
+                                        className={styles.loginBtn}
+                                        onClick={() => router.push('/login?next=/contact')}
+                                    >
+                                        로그인하기
+                                    </button>
                                 </div>
-                                <div className={styles.inputGroup}>
-                                    <label>문의 내용</label>
-                                    <textarea
-                                        className={styles.textarea}
-                                        placeholder="문의사항이나 의견을 자유롭게 남겨주세요."
-                                        value={formData.content}
-                                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    className={styles.submitBtn}
-                                    disabled={inquiryStatus === 'submitting'}
-                                >
-                                    {inquiryStatus === 'submitting' ? '등록 중...' : '등록하기'}
-                                </button>
-                                {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 등록되고 관리자에게 메일이 발송되었습니다.</p>}
-                                {inquiryStatus === 'error' && <p className={styles.errorMsg}>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>}
-                            </form>
+                            ) : (
+                                <form className={styles.form} onSubmit={handleSubmit}>
+                                    <div className={styles.inputGroup}>
+                                        <label>회사명 (선택)</label>
+                                        <input
+                                            type="text"
+                                            className={styles.input}
+                                            placeholder="회사명을 입력해주세요"
+                                            value={formData.company_name}
+                                            onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className={styles.inputGroup}>
+                                        <label>연락처 (선택)</label>
+                                        <input
+                                            type="tel"
+                                            className={styles.input}
+                                            placeholder="010-0000-0000"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className={styles.inputGroup}>
+                                        <label>제목 *</label>
+                                        <input
+                                            type="text"
+                                            className={styles.input}
+                                            placeholder="문의 제목을 입력해주세요"
+                                            value={formData.subject}
+                                            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className={styles.inputGroup}>
+                                        <label>문의 내용 *</label>
+                                        <textarea
+                                            className={styles.textarea}
+                                            placeholder="문의사항이나 의견을 자유롭게 남겨주세요."
+                                            value={formData.message}
+                                            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        className={styles.submitBtn}
+                                        disabled={inquiryStatus === 'submitting'}
+                                    >
+                                        {inquiryStatus === 'submitting' ? '등록 중...' : '등록하기'}
+                                    </button>
+                                    {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 등록되고 관리자에게 메일이 발송되었습니다.</p>}
+                                    {inquiryStatus === 'error' && <p className={styles.errorMsg}>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>}
+                                </form>
+                            )}
                         </motion.div>
 
                         {/* Right: Board */}
                         <div className={styles.boardWrapper}>
                             <div className={styles.boardHeader}>
-                                <h3 className={styles.boardTitle}>최근 문의 내역</h3>
-                                <span className={styles.boardCount}>총 {posts.length}건</span>
+                                <h3 className={styles.boardTitle}>
+                                    {user ? '내 문의 내역' : '전체 문의 내역'}
+                                </h3>
+                                <span className={styles.boardCount}>총 {inquiries.length}건</span>
                             </div>
 
-                            <div className={styles.postList}>
-                                <AnimatePresence mode="popLayout">
-                                    {posts.map((post) => (
-                                        <motion.div
-                                            key={post.id}
-                                            className={styles.postCard}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, scale: 0.95 }}
-                                            layout
-                                        >
-                                            <div className={styles.postThumb}>
-                                                <span className={styles.postAuthor}>{post.author}</span>
-                                                <span className={styles.postDate}>{post.date}</span>
-                                            </div>
-                                            <p className={styles.postContent}>{post.content}</p>
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
+                            {!user && (
+                                <div className={styles.publicList}>
+                                    <p className={styles.publicNotice}>🔒 로그인하면 문의 내용 전체를 확인할 수 있습니다.</p>
+                                </div>
+                            )}
+
+                            {loading ? (
+                                <div className={styles.emptyState}>
+                                    <p>로딩 중...</p>
+                                </div>
+                            ) : inquiries.length === 0 ? (
+                                <div className={styles.emptyState}>
+                                    <p>아직 등록된 문의가 없습니다.</p>
+                                </div>
+                            ) : (
+                                <div className={styles.postList}>
+                                    <AnimatePresence mode="popLayout">
+                                        {inquiries.map((inquiry) => {
+                                            const badge = user ? getStatusBadge(inquiry.status) : null;
+                                            return (
+                                                <motion.div
+                                                    key={inquiry.id}
+                                                    className={styles.postCard}
+                                                    initial={{ opacity: 0, y: 20 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    layout
+                                                >
+                                                    <div className={styles.postThumb}>
+                                                        <span className={styles.postAuthor}>
+                                                            {user ? inquiry.user_name : '문의 내역'}
+                                                        </span>
+                                                        {badge && (
+                                                            <span
+                                                                className={styles.statusBadge}
+                                                                style={{ backgroundColor: badge.color }}
+                                                            >
+                                                                {badge.text}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <h4 className={styles.postSubject}>{inquiry.subject}</h4>
+                                                    {user && inquiry.message && (
+                                                        <p className={styles.postContent}>{inquiry.message}</p>
+                                                    )}
+                                                    <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                </div>
+                            )}
                         </div>
                     </div>
 
