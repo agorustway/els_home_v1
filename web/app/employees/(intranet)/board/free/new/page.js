@@ -25,12 +25,13 @@ export default function NewPostPage() {
         if (!file) return;
 
         setUploading(true);
+        const now = new Date();
+        const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('path', '/board_attachments'); // Reserved folder for board files
+        formData.append('path', `/ELSWEBAPP/Board/Free/${yearMonth}`);
 
         try {
-            // Ensure folder exists first (API handles it if type=mkdir is sent, but here we just upload)
             const res = await fetch('/api/nas/files', {
                 method: 'POST',
                 body: formData,

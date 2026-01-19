@@ -115,14 +115,14 @@ export default function Header({ darkVariant = false }) {
                         <a href="/services">서비스</a>
                         <a href="/dashboard">실적현황</a>
                         <a href="/network">네트워크</a>
-                        <a href="/contact" className={styles.contactBtn}>문의하기</a>
                         {isMounted && (
                             user ? (
-                                <button onClick={handleLogout} className={styles.authBtn}>로그아웃</button>
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }} className={styles.authLink}>로그아웃</a>
                             ) : (
-                                <button onClick={handleLoginClick} className={styles.authBtn}>로그인</button>
+                                <a href="#" onClick={(e) => { e.preventDefault(); handleLoginClick(); }} className={styles.authLink}>로그인</a>
                             )
                         )}
+                        <a href="/contact" className={styles.contactBtn}>문의하기</a>
                         <div className={styles.hasDropdown}>
                             <a href="/employees" className={styles.empBtn}>임직원전용</a>
                             <div className={styles.dropdown}>

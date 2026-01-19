@@ -27,9 +27,11 @@ export default function NewReportPage() {
         const file = e.target.files[0];
         if (!file) return;
         setUploading(true);
+        const now = new Date();
+        const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('path', '/report_attachments');
+        formData.append('path', `/ELSWEBAPP/Board/Report/${yearMonth}`);
 
         try {
             const res = await fetch('/api/nas/files', { method: 'POST', body: formData });

@@ -20,26 +20,39 @@ export async function GET(request) {
     try {
         const client = getNasClient();
         const buffer = await client.getFileContents(path);
+        const fileName = path.split('/').pop();
+        const isDownload = searchParams.get('download') === 'true';
 
         // Determine content type by extension
-        const ext = path.split('.').pop().toLowerCase();
+        const ext = fileName.split('.').pop().toLowerCase();
         const mimeMap = {
             'jpg': 'image/jpeg',
             'jpeg': 'image/jpeg',
             'png': 'image/png',
             'gif': 'image/gif',
             'webp': 'image/webp',
-            'pdf': 'application/pdf'
+            'pdf': 'application/pdf',
+            'hwp': 'application/x-hwp',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'xls': 'application/vnd.ms-excel',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc': 'application/msword',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'ppt': 'application/vnd.ms-powerpoint'
         };
 
-        return new Response(buffer, {
-            headers: {
-                'Content-Type': mimeMap[ext] || 'application/octet-stream',
-                'Cache-Control': 'public, max-age=3600'
-            }
-        });
+        const headers = {
+            'Content-Type': mimeMap[ext] || 'application/octet-stream',
+            'Cache-Control': 'public, max-age=3600'
+        };
+
+        if (isDownload || !mimeMap[ext]) {
+            headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(fileName)}"`;
+        }
+
+        return new Response(buffer, { headers });
     } catch (error) {
         console.error('NAS Preview Error:', error);
-        return new Response('Failed to load preview', { status: 500 });
+        return new Response('Failed to load file', { status: 500 });
     }
 }

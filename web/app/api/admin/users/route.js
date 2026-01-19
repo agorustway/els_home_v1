@@ -43,6 +43,9 @@ export async function GET() {
             id: authUser.id,
             email: authUser.email,
             role: rolesMap[authUser.id]?.role || 'visitor',
+            can_write: rolesMap[authUser.id]?.can_write || false,
+            can_delete: rolesMap[authUser.id]?.can_delete || false,
+            can_read_security: rolesMap[authUser.id]?.can_read_security || false,
             created_at: rolesMap[authUser.id]?.created_at || authUser.created_at
         }));
 
@@ -58,7 +61,7 @@ export async function GET() {
 export async function PATCH(request) {
     try {
         const supabase = await createClient();
-        const { userId, role, email } = await request.json();
+        const { userId, role, email, can_write, can_delete, can_read_security } = await request.json();
 
         // Check if requester is admin
         const { data: { user } } = await supabase.auth.getUser();
@@ -81,7 +84,10 @@ export async function PATCH(request) {
             .upsert({
                 id: userId,
                 email: email,
-                role: role
+                role: role,
+                can_write: can_write,
+                can_delete: can_delete,
+                can_read_security: can_read_security
             }, {
                 onConflict: 'id'
             });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from './archive.module.css';
@@ -13,6 +13,16 @@ export default function ArchivePage() {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+    const [contextMenu, setContextMenu] = useState(null); // { x, y, file }
+    const [deleteModal, setDeleteModal] = useState({ show: false, fileName: '' });
+    const [clipboard, setClipboard] = useState(null); // { type: 'copy', path, name }
+
+    // Multi-selection state
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedPaths, setSelectedPaths] = useState(new Set());
+    const longPressTimer = useRef(null);
+    const preventClick = useRef(false);
 
     useEffect(() => {
         if (!authLoading && !role) {
@@ -24,7 +34,6 @@ export default function ArchivePage() {
         if (!role || role === 'visitor') return;
         setLoading(true);
         try {
-            console.log('Fetching NAS files for:', currentPath);
             const res = await fetch(`/api/nas/files?path=${encodeURIComponent(currentPath)}`);
             if (!res.ok) {
                 const errorData = await res.json();
@@ -32,6 +41,8 @@ export default function ArchivePage() {
             }
             const data = await res.json();
             setFiles(data.files || []);
+            setSelectedPaths(new Set()); // Reset selection on path change
+            setSelectionMode(false);
         } catch (error) {
             console.error('NAS Fetch Error:', error);
         } finally {
@@ -43,35 +54,30 @@ export default function ArchivePage() {
         fetchFiles(path);
     }, [path, fetchFiles]);
 
-    const handleUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
+    const handleUpload = async (fileList) => {
+        if (!fileList || fileList.length === 0) return;
         setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', path);
 
         try {
-            const res = await fetch('/api/nas/files', {
-                method: 'POST',
-                body: formData,
-            });
-            if (!res.ok) throw new Error('Upload failed');
+            for (const file of Array.from(fileList)) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('path', path);
+                const res = await fetch('/api/nas/files', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error(`Upload failed for ${file.name}`);
+            }
             await fetchFiles(path);
         } catch (error) {
             console.error(error);
             alert('업로드 실패');
         } finally {
             setUploading(false);
-            e.target.value = ''; // Reset input
         }
     };
 
     const handleCreateFolder = async () => {
         const folderName = prompt('새 폴더 이름:');
         if (!folderName) return;
-
         try {
             const newPath = path === '/' ? `/${folderName}` : `${path}/${folderName}`;
             const res = await fetch('/api/nas/files', {
@@ -87,14 +93,93 @@ export default function ArchivePage() {
         }
     };
 
-    const handleDelete = async (fileName) => {
-        if (!confirm(`${fileName}을(를) 삭제하시겠습니까?`)) return;
+    const handleCopy = async (file) => {
+        let newName;
+        if (file.type === 'directory') newName = `${file.name}(1)`;
+        else {
+            const lastDot = file.name.lastIndexOf('.');
+            if (lastDot === -1) newName = `${file.name}(1)`;
+            else newName = `${file.name.substring(0, lastDot)}(1)${file.name.substring(lastDot)}`;
+        }
+        const from = file.path;
+        const to = path === '/' ? `/${newName}` : `${path}/${newName}`;
+        try {
+            const res = await fetch('/api/nas/files', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'copy', from, to }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Duplicate failed');
+            }
+            await fetchFiles(path);
+            setTimeout(() => handleRename({ path: to, name: newName, type: file.type }), 500);
+        } catch (error) {
+            console.error(error);
+            alert(`복제 실패: ${error.message}`);
+        }
+    };
 
+    const handlePaste = async () => {
+        if (!clipboard) return;
+        const to = path === '/' ? `/${clipboard.name}` : `${path}/${clipboard.name}`;
+        let finalTo = to;
+        const exists = files.some(f => f.name === clipboard.name);
+        if (exists) {
+            const lastDot = clipboard.name.lastIndexOf('.');
+            if (lastDot === -1 || clipboard.fileType === 'directory') finalTo = `${to}(1)`;
+            else finalTo = `${to.substring(0, to.lastIndexOf('.'))}(1)${to.substring(to.lastIndexOf('.'))}`;
+        }
+        try {
+            const res = await fetch('/api/nas/files', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'copy', from: clipboard.path, to: finalTo }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Paste failed');
+            }
+            await fetchFiles(path);
+            setClipboard(null);
+        } catch (error) {
+            console.error(error);
+            alert(`붙여넣기 실패: ${error.message}`);
+        }
+    };
+
+    const handleRename = async (file) => {
+        const newName = prompt('새 이름을 입력하세요:', file.name);
+        if (!newName || newName === file.name) return;
+        const from = file.path;
+        const to = path === '/' ? `/${newName}` : `${path}/${newName}`;
+        try {
+            const res = await fetch('/api/nas/files', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from, to }),
+            });
+            if (!res.ok) throw new Error('Rename failed');
+            await fetchFiles(path);
+        } catch (error) {
+            console.error(error);
+            alert('이름 변경 실패');
+        }
+    };
+
+    const handleDelete = async (fileName) => {
+        const { can_delete, role: userRole } = await fetch('/api/nas/files/permissions').then(r => r.json()).catch(() => ({}));
+
+        if (!can_delete && userRole !== 'admin') {
+            setDeleteModal({ show: true, fileName });
+            return;
+        }
+
+        if (!confirm(`${fileName}을(를) 삭제하시겠습니까?`)) return;
         const filePath = path === '/' ? `/${fileName}` : `${path}/${fileName}`;
         try {
-            const res = await fetch(`/api/nas/files?path=${encodeURIComponent(filePath)}`, {
-                method: 'DELETE',
-            });
+            const res = await fetch(`/api/nas/files?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Delete failed');
             await fetchFiles(path);
         } catch (error) {
@@ -102,6 +187,121 @@ export default function ArchivePage() {
             alert('삭제 실패');
         }
     };
+
+    const handleZipDownload = async () => {
+        if (selectedPaths.size === 0) return;
+        try {
+            const res = await fetch('/api/nas/zip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paths: Array.from(selectedPaths) }),
+            });
+            if (!res.ok) throw new Error('Zip failed');
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nas_selection_${new Date().getTime()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (error) {
+            console.error(error);
+            alert('압축 다운로드 실패');
+        }
+    };
+
+    // Selection Handling
+    const toggleSelect = (filePath) => {
+        const newSelection = new Set(selectedPaths);
+        if (newSelection.has(filePath)) newSelection.delete(filePath);
+        else newSelection.add(filePath);
+        setSelectedPaths(newSelection);
+
+        // If selection becomes empty, exit selection mode
+        if (newSelection.size === 0) {
+            setSelectionMode(false);
+        }
+    };
+
+    const handleLongPress = (file) => {
+        preventClick.current = true; // Mark that a long press happened
+        if (!selectionMode) {
+            setSelectionMode(true);
+            const newSelection = new Set([file.path]);
+            setSelectedPaths(newSelection);
+        } else {
+            toggleSelect(file.path);
+        }
+    };
+
+    const startLongPress = (file) => {
+        preventClick.current = false;
+        longPressTimer.current = setTimeout(() => handleLongPress(file), 700);
+    };
+
+    const clearLongPress = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+
+    // Drag and Drop Handling
+    const handleDragStart = (e, file) => {
+        e.dataTransfer.setData('sourcePath', file.path);
+        e.dataTransfer.setData('sourceName', file.name);
+    };
+
+    const handleDragOver = (e) => e.preventDefault();
+
+    const handleDropInternal = async (e, targetFolder) => {
+        e.preventDefault();
+        const sourcePath = e.dataTransfer.getData('sourcePath');
+        const sourceName = e.dataTransfer.getData('sourceName');
+        if (!sourcePath || !targetFolder || sourcePath === targetFolder.path) return;
+
+        const newPath = `${targetFolder.path}/${sourceName}`.replace(/\/+/g, '/');
+        try {
+            const res = await fetch('/api/nas/files', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: sourcePath, to: newPath }),
+            });
+            if (!res.ok) throw new Error('Move failed');
+            await fetchFiles(path);
+        } catch (error) {
+            console.error(error);
+            alert('이동 실패');
+        }
+    };
+
+    const handleDropExternal = async (e) => {
+        e.preventDefault();
+        const droppedFiles = e.dataTransfer.files;
+        if (droppedFiles.length > 0) handleUpload(droppedFiles);
+    };
+
+    const handleContextMenu = (e, file) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        setContextMenu({
+            x: e ? e.clientX : 0,
+            y: e ? e.clientY : 0,
+            file
+        });
+    };
+
+    // Close menu on click or scroll
+    useEffect(() => {
+        const closeMenu = () => setContextMenu(null);
+        window.addEventListener('click', closeMenu);
+        window.addEventListener('scroll', closeMenu, true);
+        return () => {
+            window.removeEventListener('click', closeMenu);
+            window.removeEventListener('scroll', closeMenu, true);
+        };
+    }, []);
 
     const handleNavigate = (fileName) => {
         const newPath = path === '/' ? `/${fileName}` : `${path}/${fileName}`;
@@ -127,116 +327,205 @@ export default function ArchivePage() {
         return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
     };
 
-    if (authLoading) return <div style={{ padding: '40px' }}>권한 확인 중...</div>;
+    const sortedFiles = [...files].sort((a, b) => {
+        if (a.type === 'directory' && b.type !== 'directory') return -1;
+        if (a.type !== 'directory' && b.type === 'directory') return 1;
+        const { key, direction } = sortConfig;
+        let comp = 0;
+        if (key === 'name') comp = a.name.localeCompare(b.name, 'ko');
+        else if (key === 'size') comp = (a.size || 0) - (b.size || 0);
+        else if (key === 'date') comp = new Date(a.lastMod) - new Date(b.lastMod);
+        return direction === 'asc' ? comp : -comp;
+    });
+
+    if (authLoading || loading) return <div className={styles.loadingContainer}>데이터 로딩 중...</div>;
     if (!role) return null;
 
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}>자료실 (NAS)</h1>
+                <div className={styles.titleArea}>
+                    <h1 className={styles.title}>자료실 (NAS)</h1>
+                    <div className={styles.pathBadge}>{path}</div>
+                </div>
                 <div className={styles.controls}>
-                    <div className={styles.viewToggle}>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`${styles.viewBtn} ${viewMode === 'list' ? styles.activeView : ''}`}
-                            title="자세히 보기"
-                        >
-                            📊 자세히
-                        </button>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.activeView : ''}`}
-                            title="큰 아이콘"
-                        >
-                            🖼️ 큰 아이콘
-                        </button>
-                    </div>
-                    <button onClick={handleCreateFolder} className={styles.btnSecondary}>새 폴더</button>
-                    <label className={styles.btnPrimary}>
-                        {uploading ? '업로드 중...' : '파일 업로드'}
-                        <input type="file" onChange={handleUpload} style={{ display: 'none' }} disabled={uploading} />
-                    </label>
+                    {selectionMode ? (
+                        <div className={styles.selectionToolbar}>
+                            <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
+                            <button onClick={handleZipDownload} className={styles.btnZip}>📦 압축 다운로드</button>
+                            <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btnCancel}>취소</button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className={styles.viewToggle}>
+                                <button onClick={() => setViewMode('list')} className={`${styles.viewBtn} ${viewMode === 'list' ? styles.activeView : ''}`}>📊 리스트</button>
+                                <button onClick={() => setViewMode('grid')} className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.activeView : ''}`}>🖼️ 아이콘</button>
+                            </div>
+                            <button onClick={handleCreateFolder} className={styles.btnSecondary}>새 폴더</button>
+                            <label className={styles.btnPrimary}>
+                                {uploading ? '업로드 중...' : '파일 업로드'}
+                                <input type="file" multiple onChange={(e) => handleUpload(e.target.files)} style={{ display: 'none' }} disabled={uploading} />
+                            </label>
+                        </>
+                    )}
                 </div>
             </div>
 
             <div className={styles.breadcrumbs}>
-                <button onClick={handleUp} disabled={path === '/'} className={styles.upBtn}>
-                    ↑ 상위 폴더
-                </button>
-                <span className={styles.currentPath}>{path}</span>
+                <button onClick={handleUp} disabled={path === '/'} className={styles.upBtn}>↑ 상위</button>
+                <div className={styles.pathSteps}>
+                    {path.split('/').filter(p => p).map((part, i, arr) => (
+                        <span key={i} onClick={() => setPath('/' + arr.slice(0, i + 1).join('/'))} className={styles.pathPart}>{part}</span>
+                    ))}
+                </div>
             </div>
 
-            {loading ? (
-                <div className={styles.loading}>Loading...</div>
-            ) : (
-                <div className={viewMode === 'list' ? styles.listView : styles.fileGrid}>
-                    {viewMode === 'list' ? (
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th>이름</th>
-                                    <th>수정일</th>
-                                    <th>유형</th>
-                                    <th>크기</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {files.map((file) => (
-                                    <tr key={file.name}>
-                                        <td
-                                            className={styles.fileNameCell}
-                                            onClick={() => file.type === 'directory' ? handleNavigate(file.name) : window.open(`/api/nas/preview?path=${encodeURIComponent(file.path)}`)}
-                                        >
-                                            <span className={styles.fileIcon}>{file.type === 'directory' ? '📁' : '📄'}</span>
-                                            {file.name}
-                                        </td>
-                                        <td>{new Date(file.lastMod).toLocaleDateString()}</td>
-                                        <td>{file.type === 'directory' ? '폴더' : file.name.split('.').pop().toUpperCase() + ' 파일'}</td>
-                                        <td>{formatSize(file.size)}</td>
+            <div
+                className={styles.mainArea}
+                onContextMenu={(e) => handleContextMenu(e, null)}
+                onDragOver={handleDragOver}
+                onDrop={handleDropExternal}
+            >
+                {viewMode === 'list' ? (
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                {selectionMode && <th style={{ width: '40px' }}></th>}
+                                <th onClick={() => setSortConfig({ key: 'name', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>이름</th>
+                                <th>날짜</th>
+                                <th>크기</th>
+                                <th style={{ width: '60px' }}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedFiles.map((file) => (
+                                <tr
+                                    key={file.path}
+                                    className={`${styles.tr} ${selectedPaths.has(file.path) ? styles.selectedRow : ''}`}
+                                    draggable={!selectionMode}
+                                    onDragStart={(e) => handleDragStart(e, file)}
+                                    onDragOver={file.type === 'directory' ? handleDragOver : undefined}
+                                    onDrop={file.type === 'directory' ? (e) => handleDropInternal(e, file) : undefined}
+                                    onMouseDown={() => startLongPress(file)}
+                                    onMouseUp={clearLongPress}
+                                    onMouseLeave={clearLongPress}
+                                    onContextMenu={(e) => handleContextMenu(e, file)}
+                                >
+                                    {selectionMode && (
                                         <td>
-                                            <button onClick={() => handleDelete(file.name)} className={styles.inlineDeleteBtn}>×</button>
+                                            <input type="checkbox" checked={selectedPaths.has(file.path)} onChange={() => toggleSelect(file.path)} />
                                         </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        files.map((file) => (
-                            <div key={file.name} className={styles.fileCard}>
-                                <div
-                                    className={styles.icon}
-                                    onClick={() => file.type === 'directory' ? handleNavigate(file.name) : window.open(`/api/nas/preview?path=${encodeURIComponent(file.path)}`)}
-                                >
-                                    {isImage(file.name) ? (
-                                        <img
-                                            src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`}
-                                            alt={file.name}
-                                            className={styles.thumbnail}
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        file.type === 'directory' ? '📁' : '📄'
                                     )}
+                                    <td className={styles.nameCell} onClick={() => {
+                                        if (preventClick.current) {
+                                            preventClick.current = false;
+                                            return;
+                                        }
+                                        if (selectionMode) toggleSelect(file.path);
+                                        else if (file.type === 'directory') handleNavigate(file.name);
+                                        else window.open(`/api/nas/preview?path=${encodeURIComponent(file.path)}${isImage(file.name) ? '' : '&download=true'}`);
+                                    }}>
+                                        <span className={styles.icon}>{file.type === 'directory' ? '📁' : '📄'}</span>
+                                        {file.name}
+                                    </td>
+                                    <td>{new Date(file.lastMod).toLocaleDateString()}</td>
+                                    <td>{formatSize(file.size)}</td>
+                                    <td><button onClick={() => handleDelete(file.name)} className={styles.miniDelete}>×</button></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <div className={styles.grid}>
+                        {sortedFiles.map((file) => (
+                            <div
+                                key={file.path}
+                                className={`${styles.card} ${selectedPaths.has(file.path) ? styles.selectedCard : ''}`}
+                                draggable={!selectionMode}
+                                onDragStart={(e) => handleDragStart(e, file)}
+                                onDragOver={file.type === 'directory' ? handleDragOver : undefined}
+                                onDrop={file.type === 'directory' ? (e) => handleDropInternal(e, file) : undefined}
+                                onMouseDown={() => startLongPress(file)}
+                                onMouseUp={clearLongPress}
+                                onMouseLeave={clearLongPress}
+                                onContextMenu={(e) => handleContextMenu(e, file)}
+                                onClick={() => {
+                                    if (preventClick.current) {
+                                        preventClick.current = false;
+                                        return;
+                                    }
+                                    if (selectionMode) toggleSelect(file.path);
+                                    else if (file.type === 'directory') handleNavigate(file.name);
+                                    else window.open(`/api/nas/preview?path=${encodeURIComponent(file.path)}${isImage(file.name) ? '' : '&download=true'}`);
+                                }}
+                            >
+                                {selectionMode && <input type="checkbox" className={styles.cardCheck} checked={selectedPaths.has(file.path)} readOnly />}
+                                <div className={styles.cardIcon}>
+                                    {isImage(file.name) ? <img src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`} className={styles.thumb} /> : (file.type === 'directory' ? '📁' : '📄')}
                                 </div>
-                                <div className={styles.info}>
-                                    <div className={styles.name} title={file.name}>{file.name}</div>
-                                    <div className={styles.meta}>
-                                        <span className={styles.date}>{new Date(file.lastMod).toLocaleDateString()}</span>
-                                        {file.size > 0 && <span>{formatSize(file.size)}</span>}
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => handleDelete(file.name)}
-                                    className={styles.deleteBtn}
-                                    title="삭제"
-                                >
-                                    ×
-                                </button>
+                                <div className={styles.cardName}>{file.name}</div>
                             </div>
-                        ))
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {contextMenu && (
+                <div className={styles.contextMenu} style={{ top: contextMenu.y, left: contextMenu.x }} onClick={() => setContextMenu(null)}>
+                    {contextMenu.file ? (
+                        <>
+                            <div className={styles.contextItem} onClick={() => {
+                                if (contextMenu.file.type === 'directory') handleNavigate(contextMenu.file.name);
+                                else window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}`);
+                            }}>
+                                📁 {contextMenu.file.type === 'directory' ? '열기' : '미리보기'}
+                            </div>
+
+                            {/* Selection Mode Context Actions */}
+                            {selectionMode && selectedPaths.size > 0 ? (
+                                <>
+                                    <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
+                                        📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
+                                    </div>
+                                    <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>
+                                        🚫 선택 모드 해제
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {contextMenu.file.type !== 'directory' && (
+                                        <div className={styles.contextItem} onClick={() => window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}&download=true`)}>
+                                            💾 이 파일 다운로드
+                                        </div>
+                                    )}
+                                    <div className={styles.contextItem} onClick={() => setSelectionMode(true)}>
+                                        ✅ 다중 선택 모드 시작
+                                    </div>
+                                </>
+                            )}
+
+                            <div className={styles.contextDivider}></div>
+                            <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>✨ 즉시 사본 생성 (복제)</div>
+                            <div className={styles.contextItem} onClick={() => setClipboard({ type: 'copy', path: contextMenu.file.path, name: contextMenu.file.name, fileType: contextMenu.file.type })}>📋 항목 복리 (붙여넣기용)</div>
+                            {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 여기에 붙여넣기</div>}
+                            <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>✏️ 이름 바꾸기</div>
+                            <div className={styles.contextDivider}></div>
+                            <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file.name)}>🗑️ 삭제하기</div>
+                        </>
+                    ) : (
+                        <>
+                            {selectionMode && selectedPaths.size > 0 && (
+                                <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
+                                    📦 선택된 {selectedPaths.size}개 압축 다운로드
+                                </div>
+                            )}
+                            <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>📥 붙여넣기 (Paste)</div>
+                            <div className={styles.contextItem} onClick={() => handleCreateFolder()}>📁 새 폴더 만들기</div>
+                            {selectionMode && (
+                                <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>🚫 선택 모드 해제</div>
+                            )}
+                        </>
                     )}
-                    {files.length === 0 && <div className={styles.empty}>폴더가 비어있습니다.</div>}
                 </div>
             )}
         </div>
