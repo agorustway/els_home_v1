@@ -102,17 +102,35 @@
     margin-bottom: 16px;
 }
 
-.backHome {
-    color: #2563eb;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: opacity 0.2s;
+.navLinks {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
 }
 
-.backHome:hover {
-    opacity: 0.8;
-    text-decoration: underline;
+.backHome,
+.backLink {
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.backHome:hover,
+.backLink:hover {
+    color: #2563eb;
+}
+
+.separator {
+    color: #e2e8f0;
+    font-size: 0.7rem;
 }
 
 @media (max-width: 480px) {

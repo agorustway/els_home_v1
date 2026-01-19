@@ -1,6 +1,6 @@
 'use client';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import styles from './employees.module.css';
 import { motion } from 'framer-motion';
 
@@ -54,34 +54,64 @@ export default function EmployeesPortal() {
 
                             <div className={styles.gridContainer}>
                                 <motion.a
-                                    href="/admin"
+                                    href="/employees/dashboard"
                                     className={styles.card}
                                     initial={{ opacity: 0, y: 20 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: 0.1 }}
                                 >
-                                    <div className={styles.cardIcon}>🛡️</div>
-                                    <h3 className={styles.cardTitle}>관리자 대시보드</h3>
-                                    <p className={styles.cardDesc}>인사 정보 관리, 공지사항 등록 및 시스템 설정을 수행합니다.</p>
+                                    <div className={styles.cardIcon}>🏠</div>
+                                    <h3 className={styles.cardTitle}>인트라넷 홈</h3>
+                                    <p className={styles.cardDesc}>사내 소식 확인 및 통합 업무 대시보드에 접속합니다.</p>
                                     <div className={styles.arrow}>
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                     </div>
                                 </motion.a>
 
                                 <motion.a
-                                    href="https://elssolution.synology.me"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href="/employees/archive"
                                     className={styles.card}
                                     initial={{ opacity: 0, y: 20 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: 0.2 }}
                                 >
-                                    <div className={styles.cardIcon}>💾</div>
-                                    <h3 className={styles.cardTitle}>NAS 시스템</h3>
+                                    <div className={styles.cardIcon}>📂</div>
+                                    <h3 className={styles.cardTitle}>자료실 (NAS)</h3>
                                     <p className={styles.cardDesc}>사내 파일 공유, 데이터 아카이빙 및 대용량 자료 전송을 위한 서버입니다.</p>
+                                    <div className={styles.arrow}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                    </div>
+                                </motion.a>
+
+                                <motion.a
+                                    href="/employees/board/free"
+                                    className={styles.card}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: 0.3 }}
+                                >
+                                    <div className={styles.cardIcon}>💬</div>
+                                    <h3 className={styles.cardTitle}>자유게시판</h3>
+                                    <p className={styles.cardDesc}>임직원 간의 자유로운 소통과 정보를 교환하는 공간입니다.</p>
+                                    <div className={styles.arrow}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                    </div>
+                                </motion.a>
+
+                                <motion.a
+                                    href="/employees/reports"
+                                    className={styles.card}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: 0.4 }}
+                                >
+                                    <div className={styles.cardIcon}>📊</div>
+                                    <h3 className={styles.cardTitle}>업무보고 시스템</h3>
+                                    <p className={styles.cardDesc}>지점별 일일 업무 보고 및 통합 실적 관리를 수행합니다.</p>
                                     <div className={styles.arrow}>
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                     </div>

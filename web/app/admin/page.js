@@ -32,19 +32,19 @@ export default function AdminPage() {
         setUser(user);
 
         // Check if user is admin
-        const { data: profileData } = await supabase
-            .from('profiles')
+        const { data: roleData } = await supabase
+            .from('user_roles')
             .select('role')
             .eq('id', user.id)
             .single();
 
-        if (profileData?.role !== 'Admin') {
+        if (roleData?.role !== 'admin') {
             alert('관리자 권한이 필요합니다.');
             router.push('/');
             return;
         }
 
-        setProfile(profileData);
+        setProfile(roleData);
         fetchAllInquiries();
     };
 
@@ -130,7 +130,7 @@ export default function AdminPage() {
             <Header darkVariant={true} />
             <div className={styles.adminPage}>
                 <div className={styles.hero}>
-                    <div className="container">
+                    <div className={styles.fullWidthContainer}>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -142,7 +142,7 @@ export default function AdminPage() {
                 </div>
 
                 <section className={styles.section}>
-                    <div className="container">
+                    <div className={styles.fullWidthContainer}>
                         {/* Stats Cards */}
                         <div className={styles.statsGrid}>
                             <motion.div

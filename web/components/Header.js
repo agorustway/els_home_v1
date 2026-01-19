@@ -9,6 +9,7 @@ export default function Header({ darkVariant = false }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [user, setUser] = useState(null);
+    const [role, setRole] = useState(null);
     const [isMounted, setIsMounted] = useState(false);
     const supabase = createClient();
     const router = useRouter();
@@ -20,12 +21,21 @@ export default function Header({ darkVariant = false }) {
         };
         window.addEventListener('scroll', handleScroll);
 
-        // Fetch user session
-        const getUser = async () => {
+        // Fetch user session and role
+        const getUserAndRole = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
+
+            if (user) {
+                const { data: roleData } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+                setRole(roleData?.role);
+            }
         };
-        getUser();
+        getUserAndRole();
 
         setIsMounted(true);
 
@@ -117,12 +127,24 @@ export default function Header({ darkVariant = false }) {
                             <a href="/employees" className={styles.empBtn}>임직원전용</a>
                             <div className={styles.dropdown}>
                                 {/* 관리자 */}
-                                <a href="/admin" className={styles.dropdownItem} style={{ fontWeight: '800', color: '#ef4444' }}>🔐 관리자 대시보드</a>
-                                <div className={styles.dropdownDivider}></div>
+                                {role === 'admin' && (
+                                    <>
+                                        <a href="/admin/users" className={styles.dropdownItem} style={{ fontWeight: '800', color: '#ef4444' }}>🔐 회원 권한 관리</a>
+                                        <a href="/admin" className={styles.dropdownItem} style={{ fontWeight: '800', color: '#ef4444' }}>📋 고객 문의 관리</a>
+                                        <div className={styles.dropdownDivider}></div>
+                                    </>
+                                )}
 
                                 {/* 시스템 */}
-                                <div className={styles.dropdownLabel}>시스템</div>
-                                <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" className={styles.dropdownItem}>NAS 시스템</a>
+                                <div className={styles.dropdownLabel}>사내 시스템</div>
+                                <a href="/employees/archive" className={styles.dropdownItem}>📂 자료실 (NAS)</a>
+                                <a href="/employees/board/free" className={styles.dropdownItem}>💬 자유게시판</a>
+                                <div className={styles.dropdownDivider}></div>
+
+                                {/* 업무보고 */}
+                                <div className={styles.dropdownLabel}>업무보고</div>
+                                <a href="/employees/reports" className={styles.dropdownItem}>📊 통합 업무보고</a>
+                                <a href="/employees/reports/my" className={styles.dropdownItem}>📝 내 업무보고</a>
                                 <div className={styles.dropdownDivider}></div>
 
                                 {/* 지점 */}
@@ -196,8 +218,13 @@ export default function Header({ darkVariant = false }) {
                                     <a href="/employees" onClick={handleLinkClick}>임직원 홈</a>
                                     <div className={styles.mobileSubDivider}></div>
 
-                                    <a href="/admin" onClick={handleLinkClick} style={{ color: '#ef4444', fontWeight: '800' }}>🔐 관리자 대시보드</a>
-                                    <div className={styles.mobileSubDivider}></div>
+                                    {role === 'admin' && (
+                                        <>
+                                            <a href="/admin/users" onClick={handleLinkClick} style={{ color: '#ef4444', fontWeight: '800' }}>🔐 회원 권한 관리</a>
+                                            <a href="/admin" onClick={handleLinkClick} style={{ color: '#ef4444', fontWeight: '800' }}>📋 고객 문의 관리</a>
+                                            <div className={styles.mobileSubDivider}></div>
+                                        </>
+                                    )}
 
                                     <div className={styles.mobileSubLabel}>시스템</div>
                                     <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>NAS 시스템</a>

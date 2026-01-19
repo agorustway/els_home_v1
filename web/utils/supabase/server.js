@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 
 export async function createClient() {
     const cookieStore = await cookies()
+    const allCookies = cookieStore.getAll()
+    console.log('Cookies count:', allCookies.length)
 
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -10,7 +12,7 @@ export async function createClient() {
         {
             cookies: {
                 getAll() {
-                    return cookieStore.getAll()
+                    return allCookies
                 },
                 setAll(cookiesToSet) {
                     try {
@@ -22,6 +24,22 @@ export async function createClient() {
                         // This can be ignored if you have middleware refreshing
                         // user sessions.
                     }
+                },
+            },
+        }
+    )
+}
+export async function createAdminClient() {
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+            cookies: {
+                getAll() {
+                    return []
+                },
+                setAll() {
+                    // No-op for admin client
                 },
             },
         }

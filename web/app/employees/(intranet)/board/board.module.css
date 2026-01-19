@@ -1,0 +1,155 @@
+.container {
+    padding: 0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.btnPrimary {
+    background-color: #2563eb;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.btnPrimary:hover {
+    background-color: #1d4ed8;
+}
+
+.boardTable {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-collapse: collapse;
+}
+
+.boardTable th,
+.boardTable td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.boardTable th {
+    background-color: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.boardTable tr:hover {
+    background-color: #f8fafc;
+}
+
+.postRow {
+    cursor: pointer;
+}
+
+.postTitle {
+    color: #1e293b;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.postTitle:hover {
+    color: #2563eb;
+}
+
+.author {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.date {
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+.empty {
+    padding: 60px;
+    text-align: center;
+    color: #94a3b8;
+    grid-column: 1 / -1;
+}
+
+/* Post Detail Styles */
+.detailHeader {
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.detailTitle {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.detailMeta {
+    display: flex;
+    gap: 20px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.contentBody {
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #334155;
+    min-height: 300px;
+    white-space: pre-wrap;
+}
+
+.actions {
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    gap: 15px;
+}
+
+.btnSecondary {
+    background-color: white;
+    color: #64748b;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnSecondary:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.btnDelete {
+    background-color: #fee2e2;
+    color: #ef4444;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.btnDelete:hover {
+    background-color: #fecaca;
+}

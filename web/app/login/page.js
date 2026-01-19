@@ -1,7 +1,8 @@
 'use client';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '../../utils/supabase/client';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import styles from './login.module.css';
 import { motion } from 'framer-motion';
 
@@ -9,6 +10,7 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const next = searchParams.get('next') || '/';
     const supabase = createClient();
+    const router = useRouter();
 
     const handleLogin = async (provider) => {
         if (provider === 'kakao') {
@@ -62,7 +64,15 @@ function LoginForm() {
 
                 <div className={styles.footer}>
                     <p>계정이 없으신가요? 관리자에게 문의하세요.</p>
-                    <a href="/" className={styles.backHome}>홈으로 돌아가기</a>
+                    <div className={styles.navLinks}>
+                        {next.startsWith('/employees') ? (
+                            <Link href="/employees" className={styles.backLink}>임직원 포털로 돌아가기</Link>
+                        ) : (
+                            <button onClick={() => router.back()} className={styles.backLink}>이전 페이지로</button>
+                        )}
+                        <span className={styles.separator}>|</span>
+                        <Link href="/" className={styles.backHome}>홈으로 가기</Link>
+                    </div>
                 </div>
             </motion.div>
         </div>

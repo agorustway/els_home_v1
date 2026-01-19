@@ -34,6 +34,11 @@
     padding: 60px 0 100px;
 }
 
+.fullWidthContainer {
+    padding: 0 40px;
+    width: 100%;
+}
+
 /* Stats Grid */
 .statsGrid {
     display: grid;
