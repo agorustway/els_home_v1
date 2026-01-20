@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, use } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import styles from './menu.module.css';
@@ -17,8 +17,6 @@ const CARRIER_CODES = [
 ];
 
 export default function AsanMenuChoicePage({ params }) {
-    const resolvedParams = use(params);
-
     const [names, setNames] = useState(DEFAULT_NAMES);
     const [newName, setNewName] = useState('');
     const [activeGame, setActiveGame] = useState('roulette');
