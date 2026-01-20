@@ -4,6 +4,11 @@ import { createClient } from '@/utils/supabase/server';
 import { getRoleLabel } from '@/utils/roles';
 
 export async function GET(request) {
+    console.log('NAS GET: Checking environment variables.');
+    console.log(`NAS GET: NAS_URL is ${process.env.NAS_URL ? 'set' : 'NOT SET'}`);
+    console.log(`NAS GET: NAS_USER is ${process.env.NAS_USER ? 'set' : 'NOT SET'}`);
+    console.log(`NAS GET: NAS_PW is ${process.env.NAS_PW ? 'set' : 'NOT SET'}`);
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -224,33 +229,61 @@ export async function DELETE(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+        console.log('NAS Delete: Unauthorized access attempt.');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    try {
-        const { searchParams } = new URL(request.url);
-        const path = searchParams.get('path');
-        if (!path) return NextResponse.json({ error: 'Path is required' }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    const path = searchParams.get('path');
+    console.log(`NAS Delete: User ${user.id} attempting to delete path: "${path}"`);
 
+    if (!path) {
+        console.log('NAS Delete: Path is required, but not provided.');
+        return NextResponse.json({ error: 'Path is required' }, { status: 400 });
+    }
+
+    try {
         const { data: roleData } = await supabase.from('user_roles').select('*').eq('id', user.id).single();
         const userRole = roleData?.role || 'visitor';
         const userLabel = getRoleLabel(userRole);
         const canDelete = roleData?.can_delete || userRole === 'admin';
+        console.log(`NAS Delete: User role: ${userRole}, can_delete: ${roleData?.can_delete}, effective canDelete: ${canDelete}`);
 
         const checkCanDeleteInternal = (targetPath) => {
-            if (canDelete) return true;
-            if (userRole === 'visitor') return false;
+            if (canDelete) {
+                console.log('NAS Delete: Permission granted by admin or can_delete flag.');
+                return true;
+            }
+            if (userRole === 'visitor') {
+                console.log('NAS Delete: Permission denied for visitor.');
+                return false;
+            }
             // Employees can delete in Jaryosil or their branch folder
-            if (targetPath.startsWith('/자료실')) return true;
-            if (userLabel && targetPath.includes(userLabel)) return true;
+            if (targetPath.startsWith('/자료실')) {
+                console.log('NAS Delete: Permission granted for /자료실 path.');
+                return true;
+            }
+            if (userLabel && targetPath.includes(userLabel)) {
+                console.log(`NAS Delete: Permission granted for user label "${userLabel}" in path.`);
+                return true;
+            }
+            console.log('NAS Delete: No specific permission rule matched.');
             return false;
         };
 
-        if (!checkCanDeleteInternal(path)) return NextResponse.json({ error: '삭제 권한이 없습니다.' }, { status: 403 });
+        if (!checkCanDeleteInternal(path)) {
+            console.log(`NAS Delete: Permission check failed for user ${user.id} on path "${path}".`);
+            return NextResponse.json({ error: '삭제 권한이 없습니다.' }, { status: 403 });
+        }
 
+        console.log(`NAS Delete: Permission granted. Proceeding with deletion for path: "${path}".`);
         const client = getNasClient();
         if (await client.exists(path)) {
+            console.log(`NAS Delete: File/directory exists at "${path}". Attempting to delete.`);
             await client.deleteFile(path);
+            console.log(`NAS Delete: Successfully deleted "${path}".`);
+        } else {
+            console.log(`NAS Delete: File/directory did not exist at "${path}". Nothing to delete.`);
         }
         return NextResponse.json({ success: true });
     } catch (error) {

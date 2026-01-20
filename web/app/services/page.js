@@ -1,8 +1,8 @@
 'use client';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
-import Business from '../../components/Business';
-import SubPageHero from '../../components/SubPageHero';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import Business from '@/components/Business';
+import SubPageHero from '@/components/SubPageHero';
 
 export default function ServicesPage() {
     return (

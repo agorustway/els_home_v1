@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
-import Header from '../../components/Header';
-import SubNav from '../../components/SubNav';
-import Footer from '../../components/Footer';
-import SubPageHero from '../../components/SubPageHero';
+import Header from '@/components/Header';
+import SubNav from '@/components/SubNav';
+import Footer from '@/components/Footer';
+import SubPageHero from '@/components/SubPageHero';
 import styles from './welfare.module.css';
 import { motion } from 'framer-motion';
 

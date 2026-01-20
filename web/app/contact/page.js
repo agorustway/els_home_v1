@@ -1,12 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
-import SubPageHero from '../../components/SubPageHero';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import SubPageHero from '@/components/SubPageHero';
 import styles from './contact.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '../../utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 
 export default function ContactPage() {
     const [user, setUser] = useState(null);

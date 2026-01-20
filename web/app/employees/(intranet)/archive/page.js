@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from './archive.module.css';
 
 export default function ArchivePage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
-    const [path, setPath] = useState('/');
+    const searchParams = useSearchParams();
+    const path = searchParams.get('path') || '/';
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -17,6 +18,7 @@ export default function ArchivePage() {
     const [contextMenu, setContextMenu] = useState(null); // { x, y, file }
     const [deleteModal, setDeleteModal] = useState({ show: false, fileName: '' });
     const [clipboard, setClipboard] = useState(null); // { type: 'copy', path, name }
+    const [error, setError] = useState(null);
 
     // Multi-selection state
     const [selectionMode, setSelectionMode] = useState(false);
@@ -33,6 +35,7 @@ export default function ArchivePage() {
     const fetchFiles = useCallback(async (currentPath) => {
         if (!role || role === 'visitor') return;
         setLoading(true);
+        setError(null);
         try {
             const res = await fetch(`/api/nas/files?path=${encodeURIComponent(currentPath)}`);
             if (!res.ok) {
@@ -45,6 +48,7 @@ export default function ArchivePage() {
             setSelectionMode(false);
         } catch (error) {
             console.error('NAS Fetch Error:', error);
+            setError(error.message);
         } finally {
             setLoading(false);
         }
@@ -305,13 +309,13 @@ export default function ArchivePage() {
 
     const handleNavigate = (fileName) => {
         const newPath = path === '/' ? `/${fileName}` : `${path}/${fileName}`;
-        setPath(newPath);
+        router.push(`/employees/archive?path=${encodeURIComponent(newPath)}`);
     };
 
     const handleUp = () => {
         if (path === '/') return;
         const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-        setPath(parentPath);
+        router.push(`/employees/archive?path=${encodeURIComponent(parentPath)}`);
     };
 
     const formatSize = (bytes) => {
@@ -339,6 +343,7 @@ export default function ArchivePage() {
     });
 
     if (authLoading || loading) return <div className={styles.loadingContainer}>데이터 로딩 중...</div>;
+    if (error) return <div className={styles.loadingContainer}>오류: {error}</div>;
     if (!role) return null;
 
     return (
@@ -375,7 +380,7 @@ export default function ArchivePage() {
                 <button onClick={handleUp} disabled={path === '/'} className={styles.upBtn}>↑ 상위</button>
                 <div className={styles.pathSteps}>
                     {path.split('/').filter(p => p).map((part, i, arr) => (
-                        <span key={i} onClick={() => setPath('/' + arr.slice(0, i + 1).join('/'))} className={styles.pathPart}>{part}</span>
+                        <span key={i} onClick={() => router.push(`/employees/archive?path=${encodeURIComponent('/' + arr.slice(0, i + 1).join('/'))}`)} className={styles.pathPart}>{part}</span>
                     ))}
                 </div>
             </div>

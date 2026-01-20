@@ -1,9 +1,9 @@
 'use client';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
-import History from '../../components/History';
-import SubNav from '../../components/SubNav';
-import SubPageHero from '../../components/SubPageHero';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import History from '@/components/History';
+import SubNav from '@/components/SubNav';
+import SubPageHero from '@/components/SubPageHero';
 
 export default function HistoryPage() {
     return (

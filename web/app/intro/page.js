@@ -1,9 +1,9 @@
 'use client';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
-import Intro from '../../components/Intro';
-import SubNav from '../../components/SubNav';
-import SubPageHero from '../../components/SubPageHero';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import Intro from '@/components/Intro';
+import SubNav from '@/components/SubNav';
+import SubPageHero from '@/components/SubPageHero';
 
 export default function IntroPage() {
     return (

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, use } from 'react';
-import Header from '../../../../../components/Header';
-import Footer from '../../../../../components/Footer';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import styles from './menu.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 

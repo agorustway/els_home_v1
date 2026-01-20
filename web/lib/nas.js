@@ -11,7 +11,8 @@ export function getNasClient() {
         console.log('Initializing NAS client with URL:', process.env.NAS_URL);
         client = createClient(process.env.NAS_URL, {
             username: process.env.NAS_USER,
-            password: process.env.NAS_PW
+            password: process.env.NAS_PW,
+            timeout: 10000
         });
     }
     return client;
