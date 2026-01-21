@@ -557,6 +557,7 @@ export default function ArchiveBrowser() {
                         </>
                     )}
                 </div>
+                </>
             )}
         </div>
     );
