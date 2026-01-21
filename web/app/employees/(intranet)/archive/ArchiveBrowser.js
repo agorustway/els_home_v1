@@ -397,8 +397,8 @@ export default function ArchiveBrowser() {
                             <tr>
                                 {selectionMode && <th style={{ width: '40px' }}></th>}
                                 <th onClick={() => setSortConfig({ key: 'name', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>이름</th>
-                                <th>날짜</th>
-                                <th>크기</th>
+                                <th className={styles.hideMobile}>날짜</th>
+                                <th className={styles.hideMobile}>크기</th>
                                 <th style={{ width: '60px' }}></th>
                             </tr>
                         </thead>
@@ -414,6 +414,8 @@ export default function ArchiveBrowser() {
                                     onMouseDown={() => startLongPress(file)}
                                     onMouseUp={clearLongPress}
                                     onMouseLeave={clearLongPress}
+                                    onTouchStart={() => startLongPress(file)}
+                                    onTouchEnd={clearLongPress}
                                     onContextMenu={(e) => handleContextMenu(e, file)}
                                 >
                                     {selectionMode && (
@@ -433,9 +435,19 @@ export default function ArchiveBrowser() {
                                         <span className={styles.icon}>{file.type === 'directory' ? '📁' : '📄'}</span>
                                         {file.name}
                                     </td>
-                                    <td>{new Date(file.lastMod).toLocaleDateString()}</td>
-                                    <td>{formatSize(file.size)}</td>
-                                    <td><button onClick={() => handleDelete(file.name)} className={styles.miniDelete}>×</button></td>
+                                    <td className={styles.hideMobile}>{new Date(file.lastMod).toLocaleDateString()}</td>
+                                    <td className={styles.hideMobile}>{formatSize(file.size)}</td>
+                                    <td>
+                                        <button 
+                                            className={styles.moreBtn} 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleContextMenu(e, file);
+                                            }}
+                                        >
+                                            ⋮
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -453,6 +465,8 @@ export default function ArchiveBrowser() {
                                 onMouseDown={() => startLongPress(file)}
                                 onMouseUp={clearLongPress}
                                 onMouseLeave={clearLongPress}
+                                onTouchStart={() => startLongPress(file)}
+                                onTouchEnd={clearLongPress}
                                 onContextMenu={(e) => handleContextMenu(e, file)}
                                 onClick={() => {
                                     if (preventClick.current) {
@@ -465,6 +479,15 @@ export default function ArchiveBrowser() {
                                 }}
                             >
                                 {selectionMode && <input type="checkbox" className={styles.cardCheck} checked={selectedPaths.has(file.path)} readOnly />}
+                                <button 
+                                    className={styles.cardMoreBtn} 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleContextMenu(e, file);
+                                    }}
+                                >
+                                    ⋮
+                                </button>
                                 <div className={styles.cardIcon}>
                                     {isImage(file.name) ? <img src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`} className={styles.thumb} /> : (file.type === 'directory' ? '📁' : '📄')}
                                 </div>
@@ -476,15 +499,17 @@ export default function ArchiveBrowser() {
             </div>
 
             {contextMenu && (
-                <div className={styles.contextMenu} style={{ top: contextMenu.y, left: contextMenu.x }} onClick={() => setContextMenu(null)}>
-                    {contextMenu.file ? (
-                        <>
-                            <div className={styles.contextItem} onClick={() => {
-                                if (contextMenu.file.type === 'directory') handleNavigate(contextMenu.file.name);
-                                else window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}`);
-                            }}>
-                                📁 {contextMenu.file.type === 'directory' ? '열기' : '미리보기'}
-                            </div>
+                <>
+                    <div className={styles.contextOverlay} onClick={() => setContextMenu(null)} />
+                    <div className={styles.contextMenu} style={{ top: contextMenu.y, left: contextMenu.x }} onClick={() => setContextMenu(null)}>
+                        {contextMenu.file ? (
+                            <>
+                                <div className={styles.contextItem} onClick={() => {
+                                    if (contextMenu.file.type === 'directory') handleNavigate(contextMenu.file.name);
+                                    else window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}`);
+                                }}>
+                                    📁 {contextMenu.file.type === 'directory' ? '열기' : '미리보기'}
+                                </div>
 
                             {/* Selection Mode Context Actions */}
                             {selectionMode && selectedPaths.size > 0 ? (

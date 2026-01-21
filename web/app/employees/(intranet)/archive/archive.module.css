@@ -351,3 +351,89 @@
 .miniDelete:hover {
     color: #e53e3e;
 }
+
+.moreBtn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #a0aec0;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.moreBtn:hover, .moreBtn:active {
+    background: #edf2f7;
+    color: #2d3748;
+}
+
+.cardMoreBtn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.8);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #718096;
+    cursor: pointer;
+    z-index: 5;
+    transition: all 0.2s;
+}
+
+.cardMoreBtn:hover, .cardMoreBtn:active {
+    background: white;
+    color: #2d3748;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.contextOverlay {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .hideMobile {
+        display: none;
+    }
+    
+    .table th, .table td {
+        padding: 12px 8px;
+    }
+    
+    .nameCell {
+        font-size: 0.9rem;
+    }
+    
+    .container {
+        padding-bottom: 80px; /* Space for bottom interaction if needed */
+    }
+    
+    .contextOverlay {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        backdrop-filter: blur(2px);
+    }
+    
+    .contextMenu {
+        position: fixed;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 300px;
+        z-index: 10001;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+}

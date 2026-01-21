@@ -260,13 +260,33 @@
 .mobileToggle {
     display: flex; /* Default to visible (mobile first approach) or handle via media query */
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     background: transparent;
     border: none;
     cursor: pointer;
     z-index: 1001;
     padding: 10px;
     margin-right: -10px;
+}
+
+.mobileToggle span {
+    width: 24px;
+    height: 2px;
+    background-color: currentColor;
+    border-radius: 2px;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mobileToggle.active span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.mobileToggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobileToggle.active span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
 }
 
 .mobileNav {
