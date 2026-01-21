@@ -43,7 +43,8 @@ export async function GET(request) {
 
         const headers = {
             'Content-Type': mimeMap[ext] || 'application/octet-stream',
-            'Cache-Control': 'public, max-age=3600'
+            // Aggressive caching: 1 year, immutable
+            'Cache-Control': 'public, max-age=31536000, immutable'
         };
 
         if (isDownload || !mimeMap[ext]) {

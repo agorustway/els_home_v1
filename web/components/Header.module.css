@@ -256,9 +256,9 @@
     transform: translateY(0);
 }
 
-/* Mobile Navigation - Hidden by default on Desktop */
+/* Mobile Navigation */
 .mobileToggle {
-    display: none !important; /* Force hide on desktop */
+    display: flex; /* Default to visible (mobile first approach) or handle via media query */
     flex-direction: column;
     gap: 5px;
     background: transparent;
@@ -270,7 +270,7 @@
 }
 
 .mobileNav {
-    display: none !important; /* Force hide on desktop */
+    display: flex;
     position: fixed;
     top: 0;
     right: -100%;
@@ -287,7 +287,7 @@
 }
 
 .overlay {
-    display: none !important; /* Force hide on desktop */
+    display: block;
     position: fixed;
     top: 0;
     left: 0;
@@ -301,9 +301,16 @@
     transition: all 0.4s;
 }
 
-/* ... (나머지 모바일 스타일 유지) ... */
+/* Desktop: Hide Mobile Elements */
+@media (min-width: 1025px) {
+    .mobileToggle,
+    .mobileNav,
+    .overlay {
+        display: none !important;
+    }
+}
 
-/* Responsive */
+/* Mobile: Hide Desktop Elements */
 @media (max-width: 1024px) {
     .nav {
         display: none !important;
@@ -313,18 +320,7 @@
         display: none !important;
     }
 
-    .mobileToggle {
-        display: flex !important; /* Override desktop force hide */
-    }
-
-    .mobileNav {
-        display: flex !important; /* Override desktop force hide */
-    }
-    
-    .overlay {
-        display: block !important; /* Override desktop force hide */
-    }
-
+    /* Mobile elements are visible by default CSS above, just need layout adjustments if any */
     .header {
         height: 70px;
     }

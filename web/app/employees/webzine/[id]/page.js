@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import Header from '@/components/Header';
 import EmployeeSidebar from '@/components/EmployeeSidebar';
 import SubPageHero from '@/components/SubPageHero';
@@ -63,9 +64,10 @@ export default function WebzineDetail({ params }) {
     };
 
     const getThumbnailSrc = (url) => {
-        if (!url) return null;
+        if (!url) return '';
         if (url.startsWith('http')) return url;
-        return `/api/nas/preview?path=${encodeURIComponent(url)}`;
+        const path = url.startsWith('/') ? url : `/${url}`;
+        return `/api/nas/preview?path=${encodeURIComponent(path)}`;
     };
 
     if (loading) return (
@@ -125,10 +127,15 @@ export default function WebzineDetail({ params }) {
 
                         {post.thumbnail_url && (
                             <div className={styles.heroImageWrapper}>
-                                <img 
+                                <Image 
                                     src={getThumbnailSrc(post.thumbnail_url)} 
                                     alt={post.title} 
+                                    width={1200}
+                                    height={630}
                                     className={styles.heroImage}
+                                    style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+                                    unoptimized
+                                    priority
                                 />
                             </div>
                         )}
