@@ -12,7 +12,8 @@ export async function GET(request) {
         .select(`
             *,
             author:user_roles!author_id (
-                email
+                email,
+                name
             )
         `)
         .eq('board_type', type)

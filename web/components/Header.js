@@ -3,6 +3,68 @@ import { useState, useEffect } from 'react';
 import styles from './Header.module.css';
 import { createClient } from '../utils/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+
+// Centralized navigation structure
+const navLinks = [
+    {
+        label: '회사소개',
+        children: [
+            { href: '/intro', label: '회사 개요' },
+            { href: '/vision', label: '비전' },
+            { href: '/esg', label: 'ESG' },
+            { href: '/team', label: '조직도' },
+            { href: '/history', label: '연혁' },
+            { type: 'divider' },
+            {
+                label: '사원복지',
+                children: [
+                    { href: '/welfare#satisfaction', label: '직원만족도 조사' },
+                    { href: '/welfare#grievance', label: '고충상담' },
+                    { href: '/welfare#roadmap', label: '지속가능 일터' },
+                    { href: '/welfare#report', label: '부조리/인권침해 제보' },
+                ]
+            }
+        ]
+    },
+    { href: '/services', label: '서비스' },
+    { href: '/dashboard', label: '실적현황' },
+    { href: '/network', label: '네트워크' },
+    { href: '/contact', label: '문의하기', isContact: true },
+    {
+        label: '임직원전용',
+        isEmployee: true,
+        children: [
+            { href: '/admin/users', label: '🔐 회원 권한 관리', isAdmin: true },
+            { href: '/admin', label: '📋 고객 문의 관리', isAdmin: true },
+            { type: 'divider', isAdmin: true },
+            { label: '사내 시스템', type: 'label' },
+            { href: '/employees/archive', label: '📂 자료실 (NAS)' },
+            { href: '/employees/board/free', label: '💬 자유게시판' },
+            { href: '/employees/webzine', label: '📰 웹진 (블로그)' },
+            { type: 'divider' },
+            { label: '업무보고', type: 'label' },
+            { href: '/employees/reports', label: '📊 통합 업무보고' },
+            { href: '/employees/reports/my', label: '📝 내 업무보고' },
+            { type: 'divider' },
+            {
+                label: '지점별 서비스',
+                children: [
+                    { href: '/employees/branches/asan', label: '아산지점' },
+                    { href: '/employees/branches/asan/menu', label: '└ 식단선택', isSubItem: true },
+                    { href: '/employees/branches/jungbu', label: '중부지점' },
+                    { href: '/employees/branches/dangjin', label: '당진지점' },
+                    { href: '/employees/branches/yesan', label: '예산지점' },
+                ]
+            }
+        ]
+    },
+];
+
+
+import { getRoleLabel } from '../utils/roles';
+
+// Centralized navigation structure (navLinks definition omitted for brevity)
 
 export default function Header({ darkVariant = false }) {
     const [scrolled, setScrolled] = useState(false);
@@ -10,248 +72,199 @@ export default function Header({ darkVariant = false }) {
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
+    const [userName, setUserName] = useState(null);
     const [isMounted, setIsMounted] = useState(false);
     const supabase = createClient();
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 50);
-        };
+        const handleScroll = () => setScrolled(window.scrollY > 50);
         window.addEventListener('scroll', handleScroll);
+        handleScroll(); // Initial check
 
-        // Fetch user session and role
         const getUserAndRole = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
-
             if (user) {
-                const { data: roleData } = await supabase
-                    .from('user_roles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
+                const { data: roleData } = await supabase.from('user_roles').select('role, name').eq('id', user.id).single();
                 setRole(roleData?.role);
+                setUserName(roleData?.name);
             }
         };
         getUserAndRole();
-
         setIsMounted(true);
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             setUser(session?.user ?? null);
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                getUserAndRole();
+            }
         });
 
         return () => {
             window.removeEventListener('scroll', handleScroll);
-            subscription.unsubscribe();
+            subscription?.unsubscribe();
         };
     }, []);
 
-    const toggleMenu = () => {
-        setMenuOpen(!menuOpen);
-        setActiveDropdown(null); // Reset dropdowns when menu toggles
-        if (!menuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-    };
+    useEffect(() => {
+        document.body.style.overflow = menuOpen ? 'hidden' : 'unset';
+    }, [menuOpen]);
 
-    const toggleDropdown = (name) => {
-        setActiveDropdown(activeDropdown === name ? null : name);
-    };
-
-    const handleLinkClick = () => {
-        setMenuOpen(false);
-        document.body.style.overflow = 'unset';
-    };
+    const toggleMenu = () => setMenuOpen(!menuOpen);
+    const handleLinkClick = () => setMenuOpen(false);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.refresh();
+        handleLinkClick();
     };
 
     const handleLoginClick = () => {
         router.push(`/login?next=${encodeURIComponent(pathname)}`);
+        handleLinkClick();
+    };
+
+    const renderNavLinks = (isMobile = false) => {
+        const linkElements = navLinks.filter(link => {
+            // Filter out employee-only links for non-logged-in users on mobile
+            return isMobile ? true : !link.isEmployee;
+        }).map((link, index) => {
+            if (link.children) {
+                return (
+                    <div key={index} className={isMobile ? styles.mobileNode : styles.hasDropdown}>
+                        <a
+                            href={link.href || '#'}
+                            className={isMobile ? styles.mobileLink : `${styles.dropBtn} ${link.isEmployee ? styles.empBtn : ''}`}
+                            onClick={(e) => {
+                                if (isMobile) {
+                                    e.preventDefault();
+                                    setActiveDropdown(activeDropdown === link.label ? null : link.label);
+                                }
+                            }}
+                        >
+                            {link.label}
+                            {isMobile && <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>}
+                        </a>
+                        <div className={isMobile ? `${styles.mobileSub} ${activeDropdown === link.label ? styles.showSub : ''}` : styles.dropdown}>
+                            {renderSubLinks(link.children, isMobile)}
+                        </div>
+                    </div>
+                );
+            }
+
+            return <Link key={index} href={link.href} className={isMobile ? styles.mobileLink : ''} onClick={handleLinkClick}>{link.label}</Link>;
+        });
+
+        // Add employee links for desktop if logged in
+        if (!isMobile && isMounted && user) {
+             linkElements.push(
+                <div key="employee-nav" className={styles.hasDropdown}>
+                    <a href="/employees" className={styles.empBtn}>임직원전용</a>
+                    <div className={styles.dropdown}>
+                        {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
+                    </div>
+                </div>
+            );
+        }
+
+        return linkElements;
+    };
+
+    const renderSubLinks = (subLinks, isMobile) => {
+        return subLinks.map((subLink, subIndex) => {
+            if (subLink.isAdmin && role !== 'admin') return null;
+            if (subLink.type === 'divider') return <div key={subIndex} className={isMobile ? styles.mobileSubDivider : styles.dropdownDivider} />;
+            if (subLink.type === 'label') return <div key={subIndex} className={isMobile ? styles.mobileSubLabel : styles.dropdownLabel}>{subLink.label}</div>;
+
+            if (subLink.children) {
+                 return (
+                    <div key={subIndex} className={isMobile ? '' : styles.hasSubDropdown}>
+                         <a href="#" className={isMobile ? styles.mobileSubToggle : styles.dropdownItem} onClick={(e) => {
+                              e.preventDefault();
+                              if(isMobile) setActiveDropdown(activeDropdown === subLink.label ? null : subLink.label)
+                         }}>
+                             {subLink.label}
+                             <svg viewBox="0 0 24 24" width="14" height="14"><path d="m9 18 6-6-6-6" /></svg>
+                         </a>
+                         <div className={isMobile ? `${styles.mobileSub} ${activeDropdown === subLink.label ? styles.showSub : ''}` : styles.subDropdown}>
+                             {renderSubLinks(subLink.children, isMobile)}
+                         </div>
+                     </div>
+                 );
+            }
+            
+            const className = isMobile
+                ? `${styles.mobileSubItem} ${subLink.isSubItem ? styles.mobileSubItemNested : ''}`
+                : `${styles.dropdownItem} ${subLink.isSubItem ? styles.dropdownSubItem : ''} ${subLink.isAdmin ? styles.adminLink : ''}`;
+
+            return <Link key={subIndex} href={subLink.href} className={className} onClick={handleLinkClick}>{subLink.label}</Link>;
+        }).filter(Boolean);
     };
 
     const isDarkHeader = scrolled || darkVariant;
+    const displayName = userName || user?.email?.split('@')[0] || '사용자';
+    const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     return (
-        <header className={`${styles.header} ${isDarkHeader ? styles.scrolled : ''} ${darkVariant && !scrolled ? styles.darkVariant : ''}`}>
-            <div className="container">
-                <div className={styles.inner}>
-                    <a href="/" className={styles.logo} onClick={handleLinkClick}>
-                        <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} />
-                    </a>
+        <>
+            <header className={`${styles.header} ${isDarkHeader ? styles.scrolled : ''} ${darkVariant && !scrolled ? styles.darkVariant : ''}`}>
+                <div className="container">
+                    <div className={styles.inner}>
+                        <Link href="/" className={styles.logo} onClick={handleLinkClick}>
+                            <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} />
+                        </Link>
 
-                    {/* Desktop Navigation */}
-                    <nav className={styles.nav}>
-                        <div className={styles.hasDropdown}>
-                            <a href="/intro" className={styles.dropBtn}>회사소개</a>
-                            <div className={styles.dropdown}>
-                                <a href="/vision" className={styles.dropdownItem}>비전</a>
-                                <a href="/esg" className={styles.dropdownItem}>ESG</a>
-                                <a href="/team" className={styles.dropdownItem}>조직도</a>
-                                <a href="/history" className={styles.dropdownItem}>연혁</a>
-                                <div className={styles.dropdownDivider}></div>
-                                <div className={styles.hasSubDropdown}>
-                                    <a href="#" className={styles.dropdownItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={(e) => e.preventDefault()}>
-                                        사원복지
-                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
-                                    </a>
-                                    <div className={styles.subDropdown}>
-                                        <a href="/welfare#satisfaction" className={styles.dropdownItem}>직원만족도 조사</a>
-                                        <a href="/welfare#grievance" className={styles.dropdownItem}>고충상담</a>
-                                        <a href="/welfare#roadmap" className={styles.dropdownItem}>지속가능 일터</a>
-                                        <a href="/welfare#report" className={styles.dropdownItem}>부조리/인권침해 제보</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <a href="/services">서비스</a>
-                        <a href="/dashboard">실적현황</a>
-                        <a href="/network">네트워크</a>
-                        {isMounted && (
-                            user ? (
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }} className={styles.authLink}>로그아웃</a>
-                            ) : (
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleLoginClick(); }} className={styles.authLink}>로그인</a>
-                            )
-                        )}
-                        <a href="/contact" className={styles.contactBtn}>문의하기</a>
-                        <div className={styles.hasDropdown}>
-                            <a href="/employees" className={styles.empBtn}>임직원전용</a>
-                            <div className={styles.dropdown}>
-                                {/* 관리자 */}
-                                {role === 'admin' && (
-                                    <>
-                                        <a href="/admin/users" className={styles.dropdownItem} style={{ fontWeight: '800', color: '#ef4444' }}>🔐 회원 권한 관리</a>
-                                        <a href="/admin" className={styles.dropdownItem} style={{ fontWeight: '800', color: '#ef4444' }}>📋 고객 문의 관리</a>
-                                        <div className={styles.dropdownDivider}></div>
-                                    </>
-                                )}
+                        <nav className={styles.nav}>
+                            {renderNavLinks(false)}
+                        </nav>
 
-                                {/* 시스템 */}
-                                <div className={styles.dropdownLabel}>사내 시스템</div>
-                                <a href="/employees/archive" className={styles.dropdownItem}>📂 자료실 (NAS)</a>
-                                <a href="/employees/board/free" className={styles.dropdownItem}>💬 자유게시판</a>
-                                <div className={styles.dropdownDivider}></div>
-
-                                {/* 업무보고 */}
-                                <div className={styles.dropdownLabel}>업무보고</div>
-                                <a href="/employees/reports" className={styles.dropdownItem}>📊 통합 업무보고</a>
-                                <a href="/employees/reports/my" className={styles.dropdownItem}>📝 내 업무보고</a>
-                                <div className={styles.dropdownDivider}></div>
-
-                                {/* 지점 */}
-                                <div className={styles.hasSubDropdown}>
-                                    <a href="#" className={styles.dropdownItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={(e) => e.preventDefault()}>
-                                        지점별 서비스
-                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
-                                    </a>
-                                    <div className={styles.subDropdown}>
-                                        <a href="/employees/branches/asan" className={styles.dropdownItem}>아산지점</a>
-                                        <a href="/employees/branches/asan/menu" className={styles.dropdownSubItem}>└ 식단선택</a>
-                                        <a href="/employees/branches/jungbu" className={styles.dropdownItem}>중부지점</a>
-                                        <a href="/employees/branches/dangjin" className={styles.dropdownItem}>당진지점</a>
-                                        <a href="/employees/branches/yesan" className={styles.dropdownItem}>예산지점</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </nav>
-
-                    {/* Mobile Toggle Button */}
-                    <button
-                        className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`}
-                        onClick={toggleMenu}
-                        aria-label="Toggle Menu"
-                    >
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </button>
-
-                    {/* Mobile Navigation */}
-                    <div className={`${styles.mobileNav} ${menuOpen ? styles.mobileNavOpen : ''}`}>
-                        <div className={styles.mobileNavLinks}>
-                            <div className={styles.mobileNode}>
-                                <button
-                                    className={`${styles.mobileLink} ${activeDropdown === 'intro' ? styles.activeSub : ''}`}
-                                    onClick={() => toggleDropdown('intro')}
-                                >
-                                    회사소개
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
-                                </button>
-                                <div className={`${styles.mobileSub} ${activeDropdown === 'intro' ? styles.showSub : ''}`}>
-                                    <a href="/intro" onClick={handleLinkClick}>회사 개요</a>
-                                    <a href="/vision" onClick={handleLinkClick}>비전</a>
-                                    <a href="/esg" onClick={handleLinkClick}>ESG</a>
-                                    <a href="/team" onClick={handleLinkClick}>조직도</a>
-                                    <a href="/history" onClick={handleLinkClick}>연혁</a>
-                                    <div className={styles.mobileSubDivider}></div>
-                                    <div style={{ padding: '10px 20px', fontWeight: '700', color: '#1a1a1a', fontSize: '1rem' }}>사원복지</div>
-                                    <a href="/welfare#satisfaction" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 직원만족도 조사</a>
-                                    <a href="/welfare#grievance" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 고충상담</a>
-                                    <a href="/welfare#roadmap" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 지속가능 일터</a>
-                                    <a href="/welfare#report" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 부조리/인권침해 제보</a>
-                                </div>
-                            </div>
-
-                            <a href="/services" className={styles.mobileLink} onClick={handleLinkClick}>서비스</a>
-                            <a href="/dashboard" className={styles.mobileLink} onClick={handleLinkClick}>실적현황</a>
-                            <a href="/network" className={styles.mobileLink} onClick={handleLinkClick}>네트워크</a>
-
-                            <div className={styles.mobileNode}>
-                                <button
-                                    className={`${styles.mobileLink} ${activeDropdown === 'emp' ? styles.activeSub : ''}`}
-                                    onClick={() => toggleDropdown('emp')}
-                                >
-                                    임직원사이트
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
-                                </button>
-                                <div className={`${styles.mobileSub} ${activeDropdown === 'emp' ? styles.showSub : ''}`}>
-                                    <a href="/employees" onClick={handleLinkClick}>임직원 홈</a>
-                                    <div className={styles.mobileSubDivider}></div>
-
-                                    {role === 'admin' && (
-                                        <>
-                                            <a href="/admin/users" onClick={handleLinkClick} style={{ color: '#ef4444', fontWeight: '800' }}>🔐 회원 권한 관리</a>
-                                            <a href="/admin" onClick={handleLinkClick} style={{ color: '#ef4444', fontWeight: '800' }}>📋 고객 문의 관리</a>
-                                            <div className={styles.mobileSubDivider}></div>
-                                        </>
+                        <div className={styles.utility}>
+                            {isMounted && !menuOpen && (
+                                <div className={styles.desktopAuth}>
+                                    {user ? (
+                                        <button 
+                                            onClick={handleLogout} 
+                                            className={styles.googleStyleAuthBtn}
+                                            title={`${displayName} (${getRoleLabel(role)})`}
+                                        >
+                                            <span className={styles.userInitial}>{displayInitial}</span>
+                                        </button>
+                                    ) : (
+                                        <Link href={`/login?next=${encodeURIComponent(pathname)}`} className={styles.googleStyleLoginLink}>
+                                            로그인
+                                        </Link>
                                     )}
-
-                                    <div className={styles.mobileSubLabel}>시스템</div>
-                                    <a href="https://elssolution.synology.me" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>NAS 시스템</a>
-                                    <div className={styles.mobileSubDivider}></div>
-
-                                    <div className={styles.mobileSubDivider}></div>
-
-                                    <div style={{ padding: '10px 20px', fontWeight: '700', color: '#1a1a1a', fontSize: '1rem' }}>지점별 서비스</div>
-                                    <a href="/employees/branches/asan" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 아산지점</a>
-                                    <a href="/employees/branches/asan/menu" onClick={handleLinkClick} style={{ paddingLeft: '50px', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>└ 식단선택</a>
-                                    <a href="/employees/branches/jungbu" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 중부지점</a>
-                                    <a href="/employees/branches/dangjin" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 당진지점</a>
-                                    <a href="/employees/branches/yesan" onClick={handleLinkClick} style={{ paddingLeft: '35px', fontSize: '0.95rem' }}>└ 예산지점</a>
                                 </div>
-                            </div>
-                            <a href="/contact" className={styles.mobileContactBtn} onClick={handleLinkClick}>문의하기</a>
-                            {isMounted && (
-                                user ? (
-                                    <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
-                                ) : (
-                                    <button onClick={handleLoginClick} className={styles.mobileAuthBtn}>로그인</button>
-                                )
                             )}
+                            <button className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`} onClick={toggleMenu} aria-label="Toggle Menu">
+                                <span /><span /><span />
+                            </button>
                         </div>
                     </div>
                 </div>
+            </header>
+
+
+            <div className={`${styles.mobileNav} ${menuOpen ? styles.mobileNavOpen : ''}`}>
+                <div className={styles.mobileNavHeader}>
+                    {isMounted && (user ?
+                        <>
+                            <div className={styles.welcomeMsg}>
+                                환영합니다, <strong>{displayName}</strong>님!<br/>
+                                <span style={{fontSize:'0.85rem', color:'#666', fontWeight: 400}}>({getRoleLabel(role)})</span>
+                            </div>
+                            <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
+                        </> :
+                        <button onClick={handleLoginClick} className={styles.mobileAuthBtn}>로그인</button>
+                    )}
+                </div>
+                <div className={styles.mobileNavLinks}>
+                    {renderNavLinks(true)}
+                </div>
             </div>
-        </header>
+            <div className={`${styles.overlay} ${menuOpen ? styles.overlayOpen : ''}`} onClick={toggleMenu} />
+        </>
     );
 }

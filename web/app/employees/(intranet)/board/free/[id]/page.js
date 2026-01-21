@@ -64,7 +64,7 @@ export default function PostDetailPage() {
             <div className={styles.detailHeader}>
                 <h1 className={styles.detailTitle}>{post.title}</h1>
                 <div className={styles.detailMeta}>
-                    <span>작성자: {post.author?.email}</span>
+                    <span>작성자: {post.author?.name || post.author?.email?.split('@')[0]}</span>
                     <span>작성일: {new Date(post.created_at).toLocaleString()}</span>
                     <span>조회수: {post.view_count}</span>
                 </div>

@@ -153,3 +153,42 @@
 .btnDelete:hover {
     background-color: #fecaca;
 }
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .boardTable th, 
+    .boardTable td {
+        padding: 12px 10px;
+        font-size: 0.85rem;
+    }
+
+    /* Hide 'No' column on mobile */
+    .boardTable th:nth-child(1),
+    .boardTable td:nth-child(1) {
+        display: none;
+    }
+
+    /* Hide 'Date' column on mobile */
+    .boardTable th:nth-child(4),
+    .boardTable td:nth-child(4) {
+        display: none;
+    }
+    
+    .detailTitle {
+        font-size: 1.8rem;
+    }
+    
+    .detailMeta {
+        flex-direction: column;
+        gap: 5px;
+    }
+}

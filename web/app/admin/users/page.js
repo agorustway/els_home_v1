@@ -114,6 +114,7 @@ export default function AdminUsersPage() {
                                 <thead>
                                     <tr style={{ backgroundColor: '#f1f5f9' }}>
                                         <th style={{ padding: '16px 24px', color: '#475569', fontWeight: '600' }}>이메일</th>
+                                        <th style={{ padding: '16px 24px', color: '#475569', fontWeight: '600' }}>이름</th>
                                         <th style={{ padding: '16px 24px', color: '#475569', fontWeight: '600' }}>지점/권한</th>
                                         <th style={{ padding: '16px 24px', color: '#475569', fontWeight: '600' }}>권한 변경</th>
                                         <th style={{ padding: '16px 24px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>쓰기</th>
@@ -126,6 +127,30 @@ export default function AdminUsersPage() {
                                     {filteredUsers.map((u) => (
                                         <tr key={u.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '16px 24px', color: '#1e293b', fontWeight: '500' }}>{u.email}</td>
+                                            <td style={{ padding: '16px 24px' }}>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={u.name || ''}
+                                                    placeholder="이름 입력"
+                                                    onBlur={(e) => {
+                                                        if (e.target.value !== (u.name || '')) {
+                                                            handleUpdateUser(u.id, u.email, { name: e.target.value });
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.target.blur();
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        width: '100px',
+                                                        padding: '6px 10px',
+                                                        borderRadius: '6px',
+                                                        border: '1px solid #e2e8f0',
+                                                        fontSize: '0.9rem'
+                                                    }}
+                                                />
+                                            </td>
                                             <td style={{ padding: '16px 24px' }}>
                                                 <span style={{
                                                     backgroundColor: u.role === 'admin' ? '#fee2e2' : '#f1f5f9',

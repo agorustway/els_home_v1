@@ -9,8 +9,9 @@ export async function GET(request, { params }) {
         .from('posts')
         .select(`
             *,
-            author:author_id (
-                email
+            author:user_roles!author_id (
+                email,
+                name
             )
         `)
         .eq('id', id)

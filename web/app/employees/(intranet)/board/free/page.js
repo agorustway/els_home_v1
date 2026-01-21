@@ -61,14 +61,20 @@ export default function FreeBoardPage() {
                 </thead>
                 <tbody>
                     {posts.map((post, index) => (
-                        <tr key={post.id} className={styles.postRow}>
+                        <tr 
+                            key={post.id} 
+                            className={styles.postRow}
+                            onClick={() => router.push(`/employees/board/free/${post.id}`)}
+                        >
                             <td>{posts.length - index}</td>
                             <td>
-                                <Link href={`/employees/board/free/${post.id}`} className={styles.postTitle}>
+                                <span className={styles.postTitle}>
                                     {post.title}
-                                </Link>
+                                </span>
                             </td>
-                            <td className={styles.author}>{post.author?.email.split('@')[0]}</td>
+                            <td className={styles.author}>
+                                {post.author?.name || post.author?.email?.split('@')[0]}
+                            </td>
                             <td className={styles.date}>
                                 {new Date(post.created_at).toLocaleDateString()}
                             </td>

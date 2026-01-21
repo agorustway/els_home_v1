@@ -33,28 +33,12 @@ export default function EmployeesPortal() {
 
                                 <div className={styles.gridContainer}>
                                     <motion.a
-                                        href="/employees/dashboard"
-                                        className={styles.card}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: 0.1 }}
-                                    >
-                                        <div className={styles.cardIcon}>🏠</div>
-                                        <h3 className={styles.cardTitle}>인트라넷 홈</h3>
-                                        <p className={styles.cardDesc}>사내 소식 확인 및 통합 업무 대시보드에 접속합니다.</p>
-                                        <div className={styles.arrow}>
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                                        </div>
-                                    </motion.a>
-
-                                    <motion.a
                                         href="/employees/archive"
                                         className={styles.card}
                                         initial={{ opacity: 0, y: 20 }}
                                         whileInView={{ opacity: 1, y: 0 }}
                                         viewport={{ once: true }}
-                                        transition={{ delay: 0.2 }}
+                                        transition={{ delay: 0.1 }}
                                     >
                                         <div className={styles.cardIcon}>📂</div>
                                         <h3 className={styles.cardTitle}>자료실 (NAS)</h3>
@@ -70,11 +54,27 @@ export default function EmployeesPortal() {
                                         initial={{ opacity: 0, y: 20 }}
                                         whileInView={{ opacity: 1, y: 0 }}
                                         viewport={{ once: true }}
-                                        transition={{ delay: 0.3 }}
+                                        transition={{ delay: 0.2 }}
                                     >
                                         <div className={styles.cardIcon}>💬</div>
                                         <h3 className={styles.cardTitle}>자유게시판</h3>
                                         <p className={styles.cardDesc}>임직원 간의 자유로운 소통과 정보를 교환하는 공간입니다.</p>
+                                        <div className={styles.arrow}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                        </div>
+                                    </motion.a>
+
+                                    <motion.a
+                                        href="/employees/webzine"
+                                        className={styles.card}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: 0.35 }}
+                                    >
+                                        <div className={styles.cardIcon}>📰</div>
+                                        <h3 className={styles.cardTitle}>웹진 (블로그)</h3>
+                                        <p className={styles.cardDesc}>사내 소식, 행사, 인터뷰 등 다양한 이야기를 공유합니다.</p>
                                         <div className={styles.arrow}>
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                         </div>

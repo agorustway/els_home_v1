@@ -122,8 +122,8 @@ export async function POST(request) {
             if (canWrite) return true;
             if (userRole === 'visitor') return false;
 
-            // Allow writing to /자료실, /ELSWEBAPP, and shared folders
-            if (targetPath.startsWith('/자료실') || targetPath.startsWith('/ELSWEBAPP')) return true;
+            // Allow writing to /자료실, /ELSWEBAPP, /ELS_WEB_DATA and shared folders
+            if (targetPath.startsWith('/자료실') || targetPath.startsWith('/ELSWEBAPP') || targetPath.startsWith('/ELS_WEB_DATA')) return true;
             if (targetPath.startsWith('/공용') || targetPath.startsWith('/Notice')) return true;
 
             // Allow writing to their own branch folder
@@ -166,16 +166,17 @@ export async function POST(request) {
             const fileName = file.name;
             const fullPath = `${targetPath}/${fileName}`.replace(/\/+/g, '/');
 
-            // Auto-create directories
+            // Skip auto-create directories to avoid 405 Method Not Allowed on shared folders
+            // Assuming the folder exists or will be created manually if needed.
+            /*
             const pathParts = targetPath.split('/').filter(p => p);
             let currentPath = '';
             for (const part of pathParts) {
-                currentPath += `/${part}`;
-                if (await client.exists(currentPath) === false) {
-                    await client.createDirectory(currentPath);
-                }
+                // ... logic removed to prevent 405 error
             }
+            */
 
+            console.log(`Uploading file to: ${fullPath}`);
             await client.putFileContents(fullPath, buffer, { overwrite: false });
             return NextResponse.json({ success: true, path: fullPath });
         }
@@ -207,7 +208,7 @@ export async function PATCH(request) {
         const checkCanWriteInternal = (targetPath) => {
             if (canWrite) return true;
             if (userRole === 'visitor') return false;
-            if (targetPath.startsWith('/자료실') || targetPath.startsWith('/ELSWEBAPP')) return true;
+            if (targetPath.startsWith('/자료실') || targetPath.startsWith('/ELSWEBAPP') || targetPath.startsWith('/ELS_WEB_DATA')) return true;
             if (targetPath.startsWith('/공용') || targetPath.startsWith('/Notice')) return true;
             if (userLabel && targetPath.includes(userLabel)) return true;
             return false;

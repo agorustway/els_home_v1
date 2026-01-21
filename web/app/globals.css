@@ -77,3 +77,19 @@ a {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 20px;
+  }
+
+  .section {
+    padding: 60px 0;
+  }
+
+  .sectionTitle {
+    font-size: 2.2rem;
+    margin-bottom: 40px;
+  }
+}
