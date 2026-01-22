@@ -4,6 +4,7 @@ import styles from './Header.module.css';
 import { createClient } from '../utils/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { getRoleLabel } from '../utils/roles';
 
 // Centralized navigation structure
 const navLinks = [
@@ -61,24 +62,52 @@ const navLinks = [
     },
 ];
 
-
-import { getRoleLabel } from '../utils/roles';
-
-// Centralized navigation structure (navLinks definition omitted for brevity)
-
 export default function Header({ darkVariant = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [expandedMenus, setExpandedMenus] = useState([]); // Changed to array
+    const [expandedMenus, setExpandedMenus] = useState([]); 
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
     const [userName, setUserName] = useState(null);
     const [isMounted, setIsMounted] = useState(false);
+    
     const supabase = createClient();
     const router = useRouter();
     const pathname = usePathname();
 
-    // ... (useEffect hooks remain same)
+    useEffect(() => {
+        const handleScroll = () => {
+            const isScrolled = window.scrollY > 20;
+            if (scrolled !== isScrolled) setScrolled(isScrolled);
+        };
+        
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+
+        const getUserAndRole = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+            if (user) {
+                const { data: roleData } = await supabase.from('user_roles').select('role, name').eq('id', user.id).single();
+                setRole(roleData?.role);
+                setUserName(roleData?.name);
+            }
+        };
+        getUserAndRole();
+        setIsMounted(true);
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user ?? null);
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                getUserAndRole();
+            }
+        });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            subscription?.unsubscribe();
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         document.body.style.overflow = menuOpen ? 'hidden' : 'unset';
@@ -86,21 +115,14 @@ export default function Header({ darkVariant = false }) {
 
     const toggleMenu = () => setMenuOpen(!menuOpen);
     
-    // Close menu and reset expanded items when a link is clicked
     const handleLinkClick = () => {
         setMenuOpen(false);
-        // Optional: Reset expanded menus on close? 
-        // setExpandedMenus([]); 
-        // Keeping them open might be better UX if they reopen the menu.
     };
 
     const toggleDropdown = (label) => {
         setExpandedMenus(prev => {
-            if (prev.includes(label)) {
-                return prev.filter(item => item !== label); // Close
-            } else {
-                return [...prev, label]; // Open
-            }
+            if (prev.includes(label)) return prev.filter(item => item !== label);
+            else return [...prev, label];
         });
     };
 
@@ -115,9 +137,19 @@ export default function Header({ darkVariant = false }) {
         handleLinkClick();
     };
 
+    // Determine visual styles based on state
+    const isDarkHeader = scrolled || darkVariant;
+    const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
+    const textColor = isDarkHeader ? '#1a1a1a' : '#ffffff';
+    const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
+    const shadow = isDarkHeader ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none';
+
+    const displayName = userName || user?.email?.split('@')[0] || '사용자';
+    const displayInitial = displayName[0]?.toUpperCase() || 'U';
+
+    // Defined AFTER textColor is available
     const renderNavLinks = (isMobile = false) => {
         const linkElements = navLinks.filter(link => {
-            // Filter out employee-only links for non-logged-in users on mobile
             return isMobile ? true : !link.isEmployee;
         }).map((link, index) => {
             if (link.children) {
@@ -127,6 +159,7 @@ export default function Header({ darkVariant = false }) {
                         <a
                             href={link.href || '#'}
                             className={isMobile ? styles.mobileLink : `${styles.dropBtn} ${link.isEmployee ? styles.empBtn : ''}`}
+                            style={{ color: isMobile ? '#333' : textColor }}
                             onClick={(e) => {
                                 if (isMobile) {
                                     e.preventDefault();
@@ -144,25 +177,80 @@ export default function Header({ darkVariant = false }) {
                 );
             }
 
-            return <Link key={index} href={link.href} className={isMobile ? styles.mobileLink : ''} onClick={handleLinkClick}>{link.label}</Link>;
+            return <Link key={index} href={link.href} className={isMobile ? styles.mobileLink : ''} style={{ color: isMobile ? '#333' : textColor }} onClick={handleLinkClick}>{link.label}</Link>;
         });
 
-        // Add employee links for desktop (Always visible, redirect to login if not auth)
+        // Always show Employee Portal link on Desktop
         if (!isMobile && isMounted) {
              linkElements.push(
                 <div key="employee-nav" className={styles.hasDropdown}>
+                    <a 
+                        href={user ? "/employees" : "/login"} 
+                        className={styles.empBtn}
+                        style={{ 
+                            color: textColor, 
+                            borderColor: isDarkHeader ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.4)',
+                        }}
+                    >
+                        임직원전용
+                    </a>
+                    {user && (
+                        <div className={styles.dropdown}>
+                            {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
+                        </div>
+                    )}
+                </div>
+            );
+
+            // INTEGRATED AUTH BUTTON: Add Login/Logout directly to nav
+            linkElements.push(
+                <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center' }}>
                     {user ? (
-                        <>
-                            <a href="/employees" className={styles.empBtn}>임직원전용</a>
-                            <div className={styles.dropdown}>
-                                {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
-                            </div>
-                        </>
+                        <button 
+                            onClick={handleLogout} 
+                            title="로그아웃"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0,
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <span style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#3b82f6',
+                                color: 'white',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                border: '2px solid white',
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                            }}>
+                                {displayInitial}
+                            </span>
+                        </button>
                     ) : (
-                        <a href="/login" className={styles.empBtn} onClick={(e) => {
-                            e.preventDefault();
-                            handleLoginClick();
-                        }}>임직원전용</a>
+                        <Link 
+                            href={`/login?next=${encodeURIComponent(pathname)}`} 
+                            style={{
+                                backgroundColor: '#0056b3',
+                                color: 'white',
+                                padding: '8px 16px',
+                                borderRadius: '4px',
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                textDecoration: 'none',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            로그인
+                        </Link>
                     )}
                 </div>
             );
@@ -203,104 +291,53 @@ export default function Header({ darkVariant = false }) {
         }).filter(Boolean);
     };
 
-    const isDarkHeader = scrolled || darkVariant;
-    const displayName = userName || user?.email?.split('@')[0] || '사용자';
-    const displayInitial = displayName[0]?.toUpperCase() || 'U';
-
     return (
         <>
             <header 
-                className={`${styles.header} ${isDarkHeader ? styles.scrolled : ''} ${darkVariant && !scrolled ? styles.darkVariant : ''}`}
+                className={styles.header}
                 style={{ 
-                    backgroundColor: isDarkHeader ? '#ffffff' : 'transparent',
-                    boxShadow: isDarkHeader ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none',
-                    color: isDarkHeader ? '#1a1a1a' : '#ffffff'
+                    backgroundColor: headerBg,
+                    boxShadow: shadow,
+                    color: textColor,
+                    height: '70px',
+                    transition: 'background-color 0.3s, color 0.3s'
                 }}
             >
                 <div className="container">
                     <div className={styles.inner}>
                         <Link href="/" className={styles.logo} onClick={handleLinkClick}>
-                            <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} />
+                            <img 
+                                src="/images/logo.png" 
+                                alt="ELS SOLUTION" 
+                                className={styles.logoImage} 
+                                style={{ 
+                                    filter: logoFilter,
+                                    height: '27px',
+                                    transition: 'filter 0.3s'
+                                }} 
+                            />
                         </Link>
 
                         <nav className={styles.nav}>
                             {renderNavLinks(false)}
                         </nav>
 
-                        {/* Force Flex Layout via Inline Styles */}
-                        <div className={styles.utility} style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto' }}>
-                            <div className={styles.desktopAuth} style={{ display: 'flex', alignItems: 'center', gap: '10px', visibility: 'visible', opacity: 1 }}>
-                                {isMounted ? (
-                                    user ? (
-                                        <button 
-                                            onClick={handleLogout} 
-                                            title="로그아웃"
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                padding: 0,
-                                                width: '40px',
-                                                height: '40px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                        >
-                                            <span style={{
-                                                width: '36px',
-                                                height: '36px',
-                                                backgroundColor: '#3b82f6',
-                                                color: 'white',
-                                                borderRadius: '50%',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontWeight: '700',
-                                                fontSize: '1rem',
-                                                border: '2px solid white',
-                                                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                                            }}>
-                                                {displayInitial}
-                                            </span>
-                                        </button>
-                                    ) : (
-                                        <Link 
-                                            href={`/login?next=${encodeURIComponent(pathname)}`} 
-                                            style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                backgroundColor: '#0056b3',
-                                                color: 'white',
-                                                padding: '8px 20px',
-                                                borderRadius: '4px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: '600',
-                                                textDecoration: 'none',
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            로그인
-                                        </Link>
-                                    )
-                                ) : (
-                                    <div style={{ width: '80px', height: '36px' }}></div>
-                                )}
-                            </div>
+                        {/* Mobile Toggle Button Only */}
+                        <div className={styles.utility} style={{ marginLeft: '0' }}> 
                             <button 
                                 className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`} 
                                 onClick={toggleMenu} 
                                 aria-label="Toggle Menu"
-                                // Only show on mobile breakpoints, but since media queries might be failing, let's rely on CSS class for hiding on desktop
+                                style={{ color: isDarkHeader ? '#1a1a1a' : '#ffffff' }}
                             >
-                                <span /><span /><span />
+                                <span style={{ backgroundColor: 'currentColor' }} />
+                                <span style={{ backgroundColor: 'currentColor' }} />
+                                <span style={{ backgroundColor: 'currentColor' }} />
                             </button>
                         </div>
                     </div>
                 </div>
             </header>
-
 
             <div className={`${styles.mobileNav} ${menuOpen ? styles.mobileNavOpen : ''}`}>
                 <div className={styles.mobileNavHeader}>
