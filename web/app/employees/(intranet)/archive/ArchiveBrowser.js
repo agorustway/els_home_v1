@@ -342,8 +342,45 @@ export default function ArchiveBrowser() {
         return direction === 'asc' ? comp : -comp;
     });
 
-    if (authLoading || loading) return <div className={styles.loadingContainer}>데이터 로딩 중...</div>;
-    if (error) return <div className={styles.loadingContainer}>오류: {error}</div>;
+    if (authLoading || loading) {
+        return (
+            <div className={styles.loadingContainer}>
+                <div style={{ marginBottom: '15px' }}>데이터 로딩 중...</div>
+                {(authLoading || loading) && (
+                    <div style={{ fontSize: '0.8rem', color: '#999' }}>
+                        응답이 지연되고 있습니다. 잠시만 기다려 주세요.
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className={styles.loadingContainer}>
+                <div style={{ color: '#e53e3e', marginBottom: '15px', fontWeight: 'bold' }}>
+                    데이터를 불러오지 못했습니다.
+                </div>
+                <div style={{ marginBottom: '20px', fontSize: '0.9rem', color: '#666' }}>
+                    {error}
+                </div>
+                <button 
+                    onClick={() => fetchFiles(path)} 
+                    style={{
+                        padding: '10px 20px',
+                        background: '#3182ce',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    다시 시도
+                </button>
+            </div>
+        );
+    }
+    
     if (!role) return null;
 
     return (

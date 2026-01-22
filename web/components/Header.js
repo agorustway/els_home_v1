@@ -147,14 +147,23 @@ export default function Header({ darkVariant = false }) {
             return <Link key={index} href={link.href} className={isMobile ? styles.mobileLink : ''} onClick={handleLinkClick}>{link.label}</Link>;
         });
 
-        // Add employee links for desktop if logged in
-        if (!isMobile && isMounted && user) {
+        // Add employee links for desktop (Always visible, redirect to login if not auth)
+        if (!isMobile && isMounted) {
              linkElements.push(
                 <div key="employee-nav" className={styles.hasDropdown}>
-                    <a href="/employees" className={styles.empBtn}>임직원전용</a>
-                    <div className={styles.dropdown}>
-                        {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
-                    </div>
+                    {user ? (
+                        <>
+                            <a href="/employees" className={styles.empBtn}>임직원전용</a>
+                            <div className={styles.dropdown}>
+                                {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
+                            </div>
+                        </>
+                    ) : (
+                        <a href="/login" className={styles.empBtn} onClick={(e) => {
+                            e.preventDefault();
+                            handleLoginClick();
+                        }}>임직원전용</a>
+                    )}
                 </div>
             );
         }
@@ -200,7 +209,14 @@ export default function Header({ darkVariant = false }) {
 
     return (
         <>
-            <header className={`${styles.header} ${isDarkHeader ? styles.scrolled : ''} ${darkVariant && !scrolled ? styles.darkVariant : ''}`}>
+            <header 
+                className={`${styles.header} ${isDarkHeader ? styles.scrolled : ''} ${darkVariant && !scrolled ? styles.darkVariant : ''}`}
+                style={{ 
+                    backgroundColor: isDarkHeader ? '#ffffff' : 'transparent',
+                    boxShadow: isDarkHeader ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none',
+                    color: isDarkHeader ? '#1a1a1a' : '#ffffff'
+                }}
+            >
                 <div className="container">
                     <div className={styles.inner}>
                         <Link href="/" className={styles.logo} onClick={handleLinkClick}>
@@ -211,25 +227,73 @@ export default function Header({ darkVariant = false }) {
                             {renderNavLinks(false)}
                         </nav>
 
-                        <div className={styles.utility}>
-                            {isMounted && !menuOpen && (
-                                <div className={styles.desktopAuth}>
-                                    {user ? (
+                        {/* Force Flex Layout via Inline Styles */}
+                        <div className={styles.utility} style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto' }}>
+                            <div className={styles.desktopAuth} style={{ display: 'flex', alignItems: 'center', gap: '10px', visibility: 'visible', opacity: 1 }}>
+                                {isMounted ? (
+                                    user ? (
                                         <button 
                                             onClick={handleLogout} 
-                                            className={styles.googleStyleAuthBtn}
-                                            title={`${displayName} (${getRoleLabel(role)})`}
+                                            title="로그아웃"
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                width: '40px',
+                                                height: '40px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
                                         >
-                                            <span className={styles.userInitial}>{displayInitial}</span>
+                                            <span style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                backgroundColor: '#3b82f6',
+                                                color: 'white',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: '700',
+                                                fontSize: '1rem',
+                                                border: '2px solid white',
+                                                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                            }}>
+                                                {displayInitial}
+                                            </span>
                                         </button>
                                     ) : (
-                                        <Link href={`/login?next=${encodeURIComponent(pathname)}`} className={styles.googleStyleLoginLink}>
+                                        <Link 
+                                            href={`/login?next=${encodeURIComponent(pathname)}`} 
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: '#0056b3',
+                                                color: 'white',
+                                                padding: '8px 20px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: '600',
+                                                textDecoration: 'none',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
                                             로그인
                                         </Link>
-                                    )}
-                                </div>
-                            )}
-                            <button className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`} onClick={toggleMenu} aria-label="Toggle Menu">
+                                    )
+                                ) : (
+                                    <div style={{ width: '80px', height: '36px' }}></div>
+                                )}
+                            </div>
+                            <button 
+                                className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`} 
+                                onClick={toggleMenu} 
+                                aria-label="Toggle Menu"
+                                // Only show on mobile breakpoints, but since media queries might be failing, let's rely on CSS class for hiding on desktop
+                            >
                                 <span /><span /><span />
                             </button>
                         </div>
