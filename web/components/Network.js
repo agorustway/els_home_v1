@@ -35,7 +35,7 @@ export default function Network() {
         // Param: ncpKeyId
         const script = document.createElement('script');
         script.id = scriptId;
-        script.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=hxoj79osnj';
+        script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
         script.async = true;
         script.defer = true;
 

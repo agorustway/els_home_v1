@@ -261,7 +261,15 @@
 
 .rouletteWrapper {
     position: relative;
+    max-width: 100%; /* Ensure responsiveness */
 }
+
+/* Adjust canvas for responsiveness */
+.rouletteWrapper canvas {
+    max-width: 100%;
+    height: auto;
+}
+
 
 .pointerContainer {
     position: absolute;
@@ -332,6 +340,7 @@
     padding: 50px;
     border-radius: 30px;
     text-align: center;
+    max-width: 90%; /* Mobile safe */
 }
 
 .resultCard h2 {
@@ -407,6 +416,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    overflow-x: auto; /* Allow scrolling on very small screens if needed */
 }
 
 .ladderHeaderRow,
@@ -424,6 +434,7 @@
     text-align: center;
     cursor: pointer;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    font-size: 0.9rem; /* Slightly smaller for mobile safety */
 }
 
 .ladderEndNode {
@@ -432,6 +443,7 @@
     font-weight: 900;
     color: #475569;
     padding: 20px 0;
+    font-size: 0.9rem;
 }
 
 .ladderBoard {
@@ -440,6 +452,7 @@
     padding: 0 40px;
     /* Add padding to prevent side clipping */
     margin: 10px 0;
+    min-width: 300px; /* Minimum width to prevent collapse */
 }
 
 .ladderSvgBackground,
@@ -516,6 +529,7 @@
     flex-direction: column;
     align-items: center;
     gap: 25px;
+    width: 100%; /* Full width on mobile */
 }
 
 .bingoHeader {
@@ -615,6 +629,7 @@
 .bingoWinContent {
     text-align: center;
     animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 20px; /* Safe padding */
 }
 
 @keyframes popIn {
@@ -687,6 +702,7 @@
     flex-shrink: 0;
 }
 
+/* Responsive Media Queries */
 @media (max-width: 1200px) {
     .bingoContainer {
         flex-direction: column-reverse;
@@ -700,8 +716,90 @@
 }
 
 @media (max-width: 1024px) {
+    .container {
+        padding-top: 80px;
+    }
+    
     .layout {
         grid-template-columns: 1fr;
         padding: 0 20px;
+    }
+
+    .historyCard {
+        max-height: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2rem;
+    }
+    
+    .tabs {
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 5px;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+    }
+    
+    .tabs::-webkit-scrollbar {
+        display: none; /* Hide scrollbar for cleaner look */
+    }
+    
+    .tabs button {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        border-radius: 12px;
+        white-space: nowrap; /* Prevent text wrapping */
+        flex: none; /* Don't grow or shrink */
+    }
+
+    .gameContainer {
+        padding: 20px;
+        min-height: 500px;
+    }
+
+    /* Roulette Mobile */
+    .spinBtn {
+        padding: 14px 40px;
+        font-size: 1.1rem;
+    }
+
+    /* Ladder Mobile */
+    .ladderStartNode, .ladderEndNode {
+        width: auto;
+        min-width: 40px;
+        padding: 8px 5px;
+        font-size: 0.8rem;
+    }
+
+    .ladderBoard {
+        padding: 0 10px;
+    }
+    
+    .ladderSvgBackground, .ladderSvgOverlay {
+        left: 10px;
+        right: 10px;
+        width: calc(100% - 20px);
+    }
+    
+    /* Bingo Mobile */
+    .bingoGrid {
+        gap: 6px;
+        padding: 8px;
+    }
+    
+    .bingoCell {
+        font-size: 0.9rem;
+        border-radius: 8px;
+    }
+
+    .bingoWinContent h2 {
+        font-size: 3rem !important;
+    }
+    
+    .bingoWinContent p {
+        font-size: 1.1rem !important;
     }
 }

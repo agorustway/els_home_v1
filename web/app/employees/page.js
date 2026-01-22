@@ -15,9 +15,9 @@ export default function EmployeesPortal() {
                 subtitle="업무 효율을 높이는 스마트한 솔루션, ELS 인트라넷 포털입니다."
                 bgImage="/images/hero_cy.png"
             />
-            <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fbff' }}>
+            <div className={styles.layoutWrapper}>
                 <EmployeeSidebar />
-                <main style={{ flex: 1 }}>
+                <main className={styles.mainContent}>
                     <div className={styles.page}>
                         {/* Portal Links */}
                         <section className={styles.portalSection}>

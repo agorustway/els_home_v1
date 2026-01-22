@@ -1,3 +1,14 @@
+.layoutWrapper {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f8fbff;
+}
+
+.mainContent {
+    flex: 1;
+    min-width: 0; /* Prevents flex item from overflowing */
+}
+
 .page {
     min-height: 100vh;
     background: #f8fbff;
@@ -189,9 +200,15 @@
     letter-spacing: 1px;
 }
 
+/* Mobile Optimizations */
 @media (max-width: 1024px) {
+    .layoutWrapper {
+        display: block;
+    }
+
     .gridContainer {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* Full width cards */
+        gap: 20px;
     }
 
     .branchGrid {
@@ -200,5 +217,53 @@
 
     .title {
         font-size: 2.5rem;
+    }
+
+    .portalSection {
+        padding: 40px 0 80px;
+    }
+}
+
+@media (max-width: 768px) {
+    .card {
+        padding: 25px;
+        border-radius: 20px;
+    }
+
+    .cardIcon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        border-radius: 16px;
+    }
+
+    .cardTitle {
+        font-size: 1.25rem;
+    }
+
+    .cardDesc {
+        font-size: 0.9rem;
+    }
+
+    .arrow {
+        bottom: 25px;
+        right: 25px;
+    }
+
+    .branchGrid {
+        gap: 12px;
+    }
+
+    .branchCard {
+        padding: 20px;
+    }
+
+    .branchName {
+        font-size: 1rem;
+    }
+
+    .branchEng {
+        font-size: 0.75rem;
     }
 }

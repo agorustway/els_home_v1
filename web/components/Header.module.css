@@ -293,7 +293,7 @@
     display: flex;
     position: fixed;
     top: 0;
-    right: -100%;
+    right: 0;
     width: 75%;
     max-width: 300px;
     height: 100vh;
@@ -304,6 +304,10 @@
     box-shadow: -10px 0 50px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     transform: translateX(100%);
+}
+
+.mobileNavOpen {
+    transform: translateX(0);
 }
 
 .overlay {
@@ -319,6 +323,11 @@
     opacity: 0;
     visibility: hidden;
     transition: all 0.4s;
+}
+
+.overlayOpen {
+    opacity: 1;
+    visibility: visible;
 }
 
 /* Desktop: Hide Mobile Elements */
@@ -344,4 +353,105 @@
     .header {
         height: 70px;
     }
+}
+
+/* Mobile Menu Internal Styles */
+.mobileNavHeader {
+    padding: 30px 25px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.welcomeMsg {
+    font-size: 1.1rem;
+    color: #333;
+    line-height: 1.4;
+    margin-bottom: 15px;
+}
+
+.mobileAuthBtn {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mobileNavLinks {
+    padding: 15px 0;
+}
+
+.mobileLink {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #333;
+    text-decoration: none;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.mobileSub {
+    background: #fcfcfc;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.mobileSub.showSub {
+    max-height: 1000px; /* Arbitrary large height */
+    border-bottom: 1px solid #eee;
+}
+
+.mobileSubItem {
+    display: block;
+    padding: 12px 25px 12px 35px;
+    font-size: 0.95rem;
+    color: #666;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+}
+
+.mobileSubItemNested {
+    padding-left: 50px;
+    font-size: 0.9rem;
+}
+
+.mobileSubItem:hover,
+.mobileSubItem:active {
+    background: #f0f4ff;
+    color: var(--primary-blue);
+    border-left-color: var(--primary-blue);
+}
+
+.mobileSubLabel {
+    padding: 15px 25px 5px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mobileSubDivider {
+    height: 1px;
+    background: #eee;
+    margin: 10px 25px;
+}
+
+.mobileSubToggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 25px 12px 35px;
+    font-size: 0.95rem;
+    color: #666;
+    text-decoration: none;
+    cursor: pointer;
 }

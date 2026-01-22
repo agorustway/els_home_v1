@@ -398,6 +398,35 @@
 }
 
 @media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 16px;
+    }
+
+    .controls {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 5px;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .controls::-webkit-scrollbar {
+        display: none;
+    }
+
+    .viewToggle, .btnSecondary, .btnPrimary {
+        flex: none;
+        white-space: nowrap;
+    }
+
+    .btnPrimary, .btnSecondary {
+        padding: 10px 15px;
+        font-size: 0.85rem;
+    }
+
     .hideMobile {
         display: none;
     }
