@@ -50,6 +50,9 @@
     padding: 8px 16px;
     border-radius: 12px;
     animation: slideIn 0.3s ease;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-between;
 }
 
 @keyframes slideIn {
@@ -398,49 +401,68 @@
 }
 
 @media (max-width: 768px) {
+    .container {
+        padding: 0;
+        overflow-x: hidden;
+    }
+
     .header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 15px;
         padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .titleArea {
+        text-align: center;
     }
 
     .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding-bottom: 0;
         width: 100%;
-        overflow-x: auto;
-        padding-bottom: 5px;
-        justify-content: flex-start;
-        -webkit-overflow-scrolling: touch;
     }
 
-    .controls::-webkit-scrollbar {
-        display: none;
+    .viewToggle {
+        grid-column: span 2;
+        display: flex;
+        justify-content: center;
     }
 
-    .viewToggle, .btnSecondary, .btnPrimary {
-        flex: none;
-        white-space: nowrap;
-    }
-
-    .btnPrimary, .btnSecondary {
-        padding: 10px 15px;
+    .btnSecondary, .btnPrimary {
+        width: 100%;
+        padding: 12px 8px;
         font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
     }
 
     .hideMobile {
         display: none;
     }
     
+    .table {
+        table-layout: fixed;
+    }
+
     .table th, .table td {
         padding: 12px 8px;
     }
     
     .nameCell {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+        word-break: break-all;
+        white-space: normal;
+        line-height: 1.4;
     }
     
     .container {
-        padding-bottom: 80px; /* Space for bottom interaction if needed */
+        padding-bottom: 80px; 
     }
     
     .contextOverlay {
