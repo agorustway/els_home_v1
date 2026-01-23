@@ -70,6 +70,7 @@ export default function Header({ darkVariant = false }) {
     const [role, setRole] = useState(null);
     const [userName, setUserName] = useState(null);
     const [isMounted, setIsMounted] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false); // User Menu Dropdown State
     
     const supabase = createClient();
     const router = useRouter();
@@ -113,7 +114,17 @@ export default function Header({ darkVariant = false }) {
         document.body.style.overflow = menuOpen ? 'hidden' : 'unset';
     }, [menuOpen]);
 
+    // Close menus when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (userMenuOpen) setUserMenuOpen(false);
+        };
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, [userMenuOpen]);
+
     const toggleMenu = () => setMenuOpen(!menuOpen);
+    const toggleUserMenu = () => setUserMenuOpen(!userMenuOpen);
     
     const handleLinkClick = () => {
         setMenuOpen(false);
@@ -129,6 +140,7 @@ export default function Header({ darkVariant = false }) {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.refresh();
+        setUserMenuOpen(false);
         handleLinkClick();
     };
 
@@ -147,7 +159,6 @@ export default function Header({ darkVariant = false }) {
     const displayName = userName || user?.email?.split('@')[0] || '사용자';
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
-    // Defined AFTER textColor is available
     const renderNavLinks = (isMobile = false) => {
         const linkElements = navLinks.filter(link => {
             return isMobile ? true : !link.isEmployee;
@@ -196,43 +207,98 @@ export default function Header({ darkVariant = false }) {
                     </a>
                     <div className={styles.dropdown}>
                         {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
+                        <div className={styles.dropdownDivider} />
+                        <Link href="/employees/mypage" className={styles.dropdownItem} onClick={handleLinkClick}>👤 내 정보 수정</Link>
                     </div>
                 </div>
             );
 
-            // INTEGRATED AUTH BUTTON: Add Login/Logout directly to nav
+            // USER AUTH DROPDOWN
             linkElements.push(
-                <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center' }}>
+                <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
                     {user ? (
-                        <button 
-                            onClick={handleLogout} 
-                            title="로그아웃"
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0,
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <span style={{
-                                width: '32px',
-                                height: '32px',
-                                backgroundColor: '#3b82f6',
-                                color: 'white',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 'bold',
-                                fontSize: '0.9rem',
-                                border: '2px solid white',
-                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                            }}>
-                                {displayInitial}
-                            </span>
-                        </button>
+                        <>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleUserMenu();
+                                }}
+                                title="사용자 메뉴"
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <span style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9rem',
+                                    border: '2px solid white',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                                }}>
+                                    {displayInitial}
+                                </span>
+                            </button>
+                            
+                            {userMenuOpen && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '120%',
+                                    right: 0,
+                                    background: 'white',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                    padding: '8px 0',
+                                    minWidth: '160px',
+                                    zIndex: 1000,
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{ padding: '8px 20px', borderBottom: '1px solid #f1f5f9', marginBottom: '4px' }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>{displayName}님</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{getRoleLabel(role)}</div>
+                                    </div>
+                                    <Link 
+                                        href="/employees/mypage" 
+                                        style={{ display: 'block', padding: '10px 20px', fontSize: '0.9rem', color: '#334155', textDecoration: 'none', transition: 'background 0.2s' }}
+                                        onClick={() => setUserMenuOpen(false)}
+                                        onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
+                                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                    >
+                                        👤 내 정보 수정
+                                    </Link>
+                                    <button
+                                        onClick={handleLogout}
+                                        style={{ 
+                                            display: 'block', 
+                                            width: '100%', 
+                                            textAlign: 'left', 
+                                            padding: '10px 20px', 
+                                            fontSize: '0.9rem', 
+                                            color: '#ef4444', 
+                                            background: 'transparent', 
+                                            border: 'none', 
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
+                                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                    >
+                                        🚪 로그아웃
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <Link 
                             href={`/login?next=${encodeURIComponent(pathname)}`} 

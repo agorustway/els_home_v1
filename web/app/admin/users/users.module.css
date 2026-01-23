@@ -2,3 +2,22 @@
 .usersPage {
     padding: 20px;
 }
+
+.deleteBtn {
+    background-color: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.deleteBtn:hover {
+    background-color: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}

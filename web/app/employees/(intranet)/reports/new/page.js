@@ -6,22 +6,36 @@ import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../../board/board.module.css';
 
 export default function NewReportPage() {
-    const { role, loading: authLoading } = useUserRole();
+    const { role, user, loading: authLoading } = useUserRole();
     const router = useRouter();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [branch, setBranch] = useState('');
+    const [reporterName, setReporterName] = useState('');
+    const [reporterPhone, setReporterPhone] = useState('');
     const [attachments, setAttachments] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        if (!authLoading && !role) {
-            router.replace('/login?next=/employees/reports/new');
-        } else if (role && !['admin', 'headquarters'].includes(role)) {
-            setBranch(role); // Auto-set for branch staff
+        if (!authLoading) {
+            if (!role || role === 'visitor') {
+                router.replace('/login?next=/employees/reports/new');
+            } else {
+                // Auto-fill user info
+                if (!['admin', 'headquarters'].includes(role)) {
+                    setBranch(role);
+                } else if (!branch) {
+                    setBranch('headquarters'); // Admin default
+                }
+                
+                if (user) {
+                    setReporterName(user.name || '');
+                    setReporterPhone(user.phone || '');
+                }
+            }
         }
-    }, [role, authLoading, router]);
+    }, [role, user, authLoading, router]);
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
@@ -49,14 +63,17 @@ export default function NewReportPage() {
 
         setSubmitting(true);
         try {
+            // Append reporter info to content for better visibility in the report
+            const finalContent = `${content}\n\n---\n[작성자 정보]\n성함: ${reporterName}\n지점: ${branch}\n연락처: ${reporterPhone}`;
+
             const res = await fetch('/api/board', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title,
-                    content,
+                    content: finalContent,
                     board_type: 'report',
-                    branch_tag: branch || 'hq', // Fallback
+                    branch_tag: branch || 'headquarters',
                     attachments
                 }),
             });
@@ -77,24 +94,54 @@ export default function NewReportPage() {
             </div>
 
             <form onSubmit={handleSubmit} style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                {isAdmin && (
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>지점 선택</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>지점</label>
                         <select
                             value={branch}
                             onChange={(e) => setBranch(e.target.value)}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: isAdmin ? 'white' : '#f8fafc' }}
                             required
+                            disabled={!isAdmin}
                         >
-                            <option value="">지점을 선택하세요</option>
+                            <option value="">선택</option>
                             <option value="asan">아산지점</option>
+                            <option value="asan_cy">아산CY</option>
+                            <option value="headquarters">서울본사</option>
                             <option value="jungbu">중부지점</option>
                             <option value="dangjin">당진지점</option>
                             <option value="yesan">예산지점</option>
-                            <option value="headquarters">본사</option>
+                            <option value="seosan">서산지점</option>
+                            <option value="yeoncheon">연천지점</option>
+                            <option value="ulsan">울산지점</option>
+                            <option value="imgo">임고지점</option>
+                            <option value="bulk">벌크사업부</option>
                         </select>
                     </div>
-                )}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>작성자</label>
+                        <input
+                            type="text"
+                            value={reporterName}
+                            onChange={(e) => setReporterName(e.target.value)}
+                            placeholder="이름"
+                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>연락처</label>
+                        <input
+                            type="text"
+                            value={reporterPhone}
+                            onChange={(e) => setReporterPhone(e.target.value)}
+                            placeholder="010-0000-0000"
+                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            required
+                        />
+                    </div>
+                </div>
+
                 <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>제목</label>
                     <input

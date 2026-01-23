@@ -1,0 +1,119 @@
+/* My Page Styles */
+.container {
+    max-width: 600px;
+    margin: 40px auto;
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.formGroup {
+    margin-bottom: 24px;
+}
+
+.label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.input:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.infoBox {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    border: 1px solid #f1f5f9;
+}
+
+.infoRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+
+.infoRow:last-child {
+    margin-bottom: 0;
+}
+
+.infoLabel {
+    color: #64748b;
+}
+
+.infoValue {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.btnSave {
+    width: 100%;
+    padding: 16px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+}
+
+.btnSave:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 30px 0;
+}
+
+.dangerZone {
+    text-align: center;
+}
+
+.btnWithdraw {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #cbd5e1;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnWithdraw:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: #fef2f2;
+}

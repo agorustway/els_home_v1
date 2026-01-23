@@ -28,7 +28,7 @@ export function useUserRole() {
 
                 const { data: roleData, error: roleError } = await supabase
                     .from('user_roles')
-                    .select('role')
+                    .select('role, name, phone')
                     .eq('id', authUser.id)
                     .single();
 
@@ -37,6 +37,7 @@ export function useUserRole() {
                 }
 
                 setRole(roleData?.role || 'visitor');
+                setUser(prev => ({ ...prev, ...roleData })); // Merge name, phone into user object
             } catch (error) {
                 console.error('Unexpected error in useUserRole:', error);
             } finally {
