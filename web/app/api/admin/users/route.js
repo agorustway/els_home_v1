@@ -158,7 +158,7 @@ export async function PATCH(request) {
         const roleUpdates = {};
         if (role !== undefined) {
             roleUpdates.role = role;
-            roleUpdates.requested_role = null; // Clear request on role change
+            // roleUpdates.requested_role = null; // Removed to avoid "column not found" error
         }
         if (can_write !== undefined) roleUpdates.can_write = can_write;
         if (can_delete !== undefined) roleUpdates.can_delete = can_delete;
