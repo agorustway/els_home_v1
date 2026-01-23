@@ -34,30 +34,28 @@ export default function NewWebzinePost() {
 
             let thumbnailUrl = null;
 
-            // 1. Upload Thumbnail to NAS if exists
+            // 1. Upload Thumbnail to S3 (via Server Proxy to avoid CORS)
             if (thumbnailFile) {
+                const now = new Date();
+                const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const safeName = thumbnailFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                const key = `Webzine/${yearMonth}/${Date.now()}_${safeName}`; // S3 Key
+
                 const formData = new FormData();
-                // Rename file to avoid conflicts and ensure safe characters
-                const timestamp = Date.now();
-                const safeFileName = `${timestamp}_${thumbnailFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
-                const renamedFile = new File([thumbnailFile], safeFileName, { type: thumbnailFile.type });
+                formData.append('file', thumbnailFile);
+                formData.append('key', key);
 
-                formData.append('file', renamedFile);
-                // Upload to '/ELS_WEB_DATA/webzine' as requested
-                formData.append('path', '/ELS_WEB_DATA/webzine'); 
-
-                const uploadRes = await fetch('/api/nas/files', {
+                const uploadRes = await fetch('/api/s3/files', {
                     method: 'POST',
-                    body: formData,
+                    body: formData, // Auto Content-Type: multipart/form-data
                 });
 
                 if (!uploadRes.ok) {
-                    const errorData = await uploadRes.json();
-                    throw new Error(`이미지 업로드 실패: ${errorData.error}`);
+                    const err = await uploadRes.json();
+                    throw new Error(`이미지 업로드 실패: ${err.error}`);
                 }
-
-                const result = await uploadRes.json();
-                thumbnailUrl = result.path; // Save the NAS path
+                
+                thumbnailUrl = key; // Save S3 Key
             }
 
             // 2. Save Post to Supabase

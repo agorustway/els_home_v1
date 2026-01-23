@@ -41,9 +41,18 @@ export default function WebzineList() {
         fetchPosts();
     }, []);
 
-    const getThumbnailSrc = (url) => {
+    const getThumbnailSrc = (post) => {
+        const url = post.thumbnail_url;
         if (!url) return '';
         if (url.startsWith('http')) return url;
+        
+        // If it's stored in S3 (our new system)
+        // Note: We check if it's likely an S3 key (doesn't start with /ELS) or via attachments type if available
+        // For simplicity, let's try the S3 API for anything that doesn't look like an old NAS path
+        if (url.startsWith('Webzine/')) {
+            return `/api/s3/files?key=${encodeURIComponent(url)}`;
+        }
+        
         const path = url.startsWith('/') ? url : `/${url}`;
         return `/api/nas/preview?path=${encodeURIComponent(path)}`;
     };
@@ -121,10 +130,10 @@ export default function WebzineList() {
                                             </div>
                                         </div>
 
-                                        {featuredPost.thumbnail_url && getThumbnailSrc(featuredPost.thumbnail_url) && (
+                                        {featuredPost.thumbnail_url && getThumbnailSrc(featuredPost) && (
                                             <div className={styles.featuredImageWrapper} style={{ width: '100%', height: 'auto' }}>
                                                 <Image 
-                                                    src={getThumbnailSrc(featuredPost.thumbnail_url)} 
+                                                    src={getThumbnailSrc(featuredPost)} 
                                                     alt={featuredPost.title} 
                                                     width={1200}
                                                     height={800}
@@ -158,7 +167,7 @@ export default function WebzineList() {
                                             {recentPosts.map(post => (
                                                 <Link href={`/employees/webzine/${post.id}`} key={post.id} className={styles.card}>
                                                     <div className={styles.thumbnailWrapper} style={{ position: 'relative' }}>
-                                                        {post.thumbnail_url && getThumbnailSrc(post.thumbnail_url) ? (
+                                                        {getThumbnailSrc(post) ? (
                                                             <Image 
                                                                 src={getThumbnailSrc(post.thumbnail_url)} 
                                                                 alt={post.title} 

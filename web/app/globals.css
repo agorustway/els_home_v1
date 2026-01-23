@@ -79,17 +79,59 @@ a {
 }
 
 /* Mobile Responsive Styles */
+
 @media (max-width: 768px) {
+
   .container {
-    padding: 0 20px;
+
+    padding: 0 16px; /* Tight padding like mobile apps */
+
+    width: 100%;
+
   }
+
+
 
   .section {
-    padding: 60px 0;
+
+    padding: 50px 0; /* Reduced spacing */
+
   }
 
+
+
   .sectionTitle {
-    font-size: 2.2rem;
-    margin-bottom: 40px;
+
+    font-size: 2rem;
+
+    margin-bottom: 30px;
+
+    word-break: keep-all; /* Prevent awkward breaks */
+
   }
+
+
+
+  /* Improve typography for mobile reading */
+
+  p, li, span, div {
+
+    word-break: keep-all; /* Break by word, not character */
+
+    overflow-wrap: break-word; /* Handle long URLs */
+
+  }
+
+
+
+  /* Force images to fit */
+
+  img {
+
+    max-width: 100%;
+
+    height: auto;
+
+  }
+
 }

@@ -158,7 +158,9 @@
 
     .container {
 
-        padding: 0 10px; /* Minimal padding */
+        padding: 0; /* Full width */
+
+        width: 100%;
 
     }
 
@@ -172,37 +174,15 @@
 
         gap: 10px;
 
-        margin-bottom: 15px;
+        margin-bottom: 10px;
+
+        padding: 0 15px; /* Keep header padding slightly */
 
     }
 
 
 
-    .title {
-
-        font-size: 1.4rem;
-
-        margin-left: 5px;
-
-    }
-
-
-
-    .btnPrimary {
-
-        width: 100%;
-
-        text-align: center;
-
-        padding: 12px;
-
-        font-size: 0.95rem;
-
-    }
-
-
-
-    /* Transform Table to Card List */
+    /* Transform Table to Card List - Full Width Style */
 
     .boardTable, 
 
@@ -220,9 +200,13 @@
 
 
 
-    .boardTable thead {
+    .boardTable {
 
-        display: none; /* Hide header */
+        background: transparent; /* Remove table container background */
+
+        box-shadow: none; /* Remove table shadow */
+
+        border-radius: 0;
 
     }
 
@@ -230,19 +214,23 @@
 
     .boardTable tr {
 
-        margin-bottom: 10px;
+        margin-bottom: 0; /* Remove gap between items if wanting list style, or keep small */
 
-        border: 1px solid #e2e8f0;
+        border: none;
 
-        border-radius: 8px;
+        border-bottom: 1px solid #e2e8f0; /* Separator lines */
+
+        border-radius: 0;
 
         background: white;
 
         padding: 15px;
 
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: none;
 
     }
+
+
 
 
 
