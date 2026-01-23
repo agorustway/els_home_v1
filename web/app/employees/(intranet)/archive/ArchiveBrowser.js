@@ -346,12 +346,11 @@ export default function ArchiveBrowser() {
     if (authLoading || loading) {
         return (
             <div className={styles.loadingContainer}>
-                <div style={{ marginBottom: '15px' }}>데이터 로딩 중...</div>
-                {(authLoading || loading) && (
-                    <div style={{ fontSize: '0.8rem', color: '#999' }}>
-                        응답이 지연되고 있습니다. 잠시만 기다려 주세요.
-                    </div>
-                )}
+                <div style={{ marginBottom: '15px', fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>자료실 데이터 로딩 중...</div>
+                <div style={{ fontSize: '0.95rem', color: '#64748b', lineHeight: '1.6' }}>
+                    자료실은 NAS 내부 서버와의 연결로 로딩 속도가 느립니다.<br />
+                    잠시만 기다려 주세요. 📂
+                </div>
             </div>
         );
     }
@@ -365,8 +364,8 @@ export default function ArchiveBrowser() {
                 <div style={{ marginBottom: '20px', fontSize: '0.9rem', color: '#666' }}>
                     {error}
                 </div>
-                <button 
-                    onClick={() => fetchFiles(path)} 
+                <button
+                    onClick={() => fetchFiles(path)}
                     style={{
                         padding: '10px 20px',
                         background: '#3182ce',
@@ -381,7 +380,7 @@ export default function ArchiveBrowser() {
             </div>
         );
     }
-    
+
     if (!role) return null;
 
     return (
@@ -476,8 +475,8 @@ export default function ArchiveBrowser() {
                                     <td className={styles.hideMobile}>{new Date(file.lastMod).toLocaleDateString()}</td>
                                     <td className={styles.hideMobile}>{formatSize(file.size)}</td>
                                     <td>
-                                        <button 
-                                            className={styles.moreBtn} 
+                                        <button
+                                            className={styles.moreBtn}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleContextMenu(e, file);
@@ -517,8 +516,8 @@ export default function ArchiveBrowser() {
                                 }}
                             >
                                 {selectionMode && <input type="checkbox" className={styles.cardCheck} checked={selectedPaths.has(file.path)} readOnly />}
-                                <button 
-                                    className={styles.cardMoreBtn} 
+                                <button
+                                    className={styles.cardMoreBtn}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleContextMenu(e, file);
@@ -549,52 +548,52 @@ export default function ArchiveBrowser() {
                                     📁 {contextMenu.file.type === 'directory' ? '열기' : '미리보기'}
                                 </div>
 
-                            {/* Selection Mode Context Actions */}
-                            {selectionMode && selectedPaths.size > 0 ? (
-                                <>
+                                {/* Selection Mode Context Actions */}
+                                {selectionMode && selectedPaths.size > 0 ? (
+                                    <>
+                                        <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
+                                            📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
+                                        </div>
+                                        <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>
+                                            🚫 선택 모드 해제
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        {contextMenu.file.type !== 'directory' && (
+                                            <div className={styles.contextItem} onClick={() => window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}&download=true`)}>
+                                                💾 이 파일 다운로드
+                                            </div>
+                                        )}
+                                        <div className={styles.contextItem} onClick={() => setSelectionMode(true)}>
+                                            ✅ 다중 선택 모드 시작
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className={styles.contextDivider}></div>
+                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>✨ 즉시 사본 생성 (복제)</div>
+                                <div className={styles.contextItem} onClick={() => setClipboard({ type: 'copy', path: contextMenu.file.path, name: contextMenu.file.name, fileType: contextMenu.file.type })}>📋 항목 복리 (붙여넣기용)</div>
+                                {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 여기에 붙여넣기</div>}
+                                <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>✏️ 이름 바꾸기</div>
+                                <div className={styles.contextDivider}></div>
+                                <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file.name)}>🗑️ 삭제하기</div>
+                            </>
+                        ) : (
+                            <>
+                                {selectionMode && selectedPaths.size > 0 && (
                                     <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
                                         📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
                                     </div>
-                                    <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>
-                                        🚫 선택 모드 해제
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    {contextMenu.file.type !== 'directory' && (
-                                        <div className={styles.contextItem} onClick={() => window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}&download=true`)}>
-                                            💾 이 파일 다운로드
-                                        </div>
-                                    )}
-                                    <div className={styles.contextItem} onClick={() => setSelectionMode(true)}>
-                                        ✅ 다중 선택 모드 시작
-                                    </div>
-                                </>
-                            )}
-
-                            <div className={styles.contextDivider}></div>
-                            <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>✨ 즉시 사본 생성 (복제)</div>
-                            <div className={styles.contextItem} onClick={() => setClipboard({ type: 'copy', path: contextMenu.file.path, name: contextMenu.file.name, fileType: contextMenu.file.type })}>📋 항목 복리 (붙여넣기용)</div>
-                            {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 여기에 붙여넣기</div>}
-                            <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>✏️ 이름 바꾸기</div>
-                            <div className={styles.contextDivider}></div>
-                            <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file.name)}>🗑️ 삭제하기</div>
-                        </>
-                    ) : (
-                        <>
-                            {selectionMode && selectedPaths.size > 0 && (
-                                <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
-                                    📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
-                                </div>
-                            )}
-                            <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>📥 붙여넣기 (Paste)</div>
-                            <div className={styles.contextItem} onClick={() => handleCreateFolder()}>📁 새 폴더 만들기</div>
-                            {selectionMode && (
-                                <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>🚫 선택 모드 해제</div>
-                            )}
-                        </>
-                    )}
-                </div>
+                                )}
+                                <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>📥 붙여넣기 (Paste)</div>
+                                <div className={styles.contextItem} onClick={() => handleCreateFolder()}>📁 새 폴더 만들기</div>
+                                {selectionMode && (
+                                    <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>🚫 선택 모드 해제</div>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </>
             )}
         </div>

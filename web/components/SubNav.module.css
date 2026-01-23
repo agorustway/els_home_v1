@@ -45,8 +45,21 @@
     .inner {
         gap: 20px;
         overflow-x: auto;
-        justify-content: flex-start;
-        padding: 15px 10px;
+        justify-content: center;
+        padding: 15px 20px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .inner::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* items center alignment when not overflowing */
+    @supports (justify-content: safe center) {
+        .inner {
+            justify-content: safe center;
+        }
     }
 
     .navItem {

@@ -1,0 +1,106 @@
+.subNav {
+    background: #ffffff;
+    border-bottom: 1px solid #f1f5f9;
+    position: sticky;
+    top: 90px;
+    z-index: 800;
+}
+
+.inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+}
+
+.menuList {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex: 1;
+}
+
+.navItem {
+    padding: 18px 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #64748b;
+    text-decoration: none;
+    position: relative;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.navItem:hover {
+    color: #2563eb;
+}
+
+.navItem.active {
+    color: #2563eb;
+}
+
+.navItem.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #2563eb;
+    border-radius: 2px;
+}
+
+.logoutBtn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.logoutBtn:hover {
+    background: #fff1f2;
+    color: #e11d48;
+    border-color: #fecdd3;
+}
+
+@media (max-width: 1024px) {
+    .inner {
+        padding: 0 15px;
+    }
+
+    .menuList {
+        justify-content: center;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 20px;
+        scrollbar-width: none;
+    }
+
+    .menuList::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* mobile centering when not overflowing */
+    @supports (justify-content: safe center) {
+        .menuList {
+            justify-content: safe center;
+        }
+    }
+
+    .navItem {
+        font-size: 0.85rem;
+        padding: 15px 0;
+    }
+
+    .logoutBtn {
+        display: none;
+        /* Hide logout on mobile subnav, usually header has it or it's too cramped */
+    }
+}

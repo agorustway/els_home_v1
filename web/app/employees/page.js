@@ -2,7 +2,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SubPageHero from '@/components/SubPageHero';
-import EmployeeSidebar from '@/components/EmployeeSidebar';
+import IntranetSubNav from '@/components/IntranetSubNav';
 import styles from './employees.module.css';
 import { motion } from 'framer-motion';
 
@@ -15,8 +15,8 @@ export default function EmployeesPortal() {
                 subtitle="업무 효율을 높이는 스마트한 솔루션, ELS 인트라넷 포털입니다."
                 bgImage="/images/hero_cy.png"
             />
+            <IntranetSubNav />
             <div className={styles.layoutWrapper}>
-                <EmployeeSidebar />
                 <main className={styles.mainContent}>
                     <div className={styles.page}>
                         {/* Portal Links */}

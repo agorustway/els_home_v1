@@ -1,12 +1,13 @@
 .layoutWrapper {
-    display: flex;
+    display: block;
     min-height: 100vh;
     background-color: #f8fbff;
 }
 
 .mainContent {
     flex: 1;
-    min-width: 0; /* Prevents flex item from overflowing */
+    min-width: 0;
+    /* Prevents flex item from overflowing */
 }
 
 .page {
@@ -207,7 +208,8 @@
     }
 
     .gridContainer {
-        grid-template-columns: 1fr; /* Full width cards */
+        grid-template-columns: 1fr;
+        /* Full width cards */
         gap: 20px;
     }
 
