@@ -43,7 +43,9 @@ export default function WebzineList() {
         if (!url) return '';
         if (url.startsWith('http')) return url;
 
-        if (url.toLowerCase().startsWith('webzine/')) {
+        // Check if it's stored in S3 (Webzine, Board, Report prefixes)
+        const s3Prefixes = ['webzine/', 'board/', 'report/'];
+        if (s3Prefixes.some(prefix => url.toLowerCase().startsWith(prefix))) {
             return `/api/s3/files?key=${encodeURIComponent(url)}`;
         }
 
@@ -98,21 +100,25 @@ export default function WebzineList() {
                                 </div>
 
                                 {featuredPost.thumbnail_url && getThumbnailSrc(featuredPost) && (
-                                    <div className={styles.featuredImageWrapper} style={{ width: '100%', height: 'auto' }}>
+                                    <div className={styles.featuredImageWrapper}>
                                         <Image
                                             src={getThumbnailSrc(featuredPost)}
                                             alt={featuredPost.title}
                                             width={1200}
-                                            height={800}
+                                            height={675}
                                             className={styles.featuredImage}
-                                            style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
                                             priority
                                             unoptimized
-                                            sizes="100vw"
                                             onError={(e) => {
-                                                e.currentTarget.src = '/images/office_intro.png';
+                                                const target = e.currentTarget;
+                                                target.style.display = 'none';
+                                                const fallback = target.nextSibling;
+                                                if (fallback) fallback.style.display = 'flex';
                                             }}
                                         />
+                                        <div className={styles.noThumbnail} style={{ height: '400px', fontSize: '5rem', borderRadius: '12px' }}>
+                                            📰
+                                        </div>
                                     </div>
                                 )}
 

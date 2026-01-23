@@ -1,14 +1,16 @@
 .sidebar {
     width: 280px;
-    height: calc(100vh - 90px);
+    height: calc(100vh - 120px);
     background-color: #ffffff;
-    border-right: 1px solid #eef2f6;
+    border-right: 1px solid #f1f5f9;
     display: flex;
     flex-direction: column;
-    padding: 24px;
+    padding: 30px 20px;
     position: sticky;
-    top: 90px;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.02);
+    top: 100px;
+    margin-bottom: 20px;
+    border-radius: 20px;
+    margin-left: 20px;
 }
 
 .logo {
@@ -24,6 +26,17 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.menu::-webkit-scrollbar {
+    width: 4px;
+}
+
+.menu::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
 }
 
 .sectionTitle {
@@ -66,9 +79,9 @@
 }
 
 .footer {
-    margin-top: auto;
-    border-top: 1px solid #eef2f6;
-    padding-top: 24px;
+    margin-top: 20px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 20px;
 }
 
 .userInfo {
@@ -107,11 +120,11 @@
 
 .logoutBtn {
     width: 100%;
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    background: white;
-    color: #64748b;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: #f8fafc;
+    color: #94a3b8;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -119,11 +132,11 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    font-size: 0.85rem;
 }
 
 .logoutBtn:hover {
     background-color: #fee2e2;
-    border-color: #fecaca;
     color: #ef4444;
 }
 

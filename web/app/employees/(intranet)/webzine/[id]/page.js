@@ -64,7 +64,9 @@ export default function WebzineDetail({ params }) {
         if (!url) return '';
         if (url.startsWith('http')) return url;
 
-        if (url.toLowerCase().startsWith('webzine/')) {
+        // Check for S3 prefixes
+        const s3Prefixes = ['webzine/', 'board/', 'report/'];
+        if (s3Prefixes.some(prefix => url.toLowerCase().startsWith(prefix))) {
             return `/api/s3/files?key=${encodeURIComponent(url)}`;
         }
 
