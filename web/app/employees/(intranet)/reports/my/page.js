@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
+import { getRoleLabel } from '@/utils/roles';
 import styles from '../../board/board.module.css';
 
 export default function MyReportsPage() {
@@ -68,7 +69,7 @@ export default function MyReportsPage() {
                     {posts.map((post, index) => (
                         <tr key={post.id} className={styles.postRow}>
                             <td>{posts.length - index}</td>
-                            <td><span style={{ fontSize: '0.8rem', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>{post.branch_tag?.toUpperCase()}</span></td>
+                            <td><span style={{ fontSize: '0.8rem', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{getRoleLabel(post.branch_tag)}</span></td>
                             <td>
                                 <Link href={`/employees/reports/${post.id}`} className={styles.postTitle}>
                                     {post.title}

@@ -167,7 +167,7 @@
 
     .boardTable th, 
     .boardTable td {
-        padding: 12px 10px;
+        padding: 12px 6px; /* Reduced padding further */
         font-size: 0.85rem;
     }
 
@@ -178,9 +178,15 @@
     }
 
     /* Hide 'Date' column on mobile */
-    .boardTable th:nth-child(4),
+    .boardTable th:nth-child(4), /* Author or Date depending on table */
     .boardTable td:nth-child(4) {
         display: none;
+    }
+    
+    /* Ensure title doesn't stack vertically */
+    .boardTable td:nth-child(3) {
+        word-break: break-all;
+        min-width: 150px;
     }
     
     .detailTitle {
