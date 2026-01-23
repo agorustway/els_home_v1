@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
-import styles from '../../board/board.module.css';
+import styles from '../../../board/board.module.css';
 
 export default function EditReportPage() {
     const { id } = useParams();
