@@ -185,7 +185,7 @@ export default function Header({ darkVariant = false }) {
              linkElements.push(
                 <div key="employee-nav" className={styles.hasDropdown}>
                     <a 
-                        href={user ? "/employees" : "/login"} 
+                        href="/employees" 
                         className={styles.empBtn}
                         style={{ 
                             color: textColor, 
@@ -194,11 +194,9 @@ export default function Header({ darkVariant = false }) {
                     >
                         임직원전용
                     </a>
-                    {user && (
-                        <div className={styles.dropdown}>
-                            {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
-                        </div>
-                    )}
+                    <div className={styles.dropdown}>
+                        {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
+                    </div>
                 </div>
             );
 

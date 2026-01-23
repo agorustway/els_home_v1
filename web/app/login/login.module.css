@@ -23,6 +23,8 @@
 
 .logo {
     height: 40px;
+    max-width: 100%;
+    width: auto;
     margin-bottom: 24px;
     object-fit: contain;
 }

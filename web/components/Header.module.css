@@ -131,7 +131,7 @@
 
 .empBtn {
     border: 1px solid rgba(255, 255, 255, 0.4);
-    color: white !important;
+    color: white; /* removed !important */
     padding: 8px 18px;
     border-radius: 50px;
     font-size: 0.85rem;
