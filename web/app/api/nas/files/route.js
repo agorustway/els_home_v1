@@ -70,6 +70,7 @@ export async function GET(request) {
 
     try {
         const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        const userRole = roleData?.role || 'visitor';
         const isAdmin = userRole === 'admin';
 
         const rawFiles = await listFiles(path);
