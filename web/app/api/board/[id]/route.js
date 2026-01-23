@@ -37,13 +37,25 @@ export async function PATCH(request, { params }) {
         const body = await request.json();
         const { title, content, attachments } = body;
 
-        const { data, error } = await supabase
+        // Check if admin
+        const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        const isAdmin = roleData?.role === 'admin';
+
+        let query = supabase
             .from('posts')
             .update({ title, content, attachments, updated_at: new Date().toISOString() })
-            .eq('id', id)
-            .eq('author_id', user.id) // Only author can update
-            .select()
-            .single();
+            .eq('id', id);
+
+        if (!isAdmin) {
+            query = query.eq('author_id', user.id); // Only author can update if not admin
+        }
+
+        const { data, error } = await query.select().single();
 
         if (error) throw error;
 

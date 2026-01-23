@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getNasClient } from '@/lib/nas';
 import { createClient } from '@/utils/supabase/server';
+import { logActivityServer } from '@/utils/loggerServer';
 
 export async function GET(request) {
     const supabase = await createClient();
@@ -22,6 +23,9 @@ export async function GET(request) {
         const buffer = await client.getFileContents(path);
         const fileName = path.split('/').pop();
         const isDownload = searchParams.get('download') === 'true';
+
+        // Log the activity
+        await logActivityServer(isDownload ? 'DOWNLOAD' : 'FILE_VIEW', path, { fileName });
 
         // Determine content type by extension
         const ext = fileName.split('.').pop().toLowerCase();

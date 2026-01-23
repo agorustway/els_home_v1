@@ -53,7 +53,7 @@ export default function WebzineDetail({ params }) {
                 .eq('id', id);
 
             if (error) throw error;
-            
+
             alert('삭제되었습니다.');
             router.push('/employees/webzine');
             router.refresh();
@@ -66,6 +66,12 @@ export default function WebzineDetail({ params }) {
     const getThumbnailSrc = (url) => {
         if (!url) return '';
         if (url.startsWith('http')) return url;
+
+        // S3 Cloud Path
+        if (url.startsWith('Webzine/')) {
+            return `/api/s3/files?key=${encodeURIComponent(url)}`;
+        }
+
         const path = url.startsWith('/') ? url : `/${url}`;
         return `/api/nas/preview?path=${encodeURIComponent(path)}`;
     };
@@ -73,10 +79,10 @@ export default function WebzineDetail({ params }) {
     if (loading) return (
         <>
             <Header />
-            <SubPageHero 
-                title="Webzine" 
+            <SubPageHero
+                title="Webzine"
                 subtitle="ELS의 새로운 소식과 이야기를 전해드립니다."
-                bgImage="/images/office_intro.png" 
+                bgImage="/images/office_intro.png"
             />
             <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fbff' }}>
                 <EmployeeSidebar />
@@ -90,10 +96,10 @@ export default function WebzineDetail({ params }) {
     if (!post) return (
         <>
             <Header />
-            <SubPageHero 
-                title="Webzine" 
+            <SubPageHero
+                title="Webzine"
                 subtitle="ELS의 새로운 소식과 이야기를 전해드립니다."
-                bgImage="/images/office_intro.png" 
+                bgImage="/images/office_intro.png"
             />
             <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fbff' }}>
                 <EmployeeSidebar />
@@ -107,10 +113,10 @@ export default function WebzineDetail({ params }) {
     return (
         <>
             <Header />
-            <SubPageHero 
-                title="Webzine" 
+            <SubPageHero
+                title="Webzine"
                 subtitle="ELS의 새로운 소식과 이야기를 전해드립니다."
-                bgImage="/images/office_intro.png" 
+                bgImage="/images/office_intro.png"
             />
             <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fbff' }}>
                 <EmployeeSidebar />
@@ -127,9 +133,9 @@ export default function WebzineDetail({ params }) {
 
                         {post.thumbnail_url && (
                             <div className={styles.heroImageWrapper}>
-                                <Image 
-                                    src={getThumbnailSrc(post.thumbnail_url)} 
-                                    alt={post.title} 
+                                <Image
+                                    src={getThumbnailSrc(post.thumbnail_url)}
+                                    alt={post.title}
                                     width={1200}
                                     height={630}
                                     className={styles.heroImage}

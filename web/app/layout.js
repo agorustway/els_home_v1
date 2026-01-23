@@ -17,10 +17,16 @@ export const viewport = {
   userScalable: false,
 };
 
+import { Suspense } from 'react';
+import ActivityLogger from "@/components/ActivityLogger";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
+        <Suspense fallback={null}>
+          <ActivityLogger />
+        </Suspense>
         {children}
       </body>
     </html>

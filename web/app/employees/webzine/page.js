@@ -45,14 +45,14 @@ export default function WebzineList() {
         const url = post.thumbnail_url;
         if (!url) return '';
         if (url.startsWith('http')) return url;
-        
+
         // If it's stored in S3 (our new system)
         // Note: We check if it's likely an S3 key (doesn't start with /ELS) or via attachments type if available
         // For simplicity, let's try the S3 API for anything that doesn't look like an old NAS path
         if (url.startsWith('Webzine/')) {
             return `/api/s3/files?key=${encodeURIComponent(url)}`;
         }
-        
+
         const path = url.startsWith('/') ? url : `/${url}`;
         return `/api/nas/preview?path=${encodeURIComponent(path)}`;
     };
@@ -78,10 +78,10 @@ export default function WebzineList() {
     if (loading) return (
         <>
             <Header />
-            <SubPageHero 
-                title="Webzine" 
-                subtitle="ELS의 새로운 소식과 이야기를 전해드립니다." 
-                bgImage="/images/office_intro.png" 
+            <SubPageHero
+                title="Webzine"
+                subtitle="ELS의 새로운 소식과 이야기를 전해드립니다."
+                bgImage="/images/office_intro.png"
             />
             <div className={styles.layout}>
                 <EmployeeSidebar />
@@ -95,10 +95,10 @@ export default function WebzineList() {
     return (
         <>
             <Header />
-            <SubPageHero 
-                title="Webzine" 
-                subtitle="ELS의 새로운 소식과 이야기를 전해드립니다." 
-                bgImage="/images/office_intro.png" 
+            <SubPageHero
+                title="Webzine"
+                subtitle="ELS의 새로운 소식과 이야기를 전해드립니다."
+                bgImage="/images/office_intro.png"
             />
             <div className={styles.layout}>
                 <EmployeeSidebar />
@@ -132,9 +132,9 @@ export default function WebzineList() {
 
                                         {featuredPost.thumbnail_url && getThumbnailSrc(featuredPost) && (
                                             <div className={styles.featuredImageWrapper} style={{ width: '100%', height: 'auto' }}>
-                                                <Image 
-                                                    src={getThumbnailSrc(featuredPost)} 
-                                                    alt={featuredPost.title} 
+                                                <Image
+                                                    src={getThumbnailSrc(featuredPost)}
+                                                    alt={featuredPost.title}
                                                     width={1200}
                                                     height={800}
                                                     className={styles.featuredImage}
@@ -168,9 +168,9 @@ export default function WebzineList() {
                                                 <Link href={`/employees/webzine/${post.id}`} key={post.id} className={styles.card}>
                                                     <div className={styles.thumbnailWrapper} style={{ position: 'relative' }}>
                                                         {getThumbnailSrc(post) ? (
-                                                            <Image 
-                                                                src={getThumbnailSrc(post.thumbnail_url)} 
-                                                                alt={post.title} 
+                                                            <Image
+                                                                src={getThumbnailSrc(post)}
+                                                                alt={post.title}
                                                                 fill
                                                                 className={styles.thumbnail}
                                                                 style={{ objectFit: 'cover' }}

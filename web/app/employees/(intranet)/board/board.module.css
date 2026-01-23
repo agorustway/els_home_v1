@@ -158,7 +158,8 @@
 
     .container {
 
-        padding: 0; /* Full width */
+        padding: 0;
+        /* Full width */
 
         width: 100%;
 
@@ -176,19 +177,23 @@
 
         margin-bottom: 10px;
 
-        padding: 0 15px; /* Keep header padding slightly */
+        padding: 0 15px;
+        /* Keep header padding slightly */
 
     }
 
 
 
     /* Transform Table to Card List - Full Width Style */
+    .boardTable thead {
+        display: none;
+    }
 
-    .boardTable, 
+    .boardTable,
 
-    .boardTable tbody, 
+    .boardTable tbody,
 
-    .boardTable tr, 
+    .boardTable tr,
 
     .boardTable td {
 
@@ -202,9 +207,11 @@
 
     .boardTable {
 
-        background: transparent; /* Remove table container background */
+        background: transparent;
+        /* Remove table container background */
 
-        box-shadow: none; /* Remove table shadow */
+        box-shadow: none;
+        /* Remove table shadow */
 
         border-radius: 0;
 
@@ -214,17 +221,19 @@
 
     .boardTable tr {
 
-        margin-bottom: 0; /* Remove gap between items if wanting list style, or keep small */
+        margin-bottom: 0;
+        /* Remove gap between items if wanting list style, or keep small */
 
         border: none;
 
-        border-bottom: 1px solid #e2e8f0; /* Separator lines */
+        border-bottom: 1px solid #e2e8f0;
+        /* Separator lines */
 
         border-radius: 0;
 
         background: white;
 
-        padding: 15px;
+        padding: 15px 10px;
 
         box-shadow: none;
 
@@ -264,7 +273,7 @@
 
     }
 
-    
+
 
     .boardTable td:nth-child(2) span {
 
@@ -300,9 +309,11 @@
 
     /* Author & Date Row (Combine visually if possible, or stack) */
 
-    .boardTable td:nth-child(4), /* Author */
+    .boardTable td:nth-child(4),
+    /* Author */
 
-    .boardTable td:nth-child(5) { /* Date */
+    .boardTable td:nth-child(5) {
+        /* Date */
 
         display: inline-block;
 
@@ -314,15 +325,15 @@
 
     }
 
-    
+
 
     /* Force Author/Date to show even if hidden previously */
 
-    .boardTable th:nth-child(4), 
+    .boardTable th:nth-child(4),
 
     .boardTable td:nth-child(4) {
 
-        display: inline-block !important; 
+        display: inline-block !important;
 
     }
 
@@ -338,7 +349,7 @@
 
     }
 
-    
+
 
     .detailMeta {
 

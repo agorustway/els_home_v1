@@ -7,7 +7,7 @@
   --text-gray: #555555;
   --white: #ffffff;
   --max-width: 1300px;
-  --header-height: 90px;
+  --header-height: 70px;
 }
 
 * {
@@ -84,7 +84,8 @@ a {
 
   .container {
 
-    padding: 0 16px; /* Tight padding like mobile apps */
+    padding: 0 16px;
+    /* Tight padding like mobile apps */
 
     width: 100%;
 
@@ -94,7 +95,8 @@ a {
 
   .section {
 
-    padding: 50px 0; /* Reduced spacing */
+    padding: 50px 0;
+    /* Reduced spacing */
 
   }
 
@@ -106,7 +108,8 @@ a {
 
     margin-bottom: 30px;
 
-    word-break: keep-all; /* Prevent awkward breaks */
+    word-break: keep-all;
+    /* Prevent awkward breaks */
 
   }
 
@@ -114,11 +117,16 @@ a {
 
   /* Improve typography for mobile reading */
 
-  p, li, span, div {
+  p,
+  li,
+  span,
+  div {
 
-    word-break: keep-all; /* Break by word, not character */
+    word-break: keep-all;
+    /* Break by word, not character */
 
-    overflow-wrap: break-word; /* Handle long URLs */
+    overflow-wrap: break-word;
+    /* Handle long URLs */
 
   }
 

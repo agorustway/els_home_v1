@@ -12,10 +12,11 @@ const s3Client = new S3Client({
     },
     forcePathStyle: true,
     requestHandler: new NodeHttpHandler({
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false,
+            keepAlive: true
+        })
     }),
-    // Disable checksums to avoid CORS preflight issues with custom headers
-    responseChecksums: 'none',
 });
 
 const BUCKET = process.env.NAS_BUCKET || 'els-files';
@@ -36,6 +37,24 @@ export async function uploadFileToS3(key, buffer, contentType) {
     }
 }
 
+export async function getFileBufferFromS3(key) {
+    try {
+        const command = new GetObjectCommand({
+            Bucket: BUCKET,
+            Key: key,
+        });
+        const response = await s3Client.send(command);
+        const byteArray = await response.Body.transformToByteArray();
+        return {
+            buffer: Buffer.from(byteArray),
+            contentType: response.ContentType,
+        };
+    } catch (error) {
+        console.error("S3 Get Buffer Error:", error);
+        throw error;
+    }
+}
+
 export async function getFileStreamFromS3(key) {
     try {
         const command = new GetObjectCommand({
@@ -44,7 +63,7 @@ export async function getFileStreamFromS3(key) {
         });
         const response = await s3Client.send(command);
         return {
-            stream: response.Body.transformToWebStream(), // Convert to Web Stream for Next.js
+            stream: response.Body.transformToWebStream(),
             contentType: response.ContentType,
         };
     } catch (error) {

@@ -1,19 +1,22 @@
 .container {
     padding: 0;
-    max-width: 100%; /* 전체 너비 사용 */
+    max-width: 100%;
+    /* 전체 너비 사용 */
     margin: 0 auto;
 }
 
 .header {
     margin-bottom: 40px;
-    text-align: left; /* 제목 왼쪽 정렬 */
+    text-align: left;
+    /* 제목 왼쪽 정렬 */
     border-bottom: 2px solid #333;
     padding-bottom: 20px;
 }
 
 .category {
     /* ... existing ... */
-    display: none; /* 헤더에 이미 있으므로 중복 제거 */
+    display: none;
+    /* 헤더에 이미 있으므로 중복 제거 */
 }
 
 .title {
@@ -26,7 +29,8 @@
 
 .meta {
     display: flex;
-    justify-content: flex-start; /* 왼쪽 정렬 */
+    justify-content: flex-start;
+    /* 왼쪽 정렬 */
     gap: 20px;
     color: #888;
     font-size: 0.95rem;
@@ -37,7 +41,7 @@
     margin-bottom: 50px;
     border-radius: 15px;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
 .heroImage {
@@ -75,9 +79,9 @@
 
 .editBtn {
     padding: 10px 25px;
-    background: transparent;
-    color: #0056b3;
-    border: 1px solid #0056b3;
+    background: #0056b3;
+    color: white;
+    border: none;
     border-radius: 50px;
     font-weight: 600;
     cursor: pointer;
@@ -88,8 +92,7 @@
 }
 
 .editBtn:hover {
-    background: #0056b3;
-    color: white;
+    background: #004494;
 }
 
 .deleteBtn {

@@ -79,13 +79,13 @@ export default function PostDetailPage() {
                         <h4 style={{ marginBottom: '10px' }}>첨부파일</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {post.attachments.map((file, idx) => {
-                                const downloadUrl = file.type === 's3' 
-                                    ? `/api/s3/files?key=${encodeURIComponent(file.path)}` 
+                                const downloadUrl = file.type === 's3'
+                                    ? `/api/s3/files?key=${encodeURIComponent(file.path)}`
                                     : `/api/nas/files?path=${encodeURIComponent(file.path)}&download=true`;
 
                                 return (
-                                    <a 
-                                        key={idx} 
+                                    <a
+                                        key={idx}
                                         href={downloadUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -106,7 +106,7 @@ export default function PostDetailPage() {
                 </button>
                 {canManage && (
                     <>
-                        <button onClick={() => router.push(`/employees/board/free/${id}/edit`)} className={styles.btnSecondary}>
+                        <button onClick={() => router.push(`/employees/board/free/${id}/edit`)} className={styles.btnPrimary}>
                             수정
                         </button>
                         <button onClick={handleDelete} className={styles.btnDelete}>

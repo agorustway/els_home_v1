@@ -78,7 +78,7 @@ export default function ReportDetailPage() {
 
             <div className={styles.contentBody}>
                 {post.content}
-                
+
                 {/* Attachments Display */}
                 {post.attachments && post.attachments.length > 0 && (
                     <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
@@ -86,13 +86,13 @@ export default function ReportDetailPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {post.attachments.map((file, idx) => {
                                 // Determine download URL based on storage type
-                                const downloadUrl = file.type === 's3' 
-                                    ? `/api/s3/files?key=${encodeURIComponent(file.path)}` 
+                                const downloadUrl = file.type === 's3'
+                                    ? `/api/s3/files?key=${encodeURIComponent(file.path)}`
                                     : `/api/nas/files?path=${encodeURIComponent(file.path)}&download=true`;
 
                                 return (
-                                    <a 
-                                        key={idx} 
+                                    <a
+                                        key={idx}
                                         href={downloadUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -113,6 +113,9 @@ export default function ReportDetailPage() {
                 </button>
                 {canManage && (
                     <>
+                        <button onClick={() => router.push(`/employees/reports/${id}/edit`)} className={styles.btnPrimary}>
+                            수정
+                        </button>
                         <button onClick={handleDelete} className={styles.btnDelete}>
                             삭제
                         </button>

@@ -1,0 +1,11 @@
+.mainContent {
+    flex: 1;
+    padding: 40px;
+    background-color: #f8fafc;
+}
+
+@media (max-width: 768px) {
+    .mainContent {
+        padding: 15px 0; /* Horizontal padding removed, vertical padding reduced */
+    }
+}
