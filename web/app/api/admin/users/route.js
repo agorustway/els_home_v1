@@ -154,26 +154,33 @@ export async function PATCH(request) {
             if (banError) throw banError;
         }
 
+        // Fetch existing record to avoid overwriting with defaults
+        const { data: existingRecord } = await adminSupabase
+            .from('user_roles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
         // Build update object for user_roles
-        const roleUpdates = {};
-        if (role !== undefined) {
-            roleUpdates.role = role;
-            // roleUpdates.requested_role = null; // Removed to avoid "column not found" error
-        }
+        const roleUpdates = {
+            id: userId,
+            email: email || existingRecord?.email,
+            // If it's a new record and no role provided, default to 'visitor'
+            role: role || existingRecord?.role || 'visitor'
+        };
+
         if (can_write !== undefined) roleUpdates.can_write = can_write;
         if (can_delete !== undefined) roleUpdates.can_delete = can_delete;
         if (can_read_security !== undefined) roleUpdates.can_read_security = can_read_security;
         if (name !== undefined) roleUpdates.name = name;
         if (phone !== undefined) roleUpdates.phone = phone;
 
-        // Only update if there are fields to update
-        if (Object.keys(roleUpdates).length > 0) {
-            const { error: updateError } = await adminSupabase
-                .from('user_roles')
-                .upsert({ id: userId, ...roleUpdates }, { onConflict: 'id' });
+        // Perform upsert
+        const { error: updateError } = await adminSupabase
+            .from('user_roles')
+            .upsert(roleUpdates, { onConflict: 'id' });
 
-            if (updateError) throw updateError;
-        }
+        if (updateError) throw updateError;
 
         return NextResponse.json({ success: true });
     } catch (error) {
