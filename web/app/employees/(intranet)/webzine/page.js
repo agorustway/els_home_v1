@@ -116,7 +116,7 @@ export default function WebzineList() {
                                                 if (fallback) fallback.style.display = 'flex';
                                             }}
                                         />
-                                        <div className={styles.noThumbnail} style={{ height: '400px', fontSize: '5rem', borderRadius: '12px' }}>
+                                        <div className={styles.noThumbnail} style={{ height: '400px', fontSize: '5rem', borderRadius: '12px', display: 'none' }}>
                                             📰
                                         </div>
                                     </div>
