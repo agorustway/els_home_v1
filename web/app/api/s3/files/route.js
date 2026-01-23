@@ -52,14 +52,16 @@ export async function GET(request) {
         const { getFileBufferFromS3 } = require('@/lib/s3');
         const { buffer, contentType } = await getFileBufferFromS3(key);
 
+        // Background logging (non-blocking)
         const { logActivityServer } = require('@/utils/loggerServer');
-        await logActivityServer('FILE_VIEW', key, { source: 's3' });
+        logActivityServer('FILE_VIEW', key, { source: 's3' }).catch(console.error);
 
         return new NextResponse(buffer, {
             headers: {
                 'Content-Type': contentType || 'application/octet-stream',
-                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Cache-Control': 'public, max-age=31536000, immutable', // 1 Year Caching
                 'Content-Length': buffer.length.toString(),
+                'X-Content-Type-Options': 'nosniff',
             },
         });
     } catch (error) {
