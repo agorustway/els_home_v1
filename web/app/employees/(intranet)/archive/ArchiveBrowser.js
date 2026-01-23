@@ -596,6 +596,23 @@ export default function ArchiveBrowser() {
                     </div>
                 </>
             )}
+            {deleteModal.show && (
+                <div className={styles.modalOverlay} onClick={() => setDeleteModal({ show: false, fileName: '' })}>
+                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
+                        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⚠️</div>
+                        <h2 className={styles.modalTitle}>삭제 불가 안내</h2>
+                        <p className={styles.modalDesc}>
+                            보안 및 데이터 유실 방지 정책에 따라<br />
+                            <strong>웹 자료실에서는 삭제가 불가합니다.</strong><br /><br />
+                            삭제 처리가 필요한 경우,<br />
+                            <strong>사무실 내 PC(탐색기)</strong>를 이용해 주시기 바랍니다.
+                        </p>
+                        <button className={styles.modalBtn} onClick={() => setDeleteModal({ show: false, fileName: '' })}>
+                            확인했습니다
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

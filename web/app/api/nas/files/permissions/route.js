@@ -21,7 +21,7 @@ export async function GET() {
         return NextResponse.json({
             role: userRole,
             can_write: roleData?.can_write || userRole === 'admin',
-            can_delete: roleData?.can_delete || userRole === 'admin',
+            can_delete: userRole === 'admin', // Web deletion ONLY for admin
             can_read_security: roleData?.can_read_security || userRole === 'admin'
         });
     } catch (error) {
