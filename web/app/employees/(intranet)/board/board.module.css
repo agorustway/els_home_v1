@@ -277,30 +277,20 @@
 
 
     /* Hide Number Column */
-
-    .boardTable td:nth-child(1) {
-
-        display: none;
-
+    .colNum {
+        display: none !important;
     }
 
 
 
-    /* Branch Tag */
-
-    .boardTable td:nth-child(2) {
-
+    /* Branch Tag Column */
+    .colBranch {
         margin-bottom: 6px;
-
     }
 
-
-
-    .boardTable td:nth-child(2) span {
-
-        font-size: 0.75rem;
-
-        padding: 3px 8px;
+    .colBranch span {
+        font-size: 0.7rem;
+        padding: 2px 7px;
 
         background: #eff6ff !important;
 
@@ -312,50 +302,25 @@
 
 
 
-    /* Title */
-
-    .boardTable td:nth-child(3) {
-
-        font-size: 1.05rem;
-
-        font-weight: 600;
-
+    /* Title Column */
+    .colTitle {
+        font-size: 1.15rem;
+        font-weight: 700;
         margin-bottom: 8px;
-
         line-height: 1.4;
-
+        color: #1a1a1a;
     }
 
 
 
-    /* Author & Date Row (Combine visually if possible, or stack) */
-
-    .boardTable td:nth-child(4),
-    /* Author */
-
-    .boardTable td:nth-child(5) {
-        /* Date */
-
-        display: inline-block;
-
-        font-size: 0.8rem;
-
-        color: #94a3b8;
-
-        margin-right: 10px;
-
-    }
-
-
-
-    /* Force Author/Date to show even if hidden previously */
-
-    .boardTable th:nth-child(4),
-
-    .boardTable td:nth-child(4) {
-
+    /* Metadata Columns */
+    .colAuthor,
+    .colDate {
         display: inline-block !important;
-
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin-right: 12px;
+        font-weight: 500;
     }
 
 

@@ -8,9 +8,29 @@ import { motion } from 'framer-motion';
 
 function LoginForm() {
     const searchParams = useSearchParams();
-    const next = searchParams.get('next') || '/';
+    const [next, setNext] = useState('/');
     const supabase = createClient();
     const router = useRouter();
+
+    useEffect(() => {
+        const nextParam = searchParams.get('next');
+        if (nextParam) {
+            setNext(nextParam);
+        } else if (typeof document !== 'undefined' && document.referrer) {
+            // Only redirect back to our own domain to avoid open redirect vulnerabilities
+            try {
+                const referrerUrl = new URL(document.referrer);
+                if (referrerUrl.origin === window.location.origin) {
+                    const path = referrerUrl.pathname + referrerUrl.search;
+                    if (path !== '/login' && path !== '/auth/callback') {
+                        setNext(path);
+                    }
+                }
+            } catch (e) {
+                // Ignore invalid URLs
+            }
+        }
+    }, [searchParams]);
 
     const handleLogin = async (provider) => {
         if (provider === 'kakao') {

@@ -155,29 +155,33 @@ export async function PATCH(request) {
         }
 
         // Build update object for user_roles
-        const updates = { id: userId };
+        const roleUpdates = {};
         if (role !== undefined) {
-            updates.role = role;
-            updates.requested_role = null; // Clear request on role change
+            roleUpdates.role = role;
+            roleUpdates.requested_role = null; // Clear request on role change
         }
-        if (can_write !== undefined) updates.can_write = can_write;
-        if (can_delete !== undefined) updates.can_delete = can_delete;
-        if (can_read_security !== undefined) updates.can_read_security = can_read_security;
-        if (name !== undefined) updates.name = name;
-        if (phone !== undefined) updates.phone = phone;
+        if (can_write !== undefined) roleUpdates.can_write = can_write;
+        if (can_delete !== undefined) roleUpdates.can_delete = can_delete;
+        if (can_read_security !== undefined) roleUpdates.can_read_security = can_read_security;
+        if (name !== undefined) roleUpdates.name = name;
+        if (phone !== undefined) roleUpdates.phone = phone;
 
-        // Only update if there are fields to update (besides id)
-        if (Object.keys(updates).length > 1) {
+        // Only update if there are fields to update
+        if (Object.keys(roleUpdates).length > 0) {
             const { error: updateError } = await adminSupabase
                 .from('user_roles')
-                .upsert(updates, { onConflict: 'id' });
+                .upsert({ id: userId, ...roleUpdates }, { onConflict: 'id' });
 
             if (updateError) throw updateError;
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('PATCH Error:', error);
+        return NextResponse.json({
+            error: error.message || 'Unknown error',
+            details: error.details || error.toString()
+        }, { status: 500 });
     }
 }
 

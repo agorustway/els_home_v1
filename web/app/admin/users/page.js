@@ -65,7 +65,9 @@ export default function AdminUsersPage() {
                 body: JSON.stringify({ userId, email: userEmail, ...updates }),
             });
             if (!res.ok) {
-                alert('변경 실패');
+                const errorData = await res.json();
+                console.error('Update Request Failed:', errorData);
+                alert(`변경 실패: ${errorData.error || 'Unknown error'}\n${errorData.details || ''}`);
                 fetchUsers(pagination.page, activeQuery, showBanned);
             }
         } catch (error) {

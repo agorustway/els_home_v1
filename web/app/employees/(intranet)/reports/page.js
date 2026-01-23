@@ -62,11 +62,11 @@ export default function WorkReportsPage() {
                 <table className={styles.boardTable}>
                     <thead>
                         <tr>
-                            <th style={{ width: '80px' }}>번호</th>
-                            <th style={{ width: '100px' }}>지점</th>
-                            <th>제목</th>
-                            <th style={{ width: '150px' }}>작성자</th>
-                            <th style={{ width: '120px' }}>날짜</th>
+                            <th style={{ width: '80px' }} className={styles.colNum}>번호</th>
+                            <th style={{ width: '100px' }} className={styles.colBranch}>지점</th>
+                            <th className={styles.colTitle}>제목</th>
+                            <th style={{ width: '150px' }} className={styles.colAuthor}>작성자</th>
+                            <th style={{ width: '120px' }} className={styles.colDate}>날짜</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -76,15 +76,15 @@ export default function WorkReportsPage() {
                                 className={styles.postRow}
                                 onClick={() => router.push(`/employees/reports/${post.id}`)}
                             >
-                                <td>{posts.length - index}</td>
-                                <td><span style={{ fontSize: '0.8rem', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: '4px', whiteSpace: 'nowrap', fontWeight: '700' }}>{getRoleLabel(post.branch_tag)}</span></td>
-                                <td>
+                                <td className={styles.colNum}>{posts.length - index}</td>
+                                <td className={styles.colBranch}><span style={{ fontSize: '0.8rem', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: '4px', whiteSpace: 'nowrap', fontWeight: '700' }}>{getRoleLabel(post.branch_tag)}</span></td>
+                                <td className={styles.colTitle}>
                                     <span className={styles.postTitle}>
                                         {post.title}
                                     </span>
                                 </td>
-                                <td className={styles.author}>{post.author?.name || post.author?.email.split('@')[0]}</td>
-                                <td className={styles.date}>
+                                <td className={`${styles.author} ${styles.colAuthor}`}>{post.author?.name || post.author?.email.split('@')[0]}</td>
+                                <td className={`${styles.date} ${styles.colDate}`}>
                                     {new Date(post.created_at).toLocaleDateString()}
                                 </td>
                             </tr>

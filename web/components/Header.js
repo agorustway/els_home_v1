@@ -53,9 +53,15 @@ const navLinks = [
                 children: [
                     { href: '/employees/branches/asan', label: '아산지점' },
                     { href: '/employees/branches/asan/menu', label: '└ 식단선택', isSubItem: true },
+                    { href: '/employees/branches/asan_cy', label: '아산CY' },
                     { href: '/employees/branches/jungbu', label: '중부지점' },
                     { href: '/employees/branches/dangjin', label: '당진지점' },
                     { href: '/employees/branches/yesan', label: '예산지점' },
+                    { href: '/employees/branches/seosan', label: '서산지점' },
+                    { href: '/employees/branches/yeoncheon', label: '연천지점' },
+                    { href: '/employees/branches/ulsan', label: '울산지점' },
+                    { href: '/employees/branches/imgo', label: '임고지점' },
+                    { href: '/employees/branches/bulk', label: '벌크사업부' },
                 ]
             }
         ]
@@ -65,13 +71,13 @@ const navLinks = [
 export default function Header({ darkVariant = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [expandedMenus, setExpandedMenus] = useState([]); 
+    const [expandedMenus, setExpandedMenus] = useState([]);
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
     const [userName, setUserName] = useState(null);
     const [isMounted, setIsMounted] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false); // User Menu Dropdown State
-    
+
     const supabase = createClient();
     const router = useRouter();
     const pathname = usePathname();
@@ -81,7 +87,7 @@ export default function Header({ darkVariant = false }) {
             const isScrolled = window.scrollY > 20;
             if (scrolled !== isScrolled) setScrolled(isScrolled);
         };
-        
+
         window.addEventListener('scroll', handleScroll);
         handleScroll();
 
@@ -125,7 +131,7 @@ export default function Header({ darkVariant = false }) {
 
     const toggleMenu = () => setMenuOpen(!menuOpen);
     const toggleUserMenu = () => setUserMenuOpen(!userMenuOpen);
-    
+
     const handleLinkClick = () => {
         setMenuOpen(false);
     };
@@ -193,13 +199,13 @@ export default function Header({ darkVariant = false }) {
 
         // Always show Employee Portal link on Desktop
         if (!isMobile && isMounted) {
-             linkElements.push(
+            linkElements.push(
                 <div key="employee-nav" className={styles.hasDropdown}>
-                    <a 
-                        href="/employees" 
+                    <a
+                        href="/employees"
                         className={styles.empBtn}
-                        style={{ 
-                            color: textColor, 
+                        style={{
+                            color: textColor,
                             borderColor: isDarkHeader ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.4)',
                         }}
                     >
@@ -218,7 +224,7 @@ export default function Header({ darkVariant = false }) {
                 <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
                     {user ? (
                         <>
-                            <button 
+                            <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     toggleUserMenu();
@@ -250,7 +256,7 @@ export default function Header({ darkVariant = false }) {
                                     {displayInitial}
                                 </span>
                             </button>
-                            
+
                             {userMenuOpen && (
                                 <div style={{
                                     position: 'absolute',
@@ -268,8 +274,8 @@ export default function Header({ darkVariant = false }) {
                                         <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>{displayName}님</div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{getRoleLabel(role)}</div>
                                     </div>
-                                    <Link 
-                                        href="/employees/mypage" 
+                                    <Link
+                                        href="/employees/mypage"
                                         style={{ display: 'block', padding: '10px 20px', fontSize: '0.9rem', color: '#334155', textDecoration: 'none', transition: 'background 0.2s' }}
                                         onClick={() => setUserMenuOpen(false)}
                                         onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
@@ -279,15 +285,15 @@ export default function Header({ darkVariant = false }) {
                                     </Link>
                                     <button
                                         onClick={handleLogout}
-                                        style={{ 
-                                            display: 'block', 
-                                            width: '100%', 
-                                            textAlign: 'left', 
-                                            padding: '10px 20px', 
-                                            fontSize: '0.9rem', 
-                                            color: '#ef4444', 
-                                            background: 'transparent', 
-                                            border: 'none', 
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '10px 20px',
+                                            fontSize: '0.9rem',
+                                            color: '#ef4444',
+                                            background: 'transparent',
+                                            border: 'none',
                                             cursor: 'pointer',
                                             transition: 'background 0.2s'
                                         }}
@@ -300,8 +306,8 @@ export default function Header({ darkVariant = false }) {
                             )}
                         </>
                     ) : (
-                        <Link 
-                            href={`/login?next=${encodeURIComponent(pathname)}`} 
+                        <Link
+                            href={`/login?next=${encodeURIComponent(pathname)}`}
                             style={{
                                 backgroundColor: '#0056b3',
                                 color: 'white',
@@ -330,23 +336,23 @@ export default function Header({ darkVariant = false }) {
             if (subLink.type === 'label') return <div key={subIndex} className={isMobile ? styles.mobileSubLabel : styles.dropdownLabel}>{subLink.label}</div>;
 
             if (subLink.children) {
-                 const isExpanded = expandedMenus.includes(subLink.label);
-                 return (
+                const isExpanded = expandedMenus.includes(subLink.label);
+                return (
                     <div key={subIndex} className={isMobile ? '' : styles.hasSubDropdown}>
-                         <a href="#" className={isMobile ? styles.mobileSubToggle : styles.dropdownItem} onClick={(e) => {
-                              e.preventDefault();
-                              if(isMobile) toggleDropdown(subLink.label);
-                         }}>
-                             {subLink.label}
-                             <svg viewBox="0 0 24 24" width="14" height="14" style={{ transform: isMobile && isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}><path d="m9 18 6-6-6-6" /></svg>
-                         </a>
-                         <div className={isMobile ? `${styles.mobileSub} ${isExpanded ? styles.showSub : ''}` : styles.subDropdown}>
-                             {renderSubLinks(subLink.children, isMobile)}
-                         </div>
-                     </div>
-                 );
+                        <a href="#" className={isMobile ? styles.mobileSubToggle : styles.dropdownItem} onClick={(e) => {
+                            e.preventDefault();
+                            if (isMobile) toggleDropdown(subLink.label);
+                        }}>
+                            {subLink.label}
+                            <svg viewBox="0 0 24 24" width="14" height="14" style={{ transform: isMobile && isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}><path d="m9 18 6-6-6-6" /></svg>
+                        </a>
+                        <div className={isMobile ? `${styles.mobileSub} ${isExpanded ? styles.showSub : ''}` : styles.subDropdown}>
+                            {renderSubLinks(subLink.children, isMobile)}
+                        </div>
+                    </div>
+                );
             }
-            
+
             const className = isMobile
                 ? `${styles.mobileSubItem} ${subLink.isSubItem ? styles.mobileSubItemNested : ''}`
                 : `${styles.dropdownItem} ${subLink.isSubItem ? styles.dropdownSubItem : ''} ${subLink.isAdmin ? styles.adminLink : ''}`;
@@ -357,9 +363,9 @@ export default function Header({ darkVariant = false }) {
 
     return (
         <>
-            <header 
+            <header
                 className={styles.header}
-                style={{ 
+                style={{
                     backgroundColor: headerBg,
                     boxShadow: shadow,
                     color: textColor,
@@ -370,15 +376,15 @@ export default function Header({ darkVariant = false }) {
                 <div className="container">
                     <div className={styles.inner}>
                         <Link href="/" className={styles.logo} onClick={handleLinkClick}>
-                            <img 
-                                src="/images/logo.png" 
-                                alt="ELS SOLUTION" 
-                                className={styles.logoImage} 
-                                style={{ 
+                            <img
+                                src="/images/logo.png"
+                                alt="ELS SOLUTION"
+                                className={styles.logoImage}
+                                style={{
                                     filter: logoFilter,
                                     height: '27px',
                                     transition: 'filter 0.3s'
-                                }} 
+                                }}
                             />
                         </Link>
 
@@ -387,10 +393,10 @@ export default function Header({ darkVariant = false }) {
                         </nav>
 
                         {/* Mobile Toggle Button Only */}
-                        <div className={styles.utility} style={{ marginLeft: '0' }}> 
-                            <button 
-                                className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`} 
-                                onClick={toggleMenu} 
+                        <div className={styles.utility} style={{ marginLeft: '0' }}>
+                            <button
+                                className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`}
+                                onClick={toggleMenu}
                                 aria-label="Toggle Menu"
                                 style={{ color: isDarkHeader ? '#1a1a1a' : '#ffffff' }}
                             >
@@ -408,8 +414,8 @@ export default function Header({ darkVariant = false }) {
                     {isMounted && (user ?
                         <>
                             <div className={styles.welcomeMsg}>
-                                환영합니다, <strong>{displayName}</strong>님!<br/>
-                                <span style={{fontSize:'0.85rem', color:'#666', fontWeight: 400}}>({getRoleLabel(role)})</span>
+                                환영합니다, <strong>{displayName}</strong>님!<br />
+                                <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>({getRoleLabel(role)})</span>
                             </div>
                             <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
                         </> :

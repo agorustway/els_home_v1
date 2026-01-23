@@ -111,9 +111,15 @@ export default function EmployeesPortal() {
                                 <div className={styles.branchGrid}>
                                     {[
                                         { name: '아산지점', eng: 'Asan', link: '/employees/branches/asan' },
+                                        { name: '아산CY', eng: 'Asan CY', link: '/employees/branches/asan_cy' },
                                         { name: '중부지점', eng: 'Jungbu', link: '/employees/branches/jungbu' },
                                         { name: '당진지점', eng: 'Dangjin', link: '/employees/branches/dangjin' },
-                                        { name: '예산지점', eng: 'Yesan', link: '/employees/branches/yesan' }
+                                        { name: '예산지점', eng: 'Yesan', link: '/employees/branches/yesan' },
+                                        { name: '서산지점', eng: 'Seosan', link: '/employees/branches/seosan' },
+                                        { name: '연천지점', eng: 'Yeoncheon', link: '/employees/branches/yeoncheon' },
+                                        { name: '울산지점', eng: 'Ulsan', link: '/employees/branches/ulsan' },
+                                        { name: '임고지점', eng: 'Imgo', link: '/employees/branches/imgo' },
+                                        { name: '벌크사업부', eng: 'Bulk', link: '/employees/branches/bulk' }
                                     ].map((branch, i) => (
                                         <motion.a
                                             key={branch.eng}

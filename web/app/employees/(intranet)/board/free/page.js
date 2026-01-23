@@ -56,10 +56,10 @@ export default function FreeBoardPage() {
                 <table className={styles.boardTable}>
                     <thead>
                         <tr>
-                            <th style={{ width: '80px' }}>번호</th>
-                            <th>제목</th>
-                            <th style={{ width: '150px' }}>작성자</th>
-                            <th style={{ width: '120px' }}>날짜</th>
+                            <th style={{ width: '80px' }} className={styles.colNum}>번호</th>
+                            <th className={styles.colTitle}>제목</th>
+                            <th style={{ width: '150px' }} className={styles.colAuthor}>작성자</th>
+                            <th style={{ width: '120px' }} className={styles.colDate}>날짜</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,16 +69,16 @@ export default function FreeBoardPage() {
                                 className={styles.postRow}
                                 onClick={() => router.push(`/employees/board/free/${post.id}`)}
                             >
-                                <td>{posts.length - index}</td>
-                                <td>
+                                <td className={styles.colNum}>{posts.length - index}</td>
+                                <td className={styles.colTitle}>
                                     <span className={styles.postTitle}>
                                         {post.title}
                                     </span>
                                 </td>
-                                <td className={styles.author}>
+                                <td className={`${styles.author} ${styles.colAuthor}`}>
                                     {post.author?.name || post.author?.email?.split('@')[0]}
                                 </td>
-                                <td className={styles.date}>
+                                <td className={`${styles.date} ${styles.colDate}`}>
                                     {new Date(post.created_at).toLocaleDateString()}
                                 </td>
                             </tr>

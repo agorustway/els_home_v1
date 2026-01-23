@@ -156,11 +156,9 @@
     font-size: 1rem;
     font-weight: 500;
     color: #334155;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     flex: 1;
     margin: 0;
+    line-height: 1.4;
 }
 
 .postCard:hover .postSubject {
@@ -500,16 +498,18 @@
 @media (max-width: 1024px) {
     .grid {
         grid-template-columns: 1fr;
+        gap: 30px;
     }
 }
 
 @media (max-width: 768px) {
     .section {
-        padding: 60px 0;
+        padding: 40px 0;
     }
 
     .formWrapper {
-        padding: 30px 20px;
+        padding: 25px 15px;
+        border-radius: 20px;
     }
 
     .formTitle {
@@ -521,7 +521,24 @@
     }
 
     .reportContainer {
-        padding: 40px 20px;
+        padding: 40px 15px;
         margin-top: 40px;
+        border-radius: 30px;
+    }
+
+    .postCard {
+        padding: 15px;
+        gap: 12px;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .postDate {
+        min-width: unset;
+        font-size: 0.8rem;
+    }
+
+    .statusBadge {
+        align-self: flex-start;
     }
 }
