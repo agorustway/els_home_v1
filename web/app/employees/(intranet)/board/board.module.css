@@ -155,46 +155,227 @@
 }
 
 @media (max-width: 768px) {
-    .header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
+
+    .container {
+
+        padding: 0 10px; /* Minimal padding */
+
     }
+
+
+
+    .header {
+
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 10px;
+
+        margin-bottom: 15px;
+
+    }
+
+
 
     .title {
-        font-size: 1.5rem;
+
+        font-size: 1.4rem;
+
+        margin-left: 5px;
+
     }
 
-    .boardTable th, 
+
+
+    .btnPrimary {
+
+        width: 100%;
+
+        text-align: center;
+
+        padding: 12px;
+
+        font-size: 0.95rem;
+
+    }
+
+
+
+    /* Transform Table to Card List */
+
+    .boardTable, 
+
+    .boardTable tbody, 
+
+    .boardTable tr, 
+
     .boardTable td {
-        padding: 12px 6px; /* Reduced padding further */
-        font-size: 0.85rem;
+
+        display: block;
+
+        width: 100%;
+
     }
 
-    /* Hide 'No' column on mobile */
-    .boardTable th:nth-child(1),
+
+
+    .boardTable thead {
+
+        display: none; /* Hide header */
+
+    }
+
+
+
+    .boardTable tr {
+
+        margin-bottom: 10px;
+
+        border: 1px solid #e2e8f0;
+
+        border-radius: 8px;
+
+        background: white;
+
+        padding: 15px;
+
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+    }
+
+
+
+    .boardTable td {
+
+        padding: 0;
+
+        border: none;
+
+        text-align: left;
+
+    }
+
+
+
+    /* Hide Number Column */
+
     .boardTable td:nth-child(1) {
+
         display: none;
+
     }
 
-    /* Hide 'Date' column on mobile */
-    .boardTable th:nth-child(4), /* Author or Date depending on table */
-    .boardTable td:nth-child(4) {
-        display: none;
+
+
+    /* Branch Tag */
+
+    .boardTable td:nth-child(2) {
+
+        margin-bottom: 6px;
+
     }
+
     
-    /* Ensure title doesn't stack vertically */
+
+    .boardTable td:nth-child(2) span {
+
+        font-size: 0.75rem;
+
+        padding: 3px 8px;
+
+        background: #eff6ff !important;
+
+        color: #2563eb;
+
+        font-weight: 700;
+
+    }
+
+
+
+    /* Title */
+
     .boardTable td:nth-child(3) {
-        word-break: break-all;
-        min-width: 150px;
+
+        font-size: 1.05rem;
+
+        font-weight: 600;
+
+        margin-bottom: 8px;
+
+        line-height: 1.4;
+
     }
+
+
+
+    /* Author & Date Row (Combine visually if possible, or stack) */
+
+    .boardTable td:nth-child(4), /* Author */
+
+    .boardTable td:nth-child(5) { /* Date */
+
+        display: inline-block;
+
+        font-size: 0.8rem;
+
+        color: #94a3b8;
+
+        margin-right: 10px;
+
+    }
+
     
+
+    /* Force Author/Date to show even if hidden previously */
+
+    .boardTable th:nth-child(4), 
+
+    .boardTable td:nth-child(4) {
+
+        display: inline-block !important; 
+
+    }
+
+
+
+    /* Detail Page Mobile */
+
     .detailTitle {
-        font-size: 1.8rem;
+
+        font-size: 1.5rem;
+
+        line-height: 1.3;
+
     }
+
     
+
     .detailMeta {
+
         flex-direction: column;
-        gap: 5px;
+
+        gap: 4px;
+
+        font-size: 0.85rem;
+
+        background: #f8fafc;
+
+        padding: 10px;
+
+        border-radius: 8px;
+
     }
+
+
+
+    .contentBody {
+
+        font-size: 1rem;
+
+        padding: 0 5px;
+
+    }
+
 }

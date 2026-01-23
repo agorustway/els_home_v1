@@ -25,24 +25,32 @@ export default function NewPostPage() {
         if (!file) return;
 
         setUploading(true);
-        const now = new Date();
-        const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', `/ELSWEBAPP/Board/Free/${yearMonth}`);
-
         try {
-            const res = await fetch('/api/nas/files', {
+            // 1. Get Presigned URL
+            const now = new Date();
+            const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const key = `Board/Free/${yearMonth}/${Date.now()}_${file.name}`; // S3 Key
+
+            const urlRes = await fetch('/api/s3/files', {
                 method: 'POST',
-                body: formData,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'upload_url', key, fileType: file.type }),
             });
 
-            if (res.ok) {
-                const data = await res.json();
-                setAttachments([...attachments, { name: file.name, path: data.path }]);
-            } else {
-                alert('파일 업로드 실패');
-            }
+            if (!urlRes.ok) throw new Error('Failed to get upload URL');
+            const { url } = await urlRes.json();
+
+            // 2. Upload directly to MinIO
+            const uploadRes = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type },
+                body: file,
+            });
+
+            if (!uploadRes.ok) throw new Error('Upload failed');
+
+            // 3. Save metadata
+            setAttachments([...attachments, { name: file.name, path: key, type: 's3' }]);
         } catch (error) {
             console.error(error);
             alert('업로드 오류');

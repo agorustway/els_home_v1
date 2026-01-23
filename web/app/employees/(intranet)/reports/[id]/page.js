@@ -84,17 +84,24 @@ export default function ReportDetailPage() {
                     <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
                         <h4 style={{ marginBottom: '10px' }}>첨부파일</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {post.attachments.map((file, idx) => (
-                                <a 
-                                    key={idx} 
-                                    href={`/api/nas/files?path=${encodeURIComponent(file.path)}`} // This might need a proper download route or NAS preview
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                >
-                                    📎 {file.name}
-                                </a>
-                            ))}
+                            {post.attachments.map((file, idx) => {
+                                // Determine download URL based on storage type
+                                const downloadUrl = file.type === 's3' 
+                                    ? `/api/s3/files?key=${encodeURIComponent(file.path)}` 
+                                    : `/api/nas/files?path=${encodeURIComponent(file.path)}&download=true`;
+
+                                return (
+                                    <a 
+                                        key={idx} 
+                                        href={downloadUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    >
+                                        📎 {file.name}
+                                    </a>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

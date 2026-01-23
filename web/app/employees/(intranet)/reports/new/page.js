@@ -41,20 +41,40 @@ export default function NewReportPage() {
         const file = e.target.files[0];
         if (!file) return;
         setUploading(true);
-        const now = new Date();
-        const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', `/ELSWEBAPP/Board/Report/${yearMonth}`);
-
+        
         try {
-            const res = await fetch('/api/nas/files', { method: 'POST', body: formData });
-            if (res.ok) {
-                const data = await res.json();
-                setAttachments([...attachments, { name: file.name, path: data.path }]);
-            }
-        } catch (error) { console.error(error); }
-        finally { setUploading(false); }
+            // 1. Get Presigned URL from S3 API
+            // Path structure: Board/Report/YYYYMM/filename
+            const now = new Date();
+            const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const key = `Board/Report/${yearMonth}/${Date.now()}_${file.name}`; // Unique key to prevent overwrite
+
+            const urlRes = await fetch('/api/s3/files', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'upload_url', key, fileType: file.type }),
+            });
+
+            if (!urlRes.ok) throw new Error('Failed to get upload URL');
+            const { url } = await urlRes.json();
+
+            // 2. Upload directly to MinIO
+            const uploadRes = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type },
+                body: file,
+            });
+
+            if (!uploadRes.ok) throw new Error('Upload failed');
+
+            // 3. Save metadata (path is the S3 key now)
+            setAttachments([...attachments, { name: file.name, path: key, type: 's3' }]); // Mark as S3
+        } catch (error) { 
+            console.error(error);
+            alert('파일 업로드 실패');
+        } finally { 
+            setUploading(false); 
+        }
     };
 
     const handleSubmit = async (e) => {

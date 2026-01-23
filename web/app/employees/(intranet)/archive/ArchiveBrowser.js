@@ -67,6 +67,7 @@ export default function ArchiveBrowser() {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('path', path);
+                // WebDAV Upload via API
                 const res = await fetch('/api/nas/files', { method: 'POST', body: formData });
                 if (!res.ok) throw new Error(`Upload failed for ${file.name}`);
             }
