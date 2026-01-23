@@ -29,11 +29,11 @@ const BRANCH_FOLDER_MAP = {
 /**
  * Access Control Logic:
  * 1. Admin: Everything accessible.
- * 2. Security Folders: Only visible to the specific branch (e.g., '아산지점-보안' only for 'asan').
+ * 2. Security Folders: Only visible to the specific branch (e.g., '아산지점_보안' only for 'asan').
  * 3. Write Permission: 
  *    - Branch users can write to their own branch folder and '자료실' (Common).
  *    - Others are read-only.
- * 4. Filtering: Hide system files/folders and non-Korean folders at root level.
+ * 4. Filtering: Hide system files/folders and non-Korean folders (Admins see everything).
  */
 function getPermissions(userRole, path) {
     if (userRole === 'admin') return { canRead: true, canWrite: true };
@@ -43,9 +43,9 @@ function getPermissions(userRole, path) {
     const normalizedPath = path.replace(/^\//, ''); // Remove leading slash
     const rootFolder = normalizedPath.split('/')[0];
 
-    // Visibility Check (Security Folders)
-    if (rootFolder.endsWith('-보안')) {
-        const securityBranch = rootFolder.replace('-보안', '');
+    // Visibility Check (Security Folders - Using Underscore)
+    if (rootFolder.endsWith('_보안')) {
+        const securityBranch = rootFolder.replace('_보안', '');
         if (securityBranch !== userBranchName) {
             return { canRead: false, canWrite: false }; // Completely hidden
         }
@@ -70,13 +70,16 @@ export async function GET(request) {
 
     try {
         const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
-        const userRole = roleData?.role || 'visitor';
+        const isAdmin = userRole === 'admin';
 
         const rawFiles = await listFiles(path);
 
         // Filter Logic
         const filteredFiles = rawFiles.filter(file => {
-            // 1. Hide Hidden/Temp files
+            // Admin sees EVERYTHING
+            if (isAdmin) return true;
+
+            // 1. Hide Hidden/Temp files for regular users
             if (isHiddenOrTemp(file.name)) return false;
 
             // 2. Korean Folder Rule (at Root or specific levels)
