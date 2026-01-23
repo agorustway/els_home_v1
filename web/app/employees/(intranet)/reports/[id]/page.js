@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getRoleLabel } from '@/utils/roles';
-import styles from '../../board.module.css';
+import styles from '../../board/board.module.css';
 
 export default function ReportDetailPage() {
     const { id } = useParams();
