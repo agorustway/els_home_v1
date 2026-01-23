@@ -13,6 +13,9 @@ export default function Network() {
     const [copyFeedback, setCopyFeedback] = useState("");
 
     useEffect(() => {
+        // Debug Env Var
+        console.log("Loading Naver Map with Client ID:", process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID);
+
         // 1. 방어 코드: 이미 로드되었으면 초기화만 시도
         if (window.naver && window.naver.maps) {
             initMap();
@@ -21,8 +24,11 @@ export default function Network() {
 
         // 2. 인증 실패 콜백 정의
         window.navermap_authFailure = () => {
-            setLoadingStatus("네이버 지도 인증 실패 (Error 200)");
+            const currentUrl = window.location.origin;
+            setLoadingStatus(`네이버 지도 인증 실패 (설정 필요)`);
+            setCopyFeedback(`등록 필요 URL: ${currentUrl}`); // 잠시 토스트 메시지로 띄움
             setIsError(true);
+            console.error(`[Naver Map Auth Error] NCP Console에 다음 URL을 등록해야 합니다: ${currentUrl}`);
         };
 
         // 3. 스크립트 중복 방지
@@ -32,7 +38,7 @@ export default function Network() {
 
         // 4. 수동 스크립트 주입 (Tutorial 기반 수정)
         // Domain: oapi.map.naver.com
-        // Param: ncpKeyId
+        // Param: ncpKeyId (Reverted for compatibility)
         const script = document.createElement('script');
         script.id = scriptId;
         script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
@@ -218,7 +224,15 @@ export default function Network() {
                                     <div className={`${styles.spinner} ${isError ? styles.error : ''}`} />
                                     <div className={styles.loadingStatus}>
                                         <p>{loadingStatus}</p>
-                                        {isError && <span>NCP 콘솔의 Web 서비스 URL 설정을 확인해주세요 (localhost:3000/)</span>}
+                                        {isError && (
+                                            <div style={{fontSize: '0.8rem', marginTop: '10px', color: '#ff6b6b'}}>
+                                                <p>NCP 콘솔 &gt; Web Dynamic Map &gt; Web 서비스 URL에</p>
+                                                <p style={{fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '2px 5px', borderRadius: '4px', margin: '5px 0'}}>
+                                                    {typeof window !== 'undefined' ? window.location.origin : ''}
+                                                </p>
+                                                <p>을(를) 추가해주세요.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
