@@ -3,6 +3,10 @@
     padding: 20px;
 }
 
+.cardList {
+    display: none;
+}
+
 .deleteBtn {
     background-color: #fee2e2;
     color: #ef4444;

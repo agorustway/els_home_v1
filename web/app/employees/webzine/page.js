@@ -141,8 +141,9 @@ export default function WebzineList() {
                                                     style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
                                                     priority
                                                     unoptimized
+                                                    sizes="100vw"
                                                     onError={(e) => {
-                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.src = '/images/office_intro.png';
                                                     }}
                                                 />
                                             </div>
@@ -174,11 +175,13 @@ export default function WebzineList() {
                                                                 fill
                                                                 className={styles.thumbnail}
                                                                 style={{ objectFit: 'cover' }}
-                                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                                sizes="(max-width: 768px) 100vw, 33vw"
                                                                 unoptimized
                                                                 onError={(e) => {
                                                                     e.currentTarget.style.display = 'none';
-                                                                    e.currentTarget.parentElement.nextSibling.style.display = 'flex';
+                                                                    if (e.currentTarget.parentElement?.nextSibling) {
+                                                                        e.currentTarget.parentElement.nextSibling.style.display = 'flex';
+                                                                    }
                                                                 }}
                                                             />
                                                         ) : null}

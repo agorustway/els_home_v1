@@ -58,12 +58,22 @@
 
 .postRow {
     cursor: pointer;
+    position: relative;
 }
 
 .postTitle {
     color: #1e293b;
     font-weight: 500;
     text-decoration: none;
+}
+
+.postTitle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .postTitle:hover {

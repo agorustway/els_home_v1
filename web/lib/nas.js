@@ -6,12 +6,16 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 console.log("Initializing WebDAV Client:", process.env.NAS_URL);
 
 const client = createClient(
-    process.env.NAS_URL, 
+    process.env.NAS_URL,
     {
         username: process.env.NAS_USER,
         password: process.env.NAS_PW
     }
 );
+
+export function getNasClient() {
+    return client;
+}
 
 export async function listFiles(path = "/") {
     try {

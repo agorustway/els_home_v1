@@ -73,13 +73,12 @@ export default function WorkReportsPage() {
                             <td>{posts.length - index}</td>
                             <td><span style={{ fontSize: '0.8rem', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{getRoleLabel(post.branch_tag)}</span></td>
                             <td>
-                                <Link href={`/employees/reports/${post.id}`} className={styles.postTitle}>
-                                    {post.title}
-                                </Link>
+                                {post.title}
                             </td>
                             <td className={styles.author}>{post.author?.email.split('@')[0]}</td>
                             <td className={styles.date}>
                                 {new Date(post.created_at).toLocaleDateString()}
+                                <Link href={`/employees/reports/${post.id}`} className={styles.postTitle} aria-label="상세보기" />
                             </td>
                         </tr>
                     ))}
