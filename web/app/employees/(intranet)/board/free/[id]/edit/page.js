@@ -31,7 +31,6 @@ export default function EditPostPage() {
             const res = await fetch(`/api/board/${id}`);
             const data = await res.json();
             if (data.post) {
-                // Check if user has permission
                 if (data.post.author_id !== user?.id && role !== 'admin') {
                     alert('수정 권한이 없습니다.');
                     router.push(`/employees/board/free/${id}`);
@@ -59,6 +58,7 @@ export default function EditPostPage() {
 
             if (res.ok) {
                 router.push(`/employees/board/free/${id}`);
+                router.refresh();
             } else {
                 alert('수정 실패');
             }
@@ -69,41 +69,47 @@ export default function EditPostPage() {
         }
     };
 
-    if (authLoading || loading) return <div style={{ padding: '40px' }}>로딩 중...</div>;
+    if (authLoading || loading) {
+        return <div style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
+    }
 
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1 className={styles.title}>글 수정</h1>
+                <h1 className={styles.title}>게시글 수정</h1>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>제목</label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                        required
-                    />
-                </div>
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>내용</label>
-                    <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}
-                        required
-                    />
-                </div>
-                <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>취소</button>
-                    <button type="submit" disabled={submitting} className={styles.btnPrimary}>
-                        {submitting ? '저장 중...' : '수정 완료'}
-                    </button>
-                </div>
-            </form>
+            <div className={styles.editorCard}>
+                <form onSubmit={handleSubmit}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>제목</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className={styles.input}
+                            placeholder="제목을 입력하세요"
+                            required
+                        />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>내용</label>
+                        <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            className={styles.textarea}
+                            placeholder="내용을 입력하세요"
+                            required
+                        />
+                    </div>
+                    <div className={styles.editorActions}>
+                        <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>취소</button>
+                        <button type="submit" disabled={submitting} className={styles.btnPrimary}>
+                            {submitting ? '저장 중...' : '수정 완료'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

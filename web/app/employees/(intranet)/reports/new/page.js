@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
+import { getRoleLabel } from '@/utils/roles';
 import styles from '../../board/board.module.css';
 
 export default function NewReportPage() {
@@ -22,32 +23,29 @@ export default function NewReportPage() {
             if (!role || role === 'visitor') {
                 router.replace('/login?next=/employees/reports/new');
             } else {
-                // Auto-fill user info
                 if (!['admin', 'headquarters'].includes(role)) {
                     setBranch(role);
                 } else if (!branch) {
-                    setBranch('headquarters'); // Admin default
+                    setBranch('headquarters');
                 }
-                
+
                 if (user) {
                     setReporterName(user.name || '');
                     setReporterPhone(user.phone || '');
                 }
             }
         }
-    }, [role, user, authLoading, router]);
+    }, [role, user, authLoading, router, branch]);
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         setUploading(true);
-        
+
         try {
-            // 1. Get Presigned URL from S3 API
-            // Path structure: Board/Report/YYYYMM/filename
             const now = new Date();
             const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const key = `Board/Report/${yearMonth}/${Date.now()}_${file.name}`; // Unique key to prevent overwrite
+            const key = `Board/Report/${yearMonth}/${Date.now()}_${file.name}`;
 
             const urlRes = await fetch('/api/s3/files', {
                 method: 'POST',
@@ -58,7 +56,6 @@ export default function NewReportPage() {
             if (!urlRes.ok) throw new Error('Failed to get upload URL');
             const { url } = await urlRes.json();
 
-            // 2. Upload directly to MinIO
             const uploadRes = await fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': file.type },
@@ -66,14 +63,12 @@ export default function NewReportPage() {
             });
 
             if (!uploadRes.ok) throw new Error('Upload failed');
-
-            // 3. Save metadata (path is the S3 key now)
-            setAttachments([...attachments, { name: file.name, path: key, type: 's3' }]); // Mark as S3
-        } catch (error) { 
+            setAttachments([...attachments, { name: file.name, path: key, type: 's3' }]);
+        } catch (error) {
             console.error(error);
             alert('파일 업로드 실패');
-        } finally { 
-            setUploading(false); 
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -83,7 +78,6 @@ export default function NewReportPage() {
 
         setSubmitting(true);
         try {
-            // Append reporter info to content for better visibility in the report
             const finalContent = `${content}\n\n---\n[작성자 정보]\n성함: ${reporterName}\n지점: ${branch}\n연락처: ${reporterPhone}`;
 
             const res = await fetch('/api/board', {
@@ -97,12 +91,17 @@ export default function NewReportPage() {
                     attachments
                 }),
             });
-            if (res.ok) router.push('/employees/reports');
+            if (res.ok) {
+                router.push('/employees/reports');
+                router.refresh();
+            }
         } catch (error) { console.error(error); }
         finally { setSubmitting(false); }
     };
 
-    if (authLoading) return <div style={{ padding: '40px' }}>로딩 중...</div>;
+    if (authLoading) {
+        return <div style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
+    }
     if (!role) return null;
 
     const isAdmin = ['admin', 'headquarters'].includes(role);
@@ -113,87 +112,103 @@ export default function NewReportPage() {
                 <h1 className={styles.title}>업무보고 작성</h1>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>지점</label>
-                        <select
-                            value={branch}
-                            onChange={(e) => setBranch(e.target.value)}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: isAdmin ? 'white' : '#f8fafc' }}
-                            required
-                            disabled={!isAdmin}
-                        >
-                            <option value="">선택</option>
-                            <option value="asan">아산지점</option>
-                            <option value="asan_cy">아산CY</option>
-                            <option value="headquarters">서울본사</option>
-                            <option value="jungbu">중부지점</option>
-                            <option value="dangjin">당진지점</option>
-                            <option value="yesan">예산지점</option>
-                            <option value="seosan">서산지점</option>
-                            <option value="yeoncheon">연천지점</option>
-                            <option value="ulsan">울산지점</option>
-                            <option value="imgo">임고지점</option>
-                            <option value="bulk">벌크사업부</option>
-                        </select>
+            <div className={styles.editorCard}>
+                <form onSubmit={handleSubmit}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>지점</label>
+                            <select
+                                value={branch}
+                                onChange={(e) => setBranch(e.target.value)}
+                                className={styles.input}
+                                style={{ backgroundColor: isAdmin ? 'white' : '#f8fafc' }}
+                                required
+                                disabled={!isAdmin}
+                            >
+                                <option value="">선택</option>
+                                <option value="asan">아산지점</option>
+                                <option value="asan_cy">아산CY</option>
+                                <option value="headquarters">서울본사</option>
+                                <option value="jungbu">중부지점</option>
+                                <option value="dangjin">당진지점</option>
+                                <option value="yesan">예산지점</option>
+                                <option value="seosan">서산지점</option>
+                                <option value="yeoncheon">연천지점</option>
+                                <option value="ulsan">울산지점</option>
+                                <option value="imgo">임고지점</option>
+                                <option value="bulk">벌크사업부</option>
+                            </select>
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>작성자</label>
+                            <input
+                                type="text"
+                                value={reporterName}
+                                onChange={(e) => setReporterName(e.target.value)}
+                                placeholder="이름"
+                                className={styles.input}
+                                required
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>연락처</label>
+                            <input
+                                type="text"
+                                value={reporterPhone}
+                                onChange={(e) => setReporterPhone(e.target.value)}
+                                placeholder="010-0000-0000"
+                                className={styles.input}
+                                required
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>작성자</label>
-                        <input
-                            type="text"
-                            value={reporterName}
-                            onChange={(e) => setReporterName(e.target.value)}
-                            placeholder="이름"
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>연락처</label>
-                        <input
-                            type="text"
-                            value={reporterPhone}
-                            onChange={(e) => setReporterPhone(e.target.value)}
-                            placeholder="010-0000-0000"
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                            required
-                        />
-                    </div>
-                </div>
 
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>제목</label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="보고서 제목을 입력하세요"
-                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                        required
-                    />
-                </div>
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>내용</label>
-                    <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}
-                        required
-                    />
-                </div>
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>첨부파일</label>
-                    <input type="file" onChange={handleFileUpload} disabled={uploading} />
-                    <div style={{ marginTop: '10px' }}>
-                        {attachments.map((f, i) => <div key={i}>📎 {f.name}</div>)}
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>제목</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="보고서 제목을 입력하세요"
+                            className={styles.input}
+                            required
+                        />
                     </div>
-                </div>
-                <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>취소</button>
-                    <button type="submit" disabled={submitting} className={styles.btnPrimary}>보고서 등록</button>
-                </div>
-            </form>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>내용</label>
+                        <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            placeholder="보고 내용을 입력하세요"
+                            className={styles.textarea}
+                            required
+                        />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>첨부파일</label>
+                        <input
+                            type="file"
+                            onChange={handleFileUpload}
+                            disabled={uploading}
+                            className={styles.input}
+                            style={{ padding: '10px' }}
+                        />
+                        {uploading && <span className={styles.hint}> 업로드 중...</span>}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '15px' }}>
+                            {attachments.map((file, i) => (
+                                <div key={i} style={{ background: '#f1f5f9', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #e2e8f0' }}>
+                                    📎 {file.name}
+                                    <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.editorActions}>
+                        <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>취소</button>
+                        <button type="submit" disabled={submitting} className={styles.btnPrimary}>보고서 등록</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

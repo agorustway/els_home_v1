@@ -38,7 +38,9 @@ export default function FreeBoardPage() {
         }
     }
 
-    if (authLoading || loading) return <div style={{ padding: '40px' }}>로딩 중...</div>;
+    if (authLoading || loading) {
+        return <div style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
+    }
     if (!role) return null;
 
     return (
@@ -50,43 +52,45 @@ export default function FreeBoardPage() {
                 </Link>
             </div>
 
-            <table className={styles.boardTable}>
-                <thead>
-                    <tr>
-                        <th style={{ width: '80px' }}>번호</th>
-                        <th>제목</th>
-                        <th style={{ width: '150px' }}>작성자</th>
-                        <th style={{ width: '120px' }}>날짜</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {posts.map((post, index) => (
-                        <tr 
-                            key={post.id} 
-                            className={styles.postRow}
-                            onClick={() => router.push(`/employees/board/free/${post.id}`)}
-                        >
-                            <td>{posts.length - index}</td>
-                            <td>
-                                <span className={styles.postTitle}>
-                                    {post.title}
-                                </span>
-                            </td>
-                            <td className={styles.author}>
-                                {post.author?.name || post.author?.email?.split('@')[0]}
-                            </td>
-                            <td className={styles.date}>
-                                {new Date(post.created_at).toLocaleDateString()}
-                            </td>
-                        </tr>
-                    ))}
-                    {posts.length === 0 && (
+            <div className={styles.detailCard}>
+                <table className={styles.boardTable}>
+                    <thead>
                         <tr>
-                            <td colSpan="4" className={styles.empty}>게시글이 없습니다.</td>
+                            <th style={{ width: '80px' }}>번호</th>
+                            <th>제목</th>
+                            <th style={{ width: '150px' }}>작성자</th>
+                            <th style={{ width: '120px' }}>날짜</th>
                         </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {posts.map((post, index) => (
+                            <tr
+                                key={post.id}
+                                className={styles.postRow}
+                                onClick={() => router.push(`/employees/board/free/${post.id}`)}
+                            >
+                                <td>{posts.length - index}</td>
+                                <td>
+                                    <span className={styles.postTitle}>
+                                        {post.title}
+                                    </span>
+                                </td>
+                                <td className={styles.author}>
+                                    {post.author?.name || post.author?.email?.split('@')[0]}
+                                </td>
+                                <td className={styles.date}>
+                                    {new Date(post.created_at).toLocaleDateString()}
+                                </td>
+                            </tr>
+                        ))}
+                        {posts.length === 0 && (
+                            <tr>
+                                <td colSpan="4" className={styles.empty}>게시글이 없습니다.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
