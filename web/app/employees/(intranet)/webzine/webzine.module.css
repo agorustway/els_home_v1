@@ -76,12 +76,12 @@
 }
 
 .featuredTitle {
-    font-size: 2.2rem;
+    font-size: 1.75rem;
     /* 너비에 맞춰 크기 소폭 축소 */
     font-weight: 800;
     color: #1a1a1a;
-    margin-bottom: 15px;
-    line-height: 1.2;
+    margin-bottom: 12px;
+    line-height: 1.3;
 }
 
 .featuredMeta {

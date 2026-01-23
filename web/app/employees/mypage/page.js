@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { getRoleLabel, ROLE_LABELS } from '@/utils/roles';
+import { formatPhoneNumber } from '@/utils/format';
 import styles from './mypage.module.css';
 
 export default function MyPage() {
@@ -59,7 +60,7 @@ export default function MyPage() {
                 } else {
                     alert('정보가 수정되었습니다.');
                 }
-                window.location.reload(); 
+                window.location.reload();
             } else {
                 alert('수정 실패');
             }
@@ -72,7 +73,7 @@ export default function MyPage() {
     }
 
     async function handleWithdraw() {
-        const warning = user.post_count > 0 
+        const warning = user.post_count > 0
             ? `[경고] 작성하신 게시글이 ${user.post_count}개 있습니다.\n탈퇴 시 계정은 '비활성화(차단)' 처리되며, 작성한 글은 유지됩니다.\n\n정말 탈퇴하시겠습니까?`
             : `[경고] 작성하신 게시글이 없습니다.\n탈퇴 시 계정은 '즉시 삭제' 되며 복구할 수 없습니다.\n\n정말 탈퇴하시겠습니까?`;
 
@@ -103,7 +104,7 @@ export default function MyPage() {
             <div style={{ background: '#f8fafc', minHeight: '100vh', paddingTop: '100px', paddingBottom: '60px' }}>
                 <div className={styles.container}>
                     <h1 className={styles.title}>내 정보 수정</h1>
-                    
+
                     <div className={styles.infoBox}>
                         <div className={styles.infoRow}>
                             <span className={styles.infoLabel}>이메일</span>
@@ -111,27 +112,27 @@ export default function MyPage() {
                         </div>
                         <div className={styles.infoRow}>
                             <span className={styles.infoLabel}>작성 게시글</span>
-                            <span className={styles.infoValue} style={{color: '#3b82f6'}}>{user.post_count}개</span>
+                            <span className={styles.infoValue} style={{ color: '#3b82f6' }}>{user.post_count}개</span>
                         </div>
                     </div>
 
                     <form onSubmit={handleSave}>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>이름</label>
-                            <input 
-                                type="text" 
-                                className={styles.input} 
-                                value={name} 
-                                onChange={(e) => setName(e.target.value)} 
+                            <input
+                                type="text"
+                                className={styles.input}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 placeholder="이름을 입력하세요"
                             />
                         </div>
 
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소속 지점 (권한)</label>
-                            <select 
-                                className={styles.input} 
-                                value={role} 
+                            <select
+                                className={styles.input}
+                                value={role}
                                 onChange={(e) => setRole(e.target.value)}
                                 style={{ borderColor: requestedRole && requestedRole !== user?.role ? '#f59e0b' : '#e2e8f0' }}
                             >
@@ -154,11 +155,11 @@ export default function MyPage() {
 
                         <div className={styles.formGroup}>
                             <label className={styles.label}>전화번호</label>
-                            <input 
-                                type="tel" 
-                                className={styles.input} 
-                                value={phone} 
-                                onChange={(e) => setPhone(e.target.value)} 
+                            <input
+                                type="tel"
+                                className={styles.input}
+                                value={phone}
+                                onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
                                 placeholder="010-0000-0000"
                             />
                         </div>

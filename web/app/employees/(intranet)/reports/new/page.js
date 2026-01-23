@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getRoleLabel } from '@/utils/roles';
+import { formatPhoneNumber } from '@/utils/format';
 import styles from '../../board/board.module.css';
 
 export default function NewReportPage() {
@@ -155,7 +156,7 @@ export default function NewReportPage() {
                             <input
                                 type="text"
                                 value={reporterPhone}
-                                onChange={(e) => setReporterPhone(e.target.value)}
+                                onChange={(e) => setReporterPhone(formatPhoneNumber(e.target.value))}
                                 placeholder="010-0000-0000"
                                 className={styles.input}
                                 required

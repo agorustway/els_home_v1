@@ -31,7 +31,7 @@ export async function GET(request) {
         // Note: For huge scale (10k+), this needs a better approach (e.g. sync auth to public table).
         // For now, fetching all is acceptable or we use pagination from listUsers.
         // But we need to filter by name (in user_roles) and email.
-        
+
         const { data: { users: authUsers }, error: authError } = await adminSupabase.auth.admin.listUsers({
             page: 1,
             perPage: 1000 // Fetch up to 1000 for client-side filtering (Simulated "Big" list)
@@ -57,7 +57,7 @@ export async function GET(request) {
         const { data: postsData } = await adminSupabase
             .from('posts')
             .select('author_id');
-        
+
         const postCounts = {};
         postsData?.forEach(p => {
             postCounts[p.author_id] = (postCounts[p.author_id] || 0) + 1;
@@ -87,8 +87,8 @@ export async function GET(request) {
         // Filter: Search (Email or Name or Role)
         if (query) {
             const lowerQ = query.toLowerCase();
-            mergedUsers = mergedUsers.filter(u => 
-                u.email?.toLowerCase().includes(lowerQ) || 
+            mergedUsers = mergedUsers.filter(u =>
+                u.email?.toLowerCase().includes(lowerQ) ||
                 u.name?.toLowerCase().includes(lowerQ) ||
                 getRoleLabel(u.role).toLowerCase().includes(lowerQ)
             );
@@ -103,7 +103,7 @@ export async function GET(request) {
         const startIndex = (page - 1) * limit;
         const paginatedUsers = mergedUsers.slice(startIndex, startIndex + limit);
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             users: paginatedUsers,
             pagination: {
                 page,
@@ -119,8 +119,8 @@ export async function GET(request) {
 
 // Helper for Role Label (Server Side if needed, but usually client side)
 function getRoleLabel(role) {
-     const labels = { admin:'관리자', headquarters:'서울본사', asan:'아산지점', jungbu:'중부지점', dangjin:'당진지점', yesan:'예산지점', seosan:'서산지점', yeoncheon:'연천지점', ulsan:'울산지점', imgo:'임고지점', bulk:'벌크사업부', visitor:'방문자' };
-     return labels[role] || role;
+    const labels = { admin: '관리자', headquarters: '서울본사', asan: '아산지점', jungbu: '중부지점', dangjin: '당진지점', yesan: '예산지점', seosan: '서산지점', yeoncheon: '연천지점', ulsan: '울산지점', imgo: '임고지점', bulk: '벌크사업부', visitor: '방문자' };
+    return labels[role] || role;
 }
 
 export async function PATCH(request) {
@@ -155,10 +155,10 @@ export async function PATCH(request) {
         }
 
         // Build update object for user_roles
-        const updates = {};
+        const updates = { id: userId };
         if (role !== undefined) {
             updates.role = role;
-            updates.requested_role = null; // Clear request on role change (Approve/Reject implicitly)
+            updates.requested_role = null; // Clear request on role change
         }
         if (can_write !== undefined) updates.can_write = can_write;
         if (can_delete !== undefined) updates.can_delete = can_delete;
@@ -166,12 +166,11 @@ export async function PATCH(request) {
         if (name !== undefined) updates.name = name;
         if (phone !== undefined) updates.phone = phone;
 
-        // Only update if there are fields to update
-        if (Object.keys(updates).length > 0) {
+        // Only update if there are fields to update (besides id)
+        if (Object.keys(updates).length > 1) {
             const { error: updateError } = await adminSupabase
                 .from('user_roles')
-                .update(updates)
-                .eq('id', userId);
+                .upsert(updates, { onConflict: 'id' });
 
             if (updateError) throw updateError;
         }
@@ -206,7 +205,7 @@ export async function DELETE(request) {
         // 1. Delete dependent data first
         await adminSupabase.from('user_roles').delete().eq('id', userId);
         await adminSupabase.from('posts').delete().eq('author_id', userId);
-        
+
         // Removed storage.objects direct deletion as it caused schema() error.
         // Orphaned files can be cleaned up later via storage policies or cron.
 

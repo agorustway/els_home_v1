@@ -1,11 +1,20 @@
 .mainContent {
     flex: 1;
-    padding: 40px;
+    padding: 30px 40px 60px;
     background-color: #f8fafc;
+    width: 100%;
+    max-width: 1300px;
+    margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+    .mainContent {
+        padding: 20px;
+    }
 }
 
 @media (max-width: 768px) {
     .mainContent {
-        padding: 15px 0; /* Horizontal padding removed, vertical padding reduced */
+        padding: 15px 0;
     }
 }

@@ -10,19 +10,24 @@
 }
 
 .title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #1a1a1a;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.5px;
 }
 
 .btnPrimary {
     background-color: #2563eb;
     color: white;
-    padding: 10px 20px;
+    padding: 8px 18px;
     border-radius: 8px;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     text-decoration: none;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btnPrimary:hover {
@@ -40,7 +45,7 @@
 
 .boardTable th,
 .boardTable td {
-    padding: 16px;
+    padding: 14px 16px;
     text-align: left;
     border-bottom: 1px solid #f1f5f9;
 }
@@ -63,7 +68,8 @@
 
 .postTitle {
     color: #1e293b;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.95rem;
     text-decoration: none;
 }
 
@@ -105,9 +111,12 @@
 }
 
 .detailTitle {
-    font-size: 2.5rem;
-    font-weight: 700;
+    font-size: 1.75rem;
+    font-weight: 800;
     margin-bottom: 15px;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
 }
 
 .detailMeta {
@@ -136,9 +145,10 @@
 .btnSecondary {
     background-color: white;
     color: #64748b;
-    padding: 10px 20px;
+    padding: 8px 18px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -152,12 +162,13 @@
 .btnDelete {
     background-color: #fee2e2;
     color: #ef4444;
-    padding: 10px 20px;
+    padding: 8px 18px;
     border-radius: 8px;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
     border: none;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 }
 
 .btnDelete:hover {
@@ -352,11 +363,9 @@
     /* Detail Page Mobile */
 
     .detailTitle {
-
-        font-size: 1.5rem;
-
+        font-size: 1.35rem;
         line-height: 1.3;
-
+        font-weight: 800;
     }
 
 

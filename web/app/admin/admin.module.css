@@ -19,10 +19,10 @@
 }
 
 .hero h1 {
-    font-size: 2.5rem;
-    font-weight: 900;
-    margin-bottom: 12px;
-    letter-spacing: -1px;
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
 }
 
 .hero p {
@@ -80,14 +80,14 @@
 }
 
 .statLabel {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #64748b;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .statValue {
-    font-size: 2rem;
-    font-weight: 900;
+    font-size: 1.5rem;
+    font-weight: 800;
     color: #1e3a8a;
 }
 
@@ -242,7 +242,7 @@
 }
 
 .detailHeader h2 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: #1e3a8a;
     line-height: 1.4;

@@ -1,5 +1,5 @@
 .hero {
-    height: 400px;
+    height: 300px;
     background-size: cover;
     background-position: center;
     position: relative;
@@ -11,7 +11,7 @@
 .overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to right, rgba(0, 51, 102, 0.8), rgba(0, 0, 0, 0.4));
+    background: linear-gradient(to right, rgba(0, 51, 102, 0.85), rgba(0, 0, 0, 0.5));
 }
 
 .content {
@@ -20,14 +20,14 @@
 }
 
 .title {
-    font-size: 3.5rem;
-    font-weight: 900;
-    margin-bottom: 20px;
-    letter-spacing: -2px;
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
 }
 
 .subtitle {
-    font-size: 1.2rem;
+    font-size: 1rem;
     opacity: 0.9;
     font-weight: 500;
 }
@@ -36,9 +36,11 @@
 
     .hero {
 
-        height: 220px; /* More compact */
+        height: 220px;
+        /* More compact */
 
-        padding-top: 40px; /* Account for fixed header if needed */
+        padding-top: 40px;
+        /* Account for fixed header if needed */
 
     }
 
@@ -58,7 +60,8 @@
 
         font-size: 0.95rem;
 
-        word-break: keep-all; /* Prevent subtitle breaks */
+        word-break: keep-all;
+        /* Prevent subtitle breaks */
 
         padding: 0 10px;
 

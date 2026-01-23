@@ -23,8 +23,9 @@
 .title {
     font-size: 1.5rem;
     font-weight: 800;
-    color: #1a202c;
+    color: #1e293b;
     margin: 0;
+    letter-spacing: -0.5px;
 }
 
 .pathBadge {
@@ -94,21 +95,26 @@
 
 /* Existing Buttons */
 .btnPrimary {
-    background: #3182ce;
+    background: #2563eb;
     color: white;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
 .btnSecondary {
     background: white;
-    color: #3182ce;
-    border: 1px solid #3182ce;
-    padding: 10px 20px;
-    border-radius: 10px;
+    color: #2563eb;
+    border: 1px solid #2563eb;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
 .viewToggle {
@@ -366,7 +372,8 @@
     transition: all 0.2s;
 }
 
-.moreBtn:hover, .moreBtn:active {
+.moreBtn:hover,
+.moreBtn:active {
     background: #edf2f7;
     color: #2d3748;
 }
@@ -390,10 +397,11 @@
     transition: all 0.2s;
 }
 
-.cardMoreBtn:hover, .cardMoreBtn:active {
+.cardMoreBtn:hover,
+.cardMoreBtn:active {
     background: white;
     color: #2d3748;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .contextOverlay {
@@ -432,7 +440,8 @@
         justify-content: center;
     }
 
-    .btnSecondary, .btnPrimary {
+    .btnSecondary,
+    .btnPrimary {
         width: 100%;
         padding: 12px 8px;
         font-size: 0.85rem;
@@ -445,26 +454,27 @@
     .hideMobile {
         display: none;
     }
-    
+
     .table {
         table-layout: fixed;
     }
 
-    .table th, .table td {
+    .table th,
+    .table td {
         padding: 12px 8px;
     }
-    
+
     .nameCell {
         font-size: 0.85rem;
         word-break: break-all;
         white-space: normal;
         line-height: 1.4;
     }
-    
+
     .container {
-        padding-bottom: 80px; 
+        padding-bottom: 80px;
     }
-    
+
     .contextOverlay {
         display: block;
         position: fixed;
@@ -476,7 +486,7 @@
         z-index: 10000;
         backdrop-filter: blur(2px);
     }
-    
+
     .contextMenu {
         position: fixed;
         left: 50% !important;

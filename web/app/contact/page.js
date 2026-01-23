@@ -7,6 +7,7 @@ import SubPageHero from '@/components/SubPageHero';
 import styles from './contact.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
+import { formatPhoneNumber } from '@/utils/format';
 
 export default function ContactPage() {
     const [user, setUser] = useState(null);
@@ -304,7 +305,7 @@ export default function ContactPage() {
                                             className={styles.input}
                                             placeholder="010-0000-0000"
                                             value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
                                         />
                                     </div>
                                     <div className={styles.inputGroup}>

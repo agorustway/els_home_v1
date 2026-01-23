@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SubPageHero from '@/components/SubPageHero';
 import IntranetSubNav from '@/components/IntranetSubNav';
+import { formatPhoneNumber } from '@/utils/format';
 import { getRoleLabel, ROLE_LABELS } from '@/utils/roles';
 import styles from './users.module.css';
 import layoutStyles from '@/app/employees/(intranet)/intranet.module.css';
@@ -139,9 +140,9 @@ export default function AdminUsersPage() {
             <IntranetSubNav />
             <main className={layoutStyles.mainContent}>
                 <div className={styles.adminContainer}>
-                    <div style={{ marginBottom: '32px', padding: '0 15px' }}>
-                        <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>회원 권한 관리</h1>
-                        <p style={{ color: '#64748b' }}>가입된 회원의 시스템 접근 권한을 관리합니다.</p>
+                    <div style={{ marginBottom: '24px', padding: '0 15px' }}>
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>회원 권한 관리</h1>
+                        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>가입된 회원의 시스템 접근 권한을 관리합니다.</p>
                     </div>
 
                     {/* Search & Filter Toolbar */}
@@ -232,6 +233,7 @@ export default function AdminUsersPage() {
                                                     type="text"
                                                     defaultValue={u.phone || ''}
                                                     placeholder="010-0000-0000"
+                                                    onInput={(e) => { e.target.value = formatPhoneNumber(e.target.value); }}
                                                     onBlur={(e) => { if (e.target.value !== (u.phone || '')) handleUpdateUser(u.id, u.email, { phone: e.target.value }); }}
                                                     style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                                                 />
@@ -311,7 +313,13 @@ export default function AdminUsersPage() {
                                     </div>
                                     <div className={styles.infoGroup}>
                                         <label>전화번호</label>
-                                        <input type="text" defaultValue={u.phone || ''} onBlur={(e) => handleUpdateUser(u.id, u.email, { phone: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }} />
+                                        <input
+                                            type="text"
+                                            defaultValue={u.phone || ''}
+                                            onInput={(e) => { e.target.value = formatPhoneNumber(e.target.value); }}
+                                            onBlur={(e) => handleUpdateUser(u.id, u.email, { phone: e.target.value })}
+                                            style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }}
+                                        />
                                     </div>
                                     <div className={styles.infoGroup} style={{ gridColumn: 'span 2' }}>
                                         <label>지점 및 권한</label>
