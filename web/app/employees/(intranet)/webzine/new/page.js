@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import styles from '../../(intranet)/board/board.module.css';
+import styles from '../../board/board.module.css';
 
 export default function NewWebzinePost() {
     const [title, setTitle] = useState('');
