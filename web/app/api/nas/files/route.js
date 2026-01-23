@@ -29,13 +29,13 @@ const BRANCH_FOLDER_MAP = {
 /**
  * Access Control Logic:
  * 1. Admin: Everything accessible.
- * 2. Security Folders: Only visible to the specific branch (e.g., '아산지점_보안' only for 'asan').
+ * 2. Security Folders: Only visible if user belongs to the branch AND has can_read_security = true.
  * 3. Write Permission: 
  *    - Branch users can write to their own branch folder and '자료실' (Common).
  *    - Others are read-only.
  * 4. Filtering: Hide system files/folders and non-Korean folders (Admins see everything).
  */
-function getPermissions(userRole, path) {
+function getPermissions(userRole, userCanSecurity, path) {
     if (userRole === 'admin') return { canRead: true, canWrite: true };
     if (!userRole || userRole === 'visitor') return { canRead: false, canWrite: false };
 
@@ -46,7 +46,9 @@ function getPermissions(userRole, path) {
     // Visibility Check (Security Folders - Using Underscore)
     if (rootFolder.endsWith('_보안')) {
         const securityBranch = rootFolder.replace('_보안', '');
-        if (securityBranch !== userBranchName) {
+        // Check 1: Must be user's own branch
+        // Check 2: Must have security access permission (can_read_security)
+        if (securityBranch !== userBranchName || !userCanSecurity) {
             return { canRead: false, canWrite: false }; // Completely hidden
         }
     }
@@ -69,8 +71,9 @@ export async function GET(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('id', user.id).single();
         const userRole = roleData?.role || 'visitor';
+        const userCanSecurity = roleData?.can_read_security || false;
         const isAdmin = userRole === 'admin';
 
         const rawFiles = await listFiles(path);
@@ -88,7 +91,7 @@ export async function GET(request) {
             if (file.type === 'directory' && !hasKorean(file.name)) return false;
 
             // 3. Security Folder Visibility
-            const perms = getPermissions(userRole, file.path);
+            const perms = getPermissions(userRole, userCanSecurity, file.path);
             if (!perms.canRead) return false;
 
             return true;
@@ -106,8 +109,9 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('id', user.id).single();
         const userRole = roleData?.role || 'visitor';
+        const userCanSecurity = roleData?.can_read_security || false;
 
         const contentType = request.headers.get('content-type') || '';
 
@@ -116,7 +120,7 @@ export async function POST(request) {
             const json = await request.json();
             const targetPath = json.path || json.to;
 
-            const perms = getPermissions(userRole, targetPath);
+            const perms = getPermissions(userRole, userCanSecurity, targetPath);
             if (!perms.canWrite) {
                 return NextResponse.json({ error: 'Forbidden: 해당 폴더에 쓰기 권한이 없습니다.' }, { status: 403 });
             }
@@ -137,7 +141,7 @@ export async function POST(request) {
             const file = formData.get('file');
             const path = formData.get('path') || '/';
 
-            const perms = getPermissions(userRole, path);
+            const perms = getPermissions(userRole, userCanSecurity, path);
             if (!perms.canWrite) {
                 return NextResponse.json({ error: 'Forbidden: 해당 폴더에 업로드 권한이 없습니다.' }, { status: 403 });
             }
@@ -193,12 +197,13 @@ export async function PATCH(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('id', user.id).single();
         const userRole = roleData?.role || 'visitor';
+        const userCanSecurity = roleData?.can_read_security || false;
         const { from, to } = await request.json();
 
         // Check Write Permission on Destination
-        const perms = getPermissions(userRole, to);
+        const perms = getPermissions(userRole, userCanSecurity, to);
         if (!perms.canWrite) {
             return NextResponse.json({ error: 'Forbidden: 해당 위치로 이동권한이 없습니다.' }, { status: 403 });
         }
