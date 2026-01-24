@@ -55,7 +55,6 @@ const navLinks = [
                 children: [
                     { href: '/employees/branches/headquarters', label: '서울본사' },
                     { href: '/employees/branches/asan', label: '아산지점' },
-                    { href: '/employees/branches/asan/menu', label: '└ 식단선택', isSubItem: true },
                     { href: '/employees/branches/jungbu', label: '중부지점' },
                     { href: '/employees/branches/dangjin', label: '당진지점' },
                     { href: '/employees/branches/yesan', label: '예산지점' },

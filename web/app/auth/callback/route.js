@@ -117,14 +117,21 @@ export async function GET(request) {
                     return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
                 }
 
-                // Ensure user_roles entry exists
-                const { error: roleError } = await adminSupabase
+                // Role overwriting fix: Only insert if no role exists to preserve admin status
+                const { data: existingRole } = await adminSupabase
                     .from('user_roles')
-                    .upsert({ id: user.id, role: 'visitor' }, { onConflict: 'id' });
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
 
-                if (roleError) {
-                    console.error('Naver user_roles UPSERT error:', roleError);
-                    return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
+                if (!existingRole) {
+                    const { error: roleError } = await adminSupabase
+                        .from('user_roles')
+                        .insert({ id: user.id, role: 'visitor' });
+                    if (roleError) {
+                        console.error('Naver user_roles insert error:', roleError);
+                        return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
+                    }
                 }
             }
 
@@ -182,14 +189,21 @@ export async function GET(request) {
                 return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
             }
 
-            // Ensure user_roles entry exists
-            const { error: roleError } = await adminSupabase
+            // Role overwriting fix: Only insert if no role exists to preserve admin status
+            const { data: existingRole } = await adminSupabase
                 .from('user_roles')
-                .upsert({ id: user.id, role: 'visitor' }, { onConflict: 'id' });
-            
-            if (roleError) {
-                console.error('Standard OAuth user_roles UPSERT error:', roleError);
-                return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (!existingRole) {
+                const { error: roleError } = await adminSupabase
+                    .from('user_roles')
+                    .insert({ id: user.id, role: 'visitor' });
+                if (roleError) {
+                    console.error('Standard OAuth user_roles insert error:', roleError);
+                    return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
+                }
             }
 
             return NextResponse.redirect(`${origin}${next}`);
