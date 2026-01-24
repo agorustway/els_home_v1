@@ -12,7 +12,7 @@ export const locations = [
         role: '종합 물류 전략 및 컨트롤 타워'
     },
     {
-        name: '아산지점 (CY)',
+        name: '아산지점',
         lat: 36.9243,
         lng: 127.0570,
         addr: '충남 아산시 둔포면 아산밸리중앙로 79-6 501호',

@@ -41,7 +41,7 @@ export async function middleware(request) {
     const path = request.nextUrl.pathname;
 
     // 1. Protected Routes (Access Control)
-    if (path.startsWith('/admin') || path.startsWith('/employees/mypage')) {
+    if (path.startsWith('/admin') || path.startsWith('/employees')) {
         // If not authenticated, redirect to login
         if (!user) {
             const url = request.nextUrl.clone()
@@ -51,6 +51,14 @@ export async function middleware(request) {
             return NextResponse.redirect(url)
         }
         
+        // 방문자(visitor) 권한은 임직원 홈(/employees) 외의 하위 기능 접근 불가
+        if (userRole === 'visitor' && path !== '/employees' && !path.startsWith('/employees/mypage')) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/login'
+            url.searchParams.set('error', '권한이 없습니다: 방문객은 해당 기능을 이용할 수 없습니다.')
+            return NextResponse.redirect(url)
+        }
+
         // If authenticated and not visitor, but trying to access /admin pages without 'admin' role
         if (path.startsWith('/admin') && userRole !== 'admin') {
              const url = request.nextUrl.clone()

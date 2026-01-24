@@ -9,10 +9,10 @@ import { motion } from 'framer-motion';
 import { use } from 'react';
 
 export default function BranchPage({ params }) {
-    const branch = params.branch;
+    const { branch } = use(params);
 
     const branchName = {
-        asan: '아산지점 (CY)',
+        asan: '아산지점',
         jungbu: '중부지점',
         dangjin: '당진지점',
         yesan: '예산지점',
