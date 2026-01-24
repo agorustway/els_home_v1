@@ -73,17 +73,29 @@ export async function GET(request) {
 
             // 4. UPSERT into public.profiles for account linking
             if (user && user.email) {
+                console.log('User object from social provider:', JSON.stringify(user, null, 2));
+
                 const { error: profileError } = await adminSupabase
                     .from('profiles')
                     .upsert({
                         email: user.email,
                         full_name: user.user_metadata.full_name || user.email.split('@')[0],
                         avatar_url: user.user_metadata.avatar_url,
-                    }, { onConflict: 'email', ignoreDuplicates: false }); // Ensure update on conflict
+                    }, { onConflict: 'email', ignoreDuplicates: false });
 
                 if (profileError) {
                     console.error('Naver Profile UPSERT error:', profileError);
                     return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
+                }
+
+                // Ensure user_roles entry exists
+                const { error: roleError } = await adminSupabase
+                    .from('user_roles')
+                    .upsert({ id: user.id }, { onConflict: 'id' });
+
+                if (roleError) {
+                    console.error('Naver user_roles UPSERT error:', roleError);
+                    return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
                 }
             }
 
@@ -101,18 +113,30 @@ export async function GET(request) {
     if (code) {
         const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error && user && user.email) {
+            console.log('User object from social provider:', JSON.stringify(user, null, 2));
+            
             // UPSERT into public.profiles for account linking
             const { error: profileError } = await adminSupabase
                 .from('profiles')
                 .upsert({
                     email: user.email,
-                    full_name: user.user_metadata.full_name || user.email.split('@')[0],
+                    full_name: user.user_metadata.full_name || user.user_metadata.name || user.email.split('@')[0],
                     avatar_url: user.user_metadata.avatar_url,
-                }, { onConflict: 'email', ignoreDuplicates: false }); // Ensure update on conflict
+                }, { onConflict: 'email', ignoreDuplicates: false });
 
             if (profileError) {
                 console.error('Standard OAuth Profile UPSERT error:', profileError);
                 return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
+            }
+
+            // Ensure user_roles entry exists
+            const { error: roleError } = await adminSupabase
+                .from('user_roles')
+                .upsert({ id: user.id, role: 'visitor' }, { onConflict: 'id' });
+            
+            if (roleError) {
+                console.error('Standard OAuth user_roles UPSERT error:', roleError);
+                return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
             }
 
             return NextResponse.redirect(`${origin}${next}`);
