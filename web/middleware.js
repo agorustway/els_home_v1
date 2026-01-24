@@ -41,21 +41,13 @@ export async function middleware(request) {
     const path = request.nextUrl.pathname;
 
     // 1. Protected Routes (Access Control)
-    if ((path.startsWith('/employees') || path.startsWith('/admin'))) {
+    if (path.startsWith('/admin') || path.startsWith('/employees/mypage')) {
         // If not authenticated, redirect to login
         if (!user) {
             const url = request.nextUrl.clone()
             url.pathname = '/login'
             url.searchParams.set('next', path) // Redirect back after login
             url.searchParams.set('error', '로그인이 필요합니다.')
-            return NextResponse.redirect(url)
-        }
-        
-        // If authenticated but role is 'visitor', redirect to login with unauthorized error
-        if (userRole === 'visitor') {
-            const url = request.nextUrl.clone()
-            url.pathname = '/login'
-            url.searchParams.set('error', '권한이 없습니다: 방문객은 임직원 페이지에 접근할 수 없습니다.')
             return NextResponse.redirect(url)
         }
         

@@ -53,17 +53,12 @@ const navLinks = [
             {
                 label: '지점별 서비스',
                 children: [
+                    { href: '/employees/branches/headquarters', label: '서울본사' },
                     { href: '/employees/branches/asan', label: '아산지점' },
                     { href: '/employees/branches/asan/menu', label: '└ 식단선택', isSubItem: true },
-                    { href: '/employees/branches/asan_cy', label: '아산CY' },
                     { href: '/employees/branches/jungbu', label: '중부지점' },
                     { href: '/employees/branches/dangjin', label: '당진지점' },
                     { href: '/employees/branches/yesan', label: '예산지점' },
-                    { href: '/employees/branches/seosan', label: '서산지점' },
-                    { href: '/employees/branches/yeoncheon', label: '연천지점' },
-                    { href: '/employees/branches/ulsan', label: '울산지점' },
-                    { href: '/employees/branches/imgo', label: '임고지점' },
-                    { href: '/employees/branches/bulk', label: '벌크사업부' },
                 ]
             }
         ]
@@ -147,11 +142,6 @@ export default function Header({ darkVariant = false }) {
 
     const renderNavLinks = (isMobile = false) => {
         const linkElements = navLinks.map((link, index) => {
-            if (link.isEmployee) {
-                if (!profile || profile.role === 'visitor') {
-                    return null; // Don't render employee links for visitors or unauthenticated users
-                }
-            }
             if (link.children) {
                 const isExpanded = expandedMenus.includes(link.label);
                 return (

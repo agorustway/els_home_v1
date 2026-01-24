@@ -10,6 +10,8 @@ export const metadata = {
   referrer: 'origin-when-cross-origin',
   icons: {
     icon: '/images/logo_shot.png',
+    shortcut: '/images/logo_shot.png',
+    apple: '/images/logo_shot.png',
   },
 };
 
