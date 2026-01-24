@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import styles from './Network.module.css';
-import { locations } from '../constants/locations';
+import { locations } from '@/constants/locations';
 
 
 export default function Network() {

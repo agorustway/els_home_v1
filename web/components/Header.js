@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import styles from './Header.module.css';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { getRoleLabel } from '../utils/roles';
-import { useUserProfile } from '../hooks/useUserProfile';
+import { getRoleLabel } from '@/utils/roles';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 // Centralized navigation structure
 const navLinks = [
