@@ -70,17 +70,38 @@ export async function PATCH(request) {
             if (profileError) throw profileError;
         }
         
-        // Handle Role Request in user_roles table
+        // Handle Role Change based on the new policy
         if (role !== undefined) {
+            // Block any self-request for admin role
             if (role === 'admin') {
-                return NextResponse.json({ error: 'Cannot request admin role' }, { status: 403 });
+                return NextResponse.json({ error: '관리자 권한은 요청할 수 없습니다.' }, { status: 403 });
             }
-            const { error: roleError } = await adminSupabase
-                .from('user_roles')
-                .update({ requested_role: role })
-                .eq('id', user.id);
 
-            if (roleError) throw roleError;
+            // Fetch current role first
+            const { data: currentRoleData } = await adminSupabase
+                .from('user_roles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            const currentUserRole = currentRoleData?.role || 'visitor';
+
+            // 'visitor' cannot change their role; they must be assigned one by an admin.
+            if (currentUserRole === 'visitor') {
+                return NextResponse.json({ error: '방문객은 소속 지점을 직접 변경할 수 없습니다. 관리자에게 문의하세요.' }, { status: 403 });
+            } 
+            // Any other authorized user (non-visitor) can change their role directly.
+            else {
+                const { error: roleError } = await adminSupabase
+                    .from('user_roles')
+                    .update({ 
+                        role: role,
+                        requested_role: null // Clear any pending requests
+                    })
+                    .eq('id', user.id);
+
+                if (roleError) throw roleError;
+            }
         }
 
         return NextResponse.json({ success: true });

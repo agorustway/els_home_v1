@@ -31,21 +31,42 @@ export async function middleware(request) {
         data: { user }, 
     } = await supabase.auth.getUser()
 
+    let userRole = 'visitor'; // Default to visitor if no user or role found
+    if (user) {
+        // Use the authenticated client to fetch the user's role
+        const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        userRole = roleData?.role || 'visitor';
+    }
+
     const path = request.nextUrl.pathname;
 
     // 1. Protected Routes (Access Control)
-    // /employees or /admin paths require authentication
-    if ((path.startsWith('/employees') || path.startsWith('/admin')) && !user) {
-        // Redirect to login page
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        url.searchParams.set('next', path) // Redirect back after login
-        return NextResponse.redirect(url)
+    if ((path.startsWith('/employees') || path.startsWith('/admin'))) {
+        // If not authenticated, redirect to login
+        if (!user) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/login'
+            url.searchParams.set('next', path) // Redirect back after login
+            url.searchParams.set('error', '로그인이 필요합니다.')
+            return NextResponse.redirect(url)
+        }
+        
+        // If authenticated but role is 'visitor', redirect to login with unauthorized error
+        if (userRole === 'visitor') {
+            const url = request.nextUrl.clone()
+            url.pathname = '/login'
+            url.searchParams.set('error', '권한이 없습니다: 방문객은 임직원 페이지에 접근할 수 없습니다.')
+            return NextResponse.redirect(url)
+        }
+        
+        // If authenticated and not visitor, but trying to access /admin pages without 'admin' role
+        if (path.startsWith('/admin') && userRole !== 'admin') {
+             const url = request.nextUrl.clone()
+             url.pathname = '/login' // Or a specific unauthorized page
+             url.searchParams.set('error', '권한이 없습니다: 관리자만 관리자 페이지에 접근할 수 있습니다.')
+             return NextResponse.redirect(url)
+        }
     }
-
-    // 2. Security Headers (Optional: Relax strict policies if needed for mobile)
-    // Currently standard Next.js handling is sufficient. 
-    // If specific errors persist, we can add permissive headers here.
 
     return supabaseResponse
 }

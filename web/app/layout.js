@@ -8,6 +8,9 @@ export const metadata = {
   title: "ELS SOLUTION",
   description: "Total Logistics Solution Provider",
   referrer: 'origin-when-cross-origin',
+  icons: {
+    icon: '/images/logo_shot.png',
+  },
 };
 
 export const viewport = {

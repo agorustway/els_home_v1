@@ -41,6 +41,7 @@ const navLinks = [
             { href: '/admin', label: '📋 고객 문의 관리', isAdmin: true },
             { type: 'divider', isAdmin: true },
             { label: '사내 시스템', type: 'label' },
+            { href: '/employees', label: '🏠 임직원 홈' },
             { href: '/employees/archive', label: '📂 자료실 (NAS)' },
             { href: '/employees/board/free', label: '💬 자유게시판' },
             { href: '/employees/webzine', label: '📰 웹진 (블로그)' },
@@ -145,9 +146,12 @@ export default function Header({ darkVariant = false }) {
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     const renderNavLinks = (isMobile = false) => {
-        const linkElements = navLinks.filter(link => {
-            return isMobile ? true : !link.isEmployee;
-        }).map((link, index) => {
+        const linkElements = navLinks.map((link, index) => {
+            if (link.isEmployee) {
+                if (!profile || profile.role === 'visitor') {
+                    return null; // Don't render employee links for visitors or unauthenticated users
+                }
+            }
             if (link.children) {
                 const isExpanded = expandedMenus.includes(link.label);
                 return (
@@ -174,31 +178,20 @@ export default function Header({ darkVariant = false }) {
             }
 
             return <Link key={index} href={link.href} className={isMobile ? styles.mobileLink : ''} style={{ color: isMobile ? '#333' : textColor }} onClick={handleLinkClick}>{link.label}</Link>;
-        });
+        }).filter(Boolean); // Filter out nulls from conditional rendering
 
-        // Always show Employee Portal link on Desktop
-        if (!isMobile && !loading) {
-            linkElements.push(
-                <div key="employee-nav" className={styles.hasDropdown}>
-                    <a
-                        href="/employees"
-                        className={styles.empBtn}
-                        style={{
-                            color: textColor,
-                            borderColor: isDarkHeader ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.4)',
-                        }}
-                    >
-                        임직원전용
-                    </a>
-                    <div className={styles.dropdown}>
-                        {renderSubLinks(navLinks.find(l => l.isEmployee)?.children || [], false)}
-                        <div className={styles.dropdownDivider} />
-                        <Link href="/employees/mypage" className={styles.dropdownItem} onClick={handleLinkClick}>👤 내 정보 수정</Link>
-                    </div>
-                </div>
-            );
+        // Push Employee Portal link on Desktop if not loading and user is not a visitor
+        if (!isMobile && !loading && profile && profile.role !== 'visitor') {
+            // This block is already being handled within the map filter above.
+            // If the original navLinks already contain an entry for '임직원전용',
+            // this duplicate push might be problematic. Let's make sure it's not a duplicate.
+            // Assuming the `navLinks` array contains a top-level `isEmployee` item.
+            // If so, the filter above is sufficient.
+            // Remove the push logic from here, as the filtering in map should take care of it.
+        }
 
-            // USER AUTH DROPDOWN
+        // USER AUTH DROPDOWN (This part is already fine, just needs to use profile)
+        if (!isMobile && !loading) { // This part should remain, as it controls the login/logout button
             linkElements.push(
                 <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
                     {profile ? (

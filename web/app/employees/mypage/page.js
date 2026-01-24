@@ -55,11 +55,7 @@ export default function MyPage() {
             });
 
             if (res.ok) {
-                if (role !== user.role) {
-                    alert('정보가 저장되었습니다.\n지점(권한) 변경은 관리자 승인 후 반영됩니다.');
-                } else {
-                    alert('정보가 수정되었습니다.');
-                }
+                alert('정보가 수정되었습니다.');
                 window.location.reload();
             } else {
                 alert('수정 실패');
@@ -130,27 +126,44 @@ export default function MyPage() {
 
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소속 지점 (권한)</label>
-                            <select
-                                className={styles.input}
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                                style={{ borderColor: requestedRole && requestedRole !== user?.role ? '#f59e0b' : '#e2e8f0' }}
-                            >
-                                {Object.entries(ROLE_LABELS)
-                                    .filter(([key]) => key !== 'admin')
-                                    .map(([key, label]) => (
-                                        <option key={key} value={key}>{label}</option>
-                                    ))
-                                }
-                            </select>
+                            {user.role === 'visitor' ? (
+                                <>
+                                    <input
+                                        type="text"
+                                        className={styles.input}
+                                        value={getRoleLabel(user.role)}
+                                        disabled
+                                        style={{ backgroundColor: '#e2e8f0', cursor: 'not-allowed' }}
+                                    />
+                                    <div style={{ fontSize: '0.8rem', color: '#f59e0b', marginTop: '6px' }}>
+                                        ⚠️ 소속 지점은 관리자에게 문의하여 배정받을 수 있습니다.
+                                    </div>
+                                </>
+                            ) : (
+                                <select
+                                    className={styles.input}
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    style={{ borderColor: requestedRole && requestedRole !== user?.role ? '#f59e0b' : '#e2e8f0' }}
+                                >
+                                    {Object.entries(ROLE_LABELS)
+                                        .filter(([key]) => key !== 'admin')
+                                        .map(([key, label]) => (
+                                            <option key={key} value={key}>{label}</option>
+                                        ))
+                                    }
+                                </select>
+                            )}
                             {requestedRole && requestedRole !== user?.role && (
                                 <div style={{ fontSize: '0.8rem', color: '#d97706', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     ⏳ 변경 요청 대기 중: <strong>{getRoleLabel(requestedRole)}</strong> (관리자 승인 필요)
                                 </div>
                             )}
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
-                                * 지점 변경 시 관리자 승인이 필요합니다.
-                            </div>
+                            {user.role !== 'visitor' && (
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
+                                    * 소속 지점은 즉시 변경됩니다.
+                                </div>
+                            )}
                         </div>
 
                         <div className={styles.formGroup}>
