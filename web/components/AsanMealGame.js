@@ -125,7 +125,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
         const finalCol = path[path.length - 1].c;
         const isWinner = finalCol === winnerIndexAtBottom;
         const prize = isWinner ? '당첨' : '통과';
-        const finalEmoji = isWinner ? '😭' : '😆';
+        const finalEmoji = isWinner ? '😭' : '😆'; // Penalty = Crying, Pass = Laughing
 
         setMarkerEmoji(finalEmoji);
 
@@ -245,7 +245,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                 style={{ left: i * COL_SPACE + paddingX }}
                             >
                                 <div className={`${styles.prizeTag} ${i === winnerIndexAtBottom ? styles.prizeWin : styles.prizePass}`}>
-                                    {i === winnerIndexAtBottom ? '당첨' : '통과'}
+                                    <span>{i === winnerIndexAtBottom ? '당첨' : '통과'}</span>
                                 </div>
                             </div>
                         ))}
@@ -330,18 +330,31 @@ const BingoGame = ({ participants, onGameEnd }) => {
                     ))}
                 </div>
                 <div className={styles.bingoGuideBottom}>
-                    <p>💡 선사 코드를 선택해서 3줄 빙고를 만들어보세요!</p>
+                    <p>💡 <b>게임 방법:</b> 무작위로 배치된 선사 코드를 클릭하여 가로, 세로, 혹은 대각선으로 <b>3줄</b>을 먼저 완성하면 승리합니다!</p>
                 </div>
-                {isWin && (
-                    <motion.div className={styles.bingoOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                        <motion.div className={styles.bingoResultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}>
-                            <div className={styles.victoryIcon}>🏆</div>
-                            <h2>BINGO!</h2>
-                            <p>축하합니다! 3줄 완성을 달성했습니다.</p>
-                            <button className={styles.confirmBtn} onClick={() => setIsWin(false)}>확인</button>
+                <AnimatePresence>
+                    {isWin && (
+                        <motion.div
+                            className={styles.bingoOverlay}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            <motion.div
+                                className={styles.bingoResultCard}
+                                initial={{ scale: 0.8, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.8, opacity: 0 }}
+                            >
+                                <div className={styles.victoryIcon}>🎯</div>
+                                <h2>BINGO!</h2>
+                                <p>축하합니다!<br />3줄 완성을 달성했습니다.</p>
+                                <div className={styles.bingoResultLineCnt}>{bingoCount}줄 완성</div>
+                                <button className={styles.confirmBtn} onClick={() => setIsWin(false)}>확인</button>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

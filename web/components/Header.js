@@ -46,18 +46,28 @@ const navLinks = [
             { href: '/employees/board/free', label: '💬 자유게시판' },
             { href: '/employees/webzine', label: '📰 웹진 (블로그)' },
             { type: 'divider' },
-            { label: '업무보고', type: 'label' },
-            { href: '/employees/reports', label: '📊 통합 업무보고' },
-            { href: '/employees/reports/my', label: '📝 내 업무보고' },
+            {
+                label: '업무보고',
+                children: [
+                    { href: '/employees/reports', label: '📊 통합 업무보고' },
+                    { href: '/employees/reports/my', label: '📝 내 업무보고' },
+                    { type: 'divider' },
+                    { href: '/employees/reports/daily', label: '📅 일일 업무일지', isSubItem: true },
+                    { href: '/employees/reports/monthly', label: '📆 월간 실적보고', isSubItem: true },
+                ]
+            },
             { type: 'divider' },
             {
                 label: '지점별 서비스',
                 children: [
-                    { href: '/employees/branches/headquarters', label: '서울본사' },
-                    { href: '/employees/branches/asan', label: '아산지점' },
-                    { href: '/employees/branches/jungbu', label: '중부지점' },
-                    { href: '/employees/branches/dangjin', label: '당진지점' },
-                    { href: '/employees/branches/yesan', label: '예산지점' },
+                    { label: '수도권/본사', type: 'label' },
+                    { href: '/employees/branches/headquarters', label: '🏢 서울본사', isSubItem: true },
+                    { type: 'divider' },
+                    { label: '충청권 지점', type: 'label' },
+                    { href: '/employees/branches/asan', label: '🚚 아산지점', isSubItem: true },
+                    { href: '/employees/branches/jungbu', label: '🏭 중부지점', isSubItem: true },
+                    { href: '/employees/branches/dangjin', label: '🏗️ 당진지점', isSubItem: true },
+                    { href: '/employees/branches/yesan', label: '🚛 예산지점', isSubItem: true },
                 ]
             }
         ]
@@ -167,11 +177,11 @@ export default function Header({ darkVariant = false }) {
             }
 
             return (
-                <Link 
-                    key={index} 
-                    href={link.href} 
-                    className={isMobile ? styles.mobileLink : ''} 
-                    style={{ color: isMobile ? '#333' : textColor }} 
+                <Link
+                    key={index}
+                    href={link.href}
+                    className={isMobile ? styles.mobileLink : ''}
+                    style={{ color: isMobile ? '#333' : textColor }}
                     onClick={handleLinkClick}
                     prefetch={false} // 모바일 세션 충돌 방지
                 >
@@ -345,10 +355,10 @@ export default function Header({ darkVariant = false }) {
                 : `${styles.dropdownItem} ${subLink.isSubItem ? styles.dropdownSubItem : ''} ${subLink.isAdmin ? styles.adminLink : ''}`;
 
             return (
-                <Link 
-                    key={subIndex} 
-                    href={subLink.href} 
-                    className={className} 
+                <Link
+                    key={subIndex}
+                    href={subLink.href}
+                    className={className}
                     onClick={handleLinkClick}
                     prefetch={false} // 모바일 세션 충돌 방지
                 >

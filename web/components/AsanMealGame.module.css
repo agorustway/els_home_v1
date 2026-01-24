@@ -361,16 +361,13 @@
 
 .ladderViewport {
     width: 100%;
-    overflow-x: auto;
+    overflow: x auto;
     padding: 20px 0;
     display: flex;
     justify-content: flex-start;
-    /* Ensure left-aligned for scroll */
     -webkit-overflow-scrolling: touch;
-    /* Smooth scroll for touch devices */
 }
 
-/* Custom scrollbar for better UX */
 .ladderViewport::-webkit-scrollbar {
     height: 6px;
 }
@@ -389,7 +386,8 @@
 .ladderHeaderRow,
 .ladderFooterRow {
     position: relative;
-    height: 80px;
+    height: 100px;
+    /* Slightly more height */
     width: 100%;
 }
 
@@ -399,6 +397,8 @@
     transform: translateX(-50%);
     display: flex;
     justify-content: center;
+    width: 100px;
+    /* Explicit width for centering contents */
 }
 
 .node {
@@ -411,28 +411,42 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    width: 80px;
+    width: 85px;
 }
 
-.nodeLabel {
+.prizeTag {
+    width: 70px;
+    /* Fix for vertical text */
+    padding: 10px 0;
+    border-radius: 16px;
     font-weight: 900;
-    font-size: 0.8rem;
-    color: #1e293b;
+    font-size: 0.95rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.prizeTag span {
+    display: block;
+    width: 100%;
     white-space: nowrap;
+}
+
+.prizeWin {
+    background: #ef4444;
+}
+
+.prizePass {
+    background: #10b981;
 }
 
 .ladderBoard {
     height: 450px;
     position: relative;
     margin: 10px 0;
-}
-
-.ladderLines {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
 }
 
 .activeMarker {
@@ -445,19 +459,8 @@
 }
 
 .emojiLarge {
-    font-size: 3.5rem;
-    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
-}
-
-.markerNameTag {
-    background: #4f46e5;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 900;
-    margin-top: 5px;
-    white-space: nowrap;
+    font-size: 3.8rem;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
 }
 
 /* Bingo Fixed UI */
@@ -471,52 +474,102 @@
 
 .bingoBoardOuter {
     background: #f8fafc;
-    padding: 30px;
+    padding: 24px;
     border-radius: 32px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
-    max-width: 650px;
+    max-width: 480px;
+    /* Slightly smaller board */
     width: 100%;
     position: relative;
-}
-
-.bingoHeaderWide {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-}
-
-.bingoTitleGroup h2 {
-    font-size: 1.6rem;
-    font-weight: 1000;
-    color: #0f172a;
-    margin: 0;
 }
 
 .bingoGrid5x5 {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
+    gap: 10px;
 }
 
 .bingoCellItem {
     aspect-ratio: 1;
     background: #fff;
-    border-radius: 16px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
+    /* Smaller Font */
     color: #334155;
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f1f5f9;
 }
 
 .bingoMarkedItem {
     background: #4f46e5 !important;
     color: white !important;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+}
+
+.bingoGuideBottom {
+    margin-top: 20px;
+    background: #fff;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
+}
+
+.bingoGuideBottom p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.bingoOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    border-radius: 32px;
+}
+
+.bingoResultCard {
+    background: #fff;
+    width: 85%;
+    padding: 40px 20px;
+    border-radius: 24px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.victoryIcon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.bingoResultCard h2 {
+    font-size: 2rem;
+    font-weight: 1000;
+    color: #4f46e5;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+
+.bingoResultLineCnt {
+    display: inline-block;
+    background: #fdf2f2;
+    color: #ef4444;
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-weight: 900;
+    margin-top: 15px;
+    margin-bottom: 20px;
 }
 
 /* Mobile Optimization */
@@ -545,26 +598,14 @@
         height: 340px;
     }
 
-    .confirmBtn {
-        padding: 12px 30px;
-    }
-
     .bingoBoardOuter {
         padding: 20px;
         border-radius: 24px;
-    }
-
-    .bingoGrid5x5 {
-        gap: 10px;
+        max-width: 400px;
     }
 
     .bingoCellItem {
-        font-size: 0.9rem;
-        border-radius: 12px;
-    }
-
-    .ladderViewport {
-        justify-content: flex-start;
+        font-size: 0.85rem;
     }
 }
 
@@ -587,12 +628,6 @@
     .rouletteWrapper {
         width: 300px;
         height: 300px;
-        box-shadow: 0 0 0 8px #f8fafc, 0 15px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    .indicator {
-        font-size: 22px;
-        top: -10px;
     }
 
     .bingoBoardOuter {
@@ -601,17 +636,16 @@
     }
 
     .bingoCellItem {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         border-radius: 10px;
     }
 
-    .gameNav button {
-        padding: 12px 5px;
-        font-size: 0.85rem;
+    .node {
+        width: 75px;
     }
 
-    .node {
-        width: 65px;
-        border-radius: 14px;
+    .prizeTag {
+        width: 60px;
+        font-size: 0.85rem;
     }
 }
