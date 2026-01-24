@@ -40,54 +40,72 @@ export async function GET(request) {
         if (authError) throw authError;
 
         // 2. Fetch user details (roles, name, phone)
-        const { data: userRoles, error: rolesError } = await supabase
+        const { data: userRoles } = await adminSupabase
             .from('user_roles')
             .select('*');
 
-        if (rolesError) throw rolesError;
+        // 2.1 Fetch profiles (primary info)
+        const { data: profiles } = await adminSupabase
+            .from('profiles')
+            .select('*');
 
+        // Map by Email for identity merging
         const rolesMap = {};
-        userRoles?.forEach(r => {
-            rolesMap[r.id] = r;
-        });
+        userRoles?.forEach(r => { if (r.email) rolesMap[r.email] = r; });
 
-        // 3. Fetch Post Counts for all users (to decide Delete vs Ban)
-        // Optimization: Use .select('author_id', { count: 'exact', head: true }) is hard per user.
-        // Better: Get all author_ids from posts and count them.
+        const profilesMap = {};
+        profiles?.forEach(p => { if (p.email) profilesMap[p.email] = p; });
+
+        // 3. Fetch Post Counts aggregated by email
         const { data: postsData } = await adminSupabase
             .from('posts')
-            .select('author_id');
+            .select('author_email');
 
         const postCounts = {};
         postsData?.forEach(p => {
-            postCounts[p.author_id] = (postCounts[p.author_id] || 0) + 1;
+            if (p.author_email) {
+                postCounts[p.author_email] = (postCounts[p.author_email] || 0) + 1;
+            }
         });
 
-        // 4. Merge & Filter
-        let mergedUsers = authUsers.map(authUser => ({
-            id: authUser.id,
-            email: authUser.email,
-            role: rolesMap[authUser.id]?.role || 'visitor',
-            name: rolesMap[authUser.id]?.name || '',
-            phone: rolesMap[authUser.id]?.phone || '', // Added Phone
-            can_write: rolesMap[authUser.id]?.can_write || false,
-            can_delete: rolesMap[authUser.id]?.can_delete || false,
-            can_read_security: rolesMap[authUser.id]?.can_read_security || false,
-            is_banned: authUser.banned_until && new Date(authUser.banned_until) > new Date(),
-            requested_role: rolesMap[authUser.id]?.requested_role, // Show requested role to admin
-            post_count: postCounts[authUser.id] || 0, // Post Count
-            created_at: rolesMap[authUser.id]?.created_at || authUser.created_at
-        }));
+        // 4. Unique User Consolidation (Merge by Email)
+        const uniqueEmails = new Set();
+        let consolidatedUsers = [];
+
+        authUsers.forEach(authUser => {
+            if (!authUser.email || uniqueEmails.has(authUser.email)) return;
+            uniqueEmails.add(authUser.email);
+
+            const email = authUser.email;
+            const roleInfo = rolesMap[email] || {};
+            const profileInfo = profilesMap[email] || {};
+
+            consolidatedUsers.push({
+                id: authUser.id, // Primary ID for this session
+                email: email,
+                role: roleInfo.role || 'visitor',
+                name: profileInfo.full_name || roleInfo.name || '',
+                phone: profileInfo.phone || roleInfo.phone || '',
+                avatar_url: profileInfo.avatar_url,
+                can_write: roleInfo.can_write || false,
+                can_delete: roleInfo.can_delete || false,
+                can_read_security: roleInfo.can_read_security || false,
+                is_banned: authUser.banned_until && new Date(authUser.banned_until) > new Date(),
+                requested_role: roleInfo.requested_role,
+                post_count: postCounts[email] || 0,
+                created_at: roleInfo.created_at || authUser.created_at
+            });
+        });
 
         // Filter: Banned
         if (!showBanned) {
-            mergedUsers = mergedUsers.filter(u => !u.is_banned);
+            consolidatedUsers = consolidatedUsers.filter(u => !u.is_banned);
         }
 
-        // Filter: Search (Email or Name or Role)
+        // Filter: Search
         if (query) {
             const lowerQ = query.toLowerCase();
-            mergedUsers = mergedUsers.filter(u =>
+            consolidatedUsers = consolidatedUsers.filter(u =>
                 u.email?.toLowerCase().includes(lowerQ) ||
                 u.name?.toLowerCase().includes(lowerQ) ||
                 getRoleLabel(u.role).toLowerCase().includes(lowerQ)
@@ -95,22 +113,17 @@ export async function GET(request) {
         }
 
         // Sort
-        mergedUsers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        consolidatedUsers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         // Pagination
-        const total = mergedUsers.length;
+        const total = consolidatedUsers.length;
         const totalPages = Math.ceil(total / limit);
         const startIndex = (page - 1) * limit;
-        const paginatedUsers = mergedUsers.slice(startIndex, startIndex + limit);
+        const paginatedUsers = consolidatedUsers.slice(startIndex, startIndex + limit);
 
         return NextResponse.json({
             users: paginatedUsers,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages
-            }
+            pagination: { page, limit, total, totalPages }
         });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -144,9 +157,9 @@ export async function PATCH(request) {
 
         const adminSupabase = await createAdminClient();
 
-        // Handle Ban/Unban logic
+        // Handle Ban/Unban logic (Auth level is still ID based)
         if (banned !== undefined) {
-            const banDuration = banned ? '876000h' : 'none'; // 100 years or none
+            const banDuration = banned ? '876000h' : 'none';
             const { error: banError } = await adminSupabase.auth.admin.updateUserById(
                 userId,
                 { ban_duration: banDuration }
@@ -154,33 +167,32 @@ export async function PATCH(request) {
             if (banError) throw banError;
         }
 
-        // Fetch existing record to avoid overwriting with defaults
-        const { data: existingRecord } = await adminSupabase
-            .from('user_roles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        // Handle Identity Updates (Email-centric)
+        if (email) {
+            // 1. Sync Role & Permissions in user_roles
+            const roleUpdates = { email: email };
+            if (role !== undefined) roleUpdates.role = role;
+            if (can_write !== undefined) roleUpdates.can_write = can_write;
+            if (can_delete !== undefined) roleUpdates.can_delete = can_delete;
+            if (can_read_security !== undefined) roleUpdates.can_read_security = can_read_security;
+            if (name !== undefined) roleUpdates.name = name;
+            if (phone !== undefined) roleUpdates.phone = phone;
 
-        // Build update object for user_roles
-        const roleUpdates = {
-            id: userId,
-            email: email || existingRecord?.email,
-            // If it's a new record and no role provided, default to 'visitor'
-            role: role || existingRecord?.role || 'visitor'
-        };
+            await adminSupabase
+                .from('user_roles')
+                .upsert(roleUpdates, { onConflict: 'email' });
 
-        if (can_write !== undefined) roleUpdates.can_write = can_write;
-        if (can_delete !== undefined) roleUpdates.can_delete = can_delete;
-        if (can_read_security !== undefined) roleUpdates.can_read_security = can_read_security;
-        if (name !== undefined) roleUpdates.name = name;
-        if (phone !== undefined) roleUpdates.phone = phone;
+            // 2. Sync Profile data
+            if (name !== undefined || phone !== undefined) {
+                const profileUpdates = { email: email };
+                if (name !== undefined) profileUpdates.full_name = name;
+                if (phone !== undefined) profileUpdates.phone = phone;
 
-        // Perform upsert
-        const { error: updateError } = await adminSupabase
-            .from('user_roles')
-            .upsert(roleUpdates, { onConflict: 'id' });
-
-        if (updateError) throw updateError;
+                await adminSupabase
+                    .from('profiles')
+                    .upsert(profileUpdates, { onConflict: 'email' });
+            }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

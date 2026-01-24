@@ -7,6 +7,7 @@ export async function GET(request) {
     const type = searchParams.get('type') || 'free';
     const branch = searchParams.get('branch');
 
+    // Join with user_roles to get author info, but realize multiple IDs share the same email
     let query = supabase
         .from('posts')
         .select(`
@@ -29,7 +30,32 @@ export async function GET(request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ posts: data });
+    // Post-processing: If we have author_email, we should really be using the profile name
+    // to ensure consistency across providers.
+    const uniqueEmails = [...new Set(data.filter(p => p.author?.email || p.author_email).map(p => p.author?.email || p.author_email))];
+
+    const { data: profiles } = await supabase
+        .from('profiles')
+        .select('email, full_name, avatar_url')
+        .in('email', uniqueEmails);
+
+    const profileMap = {};
+    profiles?.forEach(p => { profileMap[p.email] = p; });
+
+    const mergedPosts = data.map(post => {
+        const email = post.author?.email || post.author_email;
+        const profile = profileMap[email];
+        return {
+            ...post,
+            author: {
+                ...post.author,
+                name: profile?.full_name || post.author?.name || email?.split('@')[0],
+                avatar_url: profile?.avatar_url
+            }
+        };
+    });
+
+    return NextResponse.json({ posts: mergedPosts });
 }
 
 export async function POST(request) {
@@ -43,8 +69,8 @@ export async function POST(request) {
     try {
         const body = await request.json();
         const { title, content, board_type, branch_tag, attachments } = body;
-        console.log('Creating post:', { title, board_type, author_id: user.id });
 
+        // Save both author_id and author_email for robust identity merging
         const { data, error } = await supabase
             .from('posts')
             .insert([
@@ -54,20 +80,16 @@ export async function POST(request) {
                     board_type,
                     branch_tag,
                     author_id: user.id,
+                    author_email: user.email, // Explicitly save email for consolidation
                     attachments: attachments || []
                 }
             ])
             .select()
             .single();
 
-        if (error) {
-            console.error('Post creation error:', error);
-            throw error;
-        }
-
+        if (error) throw error;
         return NextResponse.json({ post: data });
     } catch (error) {
-        console.error('Board API Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

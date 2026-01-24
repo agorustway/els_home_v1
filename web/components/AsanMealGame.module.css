@@ -1,151 +1,617 @@
-.container {
-    padding: 40px 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-}
-
-.card {
-    background: #ffffff;
-    border-radius: 30px;
-    padding: 40px;
+.premiumLayout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 30px;
     width: 100%;
-    max-width: 600px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
-    border: 1px solid #f0f0f0;
 }
 
-.header {
-    text-align: center;
-    margin-bottom: 40px;
+/* Sidebar */
+.leftSidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
-.badge {
-    display: inline-block;
-    padding: 6px 16px;
-    background: #f0f7ff;
-    color: #0078ff;
-    border-radius: 50px;
-    font-size: 0.8rem;
-    font-weight: 800;
-    margin-bottom: 15px;
+.glassPanel {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 1);
+    border-radius: 28px;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+}
+
+.panelTitle {
+    font-size: 1rem;
+    font-weight: 900;
+    color: #1e293b;
+    margin-bottom: 20px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
-.title {
-    font-size: 1.8rem;
-    font-weight: 900;
-    color: #111;
-    margin-bottom: 10px;
+.addForm {
+    display: flex;
+    align-items: stretch;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 4px;
+    margin-bottom: 15px;
+    transition: all 0.2s;
 }
 
-.subtitle {
-    color: #666;
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-bottom: 40px;
-}
-
-.optionCard {
-    position: relative;
-    padding: 25px 15px;
-    border: 2px solid #f0f0f0;
-    border-radius: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
+.addForm:focus-within {
+    border-color: #4f46e5;
     background: #fff;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
-.optionCard.active {
-    border-color: #0078ff;
-    background: #f0f7ff;
+.addForm input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    outline: none;
 }
 
-.optionCard.disabled {
-    cursor: default;
-    opacity: 0.7;
-}
-
-.icon {
-    font-size: 2.5rem;
-    display: block;
-    margin-bottom: 12px;
-}
-
-.label {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #222;
-    margin-bottom: 5px;
-}
-
-.desc {
-    font-size: 0.8rem;
-    color: #888;
-    line-height: 1.4;
-}
-
-.check {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 24px;
-    height: 24px;
-    background: #0078ff;
+.addForm button {
+    background: #4f46e5;
     color: white;
-    border-radius: 50%;
+    border: none;
+    padding: 0 18px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.sidebarActions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.shuffleBtn,
+.resetTinyBtn {
+    flex: 1;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.shuffleBtn:hover {
+    background: #eef2ff;
+    color: #4f46e5;
+    border-color: #c7d2fe;
+}
+
+.nameChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.chip {
+    background: #fff;
+    color: #334155;
+    padding: 8px 14px;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #f1f5f9;
+}
+
+.chip span {
+    font-size: 1.2rem;
+}
+
+.chip button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.historyPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.logList {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.logItem {
+    background: #fff;
+    padding: 15px;
+    border-radius: 20px;
+    border: 1px solid #f1f5f9;
+}
+
+.logHeader {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.logTag {
+    font-size: 0.7rem;
+    font-weight: 900;
+    color: #4f46e5;
+    background: #eef2ff;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.logTime {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+.logText {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+/* Main Area */
+.gameContent {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.gameNav {
+    display: flex;
+    background: #f1f5f9;
+    padding: 8px;
+    border-radius: 24px;
+    gap: 8px;
+}
+
+.gameNav button {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 16px;
+    border-radius: 18px;
+    font-weight: 900;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.gameNav .navActive {
+    background: #fff;
+    color: #4f46e5;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.gameScreen {
+    background: #fff;
+    border-radius: 40px;
+    min-height: 650px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
-    font-weight: bold;
-}
-
-.footer {
-    text-align: center;
-}
-
-.submitBtn {
+    position: relative;
+    border: 1px solid #f1f5f9;
     width: 100%;
-    padding: 18px;
-    background: #111;
-    color: white;
+    overflow: hidden;
+}
+
+/* Roulette */
+.rouletteContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    position: relative;
+    width: 100%;
+}
+
+.indicator {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 36px;
+    color: #ef4444;
+    z-index: 10;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.rouletteWrapper {
+    padding: 15px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 12px #f8fafc, 0 30px 60px rgba(0, 0, 0, 0.1);
+    position: relative;
+    width: 420px;
+    height: 420px;
+    max-width: 90vw;
+    max-height: 90vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.canvasElement {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50%;
+}
+
+.rouletteControls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.spinBtn {
+    background: #0f172a;
+    color: #fff;
     border: none;
-    border-radius: 15px;
-    font-size: 1rem;
+    padding: 18px 70px;
+    font-size: 1.35rem;
+    font-weight: 900;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.btnSpinning {
+    background: #ef4444 !important;
+}
+
+.shuffleBtnMini {
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: #64748b;
     font-weight: 700;
     cursor: pointer;
-    transition: background 0.3s;
 }
 
-.submitBtn:hover {
-    background: #0078ff;
+/* Winner Overlay Local */
+.winnerOverlayLocal {
+    position: absolute;
+    inset: -5px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: 50%;
 }
 
-.successMsg {
-    padding: 18px;
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-radius: 15px;
-    font-weight: 700;
-    font-size: 1rem;
+.winnerCardLocal {
+    background: transparent;
+    padding: 20px;
+    text-align: center;
+    width: 250px;
+}
+
+.medalIconLarge {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.winnerCardLocal h3 {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 5px;
+    font-weight: 800;
+}
+
+.winnerCardLocal h2 {
+    font-size: 2.2rem;
+    font-weight: 1000;
+    color: #1e293b;
+    margin-bottom: 20px;
+}
+
+.confirmBtn {
+    background: #4f46e5;
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Ladder Game Refinement for Scrolling */
+.ladderBox {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    height: 100%;
+}
+
+.ladderViewport {
+    width: 100%;
+    overflow-x: auto;
+    padding: 20px 0;
+    display: flex;
+    justify-content: flex-start;
+    /* Ensure left-aligned for scroll */
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scroll for touch devices */
+}
+
+/* Custom scrollbar for better UX */
+.ladderViewport::-webkit-scrollbar {
+    height: 6px;
+}
+
+.ladderViewport::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+.ladderContainer {
+    position: relative;
+    min-height: 600px;
+    padding: 0 40px;
+}
+
+.ladderHeaderRow,
+.ladderFooterRow {
+    position: relative;
+    height: 80px;
+    width: 100%;
+}
+
+.ladderNodeWrapper,
+.ladderPrizeWrapper {
+    position: absolute;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+}
+
+.node {
+    background: #fff;
+    border: 2.5px solid #e2e8f0;
+    padding: 10px 0;
+    border-radius: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 80px;
+}
+
+.nodeLabel {
+    font-weight: 900;
+    font-size: 0.8rem;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.ladderBoard {
+    height: 450px;
+    position: relative;
+    margin: 10px 0;
+}
+
+.ladderLines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.activeMarker {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.emojiLarge {
+    font-size: 3.5rem;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+}
+
+.markerNameTag {
+    background: #4f46e5;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 900;
+    margin-top: 5px;
+    white-space: nowrap;
+}
+
+/* Bingo Fixed UI */
+.bingoContainerFixed {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+}
+
+.bingoBoardOuter {
+    background: #f8fafc;
+    padding: 30px;
+    border-radius: 32px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+    max-width: 650px;
+    width: 100%;
+    position: relative;
+}
+
+.bingoHeaderWide {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.bingoTitleGroup h2 {
+    font-size: 1.6rem;
+    font-weight: 1000;
+    color: #0f172a;
+    margin: 0;
+}
+
+.bingoGrid5x5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+.bingoCellItem {
+    aspect-ratio: 1;
+    background: #fff;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 1.05rem;
+    color: #334155;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04);
+}
+
+.bingoMarkedItem {
+    background: #4f46e5 !important;
+    color: white !important;
+}
+
+/* Mobile Optimization */
+@media (max-width: 1024px) {
+    .premiumLayout {
+        grid-template-columns: 1fr;
+    }
+
+    .leftSidebar {
+        order: 2;
+    }
+
+    .gameContent {
+        order: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .gameScreen {
+        min-height: 500px;
+        padding: 15px;
+    }
+
+    .rouletteWrapper {
+        width: 340px;
+        height: 340px;
+    }
+
+    .confirmBtn {
+        padding: 12px 30px;
+    }
+
+    .bingoBoardOuter {
+        padding: 20px;
+        border-radius: 24px;
+    }
+
+    .bingoGrid5x5 {
+        gap: 10px;
+    }
+
+    .bingoCellItem {
+        font-size: 0.9rem;
+        border-radius: 12px;
+    }
+
+    .ladderViewport {
+        justify-content: flex-start;
+    }
 }
 
 @media (max-width: 480px) {
-    .grid {
-        grid-template-columns: 1fr;
+    .premiumLayout {
+        gap: 15px;
     }
-    
-    .card {
-        padding: 30px 20px;
+
+    .glassPanel {
+        padding: 15px;
+        border-radius: 20px;
+    }
+
+    .gameScreen {
+        border-radius: 24px;
+        min-height: 480px;
+        padding: 10px;
+    }
+
+    .rouletteWrapper {
+        width: 300px;
+        height: 300px;
+        box-shadow: 0 0 0 8px #f8fafc, 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .indicator {
+        font-size: 22px;
+        top: -10px;
+    }
+
+    .bingoBoardOuter {
+        padding: 15px;
+        border-radius: 20px;
+    }
+
+    .bingoCellItem {
+        font-size: 0.8rem;
+        border-radius: 10px;
+    }
+
+    .gameNav button {
+        padding: 12px 5px;
+        font-size: 0.85rem;
+    }
+
+    .node {
+        width: 65px;
+        border-radius: 14px;
     }
 }

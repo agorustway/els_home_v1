@@ -13,33 +13,40 @@ export function useUserProfile() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      // Fetch from public.profiles using email
-      const { data: profileData, error: profileError } = await supabase
+      // 1. Fetch from public.profiles using email (Primary identity)
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', user.email)
         .single();
-      
-      if (profileError) {
-        console.error('Error fetching profile:', profileError.message);
-      }
 
-      // Fetch from public.user_roles using user.id
-      const { data: roleData, error: roleError } = await supabase
+      // 2. Fetch from public.user_roles using email (Identity merging)
+      // Note: We try ID first for strictness, then fallback to Email for merging
+      let { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('id', user.id)
         .single();
-      
-      if (roleError) {
-        // Not every user might have a role, so this might not be a critical error
-        // console.warn('Error fetching user role:', roleError.message);
+
+      if (!roleData) {
+        // Try merging by email if no ID-based role exists
+        const { data: mergedRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('email', user.email)
+          .single();
+        roleData = mergedRole;
       }
 
+      // Extract metadata fallback for avatars
+      const meta = user.user_metadata || {};
+      const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
+
       setProfile({
-        ...user, // include all original auth.user properties
-        ...profileData, // overwrite with public.profiles data (full_name, avatar_url)
-        role: roleData?.role || 'visitor', // Add role from user_roles
+        ...user,
+        ...profileData,
+        avatar_url: profileData?.avatar_url || metaAvatar || null,
+        role: roleData?.role || 'visitor',
       });
     } else {
       setProfile(null);

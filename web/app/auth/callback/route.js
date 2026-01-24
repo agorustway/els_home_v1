@@ -71,72 +71,61 @@ export async function GET(request) {
             const { data: { user }, error } = await supabase.auth.signInWithIdToken({
                 provider: 'openid', // Assuming this is the configured provider name for OIDC
                 token: id_token,
-                nonce: storedNonce, 
+                nonce: storedNonce,
             });
 
             if (error) { throw error; }
 
-            // 4. UPSERT into public.profiles using the RPC function
+            // 4. UPSERT into public.profiles by EMAIL (Master Identity)
             if (user && user.email) {
                 const meta = user.user_metadata || {};
-                
-                // Extract Name (Deep search for Kakao/Naver structures)
-                const extractedName = 
-                    meta.full_name || 
-                    meta.name || 
-                    meta.nickname || 
-                    meta.nickName || 
-                    meta.user_name || 
-                    meta.preferred_username || 
-                    meta.properties?.nickname || // Kakao specific
-                    meta.kakao_account?.profile?.nickname || // Kakao specific deep
+
+                // Unified metadata extraction for all providers
+                const extractedName =
+                    meta.full_name || meta.name || meta.nickname ||
+                    meta.properties?.nickname ||
+                    meta.kakao_account?.profile?.nickname ||
                     user.email.split('@')[0];
 
-                // Extract Avatar (Deep search)
-                const extractedAvatar = 
-                    meta.avatar_url || 
-                    meta.profile_image || 
-                    meta.picture || 
-                    meta.avatar || 
-                    meta.properties?.profile_image || // Kakao specific
-                    meta.properties?.thumbnail_image || // Kakao specific
-                    meta.kakao_account?.profile?.profile_image_url; // Kakao specific deep
+                const extractedAvatar =
+                    meta.avatar_url || meta.profile_image || meta.picture ||
+                    meta.properties?.profile_image ||
+                    meta.kakao_account?.profile?.profile_image_url;
 
-                // --- DEBUGGING LOG ---
-                console.log('Naver User Metadata:', JSON.stringify(meta, null, 2));
-                // ---------------------
-
-                const { error: rpcError } = await adminSupabase.rpc('upsert_profile', {
+                // 4.1 Sync Profile by Email
+                await adminSupabase.rpc('upsert_profile', {
                     user_email: user.email,
                     user_name: extractedName,
                     user_avatar: extractedAvatar
                 });
 
-                if (rpcError) {
-                    console.error('Naver Profile RPC error:', rpcError);
-                    return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
-                }
-
-                // Role overwriting fix: Only insert if no role exists to preserve admin status
-                const { data: existingRole } = await adminSupabase
+                // 4.2 Sync Roles by Email (Preserve existing identity)
+                // We check if this EMAIL already has a role assigned (from another provider)
+                const { data: existingRoleByEmail } = await adminSupabase
                     .from('user_roles')
-                    .select('role')
-                    .eq('id', user.id)
+                    .select('role, id')
+                    .eq('email', user.email)
                     .single();
 
-                if (!existingRole) {
-                    const { error: roleError } = await adminSupabase
+                if (existingRoleByEmail) {
+                    // Update the role record to also include the new auth.id for faster ID-based lookups
+                    // But keep the role/email intact.
+                    await adminSupabase
                         .from('user_roles')
-                        .insert({ id: user.id, role: 'visitor' });
-                    if (roleError) {
-                        console.error('Naver user_roles insert error:', roleError);
-                        return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
-                    }
+                        .update({ id: user.id }) // Link current provider ID
+                        .eq('email', user.email);
+                } else {
+                    // Only create new visitor role if no record exists for this email
+                    await adminSupabase
+                        .from('user_roles')
+                        .insert({
+                            id: user.id,
+                            email: user.email,
+                            role: 'visitor',
+                            name: extractedName
+                        });
                 }
             }
-
-
-            // 5. Redirect to the final destination
             return NextResponse.redirect(`${origin}${next}`);
 
         } catch (error) {
@@ -150,67 +139,51 @@ export async function GET(request) {
         const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error && user && user.email) {
             const meta = user.user_metadata || {};
-            
-            // Extract Name (Deep search for Kakao/Google structures)
-            const extractedName = 
-                meta.full_name || 
-                meta.name || 
-                meta.nickname || 
-                meta.nickName || 
-                meta.user_name || 
-                meta.preferred_username || 
-                meta.properties?.nickname || // Kakao specific
-                meta.kakao_account?.profile?.nickname || // Kakao specific deep
+
+            const extractedName =
+                meta.full_name || meta.name || meta.nickname ||
+                meta.properties?.nickname ||
+                meta.kakao_account?.profile?.nickname ||
                 user.email.split('@')[0];
 
-            // Extract Avatar (Deep search)
-            const extractedAvatar = 
-                meta.avatar_url || 
-                meta.profile_image || 
-                meta.picture || 
-                meta.avatar || 
-                meta.properties?.profile_image || // Kakao specific
-                meta.properties?.thumbnail_image || // Kakao specific
-                meta.kakao_account?.profile?.profile_image_url; // Kakao specific deep
-            
-            // --- DEBUGGING LOG ---
-            console.log('Standard OAuth User Metadata (Kakao/Google):', JSON.stringify(meta, null, 2));
-            // ---------------------
+            const extractedAvatar =
+                meta.avatar_url || meta.profile_image || meta.picture ||
+                meta.properties?.profile_image ||
+                meta.kakao_account?.profile?.profile_image_url;
 
-            // UPSERT into public.profiles using the RPC function
-            const { error: rpcError } = await adminSupabase.rpc('upsert_profile', {
+            // 1. UPSERT Profile by Email
+            await adminSupabase.rpc('upsert_profile', {
                 user_email: user.email,
                 user_name: extractedName,
                 user_avatar: extractedAvatar,
             });
 
-            if (rpcError) {
-                console.error('Standard OAuth Profile RPC error:', rpcError);
-                return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
-            }
-
-            // Role overwriting fix: Only insert if no role exists to preserve admin status
+            // 2. Identity Merging for Roles
             const { data: existingRole } = await adminSupabase
                 .from('user_roles')
                 .select('role')
-                .eq('id', user.id)
+                .eq('email', user.email)
                 .single();
 
-            if (!existingRole) {
-                const { error: roleError } = await adminSupabase
+            if (existingRole) {
+                // Just sync the current provider ID
+                await adminSupabase
                     .from('user_roles')
-                    .insert({ id: user.id, role: 'visitor' });
-                if (roleError) {
-                    console.error('Standard OAuth user_roles insert error:', roleError);
-                    return redirectToError('사용자 역할 생성 중 오류가 발생했습니다.');
-                }
+                    .update({ id: user.id })
+                    .eq('email', user.email);
+            } else {
+                await adminSupabase
+                    .from('user_roles')
+                    .insert({
+                        id: user.id,
+                        email: user.email,
+                        role: 'visitor',
+                        name: extractedName
+                    });
             }
 
             return NextResponse.redirect(`${origin}${next}`);
         }
-        console.error('Supabase code exchange error:', error?.message);
     }
-
-    // Fallback error redirect
     return redirectToError('인증 코드가 유효하지 않습니다.');
 }

@@ -8,34 +8,38 @@ export async function GET() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        // 1. Get unified profile from public.profiles
+        // 1. Get unified profile from public.profiles using EMAIL (Merges identities)
         const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('email', user.email)
             .single();
 
-        // 2. Get role data from user_roles
+        // 2. Get role data from user_roles using EMAIL (Supports Cross-Provider Permissions)
         const { data: roleData } = await supabase
             .from('user_roles')
             .select('role, requested_role')
-            .eq('id', user.id)
+            .eq('email', user.email)
             .single();
-        
-        // 3. Get Post Count (remains based on auth.user.id for now)
+
+        // 3. Get Post Count (Sum posts by email for true consolidated view)
         const { count } = await supabase
             .from('posts')
             .select('*', { count: 'exact', head: true })
-            .eq('author_id', user.id);
+            .eq('author_email', user.email);
 
-        // 4. Combine data, prioritizing profiles table for name/phone
+        // 4. Extract possible avatar from metadata if DB is empty
+        const meta = user.user_metadata || {};
+        const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
+
+        // 5. Combine data
         return NextResponse.json({
             user: {
-                id: user.id, // Keep auth.user.id for role-based lookups
+                id: user.id,
                 email: user.email,
-                name: profileData?.full_name || '', // Use full_name from profiles
-                phone: profileData?.phone || '', // Use phone from profiles
-                avatar_url: profileData?.avatar_url, // Use avatar from profiles
+                name: profileData?.full_name || '',
+                phone: profileData?.phone || '',
+                avatar_url: profileData?.avatar_url || metaAvatar || null,
                 role: roleData?.role || 'visitor',
                 requested_role: roleData?.requested_role,
                 post_count: count || 0
@@ -56,51 +60,56 @@ export async function PATCH(request) {
         const { name, phone, role } = await request.json();
         const adminSupabase = await createAdminClient();
 
-        // Update profiles table for name and phone
-        if (name !== undefined || phone !== undefined) {
-            const profileUpdates = {};
-            if (name !== undefined) profileUpdates.full_name = name;
-            if (phone !== undefined) profileUpdates.phone = phone;
+        // 1. Update profiles table using EMAIL (Master Identity)
+        const meta = user.user_metadata || {};
+        const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 
-            const { error: profileError } = await adminSupabase
-                .from('profiles')
-                .update(profileUpdates)
-                .eq('email', user.email);
-            
-            if (profileError) throw profileError;
-        }
-        
-        // Handle Role Change based on the new policy
+        const profileUpdates = {
+            email: user.email,
+            avatar_url: metaAvatar
+        };
+        if (name !== undefined) profileUpdates.full_name = name;
+        if (phone !== undefined) profileUpdates.phone = phone;
+
+        // Upsert by email
+        const { error: profileError } = await adminSupabase
+            .from('profiles')
+            .upsert(profileUpdates, { onConflict: 'email' });
+
+        if (profileError) throw profileError;
+
+        // 2. Redundant sync with user_roles (Admin page support)
+        const roleBackupUpdates = { email: user.email };
+        if (name !== undefined) roleBackupUpdates.name = name;
+        if (phone !== undefined) roleBackupUpdates.phone = phone;
+
+        await adminSupabase
+            .from('user_roles')
+            .upsert(roleBackupUpdates, { onConflict: 'email' });
+
+        // 3. Handle Role Change (by Email)
         if (role !== undefined) {
-            // Block any self-request for admin role
-            if (role === 'admin') {
-                return NextResponse.json({ error: '관리자 권한은 요청할 수 없습니다.' }, { status: 403 });
-            }
-
-            // Fetch current role first
             const { data: currentRoleData } = await adminSupabase
                 .from('user_roles')
                 .select('role')
-                .eq('id', user.id)
+                .eq('email', user.email)
                 .single();
 
             const currentUserRole = currentRoleData?.role || 'visitor';
 
-            // 'visitor' cannot change their role; they must be assigned one by an admin.
-            if (currentUserRole === 'visitor') {
-                return NextResponse.json({ error: '방문객은 소속 지점을 직접 변경할 수 없습니다. 관리자에게 문의하세요.' }, { status: 403 });
-            } 
-            // Any other authorized user (non-visitor) can change their role directly.
-            else {
-                const { error: roleError } = await adminSupabase
-                    .from('user_roles')
-                    .update({ 
-                        role: role,
-                        requested_role: null // Clear any pending requests
-                    })
-                    .eq('id', user.id);
+            if (role !== currentUserRole) {
+                if (role === 'admin') {
+                    return NextResponse.json({ error: '관리자 권한은 요청할 수 없습니다.' }, { status: 403 });
+                }
 
-                if (roleError) throw roleError;
+                if (currentUserRole === 'visitor') {
+                    return NextResponse.json({ error: '방문객은 소속 지점을 직접 변경할 수 없습니다. 관리자에게 문의하세요.' }, { status: 403 });
+                }
+                else {
+                    await adminSupabase
+                        .from('user_roles')
+                        .upsert({ email: user.email, role: role, requested_role: null }, { onConflict: 'email' });
+                }
             }
         }
 

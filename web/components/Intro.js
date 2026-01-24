@@ -13,7 +13,7 @@ export default function Intro() {
 
     if (!isMounted) {
         return (
-            <section id="intro" className="section" style={{ overflow: 'hidden' }}>
+            <section id="intro" className="section">
                 <div className="container">
                     <div className={styles.content}>
                         <div className={styles.textColumn}>
@@ -27,7 +27,7 @@ export default function Intro() {
     }
 
     return (
-        <section id="intro" className="section" style={{ overflow: 'hidden' }}>
+        <section id="intro" className="section">
             <div className="container">
                 <div className={styles.content}>
                     <motion.div

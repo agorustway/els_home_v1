@@ -14,10 +14,12 @@
 
 .header.scrolled,
 .header.darkVariant {
-    background-color: #ffffff !important; /* Force solid white */
+    background-color: #ffffff !important;
+    /* Force solid white */
     height: 70px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    color: #1a1a1a !important; /* Force dark text */
+    color: #1a1a1a !important;
+    /* Force dark text */
 }
 
 /* Ensure links are dark when scrolled */
@@ -58,13 +60,16 @@
     display: flex;
     align-items: stretch;
     gap: 40px;
-    margin: 0 auto; /* Center the nav */
-    flex: 1; /* Allow nav to take available space for centering */
-    justify-content: center; /* Center items within nav */
+    margin: 0 auto;
+    /* Center the nav */
+    flex: 1;
+    /* Allow nav to take available space for centering */
+    justify-content: center;
+    /* Center items within nav */
 }
 
-.nav > div, 
-.nav > a {
+.nav>div,
+.nav>a {
     display: flex;
     align-items: center;
     white-space: nowrap;
@@ -131,7 +136,8 @@
 
 .empBtn {
     border: 1px solid rgba(255, 255, 255, 0.4);
-    color: white; /* removed !important */
+    color: white;
+    /* removed !important */
     padding: 8px 18px;
     border-radius: 50px;
     font-size: 0.85rem;
@@ -188,50 +194,54 @@
 
 .dropdownItem {
     display: block;
-    padding: 8px 20px;
-    color: #444 !important;
-    font-size: 0.85rem !important;
-    font-weight: 500 !important;
+    padding: 10px 20px;
+    color: #334155 !important;
+    /* Slate 700 */
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
     text-shadow: none !important;
     transition: all 0.2s;
     width: 100%;
     text-align: left;
+    white-space: nowrap;
 }
 
 .dropdownItem:hover {
-    background: #f8faff;
+    background: #f1f5f9;
     color: var(--primary-blue) !important;
 }
 
 .dropdownDivider {
     height: 1px;
-    background: #eee;
-    margin: 5px 0;
+    background: #f1f5f9;
+    margin: 6px 0;
 }
 
 .dropdownLabel {
-    padding: 8px 25px 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #999;
+    padding: 10px 20px 5px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
 }
 
 .dropdownSubItem {
     display: block;
-    padding: 8px 20px 8px 35px;
-    color: #666 !important;
-    font-size: 0.8rem !important;
-    font-weight: 500 !important;
+    padding: 10px 20px 10px 35px;
+    color: #475569 !important;
+    /* Slate 600 */
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
     text-shadow: none !important;
     transition: all 0.2s;
     width: 100%;
     text-align: left;
+    white-space: nowrap;
 }
 
 .dropdownSubItem:hover {
-    background: #f8faff;
+    background: #f1f5f9;
     color: var(--primary-blue) !important;
 }
 
@@ -243,19 +253,18 @@
 
 .subDropdown {
     position: absolute;
-    top: -10px;
+    top: -5px;
     left: 100%;
-    margin-left: 5px;
-    /* Spacing from parent */
+    margin-left: 0;
     background: #fff;
-    min-width: 200px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    min-width: 180px;
+    border-radius: 12px;
+    box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.1);
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    padding: 10px 0;
-    transform: translateY(10px);
+    padding: 8px 0;
+    transform: translateX(10px);
 }
 
 .hasSubDropdown:hover .subDropdown {
@@ -270,7 +279,8 @@
     align-items: center;
     gap: 15px;
     margin-left: auto;
-    min-width: 120px; /* Force width */
+    min-width: 120px;
+    /* Force width */
     justify-content: flex-end;
     opacity: 1 !important;
     visibility: visible !important;
@@ -281,7 +291,8 @@
     align-items: center;
     gap: 10px;
     position: relative;
-    z-index: 2000; /* Extremely high z-index */
+    z-index: 2000;
+    /* Extremely high z-index */
     visibility: visible !important;
     opacity: 1 !important;
     height: 40px;
@@ -289,7 +300,8 @@
 
 /* Mobile Navigation */
 .mobileToggle {
-    display: flex; /* Default to visible (mobile first approach) or handle via media query */
+    display: flex;
+    /* Default to visible (mobile first approach) or handle via media query */
     flex-direction: column;
     gap: 6px;
     background: transparent;
@@ -363,6 +375,7 @@
 
 /* Desktop: Hide Mobile Elements */
 @media (min-width: 769px) {
+
     .mobileToggle,
     .mobileNav,
     .overlay {
@@ -438,7 +451,8 @@
 }
 
 .mobileSub.showSub {
-    max-height: 1000px; /* Arbitrary large height */
+    max-height: 1000px;
+    /* Arbitrary large height */
     border-bottom: 1px solid #eee;
 }
 
@@ -505,7 +519,8 @@
 }
 
 .googleStyleLoginLink:hover {
-    background-color: #1a4971; /* Darker blue */
+    background-color: #1a4971;
+    /* Darker blue */
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 86, 179, 0.2);
 }
@@ -520,8 +535,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px; /* Fixed width */
-    height: 40px; /* Fixed height */
+    width: 40px;
+    /* Fixed width */
+    height: 40px;
+    /* Fixed height */
 }
 
 .googleStyleAuthBtn:hover {
@@ -531,7 +548,8 @@
 .userInitial {
     width: 36px;
     height: 36px;
-    background-color: #3b82f6; /* Explicit Blue */
+    background-color: #3b82f6;
+    /* Explicit Blue */
     color: white;
     border-radius: 50%;
     display: flex;
@@ -540,6 +558,7 @@
     font-weight: 700;
     font-size: 1rem;
     text-shadow: none;
-    border: 2px solid white; /* Border for visibility */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    border: 2px solid white;
+    /* Border for visibility */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }

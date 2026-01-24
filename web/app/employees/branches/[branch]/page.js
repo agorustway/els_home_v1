@@ -43,7 +43,7 @@ export default function BranchPage({ params }) {
 
                             {branch === 'asan' && (
                                 <div className={styles.gameWrapper}>
-                                    <h3 className={styles.gameTitle}>🍱 아산지점 오늘의 식단게임</h3>
+                                    <h3 className={styles.gameTitle}>🎲 아산지점 이벤트 게임</h3>
                                     <AsanMealGame />
                                 </div>
                             )}
