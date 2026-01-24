@@ -5,6 +5,7 @@ import { createClient } from '../utils/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { getRoleLabel } from '../utils/roles';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 // Centralized navigation structure
 const navLinks = [
@@ -72,11 +73,9 @@ export default function Header({ darkVariant = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
-    const [user, setUser] = useState(null);
-    const [role, setRole] = useState(null);
-    const [userName, setUserName] = useState(null);
-    const [isMounted, setIsMounted] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false); // User Menu Dropdown State
+
+    const { profile, loading } = useUserProfile();
 
     const supabase = createClient();
     const router = useRouter();
@@ -91,30 +90,10 @@ export default function Header({ darkVariant = false }) {
         window.addEventListener('scroll', handleScroll);
         handleScroll();
 
-        const getUserAndRole = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            if (user) {
-                const { data: roleData } = await supabase.from('user_roles').select('role, name').eq('id', user.id).single();
-                setRole(roleData?.role);
-                setUserName(roleData?.name);
-            }
-        };
-        getUserAndRole();
-        setIsMounted(true);
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            setUser(session?.user ?? null);
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-                getUserAndRole();
-            }
-        });
-
         return () => {
             window.removeEventListener('scroll', handleScroll);
-            subscription?.unsubscribe();
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [scrolled]);
 
     useEffect(() => {
         document.body.style.overflow = menuOpen ? 'hidden' : 'unset';
@@ -162,7 +141,7 @@ export default function Header({ darkVariant = false }) {
     const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
     const shadow = isDarkHeader ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none';
 
-    const displayName = userName || user?.email?.split('@')[0] || '사용자';
+    const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     const renderNavLinks = (isMobile = false) => {
@@ -198,7 +177,7 @@ export default function Header({ darkVariant = false }) {
         });
 
         // Always show Employee Portal link on Desktop
-        if (!isMobile && isMounted) {
+        if (!isMobile && !loading) {
             linkElements.push(
                 <div key="employee-nav" className={styles.hasDropdown}>
                     <a
@@ -222,7 +201,7 @@ export default function Header({ darkVariant = false }) {
             // USER AUTH DROPDOWN
             linkElements.push(
                 <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
-                    {user ? (
+                    {profile ? (
                         <>
                             <button
                                 onClick={(e) => {
@@ -239,22 +218,37 @@ export default function Header({ darkVariant = false }) {
                                     alignItems: 'center'
                                 }}
                             >
-                                <span style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    backgroundColor: '#3b82f6',
-                                    color: 'white',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.9rem',
-                                    border: '2px solid white',
-                                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                                }}>
-                                    {displayInitial}
-                                </span>
+                                {profile?.avatar_url ? (
+                                    <img
+                                        src={profile.avatar_url}
+                                        alt={displayName}
+                                        style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            borderRadius: '50%',
+                                            border: '2px solid white',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                            objectFit: 'cover'
+                                        }}
+                                    />
+                                ) : (
+                                    <span style={{
+                                        width: '32px',
+                                        height: '32px',
+                                        backgroundColor: '#3b82f6',
+                                        color: 'white',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.9rem',
+                                        border: '2px solid white',
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                                    }}>
+                                        {displayInitial}
+                                    </span>
+                                )}
                             </button>
 
                             {userMenuOpen && (
@@ -272,7 +266,7 @@ export default function Header({ darkVariant = false }) {
                                 }}>
                                     <div style={{ padding: '8px 20px', borderBottom: '1px solid #f1f5f9', marginBottom: '4px' }}>
                                         <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>{displayName}님</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{getRoleLabel(role)}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{getRoleLabel(profile.role)}</div>
                                     </div>
                                     <Link
                                         href="/employees/mypage"
@@ -331,7 +325,7 @@ export default function Header({ darkVariant = false }) {
 
     const renderSubLinks = (subLinks, isMobile) => {
         return subLinks.map((subLink, subIndex) => {
-            if (subLink.isAdmin && role !== 'admin') return null;
+            if (subLink.isAdmin && profile?.role !== 'admin') return null;
             if (subLink.type === 'divider') return <div key={subIndex} className={isMobile ? styles.mobileSubDivider : styles.dropdownDivider} />;
             if (subLink.type === 'label') return <div key={subIndex} className={isMobile ? styles.mobileSubLabel : styles.dropdownLabel}>{subLink.label}</div>;
 
@@ -411,11 +405,11 @@ export default function Header({ darkVariant = false }) {
 
             <div className={`${styles.mobileNav} ${menuOpen ? styles.mobileNavOpen : ''}`}>
                 <div className={styles.mobileNavHeader}>
-                    {isMounted && (user ?
+                    {!loading && (profile ?
                         <>
                             <div className={styles.welcomeMsg}>
                                 환영합니다, <strong>{displayName}</strong>님!<br />
-                                <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>({getRoleLabel(role)})</span>
+                                <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>({getRoleLabel(profile.role)})</span>
                             </div>
                             <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
                         </> :

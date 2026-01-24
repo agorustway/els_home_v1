@@ -11,6 +11,14 @@ function LoginForm() {
     const [next, setNext] = useState('/');
     const supabase = createClient();
     const router = useRouter();
+    const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+
+    useEffect(() => {
+        const ua = navigator.userAgent.toLowerCase();
+        // 네이버, 카카오, 인스타그램 등 인앱 브라우저 여부 확인
+        const isInApp = /kakao|instagram|line|naver|fbav|fb_iab|messenger/i.test(ua);
+        setIsInAppBrowser(isInApp);
+    }, []);
 
     useEffect(() => {
         const nextParam = searchParams.get('next');
@@ -33,8 +41,22 @@ function LoginForm() {
     }, [searchParams]);
 
     const handleLogin = async (provider) => {
-        if (provider === 'kakao') {
-            alert('카카오 로그인은 현재 개발 중입니다.\n구글 로그인을 이용해 주세요.');
+        if (provider === 'naver') {
+            const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
+            if (!clientId) {
+                alert('네이버 로그인이 현재 설정되지 않았습니다. 관리자에게 문의하세요.');
+                return;
+            }
+            const redirectUri = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+            const state = Math.random().toString(36).substring(2);
+            const nonce = Math.random().toString(36).substring(2);
+            // Store state and nonce in cookies to verify on callback
+            document.cookie = `oauth_state=${state}; path=/; max-age=300`; // Expires in 5 minutes
+            document.cookie = `oauth_nonce=${nonce}; path=/; max-age=300`; // Expires in 5 minutes
+
+            const scope = 'openid';
+            const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&nonce=${nonce}`;
+            window.location.href = naverAuthUrl;
             return;
         }
 
@@ -63,6 +85,23 @@ function LoginForm() {
                     <h1>로그인</h1>
                     <p>이엘에스솔루션 서비스 이용을 위해 로그인해 주세요.</p>
                 </div>
+
+                {isInAppBrowser && (
+                    <div style={{
+                        backgroundColor: '#fff4e5',
+                        color: '#663c00',
+                        padding: '12px 16px',
+                        marginBottom: '20px',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        lineHeight: '1.5',
+                        border: '1px solid #ffe2b7'
+                    }}>
+                        <strong>⚠️ 보안 브라우저 안내</strong><br />
+                        현재 브라우저(네이버/카카오 등)에서는 구글 로그인이 제한될 수 있습니다. 
+                        더 안전한 이용을 위해 <strong>'다른 브라우저로 열기'</strong>를 선택해 주세요.
+                    </div>
+                )}
 
                 <div className={styles.buttonGroup}>
                     <button

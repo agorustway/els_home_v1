@@ -1,33 +1,43 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
 
-// Get Current User Info
+// Get Current Unified User Info
 export async function GET() {
     try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { data: roleData } = await supabase
-            .from('user_roles')
+        // 1. Get unified profile from public.profiles
+        const { data: profileData } = await supabase
+            .from('profiles')
             .select('*')
-            .eq('id', user.id)
+            .eq('email', user.email)
             .single();
 
-        // Get Post Count
+        // 2. Get role data from user_roles
+        const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role, requested_role')
+            .eq('id', user.id)
+            .single();
+        
+        // 3. Get Post Count (remains based on auth.user.id for now)
         const { count } = await supabase
             .from('posts')
             .select('*', { count: 'exact', head: true })
             .eq('author_id', user.id);
 
+        // 4. Combine data, prioritizing profiles table for name/phone
         return NextResponse.json({
             user: {
-                id: user.id,
+                id: user.id, // Keep auth.user.id for role-based lookups
                 email: user.email,
-                name: roleData?.name || '',
-                phone: roleData?.phone || '',
+                name: profileData?.full_name || '', // Use full_name from profiles
+                phone: profileData?.phone || '', // Use phone from profiles
+                avatar_url: profileData?.avatar_url, // Use avatar from profiles
                 role: roleData?.role || 'visitor',
-                requested_role: roleData?.requested_role, // Include requested role
+                requested_role: roleData?.requested_role,
                 post_count: count || 0
             }
         });
@@ -36,45 +46,42 @@ export async function GET() {
     }
 }
 
-// Update Profile
+// Update Unified Profile
 export async function PATCH(request) {
     try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { name, phone, role } = await request.json(); // role here is the requested one
-        const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (phone !== undefined) updates.phone = phone;
-        
-        // Handle Role Request
-        if (role !== undefined) {
-            // Fetch current role first
-            const { data: currentRoleData } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('id', user.id)
-                .single();
+        const { name, phone, role } = await request.json();
+        const adminSupabase = await createAdminClient();
+
+        // Update profiles table for name and phone
+        if (name !== undefined || phone !== undefined) {
+            const profileUpdates = {};
+            if (name !== undefined) profileUpdates.full_name = name;
+            if (phone !== undefined) profileUpdates.phone = phone;
+
+            const { error: profileError } = await adminSupabase
+                .from('profiles')
+                .update(profileUpdates)
+                .eq('email', user.email);
             
-            // If trying to request admin, block it
+            if (profileError) throw profileError;
+        }
+        
+        // Handle Role Request in user_roles table
+        if (role !== undefined) {
             if (role === 'admin') {
                 return NextResponse.json({ error: 'Cannot request admin role' }, { status: 403 });
             }
+            const { error: roleError } = await adminSupabase
+                .from('user_roles')
+                .update({ requested_role: role })
+                .eq('id', user.id);
 
-            // Instead of updating 'role' directly, update 'requested_role'
-            // Unless the user is already an admin (admins can change their own role? maybe not needed)
-            // Let's stick to the rule: Users can only REQUEST a change.
-            updates.requested_role = role;
+            if (roleError) throw roleError;
         }
-
-        const adminSupabase = await createAdminClient(); // Use admin client to ensure write access to user_roles
-        const { error } = await adminSupabase
-            .from('user_roles')
-            .update(updates)
-            .eq('id', user.id);
-
-        if (error) throw error;
 
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -97,6 +104,9 @@ export async function DELETE() {
             .select('*', { count: 'exact', head: true })
             .eq('author_id', user.id);
 
+        // Good housekeeping: delete from public.profiles first
+        await adminSupabase.from('profiles').delete().eq('email', user.email);
+
         if (count > 0) {
             // Option 1: Ban user (Soft Delete)
             const { error: banError } = await adminSupabase.auth.admin.updateUserById(
@@ -107,7 +117,7 @@ export async function DELETE() {
             return NextResponse.json({ success: true, mode: 'banned' });
         } else {
             // Option 2: Hard Delete
-            // Delete dependent data first just in case
+            // Delete dependent data first
             await adminSupabase.from('user_roles').delete().eq('id', user.id);
             const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(user.id);
             if (deleteError) throw deleteError;

@@ -30,7 +30,7 @@ export default function Footer() {
                         <div className={styles.infoCol}>
                             <h4 className={styles.heading}>Contact Info</h4>
                             <div className={styles.contactItems}>
-                                <p className={styles.footerAddress}>서울특별시 서초구 효령로 424 대명빌딩 203</p>
+                                <address className={styles.footerAddress}>서울특별시 서초구 효령로 424 대명빌딩 203</address>
                                 <p className={styles.tel}>02-522-2401</p>
                                 <p className={styles.sector}>운수업, 제조업, 서비스업</p>
                             </div>

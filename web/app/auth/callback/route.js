@@ -1,29 +1,125 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { NextResponse } from 'next/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function GET(request) {
-    const { searchParams, origin } = new URL(request.url)
-    const code = searchParams.get('code')
-    // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get('next') ?? '/'
+    const { searchParams, origin } = new URL(request.url);
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const next = searchParams.get('next') ?? '/';
 
-    if (code) {
-        const supabase = await createClient()
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error) {
-            const forwardedHost = request.headers.get('x-forwarded-host') // useful for Vercel
-            const isLocalEnv = process.env.NODE_ENV === 'development'
-            if (isLocalEnv) {
-                // we can be sure that origin is http://localhost:3000
-                return NextResponse.redirect(`${origin}${next}`)
-            } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`)
-            } else {
-                return NextResponse.redirect(`${origin}${next}`)
+    const supabase = await createClient(); // For session management
+    const adminSupabase = await createAdminClient(); // For profile UPSERT
+
+    const redirectToError = (message) => {
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(message)}`);
+    };
+
+    // Naver custom OIDC flow
+    if (state) {
+        const cookieStore = cookies();
+        const storedState = cookieStore.get('oauth_state')?.value;
+        const storedNonce = cookieStore.get('oauth_nonce')?.value;
+
+        if (state !== storedState) {
+            return redirectToError('Invalid state parameter. CSRF attack detected.');
+        }
+
+        // Clear the state and nonce cookies
+        cookieStore.set('oauth_state', '', { maxAge: 0 });
+        cookieStore.set('oauth_nonce', '', { maxAge: 0 });
+
+        try {
+            // 1. Exchange authorization code for tokens with Naver
+            const tokenResponse = await fetch('https://nid.naver.com/oauth2.0/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    client_id: process.env.NEXT_PUBLIC_NAVER_CLIENT_ID,
+                    client_secret: process.env.NAVER_CLIENT_SECRET,
+                    code,
+                    state,
+                }),
+            });
+
+            const tokenData = await tokenResponse.json();
+
+            // --- DEBUGGING LOG ---
+            // console.log('Naver Token Response:', JSON.stringify(tokenData, null, 2));
+            // ---------------------
+
+            const { access_token, id_token } = tokenData;
+
+            if (!id_token) {
+                const responseKeys = Object.keys(tokenData).join(', ');
+                return redirectToError(`Naver response did not include id_token. Received keys: [${responseKeys}]`);
             }
+
+            // 2. Verify nonce from the ID token
+            const idTokenPayload = JSON.parse(Buffer.from(id_token.split('.')[1], 'base64').toString());
+            if (idTokenPayload.nonce !== storedNonce) {
+                return redirectToError('Invalid nonce. Replay attack detected.');
+            }
+
+            // 3. Sign in/up with Supabase using the ID token
+            const { data: { user }, error } = await supabase.auth.signInWithIdToken({
+                provider: 'openid', // Assuming this is the configured provider name for OIDC
+                token: id_token,
+                nonce: storedNonce, 
+            });
+
+            if (error) { throw error; }
+
+            // 4. UPSERT into public.profiles for account linking
+            if (user && user.email) {
+                const { error: profileError } = await adminSupabase
+                    .from('profiles')
+                    .upsert({
+                        email: user.email,
+                        full_name: user.user_metadata.full_name || user.email.split('@')[0],
+                        avatar_url: user.user_metadata.avatar_url,
+                    }, { onConflict: 'email', ignoreDuplicates: false }); // Ensure update on conflict
+
+                if (profileError) {
+                    console.error('Naver Profile UPSERT error:', profileError);
+                    return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
+                }
+            }
+
+
+            // 5. Redirect to the final destination
+            return NextResponse.redirect(`${origin}${next}`);
+
+        } catch (error) {
+            console.error('Naver OIDC Callback Error:', error);
+            return redirectToError(error.message || '네이버 로그인 중 오류가 발생했습니다.');
         }
     }
 
-    // return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    // Standard Supabase OAuth flow (Google, Kakao)
+    if (code) {
+        const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error && user && user.email) {
+            // UPSERT into public.profiles for account linking
+            const { error: profileError } = await adminSupabase
+                .from('profiles')
+                .upsert({
+                    email: user.email,
+                    full_name: user.user_metadata.full_name || user.email.split('@')[0],
+                    avatar_url: user.user_metadata.avatar_url,
+                }, { onConflict: 'email', ignoreDuplicates: false }); // Ensure update on conflict
+
+            if (profileError) {
+                console.error('Standard OAuth Profile UPSERT error:', profileError);
+                return redirectToError('프로필 업데이트 중 오류가 발생했습니다.');
+            }
+
+            return NextResponse.redirect(`${origin}${next}`);
+        }
+        console.error('Supabase code exchange error:', error?.message);
+    }
+
+    // Fallback error redirect
+    return redirectToError('인증 코드가 유효하지 않습니다.');
 }

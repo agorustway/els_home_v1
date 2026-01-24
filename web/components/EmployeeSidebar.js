@@ -1,30 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import styles from './EmployeeSidebar.module.css';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { createClient } from '@/utils/supabase/client';
 import { getRoleLabel } from '@/utils/roles';
 
 export default function EmployeeSidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const { role, user } = useUserRole();
+    const { profile, loading } = useUserProfile();
     const supabase = createClient();
-
-    const [userName, setUserName] = useState(null);
-
-    useEffect(() => {
-        if (user) {
-            const fetchUserName = async () => {
-                const { data } = await supabase.from('user_roles').select('name').eq('id', user.id).single();
-                if (data) setUserName(data.name);
-            };
-            fetchUserName();
-        }
-    }, [user]);
 
     const handleLogout = async () => {
         if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -34,7 +21,8 @@ export default function EmployeeSidebar() {
 
     const isActive = (path) => pathname === path || pathname.startsWith(path + '/');
     
-    const displayName = userName || user?.user_metadata?.name || user?.email?.split('@')[0] || '사용자';
+    const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
+    const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     return (
         <aside className={styles.sidebar}>
@@ -67,7 +55,7 @@ export default function EmployeeSidebar() {
                     📝 내 업무보고
                 </Link>
 
-                {role === 'admin' && (
+                {profile?.role === 'admin' && (
                     <>
                         <div className={styles.sectionTitle}>관리 설정</div>
                         <Link href="/admin/users" className={`${styles.item} ${isActive('/admin/users') ? styles.active : ''}`}>
@@ -81,15 +69,29 @@ export default function EmployeeSidebar() {
             </nav>
 
             <div className={styles.footer}>
-                <div className={styles.userInfo}>
-                    <div className={styles.avatar}>
-                        {displayName[0].toUpperCase()}
+                {loading ? (
+                    <div className={styles.userInfo}>
+                        <div className={styles.avatar} style={{ backgroundColor: '#e2e8f0' }} />
+                        <div>
+                            <div className={styles.username} style={{ backgroundColor: '#e2e8f0', width: '80px', height: '14px', borderRadius: '4px' }}/>
+                            <div className={styles.role} style={{ backgroundColor: '#e2e8f0', width: '50px', height: '12px', borderRadius: '4px', marginTop: '4px' }}/>
+                        </div>
                     </div>
-                    <div>
-                        <div className={styles.username}>{displayName}</div>
-                        <div className={styles.role}>{getRoleLabel(role)}</div>
+                ) : profile ? (
+                    <div className={styles.userInfo}>
+                        <div className={styles.avatar}>
+                            {profile.avatar_url ? (
+                                <img src={profile.avatar_url} alt={displayName} className={styles.avatarImg} />
+                            ) : (
+                                displayInitial
+                            )}
+                        </div>
+                        <div>
+                            <div className={styles.username}>{displayName}</div>
+                            <div className={styles.role}>{getRoleLabel(profile.role)}</div>
+                        </div>
                     </div>
-                </div>
+                ) : null}
                 <button onClick={handleLogout} className={styles.logoutBtn}>
                     로그아웃
                 </button>

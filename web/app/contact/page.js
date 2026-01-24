@@ -8,9 +8,10 @@ import styles from './contact.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
 import { formatPhoneNumber } from '@/utils/format';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function ContactPage() {
-    const [user, setUser] = useState(null);
+    const { profile, loading: profileLoading } = useUserProfile();
     const [inquiries, setInquiries] = useState([]);
     const [selectedInquiry, setSelectedInquiry] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -30,31 +31,14 @@ export default function ContactPage() {
     const [reportStatus, setReportStatus] = useState('idle');
 
     useEffect(() => {
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            if (user) {
-                fetchInquiries(user.id);
-            } else {
-                setLoading(false);
-            }
-        };
-        getUser();
-
-        // Fetch public inquiries for all users
-        fetchPublicInquiries();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchInquiries(session.user.id);
+        if (!profileLoading) {
+            if (profile) {
+                fetchInquiries(profile.id);
             } else {
                 fetchPublicInquiries();
             }
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
+        }
+    }, [profile, profileLoading]);
 
     const fetchPublicInquiries = async () => {
         try {
@@ -93,7 +77,7 @@ export default function ContactPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!user) {
+        if (!profile) {
             alert('로그인이 필요합니다.');
             router.push(`/login?next=/contact`);
             return;
@@ -107,9 +91,9 @@ export default function ContactPage() {
                 .from('inquiries')
                 .insert([
                     {
-                        user_id: user.id,
-                        user_email: user.email,
-                        user_name: user.user_metadata?.full_name || user.email.split('@')[0],
+                        user_id: profile.id,
+                        user_email: profile.email,
+                        user_name: profile.full_name || profile.email.split('@')[0],
                         company_name: formData.company_name,
                         phone: formData.phone,
                         subject: formData.subject,
@@ -130,7 +114,7 @@ export default function ContactPage() {
                     category: '고객 문의',
                     title: formData.subject,
                     content: formData.message,
-                    contact: `${user.email} / ${formData.phone || 'N/A'}`
+                    contact: `${profile.email} / ${formData.phone || 'N/A'}`
                 }),
             });
 
@@ -193,7 +177,7 @@ export default function ContactPage() {
     };
 
     const handleInquiryClick = (inquiry) => {
-        if (!user) {
+        if (!profile) {
             if (confirm('로그인이 필요한 서비스입니다. 로그인 페이지로 이동하시겠습니까?')) {
                 router.push(`/login?next=/contact`);
             }
@@ -220,7 +204,7 @@ export default function ContactPage() {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', selectedInquiry.id)
-                .eq('user_id', user.id);
+                .eq('user_id', profile.id);
 
             if (error) throw error;
 
@@ -243,7 +227,7 @@ export default function ContactPage() {
                 .from('inquiries')
                 .delete()
                 .eq('id', selectedInquiry.id)
-                .eq('user_id', user.id);
+                .eq('user_id', profile.id);
 
             if (error) throw error;
 
@@ -276,7 +260,9 @@ export default function ContactPage() {
                             viewport={{ once: true }}
                         >
                             <h2 className={styles.formTitle}>문의 내용 작성</h2>
-                            {!user ? (
+                            {profileLoading ? (
+                                <div className={styles.loginRequired}><p>로딩 중...</p></div>
+                            ) : !profile ? (
                                 <div className={styles.loginRequired}>
                                     <p>🔒 문의 작성은 로그인이 필요합니다.</p>
                                     <button
@@ -346,12 +332,12 @@ export default function ContactPage() {
                         <div className={styles.boardWrapper}>
                             <div className={styles.boardHeader}>
                                 <h3 className={styles.boardTitle}>
-                                    {user ? '내 문의 내역' : '전체 문의 내역'}
+                                    {profile ? '내 문의 내역' : '전체 문의 내역'}
                                 </h3>
                                 <span className={styles.boardCount}>총 {inquiries.length}건</span>
                             </div>
 
-                            {!user && (
+                            {!profile && !profileLoading && (
                                 <div className={styles.publicList}>
                                     <p className={styles.publicNotice}>🔒 로그인하면 문의 내용 전체를 확인할 수 있습니다.</p>
                                 </div>
@@ -369,7 +355,7 @@ export default function ContactPage() {
                                 <div className={styles.postList}>
                                     <AnimatePresence mode="popLayout">
                                         {inquiries.map((inquiry) => {
-                                            const badge = user ? getStatusBadge(inquiry.status) : null;
+                                            const badge = profile ? getStatusBadge(inquiry.status) : null;
                                             return (
                                                 <motion.div
                                                     key={inquiry.id}
@@ -485,10 +471,10 @@ export default function ContactPage() {
                                     </>
                                 ) : (
                                     <>
-                                        {user && user.id === selectedInquiry.user_id && (
+                                        {profile && profile.id === selectedInquiry.user_id && (
                                             <button className={`${styles.modalBtn} ${styles.btnDanger}`} onClick={handleDelete}>삭제</button>
                                         )}
-                                        {user && user.id === selectedInquiry.user_id && (
+                                        {profile && profile.id === selectedInquiry.user_id && (
                                             <button className={`${styles.modalBtn} ${styles.btnPrimary}`} onClick={() => setIsEditing(true)}>수정</button>
                                         )}
                                     </>
