@@ -1,3 +1,4 @@
+'use client';
 export default function Loading() {
     return (
         <div style={{ padding: '40px', textAlign: 'center', minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
