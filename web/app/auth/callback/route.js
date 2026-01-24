@@ -75,8 +75,8 @@ export async function GET(request) {
             if (user && user.email) {
                 const { error: rpcError } = await adminSupabase.rpc('upsert_profile', {
                     user_email: user.email,
-                    user_name: user.user_metadata.full_name || user.email.split('@')[0],
-                    user_avatar: user.user_metadata.avatar_url
+                    user_name: user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.nickname || user.user_metadata.nickName || user.user_metadata.user_name || user.email.split('@')[0],
+                    user_avatar: user.user_metadata.avatar_url || user.user_metadata.profile_image || user.user_metadata.picture || user.user_metadata.avatar
                 });
 
                 if (rpcError) {
@@ -113,8 +113,8 @@ export async function GET(request) {
             // UPSERT into public.profiles using the RPC function
             const { error: rpcError } = await adminSupabase.rpc('upsert_profile', {
                 user_email: user.email,
-                user_name: user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.nickname || user.user_metadata.nickName || user.email.split('@')[0],
-                user_avatar: user.user_metadata.avatar_url || user.user_metadata.profile_image || user.user_metadata.picture,
+                user_name: user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.nickname || user.user_metadata.nickName || user.user_metadata.user_name || user.email.split('@')[0],
+                user_avatar: user.user_metadata.avatar_url || user.user_metadata.profile_image || user.user_metadata.picture || user.user_metadata.avatar,
             });
 
             if (rpcError) {

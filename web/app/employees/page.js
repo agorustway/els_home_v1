@@ -111,7 +111,7 @@ export default function EmployeesPortal() {
                                 <div className={styles.branchGrid}>
                                     {[
                                         { name: '서울본사', eng: 'Headquarters', link: '/employees/branches/headquarters' },
-                                        { name: '아산지점 (CY)', eng: 'Asan', link: '/employees/branches/asan' },
+                                        { name: '아산지점', eng: 'Asan', link: '/employees/branches/asan' },
                                         { name: '중부지점', eng: 'Jungbu', link: '/employees/branches/jungbu' },
                                         { name: '당진지점', eng: 'Dangjin', link: '/employees/branches/dangjin' },
                                         { name: '예산지점', eng: 'Yesan', link: '/employees/branches/yesan' },

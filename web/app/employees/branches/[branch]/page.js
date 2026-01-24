@@ -5,11 +5,11 @@ import SubPageHero from '@/components/SubPageHero';
 import IntranetSubNav from '@/components/IntranetSubNav';
 import styles from '../../employees.module.css'; // Reuse existing styles for consistency
 import { motion } from 'framer-motion';
-
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 
 export default function BranchPage({ params }) {
-    const { branch } = use(params);
+    const routeParams = useParams();
+    const branch = routeParams?.branch || params?.branch;
 
     const branchName = {
         asan: '아산지점',

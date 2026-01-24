@@ -54,8 +54,8 @@ export async function middleware(request) {
         // 방문자(visitor) 권한은 임직원 홈(/employees) 외의 하위 기능 접근 불가
         if (userRole === 'visitor' && path !== '/employees' && !path.startsWith('/employees/mypage')) {
             const url = request.nextUrl.clone()
-            url.pathname = '/login'
-            url.searchParams.set('error', '권한이 없습니다: 방문객은 해당 기능을 이용할 수 없습니다.')
+            url.pathname = '/employees' // 로그인 페이지로 보내면 무한 루프 발생 방지
+            url.searchParams.set('error', '방문객 권한으로는 접근할 수 없는 메뉴입니다.')
             return NextResponse.redirect(url)
         }
 
