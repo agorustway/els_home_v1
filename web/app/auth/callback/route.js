@@ -6,7 +6,12 @@ export async function GET(request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
-    const next = searchParams.get('next') ?? '/';
+    let next = searchParams.get('next') ?? '/';
+
+    // Prevent redirect loop to login page
+    if (next === '/login') {
+        next = '/';
+    }
 
     const supabase = await createClient(); // For session management
     const adminSupabase = await createAdminClient(); // For profile UPSERT
@@ -73,10 +78,38 @@ export async function GET(request) {
 
             // 4. UPSERT into public.profiles using the RPC function
             if (user && user.email) {
+                const meta = user.user_metadata || {};
+                
+                // Extract Name (Deep search for Kakao/Naver structures)
+                const extractedName = 
+                    meta.full_name || 
+                    meta.name || 
+                    meta.nickname || 
+                    meta.nickName || 
+                    meta.user_name || 
+                    meta.preferred_username || 
+                    meta.properties?.nickname || // Kakao specific
+                    meta.kakao_account?.profile?.nickname || // Kakao specific deep
+                    user.email.split('@')[0];
+
+                // Extract Avatar (Deep search)
+                const extractedAvatar = 
+                    meta.avatar_url || 
+                    meta.profile_image || 
+                    meta.picture || 
+                    meta.avatar || 
+                    meta.properties?.profile_image || // Kakao specific
+                    meta.properties?.thumbnail_image || // Kakao specific
+                    meta.kakao_account?.profile?.profile_image_url; // Kakao specific deep
+
+                // --- DEBUGGING LOG ---
+                console.log('Naver User Metadata:', JSON.stringify(meta, null, 2));
+                // ---------------------
+
                 const { error: rpcError } = await adminSupabase.rpc('upsert_profile', {
                     user_email: user.email,
-                    user_name: user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.nickname || user.user_metadata.nickName || user.user_metadata.user_name || user.email.split('@')[0],
-                    user_avatar: user.user_metadata.avatar_url || user.user_metadata.profile_image || user.user_metadata.picture || user.user_metadata.avatar
+                    user_name: extractedName,
+                    user_avatar: extractedAvatar
                 });
 
                 if (rpcError) {
@@ -109,12 +142,39 @@ export async function GET(request) {
     if (code) {
         const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error && user && user.email) {
+            const meta = user.user_metadata || {};
             
+            // Extract Name (Deep search for Kakao/Google structures)
+            const extractedName = 
+                meta.full_name || 
+                meta.name || 
+                meta.nickname || 
+                meta.nickName || 
+                meta.user_name || 
+                meta.preferred_username || 
+                meta.properties?.nickname || // Kakao specific
+                meta.kakao_account?.profile?.nickname || // Kakao specific deep
+                user.email.split('@')[0];
+
+            // Extract Avatar (Deep search)
+            const extractedAvatar = 
+                meta.avatar_url || 
+                meta.profile_image || 
+                meta.picture || 
+                meta.avatar || 
+                meta.properties?.profile_image || // Kakao specific
+                meta.properties?.thumbnail_image || // Kakao specific
+                meta.kakao_account?.profile?.profile_image_url; // Kakao specific deep
+            
+            // --- DEBUGGING LOG ---
+            console.log('Standard OAuth User Metadata (Kakao/Google):', JSON.stringify(meta, null, 2));
+            // ---------------------
+
             // UPSERT into public.profiles using the RPC function
             const { error: rpcError } = await adminSupabase.rpc('upsert_profile', {
                 user_email: user.email,
-                user_name: user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.nickname || user.user_metadata.nickName || user.user_metadata.user_name || user.email.split('@')[0],
-                user_avatar: user.user_metadata.avatar_url || user.user_metadata.profile_image || user.user_metadata.picture || user.user_metadata.avatar,
+                user_name: extractedName,
+                user_avatar: extractedAvatar,
             });
 
             if (rpcError) {

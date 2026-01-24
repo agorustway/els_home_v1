@@ -167,7 +167,18 @@ export default function Header({ darkVariant = false }) {
                 );
             }
 
-            return <Link key={index} href={link.href} className={isMobile ? styles.mobileLink : ''} style={{ color: isMobile ? '#333' : textColor }} onClick={handleLinkClick}>{link.label}</Link>;
+            return (
+                <Link 
+                    key={index} 
+                    href={link.href} 
+                    className={isMobile ? styles.mobileLink : ''} 
+                    style={{ color: isMobile ? '#333' : textColor }} 
+                    onClick={handleLinkClick}
+                    prefetch={false} // 모바일 세션 충돌 방지
+                >
+                    {link.label}
+                </Link>
+            );
         }).filter(Boolean); // Filter out nulls from conditional rendering
 
         // Push Employee Portal link on Desktop if not loading and user is not a visitor
@@ -334,7 +345,17 @@ export default function Header({ darkVariant = false }) {
                 ? `${styles.mobileSubItem} ${subLink.isSubItem ? styles.mobileSubItemNested : ''}`
                 : `${styles.dropdownItem} ${subLink.isSubItem ? styles.dropdownSubItem : ''} ${subLink.isAdmin ? styles.adminLink : ''}`;
 
-            return <Link key={subIndex} href={subLink.href} className={className} onClick={handleLinkClick}>{subLink.label}</Link>;
+            return (
+                <Link 
+                    key={subIndex} 
+                    href={subLink.href} 
+                    className={className} 
+                    onClick={handleLinkClick}
+                    prefetch={false} // 모바일 세션 충돌 방지
+                >
+                    {subLink.label}
+                </Link>
+            );
         }).filter(Boolean);
     };
 

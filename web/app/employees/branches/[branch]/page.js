@@ -6,6 +6,7 @@ import IntranetSubNav from '@/components/IntranetSubNav';
 import styles from '../../employees.module.css'; // Reuse existing styles for consistency
 import { motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
+import AsanMealGame from '@/components/AsanMealGame';
 
 export default function BranchPage({ params }) {
     const routeParams = useParams();
@@ -72,17 +73,7 @@ export default function BranchPage({ params }) {
                                     border: '1px solid #eee'
                                 }}>
                                     <h3 style={{ marginBottom: '20px', color: 'var(--primary-blue)' }}>🍱 아산지점 오늘의 식단게임</h3>
-                                    <div style={{ 
-                                        height: '300px', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center',
-                                        backgroundColor: '#f1f5f9',
-                                        borderRadius: '12px'
-                                    }}>
-                                        {/* 식단게임 컴포넌트가 들어갈 자리 */}
-                                        <p style={{ color: '#64748b' }}>식단게임 모듈 로딩 중...</p>
-                                    </div>
+                                    <AsanMealGame />
                                 </div>
                             )}
 

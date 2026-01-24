@@ -40,10 +40,17 @@ export async function middleware(request) {
 
     const path = request.nextUrl.pathname;
 
+    // 0. Redirect authenticated users away from login page
+    if (user && path === '/login') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+    }
+
     // 1. Protected Routes (Access Control)
     if (path.startsWith('/admin') || path.startsWith('/employees')) {
         // If not authenticated, redirect to login
-        if (!user) {
+        if (!user && path !== '/login') { // 로그인 페이지가 아닐 때만 리다이렉트
             const url = request.nextUrl.clone()
             url.pathname = '/login'
             url.searchParams.set('next', path) // Redirect back after login
