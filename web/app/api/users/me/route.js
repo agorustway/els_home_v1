@@ -20,35 +20,12 @@ export async function GET() {
             .eq('email', user.email)
             .single();
 
-        // 2. Get role data from user_roles (Check BOTH ID and Email to find highest privilege)
-        const { data: roleById } = await adminSupabase
+        // 2. Get role data from user_roles using EMAIL (single source of truth)
+        const { data: roleData } = await adminSupabase
             .from('user_roles')
-            .select('role, requested_role')
-            .eq('id', user.id)
-            .single();
-
-        const { data: roleByEmail } = await adminSupabase
-            .from('user_roles')
-            .select('role, requested_role')
+            .select('role, requested_role, name, phone')
             .eq('email', user.email)
             .single();
-
-        // Merge Roles: Admin > Branch > Visitor
-        let finalRoleData = { role: 'visitor', requested_role: null };
-
-        const r1 = roleById?.role;
-        const r2 = roleByEmail?.role;
-
-        if (r1 === 'admin' || r2 === 'admin') {
-            finalRoleData.role = 'admin';
-        } else if (r1 && r1 !== 'visitor') {
-            finalRoleData = roleById;
-        } else if (r2 && r2 !== 'visitor') {
-            finalRoleData = roleByEmail;
-        } else {
-            // Both are visitor or null, prefer ID data if exists
-            finalRoleData = roleById || roleByEmail || finalRoleData;
-        }
 
         // 3. Get Post Count
         const { count } = await adminSupabase
@@ -60,16 +37,16 @@ export async function GET() {
         const meta = user.user_metadata || {};
         const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 
-        // 5. Combine data
+        // 5. Combine data (profiles 우선, user_roles 백업)
         return NextResponse.json({
             user: {
                 id: user.id,
                 email: user.email,
-                name: profileData?.full_name || '',
-                phone: profileData?.phone || '',
+                name: profileData?.full_name || roleData?.name || '',
+                phone: profileData?.phone || roleData?.phone || '',
                 avatar_url: profileData?.avatar_url || metaAvatar || null,
-                role: finalRoleData.role || 'visitor',
-                requested_role: finalRoleData.requested_role,
+                role: roleData?.role || 'visitor',
+                requested_role: roleData?.requested_role,
                 post_count: count || 0
             }
         });
