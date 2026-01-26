@@ -65,27 +65,38 @@ export async function PATCH(request) {
         const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 
         const profileUpdates = {
-            email: user.email,
-            avatar_url: metaAvatar
+            updated_at: new Date().toISOString()
         };
+        // Only update fields if they are provided/changed (to avoid overwriting with nulls if logic changes)
+        // Client sends current values, so it's safer to just update what's passed.
         if (name !== undefined) profileUpdates.full_name = name;
         if (phone !== undefined) profileUpdates.phone = phone;
+        if (metaAvatar) profileUpdates.avatar_url = metaAvatar; // Keep avatar synced
 
-        // Upsert by email
+        // Use UPDATE instead of UPSERT to avoid Unique Constraint errors if email is often duplicated or not unique indexed properly
         const { error: profileError } = await adminSupabase
             .from('profiles')
-            .upsert(profileUpdates, { onConflict: 'email' });
+            .update(profileUpdates)
+            .eq('email', user.email);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            console.error('Profile Update Error:', profileError);
+            // Don't throw here, try updating user_roles as well
+        }
 
         // 2. Redundant sync with user_roles (Admin page support)
-        const roleBackupUpdates = { email: user.email };
+        const roleBackupUpdates = {};
         if (name !== undefined) roleBackupUpdates.name = name;
         if (phone !== undefined) roleBackupUpdates.phone = phone;
 
-        await adminSupabase
-            .from('user_roles')
-            .upsert(roleBackupUpdates, { onConflict: 'email' });
+        if (Object.keys(roleBackupUpdates).length > 0) {
+            const { error: roleError } = await adminSupabase
+                .from('user_roles')
+                .update(roleBackupUpdates)
+                .eq('email', user.email);
+
+            if (roleError) console.error('Role Update Error:', roleError);
+        }
 
         // 3. Handle Role Change (by Email)
         if (role !== undefined) {

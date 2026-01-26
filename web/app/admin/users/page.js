@@ -239,7 +239,7 @@ export default function AdminUsersPage() {
                                         <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '80px' }}>상태</th>
                                         <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '80px' }}>게시글</th>
                                         <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '150px' }}>권한 설정</th>
-                                        <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '160px' }}>관리</th>
+                                        <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '220px' }}>관리</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -312,21 +312,19 @@ export default function AdminUsersPage() {
                                                 </div>
                                             </td>
                                             <td style={{ padding: '16px', textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => handleSaveUser(u.id)}
-                                                    disabled={!u.isDirty}
-                                                    style={{
-                                                        padding: '6px 12px', borderRadius: '6px',
-                                                        background: u.isDirty ? '#4f46e5' : '#e2e8f0',
-                                                        color: u.isDirty ? 'white' : '#94a3b8',
-                                                        border: 'none', cursor: u.isDirty ? 'pointer' : 'default', fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    {u.isDirty ? '💾 저장' : '완료'}
-                                                </button>
-                                            </td>
-                                            <td style={{ padding: '16px', textAlign: 'center' }}>
-                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        onClick={() => handleSaveUser(u.id)}
+                                                        disabled={!u.isDirty}
+                                                        style={{
+                                                            padding: '6px 10px', borderRadius: '6px',
+                                                            background: u.isDirty ? '#4f46e5' : '#e2e8f0',
+                                                            color: u.isDirty ? 'white' : '#94a3b8',
+                                                            border: 'none', cursor: u.isDirty ? 'pointer' : 'default', fontWeight: 'bold', fontSize: '0.75rem'
+                                                        }}
+                                                    >
+                                                        {u.isDirty ? '💾 저장' : '완료'}
+                                                    </button>
                                                     <button onClick={() => handleBanUser(u.id, u.email, u.is_banned)} style={{ padding: '6px 10px', borderRadius: '6px', background: u.is_banned ? '#dcfce7' : '#f1f5f9', color: u.is_banned ? '#166534' : '#64748b', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
                                                         {u.is_banned ? '해제' : '차단'}
                                                     </button>
