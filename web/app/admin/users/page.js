@@ -56,23 +56,45 @@ export default function AdminUsersPage() {
         setActiveQuery(searchQuery);
     };
 
-    async function handleUpdateUser(userId, userEmail, updates) {
-        setUsers(users.map(u => u.id === userId ? { ...u, ...updates } : u));
+    // 로컬 상태만 업데이트 (화면 반영)
+    const handleLocalUpdate = (userId, field, value) => {
+        setUsers(prevUsers => prevUsers.map(u =>
+            u.id === userId ? { ...u, [field]: value, isDirty: true } : u
+        ));
+    };
+
+    // 실제 DB 저장
+    async function handleSaveUser(userId) {
+        const userToUpdate = users.find(u => u.id === userId);
+        if (!userToUpdate) return;
+
+        // DB 업데이트용 데이터 (isDirty 등 불필요한 필드 제외)
+        // role이 변경된 경우 branch는 로직상 role 변경 시 처리되어야 함? 
+        // 여기선 단순 필드 업데이트만 보냄.
+        const { id, email, name, phone, role, can_write, can_delete, can_read_security } = userToUpdate;
+        const updates = { name, phone, role, can_write, can_delete, can_read_security };
+
         try {
             const res = await fetch('/api/admin/users', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, email: userEmail, ...updates }),
+                body: JSON.stringify({ userId: id, email, ...updates }),
             });
-            if (!res.ok) {
+
+            if (res.ok) {
+                // 성공 시 isDirty 해제
+                setUsers(prevUsers => prevUsers.map(u =>
+                    u.id === userId ? { ...u, isDirty: false } : u
+                ));
+                alert('저장되었습니다.'); // 사용자 요청: 팝업 메시지
+            } else {
                 const errorData = await res.json();
                 console.error('Update Request Failed:', errorData);
-                alert(`변경 실패: ${errorData.error || 'Unknown error'}\n${errorData.details || ''}`);
-                fetchUsers(pagination.page, activeQuery, showBanned);
+                alert(`저장 실패: ${errorData.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error(error);
-            fetchUsers(pagination.page, activeQuery, showBanned);
+            alert('네트워크 오류가 발생했습니다.');
         }
     }
 
@@ -88,9 +110,19 @@ export default function AdminUsersPage() {
         }
 
         try {
-            await handleUpdateUser(userId, userEmail, { banned: !currentBanStatus });
-            setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, is_banned: !currentBanStatus } : u));
-            alert(`정상적으로 ${currentBanStatus ? '활성화' : '차단'} 처리되었습니다.`);
+            // 차단은 즉시 반영 (저장 버튼 없이 기존 로직 유지)
+            const res = await fetch('/api/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, email: userEmail, banned: !currentBanStatus }),
+            });
+
+            if (res.ok) {
+                setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, is_banned: !currentBanStatus } : u));
+                alert(`정상적으로 ${currentBanStatus ? '활성화' : '차단'} 처리되었습니다.`);
+            } else {
+                throw new Error('Failed');
+            }
         } catch (e) {
             console.error(e);
             alert('상태 변경 실패');
@@ -224,19 +256,19 @@ export default function AdminUsersPage() {
                                             <td style={{ padding: '16px' }}>
                                                 <input
                                                     type="text"
-                                                    defaultValue={u.name || ''}
+                                                    value={u.name || ''}
                                                     placeholder="이름"
-                                                    onBlur={(e) => { if (e.target.value !== (u.name || '')) handleUpdateUser(u.id, u.email, { name: e.target.value }); }}
+                                                    onChange={(e) => handleLocalUpdate(u.id, 'name', e.target.value)}
                                                     style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                                                 />
                                             </td>
                                             <td style={{ padding: '16px' }}>
                                                 <input
                                                     type="text"
-                                                    defaultValue={u.phone || ''}
+                                                    value={u.phone || ''}
                                                     placeholder="010-0000-0000"
                                                     onInput={(e) => { e.target.value = formatPhoneNumber(e.target.value); }}
-                                                    onBlur={(e) => { if (e.target.value !== (u.phone || '')) handleUpdateUser(u.id, u.email, { phone: e.target.value }); }}
+                                                    onChange={(e) => handleLocalUpdate(u.id, 'phone', e.target.value)}
                                                     style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                                                 />
                                             </td>
@@ -244,7 +276,7 @@ export default function AdminUsersPage() {
                                                 <div style={{ position: 'relative' }}>
                                                     <select
                                                         value={u.role}
-                                                        onChange={(e) => handleUpdateUser(u.id, u.email, { role: e.target.value })}
+                                                        onChange={(e) => handleLocalUpdate(u.id, 'role', e.target.value)}
                                                         style={{
                                                             width: '100%',
                                                             padding: '6px',
@@ -274,10 +306,24 @@ export default function AdminUsersPage() {
                                             </td>
                                             <td style={{ padding: '16px', textAlign: 'center' }}>
                                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                                    <label title="쓰기"><input type="checkbox" checked={u.can_write} onChange={(e) => handleUpdateUser(u.id, u.email, { can_write: e.target.checked })} /> ✏️</label>
-                                                    <label title="삭제"><input type="checkbox" checked={u.can_delete} onChange={(e) => handleUpdateUser(u.id, u.email, { can_delete: e.target.checked })} /> 🗑️</label>
-                                                    <label title="보안"><input type="checkbox" checked={u.can_read_security} onChange={(e) => handleUpdateUser(u.id, u.email, { can_read_security: e.target.checked })} /> 🔐</label>
+                                                    <label title="쓰기"><input type="checkbox" checked={u.can_write || false} onChange={(e) => handleLocalUpdate(u.id, 'can_write', e.target.checked)} /> ✏️</label>
+                                                    <label title="삭제"><input type="checkbox" checked={u.can_delete || false} onChange={(e) => handleLocalUpdate(u.id, 'can_delete', e.target.checked)} /> 🗑️</label>
+                                                    <label title="보안"><input type="checkbox" checked={u.can_read_security || false} onChange={(e) => handleLocalUpdate(u.id, 'can_read_security', e.target.checked)} /> 🔐</label>
                                                 </div>
+                                            </td>
+                                            <td style={{ padding: '16px', textAlign: 'center' }}>
+                                                <button
+                                                    onClick={() => handleSaveUser(u.id)}
+                                                    disabled={!u.isDirty}
+                                                    style={{
+                                                        padding: '6px 12px', borderRadius: '6px',
+                                                        background: u.isDirty ? '#4f46e5' : '#e2e8f0',
+                                                        color: u.isDirty ? 'white' : '#94a3b8',
+                                                        border: 'none', cursor: u.isDirty ? 'pointer' : 'default', fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    {u.isDirty ? '💾 저장' : '완료'}
+                                                </button>
                                             </td>
                                             <td style={{ padding: '16px', textAlign: 'center' }}>
                                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
@@ -311,21 +357,21 @@ export default function AdminUsersPage() {
                                 <div className={styles.cardGrid}>
                                     <div className={styles.infoGroup}>
                                         <label>이름</label>
-                                        <input type="text" defaultValue={u.name || ''} onBlur={(e) => handleUpdateUser(u.id, u.email, { name: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }} />
+                                        <input type="text" value={u.name || ''} onChange={(e) => handleLocalUpdate(u.id, 'name', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }} />
                                     </div>
                                     <div className={styles.infoGroup}>
                                         <label>전화번호</label>
                                         <input
                                             type="text"
-                                            defaultValue={u.phone || ''}
+                                            value={u.phone || ''}
                                             onInput={(e) => { e.target.value = formatPhoneNumber(e.target.value); }}
-                                            onBlur={(e) => handleUpdateUser(u.id, u.email, { phone: e.target.value })}
+                                            onChange={(e) => handleLocalUpdate(u.id, 'phone', e.target.value)}
                                             style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }}
                                         />
                                     </div>
                                     <div className={styles.infoGroup} style={{ gridColumn: 'span 2' }}>
                                         <label>지점 및 권한</label>
-                                        <select value={u.role} onChange={(e) => handleUpdateUser(u.id, u.email, { role: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }}>
+                                        <select value={u.role} onChange={(e) => handleLocalUpdate(u.id, 'role', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.85rem' }}>
                                             {Object.entries(ROLE_LABELS).map(([key, label]) => (
                                                 <option key={key} value={key}>{label}</option>
                                             ))}
@@ -336,20 +382,32 @@ export default function AdminUsersPage() {
 
                                 <div className={styles.cardPermissions}>
                                     <label className={styles.permItem}>
-                                        <input type="checkbox" checked={u.can_write} onChange={(e) => handleUpdateUser(u.id, u.email, { can_write: e.target.checked })} />
+                                        <input type="checkbox" checked={u.can_write || false} onChange={(e) => handleLocalUpdate(u.id, 'can_write', e.target.checked)} />
                                         <span>쓰기✏️</span>
                                     </label>
                                     <label className={styles.permItem}>
-                                        <input type="checkbox" checked={u.can_delete} onChange={(e) => handleUpdateUser(u.id, u.email, { can_delete: e.target.checked })} />
+                                        <input type="checkbox" checked={u.can_delete || false} onChange={(e) => handleLocalUpdate(u.id, 'can_delete', e.target.checked)} />
                                         <span>삭제🗑️</span>
                                     </label>
                                     <label className={styles.permItem}>
-                                        <input type="checkbox" checked={u.can_read_security} onChange={(e) => handleUpdateUser(u.id, u.email, { can_read_security: e.target.checked })} />
+                                        <input type="checkbox" checked={u.can_read_security || false} onChange={(e) => handleLocalUpdate(u.id, 'can_read_security', e.target.checked)} />
                                         <span>보안🔐</span>
                                     </label>
                                 </div>
 
-                                <div className={styles.cardActions}>
+                                <div className={styles.cardActions} style={{ flexWrap: 'wrap' }}>
+                                    <button
+                                        onClick={() => handleSaveUser(u.id)}
+                                        disabled={!u.isDirty}
+                                        style={{
+                                            width: '100%', marginBottom: '10px', padding: '12px', borderRadius: '8px',
+                                            background: u.isDirty ? '#4f46e5' : '#e2e8f0',
+                                            color: u.isDirty ? 'white' : '#94a3b8',
+                                            border: 'none', fontWeight: '700', fontSize: '0.95rem', cursor: u.isDirty ? 'pointer' : 'default'
+                                        }}
+                                    >
+                                        {u.isDirty ? '💾 변경사항 저장' : '저장됨'}
+                                    </button>
                                     <button onClick={() => handleBanUser(u.id, u.email, u.is_banned)} style={{ flex: 1, padding: '10px', borderRadius: '8px', background: u.is_banned ? '#dcfce7' : '#f1f5f9', color: u.is_banned ? '#166534' : '#64748b', border: '1px solid #e2e8f0', fontWeight: '700', fontSize: '0.85rem' }}>
                                         {u.is_banned ? '차단 해제' : '계정 차단'}
                                     </button>

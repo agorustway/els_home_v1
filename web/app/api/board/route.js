@@ -80,7 +80,6 @@ export async function POST(request) {
                     board_type,
                     branch_tag,
                     author_id: user.id,
-                    author_email: user.email, // Explicitly save email for consolidation
                     attachments: attachments || []
                 }
             ])
