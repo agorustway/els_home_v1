@@ -27,14 +27,10 @@ export async function GET(request) {
 
         const adminSupabase = await createAdminClient();
 
-        // 1. Fetch all users (Supabase ListUsers doesn't support advanced search well, so we fetch & filter/slice)
-        // Note: For huge scale (10k+), this needs a better approach (e.g. sync auth to public table).
-        // For now, fetching all is acceptable or we use pagination from listUsers.
-        // But we need to filter by name (in user_roles) and email.
-
+        // 1. Fetch all users
         const { data: { users: authUsers }, error: authError } = await adminSupabase.auth.admin.listUsers({
             page: 1,
-            perPage: 1000 // Fetch up to 1000 for client-side filtering (Simulated "Big" list)
+            perPage: 1000 // Fetch up to 1000 for client-side filtering 
         });
 
         if (authError) throw authError;
@@ -49,14 +45,14 @@ export async function GET(request) {
             .from('profiles')
             .select('*');
 
-        // Map by Email for identity merging
+        // Map by Email
         const rolesMap = {};
         userRoles?.forEach(r => { if (r.email) rolesMap[r.email] = r; });
 
         const profilesMap = {};
         profiles?.forEach(p => { if (p.email) profilesMap[p.email] = p; });
 
-        // 3. Fetch Post Counts aggregated by email
+        // 3. Fetch Post Counts
         const { data: postsData } = await adminSupabase
             .from('posts')
             .select('author_email');
@@ -68,7 +64,7 @@ export async function GET(request) {
             }
         });
 
-        // 4. Unique User Consolidation (Merge by Email)
+        // 4. Unique User Consolidation
         const uniqueEmails = new Set();
         let consolidatedUsers = [];
 
@@ -81,7 +77,7 @@ export async function GET(request) {
             const profileInfo = profilesMap[email] || {};
 
             consolidatedUsers.push({
-                id: authUser.id, // Primary ID for this session
+                id: authUser.id, // Primary ID
                 email: email,
                 role: roleInfo.role || 'visitor',
                 name: profileInfo.full_name || roleInfo.name || '',
@@ -130,7 +126,6 @@ export async function GET(request) {
     }
 }
 
-// Helper for Role Label (Server Side if needed, but usually client side)
 function getRoleLabel(role) {
     const labels = { admin: '관리자', headquarters: '서울본사', asan: '아산지점', jungbu: '중부지점', dangjin: '당진지점', yesan: '예산지점', seosan: '서산지점', yeoncheon: '연천지점', ulsan: '울산지점', imgo: '임고지점', bulk: '벌크사업부', visitor: '방문자' };
     return labels[role] || role;
@@ -157,7 +152,7 @@ export async function PATCH(request) {
 
         const adminSupabase = await createAdminClient();
 
-        // Handle Ban/Unban logic (Auth level is still ID based)
+        // Handle Ban/Unban logic
         if (banned !== undefined) {
             const banDuration = banned ? '876000h' : 'none';
             const { error: banError } = await adminSupabase.auth.admin.updateUserById(
@@ -179,27 +174,56 @@ export async function PATCH(request) {
             if (phone !== undefined) roleUpdates.phone = phone;
 
             if (Object.keys(roleUpdates).length > 0) {
-                // Use UPDATE instead of UPSERT to ensure we modify the existing record
-                const { error: roleError } = await adminSupabase
+                // Try UPDATE first
+                const { error: roleError, count: rCount } = await adminSupabase
                     .from('user_roles')
                     .update(roleUpdates)
-                    .eq('email', email);
+                    .eq('email', email)
+                    .select('id', { count: 'exact' });
 
                 if (roleError) console.error('Admin Role Update Error:', roleError);
+
+                // If no record, Insert
+                if (!rCount || rCount === 0) {
+                    await adminSupabase.from('user_roles').insert({
+                        id: userId, // Use the target user's ID
+                        email: email,
+                        role: role || 'visitor',
+                        name: name || '',
+                        phone: phone || '',
+                        can_write: can_write || false,
+                        can_delete: can_delete || false,
+                        can_read_security: can_read_security || false
+                    });
+                }
             }
 
             // 2. Sync Profile data
-            const profileUpdates = {};
+            const profileUpdates = {
+                updated_at: new Date().toISOString()
+            };
             if (name !== undefined) profileUpdates.full_name = name;
             if (phone !== undefined) profileUpdates.phone = phone;
 
-            if (Object.keys(profileUpdates).length > 0) {
-                const { error: profileError } = await adminSupabase
+            if (Object.keys(profileUpdates).length > 0 && (name || phone)) {
+                // Try UPDATE first
+                const { error: profileError, count: pCount } = await adminSupabase
                     .from('profiles')
                     .update(profileUpdates)
-                    .eq('email', email);
+                    .eq('email', email)
+                    .select('id', { count: 'exact' });
 
                 if (profileError) console.error('Admin Profile Update Error:', profileError);
+
+                // If no record, Insert
+                if (!pCount || pCount === 0) {
+                    await adminSupabase.from('profiles').insert({
+                        id: userId, // Use the target user's ID
+                        email: email,
+                        full_name: name || '',
+                        phone: phone || ''
+                    });
+                }
             }
         }
 
@@ -237,9 +261,6 @@ export async function DELETE(request) {
         // 1. Delete dependent data first
         await adminSupabase.from('user_roles').delete().eq('id', userId);
         await adminSupabase.from('posts').delete().eq('author_id', userId);
-
-        // Removed storage.objects direct deletion as it caused schema() error.
-        // Orphaned files can be cleaned up later via storage policies or cron.
 
         // 2. Delete user from auth.users
         const { error } = await adminSupabase.auth.admin.deleteUser(userId);
