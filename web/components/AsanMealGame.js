@@ -53,7 +53,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
     const COL_SPACE = 100;
     const boardWidth = (numCols - 1) * COL_SPACE;
-    const rowHeight = 450 / numRows;
+    const rowHeight = 500 / numRows;
     const paddingX = 60;
 
     const generateLadder = () => {
@@ -137,7 +137,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
             isWinner: isWinner,
             finalPos: {
                 x: finalCol * COL_SPACE + paddingX,
-                y: 450
+                y: 500
             }
         }]);
 
@@ -153,7 +153,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
             </div>
 
             <div className={styles.ladderViewport}>
-                <div className={styles.ladderContainer} style={{ width: Math.max(boardWidth + (paddingX * 2), 300) }}>
+                <div className={styles.ladderContainer} style={{ width: Math.max(boardWidth + (paddingX * 2) + 40, 300) }}>
                     <div className={styles.ladderHeaderRow}>
                         {participants.map((name, i) => {
                             const isCompleted = completedHistory.some(h => h.startIndex === i);
@@ -184,7 +184,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
                     <div className={styles.ladderBoard}>
                         <svg className={styles.ladderLines}>
-                            <g stroke="#f1f5f9" strokeWidth="2">
+                            <g stroke="#cbd5e1" strokeWidth="2.5">
                                 {Array.from({ length: numCols }).map((_, i) => (
                                     <line key={`v-${i}`} x1={i * COL_SPACE + paddingX} y1="0" x2={i * COL_SPACE + paddingX} y2="100%" />
                                 ))}
