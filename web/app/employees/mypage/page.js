@@ -126,15 +126,41 @@ export default function MyPage() {
 
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소속 지점 (권한)</label>
-                            {user.role === 'visitor' ? (
+                            {user.role === 'admin' ? (
                                 <>
                                     <input
                                         type="text"
                                         className={styles.input}
-                                        value={getRoleLabel(user.role)}
+                                        value="🛡️ 관리자 (최고 권한)"
                                         disabled
-                                        style={{ backgroundColor: '#e2e8f0', cursor: 'not-allowed' }}
+                                        style={{ backgroundColor: '#f0f9ff', color: '#0369a1', fontWeight: 'bold', cursor: 'default', border: '1px solid #bae6fd' }}
                                     />
+                                    <div style={{ fontSize: '0.8rem', color: '#0ea5e9', marginTop: '6px' }}>
+                                        * 관리자 권한은 시스템 설정에서 관리됩니다.
+                                    </div>
+                                </>
+                            ) : user.role === 'visitor' ? (
+                                <>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input
+                                            type="text"
+                                            className={styles.input}
+                                            value={getRoleLabel(user.role)}
+                                            disabled
+                                            style={{ backgroundColor: '#e2e8f0', cursor: 'not-allowed', flex: 1 }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setLoading(true); fetchMyInfo(); }}
+                                            style={{
+                                                padding: '0 12px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                                                background: 'white', cursor: 'pointer', fontSize: '0.9rem'
+                                            }}
+                                            title="권한 정보 새로고침"
+                                        >
+                                            🔄
+                                        </button>
+                                    </div>
                                     <div style={{ fontSize: '0.8rem', color: '#f59e0b', marginTop: '6px' }}>
                                         ⚠️ 소속 지점은 관리자에게 문의하여 배정받을 수 있습니다.
                                     </div>

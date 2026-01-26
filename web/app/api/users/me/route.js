@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 // Get Current Unified User Info
 export async function GET() {
     try {
@@ -8,21 +10,24 @@ export async function GET() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+        // Use Admin Client to bypass RLS (Important for merging identities by email)
+        const adminSupabase = await createAdminClient();
+
         // 1. Get unified profile from public.profiles using EMAIL
-        const { data: profileData } = await supabase
+        const { data: profileData } = await adminSupabase
             .from('profiles')
             .select('*')
             .eq('email', user.email)
             .single();
 
         // 2. Get role data from user_roles (Check BOTH ID and Email to find highest privilege)
-        const { data: roleById } = await supabase
+        const { data: roleById } = await adminSupabase
             .from('user_roles')
             .select('role, requested_role')
             .eq('id', user.id)
             .single();
 
-        const { data: roleByEmail } = await supabase
+        const { data: roleByEmail } = await adminSupabase
             .from('user_roles')
             .select('role, requested_role')
             .eq('email', user.email)
@@ -46,7 +51,7 @@ export async function GET() {
         }
 
         // 3. Get Post Count
-        const { count } = await supabase
+        const { count } = await adminSupabase
             .from('posts')
             .select('*', { count: 'exact', head: true })
             .eq('author_email', user.email);
