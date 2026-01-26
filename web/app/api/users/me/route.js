@@ -8,27 +8,50 @@ export async function GET() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        // 1. Get unified profile from public.profiles using EMAIL (Merges identities)
+        // 1. Get unified profile from public.profiles using EMAIL
         const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('email', user.email)
             .single();
 
-        // 2. Get role data from user_roles using EMAIL (Supports Cross-Provider Permissions)
-        const { data: roleData } = await supabase
+        // 2. Get role data from user_roles (Check BOTH ID and Email to find highest privilege)
+        const { data: roleById } = await supabase
+            .from('user_roles')
+            .select('role, requested_role')
+            .eq('id', user.id)
+            .single();
+
+        const { data: roleByEmail } = await supabase
             .from('user_roles')
             .select('role, requested_role')
             .eq('email', user.email)
             .single();
 
-        // 3. Get Post Count (Sum posts by email for true consolidated view)
+        // Merge Roles: Admin > Branch > Visitor
+        let finalRoleData = { role: 'visitor', requested_role: null };
+
+        const r1 = roleById?.role;
+        const r2 = roleByEmail?.role;
+
+        if (r1 === 'admin' || r2 === 'admin') {
+            finalRoleData.role = 'admin';
+        } else if (r1 && r1 !== 'visitor') {
+            finalRoleData = roleById;
+        } else if (r2 && r2 !== 'visitor') {
+            finalRoleData = roleByEmail;
+        } else {
+            // Both are visitor or null, prefer ID data if exists
+            finalRoleData = roleById || roleByEmail || finalRoleData;
+        }
+
+        // 3. Get Post Count
         const { count } = await supabase
             .from('posts')
             .select('*', { count: 'exact', head: true })
             .eq('author_email', user.email);
 
-        // 4. Extract possible avatar from metadata if DB is empty
+        // 4. Extract possible avatar from metadata
         const meta = user.user_metadata || {};
         const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 
@@ -40,8 +63,8 @@ export async function GET() {
                 name: profileData?.full_name || '',
                 phone: profileData?.phone || '',
                 avatar_url: profileData?.avatar_url || metaAvatar || null,
-                role: roleData?.role || 'visitor',
-                requested_role: roleData?.requested_role,
+                role: finalRoleData.role || 'visitor',
+                requested_role: finalRoleData.requested_role,
                 post_count: count || 0
             }
         });
@@ -60,45 +83,60 @@ export async function PATCH(request) {
         const { name, phone, role } = await request.json();
         const adminSupabase = await createAdminClient();
 
-        // 1. Update profiles table using EMAIL (Master Identity)
+        // 1. PROFILES Table Update (Update -> Insert fallback)
         const meta = user.user_metadata || {};
         const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 
-        const profileUpdates = {
+        const profileData = {
             updated_at: new Date().toISOString()
         };
-        // Only update fields if they are provided/changed (to avoid overwriting with nulls if logic changes)
-        // Client sends current values, so it's safer to just update what's passed.
-        if (name !== undefined) profileUpdates.full_name = name;
-        if (phone !== undefined) profileUpdates.phone = phone;
-        if (metaAvatar) profileUpdates.avatar_url = metaAvatar; // Keep avatar synced
+        if (name !== undefined) profileData.full_name = name;
+        if (phone !== undefined) profileData.phone = phone;
+        if (metaAvatar) profileData.avatar_url = metaAvatar;
 
-        // Use UPDATE instead of UPSERT to avoid Unique Constraint errors if email is often duplicated or not unique indexed properly
-        const { error: profileError } = await adminSupabase
+        // Try UPDATE first
+        const { count: pCount } = await adminSupabase
             .from('profiles')
-            .update(profileUpdates)
-            .eq('email', user.email);
+            .update(profileData)
+            .eq('email', user.email)
+            .select('id', { count: 'exact' });
 
-        if (profileError) {
-            console.error('Profile Update Error:', profileError);
-            // Don't throw here, try updating user_roles as well
+        if (!pCount) {
+            // If no record, Insert
+            await adminSupabase.from('profiles').insert({
+                id: user.id,
+                email: user.email,
+                full_name: name || '',
+                phone: phone || '',
+                avatar_url: metaAvatar
+            });
         }
 
-        // 2. Redundant sync with user_roles (Admin page support)
-        const roleBackupUpdates = {};
-        if (name !== undefined) roleBackupUpdates.name = name;
-        if (phone !== undefined) roleBackupUpdates.phone = phone;
+        // 2. USER_ROLES Table Update (Update -> Insert fallback)
+        const roleData = {};
+        if (name !== undefined) roleData.name = name;
+        if (phone !== undefined) roleData.phone = phone;
 
-        if (Object.keys(roleBackupUpdates).length > 0) {
-            const { error: roleError } = await adminSupabase
+        if (Object.keys(roleData).length > 0) {
+            const { count: rCount } = await adminSupabase
                 .from('user_roles')
-                .update(roleBackupUpdates)
-                .eq('email', user.email);
+                .update(roleData)
+                .eq('email', user.email)
+                .select('id', { count: 'exact' });
 
-            if (roleError) console.error('Role Update Error:', roleError);
+            if (!rCount) {
+                // If no record, Insert
+                await adminSupabase.from('user_roles').insert({
+                    id: user.id,
+                    email: user.email,
+                    role: 'visitor', // Default role
+                    name: name || '',
+                    phone: phone || ''
+                });
+            }
         }
 
-        // 3. Handle Role Change (by Email)
+        // 3. Handle Role Change Request
         if (role !== undefined) {
             const { data: currentRoleData } = await adminSupabase
                 .from('user_roles')
@@ -117,9 +155,23 @@ export async function PATCH(request) {
                     return NextResponse.json({ error: '방문객은 소속 지점을 직접 변경할 수 없습니다. 관리자에게 문의하세요.' }, { status: 403 });
                 }
                 else {
-                    await adminSupabase
+                    // Update role
+                    const { count: roleUpdateCount } = await adminSupabase
                         .from('user_roles')
-                        .upsert({ email: user.email, role: role, requested_role: null }, { onConflict: 'email' });
+                        .update({ role: role, requested_role: null })
+                        .eq('email', user.email)
+                        .select('id', { count: 'exact' });
+
+                    if (!roleUpdateCount) {
+                        // Insert if missing (Unlikely if step 2 ran, but safe)
+                        await adminSupabase.from('user_roles').insert({
+                            id: user.id,
+                            email: user.email,
+                            role: role,
+                            name: name || '',
+                            phone: phone || ''
+                        });
+                    }
                 }
             }
         }

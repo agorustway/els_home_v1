@@ -206,18 +206,40 @@ export default function AdminUsersPage() {
                             }}>검색</button>
                         </form>
 
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
-                            <input
-                                type="checkbox"
-                                checked={showBanned}
-                                onChange={(e) => {
-                                    setShowBanned(e.target.checked);
-                                    setPagination(prev => ({ ...prev, page: 1 }));
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                            <button
+                                type="button"
+                                onClick={() => fetchUsers(pagination.page, activeQuery, showBanned)}
+                                style={{
+                                    padding: '10px 15px',
+                                    background: 'white',
+                                    color: '#475569',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '10px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
                                 }}
-                                style={{ width: '18px', height: '18px' }}
-                            />
-                            <span style={{ color: '#64748b', fontWeight: '600' }}>차단된 계정 포함</span>
-                        </label>
+                                title="목록 새로고침"
+                            >
+                                🔄
+                            </button>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={showBanned}
+                                    onChange={(e) => {
+                                        setShowBanned(e.target.checked);
+                                        setPagination(prev => ({ ...prev, page: 1 }));
+                                    }}
+                                    style={{ width: '18px', height: '18px' }}
+                                />
+                                <span style={{ color: '#64748b', fontWeight: '600' }}>차단된 계정 포함</span>
+                            </label>
+                        </div>
                     </div>
 
                     {error && (

@@ -170,7 +170,7 @@ export async function PATCH(request) {
         // Handle Identity Updates (Email-centric)
         if (email) {
             // 1. Sync Role & Permissions in user_roles
-            const roleUpdates = { email: email };
+            const roleUpdates = {};
             if (role !== undefined) roleUpdates.role = role;
             if (can_write !== undefined) roleUpdates.can_write = can_write;
             if (can_delete !== undefined) roleUpdates.can_delete = can_delete;
@@ -178,19 +178,28 @@ export async function PATCH(request) {
             if (name !== undefined) roleUpdates.name = name;
             if (phone !== undefined) roleUpdates.phone = phone;
 
-            await adminSupabase
-                .from('user_roles')
-                .upsert(roleUpdates, { onConflict: 'email' });
+            if (Object.keys(roleUpdates).length > 0) {
+                // Use UPDATE instead of UPSERT to ensure we modify the existing record
+                const { error: roleError } = await adminSupabase
+                    .from('user_roles')
+                    .update(roleUpdates)
+                    .eq('email', email);
+
+                if (roleError) console.error('Admin Role Update Error:', roleError);
+            }
 
             // 2. Sync Profile data
-            if (name !== undefined || phone !== undefined) {
-                const profileUpdates = { email: email };
-                if (name !== undefined) profileUpdates.full_name = name;
-                if (phone !== undefined) profileUpdates.phone = phone;
+            const profileUpdates = {};
+            if (name !== undefined) profileUpdates.full_name = name;
+            if (phone !== undefined) profileUpdates.phone = phone;
 
-                await adminSupabase
+            if (Object.keys(profileUpdates).length > 0) {
+                const { error: profileError } = await adminSupabase
                     .from('profiles')
-                    .upsert(profileUpdates, { onConflict: 'email' });
+                    .update(profileUpdates)
+                    .eq('email', email);
+
+                if (profileError) console.error('Admin Profile Update Error:', profileError);
             }
         }
 
