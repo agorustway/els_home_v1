@@ -2,38 +2,56 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from './detail.module.css';
 
-export default function WebzineDetail({ params }) {
+export default function WebzineDetail() {
+    const { id } = useParams();
     const [post, setPost] = useState(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const supabase = createClient();
-    const { id } = params;
 
     useEffect(() => {
         const fetchPost = async () => {
-            const { data, error } = await supabase
+            // 1. 게시글 데이터 조회 (조인 제거)
+            const { data: postData, error: postError } = await supabase
                 .from('posts')
-                .select(`
-                    *,
-                    author:user_roles!author_id (
-                        email,
-                        name
-                    )
-                `)
+                .select('*')
                 .eq('id', id)
                 .single();
 
-            if (error) {
-                console.error('Error fetching post:', error);
-            } else {
-                setPost(data);
-                supabase.rpc('increment_view_count', { post_id: id });
+            if (postError) {
+                console.error('Error fetching post:', postError);
+                setLoading(false);
+                return;
             }
+
+            // 2. 작성자 정보 별도 조회
+            let authorInfo = { name: '알 수 없음', email: '' };
+            if (postData.author_id) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('email, full_name')
+                    .eq('id', postData.author_id)
+                    .single();
+
+                if (profile) {
+                    authorInfo = { email: profile.email, name: profile.full_name };
+                } else {
+                    const { data: role } = await supabase
+                        .from('user_roles')
+                        .select('email')
+                        .eq('id', postData.author_id)
+                        .single();
+                    if (role) authorInfo = { email: role.email, name: role.email?.split('@')[0] };
+                }
+            }
+
+            setPost({ ...postData, author: authorInfo });
+            supabase.rpc('increment_view_count', { post_id: id });
             setLoading(false);
         };
 

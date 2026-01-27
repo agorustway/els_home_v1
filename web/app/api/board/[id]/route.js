@@ -2,30 +2,75 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
 export async function GET(request, { params }) {
-    const { id } = params;
+    // Next.js 15+ 대응: params를 await 처리
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
+    console.log(`[GET /api/board/${id}] Fetching post...`);
+
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // 1. 게시글 데이터만 먼저 조회 (조인 에러 방지)
+    const { data: post, error: postError } = await supabase
         .from('posts')
-        .select(`
-            *,
-            author:user_roles!author_id (
-                email,
-                name
-            )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    if (postError) {
+        console.error(`[GET /api/board/${id}] Supabase Post Error:`, postError);
+        return NextResponse.json({ error: postError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ post: data });
+    if (!post) {
+        console.warn(`[GET /api/board/${id}] Post not found`);
+        return NextResponse.json({ post: null }, { status: 404 });
+    }
+
+    // 2. 작성자 정보 별도 조회 (안전한 방식)
+    let authorData = null;
+    if (post.author_id) {
+        // 먼저 profiles 조회
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', post.author_id)
+            .single();
+
+        if (profile) {
+            authorData = {
+                email: profile.email,
+                name: profile.full_name
+            };
+        } else {
+            // 프로필 없으면 user_roles라도 시도 (호환성)
+            const { data: roleData } = await supabase
+                .from('user_roles')
+                .select('email')
+                .eq('id', post.author_id)
+                .single();
+            if (roleData) {
+                authorData = {
+                    email: roleData.email,
+                    name: roleData.email?.split('@')[0]
+                };
+            }
+        }
+    }
+
+    // 데이터 합치기
+    const enrichedPost = {
+        ...post,
+        author: authorData || { name: '알 수 없음', email: '' }
+    };
+
+    return NextResponse.json({ post: enrichedPost });
 }
 
 export async function PATCH(request, { params }) {
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -66,7 +111,9 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

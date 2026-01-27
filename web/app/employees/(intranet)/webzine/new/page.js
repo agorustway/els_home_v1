@@ -57,6 +57,7 @@ export default function NewWebzinePost() {
                 title,
                 content,
                 author_id: user.id,
+                author_email: user.email, // 필수 필드 추가
                 board_type: 'webzine',
                 thumbnail_url: thumbnailUrl,
                 attachments: []

@@ -15,13 +15,7 @@ export default function WebzineList() {
         try {
             const { data, error } = await supabase
                 .from('posts')
-                .select(`
-                    *,
-                    author:user_roles!author_id (
-                        email,
-                        name
-                    )
-                `)
+                .select('*') // 조인 제거, 모든 필드 선택 (author_email 포함)
                 .eq('board_type', 'webzine')
                 .order('created_at', { ascending: false });
 
@@ -93,7 +87,7 @@ export default function WebzineList() {
                                 <div className={styles.featuredHeader}>
                                     <h2 className={styles.featuredTitle}>{featuredPost.title}</h2>
                                     <div className={styles.featuredMeta}>
-                                        <span>작성자: {featuredPost.author?.name || featuredPost.author?.email?.split('@')[0]}</span>
+                                        <span>작성자: {featuredPost.author_email?.split('@')[0] || featuredPost.author?.name || '관리자'}</span>
                                         <span>날짜: {new Date(featuredPost.created_at).toLocaleDateString()}</span>
                                         <span>조회수: {featuredPost.view_count || 0}</span>
                                     </div>
@@ -169,7 +163,7 @@ export default function WebzineList() {
                                                     {getExcerpt(post.content)}
                                                 </p>
                                                 <div className={styles.meta}>
-                                                    <span className={styles.author}>{post.author?.name || post.author?.email?.split('@')[0]}</span>
+                                                    <span className={styles.author}>{post.author_email?.split('@')[0] || post.author?.name || '관리자'}</span>
                                                     <span className={styles.date}>{new Date(post.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>

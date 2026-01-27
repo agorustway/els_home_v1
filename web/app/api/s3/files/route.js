@@ -37,8 +37,15 @@ export async function POST(request) {
 
         return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     } catch (error) {
-        console.error('S3 API Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('SERVER S3 API ERROR:', {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause
+        });
+        return NextResponse.json({
+            error: error.message,
+            details: error.stack
+        }, { status: 500 });
     }
 }
 

@@ -26,7 +26,13 @@ export default function PostDetailPage() {
 
     async function fetchPost() {
         try {
+            console.log('Fetching post ID:', id);
             const res = await fetch(`/api/board/${id}`);
+            if (!res.ok) {
+                const errData = await res.json();
+                console.error('Fetch Error:', errData);
+                throw new Error(errData.error || 'Failed to fetch');
+            }
             const data = await res.json();
             if (data.post) {
                 setPost(data.post);
