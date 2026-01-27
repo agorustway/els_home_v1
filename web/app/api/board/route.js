@@ -7,16 +7,10 @@ export async function GET(request) {
     const type = searchParams.get('type') || 'free';
     const branch = searchParams.get('branch');
 
-    // Join with user_roles to get author info, but realize multiple IDs share the same email
+    // 1. Fetch posts (no join)
     let query = supabase
         .from('posts')
-        .select(`
-            *,
-            author:user_roles!author_id (
-                email,
-                name
-            )
-        `)
+        .select('*')
         .eq('board_type', type)
         .order('created_at', { ascending: false });
 
@@ -30,27 +24,35 @@ export async function GET(request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Post-processing: If we have author_email, we should really be using the profile name
-    // to ensure consistency across providers.
-    const uniqueEmails = [...new Set(data.filter(p => p.author?.email || p.author_email).map(p => p.author?.email || p.author_email))];
+    // 2. Fetch Author Profiles using author_email
+    const uniqueEmails = [...new Set(data.map(p => p.author_email).filter(Boolean))];
 
-    const { data: profiles } = await supabase
-        .from('profiles')
-        .select('email, full_name, avatar_url')
-        .in('email', uniqueEmails);
+    // Fallback: If author_email is missing, try fetching profiles by id if profile table has id? 
+    // Actually, profiles table ONLY has email now. So we MUST rely on author_email.
+    // If author_email is null (old data not migrated), we can't show author info easily without migration.
+
+    let profiles = [];
+    if (uniqueEmails.length > 0) {
+        const { data: pData } = await supabase
+            .from('profiles')
+            .select('email, full_name, avatar_url')
+            .in('email', uniqueEmails);
+        profiles = pData || [];
+    }
 
     const profileMap = {};
-    profiles?.forEach(p => { profileMap[p.email] = p; });
+    profiles.forEach(p => { profileMap[p.email] = p; });
 
     const mergedPosts = data.map(post => {
-        const email = post.author?.email || post.author_email;
-        const profile = profileMap[email];
+        const email = post.author_email;
+        const profile = profileMap[email] || {};
         return {
             ...post,
             author: {
-                ...post.author,
-                name: profile?.full_name || post.author?.name || email?.split('@')[0],
-                avatar_url: profile?.avatar_url
+                email: email,
+                name: profile.full_name || email?.split('@')[0] || '알 수 없음',
+                avatar_url: profile.avatar_url,
+                id: post.author_id // Keep ID for reference
             }
         };
     });
@@ -70,7 +72,7 @@ export async function POST(request) {
         const body = await request.json();
         const { title, content, board_type, branch_tag, attachments } = body;
 
-        // Save both author_id and author_email for robust identity merging
+        // Save both author_id and author_email
         const { data, error } = await supabase
             .from('posts')
             .insert([
@@ -80,6 +82,7 @@ export async function POST(request) {
                     board_type,
                     branch_tag,
                     author_id: user.id,
+                    author_email: user.email, // Important!
                     attachments: attachments || []
                 }
             ])
