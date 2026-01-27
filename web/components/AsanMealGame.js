@@ -376,6 +376,24 @@ export default function AsanMealGame() {
     const canvasRef = useRef(null);
     const rouletteTimerRef = useRef(null);
 
+    const [rouletteSize, setRouletteSize] = useState(420);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 480) {
+                setRouletteSize(300);
+            } else if (window.innerWidth < 768) {
+                setRouletteSize(360);
+            } else {
+                setRouletteSize(420);
+            }
+        };
+
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const addToHistory = (game, result) => {
         const now = new Date();
         const timestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -389,11 +407,12 @@ export default function AsanMealGame() {
         const count = names.length;
         if (count === 0) return;
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const size = rouletteSize;
+        const centerX = size / 2;
+        const centerY = size / 2;
         const radius = Math.min(centerX, centerY) - 10;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, size, size);
         names.forEach((name, i) => {
             const startAngle = (i * 2 * Math.PI) / count;
             const endAngle = ((i + 1) * 2 * Math.PI) / count;
@@ -412,18 +431,18 @@ export default function AsanMealGame() {
             ctx.rotate(startAngle + Math.PI / count);
             ctx.textAlign = 'right';
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 16px Outfit, sans-serif';
-            ctx.fillText(name, radius - 35, 6);
+            // Responsive font size
+            ctx.font = `bold ${size < 350 ? 12 : 16}px Outfit, sans-serif`;
+            ctx.fillText(name, radius - (size < 350 ? 25 : 35), 6);
             ctx.restore();
         });
     };
 
     useEffect(() => {
         if (activeGame === 'roulette') {
-            const t = setTimeout(drawRoulette, 100);
-            return () => clearTimeout(t);
+            drawRoulette();
         }
-    }, [names, activeGame]);
+    }, [names, activeGame, rouletteSize]);
 
     const stopRoulette = () => {
         const currentAngle = getRotationDegrees(canvasRef.current);
@@ -525,9 +544,9 @@ export default function AsanMealGame() {
                 <div className={styles.gameScreen}>
                     {activeGame === 'roulette' && (
                         <div className={styles.rouletteContainer}>
-                            <div className={styles.rouletteWrapper}>
+                            <div className={styles.rouletteWrapper} style={{ width: rouletteSize, height: rouletteSize }}>
                                 <div className={styles.indicator}>▼</div>
-                                <canvas ref={canvasRef} width={420} height={420} className={styles.canvasElement} style={{
+                                <canvas ref={canvasRef} width={rouletteSize} height={rouletteSize} className={styles.canvasElement} style={{
                                     transform: `rotate(${rotation}deg)`,
                                     transition: `transform ${spinDuration}s cubic-bezier(0.1, 0, 0.1, 1)`
                                 }} />

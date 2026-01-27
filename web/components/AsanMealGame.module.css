@@ -706,8 +706,8 @@
     }
 
     .rouletteWrapper {
-        width: 340px;
-        height: 340px;
+        /* Width handled by inline styles from JS */
+        padding: 12px;
     }
 
     .bingoBoardOuter {
@@ -738,8 +738,9 @@
     }
 
     .rouletteWrapper {
-        width: 300px;
-        height: 300px;
+        /* Width handled by inline styles from JS */
+        max-width: 100%;
+        padding: 10px;
     }
 
     .bingoBoardOuter {
