@@ -63,14 +63,13 @@ export default function AdminUsersPage() {
         ));
     };
 
-    // 실제 DB 저장
+    // 실제 DB 저장 (단일)
     async function handleSaveUser(userId) {
         const userToUpdate = users.find(u => u.id === userId);
         if (!userToUpdate) return;
 
-        // DB 업데이트용 데이터 (isDirty 등 불필요한 필드 제외)
-        // role이 변경된 경우 branch는 로직상 role 변경 시 처리되어야 함? 
-        // 여기선 단순 필드 업데이트만 보냄.
+        // DB 업데이트용 데이터
+        // Email을 식별자로 사용
         const { id, email, name, phone, role, can_write, can_delete, can_read_security } = userToUpdate;
         const updates = { name, phone, role, can_write, can_delete, can_read_security };
 
@@ -78,7 +77,7 @@ export default function AdminUsersPage() {
             const res = await fetch('/api/admin/users', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: id, email, ...updates }),
+                body: JSON.stringify({ email, ...updates }), // userId 대신 email 사용
             });
 
             if (res.ok) {
@@ -86,7 +85,7 @@ export default function AdminUsersPage() {
                 setUsers(prevUsers => prevUsers.map(u =>
                     u.id === userId ? { ...u, isDirty: false } : u
                 ));
-                alert('저장되었습니다.'); // 사용자 요청: 팝업 메시지
+                alert('저장되었습니다.');
             } else {
                 const errorData = await res.json();
                 console.error('Update Request Failed:', errorData);
@@ -96,6 +95,47 @@ export default function AdminUsersPage() {
             console.error(error);
             alert('네트워크 오류가 발생했습니다.');
         }
+    }
+
+    // 전체 저장 (변경된 항목만)
+    async function handleSaveAll() {
+        const dirtyUsers = users.filter(u => u.isDirty);
+        if (dirtyUsers.length === 0) {
+            alert('변경사항이 없습니다.');
+            return;
+        }
+
+        if (!confirm(`${dirtyUsers.length}명의 변경사항을 저장하시겠습니까?`)) return;
+
+        let successCount = 0;
+        let failCount = 0;
+
+        // 병렬 처리로 모든 요청 전송
+        await Promise.all(dirtyUsers.map(async (user) => {
+            const { email, name, phone, role, can_write, can_delete, can_read_security } = user;
+            const updates = { name, phone, role, can_write, can_delete, can_read_security };
+
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, ...updates }),
+                });
+
+                if (res.ok) {
+                    successCount++;
+                    setUsers(prevUsers => prevUsers.map(u =>
+                        u.email === email ? { ...u, isDirty: false } : u
+                    ));
+                } else {
+                    failCount++;
+                }
+            } catch (error) {
+                failCount++;
+            }
+        }));
+
+        alert(`저장 완료: 성공 ${successCount}건, 실패 ${failCount}건`);
     }
 
     const handleBanUser = async (userId, userEmail, currentBanStatus) => {
@@ -207,6 +247,27 @@ export default function AdminUsersPage() {
                         </form>
 
                         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                            {users.some(u => u.isDirty) && (
+                                <button
+                                    onClick={handleSaveAll}
+                                    style={{
+                                        padding: '10px 15px',
+                                        background: '#4f46e5',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        boxShadow: '0 2px 4px rgba(79, 70, 229, 0.3)'
+                                    }}
+                                >
+                                    💾 전체 저장 ({users.filter(u => u.isDirty).length})
+                                </button>
+                            )}
+
                             <button
                                 type="button"
                                 onClick={() => fetchUsers(pagination.page, activeQuery, showBanned)}
