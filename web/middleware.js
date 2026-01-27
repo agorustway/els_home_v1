@@ -27,14 +27,14 @@ export async function middleware(request) {
         }
     )
 
-    const { 
-        data: { user }, 
+    const {
+        data: { user },
     } = await supabase.auth.getUser()
 
     let userRole = 'visitor'; // Default to visitor if no user or role found
     if (user) {
-        // Use the authenticated client to fetch the user's role
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        // Use Email-based lookup (unified identity)
+        const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', user.email).single();
         userRole = roleData?.role || 'visitor';
     }
 
@@ -57,7 +57,7 @@ export async function middleware(request) {
             url.searchParams.set('error', '로그인이 필요합니다.')
             return NextResponse.redirect(url)
         }
-        
+
         // 방문자(visitor) 권한은 임직원 홈(/employees) 외의 하위 기능 접근 불가
         if (userRole === 'visitor' && path !== '/employees' && !path.startsWith('/employees/mypage')) {
             const url = request.nextUrl.clone()
@@ -68,10 +68,10 @@ export async function middleware(request) {
 
         // If authenticated and not visitor, but trying to access /admin pages without 'admin' role
         if (path.startsWith('/admin') && userRole !== 'admin') {
-             const url = request.nextUrl.clone()
-             url.pathname = '/login' // Or a specific unauthorized page
-             url.searchParams.set('error', '권한이 없습니다: 관리자만 관리자 페이지에 접근할 수 있습니다.')
-             return NextResponse.redirect(url)
+            const url = request.nextUrl.clone()
+            url.pathname = '/login' // Or a specific unauthorized page
+            url.searchParams.set('error', '권한이 없습니다: 관리자만 관리자 페이지에 접근할 수 있습니다.')
+            return NextResponse.redirect(url)
         }
     }
 

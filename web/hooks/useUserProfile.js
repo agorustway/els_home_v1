@@ -14,7 +14,7 @@ export function useUserProfile() {
 
     if (user) {
       // 1. Fetch from public.profiles using email (Primary identity)
-      const { data: profileData } = await supabase
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', user.email)
