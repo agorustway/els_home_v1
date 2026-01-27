@@ -24,12 +24,12 @@ export function useUserRole() {
                 }
 
                 setUser(authUser);
-                console.log('useUserRole: User found, fetching role...', authUser.id);
+                console.log('useUserRole: User found, fetching role...', authUser.email);
 
                 const { data: roleData, error: roleError } = await supabase
                     .from('user_roles')
                     .select('role, name, phone')
-                    .eq('id', authUser.id)
+                    .eq('email', authUser.email)
                     .single();
 
                 if (roleError && roleError.code !== 'PGRST116') {

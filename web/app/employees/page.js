@@ -120,8 +120,7 @@ export default function EmployeesPortal() {
                                                 <p className={styles.cardDesc}>자유게시판 및 사내 웹진 채널</p>
                                             </div>
                                             <div className={styles.cardLinks}>
-                                                <Link href="/employees/board/free" className={styles.cardLinkItem}>💬 자유게시판 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></Link>
-                                                <Link href="/employees/webzine" className={styles.cardLinkItem}>📰 사내 웹진 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></Link>
+                                                <div className={styles.cardLinkItem}>💬 자유게시판 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></div>
                                             </div>
                                         </motion.div>
                                     </Link>
