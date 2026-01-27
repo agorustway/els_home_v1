@@ -10,34 +10,33 @@ export async function GET() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        // Use Admin Client to bypass RLS (Important for merging identities by email)
+        // Use Admin Client to bypass RLS
         const adminSupabase = await createAdminClient();
 
-        // 1. Get unified profile from public.profiles using EMAIL
+        // Email 기반 단일 조회 (Simple & Clean)
+        const { data: roleData } = await adminSupabase
+            .from('user_roles')
+            .select('*')
+            .eq('email', user.email)
+            .single();
+
         const { data: profileData } = await adminSupabase
             .from('profiles')
             .select('*')
             .eq('email', user.email)
             .single();
 
-        // 2. Get role data from user_roles using EMAIL (single source of truth)
-        const { data: roleData } = await adminSupabase
-            .from('user_roles')
-            .select('role, requested_role, name, phone')
-            .eq('email', user.email)
-            .single();
-
-        // 3. Get Post Count
+        // Get Post Count
         const { count } = await adminSupabase
             .from('posts')
             .select('*', { count: 'exact', head: true })
             .eq('author_email', user.email);
 
-        // 4. Extract possible avatar from metadata
+        // Extract avatar from metadata
         const meta = user.user_metadata || {};
         const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 
-        // 5. Combine data (profiles 우선, user_roles 백업)
+        // Combine data
         return NextResponse.json({
             user: {
                 id: user.id,
@@ -51,6 +50,7 @@ export async function GET() {
             }
         });
     } catch (error) {
+        console.error('GET /api/users/me Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
@@ -65,56 +65,47 @@ export async function PATCH(request) {
         const { name, phone, role } = await request.json();
         const adminSupabase = await createAdminClient();
 
-        // 1. PROFILES Table Update (Update -> Insert fallback)
-        const meta = user.user_metadata || {};
-        const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
+        // 1. Update/Insert user_roles (Email 기반 UPSERT)
+        const roleUpdates = {};
+        if (name !== undefined) roleUpdates.name = name;
+        if (phone !== undefined) roleUpdates.phone = phone;
+        // Do not directly update role here if there are specific role change rules.
+        // Handle role change separately after fetching current role.
 
-        const profileData = {
-            updated_at: new Date().toISOString()
-        };
-        if (name !== undefined) profileData.full_name = name;
-        if (phone !== undefined) profileData.phone = phone;
-        if (metaAvatar) profileData.avatar_url = metaAvatar;
+        if (Object.keys(roleUpdates).length > 0) {
+            roleUpdates.email = user.email;
+            roleUpdates.updated_at = new Date().toISOString();
 
-        // Try UPDATE first
-        const { count: pCount } = await adminSupabase
-            .from('profiles')
-            .update(profileData)
-            .eq('email', user.email)
-            .select('id', { count: 'exact' });
+            const { error: roleError } = await adminSupabase
+                .from('user_roles')
+                .upsert(roleUpdates, { onConflict: 'email', ignoreDuplicates: false }); // Ensure existing record is updated
 
-        if (!pCount) {
-            // If no record, Insert
-            await adminSupabase.from('profiles').insert({
-                id: user.id,
-                email: user.email,
-                full_name: name || '',
-                phone: phone || '',
-                avatar_url: metaAvatar
-            });
+            if (roleError) {
+                console.error('Role Update Error:', roleError);
+                return NextResponse.json({ error: roleError.message }, { status: 500 });
+            }
         }
 
-        // 2. USER_ROLES Table Update (Update -> Insert fallback)
-        const roleData = {};
-        if (name !== undefined) roleData.name = name;
-        if (phone !== undefined) roleData.phone = phone;
+        // 2. Update/Insert profiles (Email 기반 UPSERT)
+        const profileUpdates = {};
+        if (name !== undefined) profileUpdates.full_name = name;
+        if (phone !== undefined) profileUpdates.phone = phone;
 
-        if (Object.keys(roleData).length > 0) {
-            const { count: rCount } = await adminSupabase
-                .from('user_roles')
-                .update(roleData)
-                .eq('email', user.email)
-                .select('id', { count: 'exact' });
+        const meta = user.user_metadata || {};
+        const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
+        if (metaAvatar) profileUpdates.avatar_url = metaAvatar;
 
-            if (!rCount) {
-                // If no record, Insert
-                await adminSupabase.from('user_roles').insert({
-                    id: user.id,
-                    email: user.email,
-                    role: 'visitor', // Default role
-                    name: name || '',
-                    phone: phone || ''
-                });
+        if (Object.keys(profileUpdates).length > 0) {
+            profileUpdates.email = user.email;
+            profileUpdates.updated_at = new Date().toISOString();
+
+            const { error: profileError } = await adminSupabase
+                .from('profiles')
+                .upsert(profileUpdates, { onConflict: 'email', ignoreDuplicates: false }); // Ensure existing record is updated
+
+            if (profileError) {
+                console.error('Profile Update Error:', profileError);
+                return NextResponse.json({ error: profileError.message }, { status: 500 });
             }
         }
 
@@ -138,21 +129,14 @@ export async function PATCH(request) {
                 }
                 else {
                     // Update role
-                    const { count: roleUpdateCount } = await adminSupabase
+                    const { error: roleUpdateError } = await adminSupabase
                         .from('user_roles')
-                        .update({ role: role, requested_role: null })
-                        .eq('email', user.email)
-                        .select('id', { count: 'exact' });
+                        .update({ role: role, requested_role: null, updated_at: new Date().toISOString() })
+                        .eq('email', user.email);
 
-                    if (!roleUpdateCount) {
-                        // Insert if missing (Unlikely if step 2 ran, but safe)
-                        await adminSupabase.from('user_roles').insert({
-                            id: user.id,
-                            email: user.email,
-                            role: role,
-                            name: name || '',
-                            phone: phone || ''
-                        });
+                    if (roleUpdateError) {
+                        console.error('Role Change Update Error:', roleUpdateError);
+                        return NextResponse.json({ error: roleUpdateError.message }, { status: 500 });
                     }
                 }
             }
@@ -160,6 +144,7 @@ export async function PATCH(request) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
+        console.error('PATCH /api/users/me Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
