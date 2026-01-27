@@ -15,17 +15,9 @@ function getMonday(d) {
 function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const now = new Date();
-    const isThisYear = date.getFullYear() === now.getFullYear();
     const mm = date.getMonth() + 1;
     const dd = date.getDate();
-
-    if (isThisYear) {
-        return `${mm}월 ${dd}일`;
-    } else {
-        const yy = String(date.getFullYear()).slice(-2);
-        return `${yy}년 ${mm}월 ${dd}일`;
-    }
+    return `${mm}월 ${dd}일`;
 }
 
 export default function AsanLunchMenu() {
@@ -71,8 +63,10 @@ export default function AsanLunchMenu() {
             const res = await fetch('/api/asan/lunch?type=lunchbox');
             const json = await res.json();
             if (json.data) {
-                // 배열인지 확인 (API 수정으로 배열이 옴)
-                setMenus(Array.isArray(json.data) ? json.data : [json.data]);
+                const data = Array.isArray(json.data) ? json.data : [json.data];
+                // 최신순 정렬 (혹시 API가 정렬 안 해줄 경우 대비)
+                data.sort((a, b) => new Date(b.week_start_date) - new Date(a.week_start_date));
+                setMenus(data);
             } else {
                 setMenus([]);
             }
@@ -99,11 +93,37 @@ export default function AsanLunchMenu() {
 
     // 기존 식단 수정
     const handleEditClick = (menu, e) => {
-        e.stopPropagation();
+        if (e) e.stopPropagation();
         setSelectedDate(menu.week_start_date);
         setFile(null);
         setTargetMenu(menu); // Edit mode
         setIsEditing(true);
+    };
+
+    // 삭제 기능 추가
+    const handleDelete = async (menu, e) => {
+        if (e) e.stopPropagation();
+        if (!confirm(`${formatDate(menu.week_start_date)} 주간 식단표를 삭제하시겠습니까?`)) return;
+
+        try {
+            // DELETE API 호출 (API가 id 쿼리 파라미터를 받야아 함)
+            const res = await fetch(`/api/asan/lunch?id=${menu.id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                alert('삭제되었습니다.');
+                fetchMenus();
+            } else {
+                // DELETE 메서드가 없을 경우를 대비해 POST로 삭제 요청을 보낼 수도 있음 (서버 구현에 따라 다름)
+                // 일단 표준 RESTful DELETE 시도
+                const err = await res.json();
+                alert(`삭제 실패: ${err.error || '알 수 없는 오류'}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('삭제 중 오류가 발생했습니다.');
+        }
     };
 
     // 이미지 클릭 (확대)
@@ -145,59 +165,82 @@ export default function AsanLunchMenu() {
         }
     };
 
+    // Separate latest menu and history
+    const latestMenu = menus.length > 0 ? menus[0] : null;
+    const pastMenus = menus.length > 1 ? menus.slice(1) : [];
+
     return (
         <div className={styles.container}>
-            <div className={styles.card}>
-                <div className={styles.header}>
-                    <div className={styles.titleGroup}>
-                        <h2>
-                            🍱 아산지점 점심 식단표
-                        </h2>
-                        <span className={styles.subTitle}>최근 식단표를 확인하고 관리할 수 있습니다. (좌우 스크롤)</span>
+            <div className={styles.header}>
+                <div className={styles.titleGroup}>
+                    <h2>🍱 아산지점 점심 식단표</h2>
+                    <p className={styles.subTitle}>이번 주 점심 메뉴를 확인하세요.</p>
+                </div>
+                {user && (
+                    <button className={styles.uploadIconBtn} onClick={handleNewClick}>
+                        ➕ 식단 등록
+                    </button>
+                )}
+            </div>
+
+            {/* 1. Hero Section (Latest Menu) */}
+            {isLoading ? (
+                <div className={styles.loadingBox}>식단표 불러오는 중...</div>
+            ) : latestMenu ? (
+                <div className={styles.heroSection}>
+                    <div className={styles.heroHeader}>
+                        <span className={styles.badgeLatest}>최신 식단</span>
+                        <h3>{formatDate(latestMenu.week_start_date)} 주간 메뉴</h3>
                     </div>
-                    {/* Header Action Button */}
+                    <div className={styles.heroImageWrapper} onClick={() => handleImageClick(latestMenu)}>
+                        <img
+                            src={`/api/s3/files?key=${latestMenu.image_url}&t=${new Date(latestMenu.updated_at).getTime()}`}
+                            alt="Latest Menu"
+                            className={styles.heroImg}
+                        />
+                        <div className={styles.zoomHint}>🔍 클릭하여 확대</div>
+                    </div>
                     {user && (
-                        <div className={styles.headerActions}>
-                            <button className={styles.uploadIconBtn} onClick={handleNewClick}>
-                                ➕ 새 식단
-                            </button>
+                        <div className={styles.heroActions}>
+                            <button onClick={(e) => handleEditClick(latestMenu, e)} className={styles.actionBtn}>✏️ 수정</button>
+                            <button onClick={(e) => handleDelete(latestMenu, e)} className={styles.deleteBtn}>🗑️ 삭제</button>
                         </div>
                     )}
                 </div>
+            ) : (
+                <div className={styles.emptyHero}>
+                    <p>등록된 식단표가 없습니다.</p>
+                </div>
+            )}
 
-                <div className={styles.scrollContainer}>
-                    {/* Menu List Only */}
-                    {isLoading ? (
-                        <div className={styles.emptyState}>로딩 중...</div>
-                    ) : menus.length > 0 ? (
-                        menus.map((menu) => (
-                            <div key={menu.id} className={styles.menuCard}>
-                                <div className={styles.menuImageArea} onClick={() => handleImageClick(menu)}>
+            {/* 2. List Section (Past Menus) */}
+            {pastMenus.length > 0 && (
+                <div className={styles.historySection}>
+                    <h3 className={styles.historyTitle}>📜 지난 식단표 기록</h3>
+                    <div className={styles.historyList}>
+                        {pastMenus.map((menu) => (
+                            <div key={menu.id} className={styles.historyItem} onClick={() => handleImageClick(menu)}>
+                                <div className={styles.historyThumb}>
                                     <img
                                         src={`/api/s3/files?key=${menu.image_url}&t=${new Date(menu.updated_at).getTime()}`}
-                                        alt={`Menu ${menu.week_start_date}`}
-                                        className={styles.menuImg}
+                                        alt="Thumb"
                                     />
-                                    {user && (
-                                        <button
-                                            className={styles.editBtn}
-                                            onClick={(e) => handleEditClick(menu, e)}
-                                            title="수정"
-                                        >
-                                            ✏️
-                                        </button>
-                                    )}
                                 </div>
-                                <div className={styles.menuDate}>
-                                    {formatDate(menu.week_start_date)} 업데이트
+                                <div className={styles.historyInfo}>
+                                    <div className={styles.historyDate}>{formatDate(menu.week_start_date)}</div>
+                                    <div className={styles.historyMeta}>업데이트: {new Date(menu.updated_at).toLocaleDateString()}</div>
                                 </div>
+                                {user && (
+                                    <div className={styles.itemActions}>
+                                        <button onClick={(e) => handleEditClick(menu, e)} className={styles.iconBtn}>✏️</button>
+                                        <button onClick={(e) => handleDelete(menu, e)} className={styles.iconBtnDanger}>🗑️</button>
+                                    </div>
+                                )}
                             </div>
-                        ))
-                    ) : (
-                        <div className={styles.emptyState}>등록된 식단표가 없습니다.</div>
-                    )}
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Zoom Modal */}
             {isZoomed && targetMenu && (
@@ -228,9 +271,6 @@ export default function AsanLunchMenu() {
                                     value={selectedDate}
                                     onChange={e => setSelectedDate(e.target.value)}
                                     required
-                                // 수정 시 날짜 못 바꾸게? 아니면 바꾸게? 보통은 바꾸게 둠 (잘못 올렸을 수 있으니)
-                                // 하지만 PK가 아니라서 업데이트 로직이 날짜 기준이라 조심해야 함.
-                                // 현재 로직: 해당 날짜에 데이터가 있으면 덮어쓰기. 즉 날짜 바꾸면 그 날짜 데이터 덮어씀. OK.
                                 />
                             </div>
 
@@ -240,10 +280,7 @@ export default function AsanLunchMenu() {
                                     type="file"
                                     accept="image/*"
                                     onChange={e => setFile(e.target.files[0])}
-                                    required={!targetMenu} // 수정 모드일 땐 파일 선택 안 해도 됨 (날짜만 바꿀 수도 있으니? 아 근데 여기 로직은 파일 필수인듯)
-                                // API 로직 상 파일 없으면 에러 남. 수정 시에도 파일 재업로드 강제하는 게 간단함.
-                                // 하지만 사용자 경험상 날짜만 바꾸는 건 드문 케이스.
-                                // 일단 파일 필수로 유지 (이미지 관리니까). 날짜만 바꾸는 건 드문 케이스.
+                                    required={!targetMenu}
                                 />
                             </div>
 
@@ -257,7 +294,6 @@ export default function AsanLunchMenu() {
                     </div>
                 </div>
             )}
-
         </div>
     );
 }
