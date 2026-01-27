@@ -187,16 +187,18 @@ export async function PATCH(request) {
 
                 // If no record, Insert
                 if (!rCount || rCount === 0) {
-                    await adminSupabase.from('user_roles').insert({
-                        id: userId, // Use the target user's ID
-                        email: email,
+                    const newRoleData = {
+                        email: email, // Email is PK
                         role: role || 'visitor',
                         name: name || '',
                         phone: phone || '',
                         can_write: can_write || false,
                         can_delete: can_delete || false,
                         can_read_security: can_read_security || false
-                    });
+                    };
+                    if (userId) newRoleData.id = userId;
+
+                    await adminSupabase.from('user_roles').insert(newRoleData);
                 }
             }
 
@@ -219,12 +221,14 @@ export async function PATCH(request) {
 
                 // If no record, Insert
                 if (!pCount || pCount === 0) {
-                    await adminSupabase.from('profiles').insert({
-                        id: userId, // Use the target user's ID
+                    const newProfileData = {
                         email: email,
                         full_name: name || '',
                         phone: phone || ''
-                    });
+                    };
+                    if (userId) newProfileData.id = userId;
+
+                    await adminSupabase.from('profiles').insert(newProfileData);
                 }
             }
         }
@@ -261,7 +265,15 @@ export async function DELETE(request) {
         const adminSupabase = await createAdminClient();
 
         // 1. Delete dependent data first
-        await adminSupabase.from('user_roles').delete().eq('id', userId);
+        // Get email first if we have userId
+        const { data: targetUser } = await adminSupabase.auth.admin.getUserById(userId);
+        if (targetUser?.user?.email) {
+            await adminSupabase.from('user_roles').delete().eq('email', targetUser.user.email);
+        } else {
+            // Fallback to ID deletion if email not found (legacy)
+            await adminSupabase.from('user_roles').delete().eq('id', userId);
+        }
+
         await adminSupabase.from('posts').delete().eq('author_id', userId);
 
         // 2. Delete user from auth.users
