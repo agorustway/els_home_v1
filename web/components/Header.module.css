@@ -451,9 +451,10 @@
 }
 
 .mobileSub.showSub {
-    max-height: 1000px;
-    /* Arbitrary large height */
+    max-height: none;
+    overflow: visible;
     border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
 }
 
 .mobileSubItem {
