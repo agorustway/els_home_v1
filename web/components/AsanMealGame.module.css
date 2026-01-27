@@ -440,17 +440,157 @@
     color: #fbbf24;
 }
 
-/* Ladder & Bingo Placeholders Styles (Simplified) */
+/* ---------------- Ladder Game (Fixed with Absolute) ---------------- */
 .ladderViewport {
     width: 100%;
     overflow-x: auto;
-    padding: 10px 0;
+    padding: 20px 0;
+    -webkit-overflow-scrolling: touch;
 }
 
+.scrollHint {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 8px;
+    border-radius: 20px;
+    margin: 10px auto;
+    width: fit-content;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Container width handled by inline style in JS */
 .ladderContainer {
-    min-height: 600px;
+    position: relative;
+    min-height: 700px;
+    padding: 0 60px;
+    /* Reduced padding, side padding handled by width */
+    margin: 0 auto;
 }
 
+.ladderHeaderRow,
+.ladderFooterRow {
+    position: relative;
+    height: 80px;
+    width: 100%;
+}
+
+.ladderNodeWrapper {
+    position: absolute;
+    top: 0;
+    /* left handled by JS inline */
+    transform: translateX(-50%);
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+    /* Bring to front */
+}
+
+.ladderPrizeWrapper {
+    position: absolute;
+    /* IMPORTANT */
+    top: 0;
+    /* left handled by JS inline */
+    transform: translateX(-50%);
+    width: 80px;
+    display: flex;
+    justify-content: center;
+}
+
+.node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    background: #fff;
+    /* Opaque bg to cover line start */
+    padding: 5px;
+    border-radius: 12px;
+}
+
+.node:hover {
+    transform: scale(1.1);
+}
+
+.nodeIcon {
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.nodeLabel {
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.startNode .nodeLabel {
+    background: #fff;
+}
+
+/* Ladder Board (Lines) */
+.ladderBoard {
+    position: relative;
+    height: 500px;
+    margin: -10px 0 10px;
+    /* Pull up to connect with headers */
+    z-index: 5;
+}
+
+.ladderLines {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Prize Tags */
+.prizeTag {
+    padding: 8px 16px;
+    border-radius: 14px;
+    font-weight: 800;
+    color: #fff;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+
+.prizeWin {
+    background: #ef4444;
+}
+
+.prizePass {
+    background: #10b981;
+}
+
+.connectionStub {
+    /* Optional: Small line if needed provided by CSS, but SVG line is better */
+    display: none;
+}
+
+/* ---------------- Bingo Game ---------------- */
 .bingoContainerFixed {
     width: 100%;
     display: flex;
@@ -500,6 +640,39 @@
 }
 
 /* Hide guide on mobile to save space */
+
+/* ---------------- Animation Markers ---------------- */
+.activeMarker,
+.staticMarker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
+.emojiLarge {
+    font-size: 3rem;
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
+}
+
+.emojiSmall {
+    font-size: 2rem;
+    opacity: 0.8;
+}
+
+.markerNameTag {
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: -5px;
+    white-space: nowrap;
+}
 
 /* --- Mobile Specific Overrides (Galaxy S24 optimized) --- */
 @media (max-width: 480px) {

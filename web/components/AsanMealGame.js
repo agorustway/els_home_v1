@@ -151,6 +151,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
             <div className={styles.gameActions}>
                 <button className={styles.premiumBtn} onClick={generateLadder}>🔄 새 판짜기 (리셋)</button>
             </div>
+            <div className={styles.scrollHint}>↔️ 좌우로 스크롤하여 전체 사다리를 확인하세요</div>
 
             <div className={styles.ladderViewport}>
                 <div className={styles.ladderContainer} style={{ width: Math.max(boardWidth + (paddingX * 2) + 40, 300) }}>
@@ -177,6 +178,8 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                         <div className={styles.nodeIcon}>{ANIMALS[i % ANIMALS.length]}</div>
                                         <div className={styles.nodeLabel}>{name}</div>
                                     </motion.div>
+                                    {/* Connection Line Stub */}
+                                    <div className={styles.connectionStub} />
                                 </div>
                             );
                         })}
@@ -186,7 +189,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                         <svg className={styles.ladderLines}>
                             <g stroke="#cbd5e1" strokeWidth="2.5">
                                 {Array.from({ length: numCols }).map((_, i) => (
-                                    <line key={`v-${i}`} x1={i * COL_SPACE + paddingX} y1="0" x2={i * COL_SPACE + paddingX} y2="100%" />
+                                    <line key={`v-${i}`} x1={i * COL_SPACE + paddingX} y1="-20" x2={i * COL_SPACE + paddingX} y2="100%" />
                                 ))}
                                 {rungs.map((rung, i) => (
                                     <line key={`h-${i}`} x1={rung.c * COL_SPACE + paddingX} y1={rung.r * rowHeight} x2={(rung.c + 1) * COL_SPACE + paddingX} y2={rung.r * rowHeight} />
