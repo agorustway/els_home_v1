@@ -21,22 +21,11 @@ export function useUserProfile() {
         .single();
 
       // 2. Fetch from public.user_roles using email (Identity merging)
-      // Note: We try ID first for strictness, then fallback to Email for merging
-      let { data: roleData } = await supabase
+      const { data: roleData } = await supabase
         .from('user_roles')
-        .select('role')
-        .eq('id', user.id)
+        .select('*')
+        .eq('email', user.email)
         .single();
-
-      if (!roleData) {
-        // Try merging by email if no ID-based role exists
-        const { data: mergedRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('email', user.email)
-          .single();
-        roleData = mergedRole;
-      }
 
       // Extract metadata fallback for avatars
       const meta = user.user_metadata || {};
