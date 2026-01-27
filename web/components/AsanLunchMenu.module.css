@@ -12,8 +12,13 @@
 .header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 25px;
+    gap: 15px;
+}
+
+.titleGroup {
+    flex: 1;
 }
 
 .titleGroup h2 {
@@ -21,72 +26,65 @@
     font-weight: 800;
     color: #1e293b;
     margin-bottom: 5px;
+    line-height: 1.2;
 }
 
 .subTitle {
     color: #64748b;
     font-size: 0.9rem;
+    word-break: keep-all;
+    /* Prevent awkward breaks */
+    display: block;
 }
 
 .uploadIconBtn {
     background: #eff6ff;
     color: #4f46e5;
     border: 1px solid #c7d2fe;
-    padding: 10px 18px;
+    padding: 10px 16px;
     border-radius: 12px;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
-    transition: all 0.2s;
-}
-
-.uploadIconBtn:hover {
-    background: #4f46e5;
-    color: #fff;
-}
-
-/* Loading & Empty */
-.loadingBox,
-.emptyHero {
-    padding: 40px;
-    text-align: center;
-    color: #94a3b8;
-    background: #f8fafc;
-    border-radius: 16px;
-    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    /* Prevent button shrinking */
 }
 
 /* Hero Section (Latest Menu) */
 .heroSection {
-    background: #f8fafc;
-    /* Slight bg to distinguish */
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 30px;
-    border: 1px solid #f1f5f9;
+    background: #fff;
+    border-radius: 16px;
+    padding: 0;
+    /* Remove unnecessary padding */
+    margin-bottom: 25px;
+    border: none;
 }
 
 .heroHeader {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
 .badgeLatest {
     background: #ef4444;
-    color: #white;
     color: #fff;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    padding: 4px 10px;
-    border-radius: 20px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
 }
 
 .heroHeader h3 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .heroImageWrapper {
@@ -95,27 +93,33 @@
     overflow: hidden;
     position: relative;
     cursor: zoom-in;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    background: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    /* Better shadow */
+    background: #f8fafc;
+    aspect-ratio: 16/9;
+    /* Maintain aspect ratio container initially */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .heroImg {
     width: 100%;
-    height: auto;
-    display: block;
-    object-fit: cover;
-    max-height: 500px;
+    height: 100%;
+    object-fit: contain;
+    /* Show full image */
+    background: #f1f5f9;
 }
 
 .zoomHint {
     position: absolute;
-    bottom: 15px;
-    right: 15px;
+    bottom: 10px;
+    right: 10px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     pointer-events: none;
 }
@@ -123,60 +127,48 @@
 .heroActions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
-    margin-top: 15px;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.actionBtn,
+.deleteBtn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border: none;
 }
 
 .actionBtn {
-    background: #fff;
-    border: 1px solid #cbd5e1;
-    color: #475569;
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.actionBtn:hover {
     background: #f1f5f9;
-    color: #1e293b;
+    color: #475569;
 }
 
 .deleteBtn {
-    background: #fee2e2;
+    background: #fef2f2;
     color: #ef4444;
-    border: 1px solid #fecaca;
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.deleteBtn:hover {
-    background: #ef4444;
-    color: #fff;
 }
 
 /* History Section */
 .historySection {
     border-top: 1px solid #f1f5f9;
-    padding-top: 25px;
+    padding-top: 20px;
 }
 
 .historyTitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 800;
-    color: #64748b;
-    margin-bottom: 20px;
-    padding-left: 5px;
+    color: #94a3b8;
+    margin-bottom: 15px;
+    padding-left: 2px;
 }
 
 .historyList {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .historyItem {
@@ -184,25 +176,21 @@
     align-items: center;
     background: #fff;
     border: 1px solid #e2e8f0;
-    padding: 10px;
+    padding: 8px;
+    /* Reduced Padding */
     border-radius: 14px;
-    transition: all 0.2s;
     cursor: pointer;
 }
 
-.historyItem:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border-color: #cbd5e1;
-}
-
 .historyThumb {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
+    /* Fixed small thumb */
     border-radius: 10px;
     overflow: hidden;
     flex-shrink: 0;
     background: #f1f5f9;
+    margin-right: 12px;
 }
 
 .historyThumb img {
@@ -213,76 +201,68 @@
 
 .historyInfo {
     flex: 1;
-    padding: 0 15px;
+    overflow: hidden;
+    /* Text truncation support */
 }
 
 .historyDate {
-    font-weight: 800;
-    color: #1e293b;
-    font-size: 1rem;
+    font-weight: 700;
+    color: #334155;
+    font-size: 0.95rem;
     margin-bottom: 2px;
 }
 
 .historyMeta {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .itemActions {
     display: flex;
-    gap: 8px;
+    gap: 5px;
 }
 
 .iconBtn,
 .iconBtnDanger {
-    background: transparent;
-    border: none;
-    cursor: pointer;
     padding: 8px;
     border-radius: 8px;
-    font-size: 1rem;
-    opacity: 0.6;
-    transition: 0.2s;
+    font-size: 0.9rem;
+    border: none;
+    background: transparent;
 }
 
-.iconBtn:hover {
-    background: #f1f5f9;
-    opacity: 1;
+/* Loading */
+.loadingBox,
+.emptyHero {
+    padding: 30px;
+    text-align: center;
+    color: #94a3b8;
+    background: #f8fafc;
+    border-radius: 12px;
+    font-size: 0.9rem;
 }
 
-.iconBtnDanger:hover {
-    background: #fee2e2;
-    opacity: 1;
-}
-
-/* Modals (Zoom & Form) */
+/* Modals */
 .zoomOverlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 2000;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: zoom-out;
 }
 
 .zoomImg {
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-}
-
-.closeHint {
-    position: absolute;
-    bottom: 30px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
 }
 
 .formOverlay {
@@ -292,8 +272,7 @@
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
-    z-index: 1500;
+    z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -302,102 +281,97 @@
 
 .formCard {
     background: #fff;
-    padding: 30px;
-    border-radius: 20px;
     width: 100%;
-    max-width: 450px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.formCard h3 {
-    font-size: 1.4rem;
-    font-weight: 800;
-    margin-bottom: 10px;
-    color: #1e293b;
+    max-width: 400px;
+    padding: 25px;
+    border-radius: 20px;
 }
 
 .formGroup {
-    margin-bottom: 20px;
-}
-
-.formGroup label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 700;
-    color: #475569;
-    font-size: 0.9rem;
+    margin-bottom: 15px;
 }
 
 .formGroup input {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    font-size: 1rem;
-    outline: none;
-    transition: 0.2s;
-}
-
-.formGroup input:focus {
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    border-radius: 8px;
 }
 
 .formActions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 30px;
+    margin-top: 20px;
+}
+
+.cancelBtn,
+.submitBtn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
 }
 
 .cancelBtn {
     background: #f1f5f9;
     color: #64748b;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
 }
 
 .submitBtn {
     background: #4f46e5;
     color: #fff;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
 }
 
-/* Mobile Optimizations */
-@media (max-width: 768px) {
+/* --- Mobile Specific (Galaxy S24: ~360-412px width) --- */
+@media (max-width: 480px) {
     .container {
-        padding: 20px;
+        padding: 15px;
+        /* Reduce container padding */
+        border-radius: 20px;
     }
 
     .header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
+        margin-bottom: 15px;
+        align-items: center;
+        /* Vertically center icon with text */
     }
 
+    .titleGroup h2 {
+        font-size: 1.3rem;
+        /* Slightly smaller Title */
+    }
+
+    .subTitle {
+        font-size: 0.8rem;
+    }
+
+    /* Make upload button icon-only on very small screens if needed, 
+       but let's keep text for clarity, just smaller padding */
     .uploadIconBtn {
-        width: 100%;
-        text-align: center;
+        padding: 8px 12px;
+        font-size: 0.8rem;
     }
 
     .heroImageWrapper {
         border-radius: 12px;
+        /* Allow height to adapt */
+        height: auto;
+        aspect-ratio: auto;
     }
 
-    .heroActions {
-        justify-content: stretch;
+    .heroImg {
+        max-height: 300px;
     }
 
-    .actionBtn,
-    .deleteBtn {
-        flex: 1;
-        text-align: center;
+    /* History list compact */
+    .historyItem {
+        padding: 10px;
+    }
+
+    .historyThumb {
+        width: 40px;
+        height: 40px;
     }
 }

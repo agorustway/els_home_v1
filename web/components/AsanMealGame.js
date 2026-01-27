@@ -366,29 +366,29 @@ const BingoGame = ({ participants, onGameEnd }) => {
 export default function AsanMealGame() {
     const [names, setNames] = useState(DEFAULT_NAMES);
     const [newName, setNewName] = useState('');
-    const [activeGame, setActiveGame] = useState('roulette');
+    const [activeGame, setActiveGame] = useState(null); // null means 'Lobby'
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Mobile Settings Toggle
+
+    // Roulette States
     const [isSpinning, setIsSpinning] = useState(false);
     const [winner, setWinner] = useState(null);
     const [rotation, setRotation] = useState(0);
-    const [spinDuration, setSpinDuration] = useState(6); // Reduced to 6s
+    const [spinDuration, setSpinDuration] = useState(6);
     const [history, setHistory] = useState([]);
 
     const canvasRef = useRef(null);
     const rouletteTimerRef = useRef(null);
+    const [rouletteSize, setRouletteSize] = useState(300);
 
-    const [rouletteSize, setRouletteSize] = useState(420);
-
+    // Initial resize check and listener
     useEffect(() => {
         const handleResize = () => {
-            if (window.innerWidth < 480) {
-                setRouletteSize(300);
-            } else if (window.innerWidth < 768) {
-                setRouletteSize(360);
-            } else {
-                setRouletteSize(420);
-            }
+            const width = window.innerWidth;
+            if (width < 380) setRouletteSize(280);
+            else if (width < 480) setRouletteSize(320);
+            else if (width < 768) setRouletteSize(360);
+            else setRouletteSize(420);
         };
-
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -400,6 +400,7 @@ export default function AsanMealGame() {
         setHistory(prev => [{ timestamp, game, result }, ...prev].slice(0, 10));
     };
 
+    // ... (Roulette Logic: drawRoulette, stopRoulette, spinRoulette, useEffects kept same but moved inside)
     const drawRoulette = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -431,7 +432,6 @@ export default function AsanMealGame() {
             ctx.rotate(startAngle + Math.PI / count);
             ctx.textAlign = 'right';
             ctx.fillStyle = '#fff';
-            // Responsive font size
             ctx.font = `bold ${size < 350 ? 12 : 16}px Outfit, sans-serif`;
             ctx.fillText(name, radius - (size < 350 ? 25 : 35), 6);
             ctx.restore();
@@ -485,97 +485,165 @@ export default function AsanMealGame() {
         setNames(prev => [...prev].sort(() => Math.random() - 0.5));
     };
 
-    return (
-        <div className={styles.premiumLayout}>
-            <aside className={styles.leftSidebar}>
-                <div className={styles.glassPanel}>
-                    <h3 className={styles.panelTitle}>👥 인원 설정</h3>
-                    <form onSubmit={e => {
-                        e.preventDefault();
-                        if (newName.trim()) { setNames([...names, newName.trim()]); setNewName(''); }
-                    }} className={styles.addForm}>
-                        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="이름" />
-                        <button type="submit">추가</button>
-                    </form>
-                    <div className={styles.sidebarActions}>
-                        <button className={styles.shuffleBtn} onClick={shuffleParticipants}>🎲 명단 섞기</button>
-                        <button className={styles.resetTinyBtn} onClick={() => setNames(DEFAULT_NAMES)}>🔄 초기화</button>
+    // Game Lobby View
+    if (!activeGame) {
+        return (
+            <div className={styles.lobbyContainer}>
+                <div className={styles.lobbyHeader}>
+                    <h3>오늘의 점심 내기! 🎲</h3>
+                    <p>원하는 게임을 선택하세요</p>
+                </div>
+
+                <div className={styles.gameCardsGrid}>
+                    <div className={styles.gameCard} onClick={() => setActiveGame('roulette')}>
+                        <span className={styles.gameIcon}>🎡</span>
+                        <span className={styles.gameName}>룰렛 돌리기</span>
                     </div>
-                    <div className={styles.nameChips}>
-                        {names.map((name, i) => (
-                            <div key={i} className={styles.chip}>
-                                <span>{ANIMALS[i % ANIMALS.length]}</span> {name}
-                                <button onClick={() => setNames(names.filter(n => n !== name))}>×</button>
-                            </div>
-                        ))}
+                    <div className={styles.gameCard} onClick={() => setActiveGame('ladder')}>
+                        <span className={styles.gameIcon}>🪜</span>
+                        <span className={styles.gameName}>사다리 타기</span>
+                    </div>
+                    <div className={styles.gameCard} onClick={() => setActiveGame('bingo')}>
+                        <span className={styles.gameIcon}>🔢</span>
+                        <span className={styles.gameName}>코드 빙고</span>
                     </div>
                 </div>
 
-                <div className={`${styles.glassPanel} ${styles.historyPanel}`}>
-                    <h3 className={styles.panelTitle}>📜 게임 기록</h3>
-                    <div className={styles.logList}>
-                        {history.length === 0 ? <p className={styles.emptyMsg}>기록이 없습니다.</p> :
-                            history.map((h, i) => (
-                                <div key={i} className={styles.logItem}>
-                                    <div className={styles.logHeader}>
-                                        <span className={styles.logTag}>{h.game}</span>
-                                        <span className={styles.logTime}>{h.timestamp}</span>
-                                    </div>
-                                    <div className={styles.logText}>{h.result}</div>
+                {/* Quick Settings Preview */}
+                <div className={styles.lobbySettings}>
+                    <div className={styles.settingHeader}>
+                        <span>참여자 ({names.length}명)</span>
+                        <button onClick={() => setIsSettingsOpen(true)}>설정 ⚙️</button>
+                    </div>
+                    <div className={styles.nameCrops}>
+                        {names.slice(0, 5).map((n, i) => <span key={i}>{n}</span>)}
+                        {names.length > 5 && <span>+{names.length - 5}</span>}
+                    </div>
+                </div>
+
+                {/* Settings Modal */}
+                {isSettingsOpen && (
+                    <div className={styles.settingsOverlay} onClick={(e) => { if (e.target === e.currentTarget) setIsSettingsOpen(false) }}>
+                        <div className={styles.settingsModal}>
+                            <div className={styles.modalHeader}>
+                                <h3>참여자 설정</h3>
+                                <button onClick={() => setIsSettingsOpen(false)}>✕</button>
+                            </div>
+                            <div className={styles.glassPanel}>
+                                {/* Reuse existing panel content structure */}
+                                <form onSubmit={e => {
+                                    e.preventDefault();
+                                    if (newName.trim()) { setNames([...names, newName.trim()]); setNewName(''); }
+                                }} className={styles.addForm}>
+                                    <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="이름 추가" />
+                                    <button type="submit">추가</button>
+                                </form>
+                                <div className={styles.sidebarActions}>
+                                    <button className={styles.shuffleBtn} onClick={shuffleParticipants}>🎲 섞기</button>
+                                    <button className={styles.resetTinyBtn} onClick={() => setNames(DEFAULT_NAMES)}>🔄 초기화</button>
                                 </div>
-                            ))}
-                    </div>
-                </div>
-            </aside>
-
-            <main className={styles.gameContent}>
-                <div className={styles.gameNav}>
-                    {['roulette', 'ladder', 'bingo'].map((game) => (
-                        <button
-                            key={game}
-                            className={activeGame === game ? styles.navActive : ''}
-                            onClick={() => { setActiveGame(game); setWinner(null); }}
-                        >
-                            {game === 'roulette' ? '🎡 룰렛' : game === 'ladder' ? '🪜 사다리' : '🔢 빙고'}
-                        </button>
-                    ))}
-                </div>
-
-                <div className={styles.gameScreen}>
-                    {activeGame === 'roulette' && (
-                        <div className={styles.rouletteContainer}>
-                            <div className={styles.rouletteWrapper} style={{ width: rouletteSize, height: rouletteSize }}>
-                                <div className={styles.indicator}>▼</div>
-                                <canvas ref={canvasRef} width={rouletteSize} height={rouletteSize} className={styles.canvasElement} style={{
-                                    transform: `rotate(${rotation}deg)`,
-                                    transition: `transform ${spinDuration}s cubic-bezier(0.1, 0, 0.1, 1)`
-                                }} />
-
-                                <AnimatePresence>
-                                    {winner && (
-                                        <motion.div className={styles.winnerOverlayLocal} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                            <motion.div className={styles.winnerCardLocal} initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                                                <div className={styles.medalIconLarge}>👑</div>
-                                                <h3>WINNER</h3>
-                                                <h2>{winner}</h2>
-                                                <button className={styles.confirmBtn} onClick={() => setWinner(null)}>OK</button>
-                                            </motion.div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                            <div className={styles.rouletteControls}>
-                                <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''}`} onClick={spinRoulette}>
-                                    {isSpinning ? 'STOP' : 'START'}
-                                </button>
-                                <button className={styles.shuffleBtnMini} onClick={shuffleParticipants}>🎲 순서 랜덤 섞기</button>
+                                <div className={styles.nameChips}>
+                                    {names.map((name, i) => (
+                                        <div key={i} className={styles.chip}>
+                                            <span>{ANIMALS[i % ANIMALS.length]}</span> {name}
+                                            <button onClick={() => setNames(names.filter(n => n !== name))}>×</button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    )}
-                    {activeGame === 'ladder' && <LadderGame participants={names} onGameEnd={addToHistory} />}
-                    {activeGame === 'bingo' && <BingoGame participants={names} onGameEnd={addToHistory} />}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Active Game View
+    return (
+        <div className={styles.activeGameContainer}>
+            <div className={styles.activeGameHeader}>
+                <button className={styles.backBtn} onClick={() => { setActiveGame(null); setWinner(null); }}>
+                    ← 다른 게임
+                </button>
+                <div className={styles.activeGameTitle}>
+                    {activeGame === 'roulette' ? '🎡 룰렛' : activeGame === 'ladder' ? '🪜 사다리' : '🔢 빙고'}
                 </div>
-            </main>
+                <button className={styles.settingToggleBtn} onClick={() => setIsSettingsOpen(true)}>⚙️</button>
+            </div>
+
+            <div className={styles.gameContentArea}>
+                {activeGame === 'roulette' && (
+                    <div className={styles.rouletteContainer}>
+                        <div className={styles.rouletteWrapper} style={{ width: rouletteSize, height: rouletteSize }}>
+                            <div className={styles.indicator}>▼</div>
+                            <canvas ref={canvasRef} width={rouletteSize} height={rouletteSize} className={styles.canvasElement} style={{
+                                transform: `rotate(${rotation}deg)`,
+                                transition: `transform ${spinDuration}s cubic-bezier(0.1, 0, 0.1, 1)`
+                            }} />
+                            <AnimatePresence>
+                                {winner && (
+                                    <motion.div className={styles.winnerOverlayLocal} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        <motion.div className={styles.winnerCardLocal} initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                                            <div className={styles.medalIconLarge}>👑</div>
+                                            <h3>WINNER</h3>
+                                            <h2>{winner}</h2>
+                                            <button className={styles.confirmBtn} onClick={() => setWinner(null)}>OK</button>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        <div className={styles.rouletteControls}>
+                            <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''}`} onClick={spinRoulette}>
+                                {isSpinning ? 'STOP' : 'START'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {activeGame === 'ladder' && <LadderGame participants={names} onGameEnd={addToHistory} />}
+                {activeGame === 'bingo' && <BingoGame participants={names} onGameEnd={addToHistory} />}
+            </div>
+
+            {/* History Bar (Optional) */}
+            {history.length > 0 && (
+                <div className={styles.miniHistoryTicker}>
+                    <span className={styles.tickerLabel}>최근 결과:</span>
+                    <span className={styles.tickerValue}>{history[0].result}</span>
+                </div>
+            )}
+
+            {/* Settings Modal (Reused) */}
+            {isSettingsOpen && (
+                <div className={styles.settingsOverlay} onClick={(e) => { if (e.target === e.currentTarget) setIsSettingsOpen(false) }}>
+                    <div className={styles.settingsModal}>
+                        <div className={styles.modalHeader}>
+                            <h3>참여자 설정 ({names.length}명)</h3>
+                            <button onClick={() => setIsSettingsOpen(false)}>✕</button>
+                        </div>
+                        <div className={styles.glassPanel}>
+                            <form onSubmit={e => {
+                                e.preventDefault();
+                                if (newName.trim()) { setNames([...names, newName.trim()]); setNewName(''); }
+                            }} className={styles.addForm}>
+                                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="이름 추가" />
+                                <button type="submit">추가</button>
+                            </form>
+                            <div className={styles.sidebarActions}>
+                                <button className={styles.shuffleBtn} onClick={shuffleParticipants}>🎲 섞기</button>
+                                <button className={styles.resetTinyBtn} onClick={() => setNames(DEFAULT_NAMES)}>🔄 초기화</button>
+                            </div>
+                            <div className={styles.nameChips}>
+                                {names.map((name, i) => (
+                                    <div key={i} className={styles.chip}>
+                                        <span>{ANIMALS[i % ANIMALS.length]}</span> {name}
+                                        <button onClick={() => setNames(names.filter(n => n !== name))}>×</button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
