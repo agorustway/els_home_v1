@@ -27,22 +27,23 @@ export default function EmployeesPortal() {
 
                                 <div className={styles.gridContainer}>
                                     {/* 1. 자료/소통 시스템 */}
-                                    <motion.a
-                                        href="/employees/archive"
-                                        className={styles.card}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        viewport={{ once: true }}
-                                    >
-                                        <div>
-                                            <div className={styles.cardIcon}>📂</div>
-                                            <h3 className={styles.cardTitle}>지식정보 자료실</h3>
-                                            <p className={styles.cardDesc}>협업 문구, 매뉴얼, 사내 자료(NAS) 통합 관리 서버</p>
-                                        </div>
-                                        <div className={styles.cardLinks}>
-                                            <div className={styles.cardLinkItem}>사내 자료실 바로가기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></div>
-                                        </div>
-                                    </motion.a>
+                                    <Link href="/employees/archive" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                        <motion.div
+                                            className={styles.card}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                        >
+                                            <div>
+                                                <div className={styles.cardIcon}>📂</div>
+                                                <h3 className={styles.cardTitle}>지식정보 자료실</h3>
+                                                <p className={styles.cardDesc}>협업 문구, 매뉴얼, 사내 자료(NAS) 통합 관리 서버</p>
+                                            </div>
+                                            <div className={styles.cardLinks}>
+                                                <div className={styles.cardLinkItem}>사내 자료실 바로가기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></div>
+                                            </div>
+                                        </motion.div>
+                                    </Link>
 
                                     <motion.div
                                         className={styles.card}
@@ -105,24 +106,25 @@ export default function EmployeesPortal() {
                                         </div>
                                     </motion.div>
 
-                                    <motion.a
-                                        href="/employees/board/free"
-                                        className={styles.card}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: 0.3 }}
-                                    >
-                                        <div>
-                                            <div className={styles.cardIcon}>💬</div>
-                                            <h3 className={styles.cardTitle}>소통 및 웹진</h3>
-                                            <p className={styles.cardDesc}>자유게시판 및 사내 웹진 채널</p>
-                                        </div>
-                                        <div className={styles.cardLinks}>
-                                            <Link href="/employees/board/free" className={styles.cardLinkItem}>💬 자유게시판 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></Link>
-                                            <Link href="/employees/webzine" className={styles.cardLinkItem}>📰 사내 웹진 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></Link>
-                                        </div>
-                                    </motion.a>
+                                    <Link href="/employees/board/free" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                        <motion.div
+                                            className={styles.card}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                            transition={{ delay: 0.3 }}
+                                        >
+                                            <div>
+                                                <div className={styles.cardIcon}>💬</div>
+                                                <h3 className={styles.cardTitle}>소통 및 웹진</h3>
+                                                <p className={styles.cardDesc}>자유게시판 및 사내 웹진 채널</p>
+                                            </div>
+                                            <div className={styles.cardLinks}>
+                                                <Link href="/employees/board/free" className={styles.cardLinkItem}>💬 자유게시판 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></Link>
+                                                <Link href="/employees/webzine" className={styles.cardLinkItem}>📰 사내 웹진 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg></Link>
+                                            </div>
+                                        </motion.div>
+                                    </Link>
                                 </div>
                             </div>
                         </section>
