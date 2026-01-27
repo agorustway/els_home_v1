@@ -166,6 +166,8 @@ export async function PATCH(request) {
 
         // Handle Identity Updates (Email-centric)
         if (email) {
+            const targetEmail = email.trim(); // Ensure no whitespace
+
             // 1. Sync Role & Permissions in user_roles
             const roleUpdates = {};
             if (role !== undefined) roleUpdates.role = role;
@@ -180,15 +182,18 @@ export async function PATCH(request) {
                 const { error: roleError, count: rCount } = await adminSupabase
                     .from('user_roles')
                     .update(roleUpdates)
-                    .eq('email', email)
-                    .select('id', { count: 'exact' });
+                    .eq('email', targetEmail) // Use trimmed email
+                    .select('*', { count: 'exact' }); // Select all to be safe
 
-                if (roleError) console.error('Admin Role Update Error:', roleError);
+                if (roleError) {
+                    console.error('Admin Role Update Error:', roleError);
+                    throw roleError; // Explicitly throw to see error in response
+                }
 
                 // If no record, Insert
                 if (!rCount || rCount === 0) {
                     const newRoleData = {
-                        email: email, // Email is PK
+                        email: targetEmail, // Use trimmed email
                         role: role || 'visitor',
                         name: name || '',
                         phone: phone || '',
@@ -214,15 +219,15 @@ export async function PATCH(request) {
                 const { error: profileError, count: pCount } = await adminSupabase
                     .from('profiles')
                     .update(profileUpdates)
-                    .eq('email', email)
-                    .select('id', { count: 'exact' });
+                    .eq('email', targetEmail)
+                    .select('*', { count: 'exact' });
 
                 if (profileError) console.error('Admin Profile Update Error:', profileError);
 
                 // If no record, Insert
                 if (!pCount || pCount === 0) {
                     const newProfileData = {
-                        email: email,
+                        email: targetEmail,
                         full_name: name || '',
                         phone: phone || ''
                     };
