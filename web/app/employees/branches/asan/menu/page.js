@@ -30,6 +30,28 @@ export default function AsanMenuChoicePage({ params }) {
     const spinStartRotation = useRef(0);
     const spinStartTime = useRef(0);
     const spinTargetRotation = useRef(0);
+    const [rouletteSize, setRouletteSize] = useState(500);
+
+    // Responsive Roulette Size
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 480) {
+                setRouletteSize(320);
+            } else if (window.innerWidth < 768) {
+                setRouletteSize(400);
+            } else {
+                setRouletteSize(500);
+            }
+        };
+
+        handleResize(); // Initial check
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        if (activeGame === 'roulette') drawRoulette();
+    }, [rouletteSize]); // Re-draw on resize
 
     // Reset game states when switching games to prevent residue behavior
     useEffect(() => {
@@ -79,11 +101,12 @@ export default function AsanMenuChoicePage({ params }) {
         const count = names.length;
         if (count === 0) return;
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const size = rouletteSize;
+        const centerX = size / 2;
+        const centerY = size / 2;
         const radius = Math.min(centerX, centerY) - 20;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, size, size);
 
         names.forEach((name, i) => {
             const startAngle = (i * 2 * Math.PI) / count;
@@ -426,12 +449,12 @@ export default function AsanMenuChoicePage({ params }) {
                             <div className={styles.gameContainer}>
                                 {activeGame === 'roulette' && (
                                     <div className={styles.rouletteBox}>
-                                        <div className={styles.rouletteWrapper}>
+                                        <div className={styles.rouletteWrapper} style={{ width: rouletteSize, height: rouletteSize }}>
                                             <div className={styles.pointerContainer}><div className={styles.pointerRed} /></div>
                                             <canvas
                                                 ref={canvasRef}
-                                                width={500}
-                                                height={500}
+                                                width={rouletteSize}
+                                                height={rouletteSize}
                                                 style={{
                                                     transform: `rotate(${rotation}deg)`,
                                                     transition: `transform ${spinDuration}s cubic-bezier(0.1, 0, 0.1, 1)`
