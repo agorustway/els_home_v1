@@ -14,7 +14,7 @@ export async function GET() {
         const { data: roleData } = await supabase
             .from('user_roles')
             .select('*')
-            .eq('id', user.id)
+            .eq('email', user.email)
             .single();
 
         const userRole = roleData?.role || 'visitor';

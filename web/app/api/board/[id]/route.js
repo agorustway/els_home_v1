@@ -41,7 +41,7 @@ export async function PATCH(request, { params }) {
         const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('id', user.id)
+            .eq('email', user.email)
             .single();
 
         const isAdmin = roleData?.role === 'admin';
@@ -79,7 +79,7 @@ export async function DELETE(request, { params }) {
         const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('id', user.id)
+            .eq('email', user.email)
             .single();
 
         const isAdmin = roleData?.role === 'admin';

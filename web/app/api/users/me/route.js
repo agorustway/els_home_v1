@@ -178,7 +178,7 @@ export async function DELETE() {
         } else {
             // Option 2: Hard Delete
             // Delete dependent data first
-            await adminSupabase.from('user_roles').delete().eq('id', user.id);
+            await adminSupabase.from('user_roles').delete().eq('email', user.email);
             const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(user.id);
             if (deleteError) throw deleteError;
             return NextResponse.json({ success: true, mode: 'deleted' });

@@ -71,7 +71,7 @@ export async function GET(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('email', user.email).single();
         const userRole = roleData?.role || 'visitor';
         const userCanSecurity = roleData?.can_read_security || false;
         const isAdmin = userRole === 'admin';
@@ -109,7 +109,7 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('email', user.email).single();
         const userRole = roleData?.role || 'visitor';
         const userCanSecurity = roleData?.can_read_security || false;
 
@@ -173,7 +173,7 @@ export async function DELETE(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', user.email).single();
         const userRole = roleData?.role || 'visitor';
 
         // Policy: Web Deletion Forbidden for non-admins
@@ -197,7 +197,7 @@ export async function PATCH(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('id', user.id).single();
+        const { data: roleData } = await supabase.from('user_roles').select('role, can_read_security').eq('email', user.email).single();
         const userRole = roleData?.role || 'visitor';
         const userCanSecurity = roleData?.can_read_security || false;
         const { from, to } = await request.json();
