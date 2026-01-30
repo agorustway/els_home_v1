@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import { proxyToBackend } from '../proxyToBackend';
 
 const ELSBOT_DIR = path.join(process.cwd(), '..', 'elsbot');
 const CONFIG_PATH = path.join(ELSBOT_DIR, 'els_config.json');
 
 export async function POST(req) {
+    const proxied = await proxyToBackend(req);
+    if (proxied) return proxied;
     try {
         const body = await req.json();
         const userId = body?.userId != null ? String(body.userId).trim() : '';
@@ -22,7 +25,9 @@ export async function POST(req) {
     }
 }
 
-export async function GET() {
+export async function GET(req) {
+    const proxied = await proxyToBackend(req);
+    if (proxied) return proxied;
     try {
         if (!fs.existsSync(CONFIG_PATH)) {
             return NextResponse.json({ hasSaved: false, defaultUserId: '' });

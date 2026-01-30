@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import { proxyToBackend } from '../proxyToBackend';
 
 const TEMPLATE_FILENAME = 'container_list_양식.xlsx';
 
-export async function GET() {
+export async function GET(req) {
+    const proxied = await proxyToBackend(req);
+    if (proxied) return proxied;
     try {
         const wb = XLSX.utils.book_new();
         const wsData = [

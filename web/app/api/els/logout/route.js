@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDaemonUrl } from '../daemon';
+import { proxyToBackend } from '../proxyToBackend';
 
-export async function POST() {
+export async function POST(req) {
+    const proxied = await proxyToBackend(req);
+    if (proxied) return proxied;
     try {
         const baseUrl = getDaemonUrl();
         await fetch(`${baseUrl}/logout`, {

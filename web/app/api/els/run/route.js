@@ -4,6 +4,7 @@ import fs from 'fs';
 import { execSync, spawn } from 'child_process';
 import crypto from 'crypto';
 import { ensureDaemon, getDaemonUrl } from '../daemon';
+import { proxyToBackend } from '../proxyToBackend';
 
 const ELSBOT_DIR = path.join(process.cwd(), '..', 'elsbot');
 const RUNNER = path.join(ELSBOT_DIR, 'els_web_runner.py');
@@ -126,6 +127,8 @@ function runViaDaemon(body, controller, encoder) {
 }
 
 export async function POST(req) {
+    const proxied = await proxyToBackend(req);
+    if (proxied) return proxied;
     try {
         const body = await req.json();
         const { containers, useSavedCreds, userId, userPw } = body || {};
@@ -134,9 +137,10 @@ export async function POST(req) {
         }
         const python = getPythonCommand();
         if (!python) {
+            const msg = '이 기능은 Vercel 등 서버리스 배포 환경(nollae.com)에서는 사용할 수 없습니다. 로컬 또는 Python·Chrome이 설치된 서버에서만 이용 가능합니다.';
             return NextResponse.json({
-                error: 'Python이 설치되어 있지 않습니다. 컨테이너 이력 조회는 서버에 Python 및 Chrome(selenium) 환경이 필요합니다.',
-                log: ['[서버] Python 미설치 또는 PATH에 없음. 로컬에서 elsbot/els_bot.py를 직접 실행해 주세요.'],
+                error: msg,
+                log: [msg],
             }, { status: 503 });
         }
 

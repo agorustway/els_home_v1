@@ -116,9 +116,15 @@ def scrape_hyper_verify(driver, search_no):
 def login_and_prepare(u_id, u_pw):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    if os.environ.get("CHROME_BIN"):
+        options.binary_location = os.environ["CHROME_BIN"]
+    service = Service(os.environ["CHROME_DRIVER_BIN"]) if os.environ.get("CHROME_DRIVER_BIN") else Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
     try:
         driver.get("https://etrans.klnet.co.kr/index.do")
         time.sleep(2)

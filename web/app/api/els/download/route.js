@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { proxyToBackend } from '../proxyToBackend';
 
 const fileStore = globalThis.elsFileStore || (globalThis.elsFileStore = new Map());
 
@@ -9,6 +10,8 @@ function safeFilename(name) {
 }
 
 export async function GET(req) {
+    const proxied = await proxyToBackend(req);
+    if (proxied) return proxied;
     try {
         const { searchParams } = new URL(req.url);
         const token = searchParams.get('token');

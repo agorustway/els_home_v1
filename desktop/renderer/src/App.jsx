@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useRef, Fragment, useEffect } from 'react';
-import styles from './container-history.module.css';
+import styles from './App.module.css';
 
 const HEADERS = ['조회번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
 
@@ -11,7 +9,7 @@ function parseContainerInput(text) {
     return [...new Set(raw)];
 }
 
-export default function ContainerHistoryPage() {
+export default function App() {
     const [useSavedCreds, setUseSavedCreds] = useState(true);
     const [defaultUserId, setDefaultUserId] = useState('');
     const [userId, setUserId] = useState('');
@@ -19,16 +17,13 @@ export default function ContainerHistoryPage() {
     const [configLoaded, setConfigLoaded] = useState(false);
     const [savingCreds, setSavingCreds] = useState(false);
     const [elsAvailable, setElsAvailable] = useState(null);
-    const [parseAvailable, setParseAvailable] = useState(false);
     const [elsUnavailableReason, setElsUnavailableReason] = useState('');
-    const [installGuideOpen, setInstallGuideOpen] = useState(false);
 
     useEffect(() => {
         fetch('/api/els/capabilities')
             .then((res) => res.json())
             .then((data) => {
                 setElsAvailable(data.available === true);
-                setParseAvailable(data.parseAvailable === true);
                 if (data.available !== true && data.reason) setElsUnavailableReason(data.reason);
             })
             .catch(() => setElsAvailable(false));
@@ -135,6 +130,7 @@ export default function ContainerHistoryPage() {
             setLoginLoading(false);
         }
     };
+
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [resultPage, setResultPage] = useState(1);
     const [resultPageSize, setResultPageSize] = useState(20);
@@ -232,7 +228,7 @@ export default function ContainerHistoryPage() {
         setLoading(true);
         setStepIndex(3);
         setLogLines(prev => [...prev, '[조회] 시작...']);
-            setResult(null);
+        setResult(null);
         setDownloadToken(null);
         setResultFileName('');
         setResultPage(1);
@@ -358,73 +354,18 @@ export default function ContainerHistoryPage() {
         { num: 4, label: '완료(다운로드 가능)' },
     ];
 
-    const downloadWinUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_WIN || '/downloads/els-container-history-setup.exe';
-    const downloadAndroidUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_ANDROID || '/downloads/els-container-history.apk';
-
     return (
         <div className={styles.page}>
             <h1 className={styles.title}>컨테이너 이력조회</h1>
             <p className={styles.desc}>ELS 하이퍼터보 연동 · 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회·다운로드</p>
 
-            {/* 다운로드 및 설치 */}
-            <section className={styles.downloadSection}>
-                <h2 className={styles.downloadSectionTitle}>다운로드 및 설치</h2>
-                <p className={styles.downloadSectionDesc}>
-                    이 웹 페이지에서는 엑셀 파싱(번호 추출)만 가능합니다. <strong>로그인·조회·다운로드</strong>는 아래 설치 파일을 받아 PC 또는 모바일에 설치한 뒤 사용하세요.
-                </p>
-                <div className={styles.downloadLinks}>
-                    <a href={downloadWinUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
-                        <span className={styles.downloadCardIcon}>🖥️</span>
-                        <span className={styles.downloadCardLabel}>Windows 설치 프로그램</span>
-                        <span className={styles.downloadCardExt}>.exe</span>
-                    </a>
-                    <a href={downloadAndroidUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
-                        <span className={styles.downloadCardIcon}>📱</span>
-                        <span className={styles.downloadCardLabel}>Android 앱</span>
-                        <span className={styles.downloadCardExt}>.apk</span>
-                    </a>
-                </div>
-                <div className={styles.installGuideWrap}>
-                    <button type="button" className={styles.installGuideToggle} onClick={() => setInstallGuideOpen((o) => !o)} aria-expanded={installGuideOpen}>
-                        {installGuideOpen ? '설치 설명서 접기' : '설치 설명서 보기'}
-                    </button>
-                    {installGuideOpen && (
-                        <div className={styles.installGuide}>
-                            <h3>Windows</h3>
-                            <ol>
-                                <li>위에서 <strong>Windows 설치 프로그램 (.exe)</strong>를 다운로드합니다.</li>
-                                <li>PC에 <strong>Python</strong>과 <strong>Chrome</strong>이 설치되어 있는지 확인합니다.</li>
-                                <li>다운로드한 exe를 실행해 설치를 마친 뒤, 앱을 실행해 로그인·조회·다운로드를 사용합니다.</li>
-                            </ol>
-                            <h3>Android</h3>
-                            <ol>
-                                <li>위에서 <strong>Android 앱 (.apk)</strong>를 다운로드해 설치합니다.</li>
-                                <li>PC에서 <strong>데스크탑 앱</strong>을 실행하고, Android와 <strong>같은 Wi‑Fi</strong>에 연결합니다.</li>
-                                <li>Android 앱을 실행한 뒤, 화면 안내에 따라 <strong>PC IP 주소와 포트</strong>(예: 192.168.0.10:2929)를 입력해 접속합니다.</li>
-                            </ol>
-                            <a href="/employees/container-history/install" target="_blank" rel="noopener noreferrer" className={styles.installGuideLink}>전체 설치 설명서 (상세)</a>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* 배포 환경: 파싱만 가능 / 전체 불가 안내 */}
             {elsAvailable === false && (
                 <div className={styles.unavailableBanner} role="alert">
-                    <strong>
-                        {parseAvailable
-                            ? '엑셀 파싱(번호 추출)만 사용할 수 있습니다.'
-                            : '이 환경에서는 컨테이너 이력조회를 사용할 수 없습니다.'}
-                    </strong>
-                    <p>
-                        {parseAvailable
-                            ? '로그인·조회는 Chrome(브라우저 자동화)이 필요해 이 환경에서는 불가합니다. 엑셀 업로드로 번호만 추출 가능하며, 전체 기능은 로컬 또는 데스크탑 앱에서 이용하세요.'
-                            : (elsUnavailableReason || '로컬 또는 Python·Chrome이 설치된 서버에서만 이용 가능합니다.')}
-                    </p>
+                    <strong>이 환경에서는 컨테이너 이력조회를 사용할 수 없습니다.</strong>
+                    <p>{elsUnavailableReason || 'Python과 Chrome을 설치한 뒤 앱을 다시 실행해 주세요.'}</p>
                 </div>
             )}
 
-            {/* 사용방법 안내 */}
             <section className={styles.usageSection}>
                 <p className={styles.usageText}>
                     이 작업은 <strong>etrans</strong> 로그인이 필요하며 약 <strong>10초</strong> 정도 소요됩니다.
@@ -448,10 +389,8 @@ export default function ContainerHistoryPage() {
                 </div>
             </section>
 
-            {/* 본문: 왼쪽 입력/업로드/다운로드 · 오른쪽 로그 뷰어 (1:1) */}
             <div className={styles.mainModule}>
                 <div className={styles.leftPanel}>
-                    {/* 계정 */}
                     <section className={styles.section}>
                         <h2 className={styles.sectionTitle}>계정</h2>
                         {useSavedCreds && hasSavedAccount ? (
@@ -460,12 +399,7 @@ export default function ContainerHistoryPage() {
                                     <span className={styles.credBoxLabel}>아이디</span>
                                     <span className={styles.credBoxValue}>{configLoaded ? defaultUserId : '…'}</span>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={runLogin}
-                                    disabled={buttonsDisabled}
-                                    className={styles.btnLogin}
-                                >
+                                <button type="button" onClick={runLogin} disabled={buttonsDisabled} className={styles.btnLogin}>
                                     {loginLoading ? '로그인 중...' : '로그인'}
                                 </button>
                                 <div className={styles.credBox}>
@@ -473,11 +407,7 @@ export default function ContainerHistoryPage() {
                                     <span className={styles.credBoxValue}>••••••••</span>
                                 </div>
                                 <label className={styles.checkLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={useSavedCreds}
-                                        onChange={(e) => handleCheckboxChange(e.target.checked)}
-                                    />
+                                    <input type="checkbox" checked={useSavedCreds} onChange={(e) => handleCheckboxChange(e.target.checked)} />
                                     <span>저장된 계정 사용</span>
                                 </label>
                             </div>
@@ -485,45 +415,23 @@ export default function ContainerHistoryPage() {
                             <div className={styles.credRow}>
                                 <div className={styles.credBox}>
                                     <span className={styles.credBoxLabel}>아이디</span>
-                                    <input
-                                        type="text"
-                                        placeholder="아이디"
-                                        value={userId}
-                                        onChange={(e) => setUserId(e.target.value)}
-                                        className={styles.input}
-                                    />
+                                    <input type="text" placeholder="아이디" value={userId} onChange={(e) => setUserId(e.target.value)} className={styles.input} />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={runLogin}
-                                    disabled={buttonsDisabled}
-                                    className={styles.btnLogin}
-                                >
+                                <button type="button" onClick={runLogin} disabled={buttonsDisabled} className={styles.btnLogin}>
                                     {loginLoading ? '로그인 중...' : '로그인'}
                                 </button>
                                 <div className={styles.credBox}>
                                     <span className={styles.credBoxLabel}>비밀번호</span>
-                                    <input
-                                        type="password"
-                                        placeholder="비밀번호"
-                                        value={userPw}
-                                        onChange={(e) => setUserPw(e.target.value)}
-                                        className={styles.input}
-                                    />
+                                    <input type="password" placeholder="비밀번호" value={userPw} onChange={(e) => setUserPw(e.target.value)} className={styles.input} />
                                 </div>
                                 <label className={styles.checkLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={useSavedCreds}
-                                        onChange={(e) => handleCheckboxChange(e.target.checked)}
-                                    />
+                                    <input type="checkbox" checked={useSavedCreds} onChange={(e) => handleCheckboxChange(e.target.checked)} />
                                     <span>저장된 계정 사용 (체크 시 저장)</span>
                                 </label>
                             </div>
                         )}
                     </section>
 
-                    {/* 업로드 · 입력 */}
                     <section className={styles.section}>
                         <h2 className={styles.sectionTitle}>업로드 · 입력</h2>
                         <p className={styles.hint}>컨테이너 번호 또는 엑셀 업로드 (클릭·드래그로 파일 선택)</p>
@@ -537,19 +445,9 @@ export default function ContainerHistoryPage() {
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDropZoneClick(); } }}
                         >
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                accept=".xlsx"
-                                onChange={handleFileChange}
-                                className={styles.fileInput}
-                            />
-                            <span className={styles.dropZoneText}>
-                                {dropActive ? '여기에 놓으세요' : '엑셀 파일 클릭 또는 드래그'}
-                            </span>
-                            <a href="/api/els/template" download className={styles.btnTemplate} onClick={(e) => e.stopPropagation()}>
-                                양식 다운로드
-                            </a>
+                            <input type="file" ref={fileInputRef} accept=".xlsx" onChange={handleFileChange} className={styles.fileInput} />
+                            <span className={styles.dropZoneText}>{dropActive ? '여기에 놓으세요' : '엑셀 파일 클릭 또는 드래그'}</span>
+                            <a href="/api/els/template" download className={styles.btnTemplate} onClick={(e) => e.stopPropagation()}>양식 다운로드</a>
                         </div>
                         <div className={styles.uploadRow}>
                             <textarea
@@ -560,24 +458,15 @@ export default function ContainerHistoryPage() {
                                 rows={5}
                             />
                         </div>
-<div className={styles.actionRow}>
-                            <button
-                                    type="button"
-                                    onClick={runSearch}
-                                    disabled={searchDisabled}
-                                    className={styles.btnPrimary}
-                                >
-                                    {loading ? '조회 중...' : '조회'}
-                                </button>
-                            {containerCount > 0 && (
-                                <span className={styles.containerCount}>로딩된 컨테이너 {containerCount}개</span>
-                            )}
+                        <div className={styles.actionRow}>
+                            <button type="button" onClick={runSearch} disabled={searchDisabled} className={styles.btnPrimary}>
+                                {loading ? '조회 중...' : '조회'}
+                            </button>
+                            {containerCount > 0 && <span className={styles.containerCount}>로딩된 컨테이너 {containerCount}개</span>}
                             {downloadToken && resultFileName && (
                                 <div className={styles.downloadResult}>
                                     <span className={styles.resultFileName}>{resultFileName}</span>
-                                    <button type="button" onClick={downloadExcel} className={styles.btnDownload}>
-                                        다운로드
-                                    </button>
+                                    <button type="button" onClick={downloadExcel} className={styles.btnDownload}>다운로드</button>
                                 </div>
                             )}
                         </div>
@@ -585,7 +474,7 @@ export default function ContainerHistoryPage() {
                 </div>
 
                 <div className={styles.rightPanel}>
-                    <section className={styles.section + ' ' + styles.logSection}>
+                    <section className={`${styles.section} ${styles.logSection}`}>
                         <h2 className={styles.sectionTitle}>로그</h2>
                         <pre ref={terminalRef} className={styles.terminal}>
                             {logLines.length ? logLines.map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
@@ -594,7 +483,6 @@ export default function ContainerHistoryPage() {
                 </div>
             </div>
 
-            {/* 결과 (Sheet1 기준, 클릭 시 Sheet2 전개) */}
             {result && (
                 <section className={styles.section}>
                     <div className={styles.resultHeader}>
@@ -616,23 +504,16 @@ export default function ContainerHistoryPage() {
                                     const isExpanded = expandedRows.has(containerNo);
                                     return (
                                         <Fragment key={`${containerNo}-${idx}`}>
-                                            <tr
-                                                className={hasDetail ? styles.clickableRow : ''}
-                                                onClick={() => hasDetail && toggleRow(containerNo)}
-                                            >
+                                            <tr className={hasDetail ? styles.clickableRow : ''} onClick={() => hasDetail && toggleRow(containerNo)}>
                                                 <td>{hasDetail ? (isExpanded ? '▼' : '▶') : ''}</td>
                                                 {HEADERS.map((_, i) => (
-                                                    <td key={i} className={row[1] === 'ERROR' || row[1] === 'NODATA' ? styles.cellError : ''}>
-                                                        {row[i] ?? ''}
-                                                    </td>
+                                                    <td key={i} className={row[1] === 'ERROR' || row[1] === 'NODATA' ? styles.cellError : ''}>{row[i] ?? ''}</td>
                                                 ))}
                                             </tr>
                                             {isExpanded && detailRows.map((dr, di) => (
                                                 <tr key={`${containerNo}-sub-${di}`} className={styles.subRow}>
                                                     <td></td>
-                                                    {HEADERS.map((_, i) => (
-                                                        <td key={i}>{dr[i] ?? ''}</td>
-                                                    ))}
+                                                    {HEADERS.map((_, i) => <td key={i}>{dr[i] ?? ''}</td>)}
                                                 </tr>
                                             ))}
                                         </Fragment>
@@ -646,38 +527,15 @@ export default function ContainerHistoryPage() {
                             총 {totalResultCount}건 · {totalResultCount > 0 ? `${startIdx + 1}-${Math.min(startIdx + resultPageSize, totalResultCount)}` : '0'} / {totalResultCount}
                         </span>
                         <div className={styles.paginationControls}>
-                            <select
-                                className={styles.pageSizeSelect}
-                                value={resultPageSize}
-                                onChange={(e) => { setResultPageSize(Number(e.target.value)); setResultPage(1); }}
-                                aria-label="페이지당 건수"
-                            >
+                            <select className={styles.pageSizeSelect} value={resultPageSize} onChange={(e) => { setResultPageSize(Number(e.target.value)); setResultPage(1); }} aria-label="페이지당 건수">
                                 <option value={20}>20개씩</option>
                                 <option value={30}>30개씩</option>
                                 <option value={50}>50개씩</option>
                                 <option value={100}>100개씩</option>
                             </select>
-                            <button
-                                type="button"
-                                className={styles.paginationBtn}
-                                disabled={currentPage <= 1}
-                                onClick={() => setResultPage((p) => Math.max(1, p - 1))}
-                                aria-label="이전 페이지"
-                            >
-                                이전
-                            </button>
-                            <span className={styles.paginationInfo}>
-                                {currentPage} / {totalPages}
-                            </span>
-                            <button
-                                type="button"
-                                className={styles.paginationBtn}
-                                disabled={currentPage >= totalPages}
-                                onClick={() => setResultPage((p) => Math.min(totalPages, p + 1))}
-                                aria-label="다음 페이지"
-                            >
-                                다음
-                            </button>
+                            <button type="button" className={styles.paginationBtn} disabled={currentPage <= 1} onClick={() => setResultPage((p) => Math.max(1, p - 1))} aria-label="이전 페이지">이전</button>
+                            <span className={styles.paginationInfo}>{currentPage} / {totalPages}</span>
+                            <button type="button" className={styles.paginationBtn} disabled={currentPage >= totalPages} onClick={() => setResultPage((p) => Math.min(totalPages, p + 1))} aria-label="다음 페이지">다음</button>
                         </div>
                     </div>
                 </section>
