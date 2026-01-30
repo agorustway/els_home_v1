@@ -1,20 +1,33 @@
+/* Body: 상단네비 + 사이드 + 메인 (가로폭 제한 없음) */
+.bodyWrap {
+    display: flex;
+    width: 100%;
+    min-height: calc(100vh - 280px);
+}
+
 .mainContent {
     flex: 1;
-    padding: 30px 40px 60px;
+    min-width: 0;
+    padding: 24px 32px 48px;
     background-color: #f8fafc;
-    width: 100%;
-    max-width: 1300px;
-    margin: 0 auto;
 }
 
 @media (max-width: 1024px) {
+    .bodyWrap {
+        flex-direction: column;
+    }
+
     .mainContent {
-        padding: 20px;
+        padding: 16px 20px 32px;
     }
 }
 
 @media (max-width: 768px) {
     .mainContent {
-        padding: 15px 0;
+        padding: 10px 8px 20px;
+        max-width: 100vw;
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
     }
 }

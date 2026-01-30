@@ -61,120 +61,131 @@
     margin: 0 auto;
 }
 
-/* Portal Content */
+/* Portal Content - 시스템 인트라넷 홈 */
 .portalSection {
-    padding: 60px 0 120px;
+    padding: 24px 0 48px;
+    width: 100%;
+}
+
+.portalHeader {
+    margin-bottom: 28px;
+}
+
+.portalTitle {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+
+.portalSubtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
 }
 
 .gridContainer {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 30px;
-    margin-bottom: 60px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    width: 100%;
+}
+
+.cardWrap {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
 }
 
 .card {
     background: #fff;
-    border-radius: 25px;
-    padding: 40px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    border-radius: 16px;
+    padding: 24px;
+    padding-left: 28px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f1f5f9;
+    border-left: 4px solid #2563eb;
+    transition: all 0.25s ease;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    min-height: 160px;
+    height: 100%;
     text-decoration: none;
     color: inherit;
     position: relative;
     overflow: hidden;
 }
 
+.cardWrap:hover .card,
 .card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 50px rgba(0, 86, 179, 0.1);
-    border-color: rgba(0, 102, 255, 0.1);
-}
-
-.cardIcon {
-    width: 60px;
-    height: 60px;
-    background: #f0f7ff;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-    margin-bottom: 25px;
-    color: var(--primary-blue);
-    transition: all 0.3s;
-}
-
-.card:hover .cardIcon {
-    background: var(--primary-blue);
-    color: #fff;
-    transform: rotate(-5deg) scale(1.1);
+    border-left-color: #1d4ed8;
+    border-color: #e0e7ff;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+    transform: translateY(-2px);
 }
 
 .cardTitle {
-    font-size: 1.4rem;
-    font-weight: 800;
-    margin-bottom: 10px;
+    font-size: 1.15rem;
+    font-weight: 700;
     color: #1e293b;
+    margin: 0 0 6px 0;
 }
 
 .cardDesc {
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     color: #64748b;
-    line-height: 1.6;
+    line-height: 1.5;
+    margin: 0 0 16px 0;
+    flex: 1;
 }
 
-.arrow {
-    position: absolute;
-    bottom: 40px;
-    right: 40px;
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: all 0.3s;
-    color: var(--primary-blue);
+.cardCta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #2563eb;
+    margin-top: auto;
 }
 
-.card:hover .arrow {
-    opacity: 1;
-    transform: translateX(0);
+.cardWrap:hover .cardCta,
+.card:hover .cardCta {
+    color: #1d4ed8;
 }
 
-/* Grouped Card Links */
 .cardLinks {
-    margin-top: 20px;
+    margin-top: auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     border-top: 1px solid #f1f5f9;
-    padding-top: 20px;
+    padding-top: 14px;
 }
 
 .cardLinkItem {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
-    background: #f8fbff;
-    border-radius: 12px;
-    font-size: 0.9rem;
-    font-weight: 700;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
     color: #475569;
     text-decoration: none;
     transition: all 0.2s;
 }
 
 .cardLinkItem:hover {
-    background: var(--primary-blue);
-    color: #fff;
-    transform: translateX(5px);
+    background: #eff6ff;
+    color: #2563eb;
 }
 
 .cardLinkItem svg {
-    opacity: 0.5;
+    opacity: 0.7;
 }
 
 /* Regional Grouping */
@@ -228,8 +239,15 @@
 
     .gridContainer {
         grid-template-columns: 1fr;
-        /* Full width cards */
-        gap: 20px;
+        gap: 16px;
+    }
+
+    .portalSection {
+        padding: 20px 0 40px;
+    }
+
+    .portalTitle {
+        font-size: 1.35rem;
     }
 
     .branchGrid {
@@ -239,37 +257,30 @@
     .title {
         font-size: 2.5rem;
     }
-
-    .portalSection {
-        padding: 40px 0 80px;
-    }
 }
 
 @media (max-width: 768px) {
-    .card {
-        padding: 25px;
-        border-radius: 20px;
+    .portalSection {
+        padding: 16px 0 32px;
     }
 
-    .cardIcon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
+    .portalHeader {
         margin-bottom: 20px;
-        border-radius: 16px;
+    }
+
+    .card {
+        padding: 20px;
+        padding-left: 24px;
+        border-radius: 14px;
+        min-height: 140px;
     }
 
     .cardTitle {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
     }
 
     .cardDesc {
-        font-size: 0.9rem;
-    }
-
-    .arrow {
-        bottom: 25px;
-        right: 25px;
+        font-size: 0.85rem;
     }
 
     .branchGrid {

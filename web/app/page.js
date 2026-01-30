@@ -8,6 +8,7 @@ import Organization from '../components/Organization';
 import Vision from '../components/Vision';
 import ESG from '../components/ESG';
 import Dashboard from '../components/Dashboard';
+import WebzineSection from '../components/WebzineSection';
 import Network from '../components/Network';
 import Business from '../components/Business';
 import Footer from '../components/Footer';
@@ -45,6 +46,7 @@ export default function Home() {
         <div className="animate-section" style={{ background: '#f8fbff' }}><Organization /></div>
         <div className="animate-section"><History /></div>
         <div className="animate-section"><Dashboard /></div>
+        <div className="animate-section"><WebzineSection /></div>
         <div className="animate-section"><Network /></div>
       </main>
       <Footer />

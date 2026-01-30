@@ -6,6 +6,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'free';
     const branch = searchParams.get('branch');
+    const kind = searchParams.get('kind'); // 'daily' | 'monthly' for report
 
     // 1. Fetch posts (no join)
     let query = supabase
@@ -16,6 +17,9 @@ export async function GET(request) {
 
     if (branch) {
         query = query.eq('branch_tag', branch);
+    }
+    if (type === 'report' && (kind === 'daily' || kind === 'monthly')) {
+        query = query.eq('report_kind', kind);
     }
 
     const { data, error } = await query;
@@ -70,22 +74,24 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { title, content, board_type, branch_tag, attachments } = body;
+        const { title, content, board_type, branch_tag, attachments, report_kind } = body;
 
-        // Save both author_id and author_email
+        const row = {
+            title,
+            content,
+            board_type,
+            branch_tag,
+            author_id: user.id,
+            author_email: user.email,
+            attachments: attachments || []
+        };
+        if (board_type === 'report' && (report_kind === 'daily' || report_kind === 'monthly')) {
+            row.report_kind = report_kind;
+        }
+
         const { data, error } = await supabase
             .from('posts')
-            .insert([
-                {
-                    title,
-                    content,
-                    board_type,
-                    branch_tag,
-                    author_id: user.id,
-                    author_email: user.email, // Important!
-                    attachments: attachments || []
-                }
-            ])
+            .insert([row])
             .select()
             .single();
 

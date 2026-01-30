@@ -1,0 +1,116 @@
+.employeeHeader {
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    position: sticky;
+    top: var(--header-height, 70px);
+    z-index: 950;
+}
+
+.inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.logo {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #1e293b;
+    text-decoration: none;
+    letter-spacing: -0.5px;
+}
+
+.logoSub {
+    font-weight: 400;
+    color: #64748b;
+}
+
+.userArea {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.greeting {
+    font-size: 0.95rem;
+    color: #475569;
+}
+
+.greeting strong {
+    color: #1e293b;
+}
+
+.roleBadge {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-left: 2px;
+}
+
+.links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.link {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.link:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+}
+
+.linkBtn {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.linkBtn:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.searchWrap {
+    flex: 0 0 240px;
+}
+
+.searchInputWrap {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .inner {
+        padding: 10px 16px;
+        gap: 12px;
+    }
+
+    .greeting {
+        display: none;
+    }
+
+    .searchWrap {
+        flex: 1 1 100%;
+        order: 3;
+    }
+}

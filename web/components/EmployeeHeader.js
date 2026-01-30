@@ -1,0 +1,57 @@
+'use client';
+
+import Link from 'next/link';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { createClient } from '@/utils/supabase/client';
+import { getRoleLabel } from '@/utils/roles';
+import IntranetSearch from '@/components/IntranetSearch';
+import styles from './EmployeeHeader.module.css';
+
+export default function EmployeeHeader() {
+    const { profile, loading } = useUserProfile();
+    const supabase = createClient();
+
+    const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
+    const roleLabel = profile ? getRoleLabel(profile.role) : '';
+
+    const handleLogout = async () => {
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+    };
+
+    return (
+        <header className={styles.employeeHeader}>
+            <div className={styles.inner}>
+                <Link href="/employees" className={styles.logo}>
+                    ELS <span className={styles.logoSub}>Intranet</span>
+                </Link>
+                <div className={styles.userArea}>
+                    {!loading && profile && (
+                        <span className={styles.greeting}>
+                            <strong>{displayName}</strong>
+                            {roleLabel && (
+                                <span className={styles.roleBadge}>({roleLabel})</span>
+                            )}
+                            님 안녕하세요?
+                        </span>
+                    )}
+                    <div className={styles.links}>
+                        <Link href="/employees/mypage" className={styles.link}>
+                            개인정보수정
+                        </Link>
+                        <button type="button" onClick={handleLogout} className={styles.linkBtn}>
+                            로그아웃
+                        </button>
+                        <Link href="/contact" className={styles.link}>
+                            문의하기
+                        </Link>
+                    </div>
+                </div>
+                <div className={styles.searchWrap}>
+                    <IntranetSearch placeholder="메뉴·게시글 검색" className={styles.searchInputWrap} />
+                </div>
+            </div>
+        </header>
+    );
+}

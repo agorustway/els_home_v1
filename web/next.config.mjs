@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      { source: '/employees/webzine', destination: '/webzine', permanent: true },
+      { source: '/employees/webzine/:path*', destination: '/webzine/:path*', permanent: true },
+    ];
+  },
   images: {
     remotePatterns: [
       {

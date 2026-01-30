@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { getRoleLabel, ROLE_LABELS } from '@/utils/roles';
@@ -95,9 +93,7 @@ export default function MyPage() {
     if (!user) return null;
 
     return (
-        <>
-            <Header darkVariant={true} />
-            <div style={{ background: '#f8fafc', minHeight: '100vh', paddingTop: '100px', paddingBottom: '60px' }}>
+            <div style={{ background: '#f8fafc', minHeight: '100%', paddingBottom: '60px' }}>
                 <div className={styles.container}>
                     <h1 className={styles.title}>내 정보 수정</h1>
 
@@ -220,7 +216,5 @@ export default function MyPage() {
                     </div>
                 </div>
             </div>
-            <Footer />
-        </>
     );
 }

@@ -1,7 +1,5 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import styles from './menu.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -388,8 +386,6 @@ export default function AsanMenuChoicePage({ params }) {
     };
 
     return (
-        <>
-            <Header darkVariant={true} />
             <div className={styles.page}>
                 <main className={styles.container}>
                     <motion.div className={styles.hero} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
@@ -642,8 +638,6 @@ export default function AsanMenuChoicePage({ params }) {
                         </section>
                     </div>
                 </main>
-                <Footer />
             </div>
-        </>
     );
 }

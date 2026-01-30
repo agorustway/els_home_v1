@@ -31,29 +31,30 @@ const navLinks = [
     },
     { href: '/services', label: '서비스' },
     { href: '/dashboard', label: '실적현황' },
+    { href: '/webzine', label: '웹진' },
     { href: '/network', label: '네트워크' },
     { href: '/contact', label: '문의하기', isContact: true },
     {
-        label: '임직원전용',
+        label: '인트라넷',
         isEmployee: true,
         children: [
-            { href: '/admin/users', label: '🔐 회원 권한 관리', isAdmin: true },
-            { href: '/admin', label: '📋 고객 문의 관리', isAdmin: true },
+            { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
+            { href: '/admin', label: '고객 문의 관리', isAdmin: true },
             { type: 'divider', isAdmin: true },
             { label: '사내 시스템', type: 'label' },
-            { href: '/employees', label: '🏠 임직원 홈' },
-            { href: '/employees/archive', label: '📂 자료실 (NAS)' },
-            { href: '/employees/board/free', label: '💬 자유게시판' },
-            { href: '/employees/webzine', label: '📰 웹진 (블로그)' },
+            { href: '/employees', label: '인트라넷 홈' },
+            { href: '/employees/archive', label: '자료실 (NAS)' },
+            { href: '/employees/container-history', label: '컨테이너 이력조회' },
+            { href: '/employees/board/free', label: '자유게시판' },
             { type: 'divider' },
             {
                 label: '업무보고',
                 children: [
-                    { href: '/employees/reports', label: '📊 통합 업무보고' },
-                    { href: '/employees/reports/my', label: '📝 내 업무보고' },
+                    { href: '/employees/reports', label: '통합 업무보고' },
+                    { href: '/employees/reports/my', label: '내 업무보고' },
                     { type: 'divider' },
-                    { href: '/employees/reports/daily', label: '📅 일일 업무일지', isSubItem: true },
-                    { href: '/employees/reports/monthly', label: '📆 월간 실적보고', isSubItem: true },
+                    { href: '/employees/reports/daily', label: '일일 업무일지', isSubItem: true },
+                    { href: '/employees/reports/monthly', label: '월간 실적보고', isSubItem: true },
                 ]
             },
             { type: 'divider' },
@@ -61,13 +62,13 @@ const navLinks = [
                 label: '지점별 서비스',
                 children: [
                     { label: '수도권/본사', type: 'label' },
-                    { href: '/employees/branches/headquarters', label: '🏢 서울본사', isSubItem: true },
+                    { href: '/employees/branches/headquarters', label: '서울본사', isSubItem: true },
                     { type: 'divider' },
                     { label: '충청권 지점', type: 'label' },
-                    { href: '/employees/branches/asan', label: '🚚 아산지점', isSubItem: true },
-                    { href: '/employees/branches/jungbu', label: '🏭 중부지점', isSubItem: true },
-                    { href: '/employees/branches/dangjin', label: '🏗️ 당진지점', isSubItem: true },
-                    { href: '/employees/branches/yesan', label: '🚛 예산지점', isSubItem: true },
+                    { href: '/employees/branches/asan', label: '아산지점', isSubItem: true },
+                    { href: '/employees/branches/jungbu', label: '중부지점', isSubItem: true },
+                    { href: '/employees/branches/dangjin', label: '당진지점', isSubItem: true },
+                    { href: '/employees/branches/yesan', label: '예산지점', isSubItem: true },
                 ]
             }
         ]
@@ -278,7 +279,7 @@ export default function Header({ darkVariant = false }) {
                                         onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
                                         onMouseLeave={(e) => e.target.style.background = 'transparent'}
                                     >
-                                        👤 내 정보 수정
+                                        내 정보 수정
                                     </Link>
                                     <button
                                         onClick={handleLogout}
@@ -297,7 +298,7 @@ export default function Header({ darkVariant = false }) {
                                         onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
                                         onMouseLeave={(e) => e.target.style.background = 'transparent'}
                                     >
-                                        🚪 로그아웃
+                                        로그아웃
                                     </button>
                                 </div>
                             )}
