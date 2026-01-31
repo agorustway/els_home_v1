@@ -10,6 +10,7 @@ import time
 import datetime
 import tempfile
 import argparse
+import threading
 
 # els_bot 핵심 변경 없이 기존 함수만 import
 from els_bot import (
@@ -63,7 +64,23 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
     if driver is None:
         try:
             log("엔진 예열 및 로그인 중...")
-            driver = login_and_prepare(u_id, u_pw)
+            result = []
+            def do_login():
+                try:
+                    result.append(login_and_prepare(u_id, u_pw))
+                except Exception as e:
+                    result.append(e)
+            t = threading.Thread(target=do_login)
+            t.start()
+            sec = 0
+            while not result and sec < 90:
+                time.sleep(1)
+                sec += 1
+                log(f"  ... {sec}초")
+            t.join(timeout=2)
+            driver = result[0] if result and not isinstance(result[0], Exception) else None
+            if isinstance(result[0] if result else None, Exception):
+                raise result[0]
             if not driver:
                 log("로그인 실패!")
                 return (log_lines, [], [], None)
@@ -90,11 +107,11 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
                 continue
 
             grid_text = None
-            for _ in range(100):
+            for _ in range(150):
                 grid_text = scrape_hyper_verify(driver, cn)
                 if grid_text:
                     break
-                time.sleep(0.02)
+                time.sleep(0.01)
 
             dur = time.time() - unit_start
             if grid_text:
