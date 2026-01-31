@@ -28,6 +28,56 @@
     color: #64748b;
     margin: 0;
 }
+
+/* 설치 프로그램 다운로드 (한 페이지 상단) */
+.downloadSection {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #bbf7d0;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+.downloadDesc {
+    font-size: 0.95rem;
+    color: #15803d;
+    margin: 0 0 16px;
+    line-height: 1.5;
+}
+.downloadLinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.downloadCard {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #fff;
+    border: 1px solid #86efac;
+    border-radius: 12px;
+    color: #166534;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.downloadCard:hover {
+    background: #f0fdf4;
+    border-color: #22c55e;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+}
+.downloadCardIcon {
+    font-size: 1.5rem;
+}
+.downloadCardLabel {
+    font-size: 0.95rem;
+}
+.downloadCardExt {
+    font-size: 0.85rem;
+    color: #15803d;
+    font-weight: 500;
+}
+
 .section {
     background: #fff;
     border: 1px solid #e2e8f0;

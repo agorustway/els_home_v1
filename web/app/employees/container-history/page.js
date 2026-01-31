@@ -21,7 +21,6 @@ export default function ContainerHistoryPage() {
     const [elsAvailable, setElsAvailable] = useState(null);
     const [parseAvailable, setParseAvailable] = useState(false);
     const [elsUnavailableReason, setElsUnavailableReason] = useState('');
-    const [installGuideOpen, setInstallGuideOpen] = useState(false);
 
     useEffect(() => {
         fetch('/api/els/capabilities')
@@ -364,67 +363,36 @@ export default function ContainerHistoryPage() {
     return (
         <div className={styles.page}>
             <h1 className={styles.title}>컨테이너 이력조회</h1>
-            <p className={styles.desc}>ELS 하이퍼터보 연동 · 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회·다운로드</p>
+            <p className={styles.desc}>
+                {elsAvailable === true
+                    ? '이 페이지에서 로그인·조회·다운로드가 가능합니다. 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회하세요.'
+                    : 'ELS 하이퍼터보 연동 · 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회·다운로드'}
+            </p>
 
-            {/* 다운로드 및 설치 */}
-            <section className={styles.downloadSection}>
-                <h2 className={styles.downloadSectionTitle}>다운로드 및 설치</h2>
-                <p className={styles.downloadSectionDesc}>
-                    이 웹 페이지에서는 엑셀 파싱(번호 추출)만 가능합니다. <strong>로그인·조회·다운로드</strong>는 아래 설치 파일을 받아 PC 또는 모바일에 설치한 뒤 사용하세요.
-                </p>
-                <div className={styles.downloadLinks}>
-                    <a href={downloadWinUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
-                        <span className={styles.downloadCardIcon}>🖥️</span>
-                        <span className={styles.downloadCardLabel}>Windows 설치 프로그램</span>
-                        <span className={styles.downloadCardExt}>.exe</span>
-                    </a>
-                    <a href={downloadAndroidUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
-                        <span className={styles.downloadCardIcon}>📱</span>
-                        <span className={styles.downloadCardLabel}>Android 앱</span>
-                        <span className={styles.downloadCardExt}>.apk</span>
-                    </a>
-                </div>
-                <div className={styles.installGuideWrap}>
-                    <button type="button" className={styles.installGuideToggle} onClick={() => setInstallGuideOpen((o) => !o)} aria-expanded={installGuideOpen}>
-                        {installGuideOpen ? '설치 설명서 접기' : '설치 설명서 보기'}
-                    </button>
-                    {installGuideOpen && (
-                        <div className={styles.installGuide}>
-                            <h3>Windows</h3>
-                            <ol>
-                                <li>위에서 <strong>Windows 설치 프로그램 (.exe)</strong>를 다운로드합니다.</li>
-                                <li>PC에 <strong>Python</strong>과 <strong>Chrome</strong>이 설치되어 있는지 확인합니다.</li>
-                                <li>다운로드한 exe를 실행해 설치를 마친 뒤, 앱을 실행해 로그인·조회·다운로드를 사용합니다.</li>
-                            </ol>
-                            <h3>Android</h3>
-                            <ol>
-                                <li>위에서 <strong>Android 앱 (.apk)</strong>를 다운로드해 설치합니다.</li>
-                                <li>PC에서 <strong>데스크탑 앱</strong>을 실행하고, Android와 <strong>같은 Wi‑Fi</strong>에 연결합니다.</li>
-                                <li>Android 앱을 실행한 뒤, 화면 안내에 따라 <strong>PC IP 주소와 포트</strong>(예: 192.168.0.10:2929)를 입력해 접속합니다.</li>
-                            </ol>
-                            <a href="/employees/container-history/install" target="_blank" rel="noopener noreferrer" className={styles.installGuideLink}>전체 설치 설명서 (상세)</a>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* 배포 환경: 파싱만 가능 / 전체 불가 안내 */}
+            {/* 실행 불가 시: 배너 + 설치 안내 버튼 (한 페이지로 연결) */}
             {elsAvailable === false && (
-                <div className={styles.unavailableBanner} role="alert">
-                    <strong>
-                        {parseAvailable
-                            ? '엑셀 파싱(번호 추출)만 사용할 수 있습니다.'
-                            : '이 환경에서는 컨테이너 이력조회를 사용할 수 없습니다.'}
-                    </strong>
-                    <p>
-                        {parseAvailable
-                            ? '로그인·조회는 Chrome(브라우저 자동화)이 필요해 이 환경에서는 불가합니다. 엑셀 업로드로 번호만 추출 가능하며, 전체 기능은 로컬 또는 데스크탑 앱에서 이용하세요.'
-                            : (elsUnavailableReason || '로컬 또는 Python·Chrome이 설치된 서버에서만 이용 가능합니다.')}
-                    </p>
+                <div className={styles.unavailableBlock} role="alert">
+                    <div className={styles.unavailableBanner}>
+                        <strong>
+                            {parseAvailable
+                                ? '엑셀 파싱(번호 추출)만 사용할 수 있습니다.'
+                                : '이 환경에서는 웹에서 조회를 실행할 수 없습니다.'}
+                        </strong>
+                        <p>
+                            {parseAvailable
+                                ? '로그인·조회는 이 환경에서는 불가합니다. 엑셀 업로드로 번호만 추출 가능하며, 전체 기능은 설치 프로그램을 이용하세요.'
+                                : (elsUnavailableReason || '설치 프로그램(PC/모바일 앱)을 다운로드해 사용하세요.')}
+                        </p>
+                        <a href="/employees/container-history/install" className={styles.installCtaButton}>
+                            설치 프로그램 및 사용 안내 보기
+                        </a>
+                    </div>
                 </div>
             )}
 
-            {/* 사용방법 안내 */}
+            {/* 조회 UI: API 사용 가능할 때만 표시 */}
+            {(elsAvailable === true || elsAvailable === null) && (
+                <>
             <section className={styles.usageSection}>
                 <p className={styles.usageText}>
                     이 작업은 <strong>etrans</strong> 로그인이 필요하며 약 <strong>10초</strong> 정도 소요됩니다.
@@ -448,7 +416,6 @@ export default function ContainerHistoryPage() {
                 </div>
             </section>
 
-            {/* 본문: 왼쪽 입력/업로드/다운로드 · 오른쪽 로그 뷰어 (1:1) */}
             <div className={styles.mainModule}>
                 <div className={styles.leftPanel}>
                     {/* 계정 */}
@@ -680,6 +647,33 @@ export default function ContainerHistoryPage() {
                             </button>
                         </div>
                     </div>
+                </section>
+            )}
+                </>
+            )}
+
+            {/* PC/모바일 앱: API 사용 가능 시 하단에 설치 안내 (한 페이지로 연결) */}
+            {elsAvailable === true && (
+                <section className={styles.downloadSection}>
+                    <h2 className={styles.downloadSectionTitle}>PC/모바일 앱으로 쓰려면</h2>
+                    <p className={styles.downloadSectionDesc}>
+                        웹에서 조회가 안 되거나, PC·모바일 앱을 쓰려면 아래 설치 프로그램을 받은 뒤 <strong>설치 및 사용 안내</strong> 페이지를 참고하세요.
+                    </p>
+                    <div className={styles.downloadLinks}>
+                        <a href={downloadWinUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
+                            <span className={styles.downloadCardIcon}>🖥️</span>
+                            <span className={styles.downloadCardLabel}>Windows 설치 프로그램</span>
+                            <span className={styles.downloadCardExt}>.exe</span>
+                        </a>
+                        <a href={downloadAndroidUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
+                            <span className={styles.downloadCardIcon}>📱</span>
+                            <span className={styles.downloadCardLabel}>Android 앱</span>
+                            <span className={styles.downloadCardExt}>.apk</span>
+                        </a>
+                    </div>
+                    <a href="/employees/container-history/install" className={styles.installGuideLink}>
+                        설치 프로그램 및 사용 안내 (상세)
+                    </a>
                 </section>
             )}
         </div>

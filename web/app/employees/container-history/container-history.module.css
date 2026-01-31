@@ -146,10 +146,31 @@
 }
 
 .unavailableBanner p {
-    margin: 0;
+    margin: 0 0 16px;
     font-size: 0.9rem;
     color: #b91c1c;
     line-height: 1.5;
+}
+
+.unavailableBlock {
+    margin-bottom: 24px;
+}
+
+.installCtaButton {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.1s;
+}
+.installCtaButton:hover {
+    background: #b91c1c;
+    color: #fff;
+    transform: translateY(-1px);
 }
 
 /* 사용방법 안내 + 4단계 진행 */

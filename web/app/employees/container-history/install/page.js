@@ -14,9 +14,27 @@ export default function ContainerHistoryInstallPage() {
         <div className={styles.page}>
             <div className={styles.header}>
                 <Link href="/employees/container-history" className={styles.backLink}>← 컨테이너 이력조회</Link>
-                <h1 className={styles.title}>설치 설명서</h1>
-                <p className={styles.subtitle}>ELS 컨테이너 이력조회 — Windows(.exe), Android(.apk)</p>
+                <h1 className={styles.title}>설치 프로그램 및 사용 안내</h1>
+                <p className={styles.subtitle}>ELS 컨테이너 이력조회 — Windows(.exe), Android(.apk) 다운로드 및 설치·사용 방법</p>
             </div>
+
+            {/* 한 페이지: 설치 프로그램 다운로드 */}
+            <section className={styles.downloadSection}>
+                <h2 className={styles.sectionTitle}>설치 프로그램 다운로드</h2>
+                <p className={styles.downloadDesc}>아래에서 PC 또는 모바일용 설치 파일을 받은 뒤, 아래 설명에 따라 설치·사용하세요.</p>
+                <div className={styles.downloadLinks}>
+                    <a href={downloadWinUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
+                        <span className={styles.downloadCardIcon}>🖥️</span>
+                        <span className={styles.downloadCardLabel}>Windows 설치 프로그램</span>
+                        <span className={styles.downloadCardExt}>.exe</span>
+                    </a>
+                    <a href={downloadAndroidUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
+                        <span className={styles.downloadCardIcon}>📱</span>
+                        <span className={styles.downloadCardLabel}>Android 앱</span>
+                        <span className={styles.downloadCardExt}>.apk</span>
+                    </a>
+                </div>
+            </section>
 
             <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>1. Windows (데스크탑)</h2>
