@@ -369,6 +369,13 @@ export default function ContainerHistoryPage() {
                     : 'ELS 하이퍼터보 연동 · 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회·다운로드'}
             </p>
 
+            {/* 연결 확인 중: 조회 UI 노출 전까지 로딩만 표시 (깜빡임 방지) */}
+            {elsAvailable === null && (
+                <div className={styles.checkingBlock} aria-live="polite">
+                    <p className={styles.checkingText}>연결 확인 중...</p>
+                </div>
+            )}
+
             {/* 실행 불가 시: 배너 + 설치 안내 버튼 (한 페이지로 연결) */}
             {elsAvailable === false && (
                 <div className={styles.unavailableBlock} role="alert">
@@ -390,8 +397,8 @@ export default function ContainerHistoryPage() {
                 </div>
             )}
 
-            {/* 조회 UI: API 사용 가능할 때만 표시 */}
-            {(elsAvailable === true || elsAvailable === null) && (
+            {/* 조회 UI: API 사용 가능할 때만 표시 (null일 때는 위에서 로딩 표시) */}
+            {elsAvailable === true && (
                 <>
             <section className={styles.usageSection}>
                 <p className={styles.usageText}>
