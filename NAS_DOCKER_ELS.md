@@ -58,13 +58,18 @@ docker build -t els-backend:latest .
 
 ```bash
 cd /volume1/docker/els_home_v1
-docker compose -f docker/docker-compose.yml up -d
+sudo docker-compose -f docker/docker-compose.yml up -d
 ```
+
+- **"unknown shorthand flag: -f"** 가 나오면: NAS Docker가 구버전이라 `docker compose`(띄어쓰기)가 없습니다. 위처럼 **`docker-compose`**(하이픈) 를 사용하세요.
+- **"Permission denied"** 가 나오면: **`sudo`** 를 앞에 붙여 실행하세요.
+- **"port 2929 already allocated"** 가 나오면: 2929 포트를 쓰는 **기존 컨테이너**가 있습니다. `sudo docker ps` 로 **실제 컨테이너 이름**을 확인한 뒤(예: `els-backend1`), `sudo docker stop <이름>` → `sudo docker rm <이름>` 으로 제거하고, 다시 `sudo docker-compose -f docker/docker-compose.yml up -d` 로 올리세요.
 
 이렇게 하면 NAS 안에서 **2929 포트**로 “컨테이너 조회 API” 서버가 돌아갑니다.  
 (웹 사이트 전체가 NAS로 오는 게 아니라, 이 API만 2929에서 동작하는 겁니다.)
 
 - **세션 유지:** 컨테이너 안에서 **ELS 데몬**이 함께 실행됩니다. 로그인 한 번 후에는 **조회할 때마다 다시 로그인하지 않고** 기존 브라우저 세션을 씁니다. 그래서 **두 번째 조회부터는 훨씬 빠르고**, 로그에 "기존 세션으로 조회 진행." 이 나옵니다.
+- **조회할 때마다 "엔진 예열 및 로그인 중..." 이 나오면:** NAS에 **최신 이미지가 반영되지 않은 것**일 수 있습니다. 프로젝트 루트에서 `sudo docker build -t els-backend:latest .` 로 이미지를 다시 빌드한 뒤, `sudo docker-compose -f docker/docker-compose.yml down` 으로 기존 컨테이너를 내리고, `sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate` 로 다시 띄워 주세요.
 
 ### 2-4. NAS를 밖에서 부를 수 있게 (DDNS + 역방향 프록시)
 

@@ -42,10 +42,11 @@ def open_els_menu(driver):
                 target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
                 if target:
                     driver.execute_script("arguments[0].click();", target[0])
-                    time.sleep(4); return True
+                    time.sleep(2)
+                    return True
             except: continue
             finally: driver.switch_to.default_content()
-        time.sleep(1)
+        time.sleep(0.5)
     return False
 
 def solve_input_and_search(driver, container_no):
@@ -61,10 +62,10 @@ def solve_input_and_search(driver, container_no):
                 target.click()
                 target.send_keys(Keys.CONTROL + "a"); target.send_keys(Keys.DELETE)
                 target.send_keys(container_no); target.send_keys(Keys.ENTER)
-                for _ in range(20): 
+                for _ in range(25):
                     msg = check_alert(driver)
                     if msg: return f"오류: {msg}"
-                    time.sleep(0.03)
+                    time.sleep(0.02)
                 return True
         except: continue
         finally: driver.switch_to.default_content()
@@ -127,11 +128,11 @@ def login_and_prepare(u_id, u_pw):
     driver = webdriver.Chrome(service=service, options=options)
     try:
         driver.get("https://etrans.klnet.co.kr/index.do")
-        time.sleep(2)
+        time.sleep(1.5)
         driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId").send_keys(u_id)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(u_pw)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(Keys.ENTER)
-        time.sleep(8)
+        time.sleep(4)
         if open_els_menu(driver): return driver
     except: pass
     if driver: driver.quit()

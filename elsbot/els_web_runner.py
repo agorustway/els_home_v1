@@ -90,11 +90,11 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
                 continue
 
             grid_text = None
-            for _ in range(120):
+            for _ in range(100):
                 grid_text = scrape_hyper_verify(driver, cn)
                 if grid_text:
                     break
-                time.sleep(0.05)
+                time.sleep(0.02)
 
             dur = time.time() - unit_start
             if grid_text:
