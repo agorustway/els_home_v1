@@ -20,8 +20,16 @@ function getPythonCommand() {
 }
 
 export async function GET(req) {
-    const proxied = await proxyToBackend(req);
-    if (proxied) return proxied;
+    try {
+        const proxied = await proxyToBackend(req);
+        if (proxied) return proxied;
+    } catch (e) {
+        return NextResponse.json({
+            available: false,
+            parseAvailable: true,
+            reason: 'NAS API 연결 실패 또는 타임아웃입니다. ELS_BACKEND_URL 확인 후 재배포해 보세요.',
+        });
+    }
     try {
         if (process.env.VERCEL === '1') {
             return NextResponse.json({
