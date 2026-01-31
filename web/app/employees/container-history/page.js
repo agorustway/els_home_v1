@@ -357,8 +357,8 @@ export default function ContainerHistoryPage() {
         { num: 4, label: '완료(다운로드 가능)' },
     ];
 
-    const downloadWinUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_WIN || '/downloads/els-container-history-setup.exe';
-    const downloadAndroidUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_ANDROID || '/downloads/els-container-history.apk';
+    const downloadWinUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_WIN || '/api/downloads/els-win';
+    const downloadAndroidUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_ANDROID || '/api/downloads/els-android';
 
     return (
         <div className={styles.page}>

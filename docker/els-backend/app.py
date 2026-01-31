@@ -1,6 +1,6 @@
 """
 ELS 컨테이너 이력조회 백엔드 — Flask API (Docker용)
-/api/els/* 동일 스펙. Python els_web_runner.py 호출.
+/api/els/* 동일 스펙. 데몬 사용 시 세션 유지(재로그인·속도 개선), 미사용 시 els_web_runner.py 호출.
 """
 import os
 import sys
@@ -9,6 +9,8 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 from flask import Flask, request, jsonify, Response, send_file
 from werkzeug.utils import secure_filename
@@ -19,8 +21,17 @@ app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB
 ELSBOT_DIR = Path("/app/elsbot")
 RUNNER = ELSBOT_DIR / "els_web_runner.py"
 CONFIG_PATH = ELSBOT_DIR / "els_config.json"
+DAEMON_URL = "http://127.0.0.1:31999"
 
 file_store = {}
+
+
+def _daemon_available():
+    try:
+        r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=2)
+        return r.getcode() == 200
+    except Exception:
+        return False
 
 
 def run_runner(cmd, extra_args=None, env=None, stdin_data=None):
@@ -76,6 +87,21 @@ def login():
     use_saved = data.get("useSavedCreds", True)
     uid = data.get("userId") or ""
     pw = data.get("userPw") or ""
+    if _daemon_available():
+        try:
+            body = json.dumps({
+                "useSavedCreds": use_saved,
+                "userId": uid,
+                "userPw": pw,
+            }, ensure_ascii=False).encode("utf-8")
+            req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json; charset=utf-8"})
+            r = urlopen(req, timeout=60)
+            obj = json.loads(r.read().decode("utf-8"))
+            return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
+        except URLError as e:
+            pass  # fallback to subprocess
+        except Exception:
+            pass
     extra = []
     if not use_saved and uid:
         extra.extend(["--user-id", uid])
@@ -96,7 +122,90 @@ def login():
         return jsonify({"ok": False, "error": "응답 파싱 실패", "log": [out[:300]]}), 500
 
 
+def _stream_run_daemon(containers, use_saved, uid, pw):
+    """데몬 /run 스트리밍: LOG 그대로 전달, RESULT에서 output_path → downloadToken(파일 읽어 file_store)."""
+    body = json.dumps({
+        "containers": containers,
+        "useSavedCreds": use_saved,
+        "userId": uid,
+        "userPw": pw,
+    }, ensure_ascii=False).encode("utf-8")
+    req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json; charset=utf-8"})
+    resp = urlopen(req, timeout=300)
+    buffer = b""
+    result_sent = False
+    while True:
+        chunk = resp.read(4096)
+        if not chunk:
+            break
+        buffer += chunk
+        while b"\n" in buffer:
+            line, buffer = buffer.split(b"\n", 1)
+            try:
+                s = line.decode("utf-8").strip()
+            except Exception:
+                continue
+            if not s:
+                continue
+            if s.startswith("LOG:"):
+                yield "LOG:" + s[4:] + "\n"
+            elif s.startswith("RESULT:"):
+                try:
+                    obj = json.loads(s[7:])
+                    if not result_sent:
+                        result_sent = True
+                        token = None
+                        out_path = obj.get("output_path")
+                        if out_path and Path(out_path).exists():
+                            token = str(uuid.uuid4()).replace("-", "")[:16]
+                            file_store[token] = Path(out_path).read_bytes()
+                            try:
+                                Path(out_path).unlink()
+                            except Exception:
+                                pass
+                        yield "RESULT:" + json.dumps({
+                            "sheet1": obj.get("sheet1", []),
+                            "sheet2": obj.get("sheet2", []),
+                            "downloadToken": token,
+                            "error": obj.get("error"),
+                        }, ensure_ascii=False) + "\n"
+                except json.JSONDecodeError:
+                    yield "LOG:" + s + "\n"
+    if buffer.strip():
+        try:
+            s = buffer.decode("utf-8").strip()
+            if s.startswith("RESULT:") and not result_sent:
+                obj = json.loads(s[7:])
+                token = None
+                if obj.get("output_path") and Path(obj["output_path"]).exists():
+                    token = str(uuid.uuid4()).replace("-", "")[:16]
+                    file_store[token] = Path(obj["output_path"]).read_bytes()
+                yield "RESULT:" + json.dumps({
+                    "sheet1": obj.get("sheet1", []),
+                    "sheet2": obj.get("sheet2", []),
+                    "downloadToken": token,
+                    "error": obj.get("error"),
+                }, ensure_ascii=False) + "\n"
+                result_sent = True
+        except Exception:
+            yield "LOG:" + buffer.decode("utf-8", errors="replace") + "\n"
+    if not result_sent:
+        yield "RESULT:" + json.dumps({
+            "sheet1": [], "sheet2": [], "downloadToken": None,
+            "error": "데몬이 결과를 반환하지 않았습니다.",
+        }, ensure_ascii=False) + "\n"
+
+
 def _stream_run(containers, use_saved, uid, pw):
+    if _daemon_available():
+        try:
+            for chunk in _stream_run_daemon(containers, use_saved, uid, pw):
+                yield chunk
+            return
+        except URLError:
+            pass
+        except Exception:
+            pass
     extra = ["--containers", json.dumps(containers)]
     if not use_saved and uid:
         extra.extend(["--user-id", uid])
@@ -224,6 +333,12 @@ def download():
 
 @app.route("/api/els/logout", methods=["POST"])
 def logout():
+    if _daemon_available():
+        try:
+            req = Request(DAEMON_URL + "/logout", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
+            urlopen(req, timeout=5)
+        except Exception:
+            pass
     return jsonify({"ok": True})
 
 

@@ -24,4 +24,5 @@ COPY docker/els-backend/app.py /app/
 ENV FLASK_APP=app.py
 
 EXPOSE 2929
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=2929"]
+# 데몬(세션 유지) + Flask 동시 실행 — 조회 시 재로그인 제거·속도 개선
+CMD ["sh", "-c", "cd /app/elsbot && python els_web_runner_daemon.py & sleep 2 && exec python -m flask run --host=0.0.0.0 --port=2929"]
