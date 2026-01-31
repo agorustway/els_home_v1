@@ -1,0 +1,2 @@
+# Dockerfile must use LF so Docker (NAS/Windows) does not report "invalid format"
+Dockerfile text eol=lf

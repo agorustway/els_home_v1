@@ -1,12 +1,5 @@
-# ELS 컨테이너 이력조회 백엔드 — Docker Compose
-# 저장소 루트에서: docker compose -f docker/docker-compose.yml up -d
-# Synology Container Manager: 프로젝트 경로를 이 저장소로 두고 docker-compose.yml 선택 시 docker/docker-compose.yml 지정
-
 services:
   els-backend:
-    build:
-      context: .
-      dockerfile: docker/els-backend/Dockerfile
     image: els-backend:latest
     container_name: els-backend
     ports:
@@ -15,8 +8,3 @@ services:
       - CHROME_BIN=/usr/bin/chromium
       - CHROME_DRIVER_BIN=/usr/bin/chromedriver
     restart: unless-stopped
-    # NAS에서 영구 설정 저장 시 볼륨 마운트 (선택)
-    # volumes:
-    #   - elsbot_data:/app/elsbot
-    # volumes:
-    #   elsbot_data:
