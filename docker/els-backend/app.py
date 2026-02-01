@@ -83,43 +83,49 @@ def config_post():
 
 @app.route("/api/els/login", methods=["POST"])
 def login():
-    data = request.get_json() or {}
-    use_saved = data.get("useSavedCreds", True)
-    uid = data.get("userId") or ""
-    pw = data.get("userPw") or ""
-    if _daemon_available():
-        try:
-            body = json.dumps({
-                "useSavedCreds": use_saved,
-                "userId": uid,
-                "userPw": pw,
-            }, ensure_ascii=False).encode("utf-8")
-            req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json; charset=utf-8"})
-            r = urlopen(req, timeout=60)
-            obj = json.loads(r.read().decode("utf-8"))
-            return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
-        except URLError as e:
-            pass  # fallback to subprocess
-        except Exception:
-            pass
-    extra = []
-    if not use_saved and uid:
-        extra.extend(["--user-id", uid])
-    if not use_saved and pw:
-        extra.extend(["--user-pw", pw])
-    r = run_runner("login", extra_args=extra)
-    out = (r.stdout or "").strip()
-    if r.returncode != 0:
-        return jsonify({"ok": False, "error": (r.stderr or out)[:500], "log": [r.stderr or out]}), 500
     try:
-        start, end = out.rfind("{"), out.rfind("}")
-        if start >= 0 and end >= start:
-            obj = json.loads(out[start : end + 1])
-        else:
-            obj = json.loads(out)
-        return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
-    except json.JSONDecodeError:
-        return jsonify({"ok": False, "error": "응답 파싱 실패", "log": [out[:300]]}), 500
+        data = request.get_json(silent=True) or {}
+        use_saved = data.get("useSavedCreds", True)
+        uid = data.get("userId") or ""
+        pw = data.get("userPw") or ""
+        if _daemon_available():
+            try:
+                body = json.dumps({
+                    "useSavedCreds": use_saved,
+                    "userId": uid,
+                    "userPw": pw,
+                }, ensure_ascii=False).encode("utf-8")
+                req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json; charset=utf-8"})
+                r = urlopen(req, timeout=90)
+                raw = r.read().decode("utf-8")
+                if raw.strip().startswith("<"):
+                    return jsonify({"ok": False, "error": "데몬이 HTML을 반환했습니다.", "log": [raw[:200]]}), 500
+                obj = json.loads(raw)
+                return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
+            except URLError:
+                pass  # fallback to subprocess
+            except Exception as e:
+                return jsonify({"ok": False, "error": str(e)[:500], "log": [f"[데몬 오류] {e}"]}), 500
+        extra = []
+        if not use_saved and uid:
+            extra.extend(["--user-id", uid])
+        if not use_saved and pw:
+            extra.extend(["--user-pw", pw])
+        r = run_runner("login", extra_args=extra)
+        out = (r.stdout or "").strip()
+        if r.returncode != 0:
+            return jsonify({"ok": False, "error": (r.stderr or out)[:500], "log": [r.stderr or out]}), 500
+        try:
+            start, end = out.rfind("{"), out.rfind("}")
+            if start >= 0 and end >= start:
+                obj = json.loads(out[start : end + 1])
+            else:
+                obj = json.loads(out)
+            return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
+        except json.JSONDecodeError:
+            return jsonify({"ok": False, "error": "응답 파싱 실패", "log": [out[:300]]}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:500], "log": [f"[서버 오류] {e}"]}), 500
 
 
 def _stream_run_daemon(containers, use_saved, uid, pw):

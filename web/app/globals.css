@@ -84,8 +84,7 @@ a {
 
   .container {
 
-    padding: 0 16px;
-    /* Tight padding like mobile apps */
+    padding: 0 12px;
 
     width: 100%;
 

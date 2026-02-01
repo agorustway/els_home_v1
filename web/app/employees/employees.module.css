@@ -298,6 +298,19 @@
     .branchEng {
         font-size: 0.75rem;
     }
+
+    /* 지점 페이지: 모바일 좌우 여백 축소 — 내용 폭 확대 */
+    .branchMain {
+        padding: 16px 0 24px;
+    }
+
+    .branchContent {
+        padding: 40px 0;
+    }
+
+    .gameWrapper {
+        padding: 24px 12px;
+    }
 }
 
 /* Branch Page Specific */

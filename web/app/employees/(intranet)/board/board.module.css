@@ -1,4 +1,4 @@
-﻿.container {
+.container {
     padding: 0;
 }
 
@@ -198,8 +198,7 @@
 
         margin-bottom: 10px;
 
-        padding: 0 15px;
-        /* Keep header padding slightly */
+        padding: 0 8px;
 
     }
 
@@ -355,12 +354,12 @@
 
     .contentBody {
         font-size: 1rem;
-        padding: 0 5px;
+        padding: 0;
     }
 
     .editorCard,
     .detailCard {
-        padding: 20px 15px !important;
+        padding: 16px 10px !important;
         border-radius: 12px !important;
     }
 }

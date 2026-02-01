@@ -24,10 +24,15 @@
 
 @media (max-width: 768px) {
     .mainContent {
-        padding: 10px 8px 20px;
+        padding: 12px 6px 24px;
         max-width: 100vw;
         width: 100%;
         box-sizing: border-box;
         overflow-x: auto;
+    }
+    /* 인트라넷 내 .container 좌우 여백 축소 — 내용 폭 확대 */
+    .mainContent :global(.container) {
+        padding-left: 10px;
+        padding-right: 10px;
     }
 }

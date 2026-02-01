@@ -95,14 +95,22 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def handle_login(self):
-        body = self.parse_body()
+        try:
+            body = self.parse_body()
+        except Exception as e:
+            self.send_json({"ok": False, "log": [f"[오류] 요청 파싱 실패: {e}"]})
+            return
         use_saved = body.get("useSavedCreds", True)
         user_id = body.get("userId", "").strip() if not use_saved else None
         user_pw = body.get("userPw", "") if not use_saved else None
         if use_saved:
-            config = load_config()
-            user_id = config.get("user_id", "")
-            user_pw = config.get("user_pw", "")
+            try:
+                config = load_config()
+                user_id = config.get("user_id", "")
+                user_pw = config.get("user_pw", "")
+            except Exception as e:
+                self.send_json({"ok": False, "log": [f"[오류] 설정 로드 실패: {e}"]})
+                return
         if not user_id or not user_pw:
             self.send_json({"ok": False, "log": ["[오류] 아이디/비밀번호가 없습니다."]})
             return

@@ -47,7 +47,18 @@ export async function proxyToBackend(req, pathname = null) {
     });
 
     if (res.body) {
-        return new NextResponse(res.body, {
+        const isApi = path.startsWith('/api/els');
+        const bodyText = await res.text();
+        const ct = res.headers.get('content-type') || '';
+        const looksLikeHtml = ct.includes('text/html') || bodyText.trim().startsWith('<!');
+        if (isApi && looksLikeHtml) {
+            return NextResponse.json({
+                ok: false,
+                error: '백엔드가 HTML을 반환했습니다. ELS_BACKEND_URL 또는 NAS 컨테이너 상태를 확인하세요.',
+                log: [bodyText.slice(0, 300)],
+            }, { status: res.status >= 400 ? res.status : 502 });
+        }
+        return new NextResponse(bodyText, {
             status: res.status,
             statusText: res.statusText,
             headers: resHeaders,

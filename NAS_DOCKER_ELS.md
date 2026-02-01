@@ -69,7 +69,46 @@ sudo docker-compose -f docker/docker-compose.yml up -d
 (웹 사이트 전체가 NAS로 오는 게 아니라, 이 API만 2929에서 동작하는 겁니다.)
 
 - **세션 유지:** 컨테이너 안에서 **ELS 데몬**이 함께 실행됩니다. 로그인 한 번 후에는 **조회할 때마다 다시 로그인하지 않고** 기존 브라우저 세션을 씁니다. 그래서 **두 번째 조회부터는 훨씬 빠르고**, 로그에 "기존 세션으로 조회 진행." 이 나옵니다.
-- **조회할 때마다 "엔진 예열 및 로그인 중..." 이 나오면:** NAS에 **최신 이미지가 반영되지 않은 것**일 수 있습니다. 프로젝트 루트에서 `sudo docker build -t els-backend:latest .` 로 이미지를 다시 빌드한 뒤, `sudo docker-compose -f docker/docker-compose.yml down` 으로 기존 컨테이너를 내리고, `sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate` 로 다시 띄워 주세요.
+- **조회할 때마다 "엔진 예열 및 로그인 중..." 이 나오면:** NAS에 **최신 이미지가 반영되지 않은 것**일 수 있습니다. 아래 "최신 코드 반영" 후 `sudo docker build --no-cache -t els-backend:latest .` 로 다시 빌드하고, `sudo docker-compose -f docker/docker-compose.yml down` → `sudo docker-compose -f docker/docker-compose.yml up -d` 로 다시 띄워 주세요.
+- **NAS에서 `git pull` 이 없을 때 (커맨드를 찾을 수 없음):** NAS에는 Git이 설치되어 있지 않을 수 있습니다. **PC에서** 최신 코드를 받은 뒤, **프로젝트 폴더 전체**(`els_home_v1`)를 NAS 공유폴더(예: `docker`)로 **복사해 덮어쓰기**하세요. (Windows: 탐색기에서 NAS 공유폴더 열고 `els_home_v1` 붙여넣기. 또는 File Station에서 PC 쪽 폴더를 업로드.) 그 다음 NAS SSH에서 `cd /volume1/docker/els_home_v1` 후 `sudo docker build --no-cache -t els-backend:latest .` 로 빌드하면 됩니다.
+
+#### NAS에 Git 설치하기 (선택 — `git pull`로 빠르게 반영하려면)
+
+반영할 때마다 폴더 복사가 부담되면, NAS에 **Entware**를 설치한 뒤 `opkg install git`으로 Git을 깔고 `git pull`로 업데이트할 수 있습니다.
+
+**Synology NAS 기준 (Intel J3455 / x86_64)**
+
+- **상세 단계별 가이드:** [NAS_ENTWARE_INSTALL.md](./NAS_ENTWARE_INSTALL.md) 를 참고하세요. (wget 실패, HTTPS 오류, 부팅 시 마운트 등 해결 방법 포함.)
+- 요약:
+  1. **Entware** 설치 (Entware-ng 아님. URL은 `https://bin.entware.net/x64-k3.2/installer/generic.sh`).
+  2. 폴더는 `/volume1/@Entware/opt` (대문자 E). `/opt` 는 `mount -o bind` 또는 `ln -sf` 로 연결.
+  3. DSM 6/7에서는 **작업 스케줄러**로 부팅 시 `/opt` 마운트 및 `rc.unslung start` 실행.
+  4. 설치 후 ` /opt/bin/opkg update && /opt/bin/opkg install git` 로 Git 설치.
+
+**그대로 복사로 반영**  
+- Git을 쓰지 않으면 **PC에서 최신 코드 받은 뒤 `els_home_v1` 전체를 NAS 공유폴더로 복사**하는 방식으로 계속 반영하면 됩니다.
+
+Git 설치 후 한 번만 클론해 두면 됩니다.
+
+```bash
+cd /volume1/docker
+git clone https://github.com/사용자/els_home_v1.git
+# 또는 기존에 복사해 둔 폴더를 저장소로 연결
+cd /volume1/docker/els_home_v1
+git init
+git remote add origin https://github.com/사용자/els_home_v1.git
+git fetch origin main && git reset --hard origin/main
+```
+
+이후 코드 반영 시:
+
+```bash
+cd /volume1/docker/els_home_v1
+git pull
+sudo docker build --no-cache -t els-backend:latest .
+sudo docker-compose -f docker/docker-compose.yml down
+sudo docker-compose -f docker/docker-compose.yml up -d
+```
 
 ### 2-4. NAS를 밖에서 부를 수 있게 (DDNS + 역방향 프록시)
 

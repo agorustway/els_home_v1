@@ -124,7 +124,14 @@ export default function ContainerHistoryPage() {
                     userPw: useSavedCreds ? undefined : userPw,
                 }),
             });
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch (_) {
+                const msg = text.trim().startsWith('<') ? '서버가 HTML을 반환했습니다. ELS 백엔드 URL(ELS_BACKEND_URL) 또는 NAS 컨테이너 상태를 확인하세요.' : '응답 형식 오류(JSON 아님)';
+                throw new Error(msg);
+            }
             if (!res.ok) throw new Error(data.error || '로그인 실패');
             setLogLines(prev => [...prev, ...(data.log || []), data.ok ? '[로그인 완료] 조회 가능합니다.' : '[로그인 실패]']);
             if (data.ok) setStepIndex(2);
@@ -211,7 +218,13 @@ export default function ContainerHistoryPage() {
                         userPw: useSavedCreds ? undefined : userPw,
                     }),
                 });
-                const loginData = await loginRes.json();
+                const loginText = await loginRes.text();
+                let loginData;
+                try {
+                    loginData = loginText ? JSON.parse(loginText) : {};
+                } catch (_) {
+                    throw new Error(loginText.trim().startsWith('<') ? '서버가 HTML을 반환했습니다. ELS 백엔드 URL 또는 NAS 컨테이너를 확인하세요.' : '응답 형식 오류');
+                }
                 if (!loginRes.ok || !loginData.ok) {
                     setLogLines(prev => [...prev, ...(loginData.log || []), '[자동 로그인 실패] 위에서 로그인 버튼으로 먼저 로그인해 주세요.']);
                     setLoginLoading(false);
