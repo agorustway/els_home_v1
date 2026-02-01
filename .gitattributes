@@ -1,2 +1,4 @@
 # Dockerfile must use LF so Docker (NAS/Windows) does not report "invalid format"
 Dockerfile text eol=lf
+# Shell scripts must use LF so NAS/Linux does not report $'\r': command not found
+*.sh text eol=lf

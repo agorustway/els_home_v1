@@ -6,7 +6,12 @@ import { NextResponse } from 'next/server';
 
 const BASE = process.env.ELS_BACKEND_URL || '';
 
-export async function proxyToBackend(req, pathname = null) {
+/**
+ * @param {Request} req
+ * @param {string|null} pathname
+ * @param {object|string|null} overrideBody - 제공 시 req 대신 이 body로 백엔드 요청 (사용자별 creds 치환 후 프록시용)
+ */
+export async function proxyToBackend(req, pathname = null, overrideBody = null) {
     if (!BASE) return null;
     const url = new URL(req.url);
     const path = pathname != null ? pathname : url.pathname;
@@ -20,8 +25,11 @@ export async function proxyToBackend(req, pathname = null) {
     });
 
     let body;
-    const contentType = req.headers.get('content-type') || '';
-    if (method !== 'GET' && method !== 'HEAD') {
+    if (overrideBody != null) {
+        body = typeof overrideBody === 'string' ? overrideBody : JSON.stringify(overrideBody);
+        headers.set('content-type', 'application/json');
+    } else if (method !== 'GET' && method !== 'HEAD') {
+        const contentType = req.headers.get('content-type') || '';
         if (contentType.includes('multipart/form-data')) {
             body = await req.arrayBuffer();
             headers.set('content-type', req.headers.get('content-type'));

@@ -5,6 +5,7 @@ import { execSync, spawn } from 'child_process';
 import crypto from 'crypto';
 import { ensureDaemon, getDaemonUrl } from '../daemon';
 import { proxyToBackend } from '../proxyToBackend';
+import { getUserElsCreds } from '../getUserElsCreds';
 
 const ELSBOT_DIR = path.join(process.cwd(), '..', 'elsbot');
 const RUNNER = path.join(ELSBOT_DIR, 'els_web_runner.py');
@@ -127,10 +128,21 @@ function runViaDaemon(body, controller, encoder) {
 }
 
 export async function POST(req) {
-    const proxied = await proxyToBackend(req);
-    if (proxied) return proxied;
+    let body;
+    if (process.env.ELS_BACKEND_URL) {
+        body = await req.json().catch(() => ({}));
+        if (body?.useSavedCreds) {
+            const creds = await getUserElsCreds();
+            if (creds) body = { ...body, useSavedCreds: false, userId: creds.userId, userPw: creds.userPw };
+        }
+        const proxied = await proxyToBackend(req, null, body);
+        if (proxied) return proxied;
+    } else {
+        const proxied = await proxyToBackend(req);
+        if (proxied) return proxied;
+    }
     try {
-        const body = await req.json();
+        if (!body) body = await req.json();
         const { containers, useSavedCreds, userId, userPw } = body || {};
         if (!Array.isArray(containers) || containers.length === 0) {
             return NextResponse.json({ error: 'containers 배열이 필요합니다.' }, { status: 400 });

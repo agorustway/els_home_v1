@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import SubPageHero from '@/components/SubPageHero';
-import IntranetSubNav from '@/components/IntranetSubNav';
 import { formatPhoneNumber } from '@/utils/format';
 import { getRoleLabel, ROLE_LABELS } from '@/utils/roles';
 import styles from './users.module.css';
-import layoutStyles from '@/app/employees/(intranet)/intranet.module.css';
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState([]);
@@ -204,16 +199,7 @@ export default function AdminUsersPage() {
     };
 
     return (
-        <>
-            <Header />
-            <SubPageHero
-                title="Admin"
-                subtitle="사내 시스템 및 회원 권한 관리"
-                bgImage="/images/hero_cy.png"
-            />
-            <IntranetSubNav />
-            <main className={layoutStyles.mainContent}>
-                <div className={styles.adminContainer}>
+        <div className={styles.adminContainer}>
                     <div style={{ marginBottom: '24px', padding: '0 15px' }}>
                         <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>회원 권한 관리</h1>
                         <p style={{ color: '#64748b', fontSize: '0.9rem' }}>가입된 회원의 시스템 접근 권한을 관리합니다.</p>
@@ -510,9 +496,6 @@ export default function AdminUsersPage() {
                             {pagination.page} / {pagination.totalPages || 1} 페이지 (총 {pagination.total}명)
                         </span>
                     </div>
-                </div>
-            </main>
-            <Footer />
-        </>
+        </div>
     );
 }

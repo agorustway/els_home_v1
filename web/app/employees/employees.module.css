@@ -299,17 +299,26 @@
         font-size: 0.75rem;
     }
 
-    /* 지점 페이지: 모바일 좌우 여백 축소 — 내용 폭 확대 */
+    /* 지점 페이지: 모바일 가독·터치 여백 */
     .branchMain {
-        padding: 16px 0 24px;
+        padding: 16px 16px 24px;
     }
 
     .branchContent {
-        padding: 40px 0;
+        padding: 32px 0;
+    }
+
+    .branchTitle {
+        font-size: 1.5rem;
+        margin-bottom: 16px;
+    }
+
+    .branchDesc {
+        font-size: 1rem;
     }
 
     .gameWrapper {
-        padding: 24px 12px;
+        padding: 20px 16px;
     }
 }
 

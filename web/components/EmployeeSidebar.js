@@ -6,7 +6,7 @@ import styles from './EmployeeSidebar.module.css';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { createClient } from '@/utils/supabase/client';
 import { getRoleLabel } from '@/utils/roles';
-import { getActiveMainTab, SIDEBAR_ITEMS } from '@/constants/intranetMenu';
+import { MAIN_TABS, getActiveMainTab, SIDEBAR_ITEMS } from '@/constants/intranetMenu';
 import IntranetSearch from '@/components/IntranetSearch';
 
 export default function EmployeeSidebar() {
@@ -16,6 +16,10 @@ export default function EmployeeSidebar() {
     const isAdmin = profile?.role === 'admin';
     const activeTabId = getActiveMainTab(pathname, isAdmin);
     const items = SIDEBAR_ITEMS[activeTabId] || SIDEBAR_ITEMS.system;
+
+    const mainTabs = [...MAIN_TABS]
+        .filter((tab) => !tab.adminOnly || isAdmin)
+        .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
 
     const handleLogout = async () => {
         if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -33,6 +37,20 @@ export default function EmployeeSidebar() {
             <div className={styles.searchWrap}>
                 <IntranetSearch placeholder="메뉴·게시글 검색" />
             </div>
+            <nav className={styles.tabNav}>
+                {mainTabs.map((tab) => {
+                    const isTabActive = activeTabId === tab.id;
+                    return (
+                        <Link
+                            key={tab.id}
+                            href={tab.defaultPath}
+                            className={`${styles.tabItem} ${isTabActive ? styles.tabActive : ''}`}
+                        >
+                            {tab.label}
+                        </Link>
+                    );
+                })}
+            </nav>
             <nav className={styles.menu}>
                 {items.map((item) => (
                     <Link

@@ -79,66 +79,38 @@ a {
 }
 
 /* Mobile Responsive Styles */
-
 @media (max-width: 768px) {
-
   .container {
-
-    padding: 0 12px;
-
+    padding: 0 16px;
     width: 100%;
-
+    max-width: 100%;
   }
-
-
 
   .section {
-
     padding: 50px 0;
-    /* Reduced spacing */
-
   }
-
-
 
   .sectionTitle {
-
     font-size: 2rem;
-
     margin-bottom: 30px;
-
     word-break: keep-all;
-    /* Prevent awkward breaks */
-
   }
 
-
-
-  /* Improve typography for mobile reading */
-
-  p,
-  li,
-  span,
-  div {
-
+  /* 모바일 가독·터치 */
+  p, li, span, div {
     word-break: keep-all;
-    /* Break by word, not character */
-
     overflow-wrap: break-word;
-    /* Handle long URLs */
-
   }
-
-
-
-  /* Force images to fit */
 
   img {
-
     max-width: 100%;
-
     height: auto;
-
   }
+}
 
+/* 매우 좁은 화면(세로) */
+@media (max-width: 380px) {
+  .container {
+    padding: 0 12px;
+  }
 }

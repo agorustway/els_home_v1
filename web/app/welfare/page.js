@@ -1,9 +1,5 @@
 'use client';
 import { useState } from 'react';
-import Header from '@/components/Header';
-import SubNav from '@/components/SubNav';
-import Footer from '@/components/Footer';
-import SubPageHero from '@/components/SubPageHero';
 import styles from './welfare.module.css';
 import { motion } from 'framer-motion';
 
@@ -100,21 +96,9 @@ export default function WelfarePage() {
     ];
 
     return (
-        <>
-            <Header />
-            <SubPageHero
-                title="사원복지"
-                subtitle="임직원의 행복이 곧 기업의 경쟁력입니다"
-                bgImage="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80"
-            />
-
-            <SubNav />
-
-            <div className={styles.page}>
-                <main>
-                    {/* Hero removed, SubNav moved above */}
-
-                    <section id="satisfaction" className={styles.satisfactionSection}>
+        <div className={styles.page}>
+            <main>
+                <section id="satisfaction" className={styles.satisfactionSection}>
                         <div className="container">
                             <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
                             <div className={styles.satisfactionList}>
@@ -302,9 +286,7 @@ export default function WelfarePage() {
                             </motion.p>
                         </div>
                     </section>
-                </main>
-                <Footer />
-            </div>
-        </>
+            </main>
+        </div>
     );
 }

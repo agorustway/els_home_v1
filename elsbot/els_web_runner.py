@@ -78,11 +78,13 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
                 sec += 1
                 log(f"  ... {sec}초")
             t.join(timeout=2)
-            driver = result[0] if result and not isinstance(result[0], Exception) else None
+            raw = result[0] if result and not isinstance(result[0], Exception) else None
             if isinstance(result[0] if result else None, Exception):
                 raise result[0]
+            driver = raw[0] if isinstance(raw, tuple) and raw else (raw if raw else None)
+            err_msg = raw[1] if isinstance(raw, tuple) and len(raw) > 1 and raw[1] else None
             if not driver:
-                log("로그인 실패!")
+                log(err_msg or "로그인 실패!")
                 return (log_lines, [], [], None)
             log("로그인 성공.")
             own_driver = True
@@ -107,11 +109,11 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
                 continue
 
             grid_text = None
-            for _ in range(150):
+            for _ in range(120):
                 grid_text = scrape_hyper_verify(driver, cn)
                 if grid_text:
                     break
-                time.sleep(0.01)
+                time.sleep(0.008)
 
             dur = time.time() - unit_start
             if grid_text:
@@ -184,10 +186,12 @@ def login_only(user_id=None, user_pw=None):
         return (False, ["[오류] 아이디/비밀번호가 없습니다."])
     driver = None
     try:
-        driver = login_and_prepare(u_id, u_pw)
+        result = login_and_prepare(u_id, u_pw)
+        driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
+        err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else None
         if driver:
             return (True, ["로그인 성공.", "조회 페이지 대기 중."])
-        return (False, ["로그인 실패!"])
+        return (False, [err_msg or "로그인 실패!"])
     except Exception as e:
         return (False, [f"[예외] {e}"])
     finally:

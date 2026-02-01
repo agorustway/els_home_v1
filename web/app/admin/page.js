@@ -1,10 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import SubPageHero from '@/components/SubPageHero';
-import IntranetSubNav from '@/components/IntranetSubNav';
 import styles from './admin.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '../../utils/supabase/client';
@@ -128,16 +124,7 @@ export default function AdminPage() {
     }
 
     return (
-        <>
-            <Header />
-            <SubPageHero
-                title="Admin"
-                subtitle="고객 문의 및 시스템 관리"
-                bgImage="/images/hero_cy.png"
-            />
-            <IntranetSubNav />
-            <main style={{ flex: 1 }}>
-                <div className={styles.adminPage}>
+        <div className={styles.adminPage}>
 
                     <section className={styles.section}>
                         <div className={styles.fullWidthContainer}>
@@ -356,9 +343,6 @@ export default function AdminPage() {
                             </div>
                         </div>
                     </section>
-                </div>
-            </main>
-            <Footer />
-        </>
+        </div>
     );
 }

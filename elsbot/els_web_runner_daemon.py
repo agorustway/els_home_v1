@@ -117,13 +117,15 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
         do_logout()
         log_lines = []
         try:
-            driver = login_and_prepare(user_id, user_pw)
+            result = login_and_prepare(user_id, user_pw)
+            driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
+            err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else None
             if driver:
                 set_driver(driver)
                 log_lines = ["로그인 성공.", "조회 페이지 대기 중."]
                 self.send_json({"ok": True, "log": log_lines})
             else:
-                log_lines = ["로그인 실패!"]
+                log_lines = [err_msg or "로그인 실패!"]
                 self.send_json({"ok": False, "log": log_lines})
         except Exception as e:
             log_lines = [f"[예외] {e}"]
@@ -148,9 +150,11 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
             do_logout()
             log_lines = []
             try:
-                driver = login_and_prepare(user_id or "", user_pw or "")
+                result = login_and_prepare(user_id or "", user_pw or "")
+                driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
+                err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else "로그인 실패!"
                 if not driver:
-                    self.send_json({"ok": False, "error": "로그인 실패", "log": ["로그인 실패!"]})
+                    self.send_json({"ok": False, "error": "로그인 실패", "log": [err_msg]})
                     return
                 set_driver(driver)
             except Exception as e:

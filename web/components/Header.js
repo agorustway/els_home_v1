@@ -11,6 +11,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 const navLinks = [
     {
         label: '회사소개',
+        href: '/intro',
         children: [
             { href: '/intro', label: '회사 개요' },
             { href: '/vision', label: '비전' },
@@ -36,6 +37,7 @@ const navLinks = [
     { href: '/contact', label: '문의하기', isContact: true },
     {
         label: '인트라넷',
+        href: '/employees',
         isEmployee: true,
         children: [
             { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },

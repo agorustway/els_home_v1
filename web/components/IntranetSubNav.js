@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './IntranetSubNav.module.css';
 import { useUserRole } from '@/hooks/useUserRole';
-import { MAIN_TABS, getActiveMainTab } from '@/constants/intranetMenu';
+import { MAIN_TABS, SIDEBAR_ITEMS, getActiveMainTab } from '@/constants/intranetMenu';
 
 export default function IntranetSubNav() {
     const pathname = usePathname();
@@ -15,6 +15,9 @@ export default function IntranetSubNav() {
     const tabsForDisplay = [...MAIN_TABS]
         .filter((tab) => !tab.adminOnly || isAdmin)
         .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+
+    const subItems = SIDEBAR_ITEMS[activeTabId] || [];
+    const hasSubMenu = subItems.length > 0;
 
     return (
         <nav className={styles.mainNav}>
@@ -34,6 +37,23 @@ export default function IntranetSubNav() {
                         );
                     })}
                 </ul>
+                {hasSubMenu && (
+                    <ul className={styles.subTabList}>
+                        {subItems.map((item) => {
+                            const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
+                            return (
+                                <li key={item.path} className={styles.subTabItem}>
+                                    <Link
+                                        href={item.path}
+                                        className={`${styles.subTabLink} ${isActive ? styles.subTabActive : ''}`}
+                                    >
+                                        {item.label}
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
             </div>
         </nav>
     );

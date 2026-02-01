@@ -24,6 +24,7 @@ export const viewport = {
 
 import { Suspense } from 'react';
 import ActivityLogger from "@/components/ActivityLogger";
+import SiteLayout from "@/components/SiteLayout";
 
 export default function RootLayout({ children }) {
   return (
@@ -32,7 +33,7 @@ export default function RootLayout({ children }) {
         <Suspense fallback={null}>
           <ActivityLogger />
         </Suspense>
-        {children}
+        <SiteLayout>{children}</SiteLayout>
       </body>
     </html>
   );

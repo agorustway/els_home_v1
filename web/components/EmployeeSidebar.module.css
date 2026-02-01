@@ -2,21 +2,51 @@
     width: 260px;
     flex-shrink: 0;
     background-color: #ffffff;
-    border-right: 1px solid #f1f5f9;
+    border-right: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
     padding: 16px 12px;
     position: sticky;
-    top: calc(var(--header-height, 70px) + 53px + 50px);
-    margin-bottom: 20px;
-    border-radius: 12px;
-    margin-left: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    top: calc(var(--header-height, 70px) + 53px);
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
     max-height: calc(100vh - 140px);
 }
 
 .searchWrap {
     margin-bottom: 12px;
+}
+
+.tabNav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.tabItem {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #64748b;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.tabItem:hover {
+    background-color: #f1f5f9;
+    color: #1e293b;
+}
+
+.tabItem.tabActive {
+    background-color: #eff6ff;
+    color: #2563eb;
 }
 
 .searchInput {

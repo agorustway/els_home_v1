@@ -22,10 +22,21 @@ function getPythonCommand() {
 }
 
 export async function POST(req) {
-    const proxied = await proxyToBackend(req);
-    if (proxied) return proxied;
+    let body;
+    if (process.env.ELS_BACKEND_URL) {
+        body = await req.json().catch(() => ({}));
+        if (body?.useSavedCreds) {
+            const creds = await getUserElsCreds();
+            if (creds) body = { ...body, useSavedCreds: false, userId: creds.userId, userPw: creds.userPw };
+        }
+        const proxied = await proxyToBackend(req, null, body);
+        if (proxied) return proxied;
+    } else {
+        const proxied = await proxyToBackend(req);
+        if (proxied) return proxied;
+    }
     try {
-        const body = await req.json();
+        if (!body) body = await req.json();
         const { useSavedCreds, userId, userPw } = body || {};
         const python = getPythonCommand();
         if (!python) {

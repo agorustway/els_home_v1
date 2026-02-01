@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import SubPageHero from '@/components/SubPageHero';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from './webzine.module.css';
 
@@ -64,13 +63,7 @@ export default function WebzineListPage() {
     if (loading) return <div className="loading" style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
 
     return (
-        <>
-            <SubPageHero
-                title="웹진"
-                subtitle="회사 소식과 이야기를 전합니다."
-                bgImage="/images/hero_logistics.png"
-            />
-            <main className={styles.main}>
+        <div className={styles.main}>
                 <div className={styles.contentContainer}>
                     <div className={styles.actionHeader}>
                         {recentPosts.length > 0 && (
@@ -169,7 +162,6 @@ export default function WebzineListPage() {
                         <div className={styles.emptyState}>등록된 웹진 게시물이 없습니다.</div>
                     )}
                 </div>
-            </main>
-        </>
+        </div>
     );
 }

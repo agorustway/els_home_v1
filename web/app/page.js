@@ -1,6 +1,5 @@
 'use client';
 import { useEffect } from 'react';
-import Header from '../components/Header';
 import Hero from '../components/Hero';
 import Intro from '../components/Intro';
 import History from '../components/History';
@@ -11,7 +10,6 @@ import Dashboard from '../components/Dashboard';
 import WebzineSection from '../components/WebzineSection';
 import Network from '../components/Network';
 import Business from '../components/Business';
-import Footer from '../components/Footer';
 
 export default function Home() {
   useEffect(() => {
@@ -35,21 +33,17 @@ export default function Home() {
   }, []);
 
   return (
-    <>
-      <Header />
-      <main>
-        <Hero />
-        <div className="animate-section"><Intro /></div>
-        <div className="animate-section"><Business /></div>
-        <div className="animate-section"><Vision /></div>
-        <div className="animate-section"><ESG /></div>
-        <div className="animate-section" style={{ background: '#f8fbff' }}><Organization /></div>
-        <div className="animate-section"><History /></div>
-        <div className="animate-section"><Dashboard /></div>
-        <div className="animate-section"><WebzineSection /></div>
-        <div className="animate-section"><Network /></div>
-      </main>
-      <Footer />
-    </>
+    <main>
+      <Hero />
+      <div className="animate-section"><Intro /></div>
+      <div className="animate-section"><Business /></div>
+      <div className="animate-section"><Vision /></div>
+      <div className="animate-section"><ESG /></div>
+      <div className="animate-section" style={{ background: '#f8fbff' }}><Organization /></div>
+      <div className="animate-section"><History /></div>
+      <div className="animate-section"><Dashboard /></div>
+      <div className="animate-section"><WebzineSection /></div>
+      <div className="animate-section"><Network /></div>
+    </main>
   );
 }

@@ -60,7 +60,7 @@ def open_els_menu(driver):
                                 pass
                             finally:
                                 driver.switch_to.default_content()
-                        time.sleep(0.5)
+                        time.sleep(0.35)
                     driver.switch_to.default_content()
                     return True
             except Exception:
@@ -86,7 +86,7 @@ def solve_input_and_search(driver, container_no):
                 for _ in range(25):
                     msg = check_alert(driver)
                     if msg: return f"오류: {msg}"
-                    time.sleep(0.02)
+                    time.sleep(0.015)
                 return True
         except: continue
         finally: driver.switch_to.default_content()
@@ -136,6 +136,7 @@ def scrape_hyper_verify(driver, search_no):
     except: return None
 
 def login_and_prepare(u_id, u_pw):
+    """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지)."""
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -146,8 +147,9 @@ def login_and_prepare(u_id, u_pw):
     if os.environ.get("CHROME_BIN"):
         options.binary_location = os.environ["CHROME_BIN"]
     service = Service(os.environ["CHROME_DRIVER_BIN"]) if os.environ.get("CHROME_DRIVER_BIN") else Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = None
     try:
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get("https://etrans.klnet.co.kr/index.do")
         # 로그인 폼 로드 대기(최대 15초, 준비되면 즉시 진행)
         WebDriverWait(driver, 15).until(
@@ -159,11 +161,22 @@ def login_and_prepare(u_id, u_pw):
         # 로그인 처리 대기: 2초로 단축(기존 4초). 메뉴 진입 루프에서 곧바로 메뉴 탐색
         time.sleep(2)
         if open_els_menu(driver):
-            return driver
-    except Exception:
-        pass
-    if driver: driver.quit()
-    return None
+            return (driver, None)
+        if driver:
+            driver.quit()
+        return (None, "메뉴(컨테이너 이동현황)를 찾을 수 없습니다. 아이디/비밀번호 또는 ETRANS 접속 상태를 확인하세요.")
+    except Exception as e:
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+        err_msg = str(e).strip() or "알 수 없는 오류"
+        if "timeout" in err_msg.lower() or "타임아웃" in err_msg:
+            return (None, "페이지 로드 타임아웃. ETRANS(etrans.klnet.co.kr) 접속이 느리거나 불가합니다.")
+        if "chromedriver" in err_msg.lower() or "chrome" in err_msg.lower():
+            return (None, "Chrome/Chromium 실행 오류. NAS Docker에 Chrome이 설치되어 있는지 확인하세요.")
+        return (None, f"[오류] {err_msg[:200]}")
 
 def main():
     config = load_config()
@@ -181,7 +194,10 @@ def main():
         if driver is None or (time.time() - last_login) > (58 * 60):
             if driver: driver.quit()
             print("엔진 예열 및 로그인 중...")
-            driver = login_and_prepare(u_id, u_pw)
+            result = login_and_prepare(u_id, u_pw)
+            driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
+            if isinstance(result, tuple) and len(result) > 1 and result[1]:
+                print(result[1])
             last_login = time.time()
             if not driver: print("로그인 실패!"); continue
 

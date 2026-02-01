@@ -172,6 +172,42 @@
     margin-bottom: 24px;
 }
 
+/* 로그인 실패 시 아이디·비밀번호 확인 안내 */
+.loginErrorBanner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 2px solid #ef4444;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    color: #b91c1c;
+}
+.loginErrorText {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+.loginErrorRetry {
+    padding: 8px 16px;
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.loginErrorRetry:hover:not(:disabled) {
+    background: #b91c1c;
+}
+.loginErrorRetry:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 .installCtaButton {
     display: inline-block;
     padding: 12px 24px;

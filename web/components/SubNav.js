@@ -1,18 +1,13 @@
 'use client';
 import styles from './SubNav.module.css';
 import { usePathname } from 'next/navigation';
-
-const menuItems = [
-    { name: '회사소개', path: '/intro' },
-    { name: '비전', path: '/vision' },
-    { name: 'ESG', path: '/esg' },
-    { name: '조직도', path: '/team' },
-    { name: '연혁', path: '/history' },
-    { name: '사원복지', path: '/welfare' }
-];
+import { getSubNavItems } from '@/constants/siteLayout';
 
 export default function SubNav() {
     const pathname = usePathname();
+    const menuItems = getSubNavItems(pathname);
+
+    if (menuItems.length === 0) return null;
 
     return (
         <nav className={styles.subNav}>

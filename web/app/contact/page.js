@@ -1,9 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import SubPageHero from '@/components/SubPageHero';
 import styles from './contact.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
@@ -242,13 +239,6 @@ export default function ContactPage() {
 
     return (
         <div className={styles.contactPage}>
-            <Header />
-            <SubPageHero
-                title="문의하기"
-                subtitle="이엘에스솔루션에 궁금하신 점을 남겨주세요"
-                bgImage="/images/hero_logistics.png"
-            />
-
             <section className={styles.section}>
                 <div className="container">
                     <div className={styles.grid}>
@@ -484,8 +474,6 @@ export default function ContactPage() {
                     </div>
                 )}
             </AnimatePresence>
-
-            <Footer />
-        </div >
+        </div>
     );
 }

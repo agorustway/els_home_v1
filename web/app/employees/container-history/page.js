@@ -21,6 +21,12 @@ export default function ContainerHistoryPage() {
     const [elsAvailable, setElsAvailable] = useState(null);
     const [parseAvailable, setParseAvailable] = useState(false);
     const [elsUnavailableReason, setElsUnavailableReason] = useState('');
+    const [loginError, setLoginError] = useState(null);
+    const [loginProgressLine, setLoginProgressLine] = useState(null);
+
+    const autoLoginAttemptedRef = useRef(false);
+    const loginStartTimeRef = useRef(null);
+    const loginProgressIntervalRef = useRef(null);
 
     useEffect(() => {
         fetch('/api/els/capabilities')
@@ -90,6 +96,7 @@ export default function ContainerHistoryPage() {
     };
 
     const handleCheckboxChange = (checked) => {
+        setLoginError(null);
         if (checked) {
             if (!useSavedCreds && (userId?.trim() || userPw)) {
                 handleSaveCreds();
@@ -112,8 +119,15 @@ export default function ContainerHistoryPage() {
             setLogLines(prev => [...prev, '[계정] 아이디와 비밀번호를 입력하세요.']);
             return;
         }
+        setLoginError(null);
         setLoginLoading(true);
-        setLogLines(prev => [...prev, '[로그인] 시작...']);
+        loginStartTimeRef.current = Date.now();
+        setLoginProgressLine('로그인 및 메뉴 이동 실행 중입니다... 0초');
+        if (loginProgressIntervalRef.current) clearInterval(loginProgressIntervalRef.current);
+        loginProgressIntervalRef.current = setInterval(() => {
+            const elapsed = loginStartTimeRef.current ? Math.floor((Date.now() - loginStartTimeRef.current) / 1000) : 0;
+            setLoginProgressLine(`로그인 및 메뉴 이동 실행 중입니다... ${elapsed}초`);
+        }, 1000);
         try {
             const res = await fetch('/api/els/login', {
                 method: 'POST',
@@ -132,15 +146,42 @@ export default function ContainerHistoryPage() {
                 const msg = text.trim().startsWith('<') ? '서버가 HTML을 반환했습니다. ELS 백엔드 URL(ELS_BACKEND_URL) 또는 NAS 컨테이너 상태를 확인하세요.' : '응답 형식 오류(JSON 아님)';
                 throw new Error(msg);
             }
-            if (!res.ok) throw new Error(data.error || '로그인 실패');
-            setLogLines(prev => [...prev, ...(data.log || []), data.ok ? '[로그인 완료] 조회 가능합니다.' : '[로그인 실패]']);
-            if (data.ok) setStepIndex(2);
+            const elapsed = loginStartTimeRef.current ? Math.round((Date.now() - loginStartTimeRef.current) / 1000) : 0;
+            setLoginProgressLine(null);
+            if (loginProgressIntervalRef.current) {
+                clearInterval(loginProgressIntervalRef.current);
+                loginProgressIntervalRef.current = null;
+            }
+            if (!res.ok) {
+                setLogLines(prev => [...prev, ...(data.log || []), '[로그인 실패]']);
+                setLoginError('아이디·비밀번호를 확인하세요.');
+                return;
+            }
+            if (data.ok) {
+                setLogLines(prev => [...prev, `로그인·메뉴 이동 완료 (${elapsed}초)`, '입력 대기 중입니다. 컨테이너 번호를 입력하거나 엑셀을 업로드한 뒤 [조회]를 눌러 주세요.']);
+                setStepIndex(2);
+            } else {
+                setLogLines(prev => [...prev, ...(data.log || []), '[로그인 실패]']);
+                setLoginError('아이디·비밀번호를 확인하세요.');
+            }
         } catch (err) {
+            setLoginProgressLine(null);
+            if (loginProgressIntervalRef.current) {
+                clearInterval(loginProgressIntervalRef.current);
+                loginProgressIntervalRef.current = null;
+            }
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
+            setLoginError('아이디·비밀번호를 확인하세요.');
         } finally {
             setLoginLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (elsAvailable !== true || !configLoaded || !defaultUserId || !useSavedCreds || autoLoginAttemptedRef.current) return;
+        autoLoginAttemptedRef.current = true;
+        runLogin();
+    }, [elsAvailable, configLoaded, defaultUserId, useSavedCreds]);
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [resultPage, setResultPage] = useState(1);
     const [resultPageSize, setResultPageSize] = useState(20);
@@ -440,6 +481,14 @@ export default function ContainerHistoryPage() {
                     {/* 계정 */}
                     <section className={styles.section}>
                         <h2 className={styles.sectionTitle}>계정</h2>
+                        {loginError && (
+                            <div className={styles.loginErrorBanner} role="alert">
+                                <span className={styles.loginErrorText}>{loginError}</span>
+                                <button type="button" onClick={() => { setLoginError(null); runLogin(); }} className={styles.loginErrorRetry} disabled={loginLoading}>
+                                    다시 로그인
+                                </button>
+                            </div>
+                        )}
                         {useSavedCreds && hasSavedAccount ? (
                             <div className={styles.credBoxRow}>
                                 <div className={styles.credBox}>
@@ -475,7 +524,8 @@ export default function ContainerHistoryPage() {
                                         type="text"
                                         placeholder="아이디"
                                         value={userId}
-                                        onChange={(e) => setUserId(e.target.value)}
+                                        onChange={(e) => { setUserId(e.target.value); setLoginError(null); }}
+                                        onFocus={() => setLoginError(null)}
                                         className={styles.input}
                                     />
                                 </div>
@@ -493,7 +543,8 @@ export default function ContainerHistoryPage() {
                                         type="password"
                                         placeholder="비밀번호"
                                         value={userPw}
-                                        onChange={(e) => setUserPw(e.target.value)}
+                                        onChange={(e) => { setUserPw(e.target.value); setLoginError(null); }}
+                                        onFocus={() => setLoginError(null)}
                                         className={styles.input}
                                     />
                                 </div>
@@ -574,7 +625,7 @@ export default function ContainerHistoryPage() {
                     <section className={styles.section + ' ' + styles.logSection}>
                         <h2 className={styles.sectionTitle}>로그</h2>
                         <pre ref={terminalRef} className={styles.terminal}>
-                            {logLines.length ? logLines.map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
+                            {logLines.length || loginProgressLine ? [...logLines, loginProgressLine].filter(Boolean).map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
                         </pre>
                     </section>
                 </div>

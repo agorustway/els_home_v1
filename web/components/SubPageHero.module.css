@@ -33,38 +33,25 @@
 }
 
 @media (max-width: 768px) {
-
     .hero {
-
-        height: 220px;
-        /* More compact */
-
-        padding-top: 40px;
-        /* Account for fixed header if needed */
-
+        height: 200px;
+        padding-top: 24px;
     }
 
-
+    .content {
+        padding: 0 16px;
+    }
 
     .title {
-
-        font-size: 2rem;
-
-        margin-bottom: 10px;
-
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+        line-height: 1.3;
     }
-
-
 
     .subtitle {
-
-        font-size: 0.95rem;
-
+        font-size: 0.875rem;
         word-break: keep-all;
-        /* Prevent subtitle breaks */
-
-        padding: 0 10px;
-
+        padding: 0;
+        line-height: 1.4;
     }
-
 }
