@@ -222,7 +222,7 @@ export default function ContainerHistoryPage() {
                 const logs = data.log || [];
                 setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
                 if (logs.length === 0 && elapsed >= 55) {
-                    setLogLines(prev => [...prev, '[안내] 60초 내 실패 시 NAS·역방향 프록시 타임아웃(기본 60초)일 수 있습니다. NAS_DOCKER_ELS.md에서 타임아웃 120초 이상으로 설정을 확인하세요.']);
+                    setLogLines(prev => [...prev, '[안내] 약 60초 만에 끊기면 NAS 앞단 역방향 프록시 타임아웃(60초)일 수 있습니다. 120초 이상으로 늘려보세요.']);
                 }
                 setLoginError('아이디·비밀번호를 확인하세요.');
                 return;
@@ -241,7 +241,7 @@ export default function ContainerHistoryPage() {
                 const logs = data.log || [];
                 setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
                 if (logs.length <= 1 && elapsed >= 55) {
-                    setLogLines(prev => [...prev, '[안내] 60초 내 실패 시 NAS·역방향 프록시 타임아웃(기본 60초)일 수 있습니다. NAS_DOCKER_ELS.md에서 타임아웃 120초 이상으로 설정을 확인하세요.']);
+                    setLogLines(prev => [...prev, '[안내] 약 60초 만에 끊기면 NAS 앞단 역방향 프록시 타임아웃(60초)일 수 있습니다. 120초 이상으로 늘려보세요.']);
                 }
                 setLoginError('아이디·비밀번호를 확인하세요.');
             }
@@ -552,8 +552,8 @@ export default function ContainerHistoryPage() {
             <h1 className={styles.title}>컨테이너 이력조회</h1>
             <p className={styles.desc}>
                 {elsAvailable === true
-                    ? '이 페이지에서 로그인·조회·다운로드가 가능합니다. 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회하세요.'
-                    : 'ELS 하이퍼터보 연동 · 컨테이너 번호 또는 container_list.xlsx 업로드 후 조회·다운로드'}
+                    ? 'ETRANS 로그인 후 컨테이너 번호 또는 엑셀 업로드로 조회·엑셀 다운로드.'
+                    : 'ELS 연동 · 컨테이너 번호 또는 엑셀 업로드 후 조회·다운로드'}
             </p>
 
             {/* 연결 확인 중: 조회 UI 노출 전까지 로딩만 표시 (깜빡임 방지) */}

@@ -55,9 +55,18 @@ export async function proxyToBackend(req, pathname = null, overrideBody = null) 
     });
 
     if (res.body) {
+        const ct = res.headers.get('content-type') || '';
+        const isBinary = path.includes('/download') || ct.includes('spreadsheet') || ct.includes('octet-stream');
+        if (isBinary) {
+            const buffer = await res.arrayBuffer();
+            return new NextResponse(buffer, {
+                status: res.status,
+                statusText: res.statusText,
+                headers: resHeaders,
+            });
+        }
         const isApi = path.startsWith('/api/els');
         const bodyText = await res.text();
-        const ct = res.headers.get('content-type') || '';
         const looksLikeHtml = ct.includes('text/html') || bodyText.trim().startsWith('<!');
         if (isApi && looksLikeHtml) {
             return NextResponse.json({

@@ -84,10 +84,10 @@ def solve_input_and_search(driver, container_no):
                 target.click()
                 target.send_keys(Keys.CONTROL + "a"); target.send_keys(Keys.DELETE)
                 target.send_keys(container_no); target.send_keys(Keys.ENTER)
-                for _ in range(25):
+                for _ in range(20):
                     msg = check_alert(driver)
                     if msg: return f"오류: {msg}"
-                    time.sleep(0.015)
+                    time.sleep(0.03)
                 return True
         except: continue
         finally: driver.switch_to.default_content()
@@ -166,8 +166,8 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId").send_keys(u_id)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(u_pw)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(Keys.ENTER)
-        # 로그인 처리 대기: NAS 등에서 세션 반영이 느릴 수 있으므로 4초 (이전 2초에서 복원)
-        time.sleep(4)
+        # 로그인 처리 대기: PC용 잘 되던 값 8초 (NAS 등에서 세션 반영 느릴 수 있음)
+        time.sleep(8)
         _log("로그인 완료", elapsed=int(round(time.time() - start)))
         _log("컨테이너 이동현황 페이지로 이동중")
         menu_start = time.time()
