@@ -15,7 +15,7 @@ export default function EmployeeSidebar() {
     const supabase = createClient();
     const isAdmin = profile?.role === 'admin';
     const activeTabId = getActiveMainTab(pathname, isAdmin);
-    const items = SIDEBAR_ITEMS[activeTabId] || SIDEBAR_ITEMS.system;
+    const items = SIDEBAR_ITEMS[activeTabId] || SIDEBAR_ITEMS.home;
 
     const mainTabs = [...MAIN_TABS]
         .filter((tab) => !tab.adminOnly || isAdmin)

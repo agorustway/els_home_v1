@@ -1,16 +1,37 @@
 /**
  * 임직원 메뉴 구조: 메인 탭 → 탭별 사이드 메뉴 (eTrans 3.0 스타일)
+ * 인트라넷 홈 상위, 자료/연락처 분리, 시스템 → 자동화시스템
  */
 
 /** 배열 순서 = 경로 매칭 우선순위(앞일수록 우선). displayOrder = 탭 표시 순서. */
 export const MAIN_TABS = [
     {
-        id: 'admin',
-        label: '관리',
-        defaultPath: '/admin/users',
-        pathPatterns: ['/admin'],
-        adminOnly: true,
-        displayOrder: 40,
+        id: 'home',
+        label: '인트라넷 홈',
+        defaultPath: '/employees',
+        pathPatterns: ['/employees'],
+        displayOrder: 5,
+    },
+    {
+        id: 'docs',
+        label: '자료실',
+        defaultPath: '/employees/work-docs',
+        pathPatterns: ['/employees/work-docs', '/employees/form-templates'],
+        displayOrder: 10,
+    },
+    {
+        id: 'contacts',
+        label: '연락처',
+        defaultPath: '/employees/internal-contacts',
+        pathPatterns: ['/employees/internal-contacts', '/employees/external-contacts', '/employees/work-sites'],
+        displayOrder: 11,
+    },
+    {
+        id: 'automation',
+        label: '자동화시스템',
+        defaultPath: '/employees/safe-freight',
+        pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/safe-freight'],
+        displayOrder: 15,
     },
     {
         id: 'reports',
@@ -27,21 +48,33 @@ export const MAIN_TABS = [
         displayOrder: 30,
     },
     {
-        id: 'system',
-        label: '시스템',
-        defaultPath: '/employees',
-        pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/safe-freight', '/employees/board', '/employees'],
-        displayOrder: 10,
+        id: 'admin',
+        label: '관리',
+        defaultPath: '/admin/users',
+        pathPatterns: ['/admin'],
+        adminOnly: true,
+        displayOrder: 40,
     },
 ];
 
 export const SIDEBAR_ITEMS = {
-    system: [
+    home: [
         { label: '인트라넷 홈', path: '/employees' },
-        { label: '자료실 (NAS)', path: '/employees/archive' },
-        { label: '컨테이너 이력조회', path: '/employees/container-history' },
-        { label: '안전운임 조회', path: '/employees/safe-freight' },
         { label: '자유게시판', path: '/employees/board/free' },
+    ],
+    docs: [
+        { label: '업무자료실', path: '/employees/work-docs' },
+        { label: '서식자료실', path: '/employees/form-templates' },
+    ],
+    contacts: [
+        { label: '사내연락망', path: '/employees/internal-contacts' },
+        { label: '외부연락처', path: '/employees/external-contacts' },
+        { label: '작업지확인', path: '/employees/work-sites' },
+    ],
+    automation: [
+        { label: '안전운임 조회', path: '/employees/safe-freight' },
+        { label: '컨테이너 이력조회', path: '/employees/container-history' },
+        { label: '자료실 (NAS)', path: '/employees/archive' },
     ],
     reports: [
         { label: '통합 업무보고', path: '/employees/reports' },
@@ -62,11 +95,18 @@ export const SIDEBAR_ITEMS = {
     ],
 };
 
+/**
+ * 현재 경로에 해당하는 메인 탭 ID 반환.
+ * 인트라넷 홈: /employees 정확히 또는 /employees/board/* (자유게시판)
+ */
 export function getActiveMainTab(pathname, isAdmin) {
+    const p = pathname || '';
+    if (p === '/employees' || p === '/employees/' || p.startsWith('/employees/board')) return 'home';
     for (const tab of MAIN_TABS) {
         if (tab.adminOnly && !isAdmin) continue;
-        const match = tab.pathPatterns.some((p) => pathname === p || pathname.startsWith(p + '/'));
+        if (tab.id === 'home') continue;
+        const match = tab.pathPatterns.some((path) => p === path || p.startsWith(path + '/'));
         if (match) return tab.id;
     }
-    return 'system';
+    return 'home';
 }

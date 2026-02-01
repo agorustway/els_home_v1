@@ -43,11 +43,11 @@ const navLinks = [
             { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
             { href: '/admin', label: '고객 문의 관리', isAdmin: true },
             { type: 'divider', isAdmin: true },
-            { label: '사내 시스템', type: 'label' },
-            { href: '/employees', label: '인트라넷 홈' },
-            { href: '/employees/archive', label: '자료실 (NAS)' },
-            { href: '/employees/container-history', label: '컨테이너 이력조회' },
+            { label: '자동화시스템', type: 'label' },
             { href: '/employees/safe-freight', label: '안전운임 조회' },
+            { href: '/employees/container-history', label: '컨테이너 이력조회' },
+            { href: '/employees/archive', label: '자료실 (NAS)' },
+            { type: 'divider' },
             { href: '/employees/board/free', label: '자유게시판' },
             { type: 'divider' },
             {
@@ -58,6 +58,22 @@ const navLinks = [
                     { type: 'divider' },
                     { href: '/employees/reports/daily', label: '일일 업무일지', isSubItem: true },
                     { href: '/employees/reports/monthly', label: '월간 실적보고', isSubItem: true },
+                ]
+            },
+            { type: 'divider' },
+            {
+                label: '자료실',
+                children: [
+                    { href: '/employees/work-docs', label: '업무자료실', isSubItem: true },
+                    { href: '/employees/form-templates', label: '서식자료실', isSubItem: true },
+                ]
+            },
+            {
+                label: '연락처',
+                children: [
+                    { href: '/employees/internal-contacts', label: '사내연락망', isSubItem: true },
+                    { href: '/employees/external-contacts', label: '외부연락처', isSubItem: true },
+                    { href: '/employees/work-sites', label: '작업지확인', isSubItem: true },
                 ]
             },
             { type: 'divider' },

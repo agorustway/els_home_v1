@@ -82,6 +82,7 @@ export default function ContainerHistoryPage() {
             return;
         }
         loginStartTimeRef.current = startedAt;
+        autoLoginAttemptedRef.current = true; // 로그인 진행 중이면 자동 로그인 중복 호출 방지
         setLoginLoading(true);
         setLoginProgressLine(`[로그인중] ${Math.floor(age / 1000)}초`);
         if (loginProgressIntervalRef.current) clearInterval(loginProgressIntervalRef.current);
@@ -180,12 +181,21 @@ export default function ContainerHistoryPage() {
         }
         setLoginError(null);
         setLoginLoading(true);
-        const startedAt = Date.now();
-        loginStartTimeRef.current = startedAt;
+        let startedAt = Date.now();
+        if (typeof sessionStorage !== 'undefined') {
+            const raw = sessionStorage.getItem('elsLoginStartedAt');
+            const existing = raw ? parseInt(raw, 10) : NaN;
+            if (!Number.isNaN(existing) && (Date.now() - existing) <= LOGIN_STARTED_MAX_AGE_MS) {
+                startedAt = existing;
+                loginStartTimeRef.current = existing;
+            }
+        }
+        if (loginStartTimeRef.current !== startedAt) loginStartTimeRef.current = startedAt;
         try {
             if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsLoginStartedAt', String(startedAt));
         } catch (_) {}
-        setLoginProgressLine('[로그인중] 0초');
+        const initialElapsed = Math.floor((Date.now() - startedAt) / 1000);
+        setLoginProgressLine(`[로그인중] ${initialElapsed}초`);
         if (loginProgressIntervalRef.current) clearInterval(loginProgressIntervalRef.current);
         loginProgressIntervalRef.current = setInterval(() => {
             const elapsed = loginStartTimeRef.current ? Math.floor((Date.now() - loginStartTimeRef.current) / 1000) : 0;
@@ -261,8 +271,19 @@ export default function ContainerHistoryPage() {
         }
     };
 
+    // 자동 로그인: 이미 로그인 진행 중(elsLoginStartedAt 있음)이면 runLogin 호출하지 않음 → 페이지 갔다 와도 시간 0으로 리셋 방지
     useEffect(() => {
         if (elsAvailable !== true || !configLoaded || !defaultUserId || !useSavedCreds || autoLoginAttemptedRef.current) return;
+        if (typeof sessionStorage !== 'undefined') {
+            const raw = sessionStorage.getItem('elsLoginStartedAt');
+            if (raw) {
+                const t = parseInt(raw, 10);
+                if (!Number.isNaN(t) && (Date.now() - t) <= LOGIN_STARTED_MAX_AGE_MS) {
+                    autoLoginAttemptedRef.current = true;
+                    return; // 진행 중 복원은 별도 effect에서 처리, 여기서 runLogin() 호출하면 시간 0으로 덮어씀
+                }
+            }
+        }
         autoLoginAttemptedRef.current = true;
         runLogin();
     }, [elsAvailable, configLoaded, defaultUserId, useSavedCreds]);
@@ -332,7 +353,7 @@ export default function ContainerHistoryPage() {
 
         if (stepIndex === 1) {
             setLoginLoading(true);
-                setLogLines(prev => [...prev, '[자동 로그인] 입력된 컨테이너로 로그인 후 바로 조회를 진행합니다. (보통 5~15초)']);
+                setLogLines(prev => [...prev, '[자동 로그인] 입력된 컨테이너로 로그인 후 바로 조회를 진행합니다. (보통 15~20초 이상)']);
             try {
                 const loginRes = await fetch('/api/els/login', {
                     method: 'POST',
@@ -553,7 +574,7 @@ export default function ContainerHistoryPage() {
             <p className={styles.desc}>
                 {elsAvailable === true
                     ? 'ETRANS 로그인 후 컨테이너 번호 또는 엑셀 업로드로 조회·엑셀 다운로드.'
-                    : 'ELS 연동 · 컨테이너 번호 또는 엑셀 업로드 후 조회·다운로드'}
+                    : 'ETRANS 연동 · 컨테이너 번호 또는 엑셀 업로드 후 조회·다운로드'}
             </p>
 
             {/* 연결 확인 중: 조회 UI 노출 전까지 로딩만 표시 (깜빡임 방지) */}
@@ -586,7 +607,7 @@ export default function ContainerHistoryPage() {
                 <>
             <section className={styles.usageSection}>
                 <p className={styles.usageText}>
-                    이 작업은 <strong>etrans</strong> 로그인이 필요하며 약 <strong>10초</strong> 정도 소요됩니다.
+                    이 작업은 <strong>ETRANS</strong> 로그인이 필요하며 로그인·메뉴 이동에 <strong>15~20초 이상</strong> 소요될 수 있습니다.
                     로그인 후 컨테이너를 업로드하거나 번호를 입력하시면 조회·엑셀 다운로드가 가능합니다.
                     조회 완료 후에도 세션이 유지되므로 <strong>추가·변경된 번호로 바로 다시 조회</strong>할 수 있고,
                     페이지를 벗어나면 ETRANS가 자동 로그아웃됩니다.

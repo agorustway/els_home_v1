@@ -118,6 +118,90 @@
     overflow: hidden;
 }
 
+/* 카드 썸네일 배경: 이미지 + 어두운 오버레이로 텍스트 가독 */
+.cardWithBg {
+    border-left-color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+.cardWithBg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.6) 50%, rgba(15, 23, 42, 0.5) 100%);
+    border-radius: 16px;
+    z-index: 0;
+}
+.cardWithBg .cardTitle,
+.cardWithBg .cardDesc,
+.cardWithBg .cardCta,
+.cardWithBg .cardLinks,
+.cardWithBg .cardLinkItem {
+    position: relative;
+    z-index: 1;
+}
+.cardWithBg .cardTitle { color: #fff; }
+.cardWithBg .cardDesc { color: rgba(255, 255, 255, 0.88); }
+.cardWithBg .cardCta { color: rgba(255, 255, 255, 0.95); }
+.cardWithBg .cardLinkItem {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.cardWithBg .cardLinkItem:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+.cardWrap:hover .cardWithBg::before,
+.cardWithBg:hover::before {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.82) 0%, rgba(30, 41, 59, 0.7) 100%);
+}
+.cardWrap:hover .cardWithBg,
+.cardWithBg:hover {
+    border-left-color: rgba(255, 255, 255, 0.95);
+}
+
+/* 카드별 배경 이미지 (인트라넷 전용, 랜딩페이지 images/ 와 별도) */
+.cardBgNas {
+    background-image: url('/images/intranet-cards/card-nas.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgContainer {
+    background-image: url('/images/intranet-cards/card-container.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgSafeFreight {
+    background-image: url('/images/intranet-cards/card-safe-freight.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgBoard {
+    background-image: url('/images/intranet-cards/card-board.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgReports {
+    background-image: url('/images/intranet-cards/card-reports.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgDocs {
+    background-image: url('/images/intranet-cards/card-docs.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgContacts {
+    background-image: url('/images/intranet-cards/card-contacts.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.cardBgBranches {
+    background-image: url('/images/intranet-cards/card-branches.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
 .cardWrap:hover .card,
 .card:hover {
     border-left-color: #1d4ed8;
