@@ -1,11 +1,1 @@
-레이아웃·ETRANS·모바일: SiteLayout, 사용자별 ETRANS 계정, 인트라넷 사이드/서브메뉴, 모바일 대응
-
-- SiteLayout: 랜딩 원래 구성, 서브페이지 상단메뉴, 인트라넷만 사이드메뉴
-- ETRANS: user_els_credentials(Supabase), useSavedCreds 시 계정 조회 후 프록시
-- 헤더: 회사소개→/intro, 인트라넷→/employees 링크
-- 서브메뉴: 그룹별(회사소개/문의), 서비스·네트워크 상단메뉴 제거
-- 인트라넷: IntranetSubNav→사이드(EmployeeSidebar+메인탭), 본문 여백 축소
-- IntranetSubNav: 써드 서브메뉴(지점서비스 등) 본문 상단 표시
-- 관리: admin/users 중복 헤더 제거, admin 페이지 JSX 수정
-- nas-deploy.sh: LF 줄바꿈, .gitattributes *.sh eol=lf
-- 모바일: SiteLayout/Footer/EmployeeHeader/SubPageHero/globals/employees.module 반응형 정리
+안전운임 임시저장목록 최신순 정렬 및 아산지점 식단표 삭제 오류 수정 (RLS 우회)

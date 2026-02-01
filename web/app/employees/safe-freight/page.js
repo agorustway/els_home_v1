@@ -49,7 +49,7 @@ export default function SafeFreightPage() {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) setSavedResults(parsed);
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   useEffect(() => {
@@ -357,10 +357,10 @@ export default function SafeFreightPage() {
           excludedSurcharges: appliedSurchargeInfo.pctExcluded.map((s) => ({ label: s.label, reason: s.reason })),
         };
         setSavedResults((prev) => {
-          const next = [...prev, entry];
+          const next = [entry, ...prev];
           try {
             if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TEMP_RESULTS_KEY, JSON.stringify(next));
-          } catch (_) {}
+          } catch (_) { }
           return next;
         });
       }
@@ -375,7 +375,7 @@ export default function SafeFreightPage() {
     setSavedResults([]);
     try {
       if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TEMP_RESULTS_KEY);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const removeSavedItem = (id) => {
@@ -383,7 +383,7 @@ export default function SafeFreightPage() {
       const next = prev.filter((e) => e.id !== id);
       try {
         if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TEMP_RESULTS_KEY, JSON.stringify(next));
-      } catch (_) {}
+      } catch (_) { }
       return next;
     });
   };
@@ -401,20 +401,20 @@ export default function SafeFreightPage() {
     try {
       const querySheetRows = resultAll
         ? displayRows.map((row) => {
-            const applied = applySurchargesToRow(row);
-            return {
-              period: applied.period,
-              origin: resultAll.origin ?? '',
-              destination: resultAll.destination ?? '',
-              km: applied.km,
-              f40위탁: applied.f40위탁,
-              f40운수자: applied.f40운수자,
-              f40안전: applied.f40안전,
-              f20위탁: applied.f20위탁,
-              f20운수자: applied.f20운수자,
-              f20안전: applied.f20안전,
-            };
-          })
+          const applied = applySurchargesToRow(row);
+          return {
+            period: applied.period,
+            origin: resultAll.origin ?? '',
+            destination: resultAll.destination ?? '',
+            km: applied.km,
+            f40위탁: applied.f40위탁,
+            f40운수자: applied.f40운수자,
+            f40안전: applied.f40안전,
+            f20위탁: applied.f20위탁,
+            f20운수자: applied.f20운수자,
+            f20안전: applied.f20안전,
+          };
+        })
         : [];
       const res = await fetch('/api/safe-freight/download-excel', {
         method: 'POST',
@@ -575,174 +575,174 @@ export default function SafeFreightPage() {
         <div className={styles.formGrid}>
           <div className={styles.formLeft}>
             <form onSubmit={handleFormSubmit} className={styles.queryForm}>
-            <p className={styles.sectionHead}>조회 조건</p>
-            <div className={styles.formBlock}>
-              <label className={styles.label}>기간</label>
-              <select
-                className={styles.select}
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                aria-label="적용 기간"
-              >
-                {(options?.periods || []).map((p) => (
-                  <option key={p.id} value={p.id}>{p.label || p.id}</option>
-                ))}
-              </select>
-              {queryType === 'section' && displayMode === 'all' && (
-                <p className={styles.periodHint}>전체 조회 시 기간 조건은 적용되지 않습니다.</p>
-              )}
-            </div>
+              <p className={styles.sectionHead}>조회 조건</p>
+              <div className={styles.formBlock}>
+                <label className={styles.label}>기간</label>
+                <select
+                  className={styles.select}
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  aria-label="적용 기간"
+                >
+                  {(options?.periods || []).map((p) => (
+                    <option key={p.id} value={p.id}>{p.label || p.id}</option>
+                  ))}
+                </select>
+                {queryType === 'section' && displayMode === 'all' && (
+                  <p className={styles.periodHint}>전체 조회 시 기간 조건은 적용되지 않습니다.</p>
+                )}
+              </div>
 
-            {queryType !== 'distance' && (
-              <>
-                <div className={styles.formBlock}>
-                  <label className={styles.label}>기점축약</label>
-                  <select
-                    className={styles.select}
-                    value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
-                    aria-label="기점축약"
-                  >
-                    {originList.map((o) => (
-                      <option key={o.id} value={o.id}>{o.id}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.formBlock}>
-                  <label className={styles.label}>행선지</label>
-                  <div className={styles.regionGroup}>
+              {queryType !== 'distance' && (
+                <>
+                  <div className={styles.formBlock}>
+                    <label className={styles.label}>기점축약</label>
                     <select
                       className={styles.select}
-                      value={region1}
-                      onChange={(e) => setRegion1(e.target.value)}
-                      aria-label="시·도"
+                      value={origin}
+                      onChange={(e) => setOrigin(e.target.value)}
+                      aria-label="기점축약"
                     >
-                      <option value="">시·도</option>
-                      {region1List.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                    <select
-                      className={styles.select}
-                      value={region2}
-                      onChange={(e) => setRegion2(e.target.value)}
-                      aria-label="시·군·구"
-                      disabled={!region1}
-                    >
-                      <option value="">시·군·구</option>
-                      {region2List.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                    <select
-                      className={styles.select}
-                      value={region3}
-                      onChange={(e) => setRegion3(e.target.value)}
-                      aria-label="읍·면·동"
-                      disabled={!region2}
-                    >
-                      <option value="">읍·면·동</option>
-                      {region3List.map((r) => (
-                        <option key={r} value={r}>{r}</option>
+                      {originList.map((o) => (
+                        <option key={o.id} value={o.id}>{o.id}</option>
                       ))}
                     </select>
                   </div>
-                  <p className={styles.regionHint}>주소 검색 시 지역정보가 자동입력됩니다.</p>
-                </div>
-              </>
-            )}
+                  <div className={styles.formBlock}>
+                    <label className={styles.label}>행선지</label>
+                    <div className={styles.regionGroup}>
+                      <select
+                        className={styles.select}
+                        value={region1}
+                        onChange={(e) => setRegion1(e.target.value)}
+                        aria-label="시·도"
+                      >
+                        <option value="">시·도</option>
+                        {region1List.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <select
+                        className={styles.select}
+                        value={region2}
+                        onChange={(e) => setRegion2(e.target.value)}
+                        aria-label="시·군·구"
+                        disabled={!region1}
+                      >
+                        <option value="">시·군·구</option>
+                        {region2List.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <select
+                        className={styles.select}
+                        value={region3}
+                        onChange={(e) => setRegion3(e.target.value)}
+                        aria-label="읍·면·동"
+                        disabled={!region2}
+                      >
+                        <option value="">읍·면·동</option>
+                        {region3List.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className={styles.regionHint}>주소 검색 시 지역정보가 자동입력됩니다.</p>
+                  </div>
+                </>
+              )}
 
-            {queryType === 'distance' && (
-              <>
-                <div className={styles.formBlock}>
-                  <label className={styles.label}>구분</label>
-                  <select
-                    className={styles.select}
-                    value={distType}
-                    onChange={(e) => setDistType(e.target.value)}
-                    aria-label="거리별 구분"
+              {queryType === 'distance' && (
+                <>
+                  <div className={styles.formBlock}>
+                    <label className={styles.label}>구분</label>
+                    <select
+                      className={styles.select}
+                      value={distType}
+                      onChange={(e) => setDistType(e.target.value)}
+                      aria-label="거리별 구분"
+                    >
+                      {(options?.distanceTypes || []).map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.formBlock}>
+                    <label className={styles.label}>거리 (km)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className={styles.inputKm}
+                      value={inputKm}
+                      onChange={(e) => setInputKm(e.target.value)}
+                      placeholder="예: 350"
+                    />
+                  </div>
+                </>
+              )}
+
+              {queryType === 'section' && (
+                <div className={styles.modeRow}>
+                  <span className={styles.modeLabel}>표시</span>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="displayMode"
+                      value="all"
+                      checked={displayMode === 'all'}
+                      onChange={() => setDisplayMode('all')}
+                    />
+                    적용월 전체 (최근순)
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="displayMode"
+                      value="latest"
+                      checked={displayMode === 'latest'}
+                      onChange={() => setDisplayMode('latest')}
+                    />
+                    최신 적용월만
+                  </label>
+                </div>
+              )}
+
+              <div className={styles.actionRow}>
+                <div className={styles.actionPrimary}>
+                  <button
+                    type="submit"
+                    className={styles.submitBtn}
+                    disabled={lookupLoading || !canSubmit}
                   >
-                    {(options?.distanceTypes || []).map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
+                    {lookupLoading ? '조회 중…' : '안전운임 조회'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.excelDownloadBtn}
+                    disabled={downloadLoading || (!resultAll && (!savedResults || savedResults.length === 0))}
+                    onClick={downloadExcel}
+                  >
+                    {downloadLoading ? '다운로드 중…' : '엑셀 다운로드'}
+                  </button>
                 </div>
-                <div className={styles.formBlock}>
-                  <label className={styles.label}>거리 (km)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    className={styles.inputKm}
-                    value={inputKm}
-                    onChange={(e) => setInputKm(e.target.value)}
-                    placeholder="예: 350"
-                  />
+                <div className={styles.actionSecondary}>
+                  <label className={styles.tempSaveLabel}>
+                    <input
+                      type="checkbox"
+                      checked={saveToTemp}
+                      onChange={(e) => setSaveToTemp(e.target.checked)}
+                    />
+                    결과값 임시저장
+                  </label>
+                  <button
+                    type="button"
+                    className={styles.clearSavedBtn}
+                    onClick={clearSavedResults}
+                  >
+                    비우기
+                  </button>
                 </div>
-              </>
-            )}
-
-            {queryType === 'section' && (
-              <div className={styles.modeRow}>
-                <span className={styles.modeLabel}>표시</span>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="displayMode"
-                    value="all"
-                    checked={displayMode === 'all'}
-                    onChange={() => setDisplayMode('all')}
-                  />
-                  적용월 전체 (최근순)
-                </label>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="displayMode"
-                    value="latest"
-                    checked={displayMode === 'latest'}
-                    onChange={() => setDisplayMode('latest')}
-                  />
-                  최신 적용월만
-                </label>
               </div>
-            )}
-
-            <div className={styles.actionRow}>
-              <div className={styles.actionPrimary}>
-                <button
-                  type="submit"
-                  className={styles.submitBtn}
-                  disabled={lookupLoading || !canSubmit}
-                >
-                  {lookupLoading ? '조회 중…' : '안전운임 조회'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.excelDownloadBtn}
-                  disabled={downloadLoading || (!resultAll && (!savedResults || savedResults.length === 0))}
-                  onClick={downloadExcel}
-                >
-                  {downloadLoading ? '다운로드 중…' : '엑셀 다운로드'}
-                </button>
-              </div>
-              <div className={styles.actionSecondary}>
-                <label className={styles.tempSaveLabel}>
-                  <input
-                    type="checkbox"
-                    checked={saveToTemp}
-                    onChange={(e) => setSaveToTemp(e.target.checked)}
-                  />
-                  결과값 임시저장
-                </label>
-                <button
-                  type="button"
-                  className={styles.clearSavedBtn}
-                  onClick={clearSavedResults}
-                >
-                  비우기
-                </button>
-              </div>
-            </div>
             </form>
           </div>
 
@@ -999,42 +999,42 @@ export default function SafeFreightPage() {
               const savedAt = s.savedAt ? new Date(s.savedAt) : new Date(s.id);
               const savedAtStr = savedAt.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
               return (
-              <li key={s.id} className={styles.savedItem}>
-                <div className={styles.savedRow}>
-                  <span className={styles.savedSeq}>No.{idx + 1}</span>
-                  <span className={styles.savedDateTime}>{savedAtStr}</span>
-                  {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
-                  <span className={styles.savedType}>{s.typeLabel}</span>
-                  <span className={styles.savedCond}>
-                    {s.origin && `${s.origin} → `}
-                    {s.destination || '-'}
-                    {s.km != null && ` · ${s.km}km`}
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.savedItemDelete}
-                    onClick={() => removeSavedItem(s.id)}
-                    aria-label="이 항목 삭제"
-                  >
-                    삭제
-                  </button>
-                </div>
-                <div className={styles.savedFares}>
-                  <span>40FT 위탁 {s.f40위탁?.toLocaleString()} · 운수자 {s.f40운수자?.toLocaleString()} · 안전 {s.f40안전?.toLocaleString()}</span>
-                  <span>20FT 위탁 {s.f20위탁?.toLocaleString()} · 운수자 {s.f20운수자?.toLocaleString()} · 안전 {s.f20안전?.toLocaleString()}</span>
-                </div>
-                {s.appliedSurcharges?.length > 0 && (
-                  <p className={styles.savedSurcharges}>
-                    적용 할증: {s.appliedSurcharges.join(', ')}
-                  </p>
-                )}
-                {s.excludedSurcharges?.length > 0 && (
-                  <p className={styles.savedExcluded}>
-                    적용 제외: {s.excludedSurcharges.map((x) => x.label).join(', ')} — {s.excludedSurcharges[0].reason}
-                  </p>
-                )}
-              </li>
-            );
+                <li key={s.id} className={styles.savedItem}>
+                  <div className={styles.savedRow}>
+                    <span className={styles.savedSeq}>No.{savedResults.length - idx}</span>
+                    <span className={styles.savedDateTime}>{savedAtStr}</span>
+                    {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
+                    <span className={styles.savedType}>{s.typeLabel}</span>
+                    <span className={styles.savedCond}>
+                      {s.origin && `${s.origin} → `}
+                      {s.destination || '-'}
+                      {s.km != null && ` · ${s.km}km`}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.savedItemDelete}
+                      onClick={() => removeSavedItem(s.id)}
+                      aria-label="이 항목 삭제"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                  <div className={styles.savedFares}>
+                    <span>40FT 위탁 {s.f40위탁?.toLocaleString()} · 운수자 {s.f40운수자?.toLocaleString()} · 안전 {s.f40안전?.toLocaleString()}</span>
+                    <span>20FT 위탁 {s.f20위탁?.toLocaleString()} · 운수자 {s.f20운수자?.toLocaleString()} · 안전 {s.f20안전?.toLocaleString()}</span>
+                  </div>
+                  {s.appliedSurcharges?.length > 0 && (
+                    <p className={styles.savedSurcharges}>
+                      적용 할증: {s.appliedSurcharges.join(', ')}
+                    </p>
+                  )}
+                  {s.excludedSurcharges?.length > 0 && (
+                    <p className={styles.savedExcluded}>
+                      적용 제외: {s.excludedSurcharges.map((x) => x.label).join(', ')} — {s.excludedSurcharges[0].reason}
+                    </p>
+                  )}
+                </li>
+              );
             })}
           </ul>
         </section>
