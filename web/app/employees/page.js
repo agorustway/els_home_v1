@@ -33,6 +33,14 @@ export default function EmployeesPortal() {
                             </motion.div>
                         </Link>
 
+                        <Link href="/employees/safe-freight" className={styles.cardWrap}>
+                            <motion.div className={styles.card} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.075 }}>
+                                <h3 className={styles.cardTitle}>안전운임 조회</h3>
+                                <p className={styles.cardDesc}>화물자동차 안전운임 고시 · 구간별/거리별 운임 조회·엑셀 다운로드</p>
+                                <span className={styles.cardCta}>안전운임 조회 <Arrow /></span>
+                            </motion.div>
+                        </Link>
+
                         <motion.div className={styles.cardWrap} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
                             <div className={styles.card}>
                                 <h3 className={styles.cardTitle}>통합 업무보고</h3>

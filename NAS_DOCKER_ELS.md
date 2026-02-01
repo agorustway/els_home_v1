@@ -71,6 +71,7 @@ sudo docker-compose -f docker/docker-compose.yml up -d
 - **세션 유지:** 컨테이너 안에서 **ELS 데몬**이 함께 실행됩니다. 로그인 한 번 후에는 **조회할 때마다 다시 로그인하지 않고** 기존 브라우저 세션을 씁니다. 그래서 **두 번째 조회부터는 훨씬 빠르고**, 로그에 "기존 세션으로 조회 진행." 이 나옵니다.
 - **NAS에서 속도가 느린 이유 (한계점):** NAS CPU(예: Intel Celeron J3455)는 PC보다 약해서, **Chrome(Chromium) 헤드리스 + ETRANS 페이지 로드 + DOM/JS 실행**이 모두 느립니다. 그래서 **로그인 후 메뉴 이동**은 PC에서는 5~15초 예상이지만 **NAS에서는 20~40초** 걸릴 수 있고, **1건 조회**도 PC 0.5초대인데 **NAS에서는 1~2초** 넘을 수 있습니다. 정상 동작 범위이며, 조회 건수가 많을수록 "기존 세션으로 조회 진행"으로 두 번째 이후는 로그인 없이 이어서 하면 체감이 나아집니다.
 - **조회할 때마다 "엔진 예열 및 로그인 중..." 이 나오면:** NAS에 **최신 이미지가 반영되지 않은 것**일 수 있습니다. 아래 "최신 코드 반영" 후 `sudo docker build --no-cache -t els-backend:latest .` 로 다시 빌드하고, `sudo docker-compose -f docker/docker-compose.yml down` → `sudo docker-compose -f docker/docker-compose.yml up -d` 로 다시 띄워 주세요.
+- **로그인 실패 시:** 화면 로그에 단계별 메시지(로그인중 → 로그인 완료 → 컨테이너 이동현황 페이지로 이동중 → 이동완료 → 조회시작)가 나옵니다. "이동 실패"까지 나오면 ETRANS 아이디/비밀번호 또는 접속 상태를 확인하세요. "타임아웃"이면 NAS→etrans.klnet.co.kr 네트워크/방화벽을 확인하고, "Chrome/Chromium 실행 오류"면 Docker 이미지에 Chrome이 포함되어 있는지 확인하세요.
 - **NAS에서 `git pull` 이 없을 때 (커맨드를 찾을 수 없음):** NAS에는 Git이 설치되어 있지 않을 수 있습니다. **PC에서** 최신 코드를 받은 뒤, **프로젝트 폴더 전체**(`els_home_v1`)를 NAS 공유폴더(예: `docker`)로 **복사해 덮어쓰기**하세요. (Windows: 탐색기에서 NAS 공유폴더 열고 `els_home_v1` 붙여넣기. 또는 File Station에서 PC 쪽 폴더를 업로드.) 그 다음 NAS SSH에서 `cd /volume1/docker/els_home_v1` 후 `sudo docker build --no-cache -t els-backend:latest .` 로 빌드하면 됩니다.
 
 #### NAS에 Git 설치하기 (선택 — `git pull`로 빠르게 반영하려면)

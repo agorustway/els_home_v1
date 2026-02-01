@@ -30,7 +30,7 @@ export const MAIN_TABS = [
         id: 'system',
         label: '시스템',
         defaultPath: '/employees',
-        pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/board', '/employees'],
+        pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/safe-freight', '/employees/board', '/employees'],
         displayOrder: 10,
     },
 ];
@@ -40,6 +40,7 @@ export const SIDEBAR_ITEMS = {
         { label: '인트라넷 홈', path: '/employees' },
         { label: '자료실 (NAS)', path: '/employees/archive' },
         { label: '컨테이너 이력조회', path: '/employees/container-history' },
+        { label: '안전운임 조회', path: '/employees/safe-freight' },
         { label: '자유게시판', path: '/employees/board/free' },
     ],
     reports: [

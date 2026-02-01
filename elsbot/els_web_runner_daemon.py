@@ -116,19 +116,28 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
             return
         do_logout()
         log_lines = []
+        def log_cb(msg):
+            log_lines.append(msg)
         try:
-            result = login_and_prepare(user_id, user_pw)
+            result = login_and_prepare(user_id, user_pw, log_callback=log_cb)
             driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
             err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else None
             if driver:
                 set_driver(driver)
-                log_lines = ["로그인 성공.", "조회 페이지 대기 중."]
+                if not log_lines:
+                    log_lines = ["로그인 완료", "조회 페이지 대기 중."]
                 self.send_json({"ok": True, "log": log_lines})
             else:
-                log_lines = [err_msg or "로그인 실패!"]
+                if not log_lines:
+                    log_lines = [err_msg or "로그인 실패!"]
+                else:
+                    log_lines.append(err_msg or "로그인 실패!")
                 self.send_json({"ok": False, "log": log_lines})
         except Exception as e:
-            log_lines = [f"[예외] {e}"]
+            if not log_lines:
+                log_lines = [f"[예외] {e}"]
+            else:
+                log_lines.append(f"[예외] {e}")
             self.send_json({"ok": False, "log": log_lines})
 
     def handle_run(self):
@@ -149,16 +158,26 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
         if not driver:
             do_logout()
             log_lines = []
+            def log_cb(msg):
+                log_lines.append(msg)
             try:
-                result = login_and_prepare(user_id or "", user_pw or "")
+                result = login_and_prepare(user_id or "", user_pw or "", log_callback=log_cb)
                 driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
                 err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else "로그인 실패!"
                 if not driver:
-                    self.send_json({"ok": False, "error": "로그인 실패", "log": [err_msg]})
+                    if not log_lines:
+                        log_lines = [err_msg]
+                    else:
+                        log_lines.append(err_msg)
+                    self.send_json({"ok": False, "error": "로그인 실패", "log": log_lines})
                     return
                 set_driver(driver)
             except Exception as e:
-                self.send_json({"ok": False, "error": str(e), "log": [f"[예외] {e}"]})
+                if not log_lines:
+                    log_lines = [f"[예외] {e}"]
+                else:
+                    log_lines.append(f"[예외] {e}")
+                self.send_json({"ok": False, "error": str(e), "log": log_lines})
                 return
 
         self.send_response(200)

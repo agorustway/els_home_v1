@@ -135,8 +135,15 @@ def scrape_hyper_verify(driver, search_no):
     try: return driver.execute_script(script, search_no)
     except: return None
 
-def login_and_prepare(u_id, u_pw):
-    """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지)."""
+def login_and_prepare(u_id, u_pw, log_callback=None):
+    """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지).
+    log_callback(msg) 호출 시 단계별 로그 전달(진행시간 포함)."""
+    def _log(msg, elapsed=None):
+        if log_callback is not None:
+            log_callback(f"{msg} ({elapsed}초)" if elapsed is not None else msg)
+    start = time.time()
+    if log_callback is not None:
+        log_callback("로그인중 (0초)")
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -160,10 +167,16 @@ def login_and_prepare(u_id, u_pw):
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(Keys.ENTER)
         # 로그인 처리 대기: 2초로 단축(기존 4초). 메뉴 진입 루프에서 곧바로 메뉴 탐색
         time.sleep(2)
+        _log("로그인 완료", elapsed=int(round(time.time() - start)))
+        _log("컨테이너 이동현황 페이지로 이동중")
+        menu_start = time.time()
         if open_els_menu(driver):
+            _log("이동완료", elapsed=int(round(time.time() - menu_start)))
+            _log("조회시작")
             return (driver, None)
         if driver:
             driver.quit()
+        _log("이동 실패")
         return (None, "메뉴(컨테이너 이동현황)를 찾을 수 없습니다. 아이디/비밀번호 또는 ETRANS 접속 상태를 확인하세요.")
     except Exception as e:
         if driver:

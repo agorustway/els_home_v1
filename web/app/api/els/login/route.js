@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync, spawnSync } from 'child_process';
 import { ensureDaemon, getDaemonUrl } from '../daemon';
 import { proxyToBackend } from '../proxyToBackend';
+import { getUserElsCreds } from '../getUserElsCreds';
 
 const ELSBOT_DIR = path.join(process.cwd(), '..', 'elsbot');
 const RUNNER = path.join(ELSBOT_DIR, 'els_web_runner.py');
@@ -37,6 +38,19 @@ export async function POST(req) {
     }
     try {
         if (!body) body = await req.json();
+        // 저장된 계정 사용 시 Supabase에서 아이디·비밀번호 조회 (로컬/daemon 경로에서도 동일 적용)
+        if (body?.useSavedCreds) {
+            const creds = await getUserElsCreds();
+            if (creds) {
+                body = { ...body, useSavedCreds: false, userId: creds.userId, userPw: creds.userPw };
+            } else {
+                return NextResponse.json({
+                    ok: false,
+                    error: '저장된 계정이 없습니다. 아이디·비밀번호를 입력한 뒤 "저장된 계정 사용" 체크 후 저장하세요.',
+                    log: ['저장된 계정이 없습니다.'],
+                }, { status: 400 });
+            }
+        }
         const { useSavedCreds, userId, userPw } = body || {};
         const python = getPythonCommand();
         if (!python) {

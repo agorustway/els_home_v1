@@ -47,6 +47,7 @@ const navLinks = [
             { href: '/employees', label: '인트라넷 홈' },
             { href: '/employees/archive', label: '자료실 (NAS)' },
             { href: '/employees/container-history', label: '컨테이너 이력조회' },
+            { href: '/employees/safe-freight', label: '안전운임 조회' },
             { href: '/employees/board/free', label: '자유게시판' },
             { type: 'divider' },
             {

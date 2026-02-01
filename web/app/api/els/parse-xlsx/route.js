@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { execSync, spawnSync } from 'child_process';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { proxyToBackend } from '../proxyToBackend';
 
 const ELSBOT_DIR = path.join(process.cwd(), '..', 'elsbot');

@@ -27,6 +27,7 @@ export default function ContainerHistoryPage() {
     const autoLoginAttemptedRef = useRef(false);
     const loginStartTimeRef = useRef(null);
     const loginProgressIntervalRef = useRef(null);
+    const runJustFinishedRef = useRef(false);
 
     useEffect(() => {
         fetch('/api/els/capabilities')
@@ -50,6 +51,62 @@ export default function ContainerHistoryPage() {
             .catch(() => setConfigLoaded(true));
     }, []);
 
+    // 브라우저를 닫지 않았으면 메뉴 이동 후 돌아와도 대기(로그인 완료) 상태 유지 + 대기시간 연속(초 단위 동일하게 표시)
+    useEffect(() => {
+        if (!configLoaded) return;
+        if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('elsContainerHistoryLoggedIn') === '1') {
+            setStepIndex(2);
+            autoLoginAttemptedRef.current = true;
+            const raw = sessionStorage.getItem('elsWaitStartedAt');
+            if (raw) {
+                const t = parseInt(raw, 10);
+                if (!Number.isNaN(t)) {
+                    waitStartedAtRef.current = t;
+                    setWaitSeconds(Math.floor((Date.now() - t) / 1000));
+                }
+            }
+        }
+    }, [configLoaded]);
+
+    // 로그인 진행 중 다른 페이지 갔다 와도 진행시간 카운트 유지 (시작 시각 복원)
+    const LOGIN_STARTED_MAX_AGE_MS = 120 * 1000; // 120초
+    useEffect(() => {
+        if (typeof sessionStorage === 'undefined') return;
+        const raw = sessionStorage.getItem('elsLoginStartedAt');
+        if (!raw) return;
+        const startedAt = parseInt(raw, 10);
+        if (Number.isNaN(startedAt)) return;
+        const age = Date.now() - startedAt;
+        if (age < 0 || age > LOGIN_STARTED_MAX_AGE_MS) {
+            sessionStorage.removeItem('elsLoginStartedAt');
+            return;
+        }
+        loginStartTimeRef.current = startedAt;
+        setLoginLoading(true);
+        setLoginProgressLine(`[로그인중] ${Math.floor(age / 1000)}초`);
+        if (loginProgressIntervalRef.current) clearInterval(loginProgressIntervalRef.current);
+        loginProgressIntervalRef.current = setInterval(() => {
+            const elapsed = loginStartTimeRef.current ? Math.floor((Date.now() - loginStartTimeRef.current) / 1000) : 0;
+            if (elapsed >= 120) {
+                if (loginProgressIntervalRef.current) {
+                    clearInterval(loginProgressIntervalRef.current);
+                    loginProgressIntervalRef.current = null;
+                }
+                sessionStorage.removeItem('elsLoginStartedAt');
+                setLoginLoading(false);
+                setLoginProgressLine(null);
+                return;
+            }
+            setLoginProgressLine(`[로그인중] ${elapsed}초`);
+        }, 1000);
+        return () => {
+            if (loginProgressIntervalRef.current) {
+                clearInterval(loginProgressIntervalRef.current);
+                loginProgressIntervalRef.current = null;
+            }
+        };
+    }, []);
+
     const hasSavedAccount = Boolean(defaultUserId);
     const [containerInput, setContainerInput] = useState('');
     const [logLines, setLogLines] = useState([]);
@@ -60,6 +117,8 @@ export default function ContainerHistoryPage() {
     const [loginLoading, setLoginLoading] = useState(false);
     const [stepIndex, setStepIndex] = useState(1);
     const [dropActive, setDropActive] = useState(false);
+    const [waitSeconds, setWaitSeconds] = useState(0);
+    const waitStartedAtRef = useRef(null);
     const containerCount = parseContainerInput(containerInput).length;
     const canAutoLogin = stepIndex === 1 && containerCount > 0 && (useSavedCreds ? defaultUserId : (userId?.trim() && userPw));
     const elsDisabled = elsAvailable === false;
@@ -121,12 +180,16 @@ export default function ContainerHistoryPage() {
         }
         setLoginError(null);
         setLoginLoading(true);
-        loginStartTimeRef.current = Date.now();
-        setLoginProgressLine('로그인 및 메뉴 이동 실행 중입니다... 0초');
+        const startedAt = Date.now();
+        loginStartTimeRef.current = startedAt;
+        try {
+            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsLoginStartedAt', String(startedAt));
+        } catch (_) {}
+        setLoginProgressLine('[로그인중] 0초');
         if (loginProgressIntervalRef.current) clearInterval(loginProgressIntervalRef.current);
         loginProgressIntervalRef.current = setInterval(() => {
             const elapsed = loginStartTimeRef.current ? Math.floor((Date.now() - loginStartTimeRef.current) / 1000) : 0;
-            setLoginProgressLine(`로그인 및 메뉴 이동 실행 중입니다... ${elapsed}초`);
+            setLoginProgressLine(`[로그인중] ${elapsed}초`);
         }, 1000);
         try {
             const res = await fetch('/api/els/login', {
@@ -152,13 +215,23 @@ export default function ContainerHistoryPage() {
                 clearInterval(loginProgressIntervalRef.current);
                 loginProgressIntervalRef.current = null;
             }
+            try {
+                if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
+            } catch (_) {}
             if (!res.ok) {
                 setLogLines(prev => [...prev, ...(data.log || []), '[로그인 실패]']);
                 setLoginError('아이디·비밀번호를 확인하세요.');
                 return;
             }
             if (data.ok) {
-                setLogLines(prev => [...prev, `로그인·메뉴 이동 완료 (${elapsed}초)`, '입력 대기 중입니다. 컨테이너 번호를 입력하거나 엑셀을 업로드한 뒤 [조회]를 눌러 주세요.']);
+                setLogLines(prev => [...prev, ...(data.log || [])]);
+                runJustFinishedRef.current = parseContainerInput(containerInput).length > 0;
+                try {
+                    if (typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
+                        sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
+                    }
+                } catch (_) {}
                 setStepIndex(2);
             } else {
                 setLogLines(prev => [...prev, ...(data.log || []), '[로그인 실패]']);
@@ -170,6 +243,9 @@ export default function ContainerHistoryPage() {
                 clearInterval(loginProgressIntervalRef.current);
                 loginProgressIntervalRef.current = null;
             }
+            try {
+                if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
+            } catch (_) {}
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
             setLoginError('아이디·비밀번호를 확인하세요.');
         } finally {
@@ -248,7 +324,7 @@ export default function ContainerHistoryPage() {
 
         if (stepIndex === 1) {
             setLoginLoading(true);
-            setLogLines(prev => [...prev, '[자동 로그인] 값이 입력되어 자동 로그인 중입니다. 로그인·메뉴 이동 후 자동 조회됩니다.(보통 5~15초)']);
+                setLogLines(prev => [...prev, '[자동 로그인] 입력된 컨테이너로 로그인 후 바로 조회를 진행합니다. (보통 5~15초)']);
             try {
                 const loginRes = await fetch('/api/els/login', {
                     method: 'POST',
@@ -267,11 +343,17 @@ export default function ContainerHistoryPage() {
                     throw new Error(loginText.trim().startsWith('<') ? '서버가 HTML을 반환했습니다. ELS 백엔드 URL 또는 NAS 컨테이너를 확인하세요.' : '응답 형식 오류');
                 }
                 if (!loginRes.ok || !loginData.ok) {
-                    setLogLines(prev => [...prev, ...(loginData.log || []), '[자동 로그인 실패] 위에서 로그인 버튼으로 먼저 로그인해 주세요.']);
+                    setLogLines(prev => [...prev, ...(loginData.log || []), '[자동 로그인 실패] 로그인 버튼으로 먼저 로그인해 주세요.']);
                     setLoginLoading(false);
                     return;
                 }
                 setLogLines(prev => [...prev, ...(loginData.log || []), '[로그인 완료] 조회를 진행합니다.']);
+                try {
+                    if (typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
+                        sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
+                    }
+                } catch (_) {}
                 setStepIndex(2);
             } catch (err) {
                 setLogLines(prev => [...prev, `[오류] ${err.message}`]);
@@ -284,7 +366,7 @@ export default function ContainerHistoryPage() {
 
         setLoading(true);
         setStepIndex(3);
-        setLogLines(prev => [...prev, '[조회] 시작...']);
+        setLogLines(prev => [...prev, '[조회] 조회를 시작합니다.']);
             setResult(null);
         setDownloadToken(null);
         setResultFileName('');
@@ -319,7 +401,7 @@ export default function ContainerHistoryPage() {
                     } else if (line.startsWith('RESULT:')) {
                         try {
                             const data = JSON.parse(line.slice(7));
-                            setLogLines(prev => [...prev, '[완료]', '[대기] 신규 입력을 받을 수 있도록 대기 중입니다. 추가 조회가 필요하면 컨테이너 번호를 입력한 뒤 [조회] 버튼을 눌러 주세요.']);
+                            setLogLines(prev => [...prev, '[완료]', '[대기] 입력 대기 중입니다. 컨테이너 번호 또는 엑셀 입력 후 [조회]를 눌러 주세요.']);
                             setResult({ sheet1: data.sheet1 || [], sheet2: data.sheet2 || [] });
                             setResultPage(1);
                             if (data.downloadToken) {
@@ -341,7 +423,7 @@ export default function ContainerHistoryPage() {
                 else if (text.startsWith('RESULT:')) {
                     try {
                         const data = JSON.parse(text.slice(7));
-                        setLogLines(prev => [...prev, '[완료]', '[대기] 신규 입력을 받을 수 있도록 대기 중입니다. 추가 조회가 필요하면 컨테이너 번호를 입력한 뒤 [조회] 버튼을 눌러 주세요.']);
+                        setLogLines(prev => [...prev, '[완료]', '[대기] 입력 대기 중입니다. 컨테이너 번호 또는 엑셀 입력 후 [조회]를 눌러 주세요.']);
                         setResult({ sheet1: data.sheet1 || [], sheet2: data.sheet2 || [] });
                         setResultPage(1);
                         if (data.downloadToken) {
@@ -350,18 +432,34 @@ export default function ContainerHistoryPage() {
                             const d = new Date();
                             const pad = (n) => String(n).padStart(2, '0');
                             setResultFileName(`els_조회결과_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.xlsx`);
-                        } else setStepIndex(2);
+                        } else {
+                            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(Date.now())); } catch (_) {}
+                            setStepIndex(2);
+                        }
                         if (data.error) setLogLines(prev => [...prev, `[오류] ${data.error}`]);
                     } catch (_) {}
                 }
             }
         } catch (err) {
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
+            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(Date.now())); } catch (_) {}
             setStepIndex(2);
         } finally {
             setLoading(false);
         }
     };
+
+    // 로그인 완료 후 대기열(엑셀/컨테이너 번호) 있으면 바로 조회 진행
+    useEffect(() => {
+        if (stepIndex !== 2 || !runJustFinishedRef.current || loading) return;
+        const containers = parseContainerInput(containerInput);
+        if (containers.length === 0) {
+            runJustFinishedRef.current = false;
+            return;
+        }
+        runJustFinishedRef.current = false;
+        runSearch();
+    }, [stepIndex, loading]);
 
     const downloadExcel = () => {
         if (!downloadToken) return;
@@ -392,6 +490,31 @@ export default function ContainerHistoryPage() {
     useEffect(() => {
         if (terminalRef.current) terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }, [logLines]);
+
+    // 대기 상태(stepIndex===2)일 때 초 단위 대기시간 표시 (멈추지 않았음을 알리기 위함). 페이지 나갔다 와도 연속 유지.
+    useEffect(() => {
+        if (stepIndex !== 2 || loading) {
+            setWaitSeconds(0);
+            if (stepIndex !== 2) waitStartedAtRef.current = null;
+            return;
+        }
+        if (waitStartedAtRef.current == null && typeof sessionStorage !== 'undefined') {
+            const raw = sessionStorage.getItem('elsWaitStartedAt');
+            waitStartedAtRef.current = raw ? parseInt(raw, 10) : Date.now();
+            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(waitStartedAtRef.current));
+        } else if (waitStartedAtRef.current == null) {
+            waitStartedAtRef.current = Date.now();
+            try {
+                if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(waitStartedAtRef.current));
+            } catch (_) {}
+        }
+        setWaitSeconds(Math.floor((Date.now() - waitStartedAtRef.current) / 1000));
+        const interval = setInterval(() => {
+            if (waitStartedAtRef.current == null) return;
+            setWaitSeconds(Math.floor((Date.now() - waitStartedAtRef.current) / 1000));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [stepIndex, loading]);
 
     useEffect(() => {
         const doLogout = () => {
@@ -495,6 +618,10 @@ export default function ContainerHistoryPage() {
                                     <span className={styles.credBoxLabel}>아이디</span>
                                     <span className={styles.credBoxValue}>{configLoaded ? defaultUserId : '…'}</span>
                                 </div>
+                                <div className={styles.credBox}>
+                                    <span className={styles.credBoxLabel}>비밀번호</span>
+                                    <span className={styles.credBoxValue}>••••••••</span>
+                                </div>
                                 <button
                                     type="button"
                                     onClick={runLogin}
@@ -503,10 +630,6 @@ export default function ContainerHistoryPage() {
                                 >
                                     {loginLoading ? '로그인 중...' : '로그인'}
                                 </button>
-                                <div className={styles.credBox}>
-                                    <span className={styles.credBoxLabel}>비밀번호</span>
-                                    <span className={styles.credBoxValue}>••••••••</span>
-                                </div>
                                 <label className={styles.checkLabel}>
                                     <input
                                         type="checkbox"
@@ -529,14 +652,6 @@ export default function ContainerHistoryPage() {
                                         className={styles.input}
                                     />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={runLogin}
-                                    disabled={buttonsDisabled}
-                                    className={styles.btnLogin}
-                                >
-                                    {loginLoading ? '로그인 중...' : '로그인'}
-                                </button>
                                 <div className={styles.credBox}>
                                     <span className={styles.credBoxLabel}>비밀번호</span>
                                     <input
@@ -548,6 +663,14 @@ export default function ContainerHistoryPage() {
                                         className={styles.input}
                                     />
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={runLogin}
+                                    disabled={buttonsDisabled}
+                                    className={styles.btnLogin}
+                                >
+                                    {loginLoading ? '로그인 중...' : '로그인'}
+                                </button>
                                 <label className={styles.checkLabel}>
                                     <input
                                         type="checkbox"
@@ -625,7 +748,7 @@ export default function ContainerHistoryPage() {
                     <section className={styles.section + ' ' + styles.logSection}>
                         <h2 className={styles.sectionTitle}>로그</h2>
                         <pre ref={terminalRef} className={styles.terminal}>
-                            {logLines.length || loginProgressLine ? [...logLines, loginProgressLine].filter(Boolean).map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
+                            {logLines.length || loginProgressLine || (stepIndex === 2 && !loading) ? [...logLines, loginProgressLine, (stepIndex === 2 && !loading) ? `대기중입니다 (${waitSeconds}초)` : null].filter(Boolean).map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
                         </pre>
                     </section>
                 </div>
