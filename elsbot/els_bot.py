@@ -34,7 +34,7 @@ def check_alert(driver):
     except: return None
 
 def open_els_menu(driver):
-    """로그인 후 컨테이너 이동현황 메뉴 클릭. 대기 시간 단축(고정 sleep 축소)."""
+    """로그인 후 컨테이너 이동현황 메뉴 클릭. NAS 등 느린 환경을 위해 대기 여유 확보."""
     print("메뉴 진입 중...")
     for _ in range(20):
         check_alert(driver)
@@ -46,9 +46,10 @@ def open_els_menu(driver):
                 target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
                 if target:
                     driver.execute_script("arguments[0].click();", target[0])
-                    # 페이지 전환 대기: 최대 5초, 최소 0.5초 (기존 2초 고정 제거)
-                    time.sleep(0.5)
-                    for _ in range(10):
+                    # 페이지 전환 대기: NAS에서 느릴 수 있으므로 2초 (이전 0.5초에서 복원)
+                    time.sleep(2)
+                    # 조회 입력창 로드 대기: 최대 20회 x 0.5초 = 10초 (NAS 여유)
+                    for _ in range(20):
                         driver.switch_to.default_content()
                         for f in driver.find_elements(By.TAG_NAME, "iframe"):
                             try:
@@ -60,9 +61,9 @@ def open_els_menu(driver):
                                 pass
                             finally:
                                 driver.switch_to.default_content()
-                        time.sleep(0.35)
+                        time.sleep(0.5)
                     driver.switch_to.default_content()
-                    return True
+                    # 입력창을 못 찾았으면 성공 처리하지 않고 다음 프레임/루프 시도
             except Exception:
                 continue
             finally:
@@ -165,8 +166,8 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId").send_keys(u_id)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(u_pw)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(Keys.ENTER)
-        # 로그인 처리 대기: 2초로 단축(기존 4초). 메뉴 진입 루프에서 곧바로 메뉴 탐색
-        time.sleep(2)
+        # 로그인 처리 대기: NAS 등에서 세션 반영이 느릴 수 있으므로 4초 (이전 2초에서 복원)
+        time.sleep(4)
         _log("로그인 완료", elapsed=int(round(time.time() - start)))
         _log("컨테이너 이동현황 페이지로 이동중")
         menu_start = time.time()

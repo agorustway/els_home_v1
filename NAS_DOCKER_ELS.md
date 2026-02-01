@@ -72,6 +72,8 @@ sudo docker-compose -f docker/docker-compose.yml up -d
 - **NAS에서 속도가 느린 이유 (한계점):** NAS CPU(예: Intel Celeron J3455)는 PC보다 약해서, **Chrome(Chromium) 헤드리스 + ETRANS 페이지 로드 + DOM/JS 실행**이 모두 느립니다. 그래서 **로그인 후 메뉴 이동**은 PC에서는 5~15초 예상이지만 **NAS에서는 20~40초** 걸릴 수 있고, **1건 조회**도 PC 0.5초대인데 **NAS에서는 1~2초** 넘을 수 있습니다. 정상 동작 범위이며, 조회 건수가 많을수록 "기존 세션으로 조회 진행"으로 두 번째 이후는 로그인 없이 이어서 하면 체감이 나아집니다.
 - **조회할 때마다 "엔진 예열 및 로그인 중..." 이 나오면:** NAS에 **최신 이미지가 반영되지 않은 것**일 수 있습니다. 아래 "최신 코드 반영" 후 `sudo docker build --no-cache -t els-backend:latest .` 로 다시 빌드하고, `sudo docker-compose -f docker/docker-compose.yml down` → `sudo docker-compose -f docker/docker-compose.yml up -d` 로 다시 띄워 주세요.
 - **로그인 실패 시:** 화면 로그에 단계별 메시지(로그인중 → 로그인 완료 → 컨테이너 이동현황 페이지로 이동중 → 이동완료 → 조회시작)가 나옵니다. "이동 실패"까지 나오면 ETRANS 아이디/비밀번호 또는 접속 상태를 확인하세요. "타임아웃"이면 NAS→etrans.klnet.co.kr 네트워크/방화벽을 확인하고, "Chrome/Chromium 실행 오류"면 Docker 이미지에 Chrome이 포함되어 있는지 확인하세요.
+- **약 60초 뒤에 "[로그인 실패]"만 나올 때:** NAS 앞단 역방향 프록시(또는 로드밸런서)의 **타임아웃이 60초**인 경우입니다. 로그인·메뉴 이동은 NAS에서 20~40초 걸릴 수 있어, **프록시 타임아웃을 120초 이상**으로 올려주세요. (Synology 역방향 프록시에 타임아웃 옵션이 있으면 120초 이상으로 설정.)
+- **이전엔 되다가 로그인/메뉴 이동 실패할 때:** 로그인·메뉴 대기 시간을 과하게 줄이면 NAS처럼 느린 환경에서 페이지가 준비되기 전에 다음 단계로 넘어가 실패할 수 있습니다. `els_bot.py`에서 로그인 후 4초, 메뉴 클릭 후 2초, 조회 입력창 대기 최대 10초(20회×0.5초)로 **NAS용 여유를 두고 복원**해 두었습니다. 다시 배포 후 테스트해 보세요.
 - **NAS에서 `git pull` 이 없을 때 (커맨드를 찾을 수 없음):** NAS에는 Git이 설치되어 있지 않을 수 있습니다. **PC에서** 최신 코드를 받은 뒤, **프로젝트 폴더 전체**(`els_home_v1`)를 NAS 공유폴더(예: `docker`)로 **복사해 덮어쓰기**하세요. (Windows: 탐색기에서 NAS 공유폴더 열고 `els_home_v1` 붙여넣기. 또는 File Station에서 PC 쪽 폴더를 업로드.) 그 다음 NAS SSH에서 `cd /volume1/docker/els_home_v1` 후 `sudo docker build --no-cache -t els-backend:latest .` 로 빌드하면 됩니다.
 
 #### NAS에 Git 설치하기 (선택 — `git pull`로 빠르게 반영하려면)

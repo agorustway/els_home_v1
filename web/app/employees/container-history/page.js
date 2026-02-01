@@ -219,7 +219,11 @@ export default function ContainerHistoryPage() {
                 if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
             } catch (_) {}
             if (!res.ok) {
-                setLogLines(prev => [...prev, ...(data.log || []), '[로그인 실패]']);
+                const logs = data.log || [];
+                setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
+                if (logs.length === 0 && elapsed >= 55) {
+                    setLogLines(prev => [...prev, '[안내] 60초 내 실패 시 NAS·역방향 프록시 타임아웃(기본 60초)일 수 있습니다. NAS_DOCKER_ELS.md에서 타임아웃 120초 이상으로 설정을 확인하세요.']);
+                }
                 setLoginError('아이디·비밀번호를 확인하세요.');
                 return;
             }
@@ -234,7 +238,11 @@ export default function ContainerHistoryPage() {
                 } catch (_) {}
                 setStepIndex(2);
             } else {
-                setLogLines(prev => [...prev, ...(data.log || []), '[로그인 실패]']);
+                const logs = data.log || [];
+                setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
+                if (logs.length <= 1 && elapsed >= 55) {
+                    setLogLines(prev => [...prev, '[안내] 60초 내 실패 시 NAS·역방향 프록시 타임아웃(기본 60초)일 수 있습니다. NAS_DOCKER_ELS.md에서 타임아웃 120초 이상으로 설정을 확인하세요.']);
+                }
                 setLoginError('아이디·비밀번호를 확인하세요.');
             }
         } catch (err) {

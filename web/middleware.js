@@ -57,8 +57,8 @@ export async function middleware(request) {
             return NextResponse.redirect(url)
         }
 
-        // 방문자(visitor) 권한은 임직원 홈(/employees) 외의 하위 기능 접근 불가
-        if (userRole === 'visitor' && path !== '/employees' && !path.startsWith('/employees/mypage')) {
+        // 방문자(visitor) 권한: 임직원 홈, 마이페이지, 안전운임 조회(참고용)만 허용
+        if (userRole === 'visitor' && path !== '/employees' && !path.startsWith('/employees/mypage') && !path.startsWith('/employees/safe-freight')) {
             const url = request.nextUrl.clone()
             url.pathname = '/employees' // 로그인 페이지로 보내면 무한 루프 발생 방지
             url.searchParams.set('error', '방문객 권한으로는 접근할 수 없는 메뉴입니다.')
