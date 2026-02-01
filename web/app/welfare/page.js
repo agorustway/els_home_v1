@@ -99,193 +99,193 @@ export default function WelfarePage() {
         <div className={styles.page}>
             <main>
                 <section id="satisfaction" className={styles.satisfactionSection}>
-                        <div className="container">
-                            <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
-                            <div className={styles.satisfactionList}>
-                                {[
-                                    {
-                                        ...satisfactionPoints[0],
-                                        image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
-                                    },
-                                    {
-                                        ...satisfactionPoints[1],
-                                        image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80"
-                                    },
-                                    {
-                                        ...satisfactionPoints[2],
-                                        image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
-                                    }
-                                ].map((point, i) => (
-                                    <motion.div
-                                        key={i}
-                                        className={styles.satItem}
-                                        initial={{ opacity: 0, y: 50 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ duration: 0.8, delay: i * 0.1 }}
-                                    >
-                                        <div className={styles.satVisual}>
-                                            <img src={point.image} alt={point.topic} className={styles.satImage} />
-                                            <div className={styles.satOverlay}>
-                                                <h3>{point.topic}</h3>
-                                            </div>
-                                        </div>
-                                        <div className={styles.satContent}>
+                    <div className="container">
+                        <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
+                        <div className={styles.satisfactionList}>
+                            {[
+                                {
+                                    ...satisfactionPoints[0],
+                                    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
+                                },
+                                {
+                                    ...satisfactionPoints[1],
+                                    image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80"
+                                },
+                                {
+                                    ...satisfactionPoints[2],
+                                    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
+                                }
+                            ].map((point, i) => (
+                                <motion.div
+                                    key={i}
+                                    className={styles.satItem}
+                                    initial={{ opacity: 0, y: 50 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.8, delay: i * 0.1 }}
+                                >
+                                    <div className={styles.satVisual}>
+                                        <img src={point.image} alt={point.topic} className={styles.satImage} />
+                                        <div className={styles.satOverlay}>
                                             <h3>{point.topic}</h3>
-                                            <p>{point.description}</p>
                                         </div>
-                                    </motion.div>
-                                ))}
-                            </div>
+                                    </div>
+                                    <div className={styles.satContent}>
+                                        <h3>{point.topic}</h3>
+                                        <p>{point.description}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
                         </div>
-                    </section>
+                    </div>
+                </section>
 
-                    <section id="grievance" className={styles.procedureSection}>
-                        <div className="container">
-                            <h2 className={styles.sectionTitle}>인권·윤리 침해 및 고충 처리 절차</h2>
-                            <div className={styles.procedureContainer}>
-                                <p className={styles.procedureDefinition}>
-                                    직장 내 괴롭힘, 차별, 지위를 이용한 압력 등<br />
-                                    법적으로 보장된 권리 침해 사항에 대한 철저한 구제 체계를 가동합니다.
-                                </p>
-                                <div className={styles.procedureGrid}>
-                                    {procedures.map((item, i) => (
-                                        <motion.div
-                                            key={i}
-                                            className={styles.stepCard}
-                                            initial={{ opacity: 0, scale: 0.9 }}
-                                            whileInView={{ opacity: 1, scale: 1 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: i * 0.1 }}
-                                        >
-                                            <span className={styles.stepNum}>STEP {item.step}</span>
-                                            <h3 className={styles.stepTitle}>{item.title}</h3>
-                                            <p className={styles.stepDesc}>{item.content}</p>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="roadmap" className={styles.roadmapSection}>
-                        <div className="container">
-                            <h2 className={styles.sectionTitle}>지속가능한 일터 조성 계획</h2>
-                            <div className={styles.roadmapList}>
-                                {roadmapItems.map((item, i) => (
+                <section id="grievance" className={styles.procedureSection}>
+                    <div className="container">
+                        <h2 className={styles.sectionTitle}>인권·윤리 침해 및 고충 처리 절차</h2>
+                        <div className={styles.procedureContainer}>
+                            <p className={styles.procedureDefinition}>
+                                직장 내 괴롭힘, 차별, 지위를 이용한 압력 등<br />
+                                법적으로 보장된 권리 침해 사항에 대한 철저한 구제 체계를 가동합니다.
+                            </p>
+                            <div className={styles.procedureGrid}>
+                                {procedures.map((item, i) => (
                                     <motion.div
                                         key={i}
-                                        className={styles.roadmapItem}
-                                        initial={{ opacity: 0, x: -30 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
+                                        className={styles.stepCard}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        whileInView={{ opacity: 1, scale: 1 }}
                                         viewport={{ once: true }}
                                         transition={{ delay: i * 0.1 }}
                                     >
-                                        {item}
+                                        <span className={styles.stepNum}>STEP {item.step}</span>
+                                        <h3 className={styles.stepTitle}>{item.title}</h3>
+                                        <p className={styles.stepDesc}>{item.content}</p>
                                     </motion.div>
                                 ))}
                             </div>
                         </div>
-                    </section>
+                    </div>
+                </section>
 
-                    <section id="report" className={styles.reportSection}>
-                        <div className="container">
-                            <motion.div
-                                className={styles.reportContainer}
-                                initial={{ opacity: 0, y: 50 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                            >
-                                <h2 className={styles.reportTitle}>부조리 및 인권침해 제보</h2>
-                                <p className={styles.reportDesc}>접수된 내용은 철저히 보안이 유지되며, 신속하게 검토 후 조치하겠습니다.</p>
-                                <form className={styles.reportForm} onSubmit={handleSubmit}>
-                                    <div className={styles.formGroup}>
-                                        <label htmlFor="category">제보 유형</label>
-                                        <select
-                                            id="category"
-                                            name="category"
-                                            required
-                                            className={styles.formSelect}
-                                            value={formData.category}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="직장 내 괴롭힘">직장 내 괴롭힘</option>
-                                            <option value="성희롱/성폭력">성희롱/성폭력</option>
-                                            <option value="차별 행위">차별 행위</option>
-                                            <option value="부정부패/비리">부정부패/비리</option>
-                                            <option value="기타 인권침해">기타 인권침해</option>
-                                        </select>
-                                    </div>
-                                    <div className={styles.formGroup}>
-                                        <label htmlFor="title">제보 제목</label>
-                                        <input
-                                            type="text"
-                                            id="title"
-                                            name="title"
-                                            placeholder="제목을 입력해주세요"
-                                            required
-                                            className={styles.formInput}
-                                            value={formData.title}
-                                            onChange={handleChange}
-                                        />
-                                    </div>
-                                    <div className={styles.formGroup}>
-                                        <label htmlFor="content">상세 내용</label>
-                                        <textarea
-                                            id="content"
-                                            name="content"
-                                            placeholder="발생 일시, 장소, 대상, 상세 내용 등을 구체적으로 작성해주세요."
-                                            required
-                                            className={styles.formTextarea}
-                                            value={formData.content}
-                                            onChange={handleChange}
-                                        ></textarea>
-                                    </div>
-                                    <div className={styles.formGroup}>
-                                        <label htmlFor="contact">연락처 및 성함 (선택사항 - 미입력 시 익명 접수)</label>
-                                        <input
-                                            type="text"
-                                            id="contact"
-                                            name="contact"
-                                            placeholder="답변을 받으실 연락처 또는 성함을 입력해주세요."
-                                            className={styles.formInput}
-                                            value={formData.contact}
-                                            onChange={handleChange}
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        className={styles.submitBtn}
-                                        disabled={status === 'submitting'}
+                <section id="roadmap" className={styles.roadmapSection}>
+                    <div className="container">
+                        <h2 className={styles.sectionTitle}>지속가능한 일터 조성 계획</h2>
+                        <div className={styles.roadmapList}>
+                            {roadmapItems.map((item, i) => (
+                                <motion.div
+                                    key={i}
+                                    className={styles.roadmapItem}
+                                    initial={{ opacity: 0, x: -30 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.1 }}
+                                >
+                                    {item}
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="report" className={styles.reportSection}>
+                    <div className="container">
+                        <motion.div
+                            className={styles.reportContainer}
+                            initial={{ opacity: 0, y: 50 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                        >
+                            <h2 className={styles.reportTitle}>부조리 및 인권침해 제보</h2>
+                            <p className={styles.reportDesc}>접수된 내용은 철저히 보안이 유지되며, 신속하게 검토 후 조치하겠습니다.</p>
+                            <form className={styles.reportForm} onSubmit={handleSubmit}>
+                                <div className={styles.formGroup}>
+                                    <label htmlFor="category">제보 유형</label>
+                                    <select
+                                        id="category"
+                                        name="category"
+                                        required
+                                        className={styles.formSelect}
+                                        value={formData.category}
+                                        onChange={handleChange}
                                     >
-                                        {status === 'submitting' ? '제출 중...' : '제보하기'}
-                                    </button>
-                                    {status === 'success' && (
-                                        <div className={`${styles.statusMessage} ${styles.success}`}>
-                                            제보가 성공적으로 접수되었습니다. 보호와 보안을 최우선으로 검토하겠습니다.
-                                        </div>
-                                    )}
-                                    {status === 'error' && (
-                                        <div className={`${styles.statusMessage} ${styles.error}`}>
-                                            제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주시거나 관리자에게 문의바랍니다.
-                                        </div>
-                                    )}
-                                </form>
-                            </motion.div>
-                        </div>
-                    </section>
+                                        <option value="직장 내 괴롭힘">직장 내 괴롭힘</option>
+                                        <option value="성희롱/성폭력">성희롱/성폭력</option>
+                                        <option value="차별 행위">차별 행위</option>
+                                        <option value="부정부패/비리">부정부패/비리</option>
+                                        <option value="기타 인권침해">기타 인권침해</option>
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label htmlFor="title">제보 제목</label>
+                                    <input
+                                        type="text"
+                                        id="title"
+                                        name="title"
+                                        placeholder="제목을 입력해주세요"
+                                        required
+                                        className={styles.formInput}
+                                        value={formData.title}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label htmlFor="content">상세 내용</label>
+                                    <textarea
+                                        id="content"
+                                        name="content"
+                                        placeholder="발생 일시, 장소, 대상, 상세 내용 등을 구체적으로 작성해주세요."
+                                        required
+                                        className={styles.formTextarea}
+                                        value={formData.content}
+                                        onChange={handleChange}
+                                    ></textarea>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label htmlFor="contact">연락처 및 성함 (선택사항 - 미입력 시 익명 접수)</label>
+                                    <input
+                                        type="text"
+                                        id="contact"
+                                        name="contact"
+                                        placeholder="답변을 받으실 연락처 또는 성함을 입력해주세요."
+                                        className={styles.formInput}
+                                        value={formData.contact}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtn}
+                                    disabled={status === 'submitting'}
+                                >
+                                    {status === 'submitting' ? '제출 중...' : '제보하기'}
+                                </button>
+                                {status === 'success' && (
+                                    <div className={`${styles.statusMessage} ${styles.success}`}>
+                                        제보가 성공적으로 접수되었습니다. 보호와 보안을 최우선으로 검토하겠습니다.
+                                    </div>
+                                )}
+                                {status === 'error' && (
+                                    <div className={`${styles.statusMessage} ${styles.error}`}>
+                                        제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주시거나 관리자에게 문의바랍니다.
+                                    </div>
+                                )}
+                            </form>
+                        </motion.div>
+                    </div>
+                </section>
 
-                    <section className={styles.metaphorSection}>
-                        <div className="container">
-                            <motion.p
-                                className={styles.metaphorText}
-                                initial={{ opacity: 0 }}
-                                whileInView={{ opacity: 1 }}
-                            >
-                                "우리의 고충 처리 시스템은 구성원을 지키는 <strong>'안전 로프'</strong>입니다."
-                            </motion.p>
-                        </div>
-                    </section>
+                <section className={styles.metaphorSection}>
+                    <div className="container">
+                        <motion.p
+                            className={styles.metaphorText}
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                        >
+                            &quot;우리의 고충 처리 시스템은 구성원을 지키는 <strong>&apos;안전 로프&apos;</strong>입니다.&quot;
+                        </motion.p>
+                    </div>
+                </section>
             </main>
         </div>
     );

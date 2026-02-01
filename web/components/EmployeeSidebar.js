@@ -37,21 +37,26 @@ export default function EmployeeSidebar() {
             <div className={styles.searchWrap}>
                 <IntranetSearch placeholder="메뉴·게시글 검색" />
             </div>
-            <nav className={styles.tabNav}>
-                {mainTabs.map((tab) => {
-                    const isTabActive = activeTabId === tab.id;
-                    return (
-                        <Link
-                            key={tab.id}
-                            href={tab.defaultPath}
-                            className={`${styles.tabItem} ${isTabActive ? styles.tabActive : ''}`}
-                        >
-                            {tab.label}
-                        </Link>
-                    );
-                })}
-            </nav>
-            <nav className={styles.menu}>
+            <div className={styles.navBlock}>
+                <span className={styles.navLabel}>메인메뉴</span>
+                <nav className={styles.tabNav}>
+                    {mainTabs.map((tab) => {
+                        const isTabActive = activeTabId === tab.id;
+                        return (
+                            <Link
+                                key={tab.id}
+                                href={tab.defaultPath}
+                                className={`${styles.tabItem} ${isTabActive ? styles.tabActive : ''}`}
+                            >
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </div>
+            <div className={styles.navBlock}>
+                <span className={styles.navLabel}>서브메뉴</span>
+                <nav className={styles.menu}>
                 {items.map((item) => (
                     <Link
                         key={item.path}
@@ -61,7 +66,8 @@ export default function EmployeeSidebar() {
                         {item.label}
                     </Link>
                 ))}
-            </nav>
+                </nav>
+            </div>
             <div className={styles.footer}>
                 {loading ? (
                     <div className={styles.userInfo}>

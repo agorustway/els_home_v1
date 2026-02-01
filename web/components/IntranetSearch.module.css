@@ -97,3 +97,16 @@
     border-radius: 4px;
     margin-right: 8px;
 }
+
+@media (max-width: 768px) {
+    .input {
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 16px; /* iOS zoom 방지 */
+    }
+
+    .item {
+        min-height: 44px;
+        padding: 12px 14px;
+    }
+}

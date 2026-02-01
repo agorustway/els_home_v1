@@ -435,7 +435,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 25px;
+    padding: 14px 25px;
+    min-height: 48px;
     font-size: 1.05rem;
     font-weight: 600;
     color: #333;
@@ -458,8 +459,10 @@
 }
 
 .mobileSubItem {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 12px 25px 12px 35px;
+    min-height: 44px;
     font-size: 0.95rem;
     color: #666;
     text-decoration: none;
@@ -498,6 +501,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 25px 12px 35px;
+    min-height: 44px;
     font-size: 0.95rem;
     color: #666;
     text-decoration: none;

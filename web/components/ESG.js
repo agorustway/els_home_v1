@@ -145,7 +145,7 @@ export default function ESG() {
                 >
                     <span className={styles.metaphorIcon}>🧭</span>
                     <p className={styles.metaphorText}>
-                        이엘에스솔루션의 ESG 경영은 정교하게 설계된 <strong>'물류의 나침반'</strong>과 같습니다.<br />
+                        이엘에스솔루션의 ESG 경영은 정교하게 설계된 <strong>&apos;물류의 나침반&apos;</strong>과 같습니다.<br />
                         환경과 사회라는 올바른 방향을 잃지 않고, 모든 이해관계자와 함께 지속 가능한 미래를 향해 나아가겠습니다.
                     </p>
                     <span className={styles.metaphorHighlight}>Driving a Greener Future</span>

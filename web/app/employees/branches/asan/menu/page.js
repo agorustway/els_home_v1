@@ -386,258 +386,258 @@ export default function AsanMenuChoicePage({ params }) {
     };
 
     return (
-            <div className={styles.page}>
-                <main className={styles.container}>
-                    <motion.div className={styles.hero} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-                        <h1>아산지점 식단선택 게임</h1>
-                        <p>동료들과 즐거운 시간 보내세요!</p>
-                    </motion.div>
+        <div className={styles.page}>
+            <main className={styles.container}>
+                <motion.div className={styles.hero} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+                    <h1>아산지점 식단선택 게임</h1>
+                    <p>동료들과 즐거운 시간 보내세요!</p>
+                </motion.div>
 
-                    <div className={styles.layout}>
-                        <aside className={styles.sidebar}>
-                            <div className={styles.card}>
-                                <h3>게임 참여자 ({names.length})</h3>
-                                <form onSubmit={addName} className={styles.addForm}>
-                                    <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="이름 추가" />
-                                    <button type="submit">추가</button>
-                                </form>
-                                <div className={styles.nameList}>
-                                    {names.map((name, i) => (
-                                        <div key={i} className={styles.nameTag}>
-                                            <span>{name}</span>
-                                            <button onClick={() => removeName(name)}>×</button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button className={styles.resetBtn} onClick={() => { setNames(DEFAULT_NAMES); setLadderData(null); }}>기본값 복원</button>
+                <div className={styles.layout}>
+                    <aside className={styles.sidebar}>
+                        <div className={styles.card}>
+                            <h3>게임 참여자 ({names.length})</h3>
+                            <form onSubmit={addName} className={styles.addForm}>
+                                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="이름 추가" />
+                                <button type="submit">추가</button>
+                            </form>
+                            <div className={styles.nameList}>
+                                {names.map((name, i) => (
+                                    <div key={i} className={styles.nameTag}>
+                                        <span>{name}</span>
+                                        <button onClick={() => removeName(name)}>×</button>
+                                    </div>
+                                ))}
                             </div>
+                            <button className={styles.resetBtn} onClick={() => { setNames(DEFAULT_NAMES); setLadderData(null); }}>기본값 복원</button>
+                        </div>
 
-                            <div className={`${styles.card} ${styles.historyCard}`}>
-                                <h3>최근 기록</h3>
-                                <div className={styles.historyList}>
-                                    {history.length === 0 ? (
-                                        <p className={styles.emptyHistory}>기록이 없습니다.</p>
-                                    ) : (
-                                        history.map((h, i) => (
-                                            <div key={i} className={styles.historyItem}>
-                                                <div className={styles.historyMeta}>
-                                                    <span className={styles.historyGame}>{h.game}</span>
-                                                    <span className={styles.historyTime}>{h.timestamp}</span>
-                                                </div>
-                                                <div className={styles.historyResult}>{h.result}</div>
+                        <div className={`${styles.card} ${styles.historyCard}`}>
+                            <h3>최근 기록</h3>
+                            <div className={styles.historyList}>
+                                {history.length === 0 ? (
+                                    <p className={styles.emptyHistory}>기록이 없습니다.</p>
+                                ) : (
+                                    history.map((h, i) => (
+                                        <div key={i} className={styles.historyItem}>
+                                            <div className={styles.historyMeta}>
+                                                <span className={styles.historyGame}>{h.game}</span>
+                                                <span className={styles.historyTime}>{h.timestamp}</span>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                                {history.length > 0 && (
-                                    <button className={styles.clearHistoryBtn} onClick={() => setHistory([])}>전체 삭제</button>
+                                            <div className={styles.historyResult}>{h.result}</div>
+                                        </div>
+                                    ))
                                 )}
                             </div>
-                        </aside>
+                            {history.length > 0 && (
+                                <button className={styles.clearHistoryBtn} onClick={() => setHistory([])}>전체 삭제</button>
+                            )}
+                        </div>
+                    </aside>
 
-                        <section className={styles.mainArea}>
-                            <div className={styles.tabs}>
-                                <button className={activeGame === 'roulette' ? styles.activeTab : ''} onClick={() => setActiveGame('roulette')}>🎡 룰렛</button>
-                                <button className={activeGame === 'ladder' ? styles.activeTab : ''} onClick={() => { setActiveGame('ladder'); if (!ladderData) generateLadder(); }}>🪜 사다리</button>
-                                <button className={activeGame === 'bingo' ? styles.activeTab : ''} onClick={() => setActiveGame('bingo')}>🔢 빙고</button>
-                            </div>
+                    <section className={styles.mainArea}>
+                        <div className={styles.tabs}>
+                            <button className={activeGame === 'roulette' ? styles.activeTab : ''} onClick={() => setActiveGame('roulette')}>🎡 룰렛</button>
+                            <button className={activeGame === 'ladder' ? styles.activeTab : ''} onClick={() => { setActiveGame('ladder'); if (!ladderData) generateLadder(); }}>🪜 사다리</button>
+                            <button className={activeGame === 'bingo' ? styles.activeTab : ''} onClick={() => setActiveGame('bingo')}>🔢 빙고</button>
+                        </div>
 
-                            <div className={styles.gameContainer}>
-                                {activeGame === 'roulette' && (
-                                    <div className={styles.rouletteBox}>
-                                        <div className={styles.rouletteWrapper} style={{ width: rouletteSize, height: rouletteSize }}>
-                                            <div className={styles.pointerContainer}><div className={styles.pointerRed} /></div>
-                                            <canvas
-                                                ref={canvasRef}
-                                                width={rouletteSize}
-                                                height={rouletteSize}
-                                                style={{
-                                                    transform: `rotate(${rotation}deg)`,
-                                                    transition: `transform ${spinDuration}s cubic-bezier(0.1, 0, 0.1, 1)`
-                                                }}
-                                            />
+                        <div className={styles.gameContainer}>
+                            {activeGame === 'roulette' && (
+                                <div className={styles.rouletteBox}>
+                                    <div className={styles.rouletteWrapper} style={{ width: rouletteSize, height: rouletteSize }}>
+                                        <div className={styles.pointerContainer}><div className={styles.pointerRed} /></div>
+                                        <canvas
+                                            ref={canvasRef}
+                                            width={rouletteSize}
+                                            height={rouletteSize}
+                                            style={{
+                                                transform: `rotate(${rotation}deg)`,
+                                                transition: `transform ${spinDuration}s cubic-bezier(0.1, 0, 0.1, 1)`
+                                            }}
+                                        />
+                                    </div>
+                                    <button
+                                        className={`${styles.spinBtn} ${isSpinning ? styles.spinning : ''}`}
+                                        onClick={spinRoulette}
+                                        disabled={!isSpinning && names.length < 2}
+                                    >
+                                        {isSpinning ? '지금 멈추기!' : '룰렛 가동'}
+                                    </button>
+                                    <AnimatePresence>
+                                        {winner && (
+                                            <motion.div className={styles.resultOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                                <motion.div className={styles.resultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}>
+                                                    <div className={styles.confetti}>🎊</div>
+                                                    <span>당첨자</span>
+                                                    <h2>{winner}</h2>
+                                                    <button className={styles.closeBtn} onClick={() => setWinner(null)}>확인 완료</button>
+                                                </motion.div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            {activeGame === 'ladder' && (
+                                <div className={styles.ladderBox}>
+                                    <div className={styles.ladderHeader}>
+                                        <div className={styles.ladderSettings}>
+                                            <label>당첨 수:</label>
+                                            <input type="number" min="1" max={names.length - 1} value={winnerCount} onChange={(e) => setWinnerCount(parseInt(e.target.value) || 1)} className={styles.winnerInput} />
+                                            <button className={styles.regenerateBtn} onClick={generateLadder}>사다리 재생성</button>
                                         </div>
-                                        <button
-                                            className={`${styles.spinBtn} ${isSpinning ? styles.spinning : ''}`}
-                                            onClick={spinRoulette}
-                                            disabled={!isSpinning && names.length < 2}
-                                        >
-                                            {isSpinning ? '지금 멈추기!' : '룰렛 가동'}
-                                        </button>
-                                        <AnimatePresence>
-                                            {winner && (
-                                                <motion.div className={styles.resultOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                                    <motion.div className={styles.resultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}>
-                                                        <div className={styles.confetti}>🎊</div>
-                                                        <span>당첨자</span>
-                                                        <h2>{winner}</h2>
-                                                        <button className={styles.closeBtn} onClick={() => setWinner(null)}>확인 완료</button>
+                                        <p>이름을 클릭하여 결과를 확인하세요!</p>
+                                    </div>
+
+                                    <div className={styles.ladderContent}>
+                                        <div className={styles.ladderHeaderRow}>
+                                            {names.map((name, i) => (
+                                                <div key={i} className={styles.ladderStartNode} onClick={() => runLadder(i)}>{name}</div>
+                                            ))}
+                                        </div>
+
+                                        <div className={styles.ladderBoard}>
+                                            <svg className={styles.ladderSvgBackground}>
+                                                {names.map((_, i) => (
+                                                    <line key={`v-${i}`} x1={`${(i / (names.length - 1)) * 100}%`} y1="0%" x2={`${(i / (names.length - 1)) * 100}%`} y2="100%" className={styles.bgLineV} />
+                                                ))}
+                                                {ladderData && ladderData.map((row, j) => (
+                                                    row.map((active, i) => (
+                                                        active && (
+                                                            <line
+                                                                key={`h-${j}-${i}`}
+                                                                x1={`${(i / (names.length - 1)) * 100}%`}
+                                                                y1={`${8 + (j * (84 / (ladderData.length - 1)))}%`}
+                                                                x2={`${((i + 1) / (names.length - 1)) * 100}%`}
+                                                                y2={`${8 + (j * (84 / (ladderData.length - 1)))}%`}
+                                                                className={styles.bgLineH}
+                                                            />
+                                                        )
+                                                    ))
+                                                ))}
+                                            </svg>
+
+                                            <svg className={styles.ladderSvgOverlay} viewBox="0 0 100 100" preserveAspectRatio="none">
+                                                {activePaths.map((p, idx) => (
+                                                    <motion.polyline
+                                                        key={p.startIndex}
+                                                        points={p.path.map(([line, y]) => {
+                                                            const x = (line / (names.length - 1)) * 100;
+                                                            return `${x},${y}`;
+                                                        }).join(' ')}
+                                                        className={styles.activePath}
+                                                        stroke={p.color}
+                                                        initial={{ pathLength: 0, opacity: 0 }}
+                                                        animate={{ pathLength: 1, opacity: 1 }}
+                                                        transition={{ duration: 4, ease: "linear" }}
+                                                    />
+                                                ))}
+                                            </svg>
+
+                                            {activePaths.map((p, idx) => {
+                                                const keyframesX = p.path.map(([line, y]) => `${(line / (names.length - 1)) * 100}%`);
+                                                const keyframesY = p.path.map(([line, y]) => `${y}%`);
+
+                                                return (
+                                                    <motion.div
+                                                        key={`animal-${p.startIndex}`}
+                                                        className={styles.animalIcon}
+                                                        initial={{ left: `${(p.startIndex / (names.length - 1)) * 100}%`, top: '0%' }}
+                                                        animate={{
+                                                            left: keyframesX,
+                                                            top: keyframesY
+                                                        }}
+                                                        transition={{ duration: 4, ease: "linear" }}
+                                                    >
+                                                        <div className={styles.animalFace}>
+                                                            {p.isFinished ? (p.isWinner ? '😭' : '😆') : p.animal}
+                                                        </div>
                                                     </motion.div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className={styles.ladderFooterRow}>
+                                            {ladderResults.map((res, i) => (
+                                                <div key={i} className={styles.ladderEndNode}>{res}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeGame === 'bingo' && (
+                                <div className={styles.bingoContainer}>
+                                    <div className={styles.bingoBox}>
+                                        <div className={styles.bingoHeader}>
+                                            <h2>🚢 선사코드 5x5 빙고</h2>
+                                            <p>국제 선사코드(3자리)를 클릭하여 5빙고를 완성하세요!</p>
+                                            <div className={styles.bingoActions}>
+                                                <button className={styles.regenerateBtn} onClick={initBingo}>빙고판 재구성</button>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.bingoGrid}>
+                                            {bingoGrid.map((cell, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`${styles.bingoCell} ${cell.marked ? styles.marked : ''} ${cell.isWinLine ? styles.win : ''}`}
+                                                    onClick={() => toggleBingoCell(idx)}
+                                                >
+                                                    {cell.code}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className={styles.bingoCount}>
+                                            {bingoCount} BINGO
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {showBingoWin && (
+                                                <motion.div
+                                                    className={styles.bingoWinOverlay}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                >
+                                                    <div className={styles.bingoWinContent}>
+                                                        <h2 style={{ fontSize: '4rem', marginBottom: '20px' }}>👑 BINGO!</h2>
+                                                        <p style={{ fontSize: '1.5rem', marginBottom: '30px' }}>축하합니다! 5빙고를 달성했습니다.</p>
+                                                        <button className={styles.closeBtn} onClick={() => setShowBingoWin(false)}>계속하기</button>
+                                                    </div>
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
                                     </div>
-                                )}
 
-                                {activeGame === 'ladder' && (
-                                    <div className={styles.ladderBox}>
-                                        <div className={styles.ladderHeader}>
-                                            <div className={styles.ladderSettings}>
-                                                <label>당첨 수:</label>
-                                                <input type="number" min="1" max={names.length - 1} value={winnerCount} onChange={(e) => setWinnerCount(parseInt(e.target.value) || 1)} className={styles.winnerInput} />
-                                                <button className={styles.regenerateBtn} onClick={generateLadder}>사다리 재생성</button>
+                                    <aside className={styles.bingoManual}>
+                                        <h3>게임설명서</h3>
+                                        <div className={styles.manualList}>
+                                            <div className={styles.manualItem}>
+                                                <span className={styles.manualNum}>1</span>
+                                                <p>무작위로 배치된 선사코드(3자리) 중 부르는 코드를 클릭하여 체크하세요.</p>
                                             </div>
-                                            <p>이름을 클릭하여 결과를 확인하세요!</p>
-                                        </div>
-
-                                        <div className={styles.ladderContent}>
-                                            <div className={styles.ladderHeaderRow}>
-                                                {names.map((name, i) => (
-                                                    <div key={i} className={styles.ladderStartNode} onClick={() => runLadder(i)}>{name}</div>
-                                                ))}
+                                            <div className={styles.manualItem}>
+                                                <span className={styles.manualNum}>2</span>
+                                                <p>체크된 칸들이 가로, 세로, 대각선으로 한 줄이 되면 1빙고가 완성됩니다.</p>
                                             </div>
-
-                                            <div className={styles.ladderBoard}>
-                                                <svg className={styles.ladderSvgBackground}>
-                                                    {names.map((_, i) => (
-                                                        <line key={`v-${i}`} x1={`${(i / (names.length - 1)) * 100}%`} y1="0%" x2={`${(i / (names.length - 1)) * 100}%`} y2="100%" className={styles.bgLineV} />
-                                                    ))}
-                                                    {ladderData && ladderData.map((row, j) => (
-                                                        row.map((active, i) => (
-                                                            active && (
-                                                                <line
-                                                                    key={`h-${j}-${i}`}
-                                                                    x1={`${(i / (names.length - 1)) * 100}%`}
-                                                                    y1={`${8 + (j * (84 / (ladderData.length - 1)))}%`}
-                                                                    x2={`${((i + 1) / (names.length - 1)) * 100}%`}
-                                                                    y2={`${8 + (j * (84 / (ladderData.length - 1)))}%`}
-                                                                    className={styles.bgLineH}
-                                                                />
-                                                            )
-                                                        ))
-                                                    ))}
-                                                </svg>
-
-                                                <svg className={styles.ladderSvgOverlay} viewBox="0 0 100 100" preserveAspectRatio="none">
-                                                    {activePaths.map((p, idx) => (
-                                                        <motion.polyline
-                                                            key={p.startIndex}
-                                                            points={p.path.map(([line, y]) => {
-                                                                const x = (line / (names.length - 1)) * 100;
-                                                                return `${x},${y}`;
-                                                            }).join(' ')}
-                                                            className={styles.activePath}
-                                                            stroke={p.color}
-                                                            initial={{ pathLength: 0, opacity: 0 }}
-                                                            animate={{ pathLength: 1, opacity: 1 }}
-                                                            transition={{ duration: 4, ease: "linear" }}
-                                                        />
-                                                    ))}
-                                                </svg>
-
-                                                {activePaths.map((p, idx) => {
-                                                    const keyframesX = p.path.map(([line, y]) => `${(line / (names.length - 1)) * 100}%`);
-                                                    const keyframesY = p.path.map(([line, y]) => `${y}%`);
-
-                                                    return (
-                                                        <motion.div
-                                                            key={`animal-${p.startIndex}`}
-                                                            className={styles.animalIcon}
-                                                            initial={{ left: `${(p.startIndex / (names.length - 1)) * 100}%`, top: '0%' }}
-                                                            animate={{
-                                                                left: keyframesX,
-                                                                top: keyframesY
-                                                            }}
-                                                            transition={{ duration: 4, ease: "linear" }}
-                                                        >
-                                                            <div className={styles.animalFace}>
-                                                                {p.isFinished ? (p.isWinner ? '😭' : '😆') : p.animal}
-                                                            </div>
-                                                        </motion.div>
-                                                    );
-                                                })}
+                                            <div className={styles.manualItem}>
+                                                <span className={styles.manualNum}>3</span>
+                                                <p>총 5줄의 빙고를 먼저 완성하여 &apos;5 BINGO&apos;가 되면 승리합니다!</p>
                                             </div>
-
-                                            <div className={styles.ladderFooterRow}>
-                                                {ladderResults.map((res, i) => (
-                                                    <div key={i} className={styles.ladderEndNode}>{res}</div>
-                                                ))}
+                                            <div className={styles.manualItem}>
+                                                <span className={styles.manualNum}>4</span>
+                                                <p>동료들과 함께 누가 먼저 5빙고를 외치는지 대결해 보세요.</p>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-
-                                {activeGame === 'bingo' && (
-                                    <div className={styles.bingoContainer}>
-                                        <div className={styles.bingoBox}>
-                                            <div className={styles.bingoHeader}>
-                                                <h2>🚢 선사코드 5x5 빙고</h2>
-                                                <p>국제 선사코드(3자리)를 클릭하여 5빙고를 완성하세요!</p>
-                                                <div className={styles.bingoActions}>
-                                                    <button className={styles.regenerateBtn} onClick={initBingo}>빙고판 재구성</button>
-                                                </div>
-                                            </div>
-
-                                            <div className={styles.bingoGrid}>
-                                                {bingoGrid.map((cell, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className={`${styles.bingoCell} ${cell.marked ? styles.marked : ''} ${cell.isWinLine ? styles.win : ''}`}
-                                                        onClick={() => toggleBingoCell(idx)}
-                                                    >
-                                                        {cell.code}
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className={styles.bingoCount}>
-                                                {bingoCount} BINGO
-                                            </div>
-
-                                            <AnimatePresence>
-                                                {showBingoWin && (
-                                                    <motion.div
-                                                        className={styles.bingoWinOverlay}
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                    >
-                                                        <div className={styles.bingoWinContent}>
-                                                            <h2 style={{ fontSize: '4rem', marginBottom: '20px' }}>👑 BINGO!</h2>
-                                                            <p style={{ fontSize: '1.5rem', marginBottom: '30px' }}>축하합니다! 5빙고를 달성했습니다.</p>
-                                                            <button className={styles.closeBtn} onClick={() => setShowBingoWin(false)}>계속하기</button>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-
-                                        <aside className={styles.bingoManual}>
-                                            <h3>게임설명서</h3>
-                                            <div className={styles.manualList}>
-                                                <div className={styles.manualItem}>
-                                                    <span className={styles.manualNum}>1</span>
-                                                    <p>무작위로 배치된 선사코드(3자리) 중 부르는 코드를 클릭하여 체크하세요.</p>
-                                                </div>
-                                                <div className={styles.manualItem}>
-                                                    <span className={styles.manualNum}>2</span>
-                                                    <p>체크된 칸들이 가로, 세로, 대각선으로 한 줄이 되면 1빙고가 완성됩니다.</p>
-                                                </div>
-                                                <div className={styles.manualItem}>
-                                                    <span className={styles.manualNum}>3</span>
-                                                    <p>총 5줄의 빙고를 먼저 완성하여 '5 BINGO'가 되면 승리합니다!</p>
-                                                </div>
-                                                <div className={styles.manualItem}>
-                                                    <span className={styles.manualNum}>4</span>
-                                                    <p>동료들과 함께 누가 먼저 5빙고를 외치는지 대결해 보세요.</p>
-                                                </div>
-                                            </div>
-                                        </aside>
-                                    </div>
-                                )}
-                            </div>
-                        </section>
-                    </div>
-                </main>
-            </div>
+                                    </aside>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
     );
 }

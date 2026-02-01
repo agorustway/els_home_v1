@@ -714,12 +714,26 @@
 
     .input {
         min-width: 100%;
+        min-height: 44px;
+        padding: 12px 14px;
+    }
+
+    /* 터치 영역: 버튼 최소 44px */
+    .btnLogin,
+    .btnTemplate {
+        min-height: 44px;
+        padding: 10px 16px;
     }
 
     .table th,
     .table td {
-        padding: 5px 8px;
+        padding: 8px 10px;
         font-size: 0.8rem;
+    }
+
+    .dropZone {
+        min-height: 120px;
+        padding: 20px;
     }
 }
 

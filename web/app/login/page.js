@@ -98,8 +98,8 @@ function LoginForm() {
                         border: '1px solid #ffe2b7'
                     }}>
                         <strong>⚠️ 보안 브라우저 안내</strong><br />
-                        현재 브라우저(네이버/카카오 등)에서는 구글 로그인이 제한될 수 있습니다. 
-                        더 안전한 이용을 위해 <strong>'다른 브라우저로 열기'</strong>를 선택해 주세요.
+                        현재 브라우저(네이버/카카오 등)에서는 구글 로그인이 제한될 수 있습니다.
+                        더 안전한 이용을 위해 <strong>&apos;다른 브라우저로 열기&apos;</strong>를 선택해 주세요.
                     </div>
                 )}
 

@@ -102,7 +102,7 @@
 @media (max-width: 768px) {
     .inner {
         padding: 10px 16px;
-        gap: 10px;
+        gap: 12px;
         min-width: 0;
     }
 
@@ -115,13 +115,18 @@
     }
 
     .links {
-        gap: 4px;
+        gap: 6px;
     }
 
+    /* 터치 영역 최소 44px */
     .link,
     .linkBtn {
-        padding: 6px 10px;
-        font-size: 0.8rem;
+        padding: 10px 14px;
+        font-size: 0.85rem;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .searchWrap {

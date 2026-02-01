@@ -21,7 +21,7 @@ export default function Vision() {
                         whileInView={{ opacity: 1, y: 0 }}
                         className={styles.visionStatement}
                     >
-                        "고객중심 · 사회적공헌 · 상생윤리"
+                        &quot;고객중심 · 사회적공헌 · 상생윤리&quot;
                     </motion.div>
                 </div>
 
