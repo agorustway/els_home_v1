@@ -4,11 +4,23 @@ import fs from 'fs';
 
 let cached = null;
 
+function getDataPath() {
+  const cwd = process.cwd();
+  const candidates = [
+    path.join(cwd, 'data', 'safe-freight.json'),
+    path.join(cwd, 'web', 'data', 'safe-freight.json'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 function getData() {
   const isDev = process.env.NODE_ENV === 'development';
   if (!isDev && cached) return cached;
-  const p = path.join(process.cwd(), 'data', 'safe-freight.json');
-  if (!fs.existsSync(p)) return null;
+  const p = getDataPath();
+  if (!p) return null;
   const data = JSON.parse(fs.readFileSync(p, 'utf8'));
   if (!isDev) cached = data;
   return data;
