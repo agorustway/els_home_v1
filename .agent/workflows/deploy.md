@@ -16,7 +16,7 @@ git add .
 
 3. Commit changes
 ```powershell
-git commit -m "chore: automated deployment update"
+git commit -m "chore: 자동 배포 업데이트"
 ```
 
 4. Push to remote repository
