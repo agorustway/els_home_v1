@@ -207,7 +207,7 @@ export default function ContainerHistoryPage() {
 
         if (stepIndex === 1) {
             setLoginLoading(true);
-            setLogLines(prev => [...prev, '[자동 로그인] 값이 입력되어 자동 로그인 중입니다. 약 10초 대기 후 자동 조회됩니다.']);
+            setLogLines(prev => [...prev, '[자동 로그인] 값이 입력되어 자동 로그인 중입니다. 로그인·메뉴 이동 후 자동 조회됩니다.(보통 5~15초)']);
             try {
                 const loginRes = await fetch('/api/els/login', {
                     method: 'POST',
@@ -370,9 +370,6 @@ export default function ContainerHistoryPage() {
         { num: 4, label: '완료(다운로드 가능)' },
     ];
 
-    const downloadWinUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_WIN || '/api/downloads/els-win';
-    const downloadAndroidUrl = process.env.NEXT_PUBLIC_ELS_DOWNLOAD_ANDROID || '/api/downloads/els-android';
-
     return (
         <div className={styles.page}>
             <h1 className={styles.title}>컨테이너 이력조회</h1>
@@ -400,12 +397,9 @@ export default function ContainerHistoryPage() {
                         </strong>
                         <p>
                             {parseAvailable
-                                ? '로그인·조회는 이 환경에서는 불가합니다. 엑셀 업로드로 번호만 추출 가능하며, 전체 기능은 설치 프로그램을 이용하세요.'
-                                : (elsUnavailableReason || '설치 프로그램(PC/모바일 앱)을 다운로드해 사용하세요.')}
+                                ? '로그인·조회는 이 환경에서는 불가합니다. 엑셀 업로드로 번호만 추출 가능합니다.'
+                                : (elsUnavailableReason || '이 환경에서는 웹에서 조회를 실행할 수 없습니다.')}
                         </p>
-                        <a href="/employees/container-history/install" className={styles.installCtaButton}>
-                            설치 프로그램 및 사용 안내 보기
-                        </a>
                     </div>
                 </div>
             )}
@@ -670,31 +664,6 @@ export default function ContainerHistoryPage() {
                 </section>
             )}
                 </>
-            )}
-
-            {/* PC/모바일 앱: API 사용 가능 시 하단에 설치 안내 (한 페이지로 연결) */}
-            {elsAvailable === true && (
-                <section className={styles.downloadSection}>
-                    <h2 className={styles.downloadSectionTitle}>PC/모바일 앱으로 쓰려면</h2>
-                    <p className={styles.downloadSectionDesc}>
-                        웹에서 조회가 안 되거나, PC·모바일 앱을 쓰려면 아래 설치 프로그램을 받은 뒤 <strong>설치 및 사용 안내</strong> 페이지를 참고하세요.
-                    </p>
-                    <div className={styles.downloadLinks}>
-                        <a href={downloadWinUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
-                            <span className={styles.downloadCardIcon}>🖥️</span>
-                            <span className={styles.downloadCardLabel}>Windows 설치 프로그램</span>
-                            <span className={styles.downloadCardExt}>.exe</span>
-                        </a>
-                        <a href={downloadAndroidUrl} download className={styles.downloadCard} target="_blank" rel="noopener noreferrer">
-                            <span className={styles.downloadCardIcon}>📱</span>
-                            <span className={styles.downloadCardLabel}>Android 앱</span>
-                            <span className={styles.downloadCardExt}>.apk</span>
-                        </a>
-                    </div>
-                    <a href="/employees/container-history/install" className={styles.installGuideLink}>
-                        설치 프로그램 및 사용 안내 (상세)
-                    </a>
-                </section>
             )}
         </div>
     );

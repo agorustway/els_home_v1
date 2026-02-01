@@ -27,13 +27,12 @@ export async function middleware(request) {
         }
     )
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    // getSession(): 쿠키 기반으로 빠르게 확인 (getUser는 매 요청마다 서버 검증으로 지연 유발)
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
 
-    let userRole = 'visitor'; // Default to visitor if no user or role found
+    let userRole = 'visitor';
     if (user) {
-        // Use Email-based lookup (unified identity)
         const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', user.email).single();
         userRole = roleData?.role || 'visitor';
     }

@@ -10,24 +10,19 @@ export function useUserProfile() {
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession(): 로컬/쿠키 기반으로 빠르게 조회 (페이지 이동 시 지연 감소)
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
 
     if (user) {
-      // 1. Fetch from public.profiles using email (Primary identity)
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', user.email)
-        .single();
+      // profiles + user_roles 병렬 조회로 호출 횟수·대기 시간 축소
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('email', user.email).single(),
+        supabase.from('user_roles').select('*').eq('email', user.email).single(),
+      ]);
 
-      // 2. Fetch from public.user_roles using email (Identity merging)
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-
-      // Extract metadata fallback for avatars
+      const profileData = profileRes.data;
+      const roleData = roleRes.data;
       const meta = user.user_metadata || {};
       const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
 

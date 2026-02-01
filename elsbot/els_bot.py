@@ -4,6 +4,8 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoAlertPresentException
 import time
 import datetime
@@ -32,21 +34,40 @@ def check_alert(driver):
     except: return None
 
 def open_els_menu(driver):
+    """로그인 후 컨테이너 이동현황 메뉴 클릭. 대기 시간 단축(고정 sleep 축소)."""
     print("메뉴 진입 중...")
-    for _ in range(15):
+    for _ in range(20):
         check_alert(driver)
         frames = driver.find_elements(By.TAG_NAME, "iframe")
         for frame in [None] + frames:
             try:
-                if frame: driver.switch_to.frame(frame)
+                if frame:
+                    driver.switch_to.frame(frame)
                 target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
                 if target:
                     driver.execute_script("arguments[0].click();", target[0])
-                    time.sleep(2)
+                    # 페이지 전환 대기: 최대 5초, 최소 0.5초 (기존 2초 고정 제거)
+                    time.sleep(0.5)
+                    for _ in range(10):
+                        driver.switch_to.default_content()
+                        for f in driver.find_elements(By.TAG_NAME, "iframe"):
+                            try:
+                                driver.switch_to.frame(f)
+                                if driver.find_elements(By.CSS_SELECTOR, "input[id*='containerNo']"):
+                                    driver.switch_to.default_content()
+                                    return True
+                            except Exception:
+                                pass
+                            finally:
+                                driver.switch_to.default_content()
+                        time.sleep(0.5)
+                    driver.switch_to.default_content()
                     return True
-            except: continue
-            finally: driver.switch_to.default_content()
-        time.sleep(0.5)
+            except Exception:
+                continue
+            finally:
+                driver.switch_to.default_content()
+        time.sleep(0.3)
     return False
 
 def solve_input_and_search(driver, container_no):
@@ -128,13 +149,19 @@ def login_and_prepare(u_id, u_pw):
     driver = webdriver.Chrome(service=service, options=options)
     try:
         driver.get("https://etrans.klnet.co.kr/index.do")
-        time.sleep(1.5)
+        # 로그인 폼 로드 대기(최대 15초, 준비되면 즉시 진행)
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
+        )
         driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId").send_keys(u_id)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(u_pw)
         driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(Keys.ENTER)
-        time.sleep(4)
-        if open_els_menu(driver): return driver
-    except: pass
+        # 로그인 처리 대기: 2초로 단축(기존 4초). 메뉴 진입 루프에서 곧바로 메뉴 탐색
+        time.sleep(2)
+        if open_els_menu(driver):
+            return driver
+    except Exception:
+        pass
     if driver: driver.quit()
     return None
 
