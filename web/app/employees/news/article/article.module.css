@@ -1,0 +1,149 @@
+.page {
+    padding: 0;
+}
+
+.header {
+    margin-bottom: 16px;
+}
+
+.backLink {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2563eb;
+    text-decoration: none;
+}
+.backLink:hover {
+    text-decoration: underline;
+}
+
+.card {
+    background: #fff;
+    padding: 24px 28px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #f1f5f9;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 12px 0;
+    line-height: 1.35;
+}
+
+.source {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0 0 20px 0;
+}
+.sourceLink {
+    color: #2563eb;
+    word-break: break-all;
+}
+.sourceLink:hover {
+    text-decoration: underline;
+}
+
+.body {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: #334155;
+}
+
+.body p {
+    margin: 0 0 1em 0;
+}
+.body p:last-child {
+    margin-bottom: 0;
+}
+.body h1,
+.body h2,
+.body h3,
+.body h4 {
+    margin: 1.5em 0 0.5em 0;
+    font-weight: 700;
+    color: #1e293b;
+}
+.body h1:first-child,
+.body h2:first-child,
+.body h3:first-child,
+.body h4:first-child {
+    margin-top: 0;
+}
+.body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+    margin: 1em 0;
+}
+.body a {
+    color: #2563eb;
+    text-decoration: none;
+}
+.body a:hover {
+    text-decoration: underline;
+}
+.body ul,
+.body ol {
+    margin: 0.75em 0;
+    padding-left: 1.5em;
+}
+.body blockquote {
+    margin: 1em 0;
+    padding-left: 1em;
+    border-left: 4px solid #e2e8f0;
+    color: #64748b;
+}
+.body figure {
+    margin: 1em 0;
+}
+.body figcaption {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-top: 0.5em;
+}
+
+.loading,
+.error {
+    padding: 16px 0;
+    font-size: 0.95rem;
+    color: #64748b;
+}
+.error {
+    color: #dc2626;
+}
+.errorBlock {
+    padding: 20px 0;
+}
+.errorHint {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 8px 0 16px 0;
+}
+.originalLink {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+.originalLink:hover {
+    background: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+    .card {
+        padding: 16px 18px;
+    }
+    .title {
+        font-size: 1.25rem;
+    }
+    .body {
+        font-size: 0.95rem;
+    }
+}

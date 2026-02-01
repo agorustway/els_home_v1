@@ -85,6 +85,446 @@
     margin: 0;
 }
 
+/* 주요서비스 축소·재구성 */
+.portalHeaderCompact {
+    margin-bottom: 16px;
+}
+.portalTitleCompact {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+.gridContainerCompact {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    width: 100%;
+}
+.cardWrapCompact {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
+}
+.cardCompact {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f1f5f9;
+    border-left: 3px solid #2563eb;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 72px;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+}
+.cardCompact.cardWithBg {
+    border-left-color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+.cardCompact .cardTitleCompact,
+.cardCompact .cardCtaCompact,
+.cardCompact .cardLinksCompact,
+.cardCompact .cardLinkItemCompact {
+    position: relative;
+    z-index: 1;
+}
+.cardCompact .cardTitleCompact { color: #fff; }
+.cardCompact .cardCtaCompact { color: rgba(255, 255, 255, 0.95); }
+.cardCompact .cardLinkItemCompact {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.cardTitleCompact {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+.cardCtaCompact {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #2563eb;
+    margin-top: auto;
+}
+.cardWrapCompact:hover .cardCompact .cardCtaCompact { color: rgba(255, 255, 255, 0.95); }
+.cardLinksCompact {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.cardLinkItemCompact {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.cardLinkItemCompact:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* 날씨·뉴스 위젯 (최신 1개, 10초 로테이션) */
+.widgetSection {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+.widgetSectionHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.widgetSectionTitle {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+}
+.widgetSectionNote {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+.widgetRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+}
+.widgetCard {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s;
+}
+.widgetCard:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.widgetCardInner {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+}
+.widgetLabel {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.widgetPrimary {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.widgetSecondary,
+.widgetMeta {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+.widgetCta {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #2563eb;
+    margin-top: 4px;
+}
+.widgetCard:hover .widgetCta { color: #1d4ed8; }
+
+.widgetWeatherImg {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    opacity: 0.9;
+}
+.widgetNewsThumbWrap {
+    width: 100%;
+    height: 72px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+    margin-bottom: 6px;
+}
+.widgetNewsThumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.widgetNewsThumbPlaceholder {
+    width: 100%;
+    height: 100%;
+    background: url('/images/news-placeholder.svg') center/contain no-repeat;
+}
+
+/* 날씨 블록: 한 묶음 (큰 현위치 + 아래 다른 지역 리스트) - 뉴스와 열간격·구성 통일 */
+.weatherBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    padding: 16px 18px;
+    min-height: 240px;
+}
+.weatherBlockHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    min-height: 24px;
+}
+.weatherFeatured {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+.weatherFeatured:hover {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+.weatherFeaturedInner {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    min-height: 100px;
+}
+.widgetWeatherImgCurrent {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    opacity: 0.9;
+}
+.weatherBlockDesc {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: -2px 0 2px 0;
+}
+.widgetPrimaryCurrent {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+}
+.widgetSecondaryCurrent {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+.widgetWeatherTime {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+.weatherForecastDesc {
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.45;
+    margin: 4px 0 0 0;
+    padding: 0;
+}
+.weatherList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+    margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.weatherListItem {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    text-decoration: none;
+    color: inherit;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s;
+    position: relative;
+}
+.weatherListItem:last-child { border-bottom: none; }
+.weatherListItem:hover { background: #f8fafc; border-radius: 6px; }
+.weatherListIcon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    object-fit: contain;
+    opacity: 0.85;
+}
+.weatherListName {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    flex: 0 0 auto;
+    min-width: 2.2em;
+}
+.weatherListMeta {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 뉴스 블록: 많이 본 1건 크게 + 최신 3건 리스트 - 날씨와 열간격·구성 통일 */
+.newsBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    padding: 16px 18px;
+    min-height: 240px;
+}
+.newsBlockHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    min-height: 24px;
+}
+.newsMoreLink {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #2563eb;
+    text-decoration: none;
+}
+.newsMoreLink:hover { color: #1d4ed8; }
+.newsFeaturedCard {
+    display: flex;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #f1f5f9;
+    transition: all 0.2s;
+    margin-bottom: 2px;
+}
+.newsFeaturedCard:hover {
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.newsFeaturedThumb {
+    width: 120px;
+    min-width: 120px;
+    height: 88px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+.newsFeaturedImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.newsFeaturedBody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+.newsFeaturedBadge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.newsFeaturedTitle {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.newsList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+    margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.newsListItem {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 0;
+    text-decoration: none;
+    color: inherit;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s;
+}
+.newsListItem:last-child { border-bottom: none; }
+.newsListItem:hover { background: #f8fafc; border-radius: 6px; }
+.newsListTitle {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.newsListMeta {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
 .gridContainer {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -344,6 +784,27 @@
 }
 
 @media (max-width: 768px) {
+    .portalHeaderCompact { margin-bottom: 12px; }
+    .portalTitleCompact { font-size: 1.05rem; }
+    .cardCompact {
+        min-height: 64px;
+        padding: 12px 14px;
+    }
+    .cardTitleCompact { font-size: 0.85rem; }
+    .cardLinkItemCompact { min-height: 36px; padding: 6px 10px; }
+    .widgetSection { margin-top: 20px; padding-top: 18px; }
+    .widgetSectionTitle { font-size: 1rem; }
+    .widgetCardInner { padding: 14px 16px; }
+    .widgetPrimary { font-size: 0.9rem; }
+    .weatherFeaturedInner { padding: 14px 16px; min-height: 90px; }
+    .widgetWeatherImgCurrent { width: 56px; height: 56px; top: 12px; right: 12px; }
+    .weatherBlockDesc { font-size: 0.7rem; }
+    .weatherForecastDesc { font-size: 0.75rem; margin-top: 2px; }
+    .widgetPrimaryCurrent { font-size: 1.05rem; }
+    .weatherListIcon { width: 24px; height: 24px; min-width: 24px; }
+    .weatherListName { font-size: 0.8rem; }
+    .weatherListMeta { font-size: 0.7rem; }
+
     .portalSection {
         padding: 16px 0 32px;
     }
@@ -352,11 +813,24 @@
         margin-bottom: 20px;
     }
 
+    .portalTitle {
+        font-size: 1.25rem;
+    }
+
+    .portalSubtitle {
+        font-size: 0.85rem;
+    }
+
     .card {
-        padding: 20px;
-        padding-left: 24px;
+        padding: 20px 18px;
+        padding-left: 20px;
         border-radius: 14px;
         min-height: 140px;
+    }
+
+    /* 모바일: 배경 카드 오버레이 강화로 가독성 확보 */
+    .cardWithBg::before {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.78) 100%);
     }
 
     .cardTitle {
@@ -365,6 +839,21 @@
 
     .cardDesc {
         font-size: 0.85rem;
+    }
+
+    /* 터치 영역 최소 44px */
+    .cardCta {
+        min-height: 44px;
+        align-items: center;
+        padding: 4px 0;
+    }
+
+    .cardLinkItem {
+        min-height: 44px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
 
     .branchGrid {
@@ -403,6 +892,44 @@
 
     .gameWrapper {
         padding: 20px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .gridContainerCompact {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .portalHeaderCompact { margin-bottom: 10px; }
+    .portalTitleCompact { font-size: 1rem; }
+
+    .portalSection {
+        padding: 12px 0 24px;
+    }
+
+    .portalTitle {
+        font-size: 1.15rem;
+    }
+
+    .portalSubtitle {
+        font-size: 0.8rem;
+    }
+
+    .card {
+        padding: 16px 14px;
+        min-height: 120px;
+    }
+
+    .cardTitle {
+        font-size: 1rem;
+    }
+
+    .cardDesc {
+        font-size: 0.8rem;
+    }
+
+    .gridContainer {
+        gap: 12px;
     }
 }
 

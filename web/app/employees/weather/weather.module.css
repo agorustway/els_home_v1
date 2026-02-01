@@ -1,0 +1,216 @@
+.page {
+    padding: 0;
+}
+
+.header {
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.updated {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 8px 0 0 0;
+}
+
+.card {
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #f1f5f9;
+}
+
+/* 현위치 고정 - 큰 이미지 */
+.currentSection {
+    margin-bottom: 24px;
+}
+.currentSectionTitle {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 10px 0;
+}
+.currentHero {
+    min-height: 240px;
+    padding: 28px 28px 28px 24px;
+    background-size: 280px;
+    background-repeat: no-repeat;
+    background-position: right 28px center;
+    background-color: #f0f9ff;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+}
+.currentHeroContent {
+    max-width: 50%;
+}
+.currentHeroLabel {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0c4a6e;
+}
+.currentHeroDesc {
+    font-size: 1.1rem;
+    color: #0369a1;
+}
+
+/* 다른 지역 3개 - 작은 이미지, 5초마다 전환 */
+.otherSection {
+    margin-bottom: 24px;
+}
+.otherSectionTitle {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #64748b;
+    margin: 0 0 12px 0;
+}
+.otherRow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.otherCard {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.otherCardImg {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+.otherCardName {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+}
+.otherCardTemp {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.cellWeather {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.weatherIcon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+.label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.select {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 1rem;
+    background: #fff;
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #334155;
+    margin: 24px 0 12px 0;
+}
+
+.hourlyWrap {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    min-width: 320px;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.loading,
+.error {
+    padding: 16px 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.error {
+    color: #dc2626;
+}
+
+@media (max-width: 768px) {
+    .currentHero {
+        min-height: 160px;
+        padding: 20px 20px 20px 16px;
+        background-size: 140px;
+        background-position: right 16px center;
+    }
+    .currentHeroLabel { font-size: 1.1rem; }
+    .currentHeroDesc { font-size: 1rem; }
+    .otherRow { gap: 8px; }
+    .otherCard { padding: 10px 12px; }
+    .otherCardImg { width: 40px; height: 40px; }
+    .otherCardName { font-size: 0.8rem; }
+    .otherCardTemp { font-size: 0.85rem; }
+
+    .card {
+        padding: 16px;
+    }
+
+    .select {
+        max-width: 100%;
+        min-height: 44px;
+    }
+
+    .table th,
+    .table td {
+        padding: 8px 10px;
+        font-size: 0.875rem;
+    }
+}
