@@ -436,6 +436,10 @@
     min-width: 800px; /* Match ladderBoard width to align nodes */
 }
 
+.ladderHeaderRow {
+    margin-bottom: 28px; /* 이름과 사다리 시작점 사이 간격 (가려짐 방지) */
+}
+
 .ladderStartNode {
     width: 100px;
     padding: 12px 5px;

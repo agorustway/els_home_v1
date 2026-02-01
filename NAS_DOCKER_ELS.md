@@ -102,9 +102,23 @@ git fetch origin main && git reset --hard origin/main
 
 이후 코드 반영 시:
 
+**방법 1 — 한 번에 실행 (권장)**  
+프로젝트 루트에 `nas-deploy.sh` 가 있으면, NAS SSH에서 아래만 실행하면 됩니다.
+
 ```bash
 cd /volume1/docker/els_home_v1
-git pull
+sh nas-deploy.sh
+```
+
+(또는 `chmod +x nas-deploy.sh` 후 `./nas-deploy.sh`)  
+스크립트가 하는 일: `git fetch` + `git reset --hard origin/main` → 이미지 빌드 → 컨테이너 down/up.
+
+**방법 2 — 명령어 하나씩 실행**
+
+```bash
+cd /volume1/docker/els_home_v1
+/opt/bin/git fetch origin main
+/opt/bin/git reset --hard origin/main
 sudo docker build --no-cache -t els-backend:latest .
 sudo docker-compose -f docker/docker-compose.yml down
 sudo docker-compose -f docker/docker-compose.yml up -d
@@ -166,6 +180,15 @@ ELS_BACKEND_URL=https://elssolution.synology.me:8443
 
 저장 후 Next 서버 다시 실행하면, 컨테이너 이력 페이지에서 버튼 누를 때 **로컬 사이트가 NAS의 컨테이너 조회 API**로 요청을 보냅니다.  
 (나머지 페이지·로그인·게시판 등은 전부 로컬 그대로입니다.)
+
+**Vercel 배포(www.nollae.com) 시**
+
+- 사이트를 Vercel에 배포했다면, **Vercel 대시보드 → 프로젝트 → Settings → Environment Variables** 에서 아래 두 개를 반드시 설정하세요.
+  - **`ELS_BACKEND_URL`** = `https://elssolution.synology.me:8443`  
+    → 로그인·조회 API 요청을 NAS로 프록시할 때 사용.
+  - **`NEXT_PUBLIC_ELS_BACKEND_URL`** = `https://elssolution.synology.me:8443`  
+    → **엑셀 다운로드** 링크가 NAS를 가리키도록 할 때 사용. (이걸 안 넣으면 다운로드 시 "페이지를 찾을 수 없음" 404가 납니다.)
+- 두 값은 같은 NAS 주소로 넣으면 됩니다. 저장 후 **Redeploy** 한 번 해 주세요.
 
 ---
 

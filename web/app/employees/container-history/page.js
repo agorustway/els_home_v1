@@ -326,7 +326,12 @@ export default function ContainerHistoryPage() {
         if (!downloadToken) return;
         const q = new URLSearchParams({ token: downloadToken });
         if (resultFileName) q.set('filename', resultFileName);
-        window.open(`/api/els/download?${q.toString()}`, '_blank');
+        // 조회·파일은 NAS에서 처리되므로 다운로드도 NAS URL로 요청 (Vercel 404 방지)
+        const downloadBase = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+        const downloadUrl = downloadBase
+            ? `${downloadBase.replace(/\/$/, '')}/api/els/download?${q.toString()}`
+            : `/api/els/download?${q.toString()}`;
+        window.open(downloadUrl, '_blank');
     };
 
     const sheet1Rows = result?.sheet1 || [];

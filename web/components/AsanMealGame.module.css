@@ -490,6 +490,10 @@
     width: 100%;
 }
 
+.ladderHeaderRow {
+    margin-bottom: 20px; /* 이름과 사다리 시작점 사이 간격 (가려짐 방지) */
+}
+
 .ladderNodeWrapper {
     position: absolute;
     top: 0;
@@ -555,8 +559,8 @@
 .ladderBoard {
     position: relative;
     height: 500px;
-    margin: -10px 0 10px;
-    /* Pull up to connect with headers */
+    margin: 0 0 10px;
+    /* 이름 아래로 시작점 내림 (가려짐 방지) */
     z-index: 5;
 }
 
