@@ -345,6 +345,23 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.inputDong {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inputDong:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .periodHint {
   font-size: 0.8rem;
   color: #64748b;
@@ -574,6 +591,25 @@
   display: flex;
   gap: 20px;
   align-items: center;
+}
+
+.tagRound,
+.tagOneWay {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tagRound {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.tagOneWay {
+  background: #ffedd5;
+  color: #9a3412;
 }
 
 /* 동 정보 힌트 스타일 */

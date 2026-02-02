@@ -134,7 +134,7 @@ export default function SafeFreightPage() {
       setRegion3('인주면');
       setTripMode('round');
     } else {
-      const p = options?.periods?.find((x) => x.id === '12월') ? '12월' : options?.periods?.[0]?.id;
+      const p = options?.periods?.find((x) => x.id === '26.02월') ? '26.02월' : options?.periods?.[0]?.id;
       if (p) setPeriod(p);
       setRegion1('');
       setRegion2('');
@@ -237,7 +237,7 @@ export default function SafeFreightPage() {
       fixedApplied: fixedItems,
       regulation: reg,
     };
-  }, [options?.surcharges, options?.surchargeRegulation, surchargeIds, roughPct]);
+  }, [options?.surcharges, options?.surchargeRegulation, surchargeIds, roughPct, queryType, tripMode]);
 
   /** 할증 적용한 금액 객체 반환 (고시 제22조: 할증률 최대 3개, 1개 전액·나머지 50%) */
   const applySurchargesToRow = useMemo(() => {
@@ -278,9 +278,10 @@ export default function SafeFreightPage() {
         f20위탁,
         f20운수자,
         f20안전,
+        tripMode,
       };
     };
-  }, [appliedSurchargeInfo]);
+  }, [appliedSurchargeInfo, queryType, tripMode]);
 
   const runLookup = async () => {
     setLookupError(null);
@@ -355,6 +356,7 @@ export default function SafeFreightPage() {
           savedAt: new Date().toISOString(),
           type: data.type,
           typeLabel,
+          tripMode,
           period: data.period ?? period,
           origin: data.origin,
           destination: data.destination,
@@ -418,6 +420,7 @@ export default function SafeFreightPage() {
             period: applied.period,
             origin: resultAll.origin ?? '',
             destination: resultAll.destination ?? '',
+            tripMode: applied.tripMode === 'oneWay' ? '편도' : '왕복',
             km: applied.km,
             f40위탁: applied.f40위탁,
             f40운수자: applied.f40운수자,
@@ -467,7 +470,7 @@ export default function SafeFreightPage() {
   /** 전체 조회 시: 선택월 최상단 → 나머지 최신순 */
   const displayRows = useMemo(() => {
     if (!resultAll?.rows?.length) return [];
-    const isMultiRowType = queryType === 'section' || queryType === 'other';
+    const isMultiRowType = queryType === 'section' || queryType === 'other' || queryType === 'distance';
     if (!isMultiRowType || displayMode !== 'all') return resultAll.rows.slice(0, 1);
 
     const rows = [...resultAll.rows];
@@ -647,18 +650,20 @@ export default function SafeFreightPage() {
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
-                      <select
-                        className={styles.select}
+                      <input
+                        className={styles.inputDong}
                         value={region3}
                         onChange={(e) => setRegion3(e.target.value)}
-                        aria-label="읍·면·동"
+                        placeholder="읍·면·동 (직접 입력/선택)"
+                        list="dong-options"
                         disabled={!region2}
-                      >
-                        <option value="">읍·면·동</option>
+                        aria-label="읍·면·동 입력"
+                      />
+                      <datalist id="dong-options">
                         {region3List.map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
-                      </select>
+                      </datalist>
                     </div>
                     {queryType === 'other' && selectedOtherSectionInfo && (selectedOtherSectionInfo.hDong !== selectedOtherSectionInfo.bDong) && (
                       <div className={styles.dongHint}>
@@ -752,7 +757,7 @@ export default function SafeFreightPage() {
                 </>
               )}
 
-              {(queryType === 'section' || queryType === 'other') && (
+              {(queryType === 'section' || queryType === 'other' || queryType === 'distance') && (
                 <div className={styles.modeRow}>
                   <span className={styles.modeLabel}>표시</span>
                   <label className={styles.radioLabel}>
@@ -999,8 +1004,9 @@ export default function SafeFreightPage() {
               <thead>
                 <tr>
                   <th rowSpan={2}>적용</th>
-                  <th rowSpan={2}>구간</th>
+                  <th rowSpan={2}>기점</th>
                   <th rowSpan={2}>행선지</th>
+                  <th rowSpan={2}>구분</th>
                   <th rowSpan={2}>거리(KM)</th>
                   <th colSpan={3} className={styles.thGroup}>40FT</th>
                   <th colSpan={3} className={styles.thGroup}>20FT</th>
@@ -1025,6 +1031,11 @@ export default function SafeFreightPage() {
                       <td>{applied.period}</td>
                       <td>{resultAll.origin || '-'}</td>
                       <td>{resultAll.destination || '-'}</td>
+                      <td>
+                        <span className={applied.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
+                          {applied.tripMode === 'oneWay' ? '편도' : '왕복'}
+                        </span>
+                      </td>
                       <td className={styles.cellKm}>{applied.km}</td>
                       <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
                       <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
@@ -1083,6 +1094,9 @@ export default function SafeFreightPage() {
                       <span className={styles.savedDateTime}>{savedAtStr}</span>
                       {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
                       <span className={styles.savedType}>{s.typeLabel}</span>
+                      <span className={s.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
+                        {s.tripMode === 'oneWay' ? '편도' : '왕복'}
+                      </span>
                       <span className={styles.savedCond}>
                         {s.origin && `${s.origin} → `}
                         {s.destination || '-'}

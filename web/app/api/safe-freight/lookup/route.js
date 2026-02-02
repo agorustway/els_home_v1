@@ -45,34 +45,41 @@ export async function GET(request) {
 
   // ========== 거리별운임 조회 ==========
   if (type === 'distance') {
-    const distKey = `${period}|${distType}`.trim();
-    const rows = data.distanceByPeriod?.[distKey];
-    if (!rows || !rows.length) {
-      return NextResponse.json({ error: '해당 기간·구분의 거리별 운임을 찾을 수 없습니다.', key: distKey }, { status: 404 });
-    }
     if (Number.isNaN(km) || km < 1) {
       return NextResponse.json({ error: '거리(km)를 입력하세요.' }, { status: 400 });
     }
-    let row = rows.find((r) => r.km === km);
-    if (!row) {
-      const lower = rows.filter((r) => r.km <= km);
-      row = lower.length ? lower[lower.length - 1] : rows[0];
+
+    const periods = data.periods || [];
+    const resRows = [];
+    const useDistType = distType || (data.distanceTypes?.[0]) || '가. 거리(km)별 운임(왕복)';
+
+    for (const p of periods) {
+      const distKey = `${p.id}|${useDistType}`.trim();
+      const dRows = data.distanceByPeriod?.[distKey];
+      if (dRows && dRows.length) {
+        let row = dRows.find((r) => r.km === km);
+        if (!row) {
+          const lower = dRows.filter((r) => r.km <= km);
+          row = lower.length ? lower[lower.length - 1] : dRows[0];
+        }
+        resRows.push({
+          period: p.id,
+          km: row.km,
+          f40위탁: row.f40위탁,
+          f40운수자: row.f40운수자,
+          f40안전: row.f40안전,
+          f20위탁: row.f20위탁,
+          f20운수자: row.f20운수자,
+          f20안전: row.f20안전,
+        });
+      }
     }
+
     return NextResponse.json({
       type: 'distance',
-      period,
-      distType,
-      km: row.km,
-      rows: [{
-        period,
-        km: row.km,
-        f40위탁: row.f40위탁,
-        f40운수자: row.f40운수자,
-        f40안전: row.f40안전,
-        f20위탁: row.f20위탁,
-        f20운수자: row.f20운수자,
-        f20안전: row.f20안전,
-      }],
+      distType: useDistType,
+      km,
+      rows: resRows,
     });
   }
 

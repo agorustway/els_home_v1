@@ -162,11 +162,12 @@ dataRows3.forEach((row) => {
   if (Number.isNaN(kmInt)) return;
 
   const val = { km, kmInt, hDong: 행정동, bDong: 법정동, applyPeriod: 적용 };
+  if (!otherRegions[기점]) otherRegions[기점] = {};
+  if (!otherRegions[기점][시도]) otherRegions[기점][시도] = {};
+  if (!otherRegions[기점][시도][시군구]) otherRegions[기점][시도][시군구] = [];
+
   if (행정동) {
     otherSections[`${기점}|${시도}|${시군구}|${행정동}`] = val;
-    if (!otherRegions[기점]) otherRegions[기점] = {};
-    if (!otherRegions[기점][시도]) otherRegions[기점][시도] = {};
-    if (!otherRegions[기점][시도][시군구]) otherRegions[기점][시도][시군구] = [];
     if (!otherRegions[기점][시도][시군구].includes(행정동)) otherRegions[기점][시도][시군구].push(행정동);
   }
   if (법정동 && 법정동 !== 행정동) {
