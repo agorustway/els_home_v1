@@ -27,7 +27,14 @@ function ArticleContent() {
         setLoading(true);
         setError(null);
         fetch(`/api/news/article?url=${encodeURIComponent(url)}`)
-            .then((res) => res.json())
+            .then(async (res) => {
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return res.json();
+                }
+                const text = await res.text();
+                throw new Error('뉴스 본문을 불러올 수 없습니다. 아래 [원본 보기]를 이용해주세요.');
+            })
             .then((json) => {
                 if (json.error && !json.content) {
                     setError(json.error);
@@ -38,6 +45,7 @@ function ArticleContent() {
                 }
             })
             .catch((e) => {
+                console.error('Fetch error:', e);
                 setError(e.message || '본문을 불러올 수 없습니다.');
                 setArticle(null);
             })

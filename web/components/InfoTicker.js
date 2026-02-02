@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import styles from './InfoTicker.module.css';
 
+import { useRouter } from 'next/navigation';
+import { useUserRole } from '@/hooks/useUserRole';
+import ApprovalModal from './ApprovalModal';
+
 const OTHER_REGION_IDS = ['seoul', 'busan', 'daegu', 'incheon', 'daejeon', 'gwangju', 'ulsan', 'suwon', 'changwon', 'sejong', 'asan', 'dangjin', 'yesan'];
 const ROTATE_INTERVAL_MS = 5000;
 
@@ -18,11 +22,14 @@ function getWeatherImagePath(code) {
 }
 
 export default function InfoTicker({ style }) {
+    const router = useRouter();
+    const { role } = useUserRole();
     const [mounted, setMounted] = useState(false);
     const [liveTime, setLiveTime] = useState(null);
     const [newsItems, setNewsItems] = useState([]);
     const [tickerRegionIndex, setTickerRegionIndex] = useState(0);
     const [tickerWeather, setTickerWeather] = useState(null);
+    const [showModal, setShowModal] = useState(false);
 
     // 마운트 체크
     useEffect(() => {
@@ -63,6 +70,14 @@ export default function InfoTicker({ style }) {
 
     if (!mounted) return null;
 
+    const handleRestrictedClick = (path) => {
+        if (!role) {
+            setShowModal(true);
+            return;
+        }
+        router.push(path);
+    };
+
     const formatTickerTime = (date) => {
         if (!date) return '';
         const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -77,41 +92,55 @@ export default function InfoTicker({ style }) {
     };
 
     return (
-        <div className={styles.tickerBar} style={style}>
-            <div className={styles.tickerInfo}>
-                <div className={styles.tickerClock}>
-                    {formatTickerTime(liveTime)}
-                </div>
-                {tickerWeather && (
-                    <div className={styles.tickerWeather}>
-                        <img
-                            src={getWeatherImagePath(tickerWeather.hourly?.[0]?.code)}
-                            alt=""
-                            className={styles.tickerWeatherIcon}
-                        />
-                        <span className={styles.tickerWeatherText}>
-                            {tickerWeather.region.name} {tickerWeather.hourly?.[0]?.temp}°C
-                        </span>
+        <>
+            <div className={styles.tickerBar} style={style}>
+                <div className={styles.tickerInfo}>
+                    <div className={styles.tickerClock}>
+                        {formatTickerTime(liveTime)}
                     </div>
-                )}
-            </div>
-            <div className={styles.tickerDivider}></div>
-            <div className={styles.tickerNews}>
-                <div className={styles.tickerNewsLabel}>HEADLINE</div>
-                <div className={styles.tickerNewsTrack}>
-                    <div className={styles.tickerNewsScroll}>
-                        {newsItems.length > 0 ? (
-                            [...newsItems, ...newsItems].map((item, i) => (
-                                <span key={i} className={styles.tickerNewsItem}>
-                                    {item.title}
-                                </span>
-                            ))
-                        ) : (
-                            <span className={styles.tickerNewsItem}>최신 뉴스를 불러오는 중입니다...</span>
-                        )}
+                    {tickerWeather && (
+                        <div
+                            className={styles.tickerWeather}
+                            onClick={() => handleRestrictedClick('/employees/weather')}
+                            style={{ cursor: 'pointer' }}
+                            title="날씨 상세 보기"
+                        >
+                            <img
+                                src={getWeatherImagePath(tickerWeather.hourly?.[0]?.code)}
+                                alt=""
+                                className={styles.tickerWeatherIcon}
+                            />
+                            <span className={styles.tickerWeatherText}>
+                                {tickerWeather.region.name} {tickerWeather.hourly?.[0]?.temp}°C
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className={styles.tickerDivider}></div>
+                <div className={styles.tickerNews}>
+                    <div className={styles.tickerNewsLabel}>HEADLINE</div>
+                    <div className={styles.tickerNewsTrack}>
+                        <div className={styles.tickerNewsScroll}>
+                            {newsItems.length > 0 ? (
+                                [...newsItems, ...newsItems].map((item, i) => (
+                                    <span
+                                        key={i}
+                                        className={styles.tickerNewsItem}
+                                        onClick={() => handleRestrictedClick(`/employees/news/article?url=${encodeURIComponent(item.link)}`)}
+                                        style={{ cursor: 'pointer' }}
+                                        title={item.title}
+                                    >
+                                        {item.title}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className={styles.tickerNewsItem}>최신 뉴스를 불러오는 중입니다...</span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+            <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
+        </>
     );
 }
