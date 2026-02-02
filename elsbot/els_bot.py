@@ -137,14 +137,14 @@ def scrape_hyper_verify(driver, search_no):
     except: return None
 
 def login_and_prepare(u_id, u_pw, log_callback=None):
-    """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지).
-    log_callback(msg) 호출 시 단계별 로그 전달(진행시간 포함)."""
+    """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지)."""
     def _log(msg, elapsed=None):
         if log_callback is not None:
             log_callback(f"{msg} ({elapsed}초)" if elapsed is not None else msg)
+    
     start = time.time()
-    if log_callback is not None:
-        log_callback("로그인중 (0초)")
+    if log_callback: log_callback("로그인 시도 중...")
+    
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -155,56 +155,57 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
     if os.environ.get("CHROME_BIN"):
         options.binary_location = os.environ["CHROME_BIN"]
     service = Service(os.environ["CHROME_DRIVER_BIN"]) if os.environ.get("CHROME_DRIVER_BIN") else Service(ChromeDriverManager().install())
+    
     driver = None
     try:
         driver = webdriver.Chrome(service=service, options=options)
         driver.get("https://etrans.klnet.co.kr/index.do")
-        # 로그인 폼 로드 대기(NAS 느림 고려하여 15 -> 25초로 연장)
-        WebDriverWait(driver, 25).until(
+        
+        # [수정] 무조건 2초 대기 -> 요소가 나올 때까지 최대 30초 대기 (NAS 성능 고려)
+        WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
         )
         
-        # [안정성 강화] 입력 씹힘 방지: 클릭 -> 초기화 -> 대기 -> 입력
-        u_elem = driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId")
-        u_elem.click()
-        u_elem.clear()
+        # [수정] 입력 씹힘 방지: 클릭 -> 초기화 -> 대기 -> 입력
         time.sleep(0.5)
-        u_elem.send_keys(u_id)
+        uid_input = driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId")
+        uid_input.click()
+        uid_input.clear()
+        uid_input.send_keys(u_id)
         
-        p_elem = driver.find_element(By.ID, "mf_wfm_subContainer_sct_password")
-        p_elem.click()
-        p_elem.clear()
+        pw_input = driver.find_element(By.ID, "mf_wfm_subContainer_sct_password")
+        pw_input.click()
+        pw_input.clear()
+        pw_input.send_keys(u_pw)
+        
+        # 엔터 입력 전 살짝 대기
         time.sleep(0.5)
-        p_elem.send_keys(u_pw)
-        time.sleep(0.5)
+        pw_input.send_keys(Keys.ENTER)
         
-        p_elem.send_keys(Keys.ENTER)
+        # 로그인 처리 대기 (PC 8초 -> NAS 10초 여유)
+        time.sleep(10)
         
-        # 로그인 처리 대기: PC용 잘 되던 값 8초 (NAS 등에서 세션 반영 느릴 수 있음)
-        time.sleep(10) # 8초 -> 10초로 약간 더 여유 둠
         _log("로그인 완료", elapsed=int(round(time.time() - start)))
         _log("컨테이너 이동현황 페이지로 이동중")
+        
         menu_start = time.time()
         if open_els_menu(driver):
             _log("이동완료", elapsed=int(round(time.time() - menu_start)))
             _log("조회시작")
             return (driver, None)
-        if driver:
-            driver.quit()
+            
+        if driver: driver.quit()
         _log("이동 실패")
-        return (None, "메뉴(컨테이너 이동현황)를 찾을 수 없습니다. 아이디/비밀번호 또는 ETRANS 접속 상태를 확인하세요.")
+        return (None, "로그인은 된 것 같으나 메뉴(컨테이너 이동현황) 진입에 실패했습니다.")
+        
     except Exception as e:
         if driver:
-            try:
-                driver.quit()
-            except Exception:
-                pass
-        err_msg = str(e).strip() or "알 수 없는 오류"
-        if "timeout" in err_msg.lower() or "타임아웃" in err_msg:
-            return (None, "페이지 로드 타임아웃. ETRANS(etrans.klnet.co.kr) 접속이 느리거나 불가합니다.")
-        if "chromedriver" in err_msg.lower() or "chrome" in err_msg.lower():
-            return (None, "Chrome/Chromium 실행 오류. NAS Docker에 Chrome이 설치되어 있는지 확인하세요.")
-        return (None, f"[오류] {err_msg[:200]}")
+            try: driver.quit()
+            except: pass
+        err_msg = str(e)
+        if "TimeOut" in err_msg or "Timed out" in err_msg:
+            return (None, "사이트 접속 시간 초과 (NAS 네트워크/성능 문제). 30초 내에 입력창이 뜨지 않았습니다.")
+        return (None, f"[시스템 에러] {err_msg[:100]}")
 
 def main():
     config = load_config()

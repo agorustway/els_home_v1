@@ -117,6 +117,13 @@ sh nas-deploy.sh
 (또는 `chmod +x nas-deploy.sh` 후 `./nas-deploy.sh`)  
 스크립트가 하는 일: `git fetch` + `git reset --hard origin/main` → 이미지 빌드 → 컨테이너 down/up.
 
+> **[주의] "fatal: detected dubious ownership" 오류 발생 시**
+> NAS 파일 시스템 권한 문제로 Git이 실행되지 않을 때가 있습니다. 아래 명령어를 한 번 실행해서 해당 폴더를 승인해 주세요.
+>
+> ```bash
+> git config --global --add safe.directory /volume1/docker/els_home_v1
+> ```
+
 **방법 2 — 명령어 하나씩 실행**
 
 ```bash
