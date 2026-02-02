@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import styles from './employees.module.css';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const Arrow = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>;
 
@@ -27,10 +28,10 @@ function getWeatherImagePath(code) {
     if (code == null) return '/images/weather/sunny_3d.png';
     if (code <= 1) return '/images/weather/sunny_3d.png';
     if (code <= 3) return '/images/weather/cloudy_3d.png';
-    if (code === 45 || code === 48) return '/images/weather/fog.svg';
+    if (code === 45 || code === 48) return '/images/weather/cloudy_3d.png'; // Use cloudy icon for fog for consistency
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '/images/weather/rain_3d.png';
     if (code >= 71 && code <= 77) return '/images/weather/snow_3d.png';
-    if (code >= 95) return '/images/weather/thunder.svg';
+    if (code >= 95) return '/images/weather/thunder_3d.png';
     return '/images/weather/cloudy_3d.png';
 }
 
@@ -69,8 +70,23 @@ function formatNewsDateKorea(pubDate) {
 }
 
 export default function EmployeesPortal() {
+    const { role, loading: authLoading, user } = useUserRole();
     const [weatherData, setWeatherData] = useState(null);
     const [newsItems, setNewsItems] = useState([]);
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+
+    useEffect(() => {
+        // 회원이지만 소속 지점(Role)이 visitor인 경우 팝업 노출 (세션당 1회)
+        const hasSeen = sessionStorage.getItem('approval_modal_seen');
+        if (!authLoading && user && role === 'visitor' && !hasSeen) {
+            setShowApprovalModal(true);
+        }
+    }, [authLoading, user, role]);
+
+    const handleCloseModal = () => {
+        setShowApprovalModal(false);
+        sessionStorage.setItem('approval_modal_seen', 'true');
+    };
 
     const doFetchWeather = useCallback((regionId) => {
         fetch(`/api/weather?region=${regionId}`)
@@ -306,6 +322,36 @@ export default function EmployeesPortal() {
                     </div>
                 </section>
             </div>
+
+            {/* 승인 대기 안내 모달 */}
+            <AnimatePresence>
+                {showApprovalModal && (
+                    <div className={styles.modalOverlay} onClick={handleCloseModal}>
+                        <motion.div
+                            className={styles.modalContent}
+                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        >
+                            <span className={styles.modalIcon}>📢</span>
+                            <h2 className={styles.modalTitle}>권한 승인 대기 안내</h2>
+                            <p className={styles.modalDesc}>
+                                현재 소속 지점 및 권한이 배정되지 않았습니다.<br />
+                                임직원의 경우 서비스 이용을 위해 <strong>지점 배정과 관리자의 최종 승인</strong>이 필요합니다.<br /><br />
+                                가입 직후이거나 배정을 기다리고 계신 경우,<br />
+                                관리자에게 승인 요청 문의를 해주시기 바랍니다.
+                            </p>
+                            <button
+                                className={styles.modalBtn}
+                                onClick={handleCloseModal}
+                            >
+                                확인하였습니다
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
