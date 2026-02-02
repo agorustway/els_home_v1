@@ -160,15 +160,15 @@
     height: 100%;
     overflow: auto;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 20px;
 }
 
 .zoomImage {
-    max-width: 900px;
-    width: 95%;
+    max-width: min(900px, 90vw);
+    max-height: 90vh;
+    width: auto;
     height: auto;
     object-fit: contain;
     border-radius: 4px;
@@ -176,7 +176,6 @@
     cursor: zoom-in !important;
     transition: all 0.2s ease;
     background: #fff;
-    flex-shrink: 0;
 }
 
 .zoomImage.zoomedIn {
@@ -187,10 +186,14 @@
     cursor: zoom-out !important;
 }
 
-/* When zoomed in, align container to top-left for scrolling */
 .zoomContainerExpanded {
-    align-items: flex-start !important;
-    justify-content: flex-start !important;
+    display: block !important;
+    padding: 20px !important;
+}
+
+.zoomContainerExpanded .zoomImage {
+    display: block;
+    margin: 0;
 }
 
 .zoomClose {
