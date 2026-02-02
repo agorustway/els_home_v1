@@ -24,27 +24,28 @@ function weatherCodeToLabel(code) {
 }
 
 function getWeatherImagePath(code) {
-    if (code == null) return '/images/weather/sunny.svg';
-    if (code <= 1) return '/images/weather/sunny.svg';
-    if (code <= 3) return '/images/weather/cloudy.svg';
+    if (code == null) return '/images/weather/sunny_3d.png';
+    if (code <= 1) return '/images/weather/sunny_3d.png';
+    if (code <= 3) return '/images/weather/cloudy_3d.png';
     if (code === 45 || code === 48) return '/images/weather/fog.svg';
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '/images/weather/rain.svg';
-    if (code >= 71 && code <= 77) return '/images/weather/snow.svg';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '/images/weather/rain_3d.png';
+    if (code >= 71 && code <= 77) return '/images/weather/snow_3d.png';
     if (code >= 95) return '/images/weather/thunder.svg';
-    return '/images/weather/cloudy.svg';
+    return '/images/weather/cloudy_3d.png';
 }
 
-/** 날씨 API time (ISO "2026-01-30T14:00") → "1월 30일 14:00" */
+/** 날씨 API time (ISO "2026-01-30T14:00") → "2026년 1월 30일 14:00" */
 function formatWeatherDateTime(isoTime) {
     if (!isoTime || typeof isoTime !== 'string') return '';
     try {
         const d = new Date(isoTime);
         if (Number.isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
         const month = d.getMonth() + 1;
         const date = d.getDate();
         const h = d.getHours();
         const m = d.getMinutes();
-        return `${month}월 ${date}일 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        return `${y}년 ${month}월 ${date}일 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     } catch {
         return '';
     }

@@ -714,7 +714,7 @@
 
 .table th,
 .table td {
-  padding: 14px 18px;
+  padding: 8px 12px;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   border-right: 1px solid #e2e8f0;
@@ -770,8 +770,10 @@
   border-left: 2px solid #475569;
 }
 
+/* thead 2행 alignment: 첫 4개 th는 colspan/rowspan에 생략되고, 실제론 40FT/20FT 하위 th들이 나열됨 */
 .table thead tr:nth-child(2) th {
-  text-align: right;
+  text-align: center;
+  /* 헤더는 가운데 정렬이 깔끔할 수 있음. 하지만 수치 데이터면 우측도 고려 */
 }
 
 /* 조회값 첫 행 음영 진하게 */
@@ -803,6 +805,32 @@
 .table td:nth-child(1),
 .table td:nth-child(2) {
   text-align: center;
+}
+
+/* 금액/숫자 시인성 강화 (Tabular Numbers / Monospace) */
+.cellAmount {
+  text-align: right !important;
+  font-family: 'Pretendard', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.cellKm {
+  text-align: center !important;
+  font-family: 'Pretendard', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.amountText {
+  font-family: 'Pretendard', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #1e40af;
 }
 
 .table td:nth-child(4),
@@ -975,6 +1003,6 @@
 
   .table th,
   .table td {
-    padding: 12px 14px;
+    padding: 6px 8px;
   }
 }

@@ -89,6 +89,7 @@
 .portalHeaderCompact {
     margin-bottom: 16px;
 }
+
 .portalTitleCompact {
     font-size: 1.15rem;
     font-weight: 800;
@@ -96,18 +97,21 @@
     margin: 0;
     letter-spacing: -0.5px;
 }
+
 .gridContainerCompact {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     width: 100%;
 }
+
 .cardWrapCompact {
     text-decoration: none;
     color: inherit;
     display: block;
     height: 100%;
 }
+
 .cardCompact {
     background: #fff;
     border-radius: 12px;
@@ -125,10 +129,12 @@
     position: relative;
     overflow: hidden;
 }
+
 .cardCompact.cardWithBg {
     border-left-color: rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.2);
 }
+
 .cardCompact .cardTitleCompact,
 .cardCompact .cardCtaCompact,
 .cardCompact .cardLinksCompact,
@@ -136,19 +142,28 @@
     position: relative;
     z-index: 1;
 }
-.cardCompact .cardTitleCompact { color: #fff; }
-.cardCompact .cardCtaCompact { color: rgba(255, 255, 255, 0.95); }
+
+.cardCompact .cardTitleCompact {
+    color: #fff;
+}
+
+.cardCompact .cardCtaCompact {
+    color: rgba(255, 255, 255, 0.95);
+}
+
 .cardCompact .cardLinkItemCompact {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.25);
 }
+
 .cardTitleCompact {
     font-size: 0.9rem;
     font-weight: 700;
     color: #1e293b;
     margin: 0 0 4px 0;
 }
+
 .cardCtaCompact {
     display: inline-flex;
     align-items: center;
@@ -158,13 +173,18 @@
     color: #2563eb;
     margin-top: auto;
 }
-.cardWrapCompact:hover .cardCompact .cardCtaCompact { color: rgba(255, 255, 255, 0.95); }
+
+.cardWrapCompact:hover .cardCompact .cardCtaCompact {
+    color: rgba(255, 255, 255, 0.95);
+}
+
 .cardLinksCompact {
     margin-top: auto;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
 }
+
 .cardLinkItemCompact {
     display: inline-flex;
     align-items: center;
@@ -177,6 +197,7 @@
     text-decoration: none;
     transition: all 0.2s;
 }
+
 .cardLinkItemCompact:hover {
     background: rgba(255, 255, 255, 0.25);
 }
@@ -187,28 +208,33 @@
     padding-top: 24px;
     border-top: 1px solid #e2e8f0;
 }
+
 .widgetSectionHeader {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 16px;
 }
+
 .widgetSectionTitle {
     font-size: 1.1rem;
     font-weight: 800;
     color: #1e293b;
     margin: 0;
 }
+
 .widgetSectionNote {
     font-size: 0.75rem;
     color: #94a3b8;
 }
+
 .widgetRow {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
     align-items: stretch;
 }
+
 .widgetCard {
     display: block;
     text-decoration: none;
@@ -219,10 +245,12 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     transition: all 0.2s;
 }
+
 .widgetCard:hover {
     border-color: #cbd5e1;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
+
 .widgetCardInner {
     padding: 16px 18px;
     display: flex;
@@ -230,6 +258,7 @@
     gap: 6px;
     position: relative;
 }
+
 .widgetLabel {
     font-size: 0.7rem;
     font-weight: 700;
@@ -237,6 +266,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
 .widgetPrimary {
     font-size: 0.95rem;
     font-weight: 700;
@@ -244,21 +274,27 @@
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
 .widgetSecondary,
 .widgetMeta {
     font-size: 0.8rem;
     color: #64748b;
 }
+
 .widgetCta {
     font-size: 0.8rem;
     font-weight: 600;
     color: #2563eb;
     margin-top: 4px;
 }
-.widgetCard:hover .widgetCta { color: #1d4ed8; }
+
+.widgetCard:hover .widgetCta {
+    color: #1d4ed8;
+}
 
 .widgetWeatherImg {
     position: absolute;
@@ -269,6 +305,7 @@
     object-fit: contain;
     opacity: 0.9;
 }
+
 .widgetNewsThumbWrap {
     width: 100%;
     height: 72px;
@@ -277,11 +314,13 @@
     background: #f1f5f9;
     margin-bottom: 6px;
 }
+
 .widgetNewsThumb {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
+
 .widgetNewsThumbPlaceholder {
     width: 100%;
     height: 100%;
@@ -300,6 +339,7 @@
     padding: 16px 18px;
     min-height: 240px;
 }
+
 .weatherBlockHeader {
     display: flex;
     align-items: center;
@@ -307,6 +347,7 @@
     margin-bottom: 10px;
     min-height: 24px;
 }
+
 .weatherFeatured {
     display: block;
     text-decoration: none;
@@ -315,10 +356,12 @@
     border: 1px solid transparent;
     transition: all 0.2s;
 }
+
 .weatherFeatured:hover {
     background: #f8fafc;
     border-color: #e2e8f0;
 }
+
 .weatherFeaturedInner {
     padding: 16px 18px;
     display: flex;
@@ -327,34 +370,41 @@
     position: relative;
     min-height: 100px;
 }
+
 .widgetWeatherImgCurrent {
     position: absolute;
     top: 12px;
     right: 16px;
-    width: 72px;
-    height: 72px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
     opacity: 0.9;
 }
+
 .weatherBlockDesc {
     font-size: 0.75rem;
     color: #94a3b8;
     margin: -2px 0 2px 0;
 }
+
 .widgetPrimaryCurrent {
     font-size: 1.15rem;
     font-weight: 700;
     color: #1e293b;
     line-height: 1.3;
 }
+
 .widgetSecondaryCurrent {
     font-size: 0.9rem;
     color: #64748b;
 }
+
 .widgetWeatherTime {
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: #64748b;
+    margin-top: 6px;
 }
+
 .weatherForecastDesc {
     font-size: 0.8rem;
     color: #64748b;
@@ -362,6 +412,7 @@
     margin: 4px 0 0 0;
     padding: 0;
 }
+
 .weatherList {
     list-style: none;
     margin: 0;
@@ -373,6 +424,7 @@
     flex-direction: column;
     gap: 0;
 }
+
 .weatherListItem {
     display: flex;
     flex-direction: row;
@@ -385,8 +437,16 @@
     transition: background 0.15s;
     position: relative;
 }
-.weatherListItem:last-child { border-bottom: none; }
-.weatherListItem:hover { background: #f8fafc; border-radius: 6px; }
+
+.weatherListItem:last-child {
+    border-bottom: none;
+}
+
+.weatherListItem:hover {
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
 .weatherListIcon {
     width: 28px;
     height: 28px;
@@ -394,6 +454,7 @@
     object-fit: contain;
     opacity: 0.85;
 }
+
 .weatherListName {
     font-size: 0.85rem;
     font-weight: 600;
@@ -401,6 +462,7 @@
     flex: 0 0 auto;
     min-width: 2.2em;
 }
+
 .weatherListMeta {
     font-size: 0.75rem;
     color: #94a3b8;
@@ -420,6 +482,7 @@
     padding: 16px 18px;
     min-height: 240px;
 }
+
 .newsBlockHeader {
     display: flex;
     align-items: center;
@@ -427,13 +490,18 @@
     margin-bottom: 10px;
     min-height: 24px;
 }
+
 .newsMoreLink {
     font-size: 0.75rem;
     font-weight: 600;
     color: #2563eb;
     text-decoration: none;
 }
-.newsMoreLink:hover { color: #1d4ed8; }
+
+.newsMoreLink:hover {
+    color: #1d4ed8;
+}
+
 .newsFeaturedCard {
     display: flex;
     gap: 12px;
@@ -445,10 +513,12 @@
     transition: all 0.2s;
     margin-bottom: 2px;
 }
+
 .newsFeaturedCard:hover {
     border-color: #e2e8f0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
+
 .newsFeaturedThumb {
     width: 120px;
     min-width: 120px;
@@ -457,11 +527,13 @@
     overflow: hidden;
     background: #f1f5f9;
 }
+
 .newsFeaturedImg {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
+
 .newsFeaturedBody {
     flex: 1;
     min-width: 0;
@@ -470,6 +542,7 @@
     gap: 4px;
     padding: 4px 0;
 }
+
 .newsFeaturedBadge {
     font-size: 0.65rem;
     font-weight: 700;
@@ -477,6 +550,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
 .newsFeaturedTitle {
     font-size: 0.95rem;
     font-weight: 700;
@@ -484,9 +558,11 @@
     line-height: 1.35;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
 .newsList {
     list-style: none;
     margin: 0;
@@ -498,6 +574,7 @@
     flex-direction: column;
     gap: 0;
 }
+
 .newsListItem {
     display: flex;
     flex-direction: column;
@@ -508,8 +585,16 @@
     border-bottom: 1px solid #f1f5f9;
     transition: background 0.15s;
 }
-.newsListItem:last-child { border-bottom: none; }
-.newsListItem:hover { background: #f8fafc; border-radius: 6px; }
+
+.newsListItem:last-child {
+    border-bottom: none;
+}
+
+.newsListItem:hover {
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
 .newsListTitle {
     font-size: 0.8rem;
     font-weight: 600;
@@ -517,9 +602,11 @@
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
 .newsListMeta {
     font-size: 0.7rem;
     color: #94a3b8;
@@ -563,6 +650,7 @@
     border-left-color: rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.2);
 }
+
 .cardWithBg::before {
     content: '';
     position: absolute;
@@ -571,6 +659,7 @@
     border-radius: 16px;
     z-index: 0;
 }
+
 .cardWithBg .cardTitle,
 .cardWithBg .cardDesc,
 .cardWithBg .cardCta,
@@ -579,22 +668,35 @@
     position: relative;
     z-index: 1;
 }
-.cardWithBg .cardTitle { color: #fff; }
-.cardWithBg .cardDesc { color: rgba(255, 255, 255, 0.88); }
-.cardWithBg .cardCta { color: rgba(255, 255, 255, 0.95); }
+
+.cardWithBg .cardTitle {
+    color: #fff;
+}
+
+.cardWithBg .cardDesc {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.cardWithBg .cardCta {
+    color: rgba(255, 255, 255, 0.95);
+}
+
 .cardWithBg .cardLinkItem {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.25);
 }
+
 .cardWithBg .cardLinkItem:hover {
     background: rgba(255, 255, 255, 0.25);
     color: #fff;
 }
+
 .cardWrap:hover .cardWithBg::before,
 .cardWithBg:hover::before {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.82) 0%, rgba(30, 41, 59, 0.7) 100%);
 }
+
 .cardWrap:hover .cardWithBg,
 .cardWithBg:hover {
     border-left-color: rgba(255, 255, 255, 0.95);
@@ -606,36 +708,43 @@
     background-size: cover;
     background-position: center;
 }
+
 .cardBgContainer {
     background-image: url('/images/intranet-cards/card-container.jpg');
     background-size: cover;
     background-position: center;
 }
+
 .cardBgSafeFreight {
     background-image: url('/images/intranet-cards/card-safe-freight.jpg');
     background-size: cover;
     background-position: center;
 }
+
 .cardBgBoard {
     background-image: url('/images/intranet-cards/card-board.jpg');
     background-size: cover;
     background-position: center;
 }
+
 .cardBgReports {
     background-image: url('/images/intranet-cards/card-reports.jpg');
     background-size: cover;
     background-position: center;
 }
+
 .cardBgDocs {
     background-image: url('/images/intranet-cards/card-docs.jpg');
     background-size: cover;
     background-position: center;
 }
+
 .cardBgContacts {
     background-image: url('/images/intranet-cards/card-contacts.jpg');
     background-size: cover;
     background-position: center;
 }
+
 .cardBgBranches {
     background-image: url('/images/intranet-cards/card-branches.jpg');
     background-size: cover;
@@ -784,26 +893,83 @@
 }
 
 @media (max-width: 768px) {
-    .portalHeaderCompact { margin-bottom: 12px; }
-    .portalTitleCompact { font-size: 1.05rem; }
+    .portalHeaderCompact {
+        margin-bottom: 12px;
+    }
+
+    .portalTitleCompact {
+        font-size: 1.05rem;
+    }
+
     .cardCompact {
         min-height: 64px;
         padding: 12px 14px;
     }
-    .cardTitleCompact { font-size: 0.85rem; }
-    .cardLinkItemCompact { min-height: 36px; padding: 6px 10px; }
-    .widgetSection { margin-top: 20px; padding-top: 18px; }
-    .widgetSectionTitle { font-size: 1rem; }
-    .widgetCardInner { padding: 14px 16px; }
-    .widgetPrimary { font-size: 0.9rem; }
-    .weatherFeaturedInner { padding: 14px 16px; min-height: 90px; }
-    .widgetWeatherImgCurrent { width: 56px; height: 56px; top: 12px; right: 12px; }
-    .weatherBlockDesc { font-size: 0.7rem; }
-    .weatherForecastDesc { font-size: 0.75rem; margin-top: 2px; }
-    .widgetPrimaryCurrent { font-size: 1.05rem; }
-    .weatherListIcon { width: 24px; height: 24px; min-width: 24px; }
-    .weatherListName { font-size: 0.8rem; }
-    .weatherListMeta { font-size: 0.7rem; }
+
+    .cardTitleCompact {
+        font-size: 0.85rem;
+    }
+
+    .cardLinkItemCompact {
+        min-height: 36px;
+        padding: 6px 10px;
+    }
+
+    .widgetSection {
+        margin-top: 20px;
+        padding-top: 18px;
+    }
+
+    .widgetSectionTitle {
+        font-size: 1rem;
+    }
+
+    .widgetCardInner {
+        padding: 14px 16px;
+    }
+
+    .widgetPrimary {
+        font-size: 0.9rem;
+    }
+
+    .weatherFeaturedInner {
+        padding: 14px 16px;
+        min-height: 90px;
+    }
+
+    .widgetWeatherImgCurrent {
+        width: 40px;
+        height: 40px;
+        top: 12px;
+        right: 12px;
+    }
+
+    .weatherBlockDesc {
+        font-size: 0.7rem;
+    }
+
+    .weatherForecastDesc {
+        font-size: 0.75rem;
+        margin-top: 2px;
+    }
+
+    .widgetPrimaryCurrent {
+        font-size: 1.05rem;
+    }
+
+    .weatherListIcon {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+    }
+
+    .weatherListName {
+        font-size: 0.8rem;
+    }
+
+    .weatherListMeta {
+        font-size: 0.7rem;
+    }
 
     .portalSection {
         padding: 16px 0 32px;
@@ -900,8 +1066,14 @@
         grid-template-columns: 1fr;
         gap: 8px;
     }
-    .portalHeaderCompact { margin-bottom: 10px; }
-    .portalTitleCompact { font-size: 1rem; }
+
+    .portalHeaderCompact {
+        margin-bottom: 10px;
+    }
+
+    .portalTitleCompact {
+        font-size: 1rem;
+    }
 
     .portalSection {
         padding: 12px 0 24px;

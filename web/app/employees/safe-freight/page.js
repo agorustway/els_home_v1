@@ -949,13 +949,13 @@ export default function SafeFreightPage() {
                     <td>{applied.period}</td>
                     <td>{resultAll.origin || '-'}</td>
                     <td>{resultAll.destination || '-'}</td>
-                    <td>{applied.km}</td>
-                    <td>{applied.f40위탁?.toLocaleString()}</td>
-                    <td>{applied.f40운수자?.toLocaleString()}</td>
-                    <td>{applied.f40안전?.toLocaleString()}</td>
-                    <td>{applied.f20위탁?.toLocaleString()}</td>
-                    <td>{applied.f20운수자?.toLocaleString()}</td>
-                    <td>{applied.f20안전?.toLocaleString()}</td>
+                    <td className={styles.cellKm}>{applied.km}</td>
+                    <td className={styles.cellAmount}>{applied.f40위탁?.toLocaleString()}</td>
+                    <td className={styles.cellAmount}>{applied.f40운수자?.toLocaleString()}</td>
+                    <td className={styles.cellAmount}>{applied.f40안전?.toLocaleString()}</td>
+                    <td className={styles.cellAmount}>{applied.f20위탁?.toLocaleString()}</td>
+                    <td className={styles.cellAmount}>{applied.f20운수자?.toLocaleString()}</td>
+                    <td className={styles.cellAmount}>{applied.f20안전?.toLocaleString()}</td>
                   </tr>
                 );
               })}
@@ -1020,8 +1020,8 @@ export default function SafeFreightPage() {
                     </button>
                   </div>
                   <div className={styles.savedFares}>
-                    <span>40FT 위탁 {s.f40위탁?.toLocaleString()} · 운수자 {s.f40운수자?.toLocaleString()} · 안전 {s.f40안전?.toLocaleString()}</span>
-                    <span>20FT 위탁 {s.f20위탁?.toLocaleString()} · 운수자 {s.f20운수자?.toLocaleString()} · 안전 {s.f20안전?.toLocaleString()}</span>
+                    <span>40FT 위탁 <strong className={styles.amountText}>{s.f40위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f40운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f40안전?.toLocaleString()}</strong></span>
+                    <span>20FT 위탁 <strong className={styles.amountText}>{s.f20위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f20운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f20안전?.toLocaleString()}</strong></span>
                   </div>
                   {s.appliedSurcharges?.length > 0 && (
                     <p className={styles.savedSurcharges}>

@@ -26,99 +26,176 @@
 }
 
 .card {
-    background: #fff;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
     padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    border: 1px solid #f1f5f9;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 /* 현위치 고정 - 큰 이미지 */
 .currentSection {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
 }
+
 .currentSectionTitle {
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: #1e293b;
-    margin: 0 0 10px 0;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
+
+.currentSectionTitle::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: #0ea5e9;
+    border-radius: 2px;
+}
+
 .currentHero {
-    min-height: 240px;
-    padding: 28px 28px 28px 24px;
-    background-size: 280px;
-    background-repeat: no-repeat;
-    background-position: right 28px center;
-    background-color: #f0f9ff;
-    border-radius: 14px;
+    min-height: 220px;
+    padding: 32px 40px;
+    border-radius: 24px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
+
+.currentHero:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
 .currentHeroContent {
-    max-width: 50%;
+    max-width: 65%;
 }
+
 .currentHeroLabel {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #0c4a6e;
+    display: block;
+    font-size: 1.75rem;
+    font-weight: 900;
+    margin-bottom: 4px;
+    letter-spacing: -0.025em;
 }
+
 .currentHeroDesc {
-    font-size: 1.1rem;
-    color: #0369a1;
+    font-size: 1.35rem;
+    font-weight: 800;
+    display: block;
+}
+
+.weatherForecastDesc {
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.6;
+    margin: 16px 0 0 0;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* 다른 지역 3개 - 작은 이미지, 5초마다 전환 */
 .otherSection {
-    margin-bottom: 24px;
+    margin-bottom: 40px;
 }
+
 .otherSectionTitle {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #64748b;
-    margin: 0 0 12px 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
+
+.otherSectionTitle::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: #0ea5e9;
+    border-radius: 2px;
+}
+
 .otherRow {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: 20px;
 }
+
 .otherCard {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.otherCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
+    border-color: #e0f2fe;
+}
+
+.otherCardImg {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.15));
+}
+
+.otherCardBody {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
-.otherCardImg {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-}
+
 .otherCardName {
-    font-size: 0.85rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 800;
     color: #334155;
 }
+
 .otherCardTemp {
     font-size: 0.9rem;
+    font-weight: 700;
     color: #64748b;
+}
+
+.otherCardDate {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 2px;
 }
 
 .cellWeather {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
+
 .weatherIcon {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
     flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
 }
 
 .section {
@@ -186,21 +263,45 @@
 
 @media (max-width: 768px) {
     .currentHero {
-        min-height: 160px;
-        padding: 20px 20px 20px 16px;
-        background-size: 140px;
-        background-position: right 16px center;
+        min-height: 180px;
+        padding: 24px;
+        background-size: 130px !important;
+        background-position: right 12px center !important;
     }
-    .currentHeroLabel { font-size: 1.1rem; }
-    .currentHeroDesc { font-size: 1rem; }
-    .otherRow { gap: 8px; }
-    .otherCard { padding: 10px 12px; }
-    .otherCardImg { width: 40px; height: 40px; }
-    .otherCardName { font-size: 0.8rem; }
-    .otherCardTemp { font-size: 0.85rem; }
+
+    .currentHeroLabel {
+        font-size: 1.35rem;
+    }
+
+    .currentHeroDesc {
+        font-size: 1.15rem;
+    }
+
+    .otherRow {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .otherCard {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .otherCardImg {
+        width: 48px;
+        height: 48px;
+    }
+
+    .otherCardName {
+        font-size: 0.95rem;
+    }
+
+    .otherCardTemp {
+        font-size: 0.9rem;
+    }
 
     .card {
-        padding: 16px;
+        padding: 20px 16px;
     }
 
     .select {
