@@ -17,23 +17,32 @@ if SCRIPT_DIR not in sys.path:
 from els_bot import load_config, login_and_prepare
 from els_web_runner import run_search
 
-# 프로세스 내 전역 드라이버(한 번에 하나의 세션만)
+# 프로세스 내 전역 드라이버 및 상태
 _driver = None
 _lock = threading.Lock()
+_last_action_time = 0
+_current_creds = {"id": None, "pw": None}
+_keep_alive_thread = None
 
 DAEMON_PORT = 31999
-
 
 def get_driver():
     with _lock:
         return _driver
-
 
 def set_driver(drv):
     global _driver
     with _lock:
         _driver = drv
 
+def update_last_action():
+    global _last_action_time
+    _last_action_time = time.time()
+
+def save_creds(uid, upw):
+    global _current_creds
+    _current_creds["id"] = uid
+    _current_creds["pw"] = upw
 
 def do_logout():
     global _driver
@@ -44,6 +53,63 @@ def do_logout():
             except Exception:
                 pass
             _driver = None
+
+def perform_relogin():
+    """백그라운드 자동 재로그인 로직"""
+    global _driver, _last_action_time, _current_creds
+    
+    uid = _current_creds["id"]
+    upw = _current_creds["pw"]
+    
+    if not uid or not upw:
+        return # 계정 정보 없으면 재로그인 불가
+        
+    print(f"[AutoRefresh] 55분 경과. 세션 갱신을 위해 재로그인 시도... ({uid})", flush=True)
+    
+    # 기존 드라이버 종료
+    do_logout()
+    
+    # 재로그인 시도
+    try:
+        # 로그 콜백은 콘솔 출력으로 대체
+        result = login_and_prepare(uid, upw)
+        new_driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
+        
+        if new_driver:
+            set_driver(new_driver)
+            update_last_action()
+            print("[AutoRefresh] 성공. 세션 갱신 완료.", flush=True)
+        else:
+            print(f"[AutoRefresh] 실패: {result[1] if isinstance(result, tuple) and len(result)>1 else 'Unknown'}", flush=True)
+    except Exception as e:
+        print(f"[AutoRefresh] 예외 발생: {e}", flush=True)
+
+def auto_refresh_loop():
+    """1분마다 체크하여 55분 이상 활동 없으면 재로그인"""
+    import time
+    while True:
+        time.sleep(60)
+        with _lock:
+            if not _driver:
+                continue # 드라이버 없으면 체크 안 함
+            
+            elapsed = time.time() - _last_action_time
+            # 55분(3300초) 초과 시 재로그인
+            if elapsed > 3300:
+                # 락을 풀고 재로그인 수행 (긴 작업이므로)
+                pass
+            else:
+                continue
+        
+        # 락 밖에서 수행
+        if (time.time() - _last_action_time) > 3300:
+            perform_relogin()
+
+def start_auto_refresh():
+    global _keep_alive_thread
+    if _keep_alive_thread is None:
+        _keep_alive_thread = threading.Thread(target=auto_refresh_loop, daemon=True)
+        _keep_alive_thread.start()
 
 
 class ELSDaemonHandler(BaseHTTPRequestHandler):
@@ -124,6 +190,9 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
             err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else None
             if driver:
                 set_driver(driver)
+                save_creds(user_id, user_pw)
+                update_last_action()
+                start_auto_refresh() # 자동 갱신 스레드 시작
                 if not log_lines:
                     log_lines = ["로그인 완료", "조회 페이지 대기 중."]
                 self.send_json({"ok": True, "log": log_lines})
@@ -172,6 +241,7 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "error": "로그인 실패", "log": log_lines})
                     return
                 set_driver(driver)
+                save_creds(user_id, user_pw) # 조회를 통해 새로 로그인한 경우도 저장
             except Exception as e:
                 if not log_lines:
                     log_lines = [f"[예외] {e}"]
@@ -179,6 +249,10 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
                     log_lines.append(f"[예외] {e}")
                 self.send_json({"ok": False, "error": str(e), "log": log_lines})
                 return
+        
+        # 조회 시작 시점 갱신
+        update_last_action()
+        start_auto_refresh() # 혹시 꺼져있으면 켬
 
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -197,6 +271,9 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
                 keep_alive=True,
                 log_callback=stream_log,
             )
+            # 조회 끝난 시점 갱신 (조회 중에는 세션 안 끊김)
+            update_last_action()
+            
             result = {
                 "sheet1": sheet1 or [],
                 "sheet2": sheet2 or [],
@@ -216,10 +293,14 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
 
     def handle_logout(self):
         do_logout()
+        # [주의] logout 호출 시 재로그인 정보도 날리는 게 맞음
+        global _current_creds
+        _current_creds = {"id": None, "pw": None}
         self.send_json({"ok": True})
 
 
 def main():
+    import time # Ensure time imported
     server = HTTPServer(("127.0.0.1", DAEMON_PORT), ELSDaemonHandler)
     try:
         server.serve_forever()
@@ -228,6 +309,7 @@ def main():
     finally:
         do_logout()
         server.shutdown()
+
 
 
 if __name__ == "__main__":
