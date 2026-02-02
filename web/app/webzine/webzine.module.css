@@ -86,8 +86,9 @@
     position: relative;
     margin-bottom: 40px;
     border-radius: 12px;
-    background: #f8fafc;
+    background: #f8fafc url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%23cbe0f0">Loading...</text></svg>') no-repeat center;
     overflow: hidden;
+    min-height: 200px;
 }
 
 .featuredImage {
@@ -110,6 +111,9 @@
     height: auto;
     border-radius: 8px;
     margin: 20px 0;
+    cursor: zoom-in;
+    background: #f1f5f9 url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%23cbe0f0">Loading...</text></svg>') no-repeat center;
+    min-height: 150px;
 }
 
 .sectionTitle {
@@ -149,7 +153,7 @@
 .thumbnailWrapper {
     width: 100%;
     height: 180px;
-    background: #f5f5f5;
+    background: #f5f5f5 url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23cbd5e1">Loading...</text></svg>') no-repeat center;
     position: relative;
     overflow: hidden;
 }
@@ -253,4 +257,37 @@
     .grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Zoom Styles */
+.zoomOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    cursor: zoom-out;
+}
+
+.zoomImage {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+}
+
+.zoomClose {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: white;
+    font-size: 40px;
+    font-weight: 300;
+    cursor: pointer;
 }

@@ -10,6 +10,7 @@ import styles from './webzine.module.css';
 export default function WebzineListPage() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [zoomImage, setZoomImage] = useState(null);
     const { role, loading: authLoading } = useUserRole();
     const supabase = createClient();
     const canWrite = role && role !== 'visitor';
@@ -64,104 +65,116 @@ export default function WebzineListPage() {
 
     return (
         <div className={styles.main}>
-                <div className={styles.contentContainer}>
-                    <div className={styles.actionHeader}>
-                        {recentPosts.length > 0 && (
-                            <button type="button" onClick={scrollToRecent} className={styles.navBtn}>
-                                ↓ 지난 이야기 보기
-                            </button>
-                        )}
-                        {canWrite && (
-                            <Link href="/webzine/new" className={styles.writeBtn}>
-                                글쓰기
-                            </Link>
-                        )}
-                    </div>
-
-                    {posts.length > 0 ? (
-                        <>
-                            {featuredPost && (
-                                <div className={styles.featuredWrapper}>
-                                    <div className={styles.featuredHeader}>
-                                        <h2 className={styles.featuredTitle}>{featuredPost.title}</h2>
-                                        <div className={styles.featuredMeta}>
-                                            <span>작성자: {featuredPost.author_email?.split('@')[0] || '관리자'}</span>
-                                            <span>날짜: {new Date(featuredPost.created_at).toLocaleDateString()}</span>
-                                            <span>조회수: {featuredPost.view_count || 0}</span>
-                                        </div>
-                                    </div>
-                                    {featuredPost.thumbnail_url && getThumbnailSrc(featuredPost) && (
-                                        <div className={styles.featuredImageWrapper}>
-                                            <Image
-                                                src={getThumbnailSrc(featuredPost)}
-                                                alt={featuredPost.title}
-                                                width={1200}
-                                                height={675}
-                                                className={styles.featuredImage}
-                                                priority
-                                                unoptimized
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    const next = e.currentTarget.nextSibling;
-                                                    if (next) next.style.display = 'flex';
-                                                }}
-                                            />
-                                            <div className={styles.noThumbnail} style={{ height: '400px', fontSize: '5rem', borderRadius: '12px', display: 'none' }} />
-                                        </div>
-                                    )}
-                                    <div className={styles.featuredContent}>
-                                        <div dangerouslySetInnerHTML={{ __html: (featuredPost.content || '').replace(/\n/g, '<br/>') }} />
-                                        <div style={{ marginTop: '30px', textAlign: 'right' }}>
-                                            <Link href={`/webzine/${featuredPost.id}`} style={{ color: '#0056b3', fontWeight: 'bold' }}>
-                                                상세보기 &rarr;
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {recentPosts.length > 0 && (
-                                <>
-                                    <h3 id="recent-posts" className={styles.sectionTitle}>지난 이야기</h3>
-                                    <div className={styles.grid}>
-                                        {recentPosts.map((post) => (
-                                            <Link href={`/webzine/${post.id}`} key={post.id} className={styles.card}>
-                                                <div className={styles.thumbnailWrapper} style={{ position: 'relative' }}>
-                                                    {getThumbnailSrc(post) ? (
-                                                        <Image
-                                                            src={getThumbnailSrc(post)}
-                                                            alt={post.title}
-                                                            fill
-                                                            className={styles.thumbnail}
-                                                            style={{ objectFit: 'cover' }}
-                                                            sizes="(max-width: 768px) 100vw, 33vw"
-                                                            unoptimized
-                                                            onError={(e) => {
-                                                                e.currentTarget.style.display = 'none';
-                                                                const next = e.currentTarget.nextSibling;
-                                                                if (next) next.style.display = 'flex';
-                                                            }}
-                                                        />
-                                                    ) : null}
-                                                    <div className={styles.noThumbnail} style={{ display: post.thumbnail_url ? 'none' : 'flex' }} />
-                                                </div>
-                                                <div className={styles.cardContent}>
-                                                    <h2 className={styles.cardTitle}>{post.title}</h2>
-                                                    <p className={styles.excerpt}>{getExcerpt(post.content)}</p>
-                                                    <div className={styles.meta}>
-                                                        <span className={styles.author}>{post.author_email?.split('@')[0] || '관리자'}</span>
-                                                        <span className={styles.date}>{new Date(post.created_at).toLocaleDateString()}</span>
-                                                    </div>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </>
-                    ) : (
-                        <div className={styles.emptyState}>등록된 웹진 게시물이 없습니다.</div>
+            <div className={styles.contentContainer}>
+                <div className={styles.actionHeader}>
+                    {recentPosts.length > 0 && (
+                        <button type="button" onClick={scrollToRecent} className={styles.navBtn}>
+                            ↓ 지난 이야기 보기
+                        </button>
+                    )}
+                    {canWrite && (
+                        <Link href="/webzine/new" className={styles.writeBtn}>
+                            글쓰기
+                        </Link>
                     )}
                 </div>
+
+                {posts.length > 0 ? (
+                    <>
+                        {featuredPost && (
+                            <div className={styles.featuredWrapper}>
+                                <div className={styles.featuredHeader}>
+                                    <h2 className={styles.featuredTitle}>{featuredPost.title}</h2>
+                                    <div className={styles.featuredMeta}>
+                                        <span>작성자: {featuredPost.author_email?.split('@')[0] || '관리자'}</span>
+                                        <span>날짜: {new Date(featuredPost.created_at).toLocaleDateString()}</span>
+                                        <span>조회수: {featuredPost.view_count || 0}</span>
+                                    </div>
+                                </div>
+                                <div className={styles.featuredImageWrapper} onClick={() => setZoomImage(getThumbnailSrc(featuredPost))}>
+                                    <Image
+                                        src={getThumbnailSrc(featuredPost)}
+                                        alt={featuredPost.title}
+                                        width={1200}
+                                        height={675}
+                                        className={styles.featuredImage}
+                                        priority
+                                        unoptimized
+                                        style={{ cursor: 'zoom-in' }}
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            const next = e.currentTarget.nextSibling;
+                                            if (next) next.style.display = 'flex';
+                                        }}
+                                    />
+                                    <div className={styles.noThumbnail} style={{ height: '400px', fontSize: '5rem', borderRadius: '12px', display: 'none' }} />
+                                </div>
+                                <div className={styles.featuredContent}>
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: (featuredPost.content || '').replace(/\n/g, '<br/>') }}
+                                        onClick={(e) => {
+                                            if (e.target.tagName === 'IMG') setZoomImage(e.target.src);
+                                        }}
+                                    />
+                                    <div style={{ marginTop: '30px', textAlign: 'right' }}>
+                                        <Link href={`/webzine/${featuredPost.id}`} style={{ color: '#0056b3', fontWeight: 'bold' }}>
+                                            상세보기 &rarr;
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {recentPosts.length > 0 && (
+                            <>
+                                <h3 id="recent-posts" className={styles.sectionTitle}>지난 이야기</h3>
+                                <div className={styles.grid}>
+                                    {recentPosts.map((post) => (
+                                        <Link href={`/webzine/${post.id}`} key={post.id} className={styles.card}>
+                                            <div className={styles.thumbnailWrapper} style={{ position: 'relative' }}>
+                                                {getThumbnailSrc(post) ? (
+                                                    <Image
+                                                        src={getThumbnailSrc(post)}
+                                                        alt={post.title}
+                                                        fill
+                                                        className={styles.thumbnail}
+                                                        style={{ objectFit: 'cover' }}
+                                                        sizes="(max-width: 768px) 100vw, 33vw"
+                                                        unoptimized
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                            const next = e.currentTarget.nextSibling;
+                                                            if (next) next.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div className={styles.noThumbnail} style={{ display: post.thumbnail_url ? 'none' : 'flex' }} />
+                                            </div>
+                                            <div className={styles.cardContent}>
+                                                <h2 className={styles.cardTitle}>{post.title}</h2>
+                                                <p className={styles.excerpt}>{getExcerpt(post.content)}</p>
+                                                <div className={styles.meta}>
+                                                    <span className={styles.author}>{post.author_email?.split('@')[0] || '관리자'}</span>
+                                                    <span className={styles.date}>{new Date(post.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </>
+                ) : (
+                    <div className={styles.emptyState}>등록된 웹진 게시물이 없습니다.</div>
+                )}
+            </div>
+
+            {/* Zoom Overlay */}
+            {zoomImage && (
+                <div className={styles.zoomOverlay} onClick={() => setZoomImage(null)}>
+                    <div className={styles.zoomClose}>&times;</div>
+                    <img src={zoomImage} alt="Zoomed" className={styles.zoomImage} />
+                </div>
+            )}
         </div>
     );
 }

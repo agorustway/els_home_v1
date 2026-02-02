@@ -96,31 +96,15 @@ export default function EmployeesPortal() {
     }, []);
 
     useEffect(() => {
-        // 모든 디바이스에서 가능하면 브라우저 Geolocation을 먼저 시도 (정확도 높음)
-        if (typeof navigator !== 'undefined' && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    // 성공: 상세 좌표로 날씨 조회
-                    fetch(`/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
-                        .then((res) => res.json())
-                        .then((json) => { if (!json.error) setWeatherData(json); })
-                        .catch(() => {
-                            // 좌표 조회 실패 시 IP 기반 폴백
-                            fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetchWeather(j.region || 'asan'));
-                        });
-                },
-                () => {
-                    // 권한 거부 또는 실패 시 IP 기반 조회
-                    fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetchWeather(j.region || 'asan'));
-                },
-                { timeout: 5000, maximumAge: 600000 }
-            );
-        } else {
-            // Geolocation 미지원 시 IP 기반 조회
-            fetch('/api/weather/region-by-ip')
-                .then((r) => r.json())
-                .then((j) => doFetchWeather(j.region || 'asan'));
-        }
+        // IP 기반 지역 정보 우선 조회 (브라우저 위치 권한 요청 방지)
+        fetch('/api/weather/region-by-ip')
+            .then((r) => r.json())
+            .then((j) => {
+                doFetchWeather(j.region || 'asan');
+            })
+            .catch(() => {
+                doFetchWeather('asan');
+            });
     }, [doFetchWeather]);
 
     const [otherWeatherList, setOtherWeatherList] = useState([]);

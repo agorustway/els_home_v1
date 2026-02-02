@@ -40,6 +40,8 @@ const navLinks = [
         href: '/employees',
         isEmployee: true,
         children: [
+            { href: '/employees', label: '인트라넷 홈' },
+            { type: 'divider' },
             { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
             { href: '/admin', label: '고객 문의 관리', isAdmin: true },
             { type: 'divider', isAdmin: true },

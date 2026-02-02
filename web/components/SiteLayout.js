@@ -76,7 +76,7 @@ export default function SiteLayout({ children }) {
             )}
 
             {/* 실시간 티커 (히어로가 있을 땐 위로 44px 끌어올려 이미지 하단에 얹기) */}
-            <InfoTicker style={hero ? { marginTop: '-44px' } : {}} />
+            <InfoTicker style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
 
             {/* 부가 헤더 */}
             {isEmployees ? <EmployeeHeader /> : <SubNav />}

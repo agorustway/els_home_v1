@@ -15,6 +15,7 @@ export default function WebzineDetailPage() {
     const router = useRouter();
     const { role, user } = useUserRole();
     const supabase = createClient();
+    const [zoomImage, setZoomImage] = useState(null);
     const isAdmin = role === 'admin';
     const isAuthor = post && user?.id && post.author_id === user.id;
     const canEdit = isAuthor || isAdmin;
@@ -54,7 +55,7 @@ export default function WebzineDetailPage() {
             }
 
             setPost({ ...postData, author: authorInfo });
-            supabase.rpc('increment_view_count', { post_id: id }).catch(() => {});
+            supabase.rpc('increment_view_count', { post_id: id }).catch(() => { });
             setLoading(false);
         };
 
@@ -116,7 +117,14 @@ export default function WebzineDetailPage() {
                 )}
 
                 <div className={styles.content}>
-                    <div dangerouslySetInnerHTML={{ __html: (post.content || '').replace(/\n/g, '<br/>') }} />
+                    <div
+                        dangerouslySetInnerHTML={{ __html: (post.content || '').replace(/\n/g, '<br/>') }}
+                        onClick={(e) => {
+                            if (e.target.tagName === 'IMG') {
+                                setZoomImage(e.target.src);
+                            }
+                        }}
+                    />
                 </div>
 
                 <div className={styles.actions}>
@@ -129,6 +137,14 @@ export default function WebzineDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Zoom Overlay */}
+            {zoomImage && (
+                <div className={styles.zoomOverlay} onClick={() => setZoomImage(null)}>
+                    <div className={styles.zoomClose}>&times;</div>
+                    <img src={zoomImage} alt="Zoomed" className={styles.zoomImage} />
+                </div>
+            )}
         </main>
     );
 }

@@ -94,9 +94,8 @@
 .tickerNewsScroll {
     display: flex;
     gap: 80px;
-    white-space: nowrap;
-    /* 뉴스 흐르는 속도를 훨씬 느리게 조정 (기존 100s -> 250s) */
-    animation: slideTicker 250s linear infinite;
+    /* 뉴스 흐르는 속도를 훨씬 느리게 조정 (더 가독성 있게) */
+    animation: slideTicker 350s linear infinite;
     padding-left: 20px;
 }
 
@@ -168,8 +167,8 @@
     }
 
     .tickerNewsScroll {
-        animation: slideTicker 80s linear infinite;
-        /* 모바일은 조금 더 빠르게 */
+        animation: slideTicker 180s linear infinite;
+        /* 모바일도 충분히 읽을 수 있게 속도 하향 */
         gap: 40px;
     }
 }
