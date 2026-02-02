@@ -193,7 +193,7 @@ export default function ContainerHistoryPage() {
         if (loginStartTimeRef.current !== startedAt) loginStartTimeRef.current = startedAt;
         try {
             if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsLoginStartedAt', String(startedAt));
-        } catch (_) {}
+        } catch (_) { }
         const initialElapsed = Math.floor((Date.now() - startedAt) / 1000);
         setLoginProgressLine(`[로그인중] ${initialElapsed}초`);
         if (loginProgressIntervalRef.current) clearInterval(loginProgressIntervalRef.current);
@@ -227,7 +227,7 @@ export default function ContainerHistoryPage() {
             }
             try {
                 if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
-            } catch (_) {}
+            } catch (_) { }
             if (!res.ok) {
                 const logs = data.log || [];
                 setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
@@ -245,7 +245,7 @@ export default function ContainerHistoryPage() {
                         sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
                         sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
                     }
-                } catch (_) {}
+                } catch (_) { }
                 setStepIndex(2);
             } else {
                 const logs = data.log || [];
@@ -263,7 +263,7 @@ export default function ContainerHistoryPage() {
             }
             try {
                 if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
-            } catch (_) {}
+            } catch (_) { }
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
             setLoginError('아이디·비밀번호를 확인하세요.');
         } finally {
@@ -353,7 +353,7 @@ export default function ContainerHistoryPage() {
 
         if (stepIndex === 1) {
             setLoginLoading(true);
-                setLogLines(prev => [...prev, '[자동 로그인] 입력된 컨테이너로 로그인 후 바로 조회를 진행합니다. (보통 15~20초 이상)']);
+            setLogLines(prev => [...prev, '[자동 로그인] 입력된 컨테이너로 로그인 후 바로 조회를 진행합니다. (보통 15~20초 이상)']);
             try {
                 const loginRes = await fetch('/api/els/login', {
                     method: 'POST',
@@ -382,7 +382,7 @@ export default function ContainerHistoryPage() {
                         sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
                         sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
                     }
-                } catch (_) {}
+                } catch (_) { }
                 setStepIndex(2);
             } catch (err) {
                 setLogLines(prev => [...prev, `[오류] ${err.message}`]);
@@ -396,7 +396,7 @@ export default function ContainerHistoryPage() {
         setLoading(true);
         setStepIndex(3);
         setLogLines(prev => [...prev, '[조회] 조회를 시작합니다.']);
-            setResult(null);
+        setResult(null);
         setDownloadToken(null);
         setResultFileName('');
         setResultPage(1);
@@ -443,7 +443,7 @@ export default function ContainerHistoryPage() {
                                 setStepIndex(2);
                             }
                             if (data.error) setLogLines(prev => [...prev, `[오류] ${data.error}`]);
-                        } catch (_) {}
+                        } catch (_) { }
                     }
                 }
             }
@@ -462,16 +462,16 @@ export default function ContainerHistoryPage() {
                             const pad = (n) => String(n).padStart(2, '0');
                             setResultFileName(`els_조회결과_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.xlsx`);
                         } else {
-                            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(Date.now())); } catch (_) {}
+                            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(Date.now())); } catch (_) { }
                             setStepIndex(2);
                         }
                         if (data.error) setLogLines(prev => [...prev, `[오류] ${data.error}`]);
-                    } catch (_) {}
+                    } catch (_) { }
                 }
             }
         } catch (err) {
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
-            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(Date.now())); } catch (_) {}
+            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(Date.now())); } catch (_) { }
             setStepIndex(2);
         } finally {
             setLoading(false);
@@ -535,7 +535,7 @@ export default function ContainerHistoryPage() {
             waitStartedAtRef.current = Date.now();
             try {
                 if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('elsWaitStartedAt', String(waitStartedAtRef.current));
-            } catch (_) {}
+            } catch (_) { }
         }
         setWaitSeconds(Math.floor((Date.now() - waitStartedAtRef.current) / 1000));
         const interval = setInterval(() => {
@@ -548,8 +548,8 @@ export default function ContainerHistoryPage() {
     useEffect(() => {
         const doLogout = () => {
             try {
-                fetch('/api/els/logout', { method: 'POST', keepalive: true }).catch(() => {});
-            } catch (_) {}
+                fetch('/api/els/logout', { method: 'POST', keepalive: true }).catch(() => { });
+            } catch (_) { }
         };
         const onPageHide = () => {
             navigator.sendBeacon?.('/api/els/logout', '') || doLogout();
@@ -605,272 +605,271 @@ export default function ContainerHistoryPage() {
             {/* 조회 UI: API 사용 가능할 때만 표시 (null일 때는 위에서 로딩 표시) */}
             {elsAvailable === true && (
                 <>
-            <section className={styles.usageSection}>
-                <p className={styles.usageText}>
-                    이 작업은 <strong>ETRANS</strong> 로그인이 필요하며 로그인·메뉴 이동에 <strong>15~20초 이상</strong> 소요될 수 있습니다.
-                    로그인 후 컨테이너를 업로드하거나 번호를 입력하시면 조회·엑셀 다운로드가 가능합니다.
-                    조회 완료 후에도 세션이 유지되므로 <strong>추가·변경된 번호로 바로 다시 조회</strong>할 수 있고,
-                    페이지를 벗어나면 ETRANS가 자동 로그아웃됩니다.
-                </p>
-                <div className={styles.stepIndicator}>
-                    {steps.map((s, i) => (
-                        <div key={s.num} className={styles.stepItem}>
-                            <span
-                                className={`${styles.stepCircle} ${stepIndex > s.num ? styles.stepDone : ''} ${stepIndex === s.num ? styles.stepActive : ''}`}
-                                aria-hidden
-                            >
-                                {stepIndex > s.num ? '✓' : s.num}
-                            </span>
-                            <span className={styles.stepLabel}>{s.label}</span>
-                            {i < steps.length - 1 && <span className={styles.stepArrow}>→</span>}
+                    <section className={styles.usageSection}>
+                        <p className={styles.usageText}>
+                            이 작업은 <strong>ETRANS</strong> 로그인이 필요하며 초기 구동(로그인 및 메뉴 이동)에 <strong>30~50초</strong> 가량 소요될 수 있습니다.
+                            로그인 후에는 <strong>세션이 자동 유지(55분 주기 갱신)</strong>되므로 페이지를 이동해도 로그인이 풀리지 않으며,
+                            이 창을 띄워두시는 동안에는 추가 번호로 <strong>대기 없이 즉시 조회</strong>가 가능합니다.
+                        </p>
+                        <div className={styles.stepIndicator}>
+                            {steps.map((s, i) => (
+                                <div key={s.num} className={styles.stepItem}>
+                                    <span
+                                        className={`${styles.stepCircle} ${stepIndex > s.num ? styles.stepDone : ''} ${stepIndex === s.num ? styles.stepActive : ''}`}
+                                        aria-hidden
+                                    >
+                                        {stepIndex > s.num ? '✓' : s.num}
+                                    </span>
+                                    <span className={styles.stepLabel}>{s.label}</span>
+                                    {i < steps.length - 1 && <span className={styles.stepArrow}>→</span>}
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-            </section>
-
-            <div className={styles.mainModule}>
-                <div className={styles.leftPanel}>
-                    {/* 계정 */}
-                    <section className={styles.section}>
-                        <h2 className={styles.sectionTitle}>계정</h2>
-                        {loginError && (
-                            <div className={styles.loginErrorBanner} role="alert">
-                                <span className={styles.loginErrorText}>{loginError}</span>
-                                <button type="button" onClick={() => { setLoginError(null); runLogin(); }} className={styles.loginErrorRetry} disabled={loginLoading}>
-                                    다시 로그인
-                                </button>
-                            </div>
-                        )}
-                        {useSavedCreds && hasSavedAccount ? (
-                            <div className={styles.credBoxRow}>
-                                <div className={styles.credBox}>
-                                    <span className={styles.credBoxLabel}>아이디</span>
-                                    <span className={styles.credBoxValue}>{configLoaded ? defaultUserId : '…'}</span>
-                                </div>
-                                <div className={styles.credBox}>
-                                    <span className={styles.credBoxLabel}>비밀번호</span>
-                                    <span className={styles.credBoxValue}>••••••••</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={runLogin}
-                                    disabled={buttonsDisabled}
-                                    className={styles.btnLogin}
-                                >
-                                    {loginLoading ? '로그인 중...' : '로그인'}
-                                </button>
-                                <label className={styles.checkLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={useSavedCreds}
-                                        onChange={(e) => handleCheckboxChange(e.target.checked)}
-                                    />
-                                    <span>저장된 계정 사용</span>
-                                </label>
-                            </div>
-                        ) : (
-                            <div className={styles.credRow}>
-                                <div className={styles.credBox}>
-                                    <span className={styles.credBoxLabel}>아이디</span>
-                                    <input
-                                        type="text"
-                                        placeholder="아이디"
-                                        value={userId}
-                                        onChange={(e) => { setUserId(e.target.value); setLoginError(null); }}
-                                        onFocus={() => setLoginError(null)}
-                                        className={styles.input}
-                                    />
-                                </div>
-                                <div className={styles.credBox}>
-                                    <span className={styles.credBoxLabel}>비밀번호</span>
-                                    <input
-                                        type="password"
-                                        placeholder="비밀번호"
-                                        value={userPw}
-                                        onChange={(e) => { setUserPw(e.target.value); setLoginError(null); }}
-                                        onFocus={() => setLoginError(null)}
-                                        className={styles.input}
-                                    />
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={runLogin}
-                                    disabled={buttonsDisabled}
-                                    className={styles.btnLogin}
-                                >
-                                    {loginLoading ? '로그인 중...' : '로그인'}
-                                </button>
-                                <label className={styles.checkLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={useSavedCreds}
-                                        onChange={(e) => handleCheckboxChange(e.target.checked)}
-                                    />
-                                    <span>저장된 계정 사용 (체크 시 저장)</span>
-                                </label>
-                            </div>
-                        )}
                     </section>
 
-                    {/* 업로드 · 입력 */}
-                    <section className={styles.section}>
-                        <h2 className={styles.sectionTitle}>업로드 · 입력</h2>
-                        <p className={styles.hint}>컨테이너 번호 또는 엑셀 업로드 (클릭·드래그로 파일 선택)</p>
-                        <div
-                            className={`${styles.dropZone} ${dropActive ? styles.dropZoneActive : ''}`}
-                            onClick={handleDropZoneClick}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDropZoneClick(); } }}
-                        >
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                accept=".xlsx"
-                                onChange={handleFileChange}
-                                className={styles.fileInput}
-                            />
-                            <span className={styles.dropZoneText}>
-                                {dropActive ? '여기에 놓으세요' : '엑셀 파일 클릭 또는 드래그'}
-                            </span>
-                            <a href="/api/els/template" download className={styles.btnTemplate} onClick={(e) => e.stopPropagation()}>
-                                양식 다운로드
-                            </a>
-                        </div>
-                        <div className={styles.uploadRow}>
-                            <textarea
-                                placeholder="컨테이너 번호를 한 줄에 하나씩 또는 쉼표/공백으로 구분"
-                                value={containerInput}
-                                onChange={(e) => setContainerInput(e.target.value)}
-                                className={styles.textarea}
-                                rows={5}
-                            />
-                        </div>
-<div className={styles.actionRow}>
-                            <button
-                                    type="button"
-                                    onClick={runSearch}
-                                    disabled={searchDisabled}
-                                    className={styles.btnPrimary}
+                    <div className={styles.mainModule}>
+                        <div className={styles.leftPanel}>
+                            {/* 계정 */}
+                            <section className={styles.section}>
+                                <h2 className={styles.sectionTitle}>계정</h2>
+                                {loginError && (
+                                    <div className={styles.loginErrorBanner} role="alert">
+                                        <span className={styles.loginErrorText}>{loginError}</span>
+                                        <button type="button" onClick={() => { setLoginError(null); runLogin(); }} className={styles.loginErrorRetry} disabled={loginLoading}>
+                                            다시 로그인
+                                        </button>
+                                    </div>
+                                )}
+                                {useSavedCreds && hasSavedAccount ? (
+                                    <div className={styles.credBoxRow}>
+                                        <div className={styles.credBox}>
+                                            <span className={styles.credBoxLabel}>아이디</span>
+                                            <span className={styles.credBoxValue}>{configLoaded ? defaultUserId : '…'}</span>
+                                        </div>
+                                        <div className={styles.credBox}>
+                                            <span className={styles.credBoxLabel}>비밀번호</span>
+                                            <span className={styles.credBoxValue}>••••••••</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={runLogin}
+                                            disabled={buttonsDisabled}
+                                            className={styles.btnLogin}
+                                        >
+                                            {loginLoading ? '로그인 중...' : '로그인'}
+                                        </button>
+                                        <label className={styles.checkLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={useSavedCreds}
+                                                onChange={(e) => handleCheckboxChange(e.target.checked)}
+                                            />
+                                            <span>저장된 계정 사용</span>
+                                        </label>
+                                    </div>
+                                ) : (
+                                    <div className={styles.credRow}>
+                                        <div className={styles.credBox}>
+                                            <span className={styles.credBoxLabel}>아이디</span>
+                                            <input
+                                                type="text"
+                                                placeholder="아이디"
+                                                value={userId}
+                                                onChange={(e) => { setUserId(e.target.value); setLoginError(null); }}
+                                                onFocus={() => setLoginError(null)}
+                                                className={styles.input}
+                                            />
+                                        </div>
+                                        <div className={styles.credBox}>
+                                            <span className={styles.credBoxLabel}>비밀번호</span>
+                                            <input
+                                                type="password"
+                                                placeholder="비밀번호"
+                                                value={userPw}
+                                                onChange={(e) => { setUserPw(e.target.value); setLoginError(null); }}
+                                                onFocus={() => setLoginError(null)}
+                                                className={styles.input}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={runLogin}
+                                            disabled={buttonsDisabled}
+                                            className={styles.btnLogin}
+                                        >
+                                            {loginLoading ? '로그인 중...' : '로그인'}
+                                        </button>
+                                        <label className={styles.checkLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={useSavedCreds}
+                                                onChange={(e) => handleCheckboxChange(e.target.checked)}
+                                            />
+                                            <span>저장된 계정 사용 (체크 시 저장)</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </section>
+
+                            {/* 업로드 · 입력 */}
+                            <section className={styles.section}>
+                                <h2 className={styles.sectionTitle}>업로드 · 입력</h2>
+                                <p className={styles.hint}>컨테이너 번호 또는 엑셀 업로드 (클릭·드래그로 파일 선택)</p>
+                                <div
+                                    className={`${styles.dropZone} ${dropActive ? styles.dropZoneActive : ''}`}
+                                    onClick={handleDropZoneClick}
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDropZoneClick(); } }}
                                 >
-                                    {loading ? '조회 중...' : '조회'}
-                                </button>
-                            {containerCount > 0 && (
-                                <span className={styles.containerCount}>로딩된 컨테이너 {containerCount}개</span>
-                            )}
-                            {downloadToken && resultFileName && (
-                                <div className={styles.downloadResult}>
-                                    <span className={styles.resultFileName}>{resultFileName}</span>
-                                    <button type="button" onClick={downloadExcel} className={styles.btnDownload}>
-                                        다운로드
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        accept=".xlsx"
+                                        onChange={handleFileChange}
+                                        className={styles.fileInput}
+                                    />
+                                    <span className={styles.dropZoneText}>
+                                        {dropActive ? '여기에 놓으세요' : '엑셀 파일 클릭 또는 드래그'}
+                                    </span>
+                                    <a href="/api/els/template" download className={styles.btnTemplate} onClick={(e) => e.stopPropagation()}>
+                                        양식 다운로드
+                                    </a>
+                                </div>
+                                <div className={styles.uploadRow}>
+                                    <textarea
+                                        placeholder="컨테이너 번호를 한 줄에 하나씩 또는 쉼표/공백으로 구분"
+                                        value={containerInput}
+                                        onChange={(e) => setContainerInput(e.target.value)}
+                                        className={styles.textarea}
+                                        rows={5}
+                                    />
+                                </div>
+                                <div className={styles.actionRow}>
+                                    <button
+                                        type="button"
+                                        onClick={runSearch}
+                                        disabled={searchDisabled}
+                                        className={styles.btnPrimary}
+                                    >
+                                        {loading ? '조회 중...' : '조회'}
+                                    </button>
+                                    {containerCount > 0 && (
+                                        <span className={styles.containerCount}>로딩된 컨테이너 {containerCount}개</span>
+                                    )}
+                                    {downloadToken && resultFileName && (
+                                        <div className={styles.downloadResult}>
+                                            <span className={styles.resultFileName}>{resultFileName}</span>
+                                            <button type="button" onClick={downloadExcel} className={styles.btnDownload}>
+                                                다운로드
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+                        </div>
+
+                        <div className={styles.rightPanel}>
+                            <section className={styles.section + ' ' + styles.logSection}>
+                                <h2 className={styles.sectionTitle}>로그</h2>
+                                <pre ref={terminalRef} className={styles.terminal}>
+                                    {logLines.length || loginProgressLine || (stepIndex === 2 && !loading) ? [...logLines, loginProgressLine, (stepIndex === 2 && !loading) ? `대기중입니다 (${waitSeconds}초)` : null].filter(Boolean).map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
+                                </pre>
+                            </section>
+                        </div>
+                    </div>
+
+                    {/* 결과 (Sheet1 기준, 클릭 시 Sheet2 전개) */}
+                    {result && (
+                        <section className={styles.section}>
+                            <div className={styles.resultHeader}>
+                                <h2 className={styles.sectionTitle}>조회 결과 (Sheet1 · No=1 기준)</h2>
+                            </div>
+                            <div className={styles.tableWrap}>
+                                <table className={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            {HEADERS.map((h, i) => <th key={i}>{h}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedRows.map((row, idx) => {
+                                            const containerNo = row && row[0];
+                                            const detailRows = getDetailRows(containerNo);
+                                            const hasDetail = detailRows.length > 1;
+                                            const isExpanded = expandedRows.has(containerNo);
+                                            return (
+                                                <Fragment key={`${containerNo}-${idx}`}>
+                                                    <tr
+                                                        className={hasDetail ? styles.clickableRow : ''}
+                                                        onClick={() => hasDetail && toggleRow(containerNo)}
+                                                    >
+                                                        <td>{hasDetail ? (isExpanded ? '▼' : '▶') : ''}</td>
+                                                        {HEADERS.map((_, i) => (
+                                                            <td key={i} className={row[1] === 'ERROR' || row[1] === 'NODATA' ? styles.cellError : ''}>
+                                                                {row[i] ?? ''}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                    {isExpanded && detailRows.map((dr, di) => (
+                                                        <tr key={`${containerNo}-sub-${di}`} className={styles.subRow}>
+                                                            <td></td>
+                                                            {HEADERS.map((_, i) => (
+                                                                <td key={i}>{dr[i] ?? ''}</td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className={styles.paginationWrap}>
+                                <span className={styles.paginationInfo}>
+                                    총 {totalResultCount}건 · {totalResultCount > 0 ? `${startIdx + 1}-${Math.min(startIdx + resultPageSize, totalResultCount)}` : '0'} / {totalResultCount}
+                                </span>
+                                <div className={styles.paginationControls}>
+                                    <select
+                                        className={styles.pageSizeSelect}
+                                        value={resultPageSize}
+                                        onChange={(e) => { setResultPageSize(Number(e.target.value)); setResultPage(1); }}
+                                        aria-label="페이지당 건수"
+                                    >
+                                        <option value={20}>20개씩</option>
+                                        <option value={30}>30개씩</option>
+                                        <option value={50}>50개씩</option>
+                                        <option value={100}>100개씩</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        className={styles.paginationBtn}
+                                        disabled={currentPage <= 1}
+                                        onClick={() => setResultPage((p) => Math.max(1, p - 1))}
+                                        aria-label="이전 페이지"
+                                    >
+                                        이전
+                                    </button>
+                                    <span className={styles.paginationInfo}>
+                                        {currentPage} / {totalPages}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className={styles.paginationBtn}
+                                        disabled={currentPage >= totalPages}
+                                        onClick={() => setResultPage((p) => Math.min(totalPages, p + 1))}
+                                        aria-label="다음 페이지"
+                                    >
+                                        다음
                                     </button>
                                 </div>
-                            )}
-                        </div>
-                    </section>
-                </div>
-
-                <div className={styles.rightPanel}>
-                    <section className={styles.section + ' ' + styles.logSection}>
-                        <h2 className={styles.sectionTitle}>로그</h2>
-                        <pre ref={terminalRef} className={styles.terminal}>
-                            {logLines.length || loginProgressLine || (stepIndex === 2 && !loading) ? [...logLines, loginProgressLine, (stepIndex === 2 && !loading) ? `대기중입니다 (${waitSeconds}초)` : null].filter(Boolean).map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
-                        </pre>
-                    </section>
-                </div>
-            </div>
-
-            {/* 결과 (Sheet1 기준, 클릭 시 Sheet2 전개) */}
-            {result && (
-                <section className={styles.section}>
-                    <div className={styles.resultHeader}>
-                        <h2 className={styles.sectionTitle}>조회 결과 (Sheet1 · No=1 기준)</h2>
-                    </div>
-                    <div className={styles.tableWrap}>
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th></th>
-                                    {HEADERS.map((h, i) => <th key={i}>{h}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedRows.map((row, idx) => {
-                                    const containerNo = row && row[0];
-                                    const detailRows = getDetailRows(containerNo);
-                                    const hasDetail = detailRows.length > 1;
-                                    const isExpanded = expandedRows.has(containerNo);
-                                    return (
-                                        <Fragment key={`${containerNo}-${idx}`}>
-                                            <tr
-                                                className={hasDetail ? styles.clickableRow : ''}
-                                                onClick={() => hasDetail && toggleRow(containerNo)}
-                                            >
-                                                <td>{hasDetail ? (isExpanded ? '▼' : '▶') : ''}</td>
-                                                {HEADERS.map((_, i) => (
-                                                    <td key={i} className={row[1] === 'ERROR' || row[1] === 'NODATA' ? styles.cellError : ''}>
-                                                        {row[i] ?? ''}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                            {isExpanded && detailRows.map((dr, di) => (
-                                                <tr key={`${containerNo}-sub-${di}`} className={styles.subRow}>
-                                                    <td></td>
-                                                    {HEADERS.map((_, i) => (
-                                                        <td key={i}>{dr[i] ?? ''}</td>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                        </Fragment>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className={styles.paginationWrap}>
-                        <span className={styles.paginationInfo}>
-                            총 {totalResultCount}건 · {totalResultCount > 0 ? `${startIdx + 1}-${Math.min(startIdx + resultPageSize, totalResultCount)}` : '0'} / {totalResultCount}
-                        </span>
-                        <div className={styles.paginationControls}>
-                            <select
-                                className={styles.pageSizeSelect}
-                                value={resultPageSize}
-                                onChange={(e) => { setResultPageSize(Number(e.target.value)); setResultPage(1); }}
-                                aria-label="페이지당 건수"
-                            >
-                                <option value={20}>20개씩</option>
-                                <option value={30}>30개씩</option>
-                                <option value={50}>50개씩</option>
-                                <option value={100}>100개씩</option>
-                            </select>
-                            <button
-                                type="button"
-                                className={styles.paginationBtn}
-                                disabled={currentPage <= 1}
-                                onClick={() => setResultPage((p) => Math.max(1, p - 1))}
-                                aria-label="이전 페이지"
-                            >
-                                이전
-                            </button>
-                            <span className={styles.paginationInfo}>
-                                {currentPage} / {totalPages}
-                            </span>
-                            <button
-                                type="button"
-                                className={styles.paginationBtn}
-                                disabled={currentPage >= totalPages}
-                                onClick={() => setResultPage((p) => Math.min(totalPages, p + 1))}
-                                aria-label="다음 페이지"
-                            >
-                                다음
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            )}
+                            </div>
+                        </section>
+                    )}
                 </>
             )}
         </div>
