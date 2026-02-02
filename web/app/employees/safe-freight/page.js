@@ -650,20 +650,18 @@ export default function SafeFreightPage() {
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
-                      <input
-                        className={styles.inputDong}
+                      <select
+                        className={styles.select}
                         value={region3}
                         onChange={(e) => setRegion3(e.target.value)}
-                        placeholder="읍·면·동 (직접 입력/선택)"
-                        list="dong-options"
+                        aria-label="읍·면·동"
                         disabled={!region2}
-                        aria-label="읍·면·동 입력"
-                      />
-                      <datalist id="dong-options">
+                      >
+                        <option value="">읍·면·동</option>
                         {region3List.map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
-                      </datalist>
+                      </select>
                     </div>
                     {queryType === 'other' && selectedOtherSectionInfo && (selectedOtherSectionInfo.hDong !== selectedOtherSectionInfo.bDong) && (
                       <div className={styles.dongHint}>

@@ -327,8 +327,26 @@
   gap: 8px;
 }
 
-.formBlock .select {
-  max-width: 100%;
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.select:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
 }
 
 .inputKm {
@@ -406,8 +424,6 @@
 
 .regionGroup .select {
   flex: 1;
-  min-width: 0;
-  max-width: 100%;
 }
 
 .regionHint {

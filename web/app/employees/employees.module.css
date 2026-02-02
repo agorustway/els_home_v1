@@ -1413,3 +1413,9 @@
 .modalBtn:active {
     transform: translateY(0);
 }
+@media (max-width: 768px) {
+    .widgetRow {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}

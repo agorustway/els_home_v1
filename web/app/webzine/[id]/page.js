@@ -140,9 +140,21 @@ export default function WebzineDetailPage() {
 
             {/* Zoom Overlay */}
             {zoomImage && (
-                <div className={styles.zoomOverlay} onClick={() => setZoomImage(null)}>
-                    <div className={styles.zoomClose}>&times;</div>
-                    <img src={zoomImage} alt="Zoomed" className={styles.zoomImage} />
+                <div className={styles.zoomOverlay} onClick={(e) => {
+                    if (e.target.tagName !== 'IMG') setZoomImage(null);
+                }}>
+                    <div className={styles.zoomClose} onClick={() => setZoomImage(null)}>&times;</div>
+                    <div className={styles.zoomImageContainer}>
+                        <img
+                            src={zoomImage}
+                            alt="Zoomed"
+                            className={styles.zoomImage}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.target.classList.toggle(styles.zoomedIn);
+                            }}
+                        />
+                    </div>
                 </div>
             )}
         </main>
