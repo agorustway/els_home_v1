@@ -94,6 +94,7 @@
 .tickerNewsScroll {
     display: flex;
     gap: 80px;
+    white-space: nowrap;
     /* 뉴스 흐르는 속도를 훨씬 느리게 조정 (더 가독성 있게) */
     animation: slideTicker 350s linear infinite;
     padding-left: 20px;
@@ -167,6 +168,7 @@
     }
 
     .tickerNewsScroll {
+        white-space: nowrap;
         animation: slideTicker 180s linear infinite;
         /* 모바일도 충분히 읽을 수 있게 속도 하향 */
         gap: 40px;
