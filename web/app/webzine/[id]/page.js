@@ -157,6 +157,7 @@ export default function WebzineDetailPage() {
                             src={zoomImage}
                             alt="Zoomed"
                             className={`${styles.zoomImage} ${isZoomDetail ? styles.zoomedIn : ''}`}
+                            style={{ cursor: isZoomDetail ? 'zoom-out' : 'zoom-in' }}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 console.log('Image clicked! Current isZoomDetail:', isZoomDetail, '→ New:', !isZoomDetail);
