@@ -570,6 +570,12 @@
   accent-color: #2563eb;
 }
 
+.radioGroup {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
 /* 동 정보 힌트 스타일 */
 .dongHint {
   margin-top: 10px;

@@ -25,6 +25,7 @@ export default function SafeFreightPage() {
   const [region3, setRegion3] = useState('');
   const [distType, setDistType] = useState('');
   const [inputKm, setInputKm] = useState('');
+  const [tripMode, setTripMode] = useState('round'); // 'round' | 'oneWay'
   const [surchargeIds, setSurchargeIds] = useState(new Set());
   const [roughPct, setRoughPct] = useState(20);
   const [displayMode, setDisplayMode] = useState('all');
@@ -131,12 +132,14 @@ export default function SafeFreightPage() {
       setRegion1('충남');
       setRegion2('아산시');
       setRegion3('인주면');
+      setTripMode('round');
     } else {
       const p = options?.periods?.find((x) => x.id === '12월') ? '12월' : options?.periods?.[0]?.id;
       if (p) setPeriod(p);
       setRegion1('');
       setRegion2('');
       setRegion3('');
+      setTripMode('round');
     }
   }, [queryType]);
   useEffect(() => {
@@ -240,12 +243,15 @@ export default function SafeFreightPage() {
   const applySurchargesToRow = useMemo(() => {
     return (row) => {
       if (!row) return row;
-      let f40위탁 = row.f40위탁 || 0;
-      let f40운수자 = row.f40운수자 || 0;
-      let f40안전 = row.f40안전 || 0;
-      let f20위탁 = row.f20위탁 || 0;
-      let f20운수자 = row.f20운수자 || 0;
-      let f20안전 = row.f20안전 || 0;
+      const isDistanceBased = queryType === 'distance' || queryType === 'other';
+      const baseMult = (isDistanceBased && tripMode === 'oneWay') ? 0.5 : 1.0;
+
+      let f40위탁 = (row.f40위탁 || 0) * baseMult;
+      let f40운수자 = (row.f40운수자 || 0) * baseMult;
+      let f40안전 = (row.f40안전 || 0) * baseMult;
+      let f20위탁 = (row.f20위탁 || 0) * baseMult;
+      let f20운수자 = (row.f20운수자 || 0) * baseMult;
+      let f20안전 = (row.f20안전 || 0) * baseMult;
       const { pctApplied, fixedApplied } = appliedSurchargeInfo;
       const totalPct = pctApplied.reduce((sum, item) => sum + (item.pct * item.effective) / 100, 0);
       const mult = 1 + totalPct / 100;
@@ -662,6 +668,33 @@ export default function SafeFreightPage() {
                     )}
                     <p className={styles.regionHint}>주소 검색 시 지역정보가 자동입력됩니다.</p>
                   </div>
+                  {queryType === 'other' && (
+                    <div className={styles.formBlock}>
+                      <label className={styles.label}>운송구분</label>
+                      <div className={styles.radioGroup}>
+                        <label className={styles.radioLabel}>
+                          <input
+                            type="radio"
+                            name="tripModeOther"
+                            value="round"
+                            checked={tripMode === 'round'}
+                            onChange={() => setTripMode('round')}
+                          />
+                          운송(왕복)
+                        </label>
+                        <label className={styles.radioLabel}>
+                          <input
+                            type="radio"
+                            name="tripModeOther"
+                            value="oneWay"
+                            checked={tripMode === 'oneWay'}
+                            onChange={() => setTripMode('oneWay')}
+                          />
+                          구간(편도)
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -679,6 +712,31 @@ export default function SafeFreightPage() {
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className={styles.formBlock}>
+                    <label className={styles.label}>운송구분</label>
+                    <div className={styles.radioGroup}>
+                      <label className={styles.radioLabel}>
+                        <input
+                          type="radio"
+                          name="tripModeDist"
+                          value="round"
+                          checked={tripMode === 'round'}
+                          onChange={() => setTripMode('round')}
+                        />
+                        운송(왕복)
+                      </label>
+                      <label className={styles.radioLabel}>
+                        <input
+                          type="radio"
+                          name="tripModeDist"
+                          value="oneWay"
+                          checked={tripMode === 'oneWay'}
+                          onChange={() => setTripMode('oneWay')}
+                        />
+                        구간(편도)
+                      </label>
+                    </div>
                   </div>
                   <div className={styles.formBlock}>
                     <label className={styles.label}>거리 (km)</label>
@@ -923,138 +981,143 @@ export default function SafeFreightPage() {
               </>
             )}
           </div>
-        </div>
-      </section>
+        </div >
+      </section >
 
-      {lookupError && <p className={styles.error}>{lookupError}</p>}
+      {lookupError && <p className={styles.error}>{lookupError}</p>
+      }
 
-      {resultAll && resultAll.type === queryType && (
-        <section className={styles.resultSection}>
-          <p className={styles.tip}>
-            {resultAll.type === 'section' && '적용월을 참고해 위탁·운수자·안전 운임을 40FT·20FT 모두 확인할 수 있습니다.'}
-            {resultAll.type === 'distance' && '입력한 거리(km)에 해당하는 거리별 운임입니다.'}
-            {resultAll.type === 'other' && '이외구간에서 조회한 거리로 거리별 운임을 적용한 결과입니다.'}
-          </p>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th rowSpan={2}>적용</th>
-                <th rowSpan={2}>구간</th>
-                <th rowSpan={2}>행선지</th>
-                <th rowSpan={2}>거리(KM)</th>
-                <th colSpan={3} className={styles.thGroup}>40FT</th>
-                <th colSpan={3} className={styles.thGroup}>20FT</th>
-              </tr>
-              <tr>
-                <th>위탁</th>
-                <th>운수자</th>
-                <th>안전</th>
-                <th>위탁</th>
-                <th>운수자</th>
-                <th>안전</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayRows.map((row, idx) => {
-                const applied = applySurchargesToRow(row);
-                const isBlank = row.isNotApplied || (applied.f40안전 === 0);
-                const format = (val) => (isBlank || !val ? '-' : val.toLocaleString());
+      {
+        resultAll && resultAll.type === queryType && (
+          <section className={styles.resultSection}>
+            <p className={styles.tip}>
+              {resultAll.type === 'section' && '적용월을 참고해 위탁·운수자·안전 운임을 40FT·20FT 모두 확인할 수 있습니다.'}
+              {resultAll.type === 'distance' && '입력한 거리(km)에 해당하는 거리별 운임입니다.'}
+              {resultAll.type === 'other' && '이외구간에서 조회한 거리로 거리별 운임을 적용한 결과입니다.'}
+            </p>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th rowSpan={2}>적용</th>
+                  <th rowSpan={2}>구간</th>
+                  <th rowSpan={2}>행선지</th>
+                  <th rowSpan={2}>거리(KM)</th>
+                  <th colSpan={3} className={styles.thGroup}>40FT</th>
+                  <th colSpan={3} className={styles.thGroup}>20FT</th>
+                </tr>
+                <tr>
+                  <th>위탁</th>
+                  <th>운수자</th>
+                  <th>안전</th>
+                  <th>위탁</th>
+                  <th>운수자</th>
+                  <th>안전</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayRows.map((row, idx) => {
+                  const applied = applySurchargesToRow(row);
+                  const isBlank = row.isNotApplied || (applied.f40안전 === 0);
+                  const format = (val) => (isBlank || !val ? '-' : val.toLocaleString());
 
+                  return (
+                    <tr key={idx}>
+                      <td>{applied.period}</td>
+                      <td>{resultAll.origin || '-'}</td>
+                      <td>{resultAll.destination || '-'}</td>
+                      <td className={styles.cellKm}>{applied.km}</td>
+                      <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
+                      <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
+                      <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
+                      <td className={styles.cellAmount}>{format(applied.f20위탁)}</td>
+                      <td className={styles.cellAmount}>{format(applied.f20운수자)}</td>
+                      <td className={styles.cellAmount}>{format(applied.f20안전)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {surchargeIds.size > 0 && (
+              <>
+                <p className={styles.fareNote}>
+                  위 금액에 선택한 할증비용이 반영되어 표시됩니다.
+                  {appliedSurchargeInfo.pctApplied.length > 0 && (
+                    <> (할증률: 1번째 전액, 2·3번째 50% 적용)</>
+                  )}
+                </p>
+                {appliedSurchargeInfo.pctExcluded.length > 0 && (
+                  <div className={styles.excludedSurcharges}>
+                    <span className={styles.excludedHead}>적용 제외 (고시 제22조 나목):</span>
+                    <ul className={styles.excludedList}>
+                      {appliedSurchargeInfo.pctExcluded.map((s, i) => (
+                        <li key={i}>
+                          <strong>{s.label}</strong> — {s.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+            <p className={styles.disclaimer}>
+              할증금액은 할증료만 백원미만 사사오입 적용 후 합산, 거리(km)는 소수점 첫째자리 사사오입 적용됩니다.
+              본 서비스는 화물자동차 안전운임에 근거한 운임으로 참고용 자료로만 사용되어야 하며, 실제 운송 시 차이가 발생할 수 있습니다.
+            </p>
+            <p className={styles.source}>출처: 2026년 적용 화물자동차 안전운임 고시(국토교통부고시 제2026-000호, 2026.2.1. 시행)</p>
+          </section>
+        )
+      }
+
+      {
+        savedResults.length > 0 && (
+          <section className={styles.savedSection}>
+            <p className={styles.sectionHead}>임시 저장된 결과 (적용된 할증 반영)</p>
+            <ul className={styles.savedList}>
+              {savedResults.map((s, idx) => {
+                const savedAt = s.savedAt ? new Date(s.savedAt) : new Date(s.id);
+                const savedAtStr = savedAt.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
                 return (
-                  <tr key={idx}>
-                    <td>{applied.period}</td>
-                    <td>{resultAll.origin || '-'}</td>
-                    <td>{resultAll.destination || '-'}</td>
-                    <td className={styles.cellKm}>{applied.km}</td>
-                    <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
-                    <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
-                    <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
-                    <td className={styles.cellAmount}>{format(applied.f20위탁)}</td>
-                    <td className={styles.cellAmount}>{format(applied.f20운수자)}</td>
-                    <td className={styles.cellAmount}>{format(applied.f20안전)}</td>
-                  </tr>
+                  <li key={s.id} className={styles.savedItem}>
+                    <div className={styles.savedRow}>
+                      <span className={styles.savedSeq}>No.{savedResults.length - idx}</span>
+                      <span className={styles.savedDateTime}>{savedAtStr}</span>
+                      {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
+                      <span className={styles.savedType}>{s.typeLabel}</span>
+                      <span className={styles.savedCond}>
+                        {s.origin && `${s.origin} → `}
+                        {s.destination || '-'}
+                        {s.km != null && ` · ${s.km}km`}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.savedItemDelete}
+                        onClick={() => removeSavedItem(s.id)}
+                        aria-label="이 항목 삭제"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                    <div className={styles.savedFares}>
+                      <span>40FT 위탁 <strong className={styles.amountText}>{s.f40위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f40운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f40안전?.toLocaleString()}</strong></span>
+                      <span>20FT 위탁 <strong className={styles.amountText}>{s.f20위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f20운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f20안전?.toLocaleString()}</strong></span>
+                    </div>
+                    {s.appliedSurcharges?.length > 0 && (
+                      <p className={styles.savedSurcharges}>
+                        적용 할증: {s.appliedSurcharges.join(', ')}
+                      </p>
+                    )}
+                    {s.excludedSurcharges?.length > 0 && (
+                      <p className={styles.savedExcluded}>
+                        적용 제외: {s.excludedSurcharges.map((x) => x.label).join(', ')} — {s.excludedSurcharges[0].reason}
+                      </p>
+                    )}
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
-          {surchargeIds.size > 0 && (
-            <>
-              <p className={styles.fareNote}>
-                위 금액에 선택한 할증비용이 반영되어 표시됩니다.
-                {appliedSurchargeInfo.pctApplied.length > 0 && (
-                  <> (할증률: 1번째 전액, 2·3번째 50% 적용)</>
-                )}
-              </p>
-              {appliedSurchargeInfo.pctExcluded.length > 0 && (
-                <div className={styles.excludedSurcharges}>
-                  <span className={styles.excludedHead}>적용 제외 (고시 제22조 나목):</span>
-                  <ul className={styles.excludedList}>
-                    {appliedSurchargeInfo.pctExcluded.map((s, i) => (
-                      <li key={i}>
-                        <strong>{s.label}</strong> — {s.reason}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-          <p className={styles.disclaimer}>
-            할증금액은 할증료만 백원미만 사사오입 적용 후 합산, 거리(km)는 소수점 첫째자리 사사오입 적용됩니다.
-            본 서비스는 화물자동차 안전운임에 근거한 운임으로 참고용 자료로만 사용되어야 하며, 실제 운송 시 차이가 발생할 수 있습니다.
-          </p>
-          <p className={styles.source}>출처: 2026년 적용 화물자동차 안전운임 고시(국토교통부고시 제2026-000호, 2026.2.1. 시행)</p>
-        </section>
-      )}
-
-      {savedResults.length > 0 && (
-        <section className={styles.savedSection}>
-          <p className={styles.sectionHead}>임시 저장된 결과 (적용된 할증 반영)</p>
-          <ul className={styles.savedList}>
-            {savedResults.map((s, idx) => {
-              const savedAt = s.savedAt ? new Date(s.savedAt) : new Date(s.id);
-              const savedAtStr = savedAt.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
-              return (
-                <li key={s.id} className={styles.savedItem}>
-                  <div className={styles.savedRow}>
-                    <span className={styles.savedSeq}>No.{savedResults.length - idx}</span>
-                    <span className={styles.savedDateTime}>{savedAtStr}</span>
-                    {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
-                    <span className={styles.savedType}>{s.typeLabel}</span>
-                    <span className={styles.savedCond}>
-                      {s.origin && `${s.origin} → `}
-                      {s.destination || '-'}
-                      {s.km != null && ` · ${s.km}km`}
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.savedItemDelete}
-                      onClick={() => removeSavedItem(s.id)}
-                      aria-label="이 항목 삭제"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                  <div className={styles.savedFares}>
-                    <span>40FT 위탁 <strong className={styles.amountText}>{s.f40위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f40운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f40안전?.toLocaleString()}</strong></span>
-                    <span>20FT 위탁 <strong className={styles.amountText}>{s.f20위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f20운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f20안전?.toLocaleString()}</strong></span>
-                  </div>
-                  {s.appliedSurcharges?.length > 0 && (
-                    <p className={styles.savedSurcharges}>
-                      적용 할증: {s.appliedSurcharges.join(', ')}
-                    </p>
-                  )}
-                  {s.excludedSurcharges?.length > 0 && (
-                    <p className={styles.savedExcluded}>
-                      적용 제외: {s.excludedSurcharges.map((x) => x.label).join(', ')} — {s.excludedSurcharges[0].reason}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-    </div>
+            </ul>
+          </section>
+        )
+      }
+    </div >
   );
 }
