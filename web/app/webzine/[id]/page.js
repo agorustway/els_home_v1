@@ -16,6 +16,7 @@ export default function WebzineDetailPage() {
     const { role, user } = useUserRole();
     const supabase = createClient();
     const [zoomImage, setZoomImage] = useState(null);
+    const [isZoomDetail, setIsZoomDetail] = useState(false);
     const isAdmin = role === 'admin';
     const isAuthor = post && user?.id && post.author_id === user.id;
     const canEdit = isAuthor || isAdmin;
@@ -122,6 +123,7 @@ export default function WebzineDetailPage() {
                         onClick={(e) => {
                             if (e.target.tagName === 'IMG') {
                                 setZoomImage(e.target.src);
+                                setIsZoomDetail(false);
                             }
                         }}
                     />
@@ -141,17 +143,23 @@ export default function WebzineDetailPage() {
             {/* Zoom Overlay */}
             {zoomImage && (
                 <div className={styles.zoomOverlay} onClick={(e) => {
-                    if (e.target.tagName !== 'IMG') setZoomImage(null);
+                    if (e.target.tagName !== 'IMG') {
+                        setZoomImage(null);
+                        setIsZoomDetail(false);
+                    }
                 }}>
-                    <div className={styles.zoomClose} onClick={() => setZoomImage(null)}>&times;</div>
+                    <div className={styles.zoomClose} onClick={() => {
+                        setZoomImage(null);
+                        setIsZoomDetail(false);
+                    }}>&times;</div>
                     <div className={styles.zoomImageContainer}>
                         <img
                             src={zoomImage}
                             alt="Zoomed"
-                            className={styles.zoomImage}
+                            className={`${styles.zoomImage} ${isZoomDetail ? styles.zoomedIn : ''}`}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                e.target.classList.toggle(styles.zoomedIn);
+                                setIsZoomDetail(!isZoomDetail);
                             }}
                         />
                     </div>

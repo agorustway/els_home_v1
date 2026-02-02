@@ -151,10 +151,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: rgba(0, 0, 0, 0.95);
     z-index: 2000;
     cursor: zoom-out;
 }
@@ -163,44 +160,40 @@
     width: 100%;
     height: 100%;
     overflow: auto;
-    padding: 40px;
-    display: block;
-    /* Overriding previous flex if any */
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
 }
 
 .zoomImage {
-    max-width: 95%;
-    max-height: 95%;
+    max-width: 900px;
+    width: 95%;
+    height: auto;
     object-fit: contain;
     border-radius: 4px;
     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
     cursor: zoom-in;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, width 0.2s ease;
     background: #fff;
-    vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .zoomImage.zoomedIn {
     max-width: none;
-    max-height: none;
+    width: auto;
     cursor: zoom-out;
 }
 
-/* Vertical center helper */
-.zoomImageContainer::before {
-    content: '';
-    display: inline-block;
-    height: 100%;
-    vertical-align: middle;
-}
-
 .zoomClose {
-    position: absolute;
+    position: fixed;
     top: 20px;
     right: 30px;
     color: white;
-    font-size: 40px;
-    font-weight: 300;
+    font-size: 44px;
+    font-weight: 200;
     cursor: pointer;
+    z-index: 2001;
+    line-height: 1;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
