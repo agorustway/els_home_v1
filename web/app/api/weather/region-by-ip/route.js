@@ -10,13 +10,15 @@ const REGIONS = {
     ulsan: { name: '울산', lat: 35.5384, lon: 129.3114 },
     suwon: { name: '수원', lat: 37.2636, lon: 127.0286 },
     changwon: { name: '창원', lat: 35.2281, lon: 128.6811 },
-    sejong: { name: '세종', lat: 36.4801, lon: 127.2892 },
-    asan: { name: '아산', lat: 36.7897, lon: 127.0017 },
+    sejong: { name: '세종', lat: 36.5450, lon: 127.3505 },
+    asan: { name: '아산', lat: 36.9243, lon: 127.0570 },
+    dangjin: { name: '당진', lat: 36.9762, lon: 126.6867 },
+    yesan: { name: '예산', lat: 36.6766, lon: 126.7515 },
 };
 
 function nearestRegionId(lat, lon) {
     let minD = Infinity;
-    let id = 'seoul';
+    let id = 'asan';
     for (const [rid, r] of Object.entries(REGIONS)) {
         const d = (lat - r.lat) ** 2 + (lon - r.lon) ** 2;
         if (d < minD) { minD = d; id = rid; }
@@ -29,15 +31,27 @@ export async function GET(request) {
         const forwarded = request.headers.get('x-forwarded-for');
         const realIp = request.headers.get('x-real-ip');
         const ip = (forwarded?.split(',')[0]?.trim() || realIp || '').trim() || null;
+        const fields = 'status,lat,lon,city,regionName';
         const url = ip
-            ? `http://ip-api.com/json/${ip}?fields=lat,lon,status`
-            : 'http://ip-api.com/json?fields=lat,lon,status';
+            ? `http://ip-api.com/json/${ip}?fields=${fields}`
+            : `http://ip-api.com/json?fields=${fields}`;
+
         const res = await fetch(url, { next: { revalidate: 3600 } });
         if (!res.ok) throw new Error('IP 조회 실패');
         const data = await res.json();
+
         if (data.status !== 'success' || data.lat == null || data.lon == null) {
             return NextResponse.json({ region: 'asan' });
         }
+
+        // 1. 도시명(city/regionName) 우선 확인 (IP 좌표 오차 보정)
+        const locationText = `${data.city} ${data.regionName}`.toLowerCase();
+        if (locationText.includes('asan') || locationText.includes('아산')) return NextResponse.json({ region: 'asan' });
+        if (locationText.includes('dangjin') || locationText.includes('당진')) return NextResponse.json({ region: 'dangjin' });
+        if (locationText.includes('yesan') || locationText.includes('예산')) return NextResponse.json({ region: 'yesan' });
+        if (locationText.includes('sejong') || locationText.includes('세종')) return NextResponse.json({ region: 'sejong' });
+
+        // 2. 좌표 기반 가장 가까운 지역 매칭
         const region = nearestRegionId(data.lat, data.lon);
         return NextResponse.json({ region });
     } catch (e) {

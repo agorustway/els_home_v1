@@ -1,0 +1,175 @@
+/* InfoTicker.module.css */
+.tickerBar {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.9);
+    /* 약간 투명 처리 (이미지 위에 얹혀진 느낌) */
+    backdrop-filter: blur(8px);
+    /* 글래스모피즘 효과 추가 */
+    color: #f1f5f9;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    border-bottom: 3px solid #3b82f6;
+    /* ELS 블루 포인트 */
+    position: sticky;
+    top: 70px;
+    /* 헤더 바로 아래 고정 */
+    z-index: 900;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tickerInfo {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+}
+
+.tickerClock {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #93c5fd;
+    /* 밝은 블루 */
+    min-width: 210px;
+    font-size: 0.9rem;
+}
+
+.tickerWeather {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 20px;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tickerWeatherIcon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.tickerWeatherText {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.tickerDivider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 24px;
+    flex-shrink: 0;
+}
+
+.tickerNews {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.tickerNewsLabel {
+    background: #ef4444;
+    /* 레드 배지 (강조) */
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.tickerNewsTrack {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.tickerNewsScroll {
+    display: flex;
+    gap: 80px;
+    white-space: nowrap;
+    /* 뉴스 흐르는 속도를 훨씬 느리게 조정 (기존 100s -> 250s) */
+    animation: slideTicker 250s linear infinite;
+    padding-left: 20px;
+}
+
+.tickerNewsItem {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #e2e8f0;
+    transition: color 0.2s;
+}
+
+.tickerNewsItem:hover {
+    color: #3b82f6;
+}
+
+@keyframes slideTicker {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* 모바일 대응 */
+@media (max-width: 1024px) {
+    .tickerBar {
+        padding: 0 16px;
+        height: auto;
+        min-height: 48px;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        position: static;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .tickerInfo {
+        height: auto;
+        width: 100%;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        margin-bottom: 6px;
+    }
+
+    .tickerClock {
+        min-width: auto;
+        font-size: 0.8rem;
+    }
+
+    .tickerWeather {
+        padding-left: 0;
+        border-left: none;
+    }
+
+    .tickerDivider {
+        display: none;
+    }
+
+    .tickerNews {
+        width: 100%;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 6px;
+    }
+
+    .tickerNewsLabel {
+        margin-right: 12px;
+    }
+
+    .tickerNewsScroll {
+        animation: slideTicker 80s linear infinite;
+        /* 모바일은 조금 더 빠르게 */
+        gap: 40px;
+    }
+}

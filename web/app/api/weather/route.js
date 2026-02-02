@@ -10,8 +10,10 @@ const REGIONS = {
     ulsan: { name: '울산', lat: 35.5384, lon: 129.3114 },
     suwon: { name: '수원', lat: 37.2636, lon: 127.0286 },
     changwon: { name: '창원', lat: 35.2281, lon: 128.6811 },
-    sejong: { name: '세종', lat: 36.4801, lon: 127.2892 },
-    asan: { name: '아산', lat: 36.7897, lon: 127.0017 },
+    sejong: { name: '세종', lat: 36.5450, lon: 127.3505 }, // 중부지점(ICD) 근처로 조정
+    asan: { name: '아산', lat: 36.9243, lon: 127.0570 },  // 아산지점 실제 좌표
+    dangjin: { name: '당진', lat: 36.9762, lon: 126.6867 }, // 당진지점
+    yesan: { name: '예산', lat: 36.6766, lon: 126.7515 },   // 예산지점
 };
 
 const WEATHER_LABELS = { 0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림', 45: '안개', 48: '서리 안개', 51: '이슬비', 61: '비', 63: '비(강함)', 71: '눈', 80: '소나기', 95: '뇌우' };
@@ -25,10 +27,11 @@ function nearestRegionId(lat, lon) {
     let minD = Infinity;
     let id = 'asan';
     for (const [rid, r] of Object.entries(REGIONS)) {
+        // 위경도 차이의 제곱합 (단순 거리 비교용)
         const d = (lat - r.lat) ** 2 + (lon - r.lon) ** 2;
         if (d < minD) { minD = d; id = rid; }
     }
-    return id;
+    return { id, distance: Math.sqrt(minD) };
 }
 
 /** 날씨코드·체감온도로 생활/안전 예보 문장 생성 - 기상청 스타일 */
@@ -108,8 +111,10 @@ export async function GET(request) {
     if (latParam != null && lonParam != null && !Number.isNaN(Number(latParam)) && !Number.isNaN(Number(lonParam))) {
         lat = Number(latParam);
         lon = Number(lonParam);
-        regionIdFinal = nearestRegionId(lat, lon);
-        regionName = '현위치';
+        const { id, distance } = nearestRegionId(lat, lon);
+        regionIdFinal = id;
+        // 지점 반경 약 20km(위경도차 0.2) 내외면 지점명 표시, 아니면 현위치
+        regionName = distance < 0.2 ? REGIONS[id].name : '현위치';
     } else {
         const rid = regionId || 'asan';
         const region = REGIONS[rid] || REGIONS.asan;
@@ -125,13 +130,22 @@ export async function GET(request) {
         if (!res.ok) throw new Error('날씨 API 오류');
         const data = await res.json();
 
-        const hourly = (data.hourly?.time || []).slice(0, 24).map((time, i) => ({
-            time,
-            temp: data.hourly?.temperature_2m?.[i] ?? null,
-            code: data.hourly?.weathercode?.[i] ?? null,
-            pop: data.hourly?.precipitation_probability?.[i] ?? null,
-            apparent_temperature: data.hourly?.apparent_temperature?.[i] ?? null,
-        }));
+        const now = new Date();
+        const allTimes = data.hourly?.time || [];
+        // 현재 시각보다 같거나 큰 첫 번째 인덱스 찾기 (가장 가까운 미래/현재 시각)
+        let startIndex = allTimes.findIndex(t => new Date(t) >= now);
+        if (startIndex === -1) startIndex = 0; // 예외 처리
+
+        const hourly = allTimes.slice(startIndex, startIndex + 24).map((time, i) => {
+            const actualIdx = startIndex + i;
+            return {
+                time,
+                temp: data.hourly?.temperature_2m?.[actualIdx] ?? null,
+                code: data.hourly?.weathercode?.[actualIdx] ?? null,
+                pop: data.hourly?.precipitation_probability?.[actualIdx] ?? null,
+                apparent_temperature: data.hourly?.apparent_temperature?.[actualIdx] ?? null,
+            };
+        });
 
         const dailySummary = buildDailySummary(data.daily, hourly);
 

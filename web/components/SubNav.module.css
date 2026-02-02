@@ -2,8 +2,9 @@
     background: #fff;
     border-bottom: 1px solid #eee;
     position: sticky;
-    top: var(--header-height);
-    z-index: 900;
+    top: 114px;
+    /* 헤더(70px) + 티커(44px) */
+    z-index: 800;
 }
 
 .inner {

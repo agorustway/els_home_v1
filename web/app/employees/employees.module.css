@@ -119,7 +119,7 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     border: 1px solid #f1f5f9;
     border-left: 3px solid #2563eb;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     min-height: 72px;
@@ -128,11 +128,30 @@
     color: inherit;
     position: relative;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    backface-visibility: hidden;
+    /* 잔상 방지 */
 }
 
 .cardCompact.cardWithBg {
     border-left-color: rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.2);
+    background-color: #1e293b;
+    transform: translateZ(0);
+    /* GPU 가속으로 잔상 방지 */
+}
+
+/* 소형 카드 특화 오버레이 (중복 제거 및 상속 활용) */
+.cardCompact.cardWithBg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+    pointer-events: none;
+    transition: background 0.3s ease;
 }
 
 .cardCompact .cardTitleCompact,
@@ -649,6 +668,171 @@
 .cardWithBg {
     border-left-color: rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(0);
+}
+
+/* ============================================================
+   실시간 티커 바 (Real-time Ticker Bar)
+   ============================================================ */
+.tickerBar {
+    width: 100%;
+    background: #0f172a;
+    /* 짙은 네이비 */
+    color: #f1f5f9;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    font-family: 'Pretendard', sans-serif;
+    border-bottom: 3px solid #3b82f6;
+    /* ELS 블루 포인트 */
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tickerInfo {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+}
+
+.tickerClock {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #93c5fd;
+    /* 밝은 블루 */
+    min-width: 210px;
+}
+
+.tickerWeather {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 20px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tickerWeatherIcon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.tickerWeatherText {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.tickerDivider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 0 24px;
+    flex-shrink: 0;
+}
+
+.tickerNews {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.tickerNewsLabel {
+    background: #ef4444;
+    /* 레드 배지 (강조) */
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 16px;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.tickerNewsTrack {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.tickerNewsScroll {
+    display: flex;
+    gap: 60px;
+    white-space: nowrap;
+    animation: slideTicker 100s linear infinite;
+    padding-left: 10px;
+}
+
+.tickerNewsItem {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.tickerNewsItem:hover {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+@keyframes slideTicker {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* 모바일 대응 */
+@media (max-width: 1024px) {
+    .tickerBar {
+        padding: 0 16px;
+        height: 48px;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        position: static;
+    }
+
+    .tickerInfo {
+        height: 24px;
+        width: 100%;
+        justify-content: space-between;
+        font-size: 0.75rem;
+    }
+
+    .tickerClock {
+        min-width: auto;
+    }
+
+    .tickerWeather {
+        padding-left: 0;
+        border-left: none;
+    }
+
+    .tickerDivider {
+        display: none;
+    }
+
+    .tickerNews {
+        width: 100%;
+        margin-top: 4px;
+    }
+
+    .tickerNewsScroll {
+        animation: slideTicker 60s linear infinite;
+        /* 모바일은 조금 더 빠르게 */
+    }
 }
 
 .cardWithBg::before {
@@ -656,8 +840,11 @@
     position: absolute;
     inset: 0;
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.6) 50%, rgba(15, 23, 42, 0.5) 100%);
-    border-radius: 16px;
+    border-radius: inherit;
+    /* 부모 클래스의 radius 자동 상속 */
     z-index: 0;
+    pointer-events: none;
+    transition: background 0.25s ease;
 }
 
 .cardWithBg .cardTitle,
@@ -702,53 +889,37 @@
     border-left-color: rgba(255, 255, 255, 0.95);
 }
 
-/* 카드별 배경 이미지 (인트라넷 전용, 랜딩페이지 images/ 와 별도) */
+/* 카드별 배경 이미지 (앞뒤 겹침 방지를 위해 !important 및 background-color 제거) */
 .cardBgNas {
-    background-image: url('/images/intranet-cards/card-nas.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-nas.jpg') center/cover no-repeat !important;
 }
 
 .cardBgContainer {
-    background-image: url('/images/intranet-cards/card-container.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-container.jpg') center/cover no-repeat !important;
 }
 
 .cardBgSafeFreight {
-    background-image: url('/images/intranet-cards/card-safe-freight.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-safe-freight.jpg') center/cover no-repeat !important;
 }
 
 .cardBgBoard {
-    background-image: url('/images/intranet-cards/card-board.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-board.jpg') center/cover no-repeat !important;
 }
 
 .cardBgReports {
-    background-image: url('/images/intranet-cards/card-reports.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-reports.jpg') center/cover no-repeat !important;
 }
 
 .cardBgDocs {
-    background-image: url('/images/intranet-cards/card-docs.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-docs.jpg') center/cover no-repeat !important;
 }
 
 .cardBgContacts {
-    background-image: url('/images/intranet-cards/card-contacts.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-contacts.jpg') center/cover no-repeat !important;
 }
 
 .cardBgBranches {
-    background-image: url('/images/intranet-cards/card-branches.jpg');
-    background-size: cover;
-    background-position: center;
+    background: url('/images/intranet-cards/card-branches.jpg') center/cover no-repeat !important;
 }
 
 .cardWrap:hover .card,

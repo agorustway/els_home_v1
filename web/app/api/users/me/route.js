@@ -71,8 +71,6 @@ export async function PATCH(request) {
         const roleUpdates = {};
         if (name !== undefined) roleUpdates.name = name;
         if (phone !== undefined) roleUpdates.phone = phone;
-        if (rank !== undefined) roleUpdates.rank = rank;
-        if (position !== undefined) roleUpdates.position = position;
         // Do not directly update role here if there are specific role change rules.
         // Handle role change separately after fetching current role.
 

@@ -178,8 +178,6 @@ export async function PATCH(request) {
             if (can_read_security !== undefined) roleUpdates.can_read_security = can_read_security;
             if (name !== undefined) roleUpdates.name = name;
             if (phone !== undefined) roleUpdates.phone = phone;
-            if (rank !== undefined) roleUpdates.rank = rank;
-            if (position !== undefined) roleUpdates.position = position;
 
             if (Object.keys(roleUpdates).length > 0) {
                 // Try UPDATE first
@@ -201,8 +199,6 @@ export async function PATCH(request) {
                         role: role || 'visitor',
                         name: name || '',
                         phone: phone || '',
-                        rank: rank || '',
-                        position: position || '',
                         can_write: can_write || false,
                         can_delete: can_delete || false,
                         can_read_security: can_read_security || false
@@ -222,7 +218,7 @@ export async function PATCH(request) {
             if (rank !== undefined) profileUpdates.rank = rank;
             if (position !== undefined) profileUpdates.position = position;
 
-            if (Object.keys(profileUpdates).length > 0 && (name || phone)) {
+            if (Object.keys(profileUpdates).length > 1) {
                 // Try UPDATE first
                 const { error: profileError, count: pCount } = await adminSupabase
                     .from('profiles')
@@ -230,7 +226,10 @@ export async function PATCH(request) {
                     .eq('email', targetEmail)
                     .select('*', { count: 'exact' });
 
-                if (profileError) console.error('Admin Profile Update Error:', profileError);
+                if (profileError) {
+                    console.error('Admin Profile Update Error:', profileError);
+                    throw profileError;
+                }
 
                 // If no record, Insert
                 if (!pCount || pCount === 0) {

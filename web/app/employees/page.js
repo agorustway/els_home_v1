@@ -11,7 +11,7 @@ const Arrow = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" 
 const WEATHER_LABELS = { 0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림', 45: '안개', 48: '서리 안개', 51: '이슬비', 61: '비', 63: '비(강함)', 71: '눈', 80: '소나기', 95: '뇌우' };
 
 /** 다른 지역 로테이션용 ID 목록 (현위치 제외 후 3개씩 5초마다 전환) */
-const OTHER_REGION_IDS = ['seoul', 'busan', 'daegu', 'incheon', 'daejeon', 'gwangju', 'ulsan', 'suwon', 'changwon', 'sejong', 'asan'];
+const OTHER_REGION_IDS = ['seoul', 'busan', 'daegu', 'incheon', 'daejeon', 'gwangju', 'ulsan', 'suwon', 'changwon', 'sejong', 'asan', 'dangjin', 'yesan'];
 const ROTATE_INTERVAL_MS = 5000;
 
 function isMobileDevice() {
@@ -96,19 +96,27 @@ export default function EmployeesPortal() {
     }, []);
 
     useEffect(() => {
-        const mobile = isMobileDevice();
-        if (mobile && typeof navigator !== 'undefined' && navigator.geolocation) {
+        // 모든 디바이스에서 가능하면 브라우저 Geolocation을 먼저 시도 (정확도 높음)
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
+                    // 성공: 상세 좌표로 날씨 조회
                     fetch(`/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
                         .then((res) => res.json())
                         .then((json) => { if (!json.error) setWeatherData(json); })
-                        .catch(() => setWeatherData(null));
+                        .catch(() => {
+                            // 좌표 조회 실패 시 IP 기반 폴백
+                            fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetchWeather(j.region || 'asan'));
+                        });
                 },
-                () => fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetchWeather(j.region || 'asan')),
-                { timeout: 8000, maximumAge: 300000 }
+                () => {
+                    // 권한 거부 또는 실패 시 IP 기반 조회
+                    fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetchWeather(j.region || 'asan'));
+                },
+                { timeout: 5000, maximumAge: 600000 }
             );
         } else {
+            // Geolocation 미지원 시 IP 기반 조회
             fetch('/api/weather/region-by-ip')
                 .then((r) => r.json())
                 .then((j) => doFetchWeather(j.region || 'asan'));
@@ -126,7 +134,11 @@ export default function EmployeesPortal() {
     useEffect(() => {
         if (nOther < 1) return;
         const i = otherRegionIndex % nOther;
-        const ids = [otherIdsFiltered[i], otherIdsFiltered[(i + 1) % nOther], otherIdsFiltered[(i + 2) % nOther]];
+        const ids = [
+            otherIdsFiltered[i],
+            otherIdsFiltered[(i + 1) % nOther],
+            otherIdsFiltered[(i + 2) % nOther]
+        ];
         Promise.all(ids.map((id) => fetch(`/api/weather?region=${id}`).then((r) => r.json())))
             .then((results) => setOtherWeatherList(results.filter((j) => !j.error)))
             .catch(() => setOtherWeatherList([]));
@@ -146,7 +158,7 @@ export default function EmployeesPortal() {
 
     const currentWeather = weatherData?.hourly?.[0];
     const featuredNews = newsItems[0];
-    const latestNews = newsItems.slice(1, 4);
+    const latestNews = newsItems.slice(1, 5);
 
     return (
         <div className={styles.layoutWrapper}>
@@ -158,30 +170,30 @@ export default function EmployeesPortal() {
                     </header>
                     <div className={styles.gridContainerCompact}>
                         <Link href="/employees/archive" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
-                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgNas}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgNas}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
                                 <h3 className={styles.cardTitleCompact}>자료실 (NAS)</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
                         <Link href="/employees/container-history" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
-                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgContainer}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.03 }}>
+                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgContainer}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.05 }}>
                                 <h3 className={styles.cardTitleCompact}>컨테이너 이력조회</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
                         <Link href="/employees/safe-freight" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
-                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgSafeFreight}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.06 }}>
+                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgSafeFreight}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
                                 <h3 className={styles.cardTitleCompact}>안전운임 조회</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
                         <Link href="/employees/board/free" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
-                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgBoard}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.09 }}>
+                            <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgBoard}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.15 }}>
                                 <h3 className={styles.cardTitleCompact}>자유게시판</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
-                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.12 }}>
+                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.2 }}>
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgReports}`}>
                                 <h3 className={styles.cardTitleCompact}>업무보고</h3>
                                 <div className={styles.cardLinksCompact}>
@@ -190,7 +202,7 @@ export default function EmployeesPortal() {
                                 </div>
                             </div>
                         </motion.div>
-                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.15 }}>
+                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.25 }}>
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgDocs}`}>
                                 <h3 className={styles.cardTitleCompact}>자료실</h3>
                                 <div className={styles.cardLinksCompact}>
@@ -199,7 +211,7 @@ export default function EmployeesPortal() {
                                 </div>
                             </div>
                         </motion.div>
-                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.18 }}>
+                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.3 }}>
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgContacts}`}>
                                 <h3 className={styles.cardTitleCompact}>연락처</h3>
                                 <div className={styles.cardLinksCompact}>
@@ -209,7 +221,7 @@ export default function EmployeesPortal() {
                                 </div>
                             </div>
                         </motion.div>
-                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.21 }}>
+                        <motion.div className={styles.cardWrapCompact} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.35 }}>
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgBranches}`}>
                                 <h3 className={styles.cardTitleCompact}>지점서비스</h3>
                                 <div className={styles.cardLinksCompact}>

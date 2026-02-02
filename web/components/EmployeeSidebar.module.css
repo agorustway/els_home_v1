@@ -158,7 +158,8 @@
     font-weight: 700;
     font-size: 1.1rem;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-    overflow: hidden; /* To ensure the image is clipped to the circle */
+    overflow: hidden;
+    /* To ensure the image is clipped to the circle */
 }
 
 .avatarImg {
@@ -177,6 +178,14 @@
 .role {
     font-size: 0.8rem;
     color: #64748b;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.titleText {
+    color: #94a3b8;
+    font-weight: 400;
 }
 
 .logoutBtn {

@@ -97,7 +97,14 @@ export default function EmployeeSidebar() {
                         </div>
                         <div>
                             <div className={styles.username}>{displayName}</div>
-                            <div className={styles.role}>{getRoleLabel(profile.role)}</div>
+                            <div className={styles.role}>
+                                {getRoleLabel(profile.role)}
+                                {(profile.rank || profile.position) && (
+                                    <span className={styles.titleText}>
+                                        &nbsp;| {profile.rank}{profile.position ? `(${profile.position})` : ''}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ) : null}

@@ -3,19 +3,20 @@
     border-bottom: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     position: sticky;
-    top: var(--header-height, 70px);
-    z-index: 950;
+    top: 114px;
+    /* 헤더(70px) + 티커(44px) */
+    z-index: 850;
+    /* 티커(900), 메인헤더(1000) 보다는 낮게 */
 }
 
 .inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 12px 24px;
+    width: 100%;
+    padding: 0 32px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    flex-wrap: wrap;
 }
 
 .logo {

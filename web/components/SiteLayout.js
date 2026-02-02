@@ -12,6 +12,7 @@ import ApprovalModal from '@/components/ApprovalModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { MINIMAL_LAYOUT_PATHS, getHeroForPath } from '@/constants/siteLayout';
 import styles from './SiteLayout.module.css';
+import InfoTicker from '@/components/InfoTicker';
 
 export default function SiteLayout({ children }) {
     const pathname = usePathname();
@@ -40,7 +41,7 @@ export default function SiteLayout({ children }) {
         return <>{children}</>;
     }
 
-    // 랜딩(홈): 헤더 + 본문 + 푸터만 (원래 구성)
+    // 랜딩(홈): 헤더 + 본문 + 푸터만
     if (pathname === '/') {
         return (
             <>
@@ -51,35 +52,43 @@ export default function SiteLayout({ children }) {
         );
     }
 
-    // 인트라넷: 헤더, 히어로, EmployeeHeader, 본문은 사이드 메뉴 + 메인
-    if (isEmployees) {
-        return (
-            <>
-                <Header />
-                {hero && (
-                    <SubPageHero title={hero.title} subtitle={hero.subtitle} bgImage={hero.bgImage} />
-                )}
-                <EmployeeHeader />
-                <div className={styles.bodyWrap}>
-                    <EmployeeSidebar />
-                    <main className={styles.mainContent}>{children}</main>
-                </div>
-                <Footer />
-                <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
-            </>
-        );
-    }
-
-    // 그 외 서브 페이지: 헤더, 히어로, 상단 네비, 메인(사이드 없음), 푸터
+    /**
+     * 공통 레이아웃 구성 (인트라넷/서브 통합)
+     * 1. Header (Fixed 70px)
+     * 2. Spacer (70px) 또는 Hero (Min-height 300px)
+     * 3. InfoTicker (Sticky 70px)
+     * 4. SubHeader (Sticky 114px) - EmployeeHeader 또는 SubNav
+     */
     return (
         <>
             <Header />
-            {hero && (
-                <SubPageHero title={hero.title} subtitle={hero.subtitle} bgImage={hero.bgImage} />
+
+            {/* 배경 및 상단 영역 */}
+            {hero ? (
+                <SubPageHero
+                    title={hero.title}
+                    subtitle={hero.subtitle}
+                    bgImage={hero.bgImage}
+                    compact={isEmployees} // 인트라넷은 히어로 축소
+                />
+            ) : (
+                <div style={{ height: '70px' }} />
             )}
-            <SubNav />
-            <main className={styles.mainContent}>{children}</main>
+
+            {/* 실시간 티커 (히어로가 있을 땐 위로 44px 끌어올려 이미지 하단에 얹기) */}
+            <InfoTicker style={hero ? { marginTop: '-44px' } : {}} />
+
+            {/* 부가 헤더 */}
+            {isEmployees ? <EmployeeHeader /> : <SubNav />}
+
+            {/* 본문 영역 */}
+            <div className={isEmployees ? styles.bodyWrap : ''}>
+                {isEmployees && <EmployeeSidebar />}
+                <main className={styles.mainContent}>{children}</main>
+            </div>
+
             <Footer />
+            <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
         </>
     );
 }

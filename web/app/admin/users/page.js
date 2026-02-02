@@ -301,15 +301,15 @@ export default function AdminUsersPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1100px' }}>
                         <thead>
                             <tr style={{ backgroundColor: '#f1f5f9' }}>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '220px' }}>이메일</th>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '130px' }}>이름</th>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '150px' }}>직급/직책</th>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '150px' }}>전화번호</th>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600' }}>지점/권한</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '200px' }}>이메일</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '100px' }}>이름</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '160px' }}>직급/직책</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '140px' }}>전화번호</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '180px' }}>지점/권한</th>
                                 <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '80px' }}>상태</th>
                                 <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '80px' }}>게시글</th>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '150px' }}>권한 설정</th>
-                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '220px' }}>관리</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '130px' }}>권한 설정</th>
+                                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '180px' }}>관리</th>
                             </tr>
                         </thead>
                         <tbody>

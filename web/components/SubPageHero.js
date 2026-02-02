@@ -2,11 +2,14 @@
 import styles from './SubPageHero.module.css';
 import { motion } from 'framer-motion';
 
-export default function SubPageHero({ title, subtitle, bgImage }) {
+export default function SubPageHero({ title, subtitle, bgImage, compact = false }) {
     return (
-        <section className={styles.hero} style={{ backgroundImage: `url(${bgImage || '/images/hero_logistics.png'})` }}>
+        <section
+            className={`${styles.hero} ${compact ? styles.compact : ''}`}
+            style={{ backgroundImage: `url(${bgImage || '/images/hero_logistics.png'})` }}
+        >
             <div className={styles.overlay} />
-            <div className="container">
+            <div className={`container ${styles.heroContainer}`}>
                 <div className={styles.content}>
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }}
