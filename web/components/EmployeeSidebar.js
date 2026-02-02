@@ -27,6 +27,13 @@ export default function EmployeeSidebar() {
         window.location.href = '/login';
     };
 
+    const handleProtectedClick = (e) => {
+        if (profile?.role === 'visitor') {
+            e.preventDefault();
+            window.dispatchEvent(new Event('openApprovalModal'));
+        }
+    };
+
     const isActive = (path) => pathname === path || pathname.startsWith(path + '/');
 
     const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
@@ -47,6 +54,7 @@ export default function EmployeeSidebar() {
                                 key={tab.id}
                                 href={tab.defaultPath}
                                 className={`${styles.tabItem} ${isTabActive ? styles.tabActive : ''}`}
+                                onClick={handleProtectedClick}
                             >
                                 {tab.label}
                             </Link>
@@ -57,15 +65,16 @@ export default function EmployeeSidebar() {
             <div className={styles.navBlock}>
                 <span className={styles.navLabel}>서브메뉴</span>
                 <nav className={styles.menu}>
-                {items.map((item) => (
-                    <Link
-                        key={item.path}
-                        href={item.path}
-                        className={`${styles.item} ${isActive(item.path) ? styles.active : ''}`}
-                    >
-                        {item.label}
-                    </Link>
-                ))}
+                    {items.map((item) => (
+                        <Link
+                            key={item.path}
+                            href={item.path}
+                            className={`${styles.item} ${isActive(item.path) ? styles.active : ''}`}
+                            onClick={handleProtectedClick}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
                 </nav>
             </div>
             <div className={styles.footer}>

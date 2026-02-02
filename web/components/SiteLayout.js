@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -7,13 +8,32 @@ import SubPageHero from '@/components/SubPageHero';
 import SubNav from '@/components/SubNav';
 import EmployeeHeader from '@/components/EmployeeHeader';
 import EmployeeSidebar from '@/components/EmployeeSidebar';
+import ApprovalModal from '@/components/ApprovalModal';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { MINIMAL_LAYOUT_PATHS, getHeroForPath } from '@/constants/siteLayout';
 import styles from './SiteLayout.module.css';
 
 export default function SiteLayout({ children }) {
     const pathname = usePathname();
+    const { profile, loading } = useUserProfile();
+    const [showModal, setShowModal] = useState(false);
+
     const isMinimal = MINIMAL_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
     const isEmployees = pathname?.startsWith('/employees') || pathname?.startsWith('/admin');
+    const isVisitor = profile?.role === 'visitor';
+
+    useEffect(() => {
+        if (!loading && isEmployees && isVisitor) {
+            setShowModal(true);
+        }
+    }, [loading, isEmployees, isVisitor]);
+
+    useEffect(() => {
+        const handleOpenModal = () => setShowModal(true);
+        window.addEventListener('openApprovalModal', handleOpenModal);
+        return () => window.removeEventListener('openApprovalModal', handleOpenModal);
+    }, []);
+
     const hero = getHeroForPath(pathname);
 
     if (isMinimal) {
@@ -45,6 +65,7 @@ export default function SiteLayout({ children }) {
                     <main className={styles.mainContent}>{children}</main>
                 </div>
                 <Footer />
+                <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
             </>
         );
     }

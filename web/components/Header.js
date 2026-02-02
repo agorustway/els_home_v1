@@ -153,6 +153,12 @@ export default function Header({ darkVariant = false }) {
         setUserMenuOpen(false);
         handleLinkClick();
     };
+    const handleProtectedClick = (e) => {
+        if (profile?.role === 'visitor') {
+            e.preventDefault();
+            window.dispatchEvent(new Event('openApprovalModal'));
+        }
+    };
 
     const handleLoginClick = () => {
         router.push(`/login?next=${encodeURIComponent(pathname)}`);
@@ -183,6 +189,8 @@ export default function Header({ darkVariant = false }) {
                                 if (isMobile) {
                                     e.preventDefault();
                                     toggleDropdown(link.label);
+                                } else if (link.isEmployee) {
+                                    handleProtectedClick(e);
                                 }
                             }}
                         >
@@ -387,7 +395,12 @@ export default function Header({ darkVariant = false }) {
                     key={subIndex}
                     href={subLink.href}
                     className={className}
-                    onClick={handleLinkClick}
+                    onClick={(e) => {
+                        if (subLink.href?.startsWith('/employees') || subLink.href?.startsWith('/admin')) {
+                            handleProtectedClick(e);
+                        }
+                        if (!e.defaultPrevented) handleLinkClick();
+                    }}
                     prefetch={false} // 모바일 세션 충돌 방지
                 >
                     {subLink.label}

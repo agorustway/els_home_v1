@@ -73,19 +73,19 @@ export default function EmployeesPortal() {
     const { role, loading: authLoading, user } = useUserRole();
     const [weatherData, setWeatherData] = useState(null);
     const [newsItems, setNewsItems] = useState([]);
-    const [showApprovalModal, setShowApprovalModal] = useState(false);
 
     useEffect(() => {
-        // 회원이지만 소속 지점(Role)이 visitor인 경우 팝업 노출 (세션당 1회)
-        const hasSeen = sessionStorage.getItem('approval_modal_seen');
-        if (!authLoading && user && role === 'visitor' && !hasSeen) {
-            setShowApprovalModal(true);
+        // 방문객인 경우 페이지 진입 시점에 한 번 더 이벤트를 발생시켜 확실히 모달이 뜨게 할 수 있음
+        if (!authLoading && user && role === 'visitor') {
+            window.dispatchEvent(new Event('openApprovalModal'));
         }
     }, [authLoading, user, role]);
 
-    const handleCloseModal = () => {
-        setShowApprovalModal(false);
-        sessionStorage.setItem('approval_modal_seen', 'true');
+    const handleProtectedClick = (e) => {
+        if (role === 'visitor') {
+            e.preventDefault();
+            window.dispatchEvent(new Event('openApprovalModal'));
+        }
     };
 
     const doFetchWeather = useCallback((regionId) => {
@@ -157,25 +157,25 @@ export default function EmployeesPortal() {
                         <h1 className={styles.portalTitleCompact}>주요 서비스</h1>
                     </header>
                     <div className={styles.gridContainerCompact}>
-                        <Link href="/employees/archive" className={styles.cardWrapCompact}>
+                        <Link href="/employees/archive" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
                             <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgNas}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
                                 <h3 className={styles.cardTitleCompact}>자료실 (NAS)</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
-                        <Link href="/employees/container-history" className={styles.cardWrapCompact}>
+                        <Link href="/employees/container-history" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
                             <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgContainer}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.03 }}>
                                 <h3 className={styles.cardTitleCompact}>컨테이너 이력조회</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
-                        <Link href="/employees/safe-freight" className={styles.cardWrapCompact}>
+                        <Link href="/employees/safe-freight" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
                             <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgSafeFreight}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.06 }}>
                                 <h3 className={styles.cardTitleCompact}>안전운임 조회</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
                             </motion.div>
                         </Link>
-                        <Link href="/employees/board/free" className={styles.cardWrapCompact}>
+                        <Link href="/employees/board/free" className={styles.cardWrapCompact} onClick={handleProtectedClick}>
                             <motion.div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgBoard}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.09 }}>
                                 <h3 className={styles.cardTitleCompact}>자유게시판</h3>
                                 <span className={styles.cardCtaCompact}>바로가기 <Arrow /></span>
@@ -185,8 +185,8 @@ export default function EmployeesPortal() {
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgReports}`}>
                                 <h3 className={styles.cardTitleCompact}>업무보고</h3>
                                 <div className={styles.cardLinksCompact}>
-                                    <Link href="/employees/reports" className={styles.cardLinkItemCompact}>통합 <Arrow /></Link>
-                                    <Link href="/employees/reports/my" className={styles.cardLinkItemCompact}>내 보고 <Arrow /></Link>
+                                    <Link href="/employees/reports" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>통합 <Arrow /></Link>
+                                    <Link href="/employees/reports/my" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>내 보고 <Arrow /></Link>
                                 </div>
                             </div>
                         </motion.div>
@@ -194,8 +194,8 @@ export default function EmployeesPortal() {
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgDocs}`}>
                                 <h3 className={styles.cardTitleCompact}>자료실</h3>
                                 <div className={styles.cardLinksCompact}>
-                                    <Link href="/employees/work-docs" className={styles.cardLinkItemCompact}>업무자료 <Arrow /></Link>
-                                    <Link href="/employees/form-templates" className={styles.cardLinkItemCompact}>서식 <Arrow /></Link>
+                                    <Link href="/employees/work-docs" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>업무자료 <Arrow /></Link>
+                                    <Link href="/employees/form-templates" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>서식 <Arrow /></Link>
                                 </div>
                             </div>
                         </motion.div>
@@ -203,9 +203,9 @@ export default function EmployeesPortal() {
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgContacts}`}>
                                 <h3 className={styles.cardTitleCompact}>연락처</h3>
                                 <div className={styles.cardLinksCompact}>
-                                    <Link href="/employees/internal-contacts" className={styles.cardLinkItemCompact}>사내 <Arrow /></Link>
-                                    <Link href="/employees/external-contacts" className={styles.cardLinkItemCompact}>외부 <Arrow /></Link>
-                                    <Link href="/employees/work-sites" className={styles.cardLinkItemCompact}>작업지 <Arrow /></Link>
+                                    <Link href="/employees/internal-contacts" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>사내 <Arrow /></Link>
+                                    <Link href="/employees/external-contacts" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>외부 <Arrow /></Link>
+                                    <Link href="/employees/work-sites" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>작업지 <Arrow /></Link>
                                 </div>
                             </div>
                         </motion.div>
@@ -213,11 +213,11 @@ export default function EmployeesPortal() {
                             <div className={`${styles.cardCompact} ${styles.cardWithBg} ${styles.cardBgBranches}`}>
                                 <h3 className={styles.cardTitleCompact}>지점서비스</h3>
                                 <div className={styles.cardLinksCompact}>
-                                    <Link href="/employees/branches/headquarters" className={styles.cardLinkItemCompact}>서울본사 <Arrow /></Link>
-                                    <Link href="/employees/branches/asan" className={styles.cardLinkItemCompact}>아산 <Arrow /></Link>
-                                    <Link href="/employees/branches/jungbu" className={styles.cardLinkItemCompact}>중부 <Arrow /></Link>
-                                    <Link href="/employees/branches/dangjin" className={styles.cardLinkItemCompact}>당진 <Arrow /></Link>
-                                    <Link href="/employees/branches/yesan" className={styles.cardLinkItemCompact}>예산 <Arrow /></Link>
+                                    <Link href="/employees/branches/headquarters" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>서울본사 <Arrow /></Link>
+                                    <Link href="/employees/branches/asan" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>아산 <Arrow /></Link>
+                                    <Link href="/employees/branches/jungbu" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>중부 <Arrow /></Link>
+                                    <Link href="/employees/branches/dangjin" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>당진 <Arrow /></Link>
+                                    <Link href="/employees/branches/yesan" className={styles.cardLinkItemCompact} onClick={handleProtectedClick}>예산 <Arrow /></Link>
                                 </div>
                             </div>
                         </motion.div>
@@ -323,35 +323,7 @@ export default function EmployeesPortal() {
                 </section>
             </div>
 
-            {/* 승인 대기 안내 모달 */}
-            <AnimatePresence>
-                {showApprovalModal && (
-                    <div className={styles.modalOverlay} onClick={handleCloseModal}>
-                        <motion.div
-                            className={styles.modalContent}
-                            onClick={(e) => e.stopPropagation()}
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        >
-                            <span className={styles.modalIcon}>📢</span>
-                            <h2 className={styles.modalTitle}>권한 승인 대기 안내</h2>
-                            <p className={styles.modalDesc}>
-                                현재 소속 지점 및 권한이 배정되지 않았습니다.<br />
-                                임직원의 경우 서비스 이용을 위해 <strong>지점 배정과 관리자의 최종 승인</strong>이 필요합니다.<br /><br />
-                                가입 직후이거나 배정을 기다리고 계신 경우,<br />
-                                관리자에게 승인 요청 문의를 해주시기 바랍니다.
-                            </p>
-                            <button
-                                className={styles.modalBtn}
-                                onClick={handleCloseModal}
-                            >
-                                확인하였습니다
-                            </button>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            {/* 승인 모달은 SiteLayout에서 공통으로 처리함 */}
         </div>
     );
 }
