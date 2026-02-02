@@ -174,15 +174,17 @@
     border-radius: 4px;
     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
     cursor: zoom-in;
-    transition: transform 0.2s ease, width 0.2s ease;
+    transition: all 0.2s ease;
     background: #fff;
     flex-shrink: 0;
 }
 
 .zoomImage.zoomedIn {
     max-width: none;
-    width: auto;
+    width: 100%;
+    height: auto;
     cursor: zoom-out;
+    object-fit: none;
 }
 
 .zoomClose {
