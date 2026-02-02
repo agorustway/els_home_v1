@@ -153,7 +153,6 @@
     height: 100vh;
     background: rgba(0, 0, 0, 0.95);
     z-index: 2000;
-    cursor: zoom-out;
 }
 
 .zoomImageContainer {
