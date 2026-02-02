@@ -31,6 +31,8 @@ export function useUserProfile() {
         ...profileData,
         avatar_url: profileData?.avatar_url || metaAvatar || null,
         role: roleData?.role || 'visitor',
+        rank: profileData?.rank || roleData?.rank || '',
+        position: profileData?.position || roleData?.position || '',
       });
     } else {
       setProfile(null);

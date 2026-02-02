@@ -39,7 +39,7 @@ export async function GET(request) {
     if (uniqueEmails.length > 0) {
         const { data: pData } = await supabase
             .from('profiles')
-            .select('email, full_name, avatar_url')
+            .select('email, full_name, avatar_url, rank, position')
             .in('email', uniqueEmails);
         profiles = pData || [];
     }
@@ -56,6 +56,8 @@ export async function GET(request) {
                 email: email,
                 name: profile.full_name || email?.split('@')[0] || '알 수 없음',
                 avatar_url: profile.avatar_url,
+                rank: profile.rank || '',
+                position: profile.position || '',
                 id: post.author_id // Keep ID for reference
             }
         };

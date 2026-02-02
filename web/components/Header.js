@@ -288,7 +288,15 @@ export default function Header({ darkVariant = false }) {
                                     overflow: 'hidden'
                                 }}>
                                     <div style={{ padding: '8px 20px', borderBottom: '1px solid #f1f5f9', marginBottom: '4px' }}>
-                                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>{displayName}님</div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>
+                                            {displayName}
+                                            {(profile.rank || profile.position) && (
+                                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 400, marginLeft: '4px' }}>
+                                                    {profile.rank}{profile.position ? `(${profile.position})` : ''}
+                                                </span>
+                                            )}
+                                            님
+                                        </div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{getRoleLabel(profile.role)}</div>
                                     </div>
                                     <Link
@@ -441,7 +449,12 @@ export default function Header({ darkVariant = false }) {
                     {!loading && (profile ?
                         <>
                             <div className={styles.welcomeMsg}>
-                                환영합니다, <strong>{displayName}</strong>님!<br />
+                                환영합니다, <strong>{displayName}</strong>
+                                {(profile.rank || profile.position) && (
+                                    <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>
+                                        &nbsp;{profile.rank}{profile.position ? `(${profile.position})` : ''}
+                                    </span>
+                                )} 님!<br />
                                 <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>({getRoleLabel(profile.role)})</span>
                             </div>
                             <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>

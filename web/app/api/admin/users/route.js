@@ -85,6 +85,8 @@ export async function GET(request) {
                 name: profileInfo.full_name || roleInfo.name || '',
                 phone: profileInfo.phone || roleInfo.phone || '',
                 avatar_url: profileInfo.avatar_url,
+                rank: profileInfo.rank || roleInfo.rank || '',
+                position: profileInfo.position || roleInfo.position || '',
                 can_write: roleInfo.can_write || false,
                 can_delete: roleInfo.can_delete || false,
                 can_read_security: roleInfo.can_read_security || false,
@@ -136,7 +138,7 @@ function getRoleLabel(role) {
 export async function PATCH(request) {
     try {
         const supabase = await createClient();
-        const { userId, role, email, can_write, can_delete, can_read_security, name, phone, banned } = await request.json();
+        const { userId, role, email, can_write, can_delete, can_read_security, name, phone, rank, position, banned } = await request.json();
 
         // Check if requester is admin
         const { data: { user } } = await supabase.auth.getUser();
@@ -176,6 +178,8 @@ export async function PATCH(request) {
             if (can_read_security !== undefined) roleUpdates.can_read_security = can_read_security;
             if (name !== undefined) roleUpdates.name = name;
             if (phone !== undefined) roleUpdates.phone = phone;
+            if (rank !== undefined) roleUpdates.rank = rank;
+            if (position !== undefined) roleUpdates.position = position;
 
             if (Object.keys(roleUpdates).length > 0) {
                 // Try UPDATE first
@@ -197,6 +201,8 @@ export async function PATCH(request) {
                         role: role || 'visitor',
                         name: name || '',
                         phone: phone || '',
+                        rank: rank || '',
+                        position: position || '',
                         can_write: can_write || false,
                         can_delete: can_delete || false,
                         can_read_security: can_read_security || false
@@ -213,6 +219,8 @@ export async function PATCH(request) {
             };
             if (name !== undefined) profileUpdates.full_name = name;
             if (phone !== undefined) profileUpdates.phone = phone;
+            if (rank !== undefined) profileUpdates.rank = rank;
+            if (position !== undefined) profileUpdates.position = position;
 
             if (Object.keys(profileUpdates).length > 0 && (name || phone)) {
                 // Try UPDATE first
@@ -229,7 +237,9 @@ export async function PATCH(request) {
                     const newProfileData = {
                         email: targetEmail,
                         full_name: name || '',
-                        phone: phone || ''
+                        phone: phone || '',
+                        rank: rank || '',
+                        position: position || ''
                     };
                     if (userId) newProfileData.id = userId;
 

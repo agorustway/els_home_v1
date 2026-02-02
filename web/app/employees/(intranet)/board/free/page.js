@@ -77,6 +77,11 @@ export default function FreeBoardPage() {
                                 </td>
                                 <td className={`${styles.author} ${styles.colAuthor}`}>
                                     {post.author?.name || post.author?.email?.split('@')[0]}
+                                    {(post.author?.rank || post.author?.position) && (
+                                        <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '4px' }}>
+                                            {post.author.rank}{post.author.position ? `(${post.author.position})` : ''}
+                                        </span>
+                                    )}
                                 </td>
                                 <td className={`${styles.date} ${styles.colDate}`}>
                                     {new Date(post.created_at).toLocaleDateString()}

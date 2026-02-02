@@ -53,6 +53,12 @@
     margin-left: 2px;
 }
 
+.titleText {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
 .links {
     display: flex;
     align-items: center;

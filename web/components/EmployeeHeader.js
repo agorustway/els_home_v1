@@ -12,6 +12,8 @@ export default function EmployeeHeader() {
     const supabase = createClient();
 
     const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
+    const rank = profile?.rank || '';
+    const position = profile?.position || '';
     const roleLabel = profile ? getRoleLabel(profile.role) : '';
 
     const handleLogout = async () => {
@@ -30,6 +32,11 @@ export default function EmployeeHeader() {
                     {!loading && profile && (
                         <span className={styles.greeting}>
                             <strong>{displayName}</strong>
+                            {(rank || position) && (
+                                <span className={styles.titleText}>
+                                    &nbsp;{rank}{position ? `(${position})` : ''}
+                                </span>
+                            )}
                             {roleLabel && (
                                 <span className={styles.roleBadge}>({roleLabel})</span>
                             )}

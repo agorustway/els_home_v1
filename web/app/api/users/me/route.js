@@ -45,6 +45,8 @@ export async function GET() {
                 phone: profileData?.phone || roleData?.phone || '',
                 avatar_url: profileData?.avatar_url || metaAvatar || null,
                 role: roleData?.role || 'visitor',
+                rank: profileData?.rank || roleData?.rank || '',
+                position: profileData?.position || roleData?.position || '',
                 requested_role: roleData?.requested_role,
                 post_count: count || 0
             }
@@ -62,13 +64,15 @@ export async function PATCH(request) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { name, phone, role } = await request.json();
+        const { name, phone, role, rank, position } = await request.json();
         const adminSupabase = await createAdminClient();
 
         // 1. Update/Insert user_roles (Email 기반 UPSERT)
         const roleUpdates = {};
         if (name !== undefined) roleUpdates.name = name;
         if (phone !== undefined) roleUpdates.phone = phone;
+        if (rank !== undefined) roleUpdates.rank = rank;
+        if (position !== undefined) roleUpdates.position = position;
         // Do not directly update role here if there are specific role change rules.
         // Handle role change separately after fetching current role.
 
@@ -90,6 +94,8 @@ export async function PATCH(request) {
         const profileUpdates = {};
         if (name !== undefined) profileUpdates.full_name = name;
         if (phone !== undefined) profileUpdates.phone = phone;
+        if (rank !== undefined) profileUpdates.rank = rank;
+        if (position !== undefined) profileUpdates.position = position;
 
         const meta = user.user_metadata || {};
         const metaAvatar = meta.avatar_url || meta.picture || meta.profile_image || meta.kakao_account?.profile?.profile_image_url;
