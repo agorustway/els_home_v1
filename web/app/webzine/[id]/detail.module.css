@@ -162,7 +162,7 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     padding: 60px 20px;
 }
 
@@ -177,14 +177,16 @@
     transition: all 0.2s ease;
     background: #fff;
     flex-shrink: 0;
+    align-self: center;
 }
 
 .zoomImage.zoomedIn {
     max-width: none;
-    width: 100%;
+    max-height: none;
+    width: auto;
     height: auto;
     cursor: zoom-out;
-    object-fit: none;
+    align-self: flex-start;
 }
 
 .zoomClose {
