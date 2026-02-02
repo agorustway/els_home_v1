@@ -932,8 +932,8 @@ export default function SafeFreightPage() {
         <section className={styles.resultSection}>
           <p className={styles.tip}>
             {resultAll.type === 'section' && '적용월을 참고해 위탁·운수자·안전 운임을 40FT·20FT 모두 확인할 수 있습니다.'}
-            {resultAll.type === 'distance' && <>입력한 거리(km)에 해당하는 거리별 운임입니다. <span className={styles.yearNote}>(2022년 적용분)</span></>}
-            {resultAll.type === 'other' && <>이외구간에서 조회한 거리로 거리별 운임을 적용한 결과입니다. <span className={styles.yearNote}>(2022년 적용분)</span></>}
+            {resultAll.type === 'distance' && '입력한 거리(km)에 해당하는 거리별 운임입니다.'}
+            {resultAll.type === 'other' && '이외구간에서 조회한 거리로 거리별 운임을 적용한 결과입니다.'}
           </p>
           <table className={styles.table}>
             <thead>
@@ -957,18 +957,21 @@ export default function SafeFreightPage() {
             <tbody>
               {displayRows.map((row, idx) => {
                 const applied = applySurchargesToRow(row);
+                const isBlank = row.isNotApplied || (applied.f40안전 === 0);
+                const format = (val) => (isBlank || !val ? '-' : val.toLocaleString());
+
                 return (
                   <tr key={idx}>
                     <td>{applied.period}</td>
                     <td>{resultAll.origin || '-'}</td>
                     <td>{resultAll.destination || '-'}</td>
                     <td className={styles.cellKm}>{applied.km}</td>
-                    <td className={styles.cellAmount}>{applied.f40위탁?.toLocaleString()}</td>
-                    <td className={styles.cellAmount}>{applied.f40운수자?.toLocaleString()}</td>
-                    <td className={styles.cellAmount}>{applied.f40안전?.toLocaleString()}</td>
-                    <td className={styles.cellAmount}>{applied.f20위탁?.toLocaleString()}</td>
-                    <td className={styles.cellAmount}>{applied.f20운수자?.toLocaleString()}</td>
-                    <td className={styles.cellAmount}>{applied.f20안전?.toLocaleString()}</td>
+                    <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
+                    <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
+                    <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
+                    <td className={styles.cellAmount}>{format(applied.f20위탁)}</td>
+                    <td className={styles.cellAmount}>{format(applied.f20운수자)}</td>
+                    <td className={styles.cellAmount}>{format(applied.f20안전)}</td>
                   </tr>
                 );
               })}

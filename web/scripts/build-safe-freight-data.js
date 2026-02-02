@@ -138,29 +138,30 @@ Object.keys(distanceByPeriod).forEach((pk) => {
 });
 
 // ========== 3. 이외구간 ==========
-// 기점, 시도, 시군구, 행정동, 법정동, 거리, 거리(정수)
+// 적용, 기점, 시도, 시군구, 행정동, 법정동, 거리, 거리(정수)
 const sheet3 = wb.Sheets['이외구간'];
 const rows3 = XLSX.utils.sheet_to_json(sheet3, { header: 1, defval: '' });
-const dataRows3 = rows3.slice(1).filter(r => r && r.length >= 6 && String(r[0]).trim());
+const dataRows3 = rows3.slice(1).filter(r => r && r.length >= 7 && String(r[1]).trim());
 
 const otherSections = {};
 const otherRegions = {}; // 기점 -> { 시도 -> { 시군구 -> [ 동 ] } }
 
 dataRows3.forEach((row) => {
-  const 기점 = String(row[0] || '').trim();
-  const 시도 = String(row[1] || '').trim();
-  const 시군구 = String(row[2] || '').trim();
-  const 행정동 = String(row[3] || '').trim();
-  const 법정동 = String(row[4] || '').trim();
-  const 거리 = row[5];
-  const 거리정수 = row[6];
+  const 적용 = String(row[0] || '').trim();
+  const 기점 = String(row[1] || '').trim();
+  const 시도 = String(row[2] || '').trim();
+  const 시군구 = String(row[3] || '').trim();
+  const 행정동 = String(row[4] || '').trim();
+  const 법정동 = String(row[5] || '').trim();
+  const 거리 = row[6];
+  const 거리정수 = row[7];
   if (!기점 || !시도 || !시군구) return;
 
   const km = typeof 거리 === 'number' ? 거리 : parseFloat(거리);
   const kmInt = typeof 거리정수 === 'number' ? Math.round(거리정수) : parseInt(거리정수, 10);
   if (Number.isNaN(kmInt)) return;
 
-  const val = { km, kmInt, hDong: 행정동, bDong: 법정동 };
+  const val = { km, kmInt, hDong: 행정동, bDong: 법정동, applyPeriod: 적용 };
   if (행정동) {
     otherSections[`${기점}|${시도}|${시군구}|${행정동}`] = val;
     if (!otherRegions[기점]) otherRegions[기점] = {};
