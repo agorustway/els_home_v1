@@ -125,7 +125,7 @@ export default function SafeFreightPage() {
     } else if (queryType === 'other') {
       otherTabDefaultsJustSet.current = true;
       skipRegionClearOnce.current = true;
-      const p = options?.periods?.find((x) => x.id === '22.07월') ? '22.07월' : options?.periods?.[0]?.id;
+      const p = options?.periods?.find((x) => x.id === '26.02월') ? '26.02월' : options?.periods?.[0]?.id;
       if (p) setPeriod(p);
       setOrigin('부산신항');
       setRegion1('충남');
@@ -150,6 +150,12 @@ export default function SafeFreightPage() {
       setRegion3('');
     }
   }, [queryType, origin]);
+
+  const selectedOtherSectionInfo = useMemo(() => {
+    if (queryType !== 'other' || !origin || !region1 || !region2 || !region3) return null;
+    const key = `${origin}|${region1}|${region2}|${region3}`;
+    return options?.otherSections?.[key];
+  }, [options?.otherSections, queryType, origin, region1, region2, region3]);
 
   const toggleSurcharge = (id) => {
     setSurchargeIds((prev) => {
@@ -648,6 +654,12 @@ export default function SafeFreightPage() {
                         ))}
                       </select>
                     </div>
+                    {queryType === 'other' && selectedOtherSectionInfo && (selectedOtherSectionInfo.hDong !== selectedOtherSectionInfo.bDong) && (
+                      <div className={styles.dongHint}>
+                        <span>{region3 === selectedOtherSectionInfo.hDong ? '법정동' : '행정동'}: </span>
+                        <strong>{region3 === selectedOtherSectionInfo.hDong ? selectedOtherSectionInfo.bDong : selectedOtherSectionInfo.hDong}</strong>
+                      </div>
+                    )}
                     <p className={styles.regionHint}>주소 검색 시 지역정보가 자동입력됩니다.</p>
                   </div>
                 </>
