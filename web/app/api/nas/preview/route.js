@@ -20,14 +20,19 @@ export async function GET(request) {
 
     try {
         const client = getNasClient();
-        const buffer = await client.getFileContents(path);
-        const fileName = path.split('/').pop();
+
+        // 1. Get file stats first (for Content-Length)
+        const stat = await client.stat(path);
+
+        // 2. Create Read Stream instead of buffering entire file
+        const nodeStream = client.createReadStream(path);
         const isDownload = searchParams.get('download') === 'true';
 
         // Log the activity
-        await logActivityServer(isDownload ? 'DOWNLOAD' : 'FILE_VIEW', path, { fileName });
+        const fileName = path.split('/').pop();
+        await logActivityServer(isDownload ? 'DOWNLOAD' : 'FILE_VIEW', path, { fileName, size: stat.size });
 
-        // Determine content type by extension
+        // Determine content type
         const ext = fileName.split('.').pop().toLowerCase();
         const mimeMap = {
             'jpg': 'image/jpeg',
@@ -42,11 +47,15 @@ export async function GET(request) {
             'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'doc': 'application/msword',
             'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'ppt': 'application/vnd.ms-powerpoint'
+            'ppt': 'application/vnd.ms-powerpoint',
+            'mp4': 'video/mp4',
+            'mov': 'video/quicktime',
+            'zip': 'application/zip'
         };
 
         const headers = {
             'Content-Type': mimeMap[ext] || 'application/octet-stream',
+            'Content-Length': stat.size, // Crucial for download progress bar
             // Aggressive caching: 1 year, immutable
             'Cache-Control': 'public, max-age=31536000, immutable'
         };
@@ -55,9 +64,18 @@ export async function GET(request) {
             headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(fileName)}"`;
         }
 
-        return new Response(buffer, { headers });
+        // 3. Convert Node Stream to Web ReadableStream
+        const webStream = new ReadableStream({
+            start(controller) {
+                nodeStream.on('data', (chunk) => controller.enqueue(chunk));
+                nodeStream.on('end', () => controller.close());
+                nodeStream.on('error', (err) => controller.error(err));
+            }
+        });
+
+        return new Response(webStream, { headers });
     } catch (error) {
-        console.error('NAS Preview Error:', error);
+        console.error('NAS Preview/Download Error:', error);
         return new Response('Failed to load file', { status: 500 });
     }
 }

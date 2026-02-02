@@ -159,15 +159,29 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
     try:
         driver = webdriver.Chrome(service=service, options=options)
         driver.get("https://etrans.klnet.co.kr/index.do")
-        # 로그인 폼 로드 대기(최대 15초, 준비되면 즉시 진행)
-        WebDriverWait(driver, 15).until(
+        # 로그인 폼 로드 대기(NAS 느림 고려하여 15 -> 25초로 연장)
+        WebDriverWait(driver, 25).until(
             EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
         )
-        driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId").send_keys(u_id)
-        driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(u_pw)
-        driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(Keys.ENTER)
+        
+        # [안정성 강화] 입력 씹힘 방지: 클릭 -> 초기화 -> 대기 -> 입력
+        u_elem = driver.find_element(By.ID, "mf_wfm_subContainer_ibx_userId")
+        u_elem.click()
+        u_elem.clear()
+        time.sleep(0.5)
+        u_elem.send_keys(u_id)
+        
+        p_elem = driver.find_element(By.ID, "mf_wfm_subContainer_sct_password")
+        p_elem.click()
+        p_elem.clear()
+        time.sleep(0.5)
+        p_elem.send_keys(u_pw)
+        time.sleep(0.5)
+        
+        p_elem.send_keys(Keys.ENTER)
+        
         # 로그인 처리 대기: PC용 잘 되던 값 8초 (NAS 등에서 세션 반영 느릴 수 있음)
-        time.sleep(8)
+        time.sleep(10) # 8초 -> 10초로 약간 더 여유 둠
         _log("로그인 완료", elapsed=int(round(time.time() - start)))
         _log("컨테이너 이동현황 페이지로 이동중")
         menu_start = time.time()

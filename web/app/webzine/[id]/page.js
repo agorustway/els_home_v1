@@ -16,7 +16,7 @@ export default function WebzineDetailPage() {
     const { role, user } = useUserRole();
     const supabase = createClient();
     const [zoomImage, setZoomImage] = useState(null);
-    const [isZoomDetail, setIsZoomDetail] = useState(false);
+    const [scale, setScale] = useState(0); // 0: Fit to Screen, 1+: Width Scale (1 = 100vw)
     const isAdmin = role === 'admin';
     const isAuthor = post && user?.id && post.author_id === user.id;
     const canEdit = isAuthor || isAdmin;
@@ -118,15 +118,12 @@ export default function WebzineDetailPage() {
                 )}
 
                 <div className={styles.content}>
-                    <div
-                        dangerouslySetInnerHTML={{ __html: (post.content || '').replace(/\n/g, '<br/>') }}
-                        onClick={(e) => {
-                            if (e.target.tagName === 'IMG') {
-                                setZoomImage(e.target.src);
-                                setIsZoomDetail(false);
-                            }
-                        }}
-                    />
+                    onClick={(e) => {
+                        if (e.target.tagName === 'IMG') {
+                            setZoomImage(e.target.src);
+                            setScale(0);
+                        }
+                    }}
                 </div>
 
                 <div className={styles.actions}>
@@ -141,29 +138,57 @@ export default function WebzineDetailPage() {
             </div>
 
             {/* Zoom Overlay */}
+            {/* Zoom Overlay */}
             {zoomImage && (
-                <div className={styles.zoomOverlay} onClick={(e) => {
-                    if (e.target.tagName !== 'IMG') {
-                        setZoomImage(null);
-                        setIsZoomDetail(false);
-                    }
-                }}>
-                    <div className={styles.zoomClose} onClick={() => {
-                        setZoomImage(null);
-                        setIsZoomDetail(false);
-                    }}>&times;</div>
-                    <div className={`${styles.zoomImageContainer} ${isZoomDetail ? styles.zoomContainerExpanded : ''}`}>
+                <div className={styles.zoomOverlay} onClick={() => setZoomImage(null)}>
+                    <div className={styles.zoomClose}>&times;</div>
+
+                    <div className={styles.zoomImageContainer}>
                         <img
                             src={zoomImage}
                             alt="Zoomed"
-                            className={`${styles.zoomImage} ${isZoomDetail ? styles.zoomedIn : ''}`}
-                            style={{ cursor: isZoomDetail ? 'zoom-out' : 'zoom-in' }}
+                            className={styles.zoomImage}
+                            style={scale === 0 ? {
+                                maxWidth: '90vw',
+                                maxHeight: '90vh',
+                                width: 'auto',
+                                height: 'auto',
+                                cursor: 'zoom-in'
+                            } : {
+                                maxWidth: 'none',
+                                maxHeight: 'none',
+                                width: `${scale * 100}vw`,  /* 1 = 100vw, 1.5 = 150vw */
+                                height: 'auto',
+                                cursor: 'zoom-out'
+                            }}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('Image clicked! Current isZoomDetail:', isZoomDetail, '→ New:', !isZoomDetail);
-                                setIsZoomDetail(!isZoomDetail);
+                                // Toggle between Fit(0) and 100%(1)
+                                setScale(prev => prev === 0 ? 1 : 0);
                             }}
                         />
+                    </div>
+
+                    {/* Zoom Controls */}
+                    <div className={styles.zoomControls} onClick={(e) => e.stopPropagation()}>
+                        <button className={styles.zoomBtn} onClick={() => setScale(prev => {
+                            if (prev === 0) return 0; // Fit 상태면 변화 없음 (클릭해서 모드 변경하라는 의미, 혹은 100%로 갈까?)
+                            return prev <= 1 ? 0 : Number((prev - 0.5).toFixed(1)); // 0.5씩 감소, 1 이하면 Fit으로
+                        })} aria-label="Zoom Out">
+                            <span style={{ marginTop: '-2px' }}>&minus;</span>
+                        </button>
+
+                        <div className={styles.zoomLevelText}>
+                            {scale === 0 ? 'FIT' : `${scale * 100}%`}
+                        </div>
+
+                        <button className={styles.zoomBtn} onClick={() => setScale(prev => {
+                            // Fit(0) -> 1.0 (100%) -> 1.5 -> ...
+                            if (prev === 0) return 1;
+                            return Math.min(prev + 0.5, 3.0); // 최대 300%
+                        })} aria-label="Zoom In">
+                            <span style={{ marginTop: '2px' }}>+</span>
+                        </button>
                     </div>
                 </div>
             )}

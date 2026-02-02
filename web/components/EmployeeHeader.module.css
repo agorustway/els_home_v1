@@ -42,22 +42,32 @@
 .greeting {
     font-size: 0.95rem;
     color: #475569;
+    display: flex;
+    align-items: center;
+    height: 36px;
+    /* 높이 강제 통일 */
 }
 
 .greeting strong {
     color: #1e293b;
+    display: inline-flex;
+    align-items: center;
 }
 
 .roleBadge {
     font-size: 0.85rem;
     color: #64748b;
-    margin-left: 2px;
+    margin-left: 4px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .titleText {
     font-size: 0.9rem;
     color: #64748b;
     font-weight: 500;
+    display: inline-flex;
+    align-items: center;
 }
 
 .links {
@@ -67,13 +77,20 @@
 }
 
 .link {
-    padding: 6px 12px;
+    padding: 0 14px;
+    height: 36px;
+    /* 높이 강제 통일 */
     font-size: 0.875rem;
     font-weight: 600;
     color: #475569;
     text-decoration: none;
     border-radius: 6px;
     transition: background 0.2s, color 0.2s;
+    display: inline-flex;
+    /* 텍스트 수직 중앙 정렬 핵심 */
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .link:hover {
@@ -82,7 +99,9 @@
 }
 
 .linkBtn {
-    padding: 6px 12px;
+    padding: 0 14px;
+    height: 36px;
+    /* 높이 강제 통일 */
     font-size: 0.875rem;
     font-weight: 600;
     color: #475569;
@@ -91,6 +110,11 @@
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
+    display: inline-flex;
+    /* 텍스트 수직 중앙 정렬 핵심 */
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .linkBtn:hover {
@@ -113,11 +137,12 @@
         z-index: 10;
         box-shadow: none;
         padding: 5px 0;
+        border-bottom: 1px solid #f1f5f9;
     }
 
     .inner {
-        padding: 8px 16px;
-        gap: 8px;
+        padding: 10px 16px;
+        gap: 12px;
         min-width: 0;
         height: auto;
         flex-direction: column;
@@ -127,11 +152,12 @@
 
     .userArea {
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
+        width: 100%;
     }
 
     .logo {
-        font-size: 1.1rem;
+        font-size: 1.25rem;
     }
 
     .greeting {
@@ -139,23 +165,30 @@
     }
 
     .links {
-        gap: 6px;
-    }
-
-    /* 터치 영역 최소 44px */
-    .link,
-    .linkBtn {
-        padding: 10px 14px;
-        font-size: 0.85rem;
-        min-height: 44px;
-        display: inline-flex;
-        align-items: center;
+        gap: 8px;
+        width: 100%;
         justify-content: center;
     }
 
+    /* 모바일 버튼 최적화 */
+    .link,
+    .linkBtn {
+        padding: 0 12px;
+        font-size: 0.85rem;
+        height: 36px;
+        /* 44px은 너무 큼, 36px 유지 */
+        min-height: 36px;
+        flex: 1;
+        /* 버튼 균등 분배 */
+        max-width: 120px;
+        white-space: nowrap;
+        background: #f8fafc;
+        /* 터치 영역 명확히 */
+        border: 1px solid #f1f5f9;
+    }
+
     .searchWrap {
-        flex: 1 1 100%;
-        order: 3;
-        min-width: 0;
+        width: 100%;
+        margin-top: 4px;
     }
 }

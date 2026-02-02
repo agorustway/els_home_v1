@@ -32,7 +32,7 @@ export async function POST(req) {
     try {
         const body = await req.json();
         const userId = body?.userId != null ? String(body.userId).trim() : '';
-        const userPw = body?.userPw != null ? String(body.userPw) : '';
+        const userPw = body?.userPw != null ? String(body.userPw).trim() : '';
         if (!userId || !userPw) {
             return NextResponse.json({ error: '아이디와 비밀번호가 필요합니다.' }, { status: 400 });
         }
