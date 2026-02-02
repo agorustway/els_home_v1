@@ -9,7 +9,7 @@ const fs = require('fs');
 
 const workDocsDir = path.join(__dirname, '..', '..', 'work-docs');
 const files = fs.readdirSync(workDocsDir);
-const xlsxPath = path.join(workDocsDir, files.find(f => f.endsWith('.xlsx') && f !== 'container_list.xlsx'));
+const xlsxPath = path.join(workDocsDir, files.find(f => f.endsWith('.xlsx') && !f.startsWith('~$') && f !== 'container_list.xlsx'));
 
 const wb = XLSX.readFile(xlsxPath);
 
@@ -160,7 +160,7 @@ dataRows3.forEach((row) => {
   const kmInt = typeof 거리정수 === 'number' ? Math.round(거리정수) : parseInt(거리정수, 10);
   if (Number.isNaN(kmInt)) return;
 
-  const val = { km, kmInt };
+  const val = { km, kmInt, hDong: 행정동, bDong: 법정동 };
   if (행정동) {
     otherSections[`${기점}|${시도}|${시군구}|${행정동}`] = val;
     if (!otherRegions[기점]) otherRegions[기점] = {};

@@ -83,36 +83,47 @@ export async function GET(request) {
     if (!other) {
       return NextResponse.json({ error: '이외구간에서 해당 행선지의 거리를 찾을 수 없습니다.', key }, { status: 404 });
     }
-    const usePeriod = period || (data.periods?.[0]?.id) || '';
     const useDistType = distType || (data.distanceTypes?.[0]) || '가. 거리(km)별 운임(왕복)';
-    const distKey = `${usePeriod}|${useDistType}`.trim();
-    const dRows = data.distanceByPeriod?.[distKey];
-    if (!dRows || !dRows.length) {
-      return NextResponse.json({ error: '거리별 운임 데이터가 없습니다.', key: distKey }, { status: 404 });
-    }
     const kmInt = other.kmInt || Math.round(other.km);
-    let row = dRows.find((r) => r.km === kmInt);
-    if (!row) {
-      const lower = dRows.filter((r) => r.km <= kmInt);
-      row = lower.length ? lower[lower.length - 1] : dRows[0];
+
+    // 모든 기간에 대해 거리별 운임 계산
+    const periods = data.periods || [];
+    const rows = [];
+    for (const p of periods) {
+      const distKey = `${p.id}|${useDistType}`.trim();
+      const dRows = data.distanceByPeriod?.[distKey];
+      if (dRows && dRows.length) {
+        let row = dRows.find((r) => r.km === kmInt);
+        if (!row) {
+          const lower = dRows.filter((r) => r.km <= kmInt);
+          row = lower.length ? lower[lower.length - 1] : dRows[0];
+        }
+        rows.push({
+          period: p.id,
+          km: row.km,
+          f40위탁: row.f40위탁,
+          f40운수자: row.f40운수자,
+          f40안전: row.f40안전,
+          f20위탁: row.f20위탁,
+          f20운수자: row.f20운수자,
+          f20안전: row.f20안전,
+        });
+      }
     }
+
+    const { hDong, bDong } = other;
+    let destDetail = [region1, region2, region3].filter(Boolean).join(' ');
+    if (hDong && bDong && hDong !== bDong) {
+      destDetail = `${region1} ${region2} ${bDong}(법정) / ${hDong}(행정)`;
+    }
+
     return NextResponse.json({
       type: 'other',
       origin,
-      destination: [region1, region2, region3].filter(Boolean).join(' '),
+      destination: destDetail,
       km: kmInt,
-      period: usePeriod,
       distType: useDistType,
-      rows: [{
-        period: usePeriod,
-        km: row.km,
-        f40위탁: row.f40위탁,
-        f40운수자: row.f40운수자,
-        f40안전: row.f40안전,
-        f20위탁: row.f20위탁,
-        f20운수자: row.f20운수자,
-        f20안전: row.f20안전,
-      }],
+      rows,
     });
   }
 

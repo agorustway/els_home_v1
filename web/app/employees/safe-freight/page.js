@@ -6,8 +6,8 @@ import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
 
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
-  { id: 'distance', label: '거리별운임', desc: '거리(km)별 운임', yearNote: '2022년 적용분' },
-  { id: 'other', label: '이외구간', desc: '고시 외 구간 거리 → 거리별 운임 적용', yearNote: '2022년 적용분' },
+  { id: 'distance', label: '거리별운임', desc: '거리(km)별 운임' },
+  { id: 'other', label: '이외구간', desc: '고시 외 구간 거리 → 거리별 운임 적용' },
 ];
 
 const TEMP_RESULTS_KEY = 'safeFreightTempResults';
@@ -125,7 +125,7 @@ export default function SafeFreightPage() {
     } else if (queryType === 'other') {
       otherTabDefaultsJustSet.current = true;
       skipRegionClearOnce.current = true;
-      const p = options?.periods?.find((x) => x.id === '12월') ? '12월' : options?.periods?.[0]?.id;
+      const p = options?.periods?.find((x) => x.id === '22.07월') ? '22.07월' : options?.periods?.[0]?.id;
       if (p) setPeriod(p);
       setOrigin('부산신항');
       setRegion1('충남');
@@ -452,18 +452,19 @@ export default function SafeFreightPage() {
     return m ? parseInt(m[1], 10) : 0;
   };
 
-  /** 구간별 전체 조회 시: 선택월 최상단 → 최신(26.02) → 나머지 최신순 */
+  /** 전체 조회 시: 선택월 최상단 → 나머지 최신순 */
   const displayRows = useMemo(() => {
     if (!resultAll?.rows?.length) return [];
-    if (queryType !== 'section' || displayMode !== 'all') return resultAll.rows.slice(0, 1);
-    const rows = resultAll.rows;
+    const isMultiRowType = queryType === 'section' || queryType === 'other';
+    if (!isMultiRowType || displayMode !== 'all') return resultAll.rows.slice(0, 1);
+
+    const rows = [...resultAll.rows];
     const selectedRow = rows.find((r) => r.period === period);
-    const latestRow = rows[0];
-    const rest = rows.filter((r) => r !== selectedRow && r !== latestRow);
+    const rest = rows.filter((r) => r !== selectedRow);
     rest.sort((a, b) => periodToNum(b.period) - periodToNum(a.period));
+
     const ordered = [];
     if (selectedRow) ordered.push(selectedRow);
-    if (latestRow && latestRow !== selectedRow) ordered.push(latestRow);
     ordered.push(...rest);
     return ordered;
   }, [resultAll?.rows, queryType, displayMode, period]);
@@ -681,7 +682,7 @@ export default function SafeFreightPage() {
                 </>
               )}
 
-              {queryType === 'section' && (
+              {(queryType === 'section' || queryType === 'other') && (
                 <div className={styles.modeRow}>
                   <span className={styles.modeLabel}>표시</span>
                   <label className={styles.radioLabel}>
@@ -702,7 +703,7 @@ export default function SafeFreightPage() {
                       checked={displayMode === 'latest'}
                       onChange={() => setDisplayMode('latest')}
                     />
-                    최신 적용월만
+                    선택한 적용월만
                   </label>
                 </div>
               )}
