@@ -152,7 +152,7 @@ export default function WebzineDetailPage() {
                         setZoomImage(null);
                         setIsZoomDetail(false);
                     }}>&times;</div>
-                    <div className={styles.zoomImageContainer}>
+                    <div className={`${styles.zoomImageContainer} ${isZoomDetail ? styles.zoomContainerExpanded : ''}`}>
                         <img
                             src={zoomImage}
                             alt="Zoomed"

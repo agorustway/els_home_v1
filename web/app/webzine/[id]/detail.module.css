@@ -188,9 +188,9 @@
 }
 
 /* When zoomed in, align container to top-left for scrolling */
-.zoomImageContainer:has(.zoomedIn) {
-    align-items: flex-start;
-    justify-content: flex-start;
+.zoomContainerExpanded {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
 }
 
 .zoomClose {
