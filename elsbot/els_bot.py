@@ -37,91 +37,70 @@ def open_els_menu(driver, log_callback=None):
     """로그인 후 컨테이너 이동현황 메뉴 클릭. NAS 등 느린 환경을 위해 대기 여유 확보."""
     if log_callback: log_callback("메뉴 진입 시도 중...")
     else: print("메뉴 진입 중...")
-    
+
     for attempt in range(20):
         if log_callback and attempt > 0: log_callback(f"메뉴 진입 시도 {attempt+1}/20...")
         check_alert(driver)
+        driver.switch_to.default_content() # 항상 최상위에서 시작
         frames = driver.find_elements(By.TAG_NAME, "iframe")
+
+        # 메인 프레임과 모든 하위 프레임 순회
         for frame in [None] + frames:
             try:
                 if frame:
                     driver.switch_to.frame(frame)
-                target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
-                if target:
-                if target:
-                    driver.execute_script("arguments[0].click();", target[0])
+                
+                # '컨테이너 이동현황' 메뉴 아이템 검색
+                targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]" )
+                if targets:
+                    driver.execute_script("arguments[0].click();", targets[0])
                     if log_callback: log_callback("메뉴 클릭함. 입력창 로드 대기 중... (최대 30초)")
                     
-                    # [최적화] 고정 대기 제거 -> 능동적 대기
-                    # 입력창이 나올 때까지 최대 30초간 프레임을 순차 검색
+                    # 입력창이 나타날 때까지 대기
                     wait_start = time.time()
                     while time.time() - wait_start < 30:
                         driver.switch_to.default_content()
+                        all_frames_for_input = [None] + driver.find_elements(By.TAG_NAME, "iframe")
                         found_input = None
-                        
-                        # 1. 메인 컨텐츠 검색
-                        try:
-                            labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
-                            for lbl in labels:
-                                if "조회" in lbl.text: continue
-                                inputs = lbl.find_elements(By.XPATH, "./following-sibling::input") or \
-                                         lbl.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
-                                if inputs: found_input = inputs[0]; break
-                        except: pass
-                        
-                        if found_input: break
-                        
-                        # 2. 프레임 순회 검색
-                        try:
-                            current_frames = driver.find_elements(By.TAG_NAME, "iframe")
-                            for f in current_frames:
-                                try:
-                                    driver.switch_to.frame(f)
-                                    labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
-                                    for lbl in labels:
-                                        if "조회" in lbl.text: continue
-                                        inputs = lbl.find_elements(By.XPATH, "./following-sibling::input") or \
-                                                 lbl.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
-                                        if inputs: found_input = inputs[0]; break
-                                    
-                                    if not found_input:
-                                        # CSS 선택자 백업 시도
-                                        for sel_type, sel_val in [("CSS", "input[id*='containerNo']"), ("XPATH", "//input[contains(@id, 'container')]")]:
-                                            if sel_type == "CSS": els = driver.find_elements(By.CSS_SELECTOR, sel_val)
-                                            else: els = driver.find_elements(By.XPATH, sel_val)
-                                            if els: found_input = els[0]; break
-                                    
-                                    if found_input: break
-                                except: pass
+
+                        for input_frame in all_frames_for_input:
+                            try:
+                                if input_frame:
+                                    driver.switch_to.frame(input_frame)
+                                # '컨테이너번호' 입력창 라벨을 기준으로 검색
+                                labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]" )
+                                for lbl in labels:
+                                    if "조회" in lbl.text: continue
+                                    # 라벨 주변의 input 태그 검색
+                                    inputs = lbl.find_elements(By.XPATH, "./following-sibling::input") or \
+                                             lbl.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
+                                    if inputs:
+                                        found_input = inputs[0]
+                                        break
+                                if found_input: break
+                            except:
                                 driver.switch_to.default_content()
-                                
-                            if found_input: break
-                            
-                        except: pass
-                        
-                        if found_input: break
-                        time.sleep(0.5) # 0.5초 간격으로 체크
-                        
-                    if found_input:
-                        if log_callback: log_callback("입력창 발견! 메뉴 진입 성공.")
-                        return True
-                    else:
-                        if log_callback: log_callback("30초 내 입력창을 못 찾았습니다.")
-            except: pass
-            time.sleep(1) # 프레임 에러 시 잠시 대기
-    return False                                finally: driver.switch_to.default_content()
+                                continue # 프레임 전환 실패시 다음 프레임으로
                         
                         if found_input:
-                            if log_callback: log_callback("입력창 발견!")
+                            if log_callback: log_callback("입력창 발견! 메뉴 진입 성공.")
                             return True
                         
-                        time.sleep(0.5)
-                    driver.switch_to.default_content()
+                        time.sleep(0.5) # 0.5초 간격으로 재시도
+
+                    # 30초 타임아웃
+                    if log_callback: log_callback("30초 내 입력창을 못 찾았습니다.")
+                    return False
+
             except Exception:
-                continue
+                # 메뉴 클릭 과정에서 에러 발생 시 다음 프레임/시도에서 계속
+                pass
             finally:
+                # 다음 프레임 시도를 위해 항상 기본 컨텐츠로 복귀
                 driver.switch_to.default_content()
-        time.sleep(0.3)
+
+        time.sleep(1) # 전체 프레임 순회 후 1초 대기
+
     if log_callback: log_callback("메뉴 진입 실패 (타임아웃)")
     return False
 
@@ -159,7 +138,7 @@ def solve_input_and_search(driver, container_no):
     # 1. 메인 컨텐츠에서 검색
     driver.switch_to.default_content()
     try:
-        labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
+        labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]" )
         for label in labels:
             if "조회" in label.text: continue
             
@@ -188,7 +167,7 @@ def solve_input_and_search(driver, container_no):
         for frame in frames:
             try:
                 driver.switch_to.frame(frame)
-                labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
+                labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]" )
                 for label in labels:
                     if "조회" in label.text: continue
                     
@@ -253,7 +232,7 @@ def solve_input_and_search(driver, container_no):
             
             # 조회 버튼 클릭 시도
             try:
-                search_btns = driver.find_elements(By.XPATH, "//*[contains(text(),'조회') or contains(@id, 'btn_search') or contains(@id, 'Search')]")
+                search_btns = driver.find_elements(By.XPATH, "//*[contains(text(),'조회') or contains(@id, 'btn_search') or contains(@id, 'Search')]" )
                 for btn in search_btns:
                     if btn.is_displayed() and btn.tag_name in ['a', 'button', 'input', 'div', 'span', 'img']:
                         bid = (btn.get_attribute('id') or "").lower()
@@ -262,6 +241,9 @@ def solve_input_and_search(driver, container_no):
                         btn.click()
                         break
             except: pass
+
+            # [수정] 조회 후 3초 강제 대기
+            time.sleep(3)
 
             for _ in range(20):
                 msg = check_alert(driver)
@@ -274,55 +256,22 @@ def solve_input_and_search(driver, container_no):
     return "입력창을 찾을 수 없습니다."
 
 def scrape_hyper_verify(driver, search_no):
-    """매의 눈 검증: 텍스트와 입력창 값을 모두 대조해 가짜 데이터 차단"""
+    # 역슬래시 두 개(\\) 써야 자바스크립트가 알아먹는다!
     script = """
-    var searchNo = arguments[0].replace(/[^A-Z0-9]/g, '').toUpperCase();
-    try {
-        var bodyText = document.body.innerText.toUpperCase();
-        var inputs = document.querySelectorAll('input');
-        var allContent = bodyText;
-        for(var i=0; i<inputs.length; i++) { allContent += " " + inputs[i].value.toUpperCase(); }
-        var cleanedContent = allContent.replace(/[^A-Z0-9]/g, '');
-
-        if (cleanedContent.indexOf(searchNo) !== -1) {
-            var rows = document.querySelectorAll('tr');
-            var data = [];
-            var foundMatch = false;
-            rows.forEach(r => {
-                var txt = r.innerText.toUpperCase();
-                if ((txt.includes('수출') || txt.includes('수입')) && !txt.includes('RFID') && !txt.includes('DEM') && !txt.includes('DET')) {
-                    foundMatch = true;
-                    var cells = r.querySelectorAll('td');
-                    if (cells.length >= 10) {
-                        var rowArr = [];
-                        cells.forEach(c => rowArr.push(c.innerText.trim()));
-                        data.push(rowArr.join('|'));
-                    }
-                }
-            });
-            if (!foundMatch) return null; // 검색어는 있지만 데이터 행이 아직 로드 안됨
-            return data.length > 0 ? data.join('\\n') : null;
-        }
-        return null;
-    } catch(e) { return "JS_ERROR: " + e.message; }
+    var all_text = "";
+    function collect(win) {
+        try {
+            all_text += win.document.body.innerText + "\\n";
+            for (var i = 0; i < win.frames.length; i++) { collect(win.frames[i]); }
+        } catch (e) {}
+    }
+    collect(window);
+    return all_text;
     """
-    try:
-        # 모든 프레임 + 메인에서 시도
-        driver.switch_to.default_content()
-        res = driver.execute_script(script, search_no)
-        if res and "JS_ERROR" not in res: return res
-        
-        frames = driver.find_elements(By.TAG_NAME, "iframe")
-        for frame in frames:
-            driver.switch_to.frame(frame)
-            res = driver.execute_script(script, search_no)
-            if res and "JS_ERROR" not in res: 
-                driver.switch_to.default_content()
-                return res
-            driver.switch_to.default_content()
-            
+    try: return driver.execute_script(script)
+    except Exception as e:
+        print(f"JS 실행 중 오류: {e}")
         return None
-    except: return None
 
 def login_and_prepare(u_id, u_pw, log_callback=None):
     """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지)."""
@@ -395,35 +344,32 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         
         _log("아이디/비밀번호 입력 완료. 로그인 요청...")
         
-        # 엔터 입력 전 살짝 대기
-        time.sleep(0.5)
-        pw_input.send_keys(Keys.ENTER)
+        # [수정] Keys.ENTER 대신 로그인 버튼을 직접 클릭
+        try:
+            _log("로그인 버튼 검색 및 클릭 시도...")
+            # Login 버튼의 XPath 또는 다른 선택자를 여기에 맞게 조정해야 할 수 있습니다.
+            login_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//*[(@type='button' or @type='submit' or @role='button') and (contains(text(), '로그인') or contains(text(), 'Login'))] | //*[@id='mf_wfm_subContainer_btn_login']"))
+            )
+            # 일반 .click()이 안될 경우를 대비해 Javascript 클릭을 사용
+            driver.execute_script("arguments[0].click();", login_button)
+            _log("로그인 버튼 클릭 완료.")
+        except Exception as e:
+            _log(f"로그인 버튼 클릭 실패. 비상 수단으로 Enter 키 입력 시도. 에러: {e}")
+            pw_input.send_keys(Keys.ENTER)
         
         # [수정] 로그인 처리 대기: 타임아웃 방지를 위해 1초마다 로그 출력 (수동 대기)
         # 리버스 프록시(Nginx)가 60초 이상 데이터 전송이 없으면 끊어버리므로, 계속 떠들어줘야 함.
         _log("⏳ 로그인 결과 확인 중... (최대 120초)")
         
-        login_success = False
-        for i in range(120): # 120초 대기
-            try:
-                # 아이디 입력창이 없어 졌는지 확인
-                if driver.find_elements(By.ID, "mf_wfm_subContainer_ibx_userId"):
-                     # 아직 있음
-                     pass
-                else:
-                    login_success = True
-                    break
-            except: pass
-            
-            # 진행 상황 보고 (Heartbeat 역할)
-            if i % 2 == 0: _log(f"   ... 대기 중 ({i}초 경과)")
-            time.sleep(1)
-            
-        if login_success:
-            time.sleep(2) # UI 안정화 여유
-            _log("로그인 성공 (입력창 사라짐 확인)")
-        else:
-            _log("⚠️ 로그인 대기 시간 초과 (120초). 그래도 진행 시도.")
+        try:
+            # 로그인 성공의 증거로 '컨테이너 이동현황' 메뉴가 나타날 때까지 최대 60초 대기
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]" ))
+            )
+            _log("로그인 성공 (메인 메뉴 확인)")
+        except Exception:
+            _log("⚠️ 로그인 후 메인 메뉴 확인 실패 (60초 초과). 그래도 진행 시도.")
         
         _log("컨테이너 이동현황 페이지로 이동 시도")
         
@@ -476,7 +422,7 @@ def main():
             if not driver: print("로그인 실패!"); continue
 
         try:
-            df_in = pd.read_excel("container_list.xlsx")
+            df_in = pd.read_excel("elsbot/container_list.xlsx")
             c_list = df_in.iloc[2:, 0].dropna().tolist()
         except Exception as e:
             print(f"엑셀 에러: {e}"); continue
@@ -495,17 +441,39 @@ def main():
                 print(f"패스 ({status}) [{dur:.2f}s]")
                 final_rows.append([cn, "ERROR", status] + [""] * 12); continue
             
-            grid_text = None
-            for _ in range(120): # 0.05초 주기로 고속 수색
-                grid_text = scrape_hyper_verify(driver, cn)
-                if grid_text: break
-                time.sleep(0.05) 
+            grid_text = scrape_hyper_verify(driver, cn)
             
             dur = time.time() - unit_start
             if grid_text:
-                for line in grid_text.split('\n'):
-                    final_rows.append([cn] + line.split('|'))
-                print(f"성공! [{dur:.2f}s]")
+                import re
+                found_any = False
+                blacklist = ["SKR", "YML", "ZIM", "2021-04-12", "최병훈", "안녕하세요", "로그아웃", "운송관리", "조회"]
+                lines = grid_text.split('\n')
+                
+                for line in lines:
+                    stripped_line = line.strip()
+                    
+                    if not stripped_line or any(keyword in stripped_line for keyword in blacklist):
+                        continue
+
+                    row_data = re.split(r'\t|\s{2,}', stripped_line)
+                    
+                    if not row_data or not row_data[0].isdigit() or not (1 <= int(row_data[0]) <= 15):
+                        continue
+
+                    expected_data_cols = len(headers) - 1
+                    if len(row_data) < expected_data_cols:
+                        row_data.extend([''] * (expected_data_cols - len(row_data)))
+                    elif len(row_data) > expected_data_cols:
+                        row_data = row_data[:expected_data_cols]
+                    
+                    final_rows.append([cn] + row_data)
+                    found_any = True
+                
+                if found_any:
+                    print(f"성공! (정제된 데이터) [{dur:.2f}s]")
+                else:
+                    print(f"데이터는 찾았으나 유효한 행 없음 [{dur:.2f}s]")
             else:
                 print(f"불일치/내역없음 [{dur:.2f}s]")
                 final_rows.append([cn, "NODATA", "데이터 없음"] + [""] * 12)
