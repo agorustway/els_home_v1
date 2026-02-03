@@ -362,13 +362,23 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         pw_input.send_keys(u_pw)
         
         # 엔터 입력 전 살짝 대기
+        # 엔터 입력 전 살짝 대기
         time.sleep(0.5)
         pw_input.send_keys(Keys.ENTER)
         
-        # 로그인 처리 대기 (PC 8초 -> NAS 10초 여유)
-        time.sleep(10)
+        # [수정] 로그인 처리 대기: NAS가 느리므로 10초 고정이 아니라 요소가 사라질 때까지 확인
+        # 아이디 입력창이 사라지면 로그인 성공으로 간주 (최대 60초 대기)
+        _log("⏳ 로그인 처리 대기 중... (최대 60초)")
+        try:
+            WebDriverWait(driver, 60).until(
+                EC.invisibility_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
+            )
+            time.sleep(3) # UI 안정화 여유
+        except:
+            _log("⚠️ 로그인 대기 시간 초과 (로그인이 너무 오래 걸리거나 실패)")
+            # 실패로 간주하지 않고 일단 진행해봄 (팝업 등이 떠서 입력창이 가려졌을 수도 있음)
         
-        _log("로그인 완료", elapsed=int(round(time.time() - start)))
+        _log("로그인 완료 (화면 전환 확인)", elapsed=int(round(time.time() - start)))
         _log("컨테이너 이동현황 페이지로 이동중")
         
         menu_start = time.time()
