@@ -117,66 +117,200 @@ def open_els_menu(driver, log_callback=None):
 def solve_input_and_search(driver, container_no):
     """하이퍼 터보 입력 및 팝업 감시"""
     check_alert(driver)
-    frames = driver.find_elements(By.TAG_NAME, "iframe")
-    for frame in [None] + frames:
+    
+    def _is_valid_input_simple(element):
+        """날짜 필드 등 잘못된 입력창인지 검사"""
         try:
-            if frame: driver.switch_to.frame(frame)
-            input_field = driver.find_elements(By.CSS_SELECTOR, "input[id*='containerNo']")
-            if input_field:
-                target = input_field[0]
-                target.click()
-                target.send_keys(Keys.CONTROL + "a"); target.send_keys(Keys.DELETE)
-                target.send_keys(container_no); target.send_keys(Keys.ENTER)
-                for _ in range(20):
-                    msg = check_alert(driver)
-                    if msg: return f"오류: {msg}"
-                    time.sleep(0.03)
-                return True
-        except: continue
-        finally: driver.switch_to.default_content()
-    return False
+            eid = (element.get_attribute('id') or "").lower()
+            ename = (element.get_attribute('name') or "").lower()
+            etype = (element.get_attribute('type') or "").lower()
+            eclass = (element.get_attribute('class') or "").lower()
+            val = element.get_attribute('value')
+            
+            # 특수 규칙: ID에 'containerno'가 포함되면 무조건 통과
+            if 'containerno' in eid or 'container_no' in eid: return True
+
+            # 1. 날짜 관련 속성 체크
+            if any(x in eid or x in ename or x in eclass for x in ['date', 'ymd', 'from', 'to', 'cal']): return False
+            
+            # 2. 값이 날짜 형식인지 체크
+            if val and len(val) >= 8 and ('-' in val or '/' in val or val.isdigit()):
+                if val.count('-') == 2 or val.count('/') == 2: return False
+            
+            # 3. Hidden 제외
+            if etype in ['hidden', 'button', 'image', 'submit']: return False
+            
+            return True
+        except: return False
+
+    found_target = None
+    
+    # 1. 메인 컨텐츠에서 검색
+    driver.switch_to.default_content()
+    try:
+        labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
+        for label in labels:
+            if "조회" in label.text: continue
+            
+            inputs = label.find_elements(By.XPATH, "./following-sibling::input")
+            if not inputs: inputs = label.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
+            if not inputs: inputs = label.find_elements(By.XPATH, "./following::input")
+                
+            for inp in inputs[:3]:
+                if inp.is_displayed() and _is_valid_input_simple(inp):
+                    found_target = inp
+                    break
+                # ID 매칭 시도 (가시성 무시)
+                try:
+                    eid = (inp.get_attribute('id') or "").lower()
+                    if ('containerno' in eid or 'container_no' in eid) and _is_valid_input_simple(inp):
+                        found_target = inp
+                        break
+                except: pass
+            if found_target: break
+    except: pass
+    
+    # 2. 프레임 순회 검색
+    if not found_target:
+        driver.switch_to.default_content()
+        frames = driver.find_elements(By.TAG_NAME, "iframe")
+        for frame in frames:
+            try:
+                driver.switch_to.frame(frame)
+                labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
+                for label in labels:
+                    if "조회" in label.text: continue
+                    
+                    inputs = label.find_elements(By.XPATH, "./following-sibling::input")
+                    if not inputs: inputs = label.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
+                    if not inputs: inputs = label.find_elements(By.XPATH, "./following::input")
+
+                    for inp in inputs[:3]:
+                        if inp.is_displayed() and _is_valid_input_simple(inp):
+                            found_target = inp
+                            break
+                        try:
+                            eid = (inp.get_attribute('id') or "").lower()
+                            if ('containerno' in eid or 'container_no' in eid) and _is_valid_input_simple(inp):
+                                found_target = inp
+                                break
+                        except: pass
+                    if found_target: break
+                
+                # 백업 선택자
+                if not found_target:
+                    input_selectors = [("CSS", "input[id*='ontainer']"), ("CSS", "input[name*='ontainer']")]
+                    for s_type, s_val in input_selectors:
+                        if s_type == "CSS": els = driver.find_elements(By.CSS_SELECTOR, s_val)
+                        else: els = driver.find_elements(By.XPATH, s_val)
+                        for el in els:
+                            if _is_valid_input_simple(el):
+                                if el.is_displayed():
+                                    found_target = el
+                                    break
+                                # ID 매칭
+                                try:
+                                    eid = (el.get_attribute('id') or "").lower()
+                                    if 'containerno' in eid or 'container_no' in eid:
+                                        found_target = el
+                                        break
+                                except: pass
+                        if found_target: break
+
+                if found_target: break
+            except: continue
+            if not found_target: driver.switch_to.default_content()
+
+    # 입력 및 조회 수행
+    if found_target:
+        try:
+            # 가시성이 없으면 강제로 보이게 처리 (JS)
+            if not found_target.is_displayed():
+                if log_callback: log_callback("입력창 Hidden 상태 -> JS 입력 시도")
+                driver.execute_script("arguments[0].value = arguments[1];", found_target, container_no)
+            else:
+                found_target.click()
+                time.sleep(0.1)
+                found_target.send_keys(Keys.CONTROL + "a"); found_target.send_keys(Keys.DELETE)
+                found_target.send_keys(container_no)
+            
+            time.sleep(0.1)
+            found_target.send_keys(Keys.ENTER)
+            time.sleep(1)
+            found_target.send_keys(Keys.F5)
+            time.sleep(1)
+            
+            # 조회 버튼 클릭 시도
+            try:
+                search_btns = driver.find_elements(By.XPATH, "//*[contains(text(),'조회') or contains(@id, 'btn_search') or contains(@id, 'Search')]")
+                for btn in search_btns:
+                    if btn.is_displayed() and btn.tag_name in ['a', 'button', 'input', 'div', 'span', 'img']:
+                        bid = (btn.get_attribute('id') or "").lower()
+                        bclass = (btn.get_attribute('class') or "").lower()
+                        if 'cal' in bid or 'date' in bid or 'cal' in bclass: continue
+                        btn.click()
+                        break
+            except: pass
+
+            for _ in range(20):
+                msg = check_alert(driver)
+                if msg: return f"오류: {msg}"
+                time.sleep(0.03)
+            return "조회시도완료" # 성공 시 True 대신 상태 문자열 반환 (호출부 호환성)
+        except Exception as e:
+            return f"입력/조회 중 에러: {e}"
+            
+    return "입력창을 찾을 수 없습니다."
 
 def scrape_hyper_verify(driver, search_no):
     """매의 눈 검증: 텍스트와 입력창 값을 모두 대조해 가짜 데이터 차단"""
     script = """
     var searchNo = arguments[0].replace(/[^A-Z0-9]/g, '').toUpperCase();
-    function getGrid(win) {
-        try {
-            var bodyText = win.document.body.innerText.toUpperCase();
-            var inputs = win.document.querySelectorAll('input');
-            var allContent = bodyText;
-            for(var i=0; i<inputs.length; i++) { allContent += " " + inputs[i].value.toUpperCase(); }
-            var cleanedContent = allContent.replace(/[^A-Z0-9]/g, '');
+    try {
+        var bodyText = document.body.innerText.toUpperCase();
+        var inputs = document.querySelectorAll('input');
+        var allContent = bodyText;
+        for(var i=0; i<inputs.length; i++) { allContent += " " + inputs[i].value.toUpperCase(); }
+        var cleanedContent = allContent.replace(/[^A-Z0-9]/g, '');
 
-            if (cleanedContent.indexOf(searchNo) !== -1) {
-                var rows = win.document.querySelectorAll('tr');
-                var data = [];
-                var foundMatch = false;
-                rows.forEach(r => {
-                    var txt = r.innerText.toUpperCase();
-                    if ((txt.includes('수출') || txt.includes('수입')) && !txt.includes('RFID') && !txt.includes('DEM') && !txt.includes('DET')) {
-                        foundMatch = true;
-                        var cells = r.querySelectorAll('td');
-                        if (cells.length >= 10) {
-                            var rowArr = [];
-                            cells.forEach(c => rowArr.push(c.innerText.trim()));
-                            data.push(rowArr.join('|'));
-                        }
+        if (cleanedContent.indexOf(searchNo) !== -1) {
+            var rows = document.querySelectorAll('tr');
+            var data = [];
+            var foundMatch = false;
+            rows.forEach(r => {
+                var txt = r.innerText.toUpperCase();
+                if ((txt.includes('수출') || txt.includes('수입')) && !txt.includes('RFID') && !txt.includes('DEM') && !txt.includes('DET')) {
+                    foundMatch = true;
+                    var cells = r.querySelectorAll('td');
+                    if (cells.length >= 10) {
+                        var rowArr = [];
+                        cells.forEach(c => rowArr.push(c.innerText.trim()));
+                        data.push(rowArr.join('|'));
                     }
-                });
-                if (foundMatch && data.length > 0) return data.join('\\n');
-            }
-            var fs = win.frames;
-            for (var i = 0; i < fs.length; i++) {
-                var res = getGrid(fs[i]);
-                if (res) return res;
-            }
-        } catch(e) { return null; }
+                }
+            });
+            if (!foundMatch) return null; // 검색어는 있지만 데이터 행이 아직 로드 안됨
+            return data.length > 0 ? data.join('\\n') : null;
+        }
         return null;
-    }
-    return getGrid(window);
+    } catch(e) { return "JS_ERROR: " + e.message; }
     """
-    try: return driver.execute_script(script, search_no)
+    try:
+        # 모든 프레임 + 메인에서 시도
+        driver.switch_to.default_content()
+        res = driver.execute_script(script, search_no)
+        if res and "JS_ERROR" not in res: return res
+        
+        frames = driver.find_elements(By.TAG_NAME, "iframe")
+        for frame in frames:
+            driver.switch_to.frame(frame)
+            res = driver.execute_script(script, search_no)
+            if res and "JS_ERROR" not in res: 
+                driver.switch_to.default_content()
+                return res
+            driver.switch_to.default_content()
+            
+        return None
     except: return None
 
 def login_and_prepare(u_id, u_pw, log_callback=None):
