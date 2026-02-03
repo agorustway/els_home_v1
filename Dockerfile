@@ -20,9 +20,9 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
 
 # Python 패키지를 설치합니다.
 COPY requirements.txt requirements.txt
-# app.py 실행에 Flask가 필요하므로 requirements.txt에 추가
-RUN echo "Flask" >> requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir Flask # Flask는 별도로 설치
+
 
 # 애플리케이션 코드를 컨테이너에 복사합니다.
 COPY elsbot/ /app/elsbot/
