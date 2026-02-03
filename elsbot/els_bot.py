@@ -388,18 +388,31 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         time.sleep(0.5)
         pw_input.send_keys(Keys.ENTER)
         
-        # [수정] 로그인 처리 대기: NAS가 느리므로 10초 고정이 아니라 요소가 사라질 때까지 확인
-        # 아이디 입력창이 사라지면 로그인 성공으로 간주 (최대 60초 대기)
-        _log("⏳ 로그인 처리 대기 중... (최대 60초)")
-        try:
-            WebDriverWait(driver, 60).until(
-                EC.invisibility_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
-            )
-            time.sleep(3) # UI 안정화 여유
+        # [수정] 로그인 처리 대기: 타임아웃 방지를 위해 1초마다 로그 출력 (수동 대기)
+        # 리버스 프록시(Nginx)가 60초 이상 데이터 전송이 없으면 끊어버리므로, 계속 떠들어줘야 함.
+        _log("⏳ 로그인 결과 확인 중... (최대 120초)")
+        
+        login_success = False
+        for i in range(120): # 120초 대기
+            try:
+                # 아이디 입력창이 없어 졌는지 확인
+                if driver.find_elements(By.ID, "mf_wfm_subContainer_ibx_userId"):
+                     # 아직 있음
+                     pass
+                else:
+                    login_success = True
+                    break
+            except: pass
+            
+            # 진행 상황 보고 (Heartbeat 역할)
+            if i % 2 == 0: _log(f"   ... 대기 중 ({i}초 경과)")
+            time.sleep(1)
+            
+        if login_success:
+            time.sleep(2) # UI 안정화 여유
             _log("로그인 성공 (입력창 사라짐 확인)")
-        except:
-            _log("⚠️ 로그인 대기 시간 초과 (로그인이 너무 오래 걸리거나 실패)")
-            # 실패로 간주하지 않고 일단 진행해봄 (팝업 등이 떠서 입력창이 가려졌을 수도 있음)
+        else:
+            _log("⚠️ 로그인 대기 시간 초과 (120초). 그래도 진행 시도.")
         
         _log("컨테이너 이동현황 페이지로 이동 시도")
         
