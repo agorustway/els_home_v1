@@ -401,9 +401,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
 def main():
     config = load_config()
     print("--- ELS HYPER TURBO ( Eagle-Eye & Silent ) ---")
-    u_id = input(f"아이디 [{config['user_id']}]: ") or config['user_id']
-    u_pw = input(f"비밀번호 [{config['user_pw']}]: ") or config['user_pw']
-    save_config(u_id, u_pw)
+    u_id = config['user_id']
+    u_pw = config['user_pw']
+    # save_config(u_id, u_pw) # Docker 환경에서는 설정 저장이 의미 없을 수 있으므로 주석 처리
 
     driver, last_login = None, 0
     while True:
