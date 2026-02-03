@@ -33,10 +33,13 @@ def check_alert(driver):
         return txt
     except: return None
 
-def open_els_menu(driver):
+def open_els_menu(driver, log_callback=None):
     """로그인 후 컨테이너 이동현황 메뉴 클릭. NAS 등 느린 환경을 위해 대기 여유 확보."""
-    print("메뉴 진입 중...")
-    for _ in range(20):
+    if log_callback: log_callback("메뉴 진입 시도 중...")
+    else: print("메뉴 진입 중...")
+    
+    for attempt in range(20):
+        if log_callback and attempt > 0: log_callback(f"메뉴 진입 시도 {attempt+1}/20...")
         check_alert(driver)
         frames = driver.find_elements(By.TAG_NAME, "iframe")
         for frame in [None] + frames:
@@ -46,29 +49,69 @@ def open_els_menu(driver):
                 target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
                 if target:
                     driver.execute_script("arguments[0].click();", target[0])
-                    # 페이지 전환 대기: NAS에서 느릴 수 있으므로 2초 (이전 0.5초에서 복원)
+                    # 페이지 전환 대기: NAS에서 느릴 수 있으므로 2초
+                    if log_callback: log_callback("메뉴 클릭 후 대기 중...")
                     time.sleep(2)
-                    # 조회 입력창 로드 대기: 최대 20회 x 0.5초 = 10초 (NAS 여유)
-                    for _ in range(20):
+                    
+                    # 조회 입력창 로드 대기
+                    for wait_idx in range(20):
+                        if log_callback and wait_idx % 5 == 0: log_callback(f"입력창 로딩 대기 {wait_idx}...")
                         driver.switch_to.default_content()
-                        for f in driver.find_elements(By.TAG_NAME, "iframe"):
-                            try:
-                                driver.switch_to.frame(f)
-                                if driver.find_elements(By.CSS_SELECTOR, "input[id*='containerNo']"):
-                                    driver.switch_to.default_content()
-                                    return True
-                            except Exception:
-                                pass
-                            finally:
-                                driver.switch_to.default_content()
+                        
+                        found_input = None
+                        
+                        # 1. 메인 컨텐츠(Default Content)에서 레이블 기반 검색
+                        try:
+                            labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
+                            if labels:
+                                inputs = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]/following::input[1]")
+                                if inputs: found_input = inputs[0]
+                        except: pass
+                        
+                        if not found_input:
+                            current_frames = driver.find_elements(By.TAG_NAME, "iframe")
+                            for f in current_frames:
+                                try:
+                                    driver.switch_to.frame(f)
+                                    # 2. 프레임 내 레이블 기반 검색
+                                    labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
+                                    if labels:
+                                        inputs = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]/following::input[1]")
+                                        if inputs:
+                                            found_input = inputs[0]
+                                            break
+                                    
+                                    # 3. 기존 CSS/XPath 선택자 백업 시도
+                                    input_selectors = [
+                                        ("CSS", "input[id*='containerNo']"),
+                                        ("CSS", "input[id*='ContainerNo']"),
+                                        ("CSS", "input[name*='containerNo']"),
+                                        ("CSS", "input[name*='ContainerNo']"),
+                                        ("XPATH", "//input[contains(@id, 'container')]"),
+                                    ]
+                                    for selector_type, selector in input_selectors:
+                                        if selector_type == "CSS": elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                                        else: elements = driver.find_elements(By.XPATH, selector)
+                                        if elements:
+                                            found_input = elements[0]
+                                            break
+                                    
+                                    if found_input: break
+                                except: pass
+                                finally: driver.switch_to.default_content()
+                        
+                        if found_input:
+                            if log_callback: log_callback("입력창 발견!")
+                            return True
+                        
                         time.sleep(0.5)
                     driver.switch_to.default_content()
-                    # 입력창을 못 찾았으면 성공 처리하지 않고 다음 프레임/루프 시도
             except Exception:
                 continue
             finally:
                 driver.switch_to.default_content()
         time.sleep(0.3)
+    if log_callback: log_callback("메뉴 진입 실패 (타임아웃)")
     return False
 
 def solve_input_and_search(driver, container_no):
@@ -152,6 +195,12 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
+    # [추가] BOT 탐지 회피
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+
     if os.environ.get("CHROME_BIN"):
         options.binary_location = os.environ["CHROME_BIN"]
     service = Service(os.environ["CHROME_DRIVER_BIN"]) if os.environ.get("CHROME_DRIVER_BIN") else Service(ChromeDriverManager().install())
@@ -189,7 +238,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         _log("컨테이너 이동현황 페이지로 이동중")
         
         menu_start = time.time()
-        if open_els_menu(driver):
+        if open_els_menu(driver, log_callback=_log):
             _log("이동완료", elapsed=int(round(time.time() - menu_start)))
             _log("조회시작")
             return (driver, None)
