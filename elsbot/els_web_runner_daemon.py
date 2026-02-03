@@ -161,8 +161,10 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def handle_login(self):
+        body = self.parse_body()
+        # [추가] 디버깅을 위해 수신된 요청 본문을 콘솔에 출력
+        print(f"[DAEMON] /login received body: {json.dumps(body)}", flush=True)
         try:
-            body = self.parse_body()
         except Exception as e:
             self.send_json({"ok": False, "log": [f"[오류] 요청 파싱 실패: {e}"]})
             return
