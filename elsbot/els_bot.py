@@ -48,57 +48,68 @@ def open_els_menu(driver, log_callback=None):
                     driver.switch_to.frame(frame)
                 target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
                 if target:
+                if target:
                     driver.execute_script("arguments[0].click();", target[0])
-                    # 페이지 전환 대기: NAS에서 느릴 수 있으므로 2초
-                    if log_callback: log_callback("메뉴 클릭 후 대기 중...")
-                    time.sleep(2)
+                    if log_callback: log_callback("메뉴 클릭함. 입력창 로드 대기 중... (최대 30초)")
                     
-                    # 조회 입력창 로드 대기
-                    for wait_idx in range(20):
-                        if log_callback and wait_idx % 5 == 0: log_callback(f"입력창 로딩 대기 {wait_idx}...")
+                    # [최적화] 고정 대기 제거 -> 능동적 대기
+                    # 입력창이 나올 때까지 최대 30초간 프레임을 순차 검색
+                    wait_start = time.time()
+                    while time.time() - wait_start < 30:
                         driver.switch_to.default_content()
-                        
                         found_input = None
                         
-                        # 1. 메인 컨텐츠(Default Content)에서 레이블 기반 검색
+                        # 1. 메인 컨텐츠 검색
                         try:
                             labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
-                            if labels:
-                                inputs = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]/following::input[1]")
-                                if inputs: found_input = inputs[0]
+                            for lbl in labels:
+                                if "조회" in lbl.text: continue
+                                inputs = lbl.find_elements(By.XPATH, "./following-sibling::input") or \
+                                         lbl.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
+                                if inputs: found_input = inputs[0]; break
                         except: pass
                         
-                        if not found_input:
+                        if found_input: break
+                        
+                        # 2. 프레임 순회 검색
+                        try:
                             current_frames = driver.find_elements(By.TAG_NAME, "iframe")
                             for f in current_frames:
                                 try:
                                     driver.switch_to.frame(f)
-                                    # 2. 프레임 내 레이블 기반 검색
                                     labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
-                                    if labels:
-                                        inputs = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]/following::input[1]")
-                                        if inputs:
-                                            found_input = inputs[0]
-                                            break
+                                    for lbl in labels:
+                                        if "조회" in lbl.text: continue
+                                        inputs = lbl.find_elements(By.XPATH, "./following-sibling::input") or \
+                                                 lbl.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
+                                        if inputs: found_input = inputs[0]; break
                                     
-                                    # 3. 기존 CSS/XPath 선택자 백업 시도
-                                    input_selectors = [
-                                        ("CSS", "input[id*='containerNo']"),
-                                        ("CSS", "input[id*='ContainerNo']"),
-                                        ("CSS", "input[name*='containerNo']"),
-                                        ("CSS", "input[name*='ContainerNo']"),
-                                        ("XPATH", "//input[contains(@id, 'container')]"),
-                                    ]
-                                    for selector_type, selector in input_selectors:
-                                        if selector_type == "CSS": elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                                        else: elements = driver.find_elements(By.XPATH, selector)
-                                        if elements:
-                                            found_input = elements[0]
-                                            break
+                                    if not found_input:
+                                        # CSS 선택자 백업 시도
+                                        for sel_type, sel_val in [("CSS", "input[id*='containerNo']"), ("XPATH", "//input[contains(@id, 'container')]")]:
+                                            if sel_type == "CSS": els = driver.find_elements(By.CSS_SELECTOR, sel_val)
+                                            else: els = driver.find_elements(By.XPATH, sel_val)
+                                            if els: found_input = els[0]; break
                                     
                                     if found_input: break
                                 except: pass
-                                finally: driver.switch_to.default_content()
+                                driver.switch_to.default_content()
+                                
+                            if found_input: break
+                            
+                        except: pass
+                        
+                        if found_input: break
+                        time.sleep(0.5) # 0.5초 간격으로 체크
+                        
+                    if found_input:
+                        if log_callback: log_callback("입력창 발견! 메뉴 진입 성공.")
+                        return True
+                    else:
+                        if log_callback: log_callback("30초 내 입력창을 못 찾았습니다.")
+            except: pass
+            time.sleep(1) # 프레임 에러 시 잠시 대기
+    return False                                finally: driver.switch_to.default_content()
                         
                         if found_input:
                             if log_callback: log_callback("입력창 발견!")

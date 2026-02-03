@@ -180,34 +180,55 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
         if not user_id or not user_pw:
             self.send_json({"ok": False, "log": ["[오류] 아이디/비밀번호가 없습니다."]})
             return
+            
         do_logout()
+        
+        # 스트리밍 응답 시작
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.send_header("X-Accel-Buffering", "no") # [중요] Nginx 버퍼링 방지
+        self.end_headers()
+        
         log_lines = []
         def log_cb(msg):
             log_lines.append(msg)
+            # 로그 즉시 전송
+            try:
+                self.write_chunk(("LOG:" + msg + "\n").encode("utf-8"))
+            except: pass
+
         try:
             result = login_and_prepare(user_id, user_pw, log_callback=log_cb)
             driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
             err_msg = result[1] if isinstance(result, tuple) and len(result) > 1 and result[1] else None
+            
+            ok = False
             if driver:
+                ok = True
                 set_driver(driver)
                 save_creds(user_id, user_pw)
                 update_last_action()
-                start_auto_refresh() # 자동 갱신 스레드 시작
-                if not log_lines:
-                    log_lines = ["로그인 완료", "조회 페이지 대기 중."]
-                self.send_json({"ok": True, "log": log_lines})
+                start_auto_refresh()
+                if not log_lines: log_lines = ["로그인 완료", "조회 페이지 대기 중."]
+                if "로그인 완료" not in log_lines: log_cb("로그인 완료/성공")
             else:
-                if not log_lines:
-                    log_lines = [err_msg or "로그인 실패!"]
-                else:
-                    log_lines.append(err_msg or "로그인 실패!")
-                self.send_json({"ok": False, "log": log_lines})
+                ok = False
+                if not log_lines: log_lines = [err_msg or "로그인 실패!"]
+                if err_msg: log_cb(err_msg)
+            
+            # 최종 결과 JSON 전송
+            final_res = {"ok": ok, "log": log_lines, "error": err_msg if not ok else None}
+            self.write_chunk(("RESULT:" + json.dumps(final_res, ensure_ascii=False) + "\n").encode("utf-8"))
+            
         except Exception as e:
-            if not log_lines:
-                log_lines = [f"[예외] {e}"]
-            else:
-                log_lines.append(f"[예외] {e}")
-            self.send_json({"ok": False, "log": log_lines})
+            err = f"[예외] {e}"
+            if not log_lines: log_lines = [err]
+            else: log_lines.append(err)
+            final_res = {"ok": False, "log": log_lines, "error": str(e)}
+            self.write_chunk(("RESULT:" + json.dumps(final_res, ensure_ascii=False) + "\n").encode("utf-8"))
+        finally:
+            self.write_chunk(b"")
 
     def handle_run(self):
         body = self.parse_body()
@@ -257,6 +278,7 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Transfer-Encoding", "chunked")
+        self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
 
         def stream_log(msg):
