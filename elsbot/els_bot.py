@@ -315,12 +315,17 @@ def scrape_hyper_verify(driver, search_no):
 
 def login_and_prepare(u_id, u_pw, log_callback=None):
     """ETRANS 로그인 후 컨테이너 이동현황 메뉴 진입. 성공 시 (driver, None), 실패 시 (None, 오류메시지)."""
-    def _log(msg, elapsed=None):
-        if log_callback is not None:
-            log_callback(f"{msg} ({elapsed}초)" if elapsed is not None else msg)
+    start_time = time.time()
     
-    start = time.time()
-    if log_callback: log_callback("로그인 시도 중...")
+    def _log(msg):
+        elapsed = time.time() - start_time
+        debug_msg = f"[{elapsed:6.2f}s] {msg}"
+        if log_callback is not None:
+            log_callback(debug_msg)
+        else:
+            print(debug_msg, flush=True)
+
+    _log(f"로그인 프로세스 시작 (ID: {u_id})")
     
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
@@ -337,17 +342,33 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
 
     if os.environ.get("CHROME_BIN"):
         options.binary_location = os.environ["CHROME_BIN"]
-    service = Service(os.environ["CHROME_DRIVER_BIN"]) if os.environ.get("CHROME_DRIVER_BIN") else Service(ChromeDriverManager().install())
     
+    _log("크롬 드라이버 로드 중...")
+    try:
+        service_obj = Service(os.environ["CHROME_DRIVER_BIN"]) if os.environ.get("CHROME_DRIVER_BIN") else Service(ChromeDriverManager().install())
+    except Exception as e:
+        _log(f"드라이버 설치/찾기 실패: {e}")
+        return (None, f"드라이버 오류: {e}")
+
     driver = None
     try:
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.get("https://etrans.klnet.co.kr/index.do")
+        _log("브라우저 실행 시도...")
+        driver = webdriver.Chrome(service=service_obj, options=options)
+        _log("브라우저 실행 완료. 사이트 접속 시도...")
         
-        # [수정] 무조건 2초 대기 -> 요소가 나올 때까지 최대 30초 대기 (NAS 성능 고려)
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
-        )
+        driver.set_page_load_timeout(60) # 페이지 로드 타임아웃 설정
+        driver.get("https://etrans.klnet.co.kr/index.do")
+        _log("사이트 접속 명령 전송 완료. 로딩 대기 중...")
+        
+        # [수정] 무조건 2초 대기 -> 요소가 나올 때까지 최대 60초 대기 (NAS 성능 고려)
+        try:
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
+            )
+            _log("로그인 화면(아이디 입력창) 감지됨.")
+        except Exception as e:
+            _log(f"로그인 화면 로드 실패 (60초 초과). 현재 URL: {driver.current_url}")
+            raise e
         
         # [수정] 입력 씹힘 방지: 클릭 -> 초기화 -> 대기 -> 입력
         time.sleep(0.5)
@@ -361,7 +382,8 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         pw_input.clear()
         pw_input.send_keys(u_pw)
         
-        # 엔터 입력 전 살짝 대기
+        _log("아이디/비밀번호 입력 완료. 로그인 요청...")
+        
         # 엔터 입력 전 살짝 대기
         time.sleep(0.5)
         pw_input.send_keys(Keys.ENTER)
@@ -374,21 +396,26 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
                 EC.invisibility_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId"))
             )
             time.sleep(3) # UI 안정화 여유
+            _log("로그인 성공 (입력창 사라짐 확인)")
         except:
             _log("⚠️ 로그인 대기 시간 초과 (로그인이 너무 오래 걸리거나 실패)")
             # 실패로 간주하지 않고 일단 진행해봄 (팝업 등이 떠서 입력창이 가려졌을 수도 있음)
         
-        _log("로그인 완료 (화면 전환 확인)", elapsed=int(round(time.time() - start)))
-        _log("컨테이너 이동현황 페이지로 이동중")
+        _log("컨테이너 이동현황 페이지로 이동 시도")
         
         menu_start = time.time()
+        # open_els_menu에도 log_callback 전달 (경과시간은 거기서 따로 찍힘, 여기서 래핑 필요할 수도 있지만 일단 전달)
+        # -> open_els_menu는 내부적으로 메시지만 찍으므로, 여기 _log를 전달하면 포맷이 이중으로 될 수 있음.
+        # open_els_menu는 그대로 두고, 여기서 결과만 받음.
+        # 하지만 open_els_menu 내부 로그도 보고 싶으므로 _log를 전달하되, _log 함수가 이미 포맷팅을 하므로
+        # open_els_menu가 보내는 날것의 메시지를 _log가 받아서 [시간]을 붙여줌.
+        
         if open_els_menu(driver, log_callback=_log):
-            _log("이동완료", elapsed=int(round(time.time() - menu_start)))
-            _log("조회시작")
+            _log("이동 완료 및 조회 준비 끝")
             return (driver, None)
             
         if driver: driver.quit()
-        _log("이동 실패")
+        _log("메뉴 이동 실패")
         return (None, "로그인은 된 것 같으나 메뉴(컨테이너 이동현황) 진입에 실패했습니다.")
         
     except Exception as e:
@@ -396,8 +423,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
             try: driver.quit()
             except: pass
         err_msg = str(e)
+        _log(f"치명적 오류 발생: {err_msg}")
         if "TimeOut" in err_msg or "Timed out" in err_msg:
-            return (None, "사이트 접속 시간 초과 (NAS 네트워크/성능 문제). 30초 내에 입력창이 뜨지 않았습니다.")
+            return (None, f"시간 초과 오류 ({time.time()-start_time:.1f}초 경과). NAS 성능 문제일 수 있습니다.")
         return (None, f"[시스템 에러] {err_msg[:100]}")
 
 def main():
