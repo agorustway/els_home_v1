@@ -1,5 +1,5 @@
-# Debian buster 기반의 Python 3.9 슬림 이미지를 사용합니다.
-FROM python:3.9-slim-buster
+# Debian bullseye 기반의 Python 3.9 슬림 이미지를 사용합니다.
+FROM python:3.9-slim-bullseye
 
 # 작업 디렉토리를 /app으로 설정합니다.
 WORKDIR /app
