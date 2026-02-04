@@ -15,6 +15,13 @@
 ### /api/els/login 500 에러 해결 및 els_bot.py 리팩토링
 - `elsbot/els_bot.py` 및 `docker/els-backend/app.py` 파일에 `import time`이 확실히 있는지 재확인 (모두 존재).
 - `elsbot/els_bot.py`의 `main` 함수를 `run_els_process` (핵심 로직)와 `cli_main` (CLI 실행 로직)으로 리팩토링.
-- `main` 함수 내 `input()` 코드 및 `while True` 루프 제거.
-- `els_web_runner.py`에서 `els_bot.py`를 `subprocess`로 호출할 때 `sys.argv`를 파싱하여 `run_els_process`를 실행하고, 결과를 JSON 형식으로 `stdout`에 출력하도록 구현.
-- `argparse` 모듈을 사용하여 명령줄 인자를 안정적으로 파싱.
+- `els_bot.py`에서 불필요한 `input()` 코드 제거 및 `sys.argv`를 통한 실행 방식 분리.
+- `argparse` 모듈을 사용하여 외부 호출 시 인자 파싱 및 JSON 결과 출력 로직 추가.
+
+### 안전운임 조회 UI 개선 (버튼 기능 및 스타일 수정)
+- `web/app/employees/safe-freight/safe-freight.module.css` 파일에 `.tabDeveloping` CSS 클래스 추가 (옅은 빨강 배경 및 테두리).
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `구간조회` 버튼 `className`을 `styles.tabDeveloping`으로, 텍스트를 `구간조회(개발중)`으로 변경, `title`을 `네이버 지도로 경로 조회 (개발중)`으로 변경.
+    - `포워더KR` 버튼 `onClick` 핸들러를 `setView('default'); setQueryType('distance');`로 변경하여, 클릭 시 `안전운임 거리별운임` 페이지로 바로 이동하도록 처리.
+    - `포워더KR` 버튼 `title`을 `포워더케이알 운임정보 바로가기`로 변경.
+    - `포워더KR` `iframeSection` 내 불필요한 "안전운임 조회로 돌아가기" 버튼 제거.

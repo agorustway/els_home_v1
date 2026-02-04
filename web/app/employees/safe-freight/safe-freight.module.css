@@ -278,6 +278,22 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 246, 0.2);
 }
 
+.tabDeveloping {
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: 1px solid #fecaca; /* 옅은 빨강 테두리 */
+  background: #fef2f2; /* 옅은 빨강 배경 */
+  color: #b91c1c; /* 진한 빨강 글자 */
+  cursor: default; /* 클릭은 되지만 개발중임을 시각적으로 표현 */
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.tabDeveloping:hover {
+  border-color: #fca5a5;
+  background: #fee2e2;
+}
+
 .tabLabel {
   display: block;
   font-weight: 700;

@@ -533,8 +533,8 @@ export default function SafeFreightPage() {
         <button
           type="button"
           className={styles.tab}
-          onClick={() => setView('forwarder')}
-          title="포워더케이알 운임정보"
+          onClick={() => { setView('default'); setQueryType('distance'); }}
+          title="포워더케이알 운임정보 바로가기"
         >
           <img src="/images/forwarderkr.png" alt="포워더KR 로고" style={{ height: '24px', verticalAlign: 'middle' }} />
         </button>
@@ -542,11 +542,11 @@ export default function SafeFreightPage() {
         {/* 네이버 지도 경로조회 버튼 */}
         <button
             type="button"
-            className={view === 'naver-map' ? styles.tabActive : styles.tab}
+            className={styles.tabDeveloping}
             onClick={() => setView('naver-map')}
-            title="네이버 지도로 경로 조회"
+            title="네이버 지도로 경로 조회 (개발중)"
         >
-            <span className={styles.tabLabel}>구간조회(네이버MAP)</span>
+            <span className={styles.tabLabel}>구간조회(개발중)</span>
             <span className={styles.tabDesc}>지도 기반 거리/경로 조회</span>
         </button>
 
@@ -1156,9 +1156,6 @@ export default function SafeFreightPage() {
       {view === 'forwarder' && (
         <section className={styles.iframeSection}>
           <div className={styles.iframeHeader}>
-            <button onClick={() => setView('default')} className={styles.backButton}>
-              &larr; 안전운임 조회로 돌아가기
-            </button>
             <a href="https://www.forwarder.kr/tariff/" target="_blank" rel="noopener noreferrer" className={styles.externalLink}>
               새 창에서 열기
             </a>
