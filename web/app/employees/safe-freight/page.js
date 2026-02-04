@@ -520,7 +520,7 @@ export default function SafeFreightPage() {
             key={t.id}
             type="button"
             className={queryType === t.id ? styles.tabActive : styles.tab}
-            onClick={() => setQueryType(t.id)}
+            onClick={() => { setView('default'); setQueryType(t.id); }}
           >
             <span className={styles.tabLabel}>
               {t.label}
@@ -1156,15 +1156,6 @@ export default function SafeFreightPage() {
       {view === 'forwarder' && (
         <section className={styles.iframeSection}>
           <div className={styles.iframeHeader}>
-            <button
-              onClick={() => {
-                setView('default');
-                setQueryType('distance'); // 거리별운임으로 돌아가기
-              }}
-              className={styles.backButton}
-            >
-              &larr; 안전운임 거리별운임 조회로 돌아가기
-            </button>
             <a href="https://www.forwarder.kr/tariff/" target="_blank" rel="noopener noreferrer" className={styles.externalLink}>
               새 창에서 열기
             </a>
