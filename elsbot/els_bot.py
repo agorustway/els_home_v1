@@ -456,17 +456,42 @@ def main():
                     if not stripped_line or any(keyword in stripped_line for keyword in blacklist):
                         continue
 
-                    row_data = re.split(r'\t|\s{2,}', stripped_line)
+                    # 1차적으로 탭으로 분리 시도
+                    if '\t' in stripped_line:
+                        row_data = stripped_line.split('\t')
+                    else:
+                        # 탭이 없으면 2칸 이상의 공백으로 분리하되, 날짜/시간 형식은 보존하도록 개선
+                        # 예: "1 수출 2026-01-29 15:59 터미널" -> 탭으로 나눌 수 없을 때, '2026-01-29 15:59'를 하나로 유지
+                        # 이 부분은 정교한 정규식이 필요하며, 모든 경우를 커버하기는 어려울 수 있습니다.
+                        # 여기서는 간단히 2칸 이상의 공백으로 분리하되, 인덱스 매핑 시 날짜/시간 패턴을 고려해야 합니다.
+                        # 일단은 이전과 유사하게 공백으로 분리하되, 이후 인덱스 매핑 시 유연하게 처리합니다.
+                        row_data = re.split(r'\s{2,}', stripped_line)
                     
-                    if not row_data or not row_data[0].isdigit() or not (1 <= int(row_data[0]) <= 15):
+                    # 데이터 길이가 너무 짧거나 유효하지 않은 No 값 (숫자가 아니거나 범위 밖) 필터링
+                    # 최소한의 데이터(No, 수출입, 구분, 터미널, MOVE TIME 등)가 있다고 가정하고 5개 이상으로 설정
+                    if not row_data or len(row_data) < 5 or not row_data[0].isdigit() or not (1 <= int(row_data[0]) <= 15):
                         continue
-
-                    expected_data_cols = len(headers) - 1
-                    if len(row_data) < expected_data_cols:
-                        row_data.extend([''] * (expected_data_cols - len(row_data)))
-                    elif len(row_data) > expected_data_cols:
-                        row_data = row_data[:expected_data_cols]
                     
+                    # '조회번호' (cn)는 이미 outer loop에서 처리되므로, row_data는 No부터 시작
+                    # headers: ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
+                    
+                    # 필터링 후에도 지저분한 라인이 남는다면, 추가적인 검증을 통해 유효한 데이터만 최종 리스트에 추가
+                    # 예를 들어, 'No', '수출입', '구분' 등의 핵심 필드가 비어있지 않은지 확인
+                    
+                    # 추출된 row_data의 필드 개수와 헤더의 예상 필드 개수를 맞춥니다.
+                    # '조회번호' (cn)는 final_rows에 추가될 때 맨 앞에 삽입됩니다.
+                    # 따라서 실제 파싱된 데이터(row_data)는 headers에서 '조회번호'를 제외한 길이와 맞춰야 합니다.
+                    expected_data_cols_after_cn = len(headers) - 1 # headers는 15개, row_data는 14개 예상
+                    
+                    # 현재 row_data는 'No'부터 시작한다고 가정
+                    # 만약 scraped_data가 No부터 RFID까지 14개 필드를 가진다면 len(row_data)는 14
+                    
+                    # 데이터 보정 (부족하면 빈 문자열 추가, 넘치면 잘라내기)
+                    if len(row_data) < expected_data_cols_after_cn:
+                        row_data.extend([''] * (expected_data_cols_after_cn - len(row_data)))
+                    elif len(row_data) > expected_data_cols_after_cn:
+                        row_data = row_data[:expected_data_cols_after_cn]
+
                     final_rows.append([cn] + row_data)
                     found_any = True
                 
