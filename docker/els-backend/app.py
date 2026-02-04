@@ -438,4 +438,5 @@ def template():
 
 
 if __name__ == "__main__":
+    app.logger.info("Backend Server is Ready on Port 2929")
     app.run(host="0.0.0.0", port=2929)
