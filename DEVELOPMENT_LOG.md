@@ -43,3 +43,7 @@
 - `web/app/employees/news/article/article.module.css` 파일 수정:
     - `.articleIframe` 클래스를 추가하여 `width: 100%`, `height: calc(100vh - 200px)`, `border: none; display: block;` 스타일 적용.
     - `infoText` 및 `iframeFooter` 클래스 스타일 추가하여 `iframe` 주변 요소들의 시각적 배치 개선.
+
+### 컴파일 에러 해결 (React is not defined)
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `import React from 'react';` 추가하여 `React.Fragment` 사용으로 인한 `'React' is not defined` 에러 해결.

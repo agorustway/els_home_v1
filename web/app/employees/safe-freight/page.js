@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './safe-freight.module.css';
 import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
 import NaverMapRouteSearch from '@/components/NaverMapRouteSearch';
