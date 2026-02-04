@@ -115,3 +115,10 @@
 - `elsbot/els_bot.py`의 `CONFIG_FILE` 경로 (`os.path.join(...)`) 유지 확인.
 - 모든 검수 항목 및 요청사항 확인 완료. (els_web_runner.py 파일 수정 발생)
 - 프론트엔드 조회 로직 점검 완료 (`web/app/employees/safe-freight/page.js` 및 `web/app/employees/container-history/page.js`). 모든 `fetch` 요청 경로가 `/api/els/`로 시작하거나 올바른 백엔드 엔드포인트를 사용함. 스트리밍 로그 및 `downloadToken` 처리 로직도 해당 페이지의 요구사항에 맞게 잘 구현되어 있음. 에러 핸들링도 적절하게 처리됨.
+
+### elsbot 로컬 테스트 및 `re` 모듈 누락 수정
+- `elsbot/els_bot.py` 실행 시 `NameError: name 're' is not defined` 오류 발생 확인.
+- `elsbot/els_bot.py` 파일 최상단에 `import re` 추가하여 오류 해결.
+- `elsbot/els_bot.py` CLI 모드 테스트 결과, 로그인 및 컨테이너 조회, 엑셀 파일 생성(`els_hyper_0204_2147.xlsx`)까지 성공적으로 완료됨.
+- `elsbot/els_bot.py`에 추가했던 디버깅 로그(`import traceback` 및 `error_details` 출력 로직) 제거.
+- `elsbot/ELSBOТ_분석.md` 파일 내용 확인, 현재 문제의 직접적인 원인은 찾지 못했으나 주의사항 파악.
