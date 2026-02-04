@@ -136,6 +136,31 @@
     background: #1d4ed8;
 }
 
+/* iframe 관련 스타일 추가 */
+.articleIframe {
+    width: 100%;
+    height: calc(100vh - 200px); /* 상단 헤더, 하단 푸터, 카드 패딩 등 고려한 높이 */
+    border: none;
+    display: block; /* iframe 아래 기본 공백 제거 */
+    background-color: #fff; /* 로딩 중 흰 배경 */
+}
+
+.infoText {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.iframeFooter {
+    text-align: right;
+    margin-top: 15px;
+}
+
+
 @media (max-width: 768px) {
     .card {
         padding: 16px 18px;

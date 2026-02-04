@@ -39,8 +39,7 @@
     - `iframe`에 `sandbox="allow-scripts allow-same-origin allow-forms allow-modals"` 속성을 추가하여 팝업을 차단하고 보안 강화. 광고는 `iframe` 콘텐츠이므로 제거 불가.
     - 뉴스 목록으로 돌아가는 `Link`는 유지.
 
-### 안전운임 조회 UI - 포워더KR 사이트 새 창으로 열기 및 버튼 위치 조정 (최종 수정)
-- `web/app/employees/safe-freight/page.js` 파일 수정:
-    - `포워더KR` 버튼 `onClick` 로직을 `window.open('https://www.forwarder.kr/tariff/', '_blank')`로 변경하여 새 창에서 열리도록 수정. `title`은 `포워더케이알 운임정보`로 복원.
-    - `view === 'forwarder'` 일 때 렌더링되던 `iframeSection` 블록 완전히 제거.
-    - 버튼들의 순서 조정: `관련 법령·고시 안내` 버튼을 `이외구간` 왼쪽으로, `포워더KR` 버튼을 `구간조회(개발중)` 왼쪽으로 이동.
+### 뉴스 기사 페이지 iframe 크기 조정 (본문 꽉 채우기)
+- `web/app/employees/news/article/article.module.css` 파일 수정:
+    - `.articleIframe` 클래스를 추가하여 `width: 100%`, `height: calc(100vh - 200px)`, `border: none; display: block;` 스타일 적용.
+    - `infoText` 및 `iframeFooter` 클래스 스타일 추가하여 `iframe` 주변 요소들의 시각적 배치 개선.
