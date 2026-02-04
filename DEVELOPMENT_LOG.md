@@ -95,3 +95,23 @@
     - `isEmployees` 조건부 렌더링 로직에서 `InfoTicker` 컴포넌트가 렌더링되지 않을 때 `height: 0`, `overflow: 'hidden'` 속성을 가진 빈 `div`를 렌더링하도록 변경.
     - 이를 통해 비(非)인트라넷 페이지에서 `InfoTicker`로 인해 발생하던 불필요한 빈 공간(Ghost Space)을 제거함.
     - `InfoTicker.module.css`의 `height: 44px` 스타일은 `InfoTicker`가 렌더링될 때 정상적으로 적용됨.
+
+### Ghost Space 문제 최종 해결 - Header 그림자 및 SubNav 경계 조정
+- `web/components/SiteLayout.js` 파일 수정:
+    - `hero`가 `null`일 때 70px 높이의 빈 `div` (스페이서)를 렌더링하지 않고 `null`을 반환하도록 수정하여, `Header` 바로 아래 `InfoTicker` 또는 `SubNav`가 직접 연결되도록 함.
+- `web/components/Header.js` 파일 수정:
+    - `<header>` 태그의 인라인 `style` 속성에서 `boxShadow: shadow,`를 제거하여 `Header` 컴포넌트 자체에는 그림자가 생기지 않도록 함. (CSS 파일의 `box-shadow`는 이미 제거됨)
+- `web/components/SubNav.js` 파일 수정:
+    - `SubNav` 함수가 `topOffset` prop을 받도록 수정하고, `<nav>` 태그에 `style={{ top: `${topOffset}px` }}` 인라인 스타일을 적용하여 `Header` 및 `InfoTicker` 유무에 따라 동적으로 위치를 조정할 수 있도록 함.
+- `web/components/SubNav.module.css` 파일 수정:
+    - `.subNav` 클래스에서 `top: 114px;` 속성을 제거하여 인라인 스타일이 우선 적용되도록 함.
+    - `.subNav` 클래스에 `EmployeeHeader`와 동일한 `box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);`와 `border-bottom: 1px solid #e2e8f0;`를 추가하여 인트라넷 메뉴바와 시각적인 통일성을 확보함.
+
+### elsbot/els_web_runner.py: `import time` 추가 및 전수 조사
+- `elsbot/els_web_runner.py` 파일의 `import sys` 위에 `import time` 추가. (기존 주석 다음에 `import time`이 있었으나, 실제 코드 상 첫 번째 import 앞에 위치시켜 명확화)
+- `docker/els-backend/app.py`: `import time`, `import os`, `import sys`, `import json` 모두 존재 확인.
+- `elsbot/els_bot.py`: `import time`, `import os`, `import sys`, `import argparse`, `import json` 모두 존재 확인.
+- `elsbot/els_web_runner.py`: `import time`, `import os`, `import sys`, `import json`, `import argparse` 모두 존재 확인.
+- `elsbot/els_bot.py`의 `CONFIG_FILE` 경로 (`os.path.join(...)`) 유지 확인.
+- 모든 검수 항목 및 요청사항 확인 완료. (els_web_runner.py 파일 수정 발생)
+- 프론트엔드 조회 로직 점검 완료 (`web/app/employees/safe-freight/page.js` 및 `web/app/employees/container-history/page.js`). 모든 `fetch` 요청 경로가 `/api/els/`로 시작하거나 올바른 백엔드 엔드포인트를 사용함. 스트리밍 로그 및 `downloadToken` 처리 로직도 해당 페이지의 요구사항에 맞게 잘 구현되어 있음. 에러 핸들링도 적절하게 처리됨.

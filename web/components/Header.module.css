@@ -17,7 +17,7 @@
     background-color: #ffffff !important;
     /* Force solid white */
     height: 70px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    /* box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); Removed for visual flatness */
     color: #1a1a1a !important;
     /* Force dark text */
 }

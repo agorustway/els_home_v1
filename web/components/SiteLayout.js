@@ -71,19 +71,15 @@ export default function SiteLayout({ children }) {
                     bgImage={hero.bgImage}
                     compact={isEmployees} // 인트라넷은 히어로 축소
                 />
-            ) : (
-                <div style={{ height: '70px' }} />
-            )}
+            ) : null}
 
             {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링) */}
             {isEmployees ? (
                 <InfoTicker style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
-            ) : (
-                <div style={{ height: 0, overflow: 'hidden' }} /> // 빈 공간 차지 방지
-            )}
+            ) : null}
 
             {/* 부가 헤더 */}
-            {isEmployees ? <EmployeeHeader /> : <SubNav />}
+            {isEmployees ? <EmployeeHeader /> : <SubNav topOffset={isEmployees ? 114 : 70} />}
 
             {/* 본문 영역 */}
             <div className={isEmployees ? styles.bodyWrap : ''}>

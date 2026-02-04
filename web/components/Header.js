@@ -417,7 +417,7 @@ export default function Header({ darkVariant = false }) {
                 className={styles.header}
                 style={{
                     backgroundColor: headerBg,
-                    boxShadow: shadow,
+                    // boxShadow: shadow, // Removed to prevent header's shadow from affecting SubNav
                     color: textColor,
                     height: '70px',
                     transition: 'background-color 0.3s, color 0.3s'
