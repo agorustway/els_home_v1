@@ -8,12 +8,17 @@ import json
 import subprocess
 import tempfile
 import uuid
+import logging
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 from flask import Flask, request, jsonify, Response, send_file
 from werkzeug.utils import secure_filename
+
+# --- 로깅 설정 ---
+# Docker 환경에서는 stdout/stderr로 로그를 보내야 `docker logs`로 볼 수 있습니다.
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] In %(module)s: %(message)s')
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB
@@ -25,16 +30,33 @@ DAEMON_URL = "http://127.0.0.1:31999"
 
 file_store = {}
 
+# --- 전역 에러 핸들러 ---
+@app.errorhandler(Exception)
+def handle_global_exception(e):
+    # 처리되지 않은 모든 예외를 로깅하고 일관된 JSON 응답을 반환합니다.
+    app.logger.error("An unhandled exception occurred: %s", str(e), exc_info=True)
+    response = {
+        "ok": False,
+        "error": "An unexpected server error occurred.",
+        "log": [f"[FATAL] {type(e).__name__}: {str(e)}"]
+    }
+    return jsonify(response), 500
+
 
 def _daemon_available():
     try:
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=2)
-        return r.getcode() == 200
-    except Exception:
+        is_ok = r.getcode() == 200
+        if not is_ok:
+             app.logger.warning(f"Daemon health check failed with status: {r.getcode()}")
+        return is_ok
+    except Exception as e:
+        app.logger.warning(f"Daemon not available at {DAEMON_URL}: {e}")
         return False
 
 
 def run_runner(cmd, extra_args=None, env=None, stdin_data=None):
+    # ... (기존과 동일)
     args = [sys.executable, str(RUNNER), cmd] + (extra_args or [])
     env = dict(os.environ) if env is None else {**os.environ, **env}
     env["PYTHONIOENCODING"] = "utf-8"
@@ -50,11 +72,14 @@ def run_runner(cmd, extra_args=None, env=None, stdin_data=None):
 
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
+    app.logger.info("Received request for /api/els/capabilities")
     return jsonify({"available": True, "parseAvailable": True})
 
 
 @app.route("/api/els/config", methods=["GET"])
 def config_get():
+    # ... (기존과 동일)
+    app.logger.info("Received request for /api/els/config [GET]")
     if not CONFIG_PATH.exists():
         return jsonify({"hasSaved": False, "defaultUserId": ""})
     try:
@@ -62,17 +87,24 @@ def config_get():
         uid = data.get("user_id", "")
         has_saved = bool(uid and data.get("user_pw"))
         return jsonify({"hasSaved": has_saved, "defaultUserId": uid})
-    except Exception:
+    except Exception as e:
+        app.logger.error(f"Failed to read config: {e}")
         return jsonify({"hasSaved": False, "defaultUserId": ""})
 
 
 @app.route("/api/els/config", methods=["POST"])
 def config_post():
-    data = request.get_json() or {}
+    # ... (기존과 동일, 로깅 추가)
+    app.logger.info("Received request for /api/els/config [POST]")
+    data = request.get_json(silent=True)
+    if data is None:
+        app.logger.error("Config POST failed: request body is not valid JSON.")
+        return jsonify({"error": "Invalid JSON in request body"}), 400
+        
     uid = (data.get("userId") or "").strip()
     pw = data.get("userPw") or ""
     if not uid or not pw:
-        return jsonify({"error": "아이디와 비밀번호가 필요합니다."}), 400
+        return jsonify({"error": "아이디와 비밀번호가 필요합니다."`}), 400
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(
         json.dumps({"user_id": uid, "user_pw": pw}, ensure_ascii=False, indent=2),
@@ -83,12 +115,23 @@ def config_post():
 
 @app.route("/api/els/login", methods=["POST"])
 def login():
+    # --- 로그인 핸들러 방어 로직 강화 ---
+    app.logger.info("Received request for /api/els/login")
     try:
-        data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True)
+        if data is None:
+            app.logger.error("/api/els/login: Request body is not valid JSON.")
+            return jsonify({"ok": False, "error": "Invalid JSON in request body", "log": ["Request body is not valid JSON."]}), 400
+        
+        app.logger.info(f"/api/els/login received data: {json.dumps(data)}")
+
         use_saved = data.get("useSavedCreds", True)
         uid = data.get("userId") or ""
         pw = data.get("userPw") or ""
+
+        # 데몬 우선 사용
         if _daemon_available():
+            app.logger.info("Daemon is available, attempting to login via daemon.")
             try:
                 body = json.dumps({
                     "useSavedCreds": use_saved,
@@ -98,14 +141,24 @@ def login():
                 req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json; charset=utf-8"})
                 r = urlopen(req, timeout=90)
                 raw = r.read().decode("utf-8")
+
+                # 응답이 HTML인지 확인 (프록시 에러 등)
                 if raw.strip().startswith("<"):
+                    app.logger.error(f"Daemon returned unexpected HTML: {raw[:200]}")
                     return jsonify({"ok": False, "error": "데몬이 HTML을 반환했습니다.", "log": [raw[:200]]}), 500
+                
                 obj = json.loads(raw)
                 return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
-            except URLError:
+            
+            except URLError as e:
+                app.logger.warning(f"Daemon communication failed (URLError), falling back to subprocess. Error: {e}")
                 pass  # fallback to subprocess
             except Exception as e:
+                app.logger.error(f"Daemon login failed with an exception: {e}", exc_info=True)
                 return jsonify({"ok": False, "error": str(e)[:500], "log": [f"[데몬 오류] {e}"]}), 500
+
+        # 데몬 실패 시 폴백
+        app.logger.info("Daemon not available or failed, falling back to subprocess runner.")
         extra = []
         if not use_saved and uid:
             extra.extend(["--user-id", uid])
@@ -114,22 +167,26 @@ def login():
         r = run_runner("login", extra_args=extra)
         out = (r.stdout or "").strip()
         if r.returncode != 0:
+            app.logger.error(f"Subprocess runner failed with code {r.returncode}: {r.stderr or out}")
             return jsonify({"ok": False, "error": (r.stderr or out)[:500], "log": [r.stderr or out]}), 500
+        
+        # 응답 파싱
         try:
             start, end = out.rfind("{"), out.rfind("}")
-            if start >= 0 and end >= start:
-                obj = json.loads(out[start : end + 1])
-            else:
-                obj = json.loads(out)
+            obj = json.loads(out[start : end + 1]) if start >= 0 and end >= start else json.loads(out)
             return jsonify({"ok": obj.get("ok"), "log": obj.get("log", []), "error": obj.get("error")})
         except json.JSONDecodeError:
+            app.logger.error(f"Failed to parse subprocess response: {out[:300]}")
             return jsonify({"ok": False, "error": "응답 파싱 실패", "log": [out[:300]]}), 500
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)[:500], "log": [f"[서버 오류] {e}"]}), 500
 
+    except Exception as e:
+        app.logger.error("A critical error occurred in /api/els/login handler: %s", str(e), exc_info=True)
+        return jsonify({"ok": False, "error": "An critical error occurred.", "log": [f"[FATAL_HANDLER] {type(e).__name__}: {e}"]}), 500
+
+# ... (이하 다른 라우트들은 기존과 거의 동일하게 유지, 필요 시 로깅 추가) ...
 
 def _stream_run_daemon(containers, use_saved, uid, pw):
-    """데몬 /run 스트리밍: LOG 그대로 전달, RESULT에서 output_path → downloadToken(파일 읽어 file_store)."""
+    # ... (기존과 동일)
     body = json.dumps({
         "containers": containers,
         "useSavedCreds": use_saved,
@@ -203,15 +260,20 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
 
 
 def _stream_run(containers, use_saved, uid, pw):
+    # ... (기존과 동일)
     if _daemon_available():
         try:
+            app.logger.info("Streaming run via daemon.")
             for chunk in _stream_run_daemon(containers, use_saved, uid, pw):
                 yield chunk
             return
-        except URLError:
+        except URLError as e:
+            app.logger.warning(f"Daemon stream failed (URLError), falling back. Error: {e}")
             pass
-        except Exception:
+        except Exception as e:
+            app.logger.warning(f"Daemon stream failed (Exception), falling back. Error: {e}")
             pass
+    app.logger.info("Streaming run via subprocess.")
     extra = ["--containers", json.dumps(containers)]
     if not use_saved and uid:
         extra.extend(["--user-id", uid])
@@ -286,10 +348,14 @@ def _stream_run(containers, use_saved, uid, pw):
 
 @app.route("/api/els/run", methods=["POST"])
 def run():
-    data = request.get_json() or {}
+    # ... (기존과 동일, 로깅 추가)
+    app.logger.info("Received request for /api/els/run")
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid JSON"}), 400
     containers = data.get("containers") or []
     if not containers:
-        return jsonify({"error": "containers 배열이 필요합니다."}), 400
+        return jsonify({"error": "containers 배열이 필요합니다."`}), 400
     use_saved = data.get("useSavedCreds", True)
     uid = data.get("userId") or ""
     pw = data.get("userPw") or ""
@@ -301,11 +367,13 @@ def run():
 
 @app.route("/api/els/parse-xlsx", methods=["POST"])
 def parse_xlsx():
+    # ... (기존과 동일)
+    app.logger.info("Received request for /api/els/parse-xlsx")
     if "file" not in request.files:
-        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."}), 400
+        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."`}), 400
     f = request.files["file"]
     if not f or not (f.filename or "").lower().endswith(".xlsx"):
-        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."}), 400
+        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."`}), 400
     with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
         f.save(tmp.name)
         try:
@@ -327,6 +395,8 @@ def parse_xlsx():
 
 @app.route("/api/els/download", methods=["GET"])
 def download():
+    # ... (기존과 동일)
+    app.logger.info("Received request for /api/els/download")
     token = request.args.get("token")
     if not token:
         return "token required", 400
@@ -339,6 +409,8 @@ def download():
 
 @app.route("/api/els/logout", methods=["POST"])
 def logout():
+    # ... (기존과 동일)
+    app.logger.info("Received request for /api/els/logout")
     if _daemon_available():
         try:
             req = Request(DAEMON_URL + "/logout", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
@@ -350,6 +422,8 @@ def logout():
 
 @app.route("/api/els/template", methods=["GET"])
 def template():
+    # ... (기존과 동일)
+    app.logger.info("Received request for /api/els/template")
     from openpyxl import Workbook
     wb = Workbook()
     ws = wb.active
