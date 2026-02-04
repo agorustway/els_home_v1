@@ -72,3 +72,7 @@
     - 상단 설명 문구 (`<p className={styles.desc}>...</p>`) 제거.
     - `<div className={styles.tabs}>` 내의 버튼 순서 재조정: `관련 법령·고시 안내` 버튼이 `이외구간` 왼쪽으로, `포워더KR` 버튼이 `구간조회(개발중)` 왼쪽으로 이동.
     - `safe-freight.module.css` 수정: `.tabs` 클래스에 `display: flex`, `flex-wrap: wrap`, `align-items: center` 속성 추가. `.mlAuto` 클래스 (`margin-left: auto`) 추가하여 `구간조회(개발중)` 버튼을 오른쪽으로 정렬.
+
+### 컴파일 에러 해결 (Expected '...', got '}')
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `className` 속성의 템플릿 리터럴 문법 오류 ( `{styles.tabDeveloping} ${styles.mlAuto}` )를 올바른 `className={\`${styles.tabDeveloping} ${styles.mlAuto}\`}` 형식으로 수정.

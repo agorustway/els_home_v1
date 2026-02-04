@@ -569,7 +569,7 @@ export default function SafeFreightPage() {
         {/* 네이버 지도 경로조회 버튼 (개발중) */}
         <button
             type="button"
-            className={`${styles.tabDeveloping} ${styles.mlAuto}`} {/* 오른쪽으로 밀기 */}
+            className={`$\{styles.tabDeveloping} ${styles.mlAuto}`} {/* 오른쪽으로 밀기 */}
             onClick={() => setView('naver-map')}
             title="네이버 지도로 경로 조회 (개발중)"
         >
