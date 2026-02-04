@@ -75,8 +75,10 @@ export default function SiteLayout({ children }) {
                 <div style={{ height: '70px' }} />
             )}
 
-            {/* 실시간 티커 (히어로가 있을 땐 위로 44px 끌어올려 이미지 하단에 얹기) */}
-            <InfoTicker style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
+            {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링) */}
+            {isEmployees && (
+                <InfoTicker style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
+            )}
 
             {/* 부가 헤더 */}
             {isEmployees ? <EmployeeHeader /> : <SubNav />}

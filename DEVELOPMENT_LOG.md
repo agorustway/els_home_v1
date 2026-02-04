@@ -26,3 +26,8 @@
     - `포워더KR` 버튼 `title`을 `포워더케이알 운임정보 바로가기`로 변경.
     - 상단 `QUERY_TYPES` 탭 버튼들의 `onClick` 핸들러를 수정하여, `forwarder` 뷰 상태에서 클릭 시 `default` 뷰로 전환되고 해당 `queryType`이 설정되도록 변경.
     - `포워더KR` `iframeSection` 내 `안전운임 조회로 돌아가기` 버튼 제거 (불필요한 버튼 제거).
+
+### 헤더 위젯 조건부 렌더링 (인트라넷 페이지에만 표시)
+- `web/components/SiteLayout.js` 파일 수정:
+    - `InfoTicker` 컴포넌트 (`현재시간, 날씨, 뉴스` 위젯 포함)가 `/employees` 또는 `/admin` 경로일 때만 렌더링되도록 조건부 렌더링 로직 적용.
+    - `isEmployees` 변수를 활용하여 `InfoTicker` 컴포넌트의 렌더링을 제어.
