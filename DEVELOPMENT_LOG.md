@@ -22,6 +22,6 @@
 - `web/app/employees/safe-freight/safe-freight.module.css` 파일에 `.tabDeveloping` CSS 클래스 추가 (옅은 빨강 배경 및 테두리).
 - `web/app/employees/safe-freight/page.js` 파일 수정:
     - `구간조회` 버튼 `className`을 `styles.tabDeveloping`으로, 텍스트를 `구간조회(개발중)`으로 변경, `title`을 `네이버 지도로 경로 조회 (개발중)`으로 변경.
-    - `포워더KR` 버튼 `onClick` 핸들러를 `setView('default'); setQueryType('distance');`로 변경하여, 클릭 시 `안전운임 거리별운임` 페이지로 바로 이동하도록 처리.
+    - `포워더KR` 버튼 `onClick` 핸들러를 원래대로 `setView('forwarder')`로 되돌려 `iframe`이 열리도록 수정.
     - `포워더KR` 버튼 `title`을 `포워더케이알 운임정보 바로가기`로 변경.
-    - `포워더KR` `iframeSection` 내 불필요한 "안전운임 조회로 돌아가기" 버튼 제거.
+    - `포워더KR` `iframeSection` 내 "안전운임 조회로 돌아가기" 버튼을 다시 추가하고, `onClick` 시 `setView('default')`와 `setQueryType('distance')`를 함께 호출하도록 로직 수정. 버튼 텍스트는 `안전운임 거리별운임 조회로 돌아가기`로 변경.

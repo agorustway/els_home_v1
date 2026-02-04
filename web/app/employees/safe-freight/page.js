@@ -533,7 +533,7 @@ export default function SafeFreightPage() {
         <button
           type="button"
           className={styles.tab}
-          onClick={() => { setView('default'); setQueryType('distance'); }}
+          onClick={() => setView('forwarder')}
           title="포워더케이알 운임정보 바로가기"
         >
           <img src="/images/forwarderkr.png" alt="포워더KR 로고" style={{ height: '24px', verticalAlign: 'middle' }} />
@@ -1156,6 +1156,15 @@ export default function SafeFreightPage() {
       {view === 'forwarder' && (
         <section className={styles.iframeSection}>
           <div className={styles.iframeHeader}>
+            <button
+              onClick={() => {
+                setView('default');
+                setQueryType('distance'); // 거리별운임으로 돌아가기
+              }}
+              className={styles.backButton}
+            >
+              &larr; 안전운임 거리별운임 조회로 돌아가기
+            </button>
             <a href="https://www.forwarder.kr/tariff/" target="_blank" rel="noopener noreferrer" className={styles.externalLink}>
               새 창에서 열기
             </a>
