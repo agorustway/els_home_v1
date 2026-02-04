@@ -515,32 +515,8 @@ export default function SafeFreightPage() {
       </div>
 
       <div className={styles.tabs}>
+        {/* 구간별운임 → 거리별운임 → 이외구간 */}
         {QUERY_TYPES.map((t) => (
-          t.id === 'other' ? (
-            <React.Fragment key={t.id}>
-              {/* 관련 법령·고시 안내 버튼을 이외구간 왼쪽으로 이동 */}
-              <button
-                type="button"
-                className={styles.noticeTabBtn}
-                onClick={() => setNoticeModalOpen(true)}
-                aria-label="관련 법령·고시 안내 보기"
-              >
-                <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
-              </button>
-              <button
-                key={t.id}
-                type="button"
-                className={queryType === t.id ? styles.tabActive : styles.tab}
-                onClick={() => { setView('default'); setQueryType(t.id); }}
-              >
-                <span className={styles.tabLabel}>
-                  {t.label}
-                  {t.yearNote && <span className={styles.yearNote}> ({t.yearNote})</span>}
-                </span>
-                <span className={styles.tabDesc}>{t.desc}</span>
-              </button>
-            </React.Fragment>
-          ) : (
             <button
               key={t.id}
               type="button"
@@ -553,20 +529,9 @@ export default function SafeFreightPage() {
               </span>
               <span className={styles.tabDesc}>{t.desc}</span>
             </button>
-          )
         ))}
         
-        {/* 포워더 KR 버튼을 구간조회(개발중) 왼쪽으로 이동 */}
-        <button
-          type="button"
-          className={styles.tab}
-          onClick={() => window.open('https://www.forwarder.kr/tariff/', '_blank')}
-          title="포워더케이알 운임정보"
-        >
-          <img src="/images/forwarderkr.png" alt="포워더KR 로고" style={{ height: '24px', verticalAlign: 'middle' }} />
-        </button>
-        
-        {/* 네이버 지도 경로조회 버튼 (개발중) */}
+        {/* 구간조회(개발중) */}
         <button
             type="button"
             className={styles.tabDeveloping}
@@ -575,6 +540,26 @@ export default function SafeFreightPage() {
         >
             <span className={styles.tabLabel}>구간조회(개발중)</span>
             <span className={styles.tabDesc}>지도 기반 거리/경로 조회</span>
+        </button>
+
+        {/* 관련 법령·고시 안내 */}
+        <button
+            type="button"
+            className={styles.noticeTabBtn}
+            onClick={() => setNoticeModalOpen(true)}
+            aria-label="관련 법령·고시 안내 보기"
+        >
+            <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
+        </button>
+
+        {/* Forwarder.KR */}
+        <button
+            type="button"
+            className={styles.tab} /* 일반 탭 버튼 스타일 적용 */
+            onClick={() => window.open('https://www.forwarder.kr/tariff/', '_blank')}
+            title="포워더케이알 운임정보"
+        >
+            <img src="/images/forwarderkr.png" alt="포워더KR 로고" className={styles.forwarderLogo} />
         </button>
       </div>
 

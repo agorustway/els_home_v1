@@ -2,12 +2,7 @@
     padding: 0;
 }
 
-.header {
-    margin-bottom: 10px; /* 여백 축소 */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+/* .header styles removed as the element is no longer present in page.js */
 
 .backLink {
     font-size: 0.9rem;
@@ -22,7 +17,7 @@
 
 .card {
     background: #fff;
-    padding: 16px 28px; /* 상단 패딩 축소 */
+    padding: 16px 28px 0 28px; /* 상단 패딩 축소, 하단 패딩 제거 (푸터가 생기므로) */
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     border: 1px solid #f1f5f9;
@@ -160,10 +155,44 @@
 }
 
 .iframeFooter {
-    text-align: right;
-    margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0; /* 상하 패딩 조정 */
+  border-top: 1px solid #e2e8f0; /* 상단 구분선 */
+  margin-top: 16px; /* iframe과 푸터 사이 여백 */
+  flex-shrink: 0; /* 푸터가 iframe에 의해 축소되지 않도록 */
 }
 
+/* iframeFooter 내 링크 스타일 조정 */
+.iframeFooter .backLink,
+.iframeFooter .originalLink {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.iframeFooter .backLink {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.iframeFooter .backLink:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.iframeFooter .originalLink {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.iframeFooter .originalLink:hover {
+  background: #dbeafe;
+  color: #1e40af;
+}
 
 @media (max-width: 768px) {
     .card {

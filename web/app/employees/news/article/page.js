@@ -23,10 +23,6 @@ function ArticleContent() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.header}>
-                <Link href="/employees/news" className={styles.backLink}>← 뉴스 목록</Link>
-                <a href={url} target="_blank" rel="noopener noreferrer" className={styles.originalLink}>새 창에서 보기</a>
-            </div>
             <div className={styles.card}>
                 <iframe
                     src={url}
@@ -34,6 +30,10 @@ function ArticleContent() {
                     title="뉴스 기사 본문"
                     sandbox="allow-scripts allow-same-origin allow-forms allow-modals" // 팝업만 막고 스크립트 등 기본 동작 허용
                 />
+                <div className={styles.iframeFooter}>
+                    <Link href="/employees/news" className={styles.backLink}>← 뉴스 목록</Link>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.originalLink}>새 창에서 보기</a>
+                </div>
             </div>
         </div>
     );

@@ -122,3 +122,20 @@
 - `elsbot/els_bot.py` CLI 모드 테스트 결과, 로그인 및 컨테이너 조회, 엑셀 파일 생성(`els_hyper_0204_2147.xlsx`)까지 성공적으로 완료됨.
 - `elsbot/els_bot.py`에 추가했던 디버깅 로그(`import traceback` 및 `error_details` 출력 로직) 제거.
 - `elsbot/ELSBOТ_분석.md` 파일 내용 확인, 현재 문제의 직접적인 원인은 찾지 못했으나 주의사항 파악.
+
+### 뉴스 페이지 디자인 개선
+- `web/app/employees/news/article/page.js` 파일 수정:
+    - 본문 상단에 있던 "← 뉴스 목록" 링크와 "새 창에서 보기" 링크를 `iframe` 바로 아래에 새로 추가된 `<div className={styles.iframeFooter}>`로 이동.
+    - 기존 `<div className={styles.header}>` 요소는 제거.
+- `web/app/employees/news/article/article.module.css` 파일 수정:
+    - 제거된 `.header` 스타일에 대한 CSS 규칙도 함께 제거.
+    - `.card` 클래스의 `padding`을 `16px 28px 0 28px`로 조정하여 상단 여백 최소화 및 하단 패딩 제거.
+    - 새로운 `.iframeFooter` 클래스 및 그 내부 링크들에 대한 스타일을 정의하여, 이동된 링크들이 보기 좋게 정렬되고 시각적으로 개선되도록 함.
+
+### 안전운임 조회 페이지 디자인 개선
+- `web/app/employees/safe-freight/safe-freight.module.css` 파일 수정:
+    - `.headerBanner` 클래스의 `padding`을 `8px 28px`로 조정하여 상단 제목 배너의 높이를 70% 이상 축소.
+    - `.noticeTabBtn`, `.tab`, `.tabActive`, `.tabDeveloping` 클래스에 `display: flex`, `align-items: center` (또는 `flex-direction: column`, `justify-content: center`), `min-height: 40px`, `padding: 8px 16px`, `font-size: 0.9rem` (또는 `.tabLabel`의 `font-size: 0.95rem`)를 적용하여 버튼 높이, 패딩, 폰트 크기를 통일.
+    - `.forwarderLogo` 클래스 추가 (height: 24px) 및 `web/app/employees/safe-freight/page.js` 파일에서 `Forwarder.KR` 로고 버튼의 `img` 태그에 적용.
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `<div className={styles.tabs}>` 내부의 버튼 렌더링 순서를 `구간별운임 → 거리별운임 → 이외구간 → 구간조회(개발중) → 관련 법령·고시 안내 → Forwarder.KR` 순으로 재배치.
