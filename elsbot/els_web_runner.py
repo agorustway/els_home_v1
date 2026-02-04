@@ -3,18 +3,10 @@
 - parse: xlsx 경로 → stdout JSON {"containers": [...]}
 - run: containers + creds → stdout JSON {"log": [...], "sheet1": [...], "sheet2": [...], "output_path": "..."}
 """
-import time
-import time
-import time
-import time
-import time
-import time
-import time
-import time
+import time # 단 하나만 남깁니다.
 import sys
 import os
 import json
-import time
 import datetime
 import tempfile
 import argparse
@@ -97,7 +89,8 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
             log("로그인 성공.")
             own_driver = True
         except Exception as e:
-            log(f"[예외] {e}")
+            import traceback
+            log(f"[예외] {e}\n{traceback.format_exc()}")
             return (log_lines, [], [], None)
     else:
         log("기존 세션으로 조회 진행.")
@@ -174,8 +167,10 @@ def run_search(containers, user_id=None, user_pw=None, driver=None, keep_alive=F
         return (log_lines, sheet1_data, sheet2_data, output_path)
 
     except Exception as e:
-        log_lines.append(f"[예외] {e}")
-        print(f"[예외] {e}", flush=True)
+        import traceback
+        err_msg = f"[예외] {e}\n{traceback.format_exc()}"
+        log_lines.append(err_msg)
+        print(err_msg, flush=True)
         return (log_lines, [], [], None)
     finally:
         if driver and own_driver and not keep_alive:
@@ -201,7 +196,8 @@ def login_only(user_id=None, user_pw=None):
             return (True, ["로그인 성공.", "조회 페이지 대기 중."])
         return (False, [err_msg or "로그인 실패!"])
     except Exception as e:
-        return (False, [f"[예외] {e}"])
+        import traceback
+        return (False, [f"[예외] {e}\n{traceback.format_exc()}"])
     finally:
         if driver:
             try:

@@ -61,14 +61,25 @@ def run_runner(cmd, extra_args=None, env=None, stdin_data=None):
     args = [sys.executable, str(RUNNER), cmd] + (extra_args or [])
     env = dict(os.environ) if env is None else {**os.environ, **env}
     env["PYTHONIOENCODING"] = "utf-8"
-    return subprocess.run(
-        args,
-        cwd=str(ELSBOT_DIR),
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-    )
+    try:
+        result = subprocess.run(
+            args,
+            cwd=str(ELSBOT_DIR),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            env=env,
+        )
+        app.logger.info(f"Subprocess run: cmd='{' '.join(args)}' returncode={result.returncode} stdout='{result.stdout.strip()[:500]}' stderr='{result.stderr.strip()[:500]}'")
+        if result.returncode != 0:
+            app.logger.error(f"Subprocess failed with code {result.returncode}: Stderr='{result.stderr.strip()}' Stdout='{result.stdout.strip()}'")
+        return result
+    except subprocess.TimeoutExpired as e:
+        app.logger.exception(f"Subprocess timed out after {e.timeout} seconds: cmd='{' '.join(args)}'")
+        raise # 다시 예외 발생시켜 상위 핸들러가 처리하도록
+    except Exception as e:
+        app.logger.exception(f"Subprocess failed unexpectedly: cmd='{' '.join(args)}'")
+        raise # 다시 예외 발생시켜 상위 핸들러가 처리하도록
 
 
 @app.route("/api/els/capabilities", methods=["GET"])
@@ -234,8 +245,10 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
                             "downloadToken": token,
                             "error": obj.get("error"),
                         }, ensure_ascii=False) + "\n"
-                except json.JSONDecodeError:
-                    yield "LOG:" + s + "\n"
+                except json.JSONDecodeError as e:
+                    import traceback
+                    app.logger.error(f"Daemon stream JSONDecodeError: {e}\nRaw: {s}\nTrace: {traceback.format_exc()}")
+                    yield "LOG: [DAEMON_STREAM_ERROR] JSON 파싱 오류: " + s + "\n"
     if buffer.strip():
         try:
             s = buffer.decode("utf-8").strip()
@@ -270,10 +283,10 @@ def _stream_run(containers, use_saved, uid, pw):
                 yield chunk
             return
         except URLError as e:
-            app.logger.warning(f"Daemon stream failed (URLError), falling back. Error: {e}")
+            app.logger.exception(f"Daemon stream failed (URLError), falling back. Error: {e}")
             pass
         except Exception as e:
-            app.logger.warning(f"Daemon stream failed (Exception), falling back. Error: {e}")
+            app.logger.exception(f"Daemon stream failed (Exception), falling back. Error: {e}")
             pass
     app.logger.info("Streaming run via subprocess.")
     extra = ["--containers", json.dumps(containers)]
@@ -281,15 +294,24 @@ def _stream_run(containers, use_saved, uid, pw):
         extra.extend(["--user-id", uid])
     if not use_saved and pw:
         extra.extend(["--user-pw", pw])
-    proc = subprocess.Popen(
-        [sys.executable, str(RUNNER), "run"] + extra,
-        cwd=str(ELSBOT_DIR),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
-        bufsize=1,
-    )
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, str(RUNNER), "run"] + extra,
+            cwd=str(ELSBOT_DIR),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
+            bufsize=1,
+        )
+        app.logger.info(f"Subprocess Popen started: cmd='{' '.join(proc.args)}' pid={proc.pid}")
+    except Exception as e:
+        app.logger.exception(f"Failed to start subprocess Popen: cmd='{' '.join([sys.executable, str(RUNNER), 'run'] + extra)}'")
+        yield "RESULT:" + json.dumps({
+            "sheet1": [], "sheet2": [], "downloadToken": None,
+            "error": f"프로세스 시작 실패: {e}",
+        }, ensure_ascii=False) + "\n"
+        return
     buffer = ""
     result_sent = False
     for line in iter(proc.stdout.readline, ""):

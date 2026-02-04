@@ -139,3 +139,12 @@
     - `.forwarderLogo` 클래스 추가 (height: 24px) 및 `web/app/employees/safe-freight/page.js` 파일에서 `Forwarder.KR` 로고 버튼의 `img` 태그에 적용.
 - `web/app/employees/safe-freight/page.js` 파일 수정:
     - `<div className={styles.tabs}>` 내부의 버튼 렌더링 순서를 `구간별운임 → 거리별운임 → 이외구간 → 구간조회(개발중) → 관련 법령·고시 안내 → Forwarder.KR` 순으로 재배치.
+
+### ELS 백엔드 로깅 강화
+- `docker/els-backend/app.py` 파일 수정:
+    - `run_runner` 함수에서 `subprocess.run` 호출 시 `try...except` 블록을 통해 상세 로깅 (cmd, returncode, stdout, stderr 및 TimeoutExpired 등 예외 처리).
+    - `_stream_run` 함수에서 `subprocess.Popen` 시작 시 `try...except` 블록을 통해 로깅 강화 (프로세스 시작 실패 시 상세 에러 메시지 반환).
+    - `_stream_run` 함수 내부 `_daemon_available()` 이후 `URLError`나 다른 `Exception` 발생 시 `app.logger.warning` 대신 `app.logger.exception`으로 스택 트레이스 기록.
+    - `_stream_run_daemon` 함수에서 데몬 스트림 `json.JSONDecodeError` 발생 시 `app.logger.error`로 상세 스택 트레이스 및 원본 데이터 기록 강화.
+- `elsbot/els_web_runner_daemon.py` 파일 수정:
+    - `perform_relogin`, `handle_login`, `handle_run` 함수 내부의 `except` 블록에서 `traceback`을 사용한 상세 로깅 추가 (`print`를 통해 컨테이너 로그에도 남김).

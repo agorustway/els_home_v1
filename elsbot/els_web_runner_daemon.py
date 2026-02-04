@@ -82,7 +82,8 @@ def perform_relogin():
         else:
             print(f"[AutoRefresh] 실패: {result[1] if isinstance(result, tuple) and len(result)>1 else 'Unknown'}", flush=True)
     except Exception as e:
-        print(f"[AutoRefresh] 예외 발생: {e}", flush=True)
+        import traceback
+        print(f"[AutoRefresh] 예외 발생: {e}\n{traceback.format_exc()}", flush=True)
 
 def auto_refresh_loop():
     """1분마다 체크하여 55분 이상 활동 없으면 재로그인"""
@@ -224,9 +225,11 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
             self.write_chunk(("RESULT:" + json.dumps(final_res, ensure_ascii=False) + "\n").encode("utf-8"))
             
         except Exception as e:
-            err = f"[예외] {e}"
-            if not log_lines: log_lines = [err]
-            else: log_lines.append(err)
+            import traceback
+            err_msg = f"[DAEMON_ERROR] handle_login: {e}\n{traceback.format_exc()}"
+            print(err_msg, flush=True) # 컨테이너 로그에 남김
+            if not log_lines: log_lines = [err_msg]
+            else: log_lines.append(err_msg)
             final_res = {"ok": False, "log": log_lines, "error": str(e)}
             self.write_chunk(("RESULT:" + json.dumps(final_res, ensure_ascii=False) + "\n").encode("utf-8"))
         finally:
@@ -266,10 +269,11 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
                 set_driver(driver)
                 save_creds(user_id, user_pw) # 조회를 통해 새로 로그인한 경우도 저장
             except Exception as e:
-                if not log_lines:
-                    log_lines = [f"[예외] {e}"]
-                else:
-                    log_lines.append(f"[예외] {e}")
+                import traceback
+                err_msg = f"[DAEMON_ERROR] handle_run (login_and_prepare fail): {e}\n{traceback.format_exc()}"
+                print(err_msg, flush=True) # 컨테이너 로그에 남김
+                if not log_lines: log_lines = [err_msg]
+                else: log_lines.append(err_msg)
                 self.send_json({"ok": False, "error": str(e), "log": log_lines})
                 return
         
@@ -308,9 +312,13 @@ class ELSDaemonHandler(BaseHTTPRequestHandler):
                 result["error"] = log_lines[-1] if log_lines else "Unknown error"
             self.write_chunk(("RESULT:" + json.dumps(result, ensure_ascii=False) + "\n").encode("utf-8"))
         except Exception as e:
+            import traceback
+            err_msg = f"[DAEMON_ERROR] handle_run (run_search fail): {e}\n{traceback.format_exc()}"
+            print(err_msg, flush=True) # 컨테이너 로그에 남김
             self.write_chunk(("RESULT:" + json.dumps({
                 "sheet1": [], "sheet2": [], "output_path": None,
                 "error": str(e),
+                "log": [err_msg], # 로그에도 에러 메시지 포함
             }, ensure_ascii=False) + "\n").encode("utf-8"))
         finally:
             self.write_chunk(b"")
