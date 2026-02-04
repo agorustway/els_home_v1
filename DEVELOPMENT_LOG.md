@@ -31,3 +31,10 @@
 - `web/components/SiteLayout.js` 파일 수정:
     - `InfoTicker` 컴포넌트 (`현재시간, 날씨, 뉴스` 위젯 포함)가 `/employees` 또는 `/admin` 경로일 때만 렌더링되도록 조건부 렌더링 로직 적용.
     - `isEmployees` 변수를 활용하여 `InfoTicker` 컴포넌트의 렌더링을 제어.
+
+### 뉴스 기사 페이지 iframe으로 변경 (팝업 차단 시도)
+- `web/app/employees/news/article/page.js` 파일 수정:
+    - 뉴스 기사 본문을 `fetch` API를 통한 직접 렌더링 방식에서 `iframe` 방식으로 변경.
+    - 외부 기사 URL을 `iframe` `src`로 직접 로드하여 '사이트 이동' 버튼 없이 바로 기사 내용을 볼 수 있도록 개선.
+    - `iframe`에 `sandbox="allow-scripts allow-same-origin allow-forms allow-modals"` 속성을 추가하여 팝업을 차단하고 보안 강화. 광고는 `iframe` 콘텐츠이므로 제거 불가.
+    - 뉴스 목록으로 돌아가는 `Link`는 유지.

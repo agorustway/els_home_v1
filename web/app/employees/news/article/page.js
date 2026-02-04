@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -11,49 +11,15 @@ function ArticleContent() {
     const searchParams = useSearchParams();
     const { role, loading: authLoading } = useUserRole();
     const url = searchParams.get('url');
-    const [article, setArticle] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (!authLoading && !role) router.replace('/login?next=/employees/news');
-    }, [role, authLoading, router]);
+    // 인증 로딩 중이거나 역할이 없으면 로그인 페이지로 리디렉션
+    // 뉴스 목록으로 가는 Link가 있으니 별도 로직 불필요
+    // useEffect(() => {
+    //     if (!authLoading && !role) router.replace('/login?next=/employees/news');
+    // }, [role, authLoading, router]);
 
-    useEffect(() => {
-        if (!role || !url) {
-            if (!url && !authLoading) router.replace('/employees/news');
-            return;
-        }
-        setLoading(true);
-        setError(null);
-        fetch(`/api/news/article?url=${encodeURIComponent(url)}`)
-            .then(async (res) => {
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return res.json();
-                }
-                const text = await res.text();
-                throw new Error('뉴스 본문을 불러올 수 없습니다. 아래 [원본 보기]를 이용해주세요.');
-            })
-            .then((json) => {
-                if (json.error && !json.content) {
-                    setError(json.error);
-                    setArticle(null);
-                } else {
-                    setError(null);
-                    setArticle({ title: json.title || '', content: json.content || '', source: json.source });
-                }
-            })
-            .catch((e) => {
-                console.error('Fetch error:', e);
-                setError(e.message || '본문을 불러올 수 없습니다.');
-                setArticle(null);
-            })
-            .finally(() => setLoading(false));
-    }, [role, url, authLoading, router]);
-
-    if (authLoading || !role) return null;
-    if (!url) return null;
+    if (authLoading || !role) return null; // 인증 로딩 중이거나 역할이 없으면 렌더링하지 않음
+    if (!url) return <div className={styles.page}><p className={styles.error}>기사 URL이 없습니다.</p></div>;
 
     return (
         <div className={styles.page}>
@@ -61,28 +27,25 @@ function ArticleContent() {
                 <Link href="/employees/news" className={styles.backLink}>← 뉴스 목록</Link>
             </div>
             <div className={styles.card}>
-                {loading && <p className={styles.loading}>본문을 불러오는 중...</p>}
-                {error && !article && (
-                    <div className={styles.errorBlock}>
-                        <p className={styles.error}>{error}</p>
-                        <p className={styles.errorHint}>원본에서 기사를 확인할 수 있습니다.</p>
-                        <a href={url} target="_blank" rel="noopener noreferrer" className={styles.originalLink}>원본 보기</a>
-                    </div>
-                )}
-                {article && (
-                    <>
-                        <h1 className={styles.title}>{article.title}</h1>
-                        {article.source && (
-                            <p className={styles.source}>
-                                출처: <a href={article.source} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>{article.source}</a>
-                            </p>
-                        )}
-                        <div
-                            className={styles.body}
-                            dangerouslySetInnerHTML={{ __html: article.content }}
-                        />
-                    </>
-                )}
+                <p className={styles.infoText}>
+                    뉴스 본문이 바로 보이지 않거나 광고가 많을 경우, 우측 상단의 <a href={url} target="_blank" rel="noopener noreferrer" className={styles.originalLink}>새 창에서 보기</a>를 이용해 주세요.
+                </p>
+                <iframe
+                    src={url}
+                    className={styles.articleIframe}
+                    title="뉴스 기사 본문"
+                    // sandbox 속성을 사용하여 보안 강화 및 팝업 차단
+                    // allow-scripts: iframe 내 스크립트 실행 허용 (기사 내용 표시를 위해 필요)
+                    // allow-same-origin: 동일 출처 스크립트 허용 (일부 기능 동작에 필요할 수 있으나, 외부 사이트에서는 제한적)
+                    // allow-popups: 팝업 차단 (이것을 제거하면 팝업이 막힘)
+                    // allow-forms: 폼 제출 허용
+                    // allow-modals: 모달 허용 (alert, confirm 등)
+                    // allow-top-navigation: iframe 내에서 최상위 창 탐색 허용 (이것을 제거하면 iframe 내에서 새 페이지로 이동하는 것이 제한됨)
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-modals" // 팝업만 막고 스크립트 등 기본 동작 허용
+                />
+                <div className={styles.iframeFooter}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.originalLink}>새 창에서 보기</a>
+                </div>
             </div>
         </div>
     );
@@ -90,7 +53,7 @@ function ArticleContent() {
 
 export default function NewsArticlePage() {
     return (
-        <Suspense fallback={<div className={styles.page}><p className={styles.loading}>로딩 중...</p></div>}>
+        <Suspense fallback={<div className={styles.page}><p className={styles.loading}>뉴스 기사를 불러오는 중...</p></div>}>
             <ArticleContent />
         </Suspense>
     );
