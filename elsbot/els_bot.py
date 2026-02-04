@@ -398,54 +398,60 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
             return (None, f"시간 초과 오류 ({time.time()-start_time:.1f}초 경과). NAS 성능 문제일 수 있습니다.")
         return (None, f"[시스템 에러] {err_msg[:100]}")
 
-def main():
-    config = load_config()
-    print("--- ELS HYPER TURBO ( Eagle-Eye & Silent ) ---")
-    u_id = config['user_id']
-    u_pw = config['user_pw']
-    # save_config(u_id, u_pw) # Docker 환경에서는 설정 저장이 의미 없을 수 있으므로 주석 처리
+def run_els_process(u_id, u_pw, c_list, log_callback=None):
+    """
+    ELS 컨테이너 조회 및 파싱 핵심 로직.
+    백엔드 또는 웹러너에서 호출될 수 있도록 설계.
+    :param u_id: 사용자 ID
+    :param u_pw: 사용자 비밀번호
+    :param c_list: 조회할 컨테이너 번호 리스트
+    :param log_callback: 로그 메시지를 처리할 콜백 함수 (예: print 또는 로거)
+    :return: 처리 결과 딕셔너리 (ok, error, sheet1, sheet2 데이터)
+    """
+    
+    # --- 로깅 헬퍼 함수 ---
+    start_time = time.time()
+    def _log(msg):
+        elapsed = time.time() - start_time
+        debug_msg = f"[{elapsed:6.2f}s] {msg}"
+        if log_callback is not None:
+            log_callback(debug_msg)
+        else:
+            # log_callback이 없으면 콘솔에 출력 (els_web_runner에서 기본 출력 사용)
+            print(debug_msg, flush=True)
 
-    driver, last_login = None, 0
-    while True:
-        cmd = input("\n[1] 조회시작 [2] 종료 : ")
-        if cmd == '2': break
-        if cmd != '1': continue
+    _log(f"ELS 프로세스 시작 (ID: {u_id})")
 
-        if driver is None or (time.time() - last_login) > (58 * 60):
-            if driver: driver.quit()
-            print("엔진 예열 및 로그인 중...")
-            result = login_and_prepare(u_id, u_pw)
-            driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
-            if isinstance(result, tuple) and len(result) > 1 and result[1]:
-                print(result[1])
-            last_login = time.time()
-            if not driver: print("로그인 실패!"); continue
-
-        try:
-            df_in = pd.read_excel("elsbot/container_list.xlsx")
-            c_list = df_in.iloc[2:, 0].dropna().tolist()
-        except Exception as e:
-            print(f"엑셀 에러: {e}"); continue
+    driver = None
+    try:
+        # 로그인 및 드라이버 초기화 (한 번만)
+        _log("엔진 예열 및 로그인 중...")
+        result = login_and_prepare(u_id, u_pw, _log) # _log 함수 전달
+        driver = result[0] if isinstance(result, tuple) and result else (result if result else None)
+        
+        if not driver:
+            _log(f"로그인 실패! {result[1] if isinstance(result, tuple) and result[1] else '알 수 없는 오류'}")
+            return {"ok": False, "error": result[1] if isinstance(result, tuple) and result[1] else "로그인 실패", "sheet1": [], "sheet2": []}
 
         final_rows = []
         headers = ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
-
+        
+        # 컨테이너 리스트 처리 로직
         for cn_raw in c_list:
             cn = str(cn_raw).strip().upper()
-            print(f"[{cn}] 분석 중...", end=" ", flush=True)
+            _log(f"[{cn}] 분석 중...")
             unit_start = time.time()
             
             status = solve_input_and_search(driver, cn)
             if isinstance(status, str) and "오류" in status:
                 dur = time.time() - unit_start
-                print(f"패스 ({status}) [{dur:.2f}s]")
+                _log(f"[{cn}] 패스 ({status}) [{dur:.2f}s]")
                 final_rows.append([cn, "ERROR", status] + [""] * 12); continue
             
             grid_text = scrape_hyper_verify(driver, cn)
             
             dur = time.time() - unit_start
             if grid_text:
-                import re
                 found_any = False
                 blacklist = ["SKR", "YML", "ZIM", "2021-04-12", "최병훈", "안녕하세요", "로그아웃", "운송관리", "조회"]
                 lines = grid_text.split('\n')
@@ -456,37 +462,16 @@ def main():
                     if not stripped_line or any(keyword in stripped_line for keyword in blacklist):
                         continue
 
-                    # 1차적으로 탭으로 분리 시도
                     if '\t' in stripped_line:
                         row_data = stripped_line.split('\t')
                     else:
-                        # 탭이 없으면 2칸 이상의 공백으로 분리하되, 날짜/시간 형식은 보존하도록 개선
-                        # 예: "1 수출 2026-01-29 15:59 터미널" -> 탭으로 나눌 수 없을 때, '2026-01-29 15:59'를 하나로 유지
-                        # 이 부분은 정교한 정규식이 필요하며, 모든 경우를 커버하기는 어려울 수 있습니다.
-                        # 여기서는 간단히 2칸 이상의 공백으로 분리하되, 인덱스 매핑 시 날짜/시간 패턴을 고려해야 합니다.
-                        # 일단은 이전과 유사하게 공백으로 분리하되, 이후 인덱스 매핑 시 유연하게 처리합니다.
                         row_data = re.split(r'\s{2,}', stripped_line)
                     
-                    # 데이터 길이가 너무 짧거나 유효하지 않은 No 값 (숫자가 아니거나 범위 밖) 필터링
-                    # 최소한의 데이터(No, 수출입, 구분, 터미널, MOVE TIME 등)가 있다고 가정하고 5개 이상으로 설정
                     if not row_data or len(row_data) < 5 or not row_data[0].isdigit() or not (1 <= int(row_data[0]) <= 15):
                         continue
                     
-                    # '조회번호' (cn)는 이미 outer loop에서 처리되므로, row_data는 No부터 시작
-                    # headers: ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
+                    expected_data_cols_after_cn = len(headers) - 1 
                     
-                    # 필터링 후에도 지저분한 라인이 남는다면, 추가적인 검증을 통해 유효한 데이터만 최종 리스트에 추가
-                    # 예를 들어, 'No', '수출입', '구분' 등의 핵심 필드가 비어있지 않은지 확인
-                    
-                    # 추출된 row_data의 필드 개수와 헤더의 예상 필드 개수를 맞춥니다.
-                    # '조회번호' (cn)는 final_rows에 추가될 때 맨 앞에 삽입됩니다.
-                    # 따라서 실제 파싱된 데이터(row_data)는 headers에서 '조회번호'를 제외한 길이와 맞춰야 합니다.
-                    expected_data_cols_after_cn = len(headers) - 1 # headers는 15개, row_data는 14개 예상
-                    
-                    # 현재 row_data는 'No'부터 시작한다고 가정
-                    # 만약 scraped_data가 No부터 RFID까지 14개 필드를 가진다면 len(row_data)는 14
-                    
-                    # 데이터 보정 (부족하면 빈 문자열 추가, 넘치면 잘라내기)
                     if len(row_data) < expected_data_cols_after_cn:
                         row_data.extend([''] * (expected_data_cols_after_cn - len(row_data)))
                     elif len(row_data) > expected_data_cols_after_cn:
@@ -496,33 +481,132 @@ def main():
                     found_any = True
                 
                 if found_any:
-                    print(f"성공! (정제된 데이터) [{dur:.2f}s]")
+                    _log(f"[{cn}] 성공! (정제된 데이터) [{dur:.2f}s]")
                 else:
-                    print(f"데이터는 찾았으나 유효한 행 없음 [{dur:.2f}s]")
+                    _log(f"[{cn}] 데이터는 찾았으나 유효한 행 없음 [{dur:.2f}s]")
             else:
-                print(f"불일치/내역없음 [{dur:.2f}s]")
+                _log(f"[{cn}] 불일치/내역없음 [{dur:.2f}s]")
                 final_rows.append([cn, "NODATA", "데이터 없음"] + [""] * 12)
 
+        # 결과 반환
         if final_rows:
-            now = datetime.datetime.now().strftime("%m%d_%H%M")
-            fname = f"els_hyper_{now}.xlsx"
-            df_out = pd.DataFrame(final_rows)
-            df_out.columns = headers[:df_out.shape[1]]
-            with pd.ExcelWriter(fname, engine='openpyxl') as writer:
-                # 시트1: 요약(No1), 시트2: 전체
-                df_out[df_out['No'].astype(str) == '1'].to_excel(writer, sheet_name='Sheet1', index=False)
-                df_out.to_excel(writer, sheet_name='Sheet2', index=False)
-                
-                red, blue, err = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid'), PatternFill(start_color='CCE5FF', end_color='CCE5FF', fill_type='solid'), PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
-                for sn in ['Sheet1', 'Sheet2']:
-                    ws = writer.sheets[sn]
-                    for r in ws.iter_rows(min_row=2):
-                        if r[2].value == "수입": r[2].fill = red
-                        if r[3].value == "반입": r[3].fill = blue
-                        if str(r[1].value) in ["ERROR", "NODATA"]: r[1].fill = err
-            print(f"\n파일 생성 완료: {fname}")
-            # [요청사항] 팝업 메시지 박스 삭제
+            df_out = pd.DataFrame(final_rows, columns=headers)
 
-    if driver: driver.quit()
+            sheet1_data = df_out[df_out['No'].astype(str) == '1'].to_dict('records')
+            sheet2_data = df_out.to_dict('records')
 
-if __name__ == "__main__": main()
+            return {"ok": True, "sheet1": sheet1_data, "sheet2": sheet2_data}
+        else:
+            return {"ok": False, "error": "조회된 컨테이너 데이터가 없습니다.", "sheet1": [], "sheet2": []}
+            
+    except Exception as e:
+        _log(f"치명적인 오류 발생: {e}")
+        return {"ok": False, "error": f"치명적인 오류 발생: {e}", "sheet1": [], "sheet2": []}
+    finally:
+        if driver: driver.quit()
+
+
+def cli_main():
+    """CLI 환경에서 els_bot을 실행하기 위한 메인 함수."""
+    config = load_config()
+    print("--- ELS HYPER TURBO ( Eagle-Eye & Silent ) ---")
+    u_id = config['user_id']
+    u_pw = config['user_pw']
+
+    # 엑셀 파일 읽기 (CLI에서만)
+    try:
+        df_in = pd.read_excel("elsbot/container_list.xlsx")
+        c_list = df_in.iloc[2:, 0].dropna().tolist()
+    except Exception as e:
+        print(f"엑셀 에러: {e}"); return
+    
+    # 핵심 로직 함수 호출
+    results = run_els_process(u_id, u_pw, c_list, log_callback=print) # CLI에서는 print로 로그 출력
+    
+    if results["ok"]:
+        now = datetime.datetime.now().strftime("%m%d_%H%M")
+        fname = f"els_hyper_{now}.xlsx"
+        
+        df_sheet1 = pd.DataFrame(results["sheet1"])
+        df_sheet2 = pd.DataFrame(results["sheet2"])
+
+        with pd.ExcelWriter(fname, engine='openpyxl') as writer:
+            if not df_sheet1.empty:
+                df_sheet1.to_excel(writer, sheet_name='Sheet1', index=False)
+            if not df_sheet2.empty:
+                df_sheet2.to_excel(writer, sheet_name='Sheet2', index=False)
+            
+            red, blue, err = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid'), PatternFill(start_color='CCE5FF', end_color='CCE5FF', fill_type='solid'), PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+            
+            # Sheet1에 스타일 적용
+            if 'Sheet1' in writer.sheets and not df_sheet1.empty:
+                ws1 = writer.sheets['Sheet1']
+                for r_idx, row in enumerate(ws1.iter_rows(min_row=2), start=2):
+                    if len(row) > 1 and str(row[1].value) in ["ERROR", "NODATA"]: # No 컬럼
+                        for cell in row: cell.fill = err
+                    if len(row) > 2 and row[2].value == "수입":
+                        for cell in row: cell.fill = red
+                    if len(row) > 3 and row[3].value == "반입":
+                        for cell in row: cell.fill = blue
+            
+            # Sheet2에 스타일 적용
+            if 'Sheet2' in writer.sheets and not df_sheet2.empty:
+                ws2 = writer.sheets['Sheet2']
+                for r_idx, row in enumerate(ws2.iter_rows(min_row=2), start=2):
+                    if len(row) > 1 and str(row[1].value) in ["ERROR", "NODATA"]: # No 컬럼
+                        for cell in row: cell.fill = err
+                    if len(row) > 2 and row[2].value == "수입":
+                        for cell in row: cell.fill = red
+                    if len(row) > 3 and row[3].value == "반입":
+                        for cell in row: cell.fill = blue
+
+        print(f"\n파일 생성 완료: {fname}")
+    else:
+        print(f"작업 실패: {results.get('error', '알 수 없는 오류')}")
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "run":
+        # els_web_runner.py에서 호출되는 경우
+        # 인자로 전달받은 user_id, user_pw, containers를 사용
+        # (이 부분은 els_web_runner.py가 어떻게 인자를 전달하는지에 따라 다름)
+        # 현재 els_web_runner.py는 els_bot.py를 subprocess로 실행하고 stdout/stderr를 파싱하는 방식이므로,
+        # els_bot.py가 JSON 형태의 결과를 stdout으로 출력하도록 변경해야 합니다.
+        
+        # 예시: els_web_runner.py가 JSON 문자열을 stdin으로 전달한다고 가정
+        # input_data = json.loads(sys.stdin.read())
+        # user_id = input_data.get("userId")
+        # user_pw = input_data.get("userPw")
+        # container_list = input_data.get("containers")
+
+        # 지금은 els_web_runner.py가 run_runner("run")으로 호출하며,
+        # run_runner는 extra_args로 --containers, --user-id, --user-pw를 전달합니다.
+        # 이를 파싱하여 run_els_process에 전달해야 합니다.
+        
+        parser = argparse.ArgumentParser(description="ELS Bot Process Runner")
+        parser.add_argument("--containers", type=str, help="JSON string of container list")
+        parser.add_argument("--user-id", type=str, help="User ID for ELS login")
+        parser.add_argument("--user-pw", type=str, help="User Password for ELS login")
+        
+        args = parser.parse_args(sys.argv[2:]) # 'run' 명령어 다음 인자들
+        
+        c_list_json = args.containers
+        u_id_arg = args.user_id
+        u_pw_arg = args.user_pw
+        
+        container_list = json.loads(c_list_json) if c_list_json else []
+
+        # els_config.json에서 기본값을 로드
+        config = load_config()
+        u_id = u_id_arg if u_id_arg else config.get('user_id', '')
+        u_pw = u_pw_arg if u_pw_arg else config.get('user_pw', '')
+
+        # run_els_process 실행
+        process_results = run_els_process(u_id, u_pw, container_list, log_callback=lambda x: print(f"LOG:{x}", flush=True))
+        
+        # 결과를 JSON 형식으로 stdout에 출력
+        # app.py (_stream_run)에서 이 JSON을 파싱할 것으로 예상
+        print(f"RESULT:{json.dumps(process_results, ensure_ascii=False)}", flush=True)
+
+    else:
+        # CLI에서 직접 실행되는 경우 (els_bot.py)
+        cli_main()
