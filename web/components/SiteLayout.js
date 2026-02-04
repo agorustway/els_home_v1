@@ -76,8 +76,10 @@ export default function SiteLayout({ children }) {
             )}
 
             {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링) */}
-            {isEmployees && (
+            {isEmployees ? (
                 <InfoTicker style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
+            ) : (
+                <div style={{ height: 0, overflow: 'hidden' }} /> // 빈 공간 차지 방지
             )}
 
             {/* 부가 헤더 */}

@@ -90,10 +90,8 @@
     - `className={styles.tabDeveloping} {/* 오른쪽으로 밀기 */}` 에서 ` {/* 오른쪽으로 밀기 */} ` JSX 주석 제거.
     - JSX 속성 값 뒤에 바로 붙은 주석으로 인한 파싱 오류 해결. (빌드 에러 해결)
 
-### elsbot/els_web_runner.py: `import time` 누락 확인 및 전수 조사
-- `elsbot/els_web_runner.py` 파일 최상단에 `import time`이 이미 존재함을 확인. (수정 사항 없음)
-- `elsbot/els_bot.py`: `import time`, `import json`, `import os`, `import sys`, `import argparse` 모두 존재 확인.
-- `docker/els-backend/app.py`: `import time`, `import json`, `import os`, `import sys` 모두 존재 확인.
-- `elsbot/els_web_runner.py`: `import time`, `import json`, `import os`, `import sys`, `import argparse` 모두 존재 확인.
-- `elsbot/els_bot.py`의 `CONFIG_FILE` 경로 (`os.path.join(...)`) 유지 확인.
-- 모든 검수 항목 및 요청사항 확인 완료. (수정 사항 없음)
+### InfoTicker Ghost Space 문제 해결
+- `web/components/SiteLayout.js` 파일 수정:
+    - `isEmployees` 조건부 렌더링 로직에서 `InfoTicker` 컴포넌트가 렌더링되지 않을 때 `height: 0`, `overflow: 'hidden'` 속성을 가진 빈 `div`를 렌더링하도록 변경.
+    - 이를 통해 비(非)인트라넷 페이지에서 `InfoTicker`로 인해 발생하던 불필요한 빈 공간(Ghost Space)을 제거함.
+    - `InfoTicker.module.css`의 `height: 44px` 스타일은 `InfoTicker`가 렌더링될 때 정상적으로 적용됨.
