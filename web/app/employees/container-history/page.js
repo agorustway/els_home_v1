@@ -132,9 +132,9 @@ export default function ContainerHistoryPage() {
     
     const containerCount = parseContainerInput(containerInput).length;
     const canAutoLogin = stepIndex === 1 && containerCount > 0 && (useSavedCreds ? defaultUserId : (userId?.trim() && userPw));
-    const elsDisabled = elsAvailable === false;
-    const searchDisabled = elsDisabled || loading || loginLoading || savingCreds || (stepIndex === 1 && !canAutoLogin);
-    const buttonsDisabled = elsDisabled || loading || loginLoading || savingCreds;
+    const loadingInProgress = loading || loginLoading || savingCreds;
+    const searchDisabled = loadingInProgress || (stepIndex === 1 && !canAutoLogin);
+    const buttonsDisabled = loadingInProgress;
 
     const handleSaveCreds = async () => {
         const id = userId?.trim();
@@ -354,7 +354,7 @@ export default function ContainerHistoryPage() {
 
     // 자동 로그인: 이미 로그인 진행 중(elsLoginStartedAt 있음)이면 runLogin 호출하지 않음 → 페이지 갔다 와도 시간 0으로 리셋 방지
     useEffect(() => {
-        if (elsAvailable !== true || !configLoaded || !defaultUserId || !useSavedCreds || autoLoginAttemptedRef.current) return;
+        if (!configLoaded || !defaultUserId || !useSavedCreds || autoLoginAttemptedRef.current) return;
         if (typeof sessionStorage !== 'undefined') {
             const raw = sessionStorage.getItem('elsLoginStartedAt');
             if (raw) {
@@ -796,62 +796,32 @@ export default function ContainerHistoryPage() {
         <div className={styles.page}>
             <h1 className={styles.title}>컨테이너 이력조회</h1>
             <p className={styles.desc}>
-                {elsAvailable === true
-                    ? 'ETRANS 로그인 후 컨테이너 번호 또는 엑셀 업로드로 조회·엑셀 다운로드.'
-                    : 'ETRANS 연동 · 컨테이너 번호 또는 엑셀 업로드 후 조회·다운로드'}
+                ETRANS 로그인 후 컨테이너 번호 또는 엑셀 업로드로 조회·엑셀 다운로드.
             </p>
 
-            {/* 연결 확인 중: 조회 UI 노출 전까지 로딩만 표시 (깜빡임 방지) */}
-            {elsAvailable === null && (
-                <div className={styles.checkingBlock} aria-live="polite">
-                    <p className={styles.checkingText}>연결 확인 중...</p>
-                </div>
-            )}
-
-            {/* 실행 불가 시: 배너 + 설치 안내 버튼 (한 페이지로 연결) */}
-            {elsAvailable === false && (
-                <div className={styles.unavailableBlock} role="alert">
-                    <div className={styles.unavailableBanner}>
-                        <strong>
-                            {parseAvailable
-                                ? '엑셀 파싱(번호 추출)만 사용할 수 있습니다.'
-                                : '이 환경에서는 웹에서 조회를 실행할 수 없습니다.'}
-                        </strong>
-                        <p>
-                            {parseAvailable
-                                ? '로그인·조회는 이 환경에서는 불가합니다. 엑셀 업로드로 번호만 추출 가능합니다.'
-                                : (elsUnavailableReason || '이 환경에서는 웹에서 조회를 실행할 수 없습니다.')}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* 조회 UI: API 사용 가능할 때만 표시 (null일 때는 위에서 로딩 표시) */}
-            {elsAvailable === true && (
-                <>
-                    <section className={styles.usageSection}>
-                        <p className={styles.usageText}>
-                            이 작업은 <strong>ETRANS</strong> 로그인이 필요하며 초기 구동(로그인 및 메뉴 이동)에 <strong>30~50초</strong> 가량 소요될 수 있습니다.
-                            로그인 후에는 <strong>세션이 자동 유지(55분 주기 갱신)</strong>되므로 페이지를 이동해도 로그인이 풀리지 않으며,
-                            이 창을 띄워두시는 동안에는 추가 번호로 <strong>대기 없이 즉시 조회</strong>가 가능합니다.
-                        </p>
-                        <div className={styles.stepIndicator}>
-                            {steps.map((s, i) => (
-                                <div key={s.num} className={styles.stepItem}>
-                                    <span
-                                        className={`${styles.stepCircle} ${stepIndex > s.num ? styles.stepDone : ''} ${stepIndex === s.num ? styles.stepActive : ''}`}
-                                        aria-hidden
-                                    >
-                                        {stepIndex > s.num ? '✓' : s.num}
-                                    </span>
-                                    <span className={styles.stepLabel}>{s.label}</span>
-                                    {i < steps.length - 1 && <span className={styles.stepArrow}>→</span>}
-                                </div>
-                            ))}
+            <section className={styles.usageSection}>
+                <p className={styles.usageText}>
+                    이 작업은 <strong>ETRANS</strong> 로그인이 필요하며 초기 구동(로그인 및 메뉴 이동)에 <strong>30~50초</strong> 가량 소요될 수 있습니다.
+                    로그인 후에는 <strong>세션이 자동 유지(55분 주기 갱신)</strong>되므로 페이지를 이동해도 로그인이 풀리지 않으며,
+                    이 창을 띄워두시는 동안에는 추가 번호로 <strong>대기 없이 즉시 조회</strong>가 가능합니다.
+                </p>
+                <div className={styles.stepIndicator}>
+                    {steps.map((s, i) => (
+                        <div key={s.num} className={styles.stepItem}>
+                            <span
+                                className={`${styles.stepCircle} ${stepIndex > s.num ? styles.stepDone : ''} ${stepIndex === s.num ? styles.stepActive : ''}`}
+                                aria-hidden
+                            >
+                                {stepIndex > s.num ? '✓' : s.num}
+                            </span>
+                            <span className={styles.stepLabel}>{s.label}</span>
+                            {i < steps.length - 1 && <span className={styles.stepArrow}>→</span>}
                         </div>
-                    </section>
+                    ))}
+                </div>
+            </section>
 
-                    <div className={styles.mainModule}>
+            <div className={styles.mainModule}>
                         <div className={styles.leftPanel}>
                             {/* 계정 */}
                             <section className={styles.section}>
@@ -1097,8 +1067,6 @@ export default function ContainerHistoryPage() {
                             </div>
                         </section>
                     )}
-                </>
-            )}
         </div>
     );
 }
