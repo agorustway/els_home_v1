@@ -47,3 +47,17 @@
 ### 컴파일 에러 해결 (React is not defined)
 - `web/app/employees/safe-freight/page.js` 파일 수정:
     - `import React from 'react';` 추가하여 `React.Fragment` 사용으로 인한 `'React' is not defined` 에러 해결.
+
+### [재수정] 안전운임 조회 UI - 포워더KR 사이트 새 창으로 열기 및 버튼 위치 조정
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `포워더KR` 버튼 `onClick` 로직을 `window.open('https://www.forwarder.kr/tariff/', '_blank')`로 변경하여 새 창에서 열리도록 수정. `title`은 `포워더케이알 운임정보`로 복원.
+    - `view === 'forwarder'` 일 때 렌더링되던 `iframeSection` 블록 완전히 제거.
+    - 버튼들의 순서 조정: `관련 법령·고시 안내` 버튼을 `이외구간` 왼쪽으로, `포워더KR` 버튼을 `구간조회(개발중)` 왼쪽으로 이동.
+
+### 로그인 500 에러 재발 해결 및 els_bot.py, app.py 로깅 보강
+- `elsbot/els_bot.py` 파일 수정:
+    - `CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")` 으로 절대 경로 강제 지정.
+    - `load_config()` 함수에서 `FileNotFoundError` 발생 시 `[WARNING]` 로그, `json.JSONDecodeError` 발생 시 `[ERROR]` 로그 출력.
+    - `cli_main()` 함수에서 `input()` 코드 및 `while True` 루프 제거, 엑셀 파일 로딩 및 `run_els_process` 호출 로직만 남김. (에러 메시지 및 성공 메시지에 `[ERROR]`, `[INFO]` 접두사 추가)
+- `docker/els-backend/app.py` 파일 수정:
+    - `login` 함수 내 `subprocess` 실행 후 에러 로깅을 `app.logger.exception`을 사용하여 스택 트레이스 및 `stdout`, `stderr` 내용을 더 상세하게 남기도록 보강.

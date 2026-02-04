@@ -168,8 +168,9 @@ def login():
         r = run_runner("login", extra_args=extra)
         out = (r.stdout or "").strip()
         if r.returncode != 0:
-            app.logger.error(f"Subprocess runner failed with code {r.returncode}: {r.stderr or out}")
-            return jsonify({"ok": False, "error": (r.stderr or out)[:500], "log": [r.stderr or out]}), 500
+            full_error_msg = f"Subprocess runner failed with code {r.returncode}. Stderr: {r.stderr or 'No stderr'}. Stdout: {out or 'No stdout'}"
+            app.logger.exception(full_error_msg) # exception 레벨로 스택 트레이스도 남김
+            return jsonify({"ok": False, "error": (r.stderr or out)[:500], "log": [full_error_msg]}), 500
         
         # 응답 파싱
         try:

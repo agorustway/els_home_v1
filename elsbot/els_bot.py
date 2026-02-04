@@ -13,14 +13,22 @@ import json
 import os
 from openpyxl.styles import PatternFill
 
-CONFIG_FILE = "els_config.json"
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
-            with open(CONFIG_FILE, "r") as f: return json.load(f)
-        except: return {"user_id": "", "user_pw": ""}
-    return {"user_id": "", "user_pw": ""}
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(f"[ERROR] 설정 파일 '{CONFIG_FILE}' 형식이 잘못되었습니다. 기본값 사용.")
+            return {"user_id": "", "user_pw": ""}
+        except Exception as e:
+            print(f"[ERROR] 설정 파일 '{CONFIG_FILE}'을 읽는 중 오류 발생: {e}")
+            return {"user_id": "", "user_pw": ""}
+    else:
+        print(f"[WARNING] 설정 파일 '{CONFIG_FILE}'을 찾을 수 없습니다. 기본값 사용.")
+        return {"user_id": "", "user_pw": ""}
 
 def save_config(user_id, user_pw):
     with open(CONFIG_FILE, "w") as f: json.dump({"user_id": user_id, "user_pw": user_pw}, f)
@@ -510,15 +518,18 @@ def cli_main():
     """CLI 환경에서 els_bot을 실행하기 위한 메인 함수."""
     config = load_config()
     print("--- ELS HYPER TURBO ( Eagle-Eye & Silent ) ---")
-    u_id = config['user_id']
-    u_pw = config['user_pw']
+    u_id = config.get('user_id', '')
+    u_pw = config.get('user_pw', '')
 
     # 엑셀 파일 읽기 (CLI에서만)
     try:
-        df_in = pd.read_excel("elsbot/container_list.xlsx")
+        df_in = pd.read_excel(os.path.join(os.path.dirname(__file__), "container_list.xlsx"))
         c_list = df_in.iloc[2:, 0].dropna().tolist()
+    except FileNotFoundError:
+        print("[ERROR] 엑셀 파일 'elsbot/container_list.xlsx'를 찾을 수 없습니다. 경로를 확인해 주세요.")
+        return
     except Exception as e:
-        print(f"엑셀 에러: {e}"); return
+        print(f"[ERROR] 엑셀 파일 처리 중 오류 발생: {e}"); return
     
     # 핵심 로직 함수 호출
     results = run_els_process(u_id, u_pw, c_list, log_callback=print) # CLI에서는 print로 로그 출력
@@ -560,9 +571,9 @@ def cli_main():
                     if len(row) > 3 and row[3].value == "반입":
                         for cell in row: cell.fill = blue
 
-        print(f"\n파일 생성 완료: {fname}")
+        print(f"[INFO] 파일 생성 완료: {fname}")
     else:
-        print(f"작업 실패: {results.get('error', '알 수 없는 오류')}")
+        print(f"[ERROR] 작업 실패: {results.get('error', '알 수 없는 오류')}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "run":
