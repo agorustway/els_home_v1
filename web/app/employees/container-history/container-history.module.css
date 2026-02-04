@@ -801,3 +801,15 @@
     background: #fff;
     margin-left: 8px;
 }
+
+/* BIOS 스타일 깜빡임 커서 */
+.blinkingCursor {
+    color: #ffaa00;
+    animation: blink 1s infinite;
+    font-weight: bold;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}

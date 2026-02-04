@@ -120,6 +120,16 @@ export default function ContainerHistoryPage() {
     const [dropActive, setDropActive] = useState(false);
     const [waitSeconds, setWaitSeconds] = useState(0);
     const waitStartedAtRef = useRef(null);
+    
+    // [BIOS UI] 부팅/로그인 단계 상태 관리
+    const [bootStatus, setBootStatus] = useState({
+        init: { label: 'Initialize Driver', status: 'pending' },    // 크롬 드라이버
+        browser: { label: 'Start Browser', status: 'pending' },     // 브라우저 실행
+        connect: { label: 'Connect to ETRANS', status: 'pending' }, // 사이트 접속
+        login: { label: 'User Auth', status: 'pending' },           // 로그인
+        menu: { label: 'Load Menu', status: 'pending' },            // 메뉴 진입
+    });
+    
     const containerCount = parseContainerInput(containerInput).length;
     const canAutoLogin = stepIndex === 1 && containerCount > 0 && (useSavedCreds ? defaultUserId : (userId?.trim() && userPw));
     const elsDisabled = elsAvailable === false;
@@ -181,6 +191,7 @@ export default function ContainerHistoryPage() {
         }
         setLoginError(null);
         setLoginLoading(true);
+        setLogLines(prev => [...prev, '[네트워크] /api/els/login 요청 전송...']);
         let startedAt = Date.now();
         if (typeof sessionStorage !== 'undefined') {
             const raw = sessionStorage.getItem('elsLoginStartedAt');
@@ -211,14 +222,85 @@ export default function ContainerHistoryPage() {
                     userPw: useSavedCreds ? undefined : userPw,
                 }),
             });
-            const text = await res.text();
-            let data;
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch (_) {
-                const msg = text.trim().startsWith('<') ? '서버가 HTML을 반환했습니다. ELS 백엔드 URL(ELS_BACKEND_URL) 또는 NAS 컨테이너 상태를 확인하세요.' : '응답 형식 오류(JSON 아님)';
-                throw new Error(msg);
+            setLogLines(prev => [...prev, `[네트워크] 응답 수신: status=${res.status} content-type=${res.headers.get('content-type') || ''}`]);
+
+            // 1) JSON 응답(daemon 미사용/프록시 경로 등)도 지원
+            const contentType = (res.headers.get('content-type') || '').toLowerCase();
+            if (contentType.includes('application/json')) {
+                const loginData = await res.json().catch(() => null);
+                const elapsed = loginStartTimeRef.current ? Math.round((Date.now() - loginStartTimeRef.current) / 1000) : 0;
+                setLoginProgressLine(null);
+                if (loginProgressIntervalRef.current) {
+                    clearInterval(loginProgressIntervalRef.current);
+                    loginProgressIntervalRef.current = null;
+                }
+                try {
+                    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
+                } catch (_) { }
+
+                if (!loginData) {
+                    setLogLines(prev => [...prev, '[오류] 로그인 응답(JSON) 파싱 실패', '[안내] NAS 타임아웃/프록시 설정을 확인하세요.']);
+                    setLoginError('아이디·비밀번호를 확인하세요.');
+                    return;
+                }
+                if (!res.ok || !loginData.ok) {
+                    const logs = loginData.log || [];
+                    setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
+                    if (logs.length === 0 && elapsed >= 55) {
+                        setLogLines(prev => [...prev, '[안내] 약 60초 만에 끊기면 NAS 역방향 프록시 타임아웃일 수 있습니다.']);
+                    }
+                    setLoginError('아이디·비밀번호를 확인하세요.');
+                    return;
+                }
+
+                setLogLines(prev => [...prev, ...(loginData.log || [])]);
+                runJustFinishedRef.current = parseContainerInput(containerInput).length > 0;
+                try {
+                    if (typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
+                        sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
+                    }
+                } catch (_) { }
+                setStepIndex(2);
+                return;
             }
+
+            // 2) 스트리밍 응답 처리 (LOG:/RESULT:)
+            if (!res.body) {
+                const text = await res.text().catch(() => '');
+                throw new Error('서버 응답이 없습니다: ' + text);
+            }
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let loginData = null;
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('LOG:')) {
+                        setLogLines(prev => [...prev, trimmed.slice(4)]);
+                    } else if (trimmed.startsWith('RESULT:')) {
+                        try {
+                            loginData = JSON.parse(trimmed.slice(7));
+                        } catch (_) { }
+                    } else if (trimmed.startsWith('{') && !loginData) {
+                        // 혹시 모를 Non-Streaming JSON Fallback
+                        try {
+                            loginData = JSON.parse(trimmed);
+                        } catch (_) { }
+                    }
+                }
+            }
+            if (buffer.trim().startsWith('RESULT:')) {
+                try { loginData = JSON.parse(buffer.trim().slice(7)); } catch (_) { }
+            }
+
             const elapsed = loginStartTimeRef.current ? Math.round((Date.now() - loginStartTimeRef.current) / 1000) : 0;
             setLoginProgressLine(null);
             if (loginProgressIntervalRef.current) {
@@ -228,33 +310,32 @@ export default function ContainerHistoryPage() {
             try {
                 if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('elsLoginStartedAt');
             } catch (_) { }
-            if (!res.ok) {
-                const logs = data.log || [];
+
+            if (!loginData) {
+                setLogLines(prev => [...prev, '[오류] 로그인 응답 데이터가 없습니다.', '[안내] NAS 타임아웃일 수 있습니다.']);
+                setLoginError('아이디·비밀번호를 확인하세요.');
+                return;
+            }
+
+            if (!loginData.ok) {
+                const logs = loginData.log || [];
                 setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
                 if (logs.length === 0 && elapsed >= 55) {
-                    setLogLines(prev => [...prev, '[안내] 약 60초 만에 끊기면 NAS 앞단 역방향 프록시 타임아웃(60초)일 수 있습니다. 120초 이상으로 늘려보세요.']);
+                    setLogLines(prev => [...prev, '[안내] 약 60초 만에 끊기면 NAS 역방향 프록시 타임아웃일 수 있습니다.']);
                 }
                 setLoginError('아이디·비밀번호를 확인하세요.');
                 return;
             }
-            if (data.ok) {
-                setLogLines(prev => [...prev, ...(data.log || [])]);
-                runJustFinishedRef.current = parseContainerInput(containerInput).length > 0;
-                try {
-                    if (typeof sessionStorage !== 'undefined') {
-                        sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
-                        sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
-                    }
-                } catch (_) { }
-                setStepIndex(2);
-            } else {
-                const logs = data.log || [];
-                setLogLines(prev => [...prev, ...logs, '[로그인 실패]']);
-                if (logs.length <= 1 && elapsed >= 55) {
-                    setLogLines(prev => [...prev, '[안내] 약 60초 만에 끊기면 NAS 앞단 역방향 프록시 타임아웃(60초)일 수 있습니다. 120초 이상으로 늘려보세요.']);
+
+            setLogLines(prev => [...prev, ...(loginData.log || [])]);
+            runJustFinishedRef.current = parseContainerInput(containerInput).length > 0;
+            try {
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem('elsContainerHistoryLoggedIn', '1');
+                    sessionStorage.setItem('elsWaitStartedAt', String(Date.now()));
                 }
-                setLoginError('아이디·비밀번호를 확인하세요.');
-            }
+            } catch (_) { }
+            setStepIndex(2);
         } catch (err) {
             setLoginProgressLine(null);
             if (loginProgressIntervalRef.current) {
@@ -520,6 +601,149 @@ export default function ContainerHistoryPage() {
         if (terminalRef.current) terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }, [logLines]);
 
+    // 로그 메시지 파싱하여 BIOS 스타일 상태 업데이트
+    useEffect(() => {
+        if (logLines.length === 0) {
+            // 초기화
+            if (!loading && !loginLoading) {
+                setBootStatus({
+                    init: { label: 'Initialize Driver', status: 'pending' },
+                    browser: { label: 'Start Browser', status: 'pending' },
+                    connect: { label: 'Connect to ETRANS', status: 'pending' },
+                    login: { label: 'User Auth', status: 'pending' },
+                    menu: { label: 'Load Menu', status: 'pending' },
+                });
+            }
+            return;
+        }
+
+        const lastLog = logLines[logLines.length - 1] || '';
+        const allLogs = logLines.join('\n'); // 전체 맥락 확인용
+        
+        setBootStatus(prev => {
+            const next = {...prev};
+
+            // 1. 드라이버 초기화
+            if (allLogs.includes('크롬 드라이버') || allLogs.includes('드라이버 로드') || allLogs.includes('드라이버 설치')) {
+                if (next.init.status === 'pending') next.init.status = 'running';
+            }
+            if (allLogs.includes('브라우저 실행 시도') || allLogs.includes('브라우저 실행 완료') || allLogs.includes('브라우저 시작')) {
+                next.init.status = 'done';
+            }
+
+            // 2. 브라우저 실행
+            if (allLogs.includes('브라우저 실행 시도') || allLogs.includes('브라우저 시작')) {
+                if (next.browser.status === 'pending') next.browser.status = 'running';
+            }
+            if (allLogs.includes('사이트 접속 시도') || allLogs.includes('사이트 접속 명령') || allLogs.includes('접속 명령')) {
+                next.browser.status = 'done';
+            }
+
+            // 3. ETRANS 접속
+            if (allLogs.includes('사이트 접속 명령') || allLogs.includes('접속 명령') || allLogs.includes('ETRANS 접속')) {
+                if (next.connect.status === 'pending') next.connect.status = 'running';
+            }
+            if (allLogs.includes('로그인 화면') || allLogs.includes('아이디 입력창') || allLogs.includes('로그인 화면(아이디 입력창)')) {
+                next.connect.status = 'done';
+            }
+
+            // 4. 로그인
+            if (allLogs.includes('로그인 화면') || allLogs.includes('아이디/비밀번호 입력') || allLogs.includes('로그인 프로세스')) {
+                if (next.login.status === 'pending') next.login.status = 'running';
+            }
+            if (allLogs.includes('로그인 성공') || allLogs.includes('로그인 완료') || allLogs.includes('로그인 프로세스 완료')) {
+                next.login.status = 'done';
+            }
+
+            // 5. 메뉴 진입
+            if (allLogs.includes('컨테이너 이동현황 페이지') || allLogs.includes('메뉴 클릭') || allLogs.includes('메뉴 이동')) {
+                if (next.menu.status === 'pending') next.menu.status = 'running';
+            }
+            if (allLogs.includes('입력창 발견') || allLogs.includes('메뉴 진입 성공') || allLogs.includes('입력창 로드')) {
+                next.menu.status = 'done';
+            }
+
+            // 에러 감지
+            if (lastLog.includes('오류') || lastLog.includes('실패') || lastLog.includes('타임아웃') || lastLog.includes('TimeOut') || lastLog.includes('ERROR')) {
+                // 현재 running 상태인 것을 error로
+                Object.keys(next).forEach(k => {
+                    if (next[k].status === 'running') next[k].status = 'error';
+                });
+            }
+
+            return next;
+        });
+    }, [logLines, loading, loginLoading]);
+
+    // BIOS 스타일 상태 표시 렌더링 함수
+    const renderBootStatus = () => (
+        <div style={{
+            fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+            backgroundColor: '#0a0a0a',
+            color: '#00ff00',
+            padding: '12px',
+            marginBottom: '12px',
+            borderRadius: '4px',
+            fontSize: '13px',
+            border: '1px solid #333',
+            boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.5)'
+        }}>
+            <div style={{ 
+                borderBottom: '1px solid #333', 
+                paddingBottom: '6px', 
+                marginBottom: '8px', 
+                fontWeight: 'bold', 
+                color: '#00ff00',
+                fontSize: '12px',
+                letterSpacing: '1px'
+            }}>
+                SYSTEM DIAGNOSTIC
+            </div>
+            {Object.entries(bootStatus).map(([key, val]) => {
+                let statusIcon = '[    ]';
+                let statusColor = '#666';
+                if (val.status === 'running') { 
+                    statusIcon = '[....]'; 
+                    statusColor = '#ffaa00'; // 주황 (진행중)
+                } else if (val.status === 'done') { 
+                    statusIcon = '[ OK ]'; 
+                    statusColor = '#00ff00'; // 초록 (완료)
+                } else if (val.status === 'error') { 
+                    statusIcon = '[FAIL]'; 
+                    statusColor = '#ff0000'; // 빨강 (실패)
+                }
+
+                return (
+                    <div key={key} style={{ 
+                        display: 'flex', 
+                        gap: '10px', 
+                        lineHeight: '1.6',
+                        marginBottom: '4px',
+                        alignItems: 'center'
+                    }}>
+                        <span style={{ 
+                            color: statusColor, 
+                            fontWeight: 'bold',
+                            fontFamily: "'Consolas', 'Monaco', monospace",
+                            minWidth: '60px'
+                        }}>
+                            {statusIcon}
+                        </span>
+                        <span style={{ 
+                            color: val.status === 'pending' ? '#666' : (val.status === 'running' ? '#fff' : '#aaa'),
+                            fontFamily: "'Consolas', 'Monaco', monospace"
+                        }}>
+                            {val.label}
+                        </span>
+                        {val.status === 'running' && (
+                            <span className={styles.blinkingCursor}>_</span>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+
     // 대기 상태(stepIndex===2)일 때 초 단위 대기시간 표시 (멈추지 않았음을 알리기 위함). 페이지 나갔다 와도 연속 유지.
     useEffect(() => {
         if (stepIndex !== 2 || loading) {
@@ -774,7 +998,10 @@ export default function ContainerHistoryPage() {
 
                         <div className={styles.rightPanel}>
                             <section className={styles.section + ' ' + styles.logSection}>
-                                <h2 className={styles.sectionTitle}>로그</h2>
+                                <h2 className={styles.sectionTitle}>시스템 상태</h2>
+                                {/* BIOS Style Status Panel */}
+                                {renderBootStatus()}
+                                <h3 className={styles.sectionTitle} style={{ marginTop: '16px', fontSize: '0.9rem', color: '#666' }}>상세 로그</h3>
                                 <pre ref={terminalRef} className={styles.terminal}>
                                     {logLines.length || loginProgressLine || (stepIndex === 2 && !loading) ? [...logLines, loginProgressLine, (stepIndex === 2 && !loading) ? `대기중입니다 (${waitSeconds}초)` : null].filter(Boolean).map((line, i) => <span key={i}>{line}{'\n'}</span>) : '로그가 여기에 표시됩니다.'}
                                 </pre>

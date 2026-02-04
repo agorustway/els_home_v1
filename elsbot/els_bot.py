@@ -51,7 +51,7 @@ def open_els_menu(driver, log_callback=None):
                     driver.switch_to.frame(frame)
                 
                 # '컨테이너 이동현황' 메뉴 아이템 검색
-                targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]" )
+                targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
                 if targets:
                     driver.execute_script("arguments[0].click();", targets[0])
                     if log_callback: log_callback("메뉴 클릭함. 입력창 로드 대기 중... (최대 30초)")
@@ -68,7 +68,7 @@ def open_els_menu(driver, log_callback=None):
                                 if input_frame:
                                     driver.switch_to.frame(input_frame)
                                 # '컨테이너번호' 입력창 라벨을 기준으로 검색
-                                labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]" )
+                                labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
                                 for lbl in labels:
                                     if "조회" in lbl.text: continue
                                     # 라벨 주변의 input 태그 검색
@@ -365,7 +365,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         try:
             # 로그인 성공의 증거로 '컨테이너 이동현황' 메뉴가 나타날 때까지 최대 60초 대기
             WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]" ))
+                EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]"))
             )
             _log("로그인 성공 (메인 메뉴 확인)")
         except Exception:

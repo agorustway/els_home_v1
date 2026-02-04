@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './safe-freight.module.css';
 import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
+import NaverMapRouteSearch from '@/components/NaverMapRouteSearch';
 
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
@@ -14,7 +15,7 @@ const TEMP_RESULTS_KEY = 'safeFreightTempResults';
 
 export default function SafeFreightPage() {
   const [options, setOptions] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initial loading state for options
   const [error, setError] = useState(null);
 
   const [queryType, setQueryType] = useState('section');
@@ -34,13 +35,13 @@ export default function SafeFreightPage() {
   const [resultAll, setResultAll] = useState(null);
   const [result, setResult] = useState(null);
   const [lookupError, setLookupError] = useState(null);
-  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false); // Specific loading for lookup action
   const [saveToTemp, setSaveToTemp] = useState(true);
   const [savedResults, setSavedResults] = useState([]);
   const [expandedNoticeId, setExpandedNoticeId] = useState(null);
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
-  const [view, setView] = useState('default'); // 'default' or 'forwarder'
+  const [view, setView] = useState('default'); // 'default' or 'forwarder' or 'naver-map'
   const otherTabDefaultsJustSet = useRef(false);
   const skipRegionClearOnce = useRef(false);
 
@@ -288,7 +289,7 @@ export default function SafeFreightPage() {
     setLookupError(null);
     setResultAll(null);
     setResult(null);
-    setLookupLoading(true);
+    setLookupLoading(true); // Corrected to use setLookupLoading
 
     try {
       const params = new URLSearchParams();
@@ -299,7 +300,7 @@ export default function SafeFreightPage() {
         const km = parseInt(inputKm, 10);
         if (Number.isNaN(km) || km < 1) {
           setLookupError('거리(km)를 입력하세요.');
-          setLookupLoading(false);
+          setLookupLoading(false); // Corrected to use setLookupLoading
           return;
         }
         params.set('distType', distType);
@@ -307,7 +308,7 @@ export default function SafeFreightPage() {
       } else {
         if (!origin || !region1 || !region2 || !region3) {
           setLookupError('기간·구간·행선지(시/도, 시/군/구, 읍/면/동)를 모두 선택해 주세요.');
-          setLookupLoading(false);
+          setLookupLoading(false); // Corrected to use setLookupLoading
           return;
         }
         params.set('origin', origin);
@@ -382,7 +383,7 @@ export default function SafeFreightPage() {
     } catch (err) {
       setLookupError(err.message);
     } finally {
-      setLookupLoading(false);
+      setLookupLoading(false); // Corrected to use setLookupLoading
     }
   };
 
@@ -405,7 +406,7 @@ export default function SafeFreightPage() {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    if (canSubmit && !lookupLoading) runLookup();
+    if (canSubmit && !lookupLoading) runLookup(); // Corrected to use !lookupLoading
   };
 
   /** 엑셀 다운로드: Sheet1 운임조회(방금 조회값), Sheet2 저장운임(임시저장 전체 + 메시지) */
@@ -490,14 +491,14 @@ export default function SafeFreightPage() {
       ? inputKm && parseInt(inputKm, 10) >= 1
       : origin && region1 && region2 && region3;
 
-  if (loading) {
+  if (loading) { // Check initial loading
     return (
       <div className={styles.page}>
         <p className={styles.loading}>안전운임 데이터를 불러오는 중입니다.</p>
       </div>
     );
   }
-  if (error) {
+  if (error) { // Check initial error
     return (
       <div className={styles.page}>
         <p className={styles.error}>{error}</p>
@@ -528,7 +529,7 @@ export default function SafeFreightPage() {
             <span className={styles.tabDesc}>{t.desc}</span>
           </button>
         ))}
-        {/* 포워더 KR 버튼 추가 */}
+        {/* 포워더 KR 버튼 */}
         <button
           type="button"
           className={styles.tab}
@@ -537,6 +538,18 @@ export default function SafeFreightPage() {
         >
           <img src="/images/forwarderkr.png" alt="포워더KR 로고" style={{ height: '24px', verticalAlign: 'middle' }} />
         </button>
+        
+        {/* 네이버 지도 경로조회 버튼 */}
+        <button
+            type="button"
+            className={view === 'naver-map' ? styles.tabActive : styles.tab}
+            onClick={() => setView('naver-map')}
+            title="네이버 지도로 경로 조회"
+        >
+            <span className={styles.tabLabel}>구간조회(네이버MAP)</span>
+            <span className={styles.tabDesc}>지도 기반 거리/경로 조회</span>
+        </button>
+
         <button
           type="button"
           className={styles.noticeTabBtn}
@@ -723,7 +736,7 @@ export default function SafeFreightPage() {
                           onChange={(e) => setDistType(e.target.value)}
                           aria-label="거리별 구분"
                         >
-                          {(options?.distanceTypes || []).map((d) => (
+                          {(options?.distanceTypes || []).map((d) => ( // Corrected to use distanceTypes
                             <option key={d} value={d}>{d}</option>
                           ))}
                         </select>
@@ -911,7 +924,7 @@ export default function SafeFreightPage() {
                         </label>
                         {(groupApply.hazard || selectedByGroup('hazard')) && (
                           <select
-                            className={styles.surchargeSelect}
+                            className={styles.select}
                             value={selectedByGroup('hazard')}
                             onChange={(e) => setSurchargeByGroup('hazard', e.target.value || null)}
                             aria-label="위험물질 선택"
@@ -937,7 +950,7 @@ export default function SafeFreightPage() {
                         </label>
                         {(groupApply.oversize || selectedByGroup('oversize')) && (
                           <select
-                            className={styles.surchargeSelect}
+                            className={styles.select}
                             value={selectedByGroup('oversize')}
                             onChange={(e) => setSurchargeByGroup('oversize', e.target.value || null)}
                             aria-label="활대품 할증 선택"
@@ -963,7 +976,7 @@ export default function SafeFreightPage() {
                         </label>
                         {(groupApply.heavy || selectedByGroup('heavy')) && (
                           <select
-                            className={styles.surchargeSelect}
+                            className={styles.select}
                             value={selectedByGroup('heavy')}
                             onChange={(e) => setSurchargeByGroup('heavy', e.target.value || null)}
                             aria-label="중량물 할증 선택"
@@ -1156,6 +1169,10 @@ export default function SafeFreightPage() {
             title="포워더 KR 운임 정보"
           />
         </section>
+      )}
+            
+      {view === 'naver-map' && (
+          <NaverMapRouteSearch />
       )}
     </div >
   );
