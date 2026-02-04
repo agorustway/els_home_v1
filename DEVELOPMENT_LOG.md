@@ -52,7 +52,7 @@
 - `web/app/employees/safe-freight/page.js` 파일 수정:
     - `포워더KR` 버튼 `onClick` 로직을 `window.open('https://www.forwarder.kr/tariff/', '_blank')`로 변경하여 새 창에서 열리도록 수정. `title`은 `포워더케이알 운임정보`로 복원.
     - `view === 'forwarder'` 일 때 렌더링되던 `iframeSection` 블록 완전히 제거.
-    - 버튼들의 순서 조정: `관련 법령·고시 안내` 버튼을 `이외구간` 왼쪽으로, `포워더KR` 버튼을 `구간조회(개발중)` 왼쪽으로 이동.
+    - 버튼들의 순서 조정: `관련 법령·고시 안내` 버튼이 `이외구간` 왼쪽으로, `포워더KR` 버튼이 `구간조회(개발중)` 왼쪽으로 이동.
 
 ### 로그인 500 에러 재발 해결 및 els_bot.py, app.py 로깅 보강
 - `elsbot/els_bot.py` 파일 수정:
@@ -73,6 +73,7 @@
     - `<div className={styles.tabs}>` 내의 버튼 순서 재조정: `관련 법령·고시 안내` 버튼이 `이외구간` 왼쪽으로, `포워더KR` 버튼이 `구간조회(개발중)` 왼쪽으로 이동.
     - `safe-freight.module.css` 수정: `.tabs` 클래스에 `display: flex`, `flex-wrap: wrap`, `align-items: center` 속성 추가. `.mlAuto` 클래스 (`margin-left: auto`) 추가하여 `구간조회(개발중)` 버튼을 오른쪽으로 정렬.
 
-### 컴파일 에러 해결 (Expected '...', got '}')
+### 컴파일 에러 해결 (Expected '...', got '}') - 재수정
 - `web/app/employees/safe-freight/page.js` 파일 수정:
-    - `className` 속성의 템플릿 리터럴 문법 오류 ( `{styles.tabDeveloping} ${styles.mlAuto}` )를 올바른 `className={\`${styles.tabDeveloping} ${styles.mlAuto}\`}` 형식으로 수정.
+    - `className` 속성의 템플릿 리터럴 문법 오류 ( `className={`$\{styles.tabDeveloping} ${styles.mlAuto}`} ` )를 올바른 `className={styles.tabDeveloping}` 형식으로 수정. (즉, `styles.mlAuto` 클래스 제거 및 JSX 문법 오류 해결)
+    - 이제 "구간조회(개발중)" 버튼은 왼쪽으로 정렬됩니다. (형의 요청 반영)
