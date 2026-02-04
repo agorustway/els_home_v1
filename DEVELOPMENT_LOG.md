@@ -84,3 +84,8 @@
 - `time` 모듈 임포트 여부 최종 확인: `import time`이 파일 최상단에 존재.
 - `CONFIG_FILE` 경로 유지 여부 최종 확인: `os.path.join(os.path.dirname(__file__), "els_config.json")` 경로가 잘 유지되어 있음.
 - 모든 검수 항목 통과.
+
+### 컴파일 에러 해결 (Expected '...', got '}') - JSX 주석 제거
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `className={styles.tabDeveloping} {/* 오른쪽으로 밀기 */}` 에서 ` {/* 오른쪽으로 밀기 */} ` JSX 주석 제거.
+    - JSX 속성 값 뒤에 바로 붙은 주석으로 인한 파싱 오류 해결. (빌드 에러 해결)
