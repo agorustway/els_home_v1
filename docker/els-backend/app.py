@@ -104,7 +104,7 @@ def config_post():
     uid = (data.get("userId") or "").strip()
     pw = data.get("userPw") or ""
     if not uid or not pw:
-        return jsonify({"error": "아이디와 비밀번호가 필요합니다."`}), 400
+        return jsonify({"error": "아이디와 비밀번호가 필요합니다."}), 400
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(
         json.dumps({"user_id": uid, "user_pw": pw}, ensure_ascii=False, indent=2),
@@ -355,7 +355,7 @@ def run():
         return jsonify({"error": "Invalid JSON"}), 400
     containers = data.get("containers") or []
     if not containers:
-        return jsonify({"error": "containers 배열이 필요합니다."`}), 400
+        return jsonify({"error": "containers 배열이 필요합니다."}), 400
     use_saved = data.get("useSavedCreds", True)
     uid = data.get("userId") or ""
     pw = data.get("userPw") or ""
@@ -370,10 +370,10 @@ def parse_xlsx():
     # ... (기존과 동일)
     app.logger.info("Received request for /api/els/parse-xlsx")
     if "file" not in request.files:
-        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."`}), 400
+        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."}), 400
     f = request.files["file"]
     if not f or not (f.filename or "").lower().endswith(".xlsx"):
-        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."`}), 400
+        return jsonify({"error": "container_list.xlsx 형식만 지원합니다."}), 400
     with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
         f.save(tmp.name)
         try:
