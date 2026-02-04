@@ -61,3 +61,14 @@
     - `cli_main()` 함수에서 `input()` 코드 및 `while True` 루프 제거, 엑셀 파일 로딩 및 `run_els_process` 호출 로직만 남김. (에러 메시지 및 성공 메시지에 `[ERROR]`, `[INFO]` 접두사 추가)
 - `docker/els-backend/app.py` 파일 수정:
     - `login` 함수 내 `subprocess` 실행 후 에러 로깅을 `app.logger.exception`을 사용하여 스택 트레이스 및 `stdout`, `stderr` 내용을 더 상세하게 남기도록 보강.
+
+### 뉴스 페이지 및 안전운임 조회 페이지 UI 개선 (여백, 버튼 위치 조정)
+- **뉴스 페이지 (`web/app/employees/news/article/page.js`, `article.module.css`) 수정:**
+    - 상단 안내 문구 (`<p className={styles.infoText}>...</p>`) 제거.
+    - 하단 `iframeFooter` 내 `새 창에서 보기` 버튼 제거.
+    - 상단 `<div className={styles.header}>` 내에 `뉴스 목록` `Link`와 `새 창에서 보기` `a` 태그를 통합하여 배치.
+    - `article.module.css` 수정: `.header`의 `margin-bottom`을 줄이고 `display: flex` 속성 추가. `.card`의 상단 `padding`도 줄여 상단 여백 최소화.
+- **안전운임 조회 페이지 (`web/app/employees/safe-freight/page.js`, `safe-freight.module.css`) 수정:**
+    - 상단 설명 문구 (`<p className={styles.desc}>...</p>`) 제거.
+    - `<div className={styles.tabs}>` 내의 버튼 순서 재조정: `관련 법령·고시 안내` 버튼이 `이외구간` 왼쪽으로, `포워더KR` 버튼이 `구간조회(개발중)` 왼쪽으로 이동.
+    - `safe-freight.module.css` 수정: `.tabs` 클래스에 `display: flex`, `flex-wrap: wrap`, `align-items: center` 속성 추가. `.mlAuto` 클래스 (`margin-left: auto`) 추가하여 `구간조회(개발중)` 버튼을 오른쪽으로 정렬.

@@ -250,10 +250,16 @@
 }
 
 .tabs {
-  display: flex;
+  display: flex; /* Flexbox 활성화 */
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 24px;
+  align-items: center; /* 세로 중앙 정렬 */
+}
+
+/* 오른쪽으로 밀어낼 클래스 */
+.mlAuto {
+    margin-left: auto;
 }
 
 .tab,

@@ -511,7 +511,7 @@ export default function SafeFreightPage() {
     <div className={styles.page}>
       <div className={styles.headerBanner}>
         <h1 className={styles.title}>컨테이너 화물 안전운임제</h1>
-        <p className={styles.desc}>구간별운임·거리별운임·이외구간 3가지 형식으로 조회할 수 있습니다.</p>
+        {/* <p className={styles.desc}>구간별운임·거리별운임·이외구간 3가지 형식으로 조회할 수 있습니다.</p> */}
       </div>
 
       <div className={styles.tabs}>
@@ -569,7 +569,7 @@ export default function SafeFreightPage() {
         {/* 네이버 지도 경로조회 버튼 (개발중) */}
         <button
             type="button"
-            className={styles.tabDeveloping}
+            className={`${styles.tabDeveloping} ${styles.mlAuto}`} {/* 오른쪽으로 밀기 */}
             onClick={() => setView('naver-map')}
             title="네이버 지도로 경로 조회 (개발중)"
         >
