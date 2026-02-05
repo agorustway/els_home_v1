@@ -131,7 +131,7 @@ cd /volume1/docker/els_home_v1
 /opt/bin/git fetch origin main
 /opt/bin/git reset --hard origin/main
 sudo docker build --no-cache -t els-backend:latest .
-sudo docker-compose -f docker/docker-compose.yml down
+
 sudo docker-compose -f docker/docker-compose.yml up -d
 ```
 
