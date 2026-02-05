@@ -1,0 +1,10 @@
+services:
+  els-backend:
+    image: els-backend:latest
+    container_name: els-backend
+    ports:
+      - "2929:2929"
+    environment:
+      - CHROME_BIN=/usr/bin/chromium
+      - CHROME_DRIVER_BIN=/usr/bin/chromedriver
+    restart: unless-stopped
