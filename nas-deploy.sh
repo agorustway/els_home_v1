@@ -1,9 +1,14 @@
-# 1. 깃허브에서 최신 코드(elsbot, app.py 등) 땡겨오기
+#!/bin/bash
+echo "=== 1. GitHub에서 최신 코드 받기 ==="
 /opt/bin/git fetch origin main
 /opt/bin/git reset --hard origin/main
 
-# 2. 이미지 빌드 (경로를 하위 폴더로 정확히 지정!)
+echo "=== 2. Docker 이미지 빌드 ==="
+# -f 옵션으로 하위 폴더의 Dockerfile을 지목하고, 현재 폴더(.)를 기준으로 빌드해!
 sudo docker build --no-cache -t els-backend:latest -f docker/els-backend/Dockerfile .
 
-# 3. 컨테이너 가동 (이미지가 바뀌었으니 알아서 새로 만들 거야)
-sudo docker-compose -f docker/docker-compose.yml up -d
+echo "=== 3. 컨테이너 재가동 ==="
+sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate
+
+echo "=== 배포 완료 ==="
+sudo docker logs -f els-backend
