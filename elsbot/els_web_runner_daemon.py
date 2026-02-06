@@ -1,189 +1,124 @@
-"""
-ELS 세션 유지 데몬 (v2.0)
-- 55분 자동 재로그인 스레드 포함
-- 구간별 소요 시간 및 실시간 타임스탬프 로그 출력
-- 브라우저 이탈 시에도 백그라운드 작업 유지
-"""
-import time
 import json
-import logging
+import time
 import os
 import sys
-import threading
-from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import parse_qs
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-# elsbot 패키지 경로 설정
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, SCRIPT_DIR)
+# 우리가 방금 고친 els_bot의 심장 함수들을 가져온다!
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify
 
-from els_bot import load_config, login_and_prepare
-from els_web_runner import run_search
+app = Flask(__name__)
+# 모든 외부 접속 허용 (로컬/나스 공용)
+CORS(app)
 
-# --- 전역 상태 관리 ---
-_driver = None
-_lock = threading.Lock()
-_last_action_time = 0
-_current_creds = {"id": None, "pw": None}
-_keep_alive_thread = None
+# 전역 변수로 브라우저 드라이버를 유지 (세션 유지의 핵심)
+shared_driver = None
+current_user = {"id": None, "pw": None}
 
-DAEMON_PORT = 31999
+@app.route('/health', methods=['GET'])
+def health():
+    """백엔드가 데몬이 살아있는지 확인할 때 부르는 곳"""
+    return jsonify({
+        "status": "ok", 
+        "driver_active": shared_driver is not None,
+        "user_id": current_user["id"]
+    })
 
-def get_now_str():
-    return datetime.now().strftime("%H:%M:%S")
-
-def update_last_action():
-    global _last_action_time
-    _last_action_time = time.time()
-
-def set_driver(drv):
-    global _driver
-    with _lock:
-        _driver = drv
-
-def do_logout():
-    global _driver
-    with _lock:
-        if _driver:
-            try:
-                _driver.quit()
-            except: pass
-            _driver = None
-
-def perform_relogin():
-    """세션 만료 전 자동 재로그인 수행"""
-    global _current_creds
-    uid, upw = _current_creds["id"], _current_creds["pw"]
-    if not uid or not upw: return
+@app.route('/login', methods=['POST'])
+def login():
+    """백엔드에서 로그인 요청이 오면 브라우저를 띄우고 ETRANS 접속"""
+    global shared_driver, current_user
+    data = request.json
+    u_id = data.get('userId')
+    u_pw = data.get('userPw')
     
-    print(f"[{get_now_str()}] [AutoRefresh] 55분 경과. 세션 갱신 시작...", flush=True)
-    do_logout()
+    print(f"LOG:[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
+    
+    # 기존에 돌던 브라우저가 있으면 깔끔하게 종료
+    if shared_driver:
+        try:
+            shared_driver.quit()
+        except:
+            pass
+    
+    # els_bot.py의 독립 함수 호출
+    # 결과는 (driver, error_message) 튜플로 온다!
+    result = login_and_prepare(u_id, u_pw, log_callback=lambda x: print(f"LOG:{x}", flush=True))
+    
+    driver = result[0]
+    error = result[1]
+    
+    if driver:
+        shared_driver = driver
+        current_user["id"] = u_id
+        current_user["pw"] = u_pw
+        print(f"LOG:[데몬] {u_id} 로그인 및 메뉴 진입 성공!")
+        return jsonify({"ok": True, "message": "로그인 성공"})
+    else:
+        shared_driver = None
+        print(f"LOG:[데몬] 로그인 실패: {error}")
+        return jsonify({"ok": False, "error": error or "로그인 프로세스 실패"})
+
+@app.route('/run', methods=['POST'])
+def run():
+    """로그인된 세션을 사용해서 실제로 컨테이너 번호를 조회"""
+    global shared_driver
+    if not shared_driver:
+        return jsonify({"ok": False, "error": "활성화된 브라우저 세션이 없습니다. 먼저 로그인하세요."})
+    
+    data = request.json
+    container_no = data.get('containerNo')
+    
+    if not container_no:
+        return jsonify({"ok": False, "error": "컨테이너 번호가 누락되었습니다."})
+    
+    print(f"LOG:[데몬] 컨테이너 {container_no} 조회 명령 수신")
+    
     try:
-        result = login_and_prepare(uid, upw)
-        new_driver = result[0] if isinstance(result, tuple) else result
-        if new_driver:
-            set_driver(new_driver)
-            update_last_action()
-            print(f"[{get_now_str()}] [AutoRefresh] 세션 갱신 성공.", flush=True)
-    except Exception as e:
-        print(f"[{get_now_str()}] [AutoRefresh] 에러: {e}", flush=True)
-
-def auto_refresh_loop():
-    """55분(3300초)마다 활동 체크"""
-    while True:
-        time.sleep(60)
-        if _driver and (time.time() - _last_action_time) > 3300:
-            perform_relogin()
-
-class ELSDaemonHandler(BaseHTTPRequestHandler):
-    def write_chunk(self, data):
-        if not data:
-            self.wfile.write(b"0\r\n\r\n")
-            return
-        self.wfile.write(("%x\r\n" % len(data)).encode() + data + b"\r\n")
-        self.wfile.flush()
-
-    def handle_login(self):
-        start_time = time.time()
-        body = self.parse_body()
-        uid = body.get("userId", "").strip()
-        upw = body.get("userPw", "")
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Transfer-Encoding", "chunked")
-        self.send_header("X-Accel-Buffering", "no")
-        self.end_headers()
-
-        def log_cb(msg):
-            elapsed = round(time.time() - start_time, 1)
-            formatted_msg = f"LOG:[{get_now_str()}] [{elapsed}s] {msg}\n"
-            try: self.write_chunk(formatted_msg.encode("utf-8"))
-            except: pass
-
-        log_cb("ETRANS 서버 접속 및 로그인 시도 중...")
-        try:
-            do_logout()
-            result = login_and_prepare(uid, upw, log_callback=log_cb)
-            driver = result[0] if isinstance(result, tuple) else result
-            if driver:
-                set_driver(driver)
-                _current_creds["id"], _current_creds["pw"] = uid, upw
-                update_last_action()
-                log_cb("✅ 로그인 및 페이지 준비 완료.")
-                res = {"ok": True}
-            else:
-                log_cb("❌ 로그인 실패.")
-                res = {"ok": False, "error": "Login Failed"}
-            self.write_chunk(f"RESULT:{json.dumps(res)}\n".encode("utf-8"))
-        finally:
-            self.write_chunk(b"")
-
-    def handle_run(self):
-        start_time = time.time()
-        body = self.parse_body()
-        containers = body.get("containers", [])
+        # 1. 입력창 찾아서 번호 넣고 조회 버튼 클릭
+        status = solve_input_and_search(shared_driver, container_no, log_callback=lambda x: print(f"LOG:{x}", flush=True))
         
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Transfer-Encoding", "chunked")
-        self.send_header("X-Accel-Buffering", "no")
-        self.end_headers()
+        # 2. 조회 결과 텍스트 갈취 (scrape)
+        grid_text = scrape_hyper_verify(shared_driver, container_no)
+        
+        if grid_text:
+            print(f"LOG:[데몬] {container_no} 데이터 추출 완료")
+            return jsonify({
+                "ok": True, 
+                "status": status, 
+                "data": grid_text
+            })
+        else:
+            print(f"LOG:[데몬] {container_no} 조회는 했으나 데이터를 읽지 못함")
+            return jsonify({
+                "ok": True, 
+                "status": status, 
+                "data": None,
+                "message": "내역 없음 또는 파싱 실패"
+            })
+            
+    except Exception as e:
+        print(f"LOG:[데몬] 조회 중 치명적 에러: {e}")
+        return jsonify({"ok": False, "error": str(e)})
 
-        def stream_log(msg):
-            elapsed = round(time.time() - start_time, 1)
-            # 형이 원하던 초 단위 표시와 작업 상태 실시간 전송
-            line = f"LOG:[{get_now_str()}] [{elapsed}s] {msg}\n"
-            try: self.write_chunk(line.encode("utf-8"))
-            except: pass
-
+@app.route('/quit', methods=['POST'])
+def quit_driver():
+    """브라우저 강제 종료 (로그아웃 시 사용)"""
+    global shared_driver
+    if shared_driver:
         try:
-            update_last_action()
-            stream_log(f"조회 시작: 총 {len(containers)}건 처리 중...")
-            
-            log_lines, s1, s2, out_path = run_search(
-                containers, driver=get_driver(), log_callback=stream_log, keep_alive=True
-            )
-            
-            update_last_action()
-            total_time = round(time.time() - start_time, 1)
-            stream_log(f"🎉 모든 조회 완료. (총 소요시간: {total_time}초)")
-            
-            res = {"ok": True, "output_path": out_path, "totalTime": f"{total_time}s"}
-            self.write_chunk(f"RESULT:{json.dumps(res)}\n".encode("utf-8"))
+            shared_driver.quit()
+            shared_driver = None
+            return jsonify({"ok": True, "message": "브라우저 종료 완료"})
         except Exception as e:
-            stream_log(f"❌ 오류 발생: {e}")
-            self.write_chunk(f"RESULT:{{\"ok\":false, \"error\":\"{str(e)}\"}}\n".encode("utf-8"))
-        finally:
-            self.write_chunk(b"")
+            return jsonify({"ok": False, "error": str(e)})
+    return jsonify({"ok": True, "message": "종료할 브라우저가 없습니다."})
 
-    # --- 기존 헬퍼 함수들 (parse_body, do_GET, do_POST 등) 유지 ---
-    def parse_body(self):
-        length = int(self.headers.get("Content-Length", 0))
-        return json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b'{"ok":true}')
-
-    def do_POST(self):
-        if self.path == "/login": self.handle_login()
-        elif self.path == "/run": self.handle_run()
-        elif self.path == "/logout":
-            do_logout()
-            self.send_response(200)
-            self.end_headers()
-
-def main():
-    # 백그라운드 세션 유지 스레드 시작
-    threading.Thread(target=auto_refresh_loop, daemon=True).start()
-    server = HTTPServer(("127.0.0.1", DAEMON_PORT), ELSDaemonHandler)
-    print(f"[{get_now_str()}] ELS Daemon started on port {DAEMON_PORT}", flush=True)
-    server.serve_forever()
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    # 명령을 대기한다!
+    print("========================================")
+    print("   ELS HYPER TURBO DAEMON STARTED")
+    print("   PORT: 31999 | READY FOR HYUNG")
+    print("========================================")
+    app.run(host='0.0.0.0', port=31999, debug=False)
