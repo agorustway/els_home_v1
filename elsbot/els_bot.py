@@ -144,7 +144,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         if log_callback: log_callback(f"[{elapsed:6.2f}s] {msg}")
 
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    # 환경 변수로 headless 모드 제어 (로컬 테스트 시 HEADLESS=0 설정)
+    if os.getenv("HEADLESS", "1") == "1":
+        options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")

@@ -6,7 +6,8 @@ import styles from './container-history.module.css';
 const HEADERS = ['조회번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
 
 // [설정] 형의 시놀로지 외부 주소 명확히 고정
-const BACKEND_BASE_URL = 'https://elssolution.synology.me:8443';
+// const BACKEND_BASE_URL = 'https://elssolution.synology.me:8443';
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
 
 function parseContainerInput(text) {
     if (!text || !text.trim()) return [];
@@ -62,16 +63,48 @@ export default function ContainerHistoryPage() {
             .catch(() => setConfigLoaded(true));
     }, []);
 
-    // 로그 분석하여 BIOS 진단창 업데이트하는 로직 추가
+    // 로그 분석하여 BIOS 진단창 업데이트 + 시간 정보 파싱
     useEffect(() => {
         const allLogs = logLines.join('\n');
+
         setBootStatus(prev => {
             const next = { ...prev };
-            if (allLogs.includes('Initialize Driver')) next.init.status = 'done';
-            if (allLogs.includes('Start Browser')) next.browser.status = 'done';
-            if (allLogs.includes('Connect to ETRANS')) next.connect.status = 'done';
-            if (allLogs.includes('로그인 완료')) next.login.status = 'done';
-            if (allLogs.includes('메뉴 진입 성공')) next.menu.status = 'done';
+
+            // 시간 정보 파싱 함수
+            const getTime = (keyword) => {
+                const match = allLogs.match(new RegExp(`\\[(\\s*[\\d.]+s)\\].*${keyword}`));
+                return match ? match[1].trim() : null;
+            };
+
+            // 각 단계별 키워드 매칭 및 시간 추출
+            if (allLogs.includes('크롬 드라이버')) {
+                next.init.status = 'done';
+                next.init.time = getTime('크롬 드라이버');
+            }
+            if (allLogs.includes('브라우저 실행')) {
+                next.browser.status = 'done';
+                next.browser.time = getTime('브라우저 실행');
+            }
+            if (allLogs.includes('사이트 접속')) {
+                next.connect.status = 'done';
+                next.connect.time = getTime('사이트 접속');
+            }
+            if (allLogs.includes('로그인 성공') || allLogs.includes('로그인 완료')) {
+                next.login.status = 'done';
+                next.login.time = getTime('로그인 성공');
+            }
+            if (allLogs.includes('메뉴 진입 성공') || allLogs.includes('입력창 발견')) {
+                next.menu.status = 'done';
+                next.menu.time = getTime('메뉴 진입 성공');
+            }
+
+            // 에러 체크
+            if (allLogs.includes('[오류]') || allLogs.includes('[예외]') || allLogs.includes('실패')) {
+                Object.keys(next).forEach(key => {
+                    if (next[key].status === 'pending') next[key].status = 'error';
+                });
+            }
+
             return next;
         });
     }, [logLines]);
@@ -110,6 +143,12 @@ export default function ContainerHistoryPage() {
                 body: JSON.stringify({ useSavedCreds, userId: userId.trim(), userPw }),
             });
             const data = await res.json();
+
+            // 백엔드/데몬에서 받은 로그 추가
+            if (data.log && Array.isArray(data.log)) {
+                setLogLines(prev => [...prev, ...data.log]);
+            }
+
             if (data.ok) {
                 setStepIndex(2);
                 setLogLines(prev => [...prev, '[성공] 로그인 완료. 조회를 시작하세요.']);
@@ -203,11 +242,17 @@ export default function ContainerHistoryPage() {
                     <section className={styles.section}>
                         <h2 className={styles.sectionTitle}>시스템 상태</h2>
                         <div style={{ fontFamily: "'Consolas', monospace", backgroundColor: '#0a0a0a', color: '#00ff00', padding: '12px', borderRadius: '4px', border: '1px solid #333' }}>
-                            <div style={{ borderBottom: '1px solid #333', marginBottom: '8px', fontSize: '12px' }}>SYSTEM DIAGNOSTIC</div>
+                            <div style={{ borderBottom: '1px solid #333', marginBottom: '8px', fontSize: '12px', color: '#0ff' }}>SYSTEM DIAGNOSTIC</div>
                             {Object.entries(bootStatus).map(([key, val]) => (
-                                <div key={key} style={{ display: 'flex', gap: '10px', fontSize: '13px' }}>
-                                    <span style={{ color: val.status === 'done' ? '#00ff00' : '#666' }}>{val.status === 'done' ? '[ OK ]' : '[    ]'}</span>
-                                    <span>{val.label}</span>
+                                <div key={key} style={{ display: 'flex', gap: '10px', fontSize: '13px', marginBottom: '4px' }}>
+                                    <span style={{
+                                        color: val.status === 'done' ? '#00ff00' : val.status === 'error' ? '#ff0000' : '#666',
+                                        minWidth: '50px'
+                                    }}>
+                                        {val.status === 'done' ? '[ OK ]' : val.status === 'error' ? '[FAIL]' : '[    ]'}
+                                    </span>
+                                    <span style={{ flex: 1 }}>{val.label}</span>
+                                    {val.time && <span style={{ color: '#888', fontSize: '11px' }}>{val.time}</span>}
                                 </div>
                             ))}
                         </div>
@@ -236,7 +281,7 @@ export default function ContainerHistoryPage() {
                             <tbody>
                                 {result.sheet1?.map((row, i) => (
                                     <tr key={i}>
-                                        {HEADERS.map((_, j) => <td key={j} style={{ border: '1px solid #dee2e6', padding: '8px', fontSize: '12px' }}>{row[j]}</td>)}
+                                        {row.map((cell, j) => <td key={j} style={{ border: '1px solid #dee2e6', padding: '8px', fontSize: '12px' }}>{cell || ''}</td>)}
                                     </tr>
                                 ))}
                             </tbody>

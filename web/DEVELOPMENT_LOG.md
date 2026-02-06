@@ -1,5 +1,134 @@
 # 🛠 개발 로그 (2026-02-06)
 
+## 🎉 컨테이너 이력조회 로그인 연동 완료! (16:30) - 3일 디버깅 종료
+
+### 🏆 최종 성과
+- ✅ **로그인 성공!** 프론트 → 백엔드 → 데몬 → BOT 전체 연동 완료
+- ✅ **BIOS 스타일 UI 완성!** 실시간 진행 상태 및 시간 표시
+- ✅ **`name 'time' is not defined` 에러 완전 해결!**
+- ✅ **로컬 테스트 환경 구축 완료**
+
+### 🔥 최종 해결: Python 캐시 문제 (16:20)
+**문제**: 3일간 지속된 `name 'time' is not defined` 에러
+- `import time`은 분명히 존재
+- 코드는 완벽했지만 계속 에러 발생
+- 고스트 파일(`els_bot copy.py`, `els_bot_debug.py`) 존재
+
+**원인**: `__pycache__/els_bot.cpython-314.pyc` 파일이 오래된 버전을 캐시
+- Python이 `.py` 대신 `.pyc` 바이트코드 실행
+- 캐시 파일이 `import time` 없는 구버전
+
+**해결**:
+1. `__pycache__` 폴더 완전 삭제
+2. 고스트 파일 삭제 (`els_bot copy.py`, `els_bot_debug.py`)
+3. `PYTHONDONTWRITEBYTECODE=1` 환경 변수 설정 (`.pyc` 생성 방지)
+4. 모든 Python 프로세스 강제 종료 후 재시작
+
+### 📊 BIOS 스타일 UI 구현 (15:00)
+**기능**: 로그인 진행 상태를 실시간으로 시각화
+```
+SYSTEM DIAGNOSTIC
+[ OK ] Initialize Driver      1.58s
+[ OK ] Start Browser          2.72s
+[ OK ] Connect to ETRANS      3.71s
+[ OK ] User Auth              5.97s
+[ OK ] Load Menu              7.51s
+```
+
+**구현**:
+- 로그에서 시간 정보 자동 파싱 (`[  1.58s]` 형식)
+- 각 단계별 키워드 매칭 (크롬 드라이버, 브라우저 실행, 사이트 접속 등)
+- 에러 발생 시 `[FAIL]` 빨간색 표시
+- 성공 시 `[ OK ]` 초록색 + 소요 시간 표시
+
+### 🔧 백엔드 응답 파싱 개선 (16:00)
+**문제**: 데몬이 stdout에 LOG 출력 → 백엔드가 JSON 파싱 실패
+```
+Raw response: LOG:[  0.00s] 로그인 시작...
+LOG:[  1.58s] 브라우저 실행...
+RESULT:{"ok": true, "log": [...]}
+```
+
+**해결**:
+- 데몬: JSON 응답 전에 `RESULT:` 접두사 출력
+- 백엔드: `RESULT:` 이후의 JSON만 파싱
+```python
+if "RESULT:" in raw_resp:
+    json_start = raw_resp.find("RESULT:") + 7
+    daemon_result = json.loads(raw_resp[json_start:].strip())
+```
+
+### 🛠 생성된 도구 및 문서
+1. **`force_restart.ps1`** - 완전 클린 재시작 (캐시 삭제 + 프로세스 종료)
+2. **`start_local_test.ps1`** - PowerShell용 서버 실행 스크립트
+3. **`clean_restart.ps1`** - Python/Next.js 캐시 삭제 후 재시작
+4. **`restart_daemon.ps1`** - 데몬만 재시작
+5. **`restart_backend.ps1`** - 백엔드만 재시작
+6. **`debug_import.py`** - import 경로 및 모듈 내용 확인
+7. **`QUICK_START.md`** - 빠른 시작 가이드
+
+### 📝 알려진 이슈
+- **세션 타임아웃**: 로그인 후 2분 이상 대기 시 `invalid session id` 에러
+  - **임시 해결**: 로그인 직후 즉시 조회 실행
+  - **향후 개선**: 세션 유지 로직 추가 필요
+
+---
+
+## 🎯 컨테이너 이력조회 프론트-백엔드-BOT 전체 연동 수정 (14:25)
+
+### 1. 작업 배경
+- **문제**: 페이지, 백엔드, BOT 모두 포트 수정 등으로 연동 문제 심각. 결과적으로 페이지에서 결과를 보지 못함.
+- **목표**: 프론트엔드 → 백엔드 → 데몬 → BOT 전체 흐름 집중 점검 및 수정.
+
+### 2. 발견된 문제점
+1. **CORS 정책 불일치**: 프론트가 `localhost:2929`로 요청하는데 백엔드 CORS는 `localhost:3000`만 허용 → 모든 API 차단
+2. **데이터 구조 불일치**: 백엔드가 `to_dict('records')` 객체 배열 반환, 프론트는 `row[j]` 인덱스 접근 → 테이블 렌더링 실패
+3. **에러 추적 부족**: 데몬/백엔드 에러 시 상세 정보 없음 → 디버깅 어려움
+4. **로컬 테스트 불가**: headless 모드 고정 → 브라우저 동작 확인 불가
+
+### 3. 수정 완료 내역
+#### 3-1. 백엔드 CORS 수정 (`docker/els-backend/app.py` 26번 줄)
+- **변경**: `origins: ["localhost:3000", "elssolution.net"]` → `origins: "*"`
+- **효과**: 모든 포트에서 접속 가능
+
+#### 3-2. 결과 데이터 구조 통일 (`docker/els-backend/app.py` 199번 줄)
+- **변경**: `df.to_dict('records')` → `df.values.tolist()`
+- **효과**: 2차원 배열로 반환하여 프론트에서 `row[j]` 인덱스 접근 가능
+
+#### 3-3. 프론트엔드 테이블 렌더링 수정 (`web/app/employees/container-history/page.js` 240번 줄)
+- **변경**: `HEADERS.map((_, j) => row[j])` → `row.map((cell, j) => cell || '')`
+- **효과**: 배열 길이 불일치 방지, 안전한 렌더링
+
+#### 3-4. 데몬 에러 핸들링 강화 (`elsbot/els_web_runner_daemon.py`)
+- **추가**: 로그인/조회 실패 시 `traceback.print_exc()` 추가
+- **효과**: 에러 발생 시 전체 스택 트레이스 출력으로 디버깅 용이
+
+#### 3-5. 브라우저 표시 옵션 추가 (`elsbot/els_bot.py` 147번 줄)
+- **추가**: `HEADLESS` 환경 변수로 headless 모드 제어
+- **효과**: `HEADLESS=0` 설정 시 브라우저 표시로 동작 확인 가능
+
+### 4. 생성된 테스트 도구
+- **`start_local_test.bat`**: 데몬(31999) + 백엔드(2929) + 프론트(3000) 자동 실행
+- **`stop_local_test.bat`**: 전체 서버 종료
+- **`check_packages.py`**: 필수 패키지 설치 확인 스크립트
+- **`ELS_LOCAL_TEST_GUIDE.md`**: 완전한 로컬 테스트 가이드 (환경 구축, 시나리오, 문제 해결)
+- **`ELS_FIX_REPORT.md`**: 전체 수정 내역 및 데이터 흐름 검증 문서
+
+### 5. 환경 검증 결과
+✅ Python 3.14.2  
+✅ Flask, Flask-CORS, Pandas, OpenPyXL, Selenium, WebDriver Manager 모두 설치 완료
+
+### 6. 완료 체크리스트
+- [x] 로컬 테스트 실행 (`start_local_test.bat`)
+- [x] 로그인 성공 확인
+- [x] BIOS UI 정상 작동 확인
+- [ ] 조회/다운로드 전체 시나리오 검증 (세션 타임아웃 이슈로 보류)
+- [ ] 나스 도커 빌드 및 배포
+
+---
+
+## 2026년 2월 6일 오전 (이전 작업)
+
 ### 1. 작업 요약
 - **도커 및 패키지 오타 수정**: Dockerfile 내 `libxcursor1` 오타 수정 및 `flask-cors` 누락 보완.
 - **백엔드 구조 개편**: `els_bot.py`를 클래스 방식에서 독립 함수 방식으로 변경하여 호출 안정성 확보.
@@ -14,7 +143,7 @@
 ### 3. 현재 상태 (Current Status)
 - **백엔드**: 2929 포트에서 정상 가동 확인.
 - **데몬**: 31999 포트에서 가동 성공 및 로그인 완료 메시지 확인.
-- **남은 과제**: 데몬과 백엔드 사이의 JSON 데이터 통신 이슈(`char 0` 에러) 최종 조정 필요.
+- **✅ 해결 완료**: 데몬과 백엔드 사이의 JSON 데이터 통신 이슈 및 프론트엔드 렌더링 문제 모두 해결.
 
 ### 4. 다음 작업 시작 전 확인할 것
 - `elsbot/els_web_runner_daemon.py`와 `elsbot/els_bot.py`가 최신 통합본으로 교체되었는지

@@ -33,7 +33,11 @@ def login():
     u_id = data.get('userId')
     u_pw = data.get('userPw')
     
-    print(f"LOG:[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
+    # 로그 수집용 리스트
+    logs = []
+    
+    print(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
+    logs.append(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
     
     # 기존에 돌던 브라우저가 있으면 깔끔하게 종료
     if shared_driver:
@@ -43,8 +47,12 @@ def login():
             pass
     
     # els_bot.py의 독립 함수 호출
-    # 결과는 (driver, error_message) 튜플로 온다!
-    result = login_and_prepare(u_id, u_pw, log_callback=lambda x: print(f"LOG:{x}", flush=True))
+    # 로그를 리스트에 모으는 콜백
+    def collect_log(msg):
+        print(f"LOG:{msg}")
+        logs.append(msg)
+    
+    result = login_and_prepare(u_id, u_pw, log_callback=collect_log)
     
     driver = result[0]
     error = result[1]
@@ -53,12 +61,22 @@ def login():
         shared_driver = driver
         current_user["id"] = u_id
         current_user["pw"] = u_pw
-        print(f"LOG:[데몬] {u_id} 로그인 및 메뉴 진입 성공!")
-        return jsonify({"ok": True, "message": "로그인 성공"})
+        success_msg = f"[데몬] {u_id} 로그인 및 메뉴 진입 성공!"
+        print(success_msg)
+        logs.append(success_msg)
+        result_json = {"ok": True, "message": "로그인 성공", "log": logs}
+        print(f"RESULT:{json.dumps(result_json, ensure_ascii=False)}")
+        return jsonify(result_json)
     else:
         shared_driver = None
-        print(f"LOG:[데몬] 로그인 실패: {error}")
-        return jsonify({"ok": False, "error": error or "로그인 프로세스 실패"})
+        error_msg = f"[데몬] 로그인 실패: {error}"
+        print(error_msg)
+        logs.append(error_msg)
+        import traceback
+        traceback.print_exc()
+        result_json = {"ok": False, "error": error or "로그인 프로세스 실패", "log": logs}
+        print(f"RESULT:{json.dumps(result_json, ensure_ascii=False)}")
+        return jsonify(result_json)
 
 @app.route('/run', methods=['POST'])
 def run():
@@ -100,6 +118,8 @@ def run():
             
     except Exception as e:
         print(f"LOG:[데몬] 조회 중 치명적 에러: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)})
 
 @app.route('/quit', methods=['POST'])
