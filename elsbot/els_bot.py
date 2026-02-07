@@ -62,16 +62,30 @@ def _is_valid_input_simple(element):
 
 def open_els_menu(driver, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중...")
-    for attempt in range(20):
-        try:
-            driver.switch_to.default_content()
-            targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
-            if targets:
-                driver.execute_script("arguments[0].click();", targets[0])
-                time.sleep(2)
-                return True
-        except: pass
+    
+    for attempt in range(15):  # 이전 코드: 15번 시도
+        check_alert(driver)  # alert 체크 추가
+        
+        # iframe 순회 (이전 성공 코드 방식)
+        frames = driver.find_elements(By.TAG_NAME, "iframe")
+        for frame in [None] + frames:  # None부터 시작 (메인 프레임 먼저)
+            try:
+                if frame:
+                    driver.switch_to.frame(frame)
+                
+                # 메뉴 찾기
+                targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
+                if targets:
+                    driver.execute_script("arguments[0].click();", targets[0])
+                    time.sleep(4)  # 이전 코드: 4초 대기
+                    return True
+            except:
+                pass
+            finally:
+                driver.switch_to.default_content()
+        
         time.sleep(1)
+    
     return False
 
 def solve_input_and_search(driver, container_no, log_callback=None):
@@ -166,16 +180,34 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         
         wait = WebDriverWait(driver, 60)
         uid_input = wait.until(EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId")))
-        uid_input.send_keys(u_id)
-        driver.find_element(By.ID, "mf_wfm_subContainer_sct_password").send_keys(u_pw)
         
-        login_btn = driver.find_element(By.ID, "mf_wfm_subContainer_btn_login")
-        driver.execute_script("arguments[0].click();", login_btn)
+        # 입력 필드가 완전히 활성화될 때까지 대기
+        time.sleep(1)
+        
+        # 아이디 입력 (clear 제거 - 이전 성공 코드 방식)
+        uid_input.send_keys(u_id)
+        time.sleep(0.5)
+        
+        # 비밀번호 입력 (clear 제거)
+        pw_input = driver.find_element(By.ID, "mf_wfm_subContainer_sct_password")
+        pw_input.send_keys(u_pw)
+        time.sleep(0.5)
+        
+        # Enter 키로 로그인 (이전 성공 코드 방식)
+        pw_input.send_keys(Keys.ENTER)
         
         _log("로그인 시도 중...")
         
-        # 로그인 처리 대기 (HEADLESS 모드에서 중요!)
-        time.sleep(3)
+        # 로그인 처리 대기 (이전 코드: 8초)
+        time.sleep(8)
+        
+        # 디버깅: 스크린샷 저장
+        try:
+            screenshot_path = f"login_debug_{int(time.time())}.png"
+            driver.save_screenshot(screenshot_path)
+            _log(f"스크린샷 저장: {screenshot_path}")
+        except Exception as e:
+            _log(f"스크린샷 저장 실패: {e}")
         
         # alert 체크 (로그인 실패 팝업)
         alert_msg = check_alert(driver)
@@ -183,9 +215,6 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
             _log(f"로그인 실패 팝업: {alert_msg}")
             driver.quit()
             return (None, f"로그인 실패: {alert_msg}")
-        
-        # 추가 대기 (페이지 전환 완료)
-        time.sleep(2)
         
         _log("메뉴 진입 시도 중...")
         if open_els_menu(driver, _log):

@@ -81,9 +81,20 @@ def _parse_grid_text(cn, grid_text):
         
         # 정규표현식으로 정밀 파싱
         row_data = re.split(r'\t|\s{2,}', stripped)
+        
+        # No 컬럼이 숫자인 행만 (1~20)
         if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 20:
-            rows.append([cn] + row_data[:14])
-            found_any = True
+            # 데이터 길이를 14개로 맞추기 (부족하면 빈 문자열 추가)
+            while len(row_data) < 14:
+                row_data.append("")
+            
+            # [컨테이너번호] + [No, 수출입, 구분, ...] (총 15개)
+            full_row = [cn] + row_data[:14]
+            
+            # 빈 행 필터링 (컨테이너 번호와 No만 있고 나머지가 비어있는 경우)
+            if any(cell.strip() for cell in full_row[2:]):  # 3번째 컬럼부터 데이터가 있는지 확인
+                rows.append(full_row)
+                found_any = True
             
     if not found_any:
         return [[cn, "NODATA", "내역 없음"] + [""]*12]
@@ -174,7 +185,22 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
             body = json.dumps({"containerNo": cn}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
             resp = urlopen(req, timeout=60)
-            res_json = json.loads(resp.read().decode("utf-8"))
+            raw_resp = resp.read().decode("utf-8")
+            
+            # LOG: 출력 무시하고 JSON만 파싱
+            res_json = None
+            for line in raw_resp.split('\n'):
+                line = line.strip()
+                if line.startswith('{') and line.endswith('}'):
+                    try:
+                        res_json = json.loads(line)
+                        break
+                    except:
+                        continue
+            
+            if not res_json:
+                # 전체를 JSON으로 파싱 시도
+                res_json = json.loads(raw_resp)
             
             if res_json.get("ok"):
                 data_text = res_json.get("data")
@@ -195,21 +221,73 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
     if final_rows:
         try:
             yield "LOG:결과 데이터 집계 중...\n"
-            df = pd.DataFrame(final_rows, columns=headers)
+            from openpyxl.styles import PatternFill
+            from datetime import datetime
+            
+            df_all = pd.DataFrame(final_rows, columns=headers)
+            
+            # Sheet1: 각 컨테이너의 1번 행만 (요약)
+            df_summary = df_all.groupby('조회번호').first().reset_index()
+            
+            # Sheet2: 전체 데이터
+            df_full = df_all
+            
+            # 파일명 생성: els_result_260207_1311.xlsx
+            now = datetime.now()
+            filename = f"els_result_{now.strftime('%y%m%d')}_{now.strftime('%H%M')}.xlsx"
+            
             # Create Excel in memory
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='Sheet1')
+                # Sheet1: 요약
+                df_summary.to_excel(writer, index=False, sheet_name='요약')
+                ws1 = writer.sheets['요약']
+                
+                # Sheet2: 전체
+                df_full.to_excel(writer, index=False, sheet_name='전체')
+                ws2 = writer.sheets['전체']
+                
+                # 색상 적용 및 셀 너비 조정
+                red_fill = PatternFill(start_color="FFE6E6", end_color="FFE6E6", fill_type="solid")
+                blue_fill = PatternFill(start_color="E6F2FF", end_color="E6F2FF", fill_type="solid")
+                
+                for ws in [ws1, ws2]:
+                    # 셀 너비 자동 조정
+                    for column in ws.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        ws.column_dimensions[column_letter].width = adjusted_width
+                    
+                    # 색상 적용 (수입: 빨강, 반입: 파랑)
+                    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                        # "수출입" 컬럼 찾기 (3번째 컬럼, 인덱스 2)
+                        if len(row) > 2:
+                            cell_value = str(row[2].value).strip()
+                            if "수입" in cell_value:
+                                for cell in row:
+                                    cell.fill = red_fill
+                            elif "반입" in cell_value:
+                                for cell in row:
+                                    cell.fill = blue_fill
             
             output.seek(0)
             token = str(uuid.uuid4()).replace("-", "")[:16]
             file_store[token] = output.read()
             
-            # Frontend expects 'sheet1' for preview
+            # Frontend expects 'result' for preview
+            df_clean = df_all.fillna("")
             result_obj = {
                 "ok": True,
-                "sheet1": df.values.tolist(),  # 2차원 배열로 변환 (인덱스 접근 가능)
-                "downloadToken": token
+                "result": df_clean.values.tolist(),
+                "downloadToken": token,
+                "fileName": filename
             }
             yield "RESULT:" + json.dumps(result_obj, ensure_ascii=False) + "\n"
         except Exception as e:

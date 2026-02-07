@@ -108,13 +108,6 @@ export default function ContainerHistoryPage() {
 
             if (data.ok) {
                 setLogLines(prev => [...prev, '[성공] 로그인 완료!']);
-
-                // 컨테이너 번호가 있으면 자동 조회
-                const containers = parseContainerInput(containerInput);
-                if (containers.length > 0) {
-                    setLogLines(prev => [...prev, '[자동] 컨테이너 자동 조회 시작...']);
-                    setTimeout(() => runSearch(), 500);
-                }
             } else {
                 setLogLines(prev => [...prev, `[실패] ${data.error || '로그인 실패'}`]);
             }
