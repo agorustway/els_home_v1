@@ -1,10 +1,13 @@
 /* 인트라넷 전용: 사이드 + 메인 (한 페이지처럼 확장) */
 .bodyWrap {
     display: flex;
+    align-items: flex-start;
+    /* 사이드바 스티키 동작을 위해 추가 */
     width: 100%;
     min-height: calc(100vh - 280px);
     max-width: 100vw;
 }
+
 
 /* 인트라넷 본문: 양쪽 여백 없이 폭 꽉 차게, 메뉴와 한 페이지처럼 */
 .bodyWrap .mainContent {
