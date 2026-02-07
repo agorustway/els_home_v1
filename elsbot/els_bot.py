@@ -173,6 +173,21 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         driver.execute_script("arguments[0].click();", login_btn)
         
         _log("로그인 시도 중...")
+        
+        # 로그인 처리 대기 (HEADLESS 모드에서 중요!)
+        time.sleep(3)
+        
+        # alert 체크 (로그인 실패 팝업)
+        alert_msg = check_alert(driver)
+        if alert_msg:
+            _log(f"로그인 실패 팝업: {alert_msg}")
+            driver.quit()
+            return (None, f"로그인 실패: {alert_msg}")
+        
+        # 추가 대기 (페이지 전환 완료)
+        time.sleep(2)
+        
+        _log("메뉴 진입 시도 중...")
         if open_els_menu(driver, _log):
             _log("메뉴 진입 성공")
             return (driver, None)
