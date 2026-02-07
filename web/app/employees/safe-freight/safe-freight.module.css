@@ -1060,7 +1060,7 @@
 }
 
 .cellAmount {
-  text-align: center !important;
+  text-align: right !important;
   font-family: 'Pretendard', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
