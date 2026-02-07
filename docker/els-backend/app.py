@@ -295,11 +295,21 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             token = str(uuid.uuid4()).replace("-", "")[:16]
             file_store[token] = output.read()
             
-            # Frontend expects 'result' for preview
-            df_clean = df_all.fillna("")
+            # Frontend로 보낼 결과 데이터 정제 (NaN 방지)
+            df_clean = df_all.where(pd.notnull(df_all), None) # NaN을 null(None)로 변환
+            rows_list = df_clean.values.tolist()
+            
+            # 한 번 더 안전장치: 리스트 내부에 혹시 남아있을 수 있는 float('nan') 제거
+            import math
+            def _clean_nan(v):
+                if isinstance(v, float) and math.isnan(v): return None
+                return v
+            
+            final_json_rows = [[_clean_nan(cell) for cell in row] for row in rows_list]
+
             result_obj = {
                 "ok": True,
-                "result": df_clean.values.tolist(),
+                "result": final_json_rows,
                 "downloadToken": token,
                 "fileName": filename
             }
