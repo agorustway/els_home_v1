@@ -91,6 +91,7 @@ function ContainerHistoryInner() {
         return false;
     }); // 로그인 성공 여부
     const [lastSavedInfo, setLastSavedInfo] = useState(''); // 계정 저장 시간
+    const [isSaveChecked, setIsSaveChecked] = useState(false);
 
     const [downloadToken, setDownloadToken] = useState(null);
     const [resultFileName, setResultFileName] = useState('');
@@ -213,6 +214,11 @@ function ContainerHistoryInner() {
         setLogLines(prev => [...prev, `[네트워크] ${BACKEND_BASE_URL}/api/els/login 접속 중...`]);
 
         try {
+            if (isSaveChecked) {
+                // 저장 체크 시 동시 수행
+                handleSaveCreds(loginId, loginPw);
+            }
+
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -252,7 +258,7 @@ function ContainerHistoryInner() {
             setLoginLoading(false);
             stopTimer();
         }
-    }, [userId, userPw, showBrowser, BACKEND_BASE_URL, startTimer, stopTimer]);
+    }, [userId, userPw, showBrowser, BACKEND_BASE_URL, startTimer, stopTimer, isSaveChecked, handleSaveCreds]);
 
     // [고도화 3] 데이터베이스 계정 불러오기 및 자동 로그인
     useEffect(() => {
@@ -633,11 +639,19 @@ function ContainerHistoryInner() {
                                     onKeyDown={e => handleKeyDown(e, 'login')}
                                     className={`${styles.input} ${styles.loginInput}`}
                                 />
-                                <div style={{ display: 'flex', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <button onClick={() => handleLogin()} disabled={loginLoading} className={styles.button}>
                                         {loginLoading ? '접속 중...' : '로그인'}
                                     </button>
-                                    <button onClick={() => handleSaveCreds()} className={styles.buttonSecondary} title="계정 정보 저장">💾</button>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', cursor: 'pointer', userSelect: 'none' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={isSaveChecked}
+                                            onChange={e => setIsSaveChecked(e.target.checked)}
+                                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                        저장
+                                    </label>
                                 </div>
                             </div>
                             {/* 개인 계정 저장일시 - 1번 섹션 내부 하단으로 이동 */}

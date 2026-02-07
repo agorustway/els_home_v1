@@ -1,5 +1,5 @@
 .page {
-  padding: 0 0 48px;
+  padding: 0 0 24px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -8,17 +8,17 @@
 .headerBanner {
   background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
   color: #fff;
-  padding: 8px 28px; /* 상하 패딩 70% 이상 축소 */
-  border-radius: 14px;
-  margin-bottom: 28px;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  padding: 6px 20px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #fff;
-  margin: 0 0 6px 0;
+  margin: 0;
   letter-spacing: -0.02em;
 }
 
@@ -31,8 +31,9 @@
 
 .loading,
 .error {
-  padding: 24px;
+  padding: 20px;
   color: #64748b;
+  font-size: 0.9rem;
 }
 
 .error {
@@ -53,34 +54,39 @@
 .formSection {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 28px;
-  margin-bottom: 24px;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .sectionHead {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #64748b;
+  color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 /* 관련 법령·고시 안내 (탭 옆 버튼 + 모달) */
 .noticeTabBtn {
-  display: flex; /* 내부 요소 정렬을 위해 추가 */
-  align-items: center; /* 세로 중앙 정렬 */
-  min-height: 40px; /* 높이 통일 */
-  padding: 8px 16px; /* 패딩 조정 */
-  border-radius: 10px;
+  display: flex;
+  /* 내부 요소 정렬을 위해 추가 */
+  align-items: center;
+  /* 세로 중앙 정렬 */
+  min-height: 32px;
+  /* 높이 통일 */
+  padding: 4px 12px;
+  /* 패딩 조정 */
+  border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
   color: #475569;
-  font-size: 0.9rem; /* 폰트 크기 조정 */
+  font-size: 0.85rem;
+  /* 폰트 크기 조정 */
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s, color 0.2s;
@@ -253,26 +259,32 @@
 }
 
 .tabs {
-  display: flex; /* Flexbox 활성화 */
+  display: flex;
+  /* Flexbox 활성화 */
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 24px;
-  align-items: center; /* 세로 중앙 정렬 */
+  gap: 6px;
+  margin-bottom: 12px;
+  align-items: flex-end;
 }
 
 /* 오른쪽으로 밀어낼 클래스 */
 .mlAuto {
-    margin-left: auto;
+  margin-left: auto;
 }
 
 .tab,
 .tabActive {
-  display: flex; /* 내부 요소 정렬을 위해 추가 */
-  flex-direction: column; /* 라벨과 desc를 세로로 정렬 */
-  justify-content: center; /* 세로 중앙 정렬 */
-  min-height: 40px; /* 높이 통일 */
-  padding: 8px 16px; /* 패딩 조정 */
-  border-radius: 10px;
+  display: flex;
+  /* 내부 요소 정렬을 위해 추가 */
+  flex-direction: column;
+  /* 라벨과 desc를 세로로 정렬 */
+  justify-content: center;
+  /* 세로 중앙 정렬 */
+  min-height: 42px;
+  /* 높이 통일 */
+  padding: 6px 14px;
+  /* 패딩 조정 */
+  border-radius: 6px;
   border: 1px solid #e2e8f0;
   background: #fff;
   cursor: pointer;
@@ -288,20 +300,76 @@
 .tabActive {
   border-color: #2563eb;
   background: #eff6ff;
+  border-bottom-width: 2px;
   box-shadow: 0 0 0 2px rgba(37, 99, 246, 0.2);
 }
 
+.tabRed,
+.tabActiveRed {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 42px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  /* Light Red */
+  background: #fef2f2;
+  /* Light Red BG */
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.tabRed:hover {
+  border-color: #fca5a5;
+  background: #fee2e2;
+}
+
+.tabActiveRed {
+  border-color: #dc2626;
+  background: #fef2f2;
+  border-bottom-width: 2px;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+.tabActiveRed .tabLabel {
+  color: #334155;
+}
+
+.tabActiveRed .tabDesc {
+  color: #ef4444;
+}
+
+.tabRed .tabLabel {
+  color: #334155;
+}
+
+.tabRed .tabDesc {
+  color: #ef4444;
+}
+
 .tabDeveloping {
-  display: flex; /* 내부 요소 정렬을 위해 추가 */
-  flex-direction: column; /* 라벨과 desc를 세로로 정렬 */
-  justify-content: center; /* 세로 중앙 정렬 */
-  min-height: 40px; /* 높이 통일 */
-  padding: 8px 16px; /* 패딩 조정 */
-  border-radius: 10px;
-  border: 1px solid #fecaca; /* 옅은 빨강 테두리 */
-  background: #fef2f2; /* 옅은 빨강 배경 */
-  color: #b91c1c; /* 진한 빨강 글자 */
-  cursor: default; /* 클릭은 되지만 개발중임을 시각적으로 표현 */
+  display: flex;
+  /* 내부 요소 정렬을 위해 추가 */
+  flex-direction: column;
+  /* 라벨과 desc를 세로로 정렬 */
+  justify-content: center;
+  /* 세로 중앙 정렬 */
+  min-height: 42px;
+  /* 높이 통일 */
+  padding: 6px 14px;
+  /* 패딩 조정 */
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  /* 옅은 빨강 테두리 */
+  background: #fef2f2;
+  /* 옅은 빨강 배경 */
+  color: #b91c1c;
+  /* 진한 빨강 글자 */
+  cursor: default;
+  /* 클릭은 되지만 개발중임을 시각적으로 표현 */
   text-align: left;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
@@ -314,15 +382,16 @@
 .tabLabel {
   display: block;
   font-weight: 700;
-  font-size: 0.95rem; /* 폰트 크기 조정 */
+  font-size: 0.88rem;
+  /* 폰트 크기 조정 */
   color: #334155;
 }
 
 .tabDesc {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #64748b;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .yearNote {
@@ -333,121 +402,380 @@
 
 .formGrid {
   display: grid;
-  grid-template-columns: minmax(260px, 380px) 1fr;
-  gap: 28px 32px;
+  grid-template-columns: 350px 1fr 260px;
+  gap: 16px;
   align-items: stretch;
 }
 
-.formLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+@media (max-width: 1400px) {
+  .formGrid {
+    grid-template-columns: 320px 1fr 240px;
+  }
 }
 
-.formRight {
+.stepModule {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.stepTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+/* Step 2 Interior */
+.surchargeSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.surchargeGroup {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  padding: 0 0 0 28px;
-  border-left: 1px solid #e2e8f0;
-  min-height: 0;
 }
 
-.formBlock {
+.surchargeGroupTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.surchargeOptionsGrid {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.select {
+/* Tooltip System - ABSOLUTE FIX */
+.tooltipContainer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.infoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  background: #cbd5e1;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+}
+
+.tooltipText {
+  position: absolute;
+  visibility: hidden;
+  opacity: 0;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  background: #1e293b;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  pointer-events: none;
+  transition: all 0.2s;
+  white-space: normal;
+  text-align: left;
+}
+
+.tooltipText::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #1e293b transparent transparent transparent;
+}
+
+.tooltipContainer:hover .tooltipText {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Inputs & Actions */
+.select,
+.addressInput,
+.inputKm {
   width: 100%;
-  padding: 10px 12px;
-  font-size: 0.95rem;
+  height: 38px !important;
+  padding: 0 10px;
+  font-size: 0.85rem;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #fff;
-  transition: border-color 0.2s;
-  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  /* Added from later block */
 }
 
-.select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.select:disabled {
-  background: #f1f5f9;
-  cursor: not-allowed;
-}
-
-.inputKm {
-  width: 120px;
-  padding: 10px 12px;
-  font-size: 1rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-}
-
+.select:focus,
+.addressInput:focus,
 .inputKm:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.inputDong {
-  flex: 1;
-  min-width: 140px;
-  padding: 10px 12px;
-  font-size: 0.95rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.inputDong:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.periodHint {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin: 4px 0 0;
-  line-height: 1.4;
-}
-
-.label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #334155;
-  margin-bottom: 6px;
-}
-
-.select {
-  width: 100%;
-  max-width: 280px;
-  padding: 10px 12px;
-  font-size: 0.95rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .select[disabled] {
   background: #f1f5f9;
   color: #94a3b8;
 }
+
+.addressInput::placeholder {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  letter-spacing: -0.5px;
+}
+
+.inputPct {
+  width: 58px !important;
+  height: 28px !important;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  padding: 0 4px !important;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.btnGroupVertical {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.btnSearch,
+.btnExcel {
+  width: 100%;
+  height: 48px !important;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.btnSearch {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+.btnSearch:hover {
+  background: #1d4ed8;
+}
+
+.btnExcel {
+  background: #fff;
+  color: #059669;
+  border: 1px solid #059669 !important;
+}
+
+.btnExcel:hover {
+  background: #f0fdf4;
+}
+
+.checkLabel {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.checkLabel input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.formBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.periodHint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* Address Search Styles */
+.addressSearchWrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.addressSearchContainer {
+  position: relative;
+  width: 100%;
+}
+
+
+
+.searchingSpinner {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  margin-top: -10px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.addressDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 320px;
+  overflow-y: auto;
+  animation: slideDown 0.2s ease-out;
+}
+
+.addressItem {
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.2s;
+}
+
+.addressItem:last-child {
+  border-bottom: none;
+}
+
+.addressItem:hover {
+  background: #f8fafc;
+}
+
+.addrMain {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.addrSub {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.addrAdm {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.addrBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.noAddress {
+  padding: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+
 
 .regionGroup {
   display: flex;
@@ -486,21 +814,7 @@
   max-width: 280px;
 }
 
-.surchargeSelect {
-  width: 100%;
-  max-width: 280px;
-  padding: 10px 12px;
-  font-size: 0.95rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-}
 
-.surchargeSelect:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
 
 .radioGroup {
   display: flex;
@@ -515,30 +829,9 @@
   margin-top: 8px;
 }
 
-.checkLabel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  color: #475569;
-  cursor: pointer;
-  line-height: 1.4;
-}
 
-.checkLabel input[type="checkbox"] {
-  margin: 0;
-  flex-shrink: 0;
-  vertical-align: middle;
-}
 
-.roughInput {
-  width: 56px;
-  padding: 4px 6px;
-  margin: 0 4px;
-  font-size: 0.9rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-}
+
 
 .surchargeNote {
   display: block;
@@ -688,105 +981,11 @@
   }
 }
 
-.queryForm {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
-.actionRow {
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  padding: 20px 24px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
 
-.actionPrimary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
 
-.actionSecondary {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
 
-.submitBtn {
-  min-height: 44px;
-  padding: 12px 26px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  background: #2563eb;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-}
-
-.submitBtn:hover:not(:disabled) {
-  background: #1d4ed8;
-  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4);
-  transform: translateY(-1px);
-}
-
-.submitBtn:disabled {
-  background: #94a3b8;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.excelDownloadBtn {
-  min-height: 44px;
-  padding: 12px 24px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #fff;
-  background: #059669;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-}
-
-.excelDownloadBtn:hover:not(:disabled) {
-  background: #047857;
-  box-shadow: 0 2px 10px rgba(5, 150, 105, 0.4);
-  transform: translateY(-1px);
-}
-
-.excelDownloadBtn:disabled {
-  background: #94a3b8;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.tempSaveLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  color: #475569;
-  cursor: pointer;
-  padding: 6px 0;
-}
-
-.tempSaveLabel input {
-  width: 1.05em;
-  height: 1.05em;
-  accent-color: #059669;
-}
-
-.clearSavedBtn {
+.clearBtn {
   min-height: 36px;
   padding: 8px 16px;
   font-size: 0.875rem;
@@ -799,7 +998,7 @@
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
-.clearSavedBtn:hover {
+.clearBtn:hover {
   background: #f1f5f9;
   color: #475569;
   border-color: #cbd5e1;
@@ -824,7 +1023,8 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem; /* 글자 크기 살짝 줄임 */
+  font-size: 0.95rem;
+  /* 글자 크기 살짝 줄임 */
   line-height: 1.4;
   background: #fff;
   border: 1px solid #cbd5e1;
@@ -834,9 +1034,11 @@
 
 .table th,
 .table td {
-  padding: 8px 10px; /* 위아래 여백 축소 */
-  text-align: left;
-  border: 1px solid #e2e8f0; /* 모든 셀에 옅은 테두리 적용 */
+  padding: 8px 10px;
+  /* 위아래 여백 축소 */
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  /* 모든 셀에 옅은 테두리 적용 */
 }
 
 .table th {
@@ -858,7 +1060,7 @@
 }
 
 .cellAmount {
-  text-align: right !important;
+  text-align: center !important;
   font-family: 'Pretendard', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
@@ -904,16 +1106,7 @@
     grid-template-columns: 1fr;
   }
 
-  .formRight {
-    border-left: none;
-    padding-left: 0;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 20px;
-  }
 
-  .actionPrimary {
-    justify-content: center;
-  }
 }
 
 .savedSection {
@@ -1051,63 +1244,53 @@
   }
 }
 
-/* [추가] Iframe 스타일 */
-.iframeSection {
-  display: flex;
-  flex-direction: column;
-  height: 80vh;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-}
 
-.iframeHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.backButton {
-  padding: 8px 16px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #334155;
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.backButton:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-}
-
-.externalLink {
-  font-size: 0.9rem;
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.externalLink:hover {
-  text-decoration: underline;
-}
-
-.iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-}
 
 .forwarderLogo {
-  height: 24px; /* 이미지 높이 고정 */
+  height: 24px;
+  /* 이미지 높이 고정 */
   object-fit: contain;
   vertical-align: middle;
+}
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  animation: fadeInOut 4s forwards;
+  pointer-events: none;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+
+  10% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+  }
 }

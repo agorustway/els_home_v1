@@ -98,42 +98,35 @@ export async function GET(request) {
     const periods = data.periods || [];
     const rows = [];
     for (const p of periods) {
-      // "전체" 이거나 비어있거나, 또는 특정 기간과 일치할 때만 금액 계산
-      const isApplied = !applyPeriod || applyPeriod === '전체' || applyPeriod === p.id;
+      // 2026년 이후 기간 제외 (사용자 요청 및 "2022년이전" 탭 성격 반영)
+      // p.id 형식: "YY.MM월" (예: "22.07월", "26.02월")
+      const yearStr = p.id.split('.')[0];
+      const year = parseInt(yearStr, 10);
+      if (!isNaN(year) && year > 22) {
+        continue;
+      }
 
-      if (isApplied) {
-        const distKey = `${p.id}|${useDistType}`.trim();
-        const dRows = data.distanceByPeriod?.[distKey];
-        if (dRows && dRows.length) {
-          let row = dRows.find((r) => r.km === kmInt);
-          if (!row) {
-            const lower = dRows.filter((r) => r.km <= kmInt);
-            row = lower.length ? lower[lower.length - 1] : dRows[0];
-          }
-          rows.push({
-            period: p.id,
-            km: row.km,
-            f40위탁: row.f40위탁,
-            f40운수자: row.f40운수자,
-            f40안전: row.f40안전,
-            f20위탁: row.f20위탁,
-            f20운수자: row.f20운수자,
-            f20안전: row.f20안전,
-          });
+      const distKey = `${p.id}|${useDistType}`.trim();
+      const dRows = data.distanceByPeriod?.[distKey];
+      if (dRows && dRows.length) {
+        let row = dRows.find((r) => r.km === kmInt);
+        if (!row) {
+          const lower = dRows.filter((r) => r.km <= kmInt);
+          row = lower.length ? lower[lower.length - 1] : dRows[0];
         }
-      } else {
-        // 매칭되지 않는 기간은 공백 처리 (금액 0 또는 null)
         rows.push({
           period: p.id,
-          km: kmInt,
-          f40위탁: 0,
-          f40운수자: 0,
-          f40안전: 0,
-          f20위탁: 0,
-          f20운수자: 0,
-          f20안전: 0,
-          isNotApplied: true
+          km: row.km,
+          f40위탁: row.f40위탁,
+          f40운수자: row.f40운수자,
+          f40안전: row.f40안전,
+          f20위탁: row.f20위탁,
+          f20운수자: row.f20운수자,
+          f20안전: row.f20안전,
         });
+      } else {
+        // 해당 기간에 거리별 운임표가 없는 경우 (예: 데이터 누락 등)
+        // 빈 값으로라도 추가할지 여부는 선택사항이나, 안전하게 스킵하거나 0으로 표시
       }
     }
 

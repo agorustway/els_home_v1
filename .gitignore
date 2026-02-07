@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Debug images
+elsbot/login_debug_*.png
+
+# Node
+node_modules/
+.next/
+out/
+build/
+
+# Local env files
+.env*.local
+
+# OS files
+.DS_Store
+Thumbs.db

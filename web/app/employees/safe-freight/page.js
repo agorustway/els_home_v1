@@ -8,7 +8,7 @@ import NaverMapRouteSearch from '@/components/NaverMapRouteSearch';
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
   { id: 'distance', label: '거리별운임', desc: '거리(km)별 운임' },
-  { id: 'other', label: '이외구간', desc: '고시 외 구간 거리 → 거리별 운임 적용' },
+  { id: 'other', label: '이외구간', desc: '고시 외 구간(2022년이전)' },
 ];
 
 const TEMP_RESULTS_KEY = 'safeFreightTempResults';
@@ -45,6 +45,145 @@ export default function SafeFreightPage() {
   const otherTabDefaultsJustSet = useRef(false);
   const skipRegionClearOnce = useRef(false);
 
+  const [addressSearch, setAddressSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [autoRunCount, setAutoRunCount] = useState(0);
+
+  // 시도 명칭 매핑 (API -> 안전운임 데이터 표준)
+  const SIDO_MAP = {
+    '서울특별시': '서울시',
+    '부산광역시': '부산시',
+    '대구광역시': '대구시',
+    '인천광역시': '인천시',
+    '광주광역시': '광주시',
+    '대전광역시': '대전시',
+    '울산광역시': '울산시',
+    '세종특별자치시': '세종시',
+    '경기도': '경기도',
+    '강원특별자치도': '강원도',
+    '강원도': '강원도',
+    '충청북도': '충북',
+    '충청남도': '충남',
+    '전라북도': '전북',
+    '전북특별자치도': '전북',
+    '전라남도': '전남',
+    '경상북도': '경북',
+    '경상남도': '경남',
+    '제주특별자치도': '제주도',
+    '제주도': '제주도',
+    // 축약형 추가 (카카오 API 등 대비)
+    '경기': '경기도', '강원': '강원도', '충북': '충북', '충남': '충남',
+    '전북': '전북', '전남': '전남', '경북': '경북', '경남': '경남', '제주': '제주도',
+    '서울': '서울시', '부산': '부산시', '대구': '대구시', '인천': '인천시',
+    '광주': '광주시', '대전': '대전시', '울산': '울산시', '세종': '세종시'
+  };
+
+  const handleAddressSearch = async (val) => {
+    setAddressSearch(val);
+    if (!val || val.length < 2) {
+      setSearchResults([]);
+      setShowAddressDropdown(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/safe-freight/juso?keyword=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data.results?.juso) {
+        setSearchResults(data.results.juso);
+        setShowAddressDropdown(true);
+      } else {
+        setSearchResults([]);
+      }
+      setHighlightedIndex(0);
+    } catch (e) {
+      console.error('Address search error:', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectAddress = (item, autoRun = false) => {
+    const { siNm, sggNm, emdNm } = item;
+    if (!siNm || !emdNm) return;
+
+    const sido = SIDO_MAP[siNm] || siNm;
+    setRegion1(sido);
+
+    // 비동기적 상태 업데이트 연쇄 (드롭다운 의존성 때문)
+    setTimeout(() => {
+      const sgg = sggNm || '';
+      setRegion2(sgg);
+
+      setTimeout(() => {
+        // 정확한 동 매칭 시도
+        let targetDong = emdNm || '';
+
+        // 현재 선택된 모드에 맞는 지역 데이터 소스 확인
+        const currentRegions = queryType === 'other'
+          ? (options?.otherRegions?.[origin] || {})
+          : (options?.regions || {});
+
+        const dongsInSgg = currentRegions[sido]?.[sgg] || []; // Array of dongs OR Object of dongs keys? safe-freight.json structure implies array for dong list or keys if object.
+        // Based on previous code: regionsSource[region1][region2] seems to be an array or object. Let's assume list of keys or array.
+        // Actually region3List uses: (regionsSource[region1][region2] || []) which implies it's iterable.
+        // Let's verify structure: options.regions['경기도']['평택시'] is likely an ARRAY of strings based on usage.
+
+        // 데이터 구조 확인: options.regions[sido][sgg] 는 배열([]) 입니다.
+        const availableDongs = Array.isArray(dongsInSgg) ? dongsInSgg : Object.keys(dongsInSgg);
+
+        if (availableDongs.length > 0) {
+          // 1. 완전 일치 확인
+          if (availableDongs.includes(targetDong)) {
+            setRegion3(targetDong);
+          } else {
+            // 2. hDong (행정동) 매칭 시도
+            const hMatch = item.hDong && availableDongs.find(d => d === item.hDong);
+            if (hMatch) {
+              setRegion3(hMatch);
+            } else {
+              // 3. bDong (법정동) 매칭 시도
+              const bMatch = item.bDong && availableDongs.find(d => d === item.bDong);
+              if (bMatch) {
+                setRegion3(bMatch);
+              } else {
+                // 4. 유사 매칭: "신장" -> "신장1동" (앞부분 일치)
+                // 행정동명이나 법정동명 기반으로 포함 여부 확인
+                const clean = (s) => s ? s.replace(/[0-9.]/g, '').replace(/(동|읍|면)$/, '') : '';
+                const target = clean(item.hDong || item.bDong || targetDong);
+                const fuzzyMatch = availableDongs.find(d => clean(d).includes(target));
+                if (fuzzyMatch) {
+                  setRegion3(fuzzyMatch);
+                } else {
+                  setRegion3(''); // 매칭 실패 시 비움
+                }
+              }
+            }
+          }
+        } else {
+          setRegion3('');
+        }
+
+        if (autoRun) {
+          // 상태 업데이트 반영을 위해 미세한 지연 후 실행 트리거
+          setTimeout(() => setAutoRunCount(c => c + 1), 50);
+        }
+      }, 100);
+    }, 100);
+
+    setAddressSearch(item.roadAddr || item.jibunAddr);
+
+    // Event loop 마지막에 닫아 removeChild 에러 방지
+    setTimeout(() => {
+      setShowAddressDropdown(false);
+    }, 0);
+  };
+
   useEffect(() => {
     try {
       const raw = typeof sessionStorage !== 'undefined' && sessionStorage.getItem(TEMP_RESULTS_KEY);
@@ -64,7 +203,7 @@ export default function SafeFreightPage() {
         const periods = data.periods || [];
         const sectionPeriod = periods.find((p) => p.id === '26.02월') ? '26.02월' : periods[0]?.id;
         if (sectionPeriod) setPeriod(sectionPeriod);
-        setOrigin('부산신항');
+        setOrigin('[왕복] 부산신항');
         setRegion1('충남');
         setRegion2('아산시');
         setRegion3('인주면');
@@ -74,10 +213,32 @@ export default function SafeFreightPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const regionsSource = useMemo(
-    () => (queryType === 'other' ? options?.otherRegions?.[origin] || {} : options?.regions || {}),
-    [options, queryType, origin]
-  );
+  // autoRunCount 변경 시 runLookup 실행
+  useEffect(() => {
+    if (autoRunCount > 0) {
+      // 모든 필드가 채워져 있는지 확인 후 실행 (안전장치)
+      if (origin && region1 && region2 && region3) {
+        runLookup();
+      }
+    }
+  }, [autoRunCount, origin, region1, region2, region3]);
+
+  const regionsSource = useMemo(() => {
+    if (queryType === 'other') {
+      let key = origin;
+      // otherRegions 키는 '부산신항' 등 단순 명칭, origin은 '[왕복] 부산신항' 등
+      if (options?.otherRegions && !options.otherRegions[key]) {
+        // 태그 제거 후 매칭 시도
+        const cleanKey = key.replace(/\[.*?\]\s*/g, '').trim();
+        if (options.otherRegions[cleanKey]) {
+          key = cleanKey;
+        }
+      }
+      return options?.otherRegions?.[key] || {};
+    }
+    return options?.regions || {};
+  }, [options, queryType, origin]);
+
   const region1List = useMemo(() => Object.keys(regionsSource).sort(), [regionsSource]);
   const region2List = useMemo(
     () => (region1 && regionsSource[region1] ? Object.keys(regionsSource[region1]).sort() : []),
@@ -88,8 +249,50 @@ export default function SafeFreightPage() {
     [regionsSource, region1, region2]
   );
 
-  /** 조회 조건 기점 목록 (기점축약 통일) */
-  const originList = options?.origins || [];
+  /** 조회 조건 기점 목록: [왕복] -> [편도] -> 기타 순 정렬 및 분리 */
+  const originList = useMemo(() => {
+    let list = options?.origins || [];
+    if (!list.length) return [];
+
+    // 이외구간: otherRegions 에 정의된 기점만 노출
+    if (queryType === 'other') {
+      const validKeys = Object.keys(options?.otherRegions || {});
+      list = list.filter((o) => {
+        const cleanId = o.id.replace(/\[.*?\]\s*/g, '').trim();
+        return validKeys.includes(cleanId) || validKeys.some(k => o.id.includes(k));
+      });
+    }
+
+    const round = [];
+    const oneWay = [];
+    const others = [];
+
+    list.forEach((o) => {
+      const s = String(o.id);
+      if (s.includes('[왕복]')) round.push(o);
+      else if (s.includes('[편도]')) oneWay.push(o);
+      else others.push(o);
+    });
+
+    const sortFn = (a, b) => a.id.localeCompare(b.id);
+    round.sort(sortFn);
+    oneWay.sort(sortFn);
+    others.sort(sortFn);
+
+    const result = [];
+    // [편도] -> [왕복] 순서로 변경
+    if (oneWay.length) result.push(...oneWay);
+    if (oneWay.length && round.length) {
+      result.push({ id: 'sep-oneWay-round', label: '---------------------', disabled: true });
+    }
+    if (round.length) result.push(...round);
+
+    if (others.length) {
+      if (result.length > 0) result.push({ id: 'sep-others', label: '---------------------', disabled: true });
+      result.push(...others);
+    }
+    return result;
+  }, [options, queryType]);
 
   useEffect(() => {
     if ((queryType === 'other' || queryType === 'section') && skipRegionClearOnce.current) {
@@ -121,16 +324,23 @@ export default function SafeFreightPage() {
       skipRegionClearOnce.current = true;
       const p = options?.periods?.find((x) => x.id === '26.02월') ? '26.02월' : options?.periods?.[0]?.id;
       if (p) setPeriod(p);
-      setOrigin('부산신항');
+      setOrigin('[왕복] 부산신항');
       setRegion1('충남');
       setRegion2('아산시');
       setRegion3('인주면');
     } else if (queryType === 'other') {
       otherTabDefaultsJustSet.current = true;
       skipRegionClearOnce.current = true;
-      const p = options?.periods?.find((x) => x.id === '26.02월') ? '26.02월' : options?.periods?.[0]?.id;
+      // 이외구간 기본 기간: 2026년 제외, 가장 최신(예: 22.07월)
+      const validPeriods = (options?.periods || []).filter(pp => {
+        const y = parseInt(pp.id.split('.')[0], 10);
+        return !isNaN(y) && y <= 22;
+      });
+      const p = validPeriods.length > 0 ? validPeriods[0].id : '';
       if (p) setPeriod(p);
-      setOrigin('부산신항');
+
+      // 이외구간 기본 기점도 '[왕복] 부산신항' 시도 (데이터에 있다면)
+      setOrigin('[왕복] 부산신항');
       setRegion1('충남');
       setRegion2('아산시');
       setRegion3('인주면');
@@ -323,7 +533,12 @@ export default function SafeFreightPage() {
       if (!res.ok) throw new Error(data.error || '조회 실패');
 
       const rows = data.rows || [];
-      if (!rows.length) throw new Error('해당 운임을 찾을 수 없습니다.');
+      if (!rows.length) {
+        if (queryType === 'other') {
+          throw new Error('해당 구간은 [구간별 운임]에 자료가 존재할 수 있습니다. [구간별 운임] 탭에서 조회해주세요.\n(본 자료는 2022년 이전 법정동 사용 시 있던 구형 자료입니다.)');
+        }
+        throw new Error('해당 운임을 찾을 수 없습니다.');
+      }
 
       setResultAll({
         type: data.type,
@@ -381,7 +596,10 @@ export default function SafeFreightPage() {
         });
       }
     } catch (err) {
-      setLookupError(err.message);
+      // 에러 메시지를 Toast로 표시
+      setToastMessage(err.message);
+      setLookupError(null);
+      setTimeout(() => setToastMessage(null), 4000); // 4초 후 제거
     } finally {
       setLookupLoading(false); // Corrected to use setLookupLoading
     }
@@ -517,49 +735,53 @@ export default function SafeFreightPage() {
       <div className={styles.tabs}>
         {/* 구간별운임 → 거리별운임 → 이외구간 */}
         {QUERY_TYPES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={queryType === t.id ? styles.tabActive : styles.tab}
-              onClick={() => { setView('default'); setQueryType(t.id); }}
-            >
-              <span className={styles.tabLabel}>
-                {t.label}
-                {t.yearNote && <span className={styles.yearNote}> ({t.yearNote})</span>}
-              </span>
-              <span className={styles.tabDesc}>{t.desc}</span>
-            </button>
+          <button
+            key={t.id}
+            type="button"
+            className={
+              t.id === 'other'
+                ? (queryType === t.id ? styles.tabActiveRed : styles.tabRed)
+                : (queryType === t.id ? styles.tabActive : styles.tab)
+            }
+            onClick={() => { setView('default'); setQueryType(t.id); }}
+          >
+            <span className={styles.tabLabel}>
+              {t.label}
+              {t.yearNote && <span className={styles.yearNote}> ({t.yearNote})</span>}
+            </span>
+            <span className={styles.tabDesc}>{t.desc}</span>
+          </button>
         ))}
-        
+
         {/* 구간조회(개발중) */}
         <button
-            type="button"
-            className={styles.tabDeveloping}
-            onClick={() => setView('naver-map')}
-            title="네이버 지도로 경로 조회 (개발중)"
+          type="button"
+          className={styles.tabDeveloping}
+          onClick={() => setView('naver-map')}
+          title="네이버 지도로 경로 조회 (개발중)"
         >
-            <span className={styles.tabLabel}>구간조회(개발중)</span>
-            <span className={styles.tabDesc}>지도 기반 거리/경로 조회</span>
+          <span className={styles.tabLabel}>구간조회(개발중)</span>
+          <span className={styles.tabDesc}>지도 기반 거리/경로 조회</span>
         </button>
 
         {/* 관련 법령·고시 안내 */}
         <button
-            type="button"
-            className={styles.noticeTabBtn}
-            onClick={() => setNoticeModalOpen(true)}
-            aria-label="관련 법령·고시 안내 보기"
+          type="button"
+          className={styles.noticeTabBtn}
+          onClick={() => setNoticeModalOpen(true)}
+          aria-label="관련 법령·고시 안내 보기"
         >
-            <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
+          <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
         </button>
 
         {/* Forwarder.KR */}
         <button
-            type="button"
-            className={styles.tab} /* 일반 탭 버튼 스타일 적용 */
-            onClick={() => window.open('https://www.forwarder.kr/tariff/', '_blank')}
-            title="포워더케이알 운임정보"
+          type="button"
+          className={styles.tab} /* 일반 탭 버튼 스타일 적용 */
+          onClick={() => window.open('https://www.forwarder.kr/tariff/', '_blank')}
+          title="포워더케이알 운임정보"
         >
-            <img src="/images/forwarderkr.png" alt="포워더KR 로고" className={styles.forwarderLogo} />
+          <img src="/images/forwarderkr.png" alt="포워더KR 로고" className={styles.forwarderLogo} />
         </button>
       </div>
 
@@ -617,78 +839,118 @@ export default function SafeFreightPage() {
         <>
           <section className={styles.formSection}>
             <div className={styles.formGrid}>
-              <div className={styles.formLeft}>
-                <form onSubmit={handleFormSubmit} className={styles.queryForm}>
-                  <p className={styles.sectionHead}>조회 조건</p>
+
+              {/* STEP 1: 운송 조건 */}
+              <div className={styles.stepModule}>
+                <div className={styles.stepTitle}>
+                  <span className={styles.stepNumber}>1</span> 운송 조건 입력
+                </div>
+                <form onSubmit={handleFormSubmit} className={styles.formLeft}>
                   <div className={styles.formBlock}>
-                    <label className={styles.label}>기간</label>
+                    <label className={styles.label}>적용 기간</label>
                     <select
                       className={styles.select}
                       value={period}
                       onChange={(e) => setPeriod(e.target.value)}
-                      aria-label="적용 기간"
                     >
-                      {(options?.periods || []).map((p) => (
-                        <option key={p.id} value={p.id}>{p.label || p.id}</option>
-                      ))}
+                      {(options?.periods || [])
+                        .filter((p) => {
+                          if (queryType !== 'other') return true;
+                          // 이외구간: 2026년 이후(23년~) 제외
+                          const year = parseInt(p.id.split('.')[0], 10);
+                          return !isNaN(year) && year <= 22;
+                        })
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>{p.label || p.id}</option>
+                        ))}
                     </select>
                     {queryType === 'section' && displayMode === 'all' && (
                       <p className={styles.periodHint}>전체 조회 시 기간 조건은 적용되지 않습니다.</p>
                     )}
                   </div>
 
-                  {queryType !== 'distance' && (
+                  {queryType !== 'distance' ? (
                     <>
                       <div className={styles.formBlock}>
-                        <label className={styles.label}>기점축약</label>
+                        <label className={styles.label}>기점 축약</label>
                         <select
                           className={styles.select}
                           value={origin}
                           onChange={(e) => setOrigin(e.target.value)}
-                          aria-label="기점축약"
                         >
                           {originList.map((o) => (
-                            <option key={o.id} value={o.id}>{o.id}</option>
+                            <option key={o.id} value={o.id} disabled={o.disabled}>
+                              {o.disabled ? o.label : o.id}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div className={styles.formBlock}>
-                        <label className={styles.label}>행선지</label>
+                        <label className={styles.label}>행선지 (주소 검색)</label>
+                        <div className={styles.addressSearchContainer}>
+                          <input
+                            type="text"
+                            className={styles.addressInput}
+                            placeholder="주소 입력 (예: 인주면 걸매리 1034번지)"
+                            value={addressSearch}
+                            value={addressSearch}
+                            onChange={(e) => handleAddressSearch(e.target.value)}
+                            onFocus={() => addressSearch && setShowAddressDropdown(true)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setHighlightedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
+                              } else if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setHighlightedIndex(prev => Math.max(prev - 1, 0));
+                              } else if (e.key === 'Enter') {
+                                if (showAddressDropdown && searchResults.length > 0) {
+                                  e.preventDefault();
+                                  selectAddress(searchResults[highlightedIndex], true);
+                                }
+                              }
+                            }}
+                          />
+                          {isSearching && <div className={styles.searchingSpinner}></div>}
+                          {showAddressDropdown && (
+                            <div className={styles.addressDropdown}>
+                              {searchResults.length > 0 ? (
+                                searchResults.map((item, idx) => (
+                                  <div
+                                    key={idx}
+                                    onClick={() => selectAddress(item)}
+                                    className={`${styles.addressItem} ${idx === highlightedIndex ? styles.addressItemActive : ''}`}
+                                    style={idx === highlightedIndex ? { background: '#f1f5f9' } : {}}
+                                  >
+                                    <div className={styles.addrMain}>
+                                      <span className={styles.addrBadge}>도로명</span> {item.roadAddr}
+                                    </div>
+                                    <div className={styles.addrSub}>
+                                      <span className={styles.addrBadge}>지번</span> {item.jibunAddr}
+                                    </div>
+                                    <div className={styles.addrAdm}>
+                                      [행정동] {item.admNm}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                !isSearching && addressSearch.length >= 2 && <div className={styles.noAddress}>검색 결과가 없습니다.</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <div className={styles.regionGroup}>
-                          <select
-                            className={styles.select}
-                            value={region1}
-                            onChange={(e) => setRegion1(e.target.value)}
-                            aria-label="시·도"
-                          >
+                          <select className={styles.select} value={region1} onChange={(e) => setRegion1(e.target.value)} aria-label="시·도">
                             <option value="">시·도</option>
-                            {region1List.map((r) => (
-                              <option key={r} value={r}>{r}</option>
-                            ))}
+                            {region1List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
-                          <select
-                            className={styles.select}
-                            value={region2}
-                            onChange={(e) => setRegion2(e.target.value)}
-                            aria-label="시·군·구"
-                            disabled={!region1}
-                          >
+                          <select className={styles.select} value={region2} onChange={(e) => setRegion2(e.target.value)} disabled={!region1} aria-label="시·군·구">
                             <option value="">시·군·구</option>
-                            {region2List.map((r) => (
-                              <option key={r} value={r}>{r}</option>
-                            ))}
+                            {region2List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
-                          <select
-                            className={styles.select}
-                            value={region3}
-                            onChange={(e) => setRegion3(e.target.value)}
-                            aria-label="읍·면·동"
-                            disabled={!region2}
-                          >
+                          <select className={styles.select} value={region3} onChange={(e) => setRegion3(e.target.value)} disabled={!region2} aria-label="읍·면·동">
                             <option value="">읍·면·동</option>
-                            {region3List.map((r) => (
-                              <option key={r} value={r}>{r}</option>
-                            ))}
+                            {region3List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
                         </div>
                         {queryType === 'other' && selectedOtherSectionInfo && (selectedOtherSectionInfo.hDong !== selectedOtherSectionInfo.bDong) && (
@@ -697,7 +959,7 @@ export default function SafeFreightPage() {
                             <strong>{region3 === selectedOtherSectionInfo.hDong ? selectedOtherSectionInfo.bDong : selectedOtherSectionInfo.hDong}</strong>
                           </div>
                         )}
-                        <p className={styles.regionHint}>주소 검색 시 지역정보가 자동입력됩니다.</p>
+                        <p className={styles.regionHint}>주소 검색 시 행정동 기준 지역정보가 자동입력됩니다.</p>
                       </div>
                       {queryType === 'other' && (
                         <div className={styles.formBlock}>
@@ -727,9 +989,7 @@ export default function SafeFreightPage() {
                         </div>
                       )}
                     </>
-                  )}
-
-                  {queryType === 'distance' && (
+                  ) : (
                     <>
                       <div className={styles.formBlock}>
                         <label className={styles.label}>구분</label>
@@ -770,250 +1030,168 @@ export default function SafeFreightPage() {
                         </div>
                       </div>
                       <div className={styles.formBlock}>
-                        <label className={styles.label}>거리 (km)</label>
+                        <label className={styles.label}>직접 입력 (km)</label>
                         <input
                           type="number"
                           min={1}
                           className={styles.inputKm}
                           value={inputKm}
                           onChange={(e) => setInputKm(e.target.value)}
-                          placeholder="예: 350"
+                          placeholder="거리 입력"
+                          style={{ width: '100%' }}
                         />
                       </div>
                     </>
                   )}
-
-                  {(queryType === 'section' || queryType === 'other' || queryType === 'distance') && (
-                    <div className={styles.modeRow}>
-                      <span className={styles.modeLabel}>표시</span>
-                      <label className={styles.radioLabel}>
-                        <input
-                          type="radio"
-                          name="displayMode"
-                          value="all"
-                          checked={displayMode === 'all'}
-                          onChange={() => setDisplayMode('all')}
-                        />
-                        적용월 전체 (최근순)
-                      </label>
-                      <label className={styles.radioLabel}>
-                        <input
-                          type="radio"
-                          name="displayMode"
-                          value="latest"
-                          checked={displayMode === 'latest'}
-                          onChange={() => setDisplayMode('latest')}
-                        />
-                        선택한 적용월만
-                      </label>
-                    </div>
-                  )}
-
-                  <div className={styles.actionRow}>
-                    <div className={styles.actionPrimary}>
-                      <button
-                        type="submit"
-                        className={styles.submitBtn}
-                        disabled={lookupLoading || !canSubmit}
-                      >
-                        {lookupLoading ? '조회 중…' : '안전운임 조회'}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.excelDownloadBtn}
-                        disabled={downloadLoading || (!resultAll && (!savedResults || savedResults.length === 0))}
-                        onClick={downloadExcel}
-                      >
-                        {downloadLoading ? '다운로드 중…' : '엑셀 다운로드'}
-                      </button>
-                    </div>
-                    <div className={styles.actionSecondary}>
-                      <label className={styles.tempSaveLabel}>
-                        <input
-                          type="checkbox"
-                          checked={saveToTemp}
-                          onChange={(e) => setSaveToTemp(e.target.checked)}
-                        />
-                        결과값 임시저장
-                      </label>
-                      <button
-                        type="button"
-                        className={styles.clearSavedBtn}
-                        onClick={clearSavedResults}
-                      >
-                        비우기
-                      </button>
-                    </div>
-                  </div>
                 </form>
               </div>
 
-              <div className={styles.formRight}>
-                <p className={styles.sectionHead}>I. 할증비용</p>
-                {options?.surchargeRegulation?.notice && (
-                  <p className={styles.regulationNotice} title={options.surchargeRegulation.legalRef}>
-                    {options.surchargeRegulation.notice}
-                  </p>
-                )}
-                <div className={styles.surchargeGrid}>
-                  <div className={styles.surchargeCol}>
-                    {flexibagOptions.length > 0 && (
-                      <div className={styles.formBlock}>
-                        <span className={styles.label}>플렉시백 컨테이너</span>
-                        <label className={styles.checkLabel}>
-                          <input
-                            type="checkbox"
-                            checked={groupApply.flexibag || !!selectedByGroup('flexibag')}
-                            onChange={(e) => setGroupApplyEnabled('flexibag', e.target.checked)}
-                          />
-                          <span>적용</span>
+              {/* STEP 2: 할증/부대비용 */}
+              <div className={styles.stepModule}>
+                <div className={styles.stepTitle}>
+                  <span className={styles.stepNumber}>2</span> 할증/부대비용 선택
+                  <span className={styles.tooltipContainer} style={{ marginLeft: 'auto' }}>
+                    <span className={styles.infoIcon}>?</span>
+                    <div className={styles.tooltipText}>안전운임 고시 제22조(할증의 적용): 다수의 할증이 적용될 경우 가장 높은 할증률 1개는 전액, 나머지는 50%씩 적용하며, 항목은 최대 3개까지만 합산 적용됩니다.</div>
+                  </span>
+                </div>
+                <div className={styles.surchargeSection}>
+                  <div className={styles.surchargeGroup}>
+                    <div className={styles.surchargeGroupTitle}>
+                      📦 장비/화물
+                      <span className={styles.tooltipContainer}>
+                        <span className={styles.infoIcon}>?</span>
+                        <div className={styles.tooltipText}>액체화물 운송을 위한 플렉시백 설치 컨테이너 할증을 선택합니다.</div>
+                      </span>
+                    </div>
+                    <div className={styles.surchargeOptionsGrid}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label className={styles.checkLabel} style={{ minWidth: '70px' }}>
+                          <input type="checkbox" checked={groupApply.flexibag} onChange={(e) => setGroupApplyEnabled('flexibag', e.target.checked)} />
+                          플렉시백
                         </label>
-                        {(groupApply.flexibag || selectedByGroup('flexibag')) && (
-                          <div className={styles.radioGroup}>
-                            {flexibagOptions.map((s) => (
-                              <label key={s.id} className={styles.radioLabel}>
-                                <input
-                                  type="radio"
-                                  name="flexibag"
-                                  checked={surchargeIds.has(s.id)}
-                                  onChange={() => setSurchargeByGroup('flexibag', s.id)}
-                                />
-                                {s.label.replace('플렉시백 컨테이너 ', '')}
-                              </label>
-                            ))}
-                          </div>
-                        )}
+                        <select className={styles.select} value={selectedByGroup('flexibag')} onChange={(e) => setSurchargeByGroup('flexibag', e.target.value)} disabled={!groupApply.flexibag}>
+                          <option value="">유형 선택</option>
+                          {flexibagOptions.map((s) => <option key={s.id} value={s.id}>{s.label.replace('플렉시백 컨테이너 ', '')}</option>)}
+                        </select>
                       </div>
-                    )}
-                    <div className={styles.formBlock}>
-                      <span className={styles.label}>기타 할증</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label className={styles.checkLabel} style={{ minWidth: '70px' }}>
+                          <input type="checkbox" checked={groupApply.hazard} onChange={(e) => setGroupApplyEnabled('hazard', e.target.checked)} />
+                          위험물
+                        </label>
+                        <select className={styles.select} value={selectedByGroup('hazard')} onChange={(e) => setSurchargeByGroup('hazard', e.target.value)} disabled={!groupApply.hazard}>
+                          <option value="">등급</option>
+                          {hazardOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.surchargeGroup}>
+                    <div className={styles.surchargeGroupTitle}>⚙️ 운송 환경</div>
+                    <div className={styles.surchargeOptionsGrid}>
                       {checkboxSurcharges.map((s) => (
                         <label key={s.id} className={styles.checkLabel}>
-                          <input
-                            type="checkbox"
-                            checked={surchargeIds.has(s.id)}
-                            onChange={() => toggleSurcharge(s.id)}
-                          />
-                          <span>
-                            {s.label}
-                            {s.id === 'rough' && (
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={roughPct}
-                                onChange={(e) => setRoughPct(Number(e.target.value) || 20)}
-                                className={styles.roughInput}
-                              />
-                            )}
-                            {!s.fixed && typeof (s.pct ?? 0) === 'number' && (s.id === 'rough' ? ' % 적용' : (s.label?.includes('%') ? ' 적용' : ` ${s.pct}% 적용`))}
-                            {s.note && <small className={styles.surchargeNote}>{s.note}</small>}
+                          <input type="checkbox" checked={surchargeIds.has(s.id)} onChange={() => toggleSurcharge(s.id)} />
+                          {s.id === 'rough' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              험로 <input type="number" className={styles.inputPct} value={roughPct} onChange={(e) => setRoughPct(parseInt(e.target.value, 10) || 0)} />%
+                            </span>
+                          ) : s.label.split('(')[0]}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.surchargeGroup}>
+                    <div className={styles.surchargeGroupTitle}>⚠️ 특수 할증</div>
+                    <div className={styles.surchargeOptionsGrid}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label className={styles.checkLabel} style={{ whiteSpace: 'nowrap' }}>
+                          <input type="checkbox" checked={groupApply.oversize} onChange={(e) => setGroupApplyEnabled('oversize', e.target.checked)} />
+                          활대품
+                        </label>
+                        <select className={styles.select} value={selectedByGroup('oversize')} onChange={(e) => setSurchargeByGroup('oversize', e.target.value)} disabled={!groupApply.oversize}>
+                          <option value="">크기</option>
+                          {oversizeOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label className={styles.checkLabel} style={{ whiteSpace: 'nowrap' }}>
+                          <input type="checkbox" checked={groupApply.heavy} onChange={(e) => setGroupApplyEnabled('heavy', e.target.checked)} />
+                          중량물
+                        </label>
+                        <select className={styles.select} value={selectedByGroup('heavy')} onChange={(e) => setSurchargeByGroup('heavy', e.target.value)} disabled={!groupApply.heavy}>
+                          <option value="">무게</option>
+                          {heavyOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.surchargeGroup}>
+                    <div className={styles.surchargeGroupTitle}>💰 부대 비용</div>
+                    <div className={styles.surchargeOptionsGrid}>
+                      {otherCostItems.map((s) => (
+                        <label key={s.id} className={styles.checkLabel}>
+                          <input type="checkbox" checked={surchargeIds.has(s.id)} onChange={() => toggleSurcharge(s.id)} />
+                          {s.label.split(':')[0]}
+                          <span className={styles.tooltipContainer}>
+                            <span className={styles.infoIcon}>?</span>
+                            <div className={styles.tooltipText}>{s.label}</div>
                           </span>
                         </label>
                       ))}
                     </div>
                   </div>
-                  <div className={styles.surchargeCol}>
-                    {hazardOptions.length > 0 && (
-                      <div className={styles.formBlock}>
-                        <span className={styles.label}>위험물질 할증</span>
-                        <label className={styles.checkLabel}>
-                          <input
-                            type="checkbox"
-                            checked={groupApply.hazard || !!selectedByGroup('hazard')}
-                            onChange={(e) => setGroupApplyEnabled('hazard', e.target.checked)}
-                          />
-                          <span>적용</span>
-                        </label>
-                        {(groupApply.hazard || selectedByGroup('hazard')) && (
-                          <select
-                            className={styles.select}
-                            value={selectedByGroup('hazard')}
-                            onChange={(e) => setSurchargeByGroup('hazard', e.target.value || null)}
-                            aria-label="위험물질 선택"
-                          >
-                            <option value="">==선택==</option>
-                            {hazardOptions.map((s) => (
-                              <option key={s.id} value={s.id}>{s.label}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    )}
-                    {oversizeOptions.length > 0 && (
-                      <div className={styles.formBlock}>
-                        <span className={styles.label}>활대품 할증</span>
-                        <label className={styles.checkLabel}>
-                          <input
-                            type="checkbox"
-                            checked={groupApply.oversize || !!selectedByGroup('oversize')}
-                            onChange={(e) => setGroupApplyEnabled('oversize', e.target.checked)}
-                          />
-                          <span>적용</span>
-                        </label>
-                        {(groupApply.oversize || selectedByGroup('oversize')) && (
-                          <select
-                            className={styles.select}
-                            value={selectedByGroup('oversize')}
-                            onChange={(e) => setSurchargeByGroup('oversize', e.target.value || null)}
-                            aria-label="활대품 할증 선택"
-                          >
-                            <option value="">==선택==</option>
-                            {oversizeOptions.map((s) => (
-                              <option key={s.id} value={s.id}>{s.label}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    )}
-                    {heavyOptions.length > 0 && (
-                      <div className={styles.formBlock}>
-                        <span className={styles.label}>중량물 할증</span>
-                        <label className={styles.checkLabel}>
-                          <input
-                            type="checkbox"
-                            checked={groupApply.heavy || !!selectedByGroup('heavy')}
-                            onChange={(e) => setGroupApplyEnabled('heavy', e.target.checked)}
-                          />
-                          <span>적용</span>
-                        </label>
-                        {(groupApply.heavy || selectedByGroup('heavy')) && (
-                          <select
-                            className={styles.select}
-                            value={selectedByGroup('heavy')}
-                            onChange={(e) => setSurchargeByGroup('heavy', e.target.value || null)}
-                            aria-label="중량물 할증 선택"
-                          >
-                            <option value="">==선택==</option>
-                            {heavyOptions.map((s) => (
-                              <option key={s.id} value={s.id}>{s.label}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    )}
+                </div>
+              </div>
+
+              {/* STEP 3: 실행 및 조회 */}
+              <div className={styles.stepModule}>
+                <div className={styles.stepTitle}>
+                  <span className={styles.stepNumber}>3</span> 결과 조회/실행
+                </div>
+                {(queryType === 'section' || queryType === 'other' || queryType === 'distance') && (
+                  <div className={styles.modeRow}>
+                    <label className={styles.radioLabel}>
+                      <input type="radio" name="displayMode" value="all" checked={displayMode === 'all'} onChange={() => setDisplayMode('all')} />
+                      적용월 전체(최근순)
+                    </label>
+                    <label className={styles.radioLabel}>
+                      <input type="radio" name="displayMode" value="latest" checked={displayMode === 'latest'} onChange={() => setDisplayMode('latest')} />
+                      선택 적용월만
+                    </label>
+                  </div>
+                )}
+
+                <div className={styles.btnGroupVertical}>
+                  <button
+                    type="button"
+                    className={styles.btnSearch}
+                    onClick={runLookup}
+                    disabled={!canSubmit || lookupLoading}
+                  >
+                    {lookupLoading ? '조회 중...' : '안전운임 조회'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnExcel}
+                    onClick={downloadExcel}
+                    disabled={downloadLoading || (!resultAll && savedResults.length === 0)}
+                  >
+                    {downloadLoading ? '엑셀 생성 중...' : '결과 엑셀 다운로드'}
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginTop: '6px' }}>
+                    <label className={styles.checkLabel} style={{ cursor: 'pointer' }}>
+                      <input type="checkbox" checked={saveToTemp} onChange={(e) => setSaveToTemp(e.target.checked)} />
+                      조회내역 보존
+                    </label>
+                    <button type="button" onClick={clearSavedResults} className={styles.clearBtn}>내역 비우기</button>
                   </div>
                 </div>
-                {otherCostItems.length > 0 && (
-                  <>
-                    <p className={styles.sectionHead}>II. 기타비용</p>
-                    <div className={styles.formBlock}>
-                      {otherCostItems.map((s) => (
-                        <label key={s.id} className={styles.checkLabel}>
-                          <input
-                            type="checkbox"
-                            checked={surchargeIds.has(s.id)}
-                            onChange={() => toggleSurcharge(s.id)}
-                          />
-                          <span>{s.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </>
-                )}
               </div>
-            </div >
-          </section >
+
+            </div>
+          </section>
 
           {lookupError && <p className={styles.error}>{lookupError}</p>}
 
@@ -1155,12 +1333,7 @@ export default function SafeFreightPage() {
           )}
         </>
       )}
-
-
-            
-      {view === 'naver-map' && (
-          <NaverMapRouteSearch />
-      )}
-    </div >
+      {toastMessage && <div className={styles.toast}>{toastMessage}</div>}
+    </div>
   );
 }
