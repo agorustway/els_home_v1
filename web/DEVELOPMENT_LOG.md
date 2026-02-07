@@ -38,9 +38,11 @@
     - **클라이언트 캐싱**: `InfoTicker` 마운트 시 모든 지역 날씨를 한 번에 가져와 `weatherCache`에 저장. 이후 5초마다 캐시된 데이터만 로테이션.
     - **성능**: 네트워크 요청 횟수를 획기적으로 줄이면서도 정보의 흐름은 끊기지 않도록 구현.
 
-### 5. 인트라넷 전용 레이아웃 (Work Mode)
-- **Header**: 인트라넷 한정으로 `relative` 배치 적용. 스크롤 시 본문과 함께 가려져 화면 가동 범위 확대.
-- **InfoTicker**: 메인 헤더가 사라지면 **최상단(0px)에 고정(Sticky)**되어 시계와 뉴스 가독성 유지.
+### [2026-02-07] 컨테이너 이력조회 UI 고도화 및 개인화
+- **Individual Credentials**: Supabase `user_els_credentials` 테이블 및 API 추가 (사용자별 개별 이트렌스 계정 관리).
+- **State Persistence**: `sessionStorage`를 도입하여 페이지 전환 시에도 로그 및 조회 결과 유지.
+- **Auto Login & Pipeline**: 페이지 진입 시 자동 로그인 및 로그인 완료 전 조회 요청 대응 (대기열 처리).
+- **UX Improvement**: 모든 입력 필드 엔터 키(ENTER) 지원 및 개인 계정 저장 기능 추가.
 - **Sidebar**: 헤더 높이를 계산하여 티커 바로 아래에 고정되도록 `sticky top` 위치 정밀 조정.
 
 ---

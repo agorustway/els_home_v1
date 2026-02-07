@@ -15,24 +15,55 @@ CORS(app)
 # 전역 변수로 브라우저 드라이버를 유지 (세션 유지의 핵심)
 shared_driver = None
 current_user = {"id": None, "pw": None}
+is_busy = False # 현재 조회 작업 수행 중인지 여부
+
+def check_driver_alive(driver):
+    """실제로 브라우저가 살아있는지 체크 (변수만 있는게 아니라 진짜 통신되는지)"""
+    global is_busy
+    if not driver: return False
+    
+    # 만약 현재 조회 중(is_busy)이라면 이미 살아있는 것이므로 title 체크를 생략 (Thread conflict 방지)
+    if is_busy:
+        return True
+        
+    try:
+        # 가벼운 명령어로 응답 확인
+        _ = driver.title
+        return True
+    except:
+        return False
 
 @app.route('/health', methods=['GET'])
 def health():
     """백엔드가 데몬이 살아있는지 확인할 때 부르는 곳"""
+    global is_busy
+    is_alive = check_driver_alive(shared_driver)
     return jsonify({
         "status": "ok", 
-        "driver_active": shared_driver is not None,
+        "driver_active": is_alive,
+        "is_busy": is_busy,
         "user_id": current_user["id"]
     })
 
 @app.route('/login', methods=['POST'])
 def login():
     """백엔드에서 로그인 요청이 오면 브라우저를 띄우고 ETRANS 접속"""
-    global shared_driver, current_user
+    global shared_driver, current_user, is_busy
     data = request.json
-    u_id = data.get('userId')
+    u_id = (data.get('userId') or "").strip()
     u_pw = data.get('userPw')
     show_browser = data.get('showBrowser', False)
+    
+    # [방어 로직] 이미 브라우저가 살아있고 계정이 같다면 절대 새로 띄우지 않음!
+    # 조회 중(is_busy)이라면 이미 세션이 매우 활발한 것이므로 무조건 재사용
+    is_alive = check_driver_alive(shared_driver)
+    if (is_alive or is_busy) and current_user["id"] and current_user["id"].lower() == u_id.lower():
+        print(f"[데몬] 기존 세션 ({u_id}) 재사용 및 유지.")
+        return jsonify({
+            "ok": True, 
+            "message": "이미 로그인되어 있습니다.", 
+            "log": [f"[데몬] 이미 {u_id} 계정으로 로그인되어 있으며 조회 중이거나 대기 중입니다."]
+        })
     
     # 로그 수집용 리스트
     logs = []
@@ -85,7 +116,7 @@ def login():
 @app.route('/run', methods=['POST'])
 def run():
     """로그인된 세션을 사용해서 실제로 컨테이너 번호를 조회"""
-    global shared_driver
+    global shared_driver, is_busy
     if not shared_driver:
         return jsonify({"ok": False, "error": "활성화된 브라우저 세션이 없습니다. 먼저 로그인하세요."})
     
@@ -97,8 +128,7 @@ def run():
 
     print(f"LOG:[데몬] 컨테이너 {container_no} 조회 명령 수신")
     
-    print(f"LOG:[데몬] 컨테이너 {container_no} 조회 명령 수신")
-    
+    is_busy = True # 조회 시작!
     try:
         # 1. 입력창 찾아서 번호 넣고 조회 버튼 클릭
         status = solve_input_and_search(shared_driver, container_no, log_callback=lambda x: print(f"LOG:{x}", flush=True))
@@ -127,6 +157,8 @@ def run():
         import traceback
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)})
+    finally:
+        is_busy = False # 조회가 끝났거나 에러가 났어도 마쳤으므로 False
 
 @app.route('/quit', methods=['POST'])
 def quit_driver():
@@ -147,4 +179,4 @@ if __name__ == '__main__':
     print("   ELS HYPER TURBO DAEMON STARTED")
     print("   PORT: 31999 | READY FOR HYUNG")
     print("========================================")
-    app.run(host='0.0.0.0', port=31999, debug=False)
+    app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)

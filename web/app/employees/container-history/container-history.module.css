@@ -71,7 +71,7 @@
 
 .input {
     flex: 1;
-    min-width: 150px;
+    min-width: 120px;
     padding: 0.5rem;
     background: #fff;
     border: 1px solid #e2e8f0;
@@ -79,6 +79,11 @@
     color: #1e293b;
     font-size: 0.85rem;
     transition: all 0.2s;
+}
+
+.loginInput {
+    flex: none !important;
+    width: 130px;
 }
 
 .input:focus {
@@ -180,11 +185,12 @@
 }
 
 .rightColumn .section {
-    flex: 1;
+    flex: none;
+    height: 520px;
+    /* 왼쪽 섹션 2개 합 + 계정 저장 배지 높이에 맞춰 확장 */
     display: flex;
     flex-direction: column;
     margin-bottom: 0;
-    /* 마지막 여백 제거 */
 }
 
 .resultHeader {
@@ -226,8 +232,10 @@
     border: 2px solid #00ff88;
     border-radius: 4px;
     padding: 0.75rem;
-    height: 485px;
-    /* 왼쪽 로그인(85) + 컨테이너조회(400) 합계에 딱 맞춤 */
+    flex: 1;
+    /* 모듈 내에서 최대 공간 차지 */
+    min-height: 0;
+    /* flex 자식으로서 스크롤 보장 */
     overflow-y: auto;
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 0.75rem;
@@ -236,6 +244,18 @@
     position: relative;
     scrollbar-width: thin;
     scrollbar-color: #00ff88 #000;
+}
+
+.lastSaved {
+    font-size: 0.72rem;
+    color: #475569;
+    padding: 1px 10px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    display: inline-block;
+    border-left: 3px solid #3b82f6;
+    margin-bottom: 2px;
+    font-weight: 600;
 }
 
 .logLine {
@@ -392,6 +412,12 @@
     border-right: 1px solid #f1f5f9;
 }
 
+.thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
 .table th:last-child,
 .table td:last-child {
     border-right: none;
@@ -403,6 +429,15 @@
     width: 120px;
     font-weight: 600;
     color: #1e293b;
+}
+
+.rowNoData td {
+    background-color: #fcfcfc;
+    color: #94a3b8 !important;
+}
+
+.table tr {
+    transition: background-color 0.2s;
 }
 
 /* 컨테이너번호 (+버튼) */
@@ -549,7 +584,191 @@
     border-color: #1d4ed8;
 }
 
-/* 반응형 */
+/* 대시보드 요약 카드 */
+.statsRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.statCard {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.statCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #2563eb;
+}
+
+.statCardActive {
+    background: #f0f7ff;
+    border-color: #2563eb;
+    border-width: 2px;
+    padding: calc(1rem - 1px);
+}
+
+.statLabel {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.statValue {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.statUnit {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+/* 프리미엄 배지 시스템 */
+.badge {
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.badgeImport {
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+}
+
+.badgeExport {
+    background: #dcfce7;
+    color: #22c55e;
+    border: 1px solid #bbf7d0;
+}
+
+.badgeInbox {
+    background: #eff6ff;
+    color: #3b82f6;
+    border: 1px solid #dbeafe;
+}
+
+.badgeOutbox {
+    background: #fef9c3;
+    color: #ca8a04;
+    border: 1px solid #fef08a;
+}
+
+.badgeEmpty {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+/* 타임라인 스타일 */
+.timelineWrapper {
+    padding: 1rem;
+    background: #f8fbff;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.timelineItem {
+    position: relative;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.timelineItem:last-child {
+    margin-bottom: 0;
+}
+
+.timelineDot {
+    position: absolute;
+    left: -29px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border: 3px solid #3b82f6;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.timelineHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.timelineTime {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.timelineType {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.timelineContent {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: #475569;
+}
+
+.contentItem {
+    display: flex;
+    flex-direction: column;
+}
+
+.contentLabel {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+/* 반응형 보완 */
 @media (max-width: 1024px) {
     .topRow {
         grid-template-columns: 1fr;
@@ -558,4 +777,32 @@
     .terminal {
         min-height: 300px;
     }
+}
+
+/* ETRANS 바로가기 버튼 */
+.etransShortcut {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 50px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    height: 40px;
+}
+
+.etransShortcut:hover {
+    border-color: #2563eb;
+    background: #f8fbff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.etransShortcut img {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
 }

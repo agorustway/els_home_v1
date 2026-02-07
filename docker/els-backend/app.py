@@ -102,21 +102,56 @@ def _parse_grid_text(cn, grid_text):
 
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
-    return jsonify({"available": True, "parseAvailable": True})
+    # 백엔드 내부에서 데몬 상태 확인 시 3회 재시도 로직 도입 (안정성 극대화)
+    daemon_status = {"available": False, "driver_active": False, "user_id": None}
+    
+    for attempt in range(1, 4):
+        try:
+            r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=3)
+            if r.getcode() == 200:
+                raw = r.read().decode("utf-8")
+                data = json.loads(raw)
+                daemon_status["available"] = True
+                daemon_status["driver_active"] = data.get("driver_active", False)
+                daemon_status["user_id"] = data.get("user_id")
+                
+                # 살아있음이 확인되면 즉시 루프 탈출
+                if daemon_status["driver_active"]:
+                    break
+        except Exception as e:
+            app.logger.warning(f"[세션체크] {attempt}회차 시도 실패: {e}")
+        
+        if attempt < 3:
+            time.sleep(0.5) # 잠시 대기 후 재시도
+    
+    return jsonify({
+        "available": daemon_status["available"],
+        "driver_active": daemon_status["driver_active"],
+        "user_id": daemon_status.get("user_id"),
+        "parseAvailable": True
+    })
 
 @app.route("/api/els/config", methods=["GET"])
 def config_get():
+    from datetime import datetime
     if not CONFIG_PATH.exists():
         return jsonify({"hasSaved": False, "defaultUserId": ""})
     try:
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         uid = data.get("user_id", "")
-        return jsonify({"hasSaved": bool(uid and data.get("user_pw")), "defaultUserId": uid})
+        mtime = os.path.getmtime(str(CONFIG_PATH))
+        dt = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+        return jsonify({
+            "hasSaved": bool(uid and data.get("user_pw")), 
+            "defaultUserId": uid,
+            "lastSaved": dt
+        })
     except:
         return jsonify({"hasSaved": False, "defaultUserId": ""})
 
 @app.route("/api/els/config", methods=["POST"])
 def config_post():
+    from datetime import datetime
     data = request.get_json(silent=True)
     if not data: return jsonify({"error": "No data"}), 400
     uid = (data.get("userId") or "").strip()
@@ -125,7 +160,11 @@ def config_post():
     
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps({"user_id": uid, "user_pw": pw}, ensure_ascii=False, indent=2), encoding="utf-8")
-    return jsonify({"success": True, "defaultUserId": uid})
+    
+    mtime = os.path.getmtime(str(CONFIG_PATH))
+    dt = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+    
+    return jsonify({"success": True, "defaultUserId": uid, "lastSaved": dt})
 
 @app.route("/api/els/login", methods=["POST"])
 def login():
@@ -371,7 +410,7 @@ def download(token):
 @app.route("/api/els/logout", methods=["POST"])
 def logout():
     if _daemon_available():
-        req = Request(DAEMON_URL + "/logout", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
+        req = Request(DAEMON_URL + "/quit", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
         try: urlopen(req, timeout=5)
         except: pass
     return jsonify({"ok": True})
@@ -390,4 +429,4 @@ def template():
 
 if __name__ == "__main__":
     app.logger.info("Backend Server Ready with CORS")
-    app.run(host="0.0.0.0", port=2929)
+    app.run(host="0.0.0.0", port=2929, threaded=True)
