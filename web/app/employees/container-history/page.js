@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import styles from './container-history.module.css';
 
-const HEADERS = ['조회번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
+const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
-const ITEMS_PER_PAGE = 30;
+const ITEMS_PER_PAGE = 10;
 
 function parseContainerInput(text) {
     if (!text || !text.trim()) return [];
@@ -26,6 +26,7 @@ export default function ContainerHistoryPage() {
     const [expandedContainers, setExpandedContainers] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
     const [searchFilter, setSearchFilter] = useState('');
+    const [showBrowser, setShowBrowser] = useState(false);
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -45,15 +46,8 @@ export default function ContainerHistoryPage() {
 
         if (savedUserId) setUserId(savedUserId);
         if (savedUserPw) setUserPw(savedUserPw);
-        if (savedContainers) setContainerInput(savedContainers);
+        //if (savedContainers) setContainerInput(savedContainers);
 
-        // 자동 로그인
-        if (savedUserId && savedUserPw) {
-            setLogLines(prev => [...prev, '[자동] 저장된 계정으로 자동 로그인 시작...']);
-            setTimeout(() => {
-                handleLogin(savedUserId, savedUserPw);
-            }, 1000);
-        }
     }, []);
 
     // 세션 갱신 (55분마다)
@@ -98,7 +92,7 @@ export default function ContainerHistoryPage() {
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ useSavedCreds: false, userId: loginId.trim(), userPw: loginPw }),
+                body: JSON.stringify({ useSavedCreds: false, userId: loginId.trim(), userPw: loginPw, showBrowser: showBrowser }),
             });
             const data = await res.json();
 
@@ -133,10 +127,14 @@ export default function ContainerHistoryPage() {
         setLogLines(prev => [...prev, `[검색] ${containers.length}개 컨테이너 조회 시작...`]);
 
         try {
+            // The instruction provided a snippet that seemed to replace the existing fetch call
+            // with a login call. Assuming the intent was to add userId and userPw to the *existing*
+            // run search request, and the snippet was a guide for the body structure.
+            // The original code already uses JSON.stringify.
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ containers }),
+                body: JSON.stringify({ containers, showBrowser: showBrowser, userId: userId, userPw: userPw }),
             });
 
             const reader = res.body.getReader();
@@ -195,12 +193,8 @@ export default function ContainerHistoryPage() {
 
     const handleDownload = () => {
         if (!downloadToken) return;
-        const link = document.createElement('a');
-        link.href = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}`;
-        link.download = resultFileName || 'container_history.xlsx';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${encodeURIComponent(resultFileName || 'els_result.xlsx')}`;
+        window.open(url, '_blank');
     };
 
     const handleFileUpload = async (e) => {
@@ -303,7 +297,17 @@ export default function ContainerHistoryPage() {
                         </div>
 
                         <div className={styles.section}>
-                            <h2 className={styles.sectionTitle}>2. 컨테이너 조회</h2>
+                            <div className={styles.sectionHeader}>
+                                <h2 className={styles.sectionTitle}>2. 컨테이너 조회</h2>
+                                <label className={styles.debugLabel}>
+                                    <input
+                                        type="checkbox"
+                                        checked={showBrowser}
+                                        onChange={(e) => setShowBrowser(e.target.checked)}
+                                    />
+                                    브라우저 표시 (디버그)
+                                </label>
+                            </div>
                             <div
                                 className={styles.dropZone}
                                 onDrop={handleFileDrop}
@@ -377,42 +381,54 @@ export default function ContainerHistoryPage() {
                                     className={styles.searchInput}
                                 />
                                 <button onClick={handleDownload} className={styles.button}>
-                                    엑셀 다운로드 ({resultFileName})
+                                    엑셀 다운로드
                                 </button>
                             </div>
                         </div>
 
-                        {paginatedContainers.map(containerNo => (
-                            <div key={containerNo} className={styles.containerGroup}>
-                                <div
-                                    className={styles.containerHeader}
-                                    onClick={() => toggleContainer(containerNo)}
-                                >
-                                    <span className={styles.containerNo}>
-                                        {expandedContainers[containerNo] ? '▼' : '▶'} {containerNo}
-                                    </span>
-                                    <span className={styles.containerCount}>
-                                        ({result[containerNo].length}건)
-                                    </span>
-                                </div>
-                                <div className={styles.tableWrapper}>
-                                    <table className={styles.table}>
-                                        <thead>
-                                            <tr>
-                                                {HEADERS.map(h => <th key={h}>{h}</th>)}
+                        <div className={styles.resultsList}>
+                            <table className={styles.table}>
+                                <thead className={styles.thead}>
+                                    <tr>
+                                        {HEADERS.map((h, i) => (
+                                            <th key={i}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedContainers.map(containerNo => {
+                                        const rows = result[containerNo] || [];
+                                        const isExpanded = expandedContainers[containerNo];
+                                        const displayRows = isExpanded ? rows : [rows[0]];
+
+                                        return displayRows.map((row, rowIdx) => (
+                                            <tr key={`${containerNo}-${rowIdx}`}>
+                                                {/* 컨테이너번호 컬럼: 첫 행에만 전개 버튼 표시 */}
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        {rowIdx === 0 && rows.length > 1 && (
+                                                            <button
+                                                                onClick={() => toggleContainer(containerNo)}
+                                                                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: '0.9rem', color: '#3b82f6' }}
+                                                            >
+                                                                {isExpanded ? '▼' : '▶'}
+                                                            </button>
+                                                        )}
+                                                        {row[0] || containerNo}
+                                                    </div>
+                                                </td>
+                                                {/* No 컬럼 */}
+                                                <td>{row[1]}</td>
+                                                {/* 나머지 데이터 (수출입, 구분, 터미널... row[2]부터 끝까지) */}
+                                                {row.slice(2).map((cell, cellIdx) => (
+                                                    <td key={cellIdx}>{cell}</td>
+                                                ))}
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(expandedContainers[containerNo] ? result[containerNo] : [result[containerNo][0]]).map((row, i) => (
-                                                <tr key={i}>
-                                                    {row.map((cell, j) => <td key={j}>{cell}</td>)}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        ))}
+                                        ));
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
 
                         {/* 페이지네이션 */}
                         {totalPages > 1 && (
@@ -445,7 +461,6 @@ export default function ContainerHistoryPage() {
                     </div>
                 )}
             </div>
-
             {/* XLSX 라이브러리 로드 */}
             <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
         </div>

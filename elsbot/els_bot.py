@@ -151,21 +151,31 @@ def scrape_hyper_verify(driver, search_no):
     try: return driver.execute_script(script)
     except: return None
 
-def login_and_prepare(u_id, u_pw, log_callback=None):
+def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
     start_time = time.time()
     def _log(msg):
         elapsed = time.time() - start_time
         if log_callback: log_callback(f"[{elapsed:6.2f}s] {msg}")
 
+    print(f"[BOT] 자동화 시작 (브라우저 표시: {show_browser})")
     options = webdriver.ChromeOptions()
-    # 환경 변수로 headless 모드 제어 (로컬 테스트 시 HEADLESS=0 설정)
-    if os.getenv("HEADLESS", "1") == "1":
-        options.add_argument("--headless")
+    
+    # 공통 옵션
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+
+    if not show_browser:
+        # 백그라운드 모드 (Headless)
+        options.add_argument("--headless=new")
+        options.add_argument("--disable-gpu")
+    else:
+        # 화면 표시 모드 (Debug)
+        options.add_argument("--start-maximized")
+        # 팝업 차단 해제 등 추가 기능이 필요하면 여기에 추가 가능
 
     try:
         # ChromeDriver 경로 우선순위: 시스템 설치 > webdriver-manager
@@ -227,13 +237,13 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
         if 'driver' in locals() and driver: driver.quit()
         return (None, f"에러: {e}")
 
-def run_els_process(u_id, u_pw, c_list, log_callback=None):
+def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     start_time = time.time()
     def _log(msg):
         elapsed = time.time() - start_time
         if log_callback: log_callback(f"[{elapsed:6.2f}s] {msg}")
 
-    res = login_and_prepare(u_id, u_pw, _log)
+    res = login_and_prepare(u_id, u_pw, _log, show_browser=show_browser)
     driver = res[0]
     if not driver: return {"ok": False, "error": res[1]}
 

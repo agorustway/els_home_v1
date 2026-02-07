@@ -134,9 +134,11 @@ def login():
     uid = data.get("userId") or ""
     pw = data.get("userPw") or ""
 
+    show_browser = data.get("showBrowser", False)
+
     if _daemon_available():
         try:
-            body = json.dumps({"useSavedCreds": use_saved, "userId": uid, "userPw": pw}, ensure_ascii=False).encode("utf-8")
+            body = json.dumps({"useSavedCreds": use_saved, "userId": uid, "userPw": pw, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json"})
             r = urlopen(req, timeout=90)
             raw_resp = r.read().decode("utf-8")
@@ -167,12 +169,12 @@ def login():
     except:
         return jsonify({"ok": False, "error": "응답 파싱 실패"})
 
-def _stream_run_daemon(containers, use_saved, uid, pw):
+def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     # Daemon Mode: Loop through containers here in App.py
     final_rows = []
-    headers = ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
+    headers = ["컨테이너번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
     
-    yield "LOG:Daemon 모드로 조회를 시작합니다.\n"
+    yield "LOG:Daemon 서버를 통해 조회를 시작합니다.\n"
     
     for cn in containers:
         cn = cn.strip().upper()
@@ -181,8 +183,13 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
         yield f"LOG:[{cn}] 조회 요청 중...\n"
         
         try:
-            # Daemon expects singular "containerNo"
-            body = json.dumps({"containerNo": cn}, ensure_ascii=False).encode("utf-8")
+            # 데몬 서버 규격인 'containerNo' (단수형)로 전달하여 조회 실패 해결
+            body = json.dumps({
+                "userId": uid, 
+                "userPw": pw, 
+                "containerNo": cn, 
+                "showBrowser": show_browser
+            }, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
             resp = urlopen(req, timeout=60)
             raw_resp = resp.read().decode("utf-8")
@@ -227,14 +234,14 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
             df_all = pd.DataFrame(final_rows, columns=headers)
             
             # Sheet1: 각 컨테이너의 1번 행만 (요약)
-            df_summary = df_all.groupby('조회번호').first().reset_index()
+            df_summary = df_all.groupby('컨테이너번호').first().reset_index()
             
             # Sheet2: 전체 데이터
             df_full = df_all
             
-            # 파일명 생성: els_result_260207_1311.xlsx
+            # 파일명 생성: els_result_260207_134257.xlsx
             now = datetime.now()
-            filename = f"els_result_{now.strftime('%y%m%d')}_{now.strftime('%H%M')}.xlsx"
+            filename = f"els_result_{now.strftime('%y%m%d')}_{now.strftime('%H%M%S')}.xlsx"
             
             # Create Excel in memory
             output = io.BytesIO()
@@ -252,29 +259,36 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
                 blue_fill = PatternFill(start_color="E6F2FF", end_color="E6F2FF", fill_type="solid")
                 
                 for ws in [ws1, ws2]:
-                    # 셀 너비 자동 조정
-                    for column in ws.columns:
+                    # 셀 너비 자동 조정 (한글 고려 폰트 폭 계산)
+                    for column_cells in ws.columns:
                         max_length = 0
-                        column_letter = column[0].column_letter
-                        for cell in column:
+                        column = column_cells[0].column_letter
+                        for cell in column_cells:
                             try:
-                                if len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
-                        adjusted_width = min(max_length + 2, 50)
-                        ws.column_dimensions[column_letter].width = adjusted_width
+                                if cell.value:
+                                    # 한글은 대략 영문/숫자의 1.8배 폭 차지함
+                                    current_val = str(cell.value)
+                                    val_len = 0
+                                    for char in current_val:
+                                        if ord('가') <= ord(char) <= ord('힣'):
+                                            val_len += 2.0
+                                        else:
+                                            val_len += 1.2
+                                    if val_len > max_length:
+                                        max_length = val_len
+                            except: pass
+                        adjusted_width = min(max_length + 2, 60)
+                        ws.column_dimensions[column].width = adjusted_width
                     
-                    # 색상 적용 (수입: 빨강, 반입: 파랑)
+                    # 색상 적용 (수입/반입 글자 있는 칸만!)
                     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-                        # "수출입" 컬럼 찾기 (3번째 컬럼, 인덱스 2)
-                        if len(row) > 2:
-                            cell_value = str(row[2].value).strip()
-                            if "수입" in cell_value:
-                                for cell in row:
+                        # "수출입" 혹은 "구분" 컬럼 어딘가에 있을 "수입"/"반입" 찾기
+                        for cell in row:
+                            if cell.value:
+                                cell_val = str(cell.value).strip()
+                                if cell_val == "수입":
                                     cell.fill = red_fill
-                            elif "반입" in cell_value:
-                                for cell in row:
+                                elif cell_val == "반입":
                                     cell.fill = blue_fill
             
             output.seek(0)
@@ -295,9 +309,9 @@ def _stream_run_daemon(containers, use_saved, uid, pw):
     else:
         yield "LOG:처리된 데이터가 없습니다.\n"
 
-def _stream_run(containers, use_saved, uid, pw):
+def _stream_run(containers, use_saved, uid, pw, show_browser=False):
     if _daemon_available():
-        yield from _stream_run_daemon(containers, use_saved, uid, pw)
+        yield from _stream_run_daemon(containers, use_saved, uid, pw, show_browser=show_browser)
         return
     
         # Fallback to subprocess (non-daemon mode)
@@ -325,7 +339,7 @@ def _stream_run(containers, use_saved, uid, pw):
 @app.route("/api/els/run", methods=["POST"])
 def run():
     data = request.get_json(silent=True) or {}
-    return Response(_stream_run(data.get("containers", []), data.get("useSavedCreds", True), data.get("userId", ""), data.get("userPw", "") ), mimetype="text/plain; charset=utf-8")
+    return Response(_stream_run(data.get("containers", []), data.get("useSavedCreds", True), data.get("userId", ""), data.get("userPw", ""), data.get("showBrowser", False) ), mimetype="text/plain; charset=utf-8")
 
 @app.route("/api/els/parse-xlsx", methods=["POST"])
 def parse_xlsx():
@@ -336,9 +350,8 @@ def parse_xlsx():
         os.unlink(tmp.name)
     return jsonify(json.loads(r.stdout))
 
-@app.route("/api/els/download", methods=["GET"])
-def download():
-    token = request.args.get("token")
+@app.route("/api/els/download/<token>", methods=["GET"])
+def download(token):
     buf = file_store.pop(token, None)
     if not buf: return "Expired", 404
     name = request.args.get("filename") or "els_result.xlsx"

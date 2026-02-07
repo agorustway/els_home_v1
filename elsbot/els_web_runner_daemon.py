@@ -32,6 +32,7 @@ def login():
     data = request.json
     u_id = data.get('userId')
     u_pw = data.get('userPw')
+    show_browser = data.get('showBrowser', False)
     
     # 로그 수집용 리스트
     logs = []
@@ -39,12 +40,15 @@ def login():
     print(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
     logs.append(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
     
-    # 기존에 돌던 브라우저가 있으면 깔끔하게 종료
+    # 기존에 돌던 브라우저가 있으면 깔끔하게 종료하고 새로 띄움
     if shared_driver:
         try:
+            print("[데몬] 기존 브라우저 세션 종료 중...")
             shared_driver.quit()
         except:
             pass
+        finally:
+            shared_driver = None
     
     # els_bot.py의 독립 함수 호출
     # 로그를 리스트에 모으는 콜백
@@ -52,7 +56,7 @@ def login():
         print(f"LOG:{msg}")
         logs.append(msg)
     
-    result = login_and_prepare(u_id, u_pw, log_callback=collect_log)
+    result = login_and_prepare(u_id, u_pw, log_callback=collect_log, show_browser=show_browser)
     
     driver = result[0]
     error = result[1]
@@ -89,7 +93,9 @@ def run():
     container_no = data.get('containerNo')
     
     if not container_no:
-        return jsonify({"ok": False, "error": "컨테이너 번호가 누락되었습니다."})
+        return jsonify({"ok": False, "error": "조회할 컨테이너 번호가 누락되었습니다."})
+
+    print(f"LOG:[데몬] 컨테이너 {container_no} 조회 명령 수신")
     
     print(f"LOG:[데몬] 컨테이너 {container_no} 조회 명령 수신")
     
