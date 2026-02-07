@@ -7,26 +7,26 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
-    curl \
-    gnupg \
     fonts-liberation \
     libnss3 libx11-6 libatk-bridge2.0-0 libatspi2.0-0 libgtk-3-0 \
     libxcomposite1 libxcursor1 libxdamage1 libxrandr2 libgbm1 \
-    libasound2 libxss1 \
+    libasound2 libxss1 libnspr4 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Chrome for Testing 설치 (Chromium 대신)
-RUN CHROME_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | grep -oP '"Stable":\{"version":"\K[^"]+') && \
-    wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip" && \
-    unzip chrome-linux64.zip && \
-    mv chrome-linux64 /opt/chrome && \
+# 2. Chrome for Testing 설치 (안정 버전)
+RUN CHROME_VERSION="131.0.6778.108" && \
+    wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip" -O /tmp/chrome.zip && \
+    unzip -q /tmp/chrome.zip -d /tmp && \
+    mv /tmp/chrome-linux64 /opt/chrome && \
     ln -s /opt/chrome/chrome /usr/bin/google-chrome && \
-    rm chrome-linux64.zip && \
-    wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" && \
-    unzip chromedriver-linux64.zip && \
-    mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
+    rm /tmp/chrome.zip && \
+    wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" -O /tmp/chromedriver.zip && \
+    unzip -q /tmp/chromedriver.zip -d /tmp && \
+    mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
     chmod +x /usr/local/bin/chromedriver && \
-    rm -rf chromedriver-linux64.zip chromedriver-linux64
+    rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64 && \
+    google-chrome --version && \
+    chromedriver --version
 
 WORKDIR /app
 
