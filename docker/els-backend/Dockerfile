@@ -3,10 +3,11 @@ FROM python:3.11-slim
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# 1. 시스템 패키지 설치 (Chromium 등 - 오타 완벽 수정)
+# 1. 시스템 패키지 설치 (Chromium + webdriver-manager 의존성)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
-    chromium-driver \
+    wget \
+    unzip \
     fonts-liberation \
     libnss3 libx11-6 libatk-bridge2.0-0 libatspi2.0-0 libgtk-3-0 \
     libxcomposite1 libxcursor1 libxdamage1 libxrandr2 libgbm1 \

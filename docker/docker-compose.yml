@@ -8,6 +8,7 @@ services:
     network_mode: host
     environment:
       - PORT=2929
+      - HEADLESS=1
       - CHROME_BIN=/usr/bin/chromium
       - CHROME_DRIVER_BIN=/usr/bin/chromedriver
     # 호스트 모드에서는 ports 설정이 필요 없으므로 삭제하거나 주석 처리함
