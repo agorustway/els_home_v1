@@ -7,7 +7,7 @@ import { getRoleLabel } from '@/utils/roles';
 import IntranetSearch from '@/components/IntranetSearch';
 import styles from './EmployeeHeader.module.css';
 
-export default function EmployeeHeader() {
+export default function EmployeeHeader({ isEmployees = false }) {
     const { profile, loading } = useUserProfile();
     const supabase = createClient();
 
@@ -23,7 +23,7 @@ export default function EmployeeHeader() {
     };
 
     return (
-        <header className={styles.employeeHeader}>
+        <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
             <div className={styles.inner}>
                 <Link href="/employees" className={styles.logo}>
                     ELS <span className={styles.logoSub}>Intranet</span>

@@ -21,7 +21,7 @@ function getWeatherImagePath(code) {
     return '/images/weather/cloudy_3d.png';
 }
 
-export default function InfoTicker({ style }) {
+export default function InfoTicker({ style, isEmployees = false }) {
     const router = useRouter();
     const { role } = useUserRole();
     const [mounted, setMounted] = useState(false);
@@ -109,7 +109,7 @@ export default function InfoTicker({ style }) {
 
     return (
         <>
-            <div className={styles.tickerBar} style={style}>
+            <div className={`${styles.tickerBar} ${isEmployees ? styles.stickyTop : ''}`} style={style}>
                 <div className={styles.tickerInfo}>
                     <div className={styles.tickerClock}>
                         {formatTickerTime(liveTime)}

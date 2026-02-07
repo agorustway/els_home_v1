@@ -12,6 +12,10 @@
     background: transparent;
 }
 
+.header.relativeHeader {
+    position: relative;
+}
+
 .header.scrolled,
 .header.darkVariant {
     background-color: #ffffff !important;

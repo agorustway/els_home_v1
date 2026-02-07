@@ -9,6 +9,12 @@
     /* 티커(900), 메인헤더(1000) 보다는 낮게 */
 }
 
+.employeeHeader.relativeHeader {
+    position: relative;
+    top: auto !important;
+}
+
+
 .inner {
     width: 100%;
     padding: 0 32px;

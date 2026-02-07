@@ -96,7 +96,7 @@ const navLinks = [
     },
 ];
 
-export default function Header({ darkVariant = false }) {
+export default function Header({ darkVariant = false, isEmployees = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
@@ -168,11 +168,11 @@ export default function Header({ darkVariant = false }) {
     };
 
     // Determine visual styles based on state
-    const isDarkHeader = scrolled || darkVariant;
+    const isDarkHeader = scrolled || darkVariant || isEmployees;
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
     const textColor = isDarkHeader ? '#1a1a1a' : '#ffffff';
     const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
-    const shadow = isDarkHeader ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none';
+    const shadow = (isDarkHeader && !isEmployees) ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none';
 
     const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
@@ -414,7 +414,7 @@ export default function Header({ darkVariant = false }) {
     return (
         <>
             <header
-                className={styles.header}
+                className={`${styles.header} ${isEmployees ? styles.relativeHeader : ''}`}
                 style={{
                     backgroundColor: headerBg,
                     // boxShadow: shadow, // Removed to prevent header's shadow from affecting SubNav

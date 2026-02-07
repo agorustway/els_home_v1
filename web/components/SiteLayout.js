@@ -61,7 +61,7 @@ export default function SiteLayout({ children }) {
      */
     return (
         <>
-            <Header />
+            <Header isEmployees={isEmployees} />
 
             {/* 배경 및 상단 영역 */}
             {hero ? (
@@ -75,11 +75,11 @@ export default function SiteLayout({ children }) {
 
             {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링) */}
             {isEmployees ? (
-                <InfoTicker style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
+                <InfoTicker isEmployees={isEmployees} style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
             ) : null}
 
             {/* 부가 헤더 */}
-            {isEmployees ? <EmployeeHeader /> : <SubNav topOffset={isEmployees ? 114 : 70} />}
+            {isEmployees ? <EmployeeHeader isEmployees={isEmployees} /> : <SubNav topOffset={isEmployees ? 114 : 70} />}
 
             {/* 본문 영역 */}
             <div className={isEmployees ? styles.bodyWrap : ''}>
