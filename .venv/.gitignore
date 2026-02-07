@@ -1,0 +1,34 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+venv/
+ENV/
+
+# [Guideline 9] Multi-tool & Environment Sync Optimization
+
+# 1. IDE & Editors (툴 간 설정 충돌 방지)
+.vscode/             # VSCode 개인 설정
+.cursor/             # Cursor 전용 설정 및 히스토리
+.idea/               # JetBrains 설정
+*.swp                # Vim 임시 파일
+
+# 2. OS Specific (환경 간 이동 시 찌꺼기 방지)
+.DS_Store            # macOS
+Thumbs.db            # Windows 캐시
+desktop.ini          # Windows 폴더 설정
+
+# 3. Next.js & Node.js (빌드 파편화 방지)
+node_modules/
+.next/
+out/
+build/
+.turbo/
+
+# 4. Environment & Secrets (보안 및 로컬 독립성)
+.env.local           # 로컬 전용 환경 변수 (절대 push 금지)
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 5. Logs (히스토리 꼬임 방지)
+*.log
+npm-debug.log*
+yarn-debug.log*

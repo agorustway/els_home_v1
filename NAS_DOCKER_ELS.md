@@ -72,6 +72,11 @@ flask-cors
 
 해결: libcursor1을 **libxcursor1**로 수정하면 해결됩니다.
 
+🚨 503 Service Unavailable / JSON Parsing Error (NaN)
+원인: 엑셀 데이터가 비어있을 때 발생하는 `NaN` 값이 표준 JSON 규격을 벗어나 프론트엔드 파싱을 방해합니다.
+해결: 백엔드 `app.py`에서 `df.where(pd.notnull(df), None)` 명령어로 `NaN`을 `null`로 변환하고 `json.dumps(..., allow_nan=False)`를 사용해야 합니다.
+
+
 5. 고급 기능 설명
 실시간 로그 스트리밍: 각 작업 단계마다 [1.2s]와 같은 소요 시간을 계산하여 사용자에게 즉시 전송합니다.
 
