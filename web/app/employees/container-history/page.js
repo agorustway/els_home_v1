@@ -15,6 +15,7 @@ function parseContainerInput(text) {
 }
 
 export default function ContainerHistoryPage() {
+    const [mounted, setMounted] = useState(false);
     const [userId, setUserId] = useState('');
     const [userPw, setUserPw] = useState('');
     const [containerInput, setContainerInput] = useState('');
@@ -41,38 +42,45 @@ export default function ContainerHistoryPage() {
 
     // 설정 불러오기 및 자동 로그인
     useEffect(() => {
-        const savedUserId = localStorage.getItem('els_user_id');
-        const savedUserPw = localStorage.getItem('els_user_pw');
-        const savedContainers = localStorage.getItem('els_containers');
+        setMounted(true); // Set mounted to true once client-side rendering starts
+        if (typeof window !== 'undefined') {
+            const savedUserId = localStorage.getItem('els_user_id');
+            const savedUserPw = localStorage.getItem('els_user_pw');
+            const savedContainers = localStorage.getItem('els_containers');
 
-        if (savedUserId) setUserId(savedUserId);
-        if (savedUserPw) setUserPw(savedUserPw);
-        //if (savedContainers) setContainerInput(savedContainers);
-
+            if (savedUserId) setUserId(savedUserId);
+            if (savedUserPw) setUserPw(savedUserPw);
+            //if (savedContainers) setContainerInput(savedContainers);
+        }
     }, []);
 
     // 세션 갱신 (55분마다)
     useEffect(() => {
+        if (!mounted) return; // Only run after component is mounted
         const interval = setInterval(() => {
-            const savedUserId = localStorage.getItem('els_user_id');
-            const savedUserPw = localStorage.getItem('els_user_pw');
+            if (typeof window !== 'undefined') {
+                const currentId = localStorage.getItem('els_user_id');
+                const currentPw = localStorage.getItem('els_user_pw');
 
-            if (savedUserId && savedUserPw) {
-                setLogLines(prev => [...prev, '[세션] 55분 경과 - 세션 갱신 중...']);
-                handleLogin(savedUserId, savedUserPw);
+                if (currentId && currentPw) {
+                    setLogLines(prev => [...prev, '[세션] 55분 경과 - 세션 갱신 중...']);
+                    handleLogin(currentId, currentPw);
+                }
             }
         }, 55 * 60 * 1000); // 55분
 
         return () => clearInterval(interval);
-    }, [handleLogin]);
+    }, [handleLogin, mounted]); // Add mounted to dependency array
 
     const handleSaveCreds = useCallback(() => {
         const id = userId?.trim();
         const pw = userPw;
         if (!id || !pw) return;
 
-        localStorage.setItem('els_user_id', id);
-        localStorage.setItem('els_user_pw', pw);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('els_user_id', id);
+            localStorage.setItem('els_user_pw', pw);
+        }
         setLogLines(prev => [...prev, '[계정] 아이디/비밀번호 저장 완료!']);
     }, [userId, userPw]);
 
@@ -122,7 +130,9 @@ export default function ContainerHistoryPage() {
             return;
         }
 
-        localStorage.setItem('els_containers', containerInput);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('els_containers', containerInput);
+        }
 
         setLoading(true);
         setLogLines(prev => [...prev, `[검색] ${containers.length}개 컨테이너 조회 시작...`]);
@@ -194,8 +204,10 @@ export default function ContainerHistoryPage() {
 
     const handleDownload = () => {
         if (!downloadToken) return;
-        const url = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${encodeURIComponent(resultFileName || 'els_result.xlsx')}`;
-        window.open(url, '_blank');
+        if (typeof window !== 'undefined') {
+            const url = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${encodeURIComponent(resultFileName || 'els_result.xlsx')}`;
+            window.open(url, '_blank');
+        }
     };
 
     const handleFileUpload = async (e) => {
@@ -205,6 +217,11 @@ export default function ContainerHistoryPage() {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
+                // Ensure XLSX is loaded before use
+                if (typeof XLSX === 'undefined') {
+                    setLogLines(prev => [...prev, `[오류] XLSX 라이브러리가 로드되지 않았습니다.`]);
+                    return;
+                }
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -249,6 +266,10 @@ export default function ContainerHistoryPage() {
         (currentPage - 1) * ITEMS_PER_PAGE,
         currentPage * ITEMS_PER_PAGE
     );
+
+    if (!mounted) {
+        return <div style={{ minHeight: '100vh', background: '#f8fafc' }} />;
+    }
 
     return (
         <div className={styles.page}>
