@@ -154,7 +154,13 @@ def login_and_prepare(u_id, u_pw, log_callback=None):
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
     try:
-        service_obj = Service(ChromeDriverManager().install())
+        # ChromeDriver 경로 우선순위: 시스템 설치 > webdriver-manager
+        chromedriver_path = "/usr/local/bin/chromedriver"  # Docker에서 설치한 경로
+        if not os.path.exists(chromedriver_path):
+            # 로컬 환경에서는 webdriver-manager 사용
+            chromedriver_path = ChromeDriverManager().install()
+        
+        service_obj = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service_obj, options=options)
         driver.get("https://etrans.klnet.co.kr/index.do")
         
