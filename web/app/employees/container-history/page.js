@@ -5,7 +5,6 @@ import Script from 'next/script';
 import styles from './container-history.module.css';
 
 const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
 const ITEMS_PER_PAGE = 10;
 
 function parseContainerInput(text) {
@@ -14,8 +13,8 @@ function parseContainerInput(text) {
     return [...new Set(raw)];
 }
 
-export default function ContainerHistoryPage() {
-    const [mounted, setMounted] = useState(false);
+// 내부 실제 구현 컴포넌트 (클라이언트에서만 안전하게 동작)
+function ContainerHistoryInner() {
     const [userId, setUserId] = useState('');
     const [userPw, setUserPw] = useState('');
     const [containerInput, setContainerInput] = useState('');
@@ -33,6 +32,9 @@ export default function ContainerHistoryPage() {
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    // 환경 변수 안전하게 가져오기
+    const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
+
     // 자동 스크롤
     useEffect(() => {
         if (terminalRef.current) {
@@ -40,47 +42,20 @@ export default function ContainerHistoryPage() {
         }
     }, [logLines]);
 
-    // 설정 불러오기 및 자동 로그인
+    // 설정 불러오기
     useEffect(() => {
-        setMounted(true); // Set mounted to true once client-side rendering starts
-        if (typeof window !== 'undefined') {
-            const savedUserId = localStorage.getItem('els_user_id');
-            const savedUserPw = localStorage.getItem('els_user_pw');
-            const savedContainers = localStorage.getItem('els_containers');
-
-            if (savedUserId) setUserId(savedUserId);
-            if (savedUserPw) setUserPw(savedUserPw);
-            //if (savedContainers) setContainerInput(savedContainers);
-        }
+        const savedUserId = localStorage.getItem('els_user_id');
+        const savedUserPw = localStorage.getItem('els_user_pw');
+        if (savedUserId) setUserId(savedUserId);
+        if (savedUserPw) setUserPw(savedUserPw);
     }, []);
-
-    // 세션 갱신 (55분마다)
-    useEffect(() => {
-        if (!mounted) return; // Only run after component is mounted
-        const interval = setInterval(() => {
-            if (typeof window !== 'undefined') {
-                const currentId = localStorage.getItem('els_user_id');
-                const currentPw = localStorage.getItem('els_user_pw');
-
-                if (currentId && currentPw) {
-                    setLogLines(prev => [...prev, '[세션] 55분 경과 - 세션 갱신 중...']);
-                    handleLogin(currentId, currentPw);
-                }
-            }
-        }, 55 * 60 * 1000); // 55분
-
-        return () => clearInterval(interval);
-    }, [handleLogin, mounted]); // Add mounted to dependency array
 
     const handleSaveCreds = useCallback(() => {
         const id = userId?.trim();
         const pw = userPw;
         if (!id || !pw) return;
-
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('els_user_id', id);
-            localStorage.setItem('els_user_pw', pw);
-        }
+        localStorage.setItem('els_user_id', id);
+        localStorage.setItem('els_user_pw', pw);
         setLogLines(prev => [...prev, '[계정] 아이디/비밀번호 저장 완료!']);
     }, [userId, userPw]);
 
@@ -119,9 +94,33 @@ export default function ContainerHistoryPage() {
         } finally {
             setLoginLoading(false);
         }
-    }, [userId, userPw, showBrowser, handleSaveCreds]);
+    }, [userId, userPw, showBrowser, handleSaveCreds, BACKEND_BASE_URL]);
+
+    // 세션 갱신 (55분마다)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const currentId = localStorage.getItem('els_user_id');
+            const currentPw = localStorage.getItem('els_user_pw');
+            if (currentId && currentPw) {
+                setLogLines(prev => [...prev, '[세션] 55분 경과 - 세션 갱신 중...']);
+                handleLogin(currentId, currentPw);
+            }
+        }, 55 * 60 * 1000); // 55분
+        return () => clearInterval(interval);
+    }, [handleLogin]);
 
     const runLogin = () => handleLogin();
+
+    const groupByContainer = (data) => {
+        if (!data || !Array.isArray(data)) return {};
+        const grouped = {};
+        data.forEach(row => {
+            const containerNo = row[0];
+            if (!grouped[containerNo]) grouped[containerNo] = [];
+            grouped[containerNo].push(row);
+        });
+        return grouped;
+    };
 
     const runSearch = async () => {
         const containers = parseContainerInput(containerInput);
@@ -130,18 +129,11 @@ export default function ContainerHistoryPage() {
             return;
         }
 
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('els_containers', containerInput);
-        }
-
+        localStorage.setItem('els_containers', containerInput);
         setLoading(true);
         setLogLines(prev => [...prev, `[검색] ${containers.length}개 컨테이너 조회 시작...`]);
 
         try {
-            // The instruction provided a snippet that seemed to replace the existing fetch call
-            // with a login call. Assuming the intent was to add userId and userPw to the *existing*
-            // run search request, and the snippet was a guide for the body structure.
-            // The original code already uses JSON.stringify.
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -187,27 +179,10 @@ export default function ContainerHistoryPage() {
         }
     };
 
-    const groupByContainer = (data) => {
-        if (!data || !Array.isArray(data)) return {};
-
-        const grouped = {};
-        data.forEach(row => {
-            const containerNo = row[0];
-            if (!grouped[containerNo]) {
-                grouped[containerNo] = [];
-            }
-            grouped[containerNo].push(row);
-        });
-
-        return grouped;
-    };
-
     const handleDownload = () => {
         if (!downloadToken) return;
-        if (typeof window !== 'undefined') {
-            const url = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${encodeURIComponent(resultFileName || 'els_result.xlsx')}`;
-            window.open(url, '_blank');
-        }
+        const url = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${encodeURIComponent(resultFileName || 'els_result.xlsx')}`;
+        window.open(url, '_blank');
     };
 
     const handleFileUpload = async (e) => {
@@ -217,7 +192,6 @@ export default function ContainerHistoryPage() {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                // Ensure XLSX is loaded before use
                 if (typeof XLSX === 'undefined') {
                     setLogLines(prev => [...prev, `[오류] XLSX 라이브러리가 로드되지 않았습니다.`]);
                     return;
@@ -256,7 +230,6 @@ export default function ContainerHistoryPage() {
         }));
     };
 
-    // 필터링 및 페이지네이션
     const filteredContainers = result ? Object.keys(result).filter(cn =>
         cn.toLowerCase().includes(searchFilter.toLowerCase())
     ) : [];
@@ -267,17 +240,11 @@ export default function ContainerHistoryPage() {
         currentPage * ITEMS_PER_PAGE
     );
 
-    if (!mounted) {
-        return <div style={{ minHeight: '100vh', background: '#f8fafc' }} />;
-    }
-
     return (
         <div className={styles.page}>
             <div className={styles.container}>
                 <h1 className={styles.title}>컨테이너 이력조회</h1>
-
                 <div className={styles.topRow}>
-                    {/* 왼쪽: 입력 */}
                     <div className={styles.leftColumn}>
                         <div className={styles.section}>
                             <h2 className={styles.sectionTitle}>1. ETRANS 로그인</h2>
@@ -287,12 +254,6 @@ export default function ContainerHistoryPage() {
                                     placeholder="아이디"
                                     value={userId}
                                     onChange={e => setUserId(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            document.querySelector('input[type="password"]')?.focus();
-                                        }
-                                    }}
                                     className={styles.input}
                                 />
                                 <input
@@ -300,194 +261,116 @@ export default function ContainerHistoryPage() {
                                     placeholder="비밀번호"
                                     value={userPw}
                                     onChange={e => setUserPw(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            runLogin();
-                                        }
-                                    }}
                                     className={styles.input}
                                 />
-                                <button
-                                    onClick={runLogin}
-                                    disabled={loginLoading}
-                                    className={styles.button}
-                                >
+                                <button onClick={runLogin} disabled={loginLoading} className={styles.button}>
                                     {loginLoading ? '로그인 중...' : '로그인'}
                                 </button>
                             </div>
                         </div>
-
                         <div className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <h2 className={styles.sectionTitle}>2. 컨테이너 조회</h2>
                                 <label className={styles.debugLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={showBrowser}
-                                        onChange={(e) => setShowBrowser(e.target.checked)}
-                                    />
+                                    <input type="checkbox" checked={showBrowser} onChange={e => setShowBrowser(e.target.checked)} />
                                     브라우저 표시 (디버그)
                                 </label>
                             </div>
-                            <div
-                                className={styles.dropZone}
-                                onDrop={handleFileDrop}
-                                onDragOver={e => e.preventDefault()}
-                            >
+                            <div className={styles.dropZone} onDrop={handleFileDrop} onDragOver={e => e.preventDefault()}>
                                 <textarea
-                                    placeholder="컨테이너 번호 입력 (줄바꿈 또는 쉼표로 구분)&#10;또는 엑셀 파일을 여기에 드래그하세요"
+                                    placeholder="컨테이너 번호 입력 (줄바꿈/쉼표)... 또는 엑셀 드래그"
                                     value={containerInput}
                                     onChange={e => setContainerInput(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && e.ctrlKey) {
-                                            e.preventDefault();
-                                            runSearch();
-                                        }
-                                    }}
                                     className={styles.textarea}
-                                    rows={8}
                                 />
                             </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".xlsx"
-                                onChange={handleFileUpload}
-                                style={{ display: 'none' }}
-                            />
+                            <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileUpload} style={{ display: 'none' }} />
                             <div className={styles.buttonGroup}>
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={styles.buttonSecondary}
-                                >
-                                    엑셀 파일 선택
-                                </button>
-                                <button
-                                    onClick={runSearch}
-                                    disabled={loading}
-                                    className={styles.button}
-                                >
-                                    {loading ? '조회 중...' : '조회 시작 (Ctrl+Enter)'}
+                                <button onClick={() => fileInputRef.current?.click()} className={styles.buttonSecondary}>엑셀 파일 선택</button>
+                                <button onClick={runSearch} disabled={loading} className={styles.button}>
+                                    {loading ? '조회 중...' : '조회 시작'}
                                 </button>
                             </div>
                         </div>
                     </div>
-
-                    {/* 오른쪽: 로그 */}
                     <div className={styles.rightColumn}>
                         <div className={styles.section}>
                             <h2 className={styles.sectionTitle}>실시간 로그</h2>
                             <div ref={terminalRef} className={styles.terminal}>
-                                {logLines.map((line, i) => (
-                                    <div key={i} className={styles.logLine}>
-                                        {line}
-                                    </div>
-                                ))}
+                                {logLines.map((line, i) => <div key={i} className={styles.logLine}>{line}</div>)}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 결과 */}
                 {result && Object.keys(result).length > 0 && (
                     <div className={styles.section}>
                         <div className={styles.resultHeader}>
-                            <h2 className={styles.sectionTitle}>조회 결과 ({filteredContainers.length}개 컨테이너)</h2>
+                            <h2 className={styles.sectionTitle}>조회 결과 ({filteredContainers.length}개)</h2>
                             <div className={styles.resultActions}>
-                                <input
-                                    type="text"
-                                    placeholder="컨테이너 검색..."
-                                    value={searchFilter}
-                                    onChange={e => setSearchFilter(e.target.value)}
-                                    className={styles.searchInput}
-                                />
-                                <button onClick={handleDownload} className={styles.button}>
-                                    엑셀 다운로드
-                                </button>
+                                <input type="text" placeholder="검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.searchInput} />
+                                <button onClick={handleDownload} className={styles.button}>엑셀 다운로드</button>
                             </div>
                         </div>
-
                         <div className={styles.resultsList}>
                             <table className={styles.table}>
                                 <thead className={styles.thead}>
-                                    <tr>
-                                        {HEADERS.map((h, i) => (
-                                            <th key={i}>{h}</th>
-                                        ))}
-                                    </tr>
+                                    <tr>{HEADERS.map((h, i) => <th key={i}>{h}</th>)}</tr>
                                 </thead>
                                 <tbody>
                                     {paginatedContainers.map(containerNo => {
                                         const rows = result[containerNo] || [];
                                         const isExpanded = expandedContainers[containerNo];
                                         const displayRows = isExpanded ? rows : [rows[0]];
-
                                         return displayRows.map((row, rowIdx) => (
                                             <tr key={`${containerNo}-${rowIdx}`}>
-                                                {/* 컨테이너번호 컬럼: 첫 행에만 전개 버튼 표시 */}
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                         {rowIdx === 0 && rows.length > 1 && (
-                                                            <button
-                                                                onClick={() => toggleContainer(containerNo)}
-                                                                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: '0.9rem', color: '#3b82f6' }}
-                                                            >
+                                                            <button onClick={() => toggleContainer(containerNo)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: '#3b82f6' }}>
                                                                 {isExpanded ? '▼' : '▶'}
                                                             </button>
                                                         )}
                                                         {row[0] || containerNo}
                                                     </div>
                                                 </td>
-                                                {/* No 컬럼 */}
                                                 <td>{row[1]}</td>
-                                                {/* 나머지 데이터 (수출입, 구분, 터미널... row[2]부터 끝까지) */}
-                                                {row.slice(2).map((cell, cellIdx) => (
-                                                    <td key={cellIdx}>{cell}</td>
-                                                ))}
+                                                {row.slice(2).map((cell, cellIdx) => <td key={cellIdx}>{cell}</td>)}
                                             </tr>
                                         ));
                                     })}
                                 </tbody>
                             </table>
                         </div>
-
-                        {/* 페이지네이션 */}
                         {totalPages > 1 && (
                             <div className={styles.pagination}>
-                                <button
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    disabled={currentPage === 1}
-                                    className={styles.pageButton}
-                                >
-                                    &lt;
-                                </button>
+                                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={styles.pageButton}>&lt;</button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`${styles.pageButton} ${currentPage === page ? styles.pageButtonActive : ''}`}
-                                    >
-                                        {page}
-                                    </button>
+                                    <button key={page} onClick={() => setCurrentPage(page)} className={`${styles.pageButton} ${currentPage === page ? styles.pageButtonActive : ''}`}>{page}</button>
                                 ))}
-                                <button
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className={styles.pageButton}
-                                >
-                                    &gt;
-                                </button>
+                                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={styles.pageButton}>&gt;</button>
                             </div>
                         )}
                     </div>
                 )}
             </div>
-            {/* XLSX 라이브러리 로드 */}
-            <Script
-                src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"
-                strategy="lazyOnload"
-            />
+            <Script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" strategy="afterInteractive" />
         </div>
     );
+}
+
+// 명시적인 클라이언트 온리 래퍼 (SSR 하이드레이션 에러 원천 봉쇄)
+export default function ContainerHistoryPage() {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // 하이드레이션 오류를 막기 위해 마운트 전에는 빈 화면(또는 스켈레톤) 렌더링
+    if (!mounted) {
+        return <div style={{ minHeight: '100vh', background: '#f8fafc' }} />;
+    }
+
+    return <ContainerHistoryInner />;
 }
