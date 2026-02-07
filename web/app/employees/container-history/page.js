@@ -28,9 +28,27 @@ function ContainerHistoryInner() {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchFilter, setSearchFilter] = useState('');
     const [showBrowser, setShowBrowser] = useState(false);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
+    const timerRef = useRef(null);
+
+    // 타이머 로직
+    const startTimer = useCallback(() => {
+        setElapsedSeconds(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+            setElapsedSeconds(prev => prev + 0.1);
+        }, 100);
+    }, []);
+
+    const stopTimer = useCallback(() => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    }, []);
 
     // 환경 변수 안전하게 가져오기
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
@@ -40,7 +58,14 @@ function ContainerHistoryInner() {
         if (terminalRef.current) {
             terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
         }
-    }, [logLines]);
+    }, [logLines, elapsedSeconds]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
 
     // 설정 불러오기
     useEffect(() => {
@@ -70,6 +95,7 @@ function ContainerHistoryInner() {
 
         if (!id && !pw) handleSaveCreds();
         setLoginLoading(true);
+        startTimer();
         setLogLines(prev => [...prev, `[네트워크] ${BACKEND_BASE_URL}/api/els/login 접속 중...`]);
 
         try {
@@ -85,16 +111,17 @@ function ContainerHistoryInner() {
             }
 
             if (data.ok) {
-                setLogLines(prev => [...prev, '[성공] 로그인 완료!']);
+                setLogLines(prev => [...prev, `[${elapsedSeconds.toFixed(1)}s] [성공] 로그인 완료!`]);
             } else {
-                setLogLines(prev => [...prev, `[실패] ${data.error || '로그인 실패'}`]);
+                setLogLines(prev => [...prev, `[${elapsedSeconds.toFixed(1)}s] [실패] ${data.error || '로그인 실패'}`]);
             }
         } catch (err) {
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
         } finally {
             setLoginLoading(false);
+            stopTimer();
         }
-    }, [userId, userPw, showBrowser, handleSaveCreds, BACKEND_BASE_URL]);
+    }, [userId, userPw, showBrowser, handleSaveCreds, BACKEND_BASE_URL, elapsedSeconds]);
 
     // 세션 갱신 (55분마다)
     useEffect(() => {
@@ -131,6 +158,7 @@ function ContainerHistoryInner() {
 
         localStorage.setItem('els_containers', containerInput);
         setLoading(true);
+        startTimer();
         setLogLines(prev => [...prev, `[검색] ${containers.length}개 컨테이너 조회 시작...`]);
 
         try {
@@ -153,16 +181,20 @@ function ContainerHistoryInner() {
                 buffer = lines.pop();
 
                 for (const line of lines) {
-                    if (line.startsWith('LOG:')) {
-                        setLogLines(prev => [...prev, line.substring(4)]);
-                    } else if (line.startsWith('RESULT:')) {
+                    if (line.trim().startsWith('LOG:')) {
+                        setLogLines(prev => [...prev, `[${elapsedSeconds.toFixed(1)}s] ${line.trim().substring(4)}`]);
+                    } else if (line.trim().startsWith('RESULT:')) {
                         try {
-                            const data = JSON.parse(line.substring(7));
+                            const rawJson = line.trim().substring(7);
+                            // 2중 방어: NaN 문자열을 null로 강제 치환
+                            const cleanedJson = rawJson.replace(/:\s*NaN/g, ': null').replace(/,\s*NaN/g, ', null');
+                            const data = JSON.parse(cleanedJson);
+
                             if (data.ok) {
                                 setResult(groupByContainer(data.result));
                                 setDownloadToken(data.downloadToken);
                                 setResultFileName(data.fileName);
-                                setLogLines(prev => [...prev, `[완료] 조회 완료! ${data.result?.length || 0}건`]);
+                                setLogLines(prev => [...prev, `[완료] 총 ${elapsedSeconds.toFixed(1)}초 소요 - ${data.result?.length || 0}건 조회 완료`]);
                             } else {
                                 setLogLines(prev => [...prev, `[실패] ${data.error || '조회 실패'}`]);
                             }
@@ -176,6 +208,7 @@ function ContainerHistoryInner() {
             setLogLines(prev => [...prev, `[오류] ${err.message}`]);
         } finally {
             setLoading(false);
+            stopTimer();
         }
     };
 
@@ -298,6 +331,14 @@ function ContainerHistoryInner() {
                             <h2 className={styles.sectionTitle}>실시간 로그</h2>
                             <div ref={terminalRef} className={styles.terminal}>
                                 {logLines.map((line, i) => <div key={i} className={styles.logLine}>{line}</div>)}
+                                {(loading || loginLoading) && (
+                                    <div className={styles.logLineActive}>
+                                        <span className={styles.cursor}>_</span>
+                                        <span style={{ color: '#fbbf24', marginLeft: '8px' }}>
+                                            [실시간 수행 중... {elapsedSeconds.toFixed(1)}s]
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

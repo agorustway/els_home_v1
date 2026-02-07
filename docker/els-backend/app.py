@@ -302,7 +302,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             # 한 번 더 안전장치: 리스트 내부에 혹시 남아있을 수 있는 float('nan') 제거
             import math
             def _clean_nan(v):
-                if isinstance(v, float) and math.isnan(v): return None
+                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
                 return v
             
             final_json_rows = [[_clean_nan(cell) for cell in row] for row in rows_list]
@@ -313,7 +313,8 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                 "downloadToken": token,
                 "fileName": filename
             }
-            yield "RESULT:" + json.dumps(result_obj, ensure_ascii=False) + "\n"
+            # allow_nan=False 설정으로 규격 외 JSON 생성 원천 차단
+            yield "RESULT:" + json.dumps(result_obj, ensure_ascii=False, allow_nan=False) + "\n"
         except Exception as e:
              yield f"LOG:[결과생성] 엑셀 생성 중 에러: {e}\n"
     else:

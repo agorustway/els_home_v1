@@ -245,6 +245,35 @@
     word-break: break-word;
 }
 
+.logLineActive {
+    color: #fbbf24;
+    font-weight: 700;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.cursor {
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background: #fbbf24;
+    margin-right: 5px;
+    animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
 /* 로그 타입별 색상 */
 .logLine:has([오류]),
 .logLine:has([실패]),
