@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Script from 'next/script';
 import styles from './container-history.module.css';
 
 const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
@@ -63,9 +64,9 @@ export default function ContainerHistoryPage() {
         }, 55 * 60 * 1000); // 55분
 
         return () => clearInterval(interval);
-    }, []);
+    }, [handleLogin]);
 
-    const handleSaveCreds = () => {
+    const handleSaveCreds = useCallback(() => {
         const id = userId?.trim();
         const pw = userPw;
         if (!id || !pw) return;
@@ -73,9 +74,9 @@ export default function ContainerHistoryPage() {
         localStorage.setItem('els_user_id', id);
         localStorage.setItem('els_user_pw', pw);
         setLogLines(prev => [...prev, '[계정] 아이디/비밀번호 저장 완료!']);
-    };
+    }, [userId, userPw]);
 
-    const handleLogin = async (id, pw) => {
+    const handleLogin = useCallback(async (id, pw) => {
         const loginId = id || userId;
         const loginPw = pw || userPw;
 
@@ -110,7 +111,7 @@ export default function ContainerHistoryPage() {
         } finally {
             setLoginLoading(false);
         }
-    };
+    }, [userId, userPw, showBrowser, handleSaveCreds]);
 
     const runLogin = () => handleLogin();
 
@@ -462,7 +463,10 @@ export default function ContainerHistoryPage() {
                 )}
             </div>
             {/* XLSX 라이브러리 로드 */}
-            <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+            <Script
+                src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"
+                strategy="lazyOnload"
+            />
         </div>
     );
 }
