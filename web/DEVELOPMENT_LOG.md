@@ -1,10 +1,11 @@
-﻿#  개발 로그 (2026-02-07)
+﻿# 🛠 개발 로그 (2026-02-07)
+
 
 ### [2026-02-07] 컨테이너 이력조회 UI/UX 프리미엄 폴리싱 - 2차
 
-###  핵심 성과
+### 🚀 핵심 성과
 - **안전운임 조회 키보드 내비게이션 완벽 지원**:
-  - 주소 검색 결과에서 **방향키(/)**로 이동하고 **Enter**로 선택 시 즉시 조회가 실행되도록 개선.
+  - 주소 검색 결과에서 **방향키(↑/↓)**로 이동하고 **Enter**로 선택 시 즉시 조회가 실행되도록 개선.
   - 마우스 이동 없이 키보드만으로 주소 검색부터 조회까지 원스톱 처리 가능.
 - **컨테이너 이력조회 계정 저장 UX 개선**:
   - 기존의 모호했던 저장 버튼(💾)을 직관적인 **"저장" 체크박스**로 변경.
@@ -12,101 +13,110 @@
 - **UI 디테일 마감**:
   - 안전운임 데이터 결과 테이블의 모든 컬럼을 **가운데 정렬**하여 가독성 극대화.
   - '구간조회(개발중)' 버튼의 크기와 스타일을 다른 탭과 동일하게 맞춰 시각적 균형 완성.
-  - 에러 메시지 알림을 alert 창이나 고정형 박스 대신, 화면 중앙에 부드럽게 떴다 사라지는 **Toast 알림**으로 변경하여 고급스러운 사용자 경험 제공.
+  - 에러 메시지 알림을 `alert` 창이나 고정형 박스 대신, 화면 중앙에 부드럽게 떴다 사라지는 **Toast 알림**으로 변경하여 고급스러운 사용자 경험 제공.
 
-###  상세 작업 내역
-1. **Toast 알림 구현** (safe-freight):
-   - useEffect와 CSS Animation을 활용하여 4초 후 자동으로 사라지는 중앙 토스트 메시지 구현.
+### 🛠 상세 작업 내역
+1. **Toast 알림 구현** (`safe-freight`):
+   - `useEffect`와 CSS Animation을 활용하여 4초 후 자동으로 사라지는 중앙 토스트 메시지 구현.
    - 에러 발생 시 사용자 흐름을 끊지 않으면서도 명확하게 피드백 전달.
-2. **주소 검색 키보드 이벤트** (safe-freight):
-   - onKeyDown 핸들러를 추가하여 ArrowUp, ArrowDown, Enter 이벤트 처리.
-   - highlightedIndex 상태를 관리하여 드롭다운 내 현재 선택된 항목 시각적 강조.
-   - autoRun 파라미터를 통해 주소 선택 완료 시 자동으로 runLookup 트리거.
-3. **계정 저장 체크박스** (container-history):
-   - handleSaveCreds를 별도 버튼에서 로그인 로직 내부로 통합.
-   - isSaveChecked 상태에 따라 로그인 시도 시 계정 저장 병행 수행.
+2. **주소 검색 키보드 이벤트** (`safe-freight`):
+   - `onKeyDown` 핸들러를 추가하여 `ArrowUp`, `ArrowDown`, `Enter` 이벤트 처리.
+   - `highlightedIndex` 상태를 관리하여 드롭다운 내 현재 선택된 항목 시각적 강조.
+   - `autoRun` 파라미터를 통해 주소 선택 완료 시 자동으로 `runLookup` 트리거.
+3. **계정 저장 체크박스** (`container-history`):
+   - `handleSaveCreds`를 별도 버튼에서 로그인 로직 내부로 통합.
+   - `isSaveChecked` 상태에 따라 로그인 시도 시 계정 저장 병행 수행.
 
-###  결과
+### ✨ 결과
 - 안전운임 페이지와 컨테이너 이력조회 페이지 모두 **전문가용 도구**다운 신속성과 편의성을 갖추게 되었습니다.
 
-# ?썱 媛쒕컻 濡쒓렇 (2026-02-07)
+# 🛠 개발 로그 (2026-02-07)
 
-## ?? 諛고룷 ?덉젙??諛?UI/UX ?꾨━誘몄뾼 怨좊룄???꾨즺! (16:50)
+## 🚀 배포 안정화 및 UI/UX 프리미엄 고도화 완료! (16:50)
 
-### ?뭿 ?듭떖 ?깃낵
-1.  **Vercel 諛고룷 ?꾨꼍 ?닿껐**: SSR(?쒕쾭 ?ъ씠???뚮뜑留? ?섍꼍?먯꽌 `localStorage` 諛?`window` ?묎렐 ?먮윭瑜?100% 李⑤떒?섎뒗 援ъ“濡?媛쒗렪 (Mounted State ?쒖슜).
-2.  **?곗씠??臾닿껐???뺣낫 (NaN ?닿껐)**: 諛깆뿏??`app.py`)?먯꽌 諛쒖깮?섎뜕 `NaN` 諛?`Infinity` JSON ?뚯떛 ?ㅻ쪟瑜??쒕쾭-?대씪?댁뼵??2以?諛⑹뼱留됱쑝濡??꾩쟾 ?닿껐.
-3.  **BIOS ?ㅽ????ㅼ떆媛?濡쒓퉭 & ??대㉧**: 而⑦뀒?대꼫 議고쉶 ???ㅼ젣 ?뚯슂 ?쒓컙??0.1珥??⑥쐞濡??쒖떆?섎뒗 ?ㅼ떆媛???대㉧? 釉붾쭅??而ㅼ꽌 UI ?꾩엯.
-4.  **?쒕쾭 遺??90% ?덇컧 (?좎뵪/?댁뒪 理쒖쟻??**: 5珥덈쭏???몄텧?섎뜕 ?좎뵪/?댁뒪瑜?**30遺?二쇨린 罹먯떛**?쇰줈 蹂寃? ?곗빱??濡쒖뺄 罹먯떆瑜?5珥덈쭏???쒗솚?쒖폒 ?ъ슜??寃쏀뿕? ?좎??섍퀬 ?쒕쾭 遺?섎뒗 ?꾪룺?곸쑝濡???땄.
-5.  **?명듃?쇰꽬 ?낅Т 吏묒쨷 紐⑤뱶**: ?ㅽ겕濡???硫붿씤 ?ㅻ뜑瑜??④린怨?**?곗빱? ?ъ씠?쒕컮留??곷떒??怨좎젙**?섎룄濡??덉씠?꾩썐 怨좊룄??
-
----
-
-## ?썱 ?곸꽭 ?묒뾽 ?댁뿭
-
-### 1. Vercel & SSR ?덉젙??- **臾몄젣**: Next.js 鍮뚮뱶 諛??고?????`ReferenceError: window is not defined` 諛쒖깮 諛??섏씠?쒕젅?댁뀡 ?ㅻ쪟.
-- **?닿껐**:
-    - `useClient` 而댄룷?뚰듃 ?대???`mounted` ?곹깭媛??꾩엯.
-    - `useEffect`濡?留덉슫???뺤씤 ?꾩뿉??釉뚮씪?곗? API ?몄텧 ?꾩쟾 李⑤떒.
-    - ?몃? ?쇱씠釉뚮윭由?XLSX ??瑜?Next.js `Script` 而댄룷?뚰듃(`afterInteractive`)濡?援먯껜?섏뿬 ?뚮뜑留?李⑤떒 諛⑹?.
-
-### 2. 諛깆뿏??JSON ?뚯떛 踰꾧렇 ?섏젙 (`NaN` ???
-- **臾몄젣**: ?묒? ?곗씠?곌? 鍮꾩뼱?덉쓣 寃쎌슦 `NaN`??諛쒖깮, `json.dumps`媛 ?대? 泥섎━?섏? 紐삵빐 ?꾨줎?몄뿉???먮윭 諛쒖깮.
-- **?닿껐**:
-    - `app.py`: `pd.notnull` 泥댄겕 ??`NaN`??`None`?쇰줈 蹂?? `json.dumps(allow_nan=False)` ?ㅼ젙?쇰줈 洹쒓꺽 ??JSON ?앹꽦 ?먯쿇 李⑤떒.
-    - `page.js`: ?ㅽ듃由щ컢 ?곗씠?곕? 諛쏆쓣 ??臾몄옄??`"NaN"`??`null`濡?移섑솚?섎뒗 ?덉쟾?μ튂 異붽?.
-
-### 3. 而⑦뀒?대꼫 ?대젰議고쉶 UI ?꾨━誘몄뾼 ?대━??- **BIOS 濡쒓퉭**: ?꾨줈?몄뒪 吏꾪뻾 ?곹깭瑜??몃??섍쾶 異쒕젰 (`[寃?? 而⑦뀒?대꼫 議고쉶 ?쒖옉...`).
-- **?ㅼ떆媛???대㉧**: `setInterval`???댁슜??0.1珥??⑥쐞 寃쎄낵 ?쒓컙 ?쒖떆 諛??묒뾽 ?꾨즺 ??理쒖쥌 ?뚯슂 ?쒓컙 湲곕줉.
-- **?좊땲硫붿씠??*: ?묒뾽 以묒엫???쒓컖?곸쑝濡??뚮젮二쇰뒗 **釉붾쭅??而ㅼ꽌(`_`)** 諛??쒖꽦 濡쒓렇 ?쇱씤 媛뺤“ ?ㅽ???異붽?.
-
-### 4. ?뺣낫 ?섏쭛 濡쒖쭅 ?꾪궎?띿쿂 媛쒖꽑
-- **湲곗〈**: `InfoTicker`媛 5珥덈쭏??紐⑤뱺 吏???좎뵪 API瑜?媛쒕퀎 ?몄텧 (?쒕쾭 怨쇰????먯씤).
-- **媛쒖꽑**:
-    - **?낃뎄 而?*: `/api/weather`, `/api/news` API ?먯껜??`revalidate` 二쇨린瑜?30遺꾩쑝濡??곹뼢.
-    - **?대씪?댁뼵??罹먯떛**: `InfoTicker` 留덉슫????紐⑤뱺 吏???좎뵪瑜???踰덉뿉 媛?몄? `weatherCache`????? ?댄썑 5珥덈쭏??罹먯떆???곗씠?곕쭔 濡쒗뀒?댁뀡.
-    - **?깅뒫**: ?ㅽ듃?뚰겕 ?붿껌 ?잛닔瑜??띻린?곸쑝濡?以꾩씠硫댁꽌???뺣낫???먮쫫? ?딄린吏 ?딅룄濡?援ы쁽.
-
-### 5. ?명듃?쇰꽬 ?꾩슜 ?덉씠?꾩썐 (Work Mode)
-- **Header**: ?명듃?쇰꽬 ?쒖젙?쇰줈 `relative` 諛곗튂 ?곸슜. ?ㅽ겕濡???蹂몃Ц怨??④퍡 媛?ㅼ졇 ?붾㈃ 媛??踰붿쐞 ?뺣?.
-- **InfoTicker**: 硫붿씤 ?ㅻ뜑媛 ?щ씪吏硫?**理쒖긽??0px)??怨좎젙(Sticky)**?섏뼱 ?쒓퀎? ?댁뒪 媛?낆꽦 ?좎?.
-- **Sidebar**: ?ㅻ뜑 ?믪씠瑜?怨꾩궛?섏뿬 ?곗빱 諛붾줈 ?꾨옒??怨좎젙?섎룄濡?`sticky top` ?꾩튂 ?뺣? 議곗젙.
+### 💎 핵심 성과
+1.  **Vercel 배포 완벽 해결**: SSR(서버 사이드 렌더링) 환경에서 `localStorage` 및 `window` 접근 에러를 100% 차단하는 구조로 개편 (Mounted State 활용).
+2.  **데이터 무결성 확보 (NaN 해결)**: 백엔드(`app.py`)에서 발생하던 `NaN` 및 `Infinity` JSON 파싱 오류를 서버-클라이언트 2중 방어막으로 완전 해결.
+3.  **BIOS 스타일 실시간 로깅 & 타이머**: 컨테이너 조회 시 실제 소요 시간을 0.1초 단위로 표시하는 실시간 타이머와 블링킹 커서 UI 도입.
+4.  **서버 부하 90% 절감 (날씨/뉴스 최적화)**: 5초마다 호출하던 날씨/뉴스를 **30분 주기 캐싱**으로 변경. 티커는 로컬 캐시를 5초마다 순환시켜 사용자 경험은 유지하고 서버 부하는 전폭적으로 낮춤.
+5.  **인트라넷 업무 집중 모드**: 스크롤 시 메인 헤더를 숨기고 **티커와 사이드바만 상단에 고정**되도록 레이아웃 고도화.
 
 ---
 
-## ?뱥 ?꾨즺 泥댄겕由ъ뒪??- [x] Vercel 諛고룷 ?깃났 諛??고????먮윭 ?꾩닔 議곗궗 ?꾨즺
-- [x] 諛깆뿏??`NaN` 泥섎━ 諛?JSON 蹂댁븞 媛뺥솕
-- [x] ?ㅼ떆媛???대㉧ 諛?BIOS UI ?곸슜
-- [x] ?좎뵪/?댁뒪 30遺?罹먯떛 濡쒖쭅 ?곸슜
-- [x] ?명듃?쇰꽬 ?ㅽ겕濡??덉씠?꾩썐 理쒖쟻??
+## 🛠 상세 작업 내역
+
+### 1. Vercel & SSR 안정화
+- **문제**: Next.js 빌드 및 런타임 시 `ReferenceError: window is not defined` 발생 및 하이드레이션 오류.
+- **해결**:
+    - `useClient` 컴포넌트 내부에 `mounted` 상태값 도입.
+    - `useEffect`로 마운트 확인 전에는 브라우저 API 호출 완전 차단.
+    - 외부 라이브러리(XLSX 등)를 Next.js `Script` 컴포넌트(`afterInteractive`)로 교체하여 렌더링 차단 방지.
+
+### 2. 백엔드 JSON 파싱 버그 수정 (`NaN` 대응)
+- **문제**: 엑셀 데이터가 비어있을 경우 `NaN`이 발생, `json.dumps`가 이를 처리하지 못해 프론트에서 에러 발생.
+- **해결**:
+    - `app.py`: `pd.notnull` 체크 후 `NaN`을 `None`으로 변환. `json.dumps(allow_nan=False)` 설정으로 규격 외 JSON 생성 원천 차단.
+    - `page.js`: 스트리밍 데이터를 받을 때 문자열 `"NaN"`을 `null`로 치환하는 안전장치 추가.
+
+### 3. 컨테이너 이력조회 UI 프리미엄 폴리싱
+- **BIOS 로깅**: 프로세스 진행 상태를 세밀하게 출력 (`[검색] 컨테이너 조회 시작...`).
+- **실시간 타이머**: `setInterval`을 이용해 0.1초 단위 경과 시간 표시 및 작업 완료 시 최종 소요 시간 기록.
+- **애니메이션**: 작업 중임을 시각적으로 알려주는 **블링킹 커서(`_`)** 및 활성 로그 라인 강조 스타일 추가.
+
+### 4. 정보 수집 로직 아키텍처 개선
+- **기존**: `InfoTicker`가 5초마다 모든 지역 날씨 API를 개별 호출 (서버 과부하 원인).
+- **개선**:
+    - **입구 컷**: `/api/weather`, `/api/news` API 자체의 `revalidate` 주기를 30분으로 상향.
+    - **클라이언트 캐싱**: `InfoTicker` 마운트 시 모든 지역 날씨를 한 번에 가져와 `weatherCache`에 저장. 이후 5초마다 캐시된 데이터만 로테이션.
+    - **성능**: 네트워크 요청 횟수를 획기적으로 줄이면서도 정보의 흐름은 끊기지 않도록 구현.
+
+### [2026-02-07] 컨테이너 이력조회 UI 고도화 및 개인화
+- **Individual Credentials**: Supabase `user_els_credentials` 테이블 및 API 추가 (사용자별 개별 이트렌스 계정 관리).
+- **State Persistence**: `sessionStorage`를 도입하여 페이지 전환 시에도 로그 및 조회 결과 유지.
+- **Auto Login & Pipeline**: 페이지 진입 시 자동 로그인 및 로그인 완료 전 조회 요청 대응 (대기열 처리).
+- **UX Improvement**: 모든 입력 필드 엔터 키(ENTER) 지원 및 개인 계정 저장 기능 추가.
+- **Sidebar**: 헤더 높이를 계산하여 티커 바로 아래에 고정되도록 `sticky top` 위치 정밀 조정.
+
+---
+
+## 📋 완료 체크리스트
+- [x] Vercel 배포 성공 및 런타임 에러 전수 조사 완료
+- [x] 백엔드 `NaN` 처리 및 JSON 보안 강화
+- [x] 실시간 타이머 및 BIOS UI 적용
+- [x] 날씨/뉴스 30분 캐싱 로직 적용
+- [x] 인트라넷 스크롤 레이아웃 최적화
+
 ---
 
 
 
-## ?럦 而⑦뀒?대꼫 ?대젰議고쉶 濡쒓렇???곕룞 ?꾨즺! (16:30) - 3???붾쾭源?醫낅즺
+## 🎉 컨테이너 이력조회 로그인 연동 완료! (16:30) - 3일 디버깅 종료
 
-### ?룇 理쒖쥌 ?깃낵
-- ??**濡쒓렇???깃났!** ?꾨줎????諛깆뿏?????곕が ??BOT ?꾩껜 ?곕룞 ?꾨즺
-- ??**BIOS ?ㅽ???UI ?꾩꽦!** ?ㅼ떆媛?吏꾪뻾 ?곹깭 諛??쒓컙 ?쒖떆
-- ??**`name 'time' is not defined` ?먮윭 ?꾩쟾 ?닿껐!**
-- ??**濡쒖뺄 ?뚯뒪???섍꼍 援ъ텞 ?꾨즺**
+### 🏆 최종 성과
+- ✅ **로그인 성공!** 프론트 → 백엔드 → 데몬 → BOT 전체 연동 완료
+- ✅ **BIOS 스타일 UI 완성!** 실시간 진행 상태 및 시간 표시
+- ✅ **`name 'time' is not defined` 에러 완전 해결!**
+- ✅ **로컬 테스트 환경 구축 완료**
 
-### ?뵦 理쒖쥌 ?닿껐: Python 罹먯떆 臾몄젣 (16:20)
-**臾몄젣**: 3?쇨컙 吏?띾맂 `name 'time' is not defined` ?먮윭
-- `import time`? 遺꾨챸??議댁옱
-- 肄붾뱶???꾨꼍?덉?留?怨꾩냽 ?먮윭 諛쒖깮
-- 怨좎뒪???뚯씪(`els_bot copy.py`, `els_bot_debug.py`) 議댁옱
+### 🔥 최종 해결: Python 캐시 문제 (16:20)
+**문제**: 3일간 지속된 `name 'time' is not defined` 에러
+- `import time`은 분명히 존재
+- 코드는 완벽했지만 계속 에러 발생
+- 고스트 파일(`els_bot copy.py`, `els_bot_debug.py`) 존재
 
-**?먯씤**: `__pycache__/els_bot.cpython-314.pyc` ?뚯씪???ㅻ옒??踰꾩쟾??罹먯떆
-- Python??`.py` ???`.pyc` 諛붿씠?몄퐫???ㅽ뻾
-- 罹먯떆 ?뚯씪??`import time` ?녿뒗 援щ쾭??
-**?닿껐**:
-1. `__pycache__` ?대뜑 ?꾩쟾 ??젣
-2. 怨좎뒪???뚯씪 ??젣 (`els_bot copy.py`, `els_bot_debug.py`)
-3. `PYTHONDONTWRITEBYTECODE=1` ?섍꼍 蹂???ㅼ젙 (`.pyc` ?앹꽦 諛⑹?)
-4. 紐⑤뱺 Python ?꾨줈?몄뒪 媛뺤젣 醫낅즺 ???ъ떆??
-### ?뱤 BIOS ?ㅽ???UI 援ы쁽 (15:00)
-**湲곕뒫**: 濡쒓렇??吏꾪뻾 ?곹깭瑜??ㅼ떆媛꾩쑝濡??쒓컖??```
+**원인**: `__pycache__/els_bot.cpython-314.pyc` 파일이 오래된 버전을 캐시
+- Python이 `.py` 대신 `.pyc` 바이트코드 실행
+- 캐시 파일이 `import time` 없는 구버전
+
+**해결**:
+1. `__pycache__` 폴더 완전 삭제
+2. 고스트 파일 삭제 (`els_bot copy.py`, `els_bot_debug.py`)
+3. `PYTHONDONTWRITEBYTECODE=1` 환경 변수 설정 (`.pyc` 생성 방지)
+4. 모든 Python 프로세스 강제 종료 후 재시작
+
+### 📊 BIOS 스타일 UI 구현 (15:00)
+**기능**: 로그인 진행 상태를 실시간으로 시각화
+```
 SYSTEM DIAGNOSTIC
 [ OK ] Initialize Driver      1.58s
 [ OK ] Start Browser          2.72s
@@ -115,1515 +125,1558 @@ SYSTEM DIAGNOSTIC
 [ OK ] Load Menu              7.51s
 ```
 
-**援ы쁽**:
-- 濡쒓렇?먯꽌 ?쒓컙 ?뺣낫 ?먮룞 ?뚯떛 (`[  1.58s]` ?뺤떇)
-- 媛??④퀎蹂??ㅼ썙??留ㅼ묶 (?щ＼ ?쒕씪?대쾭, 釉뚮씪?곗? ?ㅽ뻾, ?ъ씠???묒냽 ??
-- ?먮윭 諛쒖깮 ??`[FAIL]` 鍮④컙???쒖떆
-- ?깃났 ??`[ OK ]` 珥덈줉??+ ?뚯슂 ?쒓컙 ?쒖떆
+**구현**:
+- 로그에서 시간 정보 자동 파싱 (`[  1.58s]` 형식)
+- 각 단계별 키워드 매칭 (크롬 드라이버, 브라우저 실행, 사이트 접속 등)
+- 에러 발생 시 `[FAIL]` 빨간색 표시
+- 성공 시 `[ OK ]` 초록색 + 소요 시간 표시
 
-### ?뵩 諛깆뿏???묐떟 ?뚯떛 媛쒖꽑 (16:00)
-**臾몄젣**: ?곕が??stdout??LOG 異쒕젰 ??諛깆뿏?쒓? JSON ?뚯떛 ?ㅽ뙣
+### 🔧 백엔드 응답 파싱 개선 (16:00)
+**문제**: 데몬이 stdout에 LOG 출력 → 백엔드가 JSON 파싱 실패
 ```
-Raw response: LOG:[  0.00s] 濡쒓렇???쒖옉...
-LOG:[  1.58s] 釉뚮씪?곗? ?ㅽ뻾...
+Raw response: LOG:[  0.00s] 로그인 시작...
+LOG:[  1.58s] 브라우저 실행...
 RESULT:{"ok": true, "log": [...]}
 ```
 
-**?닿껐**:
-- ?곕が: JSON ?묐떟 ?꾩뿉 `RESULT:` ?묐몢??異쒕젰
-- 諛깆뿏?? `RESULT:` ?댄썑??JSON留??뚯떛
+**해결**:
+- 데몬: JSON 응답 전에 `RESULT:` 접두사 출력
+- 백엔드: `RESULT:` 이후의 JSON만 파싱
 ```python
 if "RESULT:" in raw_resp:
     json_start = raw_resp.find("RESULT:") + 7
     daemon_result = json.loads(raw_resp[json_start:].strip())
 ```
 
-### ?썱 ?앹꽦???꾧뎄 諛?臾몄꽌
-1. **`force_restart.ps1`** - ?꾩쟾 ?대┛ ?ъ떆??(罹먯떆 ??젣 + ?꾨줈?몄뒪 醫낅즺)
-2. **`start_local_test.ps1`** - PowerShell???쒕쾭 ?ㅽ뻾 ?ㅽ겕由쏀듃
-3. **`clean_restart.ps1`** - Python/Next.js 罹먯떆 ??젣 ???ъ떆??4. **`restart_daemon.ps1`** - ?곕が留??ъ떆??5. **`restart_backend.ps1`** - 諛깆뿏?쒕쭔 ?ъ떆??6. **`debug_import.py`** - import 寃쎈줈 諛?紐⑤뱢 ?댁슜 ?뺤씤
-7. **`QUICK_START.md`** - 鍮좊Ⅸ ?쒖옉 媛?대뱶
+### 🛠 생성된 도구 및 문서
+1. **`force_restart.ps1`** - 완전 클린 재시작 (캐시 삭제 + 프로세스 종료)
+2. **`start_local_test.ps1`** - PowerShell용 서버 실행 스크립트
+3. **`clean_restart.ps1`** - Python/Next.js 캐시 삭제 후 재시작
+4. **`restart_daemon.ps1`** - 데몬만 재시작
+5. **`restart_backend.ps1`** - 백엔드만 재시작
+6. **`debug_import.py`** - import 경로 및 모듈 내용 확인
+7. **`QUICK_START.md`** - 빠른 시작 가이드
 
-### ?뱷 ?뚮젮吏??댁뒋
-- **?몄뀡 ??꾩븘??*: 濡쒓렇????2遺??댁긽 ?湲???`invalid session id` ?먮윭
-  - **?꾩떆 ?닿껐**: 濡쒓렇??吏곹썑 利됱떆 議고쉶 ?ㅽ뻾
-  - **?ν썑 媛쒖꽑**: ?몄뀡 ?좎? 濡쒖쭅 異붽? ?꾩슂
-
----
-
-## ?렞 而⑦뀒?대꼫 ?대젰議고쉶 ?꾨줎??諛깆뿏??BOT ?꾩껜 ?곕룞 ?섏젙 (14:25)
-
-### 1. ?묒뾽 諛곌꼍
-- **臾몄젣**: ?섏씠吏, 諛깆뿏?? BOT 紐⑤몢 ?ы듃 ?섏젙 ?깆쑝濡??곕룞 臾몄젣 ?ш컖. 寃곌낵?곸쑝濡??섏씠吏?먯꽌 寃곌낵瑜?蹂댁? 紐삵븿.
-- **紐⑺몴**: ?꾨줎?몄뿏????諛깆뿏?????곕が ??BOT ?꾩껜 ?먮쫫 吏묒쨷 ?먭? 諛??섏젙.
-
-### 2. 諛쒓껄??臾몄젣??1. **CORS ?뺤콉 遺덉씪移?*: ?꾨줎?멸? `localhost:2929`濡??붿껌?섎뒗??諛깆뿏??CORS??`localhost:3000`留??덉슜 ??紐⑤뱺 API 李⑤떒
-2. **?곗씠??援ъ“ 遺덉씪移?*: 諛깆뿏?쒓? `to_dict('records')` 媛앹껜 諛곗뿴 諛섑솚, ?꾨줎?몃뒗 `row[j]` ?몃뜳???묎렐 ???뚯씠釉??뚮뜑留??ㅽ뙣
-3. **?먮윭 異붿쟻 遺議?*: ?곕が/諛깆뿏???먮윭 ???곸꽭 ?뺣낫 ?놁쓬 ???붾쾭源??대젮?
-4. **濡쒖뺄 ?뚯뒪??遺덇?**: headless 紐⑤뱶 怨좎젙 ??釉뚮씪?곗? ?숈옉 ?뺤씤 遺덇?
-
-### 3. ?섏젙 ?꾨즺 ?댁뿭
-#### 3-1. 諛깆뿏??CORS ?섏젙 (`docker/els-backend/app.py` 26踰?以?
-- **蹂寃?*: `origins: ["localhost:3000", "elssolution.net"]` ??`origins: "*"`
-- **?④낵**: 紐⑤뱺 ?ы듃?먯꽌 ?묒냽 媛??
-#### 3-2. 寃곌낵 ?곗씠??援ъ“ ?듭씪 (`docker/els-backend/app.py` 199踰?以?
-- **蹂寃?*: `df.to_dict('records')` ??`df.values.tolist()`
-- **?④낵**: 2李⑥썝 諛곗뿴濡?諛섑솚?섏뿬 ?꾨줎?몄뿉??`row[j]` ?몃뜳???묎렐 媛??
-#### 3-3. ?꾨줎?몄뿏???뚯씠釉??뚮뜑留??섏젙 (`web/app/employees/container-history/page.js` 240踰?以?
-- **蹂寃?*: `HEADERS.map((_, j) => row[j])` ??`row.map((cell, j) => cell || '')`
-- **?④낵**: 諛곗뿴 湲몄씠 遺덉씪移?諛⑹?, ?덉쟾???뚮뜑留?
-#### 3-4. ?곕が ?먮윭 ?몃뱾留?媛뺥솕 (`elsbot/els_web_runner_daemon.py`)
-- **異붽?**: 濡쒓렇??議고쉶 ?ㅽ뙣 ??`traceback.print_exc()` 異붽?
-- **?④낵**: ?먮윭 諛쒖깮 ???꾩껜 ?ㅽ깮 ?몃젅?댁뒪 異쒕젰?쇰줈 ?붾쾭源??⑹씠
-
-#### 3-5. 釉뚮씪?곗? ?쒖떆 ?듭뀡 異붽? (`elsbot/els_bot.py` 147踰?以?
-- **異붽?**: `HEADLESS` ?섍꼍 蹂?섎줈 headless 紐⑤뱶 ?쒖뼱
-- **?④낵**: `HEADLESS=0` ?ㅼ젙 ??釉뚮씪?곗? ?쒖떆濡??숈옉 ?뺤씤 媛??
-### 4. ?앹꽦???뚯뒪???꾧뎄
-- **`start_local_test.bat`**: ?곕が(31999) + 諛깆뿏??2929) + ?꾨줎??3000) ?먮룞 ?ㅽ뻾
-- **`stop_local_test.bat`**: ?꾩껜 ?쒕쾭 醫낅즺
-- **`check_packages.py`**: ?꾩닔 ?⑦궎吏 ?ㅼ튂 ?뺤씤 ?ㅽ겕由쏀듃
-- **`ELS_LOCAL_TEST_GUIDE.md`**: ?꾩쟾??濡쒖뺄 ?뚯뒪??媛?대뱶 (?섍꼍 援ъ텞, ?쒕굹由ъ삤, 臾몄젣 ?닿껐)
-- **`ELS_FIX_REPORT.md`**: ?꾩껜 ?섏젙 ?댁뿭 諛??곗씠???먮쫫 寃利?臾몄꽌
-
-### 5. ?섍꼍 寃利?寃곌낵
-??Python 3.14.2  
-??Flask, Flask-CORS, Pandas, OpenPyXL, Selenium, WebDriver Manager 紐⑤몢 ?ㅼ튂 ?꾨즺
-
-### 6. ?꾨즺 泥댄겕由ъ뒪??- [x] 濡쒖뺄 ?뚯뒪???ㅽ뻾 (`start_local_test.bat`)
-- [x] 濡쒓렇???깃났 ?뺤씤
-- [x] BIOS UI ?뺤긽 ?묐룞 ?뺤씤
-- [ ] 議고쉶/?ㅼ슫濡쒕뱶 ?꾩껜 ?쒕굹由ъ삤 寃利?(?몄뀡 ??꾩븘???댁뒋濡?蹂대쪟)
-- [ ] ?섏뒪 ?꾩빱 鍮뚮뱶 諛?諛고룷
+### 📝 알려진 이슈
+- **세션 타임아웃**: 로그인 후 2분 이상 대기 시 `invalid session id` 에러
+  - **임시 해결**: 로그인 직후 즉시 조회 실행
+  - **향후 개선**: 세션 유지 로직 추가 필요
 
 ---
 
-## 2026??2??6???ㅼ쟾 (?댁쟾 ?묒뾽)
+## 🎯 컨테이너 이력조회 프론트-백엔드-BOT 전체 연동 수정 (14:25)
 
-### 1. ?묒뾽 ?붿빟
-- **?꾩빱 諛??⑦궎吏 ?ㅽ? ?섏젙**: Dockerfile ??`libxcursor1` ?ㅽ? ?섏젙 諛?`flask-cors` ?꾨씫 蹂댁셿.
-- **諛깆뿏??援ъ“ 媛쒗렪**: `els_bot.py`瑜??대옒??諛⑹떇?먯꽌 ?낅┰ ?⑥닔 諛⑹떇?쇰줈 蹂寃쏀븯???몄텧 ?덉젙???뺣낫.
-- **濡쒖뺄 ?섍꼍 寃利?*: ?섏뒪 鍮뚮뱶 ?띾룄 臾몄젣瑜??쇳븯湲??꾪빐 ?덈룄??濡쒖뺄 PC?먯꽌 諛깆뿏??諛??곕が ?쒕쾭 媛???뚯뒪??吏꾪뻾.
+### 1. 작업 배경
+- **문제**: 페이지, 백엔드, BOT 모두 포트 수정 등으로 연동 문제 심각. 결과적으로 페이지에서 결과를 보지 못함.
+- **목표**: 프론트엔드 → 백엔드 → 데몬 → BOT 전체 흐름 집중 점검 및 수정.
 
-### 2. ?닿껐??臾몄젣 (Fixed)
-- **CORS ?먮윭**: `app.py`?먯꽌 `nollae.com` 諛?濡쒖뺄 ?몄뒪???덉슜 紐⑸줉 ?낅뜲?댄듃.
-- **Dockerfile 鍮뚮뱶 ?ㅻ쪟**: `libcursor1` -> `libxcursor1` ?섏젙?쇰줈 ?대?吏 鍮뚮뱶 ?깃났.
-- **ModuleNotFoundError**: 濡쒖뺄 PC???꾩닔 ?⑦궎吏(`flask`, `selenium` ?? ?ㅼ튂 媛?대뱶 ?꾨즺.
-- **NameError (get_driver)**: `els_bot.py` ?대????섎せ???⑥닔 ?몄텧 濡쒖쭅 ?섏젙.
+### 2. 발견된 문제점
+1. **CORS 정책 불일치**: 프론트가 `localhost:2929`로 요청하는데 백엔드 CORS는 `localhost:3000`만 허용 → 모든 API 차단
+2. **데이터 구조 불일치**: 백엔드가 `to_dict('records')` 객체 배열 반환, 프론트는 `row[j]` 인덱스 접근 → 테이블 렌더링 실패
+3. **에러 추적 부족**: 데몬/백엔드 에러 시 상세 정보 없음 → 디버깅 어려움
+4. **로컬 테스트 불가**: headless 모드 고정 → 브라우저 동작 확인 불가
 
-### 3. ?꾩옱 ?곹깭 (Current Status)
-- **諛깆뿏??*: 2929 ?ы듃?먯꽌 ?뺤긽 媛???뺤씤.
-- **?곕が**: 31999 ?ы듃?먯꽌 媛???깃났 諛?濡쒓렇???꾨즺 硫붿떆吏 ?뺤씤.
-- **???닿껐 ?꾨즺**: ?곕が怨?諛깆뿏???ъ씠??JSON ?곗씠???듭떊 ?댁뒋 諛??꾨줎?몄뿏???뚮뜑留?臾몄젣 紐⑤몢 ?닿껐.
+### 3. 수정 완료 내역
+#### 3-1. 백엔드 CORS 수정 (`docker/els-backend/app.py` 26번 줄)
+- **변경**: `origins: ["localhost:3000", "elssolution.net"]` → `origins: "*"`
+- **효과**: 모든 포트에서 접속 가능
 
-### 4. ?ㅼ쓬 ?묒뾽 ?쒖옉 ???뺤씤??寃?- `elsbot/els_web_runner_daemon.py`? `elsbot/els_bot.py`媛 理쒖떊 ?듯빀蹂몄쑝濡?援먯껜?섏뿀?붿?
+#### 3-2. 결과 데이터 구조 통일 (`docker/els-backend/app.py` 199번 줄)
+- **변경**: `df.to_dict('records')` → `df.values.tolist()`
+- **효과**: 2차원 배열로 반환하여 프론트에서 `row[j]` 인덱스 접근 가능
 
+#### 3-3. 프론트엔드 테이블 렌더링 수정 (`web/app/employees/container-history/page.js` 240번 줄)
+- **변경**: `HEADERS.map((_, j) => row[j])` → `row.map((cell, j) => cell || '')`
+- **효과**: 배열 길이 불일치 방지, 안전한 렌더링
 
-## 2026??2??4???섏슂??### els_bot.py 諛?app.py ?뚯씪??'time' 紐⑤뱢 import ?꾨씫 ?섏젙
-- `elsbot/els_bot.py`: `import time`???대? 議댁옱?섏뿬 ?섏젙?섏? ?딆쓬.
-- `docker/els-backend/app.py`: `import time` ?꾨씫 ?뺤씤 ??理쒖긽?⑥뿉 異붽?.
-- `[?덉쇅] name 'time' is not defined` ?먮윭 ?닿껐.
+#### 3-4. 데몬 에러 핸들링 강화 (`elsbot/els_web_runner_daemon.py`)
+- **추가**: 로그인/조회 실패 시 `traceback.print_exc()` 추가
+- **효과**: 에러 발생 시 전체 스택 트레이스 출력으로 디버깅 용이
 
-### els_bot.py ?묒? ?곗씠???뚯떛 濡쒖쭅 ?섏젙
-- `elsbot/els_bot.py` ??`main` ?⑥닔???뚯떛 濡쒖쭅 媛쒖꽑.
-- `re.split` ?????`\t`)???곗꽑 湲곗??쇰줈 遺꾨━?섎룄濡??섏젙?섏뿬 ?좎쭨/?쒓컙 ?곗씠?곗쓽 怨듬갚 履쇨컻吏?諛⑹?.
-- `row_data`??湲몄씠瑜?寃利?`len(row_data) < 5`)?섍퀬 `No` ?꾨뱶???좏슚??`isdigit()`, `1 <= No <= 15`)??異붽??섏뿬 ?좏슚?섏? ?딆? ?곗씠??以??꾪꽣留?
-- `Sheet1`??`No`媛 '1'???곗씠?곕쭔 ?ㅼ뼱媛?꾨줉 ?섎뒗 濡쒖쭅? 湲곗〈?濡??좎???(?뚯떛 ?뺥솗??媛쒖꽑?쇰줈 ?꾪꽣留??④낵 利앸?).
+#### 3-5. 브라우저 표시 옵션 추가 (`elsbot/els_bot.py` 147번 줄)
+- **추가**: `HEADLESS` 환경 변수로 headless 모드 제어
+- **효과**: `HEADLESS=0` 설정 시 브라우저 표시로 동작 확인 가능
 
-### /api/els/login 500 ?먮윭 ?닿껐 諛?els_bot.py 由ы뙥?좊쭅
-- `elsbot/els_bot.py` 諛?`docker/els-backend/app.py` ?뚯씪??`import time`???뺤떎???덈뒗吏 ?ы솗??(紐⑤몢 議댁옱).
-- `elsbot/els_bot.py`??`main` ?⑥닔瑜?`run_els_process` (?듭떖 濡쒖쭅)? `cli_main` (CLI ?ㅽ뻾 濡쒖쭅)?쇰줈 由ы뙥?좊쭅.
-- `els_bot.py`?먯꽌 遺덊븘?뷀븳 `input()` 肄붾뱶 ?쒓굅 諛?`sys.argv`瑜??듯븳 ?ㅽ뻾 諛⑹떇 遺꾨━.
-- `argparse` 紐⑤뱢???ъ슜?섏뿬 ?몃? ?몄텧 ???몄옄 ?뚯떛 諛?JSON 寃곌낵 異쒕젰 濡쒖쭅 異붽?.
+### 4. 생성된 테스트 도구
+- **`start_local_test.bat`**: 데몬(31999) + 백엔드(2929) + 프론트(3000) 자동 실행
+- **`stop_local_test.bat`**: 전체 서버 종료
+- **`check_packages.py`**: 필수 패키지 설치 확인 스크립트
+- **`ELS_LOCAL_TEST_GUIDE.md`**: 완전한 로컬 테스트 가이드 (환경 구축, 시나리오, 문제 해결)
+- **`ELS_FIX_REPORT.md`**: 전체 수정 내역 및 데이터 흐름 검증 문서
 
-### ?덉쟾?댁엫 議고쉶 UI 媛쒖꽑 (踰꾪듉 湲곕뒫 諛??ㅽ????섏젙 - 理쒖쥌)
-- `web/app/employees/safe-freight/safe-freight.module.css` ?뚯씪??`.tabDeveloping` CSS ?대옒??異붽? (?낆? 鍮④컯 諛곌꼍 諛??뚮몢由?.
-- `web/app/employees/safe-freight/page.js` ?뚯씪 ?섏젙:
-    - `援ш컙議고쉶` 踰꾪듉 `className`??`styles.tabDeveloping`?쇰줈, ?띿뒪?몃? `援ш컙議고쉶(媛쒕컻以?`?쇰줈 蹂寃? `title`??`?ㅼ씠踰?吏?꾨줈 寃쎈줈 議고쉶 (媛쒕컻以?`?쇰줈 蹂寃?
-    - `?ъ썙?봌R` 踰꾪듉 `onClick` ?몃뱾?щ? ?먮옒?濡?`setView('forwarder')`濡??섎룎??`iframe`???대━?꾨줉 ?섏젙.
-    - `?ъ썙?봌R` 踰꾪듉 `title`??`?ъ썙?붿??댁븣 ?댁엫?뺣낫 諛붾줈媛湲?濡?蹂寃?
-    - ?곷떒 `QUERY_TYPES` ??踰꾪듉?ㅼ쓽 `onClick` ?몃뱾?щ? ?섏젙?섏뿬, `forwarder` 酉??곹깭?먯꽌 ?대┃ ??`default` 酉곕줈 ?꾪솚?섍퀬 ?대떦 `queryType`???ㅼ젙?섎룄濡?蹂寃?
-    - `?ъ썙?봌R` `iframeSection` ??`?덉쟾?댁엫 議고쉶濡??뚯븘媛湲? 踰꾪듉 ?쒓굅 (遺덊븘?뷀븳 踰꾪듉 ?쒓굅).
+### 5. 환경 검증 결과
+✅ Python 3.14.2  
+✅ Flask, Flask-CORS, Pandas, OpenPyXL, Selenium, WebDriver Manager 모두 설치 완료
 
-### ?ㅻ뜑 ?꾩젽 議곌굔遺 ?뚮뜑留?(?명듃?쇰꽬 ?섏씠吏?먮쭔 ?쒖떆)
-- `web/components/SiteLayout.js` ?뚯씪 ?섏젙:
-    - `InfoTicker` 而댄룷?뚰듃 (`?꾩옱?쒓컙, ?좎뵪, ?댁뒪` ?꾩젽 ?ы븿)媛 `/employees` ?먮뒗 `/admin` 寃쎈줈???뚮쭔 ?뚮뜑留곷릺?꾨줉 議곌굔遺 ?뚮뜑留?濡쒖쭅 ?곸슜.
-    - `isEmployees` 蹂?섎? ?쒖슜?섏뿬 `InfoTicker` 而댄룷?뚰듃???뚮뜑留곸쓣 ?쒖뼱.
-
-### ?댁뒪 湲곗궗 ?섏씠吏 iframe?쇰줈 蹂寃?(?앹뾽 李⑤떒 ?쒕룄)
-- `web/app/employees/news/article/page.js` ?뚯씪 ?섏젙:
-    - ?댁뒪 湲곗궗 蹂몃Ц??`fetch` API瑜??듯븳 吏곸젒 ?뚮뜑留?諛⑹떇?먯꽌 `iframe` 諛⑹떇?쇰줈 蹂寃?
-    - ?몃? 湲곗궗 URL??`iframe` `src`濡?吏곸젒 濡쒕뱶?섏뿬 '?ъ씠???대룞' 踰꾪듉 ?놁씠 諛붾줈 湲곗궗 ?댁슜??蹂????덈룄濡?媛쒖꽑.
-    - `iframe`??`sandbox="allow-scripts allow-same-origin allow-forms allow-modals"` ?띿꽦??異붽??섏뿬 ?앹뾽??李⑤떒?섍퀬 蹂댁븞 媛뺥솕. 愿묎퀬??`iframe` 肄섑뀗痢좎씠誘濡??쒓굅 遺덇?.
-    - ?댁뒪 紐⑸줉?쇰줈 ?뚯븘媛??`Link`???좎?.
-
-### ?댁뒪 湲곗궗 ?섏씠吏 iframe ?ш린 議곗젙 (蹂몃Ц 苑?梨꾩슦湲?
-- `web/app/employees/news/article/article.module.css` ?뚯씪 ?섏젙:
-    - `.articleIframe` ?대옒?ㅻ? 異붽??섏뿬 `width: 100%`, `height: calc(100vh - 200px)`, `border: none; display: block;` ?ㅽ????곸슜.
-    - `infoText` 諛?`iframeFooter` ?대옒???ㅽ???異붽??섏뿬 `iframe` 二쇰? ?붿냼?ㅼ쓽 ?쒓컖??諛곗튂 媛쒖꽑.
-
-### 而댄뙆???먮윭 ?닿껐 (React is not defined)
-- `web/app/employees/safe-freight/page.js` ?뚯씪 ?섏젙:
-    - `import React from 'react';` 異붽??섏뿬 `React.Fragment` ?ъ슜?쇰줈 ?명븳 `'React' is not defined` ?먮윭 ?닿껐.
-
-### [?ъ닔?? ?덉쟾?댁엫 議고쉶 UI - ?ъ썙?봌R ?ъ씠????李쎌쑝濡??닿린 諛?踰꾪듉 ?꾩튂 議곗젙
-- `web/app/employees/safe-freight/page.js` ?뚯씪 ?섏젙:
-    - `?ъ썙?봌R` 踰꾪듉 `onClick` 濡쒖쭅??`window.open('https://www.forwarder.kr/tariff/', '_blank')`濡?蹂寃쏀븯????李쎌뿉???대━?꾨줉 ?섏젙. `title`? `?ъ썙?붿??댁븣 ?댁엫?뺣낫`濡?蹂듭썝.
-    - `view === 'forwarder'` ?????뚮뜑留곷릺??`iframeSection` 釉붾줉 ?꾩쟾???쒓굅.
-    - 踰꾪듉?ㅼ쓽 ?쒖꽌 議곗젙: `愿??踰뺣졊쨌怨좎떆 ?덈궡` 踰꾪듉??`?댁쇅援ш컙` ?쇱そ?쇰줈, `?ъ썙?봌R` 踰꾪듉??`援ш컙議고쉶(媛쒕컻以?` ?쇱そ?쇰줈 ?대룞.
-
-### 濡쒓렇??500 ?먮윭 ?щ컻 ?닿껐 諛?els_bot.py, app.py 濡쒓퉭 蹂닿컯
-- `elsbot/els_bot.py` ?뚯씪 ?섏젙:
-    - `CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")` ?쇰줈 ?덈? 寃쎈줈 媛뺤젣 吏??
-    - `load_config()` ?⑥닔?먯꽌 `FileNotFoundError` 諛쒖깮 ??`[WARNING]` 濡쒓렇, `json.JSONDecodeError` 諛쒖깮 ??`[ERROR]` 濡쒓렇 異쒕젰.
-    - `cli_main()` ?⑥닔?먯꽌 `input()` 肄붾뱶 諛?`while True` 猷⑦봽 ?쒓굅, ?묒? ?뚯씪 濡쒕뵫 諛?`run_els_process` ?몄텧 濡쒖쭅留??④?. (?먮윭 硫붿떆吏 諛??깃났 硫붿떆吏??`[ERROR]`, `[INFO]` ?묐몢??異붽?)
-- `docker/els-backend/app.py` ?뚯씪 ?섏젙:
-    - `login` ?⑥닔 ??`subprocess` ?ㅽ뻾 ???먮윭 濡쒓퉭??`app.logger.exception`???ъ슜?섏뿬 ?ㅽ깮 ?몃젅?댁뒪 諛?`stdout`, `stderr` ?댁슜?????곸꽭?섍쾶 ?④린?꾨줉 蹂닿컯.
-
-### ?댁뒪 ?섏씠吏 諛??덉쟾?댁엫 議고쉶 ?섏씠吏 UI 媛쒖꽑 (?щ갚, 踰꾪듉 ?꾩튂 議곗젙)
-- **?댁뒪 ?섏씠吏 (`web/app/employees/news/article/page.js`, `article.module.css`) ?섏젙:**
-    - ?곷떒 ?덈궡 臾멸뎄 (`<p className={styles.infoText}>...</p>`) ?쒓굅.
-    - ?섎떒 `iframeFooter` ??`??李쎌뿉??蹂닿린` 踰꾪듉 ?쒓굅.
-    - ?곷떒 `<div className={styles.header}>` ?댁뿉 `?댁뒪 紐⑸줉` `Link`? `??李쎌뿉??蹂닿린` `a` ?쒓렇瑜??듯빀?섏뿬 諛곗튂.
-    - `article.module.css` ?섏젙: `.header`??`margin-bottom`??以꾩씠怨?`display: flex` ?띿꽦 異붽?. `.card`???곷떒 `padding`??以꾩뿬 ?곷떒 ?щ갚 理쒖냼??
-- **?덉쟾?댁엫 議고쉶 ?섏씠吏 (`web/app/employees/safe-freight/page.js`, `safe-freight.module.css`) ?섏젙:**
-    - ?곷떒 ?ㅻ챸 臾멸뎄 (`<p className={styles.desc}>...</p>`) ?쒓굅.
-    - `<div className={styles.tabs}>` ?댁쓽 踰꾪듉 ?쒖꽌 ?ъ“?? `愿??踰뺣졊쨌怨좎떆 ?덈궡` 踰꾪듉??`?댁쇅援ш컙` ?쇱そ?쇰줈, `?ъ썙?봌R` 踰꾪듉??`援ш컙議고쉶(媛쒕컻以?` ?쇱そ?쇰줈 ?대룞.
-    - `safe-freight.module.css` ?섏젙: `.tabs` ?대옒?ㅼ뿉 `display: flex`, `flex-wrap: wrap`, `align-items: center` ?띿꽦 異붽?. `.mlAuto` ?대옒??(`margin-left: auto`) 異붽??섏뿬 `援ш컙議고쉶(媛쒕컻以?` 踰꾪듉???ㅻⅨ履쎌쑝濡??뺣젹.
-
-### 而댄뙆???먮윭 ?닿껐 (Expected '...', got '}') - ?ъ닔??- `web/app/employees/safe-freight/page.js` ?뚯씪 ?섏젙:
-    - `className` ?띿꽦???쒗뵆由?由ы꽣??臾몃쾿 ?ㅻ쪟 ( `className={`$\{styles.tabDeveloping} ${styles.mlAuto}`} ` )瑜??щ컮瑜?`className={styles.tabDeveloping}` ?뺤떇?쇰줈 ?섏젙. (利? `styles.mlAuto` ?대옒???쒓굅 諛?JSX 臾몃쾿 ?ㅻ쪟 ?닿껐)
-    - ?댁젣 "援ш컙議고쉶(媛쒕컻以?" 踰꾪듉? ?쇱そ?쇰줈 ?뺣젹?⑸땲?? (?뺤쓽 ?붿껌 諛섏쁺)
-
-### elsbot/els_bot.py: `sys`, `argparse` 紐⑤뱢 import 異붽? 諛?理쒖쥌 寃??- `elsbot/els_bot.py` ?뚯씪 理쒖긽??`import os` ?꾨옒??`import sys`? `import argparse` 異붽?.
-- `input()` ?⑥닔 ?ъ슜 ?щ? 理쒖쥌 ?뺤씤: ???댁긽 ?ъ슜?섏? ?딆쓬.
-- `time` 紐⑤뱢 ?꾪룷???щ? 理쒖쥌 ?뺤씤: `import time`???뚯씪 理쒖긽?⑥뿉 議댁옱.
-- `CONFIG_FILE` 寃쎈줈 ?좎? ?щ? 理쒖쥌 ?뺤씤: `os.path.join(os.path.dirname(__file__), "els_config.json")` 寃쎈줈媛 ???좎??섏뼱 ?덉쓬.
-- 紐⑤뱺 寃????ぉ ?듦낵.
-
-### 而댄뙆???먮윭 ?닿껐 (Expected '...', got '}') - JSX 二쇱꽍 ?쒓굅
-- `web/app/employees/safe-freight/page.js` ?뚯씪 ?섏젙:
-    - `className={styles.tabDeveloping} {/* ?ㅻⅨ履쎌쑝濡?諛湲?*/}` ?먯꽌 ` {/* ?ㅻⅨ履쎌쑝濡?諛湲?*/} ` JSX 二쇱꽍 ?쒓굅.
-    - JSX ?띿꽦 媛??ㅼ뿉 諛붾줈 遺숈? 二쇱꽍?쇰줈 ?명븳 ?뚯떛 ?ㅻ쪟 ?닿껐. (鍮뚮뱶 ?먮윭 ?닿껐)
-
-### InfoTicker Ghost Space 臾몄젣 ?닿껐
-- `web/components/SiteLayout.js` ?뚯씪 ?섏젙:
-    - `isEmployees` 議곌굔遺 ?뚮뜑留?濡쒖쭅?먯꽌 `InfoTicker` 而댄룷?뚰듃媛 ?뚮뜑留곷릺吏 ?딆쓣 ??`height: 0`, `overflow: 'hidden'` ?띿꽦??媛吏?鍮?`div`瑜??뚮뜑留곹븯?꾨줉 蹂寃?
-    - ?대? ?듯빐 鍮????명듃?쇰꽬 ?섏씠吏?먯꽌 `InfoTicker`濡??명빐 諛쒖깮?섎뜕 遺덊븘?뷀븳 鍮?怨듦컙(Ghost Space)???쒓굅??
-    - `InfoTicker.module.css`??`height: 44px` ?ㅽ??쇱? `InfoTicker`媛 ?뚮뜑留곷맆 ???뺤긽?곸쑝濡??곸슜??
-
-### Ghost Space 臾몄젣 理쒖쥌 ?닿껐 - Header 洹몃┝??諛?SubNav 寃쎄퀎 議곗젙
-- `web/components/SiteLayout.js` ?뚯씪 ?섏젙:
-    - `hero`媛 `null`????70px ?믪씠??鍮?`div` (?ㅽ럹?댁꽌)瑜??뚮뜑留곹븯吏 ?딄퀬 `null`??諛섑솚?섎룄濡??섏젙?섏뿬, `Header` 諛붾줈 ?꾨옒 `InfoTicker` ?먮뒗 `SubNav`媛 吏곸젒 ?곌껐?섎룄濡???
-- `web/components/Header.js` ?뚯씪 ?섏젙:
-    - `<header>` ?쒓렇???몃씪??`style` ?띿꽦?먯꽌 `boxShadow: shadow,`瑜??쒓굅?섏뿬 `Header` 而댄룷?뚰듃 ?먯껜?먮뒗 洹몃┝?먭? ?앷린吏 ?딅룄濡??? (CSS ?뚯씪??`box-shadow`???대? ?쒓굅??
-- `web/components/SubNav.js` ?뚯씪 ?섏젙:
-    - `SubNav` ?⑥닔媛 `topOffset` prop??諛쏅룄濡??섏젙?섍퀬, `<nav>` ?쒓렇??`style={{ top: `${topOffset}px` }}` ?몃씪???ㅽ??쇱쓣 ?곸슜?섏뿬 `Header` 諛?`InfoTicker` ?좊Т???곕씪 ?숈쟻?쇰줈 ?꾩튂瑜?議곗젙?????덈룄濡???
-- `web/components/SubNav.module.css` ?뚯씪 ?섏젙:
-    - `.subNav` ?대옒?ㅼ뿉??`top: 114px;` ?띿꽦???쒓굅?섏뿬 ?몃씪???ㅽ??쇱씠 ?곗꽑 ?곸슜?섎룄濡???
-    - `.subNav` ?대옒?ㅼ뿉 `EmployeeHeader`? ?숈씪??`box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);`? `border-bottom: 1px solid #e2e8f0;`瑜?異붽??섏뿬 ?명듃?쇰꽬 硫붾돱諛붿? ?쒓컖?곸씤 ?듭씪?깆쓣 ?뺣낫??
-
-### elsbot/els_web_runner.py: `import time` 異붽? 諛??꾩닔 議곗궗
-- `elsbot/els_web_runner.py` ?뚯씪??`import sys` ?꾩뿉 `import time` 異붽?. (湲곗〈 二쇱꽍 ?ㅼ쓬??`import time`???덉뿀?쇰굹, ?ㅼ젣 肄붾뱶 ??泥?踰덉㎏ import ?욎뿉 ?꾩튂?쒖폒 紐낇솗??
-- `docker/els-backend/app.py`: `import time`, `import os`, `import sys`, `import json` 紐⑤몢 議댁옱 ?뺤씤.
-- `elsbot/els_bot.py`: `import time`, `import os`, `import sys`, `import argparse`, `import json` 紐⑤몢 議댁옱 ?뺤씤.
-- `elsbot/els_web_runner.py`: `import time`, `import os`, `import sys`, `import json`, `import argparse` 紐⑤몢 議댁옱 ?뺤씤.
-- `elsbot/els_bot.py`??`CONFIG_FILE` 寃쎈줈 (`os.path.join(...)`) ?좎? ?뺤씤.
-- 紐⑤뱺 寃????ぉ 諛??붿껌?ы빆 ?뺤씤 ?꾨즺. (els_web_runner.py ?뚯씪 ?섏젙 諛쒖깮)
-- ?꾨줎?몄뿏??議고쉶 濡쒖쭅 ?먭? ?꾨즺 (`web/app/employees/safe-freight/page.js` 諛?`web/app/employees/container-history/page.js`). 紐⑤뱺 `fetch` ?붿껌 寃쎈줈媛 `/api/els/`濡??쒖옉?섍굅???щ컮瑜?諛깆뿏???붾뱶?ъ씤?몃? ?ъ슜?? ?ㅽ듃由щ컢 濡쒓렇 諛?`downloadToken` 泥섎━ 濡쒖쭅???대떦 ?섏씠吏???붽뎄?ы빆??留욊쾶 ??援ы쁽?섏뼱 ?덉쓬. ?먮윭 ?몃뱾留곷룄 ?곸젅?섍쾶 泥섎━??
-
-### elsbot 濡쒖뺄 ?뚯뒪??諛?`re` 紐⑤뱢 ?꾨씫 ?섏젙
-- `elsbot/els_bot.py` ?ㅽ뻾 ??`NameError: name 're' is not defined` ?ㅻ쪟 諛쒖깮 ?뺤씤.
-- `elsbot/els_bot.py` ?뚯씪 理쒖긽?⑥뿉 `import re` 異붽??섏뿬 ?ㅻ쪟 ?닿껐.
-- `elsbot/els_bot.py` CLI 紐⑤뱶 ?뚯뒪??寃곌낵, 濡쒓렇??諛?而⑦뀒?대꼫 議고쉶, ?묒? ?뚯씪 ?앹꽦(`els_hyper_0204_2147.xlsx`)源뚯? ?깃났?곸쑝濡??꾨즺??
-- `elsbot/els_bot.py`??異붽??덈뜕 ?붾쾭源?濡쒓렇(`import traceback` 諛?`error_details` 異쒕젰 濡쒖쭅) ?쒓굅.
-- `elsbot/ELSBO龜_遺꾩꽍.md` ?뚯씪 ?댁슜 ?뺤씤, ?꾩옱 臾몄젣??吏곸젒?곸씤 ?먯씤? 李얠? 紐삵뻽?쇰굹 二쇱쓽?ы빆 ?뚯븙.
-
-### ?댁뒪 ?섏씠吏 ?붿옄??媛쒖꽑
-- `web/app/employees/news/article/page.js` ?뚯씪 ?섏젙:
-    - 蹂몃Ц ?곷떒???덈뜕 "???댁뒪 紐⑸줉" 留곹겕? "??李쎌뿉??蹂닿린" 留곹겕瑜?`iframe` 諛붾줈 ?꾨옒???덈줈 異붽???`<div className={styles.iframeFooter}>`濡??대룞.
-    - 湲곗〈 `<div className={styles.header}>` ?붿냼???쒓굅.
-- `web/app/employees/news/article/article.module.css` ?뚯씪 ?섏젙:
-    - ?쒓굅??`.header` ?ㅽ??쇱뿉 ???CSS 洹쒖튃???④퍡 ?쒓굅.
-    - `.card` ?대옒?ㅼ쓽 `padding`??`16px 28px 0 28px`濡?議곗젙?섏뿬 ?곷떒 ?щ갚 理쒖냼??諛??섎떒 ?⑤뵫 ?쒓굅.
-    - ?덈줈??`.iframeFooter` ?대옒??諛?洹??대? 留곹겕?ㅼ뿉 ????ㅽ??쇱쓣 ?뺤쓽?섏뿬, ?대룞??留곹겕?ㅼ씠 蹂닿린 醫뗪쾶 ?뺣젹?섍퀬 ?쒓컖?곸쑝濡?媛쒖꽑?섎룄濡???
-
-### ?덉쟾?댁엫 議고쉶 ?섏씠吏 ?붿옄??媛쒖꽑
-- `web/app/employees/safe-freight/safe-freight.module.css` ?뚯씪 ?섏젙:
-    - `.headerBanner` ?대옒?ㅼ쓽 `padding`??`8px 28px`濡?議곗젙?섏뿬 ?곷떒 ?쒕ぉ 諛곕꼫???믪씠瑜?70% ?댁긽 異뺤냼.
-    - `.noticeTabBtn`, `.tab`, `.tabActive`, `.tabDeveloping` ?대옒?ㅼ뿉 `display: flex`, `align-items: center` (?먮뒗 `flex-direction: column`, `justify-content: center`), `min-height: 40px`, `padding: 8px 16px`, `font-size: 0.9rem` (?먮뒗 `.tabLabel`??`font-size: 0.95rem`)瑜??곸슜?섏뿬 踰꾪듉 ?믪씠, ?⑤뵫, ?고듃 ?ш린瑜??듭씪.
-    - `.forwarderLogo` ?대옒??異붽? (height: 24px) 諛?`web/app/employees/safe-freight/page.js` ?뚯씪?먯꽌 `Forwarder.KR` 濡쒓퀬 踰꾪듉??`img` ?쒓렇???곸슜.
-- `web/app/employees/safe-freight/page.js` ?뚯씪 ?섏젙:
-    - `<div className={styles.tabs}>` ?대???踰꾪듉 ?뚮뜑留??쒖꽌瑜?`援ш컙蹂꾩슫????嫄곕━蹂꾩슫?????댁쇅援ш컙 ??援ш컙議고쉶(媛쒕컻以? ??愿??踰뺣졊쨌怨좎떆 ?덈궡 ??Forwarder.KR` ?쒖쑝濡??щ같移?
-
-### ELS 諛깆뿏??濡쒓퉭 媛뺥솕
-- `docker/els-backend/app.py` ?뚯씪 ?섏젙:
-    - `run_runner` ?⑥닔?먯꽌 `subprocess.run` ?몄텧 ??`try...except` 釉붾줉???듯빐 ?곸꽭 濡쒓퉭 (cmd, returncode, stdout, stderr 諛?TimeoutExpired ???덉쇅 泥섎━).
-    - `_stream_run` ?⑥닔?먯꽌 `subprocess.Popen` ?쒖옉 ??`try...except` 釉붾줉???듯빐 濡쒓퉭 媛뺥솕 (?꾨줈?몄뒪 ?쒖옉 ?ㅽ뙣 ???곸꽭 ?먮윭 硫붿떆吏 諛섑솚).
-    - `_stream_run` ?⑥닔 ?대? `_daemon_available()` ?댄썑 `URLError`???ㅻⅨ `Exception` 諛쒖깮 ??`app.logger.warning` ???`app.logger.exception`?쇰줈 ?ㅽ깮 ?몃젅?댁뒪 湲곕줉.
-    - `_stream_run_daemon` ?⑥닔?먯꽌 ?곕が ?ㅽ듃由?`json.JSONDecodeError` 諛쒖깮 ??`app.logger.error`濡??곸꽭 ?ㅽ깮 ?몃젅?댁뒪 諛??먮낯 ?곗씠??湲곕줉 媛뺥솕.
-- `elsbot/els_web_runner_daemon.py` ?뚯씪 ?섏젙:
-    - `perform_relogin`, `handle_login`, `handle_run` ?⑥닔 ?대???`except` 釉붾줉?먯꽌 `traceback`???ъ슜???곸꽭 濡쒓퉭 異붽? (`print`瑜??듯빐 而⑦뀒?대꼫 濡쒓렇?먮룄 ?④?).
-
-## [2026-02-03] - ?먮즺??NAS) 諛깃렇?쇱슫???ㅽ듃由щ컢 ?ㅼ슫濡쒕뱶 媛쒖꽑
-
-### ?? ?듭떖 ?깃낵
-- **諛깃렇?쇱슫???ㅼ슫濡쒕뱶 援ы쁽**: ???⑸웾 ?뚯씪 ?ㅼ슫濡쒕뱶 ???섏씠吏媛 踰꾨쾮?대뜕 臾몄젣瑜??닿껐?덉뒿?덈떎. ?댁젣 ?ㅼ슫濡쒕뱶媛 利됱떆 釉뚮씪?곗? ?ㅼ슫濡쒕뱶 留ㅻ땲?濡??꾨떖?섏뼱 **諛깃렇?쇱슫?쒖뿉??泥섎━**?⑸땲??
-- **?ъ슜??寃쏀뿕 媛쒖꽑**: ?ㅼ슫濡쒕뱶 ?쒖옉 ???섏씠吏 ?대룞???먯쑀濡쒖썙議뚯쑝硫? ?ㅼ슫濡쒕뱶 吏꾪뻾 ?곹솴? 釉뚮씪?곗? ?섎떒 ?ㅼ슫濡쒕뱶 諛붿뿉???뺤씤?????덉뒿?덈떎.
-- **?ㅼ슫濡쒕뱶 ?곹깭 ?쒖떆**: ?ㅼ슫濡쒕뱶 以묒씤 ?뚯씪??"燧뉛툘 ?ㅼ슫濡쒕뱶 以?.." ?쒖떆瑜?異붽??섏뿬 ?ъ슜?먭? ?꾩옱 ?곹깭瑜?吏곴??곸쑝濡??뚯븙?????덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?ㅼ슫濡쒕뱶 諛⑹떇 蹂寃?(`ArchiveBrowser.js`)
-- **湲곗〈 諛⑹떇**: `window.open()`?쇰줈 ??李쎌쓣 ?댁뼱 ?ㅼ슫濡쒕뱶 ?????뚯씪 ??UI 踰꾨쾮??- **媛쒖꽑 諛⑹떇**: `fetch()` + `Blob` + `download` attribute ?쒖슜
-  - ?뚯씪???ㅽ듃由щ컢?쇰줈 諛쏆븘 Blob 媛앹껜濡?蹂??  - ?숈쟻?쇰줈 `<a>` ?쒓렇 ?앹꽦 ??`download` ?띿꽦?쇰줈 利됱떆 ?ㅼ슫濡쒕뱶 ?쒖옉
-  - ?ㅼ슫濡쒕뱶媛 釉뚮씪?곗? ?ㅼ슫濡쒕뱶 ?먯뿉 異붽??섏뼱 諛깃렇?쇱슫??泥섎━
-
-#### 2. ?덈줈???⑥닔 異붽?
-- **`handleDownloadFile(file)`**: 諛깃렇?쇱슫???ㅽ듃由щ컢 ?ㅼ슫濡쒕뱶 泥섎━
-  - ?ㅼ슫濡쒕뱶 以??곹깭 異붿쟻 (`downloading` Set)
-  - ?먮윭 泥섎━ 諛??ъ슜???쇰뱶諛?  - ?ㅼ슫濡쒕뱶 ?꾨즺 ???먮룞 ?뺣━ (URL revoke)
-
-#### 3. UI 媛쒖꽑
-- **由ъ뒪??酉?*: ?뚯씪紐??놁뿉 "燧뉛툘 ?ㅼ슫濡쒕뱶 以?.." ?띿뒪???쒖떆
-- **洹몃━??酉?*: 移대뱶 ?곗륫 ?곷떒??"燧뉛툘 ?ㅼ슫濡쒕뱶 以? 諛곗? ?쒖떆
-- **?대?吏 ?뚯씪**: 誘몃━蹂닿린??湲곗〈?濡?????뿉???대┝ (蹂寃??놁쓬)
-- **?쇰컲 ?뚯씪**: 諛깃렇?쇱슫???ㅼ슫濡쒕뱶 ?먮룞 ?쒖옉
-
-#### 4. ?곸슜 踰붿쐞
-- 由ъ뒪??酉??뚯씪 ?대┃
-- 洹몃━??酉??뚯씪 ?대┃
-- 而⑦뀓?ㅽ듃 硫붾돱 "?뮶 ???뚯씪 ?ㅼ슫濡쒕뱶" ?듭뀡
-
-### ?좑툘 二쇱쓽
-- ?대?吏 ?뚯씪(jpg, jpeg, png, gif, webp)? 湲곗〈?濡?誘몃━蹂닿린 紐⑤뱶濡?????뿉???대┰?덈떎.
-- 諛깆뿏??API(`/api/nas/preview`)???대? ?ㅽ듃由щ컢 諛⑹떇?쇰줈 援ы쁽?섏뼱 ?덉뼱 ?섏젙 遺덊븘??
-- ?ㅼ슫濡쒕뱶 以??섏씠吏瑜??대룞?대룄 ?ㅼ슫濡쒕뱶??怨꾩냽 吏꾪뻾?⑸땲??
+### 6. 완료 체크리스트
+- [x] 로컬 테스트 실행 (`start_local_test.bat`)
+- [x] 로그인 성공 확인
+- [x] BIOS UI 정상 작동 확인
+- [ ] 조회/다운로드 전체 시나리오 검증 (세션 타임아웃 이슈로 보류)
+- [ ] 나스 도커 빌드 및 배포
 
 ---
 
-## [2026-02-02] - 吏???멸렐(?꾩궛쨌?뱀쭊쨌?덉궛쨌?몄쥌) ?꾩튂 ?몄떇 ?뺣???媛쒖꽑 諛?吏???뺤옣
+## 2026년 2월 6일 오전 (이전 작업)
+
+### 1. 작업 요약
+- **도커 및 패키지 오타 수정**: Dockerfile 내 `libxcursor1` 오타 수정 및 `flask-cors` 누락 보완.
+- **백엔드 구조 개편**: `els_bot.py`를 클래스 방식에서 독립 함수 방식으로 변경하여 호출 안정성 확보.
+- **로컬 환경 검증**: 나스 빌드 속도 문제를 피하기 위해 윈도우 로컬 PC에서 백엔드 및 데몬 서버 가동 테스트 진행.
+
+### 2. 해결된 문제 (Fixed)
+- **CORS 에러**: `app.py`에서 `nollae.com` 및 로컬 호스트 허용 목록 업데이트.
+- **Dockerfile 빌드 오류**: `libcursor1` -> `libxcursor1` 수정으로 이미지 빌드 성공.
+- **ModuleNotFoundError**: 로컬 PC에 필수 패키지(`flask`, `selenium` 등) 설치 가이드 완료.
+- **NameError (get_driver)**: `els_bot.py` 내부의 잘못된 함수 호출 로직 수정.
+
+### 3. 현재 상태 (Current Status)
+- **백엔드**: 2929 포트에서 정상 가동 확인.
+- **데몬**: 31999 포트에서 가동 성공 및 로그인 완료 메시지 확인.
+- **✅ 해결 완료**: 데몬과 백엔드 사이의 JSON 데이터 통신 이슈 및 프론트엔드 렌더링 문제 모두 해결.
+
+### 4. 다음 작업 시작 전 확인할 것
+- `elsbot/els_web_runner_daemon.py`와 `elsbot/els_bot.py`가 최신 통합본으로 교체되었는지
 
 
-### ?? ?듭떖 ?깃낵
-- **吏??湲곕컲 吏???뺤옣**: ?좎뵪 議고쉶 媛??吏??뿉 **?뱀쭊**怨?**?덉궛**??異붽??섍퀬, 湲곗〈 ?꾩궛쨌?몄쥌 吏?먯쓽 ?꾧꼍?꾨? ?ㅼ젣 吏???꾩튂濡??뺣? 議곗젙?덉뒿?덈떎.
-- **IP 湲곕컲 ?ㅼ감 蹂댁젙**: IP 醫뚰몴媛 '??? ?깆쑝濡?????꾩긽???닿껐?섍린 ?꾪빐 IP-API濡쒕???**?꾩떆紐?city)**??諛쏆븘???'?꾩궛쨌?뱀쭊쨌?덉궛쨌?몄쥌' ?⑥뼱媛 ?ы븿?섎㈃ ?대떦 吏??쑝濡?媛뺤젣 留ㅼ묶?섎뒗 濡쒖쭅??異붽??덉뒿?덈떎.
-- **GPS 紐낆묶 吏곴???*: 釉뚮씪?곗? ?꾩튂 ?뺣낫(GPS) ?ъ슜 ?? 吏??諛섍꼍 20km ?대궡硫?"?꾩쐞移? ????대떦 **吏?먮챸(?? ?꾩궛)**??吏곸젒 ?몄텧?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-- **?덉씠?꾩썐 諛??쒓컖 理쒖쟻??*: ?ъ슜?먯쓽 ?쒓컖???좏샇??留욎떠 ?좎뵪 由ъ뒪?몃뒗 **3媛?*濡?蹂듦뎄?섍퀬 ?댁뒪 由ъ뒪?몃뒗 **4媛?*濡??좎??섏뿬 理쒖쟻??洹좏삎??留욎톬?듬땲?? ?먰븳, ?좎뵪 ?곗씠?곌? ??긽 ?꾩옱 ?쒓컖 湲곗???理쒖떊 ?덈낫遺???쒖떆?섎룄濡?API 濡쒖쭅??媛쒖꽑?덉뒿?덈떎.
-- **諛곌꼍 ?대?吏 ?붿긽 ?쒓굅**: ??쒕낫??移대뱶??諛곌꼍 ?대?吏媛 寃뱀튂嫄곕굹 吏?遺꾪븯寃?蹂댁씠???꾩긽(?욌뮘 寃뱀묠)???닿껐?덉뒿?덈떎. 以묐났??媛???붿냼瑜??쒓굅?섍퀬, GPU 媛??諛??덉씠??怨좎젙 ?ㅼ젙???듯빐 ?좊땲硫붿씠???쒖뿉??源붾걫???대?吏瑜??좎??섎룄濡??섏젙?덉뒿?덈떎.
-- **?ㅼ떆媛??뺣낫 ?곗빱(Ticker) ?꾩엯 諛?怨듭쑀**: ?ㅻ뜑 ?섎떒??珥??⑥쐞 ?ㅼ떆媛??쒓퀎, 吏?먮퀎 ?쒗솚 ?좎뵪, ?댁뒪 ?ㅻ뱶?쇱씤???먮Ⅴ???곗빱 諛붾? 異붽??덉뒿?덈떎. ?대? 怨듯넻 ?덉씠?꾩썐???듯빀?섏뿬 ?쒕뵫 ?섏씠吏瑜??쒖쇅??紐⑤뱺 ?쒕툕 ?섏씠吏?먯꽌 蹂????덈룄濡?媛쒖꽑?덉쑝硫? ?댁뒪 ?먮쫫 ?띾룄瑜???떠 媛?낆꽦???믪??듬땲??
+## 2026년 2월 4일 수요일
+### els_bot.py 및 app.py 파일의 'time' 모듈 import 누락 수정
+- `elsbot/els_bot.py`: `import time`이 이미 존재하여 수정하지 않음.
+- `docker/els-backend/app.py`: `import time` 누락 확인 후 최상단에 추가.
+- `[예외] name 'time' is not defined` 에러 해결.
 
-### ?썱截??묒뾽 ?곸꽭
-- **api/weather/route.js**: `REGIONS`???뱀쭊쨌?덉궛 異붽?, `nearestRegionId` 嫄곕━ 怨꾩궛 諛섑솚媛??섏젙, `GET`?먯꽌 嫄곕━ 湲곕컲 吏?먮챸/?꾩쐞移?遺꾧린 泥섎━.
-- **api/weather/region-by-ip/route.js**: `REGIONS` ?숆린?? `ip-api` ?몄텧 ?꾨뱶 ?뺤옣(`city`, `regionName`), ?꾩떆紐??ㅼ썙??留ㅼ묶 ?곗꽑 ?쒖쐞 ?곸슜.
-- **app/employees/page.js**: `OTHER_REGION_IDS`??`dangjin`, `yesan` 異붽?.
+### els_bot.py 엑셀 데이터 파싱 로직 수정
+- `elsbot/els_bot.py` 내 `main` 함수의 파싱 로직 개선.
+- `re.split` 대신 탭(`\t`)을 우선 기준으로 분리하도록 수정하여 날짜/시간 데이터의 공백 쪼개짐 방지.
+- `row_data`의 길이를 검증(`len(row_data) < 5`)하고 `No` 필드의 유효성(`isdigit()`, `1 <= No <= 15`)을 추가하여 유효하지 않은 데이터 줄 필터링.
+- `Sheet1`에 `No`가 '1'인 데이터만 들어가도록 하는 로직은 기존대로 유지됨 (파싱 정확도 개선으로 필터링 효과 증대).
 
-### ?좑툘 二쇱쓽
-- IP 湲곕컲 ?꾩튂???ъ쟾???듭떊???ъ젙???곕씪 ?ㅼ감媛 ?덉쓣 ???덉쑝?? ?꾩떆紐?留ㅼ묶?쇰줈 ?遺遺꾩쓽 ?ㅽ뵾???섍꼍 ?ㅼ씤?앹? ?닿껐??寃껋쑝濡?湲곕??⑸땲??
+### /api/els/login 500 에러 해결 및 els_bot.py 리팩토링
+- `elsbot/els_bot.py` 및 `docker/els-backend/app.py` 파일에 `import time`이 확실히 있는지 재확인 (모두 존재).
+- `elsbot/els_bot.py`의 `main` 함수를 `run_els_process` (핵심 로직)와 `cli_main` (CLI 실행 로직)으로 리팩토링.
+- `els_bot.py`에서 불필요한 `input()` 코드 제거 및 `sys.argv`를 통한 실행 방식 분리.
+- `argparse` 모듈을 사용하여 외부 호출 시 인자 파싱 및 JSON 결과 출력 로직 추가.
+
+### 안전운임 조회 UI 개선 (버튼 기능 및 스타일 수정 - 최종)
+- `web/app/employees/safe-freight/safe-freight.module.css` 파일에 `.tabDeveloping` CSS 클래스 추가 (옅은 빨강 배경 및 테두리).
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `구간조회` 버튼 `className`을 `styles.tabDeveloping`으로, 텍스트를 `구간조회(개발중)`으로 변경, `title`을 `네이버 지도로 경로 조회 (개발중)`으로 변경.
+    - `포워더KR` 버튼 `onClick` 핸들러를 원래대로 `setView('forwarder')`로 되돌려 `iframe`이 열리도록 수정.
+    - `포워더KR` 버튼 `title`을 `포워더케이알 운임정보 바로가기`로 변경.
+    - 상단 `QUERY_TYPES` 탭 버튼들의 `onClick` 핸들러를 수정하여, `forwarder` 뷰 상태에서 클릭 시 `default` 뷰로 전환되고 해당 `queryType`이 설정되도록 변경.
+    - `포워더KR` `iframeSection` 내 `안전운임 조회로 돌아가기` 버튼 제거 (불필요한 버튼 제거).
+
+### 헤더 위젯 조건부 렌더링 (인트라넷 페이지에만 표시)
+- `web/components/SiteLayout.js` 파일 수정:
+    - `InfoTicker` 컴포넌트 (`현재시간, 날씨, 뉴스` 위젯 포함)가 `/employees` 또는 `/admin` 경로일 때만 렌더링되도록 조건부 렌더링 로직 적용.
+    - `isEmployees` 변수를 활용하여 `InfoTicker` 컴포넌트의 렌더링을 제어.
+
+### 뉴스 기사 페이지 iframe으로 변경 (팝업 차단 시도)
+- `web/app/employees/news/article/page.js` 파일 수정:
+    - 뉴스 기사 본문을 `fetch` API를 통한 직접 렌더링 방식에서 `iframe` 방식으로 변경.
+    - 외부 기사 URL을 `iframe` `src`로 직접 로드하여 '사이트 이동' 버튼 없이 바로 기사 내용을 볼 수 있도록 개선.
+    - `iframe`에 `sandbox="allow-scripts allow-same-origin allow-forms allow-modals"` 속성을 추가하여 팝업을 차단하고 보안 강화. 광고는 `iframe` 콘텐츠이므로 제거 불가.
+    - 뉴스 목록으로 돌아가는 `Link`는 유지.
+
+### 뉴스 기사 페이지 iframe 크기 조정 (본문 꽉 채우기)
+- `web/app/employees/news/article/article.module.css` 파일 수정:
+    - `.articleIframe` 클래스를 추가하여 `width: 100%`, `height: calc(100vh - 200px)`, `border: none; display: block;` 스타일 적용.
+    - `infoText` 및 `iframeFooter` 클래스 스타일 추가하여 `iframe` 주변 요소들의 시각적 배치 개선.
+
+### 컴파일 에러 해결 (React is not defined)
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `import React from 'react';` 추가하여 `React.Fragment` 사용으로 인한 `'React' is not defined` 에러 해결.
+
+### [재수정] 안전운임 조회 UI - 포워더KR 사이트 새 창으로 열기 및 버튼 위치 조정
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `포워더KR` 버튼 `onClick` 로직을 `window.open('https://www.forwarder.kr/tariff/', '_blank')`로 변경하여 새 창에서 열리도록 수정. `title`은 `포워더케이알 운임정보`로 복원.
+    - `view === 'forwarder'` 일 때 렌더링되던 `iframeSection` 블록 완전히 제거.
+    - 버튼들의 순서 조정: `관련 법령·고시 안내` 버튼이 `이외구간` 왼쪽으로, `포워더KR` 버튼이 `구간조회(개발중)` 왼쪽으로 이동.
+
+### 로그인 500 에러 재발 해결 및 els_bot.py, app.py 로깅 보강
+- `elsbot/els_bot.py` 파일 수정:
+    - `CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")` 으로 절대 경로 강제 지정.
+    - `load_config()` 함수에서 `FileNotFoundError` 발생 시 `[WARNING]` 로그, `json.JSONDecodeError` 발생 시 `[ERROR]` 로그 출력.
+    - `cli_main()` 함수에서 `input()` 코드 및 `while True` 루프 제거, 엑셀 파일 로딩 및 `run_els_process` 호출 로직만 남김. (에러 메시지 및 성공 메시지에 `[ERROR]`, `[INFO]` 접두사 추가)
+- `docker/els-backend/app.py` 파일 수정:
+    - `login` 함수 내 `subprocess` 실행 후 에러 로깅을 `app.logger.exception`을 사용하여 스택 트레이스 및 `stdout`, `stderr` 내용을 더 상세하게 남기도록 보강.
+
+### 뉴스 페이지 및 안전운임 조회 페이지 UI 개선 (여백, 버튼 위치 조정)
+- **뉴스 페이지 (`web/app/employees/news/article/page.js`, `article.module.css`) 수정:**
+    - 상단 안내 문구 (`<p className={styles.infoText}>...</p>`) 제거.
+    - 하단 `iframeFooter` 내 `새 창에서 보기` 버튼 제거.
+    - 상단 `<div className={styles.header}>` 내에 `뉴스 목록` `Link`와 `새 창에서 보기` `a` 태그를 통합하여 배치.
+    - `article.module.css` 수정: `.header`의 `margin-bottom`을 줄이고 `display: flex` 속성 추가. `.card`의 상단 `padding`도 줄여 상단 여백 최소화.
+- **안전운임 조회 페이지 (`web/app/employees/safe-freight/page.js`, `safe-freight.module.css`) 수정:**
+    - 상단 설명 문구 (`<p className={styles.desc}>...</p>`) 제거.
+    - `<div className={styles.tabs}>` 내의 버튼 순서 재조정: `관련 법령·고시 안내` 버튼이 `이외구간` 왼쪽으로, `포워더KR` 버튼이 `구간조회(개발중)` 왼쪽으로 이동.
+    - `safe-freight.module.css` 수정: `.tabs` 클래스에 `display: flex`, `flex-wrap: wrap`, `align-items: center` 속성 추가. `.mlAuto` 클래스 (`margin-left: auto`) 추가하여 `구간조회(개발중)` 버튼을 오른쪽으로 정렬.
+
+### 컴파일 에러 해결 (Expected '...', got '}') - 재수정
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `className` 속성의 템플릿 리터럴 문법 오류 ( `className={`$\{styles.tabDeveloping} ${styles.mlAuto}`} ` )를 올바른 `className={styles.tabDeveloping}` 형식으로 수정. (즉, `styles.mlAuto` 클래스 제거 및 JSX 문법 오류 해결)
+    - 이제 "구간조회(개발중)" 버튼은 왼쪽으로 정렬됩니다. (형의 요청 반영)
+
+### elsbot/els_bot.py: `sys`, `argparse` 모듈 import 추가 및 최종 검수
+- `elsbot/els_bot.py` 파일 최상단 `import os` 아래에 `import sys`와 `import argparse` 추가.
+- `input()` 함수 사용 여부 최종 확인: 더 이상 사용되지 않음.
+- `time` 모듈 임포트 여부 최종 확인: `import time`이 파일 최상단에 존재.
+- `CONFIG_FILE` 경로 유지 여부 최종 확인: `os.path.join(os.path.dirname(__file__), "els_config.json")` 경로가 잘 유지되어 있음.
+- 모든 검수 항목 통과.
+
+### 컴파일 에러 해결 (Expected '...', got '}') - JSX 주석 제거
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `className={styles.tabDeveloping} {/* 오른쪽으로 밀기 */}` 에서 ` {/* 오른쪽으로 밀기 */} ` JSX 주석 제거.
+    - JSX 속성 값 뒤에 바로 붙은 주석으로 인한 파싱 오류 해결. (빌드 에러 해결)
+
+### InfoTicker Ghost Space 문제 해결
+- `web/components/SiteLayout.js` 파일 수정:
+    - `isEmployees` 조건부 렌더링 로직에서 `InfoTicker` 컴포넌트가 렌더링되지 않을 때 `height: 0`, `overflow: 'hidden'` 속성을 가진 빈 `div`를 렌더링하도록 변경.
+    - 이를 통해 비(非)인트라넷 페이지에서 `InfoTicker`로 인해 발생하던 불필요한 빈 공간(Ghost Space)을 제거함.
+    - `InfoTicker.module.css`의 `height: 44px` 스타일은 `InfoTicker`가 렌더링될 때 정상적으로 적용됨.
+
+### Ghost Space 문제 최종 해결 - Header 그림자 및 SubNav 경계 조정
+- `web/components/SiteLayout.js` 파일 수정:
+    - `hero`가 `null`일 때 70px 높이의 빈 `div` (스페이서)를 렌더링하지 않고 `null`을 반환하도록 수정하여, `Header` 바로 아래 `InfoTicker` 또는 `SubNav`가 직접 연결되도록 함.
+- `web/components/Header.js` 파일 수정:
+    - `<header>` 태그의 인라인 `style` 속성에서 `boxShadow: shadow,`를 제거하여 `Header` 컴포넌트 자체에는 그림자가 생기지 않도록 함. (CSS 파일의 `box-shadow`는 이미 제거됨)
+- `web/components/SubNav.js` 파일 수정:
+    - `SubNav` 함수가 `topOffset` prop을 받도록 수정하고, `<nav>` 태그에 `style={{ top: `${topOffset}px` }}` 인라인 스타일을 적용하여 `Header` 및 `InfoTicker` 유무에 따라 동적으로 위치를 조정할 수 있도록 함.
+- `web/components/SubNav.module.css` 파일 수정:
+    - `.subNav` 클래스에서 `top: 114px;` 속성을 제거하여 인라인 스타일이 우선 적용되도록 함.
+    - `.subNav` 클래스에 `EmployeeHeader`와 동일한 `box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);`와 `border-bottom: 1px solid #e2e8f0;`를 추가하여 인트라넷 메뉴바와 시각적인 통일성을 확보함.
+
+### elsbot/els_web_runner.py: `import time` 추가 및 전수 조사
+- `elsbot/els_web_runner.py` 파일의 `import sys` 위에 `import time` 추가. (기존 주석 다음에 `import time`이 있었으나, 실제 코드 상 첫 번째 import 앞에 위치시켜 명확화)
+- `docker/els-backend/app.py`: `import time`, `import os`, `import sys`, `import json` 모두 존재 확인.
+- `elsbot/els_bot.py`: `import time`, `import os`, `import sys`, `import argparse`, `import json` 모두 존재 확인.
+- `elsbot/els_web_runner.py`: `import time`, `import os`, `import sys`, `import json`, `import argparse` 모두 존재 확인.
+- `elsbot/els_bot.py`의 `CONFIG_FILE` 경로 (`os.path.join(...)`) 유지 확인.
+- 모든 검수 항목 및 요청사항 확인 완료. (els_web_runner.py 파일 수정 발생)
+- 프론트엔드 조회 로직 점검 완료 (`web/app/employees/safe-freight/page.js` 및 `web/app/employees/container-history/page.js`). 모든 `fetch` 요청 경로가 `/api/els/`로 시작하거나 올바른 백엔드 엔드포인트를 사용함. 스트리밍 로그 및 `downloadToken` 처리 로직도 해당 페이지의 요구사항에 맞게 잘 구현되어 있음. 에러 핸들링도 적절하게 처리됨.
+
+### elsbot 로컬 테스트 및 `re` 모듈 누락 수정
+- `elsbot/els_bot.py` 실행 시 `NameError: name 're' is not defined` 오류 발생 확인.
+- `elsbot/els_bot.py` 파일 최상단에 `import re` 추가하여 오류 해결.
+- `elsbot/els_bot.py` CLI 모드 테스트 결과, 로그인 및 컨테이너 조회, 엑셀 파일 생성(`els_hyper_0204_2147.xlsx`)까지 성공적으로 완료됨.
+- `elsbot/els_bot.py`에 추가했던 디버깅 로그(`import traceback` 및 `error_details` 출력 로직) 제거.
+- `elsbot/ELSBOТ_분석.md` 파일 내용 확인, 현재 문제의 직접적인 원인은 찾지 못했으나 주의사항 파악.
+
+### 뉴스 페이지 디자인 개선
+- `web/app/employees/news/article/page.js` 파일 수정:
+    - 본문 상단에 있던 "← 뉴스 목록" 링크와 "새 창에서 보기" 링크를 `iframe` 바로 아래에 새로 추가된 `<div className={styles.iframeFooter}>`로 이동.
+    - 기존 `<div className={styles.header}>` 요소는 제거.
+- `web/app/employees/news/article/article.module.css` 파일 수정:
+    - 제거된 `.header` 스타일에 대한 CSS 규칙도 함께 제거.
+    - `.card` 클래스의 `padding`을 `16px 28px 0 28px`로 조정하여 상단 여백 최소화 및 하단 패딩 제거.
+    - 새로운 `.iframeFooter` 클래스 및 그 내부 링크들에 대한 스타일을 정의하여, 이동된 링크들이 보기 좋게 정렬되고 시각적으로 개선되도록 함.
+
+### 안전운임 조회 페이지 디자인 개선
+- `web/app/employees/safe-freight/safe-freight.module.css` 파일 수정:
+    - `.headerBanner` 클래스의 `padding`을 `8px 28px`로 조정하여 상단 제목 배너의 높이를 70% 이상 축소.
+    - `.noticeTabBtn`, `.tab`, `.tabActive`, `.tabDeveloping` 클래스에 `display: flex`, `align-items: center` (또는 `flex-direction: column`, `justify-content: center`), `min-height: 40px`, `padding: 8px 16px`, `font-size: 0.9rem` (또는 `.tabLabel`의 `font-size: 0.95rem`)를 적용하여 버튼 높이, 패딩, 폰트 크기를 통일.
+    - `.forwarderLogo` 클래스 추가 (height: 24px) 및 `web/app/employees/safe-freight/page.js` 파일에서 `Forwarder.KR` 로고 버튼의 `img` 태그에 적용.
+- `web/app/employees/safe-freight/page.js` 파일 수정:
+    - `<div className={styles.tabs}>` 내부의 버튼 렌더링 순서를 `구간별운임 → 거리별운임 → 이외구간 → 구간조회(개발중) → 관련 법령·고시 안내 → Forwarder.KR` 순으로 재배치.
+
+### ELS 백엔드 로깅 강화
+- `docker/els-backend/app.py` 파일 수정:
+    - `run_runner` 함수에서 `subprocess.run` 호출 시 `try...except` 블록을 통해 상세 로깅 (cmd, returncode, stdout, stderr 및 TimeoutExpired 등 예외 처리).
+    - `_stream_run` 함수에서 `subprocess.Popen` 시작 시 `try...except` 블록을 통해 로깅 강화 (프로세스 시작 실패 시 상세 에러 메시지 반환).
+    - `_stream_run` 함수 내부 `_daemon_available()` 이후 `URLError`나 다른 `Exception` 발생 시 `app.logger.warning` 대신 `app.logger.exception`으로 스택 트레이스 기록.
+    - `_stream_run_daemon` 함수에서 데몬 스트림 `json.JSONDecodeError` 발생 시 `app.logger.error`로 상세 스택 트레이스 및 원본 데이터 기록 강화.
+- `elsbot/els_web_runner_daemon.py` 파일 수정:
+    - `perform_relogin`, `handle_login`, `handle_run` 함수 내부의 `except` 블록에서 `traceback`을 사용한 상세 로깅 추가 (`print`를 통해 컨테이너 로그에도 남김).
+
+## [2026-02-03] - 자료실(NAS) 백그라운드 스트리밍 다운로드 개선
+
+### 🚀 핵심 성과
+- **백그라운드 다운로드 구현**: 큰 용량 파일 다운로드 시 페이지가 버벅이던 문제를 해결했습니다. 이제 다운로드가 즉시 브라우저 다운로드 매니저로 전달되어 **백그라운드에서 처리**됩니다.
+- **사용자 경험 개선**: 다운로드 시작 후 페이지 이동이 자유로워졌으며, 다운로드 진행 상황은 브라우저 하단 다운로드 바에서 확인할 수 있습니다.
+- **다운로드 상태 표시**: 다운로드 중인 파일에 "⬇️ 다운로드 중..." 표시를 추가하여 사용자가 현재 상태를 직관적으로 파악할 수 있습니다.
+
+### 🛠️ 작업 상세
+#### 1. 다운로드 방식 변경 (`ArchiveBrowser.js`)
+- **기존 방식**: `window.open()`으로 새 창을 열어 다운로드 → 큰 파일 시 UI 버벅임
+- **개선 방식**: `fetch()` + `Blob` + `download` attribute 활용
+  - 파일을 스트리밍으로 받아 Blob 객체로 변환
+  - 동적으로 `<a>` 태그 생성 후 `download` 속성으로 즉시 다운로드 시작
+  - 다운로드가 브라우저 다운로드 큐에 추가되어 백그라운드 처리
+
+#### 2. 새로운 함수 추가
+- **`handleDownloadFile(file)`**: 백그라운드 스트리밍 다운로드 처리
+  - 다운로드 중 상태 추적 (`downloading` Set)
+  - 에러 처리 및 사용자 피드백
+  - 다운로드 완료 후 자동 정리 (URL revoke)
+
+#### 3. UI 개선
+- **리스트 뷰**: 파일명 옆에 "⬇️ 다운로드 중..." 텍스트 표시
+- **그리드 뷰**: 카드 우측 상단에 "⬇️ 다운로드 중" 배지 표시
+- **이미지 파일**: 미리보기는 기존대로 새 탭에서 열림 (변경 없음)
+- **일반 파일**: 백그라운드 다운로드 자동 시작
+
+#### 4. 적용 범위
+- 리스트 뷰 파일 클릭
+- 그리드 뷰 파일 클릭
+- 컨텍스트 메뉴 "💾 이 파일 다운로드" 옵션
+
+### ⚠️ 주의
+- 이미지 파일(jpg, jpeg, png, gif, webp)은 기존대로 미리보기 모드로 새 탭에서 열립니다.
+- 백엔드 API(`/api/nas/preview`)는 이미 스트리밍 방식으로 구현되어 있어 수정 불필요.
+- 다운로드 중 페이지를 이동해도 다운로드는 계속 진행됩니다.
 
 ---
 
-## [2026-01-30] - ?명듃?쇰꽬 ???좎뵪쨌?댁뒪 紐⑤뱢 媛쒖꽑 諛??ㅻ뒛???좎뵪?덈낫 臾몄옣
+## [2026-02-02] - 지점 인근(아산·당진·예산·세종) 위치 인식 정밀도 개선 및 지역 확장
 
-### ?? ?듭떖 ?깃낵
-- **?좎뵪 紐⑤뱢 ?ш뎄??*: ?꾩쐞移??좎뵪瑜??ш쾶 怨좎젙?섍퀬, ?ㅻⅨ 吏??3怨녹쓣 ?댁뒪泥섎읆 **??釉붾줉 ??由ъ뒪??*濡??쒖떆(5珥덈쭏???꾪솚). ?좎뵪쨌?댁뒪 ?닿컙寃㈑룻뙣???듭씪濡??쒓컖???덉젙??
-- **?곗뒪?ы깙 湲곕낯 吏???꾩궛**: IP 湲곕컲 吏??議고쉶 ?ㅽ뙣 ??湲곕낯媛믪쓣 ?쒖슱 ??**?꾩궛(異⑸궓)**?쇰줈 蹂寃? `REGIONS`???꾩궛 異붽?.
-- **?ㅻ뒛???좎뵪?덈낫 臾몄옣**: Open-Meteo **?쇰퀎(daily)**쨌**泥닿컧?⑤룄(apparent_temperature)** ?곗씠?곕줈 "?ㅻ뒛 ??理쒓퀬쨌諛?理쒖?, ?좎뵪 ?곹깭" + **?앺솢/?덉쟾 ?덈낫**(?댟룸퉬쨌?덇컻쨌?뚯슦 二쇱쓽, ?쒗뙆쨌臾대뜑???룹감由? 臾몄옣???먮룞 ?앹꽦???꾩쐞移??곸뿭???쒖떆.
-- **?댁뒪쨌?좎뵪 ?좎쭨/?쒓컙**: ?댁뒪??**?쒓뎅 ?좎쭨쨌?쒓컙** ?щ㎎(2026??1??30??14:00), ?좎뵪??**湲곗? ?쒓컖**(1??30??14:00) ?쒖떆.
 
-### ?썱截??묒뾽 ?곸꽭
-- **api/weather/route.js**: `daily=temperature_2m_max,temperature_2m_min,weathercode`, `hourly=...,apparent_temperature` 異붽?. `buildDailySummary(daily, hourly)`濡?湲곕낯 ?덈낫 + `buildAdvisoryText(weatherCode, apparentMin)`濡???鍮??덇컻/?뚯슦/泥닿컧?⑤룄 湲곕컲 臾몄옣 ?앹꽦. ?덈낫 臾몄옣 ?뺤젣(?쒗뙆쨌臾대뜑?꽷룸끂?쎌옄쨌?꾩“????.
-- **api/weather/region-by-ip/route.js**: `REGIONS`???꾩궛 異붽?, 湲곕낯媛뮻룹떎????`region: 'asan'`.
-- **app/employees/page.js**: ?좎뵪 釉붾줉????臾띠쓬(weatherBlock: ?꾩쐞移???移대뱶 + weatherList 3怨?, `formatWeatherDateTime`쨌`formatNewsDateKorea`濡??좎쭨/?쒓컙 ?쒖떆, `dailySummary`쨌?좎뵪쨌?댁뒪 ?ㅻ챸(?좎뵪쨌?댁뒪 ?꾩쐞移?湲곗?), ?ㅻⅨ 吏??由ъ뒪?몄뿉 ?묒? ?좎뵪 ?꾩씠肄?
-- **employees.module.css**: weatherBlock쨌weatherFeatured쨌weatherList쨌weatherListItem쨌weatherListIcon쨌weatherForecastDesc쨌weatherBlockDesc, ?닿컙寃??듭씪(weatherBlock쨌newsBlock ?숈씪 padding쨌min-height쨌?ㅻ뜑쨌由ъ뒪??媛꾧꺽).
+### 🚀 핵심 성과
+- **지점 기반 지역 확장**: 날씨 조회 가능 지역에 **당진**과 **예산**을 추가하고, 기존 아산·세종 지점의 위경도를 실제 지점 위치로 정밀 조정했습니다.
+- **IP 기반 오차 보정**: IP 좌표가 '대전' 등으로 튀는 현상을 해결하기 위해 IP-API로부터 **도시명(city)**을 받아와서 '아산·당진·예산·세종' 단어가 포함되면 해당 지역으로 강제 매칭하는 로직을 추가했습니다.
+- **GPS 명칭 직관화**: 브라우저 위치 정보(GPS) 사용 시, 지점 반경 20km 이내면 "현위치" 대신 해당 **지점명(예: 아산)**이 직접 노출되도록 개선했습니다.
+- **레이아웃 및 시각 최적화**: 사용자의 시각적 선호에 맞춰 날씨 리스트는 **3개**로 복구하고 뉴스 리스트는 **4개**로 유지하여 최적의 균형을 맞췄습니다. 또한, 날씨 데이터가 항상 현재 시각 기준의 최신 예보부터 표시되도록 API 로직을 개선했습니다.
+- **배경 이미지 잔상 제거**: 대시보드 카드의 배경 이미지가 겹치거나 지저분하게 보이던 현상(앞뒤 겹침)을 해결했습니다. 중복된 가상 요소를 제거하고, GPU 가속 및 레이어 고정 설정을 통해 애니메이션 시에도 깔끔한 이미지를 유지하도록 수정했습니다.
+- **실시간 정보 티커(Ticker) 도입 및 공유**: 헤더 하단에 초 단위 실시간 시계, 지점별 순환 날씨, 뉴스 헤드라인이 흐르는 티커 바를 추가했습니다. 이를 공통 레이아웃에 통합하여 랜딩 페이지를 제외한 모든 서브 페이지에서 볼 수 있도록 개선했으며, 뉴스 흐름 속도를 늦춰 가독성을 높였습니다.
 
-### ?좑툘 二쇱쓽
-- ?좎뵪 ?덈낫 臾몄옣? Open-Meteo ?곗씠?곕쭔?쇰줈 ?앹꽦. 蹂꾨룄 ?덈낫 臾몄옣 API 誘몄궗??
+### 🛠️ 작업 상세
+- **api/weather/route.js**: `REGIONS`에 당진·예산 추가, `nearestRegionId` 거리 계산 반환값 수정, `GET`에서 거리 기반 지점명/현위치 분기 처리.
+- **api/weather/region-by-ip/route.js**: `REGIONS` 동기화, `ip-api` 호출 필드 확장(`city`, `regionName`), 도시명 키워드 매칭 우선 순위 적용.
+- **app/employees/page.js**: `OTHER_REGION_IDS`에 `dangjin`, `yesan` 추가.
 
----
-
-## [2026-01-31] - Synology NAS Docker濡?ELS 諛깆뿏???ㅽ뻾 諛????꾨줉???곕룞
-
-### ?? ?듭떖 ?깃낵
-- **Docker 諛깆뿏??*: NAS?먯꽌 Python + Chromium + elsbot??Docker濡??ㅽ뻾??`/api/els/*` API ?쒓났. ?ъ슜??exe/apk ?ㅼ튂 ?놁씠 ?뱀뿉??議고쉶 媛??
-- **Synology ?곕룞**: ?먮즺??WebDAV)쨌寃뚯떆???꾨줉?쒕뒗 湲곗〈?濡??먭퀬, ELS留?`docker/els-backend` ?대?吏濡?異붽? ?ㅽ뻾.
-- **Next.js ?꾨줉??*: `ELS_BACKEND_URL` ?섍꼍 蹂???ㅼ젙 ??`/api/els/*` ?붿껌??NAS 諛깆뿏?쒕줈 ?꾨줉?? DDNS+??갑???꾨줉?쒕줈 NAS瑜??몃????몄텧?섎㈃ Vercel?먯꽌??NAS 諛깆뿏???ъ슜 媛??
-
-### ?썱截??묒뾽 ?곸꽭
-- **docker/els-backend/**: Dockerfile (Python 3.11, Chromium, chromedriver), requirements.txt, app.py (Flask API). 鍮뚮뱶 ????μ냼 猷⑦듃瑜?而⑦뀓?ㅽ듃濡??ъ슜.
-- **docker/docker-compose.yml**: els-backend ?쒕퉬?? ?ы듃 2929.
-- **elsbot/els_bot.py**: Docker??`CHROME_BIN`, `CHROME_DRIVER_BIN` ?섍꼍 蹂??諛?headless ?듭뀡(`--no-sandbox`, `--disable-dev-shm-usage`) 吏??異붽?.
-- **web/app/api/els/proxyToBackend.js**: `ELS_BACKEND_URL`???덉쑝硫??붿껌???대떦 URL濡??꾨줉?쒗븯??怨듯넻 ?⑥닔.
-- **web/app/api/els/** (capabilities, config, login, run, parse-xlsx, download, logout, template): 媛??쇱슦???곷떒?먯꽌 `proxyToBackend(req)` ?몄텧 ???꾨줉???묐떟 諛섑솚.
-- **NAS_DOCKER_ELS.md**: Synology NAS?먯꽌 Docker 鍮뚮뱶/?ㅽ뻾, DDNS쨌??갑???꾨줉?? Next.js `ELS_BACKEND_URL` ?ㅼ젙 諛⑸쾿 ?뺣━.
-
-### ?좑툘 二쇱쓽
-- Vercel?먯꽌 NAS 諛깆뿏?쒕? ?곕젮硫?NAS媛 ?몃??먯꽌 ?묎렐 媛?ν빐???섎?濡?DDNS + ??갑???꾨줉??HTTPS) ?ㅼ젙 ?꾩슂. ?щТ???대? ?꾩슜?대㈃ Next.js瑜?NAS/?대? ?쒕쾭???먭퀬 `ELS_BACKEND_URL=http://NAS?대?IP:2929` 濡??ㅼ젙.
+### ⚠️ 주의
+- IP 기반 위치는 여전히 통신사 사정에 따라 오차가 있을 수 있으나, 도시명 매칭으로 대부분의 오피스 환경 오인식은 해결될 것으로 기대됩니다.
 
 ---
 
-## [2026-01-31] - 而⑦뀒?대꼫 ?대젰議고쉶 ?섏씠吏??exe/apk ?ㅼ슫濡쒕뱶쨌?ㅼ튂 ?ㅻ챸??異붽?
+## [2026-01-30] - 인트라넷 홈 날씨·뉴스 모듈 개선 및 오늘의 날씨예보 문장
 
-### ?? ?듭떖 ?깃낵
-- **?ㅼ슫濡쒕뱶 諛??ㅼ튂 ?뱀뀡**: 而⑦뀒?대꼫 ?대젰議고쉶 ?섏씠吏 ?곷떒??**?ㅼ슫濡쒕뱶 諛??ㅼ튂** ?뱀뀡 異붽?. Windows(.exe), Android(.apk) 留곹겕濡??대┃ ???ㅼ슫濡쒕뱶 ???ㅼ튂 媛??
-- **exe/apk 蹂닿?쨌留곹겕**: `web/public/downloads/` ??exe쨌apk ?뚯씪???먮㈃ `/downloads/els-container-history-setup.exe`, `/downloads/els-container-history.apk` 濡??쒓났. ?몃? URL? `NEXT_PUBLIC_ELS_DOWNLOAD_WIN`, `NEXT_PUBLIC_ELS_DOWNLOAD_ANDROID` 濡?吏??媛??
-- **?ㅼ튂 ?ㅻ챸??*: ?섏씠吏 ???묒씠??**?ㅼ튂 ?ㅻ챸??蹂닿린** + ?꾩슜 ?섏씠吏 `/employees/container-history/install` (?곗뒪?ы깙쨌紐⑤컮???숈씪 留곹겕). `public/downloads/CONTAINER_HISTORY_INSTALL.md` 臾몄꽌 異붽?.
+### 🚀 핵심 성과
+- **날씨 모듈 재구성**: 현위치 날씨를 크게 고정하고, 다른 지역 3곳을 뉴스처럼 **한 블록 안 리스트**로 표시(5초마다 전환). 날씨·뉴스 열간격·패딩 통일로 시각적 안정화.
+- **데스크탑 기본 지역 아산**: IP 기반 지역 조회 실패 시 기본값을 서울 → **아산(충남)**으로 변경. `REGIONS`에 아산 추가.
+- **오늘의 날씨예보 문장**: Open-Meteo **일별(daily)**·**체감온도(apparent_temperature)** 데이터로 "오늘 낮 최고·밤 최저, 날씨 상태" + **생활/안전 예보**(눈·비·안개·뇌우 주의, 한파·무더위 옷차림) 문장을 자동 생성해 현위치 영역에 표시.
+- **뉴스·날씨 날짜/시간**: 뉴스는 **한국 날짜·시간** 포맷(2026년 1월 30일 14:00), 날씨는 **기준 시각**(1월 30일 14:00) 표시.
 
-### ?썱截??묒뾽 ?곸꽭
-- **container-history/page.js**: ?ㅼ슫濡쒕뱶 ?뱀뀡(Windows exe, Android apk 留곹겕), ?ㅼ튂 ?ㅻ챸???묎린/?쇱튂湲? ?꾩껜 ?ㅻ챸??留곹겕.
-- **container-history.module.css**: `.downloadSection`, `.downloadCard`, `.installGuide` ???ㅽ???異붽?.
-- **container-history/install/page.js**, **install.module.css**: ?ㅼ튂 ?ㅻ챸???꾩슜 ?섏씠吏 (Windows/Android ?ㅼ슫濡쒕뱶쨌?ㅼ튂쨌?ъ슜 諛⑸쾿).
-- **public/downloads/README.md**: exe쨌apk 蹂닿? 諛⑸쾿 諛?env 蹂???덈궡.
-- **public/downloads/CONTAINER_HISTORY_INSTALL.md**: ?ㅼ튂 ?ㅻ챸??蹂몃Ц(留덊겕?ㅼ슫).
+### 🛠️ 작업 상세
+- **api/weather/route.js**: `daily=temperature_2m_max,temperature_2m_min,weathercode`, `hourly=...,apparent_temperature` 추가. `buildDailySummary(daily, hourly)`로 기본 예보 + `buildAdvisoryText(weatherCode, apparentMin)`로 눈/비/안개/뇌우/체감온도 기반 문장 생성. 예보 문장 정제(한파·무더위·노약자·전조등 등).
+- **api/weather/region-by-ip/route.js**: `REGIONS`에 아산 추가, 기본값·실패 시 `region: 'asan'`.
+- **app/employees/page.js**: 날씨 블록을 한 묶음(weatherBlock: 현위치 큰 카드 + weatherList 3곳), `formatWeatherDateTime`·`formatNewsDateKorea`로 날짜/시간 표시, `dailySummary`·날씨·뉴스 설명(날씨·뉴스 현위치 기준), 다른 지역 리스트에 작은 날씨 아이콘.
+- **employees.module.css**: weatherBlock·weatherFeatured·weatherList·weatherListItem·weatherListIcon·weatherForecastDesc·weatherBlockDesc, 열간격 통일(weatherBlock·newsBlock 동일 padding·min-height·헤더·리스트 간격).
 
-### ?좑툘 二쇱쓽
-- exe쨌apk ?뚯씪? `desktop/` 鍮뚮뱶쨌?⑦궎吏???`public/downloads/` ??蹂듭궗?섍굅?? GitHub Releases ???몃? URL??env濡?吏?뺥빐 ?ъ슜.
-
----
-
-## [2026-01-31] - Vercel?먯꽌 ?묒? ?뚯떛(parse)留??ъ슜 媛?ν븯?꾨줉 媛쒖꽑
-
-### ?? ?듭떖 ?깃낵
-- **Vercel ?쒗븳 ?뺣━**: Vercel? Python ?쒕쾭由ъ뒪 ?⑥닔瑜?吏?먰븯吏留? ELS 濡쒓렇?맞룹“?뚮뒗 **Selenium + Chrome**???꾩슂???쒕쾭由ъ뒪 ?섍꼍??Chrome???놁뼱 遺덇?. ?곕씪??**?쇰컮?대꼫由щ줈 ?꾩껜 議고쉶**??Vercel ?ㅼ젙留뚯쑝濡쒕뒗 遺덇?.
-- **?묒? ?뚯떛留?Vercel?먯꽌 ?숈옉**: Python/Chrome ?놁씠 **?묒??먯꽌 而⑦뀒?대꼫 踰덊샇留?異붿텧**?섎뒗 寃껋? Node `xlsx`濡?媛?? parse-xlsx API??Node ?대갚 異붽? ??Vercel(nollae.com)?먯꽌 **?묒? ?낅줈????踰덊샇 異붿텧**源뚯? ?ъ슜 媛??
-- **capabilities쨌UI**: `parseAvailable: true` 異붽?. 諛고룷 ?섍꼍?먯꽌??"?묒? ?뚯떛(踰덊샇 異붿텧)留??ъ슜 媛?? 濡쒓렇?맞룹“?뚮뒗 Chrome ?꾩슂濡?遺덇?" ?덈궡.
-
-### ?썱截??묒뾽 ?곸꽭
-- **api/els/parse-xlsx/route.js**: Python ?녾굅??RUNNER ?놁쓣 ??`parseXlsxWithNode(buffer)` (xlsx ?⑦궎吏, A2~ 而щ읆 A 異붿텧)濡??대갚. ?숈씪 ?묐떟 `{ containers }`.
-- **api/els/capabilities/route.js**: Vercel ?먮뒗 Python ?놁쓣 ??`{ available: false, parseAvailable: true, reason }` 諛섑솚. Python ?덉쓣 ??`{ available: true, parseAvailable: true }`.
-- **container-history/page.js**: `parseAvailable` ?곹깭 異붽?. `elsAvailable === false && parseAvailable === true`????"?묒? ?뚯떛留??ъ슜?????덉뒿?덈떎" 諛곕꼫 諛??곸꽭 ?덈궡 臾멸뎄 遺꾨━.
-
-### ?좑툘 二쇱쓽
-- 濡쒓렇?맞룹“?뚮뒗 怨꾩냽 濡쒖뺄/?곗뒪?ы깙 ???먮뒗 Chrome ?덈뒗 ?쒕쾭?먯꽌留?媛?? Vercel?먯꽌 ?ㅼ젙?쇰줈 Chrome???????덈뒗 諛⑸쾿? ?놁쓬(?쒕쾭由ъ뒪 ?⑥닔??釉뚮씪?곗? 誘명룷??.
+### ⚠️ 주의
+- 날씨 예보 문장은 Open-Meteo 데이터만으로 생성. 별도 예보 문장 API 미사용.
 
 ---
 
-## [2026-01-31] - Vercel 諛고룷 ??而⑦뀒?대꼫 ?대젰議고쉶 Python ?먮윭 ???
-### ?? ?듭떖 ?깃낵
-- **諛고룷 ?섍꼍 媛먯?**: Vercel(nollae.com) ???쒕쾭由ъ뒪 ?섍꼍?먯꽌??Python???놁뼱 濡쒓렇??議고쉶 ??503쨌"Python 誘몄꽕移? ?먮윭媛 濡쒓렇??李랁엳??臾몄젣瑜??닿껐.
-- **?ъ쟾 ?덈궡**: 而⑦뀒?대꼫 ?대젰 ?섏씠吏 濡쒕뱶 ??`GET /api/els/capabilities`濡??ъ슜 媛???щ?瑜??뺤씤?섍퀬, 遺덇? ???곷떒 諛곕꼫濡??덈궡쨌濡쒓렇??議고쉶 踰꾪듉 鍮꾪솢?깊솕.
-- **?먮윭 硫붿떆吏 ?듭씪**: login/run/parse-xlsx API??503 ?묐떟 硫붿떆吏瑜?"Vercel ???쒕쾭由ъ뒪 諛고룷 ?섍꼍(nollae.com)?먯꽌???ъ슜?????놁뒿?덈떎. 濡쒖뺄 ?먮뒗 Python쨌Chrome???ㅼ튂???쒕쾭?먯꽌留??댁슜 媛?ν빀?덈떎."濡??듭씪.
+## [2026-01-31] - Synology NAS Docker로 ELS 백엔드 실행 및 웹 프록시 연동
 
-### ?썱截??묒뾽 ?곸꽭
-- **api/els/capabilities/route.js** ?좉퇋: GET?쇰줈 `VERCEL === '1'` ?먮뒗 Python 誘몄꽕移???`{ available: false, reason }` 諛섑솚, 洹???`{ available: true }`.
-- **container-history/page.js**: 留덉슫????capabilities ?몄텧, `elsAvailable === false`????諛곕꼫 ?쒖떆 諛?`elsDisabled`濡?濡쒓렇??議고쉶 踰꾪듉 鍮꾪솢?깊솕.
-- **container-history.module.css**: `.unavailableBanner` ?ㅽ???異붽?(寃쎄퀬 諛곕꼫).
-- **api/els/login/route.js**, **api/els/run/route.js**, **api/els/parse-xlsx/route.js**: Python ?놁쓣 ??503 硫붿떆吏瑜?諛고룷 ?섍꼍 ?덈궡 臾멸뎄濡??듭씪.
+### 🚀 핵심 성과
+- **Docker 백엔드**: NAS에서 Python + Chromium + elsbot을 Docker로 실행해 `/api/els/*` API 제공. 사용자 exe/apk 설치 없이 웹에서 조회 가능.
+- **Synology 연동**: 자료실(WebDAV)·게시판 프록시는 기존대로 두고, ELS만 `docker/els-backend` 이미지로 추가 실행.
+- **Next.js 프록시**: `ELS_BACKEND_URL` 환경 변수 설정 시 `/api/els/*` 요청을 NAS 백엔드로 프록시. DDNS+역방향 프록시로 NAS를 외부에 노출하면 Vercel에서도 NAS 백엔드 사용 가능.
 
-### ?좑툘 二쇱쓽
-- 而⑦뀒?대꼫 ?대젰 議고쉶쨌?ㅼ슫濡쒕뱶???ъ쟾??濡쒖뺄 ?먮뒗 Python쨌Chrome???덈뒗 ?쒕쾭?먯꽌留??숈옉. Vercel?먯꽌??湲곕뒫 鍮꾪솢?깊솕留??섍퀬 ?먮윭 ????덈궡 諛곕꼫瑜??몄텧.
+### 🛠️ 작업 상세
+- **docker/els-backend/**: Dockerfile (Python 3.11, Chromium, chromedriver), requirements.txt, app.py (Flask API). 빌드 시 저장소 루트를 컨텍스트로 사용.
+- **docker/docker-compose.yml**: els-backend 서비스, 포트 2929.
+- **elsbot/els_bot.py**: Docker용 `CHROME_BIN`, `CHROME_DRIVER_BIN` 환경 변수 및 headless 옵션(`--no-sandbox`, `--disable-dev-shm-usage`) 지원 추가.
+- **web/app/api/els/proxyToBackend.js**: `ELS_BACKEND_URL`이 있으면 요청을 해당 URL로 프록시하는 공통 함수.
+- **web/app/api/els/** (capabilities, config, login, run, parse-xlsx, download, logout, template): 각 라우트 상단에서 `proxyToBackend(req)` 호출 후 프록시 응답 반환.
+- **NAS_DOCKER_ELS.md**: Synology NAS에서 Docker 빌드/실행, DDNS·역방향 프록시, Next.js `ELS_BACKEND_URL` 설정 방법 정리.
 
----
-
-## [2026-01-30] - ?쇱씪/?붽컙 ?낅Т蹂닿퀬쨌?뱀쭊 ?닿?쨌而⑦뀒?대꼫 ?대젰 ?몄뀡 ?좎?쨌UX
-
-### ?? ?듭떖 ?깃낵
-- **?쇱씪 ?낅Т?쇱?쨌?붽컙 ?ㅼ쟻蹂닿퀬 紐⑤뱢**: `posts.report_kind`(daily/monthly) 異붽?, `/employees/reports/daily`, `/employees/reports/monthly` 紐⑸줉쨌?묒꽦 ?섏씠吏 諛?API `kind` ?뚮씪誘명꽣 吏??
-- **?뱀쭊 硫붿씤 ?섏씠吏 ?닿?**: ?명듃?쇰꽬?먯꽌 ?쒓굅 ??硫붿씤 ?ъ씠?몃줈 ?대룞. ?ㅼ쟻?꾪솴?붾꽕?몄썙???ъ씠???뱀쭊 ?뱀뀡 異붽?, `/webzine` 紐⑸줉쨌?곸꽭쨌?묒꽦쨌?섏젙 ?쇱슦??援ъ꽦. ?뱀쭊 沅뚰븳: 諛⑸Ц???쎄린 ?꾩슜, 吏???ъ슜???묒꽦쨌?섏젙 媛?Β룹궘??遺덇?, 愿由ъ옄 ?꾩껜 沅뚰븳.
-- **而⑦뀒?대꼫 ?대젰議고쉶 ?몄뀡 ?좎?**: 議고쉶 ?꾨즺 ??ETRANS 濡쒓렇?꾩썐?섏? ?딄퀬 ?湲? ELS ?곕が(els_web_runner_daemon.py)?쇰줈 濡쒓렇???좎?, ?섏씠吏 ?댄깉 ?쒖뿉留?`/api/els/logout` ?몄텧. 異붽?쨌蹂寃?踰덊샇濡?利됱떆 ?ъ“??媛??
-- **而⑦뀒?대꼫 ?대젰 UX**: Python/?곕が spawn ??`windowsHide: true`濡??곕???李?鍮꾨끂異? 議고쉶 ?꾨즺 ??濡쒓렇??"[?湲? ?좉퇋 ?낅젰??諛쏆쓣 ???덈룄濡??湲?以묒엯?덈떎. 異붽? 議고쉶媛 ?꾩슂?섎㈃ 而⑦뀒?대꼫 踰덊샇瑜??낅젰????[議고쉶] 踰꾪듉???뚮윭 二쇱꽭??" 異쒕젰.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?낅Т蹂닿퀬 醫낅쪟 援щ텇
-- **DB**: `supabase_migration_report_kind.sql` ??`posts.report_kind`(null/daily/monthly) 而щ읆 異붽?.
-- **API**: `api/board/route.js` ??GET `kind` ?뚮씪誘명꽣, POST `report_kind` ???
-- **?섏씠吏**: `reports/daily`, `reports/monthly` 紐⑸줉쨌?묒꽦 ?섏씠吏, `intranetMenu.js`???쇱씪 ?낅Т?쇱?쨌?붽컙 ?ㅼ쟻蹂닿퀬 硫붾돱 異붽?.
-
-#### 2. ?뱀쭊 硫붿씤 ?닿? 諛?沅뚰븳
-- **硫붿씤**: `app/page.js`???ㅼ쟻?꾪솴?붾꽕?몄썙???ъ씠 `WebzineSection` 異붽?. `Header`???뱀쭊 留곹겕, ?명듃?쇰꽬 ?쒕∼?ㅼ슫?먯꽌 ?뱀쭊 ?쒓굅.
-- **?쇱슦??*: `app/webzine/` ??layout, 紐⑸줉, ?곸꽭, ?묒꽦, ?섏젙. `next.config.mjs`??`/employees/webzine` ??`/webzine` 由щ떎?대젆??
-- **沅뚰븳**: `supabase_webzine_permissions.sql` ???뱀쭊 ??젣??愿由ъ옄留? ?섏젙? ?묒꽦?먃룰?由ъ옄. 紐⑸줉/?곸꽭/?묒꽦/?섏젙 ?섏씠吏??`useUserRole` 湲곕컲 踰꾪듉 ?몄텧쨌由щ떎?대젆???곸슜.
-
-#### 3. 而⑦뀒?대꼫 ?대젰 ?몄뀡 ?좎?
-- **els_web_runner.py**: `run_search(..., driver=, keep_alive=, log_callback=)` ??湲곗〈 ?쒕씪?대쾭 ?ъ궗?㈑룹“????誘몄쥌猷??듭뀡.
-- **els_web_runner_daemon.py**: HTTP ?쒕쾭(31999) ??`/login`, `/run`(?ㅽ듃由щ컢), `/logout`. ?쒕씪?대쾭 ?좎?.
-- **API**: `api/els/daemon.js`(ensureDaemon), `run/route.js`(?곕が ?곗꽑), `login/route.js`(?곕が ?곗꽑), `logout/route.js` ?좉퇋.
-- **?꾨줎??*: container-history ?섏씠吏?먯꽌 `pagehide`쨌?몃쭏?댄듃 ??`POST /api/els/logout`. ?ъ슜 ?덈궡 臾멸뎄 諛?濡쒓렇 ?湲?硫붿떆吏 異붽?.
-
-#### 4. 湲고?
-- **?곕???李??④?**: `api/els/daemon.js`, `run/route.js`, `login/route.js`, `parse-xlsx/route.js`??`windowsHide: true` ?곸슜.
-- **寃??*: `api/employees/search` ?뱀쭊 寃쎈줈瑜?`/webzine/[id]`濡?蹂寃?
-
-### ?좑툘 二쇱쓽
-- 而⑦뀒?대꼫 ?대젰 ?곕が? 泥?濡쒓렇??議고쉶 ??Next ?쒕쾭媛 ?먮룞 湲곕룞. ?섎룞 ?ㅽ뻾 遺덊븘??
-- ?뱀쭊 RLS쨌沅뚰븳 ?곸슜???꾪빐 `supabase_webzine_permissions.sql` ?ㅽ뻾 ?꾩슂.
+### ⚠️ 주의
+- Vercel에서 NAS 백엔드를 쓰려면 NAS가 외부에서 접근 가능해야 하므로 DDNS + 역방향 프록시(HTTPS) 설정 필요. 사무실 내부 전용이면 Next.js를 NAS/내부 서버에 두고 `ELS_BACKEND_URL=http://NAS내부IP:2929` 로 설정.
 
 ---
 
-## [2026-01-30] - ?꾩쭅??硫붾돱 eTrans 3.0 ?ㅽ????ш뎄??(?ㅻ뜑쨌硫붿씤쨌?ъ씠??
+## [2026-01-31] - 컨테이너 이력조회 페이지에 exe/apk 다운로드·설치 설명서 추가
 
-### ?? ?듭떖 ?깃낵
-- **?ㅻ뜑 硫붾돱**: ?꾩쭅???꾩슜 ?ㅻ뜑(EmployeeHeader) 異붽? ??ELS Intranet 濡쒓퀬, "OOO???덈뀞?섏꽭??", 媛쒖씤?뺣낫?섏젙쨌濡쒓렇?꾩썐쨌臾몄쓽?섍린 留곹겕, "硫붾돱瑜?寃?됲븯?몄슂." 寃?됱갹(?뚮젅?댁뒪???.
-- **硫붿씤 硫붾돱**: ?곷떒 ??援ъ“濡?蹂寃???**?쒖뒪??* | **?낅Т蹂닿퀬** | **吏?먯꽌鍮꾩뒪** | **愿由?*(admin ?꾩슜). ?좏깮 ???뚮???媛뺤“쨌?섎떒 ?쇱씤.
-- **?ъ씠??硫붾돱**: ?좏깮??硫붿씤 ??뿉 ?곕씪 ??ぉ留??몄텧. ?곷떒??"硫붾돱瑜?寃?됲븯?몄슂." 寃?됱갹 異붽?. ?섎떒 ?ъ슜???뺣낫쨌濡쒓렇?꾩썐 ?좎?.
+### 🚀 핵심 성과
+- **다운로드 및 설치 섹션**: 컨테이너 이력조회 페이지 상단에 **다운로드 및 설치** 섹션 추가. Windows(.exe), Android(.apk) 링크로 클릭 시 다운로드 후 설치 가능.
+- **exe/apk 보관·링크**: `web/public/downloads/` 에 exe·apk 파일을 두면 `/downloads/els-container-history-setup.exe`, `/downloads/els-container-history.apk` 로 제공. 외부 URL은 `NEXT_PUBLIC_ELS_DOWNLOAD_WIN`, `NEXT_PUBLIC_ELS_DOWNLOAD_ANDROID` 로 지정 가능.
+- **설치 설명서**: 페이지 내 접이식 **설치 설명서 보기** + 전용 페이지 `/employees/container-history/install` (데스크탑·모바일 동일 링크). `public/downloads/CONTAINER_HISTORY_INSTALL.md` 문서 추가.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. EmployeeHeader (?좉퇋)
-- **components/EmployeeHeader.js**, **EmployeeHeader.module.css**: 濡쒓퀬(ELS Intranet), ?ъ슜???몄궗留? 媛쒖씤?뺣낫?섏젙(/employees/mypage), 濡쒓렇?꾩썐, 臾몄쓽?섍린(/contact), 寃???낅젰(placeholder). sticky, ?꾩뿭 ?ㅻ뜑 ?꾨옒 ?뺣젹.
-- **app/employees/layout.js**: SubPageHero ?ㅼ쓬??EmployeeHeader 諛곗튂.
+### 🛠️ 작업 상세
+- **container-history/page.js**: 다운로드 섹션(Windows exe, Android apk 링크), 설치 설명서 접기/펼치기, 전체 설명서 링크.
+- **container-history.module.css**: `.downloadSection`, `.downloadCard`, `.installGuide` 등 스타일 추가.
+- **container-history/install/page.js**, **install.module.css**: 설치 설명서 전용 페이지 (Windows/Android 다운로드·설치·사용 방법).
+- **public/downloads/README.md**: exe·apk 보관 방법 및 env 변수 안내.
+- **public/downloads/CONTAINER_HISTORY_INSTALL.md**: 설치 설명서 본문(마크다운).
 
-#### 2. 硫붿씤 硫붾돱(?? ?ш뎄??- **constants/intranetMenu.js** ?좉퇋: MAIN_TABS(?쒖뒪?쑣룹뾽臾대낫怨졖룹??먯꽌鍮꾩뒪쨌愿由?, SIDEBAR_ITEMS(??퀎 ?ъ씠????ぉ), getActiveMainTab(pathname, isAdmin). 寃쎈줈 留ㅼ묶 ?곗꽑?쒖쐞쨌?쒖떆 ?쒖꽌(displayOrder) 遺꾨━.
-- **IntranetSubNav.js**: ??留곹겕留??쒖떆. displayOrder濡??뺣젹???쒖뒪?쒋넂?낅Т蹂닿퀬?믪??먯꽌鍮꾩뒪?믨?由????몄텧.
-- **IntranetSubNav.module.css**: ???ㅽ???諛곌꼍쨌?쒖꽦 ?섎떒 ?쇱씤), sticky top 蹂댁젙.
-
-#### 3. ?ъ씠??硫붾돱(??퀎)
-- **EmployeeSidebar.js**: getActiveMainTab?쇰줈 ?쒖꽦 ??怨꾩궛 ??SIDEBAR_ITEMS[activeTabId]留??뚮뜑. ?곷떒 寃???낅젰 異붽?. sectionTitle ?쒓굅, ?꾩씠肄??쇰꺼 留곹겕留??쒖떆.
-- **EmployeeSidebar.module.css**: 寃???곸뿭쨌?꾩씠肄??ㅽ??? sticky top 蹂댁젙.
-
-### ?좑툘 二쇱쓽
-- 硫붾돱 寃?됱갹? ?꾩옱 UI留?援ы쁽(placeholder). 異뷀썑 寃??湲곕뒫 ?곕룞 ??蹂꾨룄 ?묒뾽 ?꾩슂.
+### ⚠️ 주의
+- exe·apk 파일은 `desktop/` 빌드·패키징 후 `public/downloads/` 에 복사하거나, GitHub Releases 등 외부 URL을 env로 지정해 사용.
 
 ---
 
-## [2026-01-30] - ?꾩쭅???섏씠吏 ?덉씠?꾩썐 ?ш뎄??諛?而⑦뀒?대꼫 ?대젰議고쉶(ELS) ???곕룞
+## [2026-01-31] - Vercel에서 엑셀 파싱(parse)만 사용 가능하도록 개선
 
-### ?? ?듭떖 ?깃낵
-- **?꾩쭅???섏씠吏 援ъ“ ?듭씪**: Header ??諛붾뵒 ?곷떒 硫붾돱(IntranetSubNav) ??諛붾뵒 ?ъ씠??硫붾돱(EmployeeSidebar) + main 援ъ꽦. ?곗뒪?ы깙?먯꽌 ?ъ씠?쒕컮 ?몄텧, 1024px ?댄븯?먯꽌 ?ъ씠?쒕컮 ?④?(湲곗〈 CSS ?좎?).
-- **硫붾돱 ?ш뎄??*: ?ъ씠?쒕컮쨌?곷떒 ?쒕툕?ㅻ퉬쨌?ㅻ뜑 ?꾩쭅?먯쟾???쒕∼?ㅼ슫??**而⑦뀒?대꼫 ?대젰議고쉶** 硫붾돱 異붽?.
-- **而⑦뀒?대꼫 ?대젰議고쉶 ?섏씠吏 ?좉퇋**: `/employees/container-history`?먯꽌 ?곕???濡쒓렇, 怨꾩젙(?꾩옱 ?꾩씠??鍮꾨?踰덊샇 泥댄겕諛뺤뒪쨌?좉퇋 ?낅젰), ?낅줈??而⑦뀒?대꼫 踰덊샇 ?낅젰쨌怨듬갚 ?쒓굅쨌container_list.xlsx ?낅줈??, 議고쉶 寃곌낵(Sheet1쨌No=1 湲곗?쨌???대┃ ??Sheet2 ?ㅽ????꾧컻), ?묒? ?ㅼ슫濡쒕뱶 ?쒓났.
-- **elsbot ???곕룞**: `els_bot.py` ?듭떖 濡쒖쭅(get delay쨌scrape_hyper_verify ?? 蹂寃??놁씠, `els_web_runner.py`留?異붽??섏뿬 parse/run CLI濡???API? ?곕룞.
+### 🚀 핵심 성과
+- **Vercel 제한 정리**: Vercel은 Python 서버리스 함수를 지원하지만, ELS 로그인·조회는 **Selenium + Chrome**이 필요해 서버리스 환경에 Chrome이 없어 불가. 따라서 **논바이너리로 전체 조회**는 Vercel 설정만으로는 불가.
+- **엑셀 파싱만 Vercel에서 동작**: Python/Chrome 없이 **엑셀에서 컨테이너 번호만 추출**하는 것은 Node `xlsx`로 가능. parse-xlsx API에 Node 폴백 추가 → Vercel(nollae.com)에서 **엑셀 업로드 → 번호 추출**까지 사용 가능.
+- **capabilities·UI**: `parseAvailable: true` 추가. 배포 환경에서는 "엑셀 파싱(번호 추출)만 사용 가능. 로그인·조회는 Chrome 필요로 불가" 안내.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?덉씠?꾩썐
-- **app/employees/layout.js** ?좉퇋: 紐⑤뱺 `/employees/*`??Header, SubPageHero, IntranetSubNav, bodyWrap(EmployeeSidebar + main), Footer ?곸슜.
-- **app/employees/(intranet)/layout.js**: Header쨌SubNav쨌Sidebar 以묐났 ?쒓굅, `{children}`留??뚮뜑.
-- **app/employees/(intranet)/intranet.module.css**: `.bodyWrap`(flex), `.mainContent` ?좎?쨌蹂댁“ ?ㅽ???異붽?.
-- **app/employees/page.js**: Header쨌SubPageHero쨌IntranetSubNav ?쒓굅(?곸쐞 layout?먯꽌 ?쒓났).
+### 🛠️ 작업 상세
+- **api/els/parse-xlsx/route.js**: Python 없거나 RUNNER 없을 때 `parseXlsxWithNode(buffer)` (xlsx 패키지, A2~ 컬럼 A 추출)로 폴백. 동일 응답 `{ containers }`.
+- **api/els/capabilities/route.js**: Vercel 또는 Python 없을 때 `{ available: false, parseAvailable: true, reason }` 반환. Python 있을 때 `{ available: true, parseAvailable: true }`.
+- **container-history/page.js**: `parseAvailable` 상태 추가. `elsAvailable === false && parseAvailable === true`일 때 "엑셀 파싱만 사용할 수 있습니다" 배너 및 상세 안내 문구 분리.
 
-#### 2. 硫붾돱
-- **EmployeeSidebar.js**: "?벀 而⑦뀒?대꼫 ?대젰議고쉶" ??`/employees/container-history` 留곹겕 異붽?.
-- **IntranetSubNav.js**: "而⑦뀒?대꼫 ?대젰" 硫붾돱 異붽?.
-- **Header.js** (?꾩쭅?먯쟾???쒕∼?ㅼ슫): "?벀 而⑦뀒?대꼫 ?대젰議고쉶" 留곹겕 異붽?.
+### ⚠️ 주의
+- 로그인·조회는 계속 로컬/데스크탑 앱 또는 Chrome 있는 서버에서만 가능. Vercel에서 설정으로 Chrome을 쓸 수 있는 방법은 없음(서버리스 함수에 브라우저 미포함).
 
-#### 3. 而⑦뀒?대꼫 ?대젰議고쉶 ?섏씠吏
-- **app/employees/container-history/page.js**, **container-history.module.css**: ?곕???濡쒓렇), 怨꾩젙(?꾩옱 ID/PW 泥댄겕쨌?좉퇋 ?낅젰), ?낅줈???묒? 踰꾪듉쨌textarea 而⑦뀒?대꼫 踰덊샇쨌怨듬갚 ?쒓굅 ???낅젰), 議고쉶 踰꾪듉, 寃곌낵 ?뚯씠釉?Sheet1 湲곗?쨌?꾧컻 ??Sheet2 ?ㅽ???, ?묒? ?ㅼ슫濡쒕뱶 踰꾪듉.
+---
 
-#### 4. elsbot ???щ꼫
-- **elsbot/els_web_runner.py** ?좉퇋: `parse <xlsx寃쎈줈>` ??stdout JSON `{"containers": [...]}` (iloc[2:, 0] ?숈씪). `run --containers '[...]' [--user-id] [--user-pw]` ??stdout JSON `{log, sheet1, sheet2, output_path}`. `els_bot`??`login_and_prepare`, `solve_input_and_search`, `scrape_hyper_verify`留?import, 湲곗〈 濡쒖쭅쨌?쒕젅????蹂寃??놁쓬.
+## [2026-01-31] - Vercel 배포 시 컨테이너 이력조회 Python 에러 대응
+
+### 🚀 핵심 성과
+- **배포 환경 감지**: Vercel(nollae.com) 등 서버리스 환경에서는 Python이 없어 로그인/조회 시 503·"Python 미설치" 에러가 로그에 찍히는 문제를 해결.
+- **사전 안내**: 컨테이너 이력 페이지 로드 시 `GET /api/els/capabilities`로 사용 가능 여부를 확인하고, 불가 시 상단 배너로 안내·로그인/조회 버튼 비활성화.
+- **에러 메시지 통일**: login/run/parse-xlsx API의 503 응답 메시지를 "Vercel 등 서버리스 배포 환경(nollae.com)에서는 사용할 수 없습니다. 로컬 또는 Python·Chrome이 설치된 서버에서만 이용 가능합니다."로 통일.
+
+### 🛠️ 작업 상세
+- **api/els/capabilities/route.js** 신규: GET으로 `VERCEL === '1'` 또는 Python 미설치 시 `{ available: false, reason }` 반환, 그 외 `{ available: true }`.
+- **container-history/page.js**: 마운트 시 capabilities 호출, `elsAvailable === false`일 때 배너 표시 및 `elsDisabled`로 로그인/조회 버튼 비활성화.
+- **container-history.module.css**: `.unavailableBanner` 스타일 추가(경고 배너).
+- **api/els/login/route.js**, **api/els/run/route.js**, **api/els/parse-xlsx/route.js**: Python 없을 때 503 메시지를 배포 환경 안내 문구로 통일.
+
+### ⚠️ 주의
+- 컨테이너 이력 조회·다운로드는 여전히 로컬 또는 Python·Chrome이 있는 서버에서만 동작. Vercel에서는 기능 비활성화만 하고 에러 대신 안내 배너를 노출.
+
+---
+
+## [2026-01-30] - 일일/월간 업무보고·웹진 이관·컨테이너 이력 세션 유지·UX
+
+### 🚀 핵심 성과
+- **일일 업무일지·월간 실적보고 모듈**: `posts.report_kind`(daily/monthly) 추가, `/employees/reports/daily`, `/employees/reports/monthly` 목록·작성 페이지 및 API `kind` 파라미터 지원.
+- **웹진 메인 페이지 이관**: 인트라넷에서 제거 후 메인 사이트로 이동. 실적현황↔네트워크 사이에 웹진 섹션 추가, `/webzine` 목록·상세·작성·수정 라우트 구성. 웹진 권한: 방문자 읽기 전용, 지점 사용자 작성·수정 가능·삭제 불가, 관리자 전체 권한.
+- **컨테이너 이력조회 세션 유지**: 조회 완료 후 ETRANS 로그아웃하지 않고 대기. ELS 데몬(els_web_runner_daemon.py)으로 로그인 유지, 페이지 이탈 시에만 `/api/els/logout` 호출. 추가·변경 번호로 즉시 재조회 가능.
+- **컨테이너 이력 UX**: Python/데몬 spawn 시 `windowsHide: true`로 터미널 창 비노출. 조회 완료 후 로그에 "[대기] 신규 입력을 받을 수 있도록 대기 중입니다. 추가 조회가 필요하면 컨테이너 번호를 입력한 뒤 [조회] 버튼을 눌러 주세요." 출력.
+
+### 🛠️ 작업 상세
+#### 1. 업무보고 종류 구분
+- **DB**: `supabase_migration_report_kind.sql` — `posts.report_kind`(null/daily/monthly) 컬럼 추가.
+- **API**: `api/board/route.js` — GET `kind` 파라미터, POST `report_kind` 저장.
+- **페이지**: `reports/daily`, `reports/monthly` 목록·작성 페이지, `intranetMenu.js`에 일일 업무일지·월간 실적보고 메뉴 추가.
+
+#### 2. 웹진 메인 이관 및 권한
+- **메인**: `app/page.js`에 실적현황↔네트워크 사이 `WebzineSection` 추가. `Header`에 웹진 링크, 인트라넷 드롭다운에서 웹진 제거.
+- **라우트**: `app/webzine/` — layout, 목록, 상세, 작성, 수정. `next.config.mjs`에 `/employees/webzine` → `/webzine` 리다이렉트.
+- **권한**: `supabase_webzine_permissions.sql` — 웹진 삭제는 관리자만, 수정은 작성자·관리자. 목록/상세/작성/수정 페이지에 `useUserRole` 기반 버튼 노출·리다이렉트 적용.
+
+#### 3. 컨테이너 이력 세션 유지
+- **els_web_runner.py**: `run_search(..., driver=, keep_alive=, log_callback=)` — 기존 드라이버 재사용·조회 후 미종료 옵션.
+- **els_web_runner_daemon.py**: HTTP 서버(31999) — `/login`, `/run`(스트리밍), `/logout`. 드라이버 유지.
+- **API**: `api/els/daemon.js`(ensureDaemon), `run/route.js`(데몬 우선), `login/route.js`(데몬 우선), `logout/route.js` 신규.
+- **프론트**: container-history 페이지에서 `pagehide`·언마운트 시 `POST /api/els/logout`. 사용 안내 문구 및 로그 대기 메시지 추가.
+
+#### 4. 기타
+- **터미널 창 숨김**: `api/els/daemon.js`, `run/route.js`, `login/route.js`, `parse-xlsx/route.js`에 `windowsHide: true` 적용.
+- **검색**: `api/employees/search` 웹진 경로를 `/webzine/[id]`로 변경.
+
+### ⚠️ 주의
+- 컨테이너 이력 데몬은 첫 로그인/조회 시 Next 서버가 자동 기동. 수동 실행 불필요.
+- 웹진 RLS·권한 적용을 위해 `supabase_webzine_permissions.sql` 실행 필요.
+
+---
+
+## [2026-01-30] - 임직원 메뉴 eTrans 3.0 스타일 재구성 (헤더·메인·사이드)
+
+### 🚀 핵심 성과
+- **헤더 메뉴**: 임직원 전용 헤더(EmployeeHeader) 추가 — ELS Intranet 로고, "OOO님 안녕하세요?", 개인정보수정·로그아웃·문의하기 링크, "메뉴를 검색하세요." 검색창(플레이스홀더).
+- **메인 메뉴**: 상단 탭 구조로 변경 — **시스템** | **업무보고** | **지점서비스** | **관리**(admin 전용). 선택 탭 파란색 강조·하단 라인.
+- **사이드 메뉴**: 선택된 메인 탭에 따라 항목만 노출. 상단에 "메뉴를 검색하세요." 검색창 추가. 하단 사용자 정보·로그아웃 유지.
+
+### 🛠️ 작업 상세
+#### 1. EmployeeHeader (신규)
+- **components/EmployeeHeader.js**, **EmployeeHeader.module.css**: 로고(ELS Intranet), 사용자 인사말, 개인정보수정(/employees/mypage), 로그아웃, 문의하기(/contact), 검색 입력(placeholder). sticky, 전역 헤더 아래 정렬.
+- **app/employees/layout.js**: SubPageHero 다음에 EmployeeHeader 배치.
+
+#### 2. 메인 메뉴(탭) 재구성
+- **constants/intranetMenu.js** 신규: MAIN_TABS(시스템·업무보고·지점서비스·관리), SIDEBAR_ITEMS(탭별 사이드 항목), getActiveMainTab(pathname, isAdmin). 경로 매칭 우선순위·표시 순서(displayOrder) 분리.
+- **IntranetSubNav.js**: 탭 링크만 표시. displayOrder로 정렬해 시스템→업무보고→지점서비스→관리 순 노출.
+- **IntranetSubNav.module.css**: 탭 스타일(배경·활성 하단 라인), sticky top 보정.
+
+#### 3. 사이드 메뉴(탭별)
+- **EmployeeSidebar.js**: getActiveMainTab으로 활성 탭 계산 후 SIDEBAR_ITEMS[activeTabId]만 렌더. 상단 검색 입력 추가. sectionTitle 제거, 아이콘+라벨 링크만 표시.
+- **EmployeeSidebar.module.css**: 검색 영역·아이콘 스타일, sticky top 보정.
+
+### ⚠️ 주의
+- 메뉴 검색창은 현재 UI만 구현(placeholder). 추후 검색 기능 연동 시 별도 작업 필요.
+
+---
+
+## [2026-01-30] - 임직원 페이지 레이아웃 재구성 및 컨테이너 이력조회(ELS) 웹 연동
+
+### 🚀 핵심 성과
+- **임직원 페이지 구조 통일**: Header → 바디 상단 메뉴(IntranetSubNav) → 바디 사이드 메뉴(EmployeeSidebar) + main 구성. 데스크탑에서 사이드바 노출, 1024px 이하에서 사이드바 숨김(기존 CSS 유지).
+- **메뉴 재구성**: 사이드바·상단 서브네비·헤더 임직원전용 드롭다운에 **컨테이너 이력조회** 메뉴 추가.
+- **컨테이너 이력조회 페이지 신규**: `/employees/container-history`에서 터미널 로그, 계정(현재 아이디/비밀번호 체크박스·신규 입력), 업로드(컨테이너 번호 입력·공백 제거·container_list.xlsx 업로드), 조회 결과(Sheet1·No=1 기준·행 클릭 시 Sheet2 스타일 전개), 엑셀 다운로드 제공.
+- **elsbot 웹 연동**: `els_bot.py` 핵심 로직(get delay·scrape_hyper_verify 등) 변경 없이, `els_web_runner.py`만 추가하여 parse/run CLI로 웹 API와 연동.
+
+### 🛠️ 작업 상세
+#### 1. 레이아웃
+- **app/employees/layout.js** 신규: 모든 `/employees/*`에 Header, SubPageHero, IntranetSubNav, bodyWrap(EmployeeSidebar + main), Footer 적용.
+- **app/employees/(intranet)/layout.js**: Header·SubNav·Sidebar 중복 제거, `{children}`만 렌더.
+- **app/employees/(intranet)/intranet.module.css**: `.bodyWrap`(flex), `.mainContent` 유지·보조 스타일 추가.
+- **app/employees/page.js**: Header·SubPageHero·IntranetSubNav 제거(상위 layout에서 제공).
+
+#### 2. 메뉴
+- **EmployeeSidebar.js**: "📦 컨테이너 이력조회" → `/employees/container-history` 링크 추가.
+- **IntranetSubNav.js**: "컨테이너 이력" 메뉴 추가.
+- **Header.js** (임직원전용 드롭다운): "📦 컨테이너 이력조회" 링크 추가.
+
+#### 3. 컨테이너 이력조회 페이지
+- **app/employees/container-history/page.js**, **container-history.module.css**: 터미널(로그), 계정(현재 ID/PW 체크·신규 입력), 업로드(엑셀 버튼·textarea 컨테이너 번호·공백 제거 후 입력), 조회 버튼, 결과 테이블(Sheet1 기준·전개 시 Sheet2 스타일), 엑셀 다운로드 버튼.
+
+#### 4. elsbot 웹 러너
+- **elsbot/els_web_runner.py** 신규: `parse <xlsx경로>` → stdout JSON `{"containers": [...]}` (iloc[2:, 0] 동일). `run --containers '[...]' [--user-id] [--user-pw]` → stdout JSON `{log, sheet1, sheet2, output_path}`. `els_bot`의 `login_and_prepare`, `solve_input_and_search`, `scrape_hyper_verify`만 import, 기존 로직·딜레이 등 변경 없음.
 
 #### 5. Next.js API
-- **GET /api/els/config**: els_config.json 議댁옱쨌?꾩씠??留덉뒪??諛섑솚(鍮꾨?踰덊샇 誘몃끂異?.
-- **POST /api/els/parse-xlsx**: multipart file ???꾩떆 ?????Python `els_web_runner.py parse` ?몄텧 ??`{containers}` 諛섑솚.
-- **POST /api/els/run**: JSON `{containers, useSavedCreds, userId?, userPw?}` ??Python `els_web_runner.py run` ?몄텧 ??寃곌낵 ?뚯씪 ?쎌뼱 ?좏겙 ?????`{log, sheet1, sheet2, downloadToken}` 諛섑솚.
-- **GET /api/els/download?token=**: ?좏겙?쇰줈 ??λ맂 ?묒? ?뚯씪 ?ㅽ듃由щ컢 ???좏겙 ??젣.
+- **GET /api/els/config**: els_config.json 존재·아이디 마스킹 반환(비밀번호 미노출).
+- **POST /api/els/parse-xlsx**: multipart file → 임시 저장 후 Python `els_web_runner.py parse` 호출 → `{containers}` 반환.
+- **POST /api/els/run**: JSON `{containers, useSavedCreds, userId?, userPw?}` → Python `els_web_runner.py run` 호출 → 결과 파일 읽어 토큰 저장 → `{log, sheet1, sheet2, downloadToken}` 반환.
+- **GET /api/els/download?token=**: 토큰으로 저장된 엑셀 파일 스트리밍 후 토큰 삭제.
 
-### ?좑툘 二쇱쓽
-- 而⑦뀒?대꼫 ?대젰 **議고쉶쨌?ㅼ슫濡쒕뱶**???쒕쾭??Python쨌Chrome(selenium)쨌elsbot 寃쎈줈(`web/../elsbot`)媛 ?꾩슂. Vercel ???쒕쾭由ъ뒪?먯꽌???숈옉?섏? ?딆쑝硫? 濡쒖뺄 ?먮뒗 Python/Chrome???덈뒗 ?쒕쾭?먯꽌留??ъ슜 媛??
-- ?묒? ?뚯떛留??ъ슜??寃쎌슦 Python留??덉쑝硫???parse-xlsx). ?ㅼ젣 議고쉶(run)??Selenium쨌Chrome ?꾩슂.
-
----
-
-## [2026-01-30] - ?먯씠?꾪듃 媛?대뱶?쇱씤 ?뺤콉 異붽?쨌蹂닿컯 (?⑹쓽 ?곗꽑, ?ㅽ뙆寃뚰떚 諛⑹?, ?묒뾽 留λ씫, ?명솚??
-
-### ?? ?듭떖 ?깃낵
-- **?⑹쓽 ?곗꽑쨌????쒖떆**: 紐⑤뱺 ?묒뾽? ?뺢낵 ?섏쓽 ?⑹쓽 ??吏꾪뻾. 臾몄젣媛 ?덉쓣 ???덈뒗 遺遺꾩? 吏꾪뻾?섏? 留먭퀬 ??덉쓣 ?쒖떆?섎룄濡?4踰덉뿉 諛섏쁺.
-- **?ㅽ뙆寃뚰떚 肄붾뱶 諛⑹?**: 蹂寃??묒뾽???쇰룞?쇰줈 肄붾뱶媛 瑗ъ씠吏 ?딅룄濡? 援ъ“媛 瑗ъ씪 ?ъ?媛 ?덉쑝硫??뺣━ 諛⑹븞 ?쒖븞 ???⑹쓽?섎룄濡?4踰덉뿉 諛섏쁺.
-- **?꾩옱 ?꾨줈?앺듃 留λ씫**: ?뚯궗?뚭컻쨌?꾩쭅???ы깉(吏묒쨷)쨌?댄썑 紐⑤컮???굿룸㏊ 異붿쟻. ?곗뒪?ы깙?먯꽌 ?묒뾽, **而ㅻ컠 ?쒖젏**????紐⑤컮??UI/UX ?먭??섏뿬 ???섍꼍 紐⑤몢 苡뚯쟻?섍쾶 ?섎룄濡?5쨌6踰덉뿉 諛섏쁺.
-- **釉뚮씪?곗?쨌?붾컮?댁뒪 ?명솚??*: Chrome ??MS 釉뚮씪?곗? 濡쒓렇???댁뒋, 紐⑤컮???ㅼ씠踰?????援ш? 濡쒓렇??"?좊ː?????놁쓬" ???명솚???ъ쟾 ?먭??섎룄濡?7踰??좎꽕.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. .AGENT_GUIDELINES.md 蹂寃?- **4踰?(?⑹쓽 ?곗꽑 諛??섏젙 踰붿쐞 ?쒗븳)**: "?뺤씠 ?섏옄怨??대룄 臾몄젣 遺遺꾩씠 ?덉쑝硫?吏꾪뻾?섏? 留먭퀬 ????쒖떆", "?ㅽ뙆寃뚰떚 肄붾뱶 諛⑹?" 臾멸뎄 異붽?.
-- **5踰?(?꾩옱 ?꾨줈?앺듃 留λ씫 諛??묒뾽 諛⑹떇)**: ?좎꽕. ???뚯궗?뚭컻, ?꾩쭅???ы깉 吏묒쨷) ??紐⑤컮???굿룸㏊ ?곕룞 ?덉젙. ?곗뒪?ы깙 ?묒뾽쨌而ㅻ컠 ????紐⑤컮???먭?.
-- **6踰?*: 湲곗〈 5踰??섍꼍蹂?UI/UX) 踰덊샇留?蹂寃?
-- **7踰?(釉뚮씪?곗?쨌?붾컮?댁뒪 ?명솚??**: ?좎꽕. MS 釉뚮씪?곗? 濡쒓렇?? 紐⑤컮?셋룹빋 ??釉뚮씪?곗?(?ㅼ씠踰?????援ш? 濡쒓렇???? ?명솚???ъ쟾 ?먭?.
-- **8~12踰?*: 湲곗〈 6~10踰?踰덊샇留??쒖감 蹂寃?
-
-#### 2. ?곸슜 ?먯튃
-- ?뺤콉 異붽?쨌媛쒖젙 ?댁슜? 蹂?DEVELOPMENT_LOG??湲곕줉?섍퀬, 媛?대뱶?쇱씤怨??숈씪?섍쾶 ?곸슜?쒕떎.
-
-### ?좑툘 二쇱쓽
-- 濡쒓렇?맞룹씤利씲룸━?ㅼ씠?됲듃 愿???섏젙 ??Chrome肉??꾨땲??MS Edge, 紐⑤컮??Safari/Chrome, ?ㅼ씠踰?????釉뚮씪?곗??먯꽌 ?숈옉 ?뺤씤 沅뚯옣.
+### ⚠️ 주의
+- 컨테이너 이력 **조회·다운로드**는 서버에 Python·Chrome(selenium)·elsbot 경로(`web/../elsbot`)가 필요. Vercel 등 서버리스에서는 동작하지 않으며, 로컬 또는 Python/Chrome이 있는 서버에서만 사용 가능.
+- 엑셀 파싱만 사용할 경우 Python만 있으면 됨(parse-xlsx). 실제 조회(run)는 Selenium·Chrome 필요.
 
 ---
 
-## [2026-01-30] - /web ?붾젆?곕━ 援ъ“ ?뺣━ 諛??곕젅湲?肄붾뱶쨌?뚯씪 ?뺣━
+## [2026-01-30] - 에이전트 가이드라인 정책 추가·보강 (합의 우선, 스파게티 방지, 작업 맥락, 호환성)
 
-### ?? ?듭떖 ?깃낵
-- **猷⑦듃 ?곕젅湲??뚯씪 ??젣**: 鍮뚮뱶 濡쒓렇쨌?뚯뒪?맞룰?利??ㅽ겕由쏀듃 ??遺덊븘???뚯씪 ?쒓굅濡???μ냼 ?뺣━.
-- **誘몄궗??肄붾뱶쨌API ?쒓굅**: `proxy.js`, `/api/debug_env`, `/api/test-s3` ??젣 (蹂댁븞쨌?좎?蹂댁닔 愿??.
-- **SQL ?ㅽ겕由쏀듃 ?뺣━**: `supabase_sql/` ?대뜑 ?앹꽦 ???쇰? Supabase SQL ?ㅽ겕由쏀듃 ?대룞. (?섎㉧吏???꾩슂 ???섎룞 ?대룞 沅뚯옣.)
-- **怨꾩젙 ?곕룞 ?뺤콉 寃利?*: 媛?대뱶?쇱씤 10踰덇낵 肄붾뱶 ?쇱튂 ?뺤씤. 濡쒓렇?맞룹씠硫붿씪 愿由??뚯뒪???꾨즺 ?곹깭 ?좎?.
+### 🚀 핵심 성과
+- **합의 우선·대안 제시**: 모든 작업은 형과 나의 합의 후 진행. 문제가 있을 수 있는 부분은 진행하지 말고 대안을 제시하도록 4번에 반영.
+- **스파게티 코드 방지**: 변경 작업의 혼동으로 코드가 꼬이지 않도록, 구조가 꼬일 여지가 있으면 정리 방안 제안 후 합의하도록 4번에 반영.
+- **현재 프로젝트 맥락**: 회사소개·임직원 포탈(집중)·이후 모바일 앱·맵 추적. 데스크탑에서 작업, **커밋 시점**에 웹+모바일 UI/UX 점검하여 두 환경 모두 쾌적하게 하도록 5·6번에 반영.
+- **브라우저·디바이스 호환성**: Chrome 외 MS 브라우저 로그인 이슈, 모바일 네이버 앱 내 구글 로그인 "신뢰할 수 없음" 등 호환성 사전 점검하도록 7번 신설.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ??젣???뚯씪
-- **猷⑦듃**: `proxy.js` (誘몄궗?? middleware.js媛 ?ㅼ젣 ?ъ슜), `build_new.log`, `build.log`, `build_output.txt`, `error.txt`, `debug_env.js`, `debug-email.js`, `test_latest_fixes.js`, `test_s3.js`, `test_s3_v2.js`, `test-email.js`, `verify_deployment_fixes.js`, `verify_header_fix.js`, `verify_mobile_ui.js`
-- **API**: `app/api/debug_env/route.js` (?섍꼍 ???몄텧 ?꾪뿕), `app/api/test-s3/route.js` (?뚯뒪?몄슜 S3 ?곌린)
+### 🛠️ 작업 상세
+#### 1. .AGENT_GUIDELINES.md 변경
+- **4번 (합의 우선 및 수정 범위 제한)**: "형이 하자고 해도 문제 부분이 있으면 진행하지 말고 대안 제시", "스파게티 코드 방지" 문구 추가.
+- **5번 (현재 프로젝트 맥락 및 작업 방식)**: 신설. 웹(회사소개, 임직원 포탈 집중) → 모바일 앱·맵 연동 예정. 데스크탑 작업·커밋 시 웹+모바일 점검.
+- **6번**: 기존 5번(환경별 UI/UX) 번호만 변경.
+- **7번 (브라우저·디바이스 호환성)**: 신설. MS 브라우저 로그인, 모바일·앱 내 브라우저(네이버 앱 내 구글 로그인 등) 호환성 사전 점검.
+- **8~12번**: 기존 6~10번 번호만 순차 변경.
 
-#### 2. .gitignore 異붽?
-- `build*.log`, `build_output.txt`, `error.txt` ??鍮뚮뱶 ?곗텧臾쇱씠 而ㅻ컠?섏? ?딅룄濡?異붽?.
+#### 2. 적용 원칙
+- 정책 추가·개정 내용은 본 DEVELOPMENT_LOG에 기록하고, 가이드라인과 동일하게 적용한다.
 
-#### 3. supabase_sql ?대뜑
-- `web/supabase_sql/README.md` 異붽?.
-- `supabase_account_linking.sql`, `supabase_asan_lunch.sql`, `supabase_add_phone.sql`, `supabase_add_requested_role.sql` 瑜?`supabase_sql/` 濡??대룞(蹂듭궗). 猷⑦듃??`supabase_*.sql` ?쇰???洹몃?濡??먯뿀?쇰ŉ, ?꾩슂 ???꾩껜瑜?`supabase_sql/` 濡??섎룞 ?대룞 沅뚯옣.
-
-#### 4. 怨꾩젙 ?곕룞 ?뺤콉(媛?대뱶?쇱씤 10) ?먭?
-- **?듯빀 ?꾨줈??*: `public.profiles` ??`email` 怨좎쑀쨌`id` 蹂댁쑀. `useUserProfile` ?낆? `email` 湲곗? 議고쉶. auth callback쨌`/api/users/me` ??email 湲곕컲 UPSERT/議고쉶. **?쇱튂.**
-- **肄섑뀗痢?*: `posts` ??`author_id`(auth.users.id)쨌`author_email` ?좎?. 紐⑸줉 API??`author_email` 濡?profiles 議고쉶, ?⑥씪 寃뚯떆湲? `author_id` 濡?profiles/user_roles 議고쉶(?명솚). **?쇰룞 ?놁쓬.**
-
-### ?좑툘 二쇱쓽
-- ?붾쾭洹??뚯뒪?멸? ?꾩슂?섎㈃ `NODE_ENV=development` ?먯꽌留??숈옉?섎뒗 API瑜??덈줈 異붽???寃? 湲곗〈 `/api/debug_env`, `/api/test-s3` ???쒓굅??
+### ⚠️ 주의
+- 로그인·인증·리다이렉트 관련 수정 시 Chrome뿐 아니라 MS Edge, 모바일 Safari/Chrome, 네이버 앱 내 브라우저에서 동작 확인 권장.
 
 ---
 
-## [2026-01-26] - ?꾩궛吏??二쇨컙 ?앸떒???꾩떆?? 愿由??쒖뒪??援ъ텞
+## [2026-01-30] - /web 디렉터리 구조 정리 및 쓰레기 코드·파일 정리
 
-### ?? ?듭떖 ?깃낵
-- **二쇨컙 ?앸떒 ?대?吏 寃뚯떆???꾩엯**: ?꾩궛吏??吏곸썝?ㅼ씠 留ㅼ＜ ?꾩떆???앸떒???쎄쾶 ?뺤씤?????덈룄濡??뱀쭊 ?ㅽ??쇱쓽 ????대?吏 酉곗뼱瑜?援ы쁽?덉뒿?덈떎.
-- **愿由ъ옄 ?낅줈??湲곕뒫**: ?섏씠吏 ?댄깉 ?놁씠 ?꾩옣?먯꽌 利됱떆 ?앸떒 ?대?吏瑜??깅줉?섍퀬 ?섏젙?????덈뒗 紐⑤떖 ?쇱쓣 媛쒕컻?덉뒿?덈떎.
-- **?먮룞?붾맂 議고쉶 濡쒖쭅**: 蹂꾨룄???ㅼ젙 ?놁씠 '?대쾲二????대떦?섎뒗 理쒖떊 ?앸떒???먮룞?쇰줈 ?몄텧?섎룄濡?`GET` API瑜?理쒖쟻?뷀뻽?듬땲??
+### 🚀 핵심 성과
+- **루트 쓰레기 파일 삭제**: 빌드 로그·테스트·검증 스크립트 등 불필요 파일 제거로 저장소 정리.
+- **미사용 코드·API 제거**: `proxy.js`, `/api/debug_env`, `/api/test-s3` 삭제 (보안·유지보수 관점).
+- **SQL 스크립트 정리**: `supabase_sql/` 폴더 생성 후 일부 Supabase SQL 스크립트 이동. (나머지는 필요 시 수동 이동 권장.)
+- **계정 연동 정책 검증**: 가이드라인 10번과 코드 일치 확인. 로그인·이메일 관리 테스트 완료 상태 유지.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?곗씠?곕쿋?댁뒪 諛?API (`supabase_asan_lunch.sql`, `api/asan/lunch/route.js`)
-- `weekly_menus` ?뚯씠釉??ㅺ퀎: 吏?먯퐫?? 硫붾돱???lunchbox), ?쒖옉?? ?대?吏URL ?깆쓣 ???
-- `GET /api/asan/lunch`: 理쒖떊 ?좎쭨?쒖쑝濡??앸떒 1嫄?議고쉶.
-- `POST /api/asan/lunch`: ?대?吏 S3 ?낅줈??諛?DB Upsert(?깅줉/?섏젙) 泥섎━.
+### 🛠️ 작업 상세
+#### 1. 삭제한 파일
+- **루트**: `proxy.js` (미사용, middleware.js가 실제 사용), `build_new.log`, `build.log`, `build_output.txt`, `error.txt`, `debug_env.js`, `debug-email.js`, `test_latest_fixes.js`, `test_s3.js`, `test_s3_v2.js`, `test-email.js`, `verify_deployment_fixes.js`, `verify_header_fix.js`, `verify_mobile_ui.js`
+- **API**: `app/api/debug_env/route.js` (환경 키 노출 위험), `app/api/test-s3/route.js` (테스트용 S3 쓰기)
 
-#### 2. ?꾨줎?몄뿏??而댄룷?뚰듃 (`components/AsanLunchMenu.js`, `AsanLunchMenu.module.css`)
-- **UI ?붿옄??*: 湲곗〈 `glassPanel` ?ㅽ??쇱쓣 怨꾩듅?섏뿬 ?꾨━誘몄뾼??移대뱶 UI 援ы쁽.
-- **?ъ슜??寃쏀뿕 媛쒖꽑**:
-  - **?몃꽕??酉?*: 湲곕낯 ?붾㈃?먯꽌??怨듦컙 ?덉빟???꾪빐 ?묎쾶 ?쒖떆 (?대┃ ?좊룄 留덉슦??而ㅼ꽌 ?곸슜).
-  - **?뺣? 蹂닿린(Lightbox)**: ?대?吏 ?대┃ ??怨좏솕吏??먮낯???꾩껜 ?붾㈃ 紐⑤떖濡??쒓났?섎ŉ, ?좊땲硫붿씠???④낵瑜??곸슜?섏뿬 遺?쒕윭???꾪솚 援ы쁽.
-- **湲곕뒫**:
-  - `fetchLatestMenu`: ?섏씠吏 濡쒕뱶 ??理쒖떊 ?앸떒 ?먮룞 議고쉶.
-  - `handleUploadClick`: ?대쾲二??붿슂?쇱쓣 湲곕낯媛믪쑝濡??섎뒗 ?낅줈?????ㅽ뵂.
-  - **S3 Proxy ?곕룞**: `/api/s3/files`瑜??듯빐 蹂댁븞???대?吏瑜?怨좎냽?쇰줈 濡쒕뵫.
+#### 2. .gitignore 추가
+- `build*.log`, `build_output.txt`, `error.txt` — 빌드 산출물이 커밋되지 않도록 추가.
 
-#### 3. ?섏씠吏 ?듯빀 (`app/employees/branches/[branch]/page.js`)
-- ?꾩궛吏??`asan`) ?섏씠吏 吏꾩엯 ?? **理쒖긽?⑥뿉 ?앸떒???뱀뀡??諛곗튂**?섍퀬 洹??꾨옒???대깽??寃뚯엫???먯뼱 ?뺣낫 ?묎렐?깆쓣 ?믪??듬땲??
+#### 3. supabase_sql 폴더
+- `web/supabase_sql/README.md` 추가.
+- `supabase_account_linking.sql`, `supabase_asan_lunch.sql`, `supabase_add_phone.sql`, `supabase_add_requested_role.sql` 를 `supabase_sql/` 로 이동(복사). 루트의 `supabase_*.sql` 일부는 그대로 두었으며, 필요 시 전체를 `supabase_sql/` 로 수동 이동 권장.
 
-### ?썱截?愿由ъ옄 湲곕뒫 媛쒖꽑 (`app/admin/users/page.js`)
-- **?뚯썝 ?뺣낫 ?섏젙 ?꾨줈?몄뒪 媛쒖꽑**: '?먮룞 ??? 諛⑹떇?먯꽌 **'?섏젙 ?????踰꾪듉 ?대┃'** 諛⑹떇?쇰줈 蹂寃쏀븯???ㅼ옉??諛⑹?.
-- **???踰꾪듉 異붽?**: 媛??ъ슜???됰쭏??**[?뮶 蹂寃쎌궗?????** 踰꾪듉??異붽??섍퀬, ?뺣낫 蹂寃??쒖뿉留??쒖꽦?붾릺?꾨줉 援ы쁽(`isDirty` ?곹깭 異붿쟻).
-- **?쇰뱶諛?媛뺥솕**: ????깃났 ??"??λ릺?덉뒿?덈떎" ?앹뾽???꾩썙 愿由ъ옄媛 紐낇솗?섍쾶 ?몄??????덈룄濡?媛쒖꽑.
+#### 4. 계정 연동 정책(가이드라인 10) 점검
+- **통합 프로필**: `public.profiles` 는 `email` 고유·`id` 보유. `useUserProfile` 훅은 `email` 기준 조회. auth callback·`/api/users/me` 는 email 기반 UPSERT/조회. **일치.**
+- **콘텐츠**: `posts` 는 `author_id`(auth.users.id)·`author_email` 유지. 목록 API는 `author_email` 로 profiles 조회, 단일 게시글은 `author_id` 로 profiles/user_roles 조회(호환). **혼동 없음.**
+
+### ⚠️ 주의
+- 디버그/테스트가 필요하면 `NODE_ENV=development` 에서만 동작하는 API를 새로 추가할 것. 기존 `/api/debug_env`, `/api/test-s3` 는 제거됨.
 
 ---
 
-## [2026-01-26] - ?꾩궛吏???щ떎由?寃뚯엫 ?꾩쟾 ?섏젙 諛?UI ?대━??
-### ?? ?듭떖 ?깃낵
-- **?щ떎由?寃뚯엫 ?덉씠?꾩썐 ?꾩쟾 ?닿껐**: ?섎떒 "?듦낵/?뱀꺼" ?쇰꺼???섎━??臾몄젣瑜?洹쇰낯?곸쑝濡??닿껐?덉뒿?덈떎.
-  - `.gameScreen` overflow瑜?visible濡?蹂寃?  - `.ladderViewport`??min-height 850px ?ㅼ젙
-  - `.ladderBoard` ?믪씠瑜?450px ??500px濡?利앷? 諛?overflow: visible 異붽?
-  - `.ladderContainer` ?믪씠瑜?800px濡?利앷??섍퀬 ?섎떒 ?⑤뵫 100px ?뺣낫
-- **留덉?留??몃줈 ?쇱씤(?꾩??? ?쒖떆 臾몄젣 ?닿껐**: 
-  - 而⑦뀒?대꼫 ?덈퉬 怨꾩궛???ъ쑀 怨듦컙 40px 異붽?
-  - ?댁젣 紐⑤뱺 ?몃줈 ?쇱씤???숈씪???먭퍡濡??쒖떆?⑸땲??- **踰좎씠???щ떎由??쇱씤 媛?쒖꽦 媛쒖꽑**:
-  - ?됱긽: `#f1f5f9` ??`#cbd5e1` (??吏꾪븳 ?뚯깋)
-  - ?먭퍡: `2px` ??`2.5px`
-- **?꾨즺 留덉빱 ?꾩튂 ?뺥솗???μ긽**:
-  - `rowHeight` 怨꾩궛??500px 湲곗??쇰줈 蹂寃?  - `finalPos.y`瑜?500?쇰줈 ?ㅼ젙?섏뿬 ?섎떒 ?쇰꺼 ?꾩튂???뺥솗??諛곗튂
-  - `.staticMarker`, `.emojiSmall`, `.markerNameTag` ?ㅽ???異붽?
-- **寃뚯엫 踰꾪듉 ?붿옄???꾨━誘몄뾼??*:
-  - ???먯쭨湲?踰꾪듉: ?몃뵒怨?洹몃씪?곗씠??+ ?몃쾭 ?④낵
-  - 鍮숆퀬 ?덇쾶??踰꾪듉: 洹몃┛ 洹몃씪?곗씠??+ ?쇨????명꽣?숈뀡
+## [2026-01-26] - 아산지점 주간 식단표(도시락) 관리 시스템 구축
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?덉씠?꾩썐 援ъ“ ?섏젙 (`AsanMealGame.module.css`)
-- `.gameScreen`: overflow hidden ??visible, min-height 650px ??900px
-- `.ladderBox`: justify-content: flex-start 異붽?, padding 利앷?
-- `.ladderViewport`: min-height 850px 異붽?, overflow-x ?ㅽ? ?섏젙
+### 🚀 핵심 성과
+- **주간 식단 이미지 게시판 도입**: 아산지점 직원들이 매주 도시락 식단을 쉽게 확인할 수 있도록 웹진 스타일의 대형 이미지 뷰어를 구현했습니다.
+- **관리자 업로드 기능**: 페이지 이탈 없이 현장에서 즉시 식단 이미지를 등록하고 수정할 수 있는 모달 폼을 개발했습니다.
+- **자동화된 조회 로직**: 별도의 설정 없이 '이번주'에 해당하는 최신 식단이 자동으로 노출되도록 `GET` API를 최적화했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 데이터베이스 및 API (`supabase_asan_lunch.sql`, `api/asan/lunch/route.js`)
+- `weekly_menus` 테이블 설계: 지점코드, 메뉴타입(lunchbox), 시작일, 이미지URL 등을 저장.
+- `GET /api/asan/lunch`: 최신 날짜순으로 식단 1건 조회.
+- `POST /api/asan/lunch`: 이미지 S3 업로드 및 DB Upsert(등록/수정) 처리.
+
+#### 2. 프론트엔드 컴포넌트 (`components/AsanLunchMenu.js`, `AsanLunchMenu.module.css`)
+- **UI 디자인**: 기존 `glassPanel` 스타일을 계승하여 프리미엄한 카드 UI 구현.
+- **사용자 경험 개선**:
+  - **썸네일 뷰**: 기본 화면에서는 공간 절약을 위해 작게 표시 (클릭 유도 마우스 커서 적용).
+  - **확대 보기(Lightbox)**: 이미지 클릭 시 고화질 원본을 전체 화면 모달로 제공하며, 애니메이션 효과를 적용하여 부드러운 전환 구현.
+- **기능**:
+  - `fetchLatestMenu`: 페이지 로드 시 최신 식단 자동 조회.
+  - `handleUploadClick`: 이번주 월요일을 기본값으로 하는 업로드 폼 오픈.
+  - **S3 Proxy 연동**: `/api/s3/files`를 통해 보안된 이미지를 고속으로 로딩.
+
+#### 3. 페이지 통합 (`app/employees/branches/[branch]/page.js`)
+- 아산지점(`asan`) 페이지 진입 시, **최상단에 식단표 섹션을 배치**하고 그 아래에 이벤트 게임을 두어 정보 접근성을 높였습니다.
+
+### 🛠️ 관리자 기능 개선 (`app/admin/users/page.js`)
+- **회원 정보 수정 프로세스 개선**: '자동 저장' 방식에서 **'수정 후 저장 버튼 클릭'** 방식으로 변경하여 오작동 방지.
+- **저장 버튼 추가**: 각 사용자 행마다 **[💾 변경사항 저장]** 버튼을 추가하고, 정보 변경 시에만 활성화되도록 구현(`isDirty` 상태 추적).
+- **피드백 강화**: 저장 성공 시 "저장되었습니다" 팝업을 띄워 관리자가 명확하게 인지할 수 있도록 개선.
+
+---
+
+## [2026-01-26] - 아산지점 사다리 게임 완전 수정 및 UI 폴리싱
+
+### 🚀 핵심 성과
+- **사다리 게임 레이아웃 완전 해결**: 하단 "통과/당첨" 라벨이 잘리던 문제를 근본적으로 해결했습니다.
+  - `.gameScreen` overflow를 visible로 변경
+  - `.ladderViewport`에 min-height 850px 설정
+  - `.ladderBoard` 높이를 450px → 500px로 증가 및 overflow: visible 추가
+  - `.ladderContainer` 높이를 800px로 증가하고 하단 패딩 100px 확보
+- **마지막 세로 라인(임지언) 표시 문제 해결**: 
+  - 컨테이너 너비 계산에 여유 공간 40px 추가
+  - 이제 모든 세로 라인이 동일한 두께로 표시됩니다
+- **베이스 사다리 라인 가시성 개선**:
+  - 색상: `#f1f5f9` → `#cbd5e1` (더 진한 회색)
+  - 두께: `2px` → `2.5px`
+- **완료 마커 위치 정확도 향상**:
+  - `rowHeight` 계산을 500px 기준으로 변경
+  - `finalPos.y`를 500으로 설정하여 하단 라벨 위치에 정확히 배치
+  - `.staticMarker`, `.emojiSmall`, `.markerNameTag` 스타일 추가
+- **게임 버튼 디자인 프리미엄화**:
+  - 새 판짜기 버튼: 인디고 그라데이션 + 호버 효과
+  - 빙고 새게임 버튼: 그린 그라데이션 + 일관된 인터랙션
+
+### 🛠️ 작업 상세
+#### 1. 레이아웃 구조 수정 (`AsanMealGame.module.css`)
+- `.gameScreen`: overflow hidden → visible, min-height 650px → 900px
+- `.ladderBox`: justify-content: flex-start 추가, padding 증가
+- `.ladderViewport`: min-height 850px 추가, overflow-x 오타 수정
 - `.ladderContainer`: min-height 800px, padding-bottom 100px
-- `.ladderBoard`: height 500px, overflow: visible 異붽?
-- `.ladderLines`: width/height 100%, display: block 異붽?
+- `.ladderBoard`: height 500px, overflow: visible 추가
+- `.ladderLines`: width/height 100%, display: block 추가
 
-#### 2. 寃뚯엫 濡쒖쭅 ?뺣? 議곗젙 (`AsanMealGame.js`)
-- `rowHeight`: 450 / numRows ??500 / numRows濡?蹂寃?- `finalPos.y`: 450 ??500?쇰줈 蹂寃?- ?몃줈 ?쇱씤 ?됱긽 諛??먭퍡 蹂寃? stroke="#cbd5e1" strokeWidth="2.5"
-- 而⑦뀒?대꼫 ?덈퉬: `boardWidth + (paddingX * 2) + 40` (?ъ쑀 怨듦컙 ?뺣낫)
+#### 2. 게임 로직 정밀 조정 (`AsanMealGame.js`)
+- `rowHeight`: 450 / numRows → 500 / numRows로 변경
+- `finalPos.y`: 450 → 500으로 변경
+- 세로 라인 색상 및 두께 변경: stroke="#cbd5e1" strokeWidth="2.5"
+- 컨테이너 너비: `boardWidth + (paddingX * 2) + 40` (여유 공간 확보)
 
-#### 3. ?꾨씫???ㅽ???異붽? (`AsanMealGame.module.css`)
-- `.staticMarker`: ?꾨즺??留덉빱 ?꾩튂 ?ㅽ???(transform: translate(-50%, -50%))
-- `.emojiSmall`: ?꾨즺 ?대え吏 ?ш린 (2.5rem)
-- `.markerNameTag`: ?좊땲硫붿씠??以??대쫫 ?쒓렇 ?ㅽ???- `.ladderLines`: SVG ?ш린 ?ㅼ젙
-- `.premiumBtn`: ?щ떎由?由ъ뀑 踰꾪듉 ?ㅽ???- `.bingoResetBtn`, `.bingoHeaderWide`, `.bingoTitleGroup`: 鍮숆퀬 ?ㅻ뜑 ?쒖뒪??
-### ?뱥 ?닿껐???댁뒋
-1. ???щ떎由??섎떒 ?쇰꺼 ?섎┝ ?꾩긽
-2. ??留덉?留??몃줈 ?쇱씤(?꾩??? ?쒖떆 臾몄젣
-3. ??踰좎씠???쇱씤 媛?쒖꽦 遺議?4. ???꾨즺 ?꾩씠肄??꾩튂 遺?뺥솗
-5. ??踰꾪듉 ?붿옄??誘명씉
+#### 3. 누락된 스타일 추가 (`AsanMealGame.module.css`)
+- `.staticMarker`: 완료된 마커 위치 스타일 (transform: translate(-50%, -50%))
+- `.emojiSmall`: 완료 이모지 크기 (2.5rem)
+- `.markerNameTag`: 애니메이션 중 이름 태그 스타일
+- `.ladderLines`: SVG 크기 설정
+- `.premiumBtn`: 사다리 리셋 버튼 스타일
+- `.bingoResetBtn`, `.bingoHeaderWide`, `.bingoTitleGroup`: 빙고 헤더 시스템
 
----
-
-
-## [2026-01-25] - ?꾩궛吏??寃뚯엫 媛먯꽦 怨좊룄??諛?硫붿씤 UI ?꾨━誘몄뾼 媛쒗렪
-
-### ?? ?듭떖 ?깃낵
-- **?꾩궛吏??寃뚯엫 媛먯꽦 ?뷀뀒????*:
-    - **?щ떎由?寃뚯엫**: 寃곌낵???곕씪 罹먮┃???쒖젙??蹂???뱀꺼 ???삲, ?듦낵 ???쁿)?섎ŉ 湲대컯媛먯쓣 ?뷀뻽?듬땲?? 瑗ъ????섎떒 ?쇰꺼 UI瑜??섑룊?쇰줈 ?덉걯寃??뺣젹?덉뒿?덈떎.
-    - **鍮숆퀬 寃뚯엫**: 蹂대뱶 ?ъ씠利덈? 理쒖쟻?뷀븯怨? 媛?낆꽦???믪??듬땲?? 3以??꾩꽦 ??異뺥븯 ?앹뾽???뺤쨷?숈뿉 ?붾젮?섍쾶 ?섑??섎ŉ, 吏곴??곸씤 寃뚯엫 ?ㅻ챸??Tool-tip)瑜?異붽??덉뒿?덈떎.
-- **硫붿씤 ?명듃濡?Intro) ?꾨㈃ 由щ돱??*: 諛뗫컠?덈뜕 ?대?吏 ?섏뿴 諛⑹떇???덊뵾?섍퀬, 8K湲??꾨━誘몄뾼 洹몃옒?쎄낵 ?좊━ 吏덇컧(Glassmorphism)???뚮줈??移대뱶媛 ?댁슦?ъ쭊 **'?ㅼ씠?섎? 紐⑥옄?댄겕 ?덉씠?꾩썐'**?쇰줈 媛쒗렪?덉뒿?덈떎. 
-- **?대퉬寃뚯씠??援ъ“??*: ?꾩쭅?먯쟾??硫붾돱??怨꾩링 援ъ“瑜??ы솕?섏뿬 '吏?먮퀎 ?쒕퉬??? '?낅Т蹂닿퀬' ?섏쐞 硫붾돱瑜?泥닿퀎?곸쑝濡?遺꾨쪟?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 寃뚯엫 UX ?대━??(`AsanMealGame.js`, `AsanMealGame.module.css`)
-- ?щ떎由?留덉빱 ?좊땲硫붿씠??醫낅즺 ?쒖젏???곹깭媛믪뿉 ?곕Ⅸ ?대え吏 ?ㅼ솑 濡쒖쭅??異붽??덉뒿?덈떎.
-- 鍮숆퀬 ?깃났 ?덉씠?댁뿉 `AnimatePresence`瑜??곸슜?섏뿬 遺?쒕윭???앹뾽 ?④낵瑜?援ы쁽?덉뒿?덈떎.
-
-#### 2. 鍮꾩＜??釉뚮옖??媛뺥솕 (`Intro.js`, `Intro.module.css`)
-- ?덈줈??怨좏빐?곷룄 ?듯빀 臾쇰쪟 鍮꾩＜???대?吏瑜??꾩엯?덉뒿?덈떎.
-- ?듦퀎 吏?쒖? ?듭떖 ??웾??移대뱶 ?뺥깭濡??쒓컖?뷀븯???뺣낫 ?꾨떖?μ쓣 ?믪??듬땲??
-
-#### 3. ?ㅻ뜑 ?대퉬寃뚯씠???뺤옣 (`Header.js`)
-- 吏?먮퀎 ?섏쐞 ?몃뱶(?꾩궛, 蹂몄궗, 以묐?, ?뱀쭊, ?덉궛)瑜?異붽??섍퀬, ?낅Т蹂닿퀬瑜??쇱씪/?붽컙/?듯빀?쇰줈 ?몃텇?뷀뻽?듬땲??
+### 📋 해결된 이슈
+1. ✅ 사다리 하단 라벨 잘림 현상
+2. ✅ 마지막 세로 라인(임지언) 표시 문제
+3. ✅ 베이스 라인 가시성 부족
+4. ✅ 완료 아이콘 위치 부정확
+5. ✅ 버튼 디자인 미흡
 
 ---
 
 
-## [2026-01-25] - ?듯빀 怨꾩젙 愿由??꾪궎?띿쿂(Unified Identity) ??섏닠 諛?UI/UX 留덇컧
+## [2026-01-25] - 아산지점 게임 감성 고도화 및 메인 UI 프리미엄 개편
 
-### ?? ?듭떖 ?깃낵
-- **?대찓??以묒떖 ?듯빀 ?꾩씠?댄떚??援ъ텞**: 援ш?, 移댁뭅?? ?ㅼ씠踰????대뼡 ?뚯뀥 濡쒓렇?몄쑝濡??묒냽?섎뜑?쇰룄 **?숈씪???대찓?쇱씠?쇰㈃ ??紐낆쓽 ?ъ슜??*濡?愿由ы븯???듯빀 ?꾪궎?띿쿂瑜??꾩꽦?덉뒿?덈떎. 
-- **湲濡쒕쾶 ?곗씠???숆린??*: `profiles`, `user_roles`, `posts` ?뚯씠釉??꾩껜瑜?`email` 湲곗??쇰줈 留ㅼ묶 諛?泥섎━?섎룄濡?媛쒗렪?섏뿬, 濡쒓렇??諛⑹떇??諛붾뚯뼱???대쫫, 沅뚰븳, 寃뚯떆湲???꾨꼍?섍쾶 ?좎??⑸땲??
-- **UI ?ㅼ븻留ㅻ꼫(Tone & Manner) ?뺣? 留덇컧**: ?ㅻ뜑 ?쒕∼?ㅼ슫???고듃 遺덉씪移?臾몄젣瑜??닿껐?섍퀬, ?꾩껜?곸씤 ??댄룷洹몃옒?쇰? ?꾨━誘몄뾼 ?섏??쇰줈 ?숆린?뷀뻽?듬땲??
+### 🚀 핵심 성과
+- **아산지점 게임 감성 디테일 업**:
+    - **사다리 게임**: 결과에 따라 캐릭터 표정이 변화(당첨 시 😭, 통과 시 😆)하며 긴박감을 더했습니다. 꼬였던 하단 라벨 UI를 수평으로 예쁘게 정렬했습니다.
+    - **빙고 게임**: 보드 사이즈를 최적화하고, 가독성을 높였습니다. 3줄 완성 시 축하 팝업이 정중앙에 화려하게 나타나며, 직관적인 게임 설명서(Tool-tip)를 추가했습니다.
+- **메인 인트로(Intro) 전면 리뉴얼**: 밋밋했던 이미지 나열 방식을 탈피하고, 8K급 프리미엄 그래픽과 유리 질감(Glassmorphism)의 플로팅 카드가 어우러진 **'다이나믹 모자이크 레이아웃'**으로 개편했습니다. 
+- **내비게이션 구조화**: 임직원전용 메뉴의 계층 구조를 심화하여 '지점별 서비스'와 '업무보고' 하위 메뉴를 체계적으로 분류했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?몄쬆 諛?沅뚰븳 ?쒖뒪??媛쒗렪 (`auth/callback/route.js`, `hooks/useUserProfile.js`)
-- 濡쒓렇?????숈씪 ?대찓?쇱쓽 湲곗〈 沅뚰븳??李얠븘 ?꾩옱 ?몄뀡 ID? 留ㅽ븨?섎뒗 **吏?ν삎 怨꾩젙 ?곌껐** 濡쒖쭅???꾩엯?덉뒿?덈떎.
-- ?댁젣 愿由ъ옄媛 '援ш?'濡?媛?낇뻽?붾씪??'移댁뭅??濡?泥섏쓬 濡쒓렇?명븷 ??'諛⑸Ц??濡?媛뺣벑?섏? ?딄퀬 愿由ъ옄 沅뚰븳??洹몃?濡??좎??⑸땲??
+### 🛠️ 작업 상세
+#### 1. 게임 UX 폴리싱 (`AsanMealGame.js`, `AsanMealGame.module.css`)
+- 사다리 마커 애니메이션 종료 시점에 상태값에 따른 이모지 스왑 로직을 추가했습니다.
+- 빙고 성공 레이어에 `AnimatePresence`를 적용하여 부드러운 팝업 효과를 구현했습니다.
 
-#### 2. 寃뚯떆???듯빀 愿由?(`app/api/board/route.js`)
-- 寃뚯떆湲 ?????`author_email`???꾩닔 ??ν븯?꾨줉 蹂寃쏀뻽?듬땲??
-- ?щ윭 怨꾩젙???⑥꽌 湲???⑤룄, **?대찓?쇱씠 媛숈쑝硫??섎굹???대쫫怨??꾨줈???ъ쭊**?쇰줈 ?듯빀?섏뼱 蹂댁뿬吏?꾨줉 議곗튂?덉뒿?덈떎.
+#### 2. 비주얼 브랜딩 강화 (`Intro.js`, `Intro.module.css`)
+- 새로운 고해상도 통합 물류 비주얼 이미지를 도입했습니다.
+- 통계 지표와 핵심 역량을 카드 형태로 시각화하여 정보 전달력을 높였습니다.
 
-#### 3. 愿由ъ옄 ?섏씠吏 怨좊룄??(`app/api/admin/users/route.js`)
-- 以묐났 媛?낅맂(?숈씪 ?대찓?? ?ㅻⅨ ID) ?뚯썝?ㅼ쓣 ?섎굹???됱쑝濡??듯빀?섏뿬 愿由ъ옄媛 ?쇰룞 ?놁씠 ??踰덉뿉 ?쒖뼱?????덇쾶 ?덉뒿?덈떎.
-
-#### 4. ?ㅻ뜑 UI 留덇컧 (`components/Header.module.css`)
-- ?쒕∼?ㅼ슫 硫붿씤 ?꾩씠?쒓낵 ?쒕툕 ?꾩씠?쒖쓽 ?고듃 ?ш린(`0.9rem`), 援듦린(`600`), ?됱긽(`Slate 700/600`)???듭씪?섏뿬 ?쒓컖???꾩꽦?꾨? 洹밸??뷀뻽?듬땲??
-
----
-
-
-## [2026-01-25] - ?ъ슜???곗씠???숆린???쒖뒪???꾨㈃ 媛쒗렪 (Profiles-UserRoles ?듯빀)
-
-### ?? ?듭떖 ?깃낵
-- **愿由ъ옄 ?섏씠吏 ?곗씠???뺥빀???닿껐**: 諛⑸Ц媛앹씠 ?먯떊???뺣낫瑜??섏젙?대룄 愿由ъ옄 ?섏씠吏?먯꽌 由ъ뀑?섏뼱 蹂댁씠???꾩긽??洹쇰낯?곸쑝濡??닿껐?덉뒿?덈떎. 湲곗〈???댁썝?붾릺???덈뜕 `profiles` ?뚯씠釉붽낵 `user_roles` ?뚯씠釉붿쓽 ?곗씠?곕? ?ㅼ떆媛꾩쑝濡??숆린??Sync)?섎뒗 濡쒖쭅??援ъ텞?덉뒿?덈떎.
-- **移댁뭅???꾨줈???ъ쭊 蹂듦뎄 諛??곴뎄 ???*: 移댁뭅??濡쒓렇????硫뷀??곗씠?곗뿉 ?④꺼吏??꾩궗 二쇱냼瑜??앷퉴吏 異붿쟻?섏뿬 媛?몄삤怨? ?뺣낫 ?섏젙 ????二쇱냼瑜?DB???먮룞?쇰줈 諛뺤븘?ｌ뼱 ?붿씠??'??Initial)'留??⑤뒗 ?쇱씠 ?녿룄濡?議곗튂?덉뒿?덈떎.
-- **?곗씠???좎떎 諛⑹?(UPSERT)**: 紐⑤뱺 ?ъ슜???뺣낫 ?낅뜲?댄듃 濡쒖쭅??'?대찓??湲곕컲'?먯꽌 'ID(UUID) 湲곕컲 UPSERT'濡??꾪솚?섏뿬, ?대뼡 ?곹솴?먯꽌???곗씠?곌? ??뼱?뚯썙吏嫄곕굹 由ъ뀑?섏? ?딄쾶 ?덉젙?깆쓣 ?뺣낫?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 愿由ъ옄 API 怨좊룄??(`app/api/admin/users/route.js`)
-- `GET`: `user_roles`? `profiles` ?뚯씠釉붿쓣 ?숈떆??議고쉶???? **?ъ슜??ID 湲곗? 硫붾え由?議곗씤(Join)**???섑뻾?섏뿬 媛??理쒖떊 ?뺣낫瑜?愿由ъ옄?먭쾶 蹂댁뿬以띾땲??
-- `PATCH`: 愿由ъ옄媛 ?대쫫??吏곸젒 ?섏젙???뚮룄 `profiles` ?뚯씠釉붽퉴吏 ?④퍡 ?낅뜲?댄듃?섎룄濡??숆린??濡쒖쭅??異붽??덉뒿?덈떎.
-
-#### 2. ?ъ슜???뺣낫 ?섏젙 API 蹂닿컯 (`app/api/users/me/route.js`)
-- ?ъ슜?먭? ?뺣낫瑜???ν븷 ?? **濡쒓렇???몄뀡???덈뒗 理쒖떊 ?꾨줈???ъ쭊(移댁뭅??援ш?)**???④퍡 異붿텧?섏뿬 DB???곴뎄 ??ν븯??濡쒖쭅???듯빀?덉뒿?덈떎.
-- `user_roles` ?뚯씠釉붿뿉???대쫫怨?踰덊샇瑜?諛깆뾽 ?낅뜲?댄듃?섏뿬 ?쒖뒪???꾨컲???뺥빀?깆쓣 留욎톬?듬땲??
+#### 3. 헤더 내비게이션 확장 (`Header.js`)
+- 지점별 하위 노드(아산, 본사, 중부, 당진, 예산)를 추가하고, 업무보고를 일일/월간/통합으로 세분화했습니다.
 
 ---
 
 
-## [2026-01-25] - ?뚯궗 ?뚭컻(Intro) ?뱀뀡 ?대?吏 吏ㅻ┝ ?꾩긽 ?닿껐
+## [2026-01-25] - 통합 계정 관리 아키텍처(Unified Identity) 대수술 및 UI/UX 마감
 
-### ?? ?듭떖 ?깃낵
-- **?대?吏 ?덉씠??吏ㅻ┝ 踰꾧렇 ?닿껐**: 'COMPANY PROFILE' ?뱀뀡?먯꽌 ?꾩븘?섎줈 ?吏곸씠????룞?곸씤 ?대?吏?ㅼ씠 ?뱀뀡 ?섎떒?먯꽌 ???딄린???섎━??臾몄젣瑜??닿껐?덉뒿?덈떎. 
-- **?덉씠?꾩썐 ?덉젙???뺣낫**: 湲곗〈??媛뺤젣?곸씤 `overflow: hidden` ?ㅼ젙???쒓굅?섍퀬, ?대?吏?ㅼ씠 ?먯쑀濡?쾶 ?吏곸씪 ???덈룄濡?異⑸텇???섏쭅 怨듦컙(Padding)???뺣낫?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **이메일 중심 통합 아이덴티티 구축**: 구글, 카카오, 네이버 등 어떤 소셜 로그인으로 접속하더라도 **동일한 이메일이라면 한 명의 사용자**로 관리하는 통합 아키텍처를 완성했습니다. 
+- **글로벌 데이터 동기화**: `profiles`, `user_roles`, `posts` 테이블 전체를 `email` 기준으로 매칭 및 처리하도록 개편하여, 로그인 방식이 바뀌어도 이름, 권한, 게시글이 완벽하게 유지됩니다.
+- **UI 톤앤매너(Tone & Manner) 정밀 마감**: 헤더 드롭다운의 폰트 불일치 문제를 해결하고, 전체적인 타이포그래피를 프리미엄 수준으로 동기화했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?몃씪???ㅽ????섏젙 (`components/Intro.js`)
-- ?뱀뀡 ?쒓렇??嫄몃젮?덈뜕 `overflow: hidden` ?띿꽦???쒓굅?섏뿬, ?덈? ?꾩튂(Absolute)濡?諛곗튂???섎떒 ?대?吏媛 ?섎━吏 ?딄퀬 ?앷퉴吏 蹂댁씠?꾨줉 ?섏젙?덉뒿?덈떎.
+### 🛠️ 작업 상세
+#### 1. 인증 및 권한 시스템 개편 (`auth/callback/route.js`, `hooks/useUserProfile.js`)
+- 로그인 시 동일 이메일의 기존 권한을 찾아 현재 세션 ID와 매핑하는 **지능형 계정 연결** 로직을 도입했습니다.
+- 이제 관리자가 '구글'로 가입했더라도 '카카오'로 처음 로그인할 때 '방문자'로 강등되지 않고 관리자 권한이 그대로 유지됩니다.
 
-#### 2. 紐⑤뱢 CSS 理쒖쟻??(`components/Intro.module.css`)
-- `imageColumn`: ?섎떒??`100px` (紐⑤컮?쇱뿉?쒕뒗 `120px`) ?댁긽???щ갚??異붽??섏뿬, ?좊땲硫붿씠?섏쑝濡??꾨옒濡??대젮媛???대?吏瑜??꾪븳 ?덉쟾 ?곸뿭???뺣낫?덉뒿?덈떎.
-- 媛濡??ㅽ겕濡?諛⑹?: ?뱀뀡 ?꾩껜???댁뼱?먮릺, 而⑦뀗痢??곸뿭?먮쭔 `overflow-x: hidden`???곸슜?섏뿬 ?λ뫁 ?좊떎?덈뒗 ?대?吏?ㅻ줈 ?명빐 ?붾㈃???놁쑝濡?諛由щ뒗 ?꾩긽???먯쿇 李⑤떒?덉뒿?덈떎.
+#### 2. 게시판 통합 관리 (`app/api/board/route.js`)
+- 게시글 저장 시 `author_email`을 필수 저장하도록 변경했습니다.
+- 여러 계정을 써서 글을 써도, **이메일이 같으면 하나의 이름과 프로필 사진**으로 통합되어 보여지도록 조치했습니다.
 
----
+#### 3. 관리자 페이지 고도화 (`app/api/admin/users/route.js`)
+- 중복 가입된(동일 이메일, 다른 ID) 회원들을 하나의 행으로 통합하여 관리자가 혼동 없이 한 번에 제어할 수 있게 했습니다.
 
-
-## [2026-01-25] - 移댁뭅?ㅽ넚 ?꾨줈???ъ쭊 ?숆린???뺣? 援먯젙 (N->?꾩궗)
-
-### ?? ?듭떖 ?깃낵
-- **移댁뭅?ㅽ넚 ?몃꽕??媛뺤젣 ?곕룞**: ?곗씠?곕쿋?댁뒪???대쫫留???λ릺怨??ъ쭊???꾨씫?섏뼱 'N'?대굹 ??Initial)留??⑤뜕 ?꾩긽???닿껐?덉뒿?덈떎. 
-- **吏?ν삎 硫뷀??곗씠??異붿텧**: 移댁뭅??濡쒓렇?몄쓽 蹂듭옟??援ъ“(`kakao_account.profile.profile_image_url`)?먯꽌 ?먮룞?쇰줈 ?꾩궗瑜?李얠븘?댁뼱 DB???곴뎄?곸쑝濡?諛뺤븘踰꾨━??Sync) 濡쒖쭅???곸슜?덉뒿?덈떎. 
-- **?꾨줎?몄뿏???ㅼ떆媛?媛먯?**: `useUserProfile` ?낆쓣 媛쒖꽑?섏뿬 DB???ъ쭊 ?뺣낫媛 ?녿뜑?쇰룄 濡쒓렇???몄뀡??硫뷀??곗씠?곕? 利됱떆 ?쒖슜?섏뿬 ?쒕젅???놁씠 ?ъ쭊??蹂댁뿬以띾땲??
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ??濡쒖쭅 媛쒖꽑 (`hooks/useUserProfile.js`)
-- `profiles` ?뚯씠釉붿쓽 ?곗씠?곗? `auth` ?몄뀡 ?곗씠?곕? 蹂묓빀???? ?ъ쭊 二쇱냼媛 鍮꾩뼱?덉쑝硫?硫뷀??곗씠?곗뿉???ㅼ떆媛꾩쑝濡?媛?몄삤?꾨줉 ?대갚 濡쒖쭅??媛뺥솕?덉뒿?덈떎.
-
-#### 2. ???濡쒖쭅 媛뺥솕 (`app/api/users/me/route.js`)
-- ?ъ슜?먭? ?뺣낫瑜??섏젙?섍퀬 ??ν븷 ?? ?대쫫/?꾪솕踰덊샇肉먮쭔 ?꾨땲??**?꾩옱 濡쒓렇?몃맂 ?쒕퉬??移댁뭅???????꾨줈???ъ쭊 二쇱냼???④퍡 DB???낅뜲?댄듃**?섎룄濡??섏젙?덉뒿?덈떎.
+#### 4. 헤더 UI 마감 (`components/Header.module.css`)
+- 드롭다운 메인 아이템과 서브 아이템의 폰트 크기(`0.9rem`), 굵기(`600`), 색상(`Slate 700/600`)을 통일하여 시각적 완성도를 극대화했습니다.
 
 ---
 
 
-## [2026-01-25] - ???뺣낫 ????덉젙??諛?移댁뭅??濡쒓렇???꾨줈???곕룞 媛뺥솕
+## [2026-01-25] - 사용자 데이터 동기화 시스템 전면 개편 (Profiles-UserRoles 통합)
 
-### ?? ?듭떖 ?깃낵
-- **???뺣낫 ????좊ː???μ긽 (UPSERT 諛⑹떇 ?꾩엯)**: ?뺣낫 ?섏젙 ???곗씠?곌? 由ъ뀑?섎뜕 臾몄젣瑜??닿껐?섍린 ?꾪빐, ?⑥닚 `update` ???`upsert` 諛⑹떇???꾩엯?덉뒿?덈떎. ?ъ슜??怨좎쑀 ID(UUID)瑜?湲곗??쇰줈 泥섎━?섎룄濡?蹂寃쏀븯???곗씠?곌? ?좎떎?섍굅??珥덇린?붾릺???꾩긽???먯쿇 李⑤떒?덉뒿?덈떎.
-- **移댁뭅?ㅽ넚 ?꾨줈???ъ쭊 ?곕룞 理쒖쟻??*: 移댁뭅?ㅽ넚 濡쒓렇?????꾨줈???ъ쭊???꾨씫?섎뜕 臾몄젣瑜??닿껐?덉뒿?덈떎. ?곗씠?곕쿋?댁뒪???ъ쭊 ?뺣낫媛 ?녿뜑?쇰룄 移댁뭅???몄뀡 硫뷀??곗씠?곗뿉???ㅼ떆媛꾩쑝濡??ъ쭊 ?뺣낫瑜?異붿텧?섏뿬 ?곷떒 ?ㅻ뜑? 留덉씠?섏씠吏??'N' ?꾩씠肄?????ㅼ젣 ?꾨줈???ъ쭊???⑤룄濡?濡쒖쭅??媛뺥솕?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **관리자 페이지 데이터 정합성 해결**: 방문객이 자신의 정보를 수정해도 관리자 페이지에서 리셋되어 보이던 현상을 근본적으로 해결했습니다. 기존에 이원화되어 있던 `profiles` 테이블과 `user_roles` 테이블의 데이터를 실시간으로 동기화(Sync)하는 로직을 구축했습니다.
+- **카카오 프로필 사진 복구 및 영구 저장**: 카카오 로그인 시 메타데이터에 숨겨진 프사 주소를 끝까지 추적하여 가져오고, 정보 수정 시 이 주소를 DB에 자동으로 박아넣어 더이상 '성(Initial)'만 뜨는 일이 없도록 조치했습니다.
+- **데이터 유실 방지(UPSERT)**: 모든 사용자 정보 업데이트 로직을 '이메일 기반'에서 'ID(UUID) 기반 UPSERT'로 전환하여, 어떤 상황에서도 데이터가 덮어씌워지거나 리셋되지 않게 안정성을 확보했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. API ?붿쭊 怨좊룄??(`app/api/users/me/route.js`)
-- `GET`: DB???곕룞???꾨줈???곗씠?곌? ?놁쓣 寃쎌슦瑜??鍮꾪빐 `user_metadata` ?댁쓽 ?ㅼ뼇???대컮? 寃쎈줈(`avatar_url`, `picture`, `kakao_account` ??瑜??쒖감?곸쑝濡??먯깋?섎뒗 吏?ν삎 ?대갚 ?쒖뒪???곸슜.
-- `PATCH`: ?대찓??湲곕컲 ?낅뜲?댄듃?먯꽌 **?ъ슜??ID(uuid) 湲곕컲 UPSERT**濡?蹂寃쏀븯???덉퐫???꾨씫 諛⑹? 諛??뺥빀???뺣낫.
+### 🛠️ 작업 상세
+#### 1. 관리자 API 고도화 (`app/api/admin/users/route.js`)
+- `GET`: `user_roles`와 `profiles` 테이블을 동시에 조회한 뒤, **사용자 ID 기준 메모리 조인(Join)**을 수행하여 가장 최신 정보를 관리자에게 보여줍니다.
+- `PATCH`: 관리자가 이름을 직접 수정할 때도 `profiles` 테이블까지 함께 업데이트되도록 동기화 로직을 추가했습니다.
 
-#### 2. ?ㅻ뜑 諛?留덉씠?섏씠吏 ?숆린??- ?대쫫???꾨씫?섏뼱 珥덇린媛?'N')???⑤뜕 ?꾩긽??`full_name` ?뺣? ?곕룞???듯빐 ?닿껐. ?댁젣 ?섏젙???대쫫??泥?湲?먭? ?щ컮瑜닿쾶 ?쒖떆?섍굅???ㅼ젣 ?ъ쭊??異쒕젰?⑸땲??
-
----
-
-
-## [2026-01-25] - ???뺣낫 ?섏젙 ?ㅻ쪟(諛⑸Ц媛??뺣낫 ?섏젙 遺덇?) ?닿껐
-
-### ?? ?듭떖 ?깃낵
-- **諛⑸Ц媛??꾨줈???섏젙 沅뚰븳 踰꾧렇 ?닿껐**: '諛⑸Ц??Visitor)' 沅뚰븳??媛吏??ъ슜?먭? ?대쫫?대굹 ?꾪솕踰덊샇瑜??섏젙?섎젮怨????? 沅뚰븳 蹂寃??쒗븳 濡쒖쭅??嫄몃젮 '?섏젙 ?ㅽ뙣'媛 ?⑤뜕 臾몄젣瑜??닿껐?덉뒿?덈떎. 
-- **吏?ν삎 沅뚰븳 泥댄겕 ?꾩엯**: ?쒕쾭 API(`PATCH /api/users/me`)?먯꽌 ?붿껌??沅뚰븳???꾩옱 ?ъ슜?먯쓽 沅뚰븳怨??ㅻ? ?뚮쭔 沅뚰븳 蹂寃?泥댄겕 濡쒖쭅???섑뻾?섎룄濡?媛쒖꽑?덉뒿?덈떎. ?대? ?듯빐 諛⑸Ц媛앸룄 ?먯떊???대쫫怨??곕씫泥섎뒗 ?먯쑀濡?쾶 ?섏젙?????덇쾶 ?섏뿀?듬땲??
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. API ?몃뱾???섏젙 (`app/api/users/me/route.js`)
-- `role !== currentUserRole` 議곌굔??異붽??섏뿬, 沅뚰븳???ㅼ젣 蹂寃쎌씠 ?덉쓣 ?뚮쭔 嫄곗젅 ?ъ쑀(諛⑸Ц媛?沅뚰븳 蹂寃?遺덇? ??瑜?泥댄겕?섎룄濡??섏젙?덉뒿?덈떎.
-- 遺덊븘?뷀븳 DB ?낅뜲?댄듃(`user_roles` ?뚯씠釉?瑜?諛⑹??섏뿬 ?깅뒫??誘몄꽭?섍쾶 媛쒖꽑?덉뒿?덈떎.
+#### 2. 사용자 정보 수정 API 보강 (`app/api/users/me/route.js`)
+- 사용자가 정보를 저장할 때, **로그인 세션에 있는 최신 프로필 사진(카카오/구글)**을 함께 추출하여 DB에 영구 저장하는 로직을 통합했습니다.
+- `user_roles` 테이블에도 이름과 번호를 백업 업데이트하여 시스템 전반의 정합성을 맞췄습니다.
 
 ---
 
 
-## [2026-01-25] - ?꾩궛吏???대깽??寃뚯엫(AsanMealGame) 紐⑤컮??理쒖쟻??諛?UX ?대━??
-### ?? ?듭떖 ?깃낵
-- **紐⑤컮???꾨꼍 ???*: 紐⑤뱺 寃뚯엫(猷곕젢, ?щ떎由? 鍮숆퀬)???ㅻ쭏?명룿 ?붾㈃?먯꽌??苡뚯쟻?섍쾶 利먭만 ???덈룄濡?**諛섏쓳???붿옄??Responsive Design)**???곸슜?덉뒿?덈떎.
-- **猷곕젢 ?ㅼ??쇰쭅**: 紐⑤컮??湲곌린??醫곸? ?붾㈃??留욎떠 猷곕젢 ?좎쓽 ?ш린瑜??숈쟻?쇰줈 異뺤냼(420px -> 320px -> 280px)?섏뿬 ?붾㈃??踰쀬뼱?섏? ?딄쾶 議곗젙?덉뒿?덈떎.
-- **?щ떎由??湲??곗튂 理쒖쟻??*: 醫곸? ?붾㈃?먯꽌??李몄뿬???대쫫???쎄쾶 ?뺤씤?????덈룄濡?媛濡??ㅽ겕濡ㅼ쓣 ?좎??섎릺, ?몃뱶? ?꾩씠肄섏쓽 ?ш린瑜??곸젅??議곗젅?섏뿬 ?곗튂 媛?낆꽦???믪??듬땲??
-- **?덉씠?꾩썐 ?쒖꽌 議곗젙**: 紐⑤컮?쇱뿉??寃뚯엫??癒쇱? 蹂댁씠怨??ㅼ젙李쎌씠 ?꾨옒濡?媛?꾨줉 **Flex Order**瑜?議곗젙?섏뿬 ?ъ슜??寃쏀뿕??媛쒖꽑?덉뒿?덈떎.
+## [2026-01-25] - 회사 소개(Intro) 섹션 이미지 짤림 현상 해결
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 誘몃뵒??荑쇰━ ?몃텇??(`components/AsanMealGame.module.css`)
-- `768px (?쒕툝由?` 諛?`480px (?ㅻ쭏?명룿)` 釉뚮젅?댄겕?ъ씤??異붽?.
-- `gameContent`瑜??곗꽑?곸쑝濡??몄텧?섎룄濡??곷떒 諛곗튂 濡쒖쭅 ?섏젙.
-- 紐⑤컮???꾩슜 ?고듃 ?ш린 諛??щ갚(Padding/Gap) ?뺣? 議곗젙.
+### 🚀 핵심 성과
+- **이미지 레이어 짤림 버그 해결**: 'COMPANY PROFILE' 섹션에서 위아래로 움직이는 역동적인 이미지들이 섹션 하단에서 툭 끊기듯 잘리던 문제를 해결했습니다. 
+- **레이아웃 안정성 확보**: 기존의 강제적인 `overflow: hidden` 설정을 제거하고, 이미지들이 자유롭게 움직일 수 있도록 충분한 수직 공간(Padding)을 확보했습니다.
 
-#### 2. 鍮숆퀬 蹂대뱶 ?ш린 理쒖쟻??- 5x5 洹몃━?쒖쓽 媛꾧꺽??醫곹엳怨?? ?ш린瑜??붾㈃ ?덈퉬??留욎떠 ?먮룞 議곗젅?섎룄濡?理쒖쟻?뷀뻽?듬땲??
+### 🛠️ 작업 상세
+#### 1. 인라인 스타일 수정 (`components/Intro.js`)
+- 섹션 태그에 걸려있던 `overflow: hidden` 속성을 제거하여, 절대 위치(Absolute)로 배치된 하단 이미지가 잘리지 않고 끝까지 보이도록 수정했습니다.
 
----
-
-
-## [2026-01-25] - ?꾩궛吏???대깽??寃뚯엫(AsanMealGame) 理쒖쥌 ?대━??諛?怨듭젙??媛뺥솕
-
-### ?? ?듭떖 ?깃낵
-- **紐⑤컮???щ떎由??湲??몄쓽??洹밸???*: 紐⑤컮?쇱쓽 醫곸? ?붾㈃?먯꽌 ?щ떎由ш? 李뚭렇?ъ?嫄곕굹 ?섎━???꾩긽???닿껐?섍린 ?꾪빐 **媛濡??ㅽ겕濡?Side Scroll)** ?쒖뒪?쒖쓣 ?꾨꼍?섍쾶 援ъ텞?덉뒿?덈떎. ?댁젣 ?먭??쎌쑝濡?遺?쒕읇寃?諛?댁꽌 紐⑤뱺 ?щ떎由?移몄쓣 ?뺤씤?????덉뒿?덈떎.
-- **猷곕젢(Roulette) 怨듭젙???쒖뒪???꾩엯**: 
-    - **紐낅떒 ?욊린(Shuffle)**: 寃뚯엫 ?쒖옉 ??李몄뿬???쒖꽌瑜?臾댁옉?꾨줈 ?욌뒗 踰꾪듉??異붽??덉뒿?덈떎. ?뱀젙 ?꾩튂??怨좎젙???대쫫?쇰줈 ?명븳 遺덈쭔???먯쿇 李⑤떒?⑸땲??
-    - **?쒓컙 理쒖쟻??*: 猷곕젢 ?뚯쟾 ?쒓컙??**10珥덉뿉??6珥덈줈 ?⑥텞**?섏뿬 吏猷⑦븿? 以꾩씠怨?諛뺤쭊媛먯? ?믪??듬땲??
-- **理쒖쥌 UI ?뺣? 留덇컧**: 猷곕젢 ?섎떒???뷀뵆 踰꾪듉??異붽? 諛곗튂?섍퀬, 紐⑤컮?쇱뿉?쒖쓽 寃뚯엫 ?곸뿭 ?덉씠?꾩썐???ㅼ떆 ?쒕쾲 ?뺣? 議곗젙?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 寃뚯엫 ?붿쭊 怨좊룄??(`components/AsanMealGame.js`)
-- `spinDuration`: 6珥덈줈 議곗젙 諛??먮룞 ?뺤? ??대㉧ ?숆린??
-- `shuffleParticipants` ?⑥닔 ?쒖옉: 李몄뿬??諛곗뿴???쒕뜡?섍쾶 ?욌뒗 湲곕뒫 援ы쁽.
-- ?щ떎由?酉고룷?? `justify-content` ?띿꽦??`flex-start`濡?議곗젙?섏뿬 ?ㅽ겕濡??쒖옉 吏??怨좎젙.
-
-#### 2. ?ㅽ????쒖뒪??理쒖쟻??(`components/AsanMealGame.module.css`)
-- `ladderViewport`: `-webkit-overflow-scrolling: touch` 諛?而ㅼ뒪? ?ㅽ겕濡ㅻ컮 ?붿옄???곸슜.
-- `shuffleBtn`: ?ъ씠?쒕컮? 猷곕젢 ?섎떒???댁슦?ъ????몃젴??踰꾪듉 ?ㅽ???異붽?.
+#### 2. 모듈 CSS 최적화 (`components/Intro.module.css`)
+- `imageColumn`: 하단에 `100px` (모바일에서는 `120px`) 이상의 여백을 추가하여, 애니메이션으로 아래로 내려가는 이미지를 위한 안전 영역을 확보했습니다.
+- 가로 스크롤 방지: 섹션 전체는 열어두되, 컨텐츠 영역에만 `overflow-x: hidden`을 적용하여 둥둥 떠다니는 이미지들로 인해 화면이 옆으로 밀리는 현상을 원천 차단했습니다.
 
 ---
 
 
-### ?? ?듭떖 ?깃낵
-- **鍮숆퀬(Bingo) 5x5 ?뺤삁 ?덉씠?꾩썐 蹂듭썝**: ?ъ씠?쒕컮 ?뺤떇???쒓굅?섍퀬 ?ㅼ떆 以묒븰 吏묒쨷?뺤쓽 **?낆옣??5x5 蹂대뱶**濡?蹂듦뎄?덉뒿?덈떎. ? ?ш린? 媛꾧꺽???⑷툑 鍮꾩쑉濡?議곗젙?섏뿬 ?뺣룄?곸씤 ?쒓컖???꾩꽦?꾨? ?먮옉?⑸땲??
-- **猷곕젢(Roulette) ??諛李⑺삎 ?앹뾽**: ?뱀꺼???앹뾽???꾩껜 ?붾㈃???꾨땶, **猷곕젢 ???곸뿭 ?대???濡쒖뺄 ?ㅻ쾭?덉씠**濡??⑤룄濡??섏젙?덉뒿?덈떎. ?좎쓽 ?뺥깭??留욎떠 ?먰삎 諛깃렇?쇱슫?쒕? ?곸슜?섏뿬 ?붿옄?몄쟻 ?쇱껜媛먯쓣 洹밸??뷀뻽?듬땲??
-- **寃뚯엫??媛뺥솕**: 猷곕젢 ?먮룞 以묒? ?쒖뿉?????꾨줈 利됱떆 ?앹뾽???섑??섎룄濡??섏뿬 ?ъ슜???몄쓽?깆쓣 ?믪??듬땲??
+## [2026-01-25] - 카카오톡 프로필 사진 동기화 정밀 교정 (N->프사)
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 鍮숆퀬 ?꾪궎?띿쿂 ?ш뎄異?(`components/AsanMealGame.js`)
-- `bingoContainerFixed`: 以묒븰 ?뺣젹??而⑦뀒?대꼫 ?꾩엯.
-- `bingoGrid5x5`: CSS Grid `repeat(5, 1fr)`瑜??쒖슜???꾨꼍??5x5 ?移?援ъ“ ?뺣낫.
-- ?밸━ 紐⑤떖: 鍮숆퀬???대? ?꾩슜 ?ㅻ쾭?덉씠(`bingoOverlay`) 援ы쁽.
+### 🚀 핵심 성과
+- **카카오톡 썸네일 강제 연동**: 데이터베이스에 이름만 저장되고 사진이 누락되어 'N'이나 성(Initial)만 뜨던 현상을 해결했습니다. 
+- **지능형 메타데이터 추출**: 카카오 로그인의 복잡한 구조(`kakao_account.profile.profile_image_url`)에서 자동으로 프사를 찾아내어 DB에 영구적으로 박아버리는(Sync) 로직을 적용했습니다. 
+- **프론트엔드 실시간 감지**: `useUserProfile` 훅을 개선하여 DB에 사진 정보가 없더라도 로그인 세션의 메타데이터를 즉시 활용하여 딜레이 없이 사진을 보여줍니다.
 
-#### 2. 猷곕젢 ?쒓컖 ?④낵 ?뺣? ?쒖뼱 (`components/AsanMealGame.module.css`)
-- `winnerOverlayLocal`: `rouletteWrapper`???몃뜳?ㅼ뿉 留욎떠 ???꾩뿉留?釉붾윭 ?④낵媛 ?곸슜?섎룄濡??ㅺ퀎.
-- `winnerCardLocal`: 紐⑤컮?쇨낵 ?곗뒪?ы깙?먯꽌 理쒖쟻???ъ씠利덈줈 ??以묒븰???꾩튂?섎룄濡?議곗젙.
+### 🛠️ 작업 상세
+#### 1. 훅 로직 개선 (`hooks/useUserProfile.js`)
+- `profiles` 테이블의 데이터와 `auth` 세션 데이터를 병합할 때, 사진 주소가 비어있으면 메타데이터에서 실시간으로 가져오도록 폴백 로직을 강화했습니다.
 
----
-
-
-### ?? ?듭떖 ?깃낵
-- **猷곕젢(Roulette) ?먮룞/?섎룞 ?앹뾽 ?숆린??*: 
-    - ?ъ슜?먭? 吏곸젒 硫덉텛嫄곕굹 10珥????먮룞?쇰줈 硫덉텛???곹솴 紐⑤몢?먯꽌 **?뱀꺼???앹뾽李?Pop-up)**???뺥솗?섍쾶 ?섑??섎룄濡?濡쒖쭅???듭씪?덉뒿?덈떎.
-    - `stopRoulette` 怨듯넻 ?⑥닔瑜??꾩엯?섏뿬 媛먯냽 ??寃곌낵 ?곗텧怨??앹뾽 ?몄텧 怨쇱젙???쇱썝?뷀뻽?듬땲??
-- **?щ떎由??湲?Ladder Game) ?꾩튂 諛?媛먯꽦 ?꾩꽦**: 
-    - ?щ떎由??? ?대쫫, ?뱀꺼 臾멸뎄 媛꾩쓽 **?섏쭅 ?뺣젹 ?ㅼ감瑜?0?쇰줈** 留욎톬?듬땲??
-    - 罹먮┃?곌? ?좎쓽 ?앹젏???먯꽍泥섎읆 異붿쟻?섎ŉ ?대젮?ㅻ룄濡?`Tween` ?좊땲硫붿씠?섏쓣 ?뺣??섍쾶 ?곕룞?덉뒿?덈떎.
-    - ?꾩갑 ??罹먮┃??諛섏쓳(?뱀꺼: ?삲, ?듦낵: ?쁿) ?쒖뒪?쒖쓣 ?꾩꽦?섏뿬 寃뚯엫??紐곗엯?꾨? ?믪??듬땲??
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 猷곕젢 ?붿쭊 理쒖쟻??(`components/AsanMealGame.js`)
-- `stopRoulette` 紐⑤뱢?? `clearTimeout` 諛?寃곌낵 怨꾩궛 濡쒖쭅???섎굹濡?臾띠뼱 ?먮룞 醫낅즺 ?쒖뿉???앹뾽???꾨씫?섏? ?딄쾶 議곗튂.
-- ?뚯쟾 媛먯냽 ?쒓컖?? `transition`怨?`rotation` ?곹깭瑜??뺣? ?쒖뼱?섏뿬 硫덉텧 ?뚯쓽 ?댁쭏媛??쒓굅.
-
-#### 2. ?ъ슜??寃쏀뿕(UX) ?쇰뱶諛?諛섏쁺
-- 寃뚯엫 ?ㅻ퉬寃뚯씠??諛??ъ씠?쒕컮 ?몄썝 ?ㅼ젙 UI???щ갚???ъ“?뺥븯???듬떟?⑥쓣 ?댁냼?덉뒿?덈떎.
-- 鍮숆퀬 諛?猷곕젢??寃곌낵 硫붿떆吏瑜??붿슧 異뺥븯?섎뒗 ?먮굦????뀛由??ㅼ븻留ㅻ꼫濡?援먯껜?덉뒿?덈떎.
+#### 2. 저장 로직 강화 (`app/api/users/me/route.js`)
+- 사용자가 정보를 수정하고 저장할 때, 이름/전화번호뿐만 아니라 **현재 로그인된 서비스(카카오 등)의 프로필 사진 주소도 함께 DB에 업데이트**하도록 수정했습니다.
 
 ---
 
 
-### ?? ?듭떖 ?깃낵
-- **?щ떎由??湲?Ladder Game) 臾쇰━ 湲곕컲 ?뺣? ?뺣젹**: 
-    - ?곷떒 ?대쫫 ?몃뱶, ?щ떎由?以? ?섎떒 ?뱀꺼 ?쇰꺼???꾩튂媛 **1px ?⑥쐞濡??뺥솗?섍쾶 ?쇱튂**?섎룄濡??꾩튂 濡쒖쭅???꾨㈃ ?섏젙?덉뒿?덈떎.
-    - `translateX(-50%)`? ?덈? ?꾩튂 湲곕컲??`COL_SPACE` ?쒖뒪?쒖쓣 ?꾩엯?섏뿬 李몄뿬???섏뿉 愿怨꾩뾾???꾨꼍???섏쭅 ?뺣젹??蹂댁옣?⑸땲??
-- **?숆린?붾맂 ?ㅻТ??臾대툕癒쇳듃**: 
-    - ?숇Ъ 罹먮┃?곌? ?щ떎由????앹뿉 **?먯꽍泥섎읆 ??遺숈뼱??* 留ㅻ걚?쎄쾶(tween animation) ?대룞?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-    - ?좎씠 洹몃젮吏???띾룄? 罹먮┃?곗쓽 ?대룞 ?띾룄瑜??쇱튂?쒖폒 ?쒓컖???댁쭏媛먯쓣 ?쒓굅?덉뒿?덈떎.
-- **猷곕젢(Roulette) 吏?ν삎 ?먮룞 ?뺤?**: 
-    - ?ъ슜?먭? 吏곸젒 硫덉텛吏 ?딅뜑?쇰룄 **10珥??꾩뿉???먮룞?쇰줈 媛먯냽?섎ŉ ?뺤?**?섍퀬 寃곌낵瑜?蹂댁뿬二쇰뒗 濡쒖쭅??異붽??덉뒿?덈떎.
+## [2026-01-25] - 내 정보 저장 안정화 및 카카오 로그인 프로필 연동 강화
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?좊땲硫붿씠???붿쭊 ?낃렇?덉씠??(`components/AsanMealGame.js`)
-- `activeMarker`: `framer-motion`??`tween` ?몃옖吏?섏쓣 ?쒖슜?섏뿬 ???앹쓣 ?곕씪媛??遺?쒕윭???吏곸엫 援ы쁽.
-- `LadderGame`: `COL_SPACE`? `paddingX`瑜??곸닔濡?愿由ы븯???덉씠?꾩썐 怨꾩궛 ?좊ː???μ긽.
+### 🚀 핵심 성과
+- **내 정보 저장 신뢰도 향상 (UPSERT 방식 도입)**: 정보 수정 시 데이터가 리셋되던 문제를 해결하기 위해, 단순 `update` 대신 `upsert` 방식을 도입했습니다. 사용자 고유 ID(UUID)를 기준으로 처리하도록 변경하여 데이터가 유실되거나 초기화되는 현상을 원천 차단했습니다.
+- **카카오톡 프로필 사진 연동 최적화**: 카카오톡 로그인 시 프로필 사진이 누락되던 문제를 해결했습니다. 데이터베이스에 사진 정보가 없더라도 카카오 세션 메타데이터에서 실시간으로 사진 정보를 추출하여 상단 헤더와 마이페이지에 'N' 아이콘 대신 실제 프로필 사진이 뜨도록 로직을 강화했습니다.
 
-#### 2. ?덉씠?꾩썐 ?덉젙??(`components/AsanMealGame.module.css`)
-- `ladderNodeWrapper` & `ladderPrizeWrapper`: ?덈? ?꾩튂 湲곕컲 ?쇳꽣留?濡쒖쭅 ?곸슜.
-- `startNode`: 媛꾧꺽???볧엳怨??몃쾭 ??遺?쒕윭???곸듅 ?④낵 異붽?.
+### 🛠️ 작업 상세
+#### 1. API 엔진 고도화 (`app/api/users/me/route.js`)
+- `GET`: DB에 연동된 프로필 데이터가 없을 경우를 대비해 `user_metadata` 내의 다양한 어바타 경로(`avatar_url`, `picture`, `kakao_account` 등)를 순차적으로 탐색하는 지능형 폴백 시스템 적용.
+- `PATCH`: 이메일 기반 업데이트에서 **사용자 ID(uuid) 기반 UPSERT**로 변경하여 레코드 누락 방지 및 정합성 확보.
+
+#### 2. 헤더 및 마이페이지 동기화
+- 이름이 누락되어 초기값('N')이 뜨던 현상을 `full_name` 정밀 연동을 통해 해결. 이제 수정된 이름의 첫 글자가 올바르게 표시되거나 실제 사진이 출력됩니다.
 
 ---
 
 
-### ?? ?듭떖 ?깃낵
-- **?щ떎由??湲?Ladder Game) 硫???⑥뒪 ?쒖뒪???꾩엯**: 寃뚯엫 ?꾨즺 ?꾩뿉??**罹먮┃?곗? ?대룞 ?좎씠 ?щ씪吏吏 ?딄퀬 ?붾㈃???좎?**?섎룄濡??섏젙?덉뒿?덈떎. ?대? ?듯빐 紐⑤뱺 李몄뿬?먯쓽 寃곌낵瑜??쒕늿??鍮꾧탳?????덉뒿?덈떎.
-- **媛쒕퀎 而щ윭 寃쎈줈 諛??꾩씠肄?*: 媛?李몄뿬?먮쭏??以묐났?섏? ?딅뒗 **?꾩슜 而щ윭 ??*??諛곗젙?섍퀬, ?곷떒 ?몃뱶??洹?ъ슫 ?숇Ъ ?꾩씠肄섏쓣 異붽??섏뿬 ?쒓컖???щ?? 媛?낆꽦???숈떆???≪븯?듬땲??
-- **?섏씠?붾뱶 ?꾨━誘몄뾼 UI 由щ돱??*: 
-    - ??釉붾（? ?붿씠?몃? ?쒖슜??**??뀛由??ㅼ븻留ㅻ꼫**瑜??곸슜?덉뒿?덈떎.
-    - 紐⑤뱺 踰꾪듉怨?移대뱶??遺?쒕윭???좊땲硫붿씠??`Outfit` ?고듃 湲곕컲)怨?源딆씠媛??덈뒗 洹몃┝?먮? 異붽??덉뒿?덈떎.
-    - 鍮숆퀬 諛?猷곕젢???ㅻ쾭?덉씠? 諛곗튂 援ъ꽦???붿슧 ?꾨Ц?곸씤 ?덉씠?꾩썐?쇰줈 媛쒖꽑?덉뒿?덈떎.
+## [2026-01-25] - 내 정보 수정 오류(방문객 정보 수정 불가) 해결
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 寃뚯엫 ?붿쭊 怨좊룄??(`components/AsanMealGame.js`)
-- `completedHistory` ?곹깭 ?꾩엯: ?꾨즺??紐⑤뱺 寃쎈줈 ?뺣낫(`path`, `emoji`, `color`)瑜?諛곗뿴濡?愿由ы븯???뚮뜑留?
-- `persistentPath` ?ㅽ????곸슜: ?꾨즺???좎? 諛섑닾紐??먯꽑?쇰줈 ?쒖떆?섏뿬 ?꾩옱 吏꾪뻾 以묒씤 ?좉낵 援щ텇.
-- **?숈쟻 而щ윭 ?쒖뒪??*: `PATH_COLORS` 諛곗뿴???쒖슜???몃뜳?ㅻ퀎濡?怨좎쑀???됱긽 遺??
+### 🚀 핵심 성과
+- **방문객 프로필 수정 권한 버그 해결**: '방문자(Visitor)' 권한을 가진 사용자가 이름이나 전화번호를 수정하려고 할 때, 권한 변경 제한 로직에 걸려 '수정 실패'가 뜨던 문제를 해결했습니다. 
+- **지능형 권한 체크 도입**: 서버 API(`PATCH /api/users/me`)에서 요청된 권한이 현재 사용자의 권한과 다를 때만 권한 변경 체크 로직을 수행하도록 개선했습니다. 이를 통해 방문객도 자신의 이름과 연락처는 자유롭게 수정할 수 있게 되었습니다.
 
-#### 2. ?붿옄???쒖뒪??理쒖쟻??(`components/AsanMealGame.module.css`)
-- `premiumLayout`: ???볤퀬 源딆씠媛??덈뒗 650px ?댁긽??硫붿씤 ?ㅽ겕由??뺣낫.
-- `nodeIcon` 諛?`markerFloatingName`: 罹먮┃???꾩뿉 ?대쫫???꾩슦怨??몃뱶???꾩씠肄섏쓣 諛곗튂?섏뿬 ?명꽣?숉떚釉??붿냼 媛뺥솕.
-- **鍮숆퀬 蹂대뱶 由щえ?몃쭅**: ? 媛꾧꺽怨??κ?湲?Border-radius)瑜??뺣? 議곗젙?섏뿬 怨좉툒?ㅻ윭??洹몃━???꾩꽦.
+### 🛠️ 작업 상세
+#### 1. API 핸들러 수정 (`app/api/users/me/route.js`)
+- `role !== currentUserRole` 조건을 추가하여, 권한의 실제 변경이 있을 때만 거절 사유(방문객 권한 변경 불가 등)를 체크하도록 수정했습니다.
+- 불필요한 DB 업데이트(`user_roles` 테이블)를 방지하여 성능을 미세하게 개선했습니다.
 
 ---
 
 
-### ?? ?듭떖 ?깃낵
-- **?щ떎由??湲?Ladder Game) ?숆린???좊땲硫붿씠??*: ?댁젣 ?щ떎由???Active Path)???숇Ъ 罹먮┃?곗쓽 ?대룞 ?띾룄? ?꾨꼍?섍쾶 留욎떠????移몄뵫 洹몃젮吏?꾨줉 ?섏젙?섏뿬, 寃곌낵 ?ㅽ룷?쇰윭瑜?諛⑹??섍퀬 "?먭렐?먭렐" 媛먯꽦??洹밸??뷀뻽?듬땲??
-- **罹먮┃??諛섏쓳 ?쒖뒪???꾩엯**: 
-    - **?뱀꺼(Winner)**: 罹먮┃?곌? ?꾩갑 吏?먯뿉???삲(?곕뒗 ?쒖젙)?쇰줈 蹂?섎ŉ 湲댁옣媛먯쓣 ?댁냼?⑸땲??
-    - **?듦낵(Looser)**: 罹먮┃?곌? ?쁿(?껊뒗 ?쒖젙)?쇰줈 蹂?섎ŉ ?덈룄媛먯쓣 ?쒗쁽?⑸땲??
-- **?꾨━誘몄뾼 UI/UX ?꾨㈃ 媛쒗렪**: 
-    - ?꾨컲?곸씤 ?붿옄?몄뿉 **湲?섏뒪紐⑦뵾利?Glassmorphism)** ?뚮쭏瑜??곸슜?섏뿬 ?꾨??곸씠怨??몃젴??鍮꾩＜?쇱쓣 ?꾩꽦?덉뒿?덈떎.
-    - 猷곕젢 ?뱀꺼 ?앹뾽??寃뚯엫 ?곸뿭 ?대???怨좎젙?섏뿬 ?쒓컖???쇰????쒓굅?덉뒿?덈떎.
-    - 鍮숆퀬 ?덉씠?꾩썐???ъ씠?쒕컮 ?뺥깭濡??ш뎄?깊븯???뺣낫 媛?낆꽦???믪??듬땲??
+## [2026-01-25] - 아산지점 이벤트 게임(AsanMealGame) 모바일 최적화 및 UX 폴리싱
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?좊땲硫붿씠??濡쒖쭅 媛쒖꽑 (`components/AsanMealGame.js`)
-- `LadderGame`: `visiblePath` ?곹깭瑜?異붽??섏뿬 罹먮┃?곌? ???④퀎???대룞???뚮쭏??SVG 寃쎈줈媛 ?곕씪媛?꾨줉 援ы쁽.
-- `markerEmoji` ?숈쟻 蹂寃? 寃뚯엫 ?꾨즺 ??寃곌낵(`isWinner`)???곕씪 ?대え吏瑜?利됱떆 蹂寃?
-- **?먭렐?먭렐 ?쒕젅??*: ?대룞 媛꾧꺽??300ms濡??좎??섏뿬 罹먮┃?곗? ?좎씠 ?④퍡 ?대젮?ㅻ뒗 媛먯꽦 ?뺣낫.
+### 🚀 핵심 성과
+- **모바일 완벽 대응**: 모든 게임(룰렛, 사다리, 빙고)을 스마트폰 화면에서도 쾌적하게 즐길 수 있도록 **반응형 디자인(Responsive Design)**을 적용했습니다.
+- **룰렛 스케일링**: 모바일 기기의 좁은 화면에 맞춰 룰렛 휠의 크기를 동적으로 축소(420px -> 320px -> 280px)하여 화면을 벗어나지 않게 조정했습니다.
+- **사다리 타기 터치 최적화**: 좁은 화면에서도 참여자 이름을 쉽게 확인할 수 있도록 가로 스크롤을 유지하되, 노드와 아이콘의 크기를 적절히 조절하여 터치 가독성을 높였습니다.
+- **레이아웃 순서 조정**: 모바일에서 게임이 먼저 보이고 설정창이 아래로 가도록 **Flex Order**를 조정하여 사용자 경험을 개선했습니다.
 
-#### 2. ?ㅽ????쒖뒪??怨좊룄??(`components/AsanMealGame.module.css`)
-- `premiumLayout`: ?ъ씠?쒕컮? 硫붿씤 ?붾㈃??洹몃━??鍮꾩쑉 理쒖쟻??
-- `glassPanel`: 釉붾윭 ?④낵? ?щ챸?꾨? ?쒖슜???몃젴??移대뱶 ?덉씠?꾩썐.
-- **踰꾪듉 諛?移??붿옄??*: ?명꽣?숉떚釉뚰븳 ?몃쾭 ?④낵? ?κ렐 紐⑥꽌由??붿옄???곸슜.
+### 🛠️ 작업 상세
+#### 1. 미디어 쿼리 세분화 (`components/AsanMealGame.module.css`)
+- `768px (태블릿)` 및 `480px (스마트폰)` 브레이크포인트 추가.
+- `gameContent`를 우선적으로 노출하도록 상단 배치 로직 수정.
+- 모바일 전용 폰트 크기 및 여백(Padding/Gap) 정밀 조정.
+
+#### 2. 빙고 보드 크기 최적화
+- 5x5 그리드의 간격을 좁히고 셀 크기를 화면 너비에 맞춰 자동 조절되도록 최적화했습니다.
 
 ---
 
 
-### ?? ?듭떖 ?깃낵
-- **猷곕젢 ?뱀꺼 ?앹뾽 ?꾩튂 援먯젙**: 寃뚯엫???몃?媛 ?꾨땶 ?ㅼ젣 寃뚯엫??以묒븰???뺥솗???꾩튂?섎룄濡?濡쒖뺄 ?ㅻ쾭?덉씠 諛⑹떇?쇰줈 ?섏젙?덉뒿?덈떎.
-- **?щ떎由??湲?Ladder Game) 媛먯꽦 怨좊룄??*:
-    - **?먭렐?먭렐 ?좊땲硫붿씠??*: 罹먮┃???대룞 ?띾룄瑜???떠(250ms/step) 湲댁옣媛먯쓣 ?뷀뻽?듬땲??
-    - **媛?낆꽦 理쒖쟻??*: ?щ떎由???쓣 醫곹엳怨?紐⑤컮?쇱뿉?쒕룄 ?щ씪?대뱶諛??놁씠 ?쒕늿???ㅼ뼱?ㅻ룄濡?議곗젙?덉뒿?덈떎.
-    - **吏곴????ㅼ젙**: 蹂듭옟???꾩씠???ㅼ젙???쒓굅?섍퀬 '?뱀꺼/?듦낵' ?꾩＜濡??ы뵆?섍쾶 援ъ꽦?덉뒿?덈떎.
-    - **由ъ뀑 湲곕뒫**: ??踰덉쓽 ?대┃?쇰줈 ?щ떎由?援ъ“瑜?利됱떆 ?ъ꽕?뺥븯??踰꾪듉??異붽??덉뒿?덈떎.
-- **鍮숆퀬(Bingo) ?덉씠?꾩썐 ?ы렪**: 寃뚯엫?먭낵 ?ㅻ챸?쒕? 醫뚯슦 諛곗튂(紐⑤컮?????곹븯)?섏뿬 ?몄? 遺?섎? 以꾩씠怨??쒓컖??洹좏삎??留욎톬?듬땲??
+## [2026-01-25] - 아산지점 이벤트 게임(AsanMealGame) 최종 폴리싱 및 공정성 강화
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 寃뚯엫 ?붿쭊 ?섏젙 (`components/AsanMealGame.js`)
+### 🚀 핵심 성과
+- **모바일 사다리 타기 편의성 극대화**: 모바일의 좁은 화면에서 사다리가 찌그러지거나 잘리는 현상을 해결하기 위해 **가로 스크롤(Side Scroll)** 시스템을 완벽하게 구축했습니다. 이제 손가락으로 부드럽게 밀어서 모든 사다리 칸을 확인할 수 있습니다.
+- **룰렛(Roulette) 공정성 시스템 도입**: 
+    - **명단 섞기(Shuffle)**: 게임 시작 전 참여자 순서를 무작위로 섞는 버튼을 추가했습니다. 특정 위치에 고정된 이름으로 인한 불만을 원천 차단합니다.
+    - **시간 최적화**: 룰렛 회전 시간을 **10초에서 6초로 단축**하여 지루함은 줄이고 박진감은 높였습니다.
+- **최종 UI 정밀 마감**: 룰렛 하단에 셔플 버튼을 추가 배치하고, 모바일에서의 게임 영역 레이아웃을 다시 한번 정밀 조정했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 게임 엔진 고도화 (`components/AsanMealGame.js`)
+- `spinDuration`: 6초로 조정 및 자동 정지 타이머 동기화.
+- `shuffleParticipants` 함수 제작: 참여자 배열을 랜덤하게 섞는 기능 구현.
+- 사다리 뷰포트: `justify-content` 속성을 `flex-start`로 조정하여 스크롤 시작 지점 고정.
+
+#### 2. 스타일 시스템 최적화 (`components/AsanMealGame.module.css`)
+- `ladderViewport`: `-webkit-overflow-scrolling: touch` 및 커스텀 스크롤바 디자인 적용.
+- `shuffleBtn`: 사이드바와 룰렛 하단에 어우러지는 세련된 버튼 스타일 추가.
+
+---
+
+
+### 🚀 핵심 성과
+- **빙고(Bingo) 5x5 정예 레이아웃 복원**: 사이드바 형식을 제거하고 다시 중앙 집중형의 **웅장한 5x5 보드**로 복구했습니다. 셀 크기와 간격을 황금 비율로 조정하여 압도적인 시각적 완성도를 자랑합니다.
+- **룰렛(Roulette) 휠 밀착형 팝업**: 당첨자 팝업이 전체 화면이 아닌, **룰렛 휠 영역 내부에 로컬 오버레이**로 뜨도록 수정했습니다. 휠의 형태에 맞춰 원형 백그라운드를 적용하여 디자인적 일체감을 극대화했습니다.
+- **게임성 강화**: 룰렛 자동 중지 시에도 휠 위로 즉시 팝업이 나타나도록 하여 사용자 편의성을 높였습니다.
+
+### 🛠️ 작업 상세
+#### 1. 빙고 아키텍처 재구축 (`components/AsanMealGame.js`)
+- `bingoContainerFixed`: 중앙 정렬형 컨테이너 도입.
+- `bingoGrid5x5`: CSS Grid `repeat(5, 1fr)`를 활용한 완벽한 5x5 대칭 구조 확보.
+- 승리 모달: 빙고판 내부 전용 오버레이(`bingoOverlay`) 구현.
+
+#### 2. 룰렛 시각 효과 정밀 제어 (`components/AsanMealGame.module.css`)
+- `winnerOverlayLocal`: `rouletteWrapper`의 인덱스에 맞춰 휠 위에만 블러 효과가 적용되도록 설계.
+- `winnerCardLocal`: 모바일과 데스크탑에서 최적의 사이즈로 휠 중앙에 위치하도록 조정.
+
+---
+
+
+### 🚀 핵심 성과
+- **룰렛(Roulette) 자동/수동 팝업 동기화**: 
+    - 사용자가 직접 멈추거나 10초 후 자동으로 멈추는 상황 모두에서 **당첨자 팝업창(Pop-up)**이 정확하게 나타나도록 로직을 통일했습니다.
+    - `stopRoulette` 공통 함수를 도입하여 감속 후 결과 산출과 팝업 노출 과정을 일원화했습니다.
+- **사다리 타기(Ladder Game) 위치 및 감성 완성**: 
+    - 사다리 선, 이름, 당첨 문구 간의 **수직 정렬 오차를 0으로** 맞췄습니다.
+    - 캐릭터가 선의 끝점을 자석처럼 추적하며 내려오도록 `Tween` 애니메이션을 정밀하게 연동했습니다.
+    - 도착 시 캐릭터 반응(당첨: 😭, 통과: 😆) 시스템을 완성하여 게임의 몰입도를 높였습니다.
+
+### 🛠️ 작업 상세
+#### 1. 룰렛 엔진 최적화 (`components/AsanMealGame.js`)
+- `stopRoulette` 모듈화: `clearTimeout` 및 결과 계산 로직을 하나로 묶어 자동 종료 시에도 팝업이 누락되지 않게 조치.
+- 회전 감속 시각화: `transition`과 `rotation` 상태를 정밀 제어하여 멈출 때의 이질감 제거.
+
+#### 2. 사용자 경험(UX) 피드백 반영
+- 게임 네비게이션 및 사이드바 인원 설정 UI의 여백을 재조정하여 답답함을 해소했습니다.
+- 빙고 및 룰렛의 결과 메시지를 더욱 축하하는 느낌의 럭셔리 톤앤매너로 교체했습니다.
+
+---
+
+
+### 🚀 핵심 성과
+- **사다리 타기(Ladder Game) 물리 기반 정밀 정렬**: 
+    - 상단 이름 노드, 사다리 줄, 하단 당첨 라벨의 위치가 **1px 단위로 정확하게 일치**하도록 위치 로직을 전면 수정했습니다.
+    - `translateX(-50%)`와 절대 위치 기반의 `COL_SPACE` 시스템을 도입하여 참여자 수에 관계없이 완벽한 수직 정렬을 보장합니다.
+- **동기화된 스무스 무브먼트**: 
+    - 동물 캐릭터가 사다리 선 끝에 **자석처럼 딱 붙어서** 매끄럽게(tween animation) 이동하도록 개선했습니다.
+    - 선이 그려지는 속도와 캐릭터의 이동 속도를 일치시켜 시각적 이질감을 제거했습니다.
+- **룰렛(Roulette) 지능형 자동 정지**: 
+    - 사용자가 직접 멈추지 않더라도 **10초 후에는 자동으로 감속하며 정지**하고 결과를 보여주는 로직을 추가했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 애니메이션 엔진 업그레이드 (`components/AsanMealGame.js`)
+- `activeMarker`: `framer-motion`의 `tween` 트랜지션을 활용하여 선 끝을 따라가는 부드러운 움직임 구현.
+- `LadderGame`: `COL_SPACE`와 `paddingX`를 상수로 관리하여 레이아웃 계산 신뢰도 향상.
+
+#### 2. 레이아웃 안정화 (`components/AsanMealGame.module.css`)
+- `ladderNodeWrapper` & `ladderPrizeWrapper`: 절대 위치 기반 센터링 로직 적용.
+- `startNode`: 간격을 넓히고 호버 시 부드러운 상승 효과 추가.
+
+---
+
+
+### 🚀 핵심 성과
+- **사다리 타기(Ladder Game) 멀티 패스 시스템 도입**: 게임 완료 후에도 **캐릭터와 이동 선이 사라지지 않고 화면에 유지**되도록 수정했습니다. 이를 통해 모든 참여자의 결과를 한눈에 비교할 수 있습니다.
+- **개별 컬러 경로 및 아이콘**: 각 참여자마다 중복되지 않는 **전용 컬러 선**을 배정하고, 상단 노드에 귀여운 동물 아이콘을 추가하여 시각적 재미와 가독성을 동시에 잡았습니다.
+- **하이엔드 프리미엄 UI 리뉴얼**: 
+    - 딥 블루와 화이트를 활용한 **럭셔리 톤앤매너**를 적용했습니다.
+    - 모든 버튼과 카드에 부드러운 애니메이션(`Outfit` 폰트 기반)과 깊이감 있는 그림자를 추가했습니다.
+    - 빙고 및 룰렛의 오버레이와 배치 구성을 더욱 전문적인 레이아웃으로 개선했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 게임 엔진 고도화 (`components/AsanMealGame.js`)
+- `completedHistory` 상태 도입: 완료된 모든 경로 정보(`path`, `emoji`, `color`)를 배열로 관리하여 렌더링.
+- `persistentPath` 스타일 적용: 완료된 선은 반투명 점선으로 표시하여 현재 진행 중인 선과 구분.
+- **동적 컬러 시스템**: `PATH_COLORS` 배열을 활용해 인덱스별로 고유한 색상 부여.
+
+#### 2. 디자인 시스템 최적화 (`components/AsanMealGame.module.css`)
+- `premiumLayout`: 더 넓고 깊이감 있는 650px 이상의 메인 스크린 확보.
+- `nodeIcon` 및 `markerFloatingName`: 캐릭터 위에 이름을 띄우고 노드에 아이콘을 배치하여 인터랙티브 요소 강화.
+- **빙고 보드 리모델링**: 셀 간격과 둥글기(Border-radius)를 정밀 조정하여 고급스러운 그리드 완성.
+
+---
+
+
+### 🚀 핵심 성과
+- **사다리 타기(Ladder Game) 동기화 애니메이션**: 이제 사다리 선(Active Path)이 동물 캐릭터의 이동 속도와 완벽하게 맞춰서 한 칸씩 그려지도록 수정하여, 결과 스포일러를 방지하고 "두근두근" 감성을 극대화했습니다.
+- **캐릭터 반응 시스템 도입**: 
+    - **당첨(Winner)**: 캐릭터가 도착 지점에서 😭(우는 표정)으로 변하며 긴장감을 해소합니다.
+    - **통과(Looser)**: 캐릭터가 😆(웃는 표정)으로 변하며 안도감을 표현합니다.
+- **프리미엄 UI/UX 전면 개편**: 
+    - 전반적인 디자인에 **글래스모피즘(Glassmorphism)** 테마를 적용하여 현대적이고 세련된 비주얼을 완성했습니다.
+    - 룰렛 당첨 팝업을 게임 영역 내부에 고정하여 시각적 혼란을 제거했습니다.
+    - 빙고 레이아웃을 사이드바 형태로 재구성하여 정보 가독성을 높였습니다.
+
+### 🛠️ 작업 상세
+#### 1. 애니메이션 로직 개선 (`components/AsanMealGame.js`)
+- `LadderGame`: `visiblePath` 상태를 추가하여 캐릭터가 한 단계씩 이동할 때마다 SVG 경로가 따라가도록 구현.
+- `markerEmoji` 동적 변경: 게임 완료 시 결과(`isWinner`)에 따라 이모지를 즉시 변경.
+- **두근두근 딜레이**: 이동 간격을 300ms로 유지하여 캐릭터와 선이 함께 내려오는 감성 확보.
+
+#### 2. 스타일 시스템 고도화 (`components/AsanMealGame.module.css`)
+- `premiumLayout`: 사이드바와 메인 화면의 그리드 비율 최적화.
+- `glassPanel`: 블러 효과와 투명도를 활용한 세련된 카드 레이아웃.
+- **버튼 및 칩 디자인**: 인터랙티브한 호버 효과와 둥근 모서리 디자인 적용.
+
+---
+
+
+### 🚀 핵심 성과
+- **룰렛 당첨 팝업 위치 교정**: 게임판 외부가 아닌 실제 게임판 중앙에 정확히 위치하도록 로컬 오버레이 방식으로 수정했습니다.
+- **사다리 타기(Ladder Game) 감성 고도화**:
+    - **두근두근 애니메이션**: 캐릭터 이동 속도를 늦춰(250ms/step) 긴장감을 더했습니다.
+    - **가독성 최적화**: 사다리 폭을 좁히고 모바일에서도 슬라이드바 없이 한눈에 들어오도록 조정했습니다.
+    - **직관적 설정**: 복잡한 아이템 설정을 제거하고 '당첨/통과' 위주로 심플하게 구성했습니다.
+    - **리셋 기능**: 한 번의 클릭으로 사다리 구조를 즉시 재설정하는 버튼을 추가했습니다.
+- **빙고(Bingo) 레이아웃 재편**: 게임판과 설명서를 좌우 배치(모바일 시 상하)하여 인지 부하를 줄이고 시각적 균형을 맞췄습니다.
+
+### 🛠️ 작업 상세
+#### 1. 게임 엔진 수정 (`components/AsanMealGame.js`)
 - `LadderGame`: 
-    - `markerPos` ?낅뜲?댄듃 ?쒕젅??議곗젙 諛?`boardWidth` 怨꾩궛 濡쒖쭅 理쒖쟻??
-    - ?섎떒 寃곌낵媛?'?뱀꺼/?듦낵') 濡쒖쭅?쇰줈 媛꾩냼??
-- `BingoGame`: ?ㅻ챸???띿뒪?몄? 寃뚯엫 蹂대뱶瑜?遺꾨━??移대뱶 ?덉씠?꾩썐?쇰줈 ?ш뎄??
-- `AsanMealGame`: 寃곌낵 ?ㅻ쾭?덉씠(`resultOverlay`)瑜?媛?寃뚯엫 ?대? 而⑦뀒?대꼫???섏쐞 ?붿냼濡?諛곗튂?섏뿬 ?꾩튂 ?ㅻ쪟 ?닿껐.
+    - `markerPos` 업데이트 딜레이 조정 및 `boardWidth` 계산 로직 최적화.
+    - 하단 결과값('당첨/통과') 로직으로 간소화.
+- `BingoGame`: 설명서 텍스트와 게임 보드를 분리된 카드 레이아웃으로 재구성.
+- `AsanMealGame`: 결과 오버레이(`resultOverlay`)를 각 게임 내부 컨테이너의 하위 요소로 배치하여 위치 오류 해결.
 
-#### 2. ?ㅽ????쒖뒪??理쒖쟻??(`components/AsanMealGame.module.css`)
-- `position: absolute`? `inset: 0`???쒖슜???뺣????ㅻ쾭?덉씠 ?덉씠?꾩썐 援ы쁽.
-- `bingoLayout` 洹몃━???쒖뒪???꾩엯?쇰줈 源붾걫??諛곗튂 ?뺣낫.
+#### 2. 스타일 시스템 최적화 (`components/AsanMealGame.module.css`)
+- `position: absolute`와 `inset: 0`을 활용한 정밀한 오버레이 레이아웃 구현.
+- `bingoLayout` 그리드 시스템 도입으로 깔끔한 배치 확보.
 
 ---
 
 
-### ?? ?듭떖 ?깃낵
-- **?щ떎由??湲?Ladder Game) ?좊땲硫붿씠???꾨꼍 蹂듦뎄**: ?⑥닚??寃곌낵留?蹂댁뿬二쇰뜕 諛⑹떇?먯꽌 踰쀬뼱?? SVG 寃쎈줈瑜??곕씪 罹먮┃???숇Ъ ?대え吏)媛 ?ㅼ젣濡??대룞?섎뒗 ?좊땲硫붿씠?섏쓣 援ы쁽?덉뒿?덈떎.
-- **?ㅼ떆媛?寃쎈줈 怨꾩궛 濡쒖쭅 ?꾩엯**: ?ъ슜?먭? ?대쫫???대┃?섎㈃ ?대떦 ?꾩튂?먯꽌遺???щ떎由?以꾩쓣 ?怨??대젮媛??寃쎈줈瑜??ㅼ떆媛꾩쑝濡?怨꾩궛?섏뿬 ?쒓컖?뷀빀?덈떎.
-- **UI/UX 蹂듭썝 諛?理쒖쟻??*: ?뺤씠 ?쒓났???꾨Ц?곸씤 CSS 援ъ“瑜?諛뷀깢?쇰줈 ?щ떎由?蹂대뱶, ?몃줈以?V-Line), 媛濡쒖쨪(H-Line), 洹몃━怨??대룞 寃쎈줈(Active Path)???ㅽ??쇱쓣 ?꾨꼍?섍쾶 蹂듭썝?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **사다리 타기(Ladder Game) 애니메이션 완벽 복구**: 단순히 결과만 보여주던 방식에서 벗어나, SVG 경로를 따라 캐릭터(동물 이모지)가 실제로 이동하는 애니메이션을 구현했습니다.
+- **실시간 경로 계산 로직 도입**: 사용자가 이름을 클릭하면 해당 위치에서부터 사다리 줄을 타고 내려가는 경로를 실시간으로 계산하여 시각화합니다.
+- **UI/UX 복원 및 최적화**: 형이 제공한 전문적인 CSS 구조를 바탕으로 사다리 보드, 세로줄(V-Line), 가로줄(H-Line), 그리고 이동 경로(Active Path)의 스타일을 완벽하게 복원했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 而댄룷?뚰듃 怨좊룄??(`components/AsanMealGame.js`)
+### 🛠️ 작업 상세
+#### 1. 컴포넌트 고도화 (`components/AsanMealGame.js`)
 - `LadderGame`: 
-    - `calculatePath` ?⑥닔: ?щ떎由??뚭퀬由ъ쬁??援ы쁽?섏뿬 醫뚯슦 ?대룞 濡쒖쭅???뺥솗??泥섎━?⑸땲??
-    - `runLadder` 鍮꾨룞湲??⑥닔: `markerPos`瑜??쒖감?곸쑝濡??낅뜲?댄듃?섏뿬 罹먮┃?곌? ?щ떎由щ? ?怨??대젮媛???쒓컖???④낵瑜??쒓났?⑸땲??
-    - SVG Integration: `ladderSvgBackground`? `ladderSvgOverlay`瑜??듯빐 ?뺤쟻 以꾧낵 ?숈쟻 寃쎈줈瑜?遺꾨━ 愿由ы빀?덈떎.
-- **?숇Ъ 罹먮┃???쒕뜡 諛곗젙**: 媛?李몄뿬?먮쭏???ㅻⅨ ?숇Ъ ?대え吏瑜?諛곗젙?섏뿬 ?щ? ?붿냼瑜??뷀뻽?듬땲??
+    - `calculatePath` 함수: 사다리 알고리즘을 구현하여 좌우 이동 로직을 정확히 처리합니다.
+    - `runLadder` 비동기 함수: `markerPos`를 순차적으로 업데이트하여 캐릭터가 사다리를 타고 내려가는 시각적 효과를 제공합니다.
+    - SVG Integration: `ladderSvgBackground`와 `ladderSvgOverlay`를 통해 정적 줄과 동적 경로를 분리 관리합니다.
+- **동물 캐릭터 랜덤 배정**: 각 참여자마다 다른 동물 이모지를 배정하여 재미 요소를 더했습니다.
 
-#### 2. ?ㅽ????쒗듃 ?꾨꼍 留ㅼ묶 (`components/AsanMealGame.module.css`)
-- ?뺤씠 ?꾨떖??CSS 肄붾뱶瑜?洹몃?濡?諛섏쁺?섏뿬 ?щ뵒由?蹂대뱶???믪씠(450px), ?몃뱶 ?ㅽ??? 諛섏쓳???덉씠?꾩썐??理쒖쟻?뷀뻽?듬땲??
-
----
-
-
-### ?? ?듭떖 ?깃낵
-- **AsanMealGame 而댄룷?뚰듃 ?꾨㈃ 蹂듦뎄**: ?ㅻⅨ AI ?대줈 ?명빐 ?됰쭩???섏뿀??寃뚯엫 濡쒖쭅怨?援ъ“瑜??뺤삁?뷀븯??蹂듦뎄?덉뒿?덈떎.
-- **寃뚯엫 肄섑뀗痢?媛뺥솕**:
-    - **猷곕젢(Roulette)**: 湲곗〈 濡쒖쭅??理쒖쟻?뷀븯怨??좊땲硫붿씠??諛??뱀꺼 紐⑤떖??吏곴??곸쑝濡?媛쒖꽑?덉뒿?덈떎.
-    - **?щ떎由?Ladder)**: ?⑥닚 ?뚮젅?댁뒪??붿???遺遺꾩쓣 ?ㅼ젣 臾댁옉??寃곌낵 諛곗젙 濡쒖쭅???묐룞?섎룄濡?援ы쁽?덉뒿?덈떎.
-    - **鍮숆퀬(Bingo)**: ?좎궗 肄붾뱶(Carrier Codes)瑜??쒖슜???ㅼ떆媛?踰덊샇 異붿꺼 諛?鍮숆퀬 泥댄겕 ?쒖뒪?쒖쓣 ?꾩꽦?덉뒿?덈떎.
-- **?꾨━誘몄뾼 ?붿옄???곸슜**: `AsanMealGame.module.css`瑜??꾨㈃ 媛쒗렪?섏뿬 湲?섏뒪紐⑦뵾利?Glassmorphism), 遺?쒕윭??洹몃씪?곗씠?? 諛섏쓳??洹몃━???쒖뒪?쒖쓣 ?곸슜?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 而댄룷?뚰듃 濡쒖쭅 (`components/AsanMealGame.js`)
-- `LadderGame`: 臾댁옉???뱀꺼/湲덉븸 諛곗젙 湲곕뒫??異붽??섏뿬 ?ㅼ젣 寃뚯엫??媛?ν븯?꾨줉 援ы쁽.
-- `BingoGame`: 異붿꺼 濡쒖쭅 理쒖쟻??諛?鍮숆퀬 ?ъ꽦 ???덉뒪?좊━ 湲곕줉 ?곕룞.
-- `AsanMealGame`: Canvas ?쒕줈??理쒖쟻??諛?猷곕젢 ?ㅽ? ?ㅼ븻留ㅻ꼫(Stop 湲곕뒫) 媛쒖꽑.
-- **?덉뒪?좊━ ?쒖뒪??*: 寃뚯엫蹂??뱀꺼 湲곕줉???ъ씠?쒕컮???ㅼ떆媛꾩쑝濡??⑤룄濡?蹂닿컯.
-
-#### 2. ?ㅽ???諛?UI (`components/AsanMealGame.module.css`)
-- ?곗뒪?ы깙/紐⑤컮??酉곗뿉 理쒖쟻?붾맂 ?낅┰?곸씤 ?덉씠?꾩썐 諛??고듃 ?ш린 議곗젙.
-- ?뱀꺼 ???붾젮??紐⑤떖 ?좊땲硫붿씠??`framer-motion`) 異붽?.
-- 李몄뿬??愿由?異붽?/??젣) UI瑜??몃젴??移?Chip) ?붿옄?몄쑝濡?蹂寃?
-
-#### 3. ?섏씠吏 ?곕룞 (`app/employees/branches/[branch]/page.js`)
-- ?뺤씠 ?꾨떖??理쒖떊 肄붾뱶 援ъ“瑜?洹몃?濡?諛섏쁺?섏뿬 吏?먮퀎 怨듦컙 ?덉씠?꾩썐 ?쇨????뺣낫.
+#### 2. 스타일 시트 완벽 매칭 (`components/AsanMealGame.module.css`)
+- 형이 전달한 CSS 코드를 그대로 반영하여 사디리 보드의 높이(450px), 노드 스타일, 반응형 레이아웃을 최적화했습니다.
 
 ---
 
 
-## [2026-01-24] - ?뚯뀥 濡쒓렇???꾨줈???곕룞 ?붾쾭源?諛??뺤콉 媛?대뱶
+### 🚀 핵심 성과
+- **AsanMealGame 컴포넌트 전면 복구**: 다른 AI 툴로 인해 엉망이 되었던 게임 로직과 구조를 정예화하여 복구했습니다.
+- **게임 콘텐츠 강화**:
+    - **룰렛(Roulette)**: 기존 로직을 최적화하고 애니메이션 및 당첨 모달을 직관적으로 개선했습니다.
+    - **사다리(Ladder)**: 단순 플레이스홀더였던 부분을 실제 무작위 결과 배정 로직이 작동하도록 구현했습니다.
+    - **빙고(Bingo)**: 선사 코드(Carrier Codes)를 활용한 실시간 번호 추첨 및 빙고 체크 시스템을 완성했습니다.
+- **프리미엄 디자인 적용**: `AsanMealGame.module.css`를 전면 개편하여 글래스모피즘(Glassmorphism), 부드러운 그라데이션, 반응형 그리드 시스템을 적용했습니다.
 
-### ?? ?듭떖 ?깃낵
-- **?붾쾭源?濡쒓렇 媛뺥솕**: 移댁뭅??諛??ㅼ씠踰?濡쒓렇?????꾨떖?섎뒗 `user_metadata`瑜??쒕쾭 濡쒓렇?먯꽌 ?뺤씤?????덈룄濡?`route.js`??濡쒓퉭 濡쒖쭅??異붽??덉뒿?덈떎.
-- **?숈쓽 ??ぉ ?뺤콉 媛?대뱶**: 移댁뭅??媛쒕컻???쇳꽣???숈쓽 ??ぉ??'?좏깮'?먯꽌 '?꾩닔'濡?蹂寃쏀븯?꾨줉 ?덈궡?섏뿬 ?곗씠???꾨씫 媛?μ꽦???먯쿇 李⑤떒?덉뒿?덈떎.
+### 🛠️ 작업 상세
+#### 1. 컴포넌트 로직 (`components/AsanMealGame.js`)
+- `LadderGame`: 무작위 당첨/금액 배정 기능을 추가하여 실제 게임이 가능하도록 구현.
+- `BingoGame`: 추첨 로직 최적화 및 빙고 달성 시 히스토리 기록 연동.
+- `AsanMealGame`: Canvas 드로잉 최적화 및 룰렛 스핀 톤앤매너(Stop 기능) 개선.
+- **히스토리 시스템**: 게임별 당첨 기록이 사이드바에 실시간으로 남도록 보강.
 
----
+#### 2. 스타일 및 UI (`components/AsanMealGame.module.css`)
+- 데스크탑/모바일 뷰에 최적화된 독립적인 레이아웃 및 폰트 크기 조정.
+- 당첨 시 화려한 모달 애니메이션(`framer-motion`) 추가.
+- 참여자 관리(추가/삭제) UI를 세련된 칩(Chip) 디자인으로 변경.
 
-## [2026-01-24] - 移댁뭅???꾨줈???곕룞 ?댁뒋 吏묒쨷 ?닿껐
-
-### ?? ?듭떖 ?깃낵
-- **?뚯뀥 ?꾨줈??異붿텧 濡쒖쭅 ?꾨㈃ 媛쒗렪**: 移댁뭅?ㅽ넚 濡쒓렇?????대쫫怨??꾨줈???ъ쭊???꾨씫?섎뒗 臾몄젣瑜??닿껐?섍린 ?꾪빐 `user_metadata` ?댁쓽 紐⑤뱺 媛?μ꽦 ?덈뒗 ?ㅺ컪(`nickname`, `profile_image`, `preferred_username` ?????꾩닔 議곗궗?섏뿬 留ㅽ븨?섎룄濡?`route.js`瑜??섏젙?덉뒿?덈떎.
-- **?덉젙??媛뺥솕**: 硫뷀??곗씠???묎렐 ???듭뀛??泥댁씠?앹쓣 ?곸슜?섏뿬 ?곗씠???꾨씫 ?쒖뿉???고????먮윭媛 諛쒖깮?섏? ?딅룄濡?諛⑹뼱 肄붾뱶瑜??묒꽦?덉뒿?덈떎.
-
----
-
-## [2026-01-24] - ?쒖뒪???덉젙??諛?臾댄븳 猷⑦봽 ?몃윭釉붿뒋??(TDD 湲곕컲)
-
-### ?? ?듭떖 ?깃낵
-- **紐⑤컮??由щ떎?대젆??猷⑦봽 ?닿껐**: 諛⑸Ц??沅뚰븳?쇰줈 蹂댄샇???섏씠吏 ?묎렐 ??`/login`???꾨땶 `/employees`濡?由щ떎?대젆?명븯??臾댄븳 諛섎났 ?꾩긽???섏젙?덉뒿?덈떎.
-- **?꾨줈??留ㅽ븨 濡쒖쭅 ?꾩닔 ?숆린??*: ?ㅼ씠踰?移댁뭅??援ш????ъ슜???뺣낫 留ㅽ븨 濡쒖쭅???숈씪?섍쾶 媛뺥솕?섏뿬 ?꾨줈???뺣낫 ?곕룞 臾몄젣瑜??닿껐?덉뒿?덈떎.
-- **Next.js 14 ?명솚???뺣낫**: Client Component?먯꽌 `useParams`瑜??ъ슜?섏뿬 吏???섏씠吏 濡쒕뵫 ?ㅻ쪟瑜??닿껐?덉뒿?덈떎.
-- **吏??紐낆묶 ?듭씪**: 紐⑤뱺 UI?먯꽌 '?꾩궛吏???쇰줈 紐낆묶???듭씪?덉뒿?덈떎.
-
----
-
-## [2026-01-24] - ?쒖뒪???덉젙??諛?臾댄븳 猷⑦봽 ?몃윭釉붿뒋??
-### ?? ?듭떖 ?깃낵
-- **紐⑤컮??由щ떎?대젆??猷⑦봽 ?닿껐**: 諛⑸Ц??沅뚰븳?쇰줈 蹂댄샇???섏씠吏 ?묎렐 ??`/login`???꾨땶 `/employees`濡?由щ떎?대젆?명븯?? ?대? ?몄쬆???ъ슜?먭? 濡쒓렇???섏씠吏? 蹂댄샇 ?섏씠吏 ?ъ씠瑜?臾댄븳 諛섎났?섎뒗 ?꾩긽???섏젙?덉뒿?덈떎.
-- **?꾨줈??留ㅽ븨 濡쒖쭅 ?꾩닔 ?숆린??*: ?ㅼ씠踰?OIDC? ?쒖? OAuth 肄쒕갚???ъ슜???뺣낫 留ㅽ븨 濡쒖쭅???숈씪?섍쾶 媛뺥솕?섏뿬 ?뚯뀥 ?쒕퉬??醫낅쪟??愿怨꾩뾾???대쫫怨??ъ쭊???뺤긽 ?곕룞?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-- **吏??紐낆묶 ?듭씪**: '?꾩궛吏??(CY)' ?쒓린瑜?紐⑤뱺 而댄룷?뚰듃? ?곗씠???뚯씪?먯꽌 '?꾩궛吏???쇰줈 ?듭씪?덉뒿?덈떎.
+#### 3. 페이지 연동 (`app/employees/branches/[branch]/page.js`)
+- 형이 전달한 최신 코드 구조를 그대로 반영하여 지점별 공간 레이아웃 일관성 확보.
 
 ---
 
-## [2026-01-24] - 鍮뚮뱶 ?덉젙??諛??뚯뀥 ?꾨줈??留ㅽ븨 理쒖쟻??
-### ?? ?듭떖 ?깃낵
-- **Next.js 踰꾩쟾 ?명솚???뺣낫**: Next.js 14 ?섍꼍??留욎떠 `BranchPage`??`params` ?묎렐 濡쒖쭅???덉젙?뷀븯???섏씠吏 濡쒕뵫 ?ㅻ쪟瑜??닿껐?덉뒿?덈떎.
-- **移댁뭅???ㅼ씠踰??꾨줈??留ㅽ븨 媛뺥솕**: ?뚯뀥 ?쒓났?먮퀎濡??곸씠??硫뷀??곗씠???ㅺ컪(`nickname`, `profile_image`, `picture` ????紐⑤몢 ??묓븯?꾨줉 `route.js`瑜?蹂닿컯?덉뒿?덈떎.
-- **鍮뚮뱶 ?먮윭 吏꾨떒**: `error.txt` 遺꾩꽍???듯빐 `services`, `dashboard`, `network` ?섏씠吏??而댄룷?뚰듃 寃쎈줈 李몄“ ?ㅻ쪟瑜??뺤씤?섍퀬 媛?대뱶瑜??섎┰?덉뒿?덈떎.
+
+## [2026-01-24] - 소셜 로그인 프로필 연동 디버깅 및 정책 가이드
+
+### 🚀 핵심 성과
+- **디버깅 로그 강화**: 카카오 및 네이버 로그인 시 전달되는 `user_metadata`를 서버 로그에서 확인할 수 있도록 `route.js`에 로깅 로직을 추가했습니다.
+- **동의 항목 정책 가이드**: 카카오 개발자 센터의 동의 항목을 '선택'에서 '필수'로 변경하도록 안내하여 데이터 누락 가능성을 원천 차단했습니다.
 
 ---
 
-## [2026-01-24] - ?쒖뒪???덉젙??諛?蹂댁븞 ?뺤콉 ?뺣? 援먯젙
+## [2026-01-24] - 카카오 프로필 연동 이슈 집중 해결
 
-### ?? ?듭떖 ?깃낵
-- **紐⑤컮??臾댄븳 猷⑦봽 ?닿껐**: 誘몃뱾?⑥뼱???몄뀡 泥댄겕 諛?由щ떎?대젆??濡쒖쭅??理쒖쟻?뷀븯??紐⑤컮???섍꼍?먯꽌??諛섎났 濡쒓렇???꾩긽???쒓굅?덉뒿?덈떎.
-- **諛⑸Ц??蹂댁븞 媛뺥솕**: 'visitor' 沅뚰븳 ?ъ슜?먭? ?꾩쭅???꾩슜 寃뚯떆??諛??먮즺?ㅼ뿉 ?묎렐?????녿룄濡?誘몃뱾?⑥뼱 ?덈꺼?먯꽌 李⑤떒 濡쒖쭅??蹂듦뎄?덉뒿?덈떎.
-- **移댁뭅???꾨줈???곕룞 ?꾧껐**: 移댁뭅??硫뷀??곗씠?곗쓽 ?ㅼ뼇???ㅺ컪(`nickname`, `picture` ????紐⑤몢 ??묓븯???꾨줈???뺣낫 ?꾨씫 臾몄젣瑜??닿껐?덉뒿?덈떎.
-- **紐낆묶 諛??ㅻ쪟 ?섏젙**: '?꾩궛吏?? 紐낆묶???듭씪?섍퀬, ?대씪?댁뼵??而댄룷?뚰듃??`params` ?묎렐 ?ㅻ쪟瑜??섏젙?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **소셜 프로필 추출 로직 전면 개편**: 카카오톡 로그인 시 이름과 프로필 사진이 누락되는 문제를 해결하기 위해 `user_metadata` 내의 모든 가능성 있는 키값(`nickname`, `profile_image`, `preferred_username` 등)을 전수 조사하여 매핑하도록 `route.js`를 수정했습니다.
+- **안정성 강화**: 메타데이터 접근 시 옵셔널 체이닝을 적용하여 데이터 누락 시에도 런타임 에러가 발생하지 않도록 방어 코드를 작성했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 蹂댁븞 諛??몄쬆
-- `middleware.js`: `/employees` ?섏쐞 寃쎈줈?????'visitor' ?묎렐 李⑤떒 濡쒖쭅 異붽?.
-- `app/auth/callback/route.js`: 移댁뭅???ъ슜???뺣낫 留ㅽ븨 濡쒖쭅 媛뺥솕.
-#### 2. UI/UX 諛?踰꾧렇 ?섏젙
-- `app/employees/branches/[branch]/page.js`: `React.use(params)` ?곸슜?쇰줈 ?섏씠吏 濡쒕뵫 ?ㅻ쪟 ?섏젙 諛?吏?먮챸移?援먯젙.
-- `constants/locations.js` & `Header.js`: '?꾩궛吏??(CY)'??'?꾩궛吏???쇰줈 紐낆묶 ?듭씪.
-- **釉뚮씪?곗? ?꾩씠肄?Favicon) 理쒖쟻??*: 紐⑤뱺 ?섍꼍(Shortcut, Apple Icon)?먯꽌 濡쒓퀬媛 ?뺤긽 ?쒖떆?섎룄濡??ㅼ젙??蹂닿컯?덉뒿?덈떎.
-- **?뚯뀥 濡쒓렇???뺣낫 ?곕룞 媛뺥솕**: 移댁뭅??濡쒓렇?????ъ슜?먯쓽 ?됰꽕?꾧낵 ?꾨줈???ъ쭊???꾨씫 ?놁씠 `profiles` ?뚯씠釉붿뿉 ??λ릺?꾨줉 濡쒖쭅??媛쒖꽑?덉뒿?덈떎.
-- **?꾩쭅???꾩슜 硫붾돱 ?묎렐??媛쒖꽑**: 諛⑸Ц媛앸룄 ?명듃?쇰꽬??硫붾돱 援ъ꽦???뺤씤?????덈룄濡?蹂댁븞 ?뺤콉???꾪솕?섎릺, ?ㅼ젣 ?곗씠???묎렐? ?섏씠吏 ?덈꺼?먯꽌 ?쒖뼱?섎룄濡?蹂寃쏀뻽?듬땲??
-- **吏???댁쁺 由ъ뒪???뺤삁??*: ?붿껌???곕씪 ?쒖슱蹂몄궗, ?꾩궛, 以묐?, ?뱀쭊, ?덉궛 5媛??듭떖 吏?먯쑝濡?由ъ뒪?몃? ?뺣━?섍퀬 ?꾩궛吏???섏씠吏???앸떒寃뚯엫 ?뱀뀡??異붽??덉뒿?덈떎.
+---
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. UI/UX 媛쒖꽑
-- `app/layout.js`: `shortcut` 諛?`apple` ?꾩씠肄?寃쎈줈 異붽? 諛?硫뷀??곗씠??蹂닿컯.
+## [2026-01-24] - 시스템 안정화 및 무한 루프 트러블슈팅 (TDD 기반)
+
+### 🚀 핵심 성과
+- **모바일 리다이렉트 루프 해결**: 방문자 권한으로 보호된 페이지 접근 시 `/login`이 아닌 `/employees`로 리다이렉트하여 무한 반복 현상을 수정했습니다.
+- **프로필 매핑 로직 전수 동기화**: 네이버/카카오/구글의 사용자 정보 매핑 로직을 동일하게 강화하여 프로필 정보 연동 문제를 해결했습니다.
+- **Next.js 14 호환성 확보**: Client Component에서 `useParams`를 사용하여 지점 페이지 로딩 오류를 해결했습니다.
+- **지점 명칭 통일**: 모든 UI에서 '아산지점'으로 명칭을 통일했습니다.
+
+---
+
+## [2026-01-24] - 시스템 안정화 및 무한 루프 트러블슈팅
+
+### 🚀 핵심 성과
+- **모바일 리다이렉트 루프 해결**: 방문자 권한으로 보호된 페이지 접근 시 `/login`이 아닌 `/employees`로 리다이렉트하여, 이미 인증된 사용자가 로그인 페이지와 보호 페이지 사이를 무한 반복하는 현상을 수정했습니다.
+- **프로필 매핑 로직 전수 동기화**: 네이버 OIDC와 표준 OAuth 콜백의 사용자 정보 매핑 로직을 동일하게 강화하여 소셜 서비스 종류에 관계없이 이름과 사진이 정상 연동되도록 개선했습니다.
+- **지점 명칭 통일**: '아산지점 (CY)' 표기를 모든 컴포넌트와 데이터 파일에서 '아산지점'으로 통일했습니다.
+
+---
+
+## [2026-01-24] - 빌드 안정화 및 소셜 프로필 매핑 최적화
+
+### 🚀 핵심 성과
+- **Next.js 버전 호환성 확보**: Next.js 14 환경에 맞춰 `BranchPage`의 `params` 접근 로직을 안정화하여 페이지 로딩 오류를 해결했습니다.
+- **카카오/네이버 프로필 매핑 강화**: 소셜 제공자별로 상이한 메타데이터 키값(`nickname`, `profile_image`, `picture` 등)을 모두 대응하도록 `route.js`를 보강했습니다.
+- **빌드 에러 진단**: `error.txt` 분석을 통해 `services`, `dashboard`, `network` 페이지의 컴포넌트 경로 참조 오류를 확인하고 가이드를 수립했습니다.
+
+---
+
+## [2026-01-24] - 시스템 안정화 및 보안 정책 정밀 교정
+
+### 🚀 핵심 성과
+- **모바일 무한 루프 해결**: 미들웨어의 세션 체크 및 리다이렉트 로직을 최적화하여 모바일 환경에서의 반복 로그인 현상을 제거했습니다.
+- **방문자 보안 강화**: 'visitor' 권한 사용자가 임직원 전용 게시판 및 자료실에 접근할 수 없도록 미들웨어 레벨에서 차단 로직을 복구했습니다.
+- **카카오 프로필 연동 완결**: 카카오 메타데이터의 다양한 키값(`nickname`, `picture` 등)을 모두 대응하여 프로필 정보 누락 문제를 해결했습니다.
+- **명칭 및 오류 수정**: '아산지점' 명칭을 통일하고, 클라이언트 컴포넌트의 `params` 접근 오류를 수정했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 보안 및 인증
+- `middleware.js`: `/employees` 하위 경로에 대한 'visitor' 접근 차단 로직 추가.
+- `app/auth/callback/route.js`: 카카오 사용자 정보 매핑 로직 강화.
+#### 2. UI/UX 및 버그 수정
+- `app/employees/branches/[branch]/page.js`: `React.use(params)` 적용으로 페이지 로딩 오류 수정 및 지점명칭 교정.
+- `constants/locations.js` & `Header.js`: '아산지점 (CY)'을 '아산지점'으로 명칭 통일.
+- **브라우저 아이콘(Favicon) 최적화**: 모든 환경(Shortcut, Apple Icon)에서 로고가 정상 표시되도록 설정을 보강했습니다.
+- **소셜 로그인 정보 연동 강화**: 카카오 로그인 시 사용자의 닉네임과 프로필 사진이 누락 없이 `profiles` 테이블에 저장되도록 로직을 개선했습니다.
+- **임직원 전용 메뉴 접근성 개선**: 방문객도 인트라넷의 메뉴 구성을 확인할 수 있도록 보안 정책을 완화하되, 실제 데이터 접근은 페이지 레벨에서 제어하도록 변경했습니다.
+- **지점 운영 리스트 정예화**: 요청에 따라 서울본사, 아산, 중부, 당진, 예산 5개 핵심 지점으로 리스트를 정리하고 아산지점 페이지에 식단게임 섹션을 추가했습니다.
+
+### 🛠️ 작업 상세
+#### 1. UI/UX 개선
+- `app/layout.js`: `shortcut` 및 `apple` 아이콘 경로 추가 및 메타데이터 보강.
 - `components/Header.js`: 
-    - 諛⑸Ц??`visitor`)?먭쾶??'?꾩쭅?먯쟾?? 硫붾돱媛 蹂댁씠?꾨줉 ?꾪꽣留?濡쒖쭅 ?쒓굅 諛?紐⑤컮??硫붾돱 蹂듦뎄.
-    - 吏???쒕∼?ㅼ슫 硫붾돱瑜?5媛??듭떖 吏???쒖슱, ?꾩궛, 以묐?, ?뱀쭊, ?덉궛)?쇰줈 ?뺣━.
-- `app/employees/page.js`: ?꾩쭅???ы꽭 硫붿씤 ?섏씠吏??吏??由ъ뒪?몃? 5媛??듭떖 吏?먯쑝濡??뺤삁??
-- `app/employees/branches/[branch]/page.js`: ?꾩궛吏??`asan`) ?묎렐 ???섎떒??'?앸떒寃뚯엫' ?뱀뀡 援ъ꽦.
- - `app/employees/(intranet)/archive/loading.js` & `reports/loading.js`: ?먮즺??諛?蹂닿퀬??濡쒕뵫 ???ъ슜??寃쏀뿕 媛쒖꽑???꾪븳 濡쒕뵫 UI 異붽?.
- - **鍮뚮뱶 ?ㅻ쪟 ?섏젙**: `loading.js`?먯꽌 `styled-jsx` ?ъ슜?쇰줈 ?명븳 ?쒕쾭 而댄룷?뚰듃 ?쒖빟 臾몄젣瑜?`'use client'` 吏?쒖뼱 異붽?濡??닿껐?덉뒿?덈떎.
+    - 방문자(`visitor`)에게도 '임직원전용' 메뉴가 보이도록 필터링 로직 제거 및 모바일 메뉴 복구.
+    - 지점 드롭다운 메뉴를 5개 핵심 지점(서울, 아산, 중부, 당진, 예산)으로 정리.
+- `app/employees/page.js`: 임직원 포털 메인 페이지의 지점 리스트를 5개 핵심 지점으로 정예화.
+- `app/employees/branches/[branch]/page.js`: 아산지점(`asan`) 접근 시 하단에 '식단게임' 섹션 구성.
+ - `app/employees/(intranet)/archive/loading.js` & `reports/loading.js`: 자료실 및 보고서 로딩 시 사용자 경험 개선을 위한 로딩 UI 추가.
+ - **빌드 오류 수정**: `loading.js`에서 `styled-jsx` 사용으로 인한 서버 컴포넌트 제약 문제를 `'use client'` 지시어 추가로 해결했습니다.
 
-#### 2. ?몄쬆 諛?蹂댁븞
-- `app/auth/callback/route.js`: 移댁뭅??硫뷀??곗씠??`nickName`, `profile_image`) 留ㅽ븨 濡쒖쭅 異붽?濡??꾨줈???대?吏 ?곕룞 ?닿껐.
-- `middleware.js`: `/employees` ?섏쐞 寃쎈줈(留덉씠?섏씠吏 ?쒖쇅)?????諛⑸Ц???묎렐 ?덉슜?쇰줈 硫붾돱 媛?쒖꽦 ?뺣낫.
+#### 2. 인증 및 보안
+- `app/auth/callback/route.js`: 카카오 메타데이터(`nickName`, `profile_image`) 매핑 로직 추가로 프로필 이미지 연동 해결.
+- `middleware.js`: `/employees` 하위 경로(마이페이지 제외)에 대한 방문자 접근 허용으로 메뉴 가시성 확보.
 
-#### 3. ?곗씠??諛??깅뒫
-- `constants/locations.js`: ?ㅽ듃?뚰겕 吏??諛?由ъ뒪?몄뿉??遺덊븘?뷀븳 吏?먯쓣 ?쒓굅?섍퀬 5媛??듭떖 嫄곗젏 ?꾩＜濡??ы렪.
-- 濡쒕뵫 ?띾룄 媛쒖꽑???꾪븳 ?ㅼ펷?덊넠 UI ?꾩엯 媛?대뱶 ?섎┰.
-
----
-
-## [2026-01-24] - 蹂댁븞 媛뺥솕, 踰꾧렇 ?섏젙 諛?湲곕뒫 媛쒖꽑
-
-### ?? ?듭떖 ?깃낵
-- **移섎챸??蹂댁븞 寃고븿 ?닿껐**: '諛⑸Ц媛?visitor)' 沅뚰븳???ъ슜?먭? ?꾩쭅???꾩슜 ?섏씠吏???묎렐?????덉뿀???ш컖??蹂댁븞 臾몄젣瑜?`middleware.js`瑜??섏젙?섏뿬 ?꾨꼍?섍쾶 ?닿껐?덉뒿?덈떎.
-- **?ъ슜???뺣낫 ?곕룞 ?ㅻ쪟 ?섏젙**: ?좉퇋 媛????`user_roles` ?뺣낫媛 ?앹꽦?섏? ?딆븘 '???뺣낫 ?섏젙'???ㅽ뙣?섎뜕 踰꾧렇瑜??섏젙?덉뒿?덈떎. ?먰븳, `profiles` ?뚯씠釉붿쓽 ?곗씠?곌? ?щ컮瑜닿쾶 梨꾩썙吏吏 ?딆븘 ?꾨줈???ъ쭊怨??대쫫???꾨씫?섎뜕 臾몄젣瑜??곗씠?곕쿋?댁뒪 ?⑥닔(RPC)瑜??꾩엯?섏뿬 洹쇰낯?곸쑝濡??닿껐?덉뒿?덈떎.
-- **湲곕뒫 媛쒖꽑**: ?덈줈??沅뚰븳 蹂寃??뺤콉???곸슜?섍퀬, ?ㅻ뜑??'?꾩쭅???? 硫붾돱瑜?異붽??섏뿬 ?ъ슜?깆쓣 媛쒖꽑?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 蹂댁븞 媛뺥솕
-- **?쒕쾭?ъ씠???묎렐 ?쒖뼱 (`middleware.js`)**: 誘몃뱾?⑥뼱?먯꽌 ?ъ슜?먯쓽 `role`??吏곸젒 議고쉶?섏뿬, 'visitor'??寃쎌슦 `/employees` ?먮뒗 `/admin` 寃쎈줈 ?묎렐 ??濡쒓렇???섏씠吏濡?由щ뵒?됱뀡?섎룄濡?濡쒖쭅??異붽??덉뒿?덈떎. ?먰븳 'admin'???꾨땶 ?ъ슜?먯쓽 `/admin` 寃쎈줈 ?묎렐??李⑤떒?덉뒿?덈떎.
-
-#### 2. ?듭떖 踰꾧렇 ?섏젙
-- **?몄쬆 肄쒕갚 濡쒖쭅 ?섏젙 (`app/auth/callback/route.js`)**:
-    - `profiles` ?뚯씠釉?`UPSERT` 濡쒖쭅?? `id`媛 `NULL`濡??낅젰?섎뜕 ?ㅻ쪟瑜??닿껐?섍린 ?꾪빐 ?덉젙?곸씤 ?곗씠?곕쿋?댁뒪 ?⑥닔(`upsert_profile`) ?몄텧濡?蹂寃쏀뻽?듬땲?? ?대줈???좉퇋 ?ъ슜?먯쓽 ?대쫫怨??꾨줈???ъ쭊???뺤긽?곸쑝濡???λ맗?덈떎.
-    - 濡쒓렇???깃났 ?? `user_roles` ?뚯씠釉붿뿉 `id`? `role: 'visitor'` 湲곕낯媛믪쓣 `UPSERT` ?섎룄濡??섏젙?섏뿬 ?좉퇋 ?ъ슜?먯쓽 沅뚰븳 ?뺣낫 ?꾨씫 臾몄젣瑜??닿껐?덉뒿?덈떎.
-- **?곗씠?곕쿋?댁뒪 ?⑥닔 異붽?**: `upsert_profile` RPC ?⑥닔瑜??앹꽦?섏뿬 `profiles` ?뚯씠釉붿쓽 `INSERT`? `UPDATE` 濡쒖쭅???먯옄?곸쑝濡??덉쟾?섍쾶 泥섎━?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-
-#### 3. 湲곕뒫 媛쒖꽑 諛??뺤콉 蹂寃?- **沅뚰븳 蹂寃??뺤콉 援ы쁽**:
-    - `api/users/me/route.js` (諛깆뿏??: 'visitor'??沅뚰븳 蹂寃쎌쓣 ?쒕룄?????녿룄濡?留됯퀬, 洹???吏곸썝? 愿由ъ옄 ?뱀씤 ?놁씠 ?뚯냽 吏??role)??利됱떆 蹂寃쏀븷 ???덈룄濡?`PATCH` 濡쒖쭅???섏젙?덉뒿?덈떎.
-    - `app/employees/mypage/page.js` (?꾨줎?몄뿏??: 'visitor'?먭쾶??沅뚰븳 蹂寃??쒕∼?ㅼ슫??鍮꾪솢?깊솕?섍퀬 ?덈궡 硫붿떆吏瑜??쒖떆?섎룄濡?UI瑜??섏젙?덉뒿?덈떎.
-- **'?꾩쭅???? 硫붾돱 異붽? (`components/Header.js`)**: `navLinks` ?ㅼ젙??'?꾩쭅????(`/employees`)?쇰줈 ?곌껐?섎뒗 留곹겕瑜?異붽??섏뿬 ?대퉬寃뚯씠???몄쓽?깆쓣 ?믪??듬땲??
+#### 3. 데이터 및 성능
+- `constants/locations.js`: 네트워크 지도 및 리스트에서 불필요한 지점을 제거하고 5개 핵심 거점 위주로 재편.
+- 로딩 속도 개선을 위한 스켈레톤 UI 도입 가이드 수립.
 
 ---
 
-## [2026-01-24] - 怨꾩젙 ?곕룞 ?쒖뒪??援ъ텞 諛?UI/UX 媛쒖꽑
+## [2026-01-24] - 보안 강화, 버그 수정 및 기능 개선
 
-### ?? ?듭떖 ?깃낵
-- **怨꾩젙 ?곕룞 ?쒖뒪??援ъ텞**: ?щ윭 ?뚯뀥 怨꾩젙(援ш?, 移댁뭅???????ъ슜?섎뜑?쇰룄, ?숈씪 ?대찓??湲곕컲?쇰줈 ?섎굹???ъ슜?먮줈 ?몄떇?섎뒗 '怨꾩젙 ?곕룞' ?쒖뒪?쒖쓣 ?꾩꽦?덉뒿?덈떎. ?대? ?꾪빐 `public.profiles` ?뚯씠釉붿쓣 ?좎꽕?섍퀬, ?몄쬆 諛?二쇱슂 而댄룷?뚰듃???곗씠??濡쒖쭅???꾨㈃ 由ы뙥?좊쭅?덉뒿?덈떎.
-- **?꾩뿭 ?꾨줈????`useUserProfile`) 媛쒕컻**: ?듯빀???ъ슜???뺣낫(?꾨줈?? ??븷 ??瑜????꾩껜?먯꽌 ?쇨??섍쾶 媛?몄삱 ???덈뒗 `useUserProfile` ?낆쓣 媛쒕컻?섏뿬 肄붾뱶 以묐났???쒓굅?섍퀬 ?좎?蹂댁닔?깆쓣 ?μ긽?쒖섟?듬땲??
-- **UI/UX 媛쒖꽑**: 濡쒓렇???섏씠吏??踰꾪듉 ?뺣젹???섏젙?섍퀬, ?ㅻ뜑???뚯뀥 ?꾨줈???대?吏媛 ?쒖떆?섎룄濡??섏뿬 ?ъ슜 ?몄쓽?깃낵 ?쒓컖???꾩꽦?꾨? ?믪??듬땲??
+### 🚀 핵심 성과
+- **치명적 보안 결함 해결**: '방문객(visitor)' 권한의 사용자가 임직원 전용 페이지에 접근할 수 있었던 심각한 보안 문제를 `middleware.js`를 수정하여 완벽하게 해결했습니다.
+- **사용자 정보 연동 오류 수정**: 신규 가입 시 `user_roles` 정보가 생성되지 않아 '내 정보 수정'이 실패하던 버그를 수정했습니다. 또한, `profiles` 테이블의 데이터가 올바르게 채워지지 않아 프로필 사진과 이름이 누락되던 문제를 데이터베이스 함수(RPC)를 도입하여 근본적으로 해결했습니다.
+- **기능 개선**: 새로운 권한 변경 정책을 적용하고, 헤더에 '임직원 홈' 메뉴를 추가하여 사용성을 개선했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 怨꾩젙 ?곕룞 ?꾪궎?띿쿂 ?ㅺ퀎 諛?援ы쁽
-- **DB ?ㅽ궎留?蹂寃?(`supabase_account_linking.sql`)**: `email`??怨좎쑀 ?ㅻ줈 ?ъ슜?섎뒗 `public.profiles` ?뚯씠釉붿쓣 ?좎꽕?섍퀬, `phone` ?댁쓣 異붽??섎뒗 DDL???ㅽ뻾?덉뒿?덈떎.
-- **?몄쬆 肄쒕갚 濡쒖쭅 ?섏젙 (`app/auth/callback/route.js`)**: 濡쒓렇???깃났 ?? ?ъ슜?먯쓽 `email`??湲곗??쇰줈 `profiles` ?뚯씠釉붿뿉 ?꾨줈???뺣낫瑜?`UPSERT` ?섎룄濡??섏젙?섏뿬 怨꾩젙 ?뺣낫瑜??듯빀?덉뒿?덈떎.
-- **'???뺣낫' API 由ы뙥?좊쭅 (`api/users/me/route.js`)**: `GET`, `PATCH`, `DELETE` ?붿껌 紐⑤몢 `profiles` ?뚯씠釉붽낵 `user_roles` ?뚯씠釉붿쓣 ?④퍡 ?ъ슜?섎룄濡??섏젙?섏뿬, ?듯빀 ?꾨줈?꾧낵 ??븷??遺꾨━?섏뿬 愿由ы븯?꾨줉 蹂寃쏀뻽?듬땲??
-- **`useUserProfile` ???좎꽕 (`hooks/useUserProfile.js`)**: ?대씪?댁뼵???ъ씠?쒖뿉??`auth.user`, `profiles`, `user_roles` ?뺣낫瑜??쒕쾲??媛?몄삤???꾩뿭 ?낆쓣 援ы쁽?덉뒿?덈떎.
-- **二쇱슂 而댄룷?뚰듃 由ы뙥?좊쭅**: `Header.js`, `EmployeeSidebar.js`, `contact/page.js` ???ъ슜???뺣낫媛 ?꾩슂??紐⑤뱺 而댄룷?뚰듃媛 `useUserProfile` ?낆쓣 ?ъ슜?섎룄濡??섏젙?섏뿬 ?곗씠???먮쫫??以묒븰?뷀븯怨?肄붾뱶瑜?媛꾩냼?뷀뻽?듬땲??
+### 🛠️ 작업 상세
+#### 1. 보안 강화
+- **서버사이드 접근 제어 (`middleware.js`)**: 미들웨어에서 사용자의 `role`을 직접 조회하여, 'visitor'일 경우 `/employees` 또는 `/admin` 경로 접근 시 로그인 페이지로 리디렉션하도록 로직을 추가했습니다. 또한 'admin'이 아닌 사용자의 `/admin` 경로 접근도 차단했습니다.
 
-#### 2. UI/UX 媛쒖꽑 ?묒뾽
-- **?ㅼ씠踰?濡쒓렇??蹂대쪟 議곗튂**: ?꾩옱 ?ㅼ씠踰?痢??ㅼ젙 臾몄젣濡??곕룞??遺덇??섏뿬, `app/login/page.js`?먯꽌 愿??踰꾪듉???꾩떆濡??쒓굅?덉뒿?덈떎.
-- **濡쒓렇??踰꾪듉 ?뺣젹**: `app/login/login.module.css`??踰꾪듉 ?ㅽ??쇱뿉 `line-height: 1`??異붽??섏뿬 ?꾩씠肄섍낵 ?띿뒪?몄쓽 ?섏쭅 ?뺣젹???섏젙?덉뒿?덈떎.
-- **?꾨줈???대?吏 ?쒖떆**: `Header.js`? `EmployeeSidebar.js`?먯꽌 `useUserProfile` ?낆쓣 ?듯빐 `avatar_url`??媛?몄? ?ㅻ뜑? ?ъ씠?쒕컮???ъ슜?먯쓽 ?꾨줈???대?吏瑜??쒖떆?섎룄濡?媛쒖꽑?덉뒿?덈떎.
+#### 2. 핵심 버그 수정
+- **인증 콜백 로직 수정 (`app/auth/callback/route.js`)**:
+    - `profiles` 테이블 `UPSERT` 로직을, `id`가 `NULL`로 입력되던 오류를 해결하기 위해 안정적인 데이터베이스 함수(`upsert_profile`) 호출로 변경했습니다. 이로써 신규 사용자의 이름과 프로필 사진이 정상적으로 저장됩니다.
+    - 로그인 성공 시, `user_roles` 테이블에 `id`와 `role: 'visitor'` 기본값을 `UPSERT` 하도록 수정하여 신규 사용자의 권한 정보 누락 문제를 해결했습니다.
+- **데이터베이스 함수 추가**: `upsert_profile` RPC 함수를 생성하여 `profiles` 테이블의 `INSERT`와 `UPDATE` 로직을 원자적으로 안전하게 처리하도록 개선했습니다.
 
-#### 3. ?뺤콉 諛?媛?대뱶?쇱씤 ?낅뜲?댄듃
-- **`AGENT_GUIDELINES.md` ?낅뜲?댄듃**: '怨꾩젙 ?곕룞 ?뺤콉'??10踰???ぉ?쇰줈 ?좎꽕?섏뿬, ?ν썑 紐⑤뱺 愿???묒뾽??湲곗??쇰줈 ?쇰룄濡?紐낅Ц?뷀뻽?듬땲??
-
----
-
-## [2026-01-24] - UI/UX 媛쒖꽑 諛??ㅼ씠踰?濡쒓렇??蹂대쪟 議곗튂
-
-### ?? ?듭떖 ?깃낵
-- **?ㅼ씠踰?濡쒓렇??UI ?쒓굅**: ?ㅼ씠踰?OIDC(OpenID Connect) 援ы쁽??吏?띿쟻???ㅼ젙 臾몄젣 諛?`id_token` 誘몃컲??臾몄젣濡??명빐, ?꾩옱??濡쒓렇???섏씠吏?먯꽌 ?ㅼ씠踰?濡쒓렇??踰꾪듉??UI?먯꽌 ?쒓굅?덉뒿?덈떎. ?대뒗 異뷀썑 ?ш뎄?꾩쓣 ?꾪빐 蹂대쪟???곹깭?낅땲??
-- **濡쒓렇??踰꾪듉 ?뺣젹 媛쒖꽑**: 濡쒓렇???섏씠吏???뚯뀥 濡쒓렇??踰꾪듉(援ш?, 移댁뭅?????꾩씠肄섍낵 ?띿뒪???섏쭅 ?뺣젹 臾몄젣瑜??닿껐?섏뿬 ?붿옄???꾩꽦?꾨? ?믪??듬땲??
-- **?ъ슜???꾨줈???대?吏 ?쒖떆**: 濡쒓렇?명븳 ?ъ슜?먯쓽 ?꾨줈???ъ쭊(?꾨컮?)??Supabase ?ъ슜??硫뷀??곗씠??`avatar_url`)?먯꽌 媛?몄? ?ㅻ뜑???ъ슜??硫붾돱 ?곸뿭???쒖떆?섎룄濡?援ы쁽?덉뒿?덈떎. ?꾨줈???대?吏媛 ?놁쓣 寃쎌슦 湲곗〈泥섎읆 ?대땲?쒖쓣 ?쒖떆?⑸땲??
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?ㅼ씠踰?濡쒓렇??踰꾪듉 ?쒓굅 (`web/app/login/page.js`)
-- `app/login/page.js` ?뚯씪?먯꽌 `?ㅼ씠踰꾨줈 怨꾩냽?섍린` 踰꾪듉 愿??JSX 肄붾뱶瑜??쒓굅?덉뒿?덈떎.
-- `app/login/page.js` 諛?`app/auth/callback/route.js`??援ы쁽?섏뿀???ㅼ씠踰?愿??濡쒖쭅? 肄붾뱶踰좎씠?ㅼ뿉 ?좎??섎릺, UI?먯꽌 鍮꾪솢?깊솕???곹깭?낅땲??
-
-#### 2. 濡쒓렇??踰꾪듉 CSS ?뺣젹 ?섏젙 (`web/app/login/login.module.css`)
-- `.googleBtn` 諛?`.kakaoBtn` CSS ?대옒?ㅼ뿉 `line-height: 1;` ?띿꽦??異붽??섏뿬, ?꾩씠肄섍낵 ?띿뒪?몄쓽 ?섏쭅 ?뺣젹 遺덇퇏??臾몄젣瑜??닿껐?덉뒿?덈떎.
-
-#### 3. ?ъ슜???꾨줈???대?吏 ?쒖떆 湲곕뒫 援ы쁽 (`web/components/Header.js`)
-- `components/Header.js` ?뚯씪?먯꽌 濡쒓렇?명븳 ?ъ슜?먯쓽 `user.user_metadata.avatar_url`???뺤씤?섏뿬, ?대떦 URL??議댁옱??寃쎌슦 ?꾨줈???대?吏瑜??뚮뜑留곹븯?꾨줉 ?섏젙?덉뒿?덈떎.
-- ?꾨줈???대?吏媛 ?놁쓣 寃쎌슦 湲곗〈???대땲???쒖떆 濡쒖쭅(`displayInitial`)???곕Ⅴ?꾨줉 ?대갚(fallback) 泥섎━?덉뒿?덈떎.
-- ?꾨줈???대?吏(`<img>` ?쒓렇)?먮뒗 湲곗〈 ?대땲??`<span>` ?쒓렇? ?숈씪???먰삎, ?ш린, ?뚮몢由? 洹몃┝???ㅽ??쇱쓣 ?곸슜?섏뿬 ?붿옄???쇨??깆쓣 ?좎??덉뒿?덈떎.
-
-### ?뱥 李멸퀬 ?ы빆 諛??ν썑 怨쇱젣
-- **?ㅼ씠踰?濡쒓렇???ш뎄??*: ?ㅼ씠踰?OIDC ?곕룞?????異붽??곸씤 ?먮즺 議곗궗 諛??ㅼ씠踰?媛쒕컻???쇳꽣 ?ㅼ젙 媛?대뱶 ?뺤씤 ?? ?꾩슂???ㅼ씠踰?濡쒓렇?몄쓣 ?ш뎄?꾪븷 ?덉젙?낅땲??
+#### 3. 기능 개선 및 정책 변경
+- **권한 변경 정책 구현**:
+    - `api/users/me/route.js` (백엔드): 'visitor'는 권한 변경을 시도할 수 없도록 막고, 그 외 직원은 관리자 승인 없이 소속 지점(role)을 즉시 변경할 수 있도록 `PATCH` 로직을 수정했습니다.
+    - `app/employees/mypage/page.js` (프론트엔드): 'visitor'에게는 권한 변경 드롭다운을 비활성화하고 안내 메시지를 표시하도록 UI를 수정했습니다.
+- **'임직원 홈' 메뉴 추가 (`components/Header.js`)**: `navLinks` 설정에 '임직원 홈'(`/employees`)으로 연결되는 링크를 추가하여 내비게이션 편의성을 높였습니다.
 
 ---
 
-## [2026-01-24] - 而ㅼ뒪? ?ㅼ씠踰??뚯뀥 濡쒓렇??理쒖쥌 ?꾩꽦 (OIDC, signInWithIdToken)
+## [2026-01-24] - 계정 연동 시스템 구축 및 UI/UX 개선
 
-### ?? ?듭떖 ?깃낵
-- **?먰겢由??ㅼ씠踰?濡쒓렇??援ы쁽**: ?대찓???몄쬆???꾩슂?덈뜕 ?댁쟾??OTP 諛⑹떇???먭린?섍퀬, OIDC(OpenID Connect) ?쒖???`id_token`???ъ슜?섎뒗 諛⑹떇?쇰줈 ?꾪솚?섏뿬 ?대┃ ??踰덉뿉 濡쒓렇?몄씠 ?꾨즺?섎뒗 ?꾨꼍???ъ슜??寃쏀뿕??援ы쁽?덉뒿?덈떎.
-- **`signInWithIdToken` ?곸슜 ?깃났**: Supabase??`signInWithIdToken` 硫붿꽌?쒕? ?깃났?곸쑝濡??곸슜?섏뿬, 而ㅼ뒪? ?꾨줈諛붿씠???ㅼ씠踰????몄쬆 ?뺣낫瑜??듯빐 Supabase ?몄뀡??利됱떆 諛쒓툒諛쏅뒗 ???깃났?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **계정 연동 시스템 구축**: 여러 소셜 계정(구글, 카카오 등)을 사용하더라도, 동일 이메일 기반으로 하나의 사용자로 인식되는 '계정 연동' 시스템을 완성했습니다. 이를 위해 `public.profiles` 테이블을 신설하고, 인증 및 주요 컴포넌트의 데이터 로직을 전면 리팩토링했습니다.
+- **전역 프로필 훅(`useUserProfile`) 개발**: 통합된 사용자 정보(프로필, 역할 등)를 앱 전체에서 일관되게 가져올 수 있는 `useUserProfile` 훅을 개발하여 코드 중복을 제거하고 유지보수성을 향상시켰습니다.
+- **UI/UX 개선**: 로그인 페이지의 버튼 정렬을 수정하고, 헤더에 소셜 프로필 이미지가 표시되도록 하여 사용 편의성과 시각적 완성도를 높였습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 濡쒓렇???섏씠吏 OIDC ?붿껌 ?섏젙 (`web/app/login/page.js`)
-- **`scope` 諛?`nonce` 異붽?**: ?ㅼ씠踰꾩뿉 ?몄쬆 ?붿껌 ??`scope` ?뚮씪誘명꽣??'openid'瑜?異붽??섏뿬 `id_token` 諛쒓툒???붿껌?섍퀬, ?ъ쟾??怨듦꺽(Replay Attack) 諛⑹?瑜??꾪빐 `nonce` 媛믪쓣 ?앹꽦?섏뿬 ?④퍡 ?꾩넚?섎룄濡??섏젙?덉뒿?덈떎.
+### 🛠️ 작업 상세
+#### 1. 계정 연동 아키텍처 설계 및 구현
+- **DB 스키마 변경 (`supabase_account_linking.sql`)**: `email`을 고유 키로 사용하는 `public.profiles` 테이블을 신설하고, `phone` 열을 추가하는 DDL을 실행했습니다.
+- **인증 콜백 로직 수정 (`app/auth/callback/route.js`)**: 로그인 성공 시, 사용자의 `email`을 기준으로 `profiles` 테이블에 프로필 정보를 `UPSERT` 하도록 수정하여 계정 정보를 통합했습니다.
+- **'내 정보' API 리팩토링 (`api/users/me/route.js`)**: `GET`, `PATCH`, `DELETE` 요청 모두 `profiles` 테이블과 `user_roles` 테이블을 함께 사용하도록 수정하여, 통합 프로필과 역할을 분리하여 관리하도록 변경했습니다.
+- **`useUserProfile` 훅 신설 (`hooks/useUserProfile.js`)**: 클라이언트 사이드에서 `auth.user`, `profiles`, `user_roles` 정보를 한번에 가져오는 전역 훅을 구현했습니다.
+- **주요 컴포넌트 리팩토링**: `Header.js`, `EmployeeSidebar.js`, `contact/page.js` 등 사용자 정보가 필요한 모든 컴포넌트가 `useUserProfile` 훅을 사용하도록 수정하여 데이터 흐름을 중앙화하고 코드를 간소화했습니다.
 
-#### 2. ?몄쬆 肄쒕갚 濡쒖쭅 OIDC 諛⑹떇?쇰줈 ?꾨㈃ 援먯껜 (`web/app/auth/callback/route.js`)
-- **`signInWithIdToken` ?뚮줈???곸슜**:
-    1.  ?ㅼ씠踰꾨줈遺??`code`瑜?諛쏆븘 `id_token`怨?`access_token`?쇰줈 援먰솚?⑸땲??
-    2.  諛쒓툒??`id_token`???붿퐫?⑺븯?? ?붿껌 ??蹂대깉??`nonce` 媛믨낵 ?쇱튂?섎뒗吏 寃利앺빀?덈떎.
-    3.  寃利??꾨즺 ?? `supabase.auth.signInWithIdToken` ?⑥닔??`provider: 'openid'`? ?④퍡 `id_token`, `nonce`瑜??꾨떖?섏뿬 Supabase ?몄쬆 諛??몄뀡 ?앹꽦???꾨즺?⑸땲??
-    4.  濡쒓렇???깃났 ???ъ슜?먮? ?먮옒 紐⑹쟻吏(`next` ?뚮씪誘명꽣)濡?利됱떆 由щ뵒?됱뀡?⑸땲??
+#### 2. UI/UX 개선 작업
+- **네이버 로그인 보류 조치**: 현재 네이버 측 설정 문제로 연동이 불가하여, `app/login/page.js`에서 관련 버튼을 임시로 제거했습니다.
+- **로그인 버튼 정렬**: `app/login/login.module.css`의 버튼 스타일에 `line-height: 1`을 추가하여 아이콘과 텍스트의 수직 정렬을 수정했습니다.
+- **프로필 이미지 표시**: `Header.js`와 `EmployeeSidebar.js`에서 `useUserProfile` 훅을 통해 `avatar_url`을 가져와 헤더와 사이드바에 사용자의 프로필 이미지를 표시하도록 개선했습니다.
 
-### ?뱥 李멸퀬 ?ы빆 諛?理쒖쥌 ?뺤젙
-- **濡쒓렇 理쒖쥌 ?뺤젙**: ?ㅻ뒛 湲곕줉???ㅼ씠踰?愿??濡쒓렇 以? "怨듭떇 吏???뺤씤" 諛?"OTP 諛⑹떇 援ы쁽" ?댁슜? 紐⑤몢 ?먭린?섍퀬, ??**OIDC 諛⑹떇 濡쒓렇**瑜?理쒖쥌蹂몄쑝濡??쇱뒿?덈떎. Supabase??吏?먮릺吏 ?딅뒗 ?뚯뀥 濡쒓렇?몄? ??諛⑹떇(Custom OIDC)?쇰줈 援ы쁽?섎뒗 寃껋씠 媛???щ컮瑜?諛⑸쾿?꾩쓣 理쒖쥌 ?뺤씤?덉뒿?덈떎.
-
----
-
-## [2026-01-24] - ?ㅼ씠踰??뚯뀥 濡쒓렇???몄쬆 ?뺣낫 ?ㅼ젙 諛??곕룞 ?꾨즺
-
-### ?? ?듭떖 ?깃낵
-- **?ㅼ씠踰?OAuth ?곕룞 ?뺤젙**: 諛쒓툒???ㅼ씠踰?Client ID? Secret Key瑜??섍꼍 蹂?섏뿉 諛섏쁺?섍퀬, Supabase ?꾨줈諛붿씠???ㅼ젙???꾪븳 以鍮꾨? 留덉낀?듬땲??
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?섍꼍 蹂??援ъ꽦 (`.env.local`)
-- `NEXT_PUBLIC_NAVER_CLIENT_ID` 諛?`NAVER_CLIENT_SECRET` ?깅줉 ?꾨즺.
+#### 3. 정책 및 가이드라인 업데이트
+- **`AGENT_GUIDELINES.md` 업데이트**: '계정 연동 정책'을 10번 항목으로 신설하여, 향후 모든 관련 작업의 기준으로 삼도록 명문화했습니다.
 
 ---
 
-## [2026-01-24] - ?ㅼ씠踰??뚯뀥 濡쒓렇???곕룞 以鍮?諛?吏???щ? ?뺤씤
+## [2026-01-24] - UI/UX 개선 및 네이버 로그인 보류 조치
 
-### ?? ?듭떖 ?뺤씤 ?ы빆
-- **?ㅼ씠踰??꾨줈諛붿씠??吏???뺤씤**: Supabase?먯꽌 ?ㅼ씠踰?Naver) OAuth瑜?怨듭떇 吏?먰븿???뺤씤?섍퀬, ??쒕낫?????ㅼ젙 ?꾩튂瑜??뚯븙?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **네이버 로그인 UI 제거**: 네이버 OIDC(OpenID Connect) 구현의 지속적인 설정 문제 및 `id_token` 미반환 문제로 인해, 현재는 로그인 페이지에서 네이버 로그인 버튼을 UI에서 제거했습니다. 이는 추후 재구현을 위해 보류된 상태입니다.
+- **로그인 버튼 정렬 개선**: 로그인 페이지의 소셜 로그인 버튼(구글, 카카오)의 아이콘과 텍스트 수직 정렬 문제를 해결하여 디자인 완성도를 높였습니다.
+- **사용자 프로필 이미지 표시**: 로그인한 사용자의 프로필 사진(아바타)을 Supabase 사용자 메타데이터(`avatar_url`)에서 가져와 헤더의 사용자 메뉴 영역에 표시하도록 구현했습니다. 프로필 이미지가 없을 경우 기존처럼 이니셜을 표시합니다.
 
-### ?썱截??ν썑 ?묒뾽 怨꾪쉷
-#### 1. ?ㅼ씠踰?媛쒕컻???쇳꽣 ?ㅼ젙
-- ?ㅼ씠踰?媛쒕컻???쇳꽣?먯꽌 Client ID 諛?Secret 諛쒓툒 ??Supabase???깅줉 ?덉젙.
+### 🛠️ 작업 상세
+#### 1. 네이버 로그인 버튼 제거 (`web/app/login/page.js`)
+- `app/login/page.js` 파일에서 `네이버로 계속하기` 버튼 관련 JSX 코드를 제거했습니다.
+- `app/login/page.js` 및 `app/auth/callback/route.js`에 구현되었던 네이버 관련 로직은 코드베이스에 유지하되, UI에서 비활성화된 상태입니다.
 
----
+#### 2. 로그인 버튼 CSS 정렬 수정 (`web/app/login/login.module.css`)
+- `.googleBtn` 및 `.kakaoBtn` CSS 클래스에 `line-height: 1;` 속성을 추가하여, 아이콘과 텍스트의 수직 정렬 불균형 문제를 해결했습니다.
 
-## [2026-01-24] - 移댁뭅???뚯뀥 濡쒓렇???곕룞 理쒖쥌 ?깃났
+#### 3. 사용자 프로필 이미지 표시 기능 구현 (`web/components/Header.js`)
+- `components/Header.js` 파일에서 로그인한 사용자의 `user.user_metadata.avatar_url`을 확인하여, 해당 URL이 존재할 경우 프로필 이미지를 렌더링하도록 수정했습니다.
+- 프로필 이미지가 없을 경우 기존의 이니셜 표시 로직(`displayInitial`)을 따르도록 폴백(fallback) 처리했습니다.
+- 프로필 이미지(`<img>` 태그)에는 기존 이니셜 `<span>` 태그와 동일한 원형, 크기, 테두리, 그림자 스타일을 적용하여 디자인 일관성을 유지했습니다.
 
-### ?? ?듭떖 ?깃낵
-- **移댁뭅??OAuth ?곕룞 ?꾨즺**: ?щ윭 李⑤????ㅼ젙 ?쒗뻾李⑹삤 ?앹뿉 移댁뭅??濡쒓렇?몄쓣 ?깃났?곸쑝濡?援ы쁽?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 移댁뭅??肄섏넄 ?ㅼ젙 寃쎈줈 理쒖쥌 ?뺤씤
-- **Redirect URI ?꾩튂 援먯젙**: `[???좏뵆由ъ??댁뀡 > ????> REST API ??` 愿???ㅼ젙 ?섏씠吏 以묎컙???꾩튂??Redirect URI ?깅줉 ?뱀뀡???뺤씤?섏뿬 Supabase 肄쒕갚 二쇱냼(`.../auth/v1/callback`)瑜??뺤긽 ?깅줉??
-- **?숈쓽 ??ぉ 理쒖쟻??*: ?대찓??沅뚰븳 ?띾뱷???꾪븳 蹂몄씤 ?몄쬆 ?덉감 諛??좏깮 ?숈쓽 ?ㅼ젙???꾨즺?섏뿬 `KOE205` ?먮윭瑜??닿껐??
-
----
-
-## [2026-01-24] - ?몃윭釉붿뒋?? 移댁뭅??Redirect URI 遺덉씪移?KOE006) ?닿껐
-
-### ?? ?듭떖 ?댁뒋
-- **KOE006 ?먮윭 諛쒖깮**: 移댁뭅??濡쒓렇?????붿껌??Redirect URI媛 移댁뭅?????ㅼ젙???깅줉??URI? ?쇱튂?섏? ?딆븘 ?몄쬆??嫄곕??? (JavaScript SDK ?꾨찓???ㅼ젙怨??쇰룞??
-
-### ?썱截??닿껐 諛⑹븞
-#### 1. Redirect URI 寃쎈줈 援먯젙
-- `[?쒗뭹 ?ㅼ젙 > 移댁뭅??濡쒓렇??` 硫붾돱?먯꽌 Supabase 肄쒕갚 二쇱냼(`.../auth/v1/callback`)瑜??뺥솗???깅줉?섎룄濡?媛?대뱶?? 湲곗〈 ?뚮옯???꾨찓???ㅼ젙怨?遺꾨━?섏뿬 愿由ы븯?꾨줉 議곗튂.
+### 📋 참고 사항 및 향후 과제
+- **네이버 로그인 재구현**: 네이버 OIDC 연동에 대한 추가적인 자료 조사 및 네이버 개발자 센터 설정 가이드 확인 후, 필요시 네이버 로그인을 재구현할 예정입니다.
 
 ---
 
-## [2026-01-24] - ?몃윭釉붿뒋?? 移댁뭅???대찓??沅뚰븳(KOE205) ?뺣? 吏꾨떒 諛?議곗튂
+## [2026-01-24] - 커스텀 네이버 소셜 로그인 최종 완성 (OIDC, signInWithIdToken)
 
-### ?? ?듭떖 ?댁뒋
-- **沅뚰븳 遺덉씪移??뺤씤**: 移댁뭅?????ㅼ젙?먯꽌 `account_email`??'沅뚰븳 ?놁쓬' ?곹깭?꾩뿉??遺덇뎄?섍퀬, Supabase ?몄쬆 紐⑤뱢???대떦 ?뺣낫瑜??붿껌?섏뿬 `KOE205` ?먮윭 諛쒖깮.
+### 🚀 핵심 성과
+- **원클릭 네이버 로그인 구현**: 이메일 인증이 필요했던 이전의 OTP 방식을 폐기하고, OIDC(OpenID Connect) 표준의 `id_token`을 사용하는 방식으로 전환하여 클릭 한 번에 로그인이 완료되는 완벽한 사용자 경험을 구현했습니다.
+- **`signInWithIdToken` 적용 성공**: Supabase의 `signInWithIdToken` 메서드를 성공적으로 적용하여, 커스텀 프로바이더(네이버)의 인증 정보를 통해 Supabase 세션을 즉시 발급받는 데 성공했습니다.
 
-### ?썱截??닿껐 諛⑹븞
-#### 1. 移댁뭅??鍮꾩쫰?덉뒪 蹂몄씤 ?몄쬆 ?덈궡
-- 媛쒖씤 媛쒕컻??怨꾩젙??寃쎌슦, [鍮꾩쫰?덉뒪 > 媛쒖씤 媛쒕컻??鍮꾩쫰?덉뒪 ?뺣낫]?먯꽌 蹂몄씤 ?몄쬆???꾨즺?댁빞 ?대찓????ぉ??'?좏깮 ?숈쓽'濡??ㅼ젙 媛?ν븿???뺤씤.
-- ?몄쬆 ???숈쓽 ??ぉ ?ㅼ젙??'?좏깮 ?숈쓽'濡?蹂寃쏀븯?꾨줉 媛?대뱶?쇱씤 ?섎┰.
+### 🛠️ 작업 상세
+#### 1. 로그인 페이지 OIDC 요청 수정 (`web/app/login/page.js`)
+- **`scope` 및 `nonce` 추가**: 네이버에 인증 요청 시 `scope` 파라미터에 'openid'를 추가하여 `id_token` 발급을 요청하고, 재전송 공격(Replay Attack) 방지를 위해 `nonce` 값을 생성하여 함께 전송하도록 수정했습니다.
 
----
+#### 2. 인증 콜백 로직 OIDC 방식으로 전면 교체 (`web/app/auth/callback/route.js`)
+- **`signInWithIdToken` 플로우 적용**:
+    1.  네이버로부터 `code`를 받아 `id_token`과 `access_token`으로 교환합니다.
+    2.  발급된 `id_token`을 디코딩하여, 요청 시 보냈던 `nonce` 값과 일치하는지 검증합니다.
+    3.  검증 완료 후, `supabase.auth.signInWithIdToken` 함수에 `provider: 'openid'`와 함께 `id_token`, `nonce`를 전달하여 Supabase 인증 및 세션 생성을 완료합니다.
+    4.  로그인 성공 후 사용자를 원래 목적지(`next` 파라미터)로 즉시 리디렉션합니다.
 
-## [2026-01-24] - 移댁뭅???대찓??沅뚰븳 ?뺤콉 遺꾩꽍 諛????
-### ?? ?듭떖 ?댁뒋
-- **?대찓???띾뱷 議곌굔 ?뺤씤**: 移댁뭅??REST API 臾몄꽌 遺꾩꽍 寃곌낵, ?대찓??'?꾩닔 ?숈쓽'瑜??꾪빐?쒕뒗 鍮꾩쫰?덉뒪 ???깅줉???꾩닔?꾩쓣 ?뺤씤.
-
-### ?썱截????諛⑹븞
-#### 1. 媛쒖씤 媛쒕컻???섍꼍 理쒖쟻??- 鍮꾩쫰?덉뒪 ???꾪솚 ?꾧퉴吏 '移댁뭅?ㅺ퀎???대찓??'??**?좏깮 ?숈쓽**濡??ㅼ젙?섏뿬 `KOE205` ?먮윭瑜?諛⑹???
-- Supabase ?몄쬆 ?쒖뒪?쒖씠 ?대찓??誘몄젣怨??쒖뿉???좎뿰?섍쾶 ??묓븷 ???덈룄濡??ㅼ젙 ?먭? 沅뚭퀬.
-
----
-
-## [2026-01-24] - ?몃윭釉붿뒋?? 移댁뭅??OAuth ?숈쓽 ??ぉ(KOE205) ?ㅻ쪟 ?닿껐
-
-### ?? ?듭떖 ?댁뒋
-- **KOE205 ?먮윭 諛쒖깮**: 移댁뭅??濡쒓렇????`account_email` ?숈쓽 ??ぉ???ㅼ젙?섏? ?딆븘 ?멸? 肄붾뱶 ?붿껌??嫄곕??섎뒗 ?꾩긽 ?뺤씤.
-
-### ?썱截??닿껐 諛⑹븞
-#### 1. 移댁뭅???숈쓽 ??ぉ 理쒖쟻??- 移댁뭅??媛쒕컻???쇳꽣 ??`[移댁뭅??濡쒓렇??> ?숈쓽??ぉ]`?먯꽌 '移댁뭅?ㅺ퀎???대찓??'??'?좏깮 ?숈쓽' ?댁긽?쇰줈 ?ㅼ젙?섎룄濡?媛?대뱶?? Supabase ?몄쬆 ?쒖뒪?쒖쓽 ?대찓??湲곕컲 ?ъ슜???앸퀎???꾪빐 ?꾩닔?곸씤 議곗튂??
+### 📋 참고 사항 및 최종 정정
+- **로그 최종 정정**: 오늘 기록된 네이버 관련 로그 중, "공식 지원 확인" 및 "OTP 방식 구현" 내용은 모두 폐기하고, 이 **OIDC 방식 로그**를 최종본으로 삼습니다. Supabase에 지원되지 않는 소셜 로그인은 이 방식(Custom OIDC)으로 구현하는 것이 가장 올바른 방법임을 최종 확인했습니다.
 
 ---
 
-## [2026-01-24] - ?몃윭釉붿뒋?? OAuth Provider ?쒖꽦???ㅻ쪟 ???
-### ?? ?듭떖 ?댁뒋
-- **Unsupported provider ?먮윭**: 移댁뭅???ㅼ씠踰?濡쒓렇???쒕룄 ??Supabase?먯꽌 `provider is not enabled` ?먮윭 諛섑솚 ?뺤씤.
+## [2026-01-24] - 네이버 소셜 로그인 인증 정보 설정 및 연동 완료
 
-### ?썱截??닿껐 諛⑹븞
-#### 1. Supabase ?몄쬆 ?ㅼ젙 媛?대뱶
-- Supabase Dashboard ??`Authentication > Providers` 硫붾돱?먯꽌 Kakao 諛?Naver???쒖꽦??Enabled) ?곹깭瑜??먭??섍퀬, 諛쒓툒??Client ID/Secret???깅줉?섎룄濡??덈궡??
+### 🚀 핵심 성과
+- **네이버 OAuth 연동 확정**: 발급된 네이버 Client ID와 Secret Key를 환경 변수에 반영하고, Supabase 프로바이더 설정을 위한 준비를 마쳤습니다.
 
----
-
-## [2026-01-24] - 移댁뭅??濡쒓렇???ㅼ젙 寃쎈줈 ?뺤씤 諛??낅뜲?댄듃
-
-### ?? ?듭떖 ?깃낵
-- **?ㅼ젙 寃쎈줈 理쒖쟻??*: ?ъ슜???쇰뱶諛깆쓣 諛뷀깢?쇰줈 移댁뭅??媛쒕컻???쇳꽣 ??`[?뚮옯??> Web]` ?뱀뀡??JavaScript ???ㅼ젙 ??ぉ?먯꽌 Redirect URI瑜??깅줉?섎뒗 寃쎈줈瑜??뺤씤?섍퀬 湲곕줉?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 移댁뭅??肄섏넄 ?ㅼ젙 ?뺣낫 媛깆떊
-- **Redirect URI ?깅줉**: ?뺤씠 ?뺤씤??`[?뚮옯??> Web]` ??JavaScript ??愿???ㅼ젙 援ъ뿭??`https://bzbowsvfsyerhpgrdrva.supabase.co/auth/v1/callback` ?깅줉 吏꾪뻾.
-- **?쒖꽦??泥댄겕**: 濡쒓렇?몄씠 ?뺤긽 ?묐룞?섎젮硫?`[?쒗뭹 ?ㅼ젙 > 移댁뭅??濡쒓렇??` 硫붾돱???쒖꽦???ㅼ쐞移섍? ON?댁뼱???⑥쓣 紐낆떆.
+### 🛠️ 작업 상세
+#### 1. 환경 변수 구성 (`.env.local`)
+- `NEXT_PUBLIC_NAVER_CLIENT_ID` 및 `NAVER_CLIENT_SECRET` 등록 완료.
 
 ---
 
-## [2026-01-24] - 移댁뭅??濡쒓렇???몄쬆 ?뺣낫 諛??숈쓽 ??ぉ ?ㅼ젙
+## [2026-01-24] - 네이버 소셜 로그인 연동 준비 및 지원 여부 확인
 
-### ?? ?듭떖 ?깃낵
-- **移댁뭅??OAuth ?곕룞 理쒖쟻??*: 諛쒓툒??REST API ?ㅼ? ?쒗겕由??ㅻ? ?섍꼍 蹂?섏뿉 諛섏쁺?섍퀬, ?쒕퉬???댁쁺???꾩슂???ъ슜???숈쓽 ??ぉ ?ㅼ젙???뺤젙?덉뒿?덈떎.
+### 🚀 핵심 확인 사항
+- **네이버 프로바이더 지원 확인**: Supabase에서 네이버(Naver) OAuth를 공식 지원함을 확인하고, 대시보드 내 설정 위치를 파악했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?섍꼍 蹂??援ъ꽦 (`.env.local`)
-- `NEXT_PUBLIC_KAKAO_REST_API_KEY` 諛?`KAKAO_CLIENT_SECRET` ?깅줉.
-#### 2. ?ъ슜???숈쓽 ?뺤콉 ?섎┰
-- **?꾩닔**: ?됰꽕??(?ㅼ궗?⑹옄 ?앸퀎 諛??대쫫 ?쒖떆)
-- **?좏깮**: ?꾨줈???ъ쭊 (?명꽣??留덉씠?섏씠吏 ?몃꽕???쒖슜)
-- **?댁슜 以??숈쓽**: 移댁뭅?ㅽ넚 硫붿떆吏 ?꾩넚 (?ν썑 ?낅Т ?뚮┝ 諛?怨듭? 諛쒖넚??
+### 🛠️ 향후 작업 계획
+#### 1. 네이버 개발자 센터 설정
+- 네이버 개발자 센터에서 Client ID 및 Secret 발급 후 Supabase에 등록 예정.
 
 ---
 
-## [2026-01-24] - ?뚯뀥 濡쒓렇???뺤옣: 移댁뭅??諛??ㅼ씠踰??곕룞
+## [2026-01-24] - 카카오 소셜 로그인 연동 최종 성공
 
-### ?? ?듭떖 ?깃낵
-- **?몄쬆 ?몄쓽??媛뺥솕**: 湲곗〈 援ш? 濡쒓렇???몄뿉 援?궡 ?ъ슜 鍮꾩쨷???믪? 移댁뭅?ㅽ넚 諛??ㅼ씠踰?濡쒓렇??湲곕뒫??異붽??섏뿬 ?묎렐?깆쓣 媛쒖꽑?덉뒿?덈떎.
+### 🚀 핵심 성과
+- **카카오 OAuth 연동 완료**: 여러 차례의 설정 시행착오 끝에 카카오 로그인을 성공적으로 구현했습니다.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 濡쒓렇???섏씠吏 ?낅뜲?댄듃 (`web/app/login/page.js`)
-- 移댁뭅??濡쒓렇???쒗븳 濡쒖쭅(Alert) ?쒓굅 諛??ㅼ젣 OAuth ?곕룞 ?쒖꽦??
-- ?ㅼ씠踰?濡쒓렇??踰꾪듉 ?좎꽕 諛?`handleLogin('naver')` ?곌껐.
-- **移댁뭅???ㅼ젙 媛?대뱶**: Redirect URI ?깅줉 諛?OpenID Connect ?쒖꽦??沅뚭퀬 (?뱁썒? 異뷀썑 怨쇱젣濡?遺꾨쪟).
-- **?ㅼ젙 ?좎쓽?ы빆**: 濡쒓렇?몄슜 Redirect URI(`.../callback`)? 濡쒓렇?꾩썐??URI瑜?遺꾨━?섏뿬 ?덈궡.
+### 🛠️ 작업 상세
+#### 1. 카카오 콘솔 설정 경로 최종 확인
+- **Redirect URI 위치 교정**: `[내 애플리케이션 > 앱 키 > REST API 키]` 관련 설정 페이지 중간에 위치한 Redirect URI 등록 섹션을 확인하여 Supabase 콜백 주소(`.../auth/v1/callback`)를 정상 등록함.
+- **동의 항목 최적화**: 이메일 권한 획득을 위한 본인 인증 절차 및 선택 동의 설정을 완료하여 `KOE205` 에러를 해결함.
 
 ---
 
-## [2026-01-24] - 紐⑤컮??援ш? OAuth 蹂댁븞 ?뺤콉 ????꾨즺
+## [2026-01-24] - 트러블슈팅: 카카오 Redirect URI 불일치(KOE006) 해결
 
-### ?? ?듭떖 ?댁뒋
-- **援ш? 濡쒓렇??李⑤떒 ?닿껐**: ?ㅼ씠踰꾩빋, 移댁뭅?ㅽ넚 ???몄빋 釉뚮씪?곗??먯꽌 援ш? 濡쒓렇????諛쒖깮?섎뒗 '蹂댁븞 釉뚮씪?곗? ?뺤콉 ?꾨컲' ?먮윭 ???
+### 🚀 핵심 이슈
+- **KOE006 에러 발생**: 카카오 로그인 시 요청한 Redirect URI가 카카오 앱 설정에 등록된 URI와 일치하지 않아 인증이 거부됨. (JavaScript SDK 도메인 설정과 혼동됨)
 
-### ?썱截????諛⑹븞
-#### 1. ?몄빋 釉뚮씪?곗? 媛먯? 諛?UI ?덈궡 (`web/app/login/page.js`)
-- `navigator.userAgent`瑜?遺꾩꽍?섏뿬 ?ㅼ씠踰? 移댁뭅????二쇱슂 ?몄빋 釉뚮씪?곗? ?섍꼍??媛먯??섎뒗 濡쒖쭅 異붽?.
-- ?몄빋 釉뚮씪?곗? 媛먯? ?? 濡쒓렇??移대뱶 ?대???"?ㅻⅨ 釉뚮씪?곗?濡??닿린"瑜??좊룄?섎뒗 寃쎄퀬 諛곕꼫瑜??몄텧?섏뿬 ?ъ슜???댄깉 諛⑹?.
-
----
-
-## [2026-01-24] - 媛?대뱶?쇱씤 ?뺢탳?? 援ъ“??諛??쇨????먯튃 媛뺥솕
-
-### ?? ?듭떖 ?깃낵
-- **?ㅺ퀎 ?먯튃 紐낅Ц??*: ?ㅼ뼇??AI ??Cursor, Antigravity ?? ?ъ슜 ??諛쒖깮?????덈뒗 肄붾뱶 ?ㅽ????뚰렪?붾? 諛⑹??섍린 ?꾪빐 '?쇨???Consistency)' ?좎? ?먯튃??媛?대뱶?쇱씤??紐낆떆?덉뒿?덈떎.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 媛?대뱶?쇱씤 ?낅뜲?댄듃 (`.agent/AGENT_GUIDELINES.md`)
-- 6踰???ぉ??'?꾨줈?앺듃 援ъ“??諛??쇨????쇰줈 ?뺤옣?섏뿬, ?섍꼍 蹂?붿뿉??湲곗〈 ?ㅺ퀎 ?섎룄瑜?怨좎닔?섎룄濡?吏移⑥쓣 媛뺥솕?덉뒿?덈떎.
+### 🛠️ 해결 방안
+#### 1. Redirect URI 경로 교정
+- `[제품 설정 > 카카오 로그인]` 메뉴에서 Supabase 콜백 주소(`.../auth/v1/callback`)를 정확히 등록하도록 가이드함. 기존 플랫폼 도메인 설정과 분리하여 관리하도록 조치.
 
 ---
 
-## [2026-01-24] - ?섍꼍 ?숆린???뺤콉 援ъ껜??諛?.gitignore 理쒖쟻??
-### ?? ?듭떖 ?깃낵
-- **硫?????묒뾽 湲곕컲 媛뺥솕**: Antigravity, Cursor, VSCode ???ㅼ뼇??媛쒕컻 ?꾧뎄 ?ъ슜 ??諛쒖깮?????덈뒗 ?ㅼ젙 ?뚯씪 異⑸룎??諛⑹??섍린 ?꾪빐 `.gitignore` 理쒖쟻?붿븞???섎┰?섍퀬 媛?대뱶?쇱씤??諛섏쁺?덉뒿?덈떎.
+## [2026-01-24] - 트러블슈팅: 카카오 이메일 권한(KOE205) 정밀 진단 및 조치
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 媛?대뱶?쇱씤 ?낅뜲?댄듃 (`.agent/AGENT_GUIDELINES.md`)
-- 9踰???ぉ '硫????諛??섍꼍 ?숆린????`.gitignore` 愿由?諛??섍꼍 蹂??蹂댁븞 吏移⑥쓣 異붽??섏뿬 ?ㅽ뻾?μ쓣 ?믪??듬땲??
+### 🚀 핵심 이슈
+- **권한 불일치 확인**: 카카오 앱 설정에서 `account_email`이 '권한 없음' 상태임에도 불구하고, Supabase 인증 모듈이 해당 정보를 요청하여 `KOE205` 에러 발생.
 
----
-
-## [2026-01-23] - S3(MinIO) ?곌껐 ?깃났 諛?UI/UX ?洹쒕え 媛쒖꽑
-
-### ?? ?듭떖 ?깃낵
-- **S3(MinIO) ?곌껐 ?꾩쟾 ?뺣났**: ISP ?ы듃 李⑤떒(9000踰??) 臾몄젣瑜?HTTPS ??갑???꾨줉??443)? WebSocket ?ㅻ뜑 ?ㅼ젙???듯빐 ?닿껐.
-- **愿由ъ옄 沅뚰븳 愿由?紐⑤컮?쇳솕**: ?뚯씠釉??뺥깭???덉씠?꾩썐??移대뱶 ?щ’(Card View) 諛⑹떇?쇰줈 ?꾨㈃ 媛쒗렪?섏뿬 紐⑤컮??議곗옉 ?몄쓽??洹밸???
-- **UI/UX ?대━??*: ?꾩궗 硫붿씤 ?덉씠?꾩썐 ?⑤뵫 理쒖쟻?? ?ㅻ뜑 ?좉꺽 ?섏젙, ?명꽣 ?ъ씠利?異뺤냼 ???꾨━誘몄뾼 ?붿옄???꾩꽦.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?명봽??諛?API
-- `.env.local`: `NAS_ENDPOINT`瑜?HTTPS ?꾨줉??二쇱냼濡??ㅼ젙.
-- `lib/s3.js`: S3 ?대씪?댁뼵???ㅼ젙 理쒖쟻??諛?`getFileBufferFromS3` 異붽?濡??대?吏 ?쒕튃 ?덉젙??
-- `app/api/s3/files/route.js`: POST(?낅줈??, GET(?꾨줉???ㅼ슫濡쒕뱶) 濡쒖쭅 援ы쁽.
-
-#### 2. ?꾨줎?몄뿏??媛쒖꽑
-- `app/admin/users/page.js`: 紐⑤컮?쇱슜 移대뱶 酉?異붽? 諛?諛섏쓳???덉씠?꾩썐 ?곸슜. (Intranet 怨듯넻 紐⑤뱢 ?곕룞)
-- `app/employees/webzine/page.js`: S3 ?대?吏 濡쒕뵫 踰꾧렇 ?섏젙 諛??몃꽕??寃쎈줈 濡쒖쭅 理쒖쟻??
-- `webzine/[id]/page.js`: ?곸꽭蹂닿린?먯꽌 Cloud ?대?吏 寃쎈줈 ?몄떇?섎룄濡??섏젙.
-
-#### 3. 湲고? ?섏젙
-- ?뚯쐞?먰쉶 諛??뚯궗?뚭컻 ?섏씠吏 ?쒕툕硫붾돱 ?좉꺽(20px) ?쒓굅.
-- ?명꽣 ?믪씠 諛??щ갚 異뺤냼.
-
-### ?좑툘 二쇱쓽?ы빆 諛??ν썑 怨쇱젣
-- **?쒕?濡쒖? ?ㅼ젙 ?좎?**: ??갑???꾨줉?쒖뿉??`X-Forwarded-Proto` ?ㅻ뜑? `192.168.0.4` ????명똿??諛붾뚮㈃ S3 ?낅줈?쒓? 諛붾줈 留됲옄 ???덉쓬.
-- **Webzine ?대?吏**: ?댁젣 `Webzine/`?쇰줈 ?쒖옉?섎뒗 紐⑤뱺 寃쎈줈??S3 Proxy API瑜?嫄곗퀜????
+### 🛠️ 해결 방안
+#### 1. 카카오 비즈니스 본인 인증 안내
+- 개인 개발자 계정의 경우, [비즈니스 > 개인 개발자 비즈니스 정보]에서 본인 인증을 완료해야 이메일 항목을 '선택 동의'로 설정 가능함을 확인.
+- 인증 후 동의 항목 설정을 '선택 동의'로 변경하도록 가이드라인 수립.
 
 ---
 
-## [2026-01-23] - ?ㅽ뵂 以鍮? ?ъ슜???쒕룞 濡쒓렇(Audit Log) ?쒖뒪??援ъ텞
+## [2026-01-24] - 카카오 이메일 권한 정책 분석 및 대응
 
-### ?? ?듭떖 ?깃낵
-- **?꾩궗 濡쒓렇 ?쒖뒪???꾩엯**: 紐⑤뱺 ?ъ슜?먯쓽 ?됱쐞(?대룞, ?대┃, ?ㅼ슫濡쒕뱶)瑜??ㅼ떆媛꾩쑝濡?湲곕줉?섏뿬 蹂댁븞 諛??댁쁺 ?꾧뎄 ?뺣낫.
-- **3??蹂닿? ?뺤콉 ?섎┰**: ?쒕퉬???ㅽ뵂 媛?대뱶???곕씪 濡쒓렇 ?곗씠?곕? 理쒖냼 3???숈븞 蹂닿??섎룄濡??ㅺ퀎.
+### 🚀 핵심 이슈
+- **이메일 획득 조건 확인**: 카카오 REST API 문서 분석 결과, 이메일 '필수 동의'를 위해서는 비즈니스 앱 등록이 필수임을 확인.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?곗씠?곕쿋?댁뒪 (`web/supabase_user_logs.sql`)
-- `user_activity_logs` ?뚯씠釉??앹꽦: `user_id`, `action_type`, `path`, `metadata`, `created_at` ???ы븿.
-- **蹂댁븞**: RLS ?ㅼ젙???듯빐 ?쇰컲 ?ъ슜?먮뒗 ?먭린 濡쒓렇留??앹꽦 媛?ν븯怨? 議곗????ㅼ쭅 `Admin` 沅뚰븳?먮쭔 媛?ν븯?꾨줉 寃⑸━.
+### 🛠️ 대응 방안
+#### 1. 개인 개발자 환경 최적화
+- 비즈니스 앱 전환 전까지 '카카오계정(이메일)'을 **선택 동의**로 설정하여 `KOE205` 에러를 방지함.
+- Supabase 인증 시스템이 이메일 미제공 시에도 유연하게 대응할 수 있도록 설정 점검 권고.
 
-#### 2. 濡쒓퉭 紐⑤뱢 (`utils/logger.js`, `utils/loggerServer.js`)
-- ?대씪?댁뼵?몄? ?쒕쾭 ?묒륫?먯꽌 濡쒓렇瑜??④만 ???덈뒗 ?듯빀 ?좏떥由ы떚 援ы쁽.
+---
 
-#### 3. ?먮룞 異붿쟻 (`components/ActivityLogger.js`)
-- `RootLayout`???묒옱?섏뼱 ?섏씠吏 酉?URL) 諛?以묒슂 ?대┃ ?대깽?몃? 鍮꾨룞湲곕줈 ?먮룞 湲곕줉.
+## [2026-01-24] - 트러블슈팅: 카카오 OAuth 동의 항목(KOE205) 오류 해결
 
-#### 4. ?뚯씪 ?묎렐 濡쒓퉭 (`api/nas/preview`, `api/s3/files`)
-- NAS 諛?S3 ?뚯씪 ?ㅼ슫濡쒕뱶/議고쉶 ???쒕쾭 ?덈꺼?먯꽌 ?뺥솗???뚯씪紐낃낵 ?④퍡 濡쒓렇 ?앹꽦.
+### 🚀 핵심 이슈
+- **KOE205 에러 발생**: 카카오 로그인 시 `account_email` 동의 항목이 설정되지 않아 인가 코드 요청이 거부되는 현상 확인.
 
-#### 5. ?깅뒫 理쒖쟻??(S3 Proxy Speed Up)
-- **鍮꾩감?⑦삎 濡쒓퉭**: 濡쒓렇 湲곕줉???뚯씪 ?꾩넚??諛⑺빐?섏? ?딅룄濡?Background 泥섎━瑜??곸슜?섏뿬 Latency 理쒖냼??
-- **媛뺣젰??釉뚮씪?곗? 罹먯떛**: `Cache-Control: immutable` ?ㅼ젙???듯빐 以묐났 ?붿껌 ???쒕쾭瑜?嫄곗튂吏 ?딄퀬 利됱떆 濡쒕뵫?섎룄濡?媛쒖꽑.
-- **Buffer ?꾩넚 理쒖쟻??*: ??⑸웾 ?뚯씪???덉젙?곸쑝濡??꾨떖?섍린 ?꾪빐 ?쒕쾭 硫붾え由??몃뱾留?蹂닿컯.
+### 🛠️ 해결 방안
+#### 1. 카카오 동의 항목 최적화
+- 카카오 개발자 센터 내 `[카카오 로그인 > 동의항목]`에서 '카카오계정(이메일)'을 '선택 동의' 이상으로 설정하도록 가이드함. Supabase 인증 시스템의 이메일 기반 사용자 식별을 위해 필수적인 조치임.
 
-### ?뱥 ?댁쁺 媛?대뱶 (蹂닿? 諛???젣)
-- **蹂닿? 湲고븳**: 3??(2026~2029)
-- **??젣 諛⑸쾿**: Supabase SQL Editor瑜??듯빐 `INTERVAL '3 years'` 湲곗? ??젣 荑쇰━ 沅뚯옣.
+---
 
-## [2026-01-23] - 寃뚯떆??UI/UX 怨좊룄??諛?媛쒕컻 ?뺤콉 ?섎┰
+## [2026-01-24] - 트러블슈팅: OAuth Provider 활성화 오류 대응
 
-###  ?듭떖 ?깃낵
-- **?명듃?쇰꽬 ?붿옄???듭씪???뺣낫**: ?먯쑀寃뚯떆?? ?낅Т蹂닿퀬, ?뱀쭊 ??紐⑤뱺 ?щ궡 寃뚯떆?먯뿉 ?꾨━誘몄뾼 ?붿씠??移대뱶(detailCard) ?덉씠?꾩썐???곸슜?섏뿬 媛?낆꽦怨??щ??깆쓣 洹밸???
-- **?몄쭛 ?섍꼍(Editor) ?洹쒕え 媛쒖꽑**: 援ъ떇 ???붿옄?몄쓣 嫄룹뼱?닿퀬 ?꾨??곸씤 UI濡?媛쒗렪, Hero 諛곕꼫 諛??ъ씠?쒕컮 ?듯빀 ?덉씠?꾩썐 ?쒖뒪???덉갑.
-- **NEW 媛쒕컻 ?뺤콉 ?꾩엯**: 紐⑤컮??泥댄겕 ?꾩닔?? UI/UX ?쇨????좎?, ?섏젙 遺??TDD ?섎Т????怨좏뭹吏??묒뾽???꾪븳 媛?대뱶?쇱씤(AGENT_GUIDELINES.md) ?낅뜲?댄듃.
+### 🚀 핵심 이슈
+- **Unsupported provider 에러**: 카카오/네이버 로그인 시도 시 Supabase에서 `provider is not enabled` 에러 반환 확인.
 
-###  ?묒뾽 ?곸꽭
-#### 1. 寃뚯떆??UI/UX (Free Board, Reports, Webzine)
-- oard.module.css: ?꾨━誘몄뾼 ?먮뵒??諛??곸꽭 移대뱶 ?ㅽ???editorCard, detailCard) 異붽?.
-- intranet/board/free/page.js: 紐⑸줉 ?섏씠吏 ?덉씠?꾩썐 ?듯빀 諛?移대뱶 ?붿옄???곸슜.
-- intranet/board/free/[id]/page.js & /edit/page.js: ?곸꽭 蹂닿린 諛??섏젙 ?섏씠吏 ?덉씠?꾩썐 怨좊룄??
+### 🛠️ 해결 방안
+#### 1. Supabase 인증 설정 가이드
+- Supabase Dashboard 내 `Authentication > Providers` 메뉴에서 Kakao 및 Naver의 활성화(Enabled) 상태를 점검하고, 발급된 Client ID/Secret을 등록하도록 안내함.
+
+---
+
+## [2026-01-24] - 카카오 로그인 설정 경로 확인 및 업데이트
+
+### 🚀 핵심 성과
+- **설정 경로 최적화**: 사용자 피드백을 바탕으로 카카오 개발자 센터 내 `[플랫폼 > Web]` 섹션의 JavaScript 키 설정 항목에서 Redirect URI를 등록하는 경로를 확인하고 기록했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 카카오 콘솔 설정 정보 갱신
+- **Redirect URI 등록**: 형이 확인한 `[플랫폼 > Web]` 내 JavaScript 키 관련 설정 구역에 `https://bzbowsvfsyerhpgrdrva.supabase.co/auth/v1/callback` 등록 진행.
+- **활성화 체크**: 로그인이 정상 작동하려면 `[제품 설정 > 카카오 로그인]` 메뉴의 활성화 스위치가 ON이어야 함을 명시.
+
+---
+
+## [2026-01-24] - 카카오 로그인 인증 정보 및 동의 항목 설정
+
+### 🚀 핵심 성과
+- **카카오 OAuth 연동 최적화**: 발급된 REST API 키와 시크릿 키를 환경 변수에 반영하고, 서비스 운영에 필요한 사용자 동의 항목 설정을 확정했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 환경 변수 구성 (`.env.local`)
+- `NEXT_PUBLIC_KAKAO_REST_API_KEY` 및 `KAKAO_CLIENT_SECRET` 등록.
+#### 2. 사용자 동의 정책 수립
+- **필수**: 닉네임 (실사용자 식별 및 이름 표시)
+- **선택**: 프로필 사진 (인터넷/마이페이지 썸네일 활용)
+- **이용 중 동의**: 카카오톡 메시지 전송 (향후 업무 알림 및 공지 발송용)
+
+---
+
+## [2026-01-24] - 소셜 로그인 확장: 카카오 및 네이버 연동
+
+### 🚀 핵심 성과
+- **인증 편의성 강화**: 기존 구글 로그인 외에 국내 사용 비중이 높은 카카오톡 및 네이버 로그인 기능을 추가하여 접근성을 개선했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 로그인 페이지 업데이트 (`web/app/login/page.js`)
+- 카카오 로그인 제한 로직(Alert) 제거 및 실제 OAuth 연동 활성화.
+- 네이버 로그인 버튼 신설 및 `handleLogin('naver')` 연결.
+- **카카오 설정 가이드**: Redirect URI 등록 및 OpenID Connect 활성화 권고 (웹훅은 추후 과제로 분류).
+- **설정 유의사항**: 로그인용 Redirect URI(`.../callback`)와 로그아웃용 URI를 분리하여 안내.
+
+---
+
+## [2026-01-24] - 모바일 구글 OAuth 보안 정책 대응 완료
+
+### 🚀 핵심 이슈
+- **구글 로그인 차단 해결**: 네이버앱, 카카오톡 등 인앱 브라우저에서 구글 로그인 시 발생하는 '보안 브라우저 정책 위반' 에러 대응.
+
+### 🛠️ 대응 방안
+#### 1. 인앱 브라우저 감지 및 UI 안내 (`web/app/login/page.js`)
+- `navigator.userAgent`를 분석하여 네이버, 카카오 등 주요 인앱 브라우저 환경을 감지하는 로직 추가.
+- 인앱 브라우저 감지 시, 로그인 카드 내부에 "다른 브라우저로 열기"를 유도하는 경고 배너를 노출하여 사용자 이탈 방지.
+
+---
+
+## [2026-01-24] - 가이드라인 정교화: 구조화 및 일관성 원칙 강화
+
+### 🚀 핵심 성과
+- **설계 원칙 명문화**: 다양한 AI 툴(Cursor, Antigravity 등) 사용 시 발생할 수 있는 코드 스타일 파편화를 방지하기 위해 '일관성(Consistency)' 유지 원칙을 가이드라인에 명시했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 가이드라인 업데이트 (`.agent/AGENT_GUIDELINES.md`)
+- 6번 항목을 '프로젝트 구조화 및 일관성'으로 확장하여, 환경 변화에도 기존 설계 의도를 고수하도록 지침을 강화했습니다.
+
+---
+
+## [2026-01-24] - 환경 동기화 정책 구체화 및 .gitignore 최적화
+
+### 🚀 핵심 성과
+- **멀티 툴 협업 기반 강화**: Antigravity, Cursor, VSCode 등 다양한 개발 도구 사용 시 발생할 수 있는 설정 파일 충돌을 방지하기 위해 `.gitignore` 최적화안을 수립하고 가이드라인에 반영했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 가이드라인 업데이트 (`.agent/AGENT_GUIDELINES.md`)
+- 9번 항목 '멀티 툴 및 환경 동기화'에 `.gitignore` 관리 및 환경 변수 보안 지침을 추가하여 실행력을 높였습니다.
+
+---
+
+## [2026-01-23] - S3(MinIO) 연결 성공 및 UI/UX 대규모 개선
+
+### 🚀 핵심 성과
+- **S3(MinIO) 연결 완전 정복**: ISP 포트 차단(9000번 대) 문제를 HTTPS 역방향 프록시(443)와 WebSocket 헤더 설정을 통해 해결.
+- **관리자 권한 관리 모바일화**: 테이블 형태의 레이아웃을 카드 슬롯(Card View) 방식으로 전면 개편하여 모바일 조작 편의성 극대화.
+- **UI/UX 폴리싱**: 전사 메인 레이아웃 패딩 최적화, 헤더 유격 수정, 푸터 사이즈 축소 등 프리미엄 디자인 완성.
+
+### 🛠️ 작업 상세
+#### 1. 인프라 및 API
+- `.env.local`: `NAS_ENDPOINT`를 HTTPS 프록시 주소로 설정.
+- `lib/s3.js`: S3 클라이언트 설정 최적화 및 `getFileBufferFromS3` 추가로 이미지 서빙 안정화.
+- `app/api/s3/files/route.js`: POST(업로드), GET(프록시 다운로드) 로직 구현.
+
+#### 2. 프론트엔드 개선
+- `app/admin/users/page.js`: 모바일용 카드 뷰 추가 및 반응형 레이아웃 적용. (Intranet 공통 모듈 연동)
+- `app/employees/webzine/page.js`: S3 이미지 로딩 버그 수정 및 썸네일 경로 로직 최적화.
+- `webzine/[id]/page.js`: 상세보기에서 Cloud 이미지 경로 인식하도록 수정.
+
+#### 3. 기타 수정
+- 소위원회 및 회사소개 페이지 서브메뉴 유격(20px) 제거.
+- 푸터 높이 및 여백 축소.
+
+### ⚠️ 주의사항 및 향후 과제
+- **시놀로지 설정 유지**: 역방향 프록시에서 `X-Forwarded-Proto` 헤더와 `192.168.0.4` 대상 세팅이 바뀌면 S3 업로드가 바로 막힐 수 있음.
+- **Webzine 이미지**: 이제 `Webzine/`으로 시작하는 모든 경로는 S3 Proxy API를 거쳐야 함.
+
+---
+
+## [2026-01-23] - 오픈 준비: 사용자 활동 로그(Audit Log) 시스템 구축
+
+### 🚀 핵심 성과
+- **전사 로그 시스템 도입**: 모든 사용자의 행위(이동, 클릭, 다운로드)를 실시간으로 기록하여 보안 및 운영 도구 확보.
+- **3년 보관 정책 수립**: 서비스 오픈 가이드에 따라 로그 데이터를 최소 3년 동안 보관하도록 설계.
+
+### 🛠️ 작업 상세
+#### 1. 데이터베이스 (`web/supabase_user_logs.sql`)
+- `user_activity_logs` 테이블 생성: `user_id`, `action_type`, `path`, `metadata`, `created_at` 등 포함.
+- **보안**: RLS 설정을 통해 일반 사용자는 자기 로그만 생성 가능하고, 조지는 오직 `Admin` 권한자만 가능하도록 격리.
+
+#### 2. 로깅 모듈 (`utils/logger.js`, `utils/loggerServer.js`)
+- 클라이언트와 서버 양측에서 로그를 남길 수 있는 통합 유틸리티 구현.
+
+#### 3. 자동 추적 (`components/ActivityLogger.js`)
+- `RootLayout`에 탑재되어 페이지 뷰(URL) 및 중요 클릭 이벤트를 비동기로 자동 기록.
+
+#### 4. 파일 접근 로깅 (`api/nas/preview`, `api/s3/files`)
+- NAS 및 S3 파일 다운로드/조회 시 서버 레벨에서 정확한 파일명과 함께 로그 생성.
+
+#### 5. 성능 최적화 (S3 Proxy Speed Up)
+- **비차단형 로깅**: 로그 기록이 파일 전송을 방해하지 않도록 Background 처리를 적용하여 Latency 최소화.
+- **강력한 브라우저 캐싱**: `Cache-Control: immutable` 설정을 통해 중복 요청 시 서버를 거치지 않고 즉시 로딩되도록 개선.
+- **Buffer 전송 최적화**: 대용량 파일도 안정적으로 전달하기 위해 서버 메모리 핸들링 보강.
+
+### 📋 운영 가이드 (보관 및 삭제)
+- **보관 기한**: 3년 (2026~2029)
+- **삭제 방법**: Supabase SQL Editor를 통해 `INTERVAL '3 years'` 기준 삭제 쿼리 권장.
+
+## [2026-01-23] - 게시판 UI/UX 고도화 및 개발 정책 수립
+
+###  핵심 성과
+- **인트라넷 디자인 통일성 확보**: 자유게시판, 업무보고, 웹진 등 모든 사내 게시판에 프리미엄 화이트 카드(detailCard) 레이아웃을 적용하여 가독성과 심미성을 극대화.
+- **편집 환경(Editor) 대규모 개선**: 구식 폼 디자인을 걷어내고 현대적인 UI로 개편, Hero 배너 및 사이드바 통합 레이아웃 시스템 안착.
+- **NEW 개발 정책 도입**: 모바일 체크 필수화, UI/UX 일관성 유지, 수정 부위 TDD 의무화 등 고품질 협업을 위한 가이드라인(AGENT_GUIDELINES.md) 업데이트.
+
+###  작업 상세
+#### 1. 게시판 UI/UX (Free Board, Reports, Webzine)
+- oard.module.css: 프리미엄 에디터 및 상세 카드 스타일(editorCard, detailCard) 추가.
+- intranet/board/free/page.js: 목록 페이지 레이아웃 통합 및 카드 디자인 적용.
+- intranet/board/free/[id]/page.js & /edit/page.js: 상세 보기 및 수정 페이지 레이아웃 고도화.
 - intranet/reports/page.js & 
-eports/[id]/page.js: ?낅Т蹂닿퀬 ?쒖뒪?쒖쓽 ?듭씪???덉씠?꾩썐 諛??ㅽ????곸슜.
-- webzine/page.js: 紐⑸줉 ?몃꽕???대갚(Fallback) 濡쒖쭅 媛뺥솕 諛?寃쎈줈 ?몄떇 踰꾧렇 ?섏젙.
-- webzine/[id]/page.js & detail.module.css: ?곸꽭 ?섏씠吏瑜??붿씠??移대뱶 ?ㅽ??쇰줈 ?꾨㈃ 媛쒗렪.
+eports/[id]/page.js: 업무보고 시스템의 통일된 레이아웃 및 스타일 적용.
+- webzine/page.js: 목록 썸네일 폴백(Fallback) 로직 강화 및 경로 인식 버그 수정.
+- webzine/[id]/page.js & detail.module.css: 상세 페이지를 화이트 카드 스타일로 전면 개편.
 
-#### 2. ?명봽??諛?湲고? 濡쒖쭅
-- pp/api/s3/files/route.js: multipart/form-data 泥섎━ ??ormData 媛앹껜 珥덇린???꾨씫 踰꾧렇 ?섏젙.
-- AGENT_GUIDELINES.md: ?뺤씠 ?붿껌???좉퇋 媛쒕컻 ?뺤콉(紐⑤컮???먭?, UI/UX ?좎?, TDD) 怨듭떇 異붽?.
+#### 2. 인프라 및 기타 로직
+- pp/api/s3/files/route.js: multipart/form-data 처리 시 ormData 객체 초기화 누락 버그 수정.
+- AGENT_GUIDELINES.md: 형이 요청한 신규 개발 정책(모바일 점검, UI/UX 유지, TDD) 공식 추가.
 
-###  ?좉퇋 異붽? ?뺤콉 (以???ы빆)
-1. **紐⑤컮???곗꽑 ?먭?**: 紐⑤뱺 ?섏젙 ?ы빆? 諛섎뱶??紐⑤컮???섏씠吏 酉곗뿉?쒖쓽 ?덉씠?꾩썐???뺤씤?쒕떎.
-2. **?ㅼ븻留ㅻ꼫 ?좎?**: 湲곗〈 UI/UX???뺤껜?깆쓣 ?쇱넀?섏? ?딄퀬 議고솕濡?쾶 湲곕뒫??異붽?/?섏젙?쒕떎.
-3. **TDD ?섎Т??*: ?섎룞 ?먭? 諛??뚯뒪???ㅽ겕由쏀듃瑜??듯빐 ?섏젙??濡쒖쭅??臾닿껐?깆쓣 諛섎뱶??寃利앺븳??
-
----
-
-## [2026-01-23] - 媛쒕컻 ?뺤콉 怨좊룄?? ?섍꼍蹂?UI '遺꾨━' 諛?'援ъ“?? ?뺤콉 ?섎┰
-
-###  ?듭떖 ?깃낵
-- **?섍꼍蹂?UI/UX 理쒖쟻???뺤콉 ?꾩엯**: ?곗뒪?ы깙怨?紐⑤컮?쇱쓽 ?ㅼ븻留ㅻ꼫瑜?媛곴컖 ?낅┰?곸쑝濡??좎??섎ŉ, ?붾컮?댁뒪 ?섍꼍??理쒖쟻?붾맂 ?ъ슜??寃쏀뿕???쒓났?섎뒗 
-遺꾨━ 媛쒕컻 ?먯튃 ?섎┰.
-- **?꾨줈?앺듃 援ъ“??Structuralization) ?섎Т??*: 紐⑤뱺 ?대뜑? ?뚯씪??泥닿퀎?곸씤 愿由щ? ?꾪빐 ?뺥빐吏??붾젆?좊━ 洹쒖튃???꾧꺽??以?섑븯怨?以묐났??吏?묓븯??援ъ“???뺤콉 ?꾩엯.
-- **媛?대뱶?쇱씤 怨듭떇 ?낅뜲?댄듃**: .agent/AGENT_GUIDELINES.md???대떦 ?댁슜??異붽??섏뿬 ?ν썑 紐⑤뱺 媛쒕컻??洹쇨컙?쇰줈 ?쇱쓬.
-
-###  ?곸꽭 ?뺤콉 ?댁뿭
-1. **?곗뒪?ы깙 vs 紐⑤컮??遺꾨━**: ?⑥닚 諛섏쓳?뺤쓣 ?섏뼱, 媛??섍꼍???댁슱由щ뒗 ?낅┰???붿옄?멸낵 議곗옉 諛⑹떇???곸슜?쒕떎. (?곹샇 湲곕뒫? ?곌껐?섎릺 UI???대떦 ?섍꼍??理쒖쟻??
-2. **?꾧꺽??援ъ“??*: ?뚯씪 ?쒖뒪?쒖쓣 吏곴??곸씠怨?泥닿퀎?곸쑝濡?愿由ы븯硫? ?뱁엳 ?명듃?쇰꽬 愿??湲곕뒫? (intranet) 洹몃９ ?대줈 吏덉꽌 ?덇쾶 諛곗튂?쒕떎.
+###  신규 추가 정책 (준수 사항)
+1. **모바일 우선 점검**: 모든 수정 사항은 반드시 모바일 페이지 뷰에서의 레이아웃을 확인한다.
+2. **톤앤매너 유지**: 기존 UI/UX의 정체성을 훼손하지 않고 조화롭게 기능을 추가/수정한다.
+3. **TDD 의무화**: 수동 점검 및 테스트 스크립트를 통해 수정된 로직의 무결성을 반드시 검증한다.
 
 ---
 
-## [2026-01-24] - ?명듃?쇰꽬 UI ?뺣? 理쒖쟻??諛??몄쓽 湲곕뒫 怨좊룄??
-### ?? ?듭떖 ?깃낵
-- **?꾪솕踰덊샇 ?먮룞 ?섏씠??湲곕뒫 ?꾩엯**: ?ъ슜?먯? 愿由ъ옄 ?낅젰李?紐⑤몢?먯꽌 ?レ옄留??낅젰?섎㈃ ?대????좎꽑?꾪솕 ?뺤떇??留욎떠 ?먮룞?쇰줈 ?섏씠??-)???앹꽦?섎뒗 湲곕뒫??援ы쁽?덉뒿?덈떎. (留덉씠?섏씠吏, 愿由ъ옄, 臾몄쓽?섍린 ??
-- **?명듃?쇰꽬 ?대퉬寃뚯씠??Middle Bar) ?꾨꼍 留ㅼ묶**: '?뚯궗?뚭컻' ?섏씠吏??誘몃뱾諛붿? ?숈씪???덉씠?꾩썐, 紐⑤컮???숈옉(以묒븰 ?뺣젹 諛??ㅽ겕濡?, ?ㅻ뜑 怨좎젙 ?꾩튂(Sticky Top)瑜??곸슜?섏뿬 ?쒓컖???쇨??깆쓣 ?뺣낫?덉뒿?덈떎.
-- **沅뚰븳 愿由??쒖뒪???덉젙??*: ?쇰? ?뚯썝 ?뺣낫媛 ?꾨씫?섏뼱 沅뚰븳 蹂寃쎌씠 ?ㅽ뙣?섎뜕 臾몄젣瑜?`UPSERT` 濡쒖쭅 ?꾩엯?쇰줈 洹쇰낯?곸쑝濡??닿껐?덉뒿?덈떎.
+## [2026-01-23] - 개발 정책 고도화: 환경별 UI '분리' 및 '구조화' 정책 수립
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?낅젰 ?몄쓽??媛쒖꽑
-- `web/utils/format.js`: ?쒓뎅 ?꾪솕踰덊샇 ?뺤떇(?쒖슱 02, ?대???010, 吏??쾲??????紐⑤몢 吏?먰븯???뺢탳???щℓ??濡쒖쭅 媛쒕컻.
-- ?곸슜 ?섏씠吏: `MyPage.js`, `AdminUsersPage.js`, `ContactPage.js`, `NewReportPage.js`.
+###  핵심 성과
+- **환경별 UI/UX 최적화 정책 도입**: 데스크탑과 모바일의 톤앤매너를 각각 독립적으로 유지하며, 디바이스 환경에 최적화된 사용자 경험을 제공하는 
+분리 개발 원칙 수립.
+- **프로젝트 구조화(Structuralization) 의무화**: 모든 폴더와 파일의 체계적인 관리를 위해 정해진 디렉토리 규칙을 엄격히 준수하고 중복을 지양하는 구조화 정책 도입.
+- **가이드라인 공식 업데이트**: .agent/AGENT_GUIDELINES.md에 해당 내용을 추가하여 향후 모든 개발의 근간으로 삼음.
 
-#### 2. ?대퉬寃뚯씠??諛??덉씠?꾩썐 ?뺢탳??- `IntranetSubNav.js` & `module.css`: 
-    - ?곷떒 ?ㅻ뜑 ?믪씠(`--header-height`)??留욎떠 ?뺥솗???ㅽ떚???꾩튂 議곗젙.
-    - `z-index`瑜?900?쇰줈 ?곹뼢?섏뿬 肄섑뀗痢좎? 寃뱀튂吏 ?딄쾶 ?섏젙.
-    - ?곗뒪?ы깙 濡쒓렇?꾩썐 踰꾪듉???몃젴???꾩씠肄?異붽? 諛?誘몄쟻 ?꾩꽦???μ긽.
-    - 紐⑤컮??硫붿씤 硫붾돱? ?숈씪??以묐떒??768px) 諛??쇳꽣留?濡쒖쭅 ?곸슜.
-
-#### 3. 愿由ъ옄 沅뚰븳 蹂寃?踰꾧렇 ?섏젙
-- `web/app/api/admin/users/route.js`: ?ъ슜???곸꽭 ?뺣낫(`user_roles`)媛 ?녿뒗 ?좎????뺣낫瑜??섏젙???뚮룄 ?먮룞?쇰줈 ?덉퐫?쒕? ?앹꽦?섎ŉ ??λ릺?꾨줉 `update`瑜?`upsert`濡?援먯껜?섏뿬 "蹂寃??ㅽ뙣" ?ㅻ쪟瑜??닿껐?덉뒿?덈떎.
-
-### ?뱥 李멸퀬 ?ы빆
-- **?꾪솕踰덊샇 ?낅젰**: ?댁젣 01012345678 ?낅젰 ??010-1234-5678濡??먮룞 蹂?섎맗?덈떎. 諛깆뒪?섏씠?ㅻ줈 吏???뚮룄 ?먯뿰?ㅻ읇寃??숈옉?⑸땲??
-- **硫붾돱 ?뺣젹**: 紐⑤컮?쇱뿉???명듃?쇰꽬 硫붾돱媛 ?뚯궗?뚭컻 硫붾돱? ?숈씪???ш린? 媛꾧꺽?쇰줈 源붾걫?섍쾶 ?뺣젹?⑸땲??
+###  상세 정책 내역
+1. **데스크탑 vs 모바일 분리**: 단순 반응형을 넘어, 각 환경에 어울리는 독립된 디자인과 조작 방식을 적용한다. (상호 기능은 연결되되 UI는 해당 환경에 최적화)
+2. **엄격한 구조화**: 파일 시스템을 직관적이고 체계적으로 관리하며, 특히 인트라넷 관련 기능은 (intranet) 그룹 내로 질서 있게 배치한다.
 
 ---
 
-## [2026-01-24] - ?먮즺??蹂댁븞 ?뺣???諛??명듃?쇰꽬 ?덉젙??
-### ?? ?듭떖 ?깃낵
-- **?먮즺??NAS) 吏?먮퀎 蹂댁븞 ?뺤콉 ?꾩꽦**: 吏?먮퀎 ?낅┰ ?대뜑, 蹂댁븞 ?대뜑(`_蹂댁븞`) 寃⑸━, 沅뚰븳蹂?媛?쒖꽦 ?쒖뼱 濡쒖쭅???쒕쾭 ?덈꺼?먯꽌 ?꾨꼍?섍쾶 援ы쁽?덉뒿?덈떎.
-- **????젣 ?쒗븳 諛??ㅽ봽?쇱씤 ?덈궡**: ?곗씠???좎떎 諛⑹?瑜??꾪빐 ?뱀뿉?쒖쓽 臾대텇蹂꾪븳 ??젣瑜?留됯퀬, ?щТ??PC ?ъ슜??沅뚯옣?섎뒗 ?꾩슜 ?덈궡 ?쒖뒪?쒖쓣 ?꾩엯?덉뒿?덈떎.
-- **?명듃?쇰꽬 ?ъ슜???洹쒕え 媛쒖꽑**: 濡쒓렇???꾪썑 由щ떎?대젆?? 吏?먮퀎 ?명듃?쇰꽬 ?묎렐 ?ㅻ쪟, 紐⑤컮??寃뚯떆??媛?낆꽦 ???꾩옣?먯꽌 諛쒖깮??遺덊렪 ?ы빆???꾩닔 ?섏젙?덉뒿?덈떎.
+## [2026-01-24] - 인트라넷 UI 정밀 최적화 및 편의 기능 고도화
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?먮즺??NAS) 蹂댁븞 諛??댁쁺
+### 🚀 핵심 성과
+- **전화번호 자동 하이픈 기능 도입**: 사용자와 관리자 입력창 모두에서 숫자만 입력하면 휴대폰/유선전화 형식에 맞춰 자동으로 하이픈(-)이 생성되는 기능을 구현했습니다. (마이페이지, 관리자, 문의하기 등)
+- **인트라넷 내비게이션(Middle Bar) 완벽 매칭**: '회사소개' 페이지의 미들바와 동일한 레이아웃, 모바일 동작(중앙 정렬 및 스크롤), 헤더 고정 위치(Sticky Top)를 적용하여 시각적 일관성을 확보했습니다.
+- **권한 관리 시스템 안정화**: 일부 회원 정보가 누락되어 권한 변경이 실패하던 문제를 `UPSERT` 로직 도입으로 근본적으로 해결했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 입력 편의성 개선
+- `web/utils/format.js`: 한국 전화번호 형식(서울 02, 휴대폰 010, 지역번호 등)을 모두 지원하는 정교한 포매팅 로직 개발.
+- 적용 페이지: `MyPage.js`, `AdminUsersPage.js`, `ContactPage.js`, `NewReportPage.js`.
+
+#### 2. 내비게이션 및 레이아웃 정교화
+- `IntranetSubNav.js` & `module.css`: 
+    - 상단 헤더 높이(`--header-height`)에 맞춰 정확히 스티키 위치 조정.
+    - `z-index`를 900으로 상향하여 콘텐츠와 겹치지 않게 수정.
+    - 데스크탑 로그아웃 버튼에 세련된 아이콘 추가 및 미적 완성도 향상.
+    - 모바일 메인 메뉴와 동일한 중단점(768px) 및 센터링 로직 적용.
+
+#### 3. 관리자 권한 변경 버그 수정
+- `web/app/api/admin/users/route.js`: 사용자 상세 정보(`user_roles`)가 없는 유저의 정보를 수정할 때도 자동으로 레코드를 생성하며 저장되도록 `update`를 `upsert`로 교체하여 "변경 실패" 오류를 해결했습니다.
+
+### 📋 참고 사항
+- **전화번호 입력**: 이제 01012345678 입력 시 010-1234-5678로 자동 변환됩니다. 백스페이스로 지울 때도 자연스럽게 동작합니다.
+- **메뉴 정렬**: 모바일에서 인트라넷 메뉴가 회사소개 메뉴와 동일한 크기와 간격으로 깔끔하게 정렬됩니다.
+
+---
+
+## [2026-01-24] - 자료실 보안 정밀화 및 인트라넷 안정화
+
+### 🚀 핵심 성과
+- **자료실(NAS) 지점별 보안 정책 완성**: 지점별 독립 폴더, 보안 폴더(`_보안`) 격리, 권한별 가시성 제어 로직을 서버 레벨에서 완벽하게 구현했습니다.
+- **웹 삭제 제한 및 오프라인 안내**: 데이터 유실 방지를 위해 웹에서의 무분별한 삭제를 막고, 사무실 PC 사용을 권장하는 전용 안내 시스템을 도입했습니다.
+- **인트라넷 사용성 대규모 개선**: 로그인 전후 리다이렉트, 지점별 인트라넷 접근 오류, 모바일 게시판 가독성 등 현장에서 발생한 불편 사항을 전수 수정했습니다.
+
+### 🛠️ 작업 상세
+#### 1. 자료실(NAS) 보안 및 운영
 - `app/api/nas/files/route.js`: 
-    - 吏??留ㅽ븨 諛?蹂댁븞 ?대뜑(`_蹂댁븞`) ?몄텧 濡쒖쭅 援ы쁽.
-    - **2以?蹂댁븞**: 吏???쇱튂 + 愿由ъ옄 遺??'蹂댁븞 沅뚰븳' 泥댄겕 ?쒖뿉留??대뜑 ?몄텧.
-    - **?대뱶誘??밴텒**: 紐⑤뱺 ?④? ?뚯씪, ?쒖뒪???뚯씪, ? 吏??蹂댁븞 ?대뜑 ?꾩껜 媛?쒖꽦 遺??
-    - **??젣 ?좉툑**: 愿由ъ옄 ????젣 ?쒕룄 ???꾩슜 紐⑤떖(`ArchiveBrowser.js`) ?몄텧 諛?API 李⑤떒.
-- `app/api/nas/files/permissions/route.js`: ?꾨줎?몄뿏??UI ?쒖뼱瑜??꾪븳 沅뚰븳 ?뚮옒洹??곕룞.
+    - 지점 매핑 및 보안 폴더(`_보안`) 노출 로직 구현.
+    - **2중 보안**: 지점 일치 + 관리자 부여 '보안 권한' 체크 시에만 폴더 노출.
+    - **어드민 특권**: 모든 숨김 파일, 시스템 파일, 타 지점 보안 폴더 전체 가시성 부여.
+    - **삭제 잠금**: 관리자 외 삭제 시도 시 전용 모달(`ArchiveBrowser.js`) 노출 및 API 차단.
+- `app/api/nas/files/permissions/route.js`: 프론트엔드 UI 제어를 위한 권한 플래그 연동.
 
-#### 2. ?명듃?쇰꽬 ?대퉬寃뚯씠??諛?濡쒖쭅 ?섏젙
-- **吏???명듃?쇰꽬 ?ㅻ쪟 ?섏젙**: Next.js ?뚮씪誘명꽣 濡쒕뵫 踰꾧렇瑜??섏젙?섏뿬 紐⑤뱺 吏???꾩궛, 以묐? ?? 硫붾돱 ?묎렐 ?덉젙??
-- **濡쒓렇??由щ떎?대젆??怨좊룄??*: `document.referrer` 遺꾩꽍???듯빐 濡쒓렇?????먮옒 蹂닿퀬 ?덈뜕 ?섏씠吏濡??뺥솗??蹂듦?.
-- **?꾨씫 吏???쇨큵 ?깅줉**: ?꾩궛CY, ?쒖궛, ?곗쿇, ?몄궛, ?꾧퀬, 踰뚰겕?ъ뾽遺 ????吏?먯쓣 ?ㅻ뜑 諛??ы꽭??異붽?.
+#### 2. 인트라넷 내비게이션 및 로직 수정
+- **지점 인트라넷 오류 수정**: Next.js 파라미터 로딩 버그를 수정하여 모든 지점(아산, 중부 등) 메뉴 접근 안정화.
+- **로그인 리다이렉트 고도화**: `document.referrer` 분석을 통해 로그인 후 원래 보고 있던 페이지로 정확히 복귀.
+- **누락 지점 일괄 등록**: 아산CY, 서산, 연천, 울산, 임고, 벌크사업부 등 전 지점을 헤더 및 포털에 추가.
 
-#### 3. UI/UX ?뺣? ?대━??(TDD 寃利??꾨즺)
-- **?먯쑀寃뚯떆??紐⑤컮??理쒖쟻??*: ?쒕ぉ ?고듃 ?뺣?(1.15rem), 硫뷀? ?뺣낫 異뺤냼(0.78rem)濡?媛?낆꽦 諛몃윴??議곗젙.
-- **臾몄쓽?섍린 紐⑤컮???덉씠?꾩썐**: 移대뱶 ?щ’ 媛蹂 ???곸슜 諛?媛濡??ㅽ겕濡?Overflow) ?꾩긽 ?닿껐.
-- **?뚯뒪???먮룞??*: `test_latest_fixes.js`瑜??듯빐 ?듭떖 濡쒖쭅(useState, Redirect, CSS) ?ъ쟾 寃利??꾨줈?몄뒪 援ъ텞.
+#### 3. UI/UX 정밀 폴리싱 (TDD 검증 완료)
+- **자유게시판 모바일 최적화**: 제목 폰트 확대(1.15rem), 메타 정보 축소(0.78rem)로 가독성 밸런스 조정.
+- **문의하기 모바일 레이아웃**: 카드 슬롯 가변 폭 적용 및 가로 스크롤(Overflow) 현상 해결.
+- **테스트 자동화**: `test_latest_fixes.js`를 통해 핵심 로직(useState, Redirect, CSS) 사전 검증 프로세스 구축.
 
-### ?좑툘 二쇱쓽?ы빆
-- **蹂댁븞 ?대뜑 紐낆묶**: 諛섎뱶??`[吏?먮챸]_蹂댁븞` ?뺤떇???좎??댁빞 ?쒖뒪?쒖씠 ?몄떇?⑸땲?? (?섏씠???꾨떂)
-- **沅뚰븳 愿由?*: ?댁젣 愿由ъ옄 ?섏씠吏??**?뵍(蹂댁븞)** 泥댄겕諛뺤뒪媛 NAS 蹂댁븞 ?대뜑 ?묎렐???듭떖 ?ㅼ쐞移섏엯?덈떎.
-
----
-
-## [2026-02-02] - ?덉쟾?댁엫 ?꾩떆??λぉ濡??몄텧 ?쒖꽌 媛쒖꽑
-
-### ?? ?듭떖 ?댁뒋
-- **?ъ슜???몄쓽???μ긽**: ?덉쟾?댁엫 議고쉶 ???꾩떆??λ맂 寃곌낵媛 怨쇨굅 ??ぉ遺???곷떒???몄텧?섏뼱, 諛⑷툑 議고쉶??理쒖떊 寃곌낵瑜??뺤씤?섍린 ?꾪빐 ?꾨옒濡??ㅽ겕濡ㅽ빐???섎뒗 遺덊렪??媛쒖꽑.
-
-### ?썱截??묒뾽 ?곸꽭
-#### 1. 紐⑸줉 ?뺣젹 諛??쒕쾲 濡쒖쭅 ?섏젙 (`web/app/employees/safe-freight/page.js`)
-- **???濡쒖쭅**: ?좉퇋 議고쉶 寃곌낵瑜?諛곗뿴???욌?遺꾩뿉 異붽?(`unshift`)?섎룄濡?蹂寃쏀븯???곗씠???먯껜瑜?理쒖떊?쒖쑝濡?愿由?
-- **UI ?몄텧**: `savedResults.length - idx` 怨듭떇???곸슜?섏뿬, 媛???곷떒???몄텧?섎뒗 理쒖떊 ??ぉ??媛???믪? ?쒕쾲(No.)??媛吏怨? 泥섏쓬 議고쉶????ぉ? No.1濡쒖꽌 媛???섎떒???꾩튂?섎룄濡?議곗젙.
-- **?쇨???*: ?묒? ?ㅼ슫濡쒕뱶 諛???젣 湲곕뒫 ??湲곗〈 濡쒖쭅怨쇱쓽 ?명솚?깆쓣 ?좎??섎ŉ 理쒖떊???뺣젹 諛섏쁺.
+### ⚠️ 주의사항
+- **보안 폴더 명칭**: 반드시 `[지점명]_보안` 형식을 유지해야 시스템이 인식합니다. (하이픈 아님)
+- **권한 관리**: 이제 관리자 페이지의 **🔐(보안)** 체크박스가 NAS 보안 폴더 접근의 핵심 스위치입니다.
 
 ---
 
-## [2026-02-02] - ?댁뒪 ?섏쭛 湲곕뒫 媛뺥솕 諛?UI/UX ?꾨㈃ 媛쒗렪
+## [2026-02-02] - 안전운임 임시저장목록 노출 순서 개선
 
-### ?? ?듭떖 ?댁뒋
-- **?섏쭛???쒓퀎**: 湲곗〈 Google News RSS?먮쭔 ?섏〈?섎뜕 諛⑹떇??媛쒖꽑?섏뿬 ?고빀?댁뒪, YTN ???ㅺ컖?붾맂 ?댁뒪 ?뚯뒪 ?꾩슂.
-- **異붿텧 ?ㅻ쪟**: ?뱀젙 ?댁뒪 蹂몃Ц 異붿텧 ???몄퐫??臾몄젣(EUC-KR)???쒕쾭 李⑤떒?쇰줈 ?명븳 ?ㅻ쪟(JSON ?뚯떛 ?먮윭) 諛쒖깮 ?닿껐.
-- **?쒓컖??誘명씉**: ?몃꽕??Thumbnail) ?꾨씫????퀬 紐⑸줉 ?붿옄?몄씠 ?⑥닚????媛쒖꽑.
+### 🚀 핵심 이슈
+- **사용자 편의성 향상**: 안전운임 조회 후 임시저장된 결과가 과거 항목부터 상단에 노출되어, 방금 조회한 최신 결과를 확인하기 위해 아래로 스크롤해야 하는 불편함 개선.
 
-### ?썱截??묒뾽 ?곸꽭
-#### 1. ?ㅼ쨷 ?댁뒪 ?뚯뒪 諛?寃??湲곕뒫 ?꾩엯 (`web/app/api/news/route.js`)
-- **硫???뚯뒪**: Google(?꾩껜), ?고빀?댁뒪, YTN RSS瑜??뚮씪誘명꽣???곕씪 ?좏깮?곸쑝濡??섏쭛?섎룄濡?援ы쁽?덉뒿?덈떎.
-- **寃??API**: Google News 寃??RSS瑜??쒖슜?섏뿬 ?ъ슜?먭? ?먰븯???ㅼ썙?쒕줈 ?ㅼ떆媛??댁뒪瑜?議고쉶?????덈뒗 湲곕뒫??異붽??덉뒿?덈떎.
-- **?몃꽕??媛뺥솕**: `og:image`, `twitter:image` ?깆쓣 ?ㅺ컖?꾨줈 異붿쟻?섍퀬 ?곷? 寃쎈줈 泥섎━ 諛?由щ떎?대젆?????濡쒖쭅??媛뺥솕?섏뿬 ?몃꽕???쒖떆?⑥쓣 ?믪??듬땲??
+### 🛠️ 작업 상세
+#### 1. 목록 정렬 및 순번 로직 수정 (`web/app/employees/safe-freight/page.js`)
+- **저장 로직**: 신규 조회 결과를 배열의 앞부분에 추가(`unshift`)하도록 변경하여 데이터 자체를 최신순으로 관리.
+- **UI 노출**: `savedResults.length - idx` 공식을 적용하여, 가장 상단에 노출되는 최신 항목이 가장 높은 순번(No.)을 가지고, 처음 조회한 항목은 No.1로서 가장 하단에 위치하도록 조정.
+- **일관성**: 엑셀 다운로드 및 삭제 기능 등 기존 로직과의 호환성을 유지하며 최신순 정렬 반영.
 
-#### 2. 蹂몃Ц 異붿텧 ?덉젙??(`web/app/api/news/article/route.js`)
-- **?몄퐫?????*: EUC-KR ???ㅼ뼇???몄퐫???뺤떇??媛먯??섏뿬 ?쒓? 源⑥쭚 ?꾩긽??諛⑹??덉뒿?덈떎.
-- **?덉젙???묐떟**: ?쒕쾭 ?ㅻ쪟 ??HTML???꾨땶 ?좏슚??JSON??諛섑솚?섎룄濡??덉쇅 泥섎━瑜?媛뺥솕?섏뿬 ?대씪?댁뼵?몄쓽 "Unexpected token '<'" ?먮윭瑜??닿껐?덉뒿?덈떎.
-- **?ㅻ뜑 理쒖쟻??*: ?ㅼ젣 釉뚮씪?곗?? ?좎궗???ㅻ뜑瑜??ъ슜?섏뿬 ?몃줎???ъ씠?몄쓽 李⑤떒??理쒖냼?뷀뻽?듬땲??
+---
 
-#### 3. ?댁뒪 ?섏씠吏 ?붿옄??媛쒗렪 (`web/app/employees/news/`)
-- **UI 怨좊룄??*: 寃?됰컮, ?뚯뒪 ??Google/?고빀/YTN), 移대뱶???댁뒪 紐⑸줉 ?깆쓣 ?ы븿???꾨??곸씤 ?덉씠?꾩썐?쇰줈 媛쒗렪?덉뒿?덈떎.
-- **諛섏쓳???붿옄??*: 紐⑤컮?쇱뿉?쒕룄 ?몃꽕?쇨낵 ?쒕ぉ??議고솕濡?쾶 蹂댁씠?꾨줉 理쒖쟻?뷀뻽?듬땲??
+## [2026-02-02] - 뉴스 수집 기능 강화 및 UI/UX 전면 개편
 
-#### 4. ?댁뒪 湲곕뒫 湲닿툒 蹂댁젙 (Hotfix)
-- **異붿텧湲?怨좊룄??*: Readability ?ㅽ뙣 ??援?궡 ?몃줎???뱁솕 ??됲꽣(`#articleBodyContents` ??瑜??쒖감?곸쑝濡??쒕룄?섎뒗 ?대갚 濡쒖쭅??異붽??섏뿬 異붿텧 ?깃났瑜좎쓣 ?믪??듬땲??
-- **?몃꽕??寃쎈줈 蹂듦뎄**: ?몃꽕??二쇱냼媛 ?꾨찓?몄씠 ?앸왂???곷? 寃쎈줈??寃쎌슦, ?먮낯 ?ъ씠?몄쓽 ?꾨찓?몄쓣 寃고빀?섏뿬 ?덈? 寃쎈줈濡??먮룞 蹂?섑븯?꾨줉 ?섏젙?덉뒿?덈떎.
-- **?꾩씠肄?理쒖쟻??*: 議댁옱?섏? ?딅뒗 ?대?吏 寃쎈줈瑜??섏젙?섍퀬 湲곕낯 ?댁뒪 ?꾩씠肄?SVG)?쇰줈 援먯껜?섏뿬 ?쒓컖???꾩꽦?꾨? ?믪??듬땲??
+### 🚀 핵심 이슈
+- **수집원 한계**: 기존 Google News RSS에만 의존하던 방식을 개선하여 연합뉴스, YTN 등 다각화된 뉴스 소스 필요.
+- **추출 오류**: 특정 뉴스 본문 추출 시 인코딩 문제(EUC-KR)나 서버 차단으로 인한 오류(JSON 파싱 에러) 발생 해결.
+- **시각적 미흡**: 썸네일(Thumbnail) 누락이 잦고 목록 디자인이 단순한 점 개선.
+
+### 🛠️ 작업 상세
+#### 1. 다중 뉴스 소스 및 검색 기능 도입 (`web/app/api/news/route.js`)
+- **멀티 소스**: Google(전체), 연합뉴스, YTN RSS를 파라미터에 따라 선택적으로 수집하도록 구현했습니다.
+- **검색 API**: Google News 검색 RSS를 활용하여 사용자가 원하는 키워드로 실시간 뉴스를 조회할 수 있는 기능을 추가했습니다.
+- **썸네일 강화**: `og:image`, `twitter:image` 등을 다각도로 추적하고 상대 경로 처리 및 리다이렉트 대응 로직을 강화하여 썸네일 표시율을 높였습니다.
+
+#### 2. 본문 추출 안정화 (`web/app/api/news/article/route.js`)
+- **인코딩 대응**: EUC-KR 등 다양한 인코딩 형식을 감지하여 한글 깨짐 현상을 방지했습니다.
+- **안정적 응답**: 서버 오류 시 HTML이 아닌 유효한 JSON을 반환하도록 예외 처리를 강화하여 클라이언트의 "Unexpected token '<'" 에러를 해결했습니다.
+- **헤더 최적화**: 실제 브라우저와 유사한 헤더를 사용하여 언론사 사이트의 차단을 최소화했습니다.
+
+#### 3. 뉴스 페이지 디자인 개편 (`web/app/employees/news/`)
+- **UI 고도화**: 검색바, 소스 탭(Google/연합/YTN), 카드형 뉴스 목록 등을 포함한 현대적인 레이아웃으로 개편했습니다.
+- **반응형 디자인**: 모바일에서도 썸네일과 제목이 조화롭게 보이도록 최적화했습니다.
+
+#### 4. 뉴스 기능 긴급 보정 (Hotfix)
+- **추출기 고도화**: Readability 실패 시 국내 언론사 특화 셀렉터(`#articleBodyContents` 등)를 순차적으로 시도하는 폴백 로직을 추가하여 추출 성공률을 높였습니다.
+- **썸네일 경로 복구**: 썸네일 주소가 도메인이 생략된 상대 경로일 경우, 원본 사이트의 도메인을 결합하여 절대 경로로 자동 변환하도록 수정했습니다.
+- **아이콘 최적화**: 존재하지 않는 이미지 경로를 수정하고 기본 뉴스 아이콘(SVG)으로 교체하여 시각적 완성도를 높였습니다.
 
 ---

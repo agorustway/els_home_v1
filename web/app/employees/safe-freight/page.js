@@ -893,7 +893,6 @@ export default function SafeFreightPage() {
                             className={styles.addressInput}
                             placeholder="주소 입력 (예: 인주면 걸매리 1034번지)"
                             value={addressSearch}
-                            value={addressSearch}
                             onChange={(e) => handleAddressSearch(e.target.value)}
                             onFocus={() => addressSearch && setShowAddressDropdown(true)}
                             onKeyDown={(e) => {
