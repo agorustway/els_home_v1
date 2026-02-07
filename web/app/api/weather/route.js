@@ -126,7 +126,7 @@ export async function GET(request) {
 
     try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
-        const res = await fetch(url, { next: { revalidate: 600 } });
+        const res = await fetch(url, { next: { revalidate: 1800 } });
         if (!res.ok) throw new Error('날씨 API 오류');
         const data = await res.json();
 

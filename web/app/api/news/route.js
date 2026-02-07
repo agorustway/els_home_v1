@@ -97,7 +97,7 @@ export async function GET() {
     try {
         const res = await fetch(rssUrl, {
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IntranetNews/1.0)' },
-            next: { revalidate: 300 },
+            next: { revalidate: 1800 },
         });
         if (!res.ok) throw new Error('연합뉴스 수집 실패');
         const xml = await res.text();

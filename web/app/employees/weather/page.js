@@ -120,7 +120,8 @@ export default function WeatherPage() {
     const router = useRouter();
     const [currentData, setCurrentData] = useState(null);
     const [otherStartIndex, setOtherStartIndex] = useState(0);
-    const [otherData, setOtherData] = useState([null, null, null]);
+    const [otherWeatherCache, setOtherWeatherCache] = useState({}); // { regionId: weatherData }
+    const [lastOtherFetchTime, setLastOtherFetchTime] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -165,16 +166,41 @@ export default function WeatherPage() {
         }
     }, [role]);
 
+    // 다른 지역 모든 날씨 한 번에 캐싱 (30분 주기)
     useEffect(() => {
-        const ids = [OTHER_REGIONS[otherStartIndex % 10], OTHER_REGIONS[(otherStartIndex + 1) % 10], OTHER_REGIONS[(otherStartIndex + 2) % 10]];
-        Promise.all(ids.map((id) => fetch(`/api/weather?region=${id}`).then((r) => r.json())))
-            .then((arr) => setOtherData(arr.map((j) => (j.error ? null : j))));
-    }, [otherStartIndex]);
+        if (!role) return;
+        const fetchAllOtherWeather = async () => {
+            const now = Date.now();
+            if (lastOtherFetchTime > 0 && now - lastOtherFetchTime < 30 * 60 * 1000) return;
 
+            const newCache = { ...otherWeatherCache };
+            for (const rid of OTHER_REGIONS) {
+                try {
+                    const res = await fetch(`/api/weather?region=${rid}`);
+                    const json = await res.json();
+                    if (!json.error) newCache[rid] = json;
+                } catch (e) { }
+            }
+            setOtherWeatherCache(newCache);
+            setLastOtherFetchTime(now);
+        };
+
+        fetchAllOtherWeather();
+        const timer = setInterval(fetchAllOtherWeather, 30 * 60 * 1000);
+        return () => clearInterval(timer);
+    }, [role, lastOtherFetchTime]);
+
+    // 5초마다 인덱스만 전환
     useEffect(() => {
-        const tid = setInterval(() => setOtherStartIndex((i) => (i + 3) % 10), OTHER_ROTATE_MS);
+        const tid = setInterval(() => setOtherStartIndex((i) => (i + 3) % OTHER_REGIONS.length), OTHER_ROTATE_MS);
         return () => clearInterval(tid);
     }, []);
+
+    const otherData = [
+        otherWeatherCache[OTHER_REGIONS[otherStartIndex % OTHER_REGIONS.length]],
+        otherWeatherCache[OTHER_REGIONS[(otherStartIndex + 1) % OTHER_REGIONS.length]],
+        otherWeatherCache[OTHER_REGIONS[(otherStartIndex + 2) % OTHER_REGIONS.length]]
+    ];
 
     if (authLoading || !role) return null;
 

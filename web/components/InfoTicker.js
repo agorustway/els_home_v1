@@ -28,7 +28,8 @@ export default function InfoTicker({ style }) {
     const [liveTime, setLiveTime] = useState(null);
     const [newsItems, setNewsItems] = useState([]);
     const [tickerRegionIndex, setTickerRegionIndex] = useState(0);
-    const [tickerWeather, setTickerWeather] = useState(null);
+    const [weatherCache, setWeatherCache] = useState({});
+    const [lastFetchTime, setLastFetchTime] = useState(0);
     const [showModal, setShowModal] = useState(false);
 
     // 마운트 체크
@@ -43,15 +44,37 @@ export default function InfoTicker({ style }) {
         return () => clearInterval(timer);
     }, []);
 
-    // 뉴스 가져오기
+    // 뉴스 및 모든 지역 날씨 가져오기 (30분 주기)
     useEffect(() => {
-        fetch('/api/news')
-            .then((res) => res.json())
-            .then((json) => { if (!json.error && json.items?.length) setNewsItems(json.items); })
-            .catch(() => setNewsItems([]));
-    }, []);
+        const fetchAllData = async () => {
+            const now = Date.now();
+            if (lastFetchTime > 0 && now - lastFetchTime < 30 * 60 * 1000) return;
 
-    // 티커 날씨 지역 순환 (5초)
+            // 뉴스 Fetch
+            fetch('/api/news')
+                .then((res) => res.json())
+                .then((json) => { if (!json.error && json.items?.length) setNewsItems(json.items); })
+                .catch(() => setNewsItems([]));
+
+            // 모든 지역 날씨 Fetch (순차적 또는 병렬)
+            const newCache = { ...weatherCache };
+            for (const rid of OTHER_REGION_IDS) {
+                try {
+                    const res = await fetch(`/api/weather?region=${rid}`);
+                    const json = await res.json();
+                    if (!json.error) newCache[rid] = json;
+                } catch (e) { }
+            }
+            setWeatherCache(newCache);
+            setLastFetchTime(now);
+        };
+
+        fetchAllData();
+        const timer = setInterval(fetchAllData, 30 * 60 * 1000);
+        return () => clearInterval(timer);
+    }, [lastFetchTime]);
+
+    // 티커 날씨 지역 순환 (5초) - 서버 요청 없이 인덱스만 변경
     useEffect(() => {
         const timer = setInterval(() => {
             setTickerRegionIndex((prev) => (prev + 1) % OTHER_REGION_IDS.length);
@@ -59,14 +82,7 @@ export default function InfoTicker({ style }) {
         return () => clearInterval(timer);
     }, []);
 
-    // 티커용 현재 순환 지역 날씨 가져오기
-    useEffect(() => {
-        const rid = OTHER_REGION_IDS[tickerRegionIndex];
-        fetch(`/api/weather?region=${rid}`)
-            .then(r => r.json())
-            .then(j => { if (!j.error) setTickerWeather(j); })
-            .catch(() => { });
-    }, [tickerRegionIndex]);
+    const tickerWeather = weatherCache[OTHER_REGION_IDS[tickerRegionIndex]];
 
     if (!mounted) return null;
 
