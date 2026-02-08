@@ -169,9 +169,11 @@
     .employeeHeader {
         position: relative;
         top: 0 !important;
+        /* 모바일에서는 sticky 해제 */
         z-index: 10;
         box-shadow: none;
-        padding: 5px 0;
+        padding: 0;
+        /* 패딩 제거 */
         border-bottom: 1px solid #f1f5f9;
     }
 
