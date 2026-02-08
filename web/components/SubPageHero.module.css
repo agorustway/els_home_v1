@@ -59,7 +59,8 @@
 @media (max-width: 768px) {
     .hero {
         height: 200px;
-        padding-top: 24px;
+        padding-top: 0;
+        /* 모바일에서 헤더와의 간격 제거 */
     }
 
     .content {
