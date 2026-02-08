@@ -555,6 +555,17 @@ function ContainerHistoryInner() {
         }
     };
 
+    // [고도화 7] 디버그 모드 토글 핸들러
+    const handleDebugToggle = (e) => {
+        const checked = e.target.checked;
+        setShowBrowser(checked);
+        if (loginSuccess) {
+            setLoginSuccess(false); // 로그인 상태 해제 -> 조회 시 재로그인 유도
+            sessionStorage.removeItem('els_login_success');
+            setLogLines(prev => [...prev, `[설정] 디버그 모드(${checked ? 'ON' : 'OFF'}) 변경 감지. 다음 조회 시 브라우저가 재시작됩니다.`]);
+        }
+    };
+
     const resetAll = () => {
         if (confirm('모든 입력값, 로그, 결과 데이터를 초기화할까요?')) {
             setLogLines([]);
@@ -668,7 +679,7 @@ function ContainerHistoryInner() {
                             <div className={styles.sectionHeader}>
                                 <h2 className={styles.sectionTitle}>2. 컨테이너 조회</h2>
                                 <label className={styles.debugLabel}>
-                                    <input type="checkbox" checked={showBrowser} onChange={e => setShowBrowser(e.target.checked)} />
+                                    <input type="checkbox" checked={showBrowser} onChange={handleDebugToggle} />
                                     브라우저 표시 (디버그)
                                 </label>
                             </div>

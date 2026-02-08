@@ -14,7 +14,7 @@ CORS(app)
 
 # 전역 변수로 브라우저 드라이버를 유지 (세션 유지의 핵심)
 shared_driver = None
-current_user = {"id": None, "pw": None}
+current_user = {"id": None, "pw": None, "show_browser": False}
 is_busy = False # 현재 조회 작업 수행 중인지 여부
 
 def check_driver_alive(driver):
@@ -55,21 +55,29 @@ def login():
     show_browser = data.get('showBrowser', False)
     
     # [방어 로직] 이미 브라우저가 살아있고 계정이 같다면 절대 새로 띄우지 않음!
-    # 조회 중(is_busy)이라면 이미 세션이 매우 활발한 것이므로 무조건 재사용
+    # 단, 요청된 브라우저 표시 모드(showBrowser)가 현재 상태와 다르면 새로 띄워야 함 (Headless <-> UI 전환)
     is_alive = check_driver_alive(shared_driver)
-    if (is_alive or is_busy) and current_user["id"] and current_user["id"].lower() == u_id.lower():
-        print(f"[데몬] 기존 세션 ({u_id}) 재사용 및 유지.")
+    is_same_account = current_user["id"] and current_user["id"].lower() == u_id.lower()
+    is_same_mode = current_user.get("show_browser") == show_browser
+
+    # 조회 중(is_busy)이라면 무조건 유지, 그 외엔 조건 충족 시 유지
+    if (is_alive or is_busy) and is_same_account and is_same_mode:
+        print(f"[데몬] 기존 세션 ({u_id}, GUI:{show_browser}) 재사용 및 유지.")
         return jsonify({
             "ok": True, 
             "message": "이미 로그인되어 있습니다.", 
-            "log": [f"[데몬] 이미 {u_id} 계정으로 로그인되어 있으며 조회 중이거나 대기 중입니다."]
+            "log": [f"[데몬] 이미 {u_id} 계정으로 로그인되어 있으며 설정이 동일합니다."]
         })
     
     # 로그 수집용 리스트
     logs = []
     
-    print(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
-    logs.append(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중...")
+    if is_alive and not is_same_mode:
+        print(f"[데몬] 브라우저 모드 변경 감지 (GUI: {current_user.get('show_browser')} -> {show_browser}). 재시작합니다.")
+        logs.append(f"[데몬] 디버그 모드 변경으로 인해 브라우저를 재시작합니다.")
+
+    print(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중... (GUI: {show_browser})")
+    logs.append(f"[데몬] {u_id} 계정으로 새 세션 로그인 시도 중... (GUI모드: {show_browser})")
     
     # 기존에 돌던 브라우저가 있으면 깔끔하게 종료하고 새로 띄움
     if shared_driver:
@@ -96,6 +104,7 @@ def login():
         shared_driver = driver
         current_user["id"] = u_id
         current_user["pw"] = u_pw
+        current_user["show_browser"] = show_browser # 현재 모드 저장
         success_msg = f"[데몬] {u_id} 로그인 및 메뉴 진입 성공!"
         print(success_msg)
         logs.append(success_msg)
