@@ -170,7 +170,8 @@
         position: relative;
         top: 0 !important;
         /* 모바일에서는 sticky 해제 */
-        z-index: 10;
+        z-index: 1200;
+        /* 오버레이 위에 표시 */
         box-shadow: none;
         padding: 0;
         /* 패딩 제거 */
