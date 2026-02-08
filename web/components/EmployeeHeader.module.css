@@ -25,6 +25,29 @@
     gap: 24px;
 }
 
+.leftSection {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobileMenuBtn {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #475569;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobileMenuBtn:hover {
+    background: #f1f5f9;
+}
+
 .logo {
     font-size: 1.35rem;
     font-weight: 800;
@@ -136,6 +159,12 @@
     width: 100%;
 }
 
+@media (max-width: 1024px) {
+    .mobileMenuBtn {
+        display: flex;
+    }
+}
+
 @media (max-width: 768px) {
     .employeeHeader {
         position: relative;
@@ -154,6 +183,11 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
+    }
+
+    .leftSection {
+        width: 100%;
+        justify-content: space-between;
     }
 
     .userArea {

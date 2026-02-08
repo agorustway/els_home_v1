@@ -7,7 +7,7 @@ import { getRoleLabel } from '@/utils/roles';
 import IntranetSearch from '@/components/IntranetSearch';
 import styles from './EmployeeHeader.module.css';
 
-export default function EmployeeHeader({ isEmployees = false }) {
+export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
     const { profile, loading } = useUserProfile();
     const supabase = createClient();
 
@@ -25,9 +25,16 @@ export default function EmployeeHeader({ isEmployees = false }) {
     return (
         <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
             <div className={styles.inner}>
-                <Link href="/employees" className={styles.logo}>
-                    ELS <span className={styles.logoSub}>Intranet</span>
-                </Link>
+                <div className={styles.leftSection}>
+                    <button className={styles.mobileMenuBtn} onClick={onMenuClick} aria-label="Open Sidebar">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 12h18M3 6h18M3 18h18" />
+                        </svg>
+                    </button>
+                    <Link href="/employees" className={styles.logo}>
+                        ELS <span className={styles.logoSub}>Intranet</span>
+                    </Link>
+                </div>
                 <div className={styles.userArea}>
                     {!loading && profile && (
                         <span className={styles.greeting}>

@@ -9,7 +9,7 @@ import { getRoleLabel } from '@/utils/roles';
 import { MAIN_TABS, getActiveMainTab, SIDEBAR_ITEMS } from '@/constants/intranetMenu';
 import IntranetSearch from '@/components/IntranetSearch';
 
-export default function EmployeeSidebar() {
+export default function EmployeeSidebar({ isOpen, onClose }) {
     const pathname = usePathname();
     const { profile, loading } = useUserProfile();
     const supabase = createClient();
@@ -32,6 +32,7 @@ export default function EmployeeSidebar() {
             e.preventDefault();
             window.dispatchEvent(new Event('openApprovalModal'));
         }
+        if (onClose) onClose();
     };
 
     const isActive = (path) => pathname === path || pathname.startsWith(path + '/');
@@ -40,10 +41,16 @@ export default function EmployeeSidebar() {
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     return (
-        <aside className={styles.sidebar}>
-            <div className={styles.searchWrap}>
-                <IntranetSearch placeholder="메뉴·게시글 검색" />
-            </div>
+        <>
+            <div className={`${styles.overlay} ${isOpen ? styles.overlayOpen : ''}`} onClick={onClose} />
+            <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
+                <div className={styles.mobileHeader}>
+                    <span className={styles.mobileTitle}>인트라넷 메뉴</span>
+                    <button className={styles.closeBtn} onClick={onClose}>&times;</button>
+                </div>
+                <div className={styles.searchWrap}>
+                    <IntranetSearch placeholder="메뉴·게시글 검색" />
+                </div>
             <div className={styles.navBlock}>
                 <span className={styles.navLabel}>메인메뉴</span>
                 <nav className={styles.tabNav}>
@@ -113,5 +120,6 @@ export default function EmployeeSidebar() {
                 </button>
             </div>
         </aside>
+        </>
     );
 }

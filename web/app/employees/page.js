@@ -73,6 +73,14 @@ export default function EmployeesPortal() {
     const { role, loading: authLoading, user } = useUserRole();
     const [weatherData, setWeatherData] = useState(null);
     const [newsItems, setNewsItems] = useState([]);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         // 방문객인 경우 페이지 진입 시점에 한 번 더 이벤트를 발생시켜 확실히 모달이 뜨게 할 수 있음
@@ -276,7 +284,7 @@ export default function EmployeesPortal() {
                             </ul>
                         </div>
                         {/* 뉴스 블록 */}
-                        <div className={styles.newsBlock}>
+                        <div className={`${styles.newsBlock} ${isMobile ? styles.mobileNewsMargin : ''}`}>
                             <div className={styles.newsBlockHeader}>
                                 <span className={styles.widgetLabel}>뉴스</span>
                                 <Link href="/employees/news" className={styles.newsMoreLink}>전체 보기 <Arrow /></Link>

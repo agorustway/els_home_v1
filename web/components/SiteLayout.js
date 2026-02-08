@@ -35,6 +35,21 @@ export default function SiteLayout({ children }) {
         return () => window.removeEventListener('openApprovalModal', handleOpenModal);
     }, []);
 
+    const [isMobile, setIsMobile] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024); // 사이드바가 사라지는 기준인 1024px로 조정
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // 경로 변경 시 사이드바 닫기
+    useEffect(() => {
+        setIsSidebarOpen(false);
+    }, [pathname]);
+
     const hero = getHeroForPath(pathname);
 
     if (isMinimal) {
@@ -79,11 +94,23 @@ export default function SiteLayout({ children }) {
             ) : null}
 
             {/* 부가 헤더 */}
-            {isEmployees ? <EmployeeHeader isEmployees={isEmployees} /> : <SubNav topOffset={isEmployees ? 114 : 70} />}
+            {isEmployees ? (
+                <EmployeeHeader 
+                    isEmployees={isEmployees} 
+                    onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                />
+            ) : (
+                <SubNav topOffset={isEmployees ? 114 : 70} />
+            )}
 
             {/* 본문 영역 */}
             <div className={isEmployees ? styles.bodyWrap : ''}>
-                {isEmployees && <EmployeeSidebar />}
+                {isEmployees && (
+                    <EmployeeSidebar 
+                        isOpen={isSidebarOpen} 
+                        onClose={() => setIsSidebarOpen(false)} 
+                    />
+                )}
                 <main className={styles.mainContent}>{children}</main>
             </div>
 
