@@ -178,8 +178,9 @@
     }
 
     .inner {
-        padding: 10px 16px;
-        gap: 12px;
+        padding: 8px 16px;
+        /* 패딩 최소화 */
+        gap: 8px;
         min-width: 0;
         height: auto;
         flex-direction: column;
