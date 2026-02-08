@@ -3,6 +3,7 @@
     background-size: cover;
     background-position: center;
     position: relative;
+    /* InfoTicker absolute 포지셔닝 기준점 */
     display: flex;
     flex-direction: column;
     /* 자식 요소(티커)를 아래로 보내기 위해 변경 */

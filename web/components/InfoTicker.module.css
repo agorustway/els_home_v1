@@ -135,12 +135,10 @@
         flex-direction: column;
         justify-content: center;
         align-items: flex-start;
-        position: absolute;
-        /* 히어로 위에 겹치도록 변경 */
-        bottom: 0;
-        /* 히어로 하단에 배치 */
-        left: 0;
-        right: 0;
+        position: static;
+        /* 원래대로 복구 */
+        margin-top: -48px;
+        /* 히어로 위로 겹치도록 */
         padding-top: 8px;
         padding-bottom: 8px;
     }
