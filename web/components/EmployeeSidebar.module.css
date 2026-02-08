@@ -272,14 +272,15 @@
         transform: translateX(-100%);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
         padding-top: 20px;
-        /* 모바일에서 닫혀있을 때 레이아웃 간섭 방지 */
-        visibility: hidden;
-        transition: transform 0.3s ease, visibility 0.3s;
+        /* 모바일에서 닫혀있을 때 레이아웃 간섭 방지 (display: none 필수) */
+        display: none;
+        transition: transform 0.3s ease;
     }
 
     .sidebarOpen {
         transform: translateX(0);
-        visibility: visible;
+        display: flex;
+        /* 열릴 때만 보임 */
     }
 
     .overlay {

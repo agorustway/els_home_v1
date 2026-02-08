@@ -43,6 +43,7 @@
         flex-direction: column;
     }
 
+    /* 768px 이상에서만 적용되도록 min-width 추가하거나, 768px 룰이 덮어쓸 수 있게 주의 */
     .bodyWrap .mainContent {
         padding: 16px 16px 32px;
     }
