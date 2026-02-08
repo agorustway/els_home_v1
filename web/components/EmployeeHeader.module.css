@@ -175,6 +175,8 @@
         box-shadow: none;
         padding: 0;
         /* 패딩 제거 */
+        margin-top: 0 !important;
+        /* 상단 여백 강제 제거 */
         border-bottom: 1px solid #f1f5f9;
     }
 

@@ -88,16 +88,16 @@ export default function SiteLayout({ children }) {
                 />
             ) : null}
 
-            {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링) */}
-            {isEmployees ? (
+            {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링, 모바일 제외) */}
+            {isEmployees && !isMobile ? (
                 <InfoTicker isEmployees={isEmployees} style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
             ) : null}
 
             {/* 부가 헤더 */}
             {isEmployees ? (
-                <EmployeeHeader 
-                    isEmployees={isEmployees} 
-                    onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                <EmployeeHeader
+                    isEmployees={isEmployees}
+                    onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 />
             ) : (
                 <SubNav topOffset={isEmployees ? 114 : 70} />
@@ -106,9 +106,9 @@ export default function SiteLayout({ children }) {
             {/* 본문 영역 */}
             <div className={isEmployees ? styles.bodyWrap : ''}>
                 {isEmployees && (
-                    <EmployeeSidebar 
-                        isOpen={isSidebarOpen} 
-                        onClose={() => setIsSidebarOpen(false)} 
+                    <EmployeeSidebar
+                        isOpen={isSidebarOpen}
+                        onClose={() => setIsSidebarOpen(false)}
                     />
                 )}
                 <main className={styles.mainContent}>{children}</main>
