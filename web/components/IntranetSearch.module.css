@@ -100,9 +100,12 @@
 
 @media (max-width: 768px) {
     .input {
-        min-height: 44px;
-        padding: 10px 14px;
-        font-size: 16px; /* iOS zoom 방지 */
+        min-height: 36px;
+        /* 최소 높이 축소 */
+        padding: 6px 14px;
+        /* 패딩 축소 */
+        font-size: 16px;
+        /* iOS zoom 방지 */
     }
 
     .item {
