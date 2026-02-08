@@ -180,7 +180,8 @@
     .inner {
         padding: 0 16px;
         /* 상하 패딩 완전 제거 */
-        gap: 8px;
+        gap: 4px;
+        /* 자식 간격 최소화 */
         min-width: 0;
         height: auto;
         flex-direction: column;
