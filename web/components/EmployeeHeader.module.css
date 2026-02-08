@@ -235,8 +235,7 @@
     }
 
     .searchWrap {
-        width: 100%;
-        margin-top: 0;
-        /* 여백 제거 */
+        display: none;
+        /* 모바일에서 검색창 완전히 숨김 */
     }
 }
