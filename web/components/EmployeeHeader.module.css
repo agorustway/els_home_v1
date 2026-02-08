@@ -178,8 +178,8 @@
     }
 
     .inner {
-        padding: 8px 16px;
-        /* 패딩 최소화 */
+        padding: 0 16px;
+        /* 상하 패딩 완전 제거 */
         gap: 8px;
         min-width: 0;
         height: auto;
