@@ -22,8 +22,8 @@ export const MAIN_TABS = [
     {
         id: 'contacts',
         label: '연락처',
-        defaultPath: '/employees/internal-contacts',
-        pathPatterns: ['/employees/internal-contacts', '/employees/external-contacts', '/employees/work-sites'],
+        defaultPath: '/employees/work-sites',
+        pathPatterns: ['/employees/work-sites', '/employees/internal-contacts', '/employees/external-contacts', '/employees/partner-contacts', '/employees/driver-contacts'],
         displayOrder: 11,
     },
     {
@@ -36,7 +36,7 @@ export const MAIN_TABS = [
     {
         id: 'reports',
         label: '업무보고',
-        defaultPath: '/employees/reports',
+        defaultPath: '/employees/reports/daily',
         pathPatterns: ['/employees/reports'],
         displayOrder: 20,
     },
@@ -68,9 +68,11 @@ export const SIDEBAR_ITEMS = {
         { label: '서식자료실', path: '/employees/form-templates' },
     ],
     contacts: [
+        { label: '작업지안내', path: '/employees/work-sites' },
         { label: '사내연락망', path: '/employees/internal-contacts' },
         { label: '외부연락처', path: '/employees/external-contacts' },
-        { label: '작업지확인', path: '/employees/work-sites' },
+        { label: '협력사정보', path: '/employees/partner-contacts' },
+        { label: '운전원정보', path: '/employees/driver-contacts' },
     ],
     automation: [
         { label: '안전운임 조회', path: '/employees/safe-freight' },
@@ -78,7 +80,6 @@ export const SIDEBAR_ITEMS = {
         { label: '자료실 (NAS)', path: '/employees/archive' },
     ],
     reports: [
-        { label: '전체 보고서', path: '/employees/reports' },
         { label: '일일 업무일지', path: '/employees/reports/daily' },
         { label: '월간 실적보고', path: '/employees/reports/monthly' },
         { label: '내가 쓴 보고서', path: '/employees/reports/my' },

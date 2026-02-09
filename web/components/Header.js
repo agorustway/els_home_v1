@@ -55,11 +55,9 @@ const navLinks = [
             {
                 label: '업무보고',
                 children: [
-                    { href: '/employees/reports', label: '통합 업무보고' },
-                    { href: '/employees/reports/my', label: '내 업무보고' },
-                    { type: 'divider' },
                     { href: '/employees/reports/daily', label: '일일 업무일지', isSubItem: true },
                     { href: '/employees/reports/monthly', label: '월간 실적보고', isSubItem: true },
+                    { href: '/employees/reports/my', label: '내 업무보고', isSubItem: true },
                 ]
             },
             { type: 'divider' },
@@ -73,9 +71,11 @@ const navLinks = [
             {
                 label: '연락처',
                 children: [
+                    { href: '/employees/work-sites', label: '작업지안내', isSubItem: true },
                     { href: '/employees/internal-contacts', label: '사내연락망', isSubItem: true },
                     { href: '/employees/external-contacts', label: '외부연락처', isSubItem: true },
-                    { href: '/employees/work-sites', label: '작업지확인', isSubItem: true },
+                    { href: '/employees/partner-contacts', label: '협력사정보', isSubItem: true },
+                    { href: '/employees/driver-contacts', label: '운전원정보', isSubItem: true },
                 ]
             },
             { type: 'divider' },
