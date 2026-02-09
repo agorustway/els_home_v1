@@ -14,6 +14,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
     background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
     color: #fff;
     padding: 12px 20px;
@@ -32,25 +34,30 @@
 }
 
 .etransShortcut {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: all 0.2s;
+    justify-content: center;
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 50px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    height: 36px;
 }
 
 .etransShortcut:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
+    border-color: #2563eb;
+    background: #f8fbff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
 .etransShortcut img {
-    height: 24px;
+    height: 18px;
     width: auto;
-    filter: brightness(0) invert(1);
-    opacity: 0.9;
+    object-fit: contain;
 }
 
 .section {
@@ -860,12 +867,13 @@
     }
 
     .title {
-        font-size: 1.5rem;
+        font-size: 1.1rem;
     }
 
-    .titleContainer {
+    .headerBanner {
         gap: 8px;
         margin-bottom: 1rem;
+        padding: 10px 16px;
     }
 
     .section {
@@ -905,32 +913,4 @@
         min-width: 100%;
         /* 더 작은 화면에선 한 줄씩 */
     }
-}
-
-/* ETRANS 바로가기 버튼 */
-.etransShortcut {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 50px;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    height: 40px;
-}
-
-.etransShortcut:hover {
-    border-color: #2563eb;
-    background: #f8fbff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
-}
-
-.etransShortcut img {
-    height: 24px;
-    width: auto;
-    object-fit: contain;
 }
