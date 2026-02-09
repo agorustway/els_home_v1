@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
-import styles from '../intranet.module.css';
+import styles from '../../intranet.module.css';
 
 export default function PartnerContactsNewPage() {
     const { role, loading: authLoading } = useUserRole();
