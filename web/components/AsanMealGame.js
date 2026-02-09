@@ -148,41 +148,23 @@ const LadderGame = ({ participants, onGameEnd }) => {
         onGameEnd('🪜 사다리', `${participants[index]} -> ${prize}`);
     };
 
-    const runAllLadder = async () => {
-        if (animatingIndex !== null) return;
-        for (let i = 0; i < participants.length; i++) {
-            if (!completedHistory.some(h => h.startIndex === i)) {
-                // 비동기로 실행하되 약간의 시차를 둠
-                runLadder(i);
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-        }
-    };
-
     return (
         <div className={styles.ladderBox}>
             <div className={styles.gameActions}>
-                <button className={styles.premiumBtn} onClick={generateLadder}>🔄 새 판짜기 (리셋)</button>
-                <button
-                    className={styles.runAllBtn}
-                    onClick={runAllLadder}
-                    disabled={animatingIndex !== null || completedHistory.length === participants.length}
-                >
-                    🚀 한번에 사다리 타기
-                </button>
+                <button className={styles.premiumBtn} onClick={generateLadder}>🔄 사다리 다시 그리기</button>
             </div>
 
             {completedHistory.length > 0 && (
                 <div className={styles.ladderSummary}>
-                    <div className={styles.summaryHeader}>📊 실시간 결과 요약</div>
+                    <div className={styles.summaryHeader}>🏁 실시간 결과 현황</div>
                     <div className={styles.summaryGrid}>
                         {participants.map((name, i) => {
                             const history = completedHistory.find(h => h.startIndex === i);
                             return (
-                                <div key={i} className={`${styles.summaryItem} ${history?.isWinner ? styles.summaryWinner : ''}`}>
+                                <div key={i} className={`${styles.summaryItem} ${history?.isWinner ? styles.summaryWinner : (history ? styles.summaryPass : '')}`}>
                                     <span className={styles.summaryName}>{name}</span>
                                     <span className={styles.summaryResult}>
-                                        {history ? `${history.emoji} ${history.prize}` : '-'}
+                                        {history ? `${history.emoji} ${history.prize}` : '대기중'}
                                     </span>
                                 </div>
                             );
