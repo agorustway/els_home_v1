@@ -60,13 +60,13 @@
     }
 
     .bodyWrap .mainContent {
-        padding: 0 16px 32px;
-        /* 상단 패딩 제거 */
+        padding: 0 12px 32px;
+        /* 16px -> 12px 축소 */
         min-height: auto;
         overflow-x: hidden;
     }
 
-    /* 모바일: 본문 .container는 좌우 16px로 가독성 확보 */
+    /* 모바일: 본문 .container는 좌우 12px로 가독성 확보 */
     .bodyWrap .mainContent :global(.container) {
         padding-left: 0;
         padding-right: 0;
@@ -74,7 +74,8 @@
     }
 
     .mainContent {
-        padding: 0 16px 32px !important;
+        padding: 0 12px 32px !important;
+        /* 16px -> 12px 축소 */
         max-width: 100%;
         width: 100%;
         box-sizing: border-box;
@@ -83,7 +84,16 @@
     }
 
     .mainContent :global(.container) {
-        padding-left: 16px;
-        padding-right: 16px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .bodyWrap .mainContent,
+    .mainContent {
+        padding: 0 8px 32px !important;
+        /* 초소형 기기에선 8px까지 축소 */
     }
 }

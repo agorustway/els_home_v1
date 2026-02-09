@@ -182,8 +182,8 @@
     }
 
     .inner {
-        padding: 0 16px;
-        /* 상하 패딩 완전 제거 */
+        padding: 0 8px;
+        /* 16px -> 8px 축소 */
         gap: 4px;
         /* 자식 간격 최소화 */
         min-width: 0;

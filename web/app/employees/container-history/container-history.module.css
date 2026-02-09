@@ -1,22 +1,32 @@
 .page {
     min-height: 100vh;
     background: #f8fbff;
-    padding: 0.5rem;
+    padding: 1rem;
 }
 
 .container {
-    max-width: 100%;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 0.5rem;
+    padding: 0;
+}
+
+.titleContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    /* 모바일에서 겹침 방지 */
 }
 
 .title {
-    font-size: 1.5rem;
+    font-size: 1.85rem;
     font-weight: 800;
     color: #1e293b;
-    text-align: center;
-    margin-bottom: 0.75rem;
-    letter-spacing: -0.5px;
+    margin: 0;
+    letter-spacing: -1px;
+    white-space: nowrap;
 }
 
 .section {
@@ -122,6 +132,8 @@
 .buttonGroup {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
+    /* 모바일 대응 */
 }
 
 .button {
@@ -776,6 +788,60 @@
 
     .terminal {
         min-height: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page {
+        padding: 8px;
+        /* 여백 최소화 */
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .titleContainer {
+        gap: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .section {
+        padding: 16px;
+    }
+
+    .loginInput {
+        flex: 1 !important;
+        /* 모바일에서 꽉 차게 */
+        min-width: 45%;
+    }
+
+    .inputGroup {
+        gap: 8px;
+    }
+
+    .buttonGroup {
+        justify-content: space-between;
+    }
+
+    .button,
+    .buttonSecondary {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem 0.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .titleContainer {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .loginInput {
+        min-width: 100%;
+        /* 더 작은 화면에선 한 줄씩 */
     }
 }
 

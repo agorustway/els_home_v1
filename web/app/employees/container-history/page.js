@@ -608,8 +608,8 @@ function ContainerHistoryInner() {
     return (
         <div className={styles.page}>
             <div className={styles.container}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '1rem' }}>
-                    <h1 className={styles.title} style={{ margin: 0, marginRight: '8px' }}>컨테이너 이력조회</h1>
+                <div className={styles.titleContainer}>
+                    <h1 className={styles.title}>컨테이너 이력조회</h1>
                     <a
                         href="https://etrans.klnet.co.kr"
                         target="_blank"
