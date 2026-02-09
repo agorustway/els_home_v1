@@ -233,24 +233,39 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             resp = urlopen(req, timeout=60)
             raw_resp = resp.read().decode("utf-8")
             
-            # LOG: 출력 무시하고 JSON만 파싱
+            # LOG: 접두어 라인과 RESULT: 접두어 라인을 구분하여 처리
             res_json = None
             for line in raw_resp.split('\n'):
                 line = line.strip()
-                if line.startswith('{') and line.endswith('}'):
+                if not line: continue
+                
+                if line.startswith('LOG:'):
+                    # 데몬에서 온 내부 로그는 프론트엔드로 그대로 중계
+                    yield f"{line}\n"
+                elif line.startswith('RESULT:'):
+                    try:
+                        res_json = json.loads(line[7:])
+                    except: continue
+                elif line.startswith('{') and line.endswith('}'):
                     try:
                         res_json = json.loads(line)
-                        break
-                    except:
-                        continue
+                    except: continue
             
             if not res_json:
-                # 전체를 JSON으로 파싱 시도
-                res_json = json.loads(raw_resp)
+                # 마지막 시도로 전체 파싱 시도
+                try:
+                    res_json = json.loads(raw_resp)
+                except:
+                    raise ValueError(f"데몬 응답 파싱 실패 (Raw: {raw_resp[:100]}...)")
             
             if res_json.get("ok"):
-                data_text = res_json.get("data")
-                parsed_rows = _parse_grid_text(cn, data_text)
+                # 데몬이 이미 정제된 리스트(result)를 줬다면 그걸 쓰고, 아니면 원본(data) 파싱
+                if "result" in res_json:
+                    parsed_rows = res_json["result"]
+                else:
+                    data_text = res_json.get("data")
+                    parsed_rows = _parse_grid_text(cn, data_text)
+                
                 final_rows.extend(parsed_rows)
                 yield f"LOG:[{cn}] 조회 완료 (데이터 {len(parsed_rows)}건)\n"
             else:

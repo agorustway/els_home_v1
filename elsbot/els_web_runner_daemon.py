@@ -181,9 +181,19 @@ def run():
                             stripped = line.strip()
                             if not stripped or any(kw in stripped for kw in blacklist): continue
                             row_data = re.split(r'\t|\s{2,}', stripped)
+                            
+                            # No 컬럼이 숫자인 행만 (1~20)
                             if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 20:
-                                final_rows.append([cn] + row_data[:14])
-                                found_any = True
+                                # 데이터 길이를 14개로 맞추기
+                                while len(row_data) < 14:
+                                    row_data.append("")
+                                
+                                full_row = [cn] + row_data[:14]
+                                # 유의미한 데이터가 있는 경우만 추가
+                                if any(cell.strip() for cell in full_row[2:]):
+                                    final_rows.append(full_row)
+                                    found_any = True
+                        
                         if not found_any:
                             final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
                     else:
