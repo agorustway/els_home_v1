@@ -12,6 +12,8 @@ export default function WorkSiteDetailPage() {
     const router = useRouter();
     const [item, setItem] = useState(null);
     const [showAttachments, setShowAttachments] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/work-sites/' + id);
@@ -26,6 +28,51 @@ export default function WorkSiteDetailPage() {
                 .finally(() => setLoading(false));
         }
     }, [role, id]);
+
+    const handleFileUpload = async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setUploading(true);
+        try {
+            const newAttachments = [...(item.attachments || [])];
+
+            for (const file of Array.from(files)) {
+                const key = `WorkSites/${id}/${Date.now()}_${file.name}`;
+                const formData = new FormData();
+                formData.append('key', key);
+                formData.append('file', file);
+
+                const res = await fetch('/api/s3/files', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error(`${file.name} 업로드 실패`);
+
+                newAttachments.push({
+                    name: file.name,
+                    key: key,
+                    url: `/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`
+                });
+            }
+
+            // DB 업데이트
+            const updateRes = await fetch(`/api/work-sites/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ attachments: newAttachments })
+            });
+
+            if (!updateRes.ok) throw new Error('DB 업데이트 실패');
+
+            const data = await updateRes.json();
+            setItem(data.item);
+            setShowAttachments(true);
+            alert('파일이 성공적으로 추가되었습니다.');
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleDelete = async () => {
         if (!confirm('삭제하시겠습니까?')) return;
@@ -114,20 +161,56 @@ export default function WorkSiteDetailPage() {
                             <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{showAttachments ? '▲ 접기' : '▼ 펼치기'}</span>
                         </div>
                         {showAttachments && (
-                            <ul className={styles.attachmentList}>
-                                {item.attachments.map((file, idx) => (
-                                    <li key={idx} className={styles.attachmentItem}>
-                                        <a
-                                            href={file.path || file.url || `/api/s3/files?key=${encodeURIComponent(file.key)}`}
-                                            className={styles.attachmentLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            📄 {file.name || '파일'}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderTop: 'none', borderRadius: '0 0 16px 16px', padding: 20 }}>
+                                <ul className={styles.attachmentList} style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                                    {item.attachments.map((file, idx) => (
+                                        <li key={idx} className={styles.attachmentItem} style={{ marginBottom: 8, padding: '12px 16px', background: '#f8fafc', borderRadius: 12, border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <span style={{ fontSize: '1.2rem' }}>📄</span>
+                                                <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.9rem' }}>{file.name || '파일'}</span>
+                                            </div>
+                                            <a
+                                                href={file.url || file.path || `/api/s3/files?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`}
+                                                className={styles.btnSecondary}
+                                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                                download
+                                            >
+                                                다운로드
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px dashed #e2e8f0' }}>
+                                    <input
+                                        type="file"
+                                        id="workFileAdd"
+                                        multiple
+                                        style={{ display: 'none' }}
+                                        onChange={handleFileUpload}
+                                        disabled={uploading}
+                                    />
+                                    <label
+                                        htmlFor="workFileAdd"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 8,
+                                            padding: '12px',
+                                            background: '#f1f5f9',
+                                            color: '#475569',
+                                            borderRadius: 12,
+                                            fontSize: '0.9rem',
+                                            fontWeight: 700,
+                                            cursor: uploading ? 'not-allowed' : 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {uploading ? '⏳ 업로드 중...' : '➕ 새 파일 추가하기'}
+                                    </label>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}

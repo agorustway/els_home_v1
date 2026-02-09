@@ -39,7 +39,10 @@ export default function InternalContactsNewPage() {
             const uploadUrl = json.url;
             const uploadRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
             if (!uploadRes.ok) throw new Error('Upload failed');
-            setPhotoUrl(uploadUrl.split('?')[0]);
+
+            // S3 직접 접근 URL 대신 프록시 URL을 생성하여 프리뷰 및 저제 사용
+            const proxyUrl = `/api/s3/files?key=${encodeURIComponent(key)}`;
+            setPhotoUrl(proxyUrl);
         } catch (err) {
             console.error(err);
             alert('사진 업로드 실패');

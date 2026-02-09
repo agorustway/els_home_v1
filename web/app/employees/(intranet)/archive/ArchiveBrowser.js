@@ -194,50 +194,15 @@ export default function ArchiveBrowser() {
         }
     };
 
-    // Background streaming download function
-    const handleDownloadFile = async (file) => {
+    // Fast native download function (Windows-style)
+    const handleDownloadFile = (file) => {
         const filePath = file.path;
         const fileName = file.name;
 
-        // Add to downloading set
-        setDownloading(prev => new Set(prev).add(filePath));
-
-        try {
-            // Fetch file as stream
-            const response = await fetch(`/api/nas/preview?path=${encodeURIComponent(filePath)}&download=true`);
-
-            if (!response.ok) {
-                throw new Error('Download failed');
-            }
-
-            // Convert to blob
-            const blob = await response.blob();
-
-            // Create download link
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-
-            // Cleanup
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-
-        } catch (error) {
-            console.error('Download error:', error);
-            alert(`다운로드 실패: ${fileName}`);
-        } finally {
-            // Remove from downloading set
-            setDownloading(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(filePath);
-                return newSet;
-            });
-        }
+        // Redirect directly to the preview API with download=true
+        // This leverages browser's own download manager (fastest)
+        const downloadUrl = `/api/nas/preview?path=${encodeURIComponent(filePath)}&download=true`;
+        window.location.href = downloadUrl;
     };
 
     const handleDelete = async (file) => {
@@ -587,7 +552,6 @@ export default function ArchiveBrowser() {
                                     }}>
                                         <span className={styles.icon}>{file.type === 'directory' ? '📁' : '📄'}</span>
                                         {file.name}
-                                        {downloading.has(file.path) && <span style={{ marginLeft: '8px', color: '#3182ce', fontSize: '0.85rem' }}>⬇️ 다운로드 중...</span>}
                                     </td>
                                     <td className={styles.hideMobile}>{new Date(file.lastMod).toLocaleDateString()}</td>
                                     <td className={styles.hideMobile}>{formatSize(file.size)}</td>
@@ -639,11 +603,6 @@ export default function ArchiveBrowser() {
                                 }}
                             >
                                 {selectionMode && <input type="checkbox" className={styles.cardCheck} checked={selectedPaths.has(file.path)} readOnly />}
-                                {downloading.has(file.path) && (
-                                    <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#3182ce', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                        ⬇️ 다운로드 중
-                                    </div>
-                                )}
                                 <button
                                     className={styles.cardMoreBtn}
                                     onClick={(e) => {

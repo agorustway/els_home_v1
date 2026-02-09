@@ -57,6 +57,7 @@ export async function GET(request) {
 
     try {
         const { buffer, contentType } = await getFileBufferFromS3(key);
+        const fileName = searchParams.get('name') || key.split('/').pop();
 
         // Background logging
         logActivityServer('FILE_VIEW', key, { source: 's3' }).catch(console.error);
@@ -64,6 +65,7 @@ export async function GET(request) {
         return new NextResponse(buffer, {
             headers: {
                 'Content-Type': contentType || 'application/octet-stream',
+                'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
                 'Cache-Control': 'public, max-age=31536000, immutable',
                 'Content-Length': buffer.length.toString(),
                 'X-Content-Type-Options': 'nosniff',
