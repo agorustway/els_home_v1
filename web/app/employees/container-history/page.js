@@ -231,8 +231,10 @@ function ContainerHistoryInner() {
             }
 
             if (data.ok) {
-                setLogLines(prev => [...prev, `[${elapsedSecondsRef.current.toFixed(1)}s] [성공] 로그인 완료!`]);
+                setLogLines(prev => [...prev, `[성공] 로그인 완료!`]);
                 setLoginSuccess(true);
+                setIsSaveChecked(true); // 수정 후 로그인해도 다시 '저장' 상태로
+                handleSaveCreds(loginId, loginPw); // DB에 자동 저장
                 sessionStorage.setItem('els_login_success', 'true');
                 sessionStorage.setItem('els_login_timestamp', Date.now().toString());
                 // [고도화 2] 로그인 대기열에 있던 검색 작업 자동 실행
@@ -274,6 +276,7 @@ function ContainerHistoryInner() {
                 if (data.elsId && data.elsPw) {
                     setUserId(data.elsId);
                     setUserPw(data.elsPw);
+                    setIsSaveChecked(true); // 정보가 있으면 저장 체크 활성화
                     if (data.lastSaved) setLastSavedInfo(data.lastSaved);
 
                     const now = Date.now();
@@ -395,9 +398,16 @@ function ContainerHistoryInner() {
                 buffer = lines.pop();
 
                 for (const line of lines) {
-                    if (line.trim().startsWith('LOG:')) {
-                        setLogLines(prev => [...prev, `[${elapsedSecondsRef.current.toFixed(1)}s] ${line.trim().substring(4)}`]);
-                    } else if (line.trim().startsWith('RESULT:')) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('LOG:')) {
+                        const content = trimmedLine.substring(4);
+                        // 이미 타임스탬프가 있는 로그(봇에서 옴)는 그대로 출력, 없는 건 현재 서브 타이머 붙임
+                        if (content.startsWith('[')) {
+                            setLogLines(prev => [...prev, content]);
+                        } else {
+                            setLogLines(prev => [...prev, `[${elapsedSecondsRef.current.toFixed(1)}s] ${content}`]);
+                        }
+                    } else if (trimmedLine.startsWith('RESULT:')) {
                         try {
                             const rawJson = line.trim().substring(7);
                             // 2중 방어: NaN 문자열을 null로 강제 치환
@@ -640,7 +650,8 @@ function ContainerHistoryInner() {
                                     value={userId}
                                     onChange={e => setUserId(e.target.value)}
                                     onKeyDown={e => handleKeyDown(e, 'login')}
-                                    className={`${styles.input} ${styles.loginInput}`}
+                                    disabled={isSaveChecked && !!userId} // 저장 체크 시 비활성화 (아이디 있을 때만)
+                                    className={`${styles.input} ${styles.loginInput} ${isSaveChecked ? styles.inputDisabled : ''}`}
                                 />
                                 <input
                                     type="password"
@@ -648,7 +659,8 @@ function ContainerHistoryInner() {
                                     value={userPw}
                                     onChange={e => setUserPw(e.target.value)}
                                     onKeyDown={e => handleKeyDown(e, 'login')}
-                                    className={`${styles.input} ${styles.loginInput}`}
+                                    disabled={isSaveChecked && !!userPw} // 저장 체크 시 비활성화
+                                    className={`${styles.input} ${styles.loginInput} ${isSaveChecked ? styles.inputDisabled : ''}`}
                                 />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <button onClick={() => handleLogin()} disabled={loginLoading} className={styles.button}>

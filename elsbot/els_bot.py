@@ -211,14 +211,6 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         # 로그인 처리 대기 (이전 코드: 8초)
         time.sleep(8)
         
-        # 디버깅: 스크린샷 저장 (사용자 요청으로 제거)
-        # try:
-        #     screenshot_path = f"login_debug_{int(time.time())}.png"
-        #     driver.save_screenshot(screenshot_path)
-        #     _log(f"스크린샷 저장: {screenshot_path}")
-        # except Exception as e:
-        #     _log(f"스크린샷 저장 실패: {e}")
-        
         # alert 체크 (로그인 실패 팝업)
         alert_msg = check_alert(driver)
         if alert_msg:
@@ -251,9 +243,16 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     headers = ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
     
     for cn_raw in c_list:
+        item_start = time.time()
         cn = str(cn_raw).strip().upper()
-        _log(f"[{cn}] 분석 시작...")
-        status = solve_input_and_search(driver, cn, _log)
+        
+        # 콜백에 보낼 때는 누적 시간이 아니라 현재 항목 소요 시간만 표시하고 싶어함
+        def _item_log(msg):
+            item_elapsed = time.time() - item_start
+            if log_callback: log_callback(f"[{item_elapsed:5.1f}s] {msg}")
+
+        _item_log(f"[{cn}] 분석 시작...")
+        status = solve_input_and_search(driver, cn, _item_log)
         
         if "완료" in status:
             grid_text = scrape_hyper_verify(driver, cn)
@@ -274,18 +273,23 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
                     final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
             else:
                 final_rows.append([cn, "NODATA", "데이터 추출 실패"] + [""]*12)
+            
+            _item_log(f"[{cn}] 조회 완료")
         else:
             final_rows.append([cn, "ERROR", status] + [""]*12)
+            _item_log(f"[{cn}] 조회 실패: {status}")
 
     driver.quit()
+    total_elapsed = time.time() - start_time
     if final_rows:
         df = pd.DataFrame(final_rows, columns=headers)
         return {
             "ok": True, 
             "sheet1": df[df['No'].astype(str) == '1'].to_dict('records'), 
-            "sheet2": df.to_dict('records')
+            "sheet2": df.to_dict('records'),
+            "total_elapsed": total_elapsed
         }
-    return {"ok": False, "error": "결과 없음"}
+    return {"ok": False, "error": "결과 없음", "total_elapsed": total_elapsed}
 
 # CLI 실행용 메인 함수 (기존 로직 유지)
 def cli_main():

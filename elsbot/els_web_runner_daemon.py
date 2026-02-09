@@ -6,7 +6,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 # 우리가 방금 고친 els_bot의 심장 함수들을 가져온다!
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process
+import re
+import pandas as pd
+from flask import Response
 
 app = Flask(__name__)
 # 모든 외부 접속 허용 (로컬/나스 공용)
@@ -124,50 +127,89 @@ def login():
 
 @app.route('/run', methods=['POST'])
 def run():
-    """로그인된 세션을 사용해서 실제로 컨테이너 번호를 조회"""
+    """로그인된 세션을 사용해서 실제로 컨테이너 번호를 조회 (스트리밍 지원)"""
     global shared_driver, is_busy
     if not shared_driver:
         return jsonify({"ok": False, "error": "활성화된 브라우저 세션이 없습니다. 먼저 로그인하세요."})
     
     data = request.json
-    container_no = data.get('containerNo')
+    containers = data.get('containers', [])
+    # 단일 조회(containerNo) 하위 호환성 유지
+    if not containers and data.get('containerNo'):
+        containers = [data.get('containerNo')]
     
-    if not container_no:
+    if not containers:
         return jsonify({"ok": False, "error": "조회할 컨테이너 번호가 누락되었습니다."})
 
-    print(f"LOG:[데몬] 컨테이너 {container_no} 조회 명령 수신")
-    
     is_busy = True # 조회 시작!
-    try:
-        # 1. 입력창 찾아서 번호 넣고 조회 버튼 클릭
-        status = solve_input_and_search(shared_driver, container_no, log_callback=lambda x: print(f"LOG:{x}", flush=True))
+    
+    def generate():
+        start_time = time.time()
+        final_rows = []
+        headers = ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
         
-        # 2. 조회 결과 텍스트 갈취 (scrape)
-        grid_text = scrape_hyper_verify(shared_driver, container_no)
-        
-        if grid_text:
-            print(f"LOG:[데몬] {container_no} 데이터 추출 완료")
-            return jsonify({
-                "ok": True, 
-                "status": status, 
-                "data": grid_text
-            })
-        else:
-            print(f"LOG:[데몬] {container_no} 조회는 했으나 데이터를 읽지 못함")
-            return jsonify({
-                "ok": True, 
-                "status": status, 
-                "data": None,
-                "message": "내역 없음 또는 파싱 실패"
-            })
+        try:
+            for cn_raw in containers:
+                item_start = time.time()
+                cn = str(cn_raw).strip().upper()
+                
+                # 프론트엔드로 즉시 보낼 로그 콜백
+                def _stream_log(msg):
+                    item_elapsed = time.time() - item_start
+                    line = f"LOG:[{item_elapsed:5.1f}s] {msg}\n"
+                    return line
+
+                yield f"LOG:[{cn}] 조회를 시작합니다.\n"
+                
+                # solve_input_and_search 내부에서 발생하는 로그도 스트리밍
+                def _inner_log(msg):
+                    it_el = time.time() - item_start
+                    print(f"[{cn}] {msg}")
+                    return f"LOG:[{it_el:5.1f}s] {msg}\n"
+
+                # 실제 조회 수행
+                status = solve_input_and_search(shared_driver, cn, log_callback=None) # 콜백 처리가 복잡하므로 여기선 생략하거나 yield로 직접 처리
+                yield _inner_log(f"[{cn}] {status}")
+                
+                if "완료" in status:
+                    grid_text = scrape_hyper_verify(shared_driver, cn)
+                    if grid_text:
+                        found_any = False
+                        blacklist = ["SKR", "YML", "ZIM", "최병훈", "안녕하세요", "로그아웃", "조회"]
+                        lines = grid_text.split('\n')
+                        for line in lines:
+                            stripped = line.strip()
+                            if not stripped or any(kw in stripped for kw in blacklist): continue
+                            row_data = re.split(r'\t|\s{2,}', stripped)
+                            if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 20:
+                                final_rows.append([cn] + row_data[:14])
+                                found_any = True
+                        if not found_any:
+                            final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                    else:
+                        final_rows.append([cn, "NODATA", "데이터 추출 실패"] + [""]*12)
+                    yield _inner_log(f"[{cn}] 조회 완료")
+                else:
+                    final_rows.append([cn, "ERROR", status] + [""]*12)
+                    yield _inner_log(f"[{cn}] 조회 실패")
+
+            # 모든 작업 완료 후 결과 전송
+            total_elapsed = time.time() - start_time
+            result_data = {
+                "ok": True,
+                "result": final_rows,
+                "total_elapsed": total_elapsed
+            }
+            yield f"RESULT:{json.dumps(result_data, ensure_ascii=False)}\n"
             
-    except Exception as e:
-        print(f"LOG:[데몬] 조회 중 치명적 에러: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"ok": False, "error": str(e)})
-    finally:
-        is_busy = False # 조회가 끝났거나 에러가 났어도 마쳤으므로 False
+        except Exception as e:
+            yield f"LOG:[에러] {str(e)}\n"
+            yield f"RESULT:{json.dumps({'ok': False, 'error': str(e)})}\n"
+        finally:
+            global is_busy
+            is_busy = False
+
+    return Response(generate(), mimetype='text/plain')
 
 @app.route('/quit', methods=['POST'])
 def quit_driver():

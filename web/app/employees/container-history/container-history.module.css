@@ -102,6 +102,12 @@
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
+.inputDisabled {
+    background-color: #f1f5f9;
+    color: #64748b;
+    cursor: default;
+}
+
 .dropZone {
     position: relative;
 }
