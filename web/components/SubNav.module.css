@@ -44,27 +44,35 @@
 
 @media (max-width: 768px) {
     .inner {
-        gap: 20px;
+        gap: 15px; /* 간격 줄임 */
         overflow-x: auto;
-        justify-content: center;
-        padding: 15px 20px;
+        justify-content: center; /* 기본 중앙 정렬 */
+        padding: 12px 10px; /* 좌우 여백 줄임 */
         scrollbar-width: none;
         -ms-overflow-style: none;
+        display: flex;
+        width: 100%;
     }
 
     .inner::-webkit-scrollbar {
         display: none;
     }
 
-    /* items center alignment when not overflowing */
-    @supports (justify-content: safe center) {
-        .inner {
-            justify-content: safe center;
-        }
+    /* 슬라이드 가능한 환경에서도 중앙 정렬 유지 보조 */
+    .inner::after, .inner::before {
+        content: '';
+        flex: 1;
+        display: none; /* 아이템이 적을 때 중앙 정렬 방해 금지 */
     }
 
     .navItem {
         font-size: 0.85rem;
         white-space: nowrap;
+        flex-shrink: 0; /* 아이템이 찌그러지지 않게 */
+        padding: 4px 5px; /* 아이템 자체 여백도 최적화 */
+    }
+
+    .navItem.active::after {
+        bottom: -8px; /* 보더 위치 살짝 조정 */
     }
 }
