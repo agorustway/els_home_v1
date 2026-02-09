@@ -130,30 +130,48 @@ export default function ArchiveBrowser() {
     };
 
     const handlePaste = async () => {
-        if (!clipboard) return;
-        const to = path === '/' ? `/${clipboard.name}` : `${path}/${clipboard.name}`;
-        let finalTo = to;
-        const exists = files.some(f => f.name === clipboard.name);
-        if (exists) {
-            const lastDot = clipboard.name.lastIndexOf('.');
-            if (lastDot === -1 || clipboard.fileType === 'directory') finalTo = `${to}(1)`;
-            else finalTo = `${to.substring(0, to.lastIndexOf('.'))}(1)${to.substring(to.lastIndexOf('.'))}`;
-        }
+        if (!clipboard || !clipboard.items || clipboard.items.length === 0) return;
+
+        setLoading(true);
         try {
-            const res = await fetch('/api/nas/files', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'copy', from: clipboard.path, to: finalTo }),
-            });
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Paste failed');
+            for (const item of clipboard.items) {
+                const baseName = item.name;
+                let finalName = baseName;
+                let counter = 1;
+
+                // 중복 이름 체크 및 회피
+                while (files.some(f => f.name === finalName)) {
+                    const lastDot = baseName.lastIndexOf('.');
+                    if (lastDot === -1 || item.type === 'directory') {
+                        finalName = `${baseName}(${counter})`;
+                    } else {
+                        finalName = `${baseName.substring(0, lastDot)}(${counter})${baseName.substring(lastDot)}`;
+                    }
+                    counter++;
+                }
+
+                const to = path === '/' ? `/${finalName}` : `${path}/${finalName}`;
+                const res = await fetch('/api/nas/files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'copy', from: item.path, to }),
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || `Paste failed for ${item.name}`);
+                }
             }
             await fetchFiles(path);
             setClipboard(null);
+            // 선택 모드였다면 해제
+            setSelectionMode(false);
+            setSelectedPaths(new Set());
         } catch (error) {
-            console.error(error);
+            console.error('Paste Error:', error);
             alert(`붙여넣기 실패: ${error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -691,9 +709,15 @@ export default function ArchiveBrowser() {
                                 )}
 
                                 <div className={styles.contextDivider}></div>
-                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>✨ 즉시 사본 생성 (복제)</div>
-                                <div className={styles.contextItem} onClick={() => setClipboard({ type: 'copy', path: contextMenu.file.path, name: contextMenu.file.name, fileType: contextMenu.file.type })}>📋 항목 복리 (붙여넣기용)</div>
-                                {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 여기에 붙여넣기</div>}
+                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>✨ 즉시 복제 (같은 폴더)</div>
+                                <div className={styles.contextItem} onClick={() => {
+                                    const isPartOfSelection = selectionMode && selectedPaths.has(contextMenu.file.path);
+                                    const itemsToCopy = isPartOfSelection
+                                        ? files.filter(f => selectedPaths.has(f.path))
+                                        : [contextMenu.file];
+                                    setClipboard({ type: 'copy', items: itemsToCopy });
+                                }}>📋 복사 (Copy)</div>
+                                {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 붙여넣기</div>}
                                 <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>✏️ 이름 바꾸기</div>
                                 <div className={styles.contextDivider}></div>
                                 <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file)}>
@@ -707,7 +731,7 @@ export default function ArchiveBrowser() {
                                         📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
                                     </div>
                                 )}
-                                <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>📥 붙여넣기 (Paste)</div>
+                                <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>📥 붙여넣기</div>
                                 <div className={styles.contextItem} onClick={() => handleCreateFolder()}>📁 새 폴더 만들기</div>
                                 {selectionMode && (
                                     <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>🚫 선택 모드 해제</div>
