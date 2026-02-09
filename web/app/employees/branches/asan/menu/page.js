@@ -67,6 +67,7 @@ export default function AsanMenuChoicePage({ params }) {
     const [isLadderRunning, setIsLadderRunning] = useState(false);
     const [activePaths, setActivePaths] = useState([]);
     const [ladderResults, setLadderResults] = useState([]);
+    const [ladderSummary, setLadderSummary] = useState({}); // { name: result }
 
     // Bingo States
     const [bingoGrid, setBingoGrid] = useState([]);
@@ -240,7 +241,18 @@ export default function AsanMenuChoicePage({ params }) {
         setLadderData(matrix);
         setLadderResults(results);
         setActivePaths([]);
+        setLadderSummary({}); // Reset summary on new ladder
         setIsLadderRunning(false);
+    };
+
+    const runAllLadder = async () => {
+        if (isLadderRunning || !ladderData) return;
+
+        // Run all one by one with a slight delay
+        for (let i = 0; i < names.length; i++) {
+            runLadder(i);
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
     };
 
     const runLadder = (startIndex) => {
@@ -284,16 +296,29 @@ export default function AsanMenuChoicePage({ params }) {
 
         if (ladderTimerRef.current) clearTimeout(ladderTimerRef.current);
         ladderTimerRef.current = setTimeout(() => {
-            setIsLadderRunning(false);
             const isWinner = ladderResults[currentPos].includes('당첨');
+            const resultLabel = isWinner ? '당첨 😭' : '통과 😆';
 
-            addToHistory('🪜 사다리', `${names[startIndex]} -> ${isWinner ? '당첨! 🎉' : '꽝'}`);
+            setLadderSummary(prev => ({
+                ...prev,
+                [names[startIndex]]: resultLabel
+            }));
+
+            addToHistory('🪜 사다리', `${names[startIndex]} -> ${resultLabel}`);
 
             setActivePaths(prev => prev.map(p =>
                 p.startIndex === startIndex
                     ? { ...p, isFinished: true, isWinner: isWinner }
                     : p
             ));
+
+            // If all done, turn off global running state
+            setActivePaths(currentPaths => {
+                const stillRunning = currentPaths.some(p => !p.isFinished);
+                if (!stillRunning) setIsLadderRunning(false);
+                return currentPaths;
+            });
+
             ladderTimerRef.current = null;
         }, 4200);
     };
@@ -485,10 +510,25 @@ export default function AsanMenuChoicePage({ params }) {
                                         <div className={styles.ladderSettings}>
                                             <label>당첨 수:</label>
                                             <input type="number" min="1" max={names.length - 1} value={winnerCount} onChange={(e) => setWinnerCount(parseInt(e.target.value) || 1)} className={styles.winnerInput} />
+                                            <button className={styles.runAllBtn} onClick={runAllLadder} disabled={isLadderRunning}>전체 결과 확인</button>
                                             <button className={styles.regenerateBtn} onClick={generateLadder}>사다리 재생성</button>
                                         </div>
-                                        <p>이름을 클릭하여 결과를 확인하세요!</p>
+                                        <p>이름을 클릭하거나 전체 결과를 확인하세요!</p>
                                     </div>
+
+                                    {Object.keys(ladderSummary).length > 0 && (
+                                        <div className={styles.ladderSummary}>
+                                            <h4>게임 결과 요약</h4>
+                                            <div className={styles.summaryGrid}>
+                                                {names.map((name, i) => (
+                                                    <div key={i} className={`${styles.summaryItem} ${ladderSummary[name]?.includes('당첨') ? styles.summaryWinner : ''}`}>
+                                                        <span className={styles.summaryName}>{name}</span>
+                                                        <span className={styles.summaryResult}>{ladderSummary[name] || '-'}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className={styles.ladderContent}>
                                         <div className={styles.ladderHeaderRow}>

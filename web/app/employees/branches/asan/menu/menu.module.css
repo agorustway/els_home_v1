@@ -26,7 +26,8 @@
 
 .layout {
     display: grid;
-    grid-template-columns: 320px minmax(0, 1fr); /* Prevent grid blowout */
+    grid-template-columns: 320px minmax(0, 1fr);
+    /* Prevent grid blowout */
     gap: 30px;
     max-width: 1400px;
     margin: 0 auto;
@@ -261,7 +262,8 @@
 
 .rouletteWrapper {
     position: relative;
-    max-width: 100%; /* Ensure responsiveness */
+    max-width: 100%;
+    /* Ensure responsiveness */
 }
 
 /* Adjust canvas for responsiveness */
@@ -340,7 +342,8 @@
     padding: 50px;
     border-radius: 30px;
     text-align: center;
-    max-width: 90%; /* Mobile safe */
+    max-width: 90%;
+    /* Mobile safe */
 }
 
 .resultCard h2 {
@@ -397,6 +400,30 @@
     font-weight: 700;
 }
 
+.runAllBtn {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.runAllBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+    background: #1d4ed8;
+}
+
+.runAllBtn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .regenerateBtn {
     background: white;
     border: 1px solid var(--primary-blue);
@@ -406,16 +433,78 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    white-space: nowrap; /* Prevent vertical text */
+    white-space: nowrap;
 }
 
-.regenerateBtn:hover {
-    background: var(--primary-blue);
-    color: white;
+.ladderSummary {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 30px;
+    animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.regenerateBtn:active {
-    transform: scale(0.95);
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ladderSummary h4 {
+    font-size: 1rem;
+    margin-bottom: 15px;
+    color: #475569;
+    text-align: center;
+}
+
+.summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.summaryItem {
+    background: white;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.summaryName {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.summaryResult {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.summaryWinner {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+.summaryWinner .summaryName {
+    color: #ef4444;
+}
+
+.summaryWinner .summaryResult {
+    color: #dc2626;
 }
 
 .ladderContent {
@@ -425,7 +514,8 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 10px;
-    max-width: 100%; /* Ensure it doesn't overflow parent */
+    max-width: 100%;
+    /* Ensure it doesn't overflow parent */
     box-sizing: border-box;
 }
 
@@ -433,11 +523,13 @@
 .ladderFooterRow {
     display: flex;
     justify-content: space-around;
-    min-width: 800px; /* Match ladderBoard width to align nodes */
+    min-width: 800px;
+    /* Match ladderBoard width to align nodes */
 }
 
 .ladderHeaderRow {
-    margin-bottom: 28px; /* 이름과 사다리 시작점 사이 간격 (가려짐 방지) */
+    margin-bottom: 28px;
+    /* 이름과 사다리 시작점 사이 간격 (가려짐 방지) */
 }
 
 .ladderStartNode {
@@ -452,7 +544,8 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     font-size: 0.95rem;
     color: #1e293b;
-    white-space: nowrap; /* Absolute horizontal */
+    white-space: nowrap;
+    /* Absolute horizontal */
     overflow: hidden;
     text-overflow: ellipsis;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -472,7 +565,7 @@
 .ladderStartNode:active {
     background: #e2e8f0 !important;
     transform: scale(0.95);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .ladderEndNode {
@@ -494,7 +587,8 @@
     padding: 0 40px;
     /* Add padding to prevent side clipping */
     margin: 10px 0;
-    min-width: 800px; /* Force scroll on mobile to keep shape */
+    min-width: 800px;
+    /* Force scroll on mobile to keep shape */
 }
 
 .ladderSvgBackground,
@@ -571,7 +665,8 @@
     flex-direction: column;
     align-items: center;
     gap: 25px;
-    width: 100%; /* Full width on mobile */
+    width: 100%;
+    /* Full width on mobile */
 }
 
 .bingoHeader {
@@ -658,7 +753,8 @@
 .bingoWinOverlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5); /* Dimmed background instead of solid green */
+    background: rgba(0, 0, 0, 0.5);
+    /* Dimmed background instead of solid green */
     backdrop-filter: blur(5px);
     display: flex;
     flex-direction: column;
@@ -668,13 +764,14 @@
 }
 
 .bingoWinContent {
-    background: white; /* Card style */
+    background: white;
+    /* Card style */
     color: #1e293b;
     border-radius: 24px;
     text-align: center;
     animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     padding: 40px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
     width: 90%;
     max-width: 400px;
 }
@@ -765,18 +862,22 @@
 @media (max-width: 1024px) {
     .container {
         padding-top: 80px;
-        overflow-x: hidden; /* Cut off page scroll */
+        overflow-x: hidden;
+        /* Cut off page scroll */
     }
-    
+
     .layout {
-        grid-template-columns: minmax(0, 1fr); /* Force fit to screen */
+        grid-template-columns: minmax(0, 1fr);
+        /* Force fit to screen */
         padding: 0 20px;
         width: 100%;
     }
 
     .mainArea {
-        max-width: 100vw; /* Ensure main area doesn't overflow */
-        overflow: hidden; /* Contain children */
+        max-width: 100vw;
+        /* Ensure main area doesn't overflow */
+        overflow: hidden;
+        /* Contain children */
     }
 
     .historyCard {
@@ -805,11 +906,12 @@
     }
 
     .regenerateBtn {
-        width: 100%; /* Full width on mobile for easy clicking */
+        width: 100%;
+        /* Full width on mobile for easy clicking */
         white-space: nowrap;
         padding: 12px;
     }
-    
+
     .tabs {
         gap: 8px;
         overflow-x: auto;
@@ -817,23 +919,28 @@
         -webkit-overflow-scrolling: touch;
         justify-content: flex-start;
     }
-    
+
     .tabs::-webkit-scrollbar {
-        display: none; /* Hide scrollbar for cleaner look */
+        display: none;
+        /* Hide scrollbar for cleaner look */
     }
-    
+
     .tabs button {
         padding: 12px 20px;
         font-size: 0.9rem;
         border-radius: 12px;
-        white-space: nowrap; /* Prevent text wrapping */
-        flex: none; /* Don't grow or shrink */
+        white-space: nowrap;
+        /* Prevent text wrapping */
+        flex: none;
+        /* Don't grow or shrink */
     }
 
     .gameContainer {
-        padding: 20px 10px; /* Reduce padding to save space */
+        padding: 20px 10px;
+        /* Reduce padding to save space */
         min-height: 500px;
-        overflow: hidden; /* Prevent container from expanding page width */
+        overflow: hidden;
+        /* Prevent container from expanding page width */
     }
 
     /* Roulette Mobile */
@@ -843,7 +950,8 @@
     }
 
     /* Ladder Mobile */
-    .ladderStartNode, .ladderEndNode {
+    .ladderStartNode,
+    .ladderEndNode {
         width: auto;
         min-width: 40px;
         padding: 8px 5px;
@@ -853,33 +961,36 @@
     .ladderBoard {
         padding: 0 10px;
     }
-    
-    .ladderSvgBackground, .ladderSvgOverlay {
+
+    .ladderSvgBackground,
+    .ladderSvgOverlay {
         left: 10px;
         right: 10px;
         width: calc(100% - 20px);
     }
-    
+
     /* Bingo Mobile */
     .bingoGrid {
         gap: 6px;
         padding: 8px;
     }
-    
+
     .bingoCell {
         font-size: 0.9rem;
         border-radius: 8px;
     }
 
     .bingoWinContent {
-        padding: 30px 20px; /* Reduced padding */
+        padding: 30px 20px;
+        /* Reduced padding */
     }
 
     .bingoWinContent h2 {
-        font-size: 2rem !important; /* Smaller title */
+        font-size: 2rem !important;
+        /* Smaller title */
         margin-bottom: 10px !important;
     }
-    
+
     .bingoWinContent p {
         font-size: 0.95rem !important;
         margin-bottom: 20px !important;
