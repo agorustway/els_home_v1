@@ -127,7 +127,7 @@ export default function InfoTicker({ style, isEmployees = false }) {
                                 className={styles.tickerWeatherIcon}
                             />
                             <span className={styles.tickerWeatherText}>
-                                {tickerWeather.region.name} {tickerWeather.hourly?.[0]?.temp}°C
+                                {tickerWeather.region.name} {typeof tickerWeather.hourly?.[0]?.temp === 'number' ? tickerWeather.hourly[0].temp.toFixed(1) : tickerWeather.hourly?.[0]?.temp}°C
                             </span>
                         </div>
                     )}

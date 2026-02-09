@@ -58,6 +58,12 @@
 .tickerWeatherText {
     font-weight: 600;
     font-size: 0.85rem;
+    min-width: 110px;
+    /* 온도가 바뀌어도 뉴스 위치가 변하지 않기 위해 고정 너비 확보 */
+    font-variant-numeric: tabular-nums;
+    /* 숫자 폭 고정으로 떨림 방지 */
+    padding-right: 15px;
+    /* 뉴스 배지와의 간격(여백) 확보 */
 }
 
 .tickerDivider {
