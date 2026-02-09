@@ -22,7 +22,7 @@ export default function WorkDocsNewPage() {
     }, [role, authLoading, router]);
 
     const handleFileUpload = async (e) => {
-        const files = Array.from(e.target.files);
+        const files = e.target.files ? Array.from(e.target.files) : (e.dataTransfer ? Array.from(e.dataTransfer.files) : []);
         if (files.length === 0) return;
 
         setUploading(true);
@@ -49,7 +49,7 @@ export default function WorkDocsNewPage() {
                         key: key,
                         size: file.size,
                         type: file.type,
-                        url: `/api/s3/files?key=${encodeURIComponent(key)}`
+                        url: `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`
                     };
                     setAttachments(prev => [...prev, newFile]);
                 }
@@ -61,6 +61,18 @@ export default function WorkDocsNewPage() {
         }
         setUploading(false);
         setUploadProgress(0);
+    };
+
+    const [isDragging, setIsDragging] = useState(false);
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+    const handleDragLeave = () => setIsDragging(false);
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        handleFileUpload(e);
     };
 
     const removeAttachment = (idx) => {
@@ -129,7 +141,13 @@ export default function WorkDocsNewPage() {
 
                     <div className={styles.formGroup}>
                         <label className={styles.label}>📎 첨부파일 및 이미지</label>
-                        <div className={styles.uploadZone}>
+                        <div
+                            className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            style={isDragging ? { borderColor: '#2563eb', background: '#f0f7ff' } : {}}
+                        >
                             <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
                                 📁 <b>파일을 선택</b>하거나 여기로 드래그하세요

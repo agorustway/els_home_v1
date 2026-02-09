@@ -16,6 +16,8 @@ export default function FormTemplateEditPage() {
     const [fileName, setFileName] = useState('');
     const [fileUrl, setFileUrl] = useState('');
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -38,6 +40,55 @@ export default function FormTemplateEditPage() {
                 .finally(() => setLoading(false));
         }
     }, [role, id]);
+
+    const handleFileUpload = async (e) => {
+        const files = e.target.files ? Array.from(e.target.files) : (e.dataTransfer ? Array.from(e.dataTransfer.files) : []);
+        if (files.length === 0) return;
+
+        setUploading(true);
+        setUploadProgress(0);
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const timestamp = Date.now();
+            const key = `form-templates/${timestamp}_${file.name}`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('key', key);
+
+                const res = await fetch('/api/s3/files', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const url = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`;
+                    setFileUrl(url);
+                    setFileName(file.name);
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                alert(`파일 업로드 실패: ${file.name}`);
+            }
+            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
+        }
+        setUploading(false);
+        setUploadProgress(0);
+    };
+
+    const [isDragging, setIsDragging] = useState(false);
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+    const handleDragLeave = () => setIsDragging(false);
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        handleFileUpload(e);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -89,13 +140,50 @@ export default function FormTemplateEditPage() {
                         <label className={styles.label}>설명</label>
                         <textarea className={styles.textarea} value={description} onChange={(e) => setDescription(e.target.value)} style={{ minHeight: 120 }} />
                     </div>
+
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>파일명</label>
-                        <input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                        <label className={styles.label}>📎 파일 업로드 (교체)</label>
+                        <div
+                            className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            style={isDragging ? { borderColor: '#2563eb', background: '#f0f7ff' } : {}}
+                        >
+                            <input type="file" id="fileUpload" onChange={handleFileUpload} style={{ display: 'none' }} />
+                            <label htmlFor="fileUpload" className={styles.uploadLabel}>
+                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
+                            </label>
+
+                            {uploading && (
+                                <div className={styles.uploadProgress}>
+                                    <div className={styles.progressBar} style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                            )}
+
+                            {fileName && (
+                                <div className={styles.uploadedList}>
+                                    <div className={styles.uploadedFile}>
+                                        <span>📎 {fileName}</span>
+                                        <span className={styles.removeFile} onClick={() => { setFileName(''); setFileUrl(''); }}>✕</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>파일 URL</label>
-                        <input className={styles.input} value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
+
+                    <div className={styles.formGroup} style={{ marginTop: 24, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                        <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>직접 경로 입력 (필요 시)</p>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ flex: 1 }}>
+                                <label className={styles.label} style={{ fontSize: '0.75rem', color: '#94a3b8' }}>파일명</label>
+                                <input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="예: 휴가신청서.xlsx" style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
+                            </div>
+                            <div style={{ flex: 2 }}>
+                                <label className={styles.label} style={{ fontSize: '0.75rem', color: '#94a3b8' }}>파일 URL/경로</label>
+                                <input className={styles.input} value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="다운로드 링크 또는 경로" style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
+                            </div>
+                        </div>
                     </div>
                     <div className={styles.actions}>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting}>{submitting ? '저장 중...' : '저장'}</button>

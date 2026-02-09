@@ -23,7 +23,7 @@ export default function FormTemplatesNewPage() {
     }, [role, authLoading, router]);
 
     const handleFileUpload = async (e) => {
-        const files = Array.from(e.target.files);
+        const files = e.target.files ? Array.from(e.target.files) : (e.dataTransfer ? Array.from(e.dataTransfer.files) : []);
         if (files.length === 0) return;
 
         setUploading(true);
@@ -45,7 +45,7 @@ export default function FormTemplatesNewPage() {
                 });
 
                 if (res.ok) {
-                    const url = `/api/s3/files?key=${encodeURIComponent(key)}`;
+                    const url = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`;
                     setFileUrl(url);
                     setFileName(file.name);
                 }
@@ -57,6 +57,18 @@ export default function FormTemplatesNewPage() {
         }
         setUploading(false);
         setUploadProgress(0);
+    };
+
+    const [isDragging, setIsDragging] = useState(false);
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+    const handleDragLeave = () => setIsDragging(false);
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        handleFileUpload(e);
     };
 
     const insertImageToContent = (url, name) => {
@@ -116,7 +128,13 @@ export default function FormTemplatesNewPage() {
 
                     <div className={styles.formGroup}>
                         <label className={styles.label}>📎 서식 파일 업로드</label>
-                        <div className={styles.uploadZone}>
+                        <div
+                            className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            style={isDragging ? { borderColor: '#2563eb', background: '#f0f7ff' } : {}}
+                        >
                             <input type="file" id="fileUpload" onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
                                 📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
