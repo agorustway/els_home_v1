@@ -46,24 +46,26 @@
 }
 
 .overlay {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
-    z-index: 1100;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    display: block;
+    /* display: none 대신 visibility로 제어 */
 }
 
 .overlayOpen {
-    display: block;
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 .searchWrap {
