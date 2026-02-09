@@ -20,6 +20,8 @@ export default function ArchiveBrowser() {
     const [clipboard, setClipboard] = useState(null); // { type: 'copy', path, name }
     const [error, setError] = useState(null);
     const [downloading, setDownloading] = useState(new Set()); // Track downloading files
+    const menuRef = useRef(null);
+    const [adjustedPos, setAdjustedPos] = useState({ x: 0, y: 0 });
 
     // Multi-selection state
     const [selectionMode, setSelectionMode] = useState(false);
@@ -220,23 +222,42 @@ export default function ArchiveBrowser() {
         }
     };
 
-    const handleDelete = async (fileName) => {
+    const handleDelete = async (file) => {
         const { can_delete, role: userRole } = await fetch('/api/nas/files/permissions').then(r => r.json()).catch(() => ({}));
 
         if (!can_delete && userRole !== 'admin') {
-            setDeleteModal({ show: true, fileName });
+            setDeleteModal({ show: true, fileName: file.name });
             return;
         }
 
-        if (!confirm(`${fileName}을(를) 삭제하시겠습니까?`)) return;
-        const filePath = path === '/' ? `/${fileName}` : `${path}/${fileName}`;
+        // Check if we should delete multiple selected paths
+        const isPartofSelection = selectionMode && selectedPaths.has(file.path);
+        const pathsToDelete = isPartofSelection ? Array.from(selectedPaths) : [file.path];
+        const count = pathsToDelete.length;
+
+        const confirmMsg = count > 1
+            ? `선택한 ${count}개 항목을 모두 삭제하시겠습니까?`
+            : `${file.name}을(를) 삭제하시겠습니까?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        setLoading(true); // Show global loading during mass delete
         try {
-            const res = await fetch(`/api/nas/files?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Delete failed');
+            for (const filePath of pathsToDelete) {
+                const res = await fetch(`/api/nas/files?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Delete failed');
+                }
+            }
+            setSelectedPaths(new Set());
+            setSelectionMode(false);
             await fetchFiles(path);
         } catch (error) {
-            console.error(error);
-            alert('삭제 실패');
+            console.error('Delete Error:', error);
+            alert(`삭제 실패: ${error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -343,6 +364,30 @@ export default function ArchiveBrowser() {
             file
         });
     };
+
+    // Context Menu position adjustment
+    useEffect(() => {
+        if (!contextMenu || !menuRef.current) return;
+
+        const menuWidth = menuRef.current.offsetWidth;
+        const menuHeight = menuRef.current.offsetHeight;
+        const padding = 10;
+
+        let x = contextMenu.x;
+        let y = contextMenu.y;
+
+        // Horizontal adjustment
+        if (x + menuWidth > window.innerWidth) {
+            x = window.innerWidth - menuWidth - padding;
+        }
+
+        // Vertical adjustment
+        if (y + menuHeight > window.innerHeight) {
+            y = window.innerHeight - menuHeight - padding;
+        }
+
+        setAdjustedPos({ x, y });
+    }, [contextMenu]);
 
     // Close menu on click or scroll
     useEffect(() => {
@@ -603,7 +648,16 @@ export default function ArchiveBrowser() {
             {contextMenu && (
                 <>
                     <div className={styles.contextOverlay} onClick={() => setContextMenu(null)} />
-                    <div className={styles.contextMenu} style={{ top: contextMenu.y, left: contextMenu.x }} onClick={() => setContextMenu(null)}>
+                    <div
+                        ref={menuRef}
+                        className={styles.contextMenu}
+                        style={{
+                            top: adjustedPos.y || contextMenu.y,
+                            left: adjustedPos.x || contextMenu.x,
+                            visibility: adjustedPos.x ? 'visible' : 'hidden' // Avoid flicker before adjustment
+                        }}
+                        onClick={() => setContextMenu(null)}
+                    >
                         {contextMenu.file ? (
                             <>
                                 <div className={styles.contextItem} onClick={() => {
@@ -642,7 +696,9 @@ export default function ArchiveBrowser() {
                                 {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 여기에 붙여넣기</div>}
                                 <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>✏️ 이름 바꾸기</div>
                                 <div className={styles.contextDivider}></div>
-                                <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file.name)}>🗑️ 삭제하기</div>
+                                <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file)}>
+                                    🗑️ {selectionMode && selectedPaths.has(contextMenu.file.path) && selectedPaths.size > 1 ? `선택한 ${selectedPaths.size}개 삭제` : '삭제하기'}
+                                </div>
                             </>
                         ) : (
                             <>

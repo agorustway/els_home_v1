@@ -317,6 +317,12 @@
     z-index: 10000;
 }
 
+.contextDivider {
+    height: 1px;
+    background: #edf2f7;
+    margin: 4px 8px;
+}
+
 .contextItem {
     padding: 10px 14px;
     font-size: 0.9rem;
