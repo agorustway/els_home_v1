@@ -1413,12 +1413,54 @@
 .modalBtn:active {
     transform: translateY(0);
 }
+
 @media (max-width: 768px) {
     .widgetRow {
         grid-template-columns: 1fr;
         gap: 16px;
     }
+
     .mobileNewsMargin {
         margin-top: 0 !important;
+    }
+}
+
+/* Galaxy S4 (360px) 및 소형 모바일 최적화 */
+@media (max-width: 380px) {
+    .hero {
+        padding: 100px 0 60px;
+        /* 히어로 영역 축소 */
+    }
+
+    .title {
+        font-size: 2.5rem;
+        /* 타이틀 크기 축소 */
+    }
+
+    .desc {
+        font-size: 1rem;
+        padding: 0 16px;
+    }
+
+    .gridContainerCompact,
+    .gridContainer {
+        grid-template-columns: 1fr;
+        /* 1열로 변경하여 공간 확보 */
+        gap: 12px;
+    }
+
+    .cardCompact {
+        min-height: 60px;
+        padding: 12px;
+    }
+
+    .widgetRow {
+        grid-template-columns: 1fr;
+        /* 위젯도 1열 */
+        gap: 16px;
+    }
+
+    .portalSection {
+        padding: 24px 0 32px;
     }
 }

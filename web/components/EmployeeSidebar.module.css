@@ -268,11 +268,12 @@
         left: 0;
         height: 100vh;
         max-height: 100vh;
-        z-index: 1200;
+        z-index: 1500;
+        /* 헤더(2000) 아래, 오버레이(1000) 위 */
         transform: translateX(-100%);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
-        padding-top: 20px;
-        /* 모바일에서 닫혀있을 때 레이아웃 간섭 방지 (display: none 필수) */
+        padding-top: 134px;
+        /* 헤더 영역(약 134px)만큼 아래로 내림 */
         display: none;
         transition: transform 0.3s ease;
     }

@@ -167,17 +167,18 @@
 
 @media (max-width: 768px) {
     .employeeHeader {
-        position: relative;
+        position: sticky !important;
+        /* relative -> sticky 변경 */
         top: 0 !important;
-        /* 모바일에서는 sticky 해제 */
-        z-index: 1200;
-        /* 오버레이 위에 표시 */
+        /* 모바일에서 상단 고정 */
+        z-index: 2000;
+        /* 사이드바(1500)보다 높게 설정 */
         box-shadow: none;
         padding: 0;
-        /* 패딩 제거 */
         margin-top: 0 !important;
-        /* 상단 여백 강제 제거 */
         border-bottom: 1px solid #f1f5f9;
+        background: #fff;
+        /* 배경색 명시 */
     }
 
     .inner {
