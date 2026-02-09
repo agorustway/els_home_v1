@@ -1,8 +1,10 @@
 .page {
-  padding: 0 0 24px;
+  padding: 10px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  overflow-x: hidden;
+  /* 가로 스크롤 방지 */
 }
 
 .headerBanner {
@@ -260,11 +262,11 @@
 
 .tabs {
   display: flex;
-  /* Flexbox 활성화 */
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
-  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: stretch;
+  /* 높이 균일화 */
 }
 
 /* 오른쪽으로 밀어낼 클래스 */
@@ -455,6 +457,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .surchargeSection {
+    grid-template-columns: 1fr;
+    /* 모바일에서 1열 */
+  }
 }
 
 .surchargeGroup {
@@ -1008,6 +1017,8 @@
   margin-top: 24px;
   overflow-x: auto;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
+  /* 부드러운 스크롤 */
 }
 
 .tip {
@@ -1105,8 +1116,54 @@
   .formGrid {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 768px) {
+  .page {
+    padding: 8px;
+  }
 
+  .headerBanner {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: 1.1rem;
+  }
+
+  .desc {
+    font-size: 0.8rem;
+  }
+
+  .tabs {
+    flex-direction: column;
+    /* 탭도 세로 배치로 고려 */
+  }
+
+  .tab,
+  .tabActive,
+  .tabRed,
+  .tabActiveRed,
+  .tabDeveloping,
+  .noticeTabBtn {
+    width: 100%;
+    margin-left: 0 !important;
+    min-height: 48px;
+  }
+
+  .stepModule {
+    padding: 14px;
+  }
+
+  .surchargeGroup {
+    padding: 10px;
+  }
+
+  .btnSearch,
+  .btnExcel {
+    height: 44px !important;
+  }
 }
 
 .savedSection {
