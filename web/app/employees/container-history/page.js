@@ -797,7 +797,7 @@ function ContainerHistoryInner() {
                                 <button onClick={handleDownload} className={styles.button}>엑셀 다운로드</button>
                             </div>
                         </div>
-                        <div className={styles.resultsList}>
+                        <div className={styles.tableWrapper}>
                             <table className={styles.table}>
                                 <thead className={styles.thead}>
                                     <tr>{HEADERS.map((h, i) => <th key={i}>{h}</th>)}</tr>

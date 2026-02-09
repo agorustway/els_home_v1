@@ -405,15 +405,24 @@
     overflow-x: auto;
     width: 100%;
     -webkit-overflow-scrolling: touch;
-    /* 모바일 부드러운 스크롤 */
     margin-bottom: 1rem;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
 }
 
+/* 스크롤바 스타일 (커스텀) */
+.tableWrapper::-webkit-scrollbar {
+    height: 6px;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
 .table {
-    min-width: 1000px;
-    /* 가로 스크롤을 강제하기 위한 최소 너비 */
+    min-width: 1200px;
+    /* 더 시원하게 스크롤되도록 너비 확보 */
     width: 100%;
     border-collapse: collapse;
     background: #fff;
