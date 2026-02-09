@@ -78,10 +78,10 @@ export const SIDEBAR_ITEMS = {
         { label: '자료실 (NAS)', path: '/employees/archive' },
     ],
     reports: [
-        { label: '통합 업무보고', path: '/employees/reports' },
+        { label: '전체 보고서', path: '/employees/reports' },
         { label: '일일 업무일지', path: '/employees/reports/daily' },
         { label: '월간 실적보고', path: '/employees/reports/monthly' },
-        { label: '내 업무보고', path: '/employees/reports/my' },
+        { label: '내가 쓴 보고서', path: '/employees/reports/my' },
     ],
     branches: [
         { label: '서울본사', path: '/employees/branches/headquarters' },
