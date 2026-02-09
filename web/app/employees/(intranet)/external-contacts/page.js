@@ -31,8 +31,10 @@ export default function ExternalContactsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>외부연락처</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>등록</Link>
             </div>
             <div className={styles.card}>

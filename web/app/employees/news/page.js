@@ -66,7 +66,7 @@ export default function NewsPage() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>연합뉴스</h1>
                 <p className={styles.subtitle}>실시간 주요 기사를 한눈에 확인하세요.</p>
 

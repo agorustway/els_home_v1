@@ -626,26 +626,28 @@ function ContainerHistoryInner() {
     return (
         <div className={styles.page}>
             <div className={styles.container}>
-                <div className={styles.titleContainer}>
+                <div className={styles.headerBanner}>
                     <h1 className={styles.title}>컨테이너 이력조회</h1>
-                    <a
-                        href="https://etrans.klnet.co.kr"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.etransShortcut}
-                        title="ETRANS 바로가기"
-                    >
-                        <img src="/images/etrans_logo.png" alt="eTrans 3.0" />
-                    </a>
-                    <a
-                        href="https://www.tradlinx.com/ko/container-terminal-schedule"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.etransShortcut}
-                        title="트래드링스 바로가기"
-                    >
-                        <img src="/images/tradlinx_logo.png" alt="Tradlinx" />
-                    </a>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <a
+                            href="https://etrans.klnet.co.kr"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.etransShortcut}
+                            title="ETRANS 바로가기"
+                        >
+                            <img src="/images/etrans_logo.png" alt="eTrans 3.0" />
+                        </a>
+                        <a
+                            href="https://www.tradlinx.com/ko/container-terminal-schedule"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.etransShortcut}
+                            title="트래드링스 바로가기"
+                        >
+                            <img src="/images/tradlinx_logo.png" alt="Tradlinx" />
+                        </a>
+                    </div>
                 </div>
                 <div className={styles.topRow}>
                     <div className={styles.leftColumn}>

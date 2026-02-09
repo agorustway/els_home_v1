@@ -45,8 +45,10 @@ export default function FreeBoardPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>자유게시판</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/board/free/new" className={styles.btnPrimary}>
                     글쓰기
                 </Link>

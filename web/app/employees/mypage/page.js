@@ -99,7 +99,9 @@ export default function MyPage() {
     return (
         <div style={{ background: '#f8fafc', minHeight: '100%', paddingBottom: '60px' }}>
             <div className={styles.container}>
-                <h1 className={styles.title}>내 정보 수정</h1>
+                <div className={styles.headerBanner}>
+                    <h1 className={styles.title}>내 정보 수정</h1>
+                </div>
 
                 <div className={styles.infoBox}>
                     <div className={styles.infoRow}>

@@ -31,8 +31,10 @@ export default function PartnerContactsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/partner-contacts/new" className={styles.btnPrimary}>등록</Link>
             </div>
             <div className={styles.card}>

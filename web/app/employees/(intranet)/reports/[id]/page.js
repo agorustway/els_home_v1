@@ -67,6 +67,26 @@ export default function ReportDetailPage() {
 
     return (
         <div className={styles.container}>
+            <div className={styles.headerBanner}>
+                <h1 className={styles.title}>업무보고 상세</h1>
+            </div>
+
+            <div className={styles.controls}>
+                <button onClick={() => router.push('/employees/reports')} className={styles.btnSecondary}>
+                    목록으로
+                </button>
+                {canManage && (
+                    <>
+                        <button onClick={() => router.push(`/employees/reports/${id}/edit`)} className={styles.btnSecondary}>
+                            수정
+                        </button>
+                        <button onClick={handleDelete} className={styles.btnDelete}>
+                            삭제
+                        </button>
+                    </>
+                )}
+            </div>
+
             <div className={styles.detailCard}>
                 <div className={styles.detailHeader}>
                     <div style={{ marginBottom: '15px' }}>

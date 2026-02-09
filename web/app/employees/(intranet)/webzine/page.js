@@ -69,15 +69,19 @@ export default function WebzineList() {
     return (
         <main className={styles.main}>
             <div className={styles.contentContainer}>
+                <div className={styles.headerBanner}>
+                    <h1 className={styles.title}>ELS 웹진</h1>
+                    <Link href="/employees/webzine/new" className={styles.writeBtn} style={{ background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+                        ✍️ 글쓰기
+                    </Link>
+                </div>
+
                 <div className={styles.actionHeader}>
                     {recentPosts.length > 0 && (
                         <button onClick={scrollToRecent} className={styles.navBtn}>
                             ↓ 지난 이야기 보기
                         </button>
                     )}
-                    <Link href="/employees/webzine/new" className={styles.writeBtn}>
-                        글쓰기
-                    </Link>
                 </div>
 
                 {posts.length > 0 ? (

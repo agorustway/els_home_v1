@@ -25,6 +25,32 @@
     margin: 0;
 }
 
+.headerBanner {
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+    color: #fff;
+    padding: 20px 24px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.headerBanner .title {
+    color: #fff;
+    margin: 0 0 4px 0;
+}
+
+.headerBanner .subtitle {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 12px 0;
+}
+
+.headerBanner .updated {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
 /* Card & List */
 .card {
     background: #fff;

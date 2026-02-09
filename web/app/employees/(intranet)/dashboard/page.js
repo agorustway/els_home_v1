@@ -22,12 +22,19 @@ export default function EmployeeDashboard() {
 
     return (
         <div style={{ padding: '20px' }}>
-            <div style={{ marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '10px', letterSpacing: '-1px' }}>
+            <div style={{
+                background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
+                color: '#fff',
+                padding: '24px 32px',
+                borderRadius: '16px',
+                marginBottom: '40px',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.15)'
+            }}>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#fff', marginBottom: '8px', letterSpacing: '-0.5px' }}>
                     반갑습니다, {user?.user_metadata?.name || user?.email?.split('@')[0]}님!
                 </h1>
-                <p style={{ color: '#64748b', fontSize: '1.1rem' }}>
-                    현재 <span style={{ color: '#2563eb', fontWeight: '800', backgroundColor: '#eff6ff', padding: '6px 16px', borderRadius: '20px', fontSize: '0.95rem' }}>{getRoleLabel(role)}</span> 권한으로 접속 중입니다.
+                <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1rem', margin: 0 }}>
+                    현재 <span style={{ fontWeight: '800' }}>{getRoleLabel(role)}</span> 권한으로 접속 중입니다.
                 </p>
             </div>
 

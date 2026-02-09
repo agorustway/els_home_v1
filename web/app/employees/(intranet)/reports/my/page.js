@@ -49,8 +49,10 @@ export default function MyReportsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>내 업무보고</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/reports/new" className={styles.btnPrimary}>
                     보고서 작성
                 </Link>

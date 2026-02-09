@@ -39,13 +39,13 @@ export default function PartnerContactsDetailPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보 · 상세</h1>
-                <div className={styles.headerActions}>
-                    <Link href={`/employees/partner-contacts/${params.id}/edit`} className={styles.btnPrimary}>수정</Link>
-                    <button onClick={handleDelete} className={styles.btnDanger} style={{ marginLeft: 10, padding: '8px 16px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer' }}>삭제</button>
-                    <Link href="/employees/partner-contacts" className={styles.btnSecondary} style={{ marginLeft: 10 }}>목록</Link>
-                </div>
+            </div>
+            <div className={styles.controls}>
+                <Link href={`/employees/partner-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
+                <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
+                <Link href="/employees/partner-contacts" className={styles.btnSecondary}>목록</Link>
             </div>
 
             <div className={styles.card}>

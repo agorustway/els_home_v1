@@ -31,8 +31,10 @@ export default function DriverContactsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>운전원정보</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>등록</Link>
             </div>
             <div className={styles.card}>

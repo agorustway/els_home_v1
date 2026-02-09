@@ -31,8 +31,10 @@ export default function WorkDocsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>업무자료실</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/work-docs/new" className={styles.btnPrimary}>글쓰기</Link>
             </div>
             <div className={styles.card}>

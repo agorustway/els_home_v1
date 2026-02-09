@@ -209,7 +209,7 @@ export default function WeatherPage() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>실시간 기상 정보</h1>
                 <p className={styles.subtitle}>현위치 기반 정밀 기상 예보와 주요 지역의 실시간 날씨를 제공합니다.</p>
                 {lastUpdated && (

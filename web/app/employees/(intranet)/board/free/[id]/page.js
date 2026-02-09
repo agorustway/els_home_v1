@@ -73,6 +73,9 @@ export default function PostDetailPage() {
 
     return (
         <div className={styles.container}>
+            <div className={styles.headerBanner}>
+                <h1 className={styles.title}>자유게시판</h1>
+            </div>
             <div className={styles.detailCard}>
                 <div className={styles.detailHeader}>
                     <h1 className={styles.detailTitle}>{post.title}</h1>

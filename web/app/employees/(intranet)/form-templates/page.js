@@ -31,8 +31,10 @@ export default function FormTemplatesPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>서식자료실</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/form-templates/new" className={styles.btnPrimary}>등록</Link>
             </div>
             <div className={styles.card}>

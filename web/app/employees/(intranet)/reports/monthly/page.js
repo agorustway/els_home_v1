@@ -48,8 +48,10 @@ export default function MonthlyReportsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>{branchTitle}</h1>
+            </div>
+            <div className={styles.controls}>
                 <Link href="/employees/reports/monthly/new" className={styles.btnPrimary}>
                     실적보고 작성
                 </Link>
