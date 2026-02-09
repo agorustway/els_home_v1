@@ -45,9 +45,10 @@ export default function SiteLayout({ children }) {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // 경로 변경 시 사이드바 닫기
+    // 경로 변경 시 모든 모바일 메뉴 닫기
     useEffect(() => {
         setIsSidebarOpen(false);
+        window.dispatchEvent(new Event('closeHeaderMenu'));
     }, [pathname]);
 
     // 사이드바 전용 닫기 이벤트 리스너
@@ -60,7 +61,6 @@ export default function SiteLayout({ children }) {
     const handleSidebarToggle = () => {
         const nextState = !isSidebarOpen;
         if (nextState) {
-            // 사이드바를 열 때, 헤더 메뉴가 있다면 닫으라고 신호 보냄
             window.dispatchEvent(new Event('closeHeaderMenu'));
         }
         setIsSidebarOpen(nextState);
@@ -76,7 +76,7 @@ export default function SiteLayout({ children }) {
     if (pathname === '/') {
         return (
             <>
-                <Header />
+                <Header isSidebarOpen={isSidebarOpen} />
                 {children}
                 <Footer />
             </>
@@ -92,7 +92,7 @@ export default function SiteLayout({ children }) {
      */
     return (
         <>
-            <Header isEmployees={isEmployees} />
+            <Header isEmployees={isEmployees} isSidebarOpen={isSidebarOpen} />
 
             {/* 배경 및 상단 영역 */}
             {hero ? (

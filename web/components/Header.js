@@ -96,7 +96,7 @@ const navLinks = [
     },
 ];
 
-export default function Header({ darkVariant = false, isEmployees = false }) {
+export default function Header({ darkVariant = false, isEmployees = false, isSidebarOpen = false }) {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
@@ -134,6 +134,11 @@ export default function Header({ darkVariant = false, isEmployees = false }) {
         window.addEventListener('click', handleClickOutside);
         return () => window.removeEventListener('click', handleClickOutside);
     }, [userMenuOpen]);
+
+    // 사이드바가 열리면 헤더 메뉴 닫기
+    useEffect(() => {
+        if (isSidebarOpen) setMenuOpen(false);
+    }, [isSidebarOpen]);
 
     // 헤더 메뉴 전용 닫기 이벤트 리스너
     useEffect(() => {
