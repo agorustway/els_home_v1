@@ -50,6 +50,22 @@ export default function SiteLayout({ children }) {
         setIsSidebarOpen(false);
     }, [pathname]);
 
+    // 사이드바 전용 닫기 이벤트 리스너
+    useEffect(() => {
+        const handleCloseSidebar = () => setIsSidebarOpen(false);
+        window.addEventListener('closeSidebar', handleCloseSidebar);
+        return () => window.removeEventListener('closeSidebar', handleCloseSidebar);
+    }, []);
+
+    const handleSidebarToggle = () => {
+        const nextState = !isSidebarOpen;
+        if (nextState) {
+            // 사이드바를 열 때, 헤더 메뉴가 있다면 닫으라고 신호 보냄
+            window.dispatchEvent(new Event('closeHeaderMenu'));
+        }
+        setIsSidebarOpen(nextState);
+    };
+
     const hero = getHeroForPath(pathname);
 
     if (isMinimal) {
@@ -97,7 +113,7 @@ export default function SiteLayout({ children }) {
             {isEmployees ? (
                 <EmployeeHeader
                     isEmployees={isEmployees}
-                    onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onMenuClick={handleSidebarToggle}
                 />
             ) : (
                 <SubNav topOffset={isEmployees ? 114 : 70} />

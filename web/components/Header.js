@@ -135,7 +135,22 @@ export default function Header({ darkVariant = false, isEmployees = false }) {
         return () => window.removeEventListener('click', handleClickOutside);
     }, [userMenuOpen]);
 
-    const toggleMenu = () => setMenuOpen(!menuOpen);
+    // 헤더 메뉴 전용 닫기 이벤트 리스너
+    useEffect(() => {
+        const handleCloseHeader = () => setMenuOpen(false);
+        window.addEventListener('closeHeaderMenu', handleCloseHeader);
+        return () => window.removeEventListener('closeHeaderMenu', handleCloseHeader);
+    }, []);
+
+    const toggleMenu = () => {
+        const nextState = !menuOpen;
+        if (nextState) {
+            // 헤더 메뉴를 열 때, 인트라넷 사이드바가 있다면 닫으라고 신호 보냄
+            window.dispatchEvent(new Event('closeSidebar'));
+        }
+        setMenuOpen(nextState);
+    };
+
     const toggleUserMenu = () => setUserMenuOpen(!userMenuOpen);
 
     const handleLinkClick = () => {

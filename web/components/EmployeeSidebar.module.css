@@ -276,9 +276,11 @@
         transform: translateX(-100%);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
         padding-top: 134px;
-        /* 헤더 영역(약 134px)만큼 아래로 내림 */
+        /* 사이드바 내부 콘텐츠만 헤더 아래로 */
         display: none;
         transition: transform 0.3s ease;
+        background: #fff;
+        /* 배경색 확실히 */
     }
 
     .sidebarOpen {
