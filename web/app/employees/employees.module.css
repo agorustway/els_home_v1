@@ -128,32 +128,20 @@
     color: inherit;
     position: relative;
     overflow: hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    /* GPU 가속 및 렌더링 성능 최적화 */
+    transform: translateZ(0);
     backface-visibility: hidden;
-    /* 잔상 방지 */
+    -webkit-font-smoothing: antialiased;
+    will-change: transform, opacity;
 }
 
 .cardCompact.cardWithBg {
-    border-left-color: rgba(255, 255, 255, 0.9);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-left-color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.15);
     background-color: #1e293b;
-    transform: translateZ(0);
-    /* GPU 가속으로 잔상 방지 */
 }
 
-/* 소형 카드 특화 오버레이 (중복 제거 및 상속 활용) */
-.cardCompact.cardWithBg::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
-    pointer-events: none;
-    transition: background 0.3s ease;
-}
-
+/* 소형 카드 특화 스타일 (상속 활용) */
 .cardCompact .cardTitleCompact,
 .cardCompact .cardCtaCompact,
 .cardCompact .cardLinksCompact,
@@ -162,18 +150,20 @@
     z-index: 1;
 }
 
-.cardCompact .cardTitleCompact {
+.cardCompact.cardWithBg .cardTitleCompact {
     color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.cardCompact .cardCtaCompact {
-    color: rgba(255, 255, 255, 0.95);
+.cardCompact.cardWithBg .cardCtaCompact {
+    color: rgba(255, 255, 255, 0.9);
 }
 
-.cardCompact .cardLinkItemCompact {
-    background: rgba(255, 255, 255, 0.15);
+.cardCompact.cardWithBg .cardLinkItemCompact {
+    background: rgba(255, 255, 255, 0.12);
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(2px);
 }
 
 .cardTitleCompact {
@@ -653,7 +643,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     border: 1px solid #f1f5f9;
     border-left: 4px solid #2563eb;
-    transition: all 0.25s ease;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
     display: flex;
     flex-direction: column;
     min-height: 160px;
@@ -662,13 +652,17 @@
     color: inherit;
     position: relative;
     overflow: hidden;
+    /* GPU 가속 및 렌더링 성능 최적화 */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    will-change: transform, opacity;
 }
 
 /* 카드 썸네일 배경: 이미지 + 어두운 오버레이로 텍스트 가독 */
 .cardWithBg {
-    border-left-color: rgba(255, 255, 255, 0.9);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(0);
+    border-left-color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* ============================================================
@@ -839,12 +833,13 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.6) 50%, rgba(15, 23, 42, 0.5) 100%);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.5) 50%, rgba(15, 23, 42, 0.7) 100%);
     border-radius: inherit;
-    /* 부모 클래스의 radius 자동 상속 */
     z-index: 0;
     pointer-events: none;
-    transition: background 0.25s ease;
+    transition: background 0.3s ease;
+    backdrop-filter: blur(1px);
+    /* 미세한 블러로 고급스러움 추가 */
 }
 
 .cardWithBg .cardTitle,
@@ -1064,6 +1059,11 @@
 }
 
 @media (max-width: 768px) {
+    .gridContainerCompact {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
     .portalHeaderCompact {
         margin-bottom: 12px;
     }
