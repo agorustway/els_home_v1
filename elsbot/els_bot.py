@@ -211,13 +211,13 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         # 로그인 처리 대기 (이전 코드: 8초)
         time.sleep(8)
         
-        # 디버깅: 스크린샷 저장
-        try:
-            screenshot_path = f"login_debug_{int(time.time())}.png"
-            driver.save_screenshot(screenshot_path)
-            _log(f"스크린샷 저장: {screenshot_path}")
-        except Exception as e:
-            _log(f"스크린샷 저장 실패: {e}")
+        # 디버깅: 스크린샷 저장 (사용자 요청으로 제거)
+        # try:
+        #     screenshot_path = f"login_debug_{int(time.time())}.png"
+        #     driver.save_screenshot(screenshot_path)
+        #     _log(f"스크린샷 저장: {screenshot_path}")
+        # except Exception as e:
+        #     _log(f"스크린샷 저장 실패: {e}")
         
         # alert 체크 (로그인 실패 팝업)
         alert_msg = check_alert(driver)
