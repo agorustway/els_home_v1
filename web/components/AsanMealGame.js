@@ -131,10 +131,12 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
         setCompletedHistory(prev => [...prev, {
             startIndex: index,
+            name: participants[index],
             path: path,
             emoji: finalEmoji,
             color: pathColor,
             isWinner: isWinner,
+            prize: prize,
             finalPos: {
                 x: finalCol * COL_SPACE + paddingX,
                 y: 500
@@ -146,11 +148,49 @@ const LadderGame = ({ participants, onGameEnd }) => {
         onGameEnd('🪜 사다리', `${participants[index]} -> ${prize}`);
     };
 
+    const runAllLadder = async () => {
+        if (animatingIndex !== null) return;
+        for (let i = 0; i < participants.length; i++) {
+            if (!completedHistory.some(h => h.startIndex === i)) {
+                // 비동기로 실행하되 약간의 시차를 둠
+                runLadder(i);
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+        }
+    };
+
     return (
         <div className={styles.ladderBox}>
             <div className={styles.gameActions}>
                 <button className={styles.premiumBtn} onClick={generateLadder}>🔄 새 판짜기 (리셋)</button>
+                <button
+                    className={styles.runAllBtn}
+                    onClick={runAllLadder}
+                    disabled={animatingIndex !== null || completedHistory.length === participants.length}
+                >
+                    🚀 한번에 사다리 타기
+                </button>
             </div>
+
+            {completedHistory.length > 0 && (
+                <div className={styles.ladderSummary}>
+                    <div className={styles.summaryHeader}>📊 실시간 결과 요약</div>
+                    <div className={styles.summaryGrid}>
+                        {participants.map((name, i) => {
+                            const history = completedHistory.find(h => h.startIndex === i);
+                            return (
+                                <div key={i} className={`${styles.summaryItem} ${history?.isWinner ? styles.summaryWinner : ''}`}>
+                                    <span className={styles.summaryName}>{name}</span>
+                                    <span className={styles.summaryResult}>
+                                        {history ? `${history.emoji} ${history.prize}` : '-'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div className={styles.scrollHint}>↔️ 좌우로 스크롤하여 전체 사다리를 확인하세요</div>
 
             <div className={styles.ladderViewport}>
