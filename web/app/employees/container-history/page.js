@@ -104,6 +104,7 @@ function ContainerHistoryInner() {
     const elapsedSecondsRef = useRef(0);
     const pendingSearchRef = useRef(null);
     const hasInitialized = useRef(false);
+    const initialCreds = useRef({ id: '', pw: '' });
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -180,19 +181,25 @@ function ContainerHistoryInner() {
     }, [containerInput]);
 
     const handleSaveCreds = useCallback(async (id, pw) => {
-        const targetId = id || userId;
+        const targetId = (id || userId).trim();
         const targetPw = pw || userPw;
         if (!targetId || !targetPw) return;
+
+        // 이전에 저장된 정보와 동일하면 서버 요청 생략
+        if (targetId === initialCreds.current.id && targetPw === initialCreds.current.pw) {
+            return;
+        }
 
         try {
             const res = await fetch('/api/employees/els-creds', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ elsId: targetId.trim(), elsPw: targetPw }),
+                body: JSON.stringify({ elsId: targetId, elsPw: targetPw }),
             });
             if (res.ok) {
+                initialCreds.current = { id: targetId, pw: targetPw };
                 setLastSavedInfo(new Date().toLocaleString('ko-KR'));
-                setLogLines(prev => [...prev, '[계정] 개인 계정 정보가 DB에 안전하게 저장되었습니다.']);
+                setLogLines(prev => [...prev, '✓ 계정 정보가 안전하게 저장되었습니다.']);
             }
         } catch (err) {
             console.error('Save creds error:', err);
@@ -276,6 +283,7 @@ function ContainerHistoryInner() {
                 if (data.elsId && data.elsPw) {
                     setUserId(data.elsId);
                     setUserPw(data.elsPw);
+                    initialCreds.current = { id: data.elsId, pw: data.elsPw };
                     setIsSaveChecked(true); // 정보가 있으면 저장 체크 활성화
                     if (data.lastSaved) setLastSavedInfo(data.lastSaved);
 
@@ -402,10 +410,10 @@ function ContainerHistoryInner() {
                     if (trimmedLine.startsWith('LOG:')) {
                         const content = trimmedLine.substring(4);
                         // 이미 타임스탬프가 있는 로그(봇에서 옴)는 그대로 출력, 없는 건 현재 서브 타이머 붙임
-                        if (content.startsWith('[')) {
+                        if (content.startsWith('[') || content.match(/^[▷→✔❌]/)) {
                             setLogLines(prev => [...prev, content]);
                         } else {
-                            setLogLines(prev => [...prev, `[${elapsedSecondsRef.current.toFixed(1)}s] ${content}`]);
+                            setLogLines(prev => [...prev, `→ ${content}`]);
                         }
                     } else if (trimmedLine.startsWith('RESULT:')) {
                         try {

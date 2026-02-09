@@ -159,13 +159,13 @@ def run():
                     line = f"LOG:[{item_elapsed:5.1f}s] {msg}\n"
                     return line
 
-                yield f"LOG:[{cn}] 조회를 시작합니다.\n"
+                yield f"LOG:▷ {cn} 조회를 시작합니다.\n"
                 
                 # solve_input_and_search 내부에서 발생하는 로그도 스트리밍
                 def _inner_log(msg):
                     it_el = time.time() - item_start
                     print(f"[{cn}] {msg}")
-                    return f"LOG:[{it_el:5.1f}s] {msg}\n"
+                    return f"LOG:→ {cn}: {msg} ({it_el:.1f}초)\n"
 
                 # 실제 조회 수행
                 status = solve_input_and_search(shared_driver, cn, log_callback=None) # 콜백 처리가 복잡하므로 여기선 생략하거나 yield로 직접 처리
@@ -196,12 +196,15 @@ def run():
                         
                         if not found_any:
                             final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                            yield f"LOG:✔ {cn}: 조회 완료 (데이터 없음)\n"
+                        else:
+                            yield f"LOG:✔ {cn}: 조회 완료 (데이터 {len([r for r in final_rows if r[0] == cn])}건)\n"
                     else:
                         final_rows.append([cn, "NODATA", "데이터 추출 실패"] + [""]*12)
-                    yield _inner_log(f"[{cn}] 조회 완료")
+                        yield f"LOG:→ {cn}: 데이터 추출 실패\n"
                 else:
                     final_rows.append([cn, "ERROR", status] + [""]*12)
-                    yield _inner_log(f"[{cn}] 조회 실패")
+                    yield f"LOG:❌ {cn}: 조회 실패 ({status})\n"
 
             # 모든 작업 완료 후 결과 전송
             total_elapsed = time.time() - start_time

@@ -249,7 +249,7 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
         # 콜백에 보낼 때는 누적 시간이 아니라 현재 항목 소요 시간만 표시하고 싶어함
         def _item_log(msg):
             item_elapsed = time.time() - item_start
-            if log_callback: log_callback(f"[{item_elapsed:5.1f}s] {msg}")
+            if log_callback: log_callback(f"{cn}: {msg} ({item_elapsed:.1f}s)")
 
         _item_log(f"[{cn}] 분석 시작...")
         status = solve_input_and_search(driver, cn, _item_log)
