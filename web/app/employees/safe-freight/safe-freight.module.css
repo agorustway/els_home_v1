@@ -1164,6 +1164,46 @@
   .btnExcel {
     height: 44px !important;
   }
+
+  /* 관련 법령·고시 모달 모바일 최적화 */
+  .noticeModalOverlay {
+    padding: 12px; /* 모바일에서 외부 여백 축소 */
+  }
+
+  .noticeModal {
+    max-height: calc(100vh - 24px);
+    border-radius: 12px 12px 0 0; /* 상단만 둥글게 해서 앱 느낌 유도 */
+  }
+
+  .noticeModalHead {
+    padding: 16px 16px 0 16px;
+  }
+
+  .noticeModal .noticeSectionDesc {
+    padding: 10px 16px 0;
+    font-size: 0.82rem;
+  }
+
+  .noticeModal .noticeList {
+    padding: 0 16px 16px 16px;
+  }
+
+  .noticeItemHead {
+    padding: 12px 14px;
+    font-size: 0.88rem;
+  }
+
+  .noticeSummary {
+    padding: 0 14px 12px 14px;
+    font-size: 0.82rem;
+  }
+
+  .noticeFullText {
+    margin: 0 8px 10px 8px;
+    padding: 12px 14px;
+    font-size: 0.8rem;
+    max-height: 300px; /* 모바일에서 너무 길어지지 않게 */
+  }
 }
 
 .savedSection {
