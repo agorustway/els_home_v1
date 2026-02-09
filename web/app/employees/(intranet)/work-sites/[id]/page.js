@@ -49,7 +49,7 @@ export default function WorkSiteDetailPage() {
                 newAttachments.push({
                     name: file.name,
                     key: key,
-                    url: `/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`
+                    url: `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`
                 });
             }
 

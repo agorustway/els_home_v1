@@ -56,10 +56,11 @@ export default function InternalContactEditPage() {
                 body: JSON.stringify({ action: 'upload_url', key, fileType: file.type }),
             });
             if (!urlRes.ok) throw new Error('Failed to get upload URL');
-            const { url } = await urlRes.json();
-            const uploadRes = await fetch(url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
             if (!uploadRes.ok) throw new Error('Upload failed');
-            setPhotoUrl(url.split('?')[0]);
+
+            // S3 직접 접근 URL 대신 절대 경로 프록시 URL을 생성하여 사용
+            const absoluteProxyUrl = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}`;
+            setPhotoUrl(absoluteProxyUrl);
         } catch (err) {
             console.error(err);
             alert('사진 업로드 실패');
@@ -97,12 +98,25 @@ export default function InternalContactEditPage() {
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>사진</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {photoUrl && <img src={photoUrl} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />}
-                            <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
-                            {uploading && <span>업로드 중...</span>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: '#f8fafc', padding: '16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                            {photoUrl ? (
+                                <img src={photoUrl} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%', border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+                            ) : (
+                                <div style={{ width: 80, height: 80, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#94a3b8' }}>👤</div>
+                            )}
+                            <div style={{ flex: 1 }}>
+                                <input type="file" id="photoEditUpload" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploading} />
+                                <label htmlFor="photoEditUpload" style={{ display: 'inline-block', padding: '8px 14px', background: '#2563eb', color: '#fff', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', marginBottom: 6 }}>
+                                    📸 사진 변경하기
+                                </label>
+                                {uploading && <span style={{ marginLeft: 10, fontSize: '0.85rem', color: '#2563eb', fontWeight: 600 }}>업로드 중...</span>}
+                                {photoUrl && (
+                                    <div style={{ marginTop: 8, fontSize: '0.7rem', color: '#64748b', wordBreak: 'break-all' }}>
+                                        <strong>현재 경로:</strong> {photoUrl}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <input type="url" className={styles.input} value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="이미지 URL" style={{ marginTop: 8 }} />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이름 *</label>

@@ -199,10 +199,18 @@ export default function ArchiveBrowser() {
         const filePath = file.path;
         const fileName = file.name;
 
-        // Redirect directly to the preview API with download=true
-        // This leverages browser's own download manager (fastest)
-        const downloadUrl = `/api/nas/preview?path=${encodeURIComponent(filePath)}&download=true`;
+        // Use absolute URL for sharing and native browser download manager
+        const downloadUrl = `${window.location.origin}/api/nas/preview?path=${encodeURIComponent(filePath)}&download=true`;
         window.location.href = downloadUrl;
+    };
+
+    const handleCopyShareLink = (file) => {
+        const downloadUrl = `${window.location.origin}/api/nas/preview?path=${encodeURIComponent(file.path)}&download=true`;
+        navigator.clipboard.writeText(downloadUrl).then(() => {
+            alert('외부 공유용 다운로드 링크가 복사되었습니다.');
+        }).catch(err => {
+            console.error('Link copy failed:', err);
+        });
     };
 
     const handleDelete = async (file) => {
@@ -659,6 +667,11 @@ export default function ArchiveBrowser() {
                                         {contextMenu.file.type !== 'directory' && (
                                             <div className={styles.contextItem} onClick={() => handleDownloadFile(contextMenu.file)}>
                                                 💾 이 파일 다운로드
+                                            </div>
+                                        )}
+                                        {contextMenu.file.type !== 'directory' && (
+                                            <div className={styles.contextItem} onClick={() => handleCopyShareLink(contextMenu.file)}>
+                                                🔗 외부 공유 링크 복사 (URL)
                                             </div>
                                         )}
                                         <div className={styles.contextItem} onClick={() => setSelectionMode(true)}>

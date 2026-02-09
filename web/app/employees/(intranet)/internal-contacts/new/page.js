@@ -40,9 +40,9 @@ export default function InternalContactsNewPage() {
             const uploadRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
             if (!uploadRes.ok) throw new Error('Upload failed');
 
-            // S3 직접 접근 URL 대신 프록시 URL을 생성하여 프리뷰 및 저제 사용
-            const proxyUrl = `/api/s3/files?key=${encodeURIComponent(key)}`;
-            setPhotoUrl(proxyUrl);
+            // S3 직접 접근 URL 대신 절대 경로 프록시 URL을 생성하여 사용
+            const absoluteProxyUrl = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}`;
+            setPhotoUrl(absoluteProxyUrl);
         } catch (err) {
             console.error(err);
             alert('사진 업로드 실패');
@@ -104,7 +104,11 @@ export default function InternalContactsNewPage() {
                                     📸 사진 선택하기
                                 </label>
                                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>인물 사진을 등록하면 사내 연락망에서 더욱 눈에 띕니다.</p>
-                                <input type="url" className={styles.input} value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="또는 이미지 URL 입력" style={{ marginTop: 12, padding: '6px 10px', fontSize: '0.85rem' }} />
+                                {photoUrl && (
+                                    <div style={{ marginTop: 12, padding: '8px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.75rem', color: '#64748b', wordBreak: 'break-all' }}>
+                                        <strong>저장 경로:</strong> {photoUrl}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
