@@ -61,6 +61,7 @@
 }
 
 .overlayOpen {
+    display: block;
     opacity: 1;
     visibility: visible;
 }
@@ -284,9 +285,7 @@
         /* 열릴 때만 보임 */
     }
 
-    .overlay {
-        display: block;
-    }
+
 
     .mobileHeader {
         display: flex;

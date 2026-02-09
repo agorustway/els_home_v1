@@ -442,19 +442,21 @@ export default function Header({ darkVariant = false, isEmployees = false }) {
                             {renderNavLinks(false)}
                         </nav>
 
-                        {/* Mobile Toggle Button Only */}
-                        <div className={styles.utility} style={{ marginLeft: '0' }}>
-                            <button
-                                className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`}
-                                onClick={toggleMenu}
-                                aria-label="Toggle Menu"
-                                style={{ color: isDarkHeader ? '#1a1a1a' : '#ffffff' }}
-                            >
-                                <span style={{ backgroundColor: 'currentColor' }} />
-                                <span style={{ backgroundColor: 'currentColor' }} />
-                                <span style={{ backgroundColor: 'currentColor' }} />
-                            </button>
-                        </div>
+                        {/* Mobile Toggle Button Only - Hide on Intranet pages to prevent duplicate sidebars */}
+                        {!isEmployees && (
+                            <div className={styles.utility} style={{ marginLeft: '0' }}>
+                                <button
+                                    className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`}
+                                    onClick={toggleMenu}
+                                    aria-label="Toggle Menu"
+                                    style={{ color: isDarkHeader ? '#1a1a1a' : '#ffffff' }}
+                                >
+                                    <span style={{ backgroundColor: 'currentColor' }} />
+                                    <span style={{ backgroundColor: 'currentColor' }} />
+                                    <span style={{ backgroundColor: 'currentColor' }} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
