@@ -16,9 +16,31 @@ function LoginForm() {
     useEffect(() => {
         const ua = navigator.userAgent.toLowerCase();
         // 네이버, 카카오, 인스타그램 등 인앱 브라우저 여부 확인
+        const isNaver = ua.indexOf('naver') !== -1;
+        const isKakao = ua.indexOf('kakao') !== -1;
+        const isInstagram = ua.indexOf('instagram') !== -1;
         const isInApp = /kakao|instagram|line|naver|fbav|fb_iab|messenger/i.test(ua);
+
         setIsInAppBrowser(isInApp);
+
+        // 안드로이드 인앱 브라우저에서 크롬 자동 열기 시도
+        if (isInApp && ua.indexOf('android') !== -1) {
+            const url = window.location.href.replace(/https?:\/\//, '');
+            // 딜레이를 주어 페이지 로드 후 실행
+            setTimeout(() => {
+                window.location.href = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`;
+            }, 500);
+        }
     }, []);
+
+    const copyToClipboard = () => {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            alert('주소가 복사되었습니다. 브라우저(Chrome/Safari) 주소창에 붙여넣어 주세요.');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+        });
+    };
 
     useEffect(() => {
         const nextParam = searchParams.get('next');
@@ -87,19 +109,27 @@ function LoginForm() {
                 </div>
 
                 {isInAppBrowser && (
-                    <div style={{
-                        backgroundColor: '#fff4e5',
-                        color: '#663c00',
-                        padding: '12px 16px',
-                        marginBottom: '20px',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        lineHeight: '1.5',
-                        border: '1px solid #ffe2b7'
-                    }}>
-                        <strong>⚠️ 보안 브라우저 안내</strong><br />
-                        현재 브라우저(네이버/카카오 등)에서는 구글 로그인이 제한될 수 있습니다.
-                        더 안전한 이용을 위해 <strong>&apos;다른 브라우저로 열기&apos;</strong>를 선택해 주세요.
+                    <div className={styles.inAppBanner}>
+                        <div className={styles.inAppHeader}>
+                            <strong>⚠️ 보안 브라우저 안내</strong>
+                        </div>
+                        <p>현재 브라우저(네이버/카카오 등)에서는 구글 로그인이 차단될 수 있습니다.</p>
+
+                        <div className={styles.guideContainer}>
+                            {/iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) ? (
+                                <div className={styles.iosGuide}>
+                                    <p>아이폰 사용자는 <strong>우측 하단 [ ⋮ ]</strong> 또는 <strong>[내보내기]</strong> 버튼을 눌러 <strong>&quot;Safari로 열기&quot;</strong>를 선택해 주세요.</p>
+                                </div>
+                            ) : (
+                                <div className={styles.androidGuide}>
+                                    <p>안드로이드 사용자는 자동으로 <strong>Chrome</strong>이 실행되지 않을 경우 아래 버튼을 눌러 주소를 복사한 뒤 크롬에 붙여넣어 주세요.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <button className={styles.copyBtn} onClick={copyToClipboard}>
+                            현재 페이지 주소 복사하기
+                        </button>
                     </div>
                 )}
 

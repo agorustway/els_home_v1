@@ -65,7 +65,8 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    line-height: 1; /* Add this line to fix vertical alignment */
+    line-height: 1;
+    /* Add this line to fix vertical alignment */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -129,6 +130,61 @@
 .backHome:hover,
 .backLink:hover {
     color: #2563eb;
+}
+
+.inAppBanner {
+    background-color: #fefce8;
+    color: #854d0e;
+    padding: 20px;
+    margin-bottom: 24px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    border: 1px solid #fef08a;
+    text-align: left;
+}
+
+.inAppHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: #a16207;
+}
+
+.inAppBanner p {
+    margin-bottom: 12px;
+    color: #854d0e;
+}
+
+.guideContainer {
+    background: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border: 1px solid #fef9c3;
+}
+
+.guideContainer p {
+    margin-bottom: 0;
+    font-size: 0.85rem;
+}
+
+.copyBtn {
+    width: 100%;
+    padding: 10px;
+    background: #fef9c3;
+    border: 1px solid #fde047;
+    color: #854d0e;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.copyBtn:hover {
+    background: #fde047;
 }
 
 .separator {
