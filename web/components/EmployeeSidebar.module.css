@@ -196,25 +196,30 @@
 .userInfo {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    padding: 4px 0;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .avatar {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    border-radius: 12px;
+    /* 원형에서 둥근 사각형으로 변경 (최신 트렌드) */
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-weight: 700;
-    font-size: 1.1rem;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    font-weight: 800;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
     overflow: hidden;
-    /* To ensure the image is clipped to the circle */
+    border: 2px solid #fff;
 }
 
 .avatarImg {
@@ -224,10 +229,11 @@
 }
 
 .username {
-    font-weight: 700;
+    font-weight: 800;
     color: #1e293b;
-    font-size: 0.95rem;
+    font-size: 1rem;
     margin-bottom: 2px;
+    letter-spacing: -0.5px;
 }
 
 .role {
@@ -236,6 +242,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    font-weight: 600;
 }
 
 .titleText {
@@ -245,14 +252,14 @@
 
 .logoutBtn {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     border-radius: 10px;
-    border: none;
-    background: #f8fafc;
-    color: #94a3b8;
-    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -261,8 +268,10 @@
 }
 
 .logoutBtn:hover {
-    background-color: #fee2e2;
+    background-color: #fef2f2;
     color: #ef4444;
+    border-color: #fecaca;
+    transform: translateY(-1px);
 }
 
 @media (max-width: 1024px) {
@@ -273,25 +282,66 @@
         height: 100vh;
         max-height: 100vh;
         z-index: 9999;
-        /* 오버레이(9998)보다 높고 모든 요소보다 위 */
         transform: translateX(-100%);
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
-        padding-top: 20px;
-        /* 오버레이가 위에 있으므로 내부 패딩만 조절 */
+        box-shadow: 20px 0 50px rgba(15, 23, 42, 0.15);
+        padding: 0;
         display: none;
-        transition: transform 0.3s ease;
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         background: #fff;
+        width: 280px;
     }
 
     .sidebarOpen {
         transform: translateX(0);
         display: flex;
-        /* 열릴 때만 보임 */
     }
-
-
 
     .mobileHeader {
         display: flex;
+        padding: 24px 20px;
+        background: linear-gradient(to right, #f8fbff, #fff);
+        border-bottom: 2px solid #f1f5f9;
+        margin-bottom: 20px;
+    }
+
+    .mobileTitle {
+        font-size: 1.2rem;
+        letter-spacing: -0.5px;
+    }
+
+    .searchWrap {
+        padding: 0 16px;
+        margin-bottom: 20px;
+    }
+
+    .navBlock {
+        padding: 0 12px;
+        margin-bottom: 24px;
+    }
+
+    .navLabel {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 10px;
+        padding-left: 8px;
+    }
+
+    .tabNav,
+    .menu {
+        padding: 0 6px;
+    }
+
+    .tabItem,
+    .item {
+        padding: 12px 14px;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+
+    .footer {
+        margin-top: auto;
+        padding: 24px 20px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
     }
 }

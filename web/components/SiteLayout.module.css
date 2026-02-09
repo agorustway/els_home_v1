@@ -60,10 +60,11 @@
     }
 
     .bodyWrap .mainContent {
-        padding: 0 12px 32px;
-        /* 16px -> 12px 축소 */
+        padding: 20px 12px 40px;
+        /* 상단 20px로 일관성 부여 */
         min-height: auto;
         overflow-x: hidden;
+        background-color: #f8fbff;
     }
 
     /* 모바일: 본문 .container는 좌우 12px로 가독성 확보 */
@@ -74,8 +75,7 @@
     }
 
     .mainContent {
-        padding: 0 12px 32px !important;
-        /* 16px -> 12px 축소 */
+        padding: 20px 12px 40px !important;
         max-width: 100%;
         width: 100%;
         box-sizing: border-box;
@@ -93,7 +93,6 @@
 
     .bodyWrap .mainContent,
     .mainContent {
-        padding: 0 8px 32px !important;
-        /* 초소형 기기에선 8px까지 축소 */
+        padding: 20px 8px 40px !important;
     }
 }

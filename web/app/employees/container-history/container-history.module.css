@@ -82,24 +82,24 @@
 .input {
     flex: 1;
     min-width: 120px;
-    padding: 0.5rem;
+    padding: 0.65rem 0.85rem;
     background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
     color: #1e293b;
-    font-size: 0.85rem;
-    transition: all 0.2s;
+    font-size: 0.9rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .loginInput {
     flex: none !important;
-    width: 130px;
+    width: 140px;
 }
 
 .input:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
 .dropZone {
@@ -109,24 +109,23 @@
 .textarea {
     width: 100%;
     height: 265px;
-    /* 제목 우측으로 체크박스를 옮기느라 헤더 공간이 생겨서 15px 줄임 */
-    padding: 1rem;
+    padding: 1.25rem;
     background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
     color: #1e293b;
-    font-size: 0.9rem;
-    font-family: 'Consolas', monospace;
+    font-size: 0.95rem;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
     margin-bottom: 1rem;
     resize: none;
-    transition: border-color 0.2s;
+    transition: all 0.2s;
     outline: none;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .textarea:focus {
-    outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .buttonGroup {
@@ -137,22 +136,23 @@
 }
 
 .button {
-    padding: 0.5rem 1.25rem;
-    background: #2563eb;
+    padding: 0.65rem 1.5rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     color: #fff;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.25s;
     white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
 .button:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
 }
 
 .button:disabled {
@@ -161,11 +161,11 @@
 }
 
 .buttonSecondary {
-    padding: 0.5rem 1.25rem;
-    background: #fff;
+    padding: 0.65rem 1.25rem;
+    background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    color: #1e293b;
+    border-radius: 10px;
+    color: #475569;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -173,8 +173,9 @@
 }
 
 .buttonSecondary:hover {
-    background: #f8fafc;
+    background: #f1f5f9;
     border-color: #cbd5e1;
+    color: #1e293b;
 }
 
 /* 2열 레이아웃 */
@@ -238,24 +239,37 @@
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
-/* 터미널 BIOS 스타일 */
+/* 터미널 프리미엄 BIOS 스타일 */
 .terminal {
-    background: #000;
-    border: 2px solid #00ff88;
-    border-radius: 4px;
-    padding: 0.75rem;
+    background: #0a0f18;
+    /* 딥 네이비 배경 */
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
     flex: 1;
-    /* 모듈 내에서 최대 공간 차지 */
     min-height: 0;
-    /* flex 자식으로서 스크롤 보장 */
     overflow-y: auto;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.75rem;
-    line-height: 1.4;
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.2);
     position: relative;
     scrollbar-width: thin;
-    scrollbar-color: #00ff88 #000;
+    scrollbar-color: rgba(0, 255, 136, 0.5) transparent;
+}
+
+.terminal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    background-size: 100% 3px, 3px 100%;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .lastSaved {
@@ -654,42 +668,44 @@
 
 /* 프리미엄 배지 시스템 */
 .badge {
-    padding: 2px 8px;
-    border-radius: 9999px;
-    font-size: 0.7rem;
-    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+    /* 둥근 사각형으로 트렌디하게 */
+    font-size: 0.72rem;
+    font-weight: 800;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
+    letter-spacing: -0.2px;
 }
 
 .badgeImport {
-    background: #fee2e2;
-    color: #ef4444;
-    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fecdd3;
 }
 
 .badgeExport {
-    background: #dcfce7;
-    color: #22c55e;
+    background: #f0fdf4;
+    color: #16a34a;
     border: 1px solid #bbf7d0;
 }
 
 .badgeInbox {
-    background: #eff6ff;
-    color: #3b82f6;
-    border: 1px solid #dbeafe;
+    background: #f0f9ff;
+    color: #0284c7;
+    border: 1px solid #bae6fd;
 }
 
 .badgeOutbox {
-    background: #fef9c3;
-    color: #ca8a04;
-    border: 1px solid #fef08a;
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fef3c7;
 }
 
 .badgeEmpty {
-    background: #f1f5f9;
+    background: #f8fafc;
     color: #64748b;
     border: 1px solid #e2e8f0;
 }

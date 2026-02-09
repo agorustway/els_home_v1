@@ -168,44 +168,52 @@
 @media (max-width: 768px) {
     .employeeHeader {
         position: sticky !important;
-        /* relative -> sticky 변경 */
         top: 0 !important;
-        /* 모바일에서 상단 고정 */
         z-index: 1200;
-        /* 사이드바(9999)보다 낮게 설정 */
-        box-shadow: none;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         padding: 0;
-        margin-top: 0 !important;
-        border-bottom: 1px solid #f1f5f9;
-        background: #fff;
-        /* 배경색 명시 */
     }
 
     .inner {
-        padding: 0 8px;
-        /* 16px -> 8px 축소 */
-        gap: 4px;
-        /* 자식 간격 최소화 */
-        min-width: 0;
-        height: auto;
-        flex-direction: column;
+        padding: 0 12px;
+        height: 100%;
+        flex-direction: row;
         align-items: center;
-        text-align: center;
+        justify-content: space-between;
+        gap: 0;
     }
 
     .leftSection {
-        width: 100%;
-        justify-content: space-between;
+        width: auto;
+        justify-content: flex-start;
+        gap: 10px;
     }
 
-    .userArea {
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
+    .mobileMenuBtn {
+        display: flex;
+        padding: 6px;
+        background: #f1f5f9;
+        border-radius: 8px;
+        color: var(--primary-blue);
     }
 
     .logo {
-        font-size: 1.25rem;
+        font-size: 1.15rem;
+        letter-spacing: -0.5px;
+    }
+
+    .logoSub {
+        display: none;
+    }
+
+    .userArea {
+        width: auto;
+        justify-content: flex-end;
+        gap: 6px;
     }
 
     .greeting {
@@ -213,30 +221,30 @@
     }
 
     .links {
-        gap: 8px;
-        width: 100%;
-        justify-content: center;
+        gap: 6px;
+        width: auto;
     }
 
-    /* 모바일 버튼 최적화 */
     .link,
     .linkBtn {
-        padding: 0 12px;
-        font-size: 0.85rem;
-        height: 36px;
-        /* 44px은 너무 큼, 36px 유지 */
-        min-height: 36px;
-        flex: 1;
-        /* 버튼 균등 분배 */
-        max-width: 120px;
-        white-space: nowrap;
+        height: 32px;
+        padding: 0 10px;
+        font-size: 0.75rem;
         background: #f8fafc;
-        /* 터치 영역 명확히 */
         border: 1px solid #f1f5f9;
+        border-radius: 6px;
+        flex: none;
+        max-width: none;
+        min-height: auto;
+    }
+
+    .link:last-child {
+        background: var(--primary-blue);
+        color: #fff;
+        border-color: var(--primary-blue);
     }
 
     .searchWrap {
         display: none;
-        /* 모바일에서 검색창 완전히 숨김 */
     }
 }
