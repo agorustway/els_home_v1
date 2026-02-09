@@ -9,6 +9,7 @@ import styles from '../../intranet.module.css';
 export default function WorkSitesNewPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
+    const [siteName, setSiteName] = useState('');
     const [address, setAddress] = useState('');
     const [contact, setContact] = useState('');
     const [workMethod, setWorkMethod] = useState('');
@@ -24,7 +25,7 @@ export default function WorkSitesNewPage() {
     }, [role, authLoading, router]);
 
     const handleFileUpload = async (e) => {
-        const files = Array.from(e.target.files);
+        const files = e.target.files ? Array.from(e.target.files) : (e.dataTransfer ? Array.from(e.dataTransfer.files) : []);
         if (files.length === 0) return;
 
         setUploading(true);
@@ -65,6 +66,24 @@ export default function WorkSitesNewPage() {
         setUploadProgress(0);
     };
 
+    const [isDragging, setIsDragging] = useState(false);
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        handleFileUpload(e);
+    };
+
     const removeAttachment = (idx) => {
         setAttachments(prev => prev.filter((_, i) => i !== idx));
     };
@@ -86,6 +105,7 @@ export default function WorkSitesNewPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    site_name: siteName.trim(),
                     address: address.trim(),
                     contact,
                     work_method: workMethod,
@@ -118,6 +138,10 @@ export default function WorkSitesNewPage() {
             <div className={styles.card}>
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
+                        <label className={styles.label}>작업지명 *</label>
+                        <input className={styles.input} value={siteName} onChange={(e) => setSiteName(e.target.value)} placeholder="작업지명 (예: 오창센터)" required />
+                    </div>
+                    <div className={styles.formGroup}>
                         <label className={styles.label}>작업지 주소 *</label>
                         <input className={styles.input} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="작업지 주소" required />
                     </div>
@@ -148,11 +172,19 @@ export default function WorkSitesNewPage() {
 
                     <div className={styles.formGroup}>
                         <label className={styles.label}>📎 관련 서류 및 사진 업로드</label>
-                        <div className={styles.uploadZone}>
+                        <div
+                            className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            style={isDragging ? { borderColor: '#2563eb', background: '#f0f7ff' } : {}}
+                        >
                             <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
                                 📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
                             </label>
+
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>
 
                             {uploading && (
                                 <div className={styles.uploadProgress}>

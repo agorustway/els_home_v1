@@ -66,11 +66,17 @@ export default function WorkDocsNewPage() {
     const [isDragging, setIsDragging] = useState(false);
     const handleDragOver = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragging(true);
     };
-    const handleDragLeave = () => setIsDragging(false);
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
     const handleDrop = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragging(false);
         handleFileUpload(e);
     };
@@ -152,6 +158,8 @@ export default function WorkDocsNewPage() {
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
                                 📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
                             </label>
+
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>
 
                             {uploading && (
                                 <div className={styles.uploadProgress}>

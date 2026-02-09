@@ -38,8 +38,9 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const body = await request.json();
-        const { address, contact, work_method, notes, attachments, managers } = body;
+        const { site_name, address, contact, work_method, notes, attachments, managers } = body;
         const row = {
+            site_name: site_name ?? '',
             address: address || '',
             contact: contact ?? '',
             work_method: work_method ?? '',

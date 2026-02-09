@@ -62,11 +62,17 @@ export default function FormTemplatesNewPage() {
     const [isDragging, setIsDragging] = useState(false);
     const handleDragOver = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragging(true);
     };
-    const handleDragLeave = () => setIsDragging(false);
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
     const handleDrop = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragging(false);
         handleFileUpload(e);
     };
@@ -140,6 +146,8 @@ export default function FormTemplatesNewPage() {
                                 📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
                             </label>
 
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>
+
                             {uploading && (
                                 <div className={styles.uploadProgress}>
                                     <div className={styles.progressBar} style={{ width: `${uploadProgress}%` }}></div>
@@ -165,19 +173,8 @@ export default function FormTemplatesNewPage() {
                         </div>
                     </div>
 
-                    <div className={styles.formGroup} style={{ marginTop: 24, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                        <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>직접 경로 입력 (필요 시)</p>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <div style={{ flex: 1 }}>
-                                <label className={styles.label} style={{ fontSize: '0.75rem', color: '#94a3b8' }}>파일명</label>
-                                <input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="예: 휴가신청서.xlsx" style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
-                            </div>
-                            <div style={{ flex: 2 }}>
-                                <label className={styles.label} style={{ fontSize: '0.75rem', color: '#94a3b8' }}>파일 URL/경로</label>
-                                <input className={styles.input} value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="다운로드 링크 또는 경로" style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
-                            </div>
-                        </div>
-                    </div>
+                    {/* 직접 경로 입력 섹션 숨김 (사용자 요청) */}
+                    {/* <div className={styles.formGroup} style={{ marginTop: 24, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}> ... </div> */}
                     <div className={styles.actions}>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting}>{submitting ? '저장 중...' : '저장'}</button>
                         <Link href="/employees/form-templates" className={styles.btnSecondary}>취소</Link>

@@ -10,6 +10,7 @@ export default function WorkSiteEditPage() {
     const { id } = useParams();
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
+    const [siteName, setSiteName] = useState('');
     const [address, setAddress] = useState('');
     const [contact, setContact] = useState('');
     const [workMethod, setWorkMethod] = useState('');
@@ -28,6 +29,7 @@ export default function WorkSiteEditPage() {
                 .then((res) => res.json())
                 .then((data) => {
                     if (data.item) {
+                        setSiteName(data.item.site_name ?? '');
                         setAddress(data.item.address);
                         setContact(data.item.contact ?? '');
                         setWorkMethod(data.item.work_method ?? '');
@@ -57,6 +59,7 @@ export default function WorkSiteEditPage() {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    site_name: siteName.trim(),
                     address: address.trim(),
                     contact,
                     work_method: workMethod,
@@ -81,6 +84,10 @@ export default function WorkSiteEditPage() {
             </div>
             <div className={styles.card}>
                 <form onSubmit={handleSubmit}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>작업지명 *</label>
+                        <input className={styles.input} value={siteName} onChange={(e) => setSiteName(e.target.value)} required />
+                    </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>작업지 주소 *</label>
                         <input className={styles.input} value={address} onChange={(e) => setAddress(e.target.value)} required />

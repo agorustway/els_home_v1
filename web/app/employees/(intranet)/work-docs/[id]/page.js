@@ -62,6 +62,14 @@ export default function WorkDocDetailPage() {
         }
     };
 
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('다운로드 주소가 복사되었습니다. 외부로 전달할 수 있습니다.');
+        }).catch(err => {
+            console.error('복사 실패:', err);
+        });
+    };
+
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
     if (!item) return <div className={styles.loading}>글을 찾을 수 없습니다.</div>;
@@ -99,17 +107,29 @@ export default function WorkDocDetailPage() {
                         {showAttachments && (
                             <ul className={styles.attachmentList}>
                                 {item.attachments.map((file, idx) => (
-                                    <li key={idx} className={styles.attachmentItem}>
-                                        <a
-                                            href={`/api/s3/files?key=${encodeURIComponent(file.key)}`}
-                                            className={styles.attachmentLink}
-                                            download={file.name}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            📄 {file.name}
-                                        </a>
-                                        <span className={styles.fileInfo}>({(file.size / 1024).toFixed(1)} KB)</span>
+                                    <li key={idx} className={styles.attachmentItem} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: 8, marginBottom: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <a
+                                                    href={file.url || `/api/s3/files?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`}
+                                                    className={styles.attachmentLink}
+                                                    download={file.name}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    📄 {file.name}
+                                                </a>
+                                                <span className={styles.fileInfo}>({(file.size / 1024).toFixed(1)} KB)</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(file.url || `${window.location.origin}/api/s3/files?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`)}
+                                                className={styles.btnSecondary}
+                                                style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px' }}
+                                            >
+                                                주소 복사
+                                            </button>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>

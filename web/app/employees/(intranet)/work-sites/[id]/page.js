@@ -100,9 +100,12 @@ export default function WorkSiteDetailPage() {
             <div className={styles.card}>
                 <div style={{ marginBottom: 32 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '0.9rem', marginBottom: 8, fontWeight: 600 }}>
-                        📍 작업지 위치
+                        📍 작업지명 및 위치
                     </div>
-                    <h2 className={styles.detailTitle} style={{ margin: 0 }}>{item.address}</h2>
+                    {item.site_name && (
+                        <h2 className={styles.detailTitle} style={{ margin: '0 0 8px 0', color: '#1e40af' }}>{item.site_name}</h2>
+                    )}
+                    <h3 style={{ margin: 0, color: '#475569', fontSize: '1.1rem', fontWeight: 600 }}>{item.address}</h3>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, marginBottom: 32 }}>

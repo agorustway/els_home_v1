@@ -139,6 +139,15 @@
     font-weight: 500;
 }
 
+.badge {
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #475569;
+}
+
 .formGroup {
     margin-bottom: 20px;
 }
@@ -298,7 +307,8 @@
     background: #fcfdfe;
 }
 
-.uploadZone:hover {
+.uploadZone:hover,
+.uploadZone.dragging {
     border-color: #2563eb;
     background: #f8faff;
 }

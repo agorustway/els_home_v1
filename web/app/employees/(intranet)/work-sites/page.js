@@ -40,6 +40,7 @@ export default function WorkSitesPage() {
                     <thead>
                         <tr>
                             <th className={styles.colNo}>No</th>
+                            <th style={{ width: '150px' }}>작업지명</th>
                             <th className={styles.colTitle}>작업지 주소</th>
                             <th style={{ width: '150px' }}>담당자</th>
                             <th className={styles.colAuthor} style={{ width: '150px' }}>연락처</th>
@@ -50,6 +51,7 @@ export default function WorkSitesPage() {
                         {list.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/work-sites/' + item.id)}>
                                 <td className={styles.colNo}>{list.length - i}</td>
+                                <td style={{ fontWeight: 600 }}>{item.site_name || '—'}</td>
                                 <td className={styles.colTitle}>{item.address}</td>
                                 <td style={{ fontWeight: 600, color: '#475569' }}>
                                     {(item.managers || []).map((m) => m.name).filter(Boolean).join(', ') || '—'}
@@ -61,7 +63,7 @@ export default function WorkSitesPage() {
                             </tr>
                         ))}
                         {list.length === 0 && (
-                            <tr><td colSpan="5" className={styles.empty}>등록된 작업지가 없습니다.</td></tr>
+                            <tr><td colSpan="6" className={styles.empty}>등록된 작업지가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

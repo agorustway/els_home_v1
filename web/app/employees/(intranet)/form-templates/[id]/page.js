@@ -60,6 +60,14 @@ export default function FormTemplateDetailPage() {
         else alert('삭제 실패');
     };
 
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('다운로드 주소가 복사되었습니다. 외부로 전달할 수 있습니다.');
+        }).catch(err => {
+            console.error('복사 실패:', err);
+        });
+    };
+
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
     if (!item) return <div className={styles.loading}>서식을 찾을 수 없습니다.</div>;
@@ -92,18 +100,28 @@ export default function FormTemplateDetailPage() {
                         <div className={styles.attachmentLabel} style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#1e293b' }}>
                             💾 서식 파일 다운로드
                         </div>
-                        <a
-                            href={downloadUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={styles.attachmentToggle}
-                            style={{ textDecoration: 'none', background: '#f8faff', borderColor: '#e0e7ff', display: 'flex', justifyContent: 'space-between' }}
-                        >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4f46e5', fontWeight: 600 }}>
-                                📄 {item.file_name || '파일 다운로드'}
-                            </span>
-                            <span style={{ fontSize: '0.85rem', color: '#6366f1', background: '#eef2ff', padding: '4px 12px', borderRadius: 8 }}>다운로드</span>
-                        </a>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <a
+                                href={downloadUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={styles.attachmentToggle}
+                                style={{ textDecoration: 'none', background: '#f8faff', borderColor: '#e0e7ff', display: 'flex', justifyContent: 'space-between', flex: 1 }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4f46e5', fontWeight: 600 }}>
+                                    📄 {item.file_name || '파일 다운로드'}
+                                </span>
+                                <span style={{ fontSize: '0.85rem', color: '#6366f1', background: '#eef2ff', padding: '4px 12px', borderRadius: 8 }}>다운로드</span>
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => copyToClipboard(downloadUrl)}
+                                className={styles.btnSecondary}
+                                style={{ padding: '0 16px', borderRadius: 12, height: '48px', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                            >
+                                🔗 주소 복사
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

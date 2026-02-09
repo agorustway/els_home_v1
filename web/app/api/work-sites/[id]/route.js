@@ -25,6 +25,7 @@ export async function PATCH(request, { params }) {
     try {
         const body = await request.json();
         const updates = {};
+        if (body.site_name !== undefined) updates.site_name = body.site_name;
         if (body.address !== undefined) updates.address = body.address;
         if (body.contact !== undefined) updates.contact = body.contact;
         if (body.work_method !== undefined) updates.work_method = body.work_method;
