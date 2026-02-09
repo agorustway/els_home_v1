@@ -165,6 +165,7 @@
 .noticeModal .noticeSectionDesc {
   padding: 12px 24px 0;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .noticeModal .noticeList {
@@ -172,6 +173,7 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .noticeSectionTitle {
@@ -256,8 +258,7 @@
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  max-height: 420px;
-  overflow-y: auto;
+  /* 모바일 이중 스크롤 방지를 위해 개별 스크롤 제거 */
 }
 
 .tabs {
@@ -1167,21 +1168,45 @@
 
   /* 관련 법령·고시 모달 모바일 최적화 */
   .noticeModalOverlay {
-    padding: 12px; /* 모바일에서 외부 여백 축소 */
+    padding: 0; 
+    /* 모바일에서 외부 여백 제거하고 하단 밀착 */
+    align-items: flex-end; 
   }
 
   .noticeModal {
     max-height: calc(100vh - 24px);
-    border-radius: 12px 12px 0 0; /* 상단만 둥글게 해서 앱 느낌 유도 */
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    /* 상단 라운드 강화 */
+  }
+
+  /* 가로 모드 또는 낮은 화면 대응 */
+  @media (max-height: 500px) {
+    .noticeModal {
+      max-height: calc(100vh - 12px);
+      max-width: 95%;
+    }
+
+    .noticeModalHead {
+      padding: 12px 16px 8px 16px !important;
+    }
+
+    .noticeModal .noticeSectionDesc {
+      display: none !important;
+      /* 공간 확보를 위해 설명문 숨김 */
+    }
   }
 
   .noticeModalHead {
     padding: 16px 16px 0 16px;
+    flex-shrink: 0;
   }
 
   .noticeModal .noticeSectionDesc {
     padding: 10px 16px 0;
     font-size: 0.82rem;
+    flex-shrink: 0;
   }
 
   .noticeModal .noticeList {
@@ -1202,7 +1227,8 @@
     margin: 0 8px 10px 8px;
     padding: 12px 14px;
     font-size: 0.8rem;
-    max-height: 300px; /* 모바일에서 너무 길어지지 않게 */
+    max-height: none;
+    /* 개별 스크롤 제거 */
   }
 }
 
