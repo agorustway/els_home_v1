@@ -13,6 +13,9 @@ export default function WorkDocEditPage() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [category, setCategory] = useState('일반');
+    const [attachments, setAttachments] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -29,11 +32,63 @@ export default function WorkDocEditPage() {
                         setTitle(data.item.title);
                         setContent(data.item.content ?? '');
                         setCategory(data.item.category || '일반');
+                        setAttachments(data.item.attachments || []);
                     }
                 })
                 .finally(() => setLoading(false));
         }
     }, [role, id]);
+
+    const handleFileUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setUploading(true);
+        setUploadProgress(0);
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const timestamp = Date.now();
+            const key = `work-docs/${timestamp}_${file.name}`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('key', key);
+
+                const res = await fetch('/api/s3/files', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const newFile = {
+                        name: file.name,
+                        key: key,
+                        size: file.size,
+                        type: file.type,
+                        url: `/api/s3/files?key=${encodeURIComponent(key)}`
+                    };
+                    setAttachments(prev => [...prev, newFile]);
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                alert(`파일 업로드 실패: ${file.name}`);
+            }
+            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
+        }
+        setUploading(false);
+        setUploadProgress(0);
+    };
+
+    const removeAttachment = (idx) => {
+        setAttachments(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const insertImageToContent = (url, name) => {
+        const imgTag = `![${name}](${url})\n`;
+        setContent(prev => prev + (prev.endsWith('\n') || prev === '' ? '' : '\n') + imgTag);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -43,7 +98,12 @@ export default function WorkDocEditPage() {
             const res = await fetch(`/api/work-docs/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: title.trim(), content, category }),
+                body: JSON.stringify({
+                    title: title.trim(),
+                    content,
+                    category,
+                    attachments: attachments
+                }),
             });
             if (res.ok) router.push(`/employees/work-docs/${id}`);
             else alert((await res.json()).error || '수정 실패');
@@ -75,7 +135,42 @@ export default function WorkDocEditPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>내용</label>
-                        <textarea className={styles.textarea} value={content} onChange={(e) => setContent(e.target.value)} />
+                        <textarea className={styles.textarea} value={content} onChange={(e) => setContent(e.target.value)} placeholder="내용을 입력하세요. 업로드한 이미지는 아래에서 '본문 삽입'을 눌러 추가할 수 있습니다." />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>📎 첨부파일 및 이미지</label>
+                        <div className={styles.uploadZone}>
+                            <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
+                            <label htmlFor="fileUpload" className={styles.uploadLabel}>
+                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
+                            </label>
+
+                            {uploading && (
+                                <div className={styles.uploadProgress}>
+                                    <div className={styles.progressBar} style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                            )}
+
+                            {attachments.length > 0 && (
+                                <div className={styles.uploadedList}>
+                                    {attachments.map((file, idx) => (
+                                        <div key={idx} className={styles.uploadedFile}>
+                                            <span>📎 {file.name}</span>
+                                            {file.type?.startsWith('image/') && (
+                                                <span
+                                                    className={styles.insertImgBtn}
+                                                    onClick={() => insertImageToContent(file.url, file.name)}
+                                                >
+                                                    [본문 삽입]
+                                                </span>
+                                            )}
+                                            <span className={styles.removeFile} onClick={() => removeAttachment(idx)}>✕</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className={styles.actions}>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting}>{submitting ? '저장 중...' : '저장'}</button>

@@ -11,7 +11,7 @@ export default function WorkDocDetailPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
     const [item, setItem] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [showAttachments, setShowAttachments] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace(`/login?next=/employees/work-docs/${id}`);
@@ -26,6 +26,31 @@ export default function WorkDocDetailPage() {
                 .finally(() => setLoading(false));
         }
     }, [role, id]);
+
+    const renderContent = (content) => {
+        if (!content) return <span style={{ color: '#94a3b8' }}>(내용 없음)</span>;
+
+        // Convert ![alt](url) to <img>
+        const imgRegex = /!\[([^\]]*)\]\(([^\)]+)\)/g;
+        const parts = content.split(imgRegex);
+
+        const elements = [];
+        for (let i = 0; i < parts.length; i += 3) {
+            elements.push(<span key={`text-${i}`} style={{ whiteSpace: 'pre-wrap' }}>{parts[i]}</span>);
+            if (parts[i + 1] !== undefined && parts[i + 2] !== undefined) {
+                elements.push(
+                    <div key={`img-container-${i}`} className={styles.bodyImageContainer}>
+                        <img
+                            src={parts[i + 2]}
+                            alt={parts[i + 1]}
+                            className={styles.bodyImage}
+                        />
+                    </div>
+                );
+            }
+        }
+        return elements;
+    };
 
     const handleDelete = async () => {
         if (!confirm('삭제하시겠습니까?')) return;
@@ -54,9 +79,43 @@ export default function WorkDocDetailPage() {
             <div className={styles.card}>
                 <h2 className={styles.detailTitle}>{item.title}</h2>
                 <div className={styles.detailMeta}>
-                    {item.category} · {item.author_name} · {new Date(item.created_at).toLocaleString()}
+                    <span className={styles.badge}>{item.category}</span>
+                    <span>{item.author_name}</span>
+                    <span>{new Date(item.created_at).toLocaleString()}</span>
                 </div>
-                <div className={styles.contentBody}>{item.content || '(내용 없음)'}</div>
+
+                <div className={styles.contentBody}>
+                    {renderContent(item.content)}
+                </div>
+
+                {item.attachments && item.attachments.length > 0 && (
+                    <div className={styles.attachmentSection}>
+                        <div className={styles.attachmentToggle} onClick={() => setShowAttachments(!showAttachments)}>
+                            <div className={styles.attachmentLabel}>
+                                📎 첨부파일 <span className={styles.attachmentCount}>{item.attachments.length}</span>
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{showAttachments ? '▲ 접기' : '▼ 펼치기'}</span>
+                        </div>
+                        {showAttachments && (
+                            <ul className={styles.attachmentList}>
+                                {item.attachments.map((file, idx) => (
+                                    <li key={idx} className={styles.attachmentItem}>
+                                        <a
+                                            href={`/api/s3/files?key=${encodeURIComponent(file.key)}`}
+                                            className={styles.attachmentLink}
+                                            download={file.name}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            📄 {file.name}
+                                        </a>
+                                        <span className={styles.fileInfo}>({(file.size / 1024).toFixed(1)} KB)</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
