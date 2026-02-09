@@ -11,7 +11,7 @@ export default function WorkSiteDetailPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
     const [item, setItem] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [showAttachments, setShowAttachments] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/work-sites/' + id);
@@ -51,29 +51,84 @@ export default function WorkSiteDetailPage() {
                 </div>
             </div>
             <div className={styles.card}>
-                <h2 className={styles.detailTitle}>작업지 주소</h2>
-                <p className={styles.contentBody}>{item.address}</p>
-                {item.contact && <p><strong>대표 연락처:</strong> {item.contact}</p>}
-                {managers.length > 0 && (
-                    <div style={{ marginTop: 16 }}>
-                        <strong>담당자</strong>
-                        <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-                            {managers.map((m, i) => (
-                                <li key={i}>{m.name} {m.phone && '(' + m.phone + ')'} {m.role && ' · ' + m.role}</li>
-                            ))}
-                        </ul>
+                <div style={{ marginBottom: 32 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '0.9rem', marginBottom: 8, fontWeight: 600 }}>
+                        📍 작업지 위치
                     </div>
-                )}
-                {item.work_method && <p style={{ marginTop: 12 }}><strong>작업방식:</strong> {item.work_method}</p>}
-                {item.notes && <div className={styles.contentBody} style={{ marginTop: 16 }}><strong>참고사항</strong><br />{item.notes}</div>}
+                    <h2 className={styles.detailTitle} style={{ margin: 0 }}>{item.address}</h2>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, marginBottom: 32 }}>
+                    <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9' }}>
+                        <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            👥 담당자 정보
+                        </div>
+                        {managers.length > 0 ? (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                {managers.map((m, i) => (
+                                    <li key={i} style={{ padding: '8px 0', borderBottom: i === managers.length - 1 ? 'none' : '1px dashed #e2e8f0' }}>
+                                        <div style={{ fontWeight: 700, color: '#334155' }}>
+                                            {m.name} <span style={{ color: '#94a3b8', fontWeight: 500, fontSize: '0.85rem' }}>{m.role}</span>
+                                        </div>
+                                        <div style={{ color: '#2563eb', fontSize: '0.9rem', fontWeight: 600, marginTop: 2 }}>{m.phone || '—'}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>등록된 담당자가 없습니다.</p>
+                        )}
+                    </div>
+
+                    <div style={{ background: '#fcfdfe', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9' }}>
+                        <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            ⚙️ 작업 방식 및 연락처
+                        </div>
+                        {item.contact && (
+                            <div style={{ marginBottom: 12 }}>
+                                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>대표 연락처</span>
+                                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#334155' }}>{item.contact}</div>
+                            </div>
+                        )}
+                        {item.work_method && (
+                            <div>
+                                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>작업 방식</span>
+                                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#334155', whiteSpace: 'pre-wrap' }}>{item.work_method}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ marginTop: 24 }}>
+                    <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem' }}>💡 참고사항</div>
+                    <div className={styles.contentBody} style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9', minHeight: 100 }}>
+                        {item.notes || <span style={{ color: '#94a3b8' }}>(참고 사항 없음)</span>}
+                    </div>
+                </div>
+
                 {item.attachments && item.attachments.length > 0 && (
-                    <div style={{ marginTop: 16 }}>
-                        <strong>첨부파일</strong>
-                        <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-                            {item.attachments.map((a, i) => (
-                                <li key={i}><a href={a.path || a.url} target="_blank" rel="noopener noreferrer">{a.name || '파일'}</a></li>
-                            ))}
-                        </ul>
+                    <div className={styles.attachmentSection} style={{ marginTop: 40 }}>
+                        <div className={styles.attachmentToggle} onClick={() => setShowAttachments(!showAttachments)}>
+                            <div className={styles.attachmentLabel}>
+                                📎 관련 첨부서류 <span className={styles.attachmentCount}>{item.attachments.length}</span>
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{showAttachments ? '▲ 접기' : '▼ 펼치기'}</span>
+                        </div>
+                        {showAttachments && (
+                            <ul className={styles.attachmentList}>
+                                {item.attachments.map((file, idx) => (
+                                    <li key={idx} className={styles.attachmentItem}>
+                                        <a
+                                            href={file.path || file.url || `/api/s3/files?key=${encodeURIComponent(file.key)}`}
+                                            className={styles.attachmentLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            📄 {file.name || '파일'}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 )}
             </div>

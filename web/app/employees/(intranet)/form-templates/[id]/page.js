@@ -27,6 +27,32 @@ export default function FormTemplateDetailPage() {
         }
     }, [role, id]);
 
+    const renderContent = (content) => {
+        if (!content) return null;
+
+        // Convert ![alt](url) to <img>
+        const imgRegex = /!\[([^\]]*)\]\(([^\)]+)\)/g;
+        const parts = content.split(imgRegex);
+
+        const elements = [];
+        for (let i = 0; i < parts.length; i += 3) {
+            elements.push(<span key={`text-${i}`} style={{ whiteSpace: 'pre-wrap' }}>{parts[i]}</span>);
+            if (parts[i + 1] !== undefined && parts[i + 2] !== undefined) {
+                elements.push(
+                    <div key={`img-container-${i}`} className={styles.bodyImageContainer} style={{ margin: '20px 0' }}>
+                        <img
+                            src={parts[i + 2]}
+                            alt={parts[i + 1]}
+                            className={styles.bodyImage}
+                            style={{ maxWidth: '100%', borderRadius: 12, border: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                        />
+                    </div>
+                );
+            }
+        }
+        return elements;
+    };
+
     const handleDelete = async () => {
         if (!confirm('삭제하시겠습니까?')) return;
         const res = await fetch('/api/form-templates/' + id, { method: 'DELETE' });
@@ -53,15 +79,32 @@ export default function FormTemplateDetailPage() {
             <div className={styles.card}>
                 <h2 className={styles.detailTitle}>{item.title}</h2>
                 <div className={styles.detailMeta}>
-                    {item.category} · {new Date(item.created_at).toLocaleString()}
+                    <span className={styles.badge} style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>{item.category}</span>
+                    <span style={{ color: '#94a3b8' }}>{new Date(item.created_at).toLocaleString()}</span>
                 </div>
-                {item.description && <div className={styles.contentBody} style={{ marginBottom: 16 }}>{item.description}</div>}
+
+                <div className={styles.contentBody} style={{ marginBottom: 40 }}>
+                    {renderContent(item.description) || <span style={{ color: '#94a3b8' }}>(설명 없음)</span>}
+                </div>
+
                 {downloadUrl && (
-                    <p>
-                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary} style={{ display: 'inline-flex' }}>
-                            다운로드 {item.file_name ? '(' + item.file_name + ')' : ''}
+                    <div className={styles.attachmentSection} style={{ borderTop: '1px solid #f1f5f9', paddingTop: 24 }}>
+                        <div className={styles.attachmentLabel} style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#1e293b' }}>
+                            💾 서식 파일 다운로드
+                        </div>
+                        <a
+                            href={downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.attachmentToggle}
+                            style={{ textDecoration: 'none', background: '#f8faff', borderColor: '#e0e7ff', display: 'flex', justifyContent: 'space-between' }}
+                        >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4f46e5', fontWeight: 600 }}>
+                                📄 {item.file_name || '파일 다운로드'}
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: '#6366f1', background: '#eef2ff', padding: '4px 12px', borderRadius: 8 }}>다운로드</span>
                         </a>
-                    </p>
+                    </div>
                 )}
             </div>
         </div>

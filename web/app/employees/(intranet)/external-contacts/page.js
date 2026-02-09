@@ -39,23 +39,29 @@ export default function ExternalContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th>회사명</th>
-                            <th style={{ width: '90px' }}>구분</th>
-                            <th style={{ width: '100px' }}>담당자</th>
-                            <th style={{ width: '130px' }}>연락처</th>
-                            <th>이메일</th>
-                            <th style={{ width: '180px' }}>주소</th>
+                            <th className={styles.colTitle}>회사명</th>
+                            <th className={styles.colCategory} style={{ width: '100px' }}>구분</th>
+                            <th style={{ width: '110px' }}>담당자</th>
+                            <th className={styles.colAuthor} style={{ width: '140px' }}>연락처</th>
+                            <th style={{ width: '180px' }}>이메일</th>
+                            <th>주소</th>
                         </tr>
                     </thead>
                     <tbody>
                         {list.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/external-contacts/' + item.id)}>
-                                <td className={styles.colTitle}>{item.company_name}</td>
-                                <td>{item.contact_type}</td>
-                                <td>{item.contact_person}</td>
-                                <td>{item.phone}</td>
-                                <td>{item.email}</td>
-                                <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.address}>{item.address || '—'}</td>
+                                <td className={styles.colTitle} style={{ color: '#2563eb' }}>{item.company_name}</td>
+                                <td className={styles.colCategory}>
+                                    <span style={{ background: item.contact_type === '고객사' ? '#eff6ff' : '#f8fafc', color: item.contact_type === '고객사' ? '#3b82f6' : '#64748b', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 700 }}>
+                                        {item.contact_type}
+                                    </span>
+                                </td>
+                                <td style={{ fontWeight: 600, color: '#475569' }}>{item.contact_person}</td>
+                                <td className={styles.colAuthor}>{item.phone}</td>
+                                <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{item.email}</td>
+                                <td className={styles.colDate} style={{ width: 'auto', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.address}>
+                                    {item.address || '—'}
+                                </td>
                             </tr>
                         ))}
                         {list.length === 0 && (

@@ -39,19 +39,19 @@ export default function FormTemplatesPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th style={{ width: '70px' }}>번호</th>
-                            <th>제목</th>
-                            <th style={{ width: '100px' }}>분류</th>
-                            <th style={{ width: '110px' }}>등록일</th>
+                            <th className={styles.colNo}>No</th>
+                            <th className={styles.colTitle}>제목</th>
+                            <th className={styles.colCategory}>분류</th>
+                            <th className={styles.colDate}>등록일</th>
                         </tr>
                     </thead>
                     <tbody>
                         {list.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/form-templates/' + item.id)}>
-                                <td>{list.length - i}</td>
+                                <td className={styles.colNo}>{list.length - i}</td>
                                 <td className={styles.colTitle}>{item.title}</td>
-                                <td>{item.category || '일반'}</td>
-                                <td>{new Date(item.created_at).toLocaleDateString()}</td>
+                                <td className={styles.colCategory}>{item.category || '일반'}</td>
+                                <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
                         {list.length === 0 && (

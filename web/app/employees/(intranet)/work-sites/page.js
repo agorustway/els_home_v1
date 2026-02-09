@@ -39,21 +39,25 @@ export default function WorkSitesPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th style={{ width: '70px' }}>번호</th>
-                            <th>작업지 주소</th>
-                            <th style={{ width: '140px' }}>담당자</th>
-                            <th style={{ width: '120px' }}>연락처</th>
-                            <th style={{ width: '110px' }}>등록일</th>
+                            <th className={styles.colNo}>No</th>
+                            <th className={styles.colTitle}>작업지 주소</th>
+                            <th style={{ width: '150px' }}>담당자</th>
+                            <th className={styles.colAuthor} style={{ width: '150px' }}>연락처</th>
+                            <th className={styles.colDate}>등록일</th>
                         </tr>
                     </thead>
                     <tbody>
                         {list.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/work-sites/' + item.id)}>
-                                <td>{list.length - i}</td>
+                                <td className={styles.colNo}>{list.length - i}</td>
                                 <td className={styles.colTitle}>{item.address}</td>
-                                <td>{(item.managers || []).map((m) => m.name).filter(Boolean).join(', ') || '—'}</td>
-                                <td>{item.contact || (item.managers && item.managers[0]?.phone) || '—'}</td>
-                                <td>{new Date(item.created_at).toLocaleDateString()}</td>
+                                <td style={{ fontWeight: 600, color: '#475569' }}>
+                                    {(item.managers || []).map((m) => m.name).filter(Boolean).join(', ') || '—'}
+                                </td>
+                                <td className={styles.colAuthor}>
+                                    {item.contact || (item.managers && item.managers[0]?.phone) || '—'}
+                                </td>
+                                <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
                         {list.length === 0 && (

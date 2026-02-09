@@ -14,11 +14,60 @@ export default function WorkSitesNewPage() {
     const [workMethod, setWorkMethod] = useState('');
     const [notes, setNotes] = useState('');
     const [managers, setManagers] = useState([{ name: '', phone: '', role: '' }]);
+    const [attachments, setAttachments] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/work-sites/new');
     }, [role, authLoading, router]);
+
+    const handleFileUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setUploading(true);
+        setUploadProgress(0);
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const timestamp = Date.now();
+            const key = `work-sites/${timestamp}_${file.name}`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('key', key);
+
+                const res = await fetch('/api/s3/files', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const newFile = {
+                        name: file.name,
+                        key: key,
+                        size: file.size,
+                        type: file.type,
+                        url: `/api/s3/files?key=${encodeURIComponent(key)}`
+                    };
+                    setAttachments(prev => [...prev, newFile]);
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                alert(`파일 업로드 실패: ${file.name}`);
+            }
+            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
+        }
+        setUploading(false);
+        setUploadProgress(0);
+    };
+
+    const removeAttachment = (idx) => {
+        setAttachments(prev => prev.filter((_, i) => i !== idx));
+    };
 
     const addManager = () => setManagers([...managers, { name: '', phone: '', role: '' }]);
     const removeManager = (idx) => setManagers(managers.filter((_, i) => i !== idx));
@@ -41,7 +90,7 @@ export default function WorkSitesNewPage() {
                     contact,
                     work_method: workMethod,
                     notes,
-                    attachments: [],
+                    attachments: attachments,
                     managers: managers.filter((m) => m.name && m.name.trim()),
                 }),
             });
@@ -51,6 +100,8 @@ export default function WorkSitesNewPage() {
             } else {
                 alert((await res.json()).error || '저장 실패');
             }
+        } catch (err) {
+            alert('오류가 발생했습니다.');
         } finally {
             setSubmitting(false);
         }
@@ -94,6 +145,34 @@ export default function WorkSitesNewPage() {
                         <label className={styles.label}>참고사항</label>
                         <textarea className={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="참고사항" style={{ minHeight: 100 }} />
                     </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>📎 관련 서류 및 사진 업로드</label>
+                        <div className={styles.uploadZone}>
+                            <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
+                            <label htmlFor="fileUpload" className={styles.uploadLabel}>
+                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
+                            </label>
+
+                            {uploading && (
+                                <div className={styles.uploadProgress}>
+                                    <div className={styles.progressBar} style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                            )}
+
+                            {attachments.length > 0 && (
+                                <div className={styles.uploadedList}>
+                                    {attachments.map((file, idx) => (
+                                        <div key={idx} className={styles.uploadedFile}>
+                                            <span>📎 {file.name}</span>
+                                            <span className={styles.removeFile} onClick={() => removeAttachment(idx)}>✕</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     <div className={styles.actions}>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting}>{submitting ? '저장 중...' : '저장'}</button>
                         <Link href="/employees/work-sites" className={styles.btnSecondary}>취소</Link>

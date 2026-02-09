@@ -80,14 +80,30 @@ export default function InternalContactsNewPage() {
             </div>
             <div className={styles.card}>
                 <form onSubmit={handleSubmit}>
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>사진</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {photoUrl && <img src={photoUrl} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />}
-                            <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
-                            {uploading && <span>업로드 중...</span>}
+                    <div className={styles.formGroup} style={{ marginBottom: 32 }}>
+                        <label className={styles.label}>프로필 사진</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: '#f8fafc', padding: '20px', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                            <div style={{ position: 'relative', width: 100, height: 100 }}>
+                                {photoUrl ? (
+                                    <img src={photoUrl} alt="Profile preview" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: '50%', border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                ) : (
+                                    <div style={{ width: 100, height: 100, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: '#94a3b8', border: '4px solid #fff' }}>👤</div>
+                                )}
+                                {uploading && (
+                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#2563eb' }}>
+                                        업로드 중...
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <input type="file" id="photoUpload" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploading} />
+                                <label htmlFor="photoUpload" style={{ display: 'inline-block', padding: '10px 16px', background: '#2563eb', color: '#fff', borderRadius: 8, fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
+                                    📸 사진 선택하기
+                                </label>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>인물 사진을 등록하면 사내 연락망에서 더욱 눈에 띕니다.</p>
+                                <input type="url" className={styles.input} value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="또는 이미지 URL 입력" style={{ marginTop: 12, padding: '6px 10px', fontSize: '0.85rem' }} />
+                            </div>
                         </div>
-                        <input type="url" className={styles.input} value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="또는 이미지 URL" style={{ marginTop: 8 }} />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이름 *</label>

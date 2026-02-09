@@ -39,29 +39,29 @@ export default function InternalContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th style={{ width: '70px' }}>사진</th>
-                            <th>이름</th>
-                            <th style={{ width: '100px' }}>부서</th>
-                            <th style={{ width: '90px' }}>직급</th>
-                            <th style={{ width: '130px' }}>연락처</th>
+                            <th style={{ width: '80px', textAlign: 'center' }}>프로필</th>
+                            <th className={styles.colTitle} style={{ width: '120px' }}>이름</th>
+                            <th className={styles.colCategory} style={{ width: '140px' }}>부서</th>
+                            <th style={{ width: '100px' }}>직급</th>
+                            <th className={styles.colAuthor} style={{ width: '150px' }}>연락처</th>
                             <th>이메일</th>
                         </tr>
                     </thead>
                     <tbody>
                         {list.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/internal-contacts/' + item.id)}>
-                                <td>
+                                <td style={{ textAlign: 'center' }}>
                                     {item.photo_url ? (
-                                        <img src={item.photo_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
+                                        <img src={item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '50%', border: '2px solid #f1f5f9' }} />
                                     ) : (
-                                        <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+                                        <div style={{ width: 44, height: 44, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.2rem' }}>👤</div>
                                     )}
                                 </td>
                                 <td className={styles.colTitle}>{item.name}</td>
-                                <td>{item.department}</td>
-                                <td>{item.position}</td>
-                                <td>{item.phone}</td>
-                                <td>{item.email}</td>
+                                <td className={styles.colCategory}>{item.department}</td>
+                                <td style={{ color: '#64748b', fontWeight: 500 }}>{item.position}</td>
+                                <td className={styles.colAuthor}>{item.phone}</td>
+                                <td style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{item.email}</td>
                             </tr>
                         ))}
                         {list.length === 0 && (
