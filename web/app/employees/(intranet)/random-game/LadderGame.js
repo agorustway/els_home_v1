@@ -1,3 +1,15 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import styles from './random-game.module.css';
+
+/**
+ * Constants
+ */
+const ANIMALS = ['🐻', '🦊', '🐶', '🐱', '🐭', '🐹', '🐰', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵'];
+const PATH_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#475569'];
+
 /**
  * Ladder Game Component
  */
@@ -11,11 +23,11 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
-    const numRows = 10; // 높이를 조금 더 줄임 (12 -> 10)
+    const numRows = 10; 
     const COL_SPACE = 120;
     const paddingX = 60;
     const rowHeight = 35; 
-    const boardHeight = numRows * rowHeight; // 350px
+    const boardHeight = numRows * rowHeight;
     const boardWidth = (numCols - 1) * COL_SPACE + (paddingX * 2);
 
     const generateLadder = () => {
@@ -36,7 +48,10 @@ const LadderGame = ({ participants, onGameEnd }) => {
         setWinnerIndexAtBottom(Math.floor(Math.random() * numCols));
     };
 
-    useEffect(() => { generateLadder(); }, [numCols]);
+    useEffect(() => { 
+        generateLadder(); 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [numCols]);
 
     const runLadder = async (index) => {
         if (animatingIndex !== null || completedHistory.some(h => h.startIndex === index)) return;
@@ -76,9 +91,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
     return (
         <div className={styles.ladderBox}>
             <div className={styles.ladderViewport}>
-                {/* 컨테이너 높이 줄임 (boardHeight + 180 -> + 140) */}
                 <div className={styles.ladderContainer} style={{ width: boardWidth, height: boardHeight + 140 }}>
-                    {/* Header: 상단 밀착 */}
                     <div className={styles.ladderHeaderRow} style={{ height: '70px' }}>
                         {participants.map((name, i) => {
                             const done = completedHistory.find(h => h.startIndex === i);
@@ -94,7 +107,6 @@ const LadderGame = ({ participants, onGameEnd }) => {
                         })}
                     </div>
 
-                    {/* Board: margin-top 축소 (110 -> 80) */}
                     <div className={styles.ladderBoard} style={{ top: 80, height: boardHeight }}>
                         <svg className={styles.ladderLines} width="100%" height="100%">
                             <g stroke="#cbd5e1" strokeWidth="2.5">
@@ -117,7 +129,6 @@ const LadderGame = ({ participants, onGameEnd }) => {
                         {completedHistory.map((h, i) => (<div key={`static-${i}`} className={styles.staticMarker} style={{ left: h.finalPos.x, top: h.finalPos.y + 20 }}><span className={styles.emojiSmall}>{h.emoji}</span></div>))}
                     </div>
 
-                    {/* Footer: 결과 버튼 간격 확보 */}
                     <div className={styles.ladderFooterRow} style={{ top: boardHeight + 100 }}>
                         {Array.from({ length: numCols }).map((_, i) => (
                             <div key={`foot-${i}`} className={styles.ladderPrizeWrapper} style={{ left: i * COL_SPACE + paddingX }}>
@@ -128,10 +139,11 @@ const LadderGame = ({ participants, onGameEnd }) => {
                 </div>
             </div>
             
-            {/* 다시 그리기 버튼: 하단 배치 */}
             <div className={styles.gameActions} style={{ marginTop: '20px' }}>
                 <button className={styles.premiumBtn} onClick={generateLadder}>🔄 사다리 다시 그리기</button>
             </div>
         </div>
     );
 };
+
+export default LadderGame;
