@@ -1,0 +1,140 @@
+.page {
+    min-height: 100vh;
+    background: #f8fbff;
+    padding: 10px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.hero {
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.hero h1 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+.hero p { font-size: 0.85rem; color: rgba(255, 255, 255, 0.9); margin-top: 4px; }
+
+/* Lobby */
+.lobbyContainer { display: flex; flex-direction: column; gap: 20px; }
+.gameCardsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.gameCard {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 20px;
+    padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+.gameCard:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+.gameIcon { font-size: 3rem; display: block; margin-bottom: 10px; }
+.gameName { font-weight: 800; color: #334155; }
+
+/* Settings */
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.settingHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.settingHeader h3 { font-size: 1rem; font-weight: 800; color: #1e293b; margin: 0; }
+.resetTinyBtn { background: #f1f5f9; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 700; color: #64748b; cursor: pointer; }
+
+/* 추가 버튼 가로 고정 */
+.addForm { display: flex; gap: 10px; margin-bottom: 20px; }
+.addForm input { flex: 1; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; outline: none; transition: border-color 0.2s; }
+.addForm input:focus { border-color: #2563eb; }
+.addForm button {
+    padding: 0 24px; background: #2563eb; color: #fff; border: none; border-radius: 12px;
+    font-weight: 800; font-size: 1rem; cursor: pointer; white-space: nowrap; min-width: 140px;
+}
+
+.nameChips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: #f1f5f9; padding: 8px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.chip button { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; }
+
+/* Active Game View */
+.activeGameContainer { width: 100%; }
+.activeGameHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.backBtn { background: #fff; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 10px; font-weight: 700; color: #64748b; cursor: pointer; }
+.activeGameTitle { font-size: 1.4rem; font-weight: 900; color: #1e293b; }
+.gameContentArea { background: #fff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 30px; min-height: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+/* Ladder Game - 1px 오차도 없는 정밀 보정 */
+.ladderBox { width: 100%; }
+.gameActions { margin-bottom: 20px; text-align: center; }
+.premiumBtn { background: #fff; border: 2px solid #e2e8f0; padding: 12px 24px; border-radius: 16px; font-weight: 800; cursor: pointer; }
+
+.ladderViewport { width: 100%; overflow-x: auto; padding: 20px 0; -webkit-overflow-scrolling: touch; }
+.ladderContainer { position: relative; margin: 0 auto; }
+
+/* 시작 지점 */
+.ladderHeaderRow { position: absolute; left: 0; width: 100%; height: 80px; z-index: 5; } /* z-index 낮춤 */
+.ladderNodeWrapper { position: absolute; transform: translateX(-50%); width: 120px; text-align: center; display: flex; justify-content: center; }
+.node { background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; padding: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: all 0.2s; min-width: 90px; }
+.nodeIcon { font-size: 2rem; margin-bottom: 4px; }
+.nodeLabel { font-size: 0.85rem; font-weight: 800; color: #334155; }
+
+/* 사다리 판 */
+.ladderBoard { position: relative; z-index: 1; } /* 가장 뒤로 */
+.ladderLines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+/* 움직이는 마커 - 무조건 최상위 */
+.activeMarker { position: absolute; transform: translate(-50%, -50%); z-index: 100 !important; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.emojiLarge { font-size: 3.5rem; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2)); }
+.markerNameTag { background: rgba(37, 99, 235, 0.9); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; margin-top: -5px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+.staticMarker { position: absolute; transform: translate(-50%, -50%); z-index: 20; }
+.emojiSmall { font-size: 2.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+
+/* 결과 지점 */
+.ladderFooterRow { position: absolute; left: 0; width: 100%; height: 40px; z-index: 5; } /* z-index 낮춤 */
+.ladderPrizeWrapper { position: absolute; transform: translateX(-50%); width: 120px; text-align: center; display: flex; justify-content: center; }
+.prizeTag { background: #f1f5f9; padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 0.9rem; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.05); min-width: 90px; }
+.prizeWin { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
+.prizePass { background: #dcfce7; color: #10b981; border: 1px solid #bbf7d0; }
+
+.ladderSummary { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 20px; padding: 20px; margin-bottom: 30px; }
+.summaryHeader { text-align: center; font-weight: 900; margin-bottom: 16px; font-size: 1.1rem; }
+.summaryGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.summaryItem { background: #fff; border: 1px solid #f1f5f9; padding: 12px; border-radius: 16px; text-align: center; }
+.summaryWinner { border-color: #fecaca; background: #fff1f2; }
+.summaryWinner .summaryName { color: #ef4444; }
+.summaryName { font-weight: 800; }
+.summaryResult { font-size: 0.85rem; font-weight: 700; color: #64748b; }
+
+.scrollHint { text-align: center; font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px; }
+
+/* History UI */
+.historyCardMini { margin-top: 30px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; width: 100%; }
+.historyHeader { font-weight: 900; margin-bottom: 15px; font-size: 1.1rem; }
+.historyList { display: flex; flex-direction: column; gap: 8px; }
+.historyItem { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; }
+.historyTime { font-size: 0.75rem; color: #94a3b8; }
+.historyTag { background: #eff6ff; color: #2563eb; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; }
+.historyResult { font-size: 0.9rem; font-weight: 700; color: #334155; }
+
+/* Roulette & Popup */
+.rouletteContainer { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+.rouletteWrapper { position: relative; border-radius: 50%; padding: 10px; background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+.indicator { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 30px; color: #ef4444; z-index: 10; }
+.spinBtn { background: #1e293b; color: #fff; padding: 18px 60px; font-size: 1.4rem; font-weight: 900; border-radius: 100px; cursor: pointer; transition: all 0.2s; }
+.btnSpinning { background: #ef4444; }
+.resultOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.resultCard { background: #fff; padding: 50px 40px; border-radius: 32px; text-align: center; max-width: 420px; width: 100%; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
+.confirmBtn { width: 100%; margin-top: 30px; padding: 16px; background: #2563eb; color: #fff; border: none; border-radius: 16px; font-weight: 800; font-size: 1.1rem; cursor: pointer; }
+
+/* Bingo */
+.bingoWrapper { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+.bingoBoardOuter { background: #f1f5f9; padding: 24px; border-radius: 24px; width: 100%; max-width: 500px; }
+.bingoHeaderWide { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.bingoGrid5x5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+.bingoCellItem { aspect-ratio: 1; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.bingoMarkedItem { background: #4f46e5; color: #fff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); }
+.bingoManual { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; width: 100%; }
+.bingoManual h4 { margin: 0 0 8px 0; font-size: 0.9rem; }
+.bingoManual li { font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
+
+@media (max-width: 768px) {
+    .gameCardsGrid { grid-template-columns: 1fr; }
+    .addForm { flex-direction: column; }
+    .addForm button { min-width: 100%; }
+}
