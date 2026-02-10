@@ -628,7 +628,7 @@ function ContainerHistoryInner() {
             <div className={styles.container}>
                 <div className={styles.headerBanner}>
                     <h1 className={styles.title}>컨테이너 이력조회</h1>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className={styles.shortcutGroup}>
                         <a
                             href="https://etrans.klnet.co.kr"
                             target="_blank"

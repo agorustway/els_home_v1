@@ -33,6 +33,12 @@
     white-space: nowrap;
 }
 
+.shortcutGroup {
+    display: flex;
+    gap: 8px;
+    margin-left: auto; /* 버튼들을 오른쪽으로 밀어냄 */
+}
+
 .etransShortcut {
     display: flex;
     align-items: center;
@@ -867,16 +873,21 @@
     }
 
     .title {
-        font-size: 1.05rem;
-        letter-spacing: -0.04em;
+        font-size: 1.1rem;
+        letter-spacing: -0.02em;
     }
 
     .headerBanner {
-        justify-content: flex-start;
+        justify-content: space-between;
         align-items: center;
         gap: 8px;
         margin-bottom: 1rem;
-        padding: 10px 12px;
+        padding: 10px 16px;
+    }
+
+    .shortcutGroup {
+        justify-content: flex-end; /* 줄바꿈 시 우측 정렬 유지 */
+        flex: 1; /* 가능한 공간 차지하여 오른쪽으로 밀기 */
     }
 
     .etransShortcut {
