@@ -153,7 +153,7 @@
 .lastSavedText {
     font-size: 0.7rem;
     color: #94a3b8;
-    text-align: left; /* 왼쪽 정렬 */
+    text-align: left;
     padding-left: 2px;
     margin-top: 4px;
 }
@@ -242,40 +242,302 @@
     border-radius: 12px;
 }
 
+/* 결과 데이터 현황 센터 섹션 */
+.statsBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.statItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.statItem:hover {
+    border-color: #3b82f6;
+    background: #f1f5f9;
+}
+
+.statItemActive {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #2563eb;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+}
+
+.statDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.resultContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 4px;
+}
+
+.tableInnerWrapper {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+/* 현대적인 배지 스타일 */
+.badge {
+    padding: 2px 6px; /* 패딩 축소 */
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px; /* 최소 너비 축소 */
+    letter-spacing: -0.02em;
+}
+
+.badgeImport { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+.badgeExport { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+.badgeInbox { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; }
+.badgeOutbox { background: #ffedd5; color: #ea580c; border: 1px solid #fed7aa; }
+.badgeEmpty { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+.table { 
+    width: 100%; 
+    border-collapse: separate; 
+    border-spacing: 0; 
+    font-size: 0.82rem; /* 전체 폰트 축소 */
+    min-width: 1100px; /* 전체 너비는 슬림하게 유지 */
+    table-layout: fixed; 
+}
+
+.table th, .table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 폰트와 토글 버튼을 고려한 최종 너비 튜닝 */
+.table th:nth-child(1), .table td:nth-child(1) { width: 150px; } /* 컨테이너번호 (확대) */
+.table th:nth-child(2), .table td:nth-child(2) { width: 30px; }  /* No */
+.table th:nth-child(3), .table td:nth-child(3) { width: 55px; }  /* 수출입 */
+.table th:nth-child(4), .table td:nth-child(4) { width: 55px; }  /* 구분 */
+.table th:nth-child(5), .table td:nth-child(5) { width: 210px; } /* 터미널 (조금 축소) */
+.table th:nth-child(6), .table td:nth-child(6) { width: 115px; } /* MOVE TIME (축소) */
+.table th:nth-child(7), .table td:nth-child(7) { width: 80px; }  /* 모선 (축소) */
+.table th:nth-child(8), .table td:nth-child(8) { width: 40px; }  /* 항차 (축소) */
+.table th:nth-child(9), .table td:nth-child(9) { width: 50px; }  /* 선사 */
+.table th:nth-child(10), .table td:nth-child(10) { width: 40px; } /* 적공 */
+.table th:nth-child(11), .table td:nth-child(11) { width: 50px; } /* SIZE */
+.table th:nth-child(12), .table td:nth-child(12) { width: 80px; } /* POD */
+.table th:nth-child(13), .table td:nth-child(13) { width: 45px; } /* POL */
+.table th:nth-child(14), .table td:nth-child(14) { width: 100px; } /* 차량번호 */
+.table th:nth-child(15), .table td:nth-child(15) { width: 30px; }  /* RFID */
+
+.table th { 
+    position: sticky; top: 0; z-index: 2;
+    background: #f8fafc;
+    color: #475569;
+    padding: 8px 12px; /* 패딩 축소 */
+    font-weight: 700; 
+    text-align: center;
+    border-bottom: 2px solid #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.table td { 
+    padding: 4px 10px; /* 패딩 축소 */
+    border-bottom: 1px solid #f1f5f9; 
+    text-align: center; 
+    white-space: nowrap; 
+    color: #334155;
+    transition: background 0.2s;
+}
+
+.cellBorder {
+    border-right: 1px solid #f1f5f9;
+}
+
+.cellLeft {
+    text-align: left !important;
+    padding-left: 15px !important;
+}
+
+.table tr:hover td {
+    background-color: #f8fafc;
+}
+
+.stickyColumn {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: inherit;
+    font-weight: 700;
+    color: #1e293b;
+    text-align: left !important;
+    padding-left: 20px !important;
+    box-shadow: 4px 0 8px rgba(0,0,0,0.02);
+}
+
+.table th:first-child { 
+    z-index: 3; 
+    background: #f8fafc;
+    padding-left: 20px !important;
+    text-align: left;
+}
+
+.toggleBtn {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.7rem;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.toggleBtn:hover { 
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: scale(1.05);
+}
+
+.rowOdd td {
+    background-color: #f1f4f8; /* 조금 더 진하고 차분한 회색 음영 */
+}
+
+.rowEven td {
+    background-color: #ffffff;
+}
+
+.historyRow td {
+    color: #4b5563; /* 이력 데이터 폰트 색상 살짝 조절 */
+    border-bottom: 1px dashed #e2e8f0;
+}
+
+/* 전개되었을 때 부모 행의 강조 색상 (음영보다 우선) */
+.expandedParentRow td {
+    background-color: #e0f2fe !important; 
+    border-bottom: 1px solid #bae6fd;
+}
+
+.expandedParentRow .stickyColumn {
+    color: #0284c7;
+}
+
+/* 스크롤바 커스텀 */
+.tableInnerWrapper::-webkit-scrollbar { height: 8px; width: 6px; }
+.tableInnerWrapper::-webkit-scrollbar-track { background: transparent; }
+.tableInnerWrapper::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+.tableInnerWrapper::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+.resultFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.inputSearchCompact {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    width: 180px;
+    outline: none;
+}
+
+.inputSearchCompact:focus { border-color: #3b82f6; }
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pagination button {
+    padding: 4px 10px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+.pagination span { font-size: 0.8rem; font-weight: 800; color: #1e293b; }
+
+.buttonExcelCompact {
+    padding: 6px 12px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
 /* BIOS 스타일 초록색 로그 터미널 */
 .terminal {
     background: #0a0f18;
     border-radius: 10px;
     padding: 1.25rem;
-    flex: 1;
+    height: 480px;
     overflow-y: auto;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.75rem;
-    color: #00ff88; /* BIOS 그린 */
+    color: #00ff88;
     border: 1px solid #1e293b;
     line-height: 1.6;
 }
 
-.logLine {
-    margin-bottom: 4px;
+.terminal::-webkit-scrollbar { width: 8px; }
+.terminal::-webkit-scrollbar-track { background: #0a0f18; }
+.terminal::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+.terminal::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+.logLine { margin-bottom: 4px; word-break: break-all; }
+.logLineActive { color: #fbbf24; font-weight: 800; margin-top: 10px; }
+
+@media (max-width: 1400px) { 
+    .topRow { grid-template-columns: 340px 1fr 360px; } 
 }
 
-.logLineActive {
-    color: #fbbf24;
-    font-weight: 800;
-    margin-top: 10px;
+@media (max-width: 1024px) {
+    .topRow { grid-template-columns: 1fr; min-height: auto; }
+    .leftColumn, .centerColumn, .rightColumn { width: 100%; }
+    .terminal { height: 300px; }
 }
-
-.tableWrapper {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-top: 0.5rem;
-}
-
-.table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.table th { background: #f8fafc; padding: 12px; font-weight: 800; color: #475569; border-bottom: 2px solid #e2e8f0; }
-.table td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: center; }
-
-@media (max-width: 1400px) { .topRow { grid-template-columns: 340px 1fr 360px; } }

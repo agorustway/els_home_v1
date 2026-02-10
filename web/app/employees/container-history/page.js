@@ -8,13 +8,18 @@ const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널',
 const ITEMS_PER_PAGE = 10;
 
 function StatusBadge({ type, label }) {
+    if (!label || label === '-' || label === '.' || label === '?') return null;
+    
     let className = styles.badge;
+    const isMainStatus = ['수입', '수출', '반입', '반출'].includes(label);
+    
     if (label === '수입') className += ` ${styles.badgeImport}`;
     else if (label === '수출') className += ` ${styles.badgeExport}`;
     else if (label === '반입') className += ` ${styles.badgeInbox}`;
     else if (label === '반출') className += ` ${styles.badgeOutbox}`;
     else className += ` ${styles.badgeEmpty}`;
-    return <span className={className}>{label || '-'}</span>;
+    
+    return <span className={className}>{label}</span>;
 }
 
 function parseContainerInput(text) {
@@ -26,30 +31,12 @@ function parseContainerInput(text) {
 function ContainerHistoryInner() {
     const [userId, setUserId] = useState('');
     const [userPw, setUserPw] = useState('');
-    const [containerInput, setContainerInput] = useState(() => {
-        if (typeof window !== 'undefined') return sessionStorage.getItem('els_input') || '';
-        return '';
-    });
-    const [logLines, setLogLines] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('els_logs');
-            try { return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
-        }
-        return [];
-    });
-    const [result, setResult] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('els_result');
-            try { return saved ? JSON.parse(saved) : null; } catch (e) { return null; }
-        }
-        return null;
-    });
+    const [containerInput, setContainerInput] = useState('');
+    const [logLines, setLogLines] = useState([]);
+    const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [loginLoading, setLoginLoading] = useState(false);
-    const [loginSuccess, setLoginSuccess] = useState(() => {
-        if (typeof window !== 'undefined') return sessionStorage.getItem('els_login_success') === 'true';
-        return false;
-    });
+    const [loginSuccess, setLoginSuccess] = useState(false);
     const [lastSavedInfo, setLastSavedInfo] = useState('');
     const [isSaveChecked, setIsSaveChecked] = useState(false);
     const [showBrowser, setShowBrowser] = useState(false);
@@ -57,6 +44,7 @@ function ContainerHistoryInner() {
     const [searchFilter, setSearchFilter] = useState('');
     const [activeStatFilter, setActiveStatFilter] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [expandedRows, setExpandedRows] = useState(new Set());
     const [downloadToken, setDownloadToken] = useState(null);
     const [resultFileName, setResultFileName] = useState('');
 
@@ -69,6 +57,26 @@ function ContainerHistoryInner() {
     const initialCreds = useRef({ id: '', pw: '' });
 
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
+
+    // 마운트 후 데이터 복구
+    useEffect(() => {
+        const savedInput = sessionStorage.getItem('els_input');
+        if (savedInput) setContainerInput(savedInput);
+
+        const savedLogs = sessionStorage.getItem('els_logs');
+        if (savedLogs) {
+            try { setLogLines(JSON.parse(savedLogs)); } catch (e) { console.error(e); }
+        }
+
+        const savedResult = sessionStorage.getItem('els_result');
+        if (savedResult) {
+            try { setResult(JSON.parse(savedResult)); } catch (e) { console.error(e); }
+        }
+
+        if (sessionStorage.getItem('els_login_success') === 'true') {
+            setLoginSuccess(true);
+        }
+    }, []);
 
     const startTimer = useCallback(() => {
         setElapsedSeconds(0); elapsedSecondsRef.current = 0;
@@ -214,6 +222,20 @@ function ContainerHistoryInner() {
         else { executeSearch(containers); }
     };
 
+    const toggleStatFilter = (filter) => {
+        setActiveStatFilter(prev => prev === filter ? null : filter);
+        setCurrentPage(1);
+    };
+
+    const toggleRow = (cn) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(cn)) next.delete(cn);
+            else next.add(cn);
+            return next;
+        });
+    };
+
     const handleKeyDown = (e, target) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -337,36 +359,42 @@ function ContainerHistoryInner() {
                     </div>
 
                     <div className={styles.centerColumn}>
-                        <div className={styles.section} style={{ flex: 1 }}>
+                        <div className={styles.section} style={{ flex: 1, minHeight: 0 }}>
                             <div className={styles.sectionHeader}>
-                                <h2 className={styles.sectionTitle}>조회 데이터 현황</h2>
-                                <button onClick={resetAll} className={styles.buttonReset}>전체 초기화</button>
+                                <h2 className={styles.sectionTitle}>조회 데이터 결과</h2>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    {result && downloadToken && (
+                                        <button onClick={() => window.open(`${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${resultFileName}`, '_blank')} className={styles.buttonExcelCompact}>엑셀 저장</button>
+                                    )}
+                                    <button onClick={resetAll} className={styles.buttonReset}>초기화</button>
+                                </div>
                             </div>
+
                             {stats ? (
-                                <div className={styles.statsGrid}>
-                                    <div className={`${styles.statCard} ${activeStatFilter === '수출' ? styles.statCardActive : ''}`} onClick={() => toggleStatFilter('수출')}>
-                                        <span className={styles.statLabel}>수출</span>
-                                        <span className={styles.statValue} style={{ color: '#16a34a' }}>{stats.export}</span>
+                                <div className={styles.statsBar}>
+                                    <div className={`${styles.statItem} ${activeStatFilter === '수출' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('수출')}>
+                                        <span className={styles.statDot} style={{ background: '#16a34a' }}></span>
+                                        수출 {stats.export}
                                     </div>
-                                    <div className={`${styles.statCard} ${activeStatFilter === '수입' ? styles.statCardActive : ''}`} onClick={() => toggleStatFilter('수입')}>
-                                        <span className={styles.statLabel}>수입</span>
-                                        <span className={styles.statValue} style={{ color: '#dc2626' }}>{stats.import}</span>
+                                    <div className={`${styles.statItem} ${activeStatFilter === '수입' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('수입')}>
+                                        <span className={styles.statDot} style={{ background: '#dc2626' }}></span>
+                                        수입 {stats.import}
                                     </div>
-                                    <div className={`${styles.statCard} ${activeStatFilter === '반입' ? styles.statCardActive : ''}`} onClick={() => toggleStatFilter('반입')}>
-                                        <span className={styles.statLabel}>반입</span>
-                                        <span className={styles.statValue} style={{ color: '#2563eb' }}>{stats.inbox}</span>
+                                    <div className={`${styles.statItem} ${activeStatFilter === '반입' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('반입')}>
+                                        <span className={styles.statDot} style={{ background: '#2563eb' }}></span>
+                                        반입 {stats.inbox}
                                     </div>
-                                    <div className={`${styles.statCard} ${activeStatFilter === '반출' ? styles.statCardActive : ''}`} onClick={() => toggleStatFilter('반출')}>
-                                        <span className={styles.statLabel}>반출</span>
-                                        <span className={styles.statValue} style={{ color: '#d97706' }}>{stats.outbox}</span>
+                                    <div className={`${styles.statItem} ${activeStatFilter === '반출' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('반출')}>
+                                        <span className={styles.statDot} style={{ background: '#d97706' }}></span>
+                                        반출 {stats.outbox}
                                     </div>
-                                    <div className={`${styles.statCard} ${activeStatFilter === '양하' ? styles.statCardActive : ''}`} onClick={() => toggleStatFilter('양하')}>
-                                        <span className={styles.statLabel}>양하</span>
-                                        <span className={styles.statValue} style={{ color: '#7c3aed' }}>{stats.unloading}</span>
+                                    <div className={`${styles.statItem} ${activeStatFilter === '양하' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('양하')}>
+                                        <span className={styles.statDot} style={{ background: '#7c3aed' }}></span>
+                                        양하 {stats.unloading}
                                     </div>
-                                    <div className={`${styles.statCard} ${activeStatFilter === '적하' ? styles.statCardActive : ''}`} onClick={() => toggleStatFilter('적하')}>
-                                        <span className={styles.statLabel}>적하</span>
-                                        <span className={styles.statValue} style={{ color: '#db2777' }}>{stats.loading}</span>
+                                    <div className={`${styles.statItem} ${activeStatFilter === '적하' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('적하')}>
+                                        <span className={styles.statDot} style={{ background: '#db2777' }}></span>
+                                        적하 {stats.loading}
                                     </div>
                                 </div>
                             ) : (
@@ -374,13 +402,78 @@ function ContainerHistoryInner() {
                                     <div className={styles.pulseIcon}>
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                                     </div>
-                                    <p style={{ fontWeight: 800, color: '#64748b' }}>데이터 조회 전입니다</p>
+                                    <p style={{ fontWeight: 800, color: '#64748b', fontSize: '0.85rem' }}>데이터 조회 대기 중</p>
                                 </div>
                             )}
+
                             {result && (
-                                <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
-                                    <input type="text" placeholder="결과 내 검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.input} style={{ flex: 1 }} />
-                                    {downloadToken && <button onClick={() => window.open(`${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${resultFileName}`, '_blank')} className={styles.button} style={{ padding: '8px 16px' }}>엑셀 저장</button>}
+                                <div className={styles.resultContainer}>
+                                    <div className={styles.tableInnerWrapper}>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ textAlign: 'center' }}>{HEADERS[0]}</th>
+                                                    {HEADERS.slice(1).map((h, i) => <th key={i}>{h}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((cn, idx) => {
+                                                    const rows = result[cn];
+                                                    const isExpanded = expandedRows.has(cn);
+                                                    const hasHistory = rows.length > 1;
+                                                    const rowClass = idx % 2 === 0 ? styles.rowOdd : styles.rowEven;
+
+                                                    return (
+                                                        <React.Fragment key={cn}>
+                                                            {/* 대표 행 (최신 데이터, No. 1) */}
+                                                            <tr className={`${rowClass} ${isExpanded ? styles.expandedParentRow : ''}`}>
+                                                                <td className={styles.stickyColumn}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        {hasHistory ? (
+                                                                            <button onClick={() => toggleRow(cn)} className={styles.toggleBtn}>
+                                                                                {isExpanded ? '▼' : '▶'}
+                                                                            </button>
+                                                                        ) : (
+                                                                            <span style={{ width: '18px' }}></span>
+                                                                        )}
+                                                                        <span style={{ fontWeight: 900 }}>{cn}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className={styles.cellBorder}>{rows[0][1]}</td>
+                                                                <td className={styles.cellBorder}><StatusBadge label={rows[0][2]} /></td>
+                                                                <td className={styles.cellBorder}><StatusBadge label={rows[0][3]} /></td>
+                                                                {rows[0].slice(4).map((v, i) => (
+                                                                    <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
+                                                                ))}
+                                                            </tr>
+
+                                                            {/* 과거 이력 행들 (No. 2 이상) */}
+                                                            {isExpanded && rows.slice(1).map((row, hIdx) => (
+                                                                <tr key={`${cn}-h-${hIdx}`} className={`${rowClass} ${styles.historyRow}`}>
+                                                                    <td className={styles.stickyColumn} style={{ borderRight: '1px solid #e2e8f0' }}></td>
+                                                                    <td className={styles.cellBorder}>{row[1]}</td>
+                                                                    <td className={styles.cellBorder}><StatusBadge label={row[2]} /></td>
+                                                                    <td className={styles.cellBorder}><StatusBadge label={row[3]} /></td>
+                                                                    {row.slice(4).map((v, i) => (
+                                                                        <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
+                                                                    ))}
+                                                                </tr>
+                                                            ))}
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <div className={styles.resultFooter}>
+                                        <input type="text" placeholder="결과 검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.inputSearchCompact} />
+                                        <div className={styles.pagination}>
+                                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>&lt;</button>
+                                            <span>{currentPage}</span>
+                                            <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * ITEMS_PER_PAGE >= filtered.length}>&gt;</button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -405,24 +498,6 @@ function ContainerHistoryInner() {
                     </div>
                 </div>
 
-                {result && (
-                    <div className={styles.tableWrapper}>
-                        <table className={styles.table}>
-                            <thead><tr>{HEADERS.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
-                            <tbody>
-                                {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(cn => (
-                                    <tr key={cn}>
-                                        <td style={{ fontWeight: 900, color: '#1e293b' }}>{cn}</td>
-                                        <td>{result[cn][0][1]}</td>
-                                        <td><StatusBadge label={result[cn][0][2]} /></td>
-                                        <td><StatusBadge label={result[cn][0][3]} /></td>
-                                        {result[cn][0].slice(4).map((v, i) => <td key={i}>{v || '-'}</td>)}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
             </div>
             <Script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" strategy="lazyOnload" />
         </div>

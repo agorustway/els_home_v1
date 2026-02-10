@@ -8,15 +8,17 @@ import logging
 import time
 import re
 import io
+import math
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 import pandas as pd
 from flask import Flask, request, jsonify, Response, send_file
-# [추가] CORS 보안 정책 해제용 라이브러리
 from flask_cors import CORS 
 from werkzeug.utils import secure_filename
+from openpyxl.styles import PatternFill
+from datetime import datetime
 
 # --- 로깅 설정 ---
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] In %(module)s: %(message)s')
@@ -36,7 +38,10 @@ RUNNER = ELSBOT_DIR / "els_web_runner.py"
 CONFIG_PATH = ELSBOT_DIR / "els_config.json"
 DAEMON_URL = "http://127.0.0.1:31999"
 
+# --- 전역 변수 ---
 file_store = {}
+# [추가] 진행률 트래킹용 전역 변수
+global_progress = {"total": 0, "completed": 0, "is_running": False}
 
 # --- 전역 에러 핸들러 ---
 @app.errorhandler(Exception)
@@ -128,6 +133,7 @@ def capabilities():
         "available": daemon_status["available"],
         "driver_active": daemon_status["driver_active"],
         "user_id": daemon_status.get("user_id"),
+        "progress": global_progress, # 진행률 정보 포함
         "parseAvailable": True
     })
 
@@ -209,170 +215,104 @@ def login():
         return jsonify({"ok": False, "error": "응답 파싱 실패"})
 
 def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
-    # Daemon Mode: Loop through containers here in App.py
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    global global_progress
+    
     final_rows = []
     headers = ["컨테이너번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
     
-    yield "LOG:Daemon 서버를 통해 조회를 시작합니다.\n"
+    # 진행률 초기화
+    global_progress = {"total": len(containers), "completed": 0, "is_running": True}
+    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건)\n"
     
-    for cn in containers:
+    # 병렬 처리를 위한 함수 (전과 동일)
+    def fetch_container(cn):
+        # ... (이전 코드와 동일하므로 생략하거나 유지)
         cn = cn.strip().upper()
-        if not cn: continue
-        
-        yield f"LOG:[{cn}] 조회 요청 중...\n"
-        
+        if not cn: return []
         try:
-            # 데몬 서버 규격인 'containerNo' (단수형)로 전달하여 조회 실패 해결
-            body = json.dumps({
-                "userId": uid, 
-                "userPw": pw, 
-                "containerNo": cn, 
-                "showBrowser": show_browser
-            }, ensure_ascii=False).encode("utf-8")
+            body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-            resp = urlopen(req, timeout=60)
-            raw_resp = resp.read().decode("utf-8")
-            
-            # LOG: 접두어 라인과 RESULT: 접두어 라인을 구분하여 처리
-            res_json = None
-            for line in raw_resp.split('\n'):
-                line = line.strip()
-                if not line: continue
-                
-                if line.startswith('LOG:'):
-                    # 데몬에서 온 내부 로그는 프론트엔드로 그대로 중계
-                    yield f"{line}\n"
-                elif line.startswith('RESULT:'):
-                    try:
-                        res_json = json.loads(line[7:])
-                    except: continue
-                elif line.startswith('{') and line.endswith('}'):
-                    try:
-                        res_json = json.loads(line)
-                    except: continue
-            
-            if not res_json:
-                # 마지막 시도로 전체 파싱 시도
-                try:
-                    res_json = json.loads(raw_resp)
-                except:
-                    raise ValueError(f"데몬 응답 파싱 실패 (Raw: {raw_resp[:100]}...)")
-            
-            if res_json.get("ok"):
-                # 데몬이 이미 정제된 리스트(result)를 줬다면 그걸 쓰고, 아니면 원본(data) 파싱
-                if "result" in res_json:
-                    parsed_rows = res_json["result"]
-                else:
-                    data_text = res_json.get("data")
-                    parsed_rows = _parse_grid_text(cn, data_text)
-                
-                final_rows.extend(parsed_rows)
-                yield f"LOG:[{cn}] 조회 완료 (데이터 {len(parsed_rows)}건)\n"
-            else:
-                err = res_json.get("error") or res_json.get("message") or "Unknown Error"
-                yield f"LOG:[{cn}] 조회 실패: {err}\n"
-                final_rows.append([cn, "ERROR", err] + [""]*12)
-                
+            resp = urlopen(req, timeout=120)
+            res_json = json.loads(resp.read().decode("utf-8"))
+            return res_json.get("result", []), cn, res_json.get("error")
         except Exception as e:
-            app.logger.error(f"Daemon call failed for {cn}: {e}")
-            yield f"LOG:[{cn}] 통신/시스템 에러: {e}\n"
-            final_rows.append([cn, "ERROR", f"System Error: {e}"] + [""]*12)
+            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e)
 
-    # Generate Excel and Final Result
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_to_cn = {executor.submit(fetch_container, cn): cn for cn in containers}
+        
+        for future in as_completed(future_to_cn):
+            rows, cn, err = future.result()
+            final_rows.extend(rows)
+            
+            # 진행률 업데이트
+            global_progress["completed"] += 1
+            percent = int((global_progress["completed"] / global_progress["total"]) * 100)
+            
+            if err:
+                yield f"LOG:❌ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패: {err}\n"
+            else:
+                yield f"LOG:✔ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건)\n"
+
+    global_progress["is_running"] = False
+    # Generate Final Result and Excel (이후 로직 동일)
     if final_rows:
         try:
-            yield "LOG:결과 데이터 집계 중...\n"
-            from openpyxl.styles import PatternFill
-            from datetime import datetime
+            yield "LOG:조회 완료! 데이터 정리 중...\n"
             
+            # 1. 데이터프레임 생성 및 정제 (가장 중요)
             df_all = pd.DataFrame(final_rows, columns=headers)
+            df_clean = df_all.where(pd.notnull(df_all), None)
             
-            # Sheet1: 각 컨테이너의 1번 행만 (요약)
-            df_summary = df_all.groupby('컨테이너번호').first().reset_index()
-            
-            # Sheet2: 전체 데이터
-            df_full = df_all
-            
-            # 파일명 생성: els_result_260207_134257.xlsx
-            now = datetime.now()
-            filename = f"els_result_{now.strftime('%y%m%d')}_{now.strftime('%H%M%S')}.xlsx"
-            
-            # Create Excel in memory
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                # Sheet1: 요약
-                df_summary.to_excel(writer, index=False, sheet_name='요약')
-                ws1 = writer.sheets['요약']
-                
-                # Sheet2: 전체
-                df_full.to_excel(writer, index=False, sheet_name='전체')
-                ws2 = writer.sheets['전체']
-                
-                # 색상 적용 및 셀 너비 조정
-                red_fill = PatternFill(start_color="FFE6E6", end_color="FFE6E6", fill_type="solid")
-                blue_fill = PatternFill(start_color="E6F2FF", end_color="E6F2FF", fill_type="solid")
-                
-                for ws in [ws1, ws2]:
-                    # 셀 너비 자동 조정 (한글 고려 폰트 폭 계산)
-                    for column_cells in ws.columns:
-                        max_length = 0
-                        column = column_cells[0].column_letter
-                        for cell in column_cells:
-                            try:
-                                if cell.value:
-                                    # 한글은 대략 영문/숫자의 1.8배 폭 차지함
-                                    current_val = str(cell.value)
-                                    val_len = 0
-                                    for char in current_val:
-                                        if ord('가') <= ord(char) <= ord('힣'):
-                                            val_len += 2.0
-                                        else:
-                                            val_len += 1.2
-                                    if val_len > max_length:
-                                        max_length = val_len
-                            except: pass
-                        adjusted_width = min(max_length + 2, 60)
-                        ws.column_dimensions[column].width = adjusted_width
-                    
-                    # 색상 적용 (수입/반입 글자 있는 칸만!)
-                    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-                        # "수출입" 혹은 "구분" 컬럼 어딘가에 있을 "수입"/"반입" 찾기
-                        for cell in row:
-                            if cell.value:
-                                cell_val = str(cell.value).strip()
-                                if cell_val == "수입":
-                                    cell.fill = red_fill
-                                elif cell_val == "반입":
-                                    cell.fill = blue_fill
-            
-            output.seek(0)
-            token = str(uuid.uuid4()).replace("-", "")[:16]
-            file_store[token] = output.read()
-            
-            # Frontend로 보낼 결과 데이터 정제 (NaN 방지)
-            df_clean = df_all.where(pd.notnull(df_all), None) # NaN을 null(None)로 변환
-            rows_list = df_clean.values.tolist()
-            
-            # 한 번 더 안전장치: 리스트 내부에 혹시 남아있을 수 있는 float('nan') 제거
-            import math
-            def _clean_nan(v):
+            # 안전하게 JSON용 리스트 변환
+            def _safe_val(v):
                 if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
                 return v
-            
-            final_json_rows = [[_clean_nan(cell) for cell in row] for row in rows_list]
+            rows_list = [[_safe_val(cell) for cell in row] for row in df_clean.values.tolist()]
 
+            # 2. 화면에 데이터 먼저 뿌려주기 (이걸 먼저 해야 형이 바로 볼 수 있어!)
+            token = str(uuid.uuid4()).replace("-", "")[:16]
+            filename = f"els_result_{datetime.now().strftime('%y%m%d_%H%M%S')}.xlsx"
+            
             result_obj = {
                 "ok": True,
-                "result": final_json_rows,
-                "downloadToken": token,
+                "result": rows_list,
+                "downloadToken": token, # 일단 토큰 발행
                 "fileName": filename
             }
-            # allow_nan=False 설정으로 규격 외 JSON 생성 원천 차단
-            yield "RESULT:" + json.dumps(result_obj, ensure_ascii=False, allow_nan=False) + "\n"
+            yield "RESULT:" + json.dumps(result_obj, ensure_ascii=False) + "\n"
+            yield "LOG:✔ 화면 데이터 전송 완료\n"
+
+            # 3. 그 다음 엑셀 파일 생성 (실패해도 데이터는 보임)
+            try:
+                yield "LOG:엑셀 파일 생성 중...\n"
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    # 중복 제거된 전체 데이터 저장
+                    df_all.drop_duplicates().to_excel(writer, index=False, sheet_name='조회결과')
+                    ws = writer.sheets['조회결과']
+                    # 간단한 너비 조절
+                    for col in ws.columns:
+                        ws.column_dimensions[col[0].column_letter].width = 18
+                
+                output.seek(0)
+                file_store[token] = output.read()
+                yield "LOG:✔ 엑셀 생성 완료 (다운로드 가능)\n"
+            except Exception as e:
+                yield f"LOG:![알림] 엑셀 파일 생성은 실패했습니다 (데이터는 정상). 에러: {e}\n"
+                # 엑셀 실패 시 토큰 무효화
+                if token in file_store: del file_store[token]
+
+            yield "LOG:----------------------------------------\n"
+            yield "LOG:모든 작업이 완료되었습니다. 결과 버튼을 확인하세요!\n"
+                
         except Exception as e:
-             yield f"LOG:[결과생성] 엑셀 생성 중 에러: {e}\n"
+             yield f"LOG:[치명적에러] 최종 집계 중 오류 발생: {e}\n"
+             import traceback
+             print(traceback.format_exc())
     else:
-        yield "LOG:처리된 데이터가 없습니다.\n"
+        yield "LOG:조회 결과 데이터가 하나도 없습니다.\n"
 
 def _stream_run(containers, use_saved, uid, pw, show_browser=False):
     if _daemon_available():

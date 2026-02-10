@@ -43,6 +43,29 @@ def check_alert(driver):
         return txt
     except: return None
 
+def close_modals(driver):
+    """이트랜스 공지사항 등 모달 창 닫기"""
+    try:
+        driver.switch_to.default_content()
+        # ID가 _modal이거나 클래스에 modal_popup이 포함된 요소 찾기
+        modals = driver.find_elements(By.XPATH, "//*[contains(@id, '_modal') or contains(@class, 'w2modal_popup')]")
+        for m in modals:
+            if m.is_displayed():
+                # 닫기 버튼(X)이나 확인 버튼 찾아서 클릭 시도
+                close_btns = m.find_elements(By.XPATH, ".//*[contains(text(),'닫기') or contains(text(),'확인') or contains(@class, 'close')]")
+                if close_btns:
+                    driver.execute_script("arguments[0].click();", close_btns[0])
+                else:
+                    # 버튼을 못 찾으면 display: none으로 강제 제거
+                    driver.execute_script("arguments[0].style.display = 'none';", m)
+        
+        # 가림막(overlay) 제거
+        overlays = driver.find_elements(By.CLASS_NAME, "w2modal_lay")
+        for ov in overlays:
+            driver.execute_script("arguments[0].style.display = 'none';", ov)
+    except:
+        pass
+
 def _is_valid_input_simple(element):
     """날짜 필드 등 잘못된 입력창인지 검사"""
     try:
@@ -91,6 +114,7 @@ def open_els_menu(driver, log_callback=None):
 def solve_input_and_search(driver, container_no, log_callback=None):
     """[수정 완료] driver를 직접 사용하여 NameError 방지"""
     check_alert(driver)
+    close_modals(driver)
     found_target = None
     driver.switch_to.default_content()
     
@@ -210,6 +234,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         
         # 로그인 처리 대기 (이전 코드: 8초)
         time.sleep(8)
+        
+        # 모달 닫기 시도
+        close_modals(driver)
         
         # alert 체크 (로그인 실패 팝업)
         alert_msg = check_alert(driver)
