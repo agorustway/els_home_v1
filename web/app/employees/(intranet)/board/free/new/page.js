@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../../board.module.css';
+import { motion } from 'framer-motion';
 
 export default function NewPostPage() {
     const { role, loading: authLoading } = useUserRole();
@@ -86,18 +87,21 @@ export default function NewPostPage() {
         }
     };
 
-    if (authLoading) {
-        return <div style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
-    }
+    if (authLoading) return <div className={styles.container}><p>로딩 중...</p></div>;
     if (!role) return null;
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
-                <h1 className={styles.title}>새 글 작성</h1>
+            <div className={styles.headerBanner}>
+                <h1 className={styles.title}>게시글 작성</h1>
+                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)', marginTop: '6px' }}>자유로운 소통과 정보 공유를 위한 공간입니다.</p>
             </div>
 
-            <div className={styles.editorCard}>
+            <motion.div 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={styles.editorCard}
+            >
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>제목</label>
@@ -105,48 +109,64 @@ export default function NewPostPage() {
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="제목을 입력하세요"
+                            placeholder="동료들이 한눈에 알아볼 수 있는 제목을 적어주세요"
                             className={styles.input}
                             required
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>내용</label>
+                        <label className={styles.label}>본문 내용</label>
                         <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
-                            placeholder="내용을 입력하세요"
+                            placeholder="나누고 싶은 이야기를 자유롭게 작성해 보세요."
                             className={styles.textarea}
                             required
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>첨부파일</label>
-                        <input
-                            type="file"
-                            onChange={handleFileUpload}
-                            disabled={uploading}
-                            className={styles.input}
-                            style={{ padding: '10px' }}
-                        />
-                        {uploading && <span className={styles.hint}>업로드 중...</span>}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '15px' }}>
+                        <label className={styles.label}>파일 첨부</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <input
+                                type="file"
+                                id="file-upload"
+                                onChange={handleFileUpload}
+                                disabled={uploading}
+                                style={{ display: 'none' }}
+                            />
+                            <label htmlFor="file-upload" style={{ 
+                                background: '#f8fafc', 
+                                padding: '10px 24px', 
+                                border: '1.5px solid #e2e8f0',
+                                borderRadius: '10px', 
+                                fontSize: '0.9rem', 
+                                fontWeight: 700, 
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                📁 파일 선택하기
+                            </label>
+                            {uploading && <span style={{ fontSize: '0.85rem', color: '#2563eb', fontWeight: 600 }}>업로드 중...</span>}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
                             {attachments.map((file, i) => (
-                                <div key={i} style={{ background: '#f1f5f9', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #e2e8f0' }}>
+                                <div key={i} style={{ background: '#eff6ff', padding: '8px 16px', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #dbeafe', color: '#1e40af', fontWeight: 600 }}>
                                     📎 {file.name}
-                                    <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+                                    <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>×</button>
                                 </div>
                             ))}
                         </div>
                     </div>
                     <div className={styles.editorActions}>
-                        <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>취소</button>
-                        <button type="submit" disabled={submitting} className={styles.btnPrimary}>
-                            {submitting ? '저장 중...' : '등록하기'}
+                        <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>돌아가기</button>
+                        <button type="submit" disabled={submitting || uploading} className={styles.btnPrimary}>
+                            {submitting ? '등록 중...' : '게시글 등록하기'}
                         </button>
                     </div>
                 </form>
-            </div>
+            </motion.div>
         </div>
     );
 }

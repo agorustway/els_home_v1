@@ -249,6 +249,22 @@
 @media (max-width: 768px) {
     .splitLayout { grid-template-columns: 1fr; }
     .rightColumn { grid-template-columns: 1fr; }
-    .weeklyGrid { grid-template-columns: repeat(4, 1fr); }
+    
+    .currentHero { padding: 20px; min-height: 150px; }
+    .heroRegion { font-size: 1.4rem; }
+    .heroTemp { font-size: 2.2rem; }
+    .heroIconLarge { width: 80px; height: 80px; }
+
+    .weeklyGrid { 
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* 모바일은 4개씩 2줄로 */
+        gap: 8px;
+    }
+    
+    .weeklyItem { padding: 8px 4px; }
+    .weeklyDay { font-size: 0.75rem; }
+    .weeklyTemp { font-size: 0.8rem; }
+
     .bottomSection { grid-template-columns: 1fr; }
+    .portGrid { grid-template-columns: 1fr 1fr; } /* 항만은 2열로 */
 }
