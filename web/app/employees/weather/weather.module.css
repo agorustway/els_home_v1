@@ -16,6 +16,44 @@
 .title { font-size: 1.4rem; font-weight: 800; margin: 0; color: #fff; }
 .subtitle { font-size: 0.9rem; opacity: 0.9; margin: 4px 0 0 0; }
 
+/* 상단 긴급 특보 배너 */
+.alertTopBanner {
+    background: #fff1f2;
+    border: 1px solid #fecaca;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    animation: slideDown 0.5s ease-out;
+}
+
+.alertBadge {
+    background: #e11d48;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.alertText {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #9f1239;
+    flex: 1;
+}
+
+.alertLink {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #e11d48;
+    text-decoration: underline;
+}
+
 /* 3열 분할 레이아웃 */
 .splitLayout {
     display: grid;
@@ -61,7 +99,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 800px;
+    max-height: 520px; /* 높이 조절하여 중앙 모듈과 맞춤 */
     overflow-y: auto;
     padding-right: 4px;
 }

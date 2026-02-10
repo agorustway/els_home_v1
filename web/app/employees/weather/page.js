@@ -109,6 +109,11 @@ export default function WeatherPage() {
 
     const activeData = useMemo(() => weatherCache[selectedId] || weatherCache['current'], [weatherCache, selectedId]);
 
+    // 가상 기상 특보 데이터 (실제 API 연동 시 이 부분을 업데이트)
+    const activeAlerts = [
+        { type: '강풍주의보', location: '서해안 및 남해안', time: '오늘 11:00' }
+    ];
+
     if (authLoading || !role) return null;
 
     return (
@@ -117,6 +122,21 @@ export default function WeatherPage() {
                 <h1 className={styles.title}>실시간 기상 관측 대시보드</h1>
                 <p className={styles.subtitle}>현위치, 지점별 정밀 예보 및 항만 기상 정보를 실시간으로 모니터링합니다.</p>
             </div>
+
+            {/* 상단 기상 특보 알림 바 */}
+            {activeAlerts.length > 0 && (
+                <motion.div 
+                    initial={{ opacity: 0, y: -10 }} 
+                    animate={{ opacity: 1, y: 0 }}
+                    className={styles.alertTopBanner}
+                >
+                    <span className={styles.alertBadge}>기상속보</span>
+                    <span className={styles.alertText}>
+                        <strong>[{activeAlerts[0].type}]</strong> {activeAlerts[0].location} 일대 발효 중 ({activeAlerts[0].time})
+                    </span>
+                    <span className={styles.alertLink}>정밀 예보 확인하기 →</span>
+                </motion.div>
+            )}
 
             {loading ? (
                 <div className={styles.card}><p>기상 데이터를 통합 분석 중입니다...</p></div>
