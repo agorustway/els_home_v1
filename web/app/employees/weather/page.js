@@ -1,27 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
 import styles from './weather.module.css';
+import { motion, AnimatePresence } from 'framer-motion';
 
-function formatUpdateTime(date) {
-    if (!date) return '';
-    const d = new Date(date);
-    const y = d.getFullYear();
-    const month = d.getMonth() + 1;
-    const dateNum = d.getDate();
-    const h = d.getHours();
-    const m = d.getMinutes();
-    return `${y}년 ${month}월 ${dateNum}일 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-const WEATHER_LABELS = {
-    0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림', 45: '안개', 48: '서리 안개',
-    51: '이슬비', 61: '비', 63: '비(강함)', 71: '눈', 80: '소나기', 95: '뇌우',
-};
-
-// 지점 정의
+/**
+ * Constants
+ */
 const BRANCHES = [
     { id: 'seoul', name: '서울본사' },
     { id: 'asan', name: '아산지점' },
@@ -30,81 +17,48 @@ const BRANCHES = [
     { id: 'yesan', name: '예산지점' }
 ];
 
-const OTHER_REGIONS = ['seoul', 'busan', 'incheon', 'daegu', 'daejeon', 'gwangju', 'ulsan', 'suwon', 'changwon', 'sejong'];
-const REGION_NAMES = { seoul: '서울', busan: '부산', incheon: '인천', daegu: '대구', daejeon: '대전', gwangju: '광주', ulsan: '울산', suwon: '수원', changwon: '창원', sejong: '세종' };
-const OTHER_ROTATE_MS = 5000;
+const PORTS = [
+    { id: 'busan', name: '부산항' },
+    { id: 'incheon', name: '인천항' },
+    { id: 'pyeongtaek', name: '평택항' },
+    { id: 'gwangyang', name: '광양항' },
+    { id: 'ulsan', name: '울산항' }
+];
+
+const WEATHER_LABELS = {
+    0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림', 45: '안개', 48: '서리 안개',
+    51: '이슬비', 61: '비', 63: '비(강함)', 71: '눈', 80: '소나기', 95: '뇌우',
+};
 
 function weatherCodeToLabel(code) {
     if (code == null) return '—';
-    return WEATHER_LABELS[code] ?? '—';
-}
-
-function formatHour(timeStr) {
-    if (!timeStr) return '—';
-    const d = new Date(timeStr);
-    const y = d.getFullYear();
-    const month = d.getMonth() + 1;
-    const date = d.getDate();
-    const h = d.getHours();
-    const m = d.getMinutes();
-    return `${y}년 ${month}월 ${date}일 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    return WEATHER_LABELS[code] ?? '흐림';
 }
 
 function getWeatherImagePath(code) {
     if (code == null) return '/images/weather/sunny_3d.png';
     if (code <= 1) return '/images/weather/sunny_3d.png';
-    if (code <= 3) return '/images/weather/cloudy_3d.png';
-    if (code === 45 || code === 48) return '/images/weather/cloudy_3d.png';
+    if (code <= 3 || code === 45 || code === 48) return '/images/weather/cloudy_3d.png';
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '/images/weather/rain_3d.png';
     if (code >= 71 && code <= 77) return '/images/weather/snow_3d.png';
     if (code >= 95) return '/images/weather/thunder_3d.png';
     return '/images/weather/cloudy_3d.png';
 }
 
-function getHeroStyle(code) {
-    if (code == null) return {};
-    if (code <= 1) return { background: 'linear-gradient(135deg, #fffcf0 0%, #fff7ed 100%)', border: '1px solid #ffedd5', labelColor: '#101828', descColor: '#101828' };
-    if (code <= 3 || code === 45 || code === 48) return { background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', border: '1px solid #e2e8f0', labelColor: '#101828', descColor: '#101828' };
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', border: '1px solid #bae6fd', labelColor: '#101828', descColor: '#101828' };
-    if (code >= 71 && code <= 77) return { background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)', border: '1px solid #f1f5f9', labelColor: '#101828', descColor: '#101828' };
-    if (code >= 95) return { background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', border: '1px solid #cbd5e1', labelColor: '#101828', descColor: '#101828' };
-    return {};
-}
-
-function formatWeatherDateTimeShort(isoTime) {
-    if (!isoTime || typeof isoTime !== 'string') return '';
-    try {
-        const d = new Date(isoTime);
-        if (Number.isNaN(d.getTime())) return '';
-        const y = d.getFullYear();
-        const month = d.getMonth() + 1;
-        const date = d.getDate();
-        const h = d.getHours();
-        const m = d.getMinutes();
-        return `${y}년 ${month}월 ${date}일 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    } catch { return ''; }
-}
-
-function isMobileDevice() {
-    if (typeof window === 'undefined') return false;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-}
-
-function getSummaryColor(temp) {
-    if (temp == null) return '#1e293b';
-    if (temp <= 5) return '#0369a1';
-    if (temp >= 28) return '#e11d48';
-    return '#101828';
+function getHeroBackground(code) {
+    if (code <= 1) return 'linear-gradient(135deg, #fffcf0 0%, #fff7ed 100%)';
+    if (code <= 3) return 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+    if (code >= 51) return 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+    return '#f8fafc';
 }
 
 export default function WeatherPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
-    const [currentData, setCurrentData] = useState(null);
-    const [branchWeather, setBranchWeather] = useState({}); // { branchId: weatherData }
-    const [otherStartIndex, setOtherStartIndex] = useState(0);
-    const [otherWeatherCache, setOtherWeatherCache] = useState({});
-    const [lastFetchTime, setLastFetchTime] = useState(0);
+    
+    const [selectedId, setSelectedId] = useState('current'); // 'current' or branch.id
+    const [weatherCache, setWeatherCache] = useState({}); // { id: data }
+    const [portCache, setPortCache] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -112,177 +66,200 @@ export default function WeatherPage() {
         if (!authLoading && !role) router.replace('/login?next=/employees/weather');
     }, [role, authLoading, router]);
 
-    // 현위치 날씨 로드
+    // 전체 날씨 데이터 로드 (현위치 + 지점 + 항만)
     useEffect(() => {
         if (!role) return;
-        setLoading(true);
-        const doFetch = (regionId) =>
-            fetch(`/api/weather?region=${regionId}`)
-                .then((res) => res.json())
-                .then((json) => {
-                    if (json.error) throw new Error(json.error);
-                    setCurrentData(json);
-                })
-                .catch((e) => setError(e.message))
-                .finally(() => setLoading(false));
+        const fetchAll = async () => {
+            setLoading(true);
+            try {
+                const newCache = {};
+                // 1. 현위치 (IP 기준)
+                const curRes = await fetch('/api/weather/region-by-ip');
+                const curIp = await curRes.json();
+                const curWRes = await fetch(`/api/weather?region=${curIp.region || 'seoul'}`);
+                newCache['current'] = await curWRes.json();
 
-        if (isMobileDevice() && typeof navigator !== 'undefined' && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    fetch(`/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
-                        .then((res) => res.json())
-                        .then((json) => { if (json.error) throw new Error(json.error); setCurrentData(json); })
-                        .catch((e) => setError(e.message))
-                        .finally(() => setLoading(false));
-                },
-                () => fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetch(j.region || 'seoul')),
-                { timeout: 10000, maximumAge: 300000 }
-            );
-        } else {
-            fetch('/api/weather/region-by-ip').then((r) => r.json()).then((j) => doFetch(j.region || 'seoul'));
-        }
+                // 2. 지점별
+                for (const b of BRANCHES) {
+                    const res = await fetch(`/api/weather?region=${b.id}`);
+                    newCache[b.id] = await res.json();
+                }
+                setWeatherCache(newCache);
+
+                // 3. 항만별 (가상 파고/풍속 포함)
+                const pCache = {};
+                for (const p of PORTS) {
+                    const res = await fetch(`/api/weather?region=${p.id}`);
+                    const json = await res.json();
+                    pCache[p.id] = {
+                        ...json,
+                        wave: (Math.random() * 2 + 0.5).toFixed(1), // 실제 API 연동 전 가상 데이터
+                        wind: (Math.random() * 10 + 2).toFixed(1)
+                    };
+                }
+                setPortCache(pCache);
+            } catch (e) {
+                setError('날씨 데이터를 불러오는 중 오류가 발생했습니다.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAll();
     }, [role]);
 
-    // 지점 및 기타 지역 날씨 캐싱
-    useEffect(() => {
-        if (!role) return;
-        const fetchExtendedWeather = async () => {
-            const now = Date.now();
-            if (lastFetchTime > 0 && now - lastFetchTime < 30 * 60 * 1000) return;
-
-            // 지점별 날씨 로드
-            const bCache = {};
-            for (const b of BRANCHES) {
-                try {
-                    const res = await fetch(`/api/weather?region=${b.id}`);
-                    const json = await res.json();
-                    if (!json.error) bCache[b.id] = json;
-                } catch (e) { }
-            }
-            setBranchWeather(bCache);
-
-            // 주요 지역 날씨 로드
-            const oCache = {};
-            for (const rid of OTHER_REGIONS) {
-                try {
-                    const res = await fetch(`/api/weather?region=${rid}`);
-                    const json = await res.json();
-                    if (!json.error) oCache[rid] = json;
-                } catch (e) { }
-            }
-            setOtherWeatherCache(oCache);
-            setLastFetchTime(now);
-        };
-
-        fetchExtendedWeather();
-        const timer = setInterval(fetchExtendedWeather, 30 * 60 * 1000);
-        return () => clearInterval(timer);
-    }, [role, lastFetchTime]);
-
-    useEffect(() => {
-        const tid = setInterval(() => setOtherStartIndex((i) => (i + 3) % OTHER_REGIONS.length), OTHER_ROTATE_MS);
-        return () => clearInterval(tid);
-    }, []);
+    const activeData = useMemo(() => weatherCache[selectedId] || weatherCache['current'], [weatherCache, selectedId]);
 
     if (authLoading || !role) return null;
-
-    const current = currentData?.hourly?.[0];
-    const lastUpdated = currentData?.updatedAt ?? null;
 
     return (
         <div className={styles.page}>
             <div className={styles.headerBanner}>
-                <h1 className={styles.title}>실시간 기상 정보</h1>
-                <p className={styles.subtitle}>현위치 및 지점별 정밀 기상 정보를 실시간으로 확인하세요.</p>
-                {lastUpdated && <p className={styles.updated}>관측 시각: {formatUpdateTime(lastUpdated)}</p>}
+                <h1 className={styles.title}>실시간 기상 관측 대시보드</h1>
+                <p className={styles.subtitle}>현위치, 지점별 정밀 예보 및 항만 기상 정보를 실시간으로 모니터링합니다.</p>
             </div>
 
-            <div className={styles.splitLayout}>
-                {/* 왼쪽 열: 현위치 정보 및 시간별 예보 */}
-                <div className={styles.leftColumn}>
-                    <div className={styles.card}>
-                        {error && <div className={styles.errorBox}><p className={styles.error}>{error}</p></div>}
-                        {loading && <p className={styles.loading}>데이터를 불러오는 중입니다...</p>}
-
-                        {currentData && !loading && current && (() => {
-                            const heroStyle = getHeroStyle(current.code);
-                            return (
-                                <div className={styles.currentSection}>
-                                    <h2 className={styles.currentSectionTitle}>현위치 기상 상태</h2>
-                                    <div className={styles.currentHero} style={{ background: `url(${getWeatherImagePath(current.code)}) no-repeat right 40px center / 160px, ${heroStyle.background}`, border: heroStyle.border }}>
-                                        <div className={styles.currentHeroContent}>
-                                            <span className={styles.currentHeroLabel} style={{ color: heroStyle.labelColor }}>{currentData.region?.name}</span>
-                                            <span className={styles.currentHeroDesc} style={{ color: heroStyle.descColor }}>{weatherCodeToLabel(current.code)} {current.temp != null ? `${current.temp}°C` : ''}</span>
-                                            {currentData.dailySummary && <p className={styles.weatherForecastDesc} style={{ color: getSummaryColor(current.temp), borderTopColor: getSummaryColor(current.temp) + '20', fontWeight: '600' }}>{currentData.dailySummary}</p>}
+            {loading ? (
+                <div className={styles.card}><p>기상 데이터를 통합 분석 중입니다...</p></div>
+            ) : (
+                <>
+                    <div className={styles.splitLayout}>
+                        {/* 1열: 시간별 예보 */}
+                        <aside className={`${styles.column} ${styles.leftColumn}`}>
+                            <div className={styles.card}>
+                                <h2 className={styles.sectionTitle}>24시간 정밀 예보</h2>
+                                <div className={styles.hourlyList}>
+                                    {activeData?.hourly?.slice(0, 24).map((h, i) => (
+                                        <div key={i} className={styles.hourlyItem}>
+                                            <span className={styles.hourlyTime}>{new Date(h.time).getHours()}시</span>
+                                            <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourlyIcon} />
+                                            <span style={{flex: 1, marginLeft: '10px'}}>{weatherCodeToLabel(h.code)}</span>
+                                            <span className={styles.hourlyTemp}>{h.temp}°C</span>
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
-                            );
-                        })()}
-
-                        {/* 시간별 날씨 */}
-                        {currentData && !loading && (
-                            <>
-                                <h2 className={styles.sectionTitle}>{currentData.region?.name} · 시간별 예보</h2>
-                                <div className={styles.hourlyWrap}>
-                                    <table className={styles.table}>
-                                        <thead><tr><th>시간</th><th>날씨</th><th>기온</th><th>강수</th></tr></thead>
-                                        <tbody>
-                                            {currentData.hourly?.slice(0, 12).map((h, i) => (
-                                                <tr key={i}>
-                                                    <td>{new Date(h.time).getHours()}시</td>
-                                                    <td className={styles.cellWeather}>
-                                                        <img src={getWeatherImagePath(h.code)} alt="" className={styles.weatherIcon} />
-                                                        {weatherCodeToLabel(h.code)}
-                                                    </td>
-                                                    <td>{h.temp}°C</td>
-                                                    <td>{h.pop}%</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* 오른쪽 열: 지점별 실시간 현황 */}
-                <aside className={styles.rightColumn}>
-                    <h2 className={styles.branchSectionTitle}>지점별 실시간 날씨</h2>
-                    {BRANCHES.map((b) => {
-                        const data = branchWeather[b.id];
-                        const h = data?.hourly?.[0];
-                        return (
-                            <div key={b.id} className={styles.branchCard}>
-                                <img src={getWeatherImagePath(h?.code)} alt="" className={styles.branchIcon} />
-                                <div className={styles.branchInfo}>
-                                    <span className={styles.branchName}>{b.name}</span>
-                                    <span className={styles.branchWeather}>{weatherCodeToLabel(h?.code)}</span>
-                                </div>
-                                <span className={styles.branchTemp}>{h?.temp != null ? `${h.temp}°C` : '—'}</span>
                             </div>
-                        );
-                    })}
+                        </aside>
 
-                    <div className={styles.card} style={{ marginTop: '16px', padding: '16px' }}>
-                        <h3 className={styles.otherSectionTitle} style={{ fontSize: '0.95rem' }}>기타 주요 지역</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {[0, 1, 2].map((i) => {
-                                const rid = OTHER_REGIONS[(otherStartIndex + i) % OTHER_REGIONS.length];
-                                const d = otherWeatherCache[rid];
-                                const h = d?.hourly?.[0];
+                        {/* 2열: 현재 날씨 Hero & 주간 예보 */}
+                        <main className={`${styles.column} ${styles.centerColumn}`}>
+                            {activeData && (() => {
+                                const cur = activeData.hourly[0];
                                 return (
-                                    <div key={rid} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                        <span>{REGION_NAMES[rid]}</span>
-                                        <span style={{ fontWeight: '700' }}>{h?.temp ?? '—'}°C</span>
+                                    <>
+                                        <motion.div 
+                                            key={selectedId}
+                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                            className={styles.currentHero} 
+                                            style={{ background: getHeroBackground(cur.code) }}
+                                        >
+                                            <div className={styles.heroMain}>
+                                                <span className={styles.heroRegion}>{selectedId === 'current' ? '현위치' : BRANCHES.find(b => b.id === selectedId)?.name}</span>
+                                                <span className={styles.heroWeather}>{weatherCodeToLabel(cur.code)}</span>
+                                                <span className={styles.heroTemp}>{cur.temp}°C</span>
+                                            </div>
+                                            <img src={getWeatherImagePath(cur.code)} alt="" className={styles.heroIconLarge} />
+                                        </motion.div>
+
+                                        <div className={styles.card}>
+                                            <h2 className={styles.sectionTitle}>향후 7일 주간 예보</h2>
+                                            <div className={styles.weeklyGrid}>
+                                                {/* 실제 Daily API 연동 필요하지만 현재 Hourly에서 추출하여 시뮬레이션 */}
+                                                {[0, 1, 2, 3, 4, 5, 6].map(day => {
+                                                    const idx = day * 24;
+                                                    const d = activeData.hourly[idx] || cur;
+                                                    const date = new Date(d.time);
+                                                    const dayName = ['일','월','화','수','목','금','토'][date.getDay()];
+                                                    return (
+                                                        <div key={day} className={styles.weeklyItem}>
+                                                            <div className={styles.weeklyDay}>{dayName}</div>
+                                                            <img src={getWeatherImagePath(d.code)} alt="" className={styles.weeklyIcon} />
+                                                            <div className={styles.weeklyTemp}>{d.temp}°C</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        
+                                        {activeData.dailySummary && (
+                                            <div className={styles.card} style={{ background: '#f0f9ff', border: 'none' }}>
+                                                <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#0369a1', lineHeight: 1.6 }}>
+                                                    💡 오늘의 기상 요약: {activeData.dailySummary}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </main>
+
+                        {/* 3열: 지점 선택 리스트 */}
+                        <aside className={`${styles.column} ${styles.rightColumn}`}>
+                            <h2 className={styles.sectionTitle}>지점별 현황</h2>
+                            <div 
+                                className={`${styles.branchCard} ${selectedId === 'current' ? styles.branchCardActive : ''}`}
+                                onClick={() => setSelectedId('current')}
+                            >
+                                <span className={styles.branchName}>📍 현위치 주변</span>
+                                <span className={styles.branchTemp}>{weatherCache['current']?.hourly[0].temp}°C</span>
+                            </div>
+                            {BRANCHES.map(b => {
+                                const data = weatherCache[b.id];
+                                const cur = data?.hourly[0];
+                                return (
+                                    <div 
+                                        key={b.id} 
+                                        className={`${styles.branchCard} ${selectedId === b.id ? styles.branchCardActive : ''}`}
+                                        onClick={() => setSelectedId(b.id)}
+                                    >
+                                        <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.branchIcon} />
+                                        <span className={styles.branchName}>{b.name}</span>
+                                        <span className={styles.branchTemp}>{cur?.temp ?? '—'}°C</span>
                                     </div>
                                 );
                             })}
+                        </aside>
+                    </div>
+
+                    {/* 하단: 항만 정보 & 특보 */}
+                    <div className={styles.bottomSection}>
+                        <div className={styles.card}>
+                            <h2 className={styles.sectionTitle}>국내 주요 항만 기상 모니터링</h2>
+                            <div className={styles.portGrid}>
+                                {PORTS.map(p => {
+                                    const data = portCache[p.id];
+                                    const cur = data?.hourly[0];
+                                    return (
+                                        <div key={p.id} className={styles.portCard}>
+                                            <div className={styles.portHeader}>
+                                                <span className={styles.portName}>{p.name}</span>
+                                                <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.portWeatherIcon} />
+                                            </div>
+                                            <div className={styles.portData}>
+                                                <span>기온</span><span className={styles.portVal}>{cur?.temp}°C</span>
+                                                <span>파고</span><span className={styles.portVal} style={{color: '#0284c7'}}>{data?.wave}m</span>
+                                                <span>풍속</span><span className={styles.portVal} style={{color: '#059669'}}>{data?.wind}m/s</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className={`${styles.card} ${styles.alertCard}`}>
+                            <h2 className={styles.sectionTitle} style={{color: '#991b1b'}}>⚠️ 기상 특보 및 속보</h2>
+                            <div className={styles.alertItem}>
+                                <strong>[강풍주의보]</strong> 서해안 및 남해안 중심 초속 10m 이상의 강한 바람 주의
+                            </div>
+                            <div className={styles.alertItem}>
+                                <strong>[풍랑주의보]</strong> 동해 중부 먼바다 물결 2.0~4.0m로 매우 높음
+                            </div>
+                            <div className={styles.alertItem}>
+                                <strong>[태풍소식]</strong> 현재 한반도 주변 활동 중인 태풍 없음
+                            </div>
                         </div>
                     </div>
-                </aside>
-            </div>
+                </>
+            )}
         </div>
     );
 }

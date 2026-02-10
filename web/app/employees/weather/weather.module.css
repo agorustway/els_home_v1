@@ -1,434 +1,191 @@
 .page {
-    padding: 0;
-}
-
-.header {
-    margin-bottom: 24px;
-}
-
-.title {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin: 0 0 4px 0;
-}
-
-.subtitle {
-    font-size: 0.9rem;
-    color: #64748b;
-    margin: 0;
-}
-
-.updated {
-    font-size: 0.8rem;
-    color: #64748b;
-    margin: 8px 0 0 0;
+    padding: 10px;
+    max-width: 1600px;
+    margin: 0 auto;
 }
 
 .headerBanner {
-    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
     color: #fff;
-    padding: 20px 24px;
-    border-radius: 16px;
-    margin-bottom: 24px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    margin-bottom: 16px;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 
-.headerBanner .title {
-    color: #fff;
-    margin: 0 0 4px 0;
-}
+.title { font-size: 1.4rem; font-weight: 800; margin: 0; color: #fff; }
+.subtitle { font-size: 0.9rem; opacity: 0.9; margin: 4px 0 0 0; }
 
-.headerBanner .subtitle {
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.headerBanner .updated {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    padding: 24px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-/* 2열 레이아웃 추가 */
+/* 3열 분할 레이아웃 */
 .splitLayout {
-    display: flex;
-    gap: 24px;
+    display: grid;
+    grid-template-columns: 300px 1fr 280px;
+    gap: 16px;
     align-items: flex-start;
 }
 
-.leftColumn {
-    flex: 1;
-    min-width: 0; /* flex 자식의 overflow 방지 */
-}
-
-.rightColumn {
-    width: 320px;
-    flex-shrink: 0;
+.column {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-.branchSectionTitle {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin: 0 0 16px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.branchSectionTitle::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: #2563eb;
-    border-radius: 2px;
-}
-
-.branchCard {
+.card {
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 16px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.2s ease;
-}
-
-.branchCard:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    transform: translateX(4px);
-}
-
-.branchIcon {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-}
-
-.branchInfo {
-    flex: 1;
-}
-
-.branchName {
-    display: block;
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: #334155;
-}
-
-.branchWeather {
-    font-size: 0.85rem;
-    color: #64748b;
-    font-weight: 600;
-}
-
-.branchTemp {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e40af;
-    margin-left: auto;
-}
-
-/* 현위치 고정 - 큰 이미지 */
-.currentSection {
-    margin-bottom: 32px;
-}
-
-.currentSectionTitle {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin: 0 0 16px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.currentSectionTitle::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: #0ea5e9;
-    border-radius: 2px;
-}
-
-.currentHero {
-    min-height: 220px;
-    padding: 32px 40px;
-    border-radius: 24px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-}
-
-.currentHero:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-}
-
-.currentHeroContent {
-    max-width: 65%;
-}
-
-.currentHeroLabel {
-    display: block;
-    font-size: 1.75rem;
-    font-weight: 900;
-    margin-bottom: 4px;
-    letter-spacing: -0.025em;
-}
-
-.currentHeroDesc {
-    font-size: 1.35rem;
-    font-weight: 800;
-    display: block;
-}
-
-.weatherForecastDesc {
-    font-size: 0.95rem;
-    font-weight: 500;
-    line-height: 1.6;
-    margin: 16px 0 0 0;
-    padding-top: 16px;
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-/* 다른 지역 3개 - 작은 이미지, 5초마다 전환 */
-.otherSection {
-    margin-bottom: 40px;
-}
-
-.otherSectionTitle {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin: 0 0 20px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.otherSectionTitle::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: #0ea5e9;
-    border-radius: 2px;
-}
-
-.otherRow {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
-
-.otherCard {
-    background: #fff;
-    border: 1px solid #f1f5f9;
-    border-radius: 20px;
     padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-}
-
-.otherCard:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
-    border-color: #e0f2fe;
-}
-
-.otherCardImg {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.15));
-}
-
-.otherCardBody {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.otherCardName {
-    font-size: 1rem;
-    font-weight: 800;
-    color: #334155;
-}
-
-.otherCardTemp {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #64748b;
-}
-
-.otherCardDate {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    background: #f1f5f9;
-    padding: 2px 6px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-top: 2px;
-}
-
-.cellWeather {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.weatherIcon {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-    flex-shrink: 0;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
-}
-
-.section {
-    margin-bottom: 20px;
-}
-
-.label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #1e293b;
-}
-
-.select {
-    width: 100%;
-    max-width: 200px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    font-size: 1rem;
-    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .sectionTitle {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #334155;
-    margin: 24px 0 12px 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.hourlyWrap {
-    overflow-x: auto;
+.sectionTitle::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: #3b82f6;
+    border-radius: 2px;
 }
 
-.table {
-    width: 100%;
-    min-width: 320px;
-    border-collapse: collapse;
+/* 좌측: 시간별 예보 */
+.hourlyList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 800px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
-.table th,
-.table td {
+.hourlyItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 10px 14px;
-    text-align: left;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.table th {
     background: #f8fafc;
-    color: #64748b;
-    font-weight: 600;
-    font-size: 0.875rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
 }
 
-.loading,
-.error {
-    padding: 16px 0;
-    color: #64748b;
-    font-size: 0.9rem;
+.hourlyTime { font-weight: 700; color: #64748b; width: 40px; }
+.hourlyIcon { width: 30px; height: 30px; }
+.hourlyTemp { font-weight: 800; color: #1e40af; min-width: 40px; text-align: right; }
+
+/* 중앙: 현재 & 주간 */
+.centerColumn { gap: 16px; }
+
+.currentHero {
+    min-height: 180px;
+    padding: 24px 32px;
+    border-radius: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #1e293b;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-.error {
-    color: #dc2626;
+.heroMain { display: flex; flex-direction: column; gap: 4px; }
+.heroRegion { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.02em; }
+.heroWeather { font-size: 1.2rem; font-weight: 700; }
+.heroTemp { font-size: 3rem; font-weight: 900; color: #1e40af; }
+.heroIconLarge { width: 140px; height: 140px; object-fit: contain; }
+
+.weeklyGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
 }
 
-@media (max-width: 1024px) {
-    .splitLayout {
-        flex-direction: column;
-    }
+.weeklyItem {
+    text-align: center;
+    padding: 12px 8px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
 
-    .rightColumn {
-        width: 100%;
-    }
+.weeklyDay { font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+.weeklyIcon { width: 32px; height: 32px; margin: 4px auto; display: block; }
+.weeklyTemp { font-size: 0.9rem; font-weight: 800; color: #1e293b; }
+
+/* 우측: 지점 리스트 */
+.branchCard {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.branchCard:hover, .branchCardActive {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    transform: translateX(4px);
+}
+
+.branchCardActive { box-shadow: 0 0 0 2px #3b82f6; }
+.branchIcon { width: 32px; height: 32px; }
+.branchName { flex: 1; font-weight: 800; font-size: 0.9rem; color: #334155; }
+.branchTemp { font-weight: 800; color: #1e40af; }
+
+/* 하단: 항만 & 특보 */
+.bottomSection {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 16px;
+}
+
+.portGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.portCard {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.portHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.portName { font-weight: 800; font-size: 0.9rem; color: #1e3a8a; }
+.portWeatherIcon { width: 24px; height: 24px; }
+.portData { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.75rem; color: #64748b; }
+.portVal { font-weight: 700; color: #1e293b; }
+
+.alertCard {
+    background: #fff1f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.alertItem { font-size: 0.85rem; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px border-bottom: 1px solid rgba(153, 27, 27, 0.1); }
+.alertItem:last-child { border-bottom: none; margin-bottom: 0; }
+
+@media (max-width: 1200px) {
+    .splitLayout { grid-template-columns: 1fr 1fr; }
+    .rightColumn { grid-column: span 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 }
 
 @media (max-width: 768px) {
-    .currentHero {
-        min-height: 180px;
-        padding: 24px;
-        background-size: 130px !important;
-        background-position: right 12px center !important;
-    }
-
-    .currentHeroLabel {
-        font-size: 1.35rem;
-    }
-
-    .currentHeroDesc {
-        font-size: 1.15rem;
-    }
-
-    .otherRow {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .otherCard {
-        padding: 16px;
-        gap: 16px;
-    }
-
-    .otherCardImg {
-        width: 48px;
-        height: 48px;
-    }
-
-    .otherCardName {
-        font-size: 0.95rem;
-    }
-
-    .otherCardTemp {
-        font-size: 0.9rem;
-    }
-
-    .card {
-        padding: 20px 16px;
-    }
-
-    .select {
-        max-width: 100%;
-        min-height: 44px;
-    }
-
-    .table th,
-    .table td {
-        padding: 8px 10px;
-        font-size: 0.875rem;
-    }
+    .splitLayout { grid-template-columns: 1fr; }
+    .rightColumn { grid-template-columns: 1fr; }
+    .weeklyGrid { grid-template-columns: repeat(4, 1fr); }
+    .bottomSection { grid-template-columns: 1fr; }
 }
