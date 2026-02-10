@@ -632,6 +632,16 @@ export default function SafeFreightPage() {
     });
   };
 
+  /** Enter 키 입력 시 즉시 조회 실행 */
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (canSubmit && !lookupLoading) {
+        e.preventDefault();
+        runLookup();
+      }
+    }
+  };
+
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (canSubmit && !lookupLoading) runLookup(); // Corrected to use !lookupLoading
@@ -862,6 +872,7 @@ export default function SafeFreightPage() {
                       className={styles.select}
                       value={period}
                       onChange={(e) => setPeriod(e.target.value)}
+                      onKeyDown={handleKeyDown}
                     >
                       {(options?.periods || [])
                         .filter((p) => {
@@ -887,6 +898,7 @@ export default function SafeFreightPage() {
                           className={styles.select}
                           value={origin}
                           onChange={(e) => setOrigin(e.target.value)}
+                          onKeyDown={handleKeyDown}
                         >
                           {originList.map((o) => (
                             <option key={o.id} value={o.id} disabled={o.disabled}>
@@ -906,6 +918,7 @@ export default function SafeFreightPage() {
                             onChange={(e) => handleAddressSearch(e.target.value)}
                             onFocus={() => addressSearch && setShowAddressDropdown(true)}
                             onKeyDown={(e) => {
+                              handleKeyDown(e); // 기본 엔터 처리 추가
                               if (e.key === 'ArrowDown') {
                                 e.preventDefault();
                                 setHighlightedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
@@ -949,15 +962,15 @@ export default function SafeFreightPage() {
                           )}
                         </div>
                         <div className={styles.regionGroup}>
-                          <select className={styles.select} value={region1} onChange={(e) => setRegion1(e.target.value)} aria-label="시·도">
+                          <select className={styles.select} value={region1} onChange={(e) => setRegion1(e.target.value)} onKeyDown={handleKeyDown} aria-label="시·도">
                             <option value="">시·도</option>
                             {region1List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
-                          <select className={styles.select} value={region2} onChange={(e) => setRegion2(e.target.value)} disabled={!region1} aria-label="시·군·구">
+                          <select className={styles.select} value={region2} onChange={(e) => setRegion2(e.target.value)} onKeyDown={handleKeyDown} disabled={!region1} aria-label="시·군·구">
                             <option value="">시·군·구</option>
                             {region2List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
-                          <select className={styles.select} value={region3} onChange={(e) => setRegion3(e.target.value)} disabled={!region2} aria-label="읍·면·동">
+                          <select className={styles.select} value={region3} onChange={(e) => setRegion3(e.target.value)} onKeyDown={handleKeyDown} disabled={!region2} aria-label="읍·면·동">
                             <option value="">읍·면·동</option>
                             {region3List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
@@ -981,6 +994,7 @@ export default function SafeFreightPage() {
                                 value="round"
                                 checked={tripMode === 'round'}
                                 onChange={() => setTripMode('round')}
+                                onKeyDown={handleKeyDown}
                               />
                               운송(왕복)
                             </label>
@@ -991,6 +1005,7 @@ export default function SafeFreightPage() {
                                 value="oneWay"
                                 checked={tripMode === 'oneWay'}
                                 onChange={() => setTripMode('oneWay')}
+                                onKeyDown={handleKeyDown}
                               />
                               구간(편도)
                             </label>
@@ -1006,6 +1021,7 @@ export default function SafeFreightPage() {
                           className={styles.select}
                           value={distType}
                           onChange={(e) => setDistType(e.target.value)}
+                          onKeyDown={handleKeyDown}
                           aria-label="거리별 구분"
                         >
                           {(options?.distanceTypes || []).map((d) => ( // Corrected to use distanceTypes
@@ -1023,6 +1039,7 @@ export default function SafeFreightPage() {
                               value="round"
                               checked={tripMode === 'round'}
                               onChange={() => setTripMode('round')}
+                              onKeyDown={handleKeyDown}
                             />
                             운송(왕복)
                           </label>
@@ -1033,6 +1050,7 @@ export default function SafeFreightPage() {
                               value="oneWay"
                               checked={tripMode === 'oneWay'}
                               onChange={() => setTripMode('oneWay')}
+                              onKeyDown={handleKeyDown}
                             />
                             구간(편도)
                           </label>
@@ -1046,12 +1064,24 @@ export default function SafeFreightPage() {
                           className={styles.inputKm}
                           value={inputKm}
                           onChange={(e) => setInputKm(e.target.value)}
+                          onKeyDown={handleKeyDown}
                           placeholder="거리 입력"
                           style={{ width: '100%' }}
                         />
                       </div>
                     </>
                   )}
+                  {/* 빠른조회 버튼 추가 */}
+                  <div style={{ marginTop: 'auto', paddingTop: '12px' }}>
+                    <button
+                      type="button"
+                      className={styles.btnQuickSearch}
+                      onClick={runLookup}
+                      disabled={!canSubmit || lookupLoading}
+                    >
+                      {lookupLoading ? '...' : '조건으로 즉시 조회'}
+                    </button>
+                  </div>
                 </form>
               </div>
 
