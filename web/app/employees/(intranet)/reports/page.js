@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getRoleLabel } from '@/utils/roles';
-import styles from '../board/board.module.css';
+import styles from './reports.module.css';
 
 export default function WorkReportsPage() {
     const { role, user, loading: authLoading } = useUserRole();

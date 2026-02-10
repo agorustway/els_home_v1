@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { formatPhoneNumber } from '@/utils/format';
-import styles from '../../../board/board.module.css';
+import styles from '../../reports.module.css';
 
 export default function NewDailyReportPage() {
     const { role, user, loading: authLoading } = useUserRole();

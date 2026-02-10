@@ -42,19 +42,6 @@ const navLinks = [
         children: [
             { href: '/employees/weather', label: '인트라넷 홈' },
             { type: 'divider' },
-            {
-                label: '직원 서비스',
-                children: [
-                    { href: '/employees/weather', label: '날씨' },
-                    { href: '/employees/news', label: '뉴스' },
-                    { href: '/employees/board/free', label: '자유게시판' },
-                    { href: '/employees/random-game', label: '랜덤게임' },
-                ]
-            },
-            { type: 'divider' },
-            { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
-            { href: '/admin', label: '고객 문의 관리', isAdmin: true },
-            { type: 'divider' },
             { label: '자동화시스템', type: 'label' },
             { href: '/employees/safe-freight', label: '안전운임 조회' },
             { href: '/employees/container-history', label: '컨테이너 이력조회' },
@@ -88,6 +75,15 @@ const navLinks = [
             },
             { type: 'divider' },
             {
+                label: '직원 서비스',
+                children: [
+                    { href: '/employees/weather', label: '날씨' },
+                    { href: '/employees/news', label: '뉴스' },
+                    { href: '/employees/board/free', label: '자유게시판' },
+                    { href: '/employees/random-game', label: '랜덤게임' },
+                ]
+            },
+            {
                 label: '지점별 서비스',
                 children: [
                     { label: '수도권/본사', type: 'label' },
@@ -99,7 +95,10 @@ const navLinks = [
                     { href: '/employees/branches/dangjin', label: '당진지점', isSubItem: true },
                     { href: '/employees/branches/yesan', label: '예산지점', isSubItem: true },
                 ]
-            }
+            },
+            { type: 'divider' },
+            { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
+            { href: '/admin', label: '고객 문의 관리', isAdmin: true },
         ]
     },
 ];

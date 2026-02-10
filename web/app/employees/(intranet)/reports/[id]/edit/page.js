@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
-import styles from '../../../board/board.module.css';
+import styles from '../../reports.module.css';
 
 export default function EditReportPage() {
     const { id } = useParams();
@@ -11,6 +11,7 @@ export default function EditReportPage() {
     const router = useRouter();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [reportKind, setReportKind] = useState('daily');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +39,7 @@ export default function EditReportPage() {
                 }
                 setTitle(data.post.title);
                 setContent(data.post.content);
+                setReportKind(data.post.report_kind || 'daily');
             }
         } catch (error) {
             console.error(error);
@@ -53,7 +55,7 @@ export default function EditReportPage() {
             const res = await fetch(`/api/board/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content }),
+                body: JSON.stringify({ title, content, report_kind: reportKind }),
             });
 
             if (res.ok) {
@@ -75,12 +77,25 @@ export default function EditReportPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>업무보고 수정</h1>
             </div>
 
             <div className={styles.editorCard}>
                 <form onSubmit={handleSubmit}>
+                    <div className={styles.formGroup} style={{ maxWidth: '300px' }}>
+                        <label className={styles.label}>보고 종류</label>
+                        <select 
+                            value={reportKind} 
+                            onChange={(e) => setReportKind(e.target.value)} 
+                            className={styles.input} 
+                            required
+                        >
+                            <option value="daily">일일 업무일지</option>
+                            <option value="monthly">월간 실적보고</option>
+                        </select>
+                    </div>
+
                     <div className={styles.formGroup}>
                         <label className={styles.label}>제목</label>
                         <input
@@ -92,6 +107,7 @@ export default function EditReportPage() {
                             required
                         />
                     </div>
+                    
                     <div className={styles.formGroup}>
                         <label className={styles.label}>내용</label>
                         <textarea
@@ -102,6 +118,7 @@ export default function EditReportPage() {
                             required
                         />
                     </div>
+
                     <div className={styles.editorActions}>
                         <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>취소</button>
                         <button type="submit" disabled={submitting} className={styles.btnPrimary}>

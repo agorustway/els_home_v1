@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getRoleLabel } from '@/utils/roles';
-import styles from '../../board/board.module.css';
+import styles from '../reports.module.css';
 
 export default function MonthlyReportsPage() {
     const { role, loading: authLoading } = useUserRole();
@@ -50,11 +50,6 @@ export default function MonthlyReportsPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>{branchTitle}</h1>
-            </div>
-            <div className={styles.controls}>
-                <Link href="/employees/reports/monthly/new" className={styles.btnPrimary}>
-                    실적보고 작성
-                </Link>
             </div>
 
             <div className={styles.detailCard}>

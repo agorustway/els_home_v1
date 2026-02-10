@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getRoleLabel } from '@/utils/roles';
-import styles from '../../board/board.module.css';
+import styles from '../reports.module.css';
 
 export default function MyReportsPage() {
     const { role, user, loading: authLoading } = useUserRole();
@@ -49,45 +49,48 @@ export default function MyReportsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.headerBanner}>
+            <div className={styles.headerBanner} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h1 className={styles.title}>내 업무보고</h1>
-            </div>
-            <div className={styles.controls}>
-                <Link href="/employees/reports/new" className={styles.btnPrimary}>
-                    보고서 작성
+                <Link href="/employees/reports/new" className={styles.btnPrimary} style={{ backgroundColor: '#fff', color: '#1e3a8a' }}>
+                    ✍️ 새 보고서 작성
                 </Link>
             </div>
 
-            <table className={styles.boardTable}>
-                <thead>
-                    <tr>
-                        <th style={{ width: '80px' }}>번호</th>
-                        <th style={{ width: '100px' }}>지점</th>
-                        <th>제목</th>
-                        <th style={{ width: '120px' }}>날짜</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {posts.map((post, index) => (
-                        <tr key={post.id} className={styles.postRow}>
-                            <td>{posts.length - index}</td>
-                            <td><span style={{ fontSize: '0.8rem', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{getRoleLabel(post.branch_tag)}</span></td>
-                            <td>
-                                {post.title}
-                            </td>
-                            <td className={styles.date}>
-                                {new Date(post.created_at).toLocaleDateString()}
-                                <Link href={`/employees/reports/${post.id}`} className={styles.postTitle} aria-label="상세보기" />
-                            </td>
-                        </tr>
-                    ))}
-                    {posts.length === 0 && (
+            <div className={styles.detailCard}>
+                <table className={styles.boardTable}>
+                    <thead>
                         <tr>
-                            <td colSpan="4" className={styles.empty}>작성한 업무보고가 없습니다.</td>
+                            <th style={{ width: '80px' }} className={styles.colNum}>번호</th>
+                            <th style={{ width: '100px' }} className={styles.colBranch}>지점</th>
+                            <th className={styles.colTitle}>제목</th>
+                            <th style={{ width: '120px' }} className={styles.colDate}>날짜</th>
                         </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {posts.map((post, index) => (
+                            <tr
+                                key={post.id}
+                                className={styles.postRow}
+                                onClick={() => router.push(`/employees/reports/${post.id}`)}
+                            >
+                                <td className={styles.colNum}>{posts.length - index}</td>
+                                <td className={styles.colBranch}><span style={{ fontSize: '0.8rem', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{getRoleLabel(post.branch_tag)}</span></td>
+                                <td className={styles.colTitle}>
+                                    <span className={styles.postTitle}>{post.title}</span>
+                                </td>
+                                <td className={`${styles.date} ${styles.colDate}`}>
+                                    {new Date(post.created_at).toLocaleDateString()}
+                                </td>
+                            </tr>
+                        ))}
+                        {posts.length === 0 && (
+                            <tr>
+                                <td colSpan="4" className={styles.empty}>작성한 업무보고가 없습니다.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
