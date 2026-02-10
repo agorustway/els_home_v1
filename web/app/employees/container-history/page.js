@@ -222,17 +222,27 @@ function ContainerHistoryInner() {
     };
 
     const handleFileUpload = (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files ? e.target.files[0] : null;
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
+            if (typeof XLSX === 'undefined') { setLogLines(prev => [...prev, '[오류] 엑셀 라이브러리 로드 실패']); return; }
             const data = new Uint8Array(evt.target.result);
             const wb = XLSX.read(data, { type: 'array' });
             const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
             const containers = rows.flat().filter(c => c && typeof c === 'string').map(c => c.trim().toUpperCase());
             setContainerInput(containers.join('\n'));
+            setLogLines(prev => [...prev, `[파일] ${containers.length}개 번호 추출 완료`]);
         };
         reader.readAsArrayBuffer(file);
+    };
+
+    const handleFileDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+            handleFileUpload({ target: { files: [file] } });
+        }
     };
 
     const resetAll = () => {
@@ -286,7 +296,7 @@ function ContainerHistoryInner() {
                                 </div>
                                 <div className={styles.loginActionRow}>
                                     <button onClick={() => handleLogin()} disabled={loginLoading} className={styles.button} style={{ flex: 1 }}>
-                                        {loginLoading ? '접속 중...' : '자동 로그인 연동'}
+                                        {loginLoading ? '접속 시도 중...' : '자동 로그인 연동'}
                                     </button>
                                     <label className={styles.saveControl}>
                                         <input type="checkbox" checked={isSaveChecked} onChange={e => setIsSaveChecked(e.target.checked)} />
@@ -304,12 +314,18 @@ function ContainerHistoryInner() {
                                     <input type="checkbox" checked={showBrowser} onChange={e => setShowBrowser(e.target.checked)} /> 디버그
                                 </label>
                             </div>
-                            <textarea
-                                placeholder="컨테이너 번호를 입력하세요 (엔터 구분)"
-                                value={containerInput}
-                                onChange={e => setContainerInput(e.target.value)}
-                                className={styles.textarea}
-                            />
+                            <div 
+                                onDrop={handleFileDrop} 
+                                onDragOver={e => e.preventDefault()} 
+                                style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                            >
+                                <textarea
+                                    placeholder="번호를 입력하거나 엑셀 파일을 여기에 끌어다 놓으세요."
+                                    value={containerInput}
+                                    onChange={e => setContainerInput(e.target.value)}
+                                    className={styles.textarea}
+                                />
+                            </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button onClick={() => fileInputRef.current.click()} className={styles.buttonSecondary} style={{ flex: 1 }}>엑셀 불러오기</button>
                                 <button onClick={runSearch} disabled={loading} className={styles.button} style={{ flex: 2 }}>
