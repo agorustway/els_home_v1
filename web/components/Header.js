@@ -37,15 +37,20 @@ const navLinks = [
     { href: '/contact', label: '문의하기', isContact: true },
     {
         label: '인트라넷',
-        href: '/employees',
+        href: '/employees/weather',
         isEmployee: true,
         children: [
-            { href: '/employees', label: '인트라넷 홈' },
+            { href: '/employees/weather', label: '인트라넷 홈' },
             { type: 'divider' },
-            { href: '/employees/weather', label: '날씨' },
-            { href: '/employees/news', label: '뉴스' },
-            { href: '/employees/board/free', label: '자유게시판' },
-            { href: '/employees/random-game', label: '랜덤게임' },
+            {
+                label: '직원 서비스',
+                children: [
+                    { href: '/employees/weather', label: '날씨' },
+                    { href: '/employees/news', label: '뉴스' },
+                    { href: '/employees/board/free', label: '자유게시판' },
+                    { href: '/employees/random-game', label: '랜덤게임' },
+                ]
+            },
             { type: 'divider' },
             { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
             { href: '/admin', label: '고객 문의 관리', isAdmin: true },
@@ -191,8 +196,8 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     };
 
     // Determine visual styles based on state
-    // 인트라넷 홈(/employees)에서는 일반 페이지처럼 투명 헤더 적용
-    const isIntranetHome = pathname === '/employees' || pathname === '/employees/';
+    // 새로운 인트라넷 홈(/employees/weather)에서는 일반 페이지처럼 투명 헤더 적용
+    const isIntranetHome = pathname === '/employees/weather' || pathname === '/employees/weather/';
     const isDarkHeader = scrolled || darkVariant || (isEmployees && !isIntranetHome);
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
     const textColor = isDarkHeader ? '#1a1a1a' : '#ffffff';
