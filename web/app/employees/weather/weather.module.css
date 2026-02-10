@@ -56,6 +56,91 @@
     border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* 2열 레이아웃 추가 */
+.splitLayout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.leftColumn {
+    flex: 1;
+    min-width: 0; /* flex 자식의 overflow 방지 */
+}
+
+.rightColumn {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.branchSectionTitle {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.branchSectionTitle::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: #2563eb;
+    border-radius: 2px;
+}
+
+.branchCard {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+.branchCard:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateX(4px);
+}
+
+.branchIcon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.branchInfo {
+    flex: 1;
+}
+
+.branchName {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #334155;
+}
+
+.branchWeather {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.branchTemp {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e40af;
+    margin-left: auto;
+}
+
 /* 현위치 고정 - 큰 이미지 */
 .currentSection {
     margin-bottom: 32px;
@@ -281,6 +366,16 @@
 
 .error {
     color: #dc2626;
+}
+
+@media (max-width: 1024px) {
+    .splitLayout {
+        flex-direction: column;
+    }
+
+    .rightColumn {
+        width: 100%;
+    }
 }
 
 @media (max-width: 768px) {
