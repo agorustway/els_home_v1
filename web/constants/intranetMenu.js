@@ -1,6 +1,5 @@
 /**
  * 임직원 메뉴 구조: 메인 탭 → 탭별 사이드 메뉴 (eTrans 3.0 스타일)
- * 인트라넷 홈 상위, 자료/연락처 분리, 시스템 → 자동화시스템
  */
 
 /** 배열 순서 = 경로 매칭 우선순위(앞일수록 우선). displayOrder = 탭 표시 순서. */
@@ -8,8 +7,8 @@ export const MAIN_TABS = [
     {
         id: 'home',
         label: '인트라넷 홈',
-        defaultPath: '/employees',
-        pathPatterns: ['/employees', '/employees/weather', '/employees/news', '/employees/simple-game'],
+        defaultPath: '/employees/weather', // 날씨가 첫 화면이 되도록 변경 가능
+        pathPatterns: ['/employees', '/employees/weather', '/employees/news', '/employees/board', '/employees/random-game'],
         displayOrder: 5,
     },
     {
@@ -59,10 +58,10 @@ export const MAIN_TABS = [
 
 export const SIDEBAR_ITEMS = {
     home: [
-        { label: '자유게시판', path: '/employees/board/free' },
-        { label: '단순게임', path: '/employees/simple-game' },
         { label: '날씨', path: '/employees/weather' },
         { label: '뉴스', path: '/employees/news' },
+        { label: '자유게시판', path: '/employees/board/free' },
+        { label: '복불복게임', path: '/employees/random-game' },
     ],
     docs: [
         { label: '업무자료실', path: '/employees/work-docs' },
@@ -98,13 +97,9 @@ export const SIDEBAR_ITEMS = {
     ],
 };
 
-/**
- * 현재 경로에 해당하는 메인 탭 ID 반환.
- * 인트라넷 홈: /employees 정확히 또는 /employees/board/* (자유게시판)
- */
 export function getActiveMainTab(pathname, isAdmin) {
     const p = pathname || '';
-    if (p === '/employees' || p === '/employees/' || p.startsWith('/employees/board') || p.startsWith('/employees/weather') || p.startsWith('/employees/news') || p.startsWith('/employees/simple-game')) return 'home';
+    if (p === '/employees' || p === '/employees/' || p.startsWith('/employees/board') || p.startsWith('/employees/weather') || p.startsWith('/employees/news') || p.startsWith('/employees/random-game') || p.startsWith('/employees/simple-game')) return 'home';
     for (const tab of MAIN_TABS) {
         if (tab.adminOnly && !isAdmin) continue;
         if (tab.id === 'home') continue;
