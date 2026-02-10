@@ -9,7 +9,7 @@ export const MAIN_TABS = [
         id: 'home',
         label: '인트라넷 홈',
         defaultPath: '/employees',
-        pathPatterns: ['/employees', '/employees/weather', '/employees/news'],
+        pathPatterns: ['/employees', '/employees/weather', '/employees/news', '/employees/simple-game'],
         displayOrder: 5,
     },
     {
@@ -60,6 +60,7 @@ export const MAIN_TABS = [
 export const SIDEBAR_ITEMS = {
     home: [
         { label: '자유게시판', path: '/employees/board/free' },
+        { label: '단순게임', path: '/employees/simple-game' },
         { label: '날씨', path: '/employees/weather' },
         { label: '뉴스', path: '/employees/news' },
     ],
@@ -103,7 +104,7 @@ export const SIDEBAR_ITEMS = {
  */
 export function getActiveMainTab(pathname, isAdmin) {
     const p = pathname || '';
-    if (p === '/employees' || p === '/employees/' || p.startsWith('/employees/board') || p.startsWith('/employees/weather') || p.startsWith('/employees/news')) return 'home';
+    if (p === '/employees' || p === '/employees/' || p.startsWith('/employees/board') || p.startsWith('/employees/weather') || p.startsWith('/employees/news') || p.startsWith('/employees/simple-game')) return 'home';
     for (const tab of MAIN_TABS) {
         if (tab.adminOnly && !isAdmin) continue;
         if (tab.id === 'home') continue;

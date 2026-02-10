@@ -3,7 +3,6 @@
 import styles from '../../employees.module.css';
 import { motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
-import AsanMealGame from '@/components/AsanMealGame';
 import AsanLunchMenu from '@/components/AsanLunchMenu';
 
 export default function BranchPage({ params }) {
@@ -32,15 +31,9 @@ export default function BranchPage({ params }) {
                         <p className={styles.branchDesc}>해당 지점 임직원을 위한 전용 공간입니다.<br />현재 페이지 준비 중입니다. 잠시만 기다려 주세요.</p>
 
                         {branch === 'asan' && (
-                            <>
-                                <div style={{ marginBottom: '60px' }}>
-                                    <AsanLunchMenu />
-                                </div>
-                                <div className={styles.gameWrapper}>
-                                    <h3 className={styles.gameTitle}>🎲 아산지점 이벤트 게임</h3>
-                                    <AsanMealGame />
-                                </div>
-                            </>
+                            <div style={{ marginBottom: '60px' }}>
+                                <AsanLunchMenu />
+                            </div>
                         )}
                         <div className={styles.branchDivider} />
                     </motion.div>
