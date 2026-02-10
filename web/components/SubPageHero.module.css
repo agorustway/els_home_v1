@@ -21,53 +21,59 @@
 
 .heroContainer {
     position: relative;
-    z-index: 2;
+    z-index: 2; /* Sticky 헤더들(850+)보다 아래에 위치하도록 조정 */
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
 }
 
 .content {
-    max-width: 600px;
+    max-width: 650px;
+    position: relative;
 }
 
 .title {
-    font-size: 3rem;
+    font-size: 2.8rem;
     font-weight: 900;
     color: #fff;
     margin-bottom: 12px;
     letter-spacing: -0.03em;
-    text-transform: capitalize;
+    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
 .subtitle {
-    font-size: 1.15rem;
-    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.95);
     line-height: 1.6;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .compact .title {
-    font-size: 2.25rem;
+    font-size: 2rem;
 }
 
 .compact .subtitle {
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 /* 기상 특보 팝업 (우측) */
 .weatherAlertPopup {
-    background: rgba(255, 241, 242, 0.95);
-    border: 1px solid #fecaca;
+    background: rgba(255, 241, 242, 0.92);
+    border: 1px solid rgba(254, 202, 202, 0.8);
     padding: 16px 20px;
     border-radius: 16px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-width: 320px;
+    max-width: 300px;
     cursor: pointer;
-    transition: transform 0.2s ease;
-    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 20;
+    margin-top: 20px; /* 상단 헤더와의 간격 확보 */
 }
 
 .weatherAlertPopup:hover {
@@ -112,14 +118,31 @@
 }
 
 @media (max-width: 1024px) {
-    .title { font-size: 2.5rem; }
-    .heroContainer { flex-direction: column; align-items: flex-start; gap: 24px; }
-    .weatherAlertPopup { max-width: 100%; width: 100%; }
+    .title { font-size: 2.2rem; }
+    .heroContainer { 
+        flex-direction: column; 
+        align-items: flex-start; 
+        gap: 16px; 
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .weatherAlertPopup { 
+        max-width: 100%; 
+        width: 100%; 
+        margin-top: 0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
 }
 
 @media (max-width: 768px) {
-    .hero { height: 280px; }
-    .compact { height: 180px; }
-    .title { font-size: 2rem; }
-    .subtitle { font-size: 0.95rem; }
+    .hero { 
+        height: auto; 
+        min-height: 280px; 
+        padding: 80px 0 20px 0; /* 상단 Fixed 헤더 공간 확보 */
+    }
+    .compact { 
+        min-height: 240px; 
+    }
+    .title { font-size: 1.75rem; line-height: 1.2; }
+    .subtitle { font-size: 0.9rem; }
 }
