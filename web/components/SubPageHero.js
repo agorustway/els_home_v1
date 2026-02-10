@@ -56,11 +56,11 @@ export default function SubPageHero({ title, subtitle, bgImage, compact = false 
                             <span className={styles.alertBadge}>기상 특보</span>
                             <span className={styles.alertTitle}>{weatherAlert.type}</span>
                         </div>
-                        <p className={styles.alertContent}>
+                        <p className={styles.alertDesc}>
                             {weatherAlert.location} 일대 강한 바람 주의<br/>
                             ({weatherAlert.time})
                         </p>
-                        <div className={styles.alertAction}>
+                        <div className={styles.alertLink}>
                             자세히 확인하기 →
                         </div>
                     </motion.div>
