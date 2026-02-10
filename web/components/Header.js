@@ -191,7 +191,9 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     };
 
     // Determine visual styles based on state
-    const isDarkHeader = scrolled || darkVariant || isEmployees;
+    // 인트라넷 홈(/employees)에서는 일반 페이지처럼 투명 헤더 적용
+    const isIntranetHome = pathname === '/employees' || pathname === '/employees/';
+    const isDarkHeader = scrolled || darkVariant || (isEmployees && !isIntranetHome);
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
     const textColor = isDarkHeader ? '#1a1a1a' : '#ffffff';
     const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
@@ -441,13 +443,17 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     return (
         <>
             <header
-                className={`${styles.header} ${isEmployees ? styles.relativeHeader : ''}`}
+                className={`${styles.header} ${isEmployees && !isIntranetHome ? styles.relativeHeader : ''}`}
                 style={{
                     backgroundColor: headerBg,
-                    // boxShadow: shadow, // Removed to prevent header's shadow from affecting SubNav
                     color: textColor,
                     height: '70px',
-                    transition: 'background-color 0.3s, color 0.3s'
+                    transition: 'background-color 0.3s, color 0.3s',
+                    position: (isIntranetHome || !isEmployees) ? 'fixed' : 'relative',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    zIndex: 1000
                 }}
             >
                 <div className="container">

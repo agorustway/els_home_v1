@@ -409,7 +409,7 @@
 .mainContent {
     flex: 1;
     min-width: 0;
-    padding: 24px 32px 48px;
+    padding: 0; /* 상위 여백 완전 제거 */
     background-color: #f8fafc;
 }
 
@@ -419,7 +419,7 @@
     }
 
     .mainContent {
-        padding: 12px 10px 32px;
+        padding: 12px 10px 32px; /* 모바일 패딩 최적화 */
     }
 }
 

@@ -22,7 +22,7 @@ const getRotationDegrees = (element) => {
 };
 
 /**
- * Ladder Game Component
+ * Ladder Game Component (상향 조정 및 버튼 하단 배치)
  */
 const LadderGame = ({ participants, onGameEnd }) => {
     const [rungs, setRungs] = useState([]);
@@ -34,11 +34,11 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
-    const numRows = 12;
+    const numRows = 9; // 높이를 과감하게 줄임 (옆의 룰렛/빙고와 맞춤)
     const COL_SPACE = 120;
     const paddingX = 60;
     const rowHeight = 35; 
-    const boardHeight = numRows * rowHeight; // 420px
+    const boardHeight = numRows * rowHeight; // 315px
     const boardWidth = (numCols - 1) * COL_SPACE + (paddingX * 2);
 
     const generateLadder = () => {
@@ -98,10 +98,10 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
     return (
         <div className={styles.ladderBox}>
-            <div className={styles.gameActions}><button className={styles.premiumBtn} onClick={generateLadder}>🔄 사다리 다시 그리기</button></div>
             <div className={styles.ladderViewport}>
-                <div className={styles.ladderContainer} style={{ width: boardWidth, height: boardHeight + 180 }}>
-                    <div className={styles.ladderHeaderRow}>
+                {/* 전체 높이 룰렛과 비슷하게 맞춤 */}
+                <div className={styles.ladderContainer} style={{ width: boardWidth, height: boardHeight + 140 }}>
+                    <div className={styles.ladderHeaderRow} style={{ top: 0, height: '70px' }}>
                         {participants.map((name, i) => {
                             const done = completedHistory.find(h => h.startIndex === i);
                             return (
@@ -116,7 +116,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                         })}
                     </div>
 
-                    <div className={styles.ladderBoard} style={{ top: 110, height: boardHeight }}>
+                    <div className={styles.ladderBoard} style={{ top: 80, height: boardHeight }}>
                         <svg className={styles.ladderLines} width="100%" height="100%">
                             <g stroke="#cbd5e1" strokeWidth="2.5">
                                 {Array.from({ length: numCols }).map((_, i) => (<line key={`v-${i}`} x1={i * COL_SPACE + paddingX} y1="0" x2={i * COL_SPACE + paddingX} y2="100%" />))}
@@ -138,7 +138,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                         {completedHistory.map((h, i) => (<div key={`static-${i}`} className={styles.staticMarker} style={{ left: h.finalPos.x, top: h.finalPos.y + 20 }}><span className={styles.emojiSmall}>{h.emoji}</span></div>))}
                     </div>
 
-                    <div className={styles.ladderFooterRow} style={{ top: boardHeight + 150 }}>
+                    <div className={styles.ladderFooterRow} style={{ top: boardHeight + 100 }}>
                         {Array.from({ length: numCols }).map((_, i) => (
                             <div key={`foot-${i}`} className={styles.ladderPrizeWrapper} style={{ left: i * COL_SPACE + paddingX }}>
                                 <div className={`${styles.prizeTag} ${i === winnerIndexAtBottom ? styles.prizeWin : styles.prizePass}`}>{i === winnerIndexAtBottom ? '당첨' : '통과'}</div>
@@ -147,13 +147,15 @@ const LadderGame = ({ participants, onGameEnd }) => {
                     </div>
                 </div>
             </div>
+            
+            {/* 다시 그리기 버튼 하단으로 이동 */}
+            <div className={styles.gameActions} style={{ marginTop: '20px' }}>
+                <button className={styles.premiumBtn} onClick={generateLadder}>🔄 사다리 다시 그리기</button>
+            </div>
         </div>
     );
 };
 
-/**
- * Bingo Game
- */
 const BingoGame = ({ onGameEnd }) => {
     const [grid, setGrid] = useState([]);
     const [marked, setMarked] = useState([]);
@@ -197,7 +199,7 @@ export default function RandomGamePage() {
     const [isSpinning, setIsSpinning] = useState(false);
     const [winner, setWinner] = useState(null);
     const [rotation, setRotation] = useState(0);
-    const [spinDuration, setSpinDuration] = useState(6); // 누락된 상태 추가
+    const [spinDuration, setSpinDuration] = useState(6);
     const canvasRef = useRef(null);
     const rouletteTimerRef = useRef(null);
 
@@ -270,7 +272,7 @@ export default function RandomGamePage() {
                     <div className={styles.gameContentArea}>
                         {activeGame === 'roulette' && (
                             <div className={styles.rouletteContainer}>
-                                <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)' : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} /></div>
+                                <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)' : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }} /></div>
                                 <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''}`} onClick={spin}>{isSpinning ? 'STOP!' : 'START'}</button>
                             </div>
                         )}

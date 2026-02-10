@@ -1,31 +1,35 @@
 .hero {
     position: relative;
-    height: 350px;
-    display: flex;
-    align-items: center;
+    width: 100%;
+    height: 420px;
     background-size: cover;
     background-position: center;
+    display: flex;
+    align-items: center;
+    color: #fff;
     overflow: hidden;
 }
 
-.hero.compact {
-    height: 220px;
+.compact {
+    height: 320px;
 }
 
-.overlay {
+.hero::before {
+    content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(30, 58, 138, 0.8) 0%, rgba(30, 58, 138, 0.4) 100%);
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
     z-index: 1;
 }
 
 .heroContainer {
     position: relative;
-    z-index: 2; /* Sticky 헤더들(850+)보다 아래에 위치하도록 조정 */
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    padding-top: 20px;
 }
 
 .content {
@@ -59,11 +63,11 @@
 
 /* 기상 특보 팝업 (우측) */
 .weatherAlertPopup {
-    background: rgba(255, 241, 242, 0.92);
-    border: 1px solid rgba(254, 202, 202, 0.8);
+    background: rgba(255, 241, 242, 0.95); /* 따뜻한 분홍 바탕 */
+    border: 1px solid #fecaca; /* 인접한 핑크 레드 테두리 */
     padding: 16px 20px;
     border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 12px 30px rgba(153, 27, 27, 0.15); /* 적갈색 톤 그림자 */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -73,12 +77,6 @@
     backdrop-filter: blur(12px);
     position: relative;
     z-index: 20;
-    margin-top: 20px; /* 상단 헤더와의 간격 확보 */
-}
-
-.weatherAlertPopup:hover {
-    transform: translateY(-4px);
-    background: #fff1f2;
 }
 
 .alertHeader {
@@ -88,33 +86,41 @@
 }
 
 .alertBadge {
-    background: #e11d48;
+    background: #e11d48; /* 강렬한 레드 포인트 */
     color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
 }
 
 .alertTitle {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 800;
-    color: #9f1239;
+    color: #991b1b; /* 무게감 있는 적갈색 */
 }
 
-.alertContent {
+.alertDesc {
     font-size: 0.85rem;
-    color: #be123c;
+    color: #b91c1c; /* 본문도 적갈색 톤 유지 */
     line-height: 1.4;
-    font-weight: 600;
+    font-weight: 500;
 }
 
-.alertAction {
-    margin-top: 4px;
-    font-size: 0.75rem;
+.alertLink {
+    align-self: flex-end;
+    font-size: 0.8rem;
     font-weight: 800;
-    color: #e11d48;
-    text-align: right;
+    color: #e11d48; /* 선명한 빨간색 바로가기 */
+    text-decoration: none;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.alertLink:hover {
+    text-decoration: underline;
 }
 
 @media (max-width: 1024px) {
@@ -138,7 +144,7 @@
     .hero { 
         height: auto; 
         min-height: 280px; 
-        padding: 80px 0 20px 0; /* 상단 Fixed 헤더 공간 확보 */
+        padding: 80px 0 20px 0;
     }
     .compact { 
         min-height: 240px; 
