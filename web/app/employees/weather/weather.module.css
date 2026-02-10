@@ -16,6 +16,31 @@
 .title { font-size: 1.4rem; font-weight: 800; margin: 0; color: #fff; }
 .subtitle { font-size: 0.9rem; opacity: 0.9; margin: 4px 0 0 0; }
 
+.kmaShortcut {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.kmaShortcut:hover {
+    transform: translateY(-2px);
+    background: #fff;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.kmaShortcut img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+}
+
 /* 상단 긴급 특보 배너 */
 .alertTopBanner {
     background: #fff1f2;

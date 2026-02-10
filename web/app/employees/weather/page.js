@@ -119,8 +119,21 @@ export default function WeatherPage() {
     return (
         <div className={styles.page}>
             <div className={styles.headerBanner}>
-                <h1 className={styles.title}>실시간 기상 관측 대시보드</h1>
-                <p className={styles.subtitle}>현위치, 지점별 정밀 예보 및 항만 기상 정보를 실시간으로 모니터링합니다.</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                        <h1 className={styles.title}>실시간 기상 관측 대시보드</h1>
+                        <p className={styles.subtitle}>현위치, 지점별 정밀 예보 및 항만 기상 정보를 실시간으로 모니터링합니다.</p>
+                    </div>
+                    <a 
+                        href="https://www.weather.go.kr" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.kmaShortcut}
+                        title="기상청 기상특보 바로가기"
+                    >
+                        <img src="/images/weather.png" alt="기상청" />
+                    </a>
+                </div>
             </div>
 
             {/* 상단 기상 특보 알림 바 */}
@@ -129,6 +142,7 @@ export default function WeatherPage() {
                     initial={{ opacity: 0, y: -10 }} 
                     animate={{ opacity: 1, y: 0 }}
                     className={styles.alertTopBanner}
+                    onClick={() => window.open('https://www.weather.go.kr', '_blank')}
                 >
                     <span className={styles.alertBadge}>기상속보</span>
                     <span className={styles.alertText}>
