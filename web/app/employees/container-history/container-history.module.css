@@ -867,13 +867,25 @@
     }
 
     .title {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        letter-spacing: -0.04em;
     }
 
     .headerBanner {
+        justify-content: flex-start;
+        align-items: center;
         gap: 8px;
         margin-bottom: 1rem;
-        padding: 10px 16px;
+        padding: 10px 12px;
+    }
+
+    .etransShortcut {
+        padding: 4px 10px;
+        height: 32px;
+    }
+
+    .etransShortcut img {
+        height: 14px;
     }
 
     .section {
