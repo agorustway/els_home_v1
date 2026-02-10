@@ -1,7 +1,5 @@
 .page {
-    padding: 10px;
-    max-width: 1600px;
-    margin: 0 auto;
+    padding: 0;
 }
 
 .headerBanner {
@@ -122,84 +120,103 @@
 /* 좌측: 시간별 예보 */
 .hourlyList {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-height: 520px; /* 높이 조절하여 중앙 모듈과 맞춤 */
-    overflow-y: auto;
-    padding-right: 4px;
+    flex-direction: column; gap: 10px; max-height: 520px; overflow-y: auto; padding-right: 4px;
 }
 
 .hourlyItem {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: #f8fafc;
-    border-radius: 10px;
-    font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 10px; font-size: 0.85rem;
 }
 
 .hourlyTime { font-weight: 700; color: #64748b; width: 40px; }
 .hourlyIcon { width: 30px; height: 30px; }
 .hourlyTemp { font-weight: 800; color: #1e40af; min-width: 40px; text-align: right; }
 
-/* 중앙: 현재 & 주간 */
-.centerColumn { gap: 16px; }
-
+/* 중앙: 현재 날씨 위젯 (개편) */
 .currentHero {
-    min-height: 180px;
-    padding: 24px 32px;
-    border-radius: 20px;
+    min-height: 240px;
+    padding: 40px;
+    border-radius: 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     color: #1e293b;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
 }
 
-.heroMain { display: flex; flex-direction: column; gap: 4px; }
-.heroRegion { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.02em; }
-.heroWeather { font-size: 1.2rem; font-weight: 700; }
-.heroTemp { font-size: 3rem; font-weight: 900; color: #1e40af; }
-.heroIconLarge { width: 140px; height: 140px; object-fit: contain; }
+.heroMain {
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+}
 
-.weeklyGrid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+.heroRegionBadge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #1e40af;
+    margin-bottom: 20px;
+    width: fit-content;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.heroTemp {
+    font-size: 5rem;
+    font-weight: 900;
+    line-height: 1;
+    color: #1e40af;
+    letter-spacing: -0.05em;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.5);
+}
+
+.heroWeather {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #334155;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
     gap: 10px;
 }
 
-.weeklyItem {
-    text-align: center;
-    padding: 12px 8px;
-    background: #f8fafc;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
+.heroIconLarge {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.2));
+    z-index: 2;
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.heroGlass {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 350px;
+    height: 350px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+}
+
+.weeklyGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.weeklyItem { text-align: center; padding: 12px 8px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }
 .weeklyDay { font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 6px; }
 .weeklyIcon { width: 32px; height: 32px; margin: 4px auto; display: block; }
 .weeklyTemp { font-size: 0.9rem; font-weight: 800; color: #1e293b; }
 
 /* 우측: 지점 리스트 */
 .branchCard {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s;
 }
-
-.branchCard:hover, .branchCardActive {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    transform: translateX(4px);
-}
-
+.branchCard:hover, .branchCardActive { border-color: #3b82f6; background: #eff6ff; transform: translateX(4px); }
 .branchCardActive { box-shadow: 0 0 0 2px #3b82f6; }
 .branchIcon { width: 32px; height: 32px; }
 .branchName { flex: 1; font-weight: 800; font-size: 0.9rem; color: #334155; }
@@ -207,38 +224,33 @@
 
 /* 하단: 항만 & 특보 */
 .bottomSection {
-    margin-top: 24px;
+    margin-top: 20px;
     display: grid;
-    grid-template-columns: 1fr 350px;
+    grid-template-columns: 1fr 320px;
     gap: 16px;
+    width: 100%;
 }
 
 .portGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
 }
 
 .portCard {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 14px;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: center;
 }
-
-.portHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.portName { font-weight: 800; font-size: 0.9rem; color: #1e3a8a; }
-.portWeatherIcon { width: 24px; height: 24px; }
-.portData { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.75rem; color: #64748b; }
+.portCard:hover { border-color: #3b82f6; transform: translateY(-2px); }
+.portHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.portName { font-weight: 800; font-size: 0.85rem; color: #1e3a8a; }
+.portWeatherIcon { width: 22px; height: 22px; }
+.portData { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 0.72rem; color: #64748b; }
 .portVal { font-weight: 700; color: #1e293b; }
 
 .alertCard {
-    background: #fff1f2;
-    border: 1px solid #fecaca;
-    color: #991b1b;
+    background: #fff1f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px;
 }
-
-.alertItem { font-size: 0.85rem; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(153, 27, 27, 0.1); }
+.alertItem { font-size: 0.8rem; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid rgba(153, 27, 27, 0.05); }
 .alertItem:last-child { border-bottom: none; margin-bottom: 0; }
 
 @media (max-width: 1200px) {
@@ -247,24 +259,11 @@
 }
 
 @media (max-width: 768px) {
+    .page { padding: 12px 10px 20px; }
     .splitLayout { grid-template-columns: 1fr; }
     .rightColumn { grid-template-columns: 1fr; }
-    
     .currentHero { padding: 20px; min-height: 150px; }
-    .heroRegion { font-size: 1.4rem; }
-    .heroTemp { font-size: 2.2rem; }
-    .heroIconLarge { width: 80px; height: 80px; }
-
-    .weeklyGrid { 
-        display: grid;
-        grid-template-columns: repeat(4, 1fr); /* 모바일은 4개씩 2줄로 */
-        gap: 8px;
-    }
-    
-    .weeklyItem { padding: 8px 4px; }
-    .weeklyDay { font-size: 0.75rem; }
-    .weeklyTemp { font-size: 0.8rem; }
-
+    .weeklyGrid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .bottomSection { grid-template-columns: 1fr; }
-    .portGrid { grid-template-columns: 1fr 1fr; } /* 항만은 2열로 */
+    .portGrid { grid-template-columns: 1fr 1fr; }
 }
