@@ -53,6 +53,16 @@ export default function SafeFreightPage() {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [autoRunCount, setAutoRunCount] = useState(0);
 
+  // 모달 오픈 시 바디 스크롤 방지 (이중 스크롤바 방지)
+  useEffect(() => {
+    if (noticeModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [noticeModalOpen]);
+
   // 시도 명칭 매핑 (API -> 안전운임 데이터 표준)
   const SIDO_MAP = {
     '서울특별시': '서울시',

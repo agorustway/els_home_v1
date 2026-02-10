@@ -113,9 +113,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000; /* 상단 헤더(1200)보다 높게 수정 */
   padding: 24px;
   box-sizing: border-box;
+  overflow: hidden; /* 오버레이 자체 스크롤 방지 */
 }
 
 .noticeModal {
@@ -174,6 +175,20 @@
   flex: 1;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
+}
+
+/* 스크롤바 디자인 최적화 (가림 방지) */
+.noticeModal .noticeList::-webkit-scrollbar {
+  width: 5px;
+}
+
+.noticeModal .noticeList::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.noticeModal .noticeList::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .noticeSectionTitle {
