@@ -1181,6 +1181,23 @@
     height: 44px !important;
   }
 
+  .select,
+  .addressInput {
+    height: 44px !important;
+    font-size: 0.9rem;
+    padding: 0 12px;
+  }
+
+  .regionGroup .select {
+    height: 56px !important;
+    font-size: 1.05rem;
+    padding: 0 16px;
+  }
+
+  .regionGroup {
+    gap: 6px;
+  }
+
   /* 관련 법령·고시 모달 모바일 최적화 */
   .noticeModalOverlay {
     padding: 0; 
