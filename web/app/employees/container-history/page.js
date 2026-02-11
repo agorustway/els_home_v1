@@ -9,16 +9,16 @@ const ITEMS_PER_PAGE = 10;
 
 function StatusBadge({ type, label }) {
     if (!label || label === '-' || label === '.' || label === '?') return null;
-    
+
     let className = styles.badge;
     const isMainStatus = ['수입', '수출', '반입', '반출'].includes(label);
-    
+
     if (label === '수입') className += ` ${styles.badgeImport}`;
     else if (label === '수출') className += ` ${styles.badgeExport}`;
     else if (label === '반입') className += ` ${styles.badgeInbox}`;
     else if (label === '반출') className += ` ${styles.badgeOutbox}`;
     else className += ` ${styles.badgeEmpty}`;
-    
+
     return <span className={className}>{label}</span>;
 }
 
@@ -181,6 +181,16 @@ function ContainerHistoryInner() {
             if (!grouped[cn]) grouped[cn] = [];
             grouped[cn].push(row);
         });
+
+        // 사용자가 1번이 메인으로 나오길 원하므로 No(인덱스 1) 기준으로 오름차순 정렬
+        Object.keys(grouped).forEach(cn => {
+            grouped[cn].sort((a, b) => {
+                const noA = Number(a[1]) || 0;
+                const noB = Number(b[1]) || 0;
+                return noA - noB;
+            });
+        });
+
         return grouped;
     };
 
@@ -336,9 +346,9 @@ function ContainerHistoryInner() {
                                     <input type="checkbox" checked={showBrowser} onChange={e => setShowBrowser(e.target.checked)} /> 디버그
                                 </label>
                             </div>
-                            <div 
-                                onDrop={handleFileDrop} 
-                                onDragOver={e => e.preventDefault()} 
+                            <div
+                                onDrop={handleFileDrop}
+                                onDragOver={e => e.preventDefault()}
                                 style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
                             >
                                 <textarea
@@ -400,7 +410,7 @@ function ContainerHistoryInner() {
                             ) : (
                                 <div className={styles.waitingBox}>
                                     <div className={styles.pulseIcon}>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
                                     </div>
                                     <p style={{ fontWeight: 800, color: '#64748b', fontSize: '0.85rem' }}>데이터 조회 대기 중</p>
                                 </div>
@@ -465,7 +475,7 @@ function ContainerHistoryInner() {
                                             </tbody>
                                         </table>
                                     </div>
-                                    
+
                                     <div className={styles.resultFooter}>
                                         <input type="text" placeholder="결과 검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.inputSearchCompact} />
                                         <div className={styles.pagination}>
