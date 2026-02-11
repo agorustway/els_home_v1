@@ -4,15 +4,13 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoAlertPresentException
 import time
-import datetime
 import json
 import os
 import sys
-import argparse
 import re
 from openpyxl.styles import PatternFill
 
@@ -153,8 +151,10 @@ def solve_input_and_search(driver, container_no, log_callback=None):
                 if btn.is_displayed():
                     driver.execute_script("arguments[0].click();", btn)
                     break
+            # [수정] 15건 조회로 확정 (100건 설정 로직 제거)
+            # 데이터 로딩 대기
+            time.sleep(3)
             
-            time.sleep(3) # 로딩 대기
             return "조회시도완료"
         except Exception as e:
             return f"입력오류: {e}"
@@ -293,7 +293,7 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
                     
                     # 정규표현식으로 정밀 파싱
                     row_data = re.split(r'\t|\s{2,}', stripped)
-                    if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 20:
+                    if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 200:
                         final_rows.append([cn] + row_data[:14])
                         found_any = True
                 if not found_any:

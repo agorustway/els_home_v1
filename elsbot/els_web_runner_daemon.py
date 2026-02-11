@@ -132,8 +132,13 @@ def run():
         time.sleep(random.uniform(3.0, 7.0))
         
         start_time = time.time()
+        
+        # [추가] 로그 수집
+        logs = []
+        def _log_cb(msg): logs.append(msg)
+        
         # 조회 로직
-        status = solve_input_and_search(driver, cn, log_callback=None)
+        status = solve_input_and_search(driver, cn, log_callback=_log_cb)
         
         result_rows = []
         if "완료" in status:
@@ -161,7 +166,8 @@ def run():
             "ok": True,
             "containerNo": cn,
             "result": result_rows,
-            "elapsed": round(time.time() - start_time, 1)
+            "elapsed": round(time.time() - start_time, 1),
+            "log": logs
         })
     except Exception as e:
         # 예외 발생 시 브라우저 상태가 불안정할 수 있으므로 체크 필요 (생략 가능)

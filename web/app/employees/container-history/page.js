@@ -41,6 +41,7 @@ function ContainerHistoryInner() {
     const [isSaveChecked, setIsSaveChecked] = useState(false);
     const [showBrowser, setShowBrowser] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [totalElapsed, setTotalElapsed] = useState(null);
     const [searchFilter, setSearchFilter] = useState('');
     const [activeStatFilters, setActiveStatFilters] = useState(new Set()); // 다중 선택을 위한 Set
     const [currentPage, setCurrentPage] = useState(1);
@@ -124,7 +125,7 @@ function ContainerHistoryInner() {
             if (res.ok) {
                 initialCreds.current = { id: targetId, pw: targetPw };
                 setLastSavedInfo(new Date().toLocaleString('ko-KR'));
-                setLogLines(prev => [...prev, '✓ 계정 정보가 안전하게 저장되었습니다.']);
+                // setLogLines(prev => [...prev, '✓ 계정 정보가 안전하게 저장되었습니다.']); // 불필요한 로그 제거
             }
         } catch (err) { console.error(err); }
     }, [userId, userPw]);
@@ -182,22 +183,23 @@ function ContainerHistoryInner() {
             grouped[cn].push(row);
         });
 
-        // 사용자가 1번이 메인으로 나오길 원하므로 No(인덱스 1) 기준으로 오름차순 정렬
+        // 데이터 정렬 및 필터링
         Object.keys(grouped).forEach(cn => {
             // 0번 데이터 및 내용이 없는 빈 행 제외 필터링
             grouped[cn] = grouped[cn].filter(row => {
                 const n = Number(row[1]);
                 if (n === 0) return false;
 
-                // 수출입(idx 2)과 구분(idx 3)이 모두 없거나 '-' 또는 '.' 인 경우 빈 행으로 간주
+                // 데이터 정제: 수출입(2)과 구분(3)이 모두 없으면 의미 없는 행으로 간주
                 const status = row[2];
                 const type = row[3];
-                const hasContent = (status && status !== '-' && status !== '.') ||
-                    (type && type !== '-' && type !== '.');
+                const hasContent = (status && status.trim() !== '-' && status.trim() !== '.') ||
+                    (type && type.trim() !== '-' && type.trim() !== '.');
 
                 return hasContent;
             });
 
+            // No 기준 오름차순 정렬 (1번이 맨 위)
             grouped[cn].sort((a, b) => {
                 const noA = Number(a[1]) || 0;
                 const noB = Number(b[1]) || 0;
@@ -232,9 +234,19 @@ function ContainerHistoryInner() {
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);
                         }
+                        // 데몬 로그 출력
+                        if (data.log && Array.isArray(data.log)) {
+                            setLogLines(prev => [...prev, ...data.log]);
+                        }
+                        if (data.elapsed) {
+                            // 개별 건 소요시간이지만 마지막 건일 경우 총 소요시간으로 간주
+                            // 하지만 데몬은 건별 응답이 아니라 한번에 오므로 여기서 처리
+                        }
                     }
                 });
             }
+            // 총 소요시간 계산 (타이머)
+            setTotalElapsed(elapsedSecondsRef.current);
         } catch (err) { console.error(err); }
         finally { setLoading(false); stopTimer(); }
     };
@@ -242,7 +254,12 @@ function ContainerHistoryInner() {
     const runSearch = () => {
         const containers = parseContainerInput(containerInput);
         if (!containers.length) return alert('컨테이너 번호를 입력하세요');
-        if (!loginSuccess) { pendingSearchRef.current = containers; handleLogin(); }
+        setTotalElapsed(null);
+        if (!loginSuccess) {
+            setLogLines(prev => [...prev, '로그인 후 자동으로 조회를 시작합니다...']);
+            pendingSearchRef.current = containers;
+            handleLogin();
+        }
         else { executeSearch(containers); }
     };
 
@@ -408,6 +425,12 @@ function ContainerHistoryInner() {
                                 </div>
                             </div>
 
+                            {totalElapsed && (
+                                <div style={{ padding: '0 24px 12px', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>
+                                    ⏱️ 총 소요 시간: {totalElapsed.toFixed(1)}초
+                                </div>
+                            )}
+
                             {stats ? (
                                 <div className={styles.statsBar}>
                                     {['수출', '수입', '반입', '반출', '양하', '적하'].map((stat) => {
@@ -495,7 +518,7 @@ function ContainerHistoryInner() {
 
                                                             {/* 과거 이력 행들 (No. 2 이상) */}
                                                             {isExpanded && rows.slice(1).map((row, hIdx) => (
-                                                                <tr key={`${cn}-h-${hIdx}`} className={`${rowClass} ${styles.historyRow}`}>
+                                                                <tr key={`${cn}-h-${hIdx}-${row[1]}`} className={`${rowClass} ${styles.historyRow}`}>
                                                                     <td className={styles.stickyColumn} style={{ borderRight: '1px solid #e2e8f0' }}></td>
                                                                     <td className={styles.cellBorder}>{row[1]}</td>
                                                                     <td className={styles.cellBorder}><StatusBadge label={row[2]} /></td>
