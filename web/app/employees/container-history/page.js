@@ -42,7 +42,7 @@ function ContainerHistoryInner() {
     const [showBrowser, setShowBrowser] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [searchFilter, setSearchFilter] = useState('');
-    const [activeStatFilter, setActiveStatFilter] = useState(null);
+    const [activeStatFilters, setActiveStatFilters] = useState(new Set()); // 다중 선택을 위한 Set
     const [currentPage, setCurrentPage] = useState(1);
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [downloadToken, setDownloadToken] = useState(null);
@@ -184,6 +184,20 @@ function ContainerHistoryInner() {
 
         // 사용자가 1번이 메인으로 나오길 원하므로 No(인덱스 1) 기준으로 오름차순 정렬
         Object.keys(grouped).forEach(cn => {
+            // 0번 데이터 및 내용이 없는 빈 행 제외 필터링
+            grouped[cn] = grouped[cn].filter(row => {
+                const n = Number(row[1]);
+                if (n === 0) return false;
+
+                // 수출입(idx 2)과 구분(idx 3)이 모두 없거나 '-' 또는 '.' 인 경우 빈 행으로 간주
+                const status = row[2];
+                const type = row[3];
+                const hasContent = (status && status !== '-' && status !== '.') ||
+                    (type && type !== '-' && type !== '.');
+
+                return hasContent;
+            });
+
             grouped[cn].sort((a, b) => {
                 const noA = Number(a[1]) || 0;
                 const noB = Number(b[1]) || 0;
@@ -233,7 +247,12 @@ function ContainerHistoryInner() {
     };
 
     const toggleStatFilter = (filter) => {
-        setActiveStatFilter(prev => prev === filter ? null : filter);
+        setActiveStatFilters(prev => {
+            const next = new Set(prev);
+            if (next.has(filter)) next.delete(filter);
+            else next.add(filter);
+            return next;
+        });
         setCurrentPage(1);
     };
 
@@ -299,9 +318,18 @@ function ContainerHistoryInner() {
 
     const filtered = result ? Object.keys(result).filter(cn => {
         if (searchFilter && !cn.toLowerCase().includes(searchFilter.toLowerCase())) return false;
-        if (activeStatFilter) {
+
+        // 다중 필터 적용: 선택된 필터가 하나라도 있으면 필터링 수행
+        if (activeStatFilters.size > 0) {
             const r = result[cn][0];
-            return r[2] === activeStatFilter || r[3] === activeStatFilter;
+            // 수출입(idx 2) 또는 구분(idx 3) 중 하나라도 선택된 필터에 포함되면 통과
+            const status = r[2];
+            const type = r[3];
+
+            const matchStatus = status && activeStatFilters.has(status);
+            const matchType = type && activeStatFilters.has(type);
+
+            return matchStatus || matchType;
         }
         return true;
     }) : [];
@@ -382,30 +410,38 @@ function ContainerHistoryInner() {
 
                             {stats ? (
                                 <div className={styles.statsBar}>
-                                    <div className={`${styles.statItem} ${activeStatFilter === '수출' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('수출')}>
-                                        <span className={styles.statDot} style={{ background: '#16a34a' }}></span>
-                                        수출 {stats.export}
-                                    </div>
-                                    <div className={`${styles.statItem} ${activeStatFilter === '수입' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('수입')}>
-                                        <span className={styles.statDot} style={{ background: '#dc2626' }}></span>
-                                        수입 {stats.import}
-                                    </div>
-                                    <div className={`${styles.statItem} ${activeStatFilter === '반입' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('반입')}>
-                                        <span className={styles.statDot} style={{ background: '#2563eb' }}></span>
-                                        반입 {stats.inbox}
-                                    </div>
-                                    <div className={`${styles.statItem} ${activeStatFilter === '반출' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('반출')}>
-                                        <span className={styles.statDot} style={{ background: '#d97706' }}></span>
-                                        반출 {stats.outbox}
-                                    </div>
-                                    <div className={`${styles.statItem} ${activeStatFilter === '양하' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('양하')}>
-                                        <span className={styles.statDot} style={{ background: '#7c3aed' }}></span>
-                                        양하 {stats.unloading}
-                                    </div>
-                                    <div className={`${styles.statItem} ${activeStatFilter === '적하' ? styles.statItemActive : ''}`} onClick={() => toggleStatFilter('적하')}>
-                                        <span className={styles.statDot} style={{ background: '#db2777' }}></span>
-                                        적하 {stats.loading}
-                                    </div>
+                                    {['수출', '수입', '반입', '반출', '양하', '적하'].map((stat) => {
+                                        // 색상 매핑
+                                        const colorMap = {
+                                            '수출': '#16a34a',
+                                            '수입': '#dc2626',
+                                            '반입': '#2563eb',
+                                            '반출': '#d97706',
+                                            '양하': '#7c3aed',
+                                            '적하': '#db2777'
+                                        };
+                                        const countKey = {
+                                            '수출': 'export',
+                                            '수입': 'import',
+                                            '반입': 'inbox',
+                                            '반출': 'outbox',
+                                            '양하': 'unloading',
+                                            '적하': 'loading'
+                                        }[stat];
+
+                                        const isActive = activeStatFilters.has(stat);
+
+                                        return (
+                                            <div
+                                                key={stat}
+                                                className={`${styles.statItem} ${isActive ? styles.statItemActive : ''}`}
+                                                onClick={() => toggleStatFilter(stat)}
+                                            >
+                                                <span className={styles.statDot} style={{ background: colorMap[stat] }}></span>
+                                                {stat} {stats[countKey]}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className={styles.waitingBox}>
