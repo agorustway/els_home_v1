@@ -169,6 +169,18 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         setMenuOpen(false);
     };
 
+    // Special handler for Intranet Item in Global Nav
+    const handleIntranetClick = (e, href) => {
+        // 모바일에서 인트라넷 홈 클릭 시: 글로벌 네비 닫기 + 사이드바 열기 + 페이지 이동
+        if (window.innerWidth < 768) {
+            setMenuOpen(false); // Close Global Nav
+            // Dispatch event to open sidebar (EmployeeLayout listens to this)
+            setTimeout(() => {
+                window.dispatchEvent(new Event('openSidebar'));
+            }, 100);
+        }
+    };
+
     const toggleDropdown = (label) => {
         setExpandedMenus(prev => {
             if (prev.includes(label)) return prev.filter(item => item !== label);
@@ -219,6 +231,14 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                             onClick={(e) => {
                                 if (isMobile) {
                                     e.preventDefault();
+
+                                    // Special logic for '인트라넷' parent item on mobile
+                                    if (link.isEmployee) {
+                                        handleIntranetClick(e, link.href);
+                                        if (link.href) router.push(link.href);
+                                        return;
+                                    }
+
                                     toggleDropdown(link.label);
                                 } else if (link.isEmployee) {
                                     handleProtectedClick(e);
@@ -226,11 +246,14 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                             }}
                         >
                             {link.label}
-                            {isMobile && <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}><path d="m6 9 6 6 6-6" /></svg>}
+                            {isMobile && !link.isEmployee && <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}><path d="m6 9 6 6 6-6" /></svg>}
                         </a>
-                        <div className={isMobile ? `${styles.mobileSub} ${isExpanded ? styles.showSub : ''}` : styles.dropdown}>
-                            {renderSubLinks(link.children, isMobile)}
-                        </div>
+                        {/* Render children only if NOT Employee menu on mobile (since it opens sidebar instead) */}
+                        {(!isMobile || !link.isEmployee) && (
+                            <div className={isMobile ? `${styles.mobileSub} ${isExpanded ? styles.showSub : ''}` : styles.dropdown}>
+                                {renderSubLinks(link.children, isMobile)}
+                            </div>
+                        )}
                     </div>
                 );
             }

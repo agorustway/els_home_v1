@@ -54,8 +54,15 @@ export default function SiteLayout({ children }) {
     // 사이드바 전용 닫기 이벤트 리스너
     useEffect(() => {
         const handleCloseSidebar = () => setIsSidebarOpen(false);
+        const handleOpenSidebar = () => setIsSidebarOpen(true);
+
         window.addEventListener('closeSidebar', handleCloseSidebar);
-        return () => window.removeEventListener('closeSidebar', handleCloseSidebar);
+        window.addEventListener('openSidebar', handleOpenSidebar);
+
+        return () => {
+            window.removeEventListener('closeSidebar', handleCloseSidebar);
+            window.removeEventListener('openSidebar', handleOpenSidebar);
+        };
     }, []);
 
     const handleSidebarToggle = () => {

@@ -26,7 +26,15 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
         <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
             <div className={styles.inner}>
                 <div className={styles.leftSection}>
-                    <button className={styles.mobileMenuBtn} onClick={onMenuClick} aria-label="Open Sidebar">
+                    <button
+                        className={styles.mobileMenuBtn}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onMenuClick) onMenuClick();
+                            else window.dispatchEvent(new Event('openSidebar'));
+                        }}
+                        aria-label="Open Sidebar"
+                    >
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M3 12h18M3 6h18M3 18h18" />
                         </svg>

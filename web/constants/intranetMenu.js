@@ -30,7 +30,7 @@ export const MAIN_TABS = [
         label: '자동화시스템',
         defaultPath: '/employees/safe-freight',
         pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/safe-freight'],
-        displayOrder: 15,
+        displayOrder: 6, // Moved right after Home (5)
     },
     {
         id: 'reports',

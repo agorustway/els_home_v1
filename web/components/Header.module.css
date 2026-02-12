@@ -179,14 +179,17 @@
     top: 100%;
     left: 50%;
     transform: translateX(-50%) translateY(10px);
-    background: #fff;
-    min-width: 160px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    min-width: 200px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    padding: 8px 0;
+    padding: 12px 0;
     z-index: 100;
 }
 
@@ -198,45 +201,47 @@
 
 .dropdownItem {
     display: block;
-    padding: 10px 20px;
-    color: #334155 !important;
-    /* Slate 700 */
-    font-size: 0.9rem !important;
-    font-weight: 600 !important;
+    padding: 12px 24px;
+    color: #475569 !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
     text-shadow: none !important;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
     width: 100%;
     text-align: left;
     white-space: nowrap;
+    position: relative;
 }
 
 .dropdownItem:hover {
-    background: #f1f5f9;
+    background: rgba(59, 130, 246, 0.08);
+    /* faint blue */
     color: var(--primary-blue) !important;
+    padding-left: 28px;
+    /* Slide effect */
 }
 
 .dropdownDivider {
     height: 1px;
-    background: #f1f5f9;
-    margin: 6px 0;
+    background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    margin: 8px 0;
 }
 
 .dropdownLabel {
-    padding: 10px 20px 5px;
-    font-size: 0.75rem;
+    padding: 12px 24px 6px;
+    font-size: 0.7rem;
     font-weight: 800;
     color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.08em;
 }
 
 .dropdownSubItem {
     display: block;
-    padding: 10px 20px 10px 35px;
-    color: #475569 !important;
-    /* Slate 600 */
+    padding: 10px 24px 10px 36px;
+    color: #64748b !important;
     font-size: 0.9rem !important;
-    font-weight: 600 !important;
+    font-weight: 500 !important;
     text-shadow: none !important;
     transition: all 0.2s;
     width: 100%;
@@ -245,7 +250,7 @@
 }
 
 .dropdownSubItem:hover {
-    background: #f1f5f9;
+    background: rgba(59, 130, 246, 0.05);
     color: var(--primary-blue) !important;
 }
 
@@ -257,24 +262,27 @@
 
 .subDropdown {
     position: absolute;
-    top: -5px;
+    top: -8px;
     left: 100%;
-    margin-left: 0;
-    background: #fff;
-    min-width: 180px;
-    border-radius: 12px;
-    box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.1);
+    margin-left: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    min-width: 200px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    padding: 8px 0;
-    transform: translateX(10px);
+    padding: 12px 0;
+    transform: translateX(-10px);
 }
 
 .hasSubDropdown:hover .subDropdown {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateX(0);
 }
 
 /* Utility Area */
