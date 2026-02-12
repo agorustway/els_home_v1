@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import styles from './weather.module.css';
 import { motion } from 'framer-motion';
 
+/**
+ * Constants
+ */
 const BRANCHES = [
     { id: 'seoul', name: '서울본사' },
     { id: 'asan', name: '아산지점' },
@@ -215,7 +218,7 @@ export default function WeatherPage() {
                         </div>
                     </div>
 
-                    {/* 3. Branch List (Horizontal, Top priority) */}
+                    {/* 3. Branch List (Horizontal, Top) */}
                     <div className={styles.branchSection}>
                         <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
                             <span className={styles.cardTitleIcon}>🏢</span> 지점별 날씨
@@ -266,19 +269,46 @@ export default function WeatherPage() {
                         </div>
                     </div>
 
-                    {/* 5. Weekly Forecast */}
-                    <div className={`${styles.card} ${styles.weeklySection}`}>
-                        <div className={styles.cardTitle}>
+                    {/* 5. Weekly Forecast (Detailed Cards, No Container BG) */}
+                    <div className={styles.weeklySection}>
+                        <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
                             <span className={styles.cardTitleIcon}>📅</span> 주간 예보
                         </div>
                         <div className={styles.weeklyGrid}>
-                            {getWeeklyForecast().map((w, i) => (
-                                <div key={i} className={styles.weeklyCard}>
-                                    <div className={`${styles.weekDay} ${i === 0 ? styles.today : ''}`}>{w.dayName}</div>
-                                    <img src={getWeatherImagePath(w.code)} alt="" className={styles.weekIcon} />
-                                    <div className={styles.weekTemp}>{Math.round(w.temp)}°</div>
-                                </div>
-                            ))}
+                            {getWeeklyForecast().map((w, i) => {
+                                // Mock Detailed Data
+                                const feelsLike = (Number(w.temp) - 1.5).toFixed(1);
+                                const dustOptions = [
+                                    { label: '좋음', color: '#10b981', val: '25' },
+                                    { label: '보통', color: '#f59e0b', val: '45' },
+                                    { label: '좋음', color: '#10b981', val: '18' },
+                                    { label: '나쁨', color: '#ef4444', val: '85' }
+                                ];
+                                const dust = dustOptions[Math.floor(Math.random() * dustOptions.length)];
+
+                                return (
+                                    <div key={i} className={styles.weeklyCard}>
+                                        <div className={styles.weeklyInfoSide}>
+                                            <div className={`${styles.weekDay} ${i === 0 ? styles.today : ''}`}>{w.dayName}</div>
+                                            <div className={styles.weekStats}>
+                                                <div className={`${styles.statItem} ${styles.temp}`}>
+                                                    <span className={styles.statLabel}>기온</span>
+                                                    <span className={styles.statVal}>{Math.round(w.temp)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.feels}`}>
+                                                    <span className={styles.statLabel}>체감</span>
+                                                    <span className={styles.statVal}>{Math.round(feelsLike)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.dust}`}>
+                                                    <span className={styles.statLabel}>미세</span>
+                                                    <span className={styles.statVal} style={{ color: dust.color }}>{dust.label}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <img src={getWeatherImagePath(w.code)} alt="" className={styles.weekIcon} />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 
