@@ -85,10 +85,7 @@
     flex-direction: column;
 }
 
-.card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    border-color: #cbd5e1;
-}
+/* Removed .card:hover as requested */
 
 /* Hero Section (Current Weather) */
 .heroCard {
@@ -213,7 +210,7 @@
     text-align: center;
 }
 
-/* Branch Grid (Formerly Flex, now Grid for Full Width) */
+/* Branch Grid (Detailed) */
 .branchSection {
     grid-column: span 12;
     overflow-x: auto;
@@ -222,27 +219,24 @@
 
 .branchGrid {
     display: grid;
-    /* Use auto-fit to fill the available space evenly */
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 12px;
 }
 
 .branchCard {
     min-width: 0;
-    /* Important for Grid items to shrink if needed */
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 16px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    /* Center content in wider card */
-    gap: 10px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
+/* Keep Hover for Branch Card (Interactive) */
 .branchCard:hover,
 .branchActive {
     border-color: #3b82f6;
@@ -254,30 +248,32 @@
     box-shadow: inset 0 0 0 1px #3b82f6;
 }
 
-.branchIcon {
-    width: 32px;
-    height: 32px;
-}
-
-.branchInfo {
+.branchInfoSide {
     display: flex;
     flex-direction: column;
+    gap: 6px;
 }
 
 .branchName {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #475569;
-}
-
-.branchTemp {
-    font-size: 1.1rem;
-    font-weight: 800;
+    font-size: 0.95rem;
+    font-weight: 700;
     color: #1e293b;
 }
 
+.branchStats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
-/* Hourly Forecast (Formerly Flex Scroll, now Grid Wrapping for visual fullness) */
+.branchIcon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+
+/* Hourly Forecast (12h Linear Style) */
 .hourlySection {
     grid-column: span 12;
     padding-bottom: 4px;
@@ -285,50 +281,54 @@
 
 .hourlyTrack {
     display: grid;
-    /* Small items wrapping to fill width */
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    /* Exactly 12 columns for 12 items */
+    grid-template-columns: repeat(12, 1fr);
     gap: 8px;
 }
 
 .hourlyCard {
     min-width: 0;
-    /* Important for Grid */
-    padding: 12px 0;
+    padding: 12px 6px;
+    /* Tight padding */
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    /* Horizontal Layout (1 Line) */
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    /* Center items */
+    gap: 8px;
+    /* Gap between items */
     text-align: center;
-    transition: all 0.2s;
+    /* transition: all 0.2s;  <-- Removed transition to avoid suggestion of interaction */
 }
 
-.hourlyCard:hover {
-    border-color: #3b82f6;
-    background: #f0f9ff;
-}
+/* Removed .hourlyCard:hover */
 
 .hourTime {
     font-size: 0.8rem;
     font-weight: 600;
     color: #64748b;
+    white-space: nowrap;
+    /* Prevent wrapping */
 }
 
 .hourIcon {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    /* Slightly smaller for 1-line */
+    height: 28px;
     object-fit: contain;
 }
 
 .hourTemp {
-    font-size: 0.9rem;
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 800;
     color: #1e293b;
 }
 
-/* Weekly Forecast Grid (Detailed - Replicating Port Style) */
+/* Weekly Forecast Grid */
 .weeklySection {
     grid-column: span 12;
 }
@@ -347,13 +347,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: all 0.2s;
+    /* transition: all 0.2s; <-- Removed transition */
 }
 
-.weeklyCard:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-}
+/* Removed .weeklyCard:hover */
 
 .weeklyInfoSide {
     display: flex;
@@ -439,13 +436,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: all 0.2s;
+    /* transition: all 0.2s; <-- Removed transition */
 }
 
-.portCard:hover {
-    border-color: #0ea5e9;
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.08);
-}
+/* Removed .portCard:hover */
 
 .portInfoSide {
     display: flex;
@@ -482,11 +476,12 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-    .gridContainer {
-        /* Allow flexible wrapping for mobile tablets */
+
+    /* Tablet: Hourly goes to 6 cols */
+    .hourlyTrack {
+        grid-template-columns: repeat(6, 1fr);
     }
 
-    /* Hero & AQ adjustment */
     .heroCard {
         grid-column: span 12;
     }
@@ -559,7 +554,7 @@
     }
 
     .branchCard {
-        min-width: 140px;
+        min-width: 220px;
     }
 
     /* Keep horizontal scroll for Hourly in Mobile */
@@ -569,13 +564,13 @@
     }
 
     .hourlyCard {
-        min-width: 70px;
+        min-width: 140px;
+        /* Wider for horizontal layout */
     }
 
     /* Weekly Grid in Mobile */
     .weeklyGrid {
         grid-template-columns: 1fr;
-        /* Stack vertically for details */
     }
 
     .portGrid {

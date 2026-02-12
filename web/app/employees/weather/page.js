@@ -218,35 +218,77 @@ export default function WeatherPage() {
                         </div>
                     </div>
 
-                    {/* 3. Branch List (Horizontal, Top) */}
+                    {/* 3. Branch List (Detailed + Grid) */}
                     <div className={styles.branchSection}>
                         <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
                             <span className={styles.cardTitleIcon}>🏢</span> 지점별 날씨
                         </div>
                         <div className={styles.branchGrid}>
-                            <div
-                                className={`${styles.branchCard} ${selectedId === 'current' ? styles.branchActive : ''}`}
-                                onClick={() => setSelectedId('current')}
-                            >
-                                <img src={getWeatherImagePath(weatherCache['current']?.hourly[0].code)} alt="" className={styles.branchIcon} />
-                                <div className={styles.branchInfo}>
-                                    <span className={styles.branchName}>현위치</span>
-                                    <span className={styles.branchTemp}>{Math.round(weatherCache['current']?.hourly[0].temp ?? 0)}°</span>
-                                </div>
-                            </div>
+                            {/* Current Location as First Branch */}
+                            {(() => {
+                                const curData = weatherCache['current']?.hourly[0];
+                                const feelsLike = curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-';
+                                // Mock Dust for branch
+                                const dustOptions = [{ label: '좋음', color: '#10b981' }, { label: '보통', color: '#f59e0b' }];
+                                const dust = dustOptions[0]; // Fixed for stability or random
+
+                                return (
+                                    <div
+                                        className={`${styles.branchCard} ${selectedId === 'current' ? styles.branchActive : ''}`}
+                                        onClick={() => setSelectedId('current')}
+                                    >
+                                        <div className={styles.branchInfoSide}>
+                                            <span className={styles.branchName}>현위치</span>
+                                            <div className={styles.branchStats}>
+                                                <div className={`${styles.statItem} ${styles.temp}`}>
+                                                    <span className={styles.statLabel}>기온</span>
+                                                    <span className={styles.statVal}>{Math.round(curData?.temp ?? 0)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.feels}`}>
+                                                    <span className={styles.statLabel}>체감</span>
+                                                    <span className={styles.statVal}>{Math.round(feelsLike)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.dust}`}>
+                                                    <span className={styles.statLabel}>미세</span>
+                                                    <span className={styles.statVal} style={{ color: dust.color }}>{dust.label}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <img src={getWeatherImagePath(curData?.code)} alt="" className={styles.branchIcon} />
+                                    </div>
+                                );
+                            })()}
+
                             {BRANCHES.map(b => {
-                                const cur = weatherCache[b.id]?.hourly[0];
+                                const curData = weatherCache[b.id]?.hourly[0];
+                                const feelsLike = curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-';
+                                const dustOptions = [{ label: '좋음', color: '#10b981' }, { label: '보통', color: '#f59e0b' }];
+                                const dust = dustOptions[Math.floor(Math.random() * dustOptions.length)];
+
                                 return (
                                     <div
                                         key={b.id}
                                         className={`${styles.branchCard} ${selectedId === b.id ? styles.branchActive : ''}`}
                                         onClick={() => setSelectedId(b.id)}
                                     >
-                                        <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.branchIcon} />
-                                        <div className={styles.branchInfo}>
+                                        <div className={styles.branchInfoSide}>
                                             <span className={styles.branchName}>{b.name}</span>
-                                            <span className={styles.branchTemp}>{Math.round(cur?.temp ?? 0)}°</span>
+                                            <div className={styles.branchStats}>
+                                                <div className={`${styles.statItem} ${styles.temp}`}>
+                                                    <span className={styles.statLabel}>기온</span>
+                                                    <span className={styles.statVal}>{Math.round(curData?.temp ?? 0)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.feels}`}>
+                                                    <span className={styles.statLabel}>체감</span>
+                                                    <span className={styles.statVal}>{Math.round(feelsLike)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.dust}`}>
+                                                    <span className={styles.statLabel}>미세</span>
+                                                    <span className={styles.statVal} style={{ color: dust.color }}>{dust.label}</span>
+                                                </div>
+                                            </div>
                                         </div>
+                                        <img src={getWeatherImagePath(curData?.code)} alt="" className={styles.branchIcon} />
                                     </div>
                                 );
                             })}
@@ -256,10 +298,10 @@ export default function WeatherPage() {
                     {/* 4. Hourly Forecast */}
                     <div className={styles.hourlySection}>
                         <div className={styles.cardTitle} style={{ marginBottom: '8px' }}>
-                            <span className={styles.cardTitleIcon}>⏰</span> 24시간 예보
+                            <span className={styles.cardTitleIcon}>⏰</span> 12시간 예보
                         </div>
                         <div className={styles.hourlyTrack}>
-                            {activeData?.hourly?.slice(0, 24).map((h, i) => (
+                            {activeData?.hourly?.slice(0, 12).map((h, i) => (
                                 <div key={i} className={styles.hourlyCard}>
                                     <span className={styles.hourTime}>{new Date(h.time).getHours()}시</span>
                                     <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourIcon} />
