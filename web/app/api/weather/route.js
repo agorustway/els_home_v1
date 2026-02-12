@@ -125,13 +125,22 @@ export async function GET(request) {
     }
 
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
-        const res = await fetch(url, { next: { revalidate: 1800 } });
-        if (!res.ok) throw new Error('날씨 API 오류');
-        const data = await res.json();
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
+        const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia/Seoul`;
+
+        const [weatherRes, airRes] = await Promise.all([
+            fetch(weatherUrl, { next: { revalidate: 1800 } }),
+            fetch(airUrl, { next: { revalidate: 1800 } })
+        ]);
+
+        if (!weatherRes.ok) throw new Error('날씨 API 오류');
+        const weatherData = await weatherRes.json();
+
+        let airData = null;
+        if (airRes.ok) airData = await airRes.json();
 
         const now = new Date();
-        const allTimes = data.hourly?.time || [];
+        const allTimes = weatherData.hourly?.time || [];
         // 현재 시각보다 같거나 큰 첫 번째 인덱스 찾기 (가장 가까운 미래/현재 시각)
         let startIndex = allTimes.findIndex(t => new Date(t) >= now);
         if (startIndex === -1) startIndex = 0; // 예외 처리
@@ -140,20 +149,35 @@ export async function GET(request) {
             const actualIdx = startIndex + i;
             return {
                 time,
-                temp: data.hourly?.temperature_2m?.[actualIdx] ?? null,
-                code: data.hourly?.weathercode?.[actualIdx] ?? null,
-                pop: data.hourly?.precipitation_probability?.[actualIdx] ?? null,
-                apparent_temperature: data.hourly?.apparent_temperature?.[actualIdx] ?? null,
+                temp: weatherData.hourly?.temperature_2m?.[actualIdx] ?? null,
+                code: weatherData.hourly?.weathercode?.[actualIdx] ?? null,
+                pop: weatherData.hourly?.precipitation_probability?.[actualIdx] ?? null,
+                apparent_temperature: weatherData.hourly?.apparent_temperature?.[actualIdx] ?? null,
             };
         });
 
-        const dailySummary = buildDailySummary(data.daily, hourly);
+        // Current Air Quality (using the same index logic if possible, or usually just current hour)
+        let currentAir = null;
+        if (airData && airData.hourly) {
+            // Find index in air quality data (times should align but safety check)
+            const airTimes = airData.hourly.time || [];
+            let airIdx = airTimes.findIndex(t => new Date(t) >= now);
+            if (airIdx === -1) airIdx = 0;
+
+            currentAir = {
+                pm10: airData.hourly.pm10?.[airIdx] ?? null,
+                pm2_5: airData.hourly.pm2_5?.[airIdx] ?? null,
+            };
+        }
+
+        const dailySummary = buildDailySummary(weatherData.daily, hourly);
 
         return NextResponse.json({
             region: { id: regionIdFinal, name: regionName },
             regions: Object.entries(REGIONS).map(([id, r]) => ({ id, name: r.name })),
             hourly,
             dailySummary: dailySummary || undefined,
+            airQuality: currentAir,
             updatedAt: new Date().toISOString(),
         });
     } catch (e) {

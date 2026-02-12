@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
 import styles from './weather.module.css';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 /**
  * Constants
@@ -45,19 +45,12 @@ function getWeatherImagePath(code) {
     return '/images/weather/cloudy_3d.png';
 }
 
-function getHeroBackground(code) {
-    if (code <= 1) return 'linear-gradient(135deg, #fffcf0 0%, #fff7ed 100%)';
-    if (code <= 3) return 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
-    if (code >= 51) return 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
-    return '#f8fafc';
-}
-
 export default function WeatherPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
-    
-    const [selectedId, setSelectedId] = useState('current'); 
-    const [weatherCache, setWeatherCache] = useState({}); 
+
+    const [selectedId, setSelectedId] = useState('current');
+    const [weatherCache, setWeatherCache] = useState({});
     const [portCache, setPortCache] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -101,12 +94,35 @@ export default function WeatherPage() {
 
     const activeData = useMemo(() => weatherCache[selectedId] || weatherCache['current'], [weatherCache, selectedId]);
 
-    const activeAlerts = [{ type: '강풍주의보', location: '서해안 및 남해안', time: '오늘 11:00' }];
+    // Helper for Air Quality Color/Label
+    const getAirQualityStatus = (value, type) => {
+        if (value == null) return { label: '-', color: '#94a3b8' };
+
+        // PM10 (µg/m³) 기준: 0-30 좋음, 31-80 보통, 81-150 나쁨, 151+ 매우나쁨
+        // PM2.5 (µg/m³) 기준: 0-15 좋음, 16-35 보통, 36-75 나쁨, 76+ 매우나쁨
+        let status = '좋음';
+        let color = '#3b82f6'; // Blue
+
+        if (type === 'pm10') {
+            if (value > 150) { status = '매우 나쁨'; color = '#ef4444'; }
+            else if (value > 80) { status = '나쁨'; color = '#f59e0b'; }
+            else if (value > 30) { status = '보통'; color = '#10b981'; }
+        } else {
+            if (value > 75) { status = '매우 나쁨'; color = '#ef4444'; }
+            else if (value > 35) { status = '나쁨'; color = '#f59e0b'; }
+            else if (value > 15) { status = '보통'; color = '#10b981'; }
+        }
+        return { label: status, color };
+    };
+
+    const aq = activeData?.airQuality;
+    const pm10Stat = getAirQualityStatus(aq?.pm10, 'pm10');
+    const pm25Stat = getAirQualityStatus(aq?.pm2_5, 'pm25');
 
     if (authLoading || !role) return null;
 
     const getWeeklyForecast = () => {
-        const days = ['일','월','화','수','목','금','토'];
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
         const result = [];
         const today = new Date();
         const baseTemp = activeData?.hourly[0]?.temp || 0;
@@ -126,150 +142,175 @@ export default function WeatherPage() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.headerBanner}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                        <h1 className={styles.title}>실시간 기상 관측 대시보드</h1>
-                        <p className={styles.subtitle}>현위치 및 전국 지점의 정밀 예보를 실시간 모니터링합니다.</p>
-                    </div>
-                    <a href="https://www.weather.go.kr" target="_blank" rel="noopener noreferrer" className={styles.kmaShortcut}>
-                        <img src="/images/weather.png" alt="기상청" />
-                    </a>
-                </div>
+            <div className={styles.headerSection}>
+                <h1 className={styles.mainTitle}>Weather Dashboard</h1>
+                <p className={styles.subTitle}>실시간 기상 관측 및 대기질 모니터링</p>
             </div>
 
-            {activeAlerts.length > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={styles.alertTopBanner} onClick={() => window.open('https://www.weather.go.kr', '_blank')}>
-                    <span className={styles.alertBadge}>기상속보</span>
-                    <span className={styles.alertText}><strong>[{activeAlerts[0].type}]</strong> {activeAlerts[0].location} 일대 발효 중</span>
-                    <span className={styles.alertLink}>정밀 예보 확인하기 →</span>
-                </motion.div>
-            )}
-
             {loading ? (
-                <div className={styles.card}><p>데이터 분석 중...</p></div>
+                <div className={styles.card} style={{ textAlign: 'center', padding: '60px' }}>
+                    <p style={{ color: '#64748b' }}>기상 데이터를 분석하고 있습니다...</p>
+                </div>
             ) : (
-                <>
-                    <div className={styles.splitLayout}>
-                        {/* 1열: 시간별 예보 */}
-                        <aside className={`${styles.column} ${styles.leftColumn}`}>
-                            <div className={styles.card}>
-                                <h2 className={styles.sectionTitle}>24시간 정밀 예보</h2>
-                                <div className={styles.hourlyList}>
-                                    {activeData?.hourly?.slice(0, 24).map((h, i) => (
-                                        <div key={i} className={styles.hourlyItem}>
-                                            <span className={styles.hourlyTime}>{new Date(h.time).getHours()}시</span>
-                                            <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourlyIcon} />
-                                            <span style={{flex: 1, marginLeft: '10px'}}>{weatherCodeToLabel(h.code)}</span>
-                                            <span className={styles.hourlyTemp}>{h.temp}°C</span>
-                                        </div>
-                                    ))}
+                <div className={styles.gridContainer}>
+                    {/* 1. Hero Card (Current Weather) */}
+                    {activeData && (() => {
+                        const cur = activeData.hourly[0];
+                        return (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                className={`${styles.card} ${styles.heroCard}`}
+                            >
+                                <div className={styles.heroContent}>
+                                    <div className={styles.locationBadge}>
+                                        📍 {selectedId === 'current' ? '현위치' : BRANCHES.find(b => b.id === selectedId)?.name}
+                                    </div>
+                                    <div className={styles.currentTemp}>{Math.round(cur.temp)}°</div>
+                                    <div className={styles.currentCondition}>{weatherCodeToLabel(cur.code)}</div>
+                                    {activeData.dailySummary && (
+                                        <p style={{ marginTop: '12px', fontSize: '0.9rem', color: '#475569', maxWidth: '80%' }}>
+                                            {activeData.dailySummary.split('.')[0]}.
+                                        </p>
+                                    )}
+                                </div>
+                                <div className={styles.heroDecor} />
+                                <img src={getWeatherImagePath(cur.code)} alt="" className={styles.heroIcon} />
+                            </motion.div>
+                        );
+                    })()}
+
+                    {/* 2. Air Quality Card */}
+                    <div className={`${styles.card} ${styles.aqCard}`}>
+                        <div className={styles.cardTitle}>
+                            <span className={styles.cardTitleIcon}>🍃</span> 대기질 현황
+                        </div>
+                        <div className={styles.aqList}>
+                            <div className={styles.aqItem}>
+                                <div>
+                                    <div className={styles.aqName}>미세먼지 (PM10)</div>
+                                    <div className={styles.aqValue}>{aq?.pm10 ?? '-'} <span style={{ fontSize: '0.8rem', fontWeight: 400 }}>µg/m³</span></div>
+                                </div>
+                                <div className={styles.aqStatus} style={{ background: pm10Stat.color }}>
+                                    {pm10Stat.label}
                                 </div>
                             </div>
-                        </aside>
+                            <div className={styles.aqItem}>
+                                <div>
+                                    <div className={styles.aqName}>초미세먼지 (PM2.5)</div>
+                                    <div className={styles.aqValue}>{aq?.pm2_5 ?? '-'} <span style={{ fontSize: '0.8rem', fontWeight: 400 }}>µg/m³</span></div>
+                                </div>
+                                <div className={styles.aqStatus} style={{ background: pm25Stat.color }}>
+                                    {pm25Stat.label}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '12px', textAlign: 'right' }}>
+                            * WHO 기준 적용
+                        </div>
+                    </div>
 
-                        {/* 2열: 현재 날씨 Hero 가로 와이드 레이아웃 */}
-                        <main className={`${styles.column} ${styles.centerColumn}`}>
-                            {activeData && (() => {
-                                const cur = activeData.hourly[0];
-                                return (
-                                    <>
-                                        <motion.div 
-                                            key={selectedId}
-                                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                                            className={styles.currentHero} 
-                                            style={{ background: getHeroBackground(cur.code) }}
-                                        >
-                                            <div className={styles.heroGlass} />
-                                            <div className={styles.heroMain}>
-                                                <div className={styles.heroInfoSide}>
-                                                    <div className={styles.heroRegionBadge}>
-                                                        📍 {selectedId === 'current' ? '현위치 주변' : BRANCHES.find(b => b.id === selectedId)?.name}
-                                                    </div>
-                                                    <div className={styles.heroTemp}>{cur.temp}°C</div>
-                                                    <div className={styles.heroWeather}>
-                                                        <span>{weatherCodeToLabel(cur.code)}</span>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* 기상 요약을 온도 바로 옆으로 배치 */}
-                                                {activeData.dailySummary && (
-                                                    <div className={styles.heroSummarySide}>
-                                                        💡 {activeData.dailySummary}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <img src={getWeatherImagePath(cur.code)} alt="" className={styles.heroIconLarge} />
-                                        </motion.div>
+                    {/* 3. Hourly Forecast (Scrollable) */}
+                    <div className={styles.hourlySection}>
+                        <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
+                            <span className={styles.cardTitleIcon}>clock</span> 24시간 예보
+                        </div>
+                        <div className={styles.hourlyTrack}>
+                            {activeData?.hourly?.slice(0, 24).map((h, i) => (
+                                <div key={i} className={styles.hourlyCard}>
+                                    <span className={styles.hourTime}>{new Date(h.time).getHours()}시</span>
+                                    <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourIcon} />
+                                    <span className={styles.hourTemp}>{Math.round(h.temp)}°</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                                        <div className={styles.card}>
-                                            <h2 className={styles.sectionTitle}>향후 7일 주간 예보</h2>
-                                            <div className={styles.weeklyGrid}>
-                                                {getWeeklyForecast().map((w, i) => (
-                                                    <div key={i} className={styles.weeklyItem}>
-                                                        <div className={styles.weeklyDay} style={{ color: i === 0 ? '#ef4444' : '#64748b' }}>{w.dayName}</div>
-                                                        <img src={getWeatherImagePath(w.code)} alt="" className={styles.weeklyIcon} />
-                                                        <div className={styles.weeklyTemp}>{w.temp}°C</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </main>
+                    {/* 4. Weekly Forecast (Grid) */}
+                    <div className={`${styles.card} ${styles.weeklySection}`}>
+                        <div className={styles.cardTitle}>
+                            <span className={styles.cardTitleIcon}>calendar</span> 주간 예보 (7일)
+                        </div>
+                        <div className={styles.weeklyGrid}>
+                            {getWeeklyForecast().map((w, i) => (
+                                <div key={i} className={styles.weeklyCard}>
+                                    <div className={`${styles.weekDay} ${i === 0 ? styles.today : ''}`}>{w.dayName}</div>
+                                    <img src={getWeatherImagePath(w.code)} alt="" className={styles.weekIcon} />
+                                    <div className={styles.weekTemp}>{Math.round(w.temp)}°</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                        <aside className={`${styles.column} ${styles.rightColumn}`}>
-                            <h2 className={styles.sectionTitle}>지점별 현황</h2>
-                            <div className={`${styles.branchCard} ${selectedId === 'current' ? styles.branchCardActive : ''}`} onClick={() => setSelectedId('current')}>
-                                <span className={styles.branchName}>📍 현위치 주변</span>
-                                <span className={styles.branchTemp}>{weatherCache['current']?.hourly[0].temp}°C</span>
+                    {/* 5. Branch List */}
+                    <div className={styles.branchSection}>
+                        <div className={styles.cardTitle} style={{ marginBottom: '16px' }}>
+                            <span className={styles.cardTitleIcon}>building</span> 지점별 날씨
+                        </div>
+                        <div className={styles.branchGrid}>
+                            <div
+                                className={`${styles.branchCard} ${selectedId === 'current' ? styles.branchActive : ''}`}
+                                onClick={() => setSelectedId('current')}
+                            >
+                                <img src={getWeatherImagePath(weatherCache['current']?.hourly[0].code)} alt="" className={styles.branchIcon} />
+                                <div className={styles.branchInfo}>
+                                    <span className={styles.branchName}>현위치</span>
+                                    <span className={styles.branchTemp}>{Math.round(weatherCache['current']?.hourly[0].temp ?? 0)}°</span>
+                                </div>
                             </div>
                             {BRANCHES.map(b => {
-                                const data = weatherCache[b.id];
-                                const cur = data?.hourly[0];
+                                const cur = weatherCache[b.id]?.hourly[0];
                                 return (
-                                    <div key={b.id} className={`${styles.branchCard} ${selectedId === b.id ? styles.branchCardActive : ''}`} onClick={() => setSelectedId(b.id)}>
+                                    <div
+                                        key={b.id}
+                                        className={`${styles.branchCard} ${selectedId === b.id ? styles.branchActive : ''}`}
+                                        onClick={() => setSelectedId(b.id)}
+                                    >
                                         <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.branchIcon} />
-                                        <span className={styles.branchName}>{b.name}</span>
-                                        <span className={styles.branchTemp}>{cur?.temp ?? '—'}°C</span>
+                                        <div className={styles.branchInfo}>
+                                            <span className={styles.branchName}>{b.name}</span>
+                                            <span className={styles.branchTemp}>{Math.round(cur?.temp ?? 0)}°</span>
+                                        </div>
                                     </div>
                                 );
                             })}
-                        </aside>
+                        </div>
                     </div>
 
-                    <div className={styles.bottomSection}>
-                        <div className={styles.card}>
-                            <h2 className={styles.sectionTitle}>국내 주요 항만 기상 모니터링</h2>
-                            <div className={styles.portGrid}>
-                                {PORTS.map(p => {
-                                    const data = portCache[p.id];
-                                    const cur = data?.hourly[0];
-                                    return (
-                                        <div key={p.id} className={styles.portCard}>
-                                            <div className={styles.portInfo}>
-                                                <span className={styles.portName}>{p.name}</span>
-                                                <div className={styles.portData}>
-                                                    <div className={styles.portDataItem}><span>기온</span><span className={styles.portVal}>{cur?.temp}°C</span></div>
-                                                    <div className={styles.portDataItem}><span>파고</span><span className={styles.portVal} style={{color: '#0284c7'}}>{data?.wave}m</span></div>
-                                                    <div className={styles.portDataItem}><span>풍속</span><span className={styles.portVal} style={{color: '#059669'}}>{data?.wind}m/s</span></div>
+                    {/* 6. Port Monitoring */}
+                    <div className={styles.portSection}>
+                        <div className={styles.cardTitle} style={{ marginBottom: '16px' }}>
+                            <span className={styles.cardTitleIcon}>anchor</span> 주요 항만 기상 모니터링
+                        </div>
+                        <div className={styles.portGrid}>
+                            {PORTS.map(p => {
+                                const data = portCache[p.id];
+                                const cur = data?.hourly[0];
+                                return (
+                                    <div key={p.id} className={styles.portCard}>
+                                        <div className={styles.portInfoSide}>
+                                            <div className={styles.portName}>{p.name}</div>
+                                            <div className={styles.portStats}>
+                                                <div className={`${styles.statItem} ${styles.temp}`}>
+                                                    <span className={styles.statLabel}>기온</span>
+                                                    <span className={styles.statVal}>{Math.round(cur?.temp ?? 0)}°</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.wave}`}>
+                                                    <span className={styles.statLabel}>파고</span>
+                                                    <span className={styles.statVal}>{data?.wave}m</span>
+                                                </div>
+                                                <div className={`${styles.statItem} ${styles.wind}`}>
+                                                    <span className={styles.statLabel}>풍속</span>
+                                                    <span className={styles.statVal}>{data?.wind}m/s</span>
                                                 </div>
                                             </div>
-                                            <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.portWeatherIcon} />
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className={`${styles.card} ${styles.alertCard}`}>
-                            <h2 className={styles.sectionTitle} style={{color: '#991b1b'}}>⚠️ 기상 특보 및 속보</h2>
-                            <div className={styles.alertItem}><strong>[강풍주의보]</strong> 서해안 및 남해안 중심 강한 바람 주의</div>
-                            <div className={styles.alertItem}><strong>[풍랑주의보]</strong> 먼바다 높은 물결 주의</div>
+                                        <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.portIcon} />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
-                </>
+                </div>
             )}
         </div>
     );
