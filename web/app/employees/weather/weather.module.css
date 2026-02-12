@@ -474,7 +474,7 @@
     object-fit: contain;
 }
 
-/* Responsive */
+/* Responsive (Galaxy S24 \u0026 Narrow Mobile Optimized) */
 @media (max-width: 1024px) {
 
     /* Tablet: Hourly goes to 6 cols */
@@ -506,40 +506,96 @@
 
 @media (max-width: 768px) {
     .page {
-        padding: 12px;
+        padding: 10px;
+        /* Reduced for narrow screens */
     }
 
+    /* Header Optimization */
     .headerBanner {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+        padding: 16px;
+        /* Slightly tighter */
+    }
+
+    .mainTitle {
+        font-size: 1.4rem;
+        /* Adjusted for mobile */
+    }
+
+    .subTitle {
+        font-size: 0.85rem;
     }
 
     .kmaShortcut {
         width: 100%;
+        font-size: 0.85rem;
+        padding: 10px;
     }
 
     .gridContainer {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
+        /* Tighter gap */
     }
 
+    /* Hero Optimization - Delicate & Readable */
     .heroCard {
-        padding: 20px;
+        padding: 16px;
+        min-height: 160px;
+        justify-content: flex-start;
+        /* Align contents properly */
     }
 
-    .heroIcon {
-        width: 100px;
-        height: 100px;
+    .heroContent {
+        flex: 2;
+        /* Allocate more space to text */
+    }
+
+    .locationBadge {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        margin-bottom: 8px;
     }
 
     .currentTemp {
-        font-size: 3rem;
+        font-size: 2.8rem;
+        /* Slightly smaller to fit S24 width */
+        letter-spacing: -0.05em;
+        /* Tighter tracking */
     }
 
+    .currentCondition {
+        font-size: 1.1rem;
+        margin-top: 4px;
+    }
+
+    .heroIcon {
+        width: 90px;
+        height: 90px;
+        margin-right: -10px;
+        /* Pull icon simpler */
+    }
+
+    .heroDecor {
+        width: 200px;
+        height: 200px;
+        top: -10%;
+        right: -20%;
+    }
+
+    /* AQ Optimization */
     .aqCard {
         flex-direction: column;
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .cardTitle {
+        margin-bottom: 8px;
+        font-size: 0.95rem;
     }
 
     .aqList {
@@ -547,38 +603,114 @@
         gap: 8px;
     }
 
-    /* Keep horizontal scroll for Branch in Mobile */
+    .aqItem {
+        padding: 8px 10px;
+    }
+
+    .aqName {
+        font-size: 0.8rem;
+    }
+
+    .aqValue {
+        font-size: 0.9rem;
+    }
+
+    /* Branch (Horizontal Scroll) Optimization */
+    .branchSection {
+        padding-bottom: 2px;
+    }
+
     .branchGrid {
         display: flex;
         overflow-x: auto;
+        gap: 8px;
+        /* Tighter gap */
+        padding-right: 10px;
+        /* End padding */
     }
 
     .branchCard {
-        min-width: 220px;
+        min-width: 180px;
+        /* Reduced width for better peek */
+        padding: 12px;
     }
 
-    /* Keep horizontal scroll for Hourly in Mobile */
+    .branchName {
+        font-size: 0.9rem;
+    }
+
+    .branchIcon {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Hourly (Horizontal Scroll) Optimization */
+    .hourlySection {
+        padding-bottom: 2px;
+    }
+
     .hourlyTrack {
         display: flex;
         overflow-x: auto;
+        gap: 8px;
+        padding-right: 10px;
     }
 
     .hourlyCard {
-        min-width: 140px;
-        /* Wider for horizontal layout */
+        min-width: 110px;
+        /* Adjusted for 1 line layout mobile */
+        padding: 8px;
     }
 
-    /* Weekly Grid in Mobile */
-    .weeklyGrid {
-        grid-template-columns: 1fr;
+    .hourTime {
+        font-size: 0.75rem;
     }
 
+    .hourIcon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .hourTemp {
+        font-size: 0.85rem;
+    }
+
+
+    /* Weekly \u0026 Port (Stacked) Optimization */
+    .weeklyGrid,
     .portGrid {
         grid-template-columns: 1fr;
+        gap: 10px;
     }
 
+    .weeklyCard,
     .portCard {
+        padding: 14px;
         flex-direction: row;
-        text-align: left;
+        /* Ensure row layout */
+    }
+
+    .weekDay,
+    .portName {
+        font-size: 0.95rem;
+    }
+
+    .statItem {
+        padding: 2px 6px;
+        gap: 3px;
+    }
+
+    .statLabel {
+        font-size: 0.65rem;
+    }
+
+    .statVal {
+        font-size: 0.8rem;
+    }
+
+    .weekIcon,
+    .portIcon {
+        width: 40px;
+        height: 40px;
     }
 }
