@@ -6,9 +6,6 @@ import { useRouter } from 'next/navigation';
 import styles from './weather.module.css';
 import { motion } from 'framer-motion';
 
-/**
- * Constants
- */
 const BRANCHES = [
     { id: 'seoul', name: '서울본사' },
     { id: 'asan', name: '아산지점' },
@@ -49,7 +46,7 @@ export default function WeatherPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
 
-    const [selectedId, setSelectedId] = useState('current');
+    const [selectedId, setSelectedId] = useState('current'); // 'current', 'seoul', 'asan', etc.
     const [weatherCache, setWeatherCache] = useState({});
     const [portCache, setPortCache] = useState({});
     const [loading, setLoading] = useState(true);
@@ -64,9 +61,12 @@ export default function WeatherPage() {
         const fetchAll = async () => {
             setLoading(true);
             try {
+                // 1. Current IP Location
                 const newCache = {};
                 const curRes = await fetch('/api/weather/region-by-ip');
                 const curIp = await curRes.json();
+
+                // 2. Fetch all branches + current
                 const curWRes = await fetch(`/api/weather?region=${curIp.region || 'seoul'}`);
                 newCache['current'] = await curWRes.json();
 
@@ -76,30 +76,34 @@ export default function WeatherPage() {
                 }
                 setWeatherCache(newCache);
 
+                // 3. Fetch Ports
                 const pCache = {};
                 for (const p of PORTS) {
                     const res = await fetch(`/api/weather?region=${p.id}`);
                     const json = await res.json();
                     pCache[p.id] = {
                         ...json,
-                        wave: (Math.random() * 2 + 0.5).toFixed(1),
-                        wind: (Math.random() * 10 + 2).toFixed(1)
+                        wave: (Math.random() * 2 + 0.5).toFixed(1), // Mock Wave
+                        wind: (Math.random() * 10 + 2).toFixed(1)   // Mock Wind
                     };
                 }
                 setPortCache(pCache);
-            } catch (e) { setError('데이터 오류'); } finally { setLoading(false); }
+            } catch (e) {
+                console.error(e);
+                setError('데이터 오류');
+            } finally {
+                setLoading(false);
+            }
         };
         fetchAll();
     }, [role]);
 
     const activeData = useMemo(() => weatherCache[selectedId] || weatherCache['current'], [weatherCache, selectedId]);
 
-    // Helper for Air Quality Color/Label
+    // Helper for Air Quality
     const getAirQualityStatus = (value, type) => {
         if (value == null) return { label: '-', color: '#94a3b8' };
 
-        // PM10 (µg/m³) 기준: 0-30 좋음, 31-80 보통, 81-150 나쁨, 151+ 매우나쁨
-        // PM2.5 (µg/m³) 기준: 0-15 좋음, 16-35 보통, 36-75 나쁨, 76+ 매우나쁨
         let status = '좋음';
         let color = '#3b82f6'; // Blue
 
@@ -142,9 +146,14 @@ export default function WeatherPage() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.headerSection}>
-                <h1 className={styles.mainTitle}>Weather Dashboard</h1>
-                <p className={styles.subTitle}>실시간 기상 관측 및 대기질 모니터링</p>
+            <div className={styles.headerBanner}>
+                <div className={styles.headerText}>
+                    <h1 className={styles.mainTitle}>기상 대시보드</h1>
+                    <p className={styles.subTitle}>실시간 지점별 기상 및 전 지점 모니터링</p>
+                </div>
+                <a href="https://www.weather.go.kr" target="_blank" rel="noopener noreferrer" className={styles.kmaShortcut}>
+                    기상청 바로가기 ↗
+                </a>
             </div>
 
             {loading ? (
@@ -168,7 +177,7 @@ export default function WeatherPage() {
                                     <div className={styles.currentTemp}>{Math.round(cur.temp)}°</div>
                                     <div className={styles.currentCondition}>{weatherCodeToLabel(cur.code)}</div>
                                     {activeData.dailySummary && (
-                                        <p style={{ marginTop: '12px', fontSize: '0.9rem', color: '#475569', maxWidth: '80%' }}>
+                                        <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#475569', opacity: 0.9 }}>
                                             {activeData.dailySummary.split('.')[0]}.
                                         </p>
                                     )}
@@ -182,7 +191,7 @@ export default function WeatherPage() {
                     {/* 2. Air Quality Card */}
                     <div className={`${styles.card} ${styles.aqCard}`}>
                         <div className={styles.cardTitle}>
-                            <span className={styles.cardTitleIcon}>🍃</span> 대기질 현황
+                            <span className={styles.cardTitleIcon}>🍃</span> 대기질 모니터링
                         </div>
                         <div className={styles.aqList}>
                             <div className={styles.aqItem}>
@@ -204,47 +213,12 @@ export default function WeatherPage() {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '12px', textAlign: 'right' }}>
-                            * WHO 기준 적용
-                        </div>
                     </div>
 
-                    {/* 3. Hourly Forecast (Scrollable) */}
-                    <div className={styles.hourlySection}>
-                        <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
-                            <span className={styles.cardTitleIcon}>clock</span> 24시간 예보
-                        </div>
-                        <div className={styles.hourlyTrack}>
-                            {activeData?.hourly?.slice(0, 24).map((h, i) => (
-                                <div key={i} className={styles.hourlyCard}>
-                                    <span className={styles.hourTime}>{new Date(h.time).getHours()}시</span>
-                                    <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourIcon} />
-                                    <span className={styles.hourTemp}>{Math.round(h.temp)}°</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 4. Weekly Forecast (Grid) */}
-                    <div className={`${styles.card} ${styles.weeklySection}`}>
-                        <div className={styles.cardTitle}>
-                            <span className={styles.cardTitleIcon}>calendar</span> 주간 예보 (7일)
-                        </div>
-                        <div className={styles.weeklyGrid}>
-                            {getWeeklyForecast().map((w, i) => (
-                                <div key={i} className={styles.weeklyCard}>
-                                    <div className={`${styles.weekDay} ${i === 0 ? styles.today : ''}`}>{w.dayName}</div>
-                                    <img src={getWeatherImagePath(w.code)} alt="" className={styles.weekIcon} />
-                                    <div className={styles.weekTemp}>{Math.round(w.temp)}°</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 5. Branch List */}
+                    {/* 3. Branch List (Horizontal, Top priority) */}
                     <div className={styles.branchSection}>
-                        <div className={styles.cardTitle} style={{ marginBottom: '16px' }}>
-                            <span className={styles.cardTitleIcon}>building</span> 지점별 날씨
+                        <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
+                            <span className={styles.cardTitleIcon}>🏢</span> 지점별 날씨
                         </div>
                         <div className={styles.branchGrid}>
                             <div
@@ -276,10 +250,42 @@ export default function WeatherPage() {
                         </div>
                     </div>
 
+                    {/* 4. Hourly Forecast */}
+                    <div className={styles.hourlySection}>
+                        <div className={styles.cardTitle} style={{ marginBottom: '8px' }}>
+                            <span className={styles.cardTitleIcon}>⏰</span> 24시간 예보
+                        </div>
+                        <div className={styles.hourlyTrack}>
+                            {activeData?.hourly?.slice(0, 24).map((h, i) => (
+                                <div key={i} className={styles.hourlyCard}>
+                                    <span className={styles.hourTime}>{new Date(h.time).getHours()}시</span>
+                                    <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourIcon} />
+                                    <span className={styles.hourTemp}>{Math.round(h.temp)}°</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 5. Weekly Forecast */}
+                    <div className={`${styles.card} ${styles.weeklySection}`}>
+                        <div className={styles.cardTitle}>
+                            <span className={styles.cardTitleIcon}>📅</span> 주간 예보
+                        </div>
+                        <div className={styles.weeklyGrid}>
+                            {getWeeklyForecast().map((w, i) => (
+                                <div key={i} className={styles.weeklyCard}>
+                                    <div className={`${styles.weekDay} ${i === 0 ? styles.today : ''}`}>{w.dayName}</div>
+                                    <img src={getWeatherImagePath(w.code)} alt="" className={styles.weekIcon} />
+                                    <div className={styles.weekTemp}>{Math.round(w.temp)}°</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     {/* 6. Port Monitoring */}
                     <div className={styles.portSection}>
-                        <div className={styles.cardTitle} style={{ marginBottom: '16px' }}>
-                            <span className={styles.cardTitleIcon}>anchor</span> 주요 항만 기상 모니터링
+                        <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
+                            <span className={styles.cardTitleIcon}>⚓</span> 주요 항만 기상 모니터링
                         </div>
                         <div className={styles.portGrid}>
                             {PORTS.map(p => {
