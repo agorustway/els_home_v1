@@ -213,7 +213,7 @@
     text-align: center;
 }
 
-/* Branch Grid (Horizontal, Top) */
+/* Branch Grid (Formerly Flex, now Grid for Full Width) */
 .branchSection {
     grid-column: span 12;
     overflow-x: auto;
@@ -221,19 +221,23 @@
 }
 
 .branchGrid {
-    display: flex;
-    /* 가로 배열 */
+    display: grid;
+    /* Use auto-fit to fill the available space evenly */
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
 }
 
 .branchCard {
-    min-width: 160px;
+    min-width: 0;
+    /* Important for Grid items to shrink if needed */
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     padding: 12px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    /* Center content in wider card */
     gap: 10px;
     cursor: pointer;
     transition: all 0.2s;
@@ -273,20 +277,22 @@
 }
 
 
-/* Hourly Forecast */
+/* Hourly Forecast (Formerly Flex Scroll, now Grid Wrapping for visual fullness) */
 .hourlySection {
     grid-column: span 12;
-    overflow-x: auto;
     padding-bottom: 4px;
 }
 
 .hourlyTrack {
-    display: flex;
+    display: grid;
+    /* Small items wrapping to fill width */
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 8px;
 }
 
 .hourlyCard {
-    min-width: 80px;
+    min-width: 0;
+    /* Important for Grid */
     padding: 12px 0;
     background: #fff;
     border: 1px solid #e2e8f0;
@@ -476,6 +482,9 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
+    .gridContainer {
+        /* Allow flexible wrapping for mobile tablets */
+    }
 
     /* Hero & AQ adjustment */
     .heroCard {
@@ -543,8 +552,24 @@
         gap: 8px;
     }
 
+    /* Keep horizontal scroll for Branch in Mobile */
     .branchGrid {
+        display: flex;
         overflow-x: auto;
+    }
+
+    .branchCard {
+        min-width: 140px;
+    }
+
+    /* Keep horizontal scroll for Hourly in Mobile */
+    .hourlyTrack {
+        display: flex;
+        overflow-x: auto;
+    }
+
+    .hourlyCard {
+        min-width: 70px;
     }
 
     /* Weekly Grid in Mobile */
@@ -561,6 +586,4 @@
         flex-direction: row;
         text-align: left;
     }
-
-    /* Keep row layout for details */
 }
