@@ -45,9 +45,16 @@ export default function SiteLayout({ children }) {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // 경로 변경 시 모든 모바일 메뉴 닫기
+    // 경로 변경 시 동작
     useEffect(() => {
-        setIsSidebarOpen(false);
+        // 모바일 인트라넷 메뉴 클릭으로 이동한 경우 사이드바 열기
+        const shouldOpen = sessionStorage.getItem('shouldOpenSidebar');
+        if (shouldOpen) {
+            setIsSidebarOpen(true);
+            sessionStorage.removeItem('shouldOpenSidebar');
+        } else {
+            setIsSidebarOpen(false);
+        }
         window.dispatchEvent(new Event('closeHeaderMenu'));
     }, [pathname]);
 

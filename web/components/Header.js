@@ -174,10 +174,14 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         // 모바일에서 인트라넷 홈 클릭 시: 글로벌 네비 닫기 + 사이드바 열기 + 페이지 이동
         if (window.innerWidth < 768) {
             setMenuOpen(false); // Close Global Nav
-            // Dispatch event to open sidebar (EmployeeLayout listens to this)
-            setTimeout(() => {
+
+            if (pathname === href) {
+                // 이미 해당 페이지면 즉시 열기
                 window.dispatchEvent(new Event('openSidebar'));
-            }, 100);
+            } else {
+                // 페이지 이동 시 SiteLayout에서 감지하여 열도록 플래그 설정
+                sessionStorage.setItem('shouldOpenSidebar', 'true');
+            }
         }
     };
 
