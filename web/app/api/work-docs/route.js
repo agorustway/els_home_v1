@@ -12,19 +12,37 @@ export async function GET() {
 
     const emails = [...new Set(data.map((d) => d.author_email).filter(Boolean))];
     let profiles = [];
+    let roles = [];
+
     if (emails.length > 0) {
+        // Fetch profiles
         const { data: pData } = await supabase
             .from('profiles')
             .select('email, full_name, name')
             .in('email', emails);
         profiles = pData || [];
+
+        // Fetch user_roles (fallback for name)
+        const { data: rData } = await supabase
+            .from('user_roles')
+            .select('email, name')
+            .in('email', emails);
+        roles = rData || [];
     }
-    const profileMap = {};
-    profiles.forEach((p) => { profileMap[p.email] = p; });
+
+    const nameMap = {};
+    // Populate with role names first
+    roles.forEach((r) => {
+        if (r.email && r.name) nameMap[r.email] = r.name;
+    });
+    // Overwrite with profile names if available (higher precedence usually)
+    profiles.forEach((p) => {
+        if (p.email && (p.full_name || p.name)) nameMap[p.email] = p.full_name || p.name;
+    });
 
     const list = data.map((row) => ({
         ...row,
-        author_name: profileMap[row.author_email]?.full_name || profileMap[row.author_email]?.name || row.author_email?.split('@')[0] || '알 수 없음',
+        author_name: nameMap[row.author_email] || row.author_email?.split('@')[0] || '알 수 없음',
     }));
 
     return NextResponse.json({ list });

@@ -9,9 +9,29 @@ export async function GET(request, { params }) {
     if (!data) return NextResponse.json({ item: null }, { status: 404 });
 
     let author_name = data.author_email?.split('@')[0];
+
+    // Try to get name from profiles
     if (data.author_email) {
-        const { data: p } = await supabase.from('profiles').select('full_name, name').eq('email', data.author_email).single();
-        if (p) author_name = p.full_name || p.name || author_name;
+        const { data: p } = await supabase
+            .from('profiles')
+            .select('full_name, name')
+            .eq('email', data.author_email)
+            .single();
+
+        if (p && (p.full_name || p.name)) {
+            author_name = p.full_name || p.name;
+        } else {
+            // Fallback to user_roles if profile name is missing
+            const { data: r } = await supabase
+                .from('user_roles')
+                .select('name')
+                .eq('email', data.author_email)
+                .single();
+
+            if (r && r.name) {
+                author_name = r.name;
+            }
+        }
     }
 
     return NextResponse.json({ item: { ...data, author_name } });

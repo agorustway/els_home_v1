@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../../intranet.module.css';
 
+import IntranetEditor from '@/components/IntranetEditor';
+
 export default function FormTemplatesNewPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
@@ -17,7 +19,6 @@ export default function FormTemplatesNewPage() {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [submitting, setSubmitting] = useState(false);
-    const [activeTab, setActiveTab] = useState('write');
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/form-templates/new');
@@ -60,60 +61,6 @@ export default function FormTemplatesNewPage() {
         setUploadProgress(0);
     };
 
-    // Paste handler for screenshot images
-    const handlePaste = async (e) => {
-        const items = e.clipboardData?.items;
-        if (!items) return;
-
-        let blob = null;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                blob = items[i].getAsFile();
-                break;
-            }
-        }
-
-        if (!blob) return;
-
-        const timestamp = Date.now();
-        const fileName = `paste_image_${timestamp}.png`;
-        const key = `form-templates/${timestamp}_${fileName}`;
-
-        try {
-            // Insert placeholder
-            const cursorPosition = e.target.selectionStart;
-            const textBefore = description.substring(0, cursorPosition);
-            const textAfter = description.substring(e.target.selectionEnd);
-            const placeholder = `\n![업로드 중...](${fileName})\n`;
-            setDescription(textBefore + placeholder + textAfter);
-
-            // Upload
-            const formData = new FormData();
-            formData.append('file', blob);
-            formData.append('key', key);
-
-            const res = await fetch('/api/s3/files', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (res.ok) {
-                const url = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(fileName)}`;
-
-                // Replace placeholder with actual image markdown
-                setDescription(prev => prev.replace(`![업로드 중...](${fileName})`, `![image](${url})`));
-            } else {
-                setDescription(prev => prev.replace(`\n![업로드 중...](${fileName})\n`, '\n(이미지 업로드 실패)\n'));
-                alert('이미지 붙여넣기 업로드 실패');
-            }
-        } catch (err) {
-            console.error(err);
-            setDescription(prev => prev.replace(`\n![업로드 중...](${fileName})\n`, '\n(이미지 업로드 에러)\n'));
-            alert('이미지 업로드 중 오류가 발생했습니다.');
-        }
-    };
-
-
     const [isDragging, setIsDragging] = useState(false);
     const handleDragOver = (e) => {
         e.preventDefault();
@@ -133,33 +80,8 @@ export default function FormTemplatesNewPage() {
     };
 
     const insertImageToContent = (url, name) => {
-        const imgTag = `![${name}](${url})\n`;
-        setDescription(prev => prev + (prev.endsWith('\n') || prev === '' ? '' : '\n') + imgTag);
-    };
-
-    const renderContent = (content) => {
-        if (!content) return <span style={{ color: '#94a3b8' }}>(내용 없음)</span>;
-
-        const imgRegex = /!\[([^\]]*)\]\(([^\)]+)\)/g;
-        const parts = content.split(imgRegex);
-
-        const elements = [];
-        for (let i = 0; i < parts.length; i += 3) {
-            elements.push(<span key={`text-${i}`} style={{ whiteSpace: 'pre-wrap' }}>{parts[i]}</span>);
-            if (parts[i + 1] !== undefined && parts[i + 2] !== undefined) {
-                elements.push(
-                    <div key={`img-container-${i}`} className={styles.bodyImageContainer}>
-                        <img
-                            src={parts[i + 2]}
-                            alt={parts[i + 1]}
-                            className={styles.bodyImage}
-                            style={{ maxWidth: '100%', borderRadius: 8, margin: '10px 0', border: '1px solid #e2e8f0' }}
-                        />
-                    </div>
-                );
-            }
-        }
-        return elements;
+        const imgTag = `<img src="${url}" alt="${name}" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 1px solid #e2e8f0;">`;
+        setDescription(prev => prev + imgTag);
     };
 
     const handleSubmit = async (e) => {
@@ -208,42 +130,12 @@ export default function FormTemplatesNewPage() {
                         <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="서식 제목" required />
                     </div>
                     <div className={styles.formGroup}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <label className={styles.label} style={{ marginBottom: 0 }}>설명</label>
-                            <div style={{ background: '#f1f5f9', padding: '4px', borderRadius: 8, display: 'flex' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('write')}
-                                    className={`${styles.tabBtn} ${activeTab === 'write' ? styles.tabBtnActive : ''}`}
-                                >
-                                    작성
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('preview')}
-                                    className={`${styles.tabBtn} ${activeTab === 'preview' ? styles.tabBtnActive : ''}`}
-                                >
-                                    미리보기
-                                </button>
-                            </div>
-                        </div>
-
-                        {activeTab === 'write' ? (
-                            <textarea
-                                className={styles.textarea}
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                onPaste={handlePaste}
-                                placeholder="서식에 대한 설명을 입력하세요. 스크린샷을 붙여넣기(Ctrl+V)하면 자동으로 업로드됩니다."
-                                style={{ minHeight: 120 }}
-                            />
-                        ) : (
-                            <div className={styles.textarea} style={{ background: '#f8fafc', overflowY: 'auto', minHeight: 120 }}>
-                                <div className={styles.contentBody} style={{ fontSize: '0.95rem' }}>
-                                    {renderContent(description)}
-                                </div>
-                            </div>
-                        )}
+                        <label className={styles.label}>설명</label>
+                        <IntranetEditor
+                            value={description}
+                            onChange={setDescription}
+                            placeholder="서식에 대한 설명을 입력하세요."
+                        />
                     </div>
 
                     <div className={styles.formGroup}>

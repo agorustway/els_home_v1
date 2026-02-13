@@ -30,27 +30,25 @@ export default function FormTemplateDetailPage() {
     const renderContent = (content) => {
         if (!content) return null;
 
-        // Convert ![alt](url) to <img>
-        const imgRegex = /!\[([^\]]*)\]\(([^\)]+)\)/g;
-        const parts = content.split(imgRegex);
-
-        const elements = [];
-        for (let i = 0; i < parts.length; i += 3) {
-            elements.push(<span key={`text-${i}`} style={{ whiteSpace: 'pre-wrap' }}>{parts[i]}</span>);
-            if (parts[i + 1] !== undefined && parts[i + 2] !== undefined) {
-                elements.push(
-                    <div key={`img-container-${i}`} className={styles.bodyImageContainer} style={{ margin: '20px 0' }}>
-                        <img
-                            src={parts[i + 2]}
-                            alt={parts[i + 1]}
-                            className={styles.bodyImage}
-                            style={{ maxWidth: '100%', borderRadius: 12, border: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                        />
-                    </div>
-                );
+        // Check for legacy markdown image format
+        if (content.match(/!\[([^\]]*)\]\(([^\)]+)\)/)) {
+            const imgRegex = /!\[([^\]]*)\]\(([^\)]+)\)/g;
+            const parts = content.split(imgRegex);
+            const elements = [];
+            for (let i = 0; i < parts.length; i += 3) {
+                elements.push(<span key={`text-${i}`} style={{ whiteSpace: 'pre-wrap' }}>{parts[i]}</span>);
+                if (parts[i + 1] !== undefined && parts[i + 2] !== undefined) {
+                    elements.push(
+                        <div key={`img-container-${i}`} className={styles.bodyImageContainer} style={{ margin: '20px 0' }}>
+                            <img src={parts[i + 2]} alt={parts[i + 1]} className={styles.bodyImage} style={{ maxWidth: '100%', borderRadius: 12 }} />
+                        </div>
+                    );
+                }
             }
+            return <div>{elements}</div>;
         }
-        return elements;
+
+        return <div dangerouslySetInnerHTML={{ __html: content }} className={styles.contentBody} />;
     };
 
     const handleDelete = async () => {
