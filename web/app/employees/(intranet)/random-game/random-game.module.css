@@ -11,8 +11,18 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.title { font-size: 1.4rem; font-weight: 800; margin: 0; color: #fff; }
-.subtitle { font-size: 0.9rem; opacity: 0.9; margin: 4px 0 0 0; }
+.title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0;
+    color: #fff;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin: 4px 0 0 0;
+}
 
 /* 3열 대시보드 레이아웃 */
 .splitLayout {
@@ -22,14 +32,18 @@
     align-items: flex-start;
 }
 
-.column { display: flex; flex-direction: column; gap: 16px; }
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 
 .card {
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .sectionTitle {
@@ -42,109 +56,649 @@
     gap: 8px;
     position: relative;
 }
+
 .sectionTitle::before {
-    content: ''; width: 4px; height: 16px; background: #3b82f6; border-radius: 2px;
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: #3b82f6;
+    border-radius: 2px;
 }
 
 /* 참여자 설정 */
-.settingHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.settingHeader h3 { font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px; }
-.settingHeader h3::before { display: none !important; }
-.resetTinyBtn { background: #f1f5f9; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 700; color: #64748b; cursor: pointer; }
+.settingHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
 
-.addForm { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-.addForm input { padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; outline: none; transition: border-color 0.2s; }
-.addForm input:focus { border-color: #2563eb; }
-.addForm button { padding: 12px; background: #2563eb; color: #fff; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.settingHeader h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 
-.nameChips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { background: #f1f5f9; padding: 8px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-.chip button { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; }
+.settingHeader h3::before {
+    display: none !important;
+}
+
+.resetTinyBtn {
+    background: #f1f5f9;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.addForm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.addForm input {
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.addForm input:focus {
+    border-color: #2563eb;
+}
+
+.addForm button {
+    padding: 12px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.nameChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip {
+    background: #f1f5f9;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chip button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
 
 /* 중앙 게임 영역 */
-.gameContentArea { 
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 30px; 
-    min-height: 600px; display: flex; align-items: flex-start; justify-content: center; overflow: hidden; 
+.gameContentArea {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 30px;
+    min-height: 600px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden;
 }
 
 /* Ladder Game 복구 */
-.ladderBox { width: 100%; display: flex; flex-direction: column; align-items: center; }
-.gameActions { margin-bottom: 20px; text-align: center; }
-.premiumBtn { background: #fff; border: 2px solid #e2e8f0; padding: 10px 24px; border-radius: 16px; font-weight: 800; color: #2563eb; cursor: pointer; }
+/* Ladder Game Renewed - Flex Layout */
+.ladderBox {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 
-.ladderViewport { width: 100%; overflow-x: auto; padding: 20px 0; }
-.ladderContainer { position: relative; margin: 0 auto; }
-.ladderHeaderRow { position: absolute; top: 0; left: 0; width: 100%; height: 80px; z-index: 1; }
-.ladderNodeWrapper { position: absolute; transform: translateX(-50%); width: 120px; text-align: center; display: flex; justify-content: center; }
-.node { background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; padding: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.02); min-width: 90px; }
-.nodeIcon { font-size: 2rem; }
-.nodeLabel { font-size: 0.85rem; font-weight: 800; color: #334155; }
+.gameActions {
+    margin-bottom: 20px;
+    text-align: center;
+}
 
-.ladderBoard { position: relative; height: 450px; margin-top: 110px; z-index: 5; }
-.ladderLines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.premiumBtn {
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    padding: 10px 24px;
+    border-radius: 16px;
+    font-weight: 800;
+    color: #2563eb;
+    cursor: pointer;
+    transition: all 0.2s;
+}
 
-.activeMarker { position: absolute; transform: translate(-50%, -50%); z-index: 100 !important; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
-.emojiLarge { font-size: 3.5rem; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2)); }
-.markerNameTag { background: rgba(37, 99, 235, 0.9); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; margin-top: -5px; white-space: nowrap; }
+.premiumBtn:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+}
 
-.staticMarker { position: absolute; transform: translate(-50%, -50%); z-index: 20; }
-.emojiSmall { font-size: 2.5rem; }
+/* Scroll Container */
+.ladderScrollArea {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    /* Hide scrollbar for cleaner look if desired, or keep it */
+    text-align: center;
+}
 
-.ladderFooterRow { position: absolute; top: 550px; left: 0; width: 100%; height: 40px; z-index: 1; }
-.ladderPrizeWrapper { position: absolute; transform: translateX(-50%); width: 120px; text-align: center; display: flex; justify-content: center; }
-.prizeTag { background: #f1f5f9; padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 0.9rem; white-space: nowrap; min-width: 90px; }
-.prizeWin { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
-.prizePass { background: #dcfce7; color: #10b981; border: 1px solid #bbf7d0; }
+/* The Grid Container holding Header, Body, Footer */
+.ladderGridContainer {
+    display: inline-flex;
+    flex-direction: column;
+    /* Allow min-width to grow based on content */
+    padding: 30px 20px 20px 20px;
+    box-sizing: content-box;
+}
+
+/* Header Row (Names) */
+.ladderHeader {
+    display: flex;
+    height: 60px;
+    /* Reduced height */
+    align-items: flex-end;
+    /* Connect to bottom */
+    position: relative;
+    /* Establish stacking context for children */
+    z-index: 1;
+    /* Ensure header is below body for lines to appear on top */
+}
+
+.ladderNodeCol {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    position: relative;
+}
+
+.node {
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 6px 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    min-width: 70px;
+    /* Compact width */
+    text-align: center;
+    transition: all 0.2s;
+    z-index: 0;
+    /* Lower z-index so lines can be on top */
+    position: relative;
+    /* Needed for z-index to apply */
+}
+
+.node:hover {
+    transform: translateY(-2px);
+    border-color: #3b82f6;
+}
+
+.nodeDone {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+}
+
+.nodeIcon {
+    font-size: 1.5rem;
+}
+
+.nodeLabel {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #334155;
+    margin-top: 2px;
+}
+
+/* Body Row (SVG Lines) */
+.ladderBody {
+    position: relative;
+    /* Height will be set inline based on game generation */
+    z-index: 2;
+    /* Ensure body (and lines) are above header/footer */
+}
+
+.ladderLines {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Footer Row (Results) */
+.ladderFooter {
+    display: flex;
+    height: 50px;
+    align-items: flex-start;
+    /* Connect to top */
+    position: relative;
+    /* Establish stacking context for children */
+    z-index: 1;
+    /* Ensure footer is below body for lines to appear on top */
+}
+
+.ladderPrizeCol {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    position: relative;
+}
+
+.prizeTag {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: center;
+    z-index: 0;
+    /* Lower z-index so lines can be on top */
+    position: relative;
+    /* Needed for z-index to apply */
+}
+
+.prizeWin {
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+}
+
+.prizePass {
+    background: #dcfce7;
+    color: #10b981;
+    border: 1px solid #bbf7d0;
+}
+
+/* Markers */
+.activeMarker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    transition: none;
+    /* JS controlled */
+}
+
+.emojiLarge {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.markerNameTag {
+    background: rgba(37, 99, 235, 0.9);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.staticMarker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+.emojiSmall {
+    font-size: 2rem;
+    opacity: 0.8;
+}
 
 /* 🎡 Roulette 복구 (지워졌던 부분) */
-.rouletteContainer { display: flex; flex-direction: column; align-items: center; gap: 30px; }
-.rouletteWrapper { position: relative; border-radius: 50%; padding: 10px; background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
-.indicator { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 30px; color: #ef4444; z-index: 10; }
-.spinBtn { background: #1e293b; color: #fff; padding: 18px 60px; font-size: 1.4rem; font-weight: 900; border-radius: 100px; cursor: pointer; transition: all 0.2s; }
-.btnSpinning { background: #ef4444; }
+.rouletteContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+}
+
+.rouletteWrapper {
+    position: relative;
+    border-radius: 50%;
+    padding: 10px;
+    background: #fff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+}
+
+.indicator {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 30px;
+    color: #ef4444;
+    z-index: 10;
+}
+
+.spinBtn {
+    background: #1e293b;
+    color: #fff;
+    padding: 18px 60px;
+    font-size: 1.4rem;
+    font-weight: 900;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnSpinning {
+    background: #ef4444;
+}
 
 /* 🔢 Bingo 복구 (지워졌던 부분) */
-.bingoWrapper { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
-.bingoBoardOuter { background: #f1f5f9; padding: 24px; border-radius: 24px; width: 100%; max-width: 500px; }
-.bingoHeaderWide { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.bingoGrid5x5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
-.bingoCellItem { aspect-ratio: 1; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.bingoMarkedItem { background: #4f46e5; color: #fff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); }
+.bingoWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.bingoBoardOuter {
+    background: #f1f5f9;
+    padding: 24px;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 500px;
+}
+
+.bingoHeaderWide {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.bingoGrid5x5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.bingoCellItem {
+    aspect-ratio: 1;
+    background: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.8rem;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.bingoMarkedItem {
+    background: #4f46e5;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
 
 /* 게임 선택 버튼 */
-.gameSelector { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-.gameBtn {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px 20px;
-    display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s ease;
+.gameSelector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
 }
-.gameBtn:hover { transform: translateX(4px); border-color: #3b82f6; }
-.gameBtnActive { border-color: #2563eb; background: #eff6ff; }
-.gameBtnIcon { font-size: 1.8rem; }
-.gameBtnName { font-weight: 800; font-size: 0.95rem; color: #334155; }
+
+.gameBtn {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gameBtn:hover {
+    transform: translateX(4px);
+    border-color: #3b82f6;
+}
+
+.gameBtnActive {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.gameBtnIcon {
+    font-size: 1.8rem;
+}
+
+.gameBtnName {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #334155;
+}
 
 /* History */
-.historyCardMini { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; }
-.historyHeader { font-weight: 900; margin-bottom: 12px; font-size: 0.95rem; }
-.historyList { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; }
-.historyItem { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border-left: 3px solid #2563eb; }
-.historyTime { font-size: 0.75rem; color: #94a3b8; }
-.historyResult { font-size: 0.9rem; font-weight: 700; color: #334155; }
+.historyCardMini {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.historyHeader {
+    font-weight: 900;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.historyList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.historyItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border-left: 3px solid #2563eb;
+}
+
+.historyTime {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.historyResult {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
+}
 
 /* Popup Overlay */
-.resultOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.resultCard { background: #fff; padding: 50px 40px; border-radius: 32px; text-align: center; max-width: 420px; width: 100%; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
-.confirmBtn { width: 100%; margin-top: 30px; padding: 16px; background: #2563eb; color: #fff; border: none; border-radius: 16px; font-weight: 800; font-size: 1.1rem; cursor: pointer; }
+.resultOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.resultCard {
+    background: #fff;
+    padding: 50px 40px;
+    border-radius: 32px;
+    text-align: center;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+}
+
+.confirmBtn {
+    width: 100%;
+    margin-top: 30px;
+    padding: 16px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
 
 @media (max-width: 1200px) {
-    .splitLayout { grid-template-columns: 1fr 1fr; }
-    .column:nth-child(3) { grid-column: span 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .splitLayout {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .column:nth-child(3) {
+        grid-column: span 2;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
 }
 
 @media (max-width: 768px) {
-    .page { padding: 12px 10px 20px; }
-    .splitLayout { grid-template-columns: 1fr; }
-    .column:nth-child(3) { grid-column: auto; display: flex; flex-direction: column; }
-    .gameContentArea { padding: 10px; min-height: 500px; }
-    .ladderBoard { height: 350px; margin-top: 80px; }
-    .ladderFooterRow { top: 450px; }
+    .page {
+        padding: 12px 10px 20px;
+    }
+
+    .splitLayout {
+        grid-template-columns: 1fr;
+    }
+
+    .column:nth-child(3) {
+        grid-column: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .gameContentArea {
+        padding: 20px 10px;
+        min-height: 400px;
+    }
+
+    .ladderBoard {
+        height: 480px;
+        /* 사다리 높이 증가 */
+        margin-top: 100px;
+        /* 이름과 사다리 시작점 사이 공간 확보 */
+    }
+
+    .ladderFooterRow {
+        top: 580px;
+        /* 종료 지점 위치 조정 (높이 + 마진) */
+    }
+
+    /* Roulette Mobile */
+    .rouletteWrapper {
+        padding: 5px;
+        max-width: 100%;
+        /* Ensure it doesn't visually overflow */
+        box-sizing: border-box;
+    }
+
+    .spinBtn {
+        padding: 14px 40px;
+        font-size: 1.2rem;
+    }
+
+    /* Bingo Mobile */
+    .bingoBoardOuter {
+        padding: 12px;
+    }
+
+    .bingoGrid5x5 {
+        gap: 4px;
+    }
+
+    .bingoCellItem {
+        font-size: 0.65rem;
+        border-radius: 6px;
+    }
+
+    /* Ladder Mobile */
+    .ladderViewport {
+        padding: 0 0 10px 0;
+        /* Remove top padding to move names up */
+    }
+
+    /* Reduce vertical padding */
+}
+
+@media (max-width: 480px) {
+    .page {
+        padding: 0 4px;
+    }
+
+    .card {
+        padding: 12px;
+        /* 카드 여백 축소 */
+    }
+
+    /* Reset Mobile Optimizations for New Ladder Game Code */
+    .gameContentArea {
+        padding: 10px;
+    }
+
+    .ladderBox {
+        width: 100%;
+        margin-top: 0;
+    }
+
+    /* 룰렛 컨테이너 간격 조정 */
+    .rouletteContainer {
+        gap: 16px;
+    }
+
+    .indicator {
+        font-size: 24px;
+        top: -5px;
+    }
+
+    .bingoGrid5x5 {
+        gap: 3px;
+    }
+
+    .bingoCellItem {
+        font-size: 0.6rem;
+    }
+
+    .bingoHeaderWide {
+        margin-bottom: 8px;
+    }
 }

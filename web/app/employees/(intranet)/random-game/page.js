@@ -39,11 +39,11 @@ const BingoGame = ({ onGameEnd }) => {
         setMarked(next);
         let lines = 0;
         for (let i = 0; i < 5; i++) {
-            if ([0,1,2,3,4].every(j => next.includes(`${i}-${j}`))) lines++;
-            if ([0,1,2,3,4].every(j => next.includes(`${j}-${i}`))) lines++;
+            if ([0, 1, 2, 3, 4].every(j => next.includes(`${i}-${j}`))) lines++;
+            if ([0, 1, 2, 3, 4].every(j => next.includes(`${j}-${i}`))) lines++;
         }
-        if ([0,1,2,3,4].every(i => next.includes(`${i}-${i}`))) lines++;
-        if ([0,1,2,3,4].every(i => next.includes(`${i}-${4-i}`))) lines++;
+        if ([0, 1, 2, 3, 4].every(i => next.includes(`${i}-${i}`))) lines++;
+        if ([0, 1, 2, 3, 4].every(i => next.includes(`${i}-${4 - i}`))) lines++;
         if (lines >= 3) { setShowWin(true); onGameEnd('🔢 빙고', '3줄 빙고 완성! 🎯'); }
     };
     return (
@@ -52,7 +52,7 @@ const BingoGame = ({ onGameEnd }) => {
                 <div className={styles.bingoHeaderWide}><button className={styles.resetTinyBtn} onClick={init}>새 판 짜기</button></div>
                 <div className={styles.bingoGrid5x5}>{grid.flat().map((item, i) => (<div key={i} className={`${styles.bingoCellItem} ${marked.includes(`${item.r}-${item.c}`) ? styles.bingoMarkedItem : ''}`} onClick={() => handleToggle(item.r, item.c)}>{item.v}</div>))}</div>
             </div>
-            <AnimatePresence>{showWin && (<div className={styles.resultOverlay} onClick={() => setShowWin(false)}><motion.div className={styles.resultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}><div style={{ fontSize: '5rem' }}>👑</div><h2>BINGO!</h2><p>축하합니다!<br/>3줄 빙고를 완성했습니다.</p><button className={styles.confirmBtn}>확인</button></motion.div></div>)}</AnimatePresence>
+            <AnimatePresence>{showWin && (<div className={styles.resultOverlay} onClick={() => setShowWin(false)}><motion.div className={styles.resultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}><div style={{ fontSize: '5rem' }}>👑</div><h2>BINGO!</h2><p>축하합니다!<br />3줄 빙고를 완성했습니다.</p><button className={styles.confirmBtn}>확인</button></motion.div></div>)}</AnimatePresence>
         </div>
     );
 };
@@ -78,7 +78,7 @@ export default function RandomGamePage() {
     const drawRoulette = () => {
         const canvas = canvasRef.current; if (!canvas) return;
         const ctx = canvas.getContext('2d'); const count = names.length; if (count === 0) return;
-        const size = 400; const cx = size/2; const cy = size/2; const radius = cx - 10;
+        const size = 400; const cx = size / 2; const cy = size / 2; const radius = cx - 10;
         ctx.clearRect(0, 0, size, size);
         names.forEach((name, i) => {
             const start = (i * 2 * Math.PI) / count; const end = ((i + 1) * 2 * Math.PI) / count;
@@ -130,7 +130,7 @@ export default function RandomGamePage() {
                     </div>
                     <div className={styles.card}>
                         <h3 className={styles.sectionTitle}>💡 게임 팁</h3>
-                        <p style={{fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5, margin: 0}}>사다리 타기는 이름표를 클릭하면 시작됩니다. 룰렛은 START를 누르고 원하는 시점에 STOP을 누르면 더 쫄깃하게 즐길 수 있습니다!</p>
+                        <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>사다리 타기는 이름표를 클릭하면 시작됩니다. 룰렛은 START를 누르고 원하는 시점에 STOP을 누르면 더 쫄깃하게 즐길 수 있습니다!</p>
                     </div>
                 </aside>
 
@@ -138,7 +138,7 @@ export default function RandomGamePage() {
                     <div className={styles.gameContentArea}>
                         {activeGame === 'roulette' && (
                             <div className={styles.rouletteContainer}>
-                                <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)' : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }} /></div>
+                                <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)' : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', width: '100%', height: 'auto', maxWidth: '400px', aspectRatio: '1/1' }} /></div>
                                 <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''}`} onClick={spin}>{isSpinning ? 'STOP!' : 'START'}</button>
                             </div>
                         )}
