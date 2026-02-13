@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -65,24 +65,37 @@ export default function WorkDocsNewPage() {
         setUploadProgress(0);
     };
 
-
-
-
+    const dragCounter = useRef(0);
     const [isDragging, setIsDragging] = useState(false);
-    const handleDragOver = (e) => {
+
+    const handleDragEnter = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(true);
+        dragCounter.current++;
+        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            setIsDragging(true);
+        }
     };
+
     const handleDragLeave = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(false);
+        dragCounter.current--;
+        if (dragCounter.current === 0) {
+            setIsDragging(false);
+        }
     };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
     const handleDrop = (e) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
+        dragCounter.current = 0;
         handleFileUpload(e);
     };
 
@@ -161,6 +174,7 @@ export default function WorkDocsNewPage() {
                         <label className={styles.label}>📎 첨부파일 및 이미지</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
+                            onDragEnter={handleDragEnter}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}

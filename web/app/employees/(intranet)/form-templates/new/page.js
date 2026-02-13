@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -25,57 +25,80 @@ export default function FormTemplatesNewPage() {
     }, [role, authLoading, router]);
 
     const handleFileUpload = async (e) => {
+        // Only accept single file for form template (via drop or click)
         const files = e.target.files ? Array.from(e.target.files) : (e.dataTransfer ? Array.from(e.dataTransfer.files) : []);
         if (files.length === 0) return;
+        const file = files[0];
 
         setUploading(true);
         setUploadProgress(0);
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const timestamp = Date.now();
-            const key = `form-templates/${timestamp}_${file.name}`;
+        const timestamp = Date.now();
+        const key = `form-templates/${timestamp}_${file.name}`;
 
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('key', key);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('key', key);
 
-                const res = await fetch('/api/s3/files', {
-                    method: 'POST',
-                    body: formData
-                });
+            // Mock progress since fetch doesn't support it natively easily without XHR
+            const interval = setInterval(() => {
+                setUploadProgress(prev => Math.min(prev + 10, 90));
+            }, 100);
 
-                if (res.ok) {
-                    const url = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`;
-                    setFileUrl(url);
-                    setFileName(file.name);
-                }
-            } catch (err) {
-                console.error('Upload error:', err);
-                alert(`파일 업로드 실패: ${file.name}`);
+            const res = await fetch('/api/s3/files', {
+                method: 'POST',
+                body: formData
+            });
+
+            clearInterval(interval);
+            setUploadProgress(100);
+
+            if (res.ok) {
+                setFileName(file.name);
+                setFileUrl(`${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`);
+            } else {
+                alert('업로드 실패');
             }
-            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
+        } catch (err) {
+            console.error(err);
+            alert('업로드 중 오류가 발생했습니다.');
+        } finally {
+            setUploading(false);
         }
-        setUploading(false);
-        setUploadProgress(0);
     };
 
+    const dragCounter = useRef(0);
     const [isDragging, setIsDragging] = useState(false);
-    const handleDragOver = (e) => {
+
+    const handleDragEnter = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(true);
+        dragCounter.current++;
+        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            setIsDragging(true);
+        }
     };
+
     const handleDragLeave = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(false);
+        dragCounter.current--;
+        if (dragCounter.current === 0) {
+            setIsDragging(false);
+        }
     };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
     const handleDrop = (e) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
+        dragCounter.current = 0;
         handleFileUpload(e);
     };
 
@@ -142,6 +165,7 @@ export default function FormTemplatesNewPage() {
                         <label className={styles.label}>📎 서식 파일 업로드</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
+                            onDragEnter={handleDragEnter}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
