@@ -88,6 +88,7 @@ export default function FormTemplateDetailPage() {
                 <h2 className={styles.detailTitle}>{item.title}</h2>
                 <div className={styles.detailMeta}>
                     <span className={styles.badge} style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>{item.category}</span>
+                    <span>{item.author_name}</span>
                     <span style={{ color: '#94a3b8' }}>{new Date(item.created_at).toLocaleString()}</span>
                 </div>
 

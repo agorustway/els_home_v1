@@ -7,7 +7,14 @@ export async function GET(request, { params }) {
     const { data, error } = await supabase.from('form_templates').select('*').eq('id', id).single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (!data) return NextResponse.json({ item: null }, { status: 404 });
-    return NextResponse.json({ item: data });
+
+    let author_name = data.author_email?.split('@')[0];
+    if (data.author_email) {
+        const { data: p } = await supabase.from('profiles').select('full_name, name').eq('email', data.author_email).single();
+        if (p) author_name = p.full_name || p.name || author_name;
+    }
+
+    return NextResponse.json({ item: { ...data, author_name } });
 }
 
 export async function PATCH(request, { params }) {

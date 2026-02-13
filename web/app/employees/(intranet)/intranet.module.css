@@ -25,12 +25,17 @@
 .btnPrimary {
     background: #2563eb;
     color: #fff;
-    padding: 8px 18px;
+    padding: 0 18px;
     border-radius: 8px;
     font-weight: 600;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    height: 40px;
+    font-family: inherit;
+    font-size: 1rem;
 }
 
 .btnPrimary:hover {
@@ -40,11 +45,18 @@
 .btnSecondary {
     background: #fff;
     color: #64748b;
-    padding: 8px 18px;
+    padding: 0 18px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
     font-weight: 600;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    height: 40px;
+    font-family: inherit;
+    font-size: 1rem;
 }
 
 .btnSecondary:hover {
@@ -54,11 +66,18 @@
 .btnDelete {
     background: #fee2e2;
     color: #ef4444;
-    padding: 8px 18px;
+    padding: 0 18px;
     border-radius: 8px;
     border: none;
     font-weight: 600;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    height: 40px;
+    font-family: inherit;
+    font-size: 1rem;
 }
 
 /* 안전운임 톤앤매너: 헤더 배너 스타일 */
@@ -409,7 +428,8 @@
 .mainContent {
     flex: 1;
     min-width: 0;
-    padding: 0; /* 상위 여백 완전 제거 */
+    padding: 0;
+    /* 상위 여백 완전 제거 */
     background-color: #f8fafc;
 }
 
@@ -419,7 +439,8 @@
     }
 
     .mainContent {
-        padding: 12px 10px 32px; /* 모바일 패딩 최적화 */
+        padding: 12px 10px 32px;
+        /* 모바일 패딩 최적화 */
     }
 }
 
@@ -504,4 +525,20 @@
         padding: 8px 10px;
         font-size: 0.8rem;
     }
+}
+
+.tabBtn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin-right: 4px;
+}
+
+.tabBtnActive {
+    background: #e2e8f0;
+    color: #1e293b;
 }

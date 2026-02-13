@@ -51,7 +51,17 @@ export default function FormTemplatesPage() {
                         {list.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/form-templates/' + item.id)}>
                                 <td className={styles.colNo}>{list.length - i}</td>
-                                <td className={styles.colTitle}>{item.title}</td>
+                                <td className={styles.colTitle}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <span>{item.title}</span>
+                                        {item.file_name && (
+                                            <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span>💾 {item.file_name}</span>
+                                                {item.file_size && <span style={{ color: '#94a3b8' }}>({(item.file_size / 1024).toFixed(1)} KB)</span>}
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className={styles.colCategory}>{item.category || '일반'}</td>
                                 <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>

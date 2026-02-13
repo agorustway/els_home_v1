@@ -35,7 +35,7 @@ export default function WorkDocsPage() {
                 <h1 className={styles.title}>업무자료실</h1>
             </div>
             <div className={styles.controls}>
-                <Link href="/employees/work-docs/new" className={styles.btnPrimary}>글쓰기</Link>
+                <Link href="/employees/work-docs/new" className={styles.btnPrimary}>등록</Link>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>
@@ -52,7 +52,22 @@ export default function WorkDocsPage() {
                         {list.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push(`/employees/work-docs/${item.id}`)}>
                                 <td className={styles.colNo}>{list.length - i}</td>
-                                <td className={styles.colTitle}>{item.title}</td>
+                                <td className={styles.colTitle}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <span>{item.title}</span>
+                                        {item.attachments && item.attachments.length > 0 && (
+                                            <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span>📎 {item.attachments[0].name}</span>
+                                                <span style={{ color: '#94a3b8' }}>({(item.attachments[0].size / 1024).toFixed(1)} KB)</span>
+                                                {item.attachments.length > 1 && (
+                                                    <span style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
+                                                        +{item.attachments.length - 1}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className={styles.colCategory}>{item.category || '일반'}</td>
                                 <td className={styles.colAuthor}>{item.author_name}</td>
                                 <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>

@@ -11,6 +11,7 @@ export default function WorkDocDetailPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
     const [item, setItem] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [showAttachments, setShowAttachments] = useState(false);
 
     useEffect(() => {

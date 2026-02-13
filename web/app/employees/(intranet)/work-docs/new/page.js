@@ -16,6 +16,7 @@ export default function WorkDocsNewPage() {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [submitting, setSubmitting] = useState(false);
+    const [activeTab, setActiveTab] = useState('write'); // 'write' | 'preview'
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/work-docs/new');
@@ -63,6 +64,64 @@ export default function WorkDocsNewPage() {
         setUploadProgress(0);
     };
 
+    // Paste handler for screenshot images
+    const handlePaste = async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        let blob = null;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                blob = items[i].getAsFile();
+                break;
+            }
+        }
+
+        if (!blob) return;
+
+        // Prevent default paste (optional, but good if we desire full control)
+        // For now, if text is mixed with image, we might want to let text paste.
+        // But if we found an image, let's upload it.
+
+        const timestamp = Date.now();
+        const fileName = `paste_image_${timestamp}.png`;
+        const key = `work-docs/${timestamp}_${fileName}`;
+
+        try {
+            // Insert placeholder
+            const cursorPosition = e.target.selectionStart;
+            const textBefore = content.substring(0, cursorPosition);
+            const textAfter = content.substring(e.target.selectionEnd);
+            const placeholder = `\n![업로드 중...](${fileName})\n`; // Temporary placeholder
+            setContent(textBefore + placeholder + textAfter);
+
+            // Upload
+            const formData = new FormData();
+            formData.append('file', blob);
+            formData.append('key', key);
+
+            const res = await fetch('/api/s3/files', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const url = `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(fileName)}`;
+
+                // Replace placeholder with actual image markdown
+                setContent(prev => prev.replace(`![업로드 중...](${fileName})`, `![image](${url})`));
+            } else {
+                setContent(prev => prev.replace(`\n![업로드 중...](${fileName})\n`, '\n(이미지 업로드 실패)\n'));
+                alert('이미지 붙여넣기 업로드 실패');
+            }
+        } catch (err) {
+            console.error(err);
+            setContent(prev => prev.replace(`\n![업로드 중...](${fileName})\n`, '\n(이미지 업로드 에러)\n'));
+            alert('이미지 업로드 중 오류가 발생했습니다.');
+        }
+    };
+
+
     const [isDragging, setIsDragging] = useState(false);
     const handleDragOver = (e) => {
         e.preventDefault();
@@ -88,6 +147,32 @@ export default function WorkDocsNewPage() {
     const insertImageToContent = (url, name) => {
         const imgTag = `![${name}](${url})\n`;
         setContent(prev => prev + (prev.endsWith('\n') || prev === '' ? '' : '\n') + imgTag);
+    };
+
+    const renderContent = (content) => {
+        if (!content) return <span style={{ color: '#94a3b8' }}>(내용 없음)</span>;
+
+        // Convert ![alt](url) to <img>
+        const imgRegex = /!\[([^\]]*)\]\(([^\)]+)\)/g;
+        const parts = content.split(imgRegex);
+
+        const elements = [];
+        for (let i = 0; i < parts.length; i += 3) {
+            elements.push(<span key={`text-${i}`} style={{ whiteSpace: 'pre-wrap' }}>{parts[i]}</span>);
+            if (parts[i + 1] !== undefined && parts[i + 2] !== undefined) {
+                elements.push(
+                    <div key={`img-container-${i}`} className={styles.bodyImageContainer}>
+                        <img
+                            src={parts[i + 2]}
+                            alt={parts[i + 1]}
+                            className={styles.bodyImage}
+                            style={{ maxWidth: '100%', borderRadius: 8, margin: '10px 0', border: '1px solid #e2e8f0' }}
+                        />
+                    </div>
+                );
+            }
+        }
+        return elements;
     };
 
     const handleSubmit = async (e) => {
@@ -141,8 +226,41 @@ export default function WorkDocsNewPage() {
                         <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="제목" required />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>내용</label>
-                        <textarea className={styles.textarea} value={content} onChange={(e) => setContent(e.target.value)} placeholder="내용을 입력하세요. 업로드한 이미지는 아래에서 '본문 삽입'을 눌러 추가할 수 있습니다." />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <label className={styles.label} style={{ marginBottom: 0 }}>내용</label>
+                            <div style={{ background: '#f1f5f9', padding: '4px', borderRadius: 8, display: 'flex' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('write')}
+                                    className={`${styles.tabBtn} ${activeTab === 'write' ? styles.tabBtnActive : ''}`}
+                                >
+                                    작성
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('preview')}
+                                    className={`${styles.tabBtn} ${activeTab === 'preview' ? styles.tabBtnActive : ''}`}
+                                >
+                                    미리보기
+                                </button>
+                            </div>
+                        </div>
+
+                        {activeTab === 'write' ? (
+                            <textarea
+                                className={styles.textarea}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                onPaste={handlePaste}
+                                placeholder="내용을 입력하세요. 스크린샷을 붙여넣기(Ctrl+V)하면 자동으로 업로드됩니다."
+                            />
+                        ) : (
+                            <div className={styles.textarea} style={{ background: '#f8fafc', overflowY: 'auto' }}>
+                                <div className={styles.contentBody} style={{ fontSize: '0.95rem' }}>
+                                    {renderContent(content)}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.formGroup}>
