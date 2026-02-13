@@ -355,7 +355,7 @@ function ContainerHistoryInner() {
         <div className={styles.page}>
             <div className={styles.container}>
                 <div className={styles.headerBanner}>
-                    <h1 className={styles.title}>컨테이너 이력조회 인텔리전스</h1>
+                    <h1 className={styles.title}>컨테이너 이력조회</h1>
                     <div className={styles.shortcutGroup}>
                         <a href="https://etrans.klnet.co.kr" target="_blank" rel="noreferrer" className={styles.etransShortcut}><img src="/images/etrans_logo.png" alt="ETRANS" /></a>
                         <a href="https://www.tradlinx.com" target="_blank" rel="noreferrer" className={styles.etransShortcut}><img src="/images/tradlinx_logo.png" alt="Tradlinx" /></a>

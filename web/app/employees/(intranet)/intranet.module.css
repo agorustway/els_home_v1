@@ -511,19 +511,132 @@
 }
 
 @media (max-width: 480px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        gap: 12px;
+    }
+
+    .headerBanner {
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+
+    .title {
+        font-size: 1.25rem;
+    }
+
+    .controls {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+        gap: 8px;
+    }
+
+    .btnPrimary,
+    .btnSecondary,
+    .btnDelete {
+        height: 44px;
+        padding: 0 16px;
+        font-size: 0.9rem;
+        width: 100%;
+        /* Full width for easier touch */
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    .card {
+        padding: 16px 12px;
+        /* Optimize horizontal space */
+        border-radius: 12px;
+    }
+
     .mainContent {
-        padding: 12px 10px 20px;
+        padding: 12px 10px 32px;
     }
 
     .mainContent :global(.container) {
-        padding-left: 10px;
-        padding-right: 10px;
+        padding-left: 8px;
+        padding-right: 8px;
     }
 
     .table th,
     .table td {
-        padding: 8px 10px;
-        font-size: 0.8rem;
+        padding: 12px 8px;
+        font-size: 0.85rem;
+    }
+
+    /* Hide non-essential columns on small screens */
+    .colNo,
+    .colDate,
+    .colCategory {
+        display: none;
+    }
+
+    .colTitle {
+        min-width: auto;
+        /* Allow shrink */
+        width: 100%;
+    }
+
+    .row {
+        display: flex;
+        /* Stack content if needed or keep table row */
+    }
+
+    /* Input Fields */
+    .input,
+    .textarea {
+        font-size: 16px;
+        /* Prevent zoom */
+        padding: 12px;
+    }
+
+    /* Detail Page */
+    .detailTitle {
+        font-size: 1.4rem;
+        margin-bottom: 12px;
+    }
+
+    .detailMeta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 24px;
+    }
+
+    .contentBody {
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .contentBody img {
+        margin: 16px 0;
+        border-radius: 8px;
+    }
+
+    .actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .actions button,
+    .actions a {
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
+    }
+
+    /* Attachment Section */
+    .attachmentToggle {
+        padding: 10px 16px;
+    }
+
+    .uploadZone {
+        padding: 16px;
     }
 }
 

@@ -623,15 +623,16 @@
     .branchGrid {
         display: flex;
         overflow-x: auto;
-        gap: 8px;
+        gap: 12px;
         /* Tighter gap */
+        padding: 4px;
+        /* Add padding all around to prevent border clipping */
         padding-right: 10px;
-        /* End padding */
     }
 
     .branchCard {
-        min-width: 180px;
-        /* Reduced width for better peek */
+        min-width: 150px;
+        /* Reduced slightly more */
         padding: 12px;
     }
 
@@ -653,11 +654,13 @@
         display: flex;
         overflow-x: auto;
         gap: 8px;
+        padding: 4px;
+        /* Add padding to prevent border clipping */
         padding-right: 10px;
     }
 
     .hourlyCard {
-        min-width: 110px;
+        min-width: 100px;
         /* Adjusted for 1 line layout mobile */
         padding: 8px;
     }

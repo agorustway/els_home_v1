@@ -11,7 +11,13 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.title { font-size: 1.4rem; font-weight: 800; margin: 0; color: #fff; letter-spacing: -0.02em; }
+.title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
 
 /* 3열 레이아웃 */
 .splitLayout {
@@ -21,48 +27,206 @@
     align-items: flex-start;
 }
 
-.column { display: flex; flex-direction: column; gap: 16px; }
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 
 .card {
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .sectionTitle {
-    font-size: 0.95rem; font-weight: 800; color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .sectionTitle::before {
-    content: ''; width: 4px; height: 16px; background: #2563eb; border-radius: 2px;
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: #2563eb;
+    border-radius: 2px;
 }
 
 /* 게시글 리스트 */
-.postList { display: flex; flex-direction: column; gap: 12px; }
-.postItem {
-    padding: 16px 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center;
+.postList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-.postItem:hover { border-color: #3b82f6; background: #f8fbff; transform: translateX(4px); }
+
+.postItem {
+    padding: 16px 20px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.postItem:hover {
+    border-color: #3b82f6;
+    background: #f8fbff;
+    transform: translateX(4px);
+}
 
 /* 에디터 카드 */
 .editorCard {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); width: 100%; box-sizing: border-box;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.editorActions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #f1f5f9; }
-
-.btnPrimary, .btnSecondary {
-    padding: 12px 28px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-width: 100px;
+.editorActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #f1f5f9;
 }
 
-.btnPrimary { background: #2563eb; color: #fff; border: none; }
-.btnSecondary { background: #fff; border: 1px solid #e2e8f0; color: #64748b; }
+.btnPrimary,
+.btnSecondary {
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+}
+
+.btnPrimary {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+}
+
+.btnSecondary {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
 
 @media (max-width: 768px) {
-    .container { padding: 12px 10px 20px; }
-    .splitLayout { grid-template-columns: 1fr; }
-    .editorCard { padding: 20px; }
-    .btnPrimary, .btnSecondary { padding: 10px 20px; font-size: 0.9rem; flex: 1; }
+    .container {
+        padding: 12px 10px 20px;
+    }
+
+    .splitLayout {
+        grid-template-columns: 1fr;
+    }
+
+    .editorCard {
+        padding: 20px;
+    }
+
+    .btnPrimary,
+    .btnSecondary {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        flex: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0;
+    }
+
+    /* Remove container padding -> use card padding */
+    .headerBanner {
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        border-radius: 0;
+    }
+
+    .title {
+        font-size: 1.3rem;
+    }
+
+    .card,
+    .editorCard {
+        padding: 16px;
+        border-radius: 12px;
+        /* Or 0 if full width preference */
+    }
+
+    .postItem {
+        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .postMain {
+        width: 100%;
+    }
+
+    .postTitle {
+        font-size: 1.05rem;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .postMeta {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    /* Hide the arrow on mobile to save space */
+    .postItem>div:last-child {
+        display: none;
+    }
+
+    .btnPrimary,
+    .btnSecondary {
+        width: 100%;
+        height: 48px;
+        font-size: 1rem;
+        justify-content: center;
+    }
+
+    .editorActions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* Input/Textarea friendly */
+    .input,
+    .textarea {
+        font-size: 16px !important;
+    }
+
+    /* Stats grid */
+    .card>div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        /* Stack stats */
+    }
 }
