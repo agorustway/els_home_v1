@@ -190,13 +190,13 @@ function ContainerHistoryInner() {
                 const n = Number(row[1]);
                 if (n === 0) return false;
 
-                // 데이터 정제: 수출입(2)과 구분(3)이 모두 없으면 의미 없는 행으로 간주
-                const status = row[2];
-                const type = row[3];
-                const hasContent = (status && status.trim() !== '-' && status.trim() !== '.') ||
-                    (type && type.trim() !== '-' && type.trim() !== '.');
+                // 데이터가 완전히 비어있는 행만 제외 (필터 조건 완화)
+                // 순번(row[1]) 외에 다른 데이터가 하나라도 있으면 유효한 행으로 간주
+                const hasAnyContent = row.slice(2).some(cell =>
+                    cell && String(cell).trim() !== '' && String(cell).trim() !== '-' && String(cell).trim() !== '.'
+                );
 
-                return hasContent;
+                return hasAnyContent;
             });
 
             if (grouped[cn].length === 0) {
