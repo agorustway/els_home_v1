@@ -190,16 +190,23 @@ function ContainerHistoryInner() {
                 const n = Number(row[1]);
                 if (n === 0) return false;
 
-                // 데이터가 완전히 비어있는 행만 제외 (필터 조건 완화)
-                // 순번(row[1]) 외에 다른 데이터가 하나라도 있으면 유효한 행으로 간주
+                // 데이터가 완전히 비어있는 행만 제외 (필터 조건 대폭 완화)
+                // 단순히 데이터가 존재하기만 하면 표시 (수출입/구분이 없어도 표시)
                 const hasAnyContent = row.slice(2).some(cell =>
-                    cell && String(cell).trim() !== '' && String(cell).trim() !== '-' && String(cell).trim() !== '.'
+                    cell !== null && cell !== undefined && String(cell).trim() !== ''
                 );
 
                 return hasAnyContent;
             });
 
             if (grouped[cn].length === 0) {
+                // 데이터가 하나도 없어도 컨테이너 번호라도 보여주기 위해 빈 배열 유지하지 않고
+                // '데이터 없음' 상태로라도 표시할 수 있게 처리가 필요할 수 있으나,
+                // 현재 로직상 아예 삭제하면 안 보임.
+                // 일단 데이터가 파싱되었다면 보여주도록 삭제 로직을 제거하거나 조건부 처리.
+
+                // 만약 백엔드에서 "NODATA" 등을 보냈다면 위 필터에서 걸러지지 않았을 것임.
+                // 따라서 여기서 삭제되는 건 진짜 공백 행들뿐임.
                 delete grouped[cn];
                 return;
             }
