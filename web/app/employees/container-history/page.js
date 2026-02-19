@@ -199,6 +199,11 @@ function ContainerHistoryInner() {
                 return hasContent;
             });
 
+            if (grouped[cn].length === 0) {
+                delete grouped[cn];
+                return;
+            }
+
             // No 기준 오름차순 정렬 (1번이 맨 위)
             grouped[cn].sort((a, b) => {
                 const noA = Number(a[1]) || 0;
@@ -321,7 +326,7 @@ function ContainerHistoryInner() {
     };
 
     const stats = result ? (() => {
-        const latest = Object.values(result).map(r => r[0]);
+        const latest = Object.values(result).map(r => r[0]).filter(Boolean);
         return {
             export: latest.filter(r => r[2] === '수출').length,
             import: latest.filter(r => r[2] === '수입').length,
@@ -339,6 +344,7 @@ function ContainerHistoryInner() {
         // 다중 필터 적용: 선택된 필터가 하나라도 있으면 필터링 수행
         if (activeStatFilters.size > 0) {
             const r = result[cn][0];
+            if (!r) return false;
             // 수출입(idx 2) 또는 구분(idx 3) 중 하나라도 선택된 필터에 포함되면 통과
             const status = r[2];
             const type = r[3];
