@@ -254,6 +254,18 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                 yield f"LOG:❌ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패: {err}\n"
             else:
                 yield f"LOG:✔ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건)\n"
+                
+                # [실시간 전송 로직] 건별 완료 시 부분 결과 전송
+                if rows:
+                    # null/NaN 값 안전 처리
+                    def _safe_val(v):
+                        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
+                        return v
+                    
+                    partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
+                    
+                    # 부분 결과 JSON 전송 (프론트에서 누적 처리)
+                    yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
 
     global_progress["is_running"] = False
     # Generate Final Result and Excel (이후 로직 동일)

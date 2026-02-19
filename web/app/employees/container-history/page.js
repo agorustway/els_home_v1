@@ -232,20 +232,38 @@ function ContainerHistoryInner() {
                 const lines = chunk.split('\n');
                 lines.forEach(line => {
                     if (line.startsWith('LOG:')) setLogLines(prev => [...prev, line.substring(4)]);
+                    else if (line.startsWith('RESULT_PARTIAL:')) {
+                        // [실시간 출력] 부분 결과 수신 시 즉시 데이터 추가
+                        try {
+                            const part = JSON.parse(line.substring(15));
+                            if (part.result && Array.isArray(part.result)) {
+                                setResult(prev => {
+                                    // 기존 결과에 새 결과 병합 (함수형 업데이트로 최신 상태 보장)
+                                    // groupByContainer 로직을 재사용하기 위해 'raw array' 형태로 관리하거나
+                                    // 여기서 바로 병합해야 함. 편의상 병합 후 groupBy 재적용 방식을 씀 (데이터 양 적을 때 유효)
+
+                                    // 1. 기존 데이터의 flat 한 배열 형태로 변환 (비효율적일 수 있으나 안전함)
+                                    const prevRows = prev ? Object.values(prev).flat() : [];
+                                    // 2. 새 데이터 추가
+                                    const newRows = [...prevRows, ...part.result];
+                                    // 3. 다시 그룹핑
+                                    return groupByContainer(newRows);
+                                });
+                            }
+                        } catch (e) { console.error('Partial Parse Error', e); }
+                    }
                     else if (line.startsWith('RESULT:')) {
                         const data = JSON.parse(line.substring(7));
                         if (data.ok) {
-                            setResult(groupByContainer(data.result));
+                            // 최종 결과는 덮어쓰기보다는 정합성 확인 용도로 사용하거나
+                            // 다운로드 토큰만 업데이트 (이미 PARTIAL로 다 받았을 것이므로)
+                            if (!result) setResult(groupByContainer(data.result || [])); // 혹시 못 받은 게 있으면 덮어쓰기
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);
                         }
                         // 데몬 로그 출력
                         if (data.log && Array.isArray(data.log)) {
                             setLogLines(prev => [...prev, ...data.log]);
-                        }
-                        if (data.elapsed) {
-                            // 개별 건 소요시간이지만 마지막 건일 경우 총 소요시간으로 간주
-                            // 하지만 데몬은 건별 응답이 아니라 한번에 오므로 여기서 처리
                         }
                     }
                 });

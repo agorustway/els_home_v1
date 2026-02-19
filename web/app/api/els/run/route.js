@@ -56,13 +56,16 @@ function runViaDaemon(body, controller, encoder) {
                     const trimmed = line.trim();
                     if (trimmed.startsWith('LOG:')) {
                         controller.enqueue(encoder.encode(line.trimEnd() + '\n'));
+                    } else if (trimmed.startsWith('RESULT_PARTIAL:')) {
+                        // 부분 결과 그대로 프론트로 전달
+                        controller.enqueue(encoder.encode(line.trimEnd() + '\n'));
                     } else if (trimmed.startsWith('RESULT:')) {
                         try {
                             const data = JSON.parse(trimmed.slice(7));
                             let downloadToken = null;
                             if (data.output_path && fs.existsSync(data.output_path)) {
                                 const buf = fs.readFileSync(data.output_path);
-                                try { fs.unlinkSync(data.output_path); } catch (_) {}
+                                try { fs.unlinkSync(data.output_path); } catch (_) { }
                                 downloadToken = crypto.randomBytes(16).toString('hex');
                                 fileStore.set(downloadToken, buf);
                                 setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
@@ -87,7 +90,7 @@ function runViaDaemon(body, controller, encoder) {
                         let downloadToken = null;
                         if (data.output_path && fs.existsSync(data.output_path)) {
                             const buf = fs.readFileSync(data.output_path);
-                            try { fs.unlinkSync(data.output_path); } catch (_) {}
+                            try { fs.unlinkSync(data.output_path); } catch (_) { }
                             downloadToken = crypto.randomBytes(16).toString('hex');
                             fileStore.set(downloadToken, buf);
                             setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
@@ -99,7 +102,7 @@ function runViaDaemon(body, controller, encoder) {
                             error: data.error,
                         }) + '\n'));
                         resultSent = true;
-                    } catch (_) {}
+                    } catch (_) { }
                 }
             }
             if (!resultSent) {
@@ -205,7 +208,7 @@ export async function POST(req) {
                                 let downloadToken = null;
                                 if (data.output_path && fs.existsSync(data.output_path)) {
                                     const buf = fs.readFileSync(data.output_path);
-                                    try { fs.unlinkSync(data.output_path); } catch (_) {}
+                                    try { fs.unlinkSync(data.output_path); } catch (_) { }
                                     downloadToken = crypto.randomBytes(16).toString('hex');
                                     fileStore.set(downloadToken, buf);
                                     setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
@@ -250,7 +253,7 @@ export async function POST(req) {
                                 let downloadToken = null;
                                 if (data.output_path && fs.existsSync(data.output_path)) {
                                     const buf = fs.readFileSync(data.output_path);
-                                    try { fs.unlinkSync(data.output_path); } catch (_) {}
+                                    try { fs.unlinkSync(data.output_path); } catch (_) { }
                                     downloadToken = crypto.randomBytes(16).toString('hex');
                                     fileStore.set(downloadToken, buf);
                                     setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
