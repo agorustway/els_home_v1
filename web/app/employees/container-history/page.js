@@ -185,31 +185,10 @@ function ContainerHistoryInner() {
 
         // 데이터 정렬 및 필터링
         Object.keys(grouped).forEach(cn => {
-            // 0번 데이터 및 내용이 없는 빈 행 제외 필터링
-            grouped[cn] = grouped[cn].filter(row => {
-                const n = Number(row[1]);
-                if (n === 0) return false;
+            // 백엔드에서 이미 유효성 검증(1~20번, 데이터 존재 여부)을 거쳤으므로
+            // 프론트엔드에서는 과도한 필터링을 제거하고 모든 데이터를 표시함
 
-                // 데이터가 완전히 비어있는 행만 제외 (필터 조건 대폭 완화)
-                // 단순히 데이터가 존재하기만 하면 표시 (수출입/구분이 없어도 표시)
-                const hasAnyContent = row.slice(2).some(cell =>
-                    cell !== null && cell !== undefined && String(cell).trim() !== ''
-                );
-
-                return hasAnyContent;
-            });
-
-            if (grouped[cn].length === 0) {
-                // 데이터가 하나도 없어도 컨테이너 번호라도 보여주기 위해 빈 배열 유지하지 않고
-                // '데이터 없음' 상태로라도 표시할 수 있게 처리가 필요할 수 있으나,
-                // 현재 로직상 아예 삭제하면 안 보임.
-                // 일단 데이터가 파싱되었다면 보여주도록 삭제 로직을 제거하거나 조건부 처리.
-
-                // 만약 백엔드에서 "NODATA" 등을 보냈다면 위 필터에서 걸러지지 않았을 것임.
-                // 따라서 여기서 삭제되는 건 진짜 공백 행들뿐임.
-                delete grouped[cn];
-                return;
-            }
+            // 공란 제거 로직 삭제 -> 넘어온 데이터는 무조건 표시
 
             // No 기준 오름차순 정렬 (1번이 맨 위)
             grouped[cn].sort((a, b) => {
@@ -244,6 +223,9 @@ function ContainerHistoryInner() {
                         try {
                             const part = JSON.parse(line.substring(15));
                             if (part.result && Array.isArray(part.result)) {
+                                // [DEBUG] 수신된 데이터 구조를 로그창에 잠시 노출 (문제 해결용)
+                                setLogLines(prev => [...prev, `[DEBUG] 수신: ${JSON.stringify(part.result[0])}`]);
+
                                 setResult(prev => {
                                     // 기존 결과에 새 결과 병합 (함수형 업데이트로 최신 상태 보장)
                                     // groupByContainer 로직을 재사용하기 위해 'raw array' 형태로 관리하거나
