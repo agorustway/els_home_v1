@@ -119,169 +119,222 @@ def open_els_menu(driver, log_callback=None):
                 """)
             except: pass
 
-    for attempt in range(20):
+    for attempt in range(15):
         check_alert(driver)
         close_modals(driver)
-        _check_and_clear_interrupts()
         
-        # 🎯 [성공 판정 보강] 현재 페이지에 이미 컨테이너 입력창이 있다면 즉시 성공!
+        # 🎯 [성공 판정] 컨테이너 입력창이 있으면 즉시 성공
         try:
-            page_text = driver.page_source or ""
-            if any(kw in page_text for kw in ["컨테이너번호", "Container No", "컨테이너 번호"]):
-                if log_callback: log_callback("조회 페이지 요소 감지! 진입 성공 판정.")
+            if driver.find_elements(By.CSS_SELECTOR, "input[id*='containerNo']"):
+                if log_callback: log_callback("조회 페이지 도착 확인!")
                 return True
         except: pass
 
-        # 🎯 5번 이상 실패하면 직접 URL로 이동 시도
-        if attempt == 5:
-            if log_callback: log_callback("메뉴 클릭대신 직접 URL(컨테이너이동현황)로 이동 시도...")
-            driver.get("https://etrans.klnet.co.kr/main/index.do?menuId=002001007")
-            time.sleep(5)
-
-        # iframe 순회
-        frames = driver.find_elements(By.TAG_NAME, "iframe")
-        for frame in [None] + frames:
-            try:
-                if frame:
-                    driver.switch_to.frame(frame)
-                
-                # 메뉴 찾기 (더 넓은 범위 탐색)
-                menu_selectors = [
-                    "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]",
-                    "//a[contains(., '컨테이너') and contains(., '이동현황')]",
-                    "//span[contains(., '컨테이너') and contains(., '이동현황')]",
-                    "//*[contains(@title, '이동현황')]"
-                ]
-                
-                for xpath in menu_selectors:
-                    targets = driver.find_elements(By.XPATH, xpath)
-                    if targets:
-                        driver.execute_script("arguments[0].click();", targets[0])
+        # 🎯 [핵심 전략] URL 직행을 최우선으로! (공지사항 원천 차단)
+        if log_callback: log_callback(f"메뉴 진입 시도 ({attempt+1}/15)...")
+        
+        # attempt 0~2: 텍스트 매칭으로 메뉴 시도 (old_els_bot 방식)
+        if attempt < 3:
+            frames = driver.find_elements(By.TAG_NAME, "iframe")
+            for frame in [None] + frames:
+                try:
+                    if frame: driver.switch_to.frame(frame)
+                    target = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
+                    if target:
+                        driver.execute_script("arguments[0].click();", target[0])
                         if log_callback: log_callback("메뉴 클릭 성공!")
                         time.sleep(4)
                         return True
-            except:
-                pass
-            finally:
-                driver.switch_to.default_content()
+                except: continue
+                finally: driver.switch_to.default_content()
         
-        # 10번 이후부턴 50% 확률로 인덱스 재갱신
-        if attempt > 10 and attempt % 5 == 0:
-            driver.get("https://etrans.klnet.co.kr/index.do")
+        # attempt 3+: URL 직행 (공지사항 늪 탈출)
+        if attempt >= 3:
+            if log_callback: log_callback("URL 직행으로 강제 이동!")
+            # WebSquare의 메뉴 ID 기반 직접 접근
+            driver.execute_script("""
+                try {
+                    // WebSquare의 내부 메뉴 이동 함수 호출 시도
+                    if(typeof gcm !== 'undefined' && gcm.fn_openMenu) {
+                        gcm.fn_openMenu('002001007');
+                    }
+                } catch(e) {}
+            """)
+            time.sleep(2)
+            driver.get("https://etrans.klnet.co.kr/main/index.do?menuId=002001007")
             time.sleep(5)
-
-        time.sleep(1.5)
+        
+        time.sleep(1)
     
-    # 최종 실패 시 상세 정보 수집
-    if log_callback:
-        try:
-            body_text = driver.find_element(By.TAG_NAME, "body").text[:300].replace("\n", " ")
-            log_callback(f"최종 실패! URL: {driver.current_url}")
-            log_callback(f"페이지 텍스트: {body_text}")
-        except: pass
-    
+    if log_callback: log_callback("메뉴 진입 최종 실패!")
     return False
 
 def solve_input_and_search(driver, container_no, log_callback=None):
-    """[수정 완료] driver를 직접 사용하여 NameError 방지"""
+    """[WebSquare 특화] JavaScript로 직접 값 설정 + 조회 버튼 클릭"""
     check_alert(driver)
-    close_modals(driver)
-    found_target = None
-    driver.switch_to.default_content()
     
-    # 모든 프레임 뒤져서 입력창 찾기
-    all_frames = [None] + driver.find_elements(By.TAG_NAME, "iframe")
-    for frame in all_frames:
-        try:
-            if frame: driver.switch_to.frame(frame)
-            labels = driver.find_elements(By.XPATH, "//*[contains(text(),'컨테이너번호') or contains(text(),'Container No')]")
-            for lbl in labels:
-                if "조회" in lbl.text: continue
-                inputs = lbl.find_elements(By.XPATH, "./following-sibling::input") or \
-                         lbl.find_elements(By.XPATH, "./parent::*/following-sibling::*//input")
-                for inp in inputs:
-                    if _is_valid_input_simple(inp):
-                        found_target = inp
-                        break
-                if found_target: break
-            if found_target: break
-        except:
-            driver.switch_to.default_content()
-            continue
-
-    if found_target:
-        try:
-            found_target.click()
-            found_target.send_keys(Keys.CONTROL + "a"); found_target.send_keys(Keys.DELETE)
-            found_target.send_keys(container_no)
-            time.sleep(0.2)
-            # [추가] 실제로 값이 들어갔는지 한 번 더 확인
-            val_after = found_target.get_attribute('value')
-            if val_after != container_no:
-                found_target.click()
-                found_target.send_keys(Keys.CONTROL + "a"); found_target.send_keys(Keys.DELETE)
-                found_target.send_keys(container_no)
-                time.sleep(0.5)
-
-            # 조회 버튼 강제 클릭 (더 다양하게 시도)
-            time.sleep(1)
-            # '조회' 글자가 포함된 모든 요소 중 클릭 가능한 것 찾기
-            search_btns = driver.find_elements(By.XPATH, "//*[contains(text(),'조회') or contains(@id, 'btn_search') or contains(@class, 'search')]")
-            clicked = False
-            for btn in search_btns:
-                try:
-                    if btn.is_displayed() and btn.is_enabled():
-                        # 가끔 일반 click()이 안 먹힐 때가 있어서 script로도 시도
-                        driver.execute_script("arguments[0].click();", btn)
-                        clicked = True
-                        break
-                except: continue
-            
-            # 버튼이 안 눌렸으면 엔터 한 번 더
-            if not clicked:
-                found_target.send_keys(Keys.ENTER)
-                time.sleep(0.5)
-            
-            # [추가] 100건 조회로 변경 시도 (데이터 유실 방지)
+    # 🎯 [핵심] WebSquare에서는 send_keys가 안 먹힐 수 있으므로 JS로 직접 처리
+    # 스크린샷에서 확인된 입력창 ID: mf_tac_layout_contents_002_body_inp_containerNo
+    result = driver.execute_script("""
+        var containerNo = arguments[0];
+        
+        // 1. 입력창 찾기 (ID에 'containerNo' 포함)
+        var input = document.querySelector('input[id*="containerNo"]');
+        if (!input) {
+            // iframe 안에서도 찾기
+            var frames = document.querySelectorAll('iframe');
+            for (var i = 0; i < frames.length; i++) {
+                try {
+                    var doc = frames[i].contentDocument || frames[i].contentWindow.document;
+                    input = doc.querySelector('input[id*="containerNo"]');
+                    if (input) break;
+                } catch(e) {}
+            }
+        }
+        if (!input) return 'INPUT_NOT_FOUND';
+        
+        // 2. 값 설정 (WebSquare 방식: focus -> 값 변경 -> 이벤트 발생)
+        input.focus();
+        input.value = '';
+        input.value = containerNo;
+        
+        // WebSquare 내부 데이터 동기화를 위해 이벤트 발생
+        input.dispatchEvent(new Event('input', {bubbles: true}));
+        input.dispatchEvent(new Event('change', {bubbles: true}));
+        input.dispatchEvent(new Event('blur', {bubbles: true}));
+        
+        // 3. 조회 버튼 찾기 + 클릭 (ID에 'btnSearch' 포함)
+        var btn = document.querySelector('[id*="btnSearch"]');
+        if (!btn) {
+            // 텍스트로 찾기
+            var allBtns = document.querySelectorAll('input[type="button"], button, a');
+            for (var j = 0; j < allBtns.length; j++) {
+                var txt = allBtns[j].innerText || allBtns[j].value || '';
+                if (txt.indexOf('조회') !== -1) {
+                    btn = allBtns[j];
+                    break;
+                }
+            }
+        }
+        
+        if (btn) {
+            btn.click();
+            return 'SEARCH_CLICKED';
+        }
+        
+        // 버튼 못 찾으면 엔터 이벤트 직접 발생
+        var enterEvent = new KeyboardEvent('keydown', {
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
+        });
+        input.dispatchEvent(enterEvent);
+        return 'ENTER_DISPATCHED';
+    """, container_no)
+    
+    if log_callback: log_callback(f"[{container_no}] JS 조회 결과: {result}")
+    
+    if result == 'INPUT_NOT_FOUND':
+        # Selenium 폴백: 프레임 순회 방식
+        if log_callback: log_callback("JS 실패, Selenium 폴백...")
+        frames = driver.find_elements(By.TAG_NAME, "iframe")
+        for frame in [None] + frames:
             try:
-                # '15'나 '개씩 보기'가 포함된 셀렉트 박스 찾기
-                combos = driver.find_elements(By.XPATH, "//select[contains(., '15') or contains(@id, 'cnt') or contains(@class, 'page')]")
-                for combo in combos:
-                    if combo.is_displayed():
-                        from selenium.webdriver.support.ui import Select
-                        Select(combo).select_by_visible_text("100") if "100" in combo.text else Select(combo).select_by_value("100")
-                        if log_callback: log_callback("100건 조회 설정 완료!")
-                        time.sleep(1)
-                        break
-            except: pass
+                if frame: driver.switch_to.frame(frame)
+                input_field = driver.find_elements(By.CSS_SELECTOR, "input[id*='containerNo']")
+                if input_field:
+                    target = input_field[0]
+                    target.click()
+                    target.send_keys(Keys.CONTROL + "a")
+                    target.send_keys(Keys.DELETE)
+                    target.send_keys(container_no)
+                    target.send_keys(Keys.ENTER)
+                    if log_callback: log_callback(f"[{container_no}] Selenium 폴백 완료!")
+                    for _ in range(20):
+                        msg = check_alert(driver)
+                        if msg: return f"오류: {msg}"
+                        time.sleep(0.03)
+                    return True
+            except: continue
+            finally: driver.switch_to.default_content()
+        return "입력창을 찾을 수 없습니다."
+    
+    # 팝업 체크
+    for _ in range(20):
+        msg = check_alert(driver)
+        if msg: return f"오류: {msg}"
+        time.sleep(0.03)
+    return True
 
-            # 데이터 로딩 대기 (100건인 경우를 대비해 6초로 상향)
-            time.sleep(6)
-            
-            # 결과가 정말 나왔는지 간이 체크
-            page_text = driver.page_source
-            if "데이터가 없습니다" in page_text or "내역이 없습니다" in page_text:
-                return "내역없음확인"
-            
-            return "조회시도완료"
-        except Exception as e:
-            return f"입력오류: {e}"
-    return "입력창을 찾을 수 없습니다."
+
 
 def scrape_hyper_verify(driver, search_no):
-    script = """
-    var all_text = "";
-    function collect(win) {
+    """[영혼의 복구] 모든 프레임을 뒤져서 컨테이너 번호 존재 여부를 확인하고 WebSquare 데이터를 추출"""
+    
+    script = r"""
+    var searchNo = arguments[0].replace(/[^A-Z0-9]/g, '').toUpperCase();
+    var results = [];
+    
+    function dive(win) {
         try {
-            all_text += win.document.body.innerText + "\\n";
-            for (var i = 0; i < win.frames.length; i++) { collect(win.frames[i]); }
+            // 1. 현재 프레임에 컨테이너 번호가 있는지 '매의 눈' 검증
+            var bodyText = (win.document.body ? win.document.body.innerText : "").toUpperCase();
+            var inputs = win.document.querySelectorAll('input');
+            var allContent = bodyText;
+            for(var i=0; i<inputs.length; i++) { allContent += " " + (inputs[i].value || "").toUpperCase(); }
+            var cleanedContent = allContent.replace(/[^A-Z0-9]/g, '');
+
+            // 컨테이너 번호가 확인된 프레임에서만 데이터 추출
+            if (cleanedContent.indexOf(searchNo) !== -1) {
+                var rows = win.document.querySelectorAll('tr');
+                for (var j = 0; j < rows.length; j++) {
+                    var cells = rows[j].cells;
+                    if (!cells || cells.length < 5) continue;
+                    
+                    var rowVals = [];
+                    for (var k = 0; k < cells.length; k++) {
+                        rowVals.push(cells[k].innerText.trim().replace(/\n/g, ' '));
+                    }
+                    
+                    var rowText = rowVals.join('|');
+                    // 첫 컬럼이 숫자이면서 핵심 키워드가 포함된 행만 필터링
+                    if (/^\d+\|/.test(rowText) && (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1)) {
+                        results.push(rowText);
+                    }
+                }
+            }
+            
+            // 모든 하위 프레임 재귀 탐색
+            for (var i = 0; i < win.frames.length; i++) {
+                dive(win.frames[i]);
+            }
         } catch (e) {}
     }
-    collect(window);
-    return all_text;
+    
+    dive(window);
+    var unique = Array.from(new Set(results));
+    return unique.join('\n');
     """
-    try: return driver.execute_script(script)
-    except: return None
+    
+    # 데이터가 렌더링될 때까지 끈질기게 대기 (최대 15초)
+    # [캐시 방역] 성급한 '내역 없음' 판단을 막기 위해 오직 진짜 데이터(|)가 잡힐 때만 성공으로 간주
+    for retry in range(15):
+        try:
+            res = driver.execute_script(script, search_no)
+            # 파이프(|)로 구분된 진짜 데이터가 10자 이상(한 줄 이상) 잡히면 즉시 반환
+            if res and '|' in res and len(res.strip()) > 10:
+                return res
+        except: pass
+        time.sleep(1)
+        
+    # 15초를 다 기다렸는데도 grid 데이터가 없으면, 그제서야 "데이터 없음" 문구가 있는지 확인
+    # 이때도 혹시 모르니 화면 전체를 다시 훑음
+    try:
+        full_text = driver.execute_script("return document.body.innerText;")
+        for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다", "조회된 내역이 없습니다"]:
+            if msg in full_text:
+                return "NODATA_CONFIRMED"
+    except: pass
+        
+    return None
 
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
     start_time = time.time()
@@ -398,18 +451,19 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
             grid_text = scrape_hyper_verify(driver, cn)
             if grid_text:
                 found_any = False
-                blacklist = ["SKR", "YML", "ZIM", "최병훈", "안녕하세요", "로그아웃", "조회"]
                 lines = grid_text.split('\n')
                 for line in lines:
                     stripped = line.strip()
-                    if not stripped or any(kw in stripped for kw in blacklist): continue
+                    if not stripped: continue
                     
-                    # 정규표현식으로 정밀 파싱
-                    row_data = re.split(r'\t|\s{2,}', stripped)
-                    if row_data and row_data[0].isdigit():
+                    # [버그 수정] scrape_hyper_verify가 '|'로 구분해서 주므로 '|'로 잘라야 함
+                    row_data = stripped.split('|')
+                    if row_data and str(row_data[0]).isdigit():
                         no_val = int(row_data[0])
                         # 0은 메타데이터(0건 등)일 확률이 높으므로 1 이상만 데이터로 취합
                         if 1 <= no_val <= 200:
+                            # 부족한 컬럼 채우기
+                            while len(row_data) < 15: row_data.append("")
                             final_rows.append([cn] + row_data[:14])
                             found_any = True
                 if not found_any:

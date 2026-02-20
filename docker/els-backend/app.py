@@ -76,38 +76,56 @@ def run_runner(cmd, extra_args=None, env=None):
 def _parse_grid_text(cn, grid_text):
     if not grid_text: return [[cn, "NODATA", "데이터 없음"] + [""]*12]
     
+    import re
     rows = []
     found_any = False
-    blacklist = ["SKR", "YML", "ZIM", "최병훈", "안녕하세요", "로그아웃", "조회"]
-    lines = grid_text.split('\n')
     
+    # 🎯 [무대뽀 파싱] 텍스트 전체에서 데이터 행처럼 보이는 것을 '사냥'함
+    # 1. 줄바꿈 기준 시도
+    lines = grid_text.split('\n')
     for line in lines:
-        stripped = line.strip()
-        if not stripped or any(kw in stripped for kw in blacklist): continue
+        line = line.strip()
+        if not line: continue
         
-        # 정규표현식으로 정밀 파싱
-        row_data = re.split(r'\t|\s{2,}', stripped)
-        
-        # No 컬럼이 숫자인 행만 (1~200) - 0은 메타데이터일 가능성이 큼
-        if row_data and row_data[0].isdigit():
-            no_val = int(row_data[0])
+        # 행 시작이 "숫자 + 공백 + [상태]" 패턴인지 확인
+        match = re.search(r'^(\d+)\s+([^\s]+)\s+(.+)', line)
+        if match:
+            no_val = int(match.group(1))
             if 1 <= no_val <= 200:
-                # 데이터 길이를 14개로 맞추기 (부족하면 빈 문자열 추가)
-                while len(row_data) < 14:
-                    row_data.append("")
-                
-                # [컨테이너번호] + [No, 수출입, 구분, ...] (총 15개)
-                full_row = [cn] + row_data[:14]
-                
-                # 빈 행 필터링 (컨테이너 번호와 No만 있고 나머지가 비어있는 경우)
-                if any(cell.strip() for cell in full_row[2:]):  # 3번째 컬럼부터 데이터가 있는지 확인
-                    rows.append(full_row)
-                    found_any = True
-            
+                parts = re.split(r'\t|\s{2,}', line)
+                if len(parts) >= 3:
+                    while len(parts) < 14: parts.append("")
+                    full_row = [cn] + parts[:14]
+                    if any(p.strip() for p in full_row[2:]):
+                        rows.append(full_row)
+                        found_any = True
+
+    # 2. [비상] 뭉친 텍스트에서 패턴 직접 추출
+    if not found_any:
+        matches = re.finditer(r'(\d+)\s+(수입|수출|반입|반출|양하|적하|공탈|입고|출고)', grid_text)
+        for m in matches:
+            start_idx = m.start()
+            next_m = re.search(r'(\d+)\s+(수입|수출|반입|반출|양하|적하|공탈|입고|출고)', grid_text[start_idx+1:])
+            end_idx = (start_idx + 1 + next_m.start()) if next_m else (start_idx + 100)
+            chunk = grid_text[start_idx:end_idx].replace('\n', ' ').strip()
+            parts = re.split(r'\s+', chunk)
+            if len(parts) >= 3:
+                while len(parts) < 14: parts.append("")
+                rows.append([cn] + parts[:14])
+                found_any = True
+
     if not found_any:
         return [[cn, "NODATA", "내역 없음"] + [""]*12]
-    return rows
-
+        
+    # No 기준 중복 제거 및 정렬
+    seen_no = set()
+    unique_rows = []
+    for r in sorted(rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
+        if r[1] not in seen_no:
+            unique_rows.append(r)
+            seen_no.add(r[1])
+            
+    return unique_rows
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
     # 백엔드 내부에서 데몬 상태 확인 시 3회 재시도 로직 도입 (안정성 극대화)
@@ -224,6 +242,17 @@ def login():
     except:
         return jsonify({"ok": False, "error": "응답 파싱 실패"})
 
+@app.route("/api/els/stop-daemon", methods=["POST"])
+def stop_daemon():
+    if _daemon_available():
+        try:
+            req = Request(DAEMON_URL + "/stop", method="POST")
+            urlopen(req, timeout=5)
+            return jsonify({"ok": True})
+        except:
+            pass
+    return jsonify({"ok": False, "error": "데몬 중지 실패"})
+
 def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     from concurrent.futures import ThreadPoolExecutor, as_completed
     global global_progress
@@ -309,15 +338,63 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             # 3. 그 다음 엑셀 파일 생성 (실패해도 데이터는 보임)
             try:
                 yield "LOG:엑셀 파일 생성 중...\n"
+                from openpyxl.styles import PatternFill, Font, Alignment
+                from openpyxl.utils import get_column_letter
+
                 output = io.BytesIO()
+
+                # 시트1: 최신현황 (No=1인 것만), 시트2: 전체이력
+                df_latest = df_all[df_all['No'].astype(str) == '1'].drop_duplicates()
+                df_full = df_all.drop_duplicates()
+
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    # 중복 제거된 전체 데이터 저장
-                    df_all.drop_duplicates().to_excel(writer, index=False, sheet_name='조회결과')
-                    ws = writer.sheets['조회결과']
-                    # 간단한 너비 조절
-                    for col in ws.columns:
-                        ws.column_dimensions[col[0].column_letter].width = 18
-                
+                    df_latest.to_excel(writer, index=False, sheet_name='최신현황')
+                    df_full.to_excel(writer, index=False, sheet_name='전체이력')
+
+                    # 서식 정의
+                    header_fill = PatternFill(start_color='D6EAF8', end_color='D6EAF8', fill_type='solid')
+                    banip_fill = PatternFill(start_color='D6EAF8', end_color='D6EAF8', fill_type='solid')
+                    suip_fill = PatternFill(start_color='FADBD8', end_color='FADBD8', fill_type='solid')
+                    header_font = Font(bold=True)
+
+                    for sheet_name in ['최신현황', '전체이력']:
+                        ws = writer.sheets[sheet_name]
+
+                        # (1) 제목행 서식: 옅은 파랑 배경 + 볼드
+                        for cell in ws[1]:
+                            cell.fill = header_fill
+                            cell.font = header_font
+
+                        # (2) 틀 고정 (1행)
+                        ws.freeze_panes = 'A2'
+
+                        # (3) 자동 필터 (정렬 가능)
+                        ws.auto_filter.ref = ws.dimensions
+
+                        # (4) 컬럼 너비 자동 조절 (가장 긴 글씨 기준, 한글 폭 보정)
+                        for col_idx, col_cells in enumerate(ws.columns, 1):
+                            max_length = 0
+                            for cell in col_cells:
+                                try:
+                                    val_str = str(cell.value) if cell.value is not None else ""
+                                    cell_len = len(val_str)
+                                    korean_extra = sum(1 for c in val_str if ord(c) > 127)
+                                    cell_len += korean_extra
+                                    if cell_len > max_length:
+                                        max_length = cell_len
+                                except:
+                                    pass
+                            ws.column_dimensions[get_column_letter(col_idx)].width = max(max_length + 3, 8)
+
+                        # (5) 조건부 셀 색상: "반입" → 옅은 파랑, "수입" → 옅은 붉은색
+                        for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                            for cell in row:
+                                val = str(cell.value or '')
+                                if '반입' in val:
+                                    cell.fill = banip_fill
+                                elif '수입' in val:
+                                    cell.fill = suip_fill
+
                 output.seek(0)
                 file_store[token] = output.read()
                 yield "LOG:✔ 엑셀 생성 완료 (다운로드 가능)\n"

@@ -46,6 +46,8 @@ function ContainerHistoryInner() {
     const [activeStatFilters, setActiveStatFilters] = useState(new Set()); // 다중 선택을 위한 Set
     const [currentPage, setCurrentPage] = useState(1);
     const [expandedRows, setExpandedRows] = useState(new Set());
+    const [showPassword, setShowPassword] = useState(false);
+    const [failCount, setFailCount] = useState(0);
     const [downloadToken, setDownloadToken] = useState(null);
     const [resultFileName, setResultFileName] = useState('');
 
@@ -132,7 +134,11 @@ function ContainerHistoryInner() {
 
     const handleLogin = useCallback(async (id, pw) => {
         const loginId = id || userId; const loginPw = pw || userPw;
-        if (!loginId || !loginPw) { setLogLines(prev => [...prev, '[오류] 아이디와 비밀번호가 필요합니다.']); return; }
+        if (failCount >= 2) {
+            setLogLines(prev => [...prev, '[경고] 로그인 2회 실패로 보안을 위해 자동 시도가 차단되었습니다. 비밀번호 확인 후 페이지를 새로고침하세요.']);
+            return;
+        }
+
         setLoginLoading(true); startTimer();
         try {
             if (isSaveChecked) handleSaveCreds(loginId, loginPw);
@@ -142,9 +148,14 @@ function ContainerHistoryInner() {
                 body: JSON.stringify({ userId: loginId.trim(), userPw: loginPw, showBrowser }),
             });
             const data = await res.json();
+
+            if (!data.ok && data.error === "LOGIN_ERROR_CREDENTIALS") {
+                setFailCount(prev => prev + 1);
+            }
             if (data.log) setLogLines(prev => [...prev, ...data.log]);
             if (data.ok) {
                 setLoginSuccess(true);
+                setFailCount(0); // 성공 시 초기화
                 sessionStorage.setItem('els_login_success', 'true');
                 sessionStorage.setItem('els_login_timestamp', Date.now().toString());
                 if (pendingSearchRef.current) {
@@ -382,16 +393,44 @@ function ContainerHistoryInner() {
                             <div className={styles.inputGroup}>
                                 <div className={styles.loginRow}>
                                     <input type="text" placeholder="아이디" value={userId} onChange={e => setUserId(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
-                                    <input type="password" placeholder="비밀번호" value={userPw} onChange={e => setUserPw(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
+                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호" value={userPw} onChange={e => setUserPw(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
                                 </div>
                                 <div className={styles.loginActionRow}>
-                                    <button onClick={() => handleLogin()} disabled={loginLoading} className={styles.button} style={{ flex: 1 }}>
-                                        {loginLoading ? '접속 시도 중...' : '자동 로그인 연동'}
+                                    <button
+                                        onClick={() => handleLogin()}
+                                        disabled={loginLoading || failCount >= 2}
+                                        className={styles.button}
+                                        style={{ flex: 1, backgroundColor: failCount >= 2 ? '#ef4444' : undefined }}
+                                    >
+                                        {failCount >= 2 ? '로그인 차단됨' : (loginLoading ? '접속 시도 중...' : '자동 로그인 연동')}
                                     </button>
-                                    <label className={styles.saveControl}>
-                                        <input type="checkbox" checked={isSaveChecked} onChange={e => setIsSaveChecked(e.target.checked)} />
-                                        <span>저장</span>
-                                    </label>
+                                    <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
+                                        <label className={styles.saveControl}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSaveChecked}
+                                                onChange={async (e) => {
+                                                    const checked = e.target.checked;
+                                                    setIsSaveChecked(checked);
+                                                    if (!checked) {
+                                                        // [중요] 저장 체크 해제 시 즉시 데몬 중지
+                                                        try {
+                                                            await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
+                                                            setLogLines(prev => [...prev, '✓ 자동 로그인 연동이 해제되고 세션이 종료되었습니다.']);
+                                                            setLoginSuccess(false);
+                                                            sessionStorage.removeItem('els_login_success');
+                                                            setFailCount(0); // 정지하면 카운트도 초기화
+                                                        } catch (err) { console.error(err); }
+                                                    }
+                                                }}
+                                            />
+                                            <span style={{ fontSize: '0.8rem' }}>저장</span>
+                                        </label>
+                                        <label className={styles.saveControl}>
+                                            <input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} />
+                                            <span style={{ fontSize: '0.8rem' }}>보기</span>
+                                        </label>
+                                    </div>
                                 </div>
                                 {lastSavedInfo && <div className={styles.lastSavedText}>암호화 저장됨: {lastSavedInfo}</div>}
                             </div>

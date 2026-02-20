@@ -23,8 +23,8 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False # [추가] 로그인 중복 실행 방지 플래그
-        # NAS 부하를 고려해 병렬 세션을 2개로 제한 (안정성 최우선)
-        self.max_drivers = 2 
+        # NAS 도커 병렬 처리를 위해 기본 2개로 확장 (필요시 환경변수 ELS_MAX_DRIVERS로 조절 가능)
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 2))
 
     def clear(self):
         with self.lock:
@@ -72,7 +72,8 @@ def login():
     data = request.json
     u_id = (data.get('userId') or "").strip()
     u_pw = data.get('userPw')
-    show_browser = data.get('showBrowser', False)
+    # NAS 도커용 정비: 환경변수 또는 기본값(False)에 따라 브라우저 표시 여부 결정
+    show_browser = os.environ.get("ELS_SHOW_BROWSER", "false").lower() == "true"
     
     if pool.is_same_user(u_id, show_browser):
         if len(pool.drivers) >= pool.max_drivers:
@@ -132,6 +133,13 @@ def login():
     else:
         return jsonify({"ok": False, "error": "로그인 실패", "log": logs})
 
+@app.route('/stop', methods=['POST'])
+def stop():
+    with pool.lock:
+        pool.clear()
+        pool.current_user = None
+    return jsonify({"ok": True, "message": "데몬 세션이 즉시 종료되었습니다."})
+
 @app.route('/run', methods=['POST'])
 def run():
     data = request.json
@@ -143,8 +151,38 @@ def run():
         return jsonify({"ok": False, "error": "가용한 세션 없음"})
 
     try:
+        # 🎯 [형의 조언/로그 참조] 세션 끊김(invalid session id) 방어 로직 추가
+        # 조회를 시작하기 전에 현재 브라우저가 아직 로그인 상태인지 체크
+        is_alive = False
+        try:
+            # 1. 현재 URL 확인 (로그인 페이지로 튕겼는지)
+            if "login" not in driver.current_url.lower():
+                # 2. 핵심 요소(로그아웃 버튼 등)가 있는지 확인
+                page_text = driver.page_source or ""
+                if any(kw in page_text for kw in ["로그아웃", "Logout", "컨테이너", "Container"]):
+                    is_alive = True
+        except:
+            pass
+
+        if not is_alive:
+            print(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
+            # 세션이 죽었으면 다시 로그인 (pool에 저장된 계정 정보 사용)
+            u_id = pool.current_user["id"]
+            u_pw = pool.current_user["pw"]
+            show_browser = pool.current_user["show_browser"]
+            
+            # 현재 드라이버는 버리고 새로 만들기 (안정성)
+            try: driver.quit()
+            except: pass
+            
+            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser)
+            if res[0]:
+                driver = res[0]
+                print("--- [세션 복구 성공] 조회를 계속합니다. ---")
+            else:
+                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
+
         # [형의 조언 반영] 사이트 차단 방지를 위한 더 긴 랜덤 지연 (3.0 ~ 7.0초)
-        # NAS의 느린 반응 속도를 감안하여 대기 시간을 충분히 줌
         time.sleep(random.uniform(3.0, 7.0))
         
         start_time = time.time()
@@ -157,39 +195,59 @@ def run():
         status = solve_input_and_search(driver, cn, log_callback=_log_cb)
         
         result_rows = []
-        if "완료" in status or "내역없음확인" in status:
-            # 내역 없음이 확실하다면 바로 처리
-            if "내역없음확인" in status:
+        # [핵심 수정] status가 True(bool) 또는 문자열일 수 있음
+        is_success = (status is True) or (isinstance(status, str) and ("완료" in status or "조회시도완료" in status))
+        is_nodata = isinstance(status, str) and "내역없음확인" in status
+        
+        if is_success or is_nodata:
+            if is_nodata:
                 result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
                 grid_text = None
             else:
-                # NAS 속도를 고려해 그리드 텍스트 추출 전 약간의 추가 대기
-                time.sleep(1.0)
                 grid_text = scrape_hyper_verify(driver, cn)
             
             if grid_text:
-                blacklist = ["SKR", "YML", "ZIM", "최병훈", "안녕하세요", "로그아웃", "조회"]
+                import re
+                # [DEBUG] 형, 데몬 터미널에 긁어온 생데이터 찍어볼게!
+                print(f"--- [DEBUG RAW TEXT: {cn}] ---")
+                print(grid_text[:1000]) # 앞부분 1000자만
+                print("-----------------------------------")
+                
+                temp_rows = []
+                # 🎯 [끝판왕 파싱] 텍스트 전체에서 번호(1~100) + 상태 가 붙은 모든 조각을 찾아냄
                 for line in grid_text.split('\n'):
-                    stripped = line.strip()
-                    if not stripped or any(kw in stripped for kw in blacklist): continue
-                    row_data = re.split(r'\t|\s{2,}', stripped)
-                    if row_data and row_data[0].isdigit():
-                        no_val = int(row_data[0])
-                        # 🎯 형, 여기서 1~200 사이의 진짜 'No' 번호만 필터링해.
-                        if 1 <= no_val <= 200:
-                            while len(row_data) < 14: row_data.append("")
-                            # [핵심] 번호만 있고 나머지가 '-', '.', '?' 또는 공백인 행은 '유령 데이터'니까 버려!
-                            if any(cell.strip() and cell.strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in row_data[1:14]):
-                                result_rows.append([cn] + row_data[:14])
-                            else:
-                                print(f"DEBUG: [{cn}] No.{no_val} 행은 실제 데이터가 없어 필터링됨.")
-                        else:
-                            print(f"DEBUG: [{cn}] No.{no_val} 번호가 유효 범위를 벗어나 필터링됨.")
+                    line = line.strip()
+                    if not line: continue
+                    if '|' in line:
+                        parts = line.split('|')
+                        if len(parts) >= 2:
+                            while len(parts) < 14: parts.append("")
+                            temp_rows.append([cn] + parts[:14])
+
+                if not temp_rows:
+                    for line in grid_text.split('\n'):
+                        line = line.strip()
+                        if not line: continue
+                        if re.search(r'^\d+\s+', line):
+                            parts = re.split(r'\t|\s{2,}', line)
+                            if len(parts) >= 3:
+                                while len(parts) < 14: parts.append("")
+                                temp_rows.append([cn] + parts[:14])
+
+                # No 기준 중복 제거 및 유효성 검사
+                seen_no = set()
+                for r in sorted(temp_rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
+                    if r[1] not in seen_no:
+                        if any(cell.strip() and cell.strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in r[2:14]):
+                            result_rows.append(r)
+                            seen_no.add(r[1])
             
             if not result_rows:
-                result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                if grid_text == "NODATA_CONFIRMED" or (grid_text and any(msg in grid_text for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다"])):
+                    result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                else:
+                    result_rows.append([cn, "ERROR", "데이터 추출 실패 (시간 초과)"] + [""]*12)
         else:
-            # 실패 시 모달 창이 가리고 있을 수 있으므로 한 번 닫아줌 (다음 조회를 위해)
             close_modals(driver)
             result_rows.append([cn, "ERROR", status] + [""]*12)
 
@@ -201,7 +259,6 @@ def run():
             "log": logs
         })
     except Exception as e:
-        # 예외 발생 시 브라우저 상태가 불안정할 수 있으므로 체크 필요 (생략 가능)
         return jsonify({"ok": False, "error": str(e)})
     finally:
         pool.return_driver(driver)
@@ -214,6 +271,6 @@ def quit_driver():
 if __name__ == '__main__':
     print("========================================")
     print("   ELS NAS STABLE DAEMON STARTED")
-    print("   POOL SIZE: 2 | SAFETY FIRST")
+    print("   SESSION AUTO-RECOVERY ENABLED")
     print("========================================")
     app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)

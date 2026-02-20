@@ -26,108 +26,64 @@ function getPythonCommand() {
     }
 }
 
-function runViaDaemon(body, controller, encoder) {
+async function runViaDaemon(body, controller, encoder) {
     const baseUrl = getDaemonUrl();
-    fetch(`${baseUrl}/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    }).then(async (res) => {
-        if (!res.ok || !res.body) {
-            controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
-                sheet1: [], sheet2: [], downloadToken: null,
-                error: '데몬 조회 실패 (status ' + res.status + ')',
-            }) + '\n'));
-            controller.close();
-            return;
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let resultSent = false;
-        try {
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith('LOG:')) {
-                        controller.enqueue(encoder.encode(line.trimEnd() + '\n'));
-                    } else if (trimmed.startsWith('RESULT_PARTIAL:')) {
-                        // 부분 결과 그대로 프론트로 전달
-                        controller.enqueue(encoder.encode(line.trimEnd() + '\n'));
-                    } else if (trimmed.startsWith('RESULT:')) {
-                        try {
-                            const data = JSON.parse(trimmed.slice(7));
-                            let downloadToken = null;
-                            if (data.output_path && fs.existsSync(data.output_path)) {
-                                const buf = fs.readFileSync(data.output_path);
-                                try { fs.unlinkSync(data.output_path); } catch (_) { }
-                                downloadToken = crypto.randomBytes(16).toString('hex');
-                                fileStore.set(downloadToken, buf);
-                                setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
-                            }
-                            controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
-                                sheet1: data.sheet1 || [],
-                                sheet2: data.sheet2 || [],
-                                downloadToken,
-                                error: data.error,
-                            }) + '\n'));
-                            resultSent = true;
-                        } catch (_) {
-                            controller.enqueue(encoder.encode(line + '\n'));
-                        }
+    const { containers, userId, userPw, showBrowser } = body;
+    let finalResult = [];
+    let resultSent = false;
+
+    try {
+        controller.enqueue(encoder.encode(`LOG:데몬을 통한 병렬 조회를 시작합니다. (대상: ${containers.length}건)\n`));
+
+        // 배치 조회를 각각의 데몬 요청으로 분산 (데몬이 단일건 조회를 지원하므로)
+        for (let i = 0; i < containers.length; i++) {
+            const cn = containers[i];
+            try {
+                const res = await fetch(`${baseUrl}/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ containerNo: cn, userId, userPw, showBrowser }),
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.ok && data.result) {
+                        finalResult = finalResult.concat(data.result);
+                        // 실시간 부분 결과 전송
+                        controller.enqueue(encoder.encode(`RESULT_PARTIAL:${JSON.stringify({ result: data.result })}\n`));
+                        controller.enqueue(encoder.encode(`LOG:✔ [${i + 1}/${containers.length}] [${cn}] 완료\n`));
+                    } else {
+                        controller.enqueue(encoder.encode(`LOG:❌ [${i + 1}/${containers.length}] [${cn}] 에러: ${data.error || '알 수 없는 오류'}\n`));
+                        finalResult.push([cn, "ERROR", data.error || "조회 실패", "", "", "", "", "", "", "", "", "", "", "", ""]);
                     }
+                } else {
+                    controller.enqueue(encoder.encode(`LOG:❌ [${i + 1}/${containers.length}] [${cn}] 통신 실패 (status ${res.status})\n`));
                 }
+            } catch (err) {
+                controller.enqueue(encoder.encode(`LOG:❌ [${i + 1}/${containers.length}] [${cn}] 실패: ${err.message}\n`));
             }
-            if (buffer.trim()) {
-                if (buffer.trim().startsWith('RESULT:')) {
-                    try {
-                        const data = JSON.parse(buffer.trim().slice(7));
-                        let downloadToken = null;
-                        if (data.output_path && fs.existsSync(data.output_path)) {
-                            const buf = fs.readFileSync(data.output_path);
-                            try { fs.unlinkSync(data.output_path); } catch (_) { }
-                            downloadToken = crypto.randomBytes(16).toString('hex');
-                            fileStore.set(downloadToken, buf);
-                            setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
-                        }
-                        controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
-                            sheet1: data.sheet1 || [],
-                            sheet2: data.sheet2 || [],
-                            downloadToken,
-                            error: data.error,
-                        }) + '\n'));
-                        resultSent = true;
-                    } catch (_) { }
-                }
-            }
-            if (!resultSent) {
-                controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
-                    sheet1: [], sheet2: [], downloadToken: null,
-                    error: '데몬 응답에 RESULT가 없습니다.',
-                }) + '\n'));
-            }
-        } catch (err) {
-            if (!resultSent) {
-                controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
-                    sheet1: [], sheet2: [], downloadToken: null,
-                    error: String(err.message),
-                }) + '\n'));
-            }
-        } finally {
-            controller.close();
         }
-    }).catch((err) => {
+
+        // 모든 조회가 끝난 후 최종 결과 전송 (프론트엔드 호환용 result 필드 포함)
         controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
-            sheet1: [], sheet2: [], downloadToken: null,
-            error: String(err.message || '데몬 연결 실패'),
+            ok: true,
+            result: finalResult,
+            sheet1: finalResult.filter(r => String(r[1]) === '1'),
+            sheet2: finalResult,
+            error: null,
         }) + '\n'));
+        resultSent = true;
+    } catch (err) {
+        if (!resultSent) {
+            controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
+                ok: false,
+                result: [],
+                error: String(err.message),
+            }) + '\n'));
+        }
+    } finally {
         controller.close();
-    });
+    }
 }
 
 export async function POST(req) {
@@ -214,6 +170,8 @@ export async function POST(req) {
                                     setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
                                 }
                                 controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
+                                    ok: true,
+                                    result: data.sheet2 || [],
                                     sheet1: data.sheet1 || [],
                                     sheet2: data.sheet2 || [],
                                     downloadToken,
@@ -259,6 +217,8 @@ export async function POST(req) {
                                     setTimeout(() => fileStore.delete(downloadToken), 60 * 60 * 1000);
                                 }
                                 controller.enqueue(encoder.encode('RESULT:' + JSON.stringify({
+                                    ok: true,
+                                    result: data.sheet2 || [],
                                     sheet1: data.sheet1 || [],
                                     sheet2: data.sheet2 || [],
                                     downloadToken,

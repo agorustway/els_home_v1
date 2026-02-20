@@ -43,6 +43,8 @@ export default function SafeFreightPage() {
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [view, setView] = useState('default'); // 'default' or 'forwarder' or 'naver-map'
+  const [showPassword, setShowPassword] = useState(false);
+  const [failCount, setFailCount] = useState(0);
   const otherTabDefaultsJustSet = useRef(false);
   const skipRegionClearOnce = useRef(false);
 
