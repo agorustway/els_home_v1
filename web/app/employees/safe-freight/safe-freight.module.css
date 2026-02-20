@@ -125,10 +125,11 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   max-width: 640px;
   width: 100%;
-  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px); /* 🎯 모바일 주소창 대응 */
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  overscroll-behavior: contain; /* 🎯 바디 스크롤 전이 방지 */
 }
 
 .noticeModalHead {
@@ -175,6 +176,7 @@
   flex: 1;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; /* 🎯 모바일에서 팝업 내부만 스크롤되도록 고정 */
 }
 
 /* 스크롤바 디자인 최적화 (가림 방지) */
@@ -440,7 +442,9 @@
   padding: 18px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   height: 100%;
+  min-height: 420px; /* 🎯 데스크탑에서 주소 검색창 열릴 때 프레임이 충분히 늘어나도록 최소 높이 확보 */
   box-sizing: border-box;
+  position: relative; /* 🎯 하위 절대 요소 기준점 */
 }
 
 .stepTitle {
@@ -1227,11 +1231,12 @@
   }
 
   .noticeModal {
-    max-height: calc(100vh - 24px);
-    width: 100%;
+    max-height: calc(100dvh - 20px); /* 🎯 모바일에서 가능한 최대 크기로 확장 */
+    width: 96%; /* 🎯 좌우 여백 살짝 부여 */
     max-width: 100%;
-    border-radius: 20px 20px 0 0;
+    border-radius: 16px 16px 0 0;
     /* 상단 라운드 강화 */
+    margin: 0 auto;
   }
 
   /* 가로 모드 또는 낮은 화면 대응 */
