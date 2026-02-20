@@ -82,24 +82,37 @@ def _is_valid_input_simple(element):
     except: return False
 
 def open_els_menu(driver, log_callback=None):
-    if log_callback: log_callback("메뉴 진입 시도 중...")
+    if log_callback: log_callback("메뉴 진입 시도 중 (최대 30초 대기)...")
     
-    for attempt in range(15):  # 이전 코드: 15번 시도
-        check_alert(driver)  # alert 체크 추가
+    # [NAS 최적화] 대기 시간을 30초로 상향
+    for attempt in range(30):
+        check_alert(driver)
+        close_modals(driver) # 매 시도마다 모달 체크
         
-        # iframe 순회 (이전 성공 코드 방식)
+        # iframe 순회
         frames = driver.find_elements(By.TAG_NAME, "iframe")
-        for frame in [None] + frames:  # None부터 시작 (메인 프레임 먼저)
+        for frame in [None] + frames:
             try:
                 if frame:
                     driver.switch_to.frame(frame)
                 
-                # 메뉴 찾기
-                targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
-                if targets:
-                    driver.execute_script("arguments[0].click();", targets[0])
-                    time.sleep(4)  # 이전 코드: 4초 대기
-                    return True
+                # 다양한 텍스트 패턴 시도
+                menu_xpaths = [
+                    "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]",
+                    "//*[contains(text(), '컨테이너이동현황')]",
+                    "//a[contains(., '컨테이너') and contains(., '이동현황')]",
+                    "//span[contains(., '컨테이너') and contains(., '이동현황')]"
+                ]
+                
+                for xpath in menu_xpaths:
+                    targets = driver.find_elements(By.XPATH, xpath)
+                    if targets:
+                        target = targets[0]
+                        # 가려져 있어도 클릭 가능하도록 스크립트 실행
+                        driver.execute_script("arguments[0].click();", target)
+                        if log_callback: log_callback(f"메뉴 클릭 성공 (시도: {attempt+1})")
+                        time.sleep(5)
+                        return True
             except:
                 pass
             finally:
@@ -250,9 +263,24 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         pw_input.send_keys(u_pw)
         time.sleep(0.5)
         
-        # Enter 키로 로그인 (이전 성공 코드 방식)
+        # Enter 키로 로그인 (기본)
         pw_input.send_keys(Keys.ENTER)
         
+        # [NAS 보강] 엔터가 안 먹힐 경우를 대비해 로그인 버튼 직접 클릭 시도
+        try:
+            login_btn_selectors = [
+                (By.ID, "mf_wfm_subContainer_btn_login"),
+                (By.XPATH, "//button[contains(text(), '로그인')]"),
+                (By.XPATH, "//a[contains(text(), '로그인')]"),
+                (By.CLASS_NAME, "btn_login")
+            ]
+            for sel_type, sel_val in login_btn_selectors:
+                btns = driver.find_elements(sel_type, sel_val)
+                if btns:
+                    driver.execute_script("arguments[0].click();", btns[0])
+                    break
+        except: pass
+
         _log("로그인 시도 중...")
         
         # 로그인 처리 대기 (이전 코드: 8초)
