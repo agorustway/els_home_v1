@@ -809,7 +809,14 @@ export default function SafeFreightPage() {
         <button
           type="button"
           className={styles.noticeTabBtn}
-          onClick={() => setNoticeModalOpen(true)}
+          onClick={() => {
+            // 🎯 모바일(768px 이하)에서는 좁은 팝업 대신 쾌적한 전용 페이지(새 탭)로 이동
+            if (window.innerWidth <= 768) {
+              window.open('/employees/safe-freight/notices', '_blank');
+            } else {
+              setNoticeModalOpen(true);
+            }
+          }}
           aria-label="관련 법령·고시 안내 보기"
         >
           <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
