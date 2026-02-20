@@ -1294,12 +1294,14 @@
   .noticeModal .noticeList {
     padding: 16px;
     flex: 1;
-    overflow-y: auto !important;
-    /* 🎯 실제 스크롤이 일어나는 지점 */
+    overflow-y: scroll !important;
+    /* 🎯 scroll이 auto보다 안드로이드에서 확실함 */
     min-height: 0;
-    /* 🎯 flex 하위에서 스크롤 작동을 위한 필수 속성 */
+    /* 🎯 flex 하위 스크롤 필수 */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    /* 🎯 모바일 브라우저에게 "이 영역은 세로 스와이프 허용" 명시 */
     display: flex;
     flex-direction: column;
     gap: 10px;

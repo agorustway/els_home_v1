@@ -53,14 +53,35 @@ export default function SafeFreightPage() {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [autoRunCount, setAutoRunCount] = useState(0);
 
-  // 모달 오픈 시 바디 스크롤 방지 (이중 스크롤바 방지)
+  // 모달 오픈 시 바디 스크롤 방지 (모바일 터치 스크롤 호환)
   useEffect(() => {
     if (noticeModalOpen) {
-      document.body.style.overflow = 'hidden';
+      // 🎯 모바일에서 body overflow:hidden은 내부 터치 스크롤까지 죽이므로
+      // position:fixed 방식으로 배경만 고정 (Material UI 방식)
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflowY = 'scroll'; // 스크롤바 위치 유지
     } else {
-      document.body.style.overflow = '';
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflowY = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflowY = '';
+      if (scrollY) window.scrollTo(0, parseInt(scrollY) * -1);
+    };
   }, [noticeModalOpen]);
 
   // 시도 명칭 매핑 (API -> 안전운임 데이터 표준)
@@ -809,6 +830,7 @@ export default function SafeFreightPage() {
         <div
           className={styles.noticeModalOverlay}
           onClick={() => setNoticeModalOpen(false)}
+          onTouchMove={(e) => e.preventDefault()} /* 🎯 오버레이 터치 시 배경 스크롤 방지 */
           role="dialog"
           aria-modal="true"
           aria-labelledby="notice-modal-title"
@@ -828,7 +850,10 @@ export default function SafeFreightPage() {
             <p className={styles.noticeSectionDesc}>
               {NOTICE_SOURCE} 부대조항을 압축 정리했습니다. 각 항목을 클릭하면 해당 조문 전체를 볼 수 있습니다.
             </p>
-            <ul className={styles.noticeList}>
+            <ul
+              className={styles.noticeList}
+              onTouchMove={(e) => e.stopPropagation()} /* 🎯 리스트 내부 터치는 스크롤 허용 */
+            >
               {NOTICE_SECTIONS.map((sec) => (
                 <li key={sec.id} className={styles.noticeItem}>
                   <button
