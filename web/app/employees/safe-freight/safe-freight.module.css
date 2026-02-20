@@ -3,8 +3,19 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  overflow: visible;
-  /* 🎯 가로 스크롤 방지용 hidden을 제거하여 하위 요소가 밖으로 나갈 수 있게 함 */
+  overflow: visible !important;
+  /* 🎯 하위 요소 가둠 방지 */
+  position: relative;
+  z-index: 1;
+}
+
+.container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: visible !important;
+  /* 🎯 이 프레임에서 자꾸 잘리는 문제 해결 */
+  position: relative;
 }
 
 .headerBanner {
@@ -131,13 +142,14 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   max-width: 640px;
   width: 100%;
-  max-height: calc(100dvh - 48px);
-  /* 🎯 모바일 주소창 대응 */
+  max-height: calc(100dvh - 60px);
+  /* 🎯 여백 확보 */
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  overscroll-behavior: contain;
-  /* 🎯 바디 스크롤 전이 방지 */
+  overscroll-behavior: none;
+  /* 🎯 바디 스크롤 차단 */
+  position: relative;
 }
 
 .noticeModalHead {
@@ -1242,20 +1254,20 @@
 
   /* 관련 법령·고시 모달 모바일 최적화 */
   .noticeModalOverlay {
-    padding: 0;
-    /* 모바일에서 외부 여백 제거하고 하단 밀착 */
-    align-items: flex-end;
+    padding: 12px;
+    align-items: center;
+    /* 🎯 모바일에서도 중앙 정렬로 변경하여 스크롤 공간 확보 */
   }
 
   .noticeModal {
-    max-height: calc(100dvh - 20px);
-    /* 🎯 모바일에서 가능한 최대 크기로 확장 */
-    width: 96%;
-    /* 🎯 좌우 여백 살짝 부여 */
+    height: 80dvh;
+    /* 🎯 높이를 명시적으로 부여하여 내부 flex 스크롤 유도 */
+    max-height: calc(100dvh - 40px);
+    width: 100%;
     max-width: 100%;
-    border-radius: 16px 16px 0 0;
-    /* 상단 라운드 강화 */
-    margin: 0 auto;
+    border-radius: 20px;
+    margin: 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
   }
 
   /* 가로 모드 또는 낮은 화면 대응 */
