@@ -103,8 +103,8 @@ def login():
             msg = f"[데몬] 브라우저 #{idx+1} 초기화 중..."
             print(msg); logs.append(msg)
             
-            # [NAS 최적화] 브라우저 간 부팅 간격을 15초로 조정 (너무 길면 전체 타임아웃 발생 위험)
-            if idx > 0: time.sleep(idx * 15)
+            # [NAS 최적화] 브라우저 간 부팅 간격을 20초로 설정 (안정 커밋 기준)
+            if idx > 0: time.sleep(idx * 20)
             
             res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser)
             if res[0]:
