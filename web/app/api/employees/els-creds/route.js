@@ -3,7 +3,10 @@ import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-// Get Current User's Individual ELS Credentials
+// 🔑 이트랜스 계정은 회사 공용 1개 → 고정 키 'shared'로 전체 사용자 공유
+const SHARED_KEY = 'shared';
+
+// Get Shared ELS Credentials (모든 로그인 사용자 공용)
 export async function GET() {
     try {
         const supabase = await createClient();
@@ -14,7 +17,7 @@ export async function GET() {
         const { data, error } = await adminSupabase
             .from('user_els_credentials')
             .select('els_id, els_pw, updated_at')
-            .eq('email', user.email)
+            .eq('email', SHARED_KEY)
             .single();
 
         if (error && error.code !== 'PGRST116') { // PGRST116 is 'no rows'
@@ -34,7 +37,7 @@ export async function GET() {
     }
 }
 
-// Save/Update Current User's Individual ELS Credentials
+// Save/Update Shared ELS Credentials (누가 저장하든 공용으로 반영)
 export async function POST(request) {
     try {
         const supabase = await createClient();
@@ -48,7 +51,7 @@ export async function POST(request) {
         const { error } = await adminSupabase
             .from('user_els_credentials')
             .upsert({
-                email: user.email,
+                email: SHARED_KEY,
                 els_id: elsId.trim(),
                 els_pw: elsPw,
                 updated_at: new Date().toISOString()
