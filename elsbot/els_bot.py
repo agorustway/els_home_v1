@@ -242,9 +242,21 @@ def solve_input_and_search(driver, container_no, log_callback=None):
                 found_target.send_keys(Keys.ENTER)
                 time.sleep(0.5)
             
-            # [수정] 15건 조회로 확정
-            # 데이터 로딩 대기 (충분히)
-            time.sleep(4.5)
+            # [추가] 100건 조회로 변경 시도 (데이터 유실 방지)
+            try:
+                # '15'나 '개씩 보기'가 포함된 셀렉트 박스 찾기
+                combos = driver.find_elements(By.XPATH, "//select[contains(., '15') or contains(@id, 'cnt') or contains(@class, 'page')]")
+                for combo in combos:
+                    if combo.is_displayed():
+                        from selenium.webdriver.support.ui import Select
+                        Select(combo).select_by_visible_text("100") if "100" in combo.text else Select(combo).select_by_value("100")
+                        if log_callback: log_callback("100건 조회 설정 완료!")
+                        time.sleep(1)
+                        break
+            except: pass
+
+            # 데이터 로딩 대기 (100건인 경우를 대비해 6초로 상향)
+            time.sleep(6)
             
             # 결과가 정말 나왔는지 간이 체크
             page_text = driver.page_source
@@ -338,6 +350,11 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         alert_msg = check_alert(driver)
         if alert_msg:
             _log(f"로그인 실패 팝업: {alert_msg}")
+            # 🎯 형의 요청: 로그인 실패 시 명확한 사유 전달
+            page_src = driver.page_source or ""
+            if "아이디" in page_src and "비밀번호" in page_src and ("맞지 않" in page_src or "정보가" in page_src):
+                driver.quit()
+                return (None, "LOGIN_ERROR_CREDENTIALS")
             driver.quit()
             return (None, f"로그인 실패: {alert_msg}")
         

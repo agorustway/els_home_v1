@@ -42,6 +42,7 @@ DAEMON_URL = "http://127.0.0.1:31999"
 file_store = {}
 # [추가] 진행률 트래킹용 전역 변수
 global_progress = {"total": 0, "completed": 0, "is_running": False}
+LAST_RESULT_FILE = ELSBOT_DIR / "last_search_result.json"
 
 # --- 전역 에러 핸들러 ---
 @app.errorhandler(Exception)
@@ -200,6 +201,13 @@ def login():
                 daemon_result = json.loads(raw_resp)
             
             # 데몬 응답을 그대로 반환 (log 필드 포함)
+            if "LOGIN_ERROR_CREDENTIALS" in raw_resp or (isinstance(daemon_result, dict) and daemon_result.get("error") == "LOGIN_ERROR_CREDENTIALS"):
+                return jsonify({
+                    "ok": False, 
+                    "error": "LOGIN_ERROR_CREDENTIALS", 
+                    "message": "이트랜스 계정 정보 변경이 있었는지 우선 확인하세요."
+                })
+
             return jsonify(daemon_result)
         except Exception as e:
             app.logger.error(f"Daemon login failed: {e}. Raw response: {locals().get('raw_resp', 'N/A')}")
@@ -395,6 +403,16 @@ def template():
     wb.save(buf)
     buf.seek(0)
     return send_file(buf, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="template.xlsx")
+
+@app.route("/api/last-result", methods=["GET"])
+def get_last_result():
+    if LAST_RESULT_FILE.exists():
+        try:
+            with open(LAST_RESULT_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return jsonify({"ok": True, **data})
+        except: pass
+    return jsonify({"ok": False, "message": "최근 데이터가 없습니다."})
 
 if __name__ == "__main__":
     app.logger.info("Backend Server Ready with CORS")

@@ -12,6 +12,7 @@ const QUERY_TYPES = [
 ];
 
 const TEMP_RESULTS_KEY = 'safeFreightTempResults';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:2929';
 
 export default function SafeFreightPage() {
   const [options, setOptions] = useState(null);
@@ -138,6 +139,21 @@ export default function SafeFreightPage() {
       setIsSearching(false);
     }
   };
+
+  // [추가] 페이지 로드 시 백엔드에서 마지막 결과 가져오기
+  useEffect(() => {
+    const fetchLastResult = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/last-result`);
+        const data = await res.json();
+        if (data.ok && data.result) {
+          setResultAll(data.result);
+          setResult(data.result); // 필터링 없이 일단 전체 표시
+        }
+      } catch (e) { console.log('Last result recovery failed'); }
+    };
+    fetchLastResult();
+  }, []);
 
   const selectAddress = (item, autoRun = false) => {
     const { siNm, sggNm, emdNm } = item;
