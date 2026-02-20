@@ -146,7 +146,6 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  overscroll-behavior: contain;
   position: relative;
 }
 
@@ -1257,81 +1256,82 @@
     gap: 6px;
   }
 
-  /* 관련 법령·고시 모달 모바일 최적화 - 프리미엄 바텀 시트 스타일 */
+  /* 관련 법령·고시 모달 모바일 전면 수정 (Galaxy S25 등 안드로이드 최적화) */
   .noticeModalOverlay {
-    padding: 0;
-    align-items: flex-end;
-    /* 🎯 바닥에 붙여서 바텀 시트 느낌 부여 */
+    padding: 20px;
+    align-items: center;
+    /* 🎯 중앙 정렬이 상단 배너 등에 덜 민감함 */
+    justify-content: center;
   }
 
   .noticeModal {
-    height: 85dvh;
-    /* 🎯 높이를 확실히 잡아야 내부 스크롤이 살아남 */
-    max-height: 85dvh;
+    height: 75vh;
+    /* 🎯 고정 높이 대신 가변 높이(vh) 사용 */
+    max-height: 80vh;
     width: 100%;
-    max-width: 100%;
-    border-radius: 20px 20px 0 0;
-    /* 🎯 상단만 라운드 */
+    border-radius: 16px;
     margin: 0;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
-    border-bottom: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    /* 내부 스크롤을 위해 컨테이너는 가둠 */
   }
 
   .noticeModalHead {
-    padding: 24px 20px 12px 20px;
+    padding: 20px 20px 10px 20px;
     flex-shrink: 0;
     border-bottom: 1px solid #f1f5f9;
   }
 
   .noticeModal .noticeSectionDesc {
-    padding: 14px 20px;
-    font-size: 0.85rem;
-    color: #475569;
+    padding: 12px 20px;
+    font-size: 0.82rem;
+    color: #64748b;
     background: #f8fafc;
     margin: 0;
     flex-shrink: 0;
   }
 
   .noticeModal .noticeList {
-    padding: 20px;
+    padding: 16px;
     flex: 1;
     overflow-y: auto !important;
+    /* 🎯 실제 스크롤이 일어나는 지점 */
+    min-height: 0;
+    /* 🎯 flex 하위에서 스크롤 작동을 위한 필수 속성 */
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .noticeItemHead {
-    padding: 16px;
-    font-size: 0.95rem;
-    align-items: flex-start;
-    /* 🎯 제목 길어질 때 아이콘 상단 고정 */
     gap: 10px;
   }
 
-  .noticeItemTitle {
+  .noticeItemHead {
+    padding: 14px;
     font-size: 0.9rem;
+    align-items: center;
+  }
+
+  .noticeItemTitle {
+    font-size: 0.88rem;
     font-weight: 700;
   }
 
   .noticeItemToggle {
-    font-size: 0.75rem;
-    margin-top: 2px;
+    font-size: 0.7rem;
+    padding: 3px 6px;
   }
 
   .noticeSummary {
-    padding: 0 16px 16px 16px;
-    font-size: 0.85rem;
-    color: #64748b;
+    padding: 0 14px 14px 14px;
+    font-size: 0.82rem;
   }
 
   .noticeFullText {
-    margin: 0 16px 16px 16px;
-    padding: 14px;
+    margin: 0 14px 14px 14px;
+    padding: 12px;
     font-size: 0.8rem;
     background: #f1f5f9;
+    border-radius: 8px;
   }
 }
 
