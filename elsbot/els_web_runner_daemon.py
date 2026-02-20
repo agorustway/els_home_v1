@@ -22,6 +22,7 @@ class DriverPool:
         self.lock = threading.Lock()
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
+        self.is_logging_in = False # [추가] 로그인 중복 실행 방지 플래그
         # NAS 부하를 고려해 병렬 세션을 2개로 제한 (안정성 최우선)
         self.max_drivers = 2 
 
@@ -73,43 +74,58 @@ def login():
     u_pw = data.get('userPw')
     show_browser = data.get('showBrowser', False)
     
-    if pool.is_same_user(u_id, show_browser) and len(pool.drivers) >= pool.max_drivers:
-        return jsonify({
-            "ok": True, 
-            "message": "이미 안정화된 세션이 준비되어 있습니다.", 
-            "log": [f"[데몬] 이미 {u_id} 계정으로 {len(pool.drivers)}개 세션이 준비되었습니다."]
-        })
-    
-    pool.clear()
-    pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
-    
-    logs = []
-    success_count = 0
-    
-    def _do_login(idx):
-        nonlocal success_count
-        msg = f"[데몬] 브라우저 #{idx+1} 초기화 중..."
-        print(msg); logs.append(msg)
-        
-        # [NAS 최적화] 브라우저 간 부팅 간격을 20초로 벌려 CPU 피크 방지
-        if idx > 0: time.sleep(idx * 20)
-        
-        res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser)
-        if res[0]:
-            with pool.lock:
-                pool.add_driver(res[0])
-                success_count += 1
-            logs.append(f"✔ 브라우저 #{idx+1} 준비 완료 (NAS 안정 모드)")
-        else:
-            logs.append(f"❌ 브라우저 #{idx+1} 실패: {res[1]}")
+    if pool.is_same_user(u_id, show_browser):
+        if len(pool.drivers) >= pool.max_drivers:
+            return jsonify({
+                "ok": True, 
+                "message": "이미 안정화된 세션이 준비되어 있습니다.", 
+                "log": [f"[데몬] 이미 {u_id} 계정으로 {len(pool.drivers)}개 세션이 준비되었습니다."]
+            })
+        if pool.is_logging_in:
+            return jsonify({
+                "ok": True, 
+                "message": "현재 로그인이 진행 중입니다. 잠시만 기다려주세요.", 
+                "log": ["[데몬] 이전 로그인 요청이 처리 중입니다. 중복 실행을 방지합니다."]
+            }), 202 # 202 Accepted
 
-    threads = []
-    for i in range(pool.max_drivers):
-        t = threading.Thread(target=_do_login, args=(i,))
-        t.start()
-        threads.append(t)
+    with pool.lock:
+        pool.is_logging_in = True
     
-    for t in threads: t.join()
+    try:
+        pool.clear()
+        pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
+        
+        logs = []
+        success_count = 0
+        
+        def _do_login(idx):
+            nonlocal success_count
+            msg = f"[데몬] 브라우저 #{idx+1} 초기화 중..."
+            print(msg); logs.append(msg)
+            
+            # [NAS 최적화] 브라우저 간 부팅 간격을 15초로 조정 (너무 길면 전체 타임아웃 발생 위험)
+            if idx > 0: time.sleep(idx * 15)
+            
+            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser)
+            if res[0]:
+                with pool.lock:
+                    pool.add_driver(res[0])
+                    success_count += 1
+                logs.append(f"✔ 브라우저 #{idx+1} 준비 완료 (NAS 안정 모드)")
+            else:
+                logs.append(f"❌ 브라우저 #{idx+1} 실패: {res[1]}")
+
+        threads = []
+        for i in range(pool.max_drivers):
+            t = threading.Thread(target=_do_login, args=(i,))
+            t.start()
+            threads.append(t)
+        
+        for t in threads: t.join()
+
+    finally:
+        with pool.lock:
+            pool.is_logging_in = False
 
     if success_count > 0:
         return jsonify({"ok": True, "message": f"{success_count}개 세션 확보 성공", "log": logs})

@@ -187,7 +187,7 @@ def login():
         try:
             body = json.dumps({"useSavedCreds": use_saved, "userId": uid, "userPw": pw, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json"})
-            r = urlopen(req, timeout=90)
+            r = urlopen(req, timeout=180) # [수정] NAS 안정화 시간을 고려하여 타임아웃 180초로 대폭 상향
             raw_resp = r.read().decode("utf-8")
             
             # RESULT: 이후의 JSON만 파싱 (LOG 출력 무시)
@@ -235,7 +235,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
         try:
             body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-            resp = urlopen(req, timeout=120)
+            resp = urlopen(req, timeout=180)
             res_json = json.loads(resp.read().decode("utf-8"))
             return res_json.get("result", []), cn, res_json.get("error")
         except Exception as e:
