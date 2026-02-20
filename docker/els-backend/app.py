@@ -87,19 +87,21 @@ def _parse_grid_text(cn, grid_text):
         # 정규표현식으로 정밀 파싱
         row_data = re.split(r'\t|\s{2,}', stripped)
         
-        # No 컬럼이 숫자인 행만 (1~20)
-        if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 20:
-            # 데이터 길이를 14개로 맞추기 (부족하면 빈 문자열 추가)
-            while len(row_data) < 14:
-                row_data.append("")
-            
-            # [컨테이너번호] + [No, 수출입, 구분, ...] (총 15개)
-            full_row = [cn] + row_data[:14]
-            
-            # 빈 행 필터링 (컨테이너 번호와 No만 있고 나머지가 비어있는 경우)
-            if any(cell.strip() for cell in full_row[2:]):  # 3번째 컬럼부터 데이터가 있는지 확인
-                rows.append(full_row)
-                found_any = True
+        # No 컬럼이 숫자인 행만 (1~200) - 0은 메타데이터일 가능성이 큼
+        if row_data and row_data[0].isdigit():
+            no_val = int(row_data[0])
+            if 1 <= no_val <= 200:
+                # 데이터 길이를 14개로 맞추기 (부족하면 빈 문자열 추가)
+                while len(row_data) < 14:
+                    row_data.append("")
+                
+                # [컨테이너번호] + [No, 수출입, 구분, ...] (총 15개)
+                full_row = [cn] + row_data[:14]
+                
+                # 빈 행 필터링 (컨테이너 번호와 No만 있고 나머지가 비어있는 경우)
+                if any(cell.strip() for cell in full_row[2:]):  # 3번째 컬럼부터 데이터가 있는지 확인
+                    rows.append(full_row)
+                    found_any = True
             
     if not found_any:
         return [[cn, "NODATA", "내역 없음"] + [""]*12]

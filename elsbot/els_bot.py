@@ -142,18 +142,41 @@ def solve_input_and_search(driver, container_no, log_callback=None):
             found_target.send_keys(Keys.CONTROL + "a"); found_target.send_keys(Keys.DELETE)
             found_target.send_keys(container_no)
             time.sleep(0.2)
-            found_target.send_keys(Keys.ENTER)
-            
-            # 조회 버튼 강제 클릭 (버튼 못찾을 경우 대비)
+            # [추가] 실제로 값이 들어갔는지 한 번 더 확인
+            val_after = found_target.get_attribute('value')
+            if val_after != container_no:
+                found_target.click()
+                found_target.send_keys(Keys.CONTROL + "a"); found_target.send_keys(Keys.DELETE)
+                found_target.send_keys(container_no)
+                time.sleep(0.5)
+
+            # 조회 버튼 강제 클릭 (더 다양하게 시도)
             time.sleep(1)
-            search_btns = driver.find_elements(By.XPATH, "//*[contains(text(),'조회') or contains(@id, 'btn_search')]")
+            # '조회' 글자가 포함된 모든 요소 중 클릭 가능한 것 찾기
+            search_btns = driver.find_elements(By.XPATH, "//*[contains(text(),'조회') or contains(@id, 'btn_search') or contains(@class, 'search')]")
+            clicked = False
             for btn in search_btns:
-                if btn.is_displayed():
-                    driver.execute_script("arguments[0].click();", btn)
-                    break
-            # [수정] 15건 조회로 확정 (100건 설정 로직 제거)
-            # 데이터 로딩 대기
-            time.sleep(3)
+                try:
+                    if btn.is_displayed() and btn.is_enabled():
+                        # 가끔 일반 click()이 안 먹힐 때가 있어서 script로도 시도
+                        driver.execute_script("arguments[0].click();", btn)
+                        clicked = True
+                        break
+                except: continue
+            
+            # 버튼이 안 눌렸으면 엔터 한 번 더
+            if not clicked:
+                found_target.send_keys(Keys.ENTER)
+                time.sleep(0.5)
+            
+            # [수정] 15건 조회로 확정
+            # 데이터 로딩 대기 (충분히)
+            time.sleep(4.5)
+            
+            # 결과가 정말 나왔는지 간이 체크
+            page_text = driver.page_source
+            if "데이터가 없습니다" in page_text or "내역이 없습니다" in page_text:
+                return "내역없음확인"
             
             return "조회시도완료"
         except Exception as e:
@@ -293,9 +316,12 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
                     
                     # 정규표현식으로 정밀 파싱
                     row_data = re.split(r'\t|\s{2,}', stripped)
-                    if row_data and row_data[0].isdigit() and 1 <= int(row_data[0]) <= 200:
-                        final_rows.append([cn] + row_data[:14])
-                        found_any = True
+                    if row_data and row_data[0].isdigit():
+                        no_val = int(row_data[0])
+                        # 0은 메타데이터(0건 등)일 확률이 높으므로 1 이상만 데이터로 취합
+                        if 1 <= no_val <= 200:
+                            final_rows.append([cn] + row_data[:14])
+                            found_any = True
                 if not found_any:
                     final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
             else:

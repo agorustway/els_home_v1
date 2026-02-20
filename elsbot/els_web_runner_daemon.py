@@ -141,10 +141,16 @@ def run():
         status = solve_input_and_search(driver, cn, log_callback=_log_cb)
         
         result_rows = []
-        if "완료" in status:
-            # NAS 속도를 고려해 그리드 텍스트 추출 전 약간의 추가 대기
-            time.sleep(0.5)
-            grid_text = scrape_hyper_verify(driver, cn)
+        if "완료" in status or "내역없음확인" in status:
+            # 내역 없음이 확실하다면 바로 처리
+            if "내역없음확인" in status:
+                result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                grid_text = None
+            else:
+                # NAS 속도를 고려해 그리드 텍스트 추출 전 약간의 추가 대기
+                time.sleep(1.0)
+                grid_text = scrape_hyper_verify(driver, cn)
+            
             if grid_text:
                 blacklist = ["SKR", "YML", "ZIM", "최병훈", "안녕하세요", "로그아웃", "조회"]
                 for line in grid_text.split('\n'):
@@ -152,8 +158,17 @@ def run():
                     if not stripped or any(kw in stripped for kw in blacklist): continue
                     row_data = re.split(r'\t|\s{2,}', stripped)
                     if row_data and row_data[0].isdigit():
-                        while len(row_data) < 14: row_data.append("")
-                        result_rows.append([cn] + row_data[:14])
+                        no_val = int(row_data[0])
+                        # 🎯 형, 여기서 1~200 사이의 진짜 'No' 번호만 필터링해.
+                        if 1 <= no_val <= 200:
+                            while len(row_data) < 14: row_data.append("")
+                            # [핵심] 번호만 있고 나머지가 '-', '.', '?' 또는 공백인 행은 '유령 데이터'니까 버려!
+                            if any(cell.strip() and cell.strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in row_data[1:14]):
+                                result_rows.append([cn] + row_data[:14])
+                            else:
+                                print(f"DEBUG: [{cn}] No.{no_val} 행은 실제 데이터가 없어 필터링됨.")
+                        else:
+                            print(f"DEBUG: [{cn}] No.{no_val} 번호가 유효 범위를 벗어나 필터링됨.")
             
             if not result_rows:
                 result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)

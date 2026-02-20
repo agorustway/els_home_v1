@@ -6,7 +6,9 @@ Get-Process python -ErrorAction SilentlyContinue | Where-Object {
 
 Start-Sleep -Seconds 2
 
+$PYTHON_EXE = if (Test-Path "$PSScriptRoot\.venv\Scripts\python.exe") { "$PSScriptRoot\.venv\Scripts\python.exe" } else { "python" }
+
 Write-Host "Starting daemon..."
 Set-Location "$PSScriptRoot\elsbot"
 $env:HEADLESS = "0"
-python els_web_runner_daemon.py
+& $PYTHON_EXE els_web_runner_daemon.py
