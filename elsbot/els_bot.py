@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import re
+import argparse
 from openpyxl.styles import PatternFill
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")
@@ -84,28 +85,100 @@ def _is_valid_input_simple(element):
 def open_els_menu(driver, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중...")
     
-    for attempt in range(15):  # 안정 커밋 기준: 15번 시도
-        check_alert(driver)  # alert 체크
+    # [추가] 로그인 후 나타날 수 있는 차단 페이지(비번변경 등) 처리
+    def _check_and_clear_interrupts():
+        page_text = driver.page_source or ""
+        curr_url = driver.current_url or ""
         
-        # iframe 순회 (안정 커밋 방식)
+        # 🎯 진짜 방해되는 페이지 키워드 (공지사항은 제외)
+        interrupt_keywords = ["비밀번호변경", "개인정보", "IP사용통제", "비밀번호를 변경", "사용자 정보 수정", "로그인 제한"]
+        
+        if any(kw in page_text.replace(" ", "") for kw in interrupt_keywords):
+            if log_callback: log_callback(f"진짜 방해 요소 탐지! 제거 시도... ({curr_url})")
+            
+            # 모든 프레임 순회하며 닫기/다음에 관련 버튼 찌르기
+            for f in [None] + driver.find_elements(By.TAG_NAME, "iframe"):
+                try:
+                    if f: driver.switch_to.frame(f)
+                    close_keywords = ["다음에 하기", "나중에 변경", "닫기", "종료", "Close", "X", "취소"]
+                    for kw in close_keywords:
+                        btns = driver.find_elements(By.XPATH, f"//*[contains(text(), '{kw}') or contains(@aria-label, '{kw}')]")
+                        for btn in btns:
+                            if btn.is_displayed():
+                                driver.execute_script("arguments[0].click();", btn)
+                                if log_callback: log_callback(f"'{kw}' 버튼 클릭 성공!")
+                                time.sleep(1)
+                except: pass
+                finally: driver.switch_to.default_content()
+
+            # WebSquare 전용 모달 강제 파괴/숨김
+            try:
+                driver.execute_script("""
+                    document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => e.style.display = 'none');
+                    document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => e.click());
+                """)
+            except: pass
+
+    for attempt in range(20):
+        check_alert(driver)
+        close_modals(driver)
+        _check_and_clear_interrupts()
+        
+        # 🎯 [성공 판정 보강] 현재 페이지에 이미 컨테이너 입력창이 있다면 즉시 성공!
+        try:
+            page_text = driver.page_source or ""
+            if any(kw in page_text for kw in ["컨테이너번호", "Container No", "컨테이너 번호"]):
+                if log_callback: log_callback("조회 페이지 요소 감지! 진입 성공 판정.")
+                return True
+        except: pass
+
+        # 🎯 5번 이상 실패하면 직접 URL로 이동 시도
+        if attempt == 5:
+            if log_callback: log_callback("메뉴 클릭대신 직접 URL(컨테이너이동현황)로 이동 시도...")
+            driver.get("https://etrans.klnet.co.kr/main/index.do?menuId=002001007")
+            time.sleep(5)
+
+        # iframe 순회
         frames = driver.find_elements(By.TAG_NAME, "iframe")
-        for frame in [None] + frames:  # None부터 시작 (메인 프레임 먼저)
+        for frame in [None] + frames:
             try:
                 if frame:
                     driver.switch_to.frame(frame)
                 
-                # 메뉴 찾기
-                targets = driver.find_elements(By.XPATH, "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]")
-                if targets:
-                    driver.execute_script("arguments[0].click();", targets[0])
-                    time.sleep(4)  # 안정 커밋 기준: 4초 대기
-                    return True
+                # 메뉴 찾기 (더 넓은 범위 탐색)
+                menu_selectors = [
+                    "//*[contains(text(), '컨테이너') and contains(text(), '이동현황')]",
+                    "//a[contains(., '컨테이너') and contains(., '이동현황')]",
+                    "//span[contains(., '컨테이너') and contains(., '이동현황')]",
+                    "//*[contains(@title, '이동현황')]"
+                ]
+                
+                for xpath in menu_selectors:
+                    targets = driver.find_elements(By.XPATH, xpath)
+                    if targets:
+                        driver.execute_script("arguments[0].click();", targets[0])
+                        if log_callback: log_callback("메뉴 클릭 성공!")
+                        time.sleep(4)
+                        return True
             except:
                 pass
             finally:
                 driver.switch_to.default_content()
         
-        time.sleep(1)
+        # 10번 이후부턴 50% 확률로 인덱스 재갱신
+        if attempt > 10 and attempt % 5 == 0:
+            driver.get("https://etrans.klnet.co.kr/index.do")
+            time.sleep(5)
+
+        time.sleep(1.5)
+    
+    # 최종 실패 시 상세 정보 수집
+    if log_callback:
+        try:
+            body_text = driver.find_element(By.TAG_NAME, "body").text[:300].replace("\n", " ")
+            log_callback(f"최종 실패! URL: {driver.current_url}")
+            log_callback(f"페이지 텍스트: {body_text}")
+        except: pass
     
     return False
 
@@ -365,7 +438,14 @@ if __name__ == "__main__":
         parser.add_argument("--user-pw", type=str)
         args = parser.parse_args(sys.argv[2:])
         
-        c_list = json.loads(args.containers) if args.containers else []
+        if args.containers:
+            try:
+                c_list = json.loads(args.containers)
+            except:
+                # 콤마 분리 방식 지원 (CLI 편의성)
+                c_list = [x.strip() for x in args.containers.split(',') if x.strip()]
+        else:
+            c_list = []
         u_id = args.user_id if args.user_id else load_config().get('user_id')
         u_pw = args.user_pw if args.user_pw else load_config().get('user_pw')
         
