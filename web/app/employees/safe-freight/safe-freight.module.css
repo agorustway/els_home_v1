@@ -60,6 +60,7 @@
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: visible !important;
 }
 
 .sectionHead {
@@ -113,10 +114,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000; /* 상단 헤더(1200)보다 높게 수정 */
+  z-index: 2000;
+  /* 상단 헤더(1200)보다 높게 수정 */
   padding: 24px;
   box-sizing: border-box;
-  overflow: hidden; /* 오버레이 자체 스크롤 방지 */
+  overflow: hidden;
+  /* 오버레이 자체 스크롤 방지 */
 }
 
 .noticeModal {
@@ -125,11 +128,13 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   max-width: 640px;
   width: 100%;
-  max-height: calc(100dvh - 48px); /* 🎯 모바일 주소창 대응 */
+  max-height: calc(100dvh - 48px);
+  /* 🎯 모바일 주소창 대응 */
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  overscroll-behavior: contain; /* 🎯 바디 스크롤 전이 방지 */
+  overscroll-behavior: contain;
+  /* 🎯 바디 스크롤 전이 방지 */
 }
 
 .noticeModalHead {
@@ -176,7 +181,8 @@
   flex: 1;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain; /* 🎯 모바일에서 팝업 내부만 스크롤되도록 고정 */
+  overscroll-behavior: contain;
+  /* 🎯 모바일에서 팝업 내부만 스크롤되도록 고정 */
 }
 
 /* 스크롤바 디자인 최적화 (가림 방지) */
@@ -441,10 +447,13 @@
   border-radius: 12px;
   padding: 18px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  height: 100%;
-  min-height: 420px; /* 🎯 데스크탑에서 주소 검색창 열릴 때 프레임이 충분히 늘어나도록 최소 높이 확보 */
+  min-height: 420px;
+  /* 🎯 데스크탑에서 주소 검색창 열릴 때 프레임이 충분히 늘어나도록 최소 높이 확보 */
   box-sizing: border-box;
-  position: relative; /* 🎯 하위 절대 요소 기준점 */
+  position: relative;
+  /* 🎯 하위 절대 요소 기준점 */
+  overflow: visible !important;
+  /* 🎯 주소 드롭다운이 잘리지 않도록 강제 노출 */
 }
 
 .stepTitle {
@@ -1225,14 +1234,16 @@
 
   /* 관련 법령·고시 모달 모바일 최적화 */
   .noticeModalOverlay {
-    padding: 0; 
+    padding: 0;
     /* 모바일에서 외부 여백 제거하고 하단 밀착 */
-    align-items: flex-end; 
+    align-items: flex-end;
   }
 
   .noticeModal {
-    max-height: calc(100dvh - 20px); /* 🎯 모바일에서 가능한 최대 크기로 확장 */
-    width: 96%; /* 🎯 좌우 여백 살짝 부여 */
+    max-height: calc(100dvh - 20px);
+    /* 🎯 모바일에서 가능한 최대 크기로 확장 */
+    width: 96%;
+    /* 🎯 좌우 여백 살짝 부여 */
     max-width: 100%;
     border-radius: 16px 16px 0 0;
     /* 상단 라운드 강화 */
