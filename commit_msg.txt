@@ -1,11 +1,4 @@
-feat: 페르소나 확정 및 한글/UTF-8 정책 강화
+chore: DEV_LOG 헤더 정정 및 페르소나/정책 이력 추가
 
-[주요 변경]
-- 페르소나: 형/동생 → 오빠(42)/여동생(32) 관계로 확정
-- 의사소통: 오빠 7 : AI 3 비율, AI도 의견 내고 멈출 수 있음
-- 한글/UTF-8 정책: .gitattributes에 UTF-8 강제, git 인코딩 설정
-- 테스트 격리: .tmp_test/ 에서만 테스트, 완료 후 삭제
-- 이슈 보관: .tmp_issues/ 에 미해결 이슈 보관, 해결 시 삭제
-- .gitignore에 .tmp_test/, .tmp_issues/, commit_msg.txt 추가
-- RULES.md 전면 재작성 (제0~11조)
-- MISSION_CONTROL.md 트리 구조 업데이트
+- DEV_LOG.md 헤더: CHANGELOG → DEV LOG로 정정
+- 오늘 작업(페르소나/UTF-8/테스트 격리) 이력 DEV_LOG에 추가
