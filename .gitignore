@@ -39,8 +39,10 @@ elsbot/dist/
 elsbot/*.spec
 elsbot/login_debug_*.png
 elsbot/els_config.json
+elsbot/container_list.xlsx
+elsbot/last_search_result.json
 
-# ─── 디버그/임시 파일 ────────────────────────────
+# ─── 빌드 로그 ────────────────────────────────────
 *.log
 *.tmp
 *.bak

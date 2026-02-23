@@ -1,4 +1,8 @@
-chore: DEV_LOG 헤더 정정 및 페르소나/정책 이력 추가
+refactor: v1.0.0 코드 클린업 — 데드코드 제거 및 정리
 
-- DEV_LOG.md 헤더: CHANGELOG → DEV LOG로 정정
-- 오늘 작업(페르소나/UTF-8/테스트 격리) 이력 DEV_LOG에 추가
+[변경 사항]
+- app.py: 미사용 _parse_grid_text() 삭제, _stream_run 데드코드 제거, 중복 import 정리 (53줄 감소)
+- container-history: 프로덕션 [DEBUG] 로그 출력 제거
+- package.json: 버전 0.1.0 → 1.0.0
+- gitignore: build.log, container_list.xlsx, last_search_result.json 추가
+- web/build.log(44KB) 삭제, elsbot/build/ 빈 폴더 삭제

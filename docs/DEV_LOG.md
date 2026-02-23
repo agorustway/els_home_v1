@@ -19,6 +19,23 @@
 
 ---
 
+## 📅 2026-02-23: v1.0.0 코드 클린업 — 데드코드 제거 및 정리
+
+### 핵심 성과
+- **app.py**: 미사용 함수 `_parse_grid_text()` 삭제, `_stream_run()` 데드코드(도달 불가 fallback) 제거, 중복 import 정리
+- **container-history**: 프로덕션 [DEBUG] 로그 출력 제거
+- **package.json**: 버전 `0.1.0` → `1.0.0`
+- **gitignore 강화**: `build.log`, `container_list.xlsx`, `last_search_result.json` 추가
+- **정리**: `web/build.log`(44KB) 삭제, `elsbot/build/` 빈 폴더 삭제
+
+### 변경 파일
+- `docker/els-backend/app.py` — 53줄 감소 (497→444줄)
+- `web/app/employees/container-history/page.js` — DEBUG 로그 삭제
+- `web/package.json` — v1.0.0
+- `.gitignore` — 런타임 산출물 추가
+
+---
+
 ## 📅 2026-02-23: 페르소나 확정 + 한글/UTF-8 정책 + 테스트 격리 정책
 
 ### 핵심 성과

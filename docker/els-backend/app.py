@@ -73,59 +73,6 @@ def run_runner(cmd, extra_args=None, env=None):
         app.logger.exception(f"Subprocess failed: {e}")
         raise
 
-def _parse_grid_text(cn, grid_text):
-    if not grid_text: return [[cn, "NODATA", "데이터 없음"] + [""]*12]
-    
-    import re
-    rows = []
-    found_any = False
-    
-    # 🎯 [무대뽀 파싱] 텍스트 전체에서 데이터 행처럼 보이는 것을 '사냥'함
-    # 1. 줄바꿈 기준 시도
-    lines = grid_text.split('\n')
-    for line in lines:
-        line = line.strip()
-        if not line: continue
-        
-        # 행 시작이 "숫자 + 공백 + [상태]" 패턴인지 확인
-        match = re.search(r'^(\d+)\s+([^\s]+)\s+(.+)', line)
-        if match:
-            no_val = int(match.group(1))
-            if 1 <= no_val <= 200:
-                parts = re.split(r'\t|\s{2,}', line)
-                if len(parts) >= 3:
-                    while len(parts) < 14: parts.append("")
-                    full_row = [cn] + parts[:14]
-                    if any(p.strip() for p in full_row[2:]):
-                        rows.append(full_row)
-                        found_any = True
-
-    # 2. [비상] 뭉친 텍스트에서 패턴 직접 추출
-    if not found_any:
-        matches = re.finditer(r'(\d+)\s+(수입|수출|반입|반출|양하|적하|공탈|입고|출고)', grid_text)
-        for m in matches:
-            start_idx = m.start()
-            next_m = re.search(r'(\d+)\s+(수입|수출|반입|반출|양하|적하|공탈|입고|출고)', grid_text[start_idx+1:])
-            end_idx = (start_idx + 1 + next_m.start()) if next_m else (start_idx + 100)
-            chunk = grid_text[start_idx:end_idx].replace('\n', ' ').strip()
-            parts = re.split(r'\s+', chunk)
-            if len(parts) >= 3:
-                while len(parts) < 14: parts.append("")
-                rows.append([cn] + parts[:14])
-                found_any = True
-
-    if not found_any:
-        return [[cn, "NODATA", "내역 없음"] + [""]*12]
-        
-    # No 기준 중복 제거 및 정렬
-    seen_no = set()
-    unique_rows = []
-    for r in sorted(rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
-        if r[1] not in seen_no:
-            unique_rows.append(r)
-            seen_no.add(r[1])
-            
-    return unique_rows
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
     # 백엔드 내부에서 데몬 상태 확인 시 3회 재시도 로직 도입 (안정성 극대화)
@@ -160,7 +107,6 @@ def capabilities():
 
 @app.route("/api/els/config", methods=["GET"])
 def config_get():
-    from datetime import datetime
     if not CONFIG_PATH.exists():
         return jsonify({"hasSaved": False, "defaultUserId": ""})
     try:
@@ -178,7 +124,6 @@ def config_get():
 
 @app.route("/api/els/config", methods=["POST"])
 def config_post():
-    from datetime import datetime
     data = request.get_json(silent=True)
     if not data: return jsonify({"error": "No data"}), 400
     uid = (data.get("userId") or "").strip()
@@ -414,31 +359,11 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
         yield "LOG:조회 결과 데이터가 하나도 없습니다.\n"
 
 def _stream_run(containers, use_saved, uid, pw, show_browser=False):
-    if _daemon_available():
-        yield from _stream_run_daemon(containers, use_saved, uid, pw, show_browser=show_browser)
+    """데몬 모드로 컨테이너 조회를 스트리밍 실행한다."""
+    if not _daemon_available():
+        yield "LOG:[오류] ELS 데몬이 실행되지 않았습니다. 로그인을 먼저 수행하세요.\n"
         return
-    
-        # Fallback to subprocess (non-daemon mode)
-        extra = ["--containers", json.dumps(containers)]
-        if not use_saved: extra.extend(["--user-id", uid, "--user-pw", pw])
-        proc = subprocess.Popen([sys.executable, str(RUNNER), "run"] + extra, cwd=str(ELSBOT_DIR), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}, bufsize=1)
-        
-        result_sent = False
-    for line in iter(proc.stdout.readline, ""):
-        if line.strip().startswith("{"):
-            try:
-                obj = json.loads(line.strip())
-                if not result_sent:
-                    result_sent = True
-                    token = str(uuid.uuid4()).replace("-", "")[:16]
-                    if obj.get("output_path") and Path(obj["output_path"]).exists():
-                        file_store[token] = Path(obj["output_path"]).read_bytes()
-                        Path(obj["output_path"]).unlink(missing_ok=True)
-                    yield "RESULT:" + json.dumps({**obj, "downloadToken": token}, ensure_ascii=False) + "\n"
-            except: yield "LOG:" + line + "\n"
-        else:
-            yield "LOG:" + line + "\n"
-    proc.wait()
+    yield from _stream_run_daemon(containers, use_saved, uid, pw, show_browser=show_browser)
 
 @app.route("/api/els/run", methods=["POST"])
 def run():

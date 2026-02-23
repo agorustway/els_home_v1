@@ -234,8 +234,6 @@ function ContainerHistoryInner() {
                         try {
                             const part = JSON.parse(line.substring(15));
                             if (part.result && Array.isArray(part.result)) {
-                                // [DEBUG] 수신된 데이터 구조를 로그창에 잠시 노출 (문제 해결용)
-                                setLogLines(prev => [...prev, `[DEBUG] 수신: ${JSON.stringify(part.result[0])}`]);
 
                                 setResult(prev => {
                                     // 기존 결과에 새 결과 병합 (함수형 업데이트로 최신 상태 보장)
