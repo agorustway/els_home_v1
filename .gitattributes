@@ -1,4 +1,14 @@
-# Dockerfile must use LF so Docker (NAS/Windows) does not report "invalid format"
+# ═══════════════════════════════════════════════════
+# ELS 프로젝트 .gitattributes
+# 한글 인코딩 정책: 모든 텍스트 파일은 UTF-8
+# ═══════════════════════════════════════════════════
+
+# 전체 텍스트 파일 UTF-8 강제
+* text=auto working-tree-encoding=UTF-8
+
+# Dockerfile/Shell은 LF 필수 (Docker/NAS 호환)
 Dockerfile text eol=lf
-# Shell scripts must use LF so NAS/Linux does not report $'\r': command not found
 *.sh text eol=lf
+
+# 커밋 메시지 파일도 UTF-8
+commit_msg.txt text working-tree-encoding=UTF-8

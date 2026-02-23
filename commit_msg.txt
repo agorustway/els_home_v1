@@ -1,10 +1,11 @@
-feat: AI 메모리 체계 통합 및 프로젝트 구조 대청소
+feat: 페르소나 확정 및 한글/UTF-8 정책 강화
 
 [주요 변경]
-- docs/ 디렉토리 신설: MISSION_CONTROL, RULES, DEV_LOG, ARCHITECTURE, RUNBOOK
-- 14개 분산 MD 파일을 5개 통합 파일로 정리
-- 기존 파일은 docs/_archive/ 로 백업 (gitignore)
-- 루트 잡동사니 스크립트 → scripts/ 디렉토리로 이동
-- 디버그/백업/임시 파일 → docs/_archive/ 로 이동
-- .gitignore 강화: Python 캐시, AI 도구 캐시, 빌드 산출물, IDE 설정
-- /init 워크플로우 추가: 새 대화 시작 시 메모리 자동 로드
+- 페르소나: 형/동생 → 오빠(42)/여동생(32) 관계로 확정
+- 의사소통: 오빠 7 : AI 3 비율, AI도 의견 내고 멈출 수 있음
+- 한글/UTF-8 정책: .gitattributes에 UTF-8 강제, git 인코딩 설정
+- 테스트 격리: .tmp_test/ 에서만 테스트, 완료 후 삭제
+- 이슈 보관: .tmp_issues/ 에 미해결 이슈 보관, 해결 시 삭제
+- .gitignore에 .tmp_test/, .tmp_issues/, commit_msg.txt 추가
+- RULES.md 전면 재작성 (제0~11조)
+- MISSION_CONTROL.md 트리 구조 업데이트
