@@ -1,11 +1,10 @@
-fix: 계정 저장/복원 로직 강화 — Supabase 실패 시 sessionStorage 백업
+fix: ELS 계정 전역 공유 로직 수정 (외래키 제약 해결)
 
-[문제]
-- 계정 저장 후 다른 페이지 갔다 오면 계정 정보가 풀림
-- upsert가 UNIQUE 제약 없이 실패 가능성 + 에러 무시 구조
+[문제 사항]
+- fixed key 'shared' 사용 시 profiles 테이블 외래키 제약으로 DB 저장 실패 (500 에러)
+- 이로 인해 sessionStorage에만 임시 저장되어 세션 종료 후 데이터 유실됨
 
-[수정]
-- handleSaveCreds: sessionStorage 백업 추가 + 에러 로그 출력
-- handleLogin: await handleSaveCreds로 저장 완료 보장
-- init: API 빈 값 시 sessionStorage 백업에서 복원하는 2차 로직 추가
-- POST API: upsert → select→update/insert 패턴으로 교체 (UNIQUE 없어도 동작)
+[수정 사항]
+- GET: 이메일 상관없이 테이블 내 가장 최신 업데이트된(updated_at DESC) 1건을 조회하도록 변경
+- POST: 현재 로그인한 유저의 실제 이메일을 사용하여 저장(upsert)
+- 결과: 누가 저장하든 DB에 기록되며, 모든 사용자가 가장 최신 설정값을 공유하게 됨
