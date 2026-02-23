@@ -118,6 +118,10 @@ function ContainerHistoryInner() {
         const targetPw = pw || userPw;
         if (!targetId || !targetPw) return;
         if (targetId === initialCreds.current.id && targetPw === initialCreds.current.pw) return;
+
+        // sessionStorage 백업 (API 실패해도 같은 브라우저 탭 내 유지)
+        try { sessionStorage.setItem('els_creds_backup', JSON.stringify({ id: targetId, pw: targetPw })); } catch (_) { }
+
         try {
             const res = await fetch('/api/employees/els-creds', {
                 method: 'POST',
@@ -127,9 +131,15 @@ function ContainerHistoryInner() {
             if (res.ok) {
                 initialCreds.current = { id: targetId, pw: targetPw };
                 setLastSavedInfo(new Date().toLocaleString('ko-KR'));
-                // setLogLines(prev => [...prev, '✓ 계정 정보가 안전하게 저장되었습니다.']); // 불필요한 로그 제거
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                console.error('[계정 저장 실패]', res.status, errData);
+                setLogLines(prev => [...prev, `[알림] 계정 저장 API 오류 (${res.status}). sessionStorage에 임시 저장됨.`]);
             }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error('[계정 저장 예외]', err);
+            setLogLines(prev => [...prev, `[알림] 계정 저장 중 네트워크 오류. sessionStorage에 임시 저장됨.`]);
+        }
     }, [userId, userPw]);
 
     const handleLogin = useCallback(async (id, pw) => {
@@ -141,7 +151,7 @@ function ContainerHistoryInner() {
 
         setLoginLoading(true); startTimer();
         try {
-            if (isSaveChecked) handleSaveCreds(loginId, loginPw);
+            if (isSaveChecked) await handleSaveCreds(loginId, loginPw);
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -155,7 +165,7 @@ function ContainerHistoryInner() {
             if (data.log) setLogLines(prev => [...prev, ...data.log]);
             if (data.ok) {
                 setLoginSuccess(true);
-                setFailCount(0); // 성공 시 초기화
+                setFailCount(0);
                 sessionStorage.setItem('els_login_success', 'true');
                 sessionStorage.setItem('els_login_timestamp', Date.now().toString());
                 if (pendingSearchRef.current) {
@@ -173,15 +183,47 @@ function ContainerHistoryInner() {
         hasInitialized.current = true;
         const init = async () => {
             try {
+                // 1차: Supabase API에서 공용 계정 조회
                 const res = await fetch('/api/employees/els-creds');
                 const data = await res.json();
+
                 if (data.elsId) {
                     setUserId(data.elsId); setUserPw(data.elsPw);
                     setIsSaveChecked(true);
+                    initialCreds.current = { id: data.elsId, pw: data.elsPw };
                     if (data.lastSaved) setLastSavedInfo(data.lastSaved);
                     handleLogin(data.elsId, data.elsPw);
+                    return; // API 성공 시 여기서 끝
                 }
-            } catch (err) { console.error(err); }
+
+                // 2차: API가 빈 값이면 sessionStorage 백업에서 복원
+                const backup = sessionStorage.getItem('els_creds_backup');
+                if (backup) {
+                    const { id, pw } = JSON.parse(backup);
+                    if (id && pw) {
+                        setUserId(id); setUserPw(pw);
+                        setIsSaveChecked(true);
+                        initialCreds.current = { id, pw };
+                        setLogLines(prev => [...prev, '[복원] 임시 저장된 계정으로 자동 로그인 시도...']);
+                        handleLogin(id, pw);
+                    }
+                }
+            } catch (err) {
+                console.error('[init 오류]', err);
+                // API 완전 실패 시에도 sessionStorage 백업 시도
+                try {
+                    const backup = sessionStorage.getItem('els_creds_backup');
+                    if (backup) {
+                        const { id, pw } = JSON.parse(backup);
+                        if (id && pw) {
+                            setUserId(id); setUserPw(pw);
+                            setIsSaveChecked(true);
+                            initialCreds.current = { id, pw };
+                            handleLogin(id, pw);
+                        }
+                    }
+                } catch (_) { }
+            }
         };
         init();
     }, []);

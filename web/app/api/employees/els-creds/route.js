@@ -48,14 +48,36 @@ export async function POST(request) {
         if (!elsId || !elsPw) return NextResponse.json({ error: 'ID and Password are required' }, { status: 400 });
 
         const adminSupabase = await createAdminClient();
-        const { error } = await adminSupabase
+
+        // 기존 행 존재 여부 확인
+        const { data: existing } = await adminSupabase
             .from('user_els_credentials')
-            .upsert({
-                email: SHARED_KEY,
-                els_id: elsId.trim(),
-                els_pw: elsPw,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'email' });
+            .select('email')
+            .eq('email', SHARED_KEY)
+            .single();
+
+        let error;
+        if (existing) {
+            // 기존 행이 있으면 update
+            ({ error } = await adminSupabase
+                .from('user_els_credentials')
+                .update({
+                    els_id: elsId.trim(),
+                    els_pw: elsPw,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('email', SHARED_KEY));
+        } else {
+            // 없으면 insert
+            ({ error } = await adminSupabase
+                .from('user_els_credentials')
+                .insert({
+                    email: SHARED_KEY,
+                    els_id: elsId.trim(),
+                    els_pw: elsPw,
+                    updated_at: new Date().toISOString()
+                }));
+        }
 
         if (error) {
             console.error('Save ELS Creds Error:', error);
