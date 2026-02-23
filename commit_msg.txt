@@ -1,0 +1,10 @@
+feat: AI 메모리 체계 통합 및 프로젝트 구조 대청소
+
+[주요 변경]
+- docs/ 디렉토리 신설: MISSION_CONTROL, RULES, DEV_LOG, ARCHITECTURE, RUNBOOK
+- 14개 분산 MD 파일을 5개 통합 파일로 정리
+- 기존 파일은 docs/_archive/ 로 백업 (gitignore)
+- 루트 잡동사니 스크립트 → scripts/ 디렉토리로 이동
+- 디버그/백업/임시 파일 → docs/_archive/ 로 이동
+- .gitignore 강화: Python 캐시, AI 도구 캐시, 빌드 산출물, IDE 설정
+- /init 워크플로우 추가: 새 대화 시작 시 메모리 자동 로드

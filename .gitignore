@@ -1,23 +1,61 @@
-# Python
+# ═══════════════════════════════════════════════════
+# ELS 프로젝트 .gitignore
+# 마지막 업데이트: 2026-02-23
+# ═══════════════════════════════════════════════════
+
+# ─── Python 캐시 (절대 커밋 금지) ────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
 .venv/
 venv/
 ENV/
 
-# Debug images
-elsbot/login_debug_*.png
-
-# Node
+# ─── Node.js ──────────────────────────────────────
 node_modules/
 .next/
 out/
 build/
+*.tsbuildinfo
 
-# Local env files
+# ─── 환경변수 (보안) ─────────────────────────────
 .env*.local
+.env.production
+.env.staging
 
-# OS files
+# ─── IDE/에디터 전용 설정 ────────────────────────
+.vscode/
+.cursor/
+.idea/
+
+# ─── AI 도구 캐시/임시 (메모리 파일은 유지) ──────
+.gemini-clipboard/
+.gemini/
+
+# ─── elsbot 빌드 산출물 ──────────────────────────
+elsbot/build/
+elsbot/dist/
+elsbot/*.spec
+elsbot/login_debug_*.png
+elsbot/els_config.json
+
+# ─── 디버그/임시 파일 ────────────────────────────
+*.log
+*.tmp
+*.bak
+debug_*.py
+debug_*.png
+*_debug.png
+
+# ─── OS 파일 ─────────────────────────────────────
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# ─── 아카이브 (통합 전 구 파일 백업) ─────────────
+docs/_archive/
+
+# ─── 대용량 파일 ─────────────────────────────────
+*.exe
+*.msi
