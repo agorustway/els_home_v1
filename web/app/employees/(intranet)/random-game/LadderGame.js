@@ -23,9 +23,9 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
-    const numRows = 10; // 높이 최적화
+    const numRows = 14; // 다시 14개층으로 올려서 꼬이는 기회를 대폭 늘림 (단조로움 해결)
     const COL_WIDTH = 80; // 가로 간격
-    const ROW_HEIGHT = 40; // 세로 간격
+    const ROW_HEIGHT = 28; // 대신 세로 간격을 확 줄여서 전체 높이는 400px 미만으로 유지해 스크롤 안생기게 함
 
     // Overall dimensions
     const boardWidth = numCols * COL_WIDTH;
@@ -42,50 +42,57 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const generateLadder = () => {
         const newRungs = [];
 
-        // 왼쪽부터 오른쪽으로 훑으며 겹치지 않게 확률적으로 선 생성 (고전적 + 자연스러운 사다리 방식)
+        // 1. 단조로움 완벽 타파: 매 행마다 연결 가능한 위치를 무작위로 섞고, 70%의 높은 확률로 선을 가득 채움
         for (let r = 0; r < numRows; r++) {
-            let skipNext = false; // 방금 선을 그었다면 다음 열은 건너뛰어 겹침 완전 방지
-            for (let c = 0; c < numCols - 1; c++) {
-                if (skipNext) {
-                    skipNext = false;
-                    continue;
-                }
+            let cols = Array.from({ length: numCols - 1 }, (_, i) => i);
+            cols.sort(() => Math.random() - 0.5); // 매번 섞어서 골고루 퍼지게 함
 
-                // 적절한 밀도로 선 생성 (약 50% 확률)
-                if (Math.random() < 0.5) {
-                    const rnd = Math.random();
-                    let type = 'h';
-                    if (rnd < 0.25) type = 'd1';
-                    else if (rnd < 0.5) type = 'd2';
+            for (let c of cols) {
+                const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
+                const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
 
-                    newRungs.push({ r, c, type });
-                    skipNext = true; // 가로선(또는 사선)을 그었으므로 무조건 다음칸은 빔
+                if (!hasLeft && !hasRight) {
+                    if (Math.random() < 0.70) { // 생성 확률 70% (굉장히 얽히고 설키게 됨)
+                        const rnd = Math.random();
+                        let type = 'h';
+                        if (rnd < 0.25) type = 'd1';
+                        else if (rnd < 0.5) type = 'd2';
+
+                        newRungs.push({ r, c, type });
+                    }
                 }
             }
         }
 
-        // 특정 열에만 선이 너무 적어서 수직으로만 떨어지는 기둥을 방지 (각 열 최소 2개 사다리 보장)
-        for (let c = 0; c < numCols - 1; c++) {
-            let colRungs = newRungs.filter(rg => rg.c === c);
-            let attempts = 0;
-            while (colRungs.length < 2 && attempts < 30) {
-                const r = Math.floor(Math.random() * numRows);
+        // 2. 혹시라도 3칸 이상 텅 비어있는 '수직 고속도로'가 있다면 강제로 선을 넣어줌 (재미없게 쭉 떨어지는 것 방지)
+        for (let c = 0; c < numCols; c++) {
+            let emptyCount = 0;
+            for (let r = 0; r < numRows; r++) {
+                const connectedRight = (c < numCols - 1) && newRungs.some(rg => rg.r === r && rg.c === c);
+                const connectedLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
 
-                // 해당 줄과 양옆 줄에 사다리가 없을 때만 안전하게 끼워넣음
-                const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
-                const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
-                const hasSelf = newRungs.some(rg => rg.r === r && rg.c === c);
-
-                if (!hasLeft && !hasRight && !hasSelf) {
-                    const rnd = Math.random();
-                    let type = 'h';
-                    if (rnd < 0.3) type = 'd1';
-                    else if (rnd < 0.6) type = 'd2';
-                    const newRung = { r, c, type };
-                    newRungs.push(newRung);
-                    colRungs.push(newRung);
+                if (!connectedRight && !connectedLeft) {
+                    emptyCount++;
+                } else {
+                    emptyCount = 0;
                 }
-                attempts++;
+
+                if (emptyCount >= 3) { // 3칸 연속 비어있으면 강제로 양옆 중 한 곳에 다리 놓기
+                    let options = [];
+                    if (c < numCols - 1) options.push(c);
+                    if (c > 0) options.push(c - 1);
+                    options.sort(() => Math.random() - 0.5);
+
+                    for (let optC of options) {
+                        const hasL = (optC > 0) && newRungs.some(rg => rg.r === r && rg.c === optC - 1);
+                        const hasR = (optC < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === optC + 1);
+                        if (!hasL && !hasR) {
+                            newRungs.push({ r, c: optC, type: 'h' }); // 안전하게 가로선 강제 생성
+                            break;
+                        }
+                    }
+                    emptyCount = 0;
+                }
             }
         }
 
@@ -131,8 +138,8 @@ const LadderGame = ({ participants, onGameEnd }) => {
             if (rightBridge) {
                 // Move Right
                 let y1 = midY, y2 = midY;
-                if (rightBridge.type === 'd1') { y1 = midY - 14; y2 = midY + 14; }
-                if (rightBridge.type === 'd2') { y1 = midY + 14; y2 = midY - 14; }
+                if (rightBridge.type === 'd1') { y1 = midY - 12; y2 = midY + 12; }
+                if (rightBridge.type === 'd2') { y1 = midY + 12; y2 = midY - 12; }
 
                 pathPoints.push({ x: getX(currentC), y: y1 });
                 currentC++;
@@ -140,8 +147,8 @@ const LadderGame = ({ participants, onGameEnd }) => {
             } else if (leftBridge) {
                 // Move Left
                 let y1 = midY, y2 = midY;
-                if (leftBridge.type === 'd1') { y1 = midY + 14; y2 = midY - 14; }
-                if (leftBridge.type === 'd2') { y1 = midY - 14; y2 = midY + 14; }
+                if (leftBridge.type === 'd1') { y1 = midY + 12; y2 = midY - 12; }
+                if (leftBridge.type === 'd2') { y1 = midY - 12; y2 = midY + 12; }
 
                 pathPoints.push({ x: getX(currentC), y: y1 });
                 currentC--;
@@ -247,8 +254,8 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                 {rungs.map((rung, i) => {
                                     const midY = (rung.r * ROW_HEIGHT) + (ROW_HEIGHT / 2);
                                     let y1 = midY, y2 = midY;
-                                    if (rung.type === 'd1') { y1 = midY - 14; y2 = midY + 14; }
-                                    if (rung.type === 'd2') { y1 = midY + 14; y2 = midY - 14; }
+                                    if (rung.type === 'd1') { y1 = midY - 12; y2 = midY + 12; }
+                                    if (rung.type === 'd2') { y1 = midY + 12; y2 = midY - 12; }
                                     return (
                                         <line key={`h-${i}`} x1={getX(rung.c)} y1={y1} x2={getX(rung.c + 1)} y2={y2} />
                                     );
