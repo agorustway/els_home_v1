@@ -254,7 +254,15 @@ export default function RandomGamePage() {
 
                     <div className={styles.historyCardMini}>
                         <div className={styles.historyHeader}>🏆 최근 당첨 기록</div>
-                        <div className={styles.historyList}>{history.length > 0 ? history.map((h, i) => (<div key={i} className={styles.historyItem}><span className={styles.historyTime}>{h.timestamp}</span><span className={styles.historyResult}>{h.result}</span></div>)) : <div className={styles.emptyHistory}>기록이 없습니다.</div>}</div>
+                        <div className={styles.historyList}>{history.length > 0 ? history.map((h, i) => {
+                            const isWin = h.result.includes('당첨') && !h.result.includes('취소');
+                            return (
+                                <div key={i} className={styles.historyItem}>
+                                    <span className={styles.historyTime}>{h.timestamp}</span>
+                                    <span className={styles.historyResult} style={isWin ? { color: '#ef4444', fontWeight: 'bold' } : {}}>{h.result}</span>
+                                </div>
+                            );
+                        }) : <div className={styles.emptyHistory}>기록이 없습니다.</div>}</div>
                     </div>
                 </aside>
             </div>

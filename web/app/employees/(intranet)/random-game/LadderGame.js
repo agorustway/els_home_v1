@@ -148,8 +148,20 @@ const LadderGame = ({ participants, onGameEnd }) => {
     }, [numCols]);
 
     const runLadder = async (index) => {
-        // 이미 진행중이거나 완료된 경우 시작 불가
-        if (activeRunners[index] || completedHistory.some(h => h.startIndex === index)) return;
+        // 진행 중이면 클릭 무시
+        if (activeRunners[index]) return;
+
+        let isReplay = false;
+        const existingDone = completedHistory.find(h => h.startIndex === index);
+        if (existingDone) {
+            if (existingDone.isWinner) {
+                // 당첨자 복기: 이전에 그렸던 선을 지우고 다시 애니메이션 시작
+                setCompletedHistory(prev => prev.filter(h => h.startIndex !== index));
+                isReplay = true;
+            } else {
+                return; // 당첨자가 아닌 통과자는 두 번 탈 수 없음
+            }
+        }
 
         // Find path
         let currentC = index;
@@ -260,7 +272,9 @@ const LadderGame = ({ participants, onGameEnd }) => {
             finalPos: { x: getX(currentC), y: boardHeight + 20 }
         }]);
 
-        onGameEnd('🪜 사다리', `${participants[index]} -> ${isWinner ? '당첨' : '통과'}`);
+        if (!isReplay) {
+            onGameEnd('🪜 사다리', `${participants[index]} -> ${isWinner ? '당첨' : '통과'}`);
+        }
     };
 
     return (
@@ -277,10 +291,13 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                     <div
                                         className={`${styles.node} ${done ? styles.nodeDone : ''}`}
                                         onClick={() => runLadder(i)}
-                                        style={{ borderColor: done ? (done.isWinner ? '#ef4444' : '#10b981') : '#e2e8f0' }}
+                                        style={{
+                                            borderColor: done ? (done.isWinner ? '#ef4444' : '#10b981') : '#e2e8f0',
+                                            cursor: (!done || done.isWinner) ? 'pointer' : 'default'
+                                        }}
                                     >
                                         <div className={styles.nodeIcon}>{ANIMALS[i % ANIMALS.length]}</div>
-                                        <div className={styles.nodeLabel}>{name}</div>
+                                        <div className={styles.nodeLabel} style={done && done.isWinner ? { color: '#ef4444', fontWeight: 'bold' } : {}}>{name}</div>
                                     </div>
                                     {/* Visual Connector to Line */}
                                     <div style={{
