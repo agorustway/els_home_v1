@@ -23,7 +23,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
-    const numRows = 14; // Visual density
+    const numRows = 11; // Visual density
     const COL_WIDTH = 80; // Horizontal spacing
     const ROW_HEIGHT = 40; // Vertical spacing
 
