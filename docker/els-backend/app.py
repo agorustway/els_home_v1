@@ -349,7 +349,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                 if token in file_store: del file_store[token]
 
             yield "LOG:----------------------------------------\n"
-            yield "LOG:모든 작업이 완료되었습니다. 결과 버튼을 확인하세요!\n"
+            yield "LOG:모든 작업이 완료되었습니다. 결과창을 확인하세요!\n"
                 
         except Exception as e:
              yield f"LOG:[치명적에러] 최종 집계 중 오류 발생: {e}\n"
