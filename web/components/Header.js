@@ -307,22 +307,8 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
             // Remove the push logic from here, as the filtering in map should take care of it.
         }
 
-        linkElements.push(
-            <div key="shortcut-btn" style={{ marginLeft: '10px', display: 'flex', alignItems: 'center' }}>
-                <button
-                    type="button"
-                    onClick={handleCreateShortcut}
-                    className={styles.shortcutBtn}
-                    title="바탕화면에 바로가기를 만듭니다"
-                >
-                    <img src="/favicon.png" alt="ELS" className={styles.shortcutIcon} />
-                    바로가기
-                </button>
-            </div>
-        );
-
-        // USER AUTH DROPDOWN (This part is already fine, just needs to use profile)
-        if (!isMobile && !loading) { // This part should remain, as it controls the login/logout button
+        // PUSH AUTH BUTTON FIRST
+        if (!isMobile && !loading) {
             linkElements.push(
                 <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
                     {profile ? (
@@ -451,6 +437,21 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                 </div>
             );
         }
+
+        // PUSH SHORTCUT BUTTON AT THE VERY END
+        linkElements.push(
+            <div key="shortcut-btn" style={{ marginLeft: '15px', display: 'flex', alignItems: 'center' }}>
+                <button
+                    type="button"
+                    onClick={handleCreateShortcut}
+                    className={styles.shortcutBtn}
+                    title="바탕화면에 바로가기를 만듭니다"
+                >
+                    <img src="/favicon.png" alt="ELS" className={styles.shortcutIcon} />
+                    바로가기
+                </button>
+            </div>
+        );
 
         return linkElements;
     };
