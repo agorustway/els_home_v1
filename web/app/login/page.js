@@ -77,16 +77,29 @@ function LoginForm() {
             document.cookie = `oauth_nonce=${nonce}; path=/; max-age=300`; // Expires in 5 minutes
 
             const scope = 'openid';
-            const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&nonce=${nonce}`;
+            const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&nonce=${nonce}&auth_type=reauthenticate`;
             window.location.href = naverAuthUrl;
             return;
         }
 
+        const options = {
+            redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        };
+
+        if (provider === 'google') {
+            options.queryParams = {
+                prompt: 'select_account',
+                access_type: 'offline',
+            };
+        } else if (provider === 'kakao') {
+            options.queryParams = {
+                prompt: 'login',
+            };
+        }
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-            },
+            options,
         });
 
         if (error) {
