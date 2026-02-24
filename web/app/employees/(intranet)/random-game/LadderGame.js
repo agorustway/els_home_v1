@@ -42,29 +42,45 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const generateLadder = () => {
         const newRungs = [];
 
-        // 1. 단조로움 완벽 타파: 매 행마다 연결 가능한 위치를 무작위로 섞고, 70%의 높은 확률로 선을 가득 채움
+        // 1. 편파적이지 않은 완벽한 무작위 셔플링 배치 알고리즘
+        const totalGaps = numCols - 1;
+        const totalSlots = numRows * totalGaps;
+
+        let slots = [];
         for (let r = 0; r < numRows; r++) {
-            let cols = Array.from({ length: numCols - 1 }, (_, i) => i);
-            cols.sort(() => Math.random() - 0.5); // 매번 섞어서 골고루 퍼지게 함
-
-            for (let c of cols) {
-                const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
-                const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
-
-                if (!hasLeft && !hasRight) {
-                    if (Math.random() < 0.35) { // 확률을 낮춰 횡단 가능성 증가
-                        const rnd = Math.random();
-                        let type = 'h';
-                        if (rnd < 0.25) type = 'd1';
-                        else if (rnd < 0.5) type = 'd2';
-
-                        newRungs.push({ r, c, type });
-                    }
-                }
+            for (let c = 0; c < totalGaps; c++) {
+                slots.push({ r, c });
             }
         }
 
-        // 2. 혹시라도 3칸 이상 텅 비어있는 '수직 고속도로'가 있다면 강제로 선을 넣어줌 (재미없게 쭉 떨어지는 것 방지)
+        // 모든 슬롯을 완전히 섞음
+        slots.sort(() => Math.random() - 0.5);
+
+        // 수학적으로 가득 찬 사다리에 가까울 만큼 촘촘하게(약 38~40%) 그물망 생성
+        const targetLines = Math.floor(totalSlots * 0.38);
+
+        for (const slot of slots) {
+            if (newRungs.length >= targetLines) break;
+
+            const r = slot.r;
+            const c = slot.c;
+
+            // 양옆과 같은 행에 겹치지 않는지 확인
+            const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
+            const hasRight = (c < totalGaps - 1) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
+
+            if (!hasLeft && !hasRight) {
+                const rnd = Math.random();
+                let type = 'h';
+                // 가로선 위주로 가되 간혹 사선 등장 (10%)
+                if (rnd < 0.05) type = 'd1';
+                else if (rnd < 0.10) type = 'd2';
+
+                newRungs.push({ r, c, type });
+            }
+        }
+
+        // 2. 수직 고속도로(너무 많이 끊긴 기둥) 방지 및 보정
         for (let c = 0; c < numCols; c++) {
             let emptyCount = 0;
             for (let r = 0; r < numRows; r++) {
@@ -77,7 +93,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                     emptyCount = 0;
                 }
 
-                if (emptyCount >= 4) { // 4칸 연속 비어있으면 강제로 양옆 중 한 곳에 다리 놓기
+                if (emptyCount >= 4) { // 4칸 연속 비어있으면 양쪽 빈칸 어딘가에 강제 연결
                     let options = [];
                     if (c < numCols - 1) options.push(c);
                     if (c > 0) options.push(c - 1);
@@ -86,8 +102,8 @@ const LadderGame = ({ participants, onGameEnd }) => {
                     for (let optC of options) {
                         const hasL = (optC > 0) && newRungs.some(rg => rg.r === r && rg.c === optC - 1);
                         const hasR = (optC < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === optC + 1);
-                        if (!hasL && !hasR) {
-                            newRungs.push({ r, c: optC, type: 'h' }); // 안전하게 가로선 강제 생성
+                        if (!hasL && !hasR) { // 넣으려는 위치 옆이 안 막혀있으면 강제 추가
+                            newRungs.push({ r, c: optC, type: 'h' });
                             break;
                         }
                     }
