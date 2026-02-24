@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
 import styles from './weather.module.css';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 /**
  * Constants
@@ -26,8 +27,14 @@ const PORTS = [
 ];
 
 const WEATHER_LABELS = {
-    0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림', 45: '안개', 48: '서리 안개',
-    51: '이슬비', 61: '비', 63: '비(강함)', 71: '눈', 80: '소나기', 95: '뇌우',
+    0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림',
+    45: '안개', 48: '짙은 안개',
+    51: '이슬비', 53: '이슬비', 55: '진한 이슬비',
+    61: '약한 비', 63: '비', 65: '강한 비',
+    71: '고운 눈', 73: '눈', 75: '폭설', 77: '싸락눈',
+    80: '소나기', 81: '강한 소나기', 82: '매우 강한 소나기',
+    85: '약한 눈보라', 86: '강한 눈보라',
+    95: '낙뢰/뇌우', 96: '박우', 99: '강한 박우'
 };
 
 function weatherCodeToLabel(code) {
@@ -37,10 +44,17 @@ function weatherCodeToLabel(code) {
 
 function getWeatherImagePath(code) {
     if (code == null) return '/images/weather/sunny_3d.png';
+    // Clear / Mainly clear
     if (code <= 1) return '/images/weather/sunny_3d.png';
-    if (code <= 3 || code === 45 || code === 48) return '/images/weather/cloudy_3d.png';
+    // Partly cloudy / Overcast
+    if (code === 2 || code === 3) return '/images/weather/cloudy_3d.png';
+    // Fog / Rime fog
+    if (code === 45 || code === 48) return '/images/weather/fog_3d.png';
+    // Drizzle / Rain / Showers
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '/images/weather/rain_3d.png';
-    if (code >= 71 && code <= 77) return '/images/weather/snow_3d.png';
+    // Snow / Snow showers / Snow grains
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return '/images/weather/snow_3d.png';
+    // Thunderstorm
     if (code >= 95) return '/images/weather/thunder_3d.png';
     return '/images/weather/cloudy_3d.png';
 }
@@ -201,7 +215,16 @@ export default function WeatherPage() {
                                     )}
                                 </div>
                                 <div className={styles.heroDecor} />
-                                <img src={getWeatherImagePath(cur.code)} alt="" className={styles.heroIcon} />
+                                <div className={styles.heroIconWrap}>
+                                    <Image
+                                        src={getWeatherImagePath(cur.code)}
+                                        alt={weatherCodeToLabel(cur.code)}
+                                        width={280}
+                                        height={280}
+                                        priority
+                                        className={styles.heroIcon}
+                                    />
+                                </div>
                             </motion.div>
                         );
                     })()}
@@ -269,7 +292,15 @@ export default function WeatherPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <img src={getWeatherImagePath(curData?.code)} alt="" className={styles.branchIcon} />
+                                        <div className={styles.branchIconWrap}>
+                                            <Image
+                                                src={getWeatherImagePath(curData?.code)}
+                                                alt=""
+                                                width={60}
+                                                height={60}
+                                                className={styles.branchIcon}
+                                            />
+                                        </div>
                                     </div>
                                 );
                             })()}
@@ -303,7 +334,15 @@ export default function WeatherPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <img src={getWeatherImagePath(curData?.code)} alt="" className={styles.branchIcon} />
+                                        <div className={styles.branchIconWrap}>
+                                            <Image
+                                                src={getWeatherImagePath(curData?.code)}
+                                                alt=""
+                                                width={60}
+                                                height={60}
+                                                className={styles.branchIcon}
+                                            />
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -319,7 +358,14 @@ export default function WeatherPage() {
                             {activeData?.hourly?.slice(0, 12).map((h, i) => (
                                 <div key={i} className={styles.hourlyCard}>
                                     <span className={styles.hourTime}>{new Date(h.time).getHours()}시</span>
-                                    <img src={getWeatherImagePath(h.code)} alt="" className={styles.hourIcon} />
+                                    <div className={styles.hourIconWrap}>
+                                        <Image
+                                            src={getWeatherImagePath(h.code)}
+                                            alt=""
+                                            width={40}
+                                            height={40}
+                                        />
+                                    </div>
                                     <span className={styles.hourTemp}>{Math.round(h.temp)}°</span>
                                 </div>
                             ))}
@@ -362,7 +408,15 @@ export default function WeatherPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <img src={getWeatherImagePath(w.code)} alt="" className={styles.weekIcon} />
+                                        <div className={styles.weekIconWrap}>
+                                            <Image
+                                                src={getWeatherImagePath(w.code)}
+                                                alt=""
+                                                width={50}
+                                                height={50}
+                                                className={styles.weekIcon}
+                                            />
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -397,7 +451,15 @@ export default function WeatherPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <img src={getWeatherImagePath(cur?.code)} alt="" className={styles.portIcon} />
+                                        <div className={styles.portIconWrap}>
+                                            <Image
+                                                src={getWeatherImagePath(cur?.code)}
+                                                alt=""
+                                                width={50}
+                                                height={50}
+                                                className={styles.portIcon}
+                                            />
+                                        </div>
                                     </div>
                                 );
                             })}

@@ -132,12 +132,20 @@
     margin-top: 6px;
 }
 
-.heroIcon {
-    width: 160px;
-    height: 160px;
-    object-fit: contain;
-    filter: drop-shadow(0 10px 20px rgba(37, 99, 235, 0.15));
+.heroIconWrap {
+    width: 280px;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 2;
+    position: relative;
+}
+
+.heroIcon {
+    width: 100% !important;
+    height: auto !important;
+    filter: drop-shadow(0 15px 30px rgba(37, 99, 235, 0.25));
 }
 
 .heroDecor {
@@ -266,10 +274,18 @@
     flex-wrap: wrap;
 }
 
+.branchIconWrap {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .branchIcon {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
+    width: 100% !important;
+    height: auto !important;
 }
 
 
@@ -315,11 +331,17 @@
     /* Prevent wrapping */
 }
 
-.hourIcon {
-    width: 28px;
-    /* Slightly smaller for 1-line */
-    height: 28px;
-    object-fit: contain;
+.hourIconWrap {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hourIconWrap img {
+    width: 100% !important;
+    height: auto !important;
 }
 
 .hourTemp {
@@ -410,10 +432,20 @@
 }
 
 
-.weekIcon {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
+.weekIconWrap,
+.portIconWrap {
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.weekIcon,
+.portIcon {
+    width: 100% !important;
+    height: auto !important;
 }
 
 
@@ -469,9 +501,8 @@
 }
 
 .portIcon {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
+    width: 100% !important;
+    height: auto !important;
 }
 
 /* Responsive (Galaxy S24 \u0026 Narrow Mobile Optimized) */
@@ -572,11 +603,15 @@
         margin-top: 4px;
     }
 
-    .heroIcon {
-        width: 90px;
-        height: 90px;
+    .heroIconWrap {
+        width: 120px;
+        height: 120px;
         margin-right: -10px;
-        /* Pull icon simpler */
+    }
+
+    .heroIcon {
+        width: 100% !important;
+        height: auto !important;
     }
 
     .heroDecor {
@@ -640,9 +675,14 @@
         font-size: 0.9rem;
     }
 
+    .branchIconWrap {
+        width: 44px;
+        height: 44px;
+    }
+
     .branchIcon {
-        width: 36px;
-        height: 36px;
+        width: 100% !important;
+        height: auto !important;
     }
 
     /* Hourly (Horizontal Scroll) Optimization */
@@ -669,9 +709,9 @@
         font-size: 0.75rem;
     }
 
-    .hourIcon {
-        width: 24px;
-        height: 24px;
+    .hourIconWrap {
+        width: 28px;
+        height: 28px;
     }
 
     .hourTemp {
@@ -711,9 +751,15 @@
         font-size: 0.8rem;
     }
 
+    .weekIconWrap,
+    .portIconWrap {
+        width: 44px;
+        height: 44px;
+    }
+
     .weekIcon,
     .portIcon {
-        width: 40px;
-        height: 40px;
+        width: 100% !important;
+        height: auto !important;
     }
 }
