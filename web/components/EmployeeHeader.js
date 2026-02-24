@@ -23,27 +23,26 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
     };
 
     const handleCreateShortcut = () => {
-        // Windows CMD Script to create a Chrome shortcut via PowerShell
+        // 바탕화면 바로가기 생성용 CMD 스크립트
         const script = `@echo off
+chcp 65001 > nul
 set "targetUrl=https://nollae.com"
-set "shortcutName=ELS_Home_Intranet.lnk"
-set "desktop=%USERPROFILE%\\Desktop"
+set "shortcutName=이엘에스솔루션"
 
-echo 바탕화면에 크롬 바로가기를 생성하고 있습니다...
+echo 바탕화면에 바로가기를 생성하고 있습니다...
 
-powershell -Command "$p = [System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), '%shortcutName%'); $s = (New-Object -COM WScript.Shell).CreateShortcut($p); $s.TargetPath = 'chrome.exe'; $s.Arguments = '%targetUrl%'; $s.Description = 'ELS Home Intranet'; $s.Save();"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $d = [System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), '%shortcutName%.lnk'); $s = $ws.CreateShortcut($d); $s.TargetPath = 'chrome.exe'; $s.Arguments = '%targetUrl%'; $s.Save();"
 
 if %errorlevel% equ 0 (
     echo.
-    echo [성공] 바탕화면에 바로가기가 성공적으로 생성되었습니다!
-    echo 이제 바탕화면의 ELS 아이콘을 클릭하면 크롬으로 바로 열립니다.
+    echo [성공] 바탕화면에 '%shortcutName%' 바로가기가 생성되었습니다!
 ) else (
     echo.
-    echo [오류] 바로가기 생성에 실패했습니다. 크롬이 설치되어 있는지 확인해주세요.
+    echo [오류] 바로가기 생성에 실패했습니다.
 )
 pause`;
 
-        const blob = new Blob([script], { type: 'application/octet-stream' });
+        const blob = new Blob([script], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -53,7 +52,7 @@ pause`;
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        alert('다운로드된 "els_shortcut_installer.cmd" 파일을 실행하면\\n바탕화면에 크롬 전용 바로가기가 만들어집니다!');
+        alert('다운로드된 "els_shortcut_installer.cmd" 파일을 실행하면\\n바탕화면에 "이엘에스솔루션" 크롬 바로가기가 생성됩니다!');
     };
 
     return (
@@ -99,8 +98,8 @@ pause`;
                             className={styles.shortcutBtn}
                             title="바탕화면으로 바로가기를 만듭니다"
                         >
-                            <img src="/favicon.png" alt="" className={styles.shortcutIcon} />
-                            바로가기 생성
+                            <img src="/favicon.png" alt="ELS" className={styles.shortcutIcon} />
+                            바로가기
                         </button>
                         <Link href="/employees/mypage" className={styles.link}>
                             개인정보수정
