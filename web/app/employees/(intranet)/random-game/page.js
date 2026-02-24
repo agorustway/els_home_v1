@@ -258,7 +258,6 @@ export default function RandomGamePage() {
                     </div>
                 </aside>
             </div>
-            <AnimatePresence>{winner && (<div className={styles.resultOverlay} onClick={() => setWinner(null)}><motion.div className={styles.resultCard} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}><div style={{ fontSize: '4rem', marginBottom: '10px' }}>🎊</div><h3>WINNER</h3><h2>{winner}</h2><button className={styles.confirmBtn}>확인</button></motion.div></div>)}</AnimatePresence>
         </div>
     );
 }
