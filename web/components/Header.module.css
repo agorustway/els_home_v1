@@ -310,6 +310,50 @@
     height: 40px;
 }
 
+.shortcutBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    height: 36px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.header.scrolled .shortcutBtn,
+.header.darkVariant .shortcutBtn {
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #1a1a1a;
+    text-shadow: none;
+    background: #f8fafc;
+}
+
+.shortcutBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.header.scrolled .shortcutBtn:hover,
+.header.darkVariant .shortcutBtn:hover {
+    background: #ffffff;
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.shortcutIcon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
 /* Mobile Navigation */
 .mobileToggle {
     display: flex;

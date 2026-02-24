@@ -107,7 +107,8 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
-    const [userMenuOpen, setUserMenuOpen] = useState(false); // User Menu Dropdown State
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     const { profile, loading } = useUserProfile();
 
@@ -150,8 +151,16 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     // 헤더 메뉴 전용 닫기 이벤트 리스너
     useEffect(() => {
         const handleCloseHeader = () => setMenuOpen(false);
+        const handlePWA = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
         window.addEventListener('closeHeaderMenu', handleCloseHeader);
-        return () => window.removeEventListener('closeHeaderMenu', handleCloseHeader);
+        window.addEventListener('beforeinstallprompt', handlePWA);
+        return () => {
+            window.removeEventListener('closeHeaderMenu', handleCloseHeader);
+            window.removeEventListener('beforeinstallprompt', handlePWA);
+        };
     }, []);
 
     const toggleMenu = () => {
@@ -208,6 +217,18 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     const handleLoginClick = () => {
         router.push(`/login?next=${encodeURIComponent(pathname)}`);
         handleLinkClick();
+    };
+
+    const handleCreateShortcut = async () => {
+        if (!deferredPrompt) {
+            alert('이미 앱이 설치되어 있거나, 브라우저가 자동 설치를 지원하지 않습니다.\\n브라우저 주소창 우측의 [설치] 아이콘을 확인해주세요!');
+            return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+        }
     };
 
     // Determine visual styles based on state
@@ -285,6 +306,20 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
             // If so, the filter above is sufficient.
             // Remove the push logic from here, as the filtering in map should take care of it.
         }
+
+        linkElements.push(
+            <div key="shortcut-btn" style={{ marginLeft: '10px', display: 'flex', alignItems: 'center' }}>
+                <button
+                    type="button"
+                    onClick={handleCreateShortcut}
+                    className={styles.shortcutBtn}
+                    title="바탕화면에 바로가기를 만듭니다"
+                >
+                    <img src="/favicon.png" alt="ELS" className={styles.shortcutIcon} />
+                    바로가기
+                </button>
+            </div>
+        );
 
         // USER AUTH DROPDOWN (This part is already fine, just needs to use profile)
         if (!isMobile && !loading) { // This part should remain, as it controls the login/logout button
@@ -540,6 +575,29 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                         </> :
                         <button onClick={handleLoginClick} className={styles.mobileAuthBtn}>로그인</button>
                     )}
+                    <button
+                        type="button"
+                        onClick={handleCreateShortcut}
+                        className={styles.mobileShortcutBtn}
+                        style={{
+                            width: '100%',
+                            marginTop: '10px',
+                            padding: '12px',
+                            background: '#fff',
+                            color: '#1a1a1a',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '0.95rem',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px'
+                        }}
+                    >
+                        <img src="/favicon.png" alt="ELS" style={{ width: '20px', height: '20px' }} />
+                        바로가기 설치 (바탕화면)
+                    </button>
                 </div>
                 <div className={styles.mobileNavLinks}>
                     {renderNavLinks(true)}
