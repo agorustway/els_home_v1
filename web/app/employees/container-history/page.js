@@ -43,13 +43,15 @@ function ContainerHistoryInner() {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [totalElapsed, setTotalElapsed] = useState(null);
     const [searchFilter, setSearchFilter] = useState('');
-    const [activeStatFilters, setActiveStatFilters] = useState(new Set()); // 다중 선택을 위한 Set
+    const [activeStatFilters, setActiveStatFilters] = useState(new Set(['수출', '수입', '반입', '반출', '양하', '적하']));
     const [currentPage, setCurrentPage] = useState(1);
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [showPassword, setShowPassword] = useState(false);
     const [failCount, setFailCount] = useState(0);
     const [downloadToken, setDownloadToken] = useState(null);
     const [resultFileName, setResultFileName] = useState('');
+    const [isDebugOpen, setIsDebugOpen] = useState(false); // [추가] 디버그 모달 상태
+    const [screenshotUrl, setScreenshotUrl] = useState(''); // [추가] 스크린샷 URL
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -112,6 +114,17 @@ function ContainerHistoryInner() {
     useEffect(() => {
         sessionStorage.setItem('els_input', containerInput);
     }, [containerInput]);
+
+    // [추가] 디버그 모달 열려있을 때 3초마다 스크린샷 갱신
+    useEffect(() => {
+        let interval;
+        if (isDebugOpen) {
+            const updateUrl = () => setScreenshotUrl(`${BACKEND_BASE_URL}/api/els/screenshot?t=${Date.now()}`);
+            updateUrl();
+            interval = setInterval(updateUrl, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [isDebugOpen, BACKEND_BASE_URL]);
 
     const handleSaveCreds = useCallback(async (id, pw) => {
         const targetId = (id || userId).trim();
@@ -644,7 +657,10 @@ function ContainerHistoryInner() {
                         <div className={styles.section} style={{ flex: 1 }}>
                             <div className={styles.sectionHeader}>
                                 <h2 className={styles.sectionTitle}>시스템 로그</h2>
-                                <button onClick={() => setLogLines([])} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button onClick={() => setIsDebugOpen(true)} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>브라우저 보기</button>
+                                    <button onClick={() => setLogLines([])} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
+                                </div>
                             </div>
                             <div ref={terminalRef} className={styles.terminal}>
                                 {logLines.map((l, i) => <div key={i} className={styles.logLine}>{l}</div>)}
@@ -660,6 +676,34 @@ function ContainerHistoryInner() {
                 </div>
 
             </div>
+
+            {/* [추가] 디버그 브라우저 모니터링 모달 */}
+            {isDebugOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }} onClick={() => setIsDebugOpen(false)}>
+                    <div style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', maxWidth: '1200px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링 (3초마다 갱신)</h3>
+                            <button onClick={() => setIsDebugOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+                        </div>
+                        <div style={{ padding: '12px', background: '#0f172a', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {screenshotUrl ? (
+                                <img
+                                    src={screenshotUrl}
+                                    alt="Browser Screenshot"
+                                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', border: '2px solid #334155' }}
+                                    onError={(e) => { e.target.src = 'about:blank'; }}
+                                />
+                            ) : (
+                                <div style={{ color: '#94a3b8' }}>스크린샷을 불러오는 중...</div>
+                            )}
+                        </div>
+                        <div style={{ padding: '12px 24px', background: '#f8fafc', fontSize: '0.85rem', color: '#64748b', textAlign: 'center' }}>
+                            현재 나스 도커 서버에서 봇이 보고 있는 화면입니다. (Headless 모드 캡처)
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" strategy="lazyOnload" />
         </div>
     );

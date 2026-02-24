@@ -268,6 +268,15 @@ def quit_driver():
     pool.clear()
     return jsonify({"ok": True, "message": "종료"})
 
+@app.route('/screenshot', methods=['GET'])
+def get_screenshot():
+    # elsbot/debug_screenshot.png 파일이 있으면 읽어서 반환
+    path = os.path.join(os.path.dirname(__file__), "debug_screenshot.png")
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return Response(f.read(), mimetype='image/png')
+    return jsonify({"ok": False, "error": "No screenshot"}), 404
+
 if __name__ == '__main__':
     print("========================================")
     print("   ELS NAS STABLE DAEMON STARTED")

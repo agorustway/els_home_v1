@@ -34,6 +34,23 @@ def load_config():
 def save_config(user_id, user_pw):
     with open(CONFIG_FILE, "w") as f: json.dump({"user_id": user_id, "user_pw": user_pw}, f)
 
+def save_screenshot(driver, name="debug"):
+    """디버그용 스크린샷 저장 (elsbot/debug_screenshot.png)"""
+    try:
+        path = os.path.join(os.path.dirname(__file__), f"{name}_screenshot.png")
+        driver.save_screenshot(path)
+    except Exception as e:
+        print(f"[DEBUG] 스크린샷 저장 실패: {e}")
+
+def save_screenshot(driver, name="debug"):
+    """디버그용 스크린샷 저장 (elsbot/debug_screenshot.png)"""
+    try:
+        path = os.path.join(os.path.dirname(__file__), f"{name}_screenshot.png")
+        driver.save_screenshot(path)
+        # print(f"[DEBUG] 스크린샷 저장 완료: {path}")
+    except Exception as e:
+        print(f"[DEBUG] 스크린샷 저장 실패: {e}")
+
 def check_alert(driver):
     try:
         alert = driver.switch_to.alert
@@ -123,10 +140,10 @@ def open_els_menu(driver, log_callback=None):
         check_alert(driver)
         close_modals(driver)
         
-        # 🎯 [성공 판정] 컨테이너 입력창이 있으면 즉시 성공
         try:
             if driver.find_elements(By.CSS_SELECTOR, "input[id*='containerNo']"):
                 if log_callback: log_callback("조회 페이지 도착 확인!")
+                save_screenshot(driver) # 📸 메뉴 도착 확인샷
                 return True
         except: pass
 
@@ -262,6 +279,8 @@ def solve_input_and_search(driver, container_no, log_callback=None):
         msg = check_alert(driver)
         if msg: return f"오류: {msg}"
         time.sleep(0.03)
+    
+    save_screenshot(driver) # 📸 검색 결과 화면샷
     return True
 
 

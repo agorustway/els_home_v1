@@ -416,6 +416,17 @@ def get_last_result():
         except: pass
     return jsonify({"ok": False, "message": "최근 데이터가 없습니다."})
 
+@app.route("/api/els/screenshot", methods=["GET"])
+def screenshot():
+    """데몬으로부터 스크린샷 이미지를 가져와 릴레이합니다. (디버깅용)"""
+    if _daemon_available():
+        try:
+            r = urlopen(DAEMON_URL + "/screenshot", timeout=5)
+            return Response(r.read(), mimetype='image/png')
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Daemon not available"}), 404
+
 if __name__ == "__main__":
     app.logger.info("Backend Server Ready with CORS")
     app.run(host="0.0.0.0", port=2929, threaded=True)
