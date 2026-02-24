@@ -220,10 +220,17 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     };
 
     const handleCreateShortcut = async () => {
+        const isMac = navigator.userAgent.toLowerCase().includes('mac');
+        const shortcut = isMac ? 'Cmd + D' : 'Ctrl + D';
+
         if (!deferredPrompt) {
-            alert('이미 앱이 설치되어 있거나, 브라우저가 자동 설치를 지원하지 않습니다.\\n브라우저 주소창 우측의 [설치] 아이콘을 확인해주세요!');
+            alert(`브라우저가 자동 설치를 지원하지 않거나 이미 설치되어 있습니다.\n\nPC/모바일 주소창의 [설치] 또는 [홈 화면에 추가] 기능을 이용해 주세요.\n\n또한 키보드의 [${shortcut}] 키를 눌러 브라우저 북마크(즐겨찾기)에 먼저 추가해 두시면 더욱 편리합니다!`);
             return;
         }
+
+        // 먼저 북마크 안내
+        alert(`바탕화면(홈 화면) 앱 설치를 진행합니다!\n\n참고: 웹 브라우저 북마크(즐겨찾기)에도 추가하시려면 키보드의 [${shortcut}] 키를 눌러주세요.`);
+
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
@@ -236,7 +243,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     const isIntranetHome = pathname === '/employees/weather' || pathname === '/employees/weather/';
     const isDarkHeader = scrolled || darkVariant || (isEmployees && !isIntranetHome);
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
-    const textColor = isDarkHeader ? '#1a1a1a' : '#ffffff';
+    const textColor = isDarkHeader ? '#000000' : '#ffffff';
     const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
     const shadow = (isDarkHeader && !isEmployees) ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none';
 

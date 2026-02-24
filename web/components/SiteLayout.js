@@ -13,6 +13,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { MINIMAL_LAYOUT_PATHS, getHeroForPath } from '@/constants/siteLayout';
 import styles from './SiteLayout.module.css';
 import InfoTicker from '@/components/InfoTicker';
+import PwaMigrationNotice from '@/components/PwaMigrationNotice';
 
 export default function SiteLayout({ children }) {
     const pathname = usePathname();
@@ -146,6 +147,7 @@ export default function SiteLayout({ children }) {
 
             <Footer />
             <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
+            <PwaMigrationNotice />
         </>
     );
 }
