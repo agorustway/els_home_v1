@@ -23,9 +23,9 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
-    const numRows = 9; // Visual density (reduced to avoid vertical scroll)
-    const COL_WIDTH = 80; // Horizontal spacing
-    const ROW_HEIGHT = 45; // Vertical spacing (slightly taller for clarity)
+    const numRows = 10; // 높이 최적화
+    const COL_WIDTH = 80; // 가로 간격
+    const ROW_HEIGHT = 40; // 세로 간격
 
     // Overall dimensions
     const boardWidth = numCols * COL_WIDTH;
@@ -42,36 +42,36 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const generateLadder = () => {
         const newRungs = [];
 
-        // 가로선과 사선을 랜덤하게 섞지만 특정 세로줄에 몰리는 현상 피하기 위해 컬럼 순서 셔플
+        // 왼쪽부터 오른쪽으로 훑으며 겹치지 않게 확률적으로 선 생성 (고전적 + 자연스러운 사다리 방식)
         for (let r = 0; r < numRows; r++) {
-            const columns = Array.from({ length: numCols - 1 }, (_, i) => i);
-            columns.sort(() => Math.random() - 0.5);
+            let skipNext = false; // 방금 선을 그었다면 다음 열은 건너뛰어 겹침 완전 방지
+            for (let c = 0; c < numCols - 1; c++) {
+                if (skipNext) {
+                    skipNext = false;
+                    continue;
+                }
 
-            for (const c of columns) {
-                // 왼쪽, 오른쪽, 현재 셀에 이미 배치된 것이 있는지 확인 (근접 방지)
-                const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
-                const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
+                // 적절한 밀도로 선 생성 (약 50% 확률)
+                if (Math.random() < 0.5) {
+                    const rnd = Math.random();
+                    let type = 'h';
+                    if (rnd < 0.25) type = 'd1';
+                    else if (rnd < 0.5) type = 'd2';
 
-                // 빈공간을 어느정도 허용하기 위해 너무 높은 확률을 주지 않음 (몰림 현상 개선)
-                if (!hasLeft && !hasRight) {
-                    if (Math.random() > 0.55) { // 약 45% 확률로 사다리 선 생성
-                        const rnd = Math.random();
-                        let type = 'h'; // 기본 가로선
-                        if (rnd < 0.25) type = 'd1'; // 왼쪽 위에서 오른쪽 아래로 내려가는 사선 (\)
-                        else if (rnd < 0.5) type = 'd2'; // 왼쪽 아래에서 오른쪽 위로 올라가는 사선 (/)
-
-                        newRungs.push({ r, c, type });
-                    }
+                    newRungs.push({ r, c, type });
+                    skipNext = true; // 가로선(또는 사선)을 그었으므로 무조건 다음칸은 빔
                 }
             }
         }
 
-        // 연결이 아예 없어서 수직으로만 떨어지는 기둥을 방지 (각 열마다 최소 2개 이상의 선 보장)
+        // 특정 열에만 선이 너무 적어서 수직으로만 떨어지는 기둥을 방지 (각 열 최소 2개 사다리 보장)
         for (let c = 0; c < numCols - 1; c++) {
             let colRungs = newRungs.filter(rg => rg.c === c);
             let attempts = 0;
-            while (colRungs.length < 2 && attempts < 20) {
+            while (colRungs.length < 2 && attempts < 30) {
                 const r = Math.floor(Math.random() * numRows);
+
+                // 해당 줄과 양옆 줄에 사다리가 없을 때만 안전하게 끼워넣음
                 const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
                 const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
                 const hasSelf = newRungs.some(rg => rg.r === r && rg.c === c);
@@ -81,8 +81,9 @@ const LadderGame = ({ participants, onGameEnd }) => {
                     let type = 'h';
                     if (rnd < 0.3) type = 'd1';
                     else if (rnd < 0.6) type = 'd2';
-                    newRungs.push({ r, c, type });
-                    colRungs.push({ r, c, type });
+                    const newRung = { r, c, type };
+                    newRungs.push(newRung);
+                    colRungs.push(newRung);
                 }
                 attempts++;
             }

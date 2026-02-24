@@ -289,7 +289,8 @@
 /* Footer Row (Results) */
 .ladderFooter {
     display: flex;
-    height: 50px;
+    height: 80px;
+    /* 늘어난 내부 컨텐츠(이모지, 딱지)를 수용할 수 있도록 높이 확보 */
     align-items: flex-start;
     /* Connect to top */
     position: relative;
