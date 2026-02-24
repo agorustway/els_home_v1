@@ -224,12 +224,12 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         const shortcut = isMac ? 'Cmd + D' : 'Ctrl + D';
 
         if (!deferredPrompt) {
-            alert(`브라우저가 자동 설치를 지원하지 않거나 이미 설치되어 있습니다.\n\nPC/모바일 주소창의 [설치] 또는 [홈 화면에 추가] 기능을 이용해 주세요.\n\n또한 키보드의 [${shortcut}] 키를 눌러 브라우저 북마크(즐겨찾기)에 먼저 추가해 두시면 더욱 편리합니다!`);
+            alert(`브라우저가 자동 설치를 지원하지 않거나 이미 브라우저 내부에 앱이 설치되어 있습니다.\n\n⚠️ 참고: 바탕화면에서 아이콘만 지운 경우, 웹 브라우저에는 여전히 앱이 설치된 것으로 인식됩니다.\n\n재설치가 안 될 경우, 주소창 가장 우측의 [앱 제거] 버튼이나 PC 웹 브라우저 설정에서 기존 앱을 완전히 삭제하신 후 다시 시도해 주세요.\n\n(꿀팁: 키보드의 [${shortcut}] 키를 누르시면 브라우저 북마크에도 즉시 추가 가능합니다!)`);
             return;
         }
 
         // 먼저 북마크 안내
-        alert(`바탕화면(홈 화면) 앱 설치를 진행합니다!\n\n참고: 웹 브라우저 북마크(즐겨찾기)에도 추가하시려면 키보드의 [${shortcut}] 키를 눌러주세요.`);
+        alert(`바탕화면(홈 화면) 앱 설치를 진행합니다!\n\n(참고: 웹 브라우저 북마크에도 추가하시려면 설치 후 키보드의 [${shortcut}] 키를 눌러주세요.)`);
 
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
@@ -452,10 +452,10 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                     type="button"
                     onClick={handleCreateShortcut}
                     className={styles.shortcutBtn}
-                    title="바탕화면에 바로가기를 만듭니다"
+                    title="바탕화면(홈 화면)에 앱을 설치합니다"
                 >
                     <img src="/favicon.png" alt="ELS" className={styles.shortcutIcon} />
-                    바로가기
+                    앱 설치
                 </button>
             </div>
         );
