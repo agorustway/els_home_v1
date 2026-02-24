@@ -8,10 +8,11 @@ export const metadata = {
   title: "ELS SOLUTION",
   description: "Total Logistics Solution Provider",
   referrer: 'origin-when-cross-origin',
+  manifest: '/manifest.json',
   icons: {
-    icon: '/images/logo_shot.png',
-    shortcut: '/images/logo_shot.png',
-    apple: '/images/logo_shot.png',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
 };
 
@@ -34,6 +35,19 @@ export default function RootLayout({ children }) {
           <ActivityLogger />
         </Suspense>
         <SiteLayout>{children}</SiteLayout>
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                  console.log('ServiceWorker registration successful');
+                }, function(err) {
+                  console.log('ServiceWorker registration failed: ', err);
+                });
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );

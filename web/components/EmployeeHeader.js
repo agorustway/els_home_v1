@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { createClient } from '@/utils/supabase/client';
@@ -22,37 +23,33 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
         window.location.href = '/login';
     };
 
-    const handleCreateShortcut = () => {
-        // 바탕화면 바로가기 생성용 CMD 스크립트
-        const script = `@echo off
-chcp 65001 > nul
-set "targetUrl=https://nollae.com"
-set "shortcutName=이엘에스솔루션"
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-echo 바탕화면에 바로가기를 생성하고 있습니다...
+    useEffect(() => {
+        const handler = (e) => {
+            // 브라우저 기본 설치 팝업 방지 및 이벤트 저장
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $d = [System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), '%shortcutName%.lnk'); $s = $ws.CreateShortcut($d); $s.TargetPath = 'powershell.exe'; $s.Arguments = '-WindowStyle Hidden -Command \"\"if (Get-Command chrome.exe -ErrorAction SilentlyContinue) { Start-Process chrome.exe %targetUrl% } else { Start-Process https://www.google.com/chrome/ }\"\"'; $s.Save();"
+    const handleCreateShortcut = async () => {
+        if (!deferredPrompt) {
+            // 이미 설치되었거나 브라우저에서 지원하지 않는 경우 가이드
+            alert('이미 앱이 설치되어 있거나, 브라우저가 자동 설치를 지원하지 않습니다.\\n브라우저 주소창 우측의 [설치] 아이콘을 확인해주세요!');
+            return;
+        }
 
-if %errorlevel% equ 0 (
-    echo.
-    echo [성공] 바탕화면에 '%shortcutName%' 바로가기가 생성되었습니다!
-) else (
-    echo.
-    echo [오류] 바로가기 생성에 실패했습니다.
-)
-pause`;
+        // PWA 설치 프롬프트 표시
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
 
-        const blob = new Blob([script], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'els_shortcut_installer.cmd';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        alert('다운로드된 "els_shortcut_installer.cmd" 파일을 실행하면\\n바탕화면에 "이엘에스솔루션" 크롬 바로가기가 생성됩니다!');
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+            alert('바탕화면에 바로가기 앱이 설치되었습니다!');
+        }
     };
 
     return (
