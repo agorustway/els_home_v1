@@ -1,4 +1,8 @@
 #!/bin/bash
+# 스크립트가 위치한 폴더의 상위 폴더(루트)로 이동해!
+cd "$(dirname "$0")/.."
+echo "현재 작업 디렉토리: $(pwd)"
+
 echo "=== 1. GitHub에서 최신 코드 받기 ==="
 /opt/bin/git fetch origin main
 /opt/bin/git reset --hard origin/main
