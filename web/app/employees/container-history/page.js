@@ -5,7 +5,7 @@ import Script from 'next/script';
 import styles from './container-history.module.css';
 
 const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 function StatusBadge({ type, label }) {
     if (!label || label === '-' || label === '.' || label === '?') return null;

@@ -22,6 +22,40 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
         window.location.href = '/login';
     };
 
+    const handleCreateShortcut = () => {
+        // Windows CMD Script to create a Chrome shortcut via PowerShell
+        const script = `@echo off
+set "targetUrl=https://nollae.com"
+set "shortcutName=ELS_Home_Intranet.lnk"
+set "desktop=%USERPROFILE%\\Desktop"
+
+echo 바탕화면에 크롬 바로가기를 생성하고 있습니다...
+
+powershell -Command "$p = [System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), '%shortcutName%'); $s = (New-Object -COM WScript.Shell).CreateShortcut($p); $s.TargetPath = 'chrome.exe'; $s.Arguments = '%targetUrl%'; $s.Description = 'ELS Home Intranet'; $s.Save();"
+
+if %errorlevel% equ 0 (
+    echo.
+    echo [성공] 바탕화면에 바로가기가 성공적으로 생성되었습니다!
+    echo 이제 바탕화면의 ELS 아이콘을 클릭하면 크롬으로 바로 열립니다.
+) else (
+    echo.
+    echo [오류] 바로가기 생성에 실패했습니다. 크롬이 설치되어 있는지 확인해주세요.
+)
+pause`;
+
+        const blob = new Blob([script], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'els_shortcut_installer.cmd';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        alert('다운로드된 "els_shortcut_installer.cmd" 파일을 실행하면\\n바탕화면에 크롬 전용 바로가기가 만들어집니다!');
+    };
+
     return (
         <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
             <div className={styles.inner}>
@@ -59,6 +93,15 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
                         </span>
                     )}
                     <div className={styles.links}>
+                        <button
+                            type="button"
+                            onClick={handleCreateShortcut}
+                            className={styles.shortcutBtn}
+                            title="바탕화면으로 바로가기를 만듭니다"
+                        >
+                            <img src="/favicon.png" alt="" className={styles.shortcutIcon} />
+                            바로가기 생성
+                        </button>
                         <Link href="/employees/mypage" className={styles.link}>
                             개인정보수정
                         </Link>

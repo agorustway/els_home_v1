@@ -100,7 +100,14 @@
 }
 
 .leftColumn,
-.centerColumn,
+.centerColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    /* 내부 요소가 넘칠 때 그리드 짤림 방지 */
+}
+
 .rightColumn {
     display: flex;
     flex-direction: column;
@@ -341,6 +348,8 @@
     border-radius: 12px;
     background: #fff;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    /* 세로 스크롤을 위해 높이 제한 또는 유연한 높이 설정 */
+    max-height: 800px;
 }
 
 /* 현대적인 배지 스타일 */
@@ -394,8 +403,8 @@
     border-spacing: 0;
     font-size: 0.82rem;
     /* 전체 폰트 축소 */
-    min-width: 1100px;
-    /* 전체 너비는 슬림하게 유지 */
+    min-width: 1130px;
+    /* 컬럼 너비 합계에 맞춤 */
     table-layout: fixed;
 }
 
@@ -604,21 +613,25 @@
 
 /* 스크롤바 커스텀 */
 .tableInnerWrapper::-webkit-scrollbar {
-    height: 8px;
-    width: 6px;
+    height: 12px;
+    /* 가로 스크롤바 두께 확대 */
+    width: 10px;
+    /* 세로 스크롤바 두께 확대 */
 }
 
 .tableInnerWrapper::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.tableInnerWrapper::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
+    background: #f8fafc;
     border-radius: 10px;
 }
 
-.tableInnerWrapper::-webkit-scrollbar-thumb:hover {
+.tableInnerWrapper::-webkit-scrollbar-thumb {
     background: #cbd5e1;
+    border-radius: 10px;
+    border: 3px solid #f8fafc;
+}
+
+.tableInnerWrapper::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .resultFooter {

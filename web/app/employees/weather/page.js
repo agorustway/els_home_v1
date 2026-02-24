@@ -64,33 +64,48 @@ export default function WeatherPage() {
         const fetchAll = async () => {
             setLoading(true);
             try {
-                // 1. Current IP Location
-                const newCache = {};
+                // 1. IP 기반 현위치 지역 파악
                 const curRes = await fetch('/api/weather/region-by-ip');
                 const curIp = await curRes.json();
+                const currentRegionId = curIp.region || 'seoul';
 
-                // 2. Fetch all branches + current
-                const curWRes = await fetch(`/api/weather?region=${curIp.region || 'seoul'}`);
-                newCache['current'] = await curWRes.json();
+                // 2. 모든 지점 + 현위치 + 항만 ID 목록 생성
+                const branchIds = ['current', ...BRANCHES.map(b => b.id)];
+                const portIds = PORTS.map(p => p.id);
+                const allIds = [...branchIds, ...portIds];
 
-                for (const b of BRANCHES) {
-                    const res = await fetch(`/api/weather?region=${b.id}`);
-                    newCache[b.id] = await res.json();
-                }
-                setWeatherCache(newCache);
+                // 3. 병렬 페칭 실행 (Promise.all)
+                const fetchResults = await Promise.all(allIds.map(async (id) => {
+                    const rid = id === 'current' ? currentRegionId : id;
+                    try {
+                        const res = await fetch(`/api/weather?region=${rid}`);
+                        if (!res.ok) return { id, data: null };
+                        const data = await res.json();
+                        return { id, data };
+                    } catch (err) {
+                        return { id, data: null };
+                    }
+                }));
 
-                // 3. Fetch Ports
-                const pCache = {};
-                for (const p of PORTS) {
-                    const res = await fetch(`/api/weather?region=${p.id}`);
-                    const json = await res.json();
-                    pCache[p.id] = {
-                        ...json,
-                        wave: (Math.random() * 2 + 0.5).toFixed(1), // Mock Wave
-                        wind: (Math.random() * 10 + 2).toFixed(1)   // Mock Wind
-                    };
-                }
-                setPortCache(pCache);
+                // 4. 결과를 캐시에 분배
+                const newWeatherCache = {};
+                const newPortCache = {};
+
+                fetchResults.forEach(result => {
+                    if (!result.data) return;
+                    if (portIds.includes(result.id)) {
+                        newPortCache[result.id] = {
+                            ...result.data,
+                            wave: (Math.random() * 2 + 0.5).toFixed(1),
+                            wind: (Math.random() * 10 + 2).toFixed(1)
+                        };
+                    } else {
+                        newWeatherCache[result.id] = result.data;
+                    }
+                });
+
+                setWeatherCache(newWeatherCache);
+                setPortCache(newPortCache);
             } catch (e) {
                 console.error(e);
                 setError('데이터 오류');
