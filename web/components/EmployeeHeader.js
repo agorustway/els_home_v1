@@ -28,56 +28,62 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
         <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
             <div className="container">
                 <div className={styles.inner}>
-                    <div className={styles.leftSection}>
-                        <button
-                            className={styles.mobileMenuBtn}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onMenuClick) onMenuClick();
-                                else window.dispatchEvent(new Event('openSidebar'));
-                            }}
-                            aria-label="Open Sidebar"
-                        >
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3 12h18M3 6h18M3 18h18" />
-                            </svg>
-                        </button>
-                        <Link href="/employees" className={styles.logo}>
-                            ELS <span className={styles.logoSub}>Intranet</span>
-                        </Link>
-                    </div>
-
-                    <div className={styles.searchWrap}>
-                        <IntranetSearch placeholder="메뉴·게시글 검색" className={styles.searchInputWrap} />
-                    </div>
-
-                    <div className={styles.userArea}>
-                        {!loading && profile && (
-                            <span className={styles.greeting}>
-                                <strong>{displayName}</strong>
-                                {(rank || position) && (
-                                    <span className={styles.titleText}>
-                                        &nbsp;{rank}{position ? `(${position})` : ''}
-                                    </span>
-                                )}
-                                {roleLabel && (
-                                    <span className={styles.roleBadge}>({roleLabel})</span>
-                                )}
-                                님 안녕하세요?
-                            </span>
-                        )}
-                        <div className={styles.links}>
-                            <Link href="/employees/mypage" className={styles.link}>
-                                개인정보수정
-                            </Link>
-                            <button type="button" onClick={handleLogout} className={styles.linkBtn}>
-                                로그아웃
+                    <div className={styles.leftGroup}>
+                        <div className={styles.leftSection}>
+                            <button
+                                className={styles.mobileMenuBtn}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onMenuClick) onMenuClick();
+                                    else window.dispatchEvent(new Event('openSidebar'));
+                                }}
+                                aria-label="Open Sidebar"
+                            >
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 12h18M3 6h18M3 18h18" />
+                                </svg>
                             </button>
-                            <Link href="/contact" className={styles.link}>
-                                문의하기
+                            <Link href="/employees" className={styles.logo}>
+                                ELS <span className={styles.logoSub}>Intranet</span>
                             </Link>
                         </div>
+
+                        <div className={styles.searchWrap}>
+                            <IntranetSearch placeholder="메뉴·게시글 검색" className={styles.searchInputWrap} />
+                        </div>
                     </div>
+
+                    <div className={styles.centerGroup}>
+                        <div className={styles.userArea}>
+                            {!loading && profile && (
+                                <span className={styles.greeting}>
+                                    <strong>{displayName}</strong>
+                                    {(rank || position) && (
+                                        <span className={styles.titleText}>
+                                            &nbsp;{rank}{position ? `(${position})` : ''}
+                                        </span>
+                                    )}
+                                    {roleLabel && (
+                                        <span className={styles.roleBadge}>({roleLabel})</span>
+                                    )}
+                                    님 안녕하세요?
+                                </span>
+                            )}
+                            <div className={styles.links}>
+                                <Link href="/employees/mypage" className={styles.link}>
+                                    개인정보수정
+                                </Link>
+                                <button type="button" onClick={handleLogout} className={styles.linkBtn}>
+                                    로그아웃
+                                </button>
+                                <Link href="/contact" className={styles.link}>
+                                    문의하기
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.rightGroup}></div>
                 </div>
             </div>
         </header>

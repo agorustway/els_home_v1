@@ -277,6 +277,112 @@ const LadderGame = ({ participants, onGameEnd }) => {
         }
     };
 
+    const runLadderReverse = async (finalColIndex) => {
+        const runnerKey = `rev-${finalColIndex}`;
+        if (activeRunners[runnerKey]) return; // 이미 거꾸로 올라가는 중이면 무시
+
+        // 모든 시작점(col)에서 출발해보고, 이 finalColIndex에 도착하는 진짜 startIndex 찾기
+        let targetStartIndex = -1;
+        let forwardPathPoints = [];
+
+        for (let i = 0; i < numCols; i++) {
+            let c = i;
+            let pts = [{ x: getX(c), y: 0 }];
+            for (let r = 0; r < numRows; r++) {
+                const midY = (r * ROW_HEIGHT) + (ROW_HEIGHT / 2);
+                const rightBridge = rungs.find(rg => rg.r === r && rg.c === c);
+                const leftBridge = rungs.find(rg => rg.r === r && rg.c === c - 1);
+
+                if (rightBridge) {
+                    let y1 = midY, y2 = midY;
+                    if (rightBridge.type === 'd1') { y1 = midY - 12; y2 = midY + 12; }
+                    if (rightBridge.type === 'd2') { y1 = midY + 12; y2 = midY - 12; }
+                    pts.push({ x: getX(c), y: y1 }); c++; pts.push({ x: getX(c), y: y2 });
+                } else if (leftBridge) {
+                    let y1 = midY, y2 = midY;
+                    if (leftBridge.type === 'd1') { y1 = midY + 12; y2 = midY - 12; }
+                    if (leftBridge.type === 'd2') { y1 = midY - 12; y2 = midY + 12; }
+                    pts.push({ x: getX(c), y: y1 }); c--; pts.push({ x: getX(c), y: y2 });
+                } else {
+                    pts.push({ x: getX(c), y: midY });
+                }
+            }
+            pts.push({ x: getX(c), y: boardHeight });
+
+            if (c === finalColIndex) {
+                targetStartIndex = i;
+                forwardPathPoints = pts;
+                break;
+            }
+        }
+
+        // 기존 완료(히스토리) 기록 지우고 애니메이션 준비
+        setCompletedHistory(prev => prev.filter(h => h.startIndex !== targetStartIndex));
+
+        // 역방향 배열 생성
+        const pathPoints = [...forwardPathPoints].reverse();
+        const isWinner = finalColIndex === winnerIndexAtBottom;
+
+        setActiveRunners(prev => ({
+            ...prev,
+            [runnerKey]: {
+                pathPoints,
+                currentStepPath: [],
+                markerPos: { x: pathPoints[0].x, y: pathPoints[0].y },
+                emoji: '🔎', // 역추적 돋보기 아이콘
+                duration: 0
+            }
+        }));
+
+        await new Promise(r => setTimeout(r, 100));
+
+        // 역주행 애니메이션 실행 (조금 더 빠르게 0.15초~0.25초)
+        for (let i = 1; i < pathPoints.length; i++) {
+            const pPrev = pathPoints[i - 1];
+            const pNext = pathPoints[i];
+
+            const isHorizontal = pPrev.y === pNext.y;
+            const durationSec = isHorizontal ? 0.25 : 0.15;
+
+            setActiveRunners(prev => {
+                if (!prev[runnerKey]) return prev;
+                return {
+                    ...prev,
+                    [runnerKey]: {
+                        ...prev[runnerKey],
+                        markerPos: { x: pNext.x, y: pNext.y },
+                        currentStepPath: pathPoints.slice(0, i + 1),
+                        duration: durationSec
+                    }
+                };
+            });
+
+            await new Promise(r => setTimeout(r, durationSec * 1000));
+        }
+
+        // 역주행 완료 처리
+        const finalEmoji = isWinner ? '😭' : '😆';
+        setActiveRunners(prev => {
+            const next = { ...prev };
+            delete next[runnerKey];
+            return next;
+        });
+
+        // 완료 후 최종 선 다시 그려주기
+        setCompletedHistory(prev => [...prev, {
+            startIndex: targetStartIndex,
+            name: participants[targetStartIndex],
+            emoji: finalEmoji,
+            color: PATH_COLORS[targetStartIndex % PATH_COLORS.length],
+            isWinner,
+            pathPoints: forwardPathPoints, // 완료된 경로는 시각을 위해 top-down 배열 담기
+            finalColIndex: finalColIndex,
+            finalPos: { x: getX(finalColIndex), y: boardHeight + 20 }
+        }]);
+
+        onGameEnd('🪜 역추적 복기', `${isWinner ? '당첨자리' : '통과자리'} -> [${participants[targetStartIndex]}] 확정!`);
+    };
+
     return (
         <div className={styles.ladderBox}>
             <div className={styles.ladderScrollArea}>
@@ -387,7 +493,17 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                         </div>
                                     )}
 
-                                    <div className={`${styles.prizeTag} ${i === winnerIndexAtBottom ? styles.prizeWin : styles.prizePass}`} style={{ zIndex: 1 }}>
+                                    <div
+                                        className={`${styles.prizeTag} ${i === winnerIndexAtBottom ? styles.prizeWin : styles.prizePass}`}
+                                        style={{
+                                            zIndex: 1,
+                                            cursor: i === winnerIndexAtBottom ? 'pointer' : 'default',
+                                            transform: i === winnerIndexAtBottom ? 'scale(1.1)' : 'scale(1)'
+                                        }}
+                                        onClick={() => {
+                                            if (i === winnerIndexAtBottom) runLadderReverse(i);
+                                        }}
+                                    >
                                         {i === winnerIndexAtBottom ? '당첨' : '통과'}
                                     </div>
                                 </div>

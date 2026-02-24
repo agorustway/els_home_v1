@@ -19,10 +19,27 @@
     width: 100%;
     padding: 0 32px;
     height: 64px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+}
+
+.leftGroup {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 24px;
+    justify-content: flex-start;
+    gap: 32px;
+}
+
+.centerGroup {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rightGroup {
+    display: flex;
 }
 
 .leftSection {
@@ -212,10 +229,23 @@
     .inner {
         padding: 0 12px;
         height: 100%;
+        display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
         gap: 0;
+    }
+
+    .leftGroup {
+        gap: 10px;
+    }
+
+    .centerGroup {
+        justify-content: flex-end;
+    }
+
+    .rightGroup {
+        display: none;
     }
 
     .leftSection {
