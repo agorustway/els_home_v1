@@ -270,6 +270,40 @@ function ContainerHistoryInner() {
     const executeSearch = async (targets, id, pw) => {
         setLoading(true); startTimer();
         try {
+            // [병목/경합 방지] 조회를 시작하기 전에 현재 데몬을 다른 사람이 쓰고 있는지 체크
+            let isWaiting = true;
+            let retryCount = 0;
+
+            while (isWaiting) {
+                const capRes = await fetch(`${BACKEND_BASE_URL}/api/els/capabilities`);
+                const capData = await capRes.json();
+
+                // 데몬이 다른 사용자의 요청을 처리 중인지 확인 (backend app.py에서 내려주는 progress 정보 활용)
+                if (capData.progress && capData.progress.is_running) {
+                    const prog = capData.progress;
+                    setLogLines(prev => {
+                        const last = prev[prev.length - 1];
+                        const msg = `[대기] 다른 직원이 조회 중입니다... (현재 ${prog.completed}/${prog.total} 진행 중, ${retryCount}회차 대기)`;
+                        if (last && last.startsWith('[대기]')) {
+                            return [...prev.slice(0, -1), msg];
+                        }
+                        return [...prev, msg];
+                    });
+                    retryCount++;
+                    await new Promise(r => setTimeout(r, 5000)); // 5초 대기 후 재시도
+                } else {
+                    isWaiting = false;
+                    if (retryCount > 0) setLogLines(prev => [...prev, '✓ 데몬이 준비되었습니다. 조회를 시작합니다!']);
+                }
+
+                // 무한 대기 방지 (최대 10분)
+                if (retryCount > 120) {
+                    setLogLines(prev => [...prev, '![오류] 대기 시간이 너무 깁니다. 나중에 다시 시도해 주세요.']);
+                    setLoading(false); stopTimer();
+                    return;
+                }
+            }
+
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
