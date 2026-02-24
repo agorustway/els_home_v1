@@ -16,10 +16,7 @@ const PATH_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec
 const LadderGame = ({ participants, onGameEnd }) => {
     const [rungs, setRungs] = useState([]);
     const [completedHistory, setCompletedHistory] = useState([]);
-    const [animatingIndex, setAnimatingIndex] = useState(null);
-    const [currentStepPath, setCurrentStepPath] = useState([]);
-    const [markerPos, setMarkerPos] = useState({ x: 0, y: 0 });
-    const [markerEmoji, setMarkerEmoji] = useState('🐻');
+    const [activeRunners, setActiveRunners] = useState({}); // { [index]: { pathPoints, currentStepPath, markerPos, emoji, duration } }
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
@@ -141,6 +138,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
         setRungs(newRungs);
         setCompletedHistory([]);
+        setActiveRunners({});
         setAnimatingIndex(null);
         setCurrentStepPath([]);
         setWinnerIndexAtBottom(Math.floor(Math.random() * numCols));
@@ -152,15 +150,13 @@ const LadderGame = ({ participants, onGameEnd }) => {
     }, [numCols]);
 
     const runLadder = async (index) => {
-        if (animatingIndex !== null || completedHistory.some(h => h.startIndex === index)) return;
+        // 이미 진행중이거나 완료된 경우 시작 불가
+        if (activeRunners[index] || completedHistory.some(h => h.startIndex === index)) return;
 
         // Find path
         let currentC = index;
-        // Start from top (r=-1 to r=0 is the first step visually)
-        // We track nodes as coordinates directly for smooth animation
 
         let pathPoints = [];
-        // Start Point (Top of SVG line)
         pathPoints.push({ x: getX(currentC), y: 0 });
 
         for (let r = 0; r < numRows; r++) {
@@ -205,17 +201,20 @@ const LadderGame = ({ participants, onGameEnd }) => {
             // We'll add this point in next iteration as top of cell, or at end
         }
 
-        // Add final point at very bottom
         pathPoints.push({ x: getX(currentC), y: boardHeight });
 
-        setAnimatingIndex(index);
-        setMarkerEmoji(ANIMALS[index % ANIMALS.length]);
+        // Initialize state for this runner
+        setActiveRunners(prev => ({
+            ...prev,
+            [index]: {
+                pathPoints,
+                currentStepPath: [],
+                markerPos: { x: pathPoints[0].x, y: pathPoints[0].y },
+                emoji: ANIMALS[index % ANIMALS.length],
+                duration: 0
+            }
+        }));
 
-        // Initial position before animation loop
-        setMarkerPos({ x: pathPoints[0].x, y: pathPoints[0].y });
-        setTransitionDuration(0);
-
-        // Slight pause before start
         await new Promise(r => setTimeout(r, 100));
 
         // Animate
@@ -223,23 +222,35 @@ const LadderGame = ({ participants, onGameEnd }) => {
             const pPrev = pathPoints[i - 1];
             const pNext = pathPoints[i];
 
-            // Determine ease and duration
             const isHorizontal = pPrev.y === pNext.y;
-            // Slower speed: Horizontal longer than vertical
             const durationSec = isHorizontal ? 0.3 : 0.2;
 
-            setTransitionDuration(durationSec);
-            setMarkerPos({ x: pNext.x, y: pNext.y });
-            setCurrentStepPath(pathPoints.slice(0, i + 1));
+            setActiveRunners(prev => {
+                if (!prev[index]) return prev;
+                return {
+                    ...prev,
+                    [index]: {
+                        ...prev[index],
+                        markerPos: { x: pNext.x, y: pNext.y },
+                        currentStepPath: pathPoints.slice(0, i + 1),
+                        duration: durationSec
+                    }
+                };
+            });
 
-            // Wait just a bit longer than duration to ensure smoothness
             await new Promise(r => setTimeout(r, durationSec * 1000));
         }
 
         const isWinner = currentC === winnerIndexAtBottom;
-        const finalEmoji = isWinner ? '😭' : '😆'; // 당첨(Win) = Crying / Pass = Laughing
+        const finalEmoji = isWinner ? '😭' : '😆';
 
-        setMarkerEmoji(finalEmoji);
+        // Remove from activeRunners and add to completedHistory
+        setActiveRunners(prev => {
+            const next = { ...prev };
+            delete next[index];
+            return next;
+        });
+
         setCompletedHistory(prev => [...prev, {
             startIndex: index,
             name: participants[index],
@@ -247,11 +258,10 @@ const LadderGame = ({ participants, onGameEnd }) => {
             color: PATH_COLORS[index % PATH_COLORS.length],
             isWinner,
             pathPoints,
-            finalColIndex: currentC, // Store final column index
+            finalColIndex: currentC,
             finalPos: { x: getX(currentC), y: boardHeight + 20 }
         }]);
-        setAnimatingIndex(null);
-        setCurrentStepPath([]);
+
         onGameEnd('🪜 사다리', `${participants[index]} -> ${isWinner ? '당첨' : '통과'}`);
     };
 
@@ -314,28 +324,32 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                 />
                             ))}
 
-                            {/* Active Path */}
-                            {currentStepPath.length > 0 && (
-                                <motion.path
-                                    d={`M ${currentStepPath.map(p => `${p.x},${p.y}`).join(' L ')}`}
-                                    stroke={PATH_COLORS[animatingIndex % PATH_COLORS.length]}
-                                    fill="none" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"
-                                />
-                            )}
+                            {/* Active Paths */}
+                            {Object.entries(activeRunners).map(([idx, runner]) => {
+                                if (runner.currentStepPath.length === 0) return null;
+                                return (
+                                    <motion.path
+                                        key={`path-run-${idx}`}
+                                        d={`M ${runner.currentStepPath.map(p => `${p.x},${p.y}`).join(' L ')}`}
+                                        stroke={PATH_COLORS[idx % PATH_COLORS.length]}
+                                        fill="none" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"
+                                    />
+                                );
+                            })}
                         </svg>
 
-                        {/* Active Marker */}
+                        {/* Active Markers */}
                         <AnimatePresence>
-                            {animatingIndex !== null && (
+                            {Object.entries(activeRunners).map(([idx, runner]) => (
                                 <motion.div
-                                    key="marker"
+                                    key={`marker-${idx}`}
                                     className={styles.activeMarker}
-                                    animate={{ left: markerPos.x, top: markerPos.y }}
-                                    transition={{ duration: transitionDuration, ease: "linear" }}
+                                    animate={{ left: runner.markerPos.x, top: runner.markerPos.y }}
+                                    transition={{ duration: runner.duration, ease: "linear" }}
                                 >
-                                    <span className={styles.emojiLarge}>{markerEmoji}</span>
+                                    <span className={styles.emojiLarge}>{runner.emoji}</span>
                                 </motion.div>
-                            )}
+                            ))}
                         </AnimatePresence>
                     </div>
 
