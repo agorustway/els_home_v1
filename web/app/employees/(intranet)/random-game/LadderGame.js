@@ -139,8 +139,6 @@ const LadderGame = ({ participants, onGameEnd }) => {
         setRungs(newRungs);
         setCompletedHistory([]);
         setActiveRunners({});
-        setAnimatingIndex(null);
-        setCurrentStepPath([]);
         setWinnerIndexAtBottom(Math.floor(Math.random() * numCols));
     };
 
