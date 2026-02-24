@@ -685,17 +685,27 @@ function ContainerHistoryInner() {
                             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링 (3초마다 갱신)</h3>
                             <button onClick={() => setIsDebugOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
                         </div>
-                        <div style={{ padding: '12px', background: '#0f172a', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ padding: '12px', background: '#0f172a', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                             {screenshotUrl ? (
                                 <img
                                     src={screenshotUrl}
                                     alt="Browser Screenshot"
-                                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', border: '2px solid #334155' }}
-                                    onError={(e) => { e.target.src = 'about:blank'; }}
+                                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', border: '2px solid #334155', display: 'block' }}
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'block';
+                                    }}
+                                    onLoad={(e) => {
+                                        e.target.style.display = 'block';
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'none';
+                                    }}
                                 />
-                            ) : (
-                                <div style={{ color: '#94a3b8' }}>스크린샷을 불러오는 중...</div>
-                            )}
+                            ) : null}
+                            <div style={{ color: '#94a3b8', textAlign: 'center', display: 'block' }}>
+                                <div className={styles.spinner} style={{ margin: '0 auto 12px' }}></div>
+                                <div>브라우저 화면을 대기 중...</div>
+                                <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.7 }}>(작업을 시작하면 화면이 나타납니다)</div>
+                            </div>
                         </div>
                         <div style={{ padding: '12px 24px', background: '#f8fafc', fontSize: '0.85rem', color: '#64748b', textAlign: 'center' }}>
                             현재 나스 도커 서버에서 봇이 보고 있는 화면입니다. (Headless 모드 캡처)

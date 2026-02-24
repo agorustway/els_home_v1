@@ -39,14 +39,6 @@ def save_screenshot(driver, name="debug"):
     try:
         path = os.path.join(os.path.dirname(__file__), f"{name}_screenshot.png")
         driver.save_screenshot(path)
-    except Exception as e:
-        print(f"[DEBUG] 스크린샷 저장 실패: {e}")
-
-def save_screenshot(driver, name="debug"):
-    """디버그용 스크린샷 저장 (elsbot/debug_screenshot.png)"""
-    try:
-        path = os.path.join(os.path.dirname(__file__), f"{name}_screenshot.png")
-        driver.save_screenshot(path)
         # print(f"[DEBUG] 스크린샷 저장 완료: {path}")
     except Exception as e:
         print(f"[DEBUG] 스크린샷 저장 실패: {e}")
@@ -390,7 +382,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         
         service_obj = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service_obj, options=options)
+        save_screenshot(driver) # 📸 브라우저 엔진 시작 직후 첫 샷!
         driver.get("https://etrans.klnet.co.kr/index.do")
+        save_screenshot(driver) # 📸 첫 로드 화면
         
         wait = WebDriverWait(driver, 60)
         uid_input = wait.until(EC.presence_of_element_located((By.ID, "mf_wfm_subContainer_ibx_userId")))
@@ -409,6 +403,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False):
         
         # Enter 키로 로그인 (안정 커밋 방식)
         pw_input.send_keys(Keys.ENTER)
+        save_screenshot(driver) # 📸 로그인 버튼 누른 직후
         
         _log("로그인 시도 중...")
         

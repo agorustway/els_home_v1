@@ -13,5 +13,10 @@ sudo docker build --no-cache -t els-backend:latest -f docker/els-backend/Dockerf
 echo "=== 4. 컨테이너 재가동 ==="
 sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate
 
+echo "=== 5. Docker 찌꺼기 청소 (용량 관리) ==="
+# 이름 없는 옛날 이미지와 빌드 캐시를 삭제해! (-f는 자동 확인)
+sudo docker system prune -f
+sudo docker builder prune -f
+
 echo "=== 배포 완료! 로그 확인 중... ==="
 sudo docker logs -f els-backend
