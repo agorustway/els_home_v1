@@ -52,6 +52,7 @@ function ContainerHistoryInner() {
     const [resultFileName, setResultFileName] = useState('');
     const [isDebugOpen, setIsDebugOpen] = useState(false); // [추가] 디버그 모달 상태
     const [screenshotUrl, setScreenshotUrl] = useState(''); // [추가] 스크린샷 URL
+    const [isLogCollapsed, setIsLogCollapsed] = useState(true); // [추가] 로그 접힘 상태 (기본값 접기)
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -473,7 +474,7 @@ function ContainerHistoryInner() {
                     </div>
                 </div>
 
-                <div className={styles.topRow}>
+                <div className={`${styles.topRow} ${isLogCollapsed ? styles.logCollapsed : ''}`}>
                     <div className={styles.leftColumn}>
                         <div className={styles.section}>
                             <h2 className={styles.sectionTitle}>자동 로그인 연동</h2>
@@ -684,24 +685,38 @@ function ContainerHistoryInner() {
                         </div>
                     </div>
 
-                    <div className={styles.rightColumn}>
-                        <div className={styles.section} style={{ flex: 1 }}>
-                            <div className={styles.sectionHeader}>
-                                <h2 className={styles.sectionTitle}>시스템 로그</h2>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button onClick={() => setIsDebugOpen(true)} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>브라우저 보기</button>
-                                    <button onClick={() => setLogLines([])} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
-                                </div>
-                            </div>
-                            <div ref={terminalRef} className={styles.terminal}>
-                                {logLines.map((l, i) => <div key={i} className={styles.logLine}>{l}</div>)}
-                                {(loading || loginLoading) && (
-                                    <div className={styles.logLineActive}>
-                                        <div className={styles.spinner}></div>
-                                        <span>프로세스 수행 중... ({elapsedSeconds.toFixed(1)}s)</span>
+                    <div className={`${styles.rightColumn} ${isLogCollapsed ? styles.collapsed : ''}`}>
+                        <div className={styles.section} style={{ flex: 1, overflow: 'hidden' }}>
+                            <div className={styles.sectionHeader} onClick={() => setIsLogCollapsed(!isLogCollapsed)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                <h2 className={styles.sectionTitle}>
+                                    {isLogCollapsed ? '📑' : '📖'} 시스템 로그 {isLogCollapsed ? '' : <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#94a3b8', marginLeft: '4px' }}>(클릭하여 접기)</span>}
+                                </h2>
+                                {!isLogCollapsed && (
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>브라우저 보기</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setLogLines([]); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
                                     </div>
                                 )}
                             </div>
+
+                            {!isLogCollapsed ? (
+                                <div ref={terminalRef} className={styles.terminal}>
+                                    {logLines.map((l, i) => <div key={i} className={styles.logLine}>{l}</div>)}
+                                    {(loading || loginLoading) && (
+                                        <div className={styles.logLineActive}>
+                                            <div className={styles.spinner}></div>
+                                            <span>프로세스 수행 중... ({elapsedSeconds.toFixed(1)}s)</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div onClick={() => setIsLogCollapsed(false)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: '0.8rem', writingMode: 'vertical-rl', textOrientation: 'mixed', gap: '10px', paddingTop: '20px' }}>
+                                    <span>로그 펼치기</span>
+                                    <div className={styles.pulseIcon} style={{ transform: 'rotate(90deg)' }}>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

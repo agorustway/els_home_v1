@@ -97,6 +97,11 @@
     gap: 0.5rem;
     margin-bottom: 0.5rem;
     min-height: 620px;
+    transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.topRow.logCollapsed {
+    grid-template-columns: 400px 1fr 60px;
 }
 
 .leftColumn,
@@ -112,6 +117,15 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    transition: all 0.4s ease;
+}
+
+.rightColumn.collapsed {
+    padding: 0;
+}
+
+.rightColumn.collapsed .section {
+    padding: 10px 5px;
 }
 
 .section {
