@@ -23,9 +23,9 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const [winnerIndexAtBottom, setWinnerIndexAtBottom] = useState(0);
 
     const numCols = participants.length;
-    const numRows = 14; // 다시 14개층으로 올려서 꼬이는 기회를 대폭 늘림 (단조로움 해결)
+    const numRows = 18; // 층수를 18개로 늘려 끝에서 끝으로 갈 수 있는 기회 대폭 증가
     const COL_WIDTH = 80; // 가로 간격
-    const ROW_HEIGHT = 28; // 대신 세로 간격을 확 줄여서 전체 높이는 400px 미만으로 유지해 스크롤 안생기게 함
+    const ROW_HEIGHT = 22; // 세로 간격 조정 (18 * 22 = 396px로 스크롤 X)
 
     // Overall dimensions
     const boardWidth = numCols * COL_WIDTH;
@@ -52,7 +52,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                 const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
 
                 if (!hasLeft && !hasRight) {
-                    if (Math.random() < 0.70) { // 생성 확률 70% (굉장히 얽히고 설키게 됨)
+                    if (Math.random() < 0.35) { // 확률을 낮춰 횡단 가능성 증가
                         const rnd = Math.random();
                         let type = 'h';
                         if (rnd < 0.25) type = 'd1';
@@ -77,7 +77,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                     emptyCount = 0;
                 }
 
-                if (emptyCount >= 3) { // 3칸 연속 비어있으면 강제로 양옆 중 한 곳에 다리 놓기
+                if (emptyCount >= 4) { // 4칸 연속 비어있으면 강제로 양옆 중 한 곳에 다리 놓기
                     let options = [];
                     if (c < numCols - 1) options.push(c);
                     if (c > 0) options.push(c - 1);
