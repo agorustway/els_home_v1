@@ -70,6 +70,10 @@ export default function RandomGamePage() {
     const [spinDuration, setSpinDuration] = useState(6);
     const [isBroken, setIsBroken] = useState(false);
     const [isBreakingDown, setIsBreakingDown] = useState(false);
+    const [showRouletteWin, setShowRouletteWin] = useState(false);
+    const [isBreakdownPending, setIsBreakdownPending] = useState(false);
+    const [fakeWinnerName, setFakeWinnerName] = useState(null);
+    const [isConfirmClicked, setIsConfirmClicked] = useState(false);
     const canvasRef = useRef(null);
     const rouletteTimerRef = useRef(null);
 
@@ -95,61 +99,79 @@ export default function RandomGamePage() {
 
     useEffect(() => { if (activeGame === 'roulette') drawRoulette(); }, [names, activeGame]);
 
-    const triggerBreakdown = (currentDeg) => {
-        setIsBreakingDown(true);
-        setIsSpinning(false); // 잠시 멈춤을 위해 트랜지션 해제
-        setRotation(currentDeg);
-        if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
+    const handleSpinEnd = (deg) => {
+        let target = (270 - deg) % 360; if (target < 0) target += 360;
+        const winIdx = Math.floor(target / (360 / names.length));
+        const winnerName = names[winIdx];
 
-        setTimeout(() => {
-            setIsBreakingDown(false);
-            setIsBroken(true);
-            setIsSpinning(true);
-            setSpinDuration(4); // 역회전은 조금 빠르고 쫄깃하게
-            const reverseNextRot = currentDeg - 4000 - Math.random() * 360;
-            setRotation(reverseNextRot);
+        setWinner(winnerName);
+        setShowRouletteWin(true);
 
-            rouletteTimerRef.current = setTimeout(() => {
-                setIsSpinning(false);
-                setIsBroken(false);
-                let target = (270 - reverseNextRot) % 360;
-                while (target < 0) target += 360;
-                const winIdx = Math.floor(target / (360 / names.length));
-                setWinner(names[winIdx]);
-                addToHistory('🚨 룰렛 돌발상황!', `[역회전 꿀잼] ${names[winIdx]} 당첨!`);
-            }, 4000);
-        }, 3000); // 3초간 고장 알림
+        if (Math.random() < 1 / 3) { // 33.3% 확률로 당첨 후 돌발 고장
+            setIsBreakdownPending(true);
+            setFakeWinnerName(winnerName);
+        } else {
+            setIsBreakdownPending(false);
+            addToHistory('🎡 룰렛', `${winnerName} 당첨!`);
+        }
+    };
+
+    const handleRouletteConfirm = () => {
+        if (isConfirmClicked) return;
+
+        if (isBreakdownPending) {
+            setIsConfirmClicked(true);
+            setTimeout(() => {
+                setShowRouletteWin(false);
+                setIsConfirmClicked(false);
+                setIsBreakingDown(true); // 여기서 빨간 화면 오버레이 호출
+
+                // 3초간 고장 문구 보여준 뒤 역회전 시작
+                setTimeout(() => {
+                    setIsBreakingDown(false);
+                    setIsBroken(true);
+                    setIsSpinning(true);
+                    setSpinDuration(4); // 역회전은 속도감 있게
+
+                    const deg = getRotationDegrees(canvasRef.current);
+                    const reverseNextRot = deg - 4000 - Math.random() * 360;
+                    setRotation(reverseNextRot);
+
+                    rouletteTimerRef.current = setTimeout(() => {
+                        setIsSpinning(false);
+                        setIsBroken(false);
+                        setIsBreakdownPending(false);
+
+                        let finalTarget = (270 - reverseNextRot) % 360;
+                        while (finalTarget < 0) finalTarget += 360;
+                        const finalWinIdx = Math.floor(finalTarget / (360 / names.length));
+
+                        setWinner(names[finalWinIdx]);
+                        setShowRouletteWin(true); // 진짜 당첨자 팝업
+                        addToHistory('🚨 룰렛 돌발상황!', `[역회전] ${fakeWinnerName} 취소 ➡️ ${names[finalWinIdx]} 당첨!`);
+                    }, 4000);
+                }, 3000);
+
+            }, 500); // 0.5초 대기 후 취소 문구
+        } else {
+            setShowRouletteWin(false);
+        }
     };
 
     const spin = () => {
-        if (isBroken || isBreakingDown) return; // 고장 상태일 땐 조작 불가
+        if (isBroken || isBreakingDown || showRouletteWin || isConfirmClicked) return;
 
         if (isSpinning) {
             const deg = getRotationDegrees(canvasRef.current);
             if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
-
-            if (Math.random() < 1 / 6) {
-                triggerBreakdown(deg);
-                return;
-            }
-
             setRotation(deg); setIsSpinning(false);
-            let target = (270 - deg) % 360; if (target < 0) target += 360;
-            const winIdx = Math.floor(target / (360 / names.length));
-            setTimeout(() => { setWinner(names[winIdx]); addToHistory('🎡 룰렛', `${names[winIdx]} 당첨!`); }, 150);
+            setTimeout(() => { handleSpinEnd(deg); }, 150);
         } else {
             setIsSpinning(true); setWinner(null); setSpinDuration(6); setIsBroken(false); setIsBreakingDown(false);
             const nextRot = rotation + 3600 + Math.random() * 360; setRotation(nextRot);
             rouletteTimerRef.current = setTimeout(() => {
-                if (Math.random() < 1 / 6) {
-                    triggerBreakdown(getRotationDegrees(canvasRef.current));
-                    return;
-                }
-
                 setIsSpinning(false);
-                let target = (270 - nextRot) % 360; if (target < 0) target += 360;
-                const winIdx = Math.floor(target / (360 / names.length));
-                setWinner(names[winIdx]); addToHistory('🎡 룰렛', `${names[winIdx]} 당첨!`);
+                handleSpinEnd(nextRot);
             }, 6000);
         }
     };
@@ -159,7 +181,7 @@ export default function RandomGamePage() {
             {isBreakingDown && (
                 <div className={styles.breakdownOverlay}>
                     <div className={styles.breakdownText}>🚨 돌발! 룰렛 기계 고장 🚨</div>
-                    <div className={styles.breakdownSub}>결과 취소! 시스템 오류로 역회전합니다!!</div>
+                    <div className={styles.breakdownSub}>[{fakeWinnerName}] 당첨 취소! 시스템 오류로 역회전합니다!!</div>
                 </div>
             )}
             <div className={styles.headerBanner}>
@@ -190,8 +212,22 @@ export default function RandomGamePage() {
                                 <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? `transform ${spinDuration}s cubic-bezier(${isBroken ? '0.2, 0, 0.2, 1' : '0.1, 0, 0.1, 1'})` : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', width: '100%', height: 'auto', maxWidth: '400px', aspectRatio: '1/1' }} /></div>
                                 <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''} ${isBroken || isBreakingDown ? styles.btnBroken : ''}`} onClick={spin}>{isBreakingDown || isBroken ? '🛑 작동불가' : isSpinning ? 'STOP!' : 'START'}</button>
                                 <div className={styles.gameActions} style={{ marginTop: '20px' }}>
-                                    <button className={styles.premiumBtn} onClick={() => { if (!isSpinning && !isBreakingDown && !isBroken) { setRotation(0); setNames([...names].sort(() => Math.random() - 0.5)); } }}>🔄 게임판 리셋</button>
+                                    <button className={styles.premiumBtn} onClick={() => { if (!isSpinning && !isBreakingDown && !isBroken && !showRouletteWin) { setRotation(0); setNames([...names].sort(() => Math.random() - 0.5)); } }}>🔄 게임판 리셋</button>
                                 </div>
+                                <AnimatePresence>
+                                    {showRouletteWin && (
+                                        <div className={styles.resultOverlay}>
+                                            <motion.div className={styles.resultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}>
+                                                <div style={{ fontSize: '5rem' }}>👑</div>
+                                                <h2>{winner} 당첨!</h2>
+                                                <p>{isBreakdownPending && isConfirmClicked ? '결과를 확인하는 중...' : '축하합니다!'}</p>
+                                                <button className={styles.confirmBtn} onClick={handleRouletteConfirm} disabled={isConfirmClicked}>
+                                                    {isConfirmClicked ? '앗...' : '확인'}
+                                                </button>
+                                            </motion.div>
+                                        </div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         )}
                         {activeGame === 'ladder' && <LadderGame participants={names} onGameEnd={addToHistory} />}
