@@ -93,7 +93,7 @@
 /* 3열 대시보드 그리드 */
 .topRow {
     display: grid;
-    grid-template-columns: 360px 1fr 400px;
+    grid-template-columns: 400px 1fr 450px;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
     min-height: 620px;

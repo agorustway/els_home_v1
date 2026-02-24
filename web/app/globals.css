@@ -6,7 +6,7 @@
   --text-dark: #1a1a1a;
   --text-gray: #555555;
   --white: #ffffff;
-  --max-width: 1300px;
+  --max-width: 1800px;
   --header-height: 70px;
 }
 
@@ -97,7 +97,10 @@ a {
   }
 
   /* 모바일 가독·터치 */
-  p, li, span, div {
+  p,
+  li,
+  span,
+  div {
     word-break: keep-all;
     overflow-wrap: break-word;
   }
