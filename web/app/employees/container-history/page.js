@@ -689,7 +689,7 @@ function ContainerHistoryInner() {
                         <div className={styles.section} style={{ flex: 1, overflow: 'hidden' }}>
                             <div className={styles.sectionHeader} onClick={() => setIsLogCollapsed(!isLogCollapsed)} style={{ cursor: 'pointer', userSelect: 'none' }}>
                                 <h2 className={styles.sectionTitle}>
-                                    {isLogCollapsed ? '📑 로그' : '📖 시스템 로그'}
+                                    {isLogCollapsed ? '로그' : '시스템 로그'}
                                     {!isLogCollapsed && <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#94a3b8', marginLeft: '4px' }}>(클릭하여 접기)</span>}
                                 </h2>
                                 {!isLogCollapsed && (
