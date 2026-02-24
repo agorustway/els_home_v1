@@ -68,6 +68,8 @@ export default function RandomGamePage() {
     const [winner, setWinner] = useState(null);
     const [rotation, setRotation] = useState(0);
     const [spinDuration, setSpinDuration] = useState(6);
+    const [isBroken, setIsBroken] = useState(false);
+    const [isBreakingDown, setIsBreakingDown] = useState(false);
     const canvasRef = useRef(null);
     const rouletteTimerRef = useRef(null);
 
@@ -93,18 +95,57 @@ export default function RandomGamePage() {
 
     useEffect(() => { if (activeGame === 'roulette') drawRoulette(); }, [names, activeGame]);
 
+    const triggerBreakdown = (currentDeg) => {
+        setIsBreakingDown(true);
+        setIsSpinning(false); // 잠시 멈춤을 위해 트랜지션 해제
+        setRotation(currentDeg);
+        if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
+
+        setTimeout(() => {
+            setIsBreakingDown(false);
+            setIsBroken(true);
+            setIsSpinning(true);
+            setSpinDuration(4); // 역회전은 조금 빠르고 쫄깃하게
+            const reverseNextRot = currentDeg - 4000 - Math.random() * 360;
+            setRotation(reverseNextRot);
+
+            rouletteTimerRef.current = setTimeout(() => {
+                setIsSpinning(false);
+                setIsBroken(false);
+                let target = (270 - reverseNextRot) % 360;
+                while (target < 0) target += 360;
+                const winIdx = Math.floor(target / (360 / names.length));
+                setWinner(names[winIdx]);
+                addToHistory('🚨 룰렛 돌발상황!', `[역회전 꿀잼] ${names[winIdx]} 당첨!`);
+            }, 4000);
+        }, 3000); // 3초간 고장 알림
+    };
+
     const spin = () => {
+        if (isBroken || isBreakingDown) return; // 고장 상태일 땐 조작 불가
+
         if (isSpinning) {
             const deg = getRotationDegrees(canvasRef.current);
             if (rouletteTimerRef.current) clearTimeout(rouletteTimerRef.current);
+
+            if (Math.random() < 1 / 6) {
+                triggerBreakdown(deg);
+                return;
+            }
+
             setRotation(deg); setIsSpinning(false);
             let target = (270 - deg) % 360; if (target < 0) target += 360;
             const winIdx = Math.floor(target / (360 / names.length));
             setTimeout(() => { setWinner(names[winIdx]); addToHistory('🎡 룰렛', `${names[winIdx]} 당첨!`); }, 150);
         } else {
-            setIsSpinning(true); setWinner(null); setSpinDuration(6);
+            setIsSpinning(true); setWinner(null); setSpinDuration(6); setIsBroken(false); setIsBreakingDown(false);
             const nextRot = rotation + 3600 + Math.random() * 360; setRotation(nextRot);
             rouletteTimerRef.current = setTimeout(() => {
+                if (Math.random() < 1 / 6) {
+                    triggerBreakdown(getRotationDegrees(canvasRef.current));
+                    return;
+                }
+
                 setIsSpinning(false);
                 let target = (270 - nextRot) % 360; if (target < 0) target += 360;
                 const winIdx = Math.floor(target / (360 / names.length));
@@ -115,6 +156,12 @@ export default function RandomGamePage() {
 
     return (
         <div className={styles.page}>
+            {isBreakingDown && (
+                <div className={styles.breakdownOverlay}>
+                    <div className={styles.breakdownText}>🚨 돌발! 룰렛 기계 고장 🚨</div>
+                    <div className={styles.breakdownSub}>결과 취소! 시스템 오류로 역회전합니다!!</div>
+                </div>
+            )}
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>실시간 랜덤 게임 대시보드</h1>
                 <p className={styles.subtitle}>동료들과 함께하는 즐거운 점심 내기 및 복불복 게임을 즐겨보세요.</p>
@@ -140,10 +187,10 @@ export default function RandomGamePage() {
                     <div className={styles.gameContentArea}>
                         {activeGame === 'roulette' && (
                             <div className={styles.rouletteContainer}>
-                                <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)' : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', width: '100%', height: 'auto', maxWidth: '400px', aspectRatio: '1/1' }} /></div>
-                                <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''}`} onClick={spin}>{isSpinning ? 'STOP!' : 'START'}</button>
+                                <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? `transform ${spinDuration}s cubic-bezier(${isBroken ? '0.2, 0, 0.2, 1' : '0.1, 0, 0.1, 1'})` : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', width: '100%', height: 'auto', maxWidth: '400px', aspectRatio: '1/1' }} /></div>
+                                <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''} ${isBroken || isBreakingDown ? styles.btnBroken : ''}`} onClick={spin}>{isBreakingDown || isBroken ? '🛑 작동불가' : isSpinning ? 'STOP!' : 'START'}</button>
                                 <div className={styles.gameActions} style={{ marginTop: '20px' }}>
-                                    <button className={styles.premiumBtn} onClick={() => { if (!isSpinning) { setRotation(0); setNames([...names].sort(() => Math.random() - 0.5)); } }}>🔄 게임판 리셋</button>
+                                    <button className={styles.premiumBtn} onClick={() => { if (!isSpinning && !isBreakingDown && !isBroken) { setRotation(0); setNames([...names].sort(() => Math.random() - 0.5)); } }}>🔄 게임판 리셋</button>
                                 </div>
                             </div>
                         )}
