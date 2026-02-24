@@ -42,39 +42,66 @@ const LadderGame = ({ participants, onGameEnd }) => {
     const generateLadder = () => {
         const newRungs = [];
 
-        // 1. 편파적이지 않은 완벽한 무작위 셔플링 배치 알고리즘
         const totalGaps = numCols - 1;
         const totalSlots = numRows * totalGaps;
 
-        let slots = [];
-        for (let r = 0; r < numRows; r++) {
-            for (let c = 0; c < totalGaps; c++) {
-                slots.push({ r, c });
+        // 1. 최소 간격 보장: 각 기둥 사이(gap)마다 최소 5개 이상의 선을 무조건 배치
+        let gaps = Array.from({ length: totalGaps }, (_, i) => i);
+        // 왼쪽부터 채우는 편향 방지를 위해 gap 채우는 순서 섞기
+        gaps.sort(() => Math.random() - 0.5);
+
+        for (let c of gaps) {
+            let rowIndices = Array.from({ length: numRows }, (_, i) => i);
+            rowIndices.sort(() => Math.random() - 0.5); // 행 위치도 무작위
+
+            let placedCount = 0;
+            // 각 기둥 사이에 5개를 무조건 보장 (사선 포함)
+            for (let r of rowIndices) {
+                if (placedCount >= 5) break;
+
+                const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
+                const hasRight = (c < totalGaps - 1) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
+
+                if (!hasLeft && !hasRight) {
+                    const rnd = Math.random();
+                    let type = 'h';
+                    if (rnd < 0.15) type = 'd1'; // 사선 발생 확률 15%
+                    else if (rnd < 0.30) type = 'd2'; // 반대 방향 사선 발생 확률 15%
+
+                    newRungs.push({ r, c, type });
+                    placedCount++;
+                }
             }
         }
 
-        // 모든 슬롯을 완전히 섞음
-        slots.sort(() => Math.random() - 0.5);
+        // 2. 전체적인 짜임새 보강: 기둥당 5개 배치 후 남은 전체 슬롯들을 모아서
+        // 목표 밀도(약 45%)가 될 때까지 무작위로 추가 (풍성함 극대화)
+        let extraSlots = [];
+        for (let r = 0; r < numRows; r++) {
+            for (let c = 0; c < totalGaps; c++) {
+                if (!newRungs.some(rg => rg.r === r && rg.c === c)) {
+                    extraSlots.push({ r, c });
+                }
+            }
+        }
 
-        // 수학적으로 가득 찬 사다리에 가까울 만큼 촘촘하게(약 38~40%) 그물망 생성
-        const targetLines = Math.floor(totalSlots * 0.38);
+        extraSlots.sort(() => Math.random() - 0.5);
+        const targetLines = Math.floor(totalSlots * 0.45);
 
-        for (const slot of slots) {
+        for (const slot of extraSlots) {
             if (newRungs.length >= targetLines) break;
 
             const r = slot.r;
             const c = slot.c;
 
-            // 양옆과 같은 행에 겹치지 않는지 확인
             const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
             const hasRight = (c < totalGaps - 1) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
 
             if (!hasLeft && !hasRight) {
                 const rnd = Math.random();
                 let type = 'h';
-                // 가로선 위주로 가되 간혹 사선 등장 (10%)
-                if (rnd < 0.05) type = 'd1';
-                else if (rnd < 0.10) type = 'd2';
+                if (rnd < 0.15) type = 'd1';
+                else if (rnd < 0.30) type = 'd2';
 
                 newRungs.push({ r, c, type });
             }
