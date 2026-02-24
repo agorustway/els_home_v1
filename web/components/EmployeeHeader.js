@@ -31,7 +31,7 @@ set "shortcutName=이엘에스솔루션"
 
 echo 바탕화면에 바로가기를 생성하고 있습니다...
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $d = [System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), '%shortcutName%.lnk'); $s = $ws.CreateShortcut($d); $s.TargetPath = 'chrome.exe'; $s.Arguments = '%targetUrl%'; $s.Save();"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $d = [System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), '%shortcutName%.lnk'); $s = $ws.CreateShortcut($d); $s.TargetPath = 'powershell.exe'; $s.Arguments = '-WindowStyle Hidden -Command \"\"if (Get-Command chrome.exe -ErrorAction SilentlyContinue) { Start-Process chrome.exe %targetUrl% } else { Start-Process https://www.google.com/chrome/ }\"\"'; $s.Save();"
 
 if %errorlevel% equ 0 (
     echo.
