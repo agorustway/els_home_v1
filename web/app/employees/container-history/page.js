@@ -492,9 +492,6 @@ function ContainerHistoryInner() {
                         <div className={styles.section} style={{ flex: 1 }}>
                             <div className={styles.sectionHeader}>
                                 <h2 className={styles.sectionTitle}>조회 대상 입력</h2>
-                                <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                                    <input type="checkbox" checked={showBrowser} onChange={e => setShowBrowser(e.target.checked)} /> 디버그
-                                </label>
                             </div>
                             <div
                                 onDrop={handleFileDrop}
