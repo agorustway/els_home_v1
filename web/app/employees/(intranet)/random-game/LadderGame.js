@@ -41,18 +41,47 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
     const generateLadder = () => {
         const newRungs = [];
-        // Generate horizontal lines randomly
+
+        // 가로선과 사선을 섞어서 생성
         for (let r = 0; r < numRows; r++) {
             for (let c = 0; c < numCols - 1; c++) {
-                // Ensure no adjacent rungs
-                // Check left neighbor on same row
+                // 왼쪽, 오른쪽, 현재 셀에 이미 배치된 것이 있는지 확인 (근접 방지)
                 const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
 
-                if (!hasLeft && Math.random() > 0.35) {
-                    newRungs.push({ r, c });
+                // 생성 확률을 약간 높여 단조로움을 피함
+                if (!hasLeft && Math.random() > 0.3) {
+                    const rnd = Math.random();
+                    let type = 'h'; // 기본 가로선
+                    if (rnd < 0.25) type = 'd1'; // 왼쪽 위에서 오른쪽 아래로 내려가는 사선 (\)
+                    else if (rnd < 0.5) type = 'd2'; // 왼쪽 아래에서 오른쪽 위로 올라가는 사선 (/)
+
+                    newRungs.push({ r, c, type });
                 }
             }
         }
+
+        // 연결이 아예 없어서 수직으로만 떨어지는 기둥을 방지 (각 열마다 최소 2개 이상의 선 보장)
+        for (let c = 0; c < numCols - 1; c++) {
+            let colRungs = newRungs.filter(rg => rg.c === c);
+            let attempts = 0;
+            while (colRungs.length < 2 && attempts < 20) {
+                const r = Math.floor(Math.random() * numRows);
+                const hasLeft = (c > 0) && newRungs.some(rg => rg.r === r && rg.c === c - 1);
+                const hasRight = (c < numCols - 2) && newRungs.some(rg => rg.r === r && rg.c === c + 1);
+                const hasSelf = newRungs.some(rg => rg.r === r && rg.c === c);
+
+                if (!hasLeft && !hasRight && !hasSelf) {
+                    const rnd = Math.random();
+                    let type = 'h';
+                    if (rnd < 0.3) type = 'd1';
+                    else if (rnd < 0.6) type = 'd2';
+                    newRungs.push({ r, c, type });
+                    colRungs.push({ r, c, type });
+                }
+                attempts++;
+            }
+        }
+
         setRungs(newRungs);
         setCompletedHistory([]);
         setAnimatingIndex(null);
@@ -96,11 +125,23 @@ const LadderGame = ({ participants, onGameEnd }) => {
 
             if (rightBridge) {
                 // Move Right
+                let y1 = midY, y2 = midY;
+                if (rightBridge.type === 'd1') { y1 = midY - 12; y2 = midY + 12; }
+                if (rightBridge.type === 'd2') { y1 = midY + 12; y2 = midY - 12; }
+
+                pathPoints.push({ x: getX(currentC), y: y1 });
                 currentC++;
-                pathPoints.push({ x: getX(currentC), y: midY });
+                pathPoints.push({ x: getX(currentC), y: y2 });
             } else if (leftBridge) {
                 // Move Left
+                let y1 = midY, y2 = midY;
+                if (leftBridge.type === 'd1') { y1 = midY + 12; y2 = midY - 12; }
+                if (leftBridge.type === 'd2') { y1 = midY - 12; y2 = midY + 12; }
+
+                pathPoints.push({ x: getX(currentC), y: y1 });
                 currentC--;
+                pathPoints.push({ x: getX(currentC), y: y2 });
+            } else {
                 pathPoints.push({ x: getX(currentC), y: midY });
             }
 
@@ -197,11 +238,14 @@ const LadderGame = ({ participants, onGameEnd }) => {
                                 {Array.from({ length: numCols }).map((_, i) => (
                                     <line key={`v-${i}`} x1={getX(i)} y1="0" x2={getX(i)} y2="100%" />
                                 ))}
-                                {/* Horizontal Rungs */}
+                                {/* Horizontal & Diagonal Rungs */}
                                 {rungs.map((rung, i) => {
-                                    const y = (rung.r * ROW_HEIGHT) + (ROW_HEIGHT / 2);
+                                    const midY = (rung.r * ROW_HEIGHT) + (ROW_HEIGHT / 2);
+                                    let y1 = midY, y2 = midY;
+                                    if (rung.type === 'd1') { y1 = midY - 12; y2 = midY + 12; }
+                                    if (rung.type === 'd2') { y1 = midY + 12; y2 = midY - 12; }
                                     return (
-                                        <line key={`h-${i}`} x1={getX(rung.c)} y1={y} x2={getX(rung.c + 1)} y2={y} />
+                                        <line key={`h-${i}`} x1={getX(rung.c)} y1={y1} x2={getX(rung.c + 1)} y2={y2} />
                                     );
                                 })}
                             </g>
@@ -269,7 +313,7 @@ const LadderGame = ({ participants, onGameEnd }) => {
                 </div>
             </div>
             <div className={styles.gameActions}>
-                <button className={styles.premiumBtn} onClick={generateLadder}>🔄 사다리 다시 그리기</button>
+                <button className={styles.premiumBtn} onClick={generateLadder}>🔄 게임판 리셋</button>
             </div>
         </div>
     );

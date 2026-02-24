@@ -49,8 +49,10 @@ const BingoGame = ({ onGameEnd }) => {
     return (
         <div className={styles.bingoWrapper}>
             <div className={styles.bingoBoardOuter}>
-                <div className={styles.bingoHeaderWide}><button className={styles.resetTinyBtn} onClick={init}>새 판 짜기</button></div>
                 <div className={styles.bingoGrid5x5}>{grid.flat().map((item, i) => (<div key={i} className={`${styles.bingoCellItem} ${marked.includes(`${item.r}-${item.c}`) ? styles.bingoMarkedItem : ''}`} onClick={() => handleToggle(item.r, item.c)}>{item.v}</div>))}</div>
+            </div>
+            <div className={styles.gameActions}>
+                <button className={styles.premiumBtn} onClick={init}>🔄 게임판 리셋</button>
             </div>
             <AnimatePresence>{showWin && (<div className={styles.resultOverlay} onClick={() => setShowWin(false)}><motion.div className={styles.resultCard} initial={{ scale: 0.5 }} animate={{ scale: 1 }}><div style={{ fontSize: '5rem' }}>👑</div><h2>BINGO!</h2><p>축하합니다!<br />3줄 빙고를 완성했습니다.</p><button className={styles.confirmBtn}>확인</button></motion.div></div>)}</AnimatePresence>
         </div>
@@ -140,6 +142,9 @@ export default function RandomGamePage() {
                             <div className={styles.rouletteContainer}>
                                 <div className={styles.rouletteWrapper}><div className={styles.indicator}>▼</div><canvas ref={canvasRef} width={400} height={400} style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)' : 'none', borderRadius: '50%', border: '10px solid #fff', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', width: '100%', height: 'auto', maxWidth: '400px', aspectRatio: '1/1' }} /></div>
                                 <button className={`${styles.spinBtn} ${isSpinning ? styles.btnSpinning : ''}`} onClick={spin}>{isSpinning ? 'STOP!' : 'START'}</button>
+                                <div className={styles.gameActions} style={{ marginTop: '20px' }}>
+                                    <button className={styles.premiumBtn} onClick={() => { if (!isSpinning) { setRotation(0); setNames([...names].sort(() => Math.random() - 0.5)); } }}>🔄 게임판 리셋</button>
+                                </div>
                             </div>
                         )}
                         {activeGame === 'ladder' && <LadderGame participants={names} onGameEnd={addToHistory} />}
