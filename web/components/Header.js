@@ -510,7 +510,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     return (
         <>
             <header
-                className={`${styles.header} ${isEmployees && !isIntranetHome ? styles.relativeHeader : ''}`}
+                className={`${styles.header} ${isEmployees && !isIntranetHome ? styles.relativeHeader : ''} ${scrolled ? styles.scrolled : ''} ${darkVariant ? styles.darkVariant : ''}`}
                 style={{
                     backgroundColor: headerBg,
                     color: textColor,
