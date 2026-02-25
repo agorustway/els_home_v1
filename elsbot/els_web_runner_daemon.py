@@ -25,6 +25,7 @@ class DriverPool:
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 5))
+        self.active_init_threads = 0 # [추가] 현재 초기화 중인 쓰레드 수
         # [실시간 로그용] 최근 300개의 로그를 시간과 함께 보관
         self.log_buffer = deque(maxlen=300)
 
@@ -101,17 +102,15 @@ def login():
             }), 202 # 202 Accepted
 
     with pool.lock:
-        pool.is_logging_in = True
-    
-    try:
         pool.clear()
         pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
+        pool.is_logging_in = True
+        pool.active_init_threads = pool.max_drivers
         
-        logs = []
-        success_count = 0
-        
-        def _do_login(idx):
-            nonlocal success_count
+    logs = []
+    
+    def _do_login(idx):
+        try:
             msg = f"브라우저 #{idx+1} 초기화 중..."
             pool.add_log(msg)
             
@@ -121,34 +120,41 @@ def login():
             def _inner_log(m):
                 pool.add_log(f"[B#{idx+1}] {m}")
 
-            # 각 세션마다 고유 포트 할당 (32000, 32001, ...)
             target_port = 32000 + idx
             res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
             if res[0]:
-                res[0].used_port = target_port # 포트 정보 저장
+                res[0].used_port = target_port 
                 with pool.lock:
                     pool.add_driver(res[0])
-                    success_count += 1
-                logs.append(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
+                pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
             else:
-                logs.append(f"❌ 브라우저 #{idx+1} 실패: {res[1]}")
+                pool.add_log(f"❌ 브라우저 #{idx+1} 실패: {res[1]}")
+        finally:
+            with pool.lock:
+                pool.active_init_threads -= 1
+                if pool.active_init_threads == 0:
+                    pool.is_logging_in = False
 
-        threads = []
-        for i in range(pool.max_drivers):
-            t = threading.Thread(target=_do_login, args=(i,))
-            t.start()
-            threads.append(t)
-        
-        for t in threads: t.join()
+    threads = []
+    for i in range(pool.max_drivers):
+        t = threading.Thread(target=_do_login, args=(i,), daemon=True)
+        t.start()
+        threads.append(t)
+    
+    # [핵심] 첫 번째 드라이버가 준비될 때까지만 기다리고 즉시 응답 반환!
+    start_wait = time.time()
+    while time.time() - start_wait < 400:
+        if pool.available_queue.qsize() > 0:
+             return jsonify({
+                 "ok": True, 
+                 "message": "첫 번째 세션이 준비되었습니다. 조회를 시작합니다. (동생이 뒤에서 나머지 세션도 마저 띄우는 중!)", 
+                 "log": list(pool.log_buffer)
+             })
+        if pool.active_init_threads == 0: # 모든 쓰레드가 종료됨 (전부 실패한 경우)
+            break
+        time.sleep(1)
 
-    finally:
-        with pool.lock:
-            pool.is_logging_in = False
-
-    if success_count > 0:
-        return jsonify({"ok": True, "message": f"{success_count}개 세션 확보 성공", "log": list(pool.log_buffer)})
-    else:
-        return jsonify({"ok": False, "error": "로그인 실패", "log": list(pool.log_buffer)})
+    return jsonify({"ok": False, "error": "초기 세션 확보 실패", "log": list(pool.log_buffer)})
 
 @app.route('/stop', methods=['POST'])
 def stop():
