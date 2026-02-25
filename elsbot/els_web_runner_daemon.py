@@ -104,8 +104,8 @@ def login():
             msg = f"[데몬] 브라우저 #{idx+1} 초기화 중..."
             print(msg); logs.append(msg)
             
-            # [NAS 최적화] 브라우저 간 부팅 간격을 20초로 설정
-            if idx > 0: time.sleep(idx * 20)
+            # [NAS 최적화] 브라우저 간 부팅 간격을 12초로 단축 (타임아웃 방지)
+            if idx > 0: time.sleep(idx * 12)
             
             # 각 세션마다 고유 포트 할당 (32000, 32001, ...)
             target_port = 32000 + idx
@@ -280,8 +280,22 @@ def quit_driver():
 
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
-    # elsbot/debug_screenshot.png 파일이 있으면 읽어서 반환
+    # elsbot/debug_screenshot.png 파일 경로
     path = os.path.join(os.path.dirname(__file__), "debug_screenshot.png")
+    
+    # 가용한 드라이버가 있으면 즉시 스크린샷 촬영 시도
+    driver_for_shot = None
+    with pool.lock:
+        if pool.drivers:
+            driver_for_shot = pool.drivers[0]
+    
+    if driver_for_shot:
+        try:
+            # DrissionPage의 get_screenshot 메서드 사용
+            driver_for_shot.get_screenshot(path=path)
+        except Exception as e:
+            print(f"[SCREENSHOT_ERROR] {e}")
+
     if os.path.exists(path):
         with open(path, "rb") as f:
             return Response(f.read(), mimetype='image/png')

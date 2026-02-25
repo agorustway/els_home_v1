@@ -151,7 +151,7 @@ def login():
         try:
             body = json.dumps({"useSavedCreds": use_saved, "userId": uid, "userPw": pw, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json"})
-            r = urlopen(req, timeout=90) # 안정 커밋 기준: 90초
+            r = urlopen(req, timeout=180) # 안정 커밋 기준: 180초 (5개 세션 부팅 시간 고려)
             raw_resp = r.read().decode("utf-8")
             
             # RESULT: 이후의 JSON만 파싱 (LOG 출력 무시)
