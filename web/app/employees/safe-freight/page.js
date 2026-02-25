@@ -143,20 +143,7 @@ export default function SafeFreightPage() {
     }
   };
 
-  // [추가] 페이지 로드 시 백엔드에서 마지막 결과 가져오기
-  useEffect(() => {
-    const fetchLastResult = async () => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/last-result`);
-        const data = await res.json();
-        if (data.ok && data.result) {
-          setResultAll(data.result);
-          setResult(data.result); // 필터링 없이 일단 전체 표시
-        }
-      } catch (e) { console.log('Last result recovery failed'); }
-    };
-    fetchLastResult();
-  }, []);
+  // (불필요한 컨테이너 이력조회 연동 로직 제거됨)
 
   const selectAddress = (item, autoRun = false) => {
     const { siNm, sggNm, emdNm } = item;
@@ -661,13 +648,33 @@ export default function SafeFreightPage() {
   };
 
   const clearSavedResults = () => {
+    // 결과 및 에러 초기화
     setResultAll(null);
     setResult(null);
     setLookupError(null);
     setSavedResults([]);
+
+    // 입력 필드 초기화 (기본값으로 복구)
+    setAddressSearch('');
+    setSearchResults([]);
+    setInputKm('');
+
+    // 기본 기점/행선지 복구 (useEffect의 초기설정과 동일)
+    setOrigin('[왕복] 부산신항');
+    setRegion1('충남');
+    setRegion2('아산시');
+    setRegion3('인주면');
+
+    // 할증 초기화
+    setSurchargeIds(new Set());
+    setGroupApply({ flexibag: false, hazard: false, oversize: false, heavy: false });
+
     try {
       if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TEMP_RESULTS_KEY);
     } catch (_) { }
+
+    setToastMessage('조회 내역과 입력 조건이 초기화되었습니다.');
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
   const removeSavedItem = (id) => {
