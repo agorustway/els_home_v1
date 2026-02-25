@@ -107,9 +107,13 @@ def login():
             # [NAS 최적화] 브라우저 간 부팅 간격을 12초로 단축 (타임아웃 방지)
             if idx > 0: time.sleep(idx * 12)
             
+            def _inner_log(m):
+                msg = f"[B#{idx+1}] {m}"
+                print(msg); logs.append(msg)
+
             # 각 세션마다 고유 포트 할당 (32000, 32001, ...)
             target_port = 32000 + idx
-            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
+            res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
             if res[0]:
                 res[0].used_port = target_port # 포트 정보 저장
                 with pool.lock:

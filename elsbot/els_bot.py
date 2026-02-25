@@ -56,23 +56,32 @@ def open_els_menu(page, log_callback=None):
     for attempt in range(10):
         close_modals(page)
         
+        # 현재 상태 확인 (URL/Title)
+        curr_url = page.url
+        curr_title = page.title
+        if log_callback: log_callback(f"진입 시도 ({attempt+1}/10) - URL: {curr_url}, Title: {curr_title}")
+
         # 조회 페이지 도착 확인 (입력창 탐지)
-        if page.ele('css:input[id*="containerNo"]', timeout=2):
-            if log_callback: log_callback("조회 페이지 도착 확인!")
+        if page.ele('css:input[id*="containerNo"]', timeout=3):
+            if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
             return True
 
-        if log_callback: log_callback(f"메뉴 진입 시도 ({attempt+1}/10)...")
-        
-        # URL 직접 이동 (가장 확실함)
+        # URL 직접 이동 (3회차부터 시도)
         if attempt >= 2:
+            if log_callback: log_callback("직접 URL 이동 시도...")
             page.get("https://etrans.klnet.co.kr/main/index.do?menuId=002001007")
-            time.sleep(3)
+            time.sleep(4)
         else:
             # 메뉴 클릭 시도
-            target = page.ele('text:컨테이너 이동현황', timeout=2)
+            target = page.ele('text:컨테이너 이동현황', timeout=3)
             if target:
+                if log_callback: log_callback("메뉴 텍스트 클릭!")
                 target.click()
-                time.sleep(2)
+                time.sleep(3)
+            else:
+                # 상위 메뉴 '통합정보조회' 먼저 클릭 시도 (필요한 경우)
+                parent = page.ele('text:통합정보조회', timeout=2)
+                if parent: parent.click(); time.sleep(1)
         
     return False
 
@@ -213,19 +222,36 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         uid_input.input(u_id)
         pw_input = page.ele('#mf_wfm_subContainer_sct_password')
         pw_input.input(u_pw)
-        pw_input.input('\n') # 엔터
         
-        _log("로그인 시도 중...")
-        time.sleep(5)
+        # 로그인 버튼 클릭 (엔터 대신 명시적 클릭 시도)
+        login_btn = page.ele('css:[id*="btnLogin"], css:[id*="btn_login"], text:로그인', timeout=5)
+        if login_btn:
+            _log("로그인 버튼 클릭...")
+            login_btn.click()
+        else:
+            _log("로그인 버튼을 못 찾아 엔터키로 시도...")
+            pw_input.input('\n')
+        
+        _log("로그인 시도 중 (엔터 전송)...")
+        time.sleep(7) # 충분한 로그인 처리 시간 확보
         
         close_modals(page)
         
+        # 로그인 실패 확인 (alert 확인 등은 DrissionPage가 어느 정도 자동으로 처리하지만 직접 호출)
+        if "아이디를 입력" in page.html or "비밀번호를 입력" in page.html:
+             page.quit()
+             return (None, "로그인 정보 재요청됨 (실패 가능성)")
+
         if open_els_menu(page, _log):
             _log("메뉴 진입 성공")
             return (page, None)
         
+        # 실패 시 스크린샷 저장 (데몬에서 확인 가능)
+        save_screenshot(page, "debug")
+        final_url = page.url
+        _log(f"메뉴 진입 최종 실패 (URL: {final_url}) - 스크린샷 저장됨")
         page.quit()
-        return (None, "메뉴 진입 실패")
+        return (None, f"메뉴 진입 실패 (마지막 URL: {final_url})")
     except Exception as e:
         if 'page' in locals() and page: page.quit()
         return (None, f"에러: {e}")
