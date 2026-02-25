@@ -39,12 +39,16 @@ export default function SafeFreightPage() {
   const [lookupLoading, setLookupLoading] = useState(false); // Specific loading for lookup action
   const [saveToTemp, setSaveToTemp] = useState(true);
 
-  // saveToTemp 변경 시 알림 처리
+  // saveToTemp 변경 시 알림 처리 및 즉시 삭제
   const handleSaveToTempChange = (enabled) => {
     setSaveToTemp(enabled);
     if (!enabled) {
-      setToastMessage('이후 조회 시 이전 기록보전 내역이 삭제됩니다.');
-      setTimeout(() => setToastMessage(null), 3000);
+      setSavedResults([]);
+      try {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TEMP_RESULTS_KEY);
+      } catch (_) { }
+      setToastMessage('이전 기록보전 내역이 삭제되었습니다.');
+      setTimeout(() => setToastMessage(null), 2000);
     }
   };
   const [savedResults, setSavedResults] = useState([]);
@@ -620,39 +624,50 @@ export default function SafeFreightPage() {
       }
 
       if (saveToTemp) {
+        // [중복 방지] 같은 조건(기점, 행선지, 타입, 할증)의 최신 이력이 이미 있으면 추가하지 않음
         const appliedLabels = [
           ...appliedSurchargeInfo.pctApplied.map((s) =>
             s.effective === 100 ? s.label : `${s.label} (50% 적용)`
           ),
           ...appliedSurchargeInfo.fixedApplied.map((s) => s.label),
         ];
-        const typeLabel = QUERY_TYPES.find((t) => t.id === data.type)?.label || data.type;
-        const entry = {
-          id: Date.now(),
-          savedAt: new Date().toISOString(),
-          type: data.type,
-          typeLabel,
-          tripMode,
-          period: data.period ?? period,
-          origin: data.origin,
-          destination: data.destination,
-          km: latest.km,
-          f40위탁: appliedRow.f40위탁,
-          f40운수자: appliedRow.f40운수자,
-          f40안전: appliedRow.f40안전,
-          f20위탁: appliedRow.f20위탁,
-          f20운수자: appliedRow.f20운수자,
-          f20안전: appliedRow.f20안전,
-          appliedSurcharges: appliedLabels,
-          excludedSurcharges: appliedSurchargeInfo.pctExcluded.map((s) => ({ label: s.label, reason: s.reason })),
-        };
-        setSavedResults((prev) => {
-          const next = [entry, ...prev];
-          try {
-            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TEMP_RESULTS_KEY, JSON.stringify(next));
-          } catch (_) { }
-          return next;
-        });
+
+        const isDuplicate = savedResults.length > 0 &&
+          savedResults[0].origin === (data.origin || origin) &&
+          savedResults[0].destination === (data.destination || [region1, region2, region3].join(' ')) &&
+          savedResults[0].type === data.type &&
+          savedResults[0].tripMode === tripMode &&
+          JSON.stringify(savedResults[0].appliedSurcharges) === JSON.stringify(appliedLabels);
+
+        if (!isDuplicate) {
+          const typeLabel = QUERY_TYPES.find((t) => t.id === data.type)?.label || data.type;
+          const entry = {
+            id: Date.now(),
+            savedAt: new Date().toISOString(),
+            type: data.type,
+            typeLabel,
+            tripMode,
+            period: data.period ?? period,
+            origin: data.origin || origin,
+            destination: data.destination || [region1, region2, region3].join(' '),
+            km: latest.km,
+            f40위탁: appliedRow.f40위탁,
+            f40운수자: appliedRow.f40운수자,
+            f40안전: appliedRow.f40안전,
+            f20위탁: appliedRow.f20위탁,
+            f20운수자: appliedRow.f20운수자,
+            f20안전: appliedRow.f20안전,
+            appliedSurcharges: appliedLabels,
+            excludedSurcharges: appliedSurchargeInfo.pctExcluded.map((s) => ({ label: s.label, reason: s.reason })),
+          };
+          setSavedResults((prev) => {
+            const next = [entry, ...prev];
+            try {
+              if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TEMP_RESULTS_KEY, JSON.stringify(next));
+            } catch (_) { }
+            return next;
+          });
+        }
       }
     } catch (err) {
       // 에러 메시지를 Toast로 표시
@@ -1467,52 +1482,64 @@ export default function SafeFreightPage() {
 
           {savedResults.length > 0 && (
             <section className={styles.savedSection}>
-              <p className={styles.sectionHead}>임시 저장된 결과 (적용된 할증 반영)</p>
+              <p className={styles.sectionHead}>이전 조회 내역</p>
               <ul className={styles.savedList}>
-                {savedResults.map((s, idx) => {
-                  const savedAt = s.savedAt ? new Date(s.savedAt) : new Date(s.id);
-                  const savedAtStr = savedAt.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
-                  return (
-                    <li key={s.id} className={styles.savedItem}>
-                      <div className={styles.savedRow}>
-                        <span className={styles.savedSeq}>No.{savedResults.length - idx}</span>
-                        <span className={styles.savedDateTime}>{savedAtStr}</span>
-                        {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
-                        <span className={styles.savedType}>{s.typeLabel}</span>
-                        <span className={s.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
-                          {s.tripMode === 'oneWay' ? '편도' : '왕복'}
-                        </span>
-                        <span className={styles.savedCond}>
-                          {s.origin && `${s.origin} → `}
-                          {s.destination || '-'}
-                          {s.km != null && ` · ${s.km}km`}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.savedItemDelete}
-                          onClick={() => removeSavedItem(s.id)}
-                          aria-label="이 항목 삭제"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                      <div className={styles.savedFares}>
-                        <span>40FT 위탁 <strong className={styles.amountText}>{s.f40위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f40운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f40안전?.toLocaleString()}</strong></span>
-                        <span>20FT 위탁 <strong className={styles.amountText}>{s.f20위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f20운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f20안전?.toLocaleString()}</strong></span>
-                      </div>
-                      {s.appliedSurcharges?.length > 0 && (
-                        <p className={styles.savedSurcharges}>
-                          적용 할증: {s.appliedSurcharges.join(', ')}
-                        </p>
-                      )}
-                      {s.excludedSurcharges?.length > 0 && (
-                        <p className={styles.savedExcluded}>
-                          적용 제외: {s.excludedSurcharges.map((x) => x.label).join(', ')} — {s.excludedSurcharges[0].reason}
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
+                {savedResults
+                  .filter((s, idx) => {
+                    // 상단 Detailed View(resultAll)에 표시 중인 최신 건은 이력 목록에서 숨김 (중복 방지)
+                    if (!resultAll) return true;
+                    if (idx === 0 && s.origin === resultAll.origin && s.destination === resultAll.destination && s.type === resultAll.type) return false;
+                    return true;
+                  })
+                  .map((s, idx, filteredArr) => {
+                    const savedAt = s.savedAt ? new Date(s.savedAt) : new Date(s.id);
+                    const savedAtStr = savedAt.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
+                    // No 번호 유지
+                    const seqNum = filteredArr.length - idx;
+                    return (
+                      <li key={s.id} className={styles.savedItem}>
+                        <div className={styles.savedRow}>
+                          <span className={styles.savedSeq}>No.{seqNum}</span>
+                          <span className={styles.savedDateTime}>{savedAtStr}</span>
+                          {s.period && <span className={styles.savedPeriod}>{s.period}</span>}
+                          <span className={styles.savedType}>{s.typeLabel}</span>
+                          <span className={s.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
+                            {s.tripMode === 'oneWay' ? '편도' : '왕복'}
+                          </span>
+                          <span className={styles.savedCond}>
+                            {s.origin && `${s.origin} → `}
+                            {s.destination || '-'}
+                            {s.km != null && ` · ${s.km}km`}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.savedItemDelete}
+                            onClick={() => removeSavedItem(s.id)}
+                            aria-label="이 항목 삭제"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                        <div className={styles.savedFares}>
+                          <span>40FT 위탁 <strong className={styles.amountText}>{s.f40위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f40운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f40안전?.toLocaleString()}</strong></span>
+                          <span>20FT 위탁 <strong className={styles.amountText}>{s.f20위탁?.toLocaleString()}</strong> · 운수자 <strong className={styles.amountText}>{s.f20운수자?.toLocaleString()}</strong> · 안전 <strong className={styles.amountText}>{s.f20안전?.toLocaleString()}</strong></span>
+                        </div>
+                        {s.appliedSurcharges?.length > 0 && (
+                          <p className={styles.savedSurcharges}>
+                            적용 할증: {s.appliedSurcharges.join(', ')}
+                          </p>
+                        )}
+                        {s.excludedSurcharges?.length > 0 && (
+                          <p className={styles.excludedSurcharges} style={{ marginTop: '8px', padding: '8px', background: '#f8fafc', borderRadius: '6px', fontSize: '0.8rem', color: '#64748b' }}>
+                            <span style={{ fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>적용 제외:</span>
+                            {s.excludedSurcharges.map((x, i) => (
+                              <div key={i} style={{ marginBottom: '2px' }}>• {x.label}: {x.reason}</div>
+                            ))}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
               </ul>
             </section>
           )}
