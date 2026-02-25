@@ -23,8 +23,8 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False # [추가] 로그인 중복 실행 방지 플래그
-        # NAS 도커 병렬 처리를 위해 기본 2개로 확장 (필요시 환경변수 ELS_MAX_DRIVERS로 조절 가능)
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 2))
+        # NAS 도커 병렬 처리를 위해 5개로 확장
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 5))
 
     def clear(self):
         with self.lock:
@@ -104,15 +104,18 @@ def login():
             msg = f"[데몬] 브라우저 #{idx+1} 초기화 중..."
             print(msg); logs.append(msg)
             
-            # [NAS 최적화] 브라우저 간 부팅 간격을 20초로 설정 (안정 커밋 기준)
+            # [NAS 최적화] 브라우저 간 부팅 간격을 20초로 설정
             if idx > 0: time.sleep(idx * 20)
             
-            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser)
+            # 각 세션마다 고유 포트 할당 (32000, 32001, ...)
+            target_port = 32000 + idx
+            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
+                res[0].used_port = target_port # 포트 정보 저장
                 with pool.lock:
                     pool.add_driver(res[0])
                     success_count += 1
-                logs.append(f"✔ 브라우저 #{idx+1} 준비 완료 (NAS 안정 모드)")
+                logs.append(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
             else:
                 logs.append(f"❌ 브라우저 #{idx+1} 실패: {res[1]}")
 
@@ -146,6 +149,10 @@ def run():
     cn = data.get('containerNo')
     if not cn: return jsonify({"ok": False, "error": "번호 누락"})
 
+    # 조회가 동시에 몰려도 시작 시점을 약간씩 어긋나게 해서 릴레이 효과를 줌
+    # (이미 전역 lock이 필요한 수준은 아니지만, 시작 간격 조절용)
+    time.sleep(random.uniform(0.3, 1.0))
+
     driver = pool.get_driver()
     if not driver:
         return jsonify({"ok": False, "error": "가용한 세션 없음"})
@@ -175,9 +182,12 @@ def run():
             try: driver.quit()
             except: pass
             
-            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser)
+            # 원래 사용하던 포트 유지
+            target_port = getattr(driver, 'used_port', 9222)
+            res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
                 driver = res[0]
+                driver.used_port = target_port
                 print("--- [세션 복구 성공] 조회를 계속합니다. ---")
             else:
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
