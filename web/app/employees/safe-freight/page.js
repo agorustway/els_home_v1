@@ -704,13 +704,20 @@ export default function SafeFreightPage() {
     setDestRegion2('');
     setDestRegion3('');
 
-    // [보안] 세션 스토리지 삭제
+    // [보안] 세션 스토리지 및 잔여 UI 상태 삭제
     try {
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.removeItem(TEMP_RESULTS_KEY);
-        // 혹시 모를 다른 키들도 초기화
         sessionStorage.removeItem('els_input');
       }
+
+      // 할증 및 상세 설정 초기화
+      setSurchargeIds(new Set());
+      setGroupApply({ flexibag: false, hazard: false, oversize: false, heavy: false });
+      setRoughPct(20);
+      setTripMode('round');
+      setDisplayMode('all');
+      setQueryType('section');
     } catch (_) { }
 
     setToastMessage('모든 조회 데이터와 검색 설정이 초기화되었습니다.');
