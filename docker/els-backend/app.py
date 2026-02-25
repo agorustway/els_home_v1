@@ -158,7 +158,8 @@ def login():
             login_result = {}
             def _thread_login():
                 try:
-                    r = urlopen(req, timeout=180)
+                    # [NAS 최적화] 5개 세션 부팅(Stagger 15s)을 고려하여 400초로 연장
+                    r = urlopen(req, timeout=400)
                     login_result['resp'] = json.loads(r.read().decode("utf-8"))
                 except Exception as e:
                     login_result['error'] = str(e)
@@ -167,15 +168,23 @@ def login():
             t.start()
 
             sent_logs = set()
+            retry_count = 0
             while t.is_alive():
                 try:
-                    l_req = urlopen(DAEMON_URL + "/logs", timeout=2)
+                    # 데몬의 /logs 엔드포인트에서 최신 로그 긁어오기
+                    l_req = urlopen(DAEMON_URL + "/logs", timeout=5)
                     l_data = json.loads(l_req.read().decode("utf-8"))
                     for line in l_data.get("log", []):
                         if line not in sent_logs:
                             yield f"LOG:{line}\n"
                             sent_logs.add(line)
                 except: pass
+                
+                # 데몬이 바빠서 로그를 못 줄 때를 위한 백엔드 자체 심박 로그
+                retry_count += 1
+                if retry_count % 15 == 0:
+                    yield f"LOG:[백엔드] 세션 초기화 대기 중... ({retry_count}s)\n"
+                
                 time.sleep(1)
             
             t.join()

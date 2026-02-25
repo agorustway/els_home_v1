@@ -115,7 +115,8 @@ def login():
             msg = f"브라우저 #{idx+1} 초기화 중..."
             pool.add_log(msg)
             
-            if idx > 0: time.sleep(idx * 7) # 대기 간격 소폭 단축
+            # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 15초로 설정
+            if idx > 0: time.sleep(idx * 15)
             
             def _inner_log(m):
                 pool.add_log(f"[B#{idx+1}] {m}")

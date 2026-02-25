@@ -53,7 +53,7 @@ def close_modals(page):
 def open_els_menu(page, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중 (DrissionPage)...")
     
-    for attempt in range(10):
+    for attempt in range(5):
         close_modals(page)
         
         # 현재 상태 확인 (URL/Title)
@@ -66,9 +66,9 @@ def open_els_menu(page, log_callback=None):
             if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
             return True
 
-        # URL 직접 이동 (3회차부터 시도)
-        if attempt >= 2:
-            if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt+1}/10)")
+        # URL 직접 이동 (2회차부터 시도)
+        if attempt >= 1:
+            if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt+1}/5)")
             # [수정] /main/index.do 대신 index.do로 바로 시도 (404 방지)
             page.get("https://etrans.klnet.co.kr/index.do?menuId=002001007")
             time.sleep(5) # WebSquare 초기 로딩 시간
