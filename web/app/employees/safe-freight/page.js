@@ -38,6 +38,15 @@ export default function SafeFreightPage() {
   const [lookupError, setLookupError] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false); // Specific loading for lookup action
   const [saveToTemp, setSaveToTemp] = useState(true);
+
+  // saveToTemp 변경 시 알림 처리
+  const handleSaveToTempChange = (enabled) => {
+    setSaveToTemp(enabled);
+    if (!enabled) {
+      setToastMessage('이후 조회 시 이전 기록보전 내역이 삭제됩니다.');
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
   const [savedResults, setSavedResults] = useState([]);
   const [expandedNoticeId, setExpandedNoticeId] = useState(null);
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
@@ -601,6 +610,14 @@ export default function SafeFreightPage() {
       setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
+
+      // [중요] 내역 보존 체크가 꺼져 있으면 기존 저장된 모든 내역 삭제
+      if (!saveToTemp) {
+        setSavedResults([]);
+        try {
+          if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TEMP_RESULTS_KEY);
+        } catch (_) { }
+      }
 
       if (saveToTemp) {
         const appliedLabels = [
@@ -1287,7 +1304,7 @@ export default function SafeFreightPage() {
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginTop: '6px' }}>
                     <label className={styles.checkLabel} style={{ cursor: 'pointer' }}>
-                      <input type="checkbox" checked={saveToTemp} onChange={(e) => setSaveToTemp(e.target.checked)} />
+                      <input type="checkbox" checked={saveToTemp} onChange={(e) => handleSaveToTempChange(e.target.checked)} />
                       조회내역 보존
                     </label>
                     <button type="button" onClick={clearSavedResults} className={styles.clearBtn}>내역 비우기</button>
