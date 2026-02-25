@@ -1,5 +1,8 @@
 .page {
     padding: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
+    /* 페이지 전체 가로 스크롤 방지 */
 }
 
 .headerBanner {
@@ -27,15 +30,19 @@
 /* 3열 대시보드 레이아웃 */
 .splitLayout {
     display: grid;
-    grid-template-columns: 280px 1fr 280px;
+    grid-template-columns: 280px minmax(0, 1fr) 280px;
     gap: 16px;
     align-items: flex-start;
+    width: 100%;
 }
 
 .column {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-width: 0;
+    /* 내부 요소 때문에 컬럼이 늘어나는 것 방지 */
+    width: 100%;
 }
 
 .card {
@@ -199,10 +206,30 @@
 /* Scroll Container */
 .ladderScrollArea {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     padding-bottom: 20px;
-    /* Hide scrollbar for cleaner look if desired, or keep it */
-    text-align: center;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    justify-content: flex-start;
+    /* 모바일 슬라이더를 위해 왼쪽 정렬 */
+}
+
+/* 스크롤바 디자인 (모바일에서 보이면 더 직관적임) */
+.ladderScrollArea::-webkit-scrollbar {
+    height: 6px;
+}
+
+.ladderScrollArea::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* PC에서는 중앙 정렬 */
+@media (min-width: 769px) {
+    .ladderScrollArea {
+        justify-content: center;
+    }
 }
 
 /* The Grid Container holding Header, Body, Footer */
@@ -671,7 +698,9 @@
     }
 
     .splitLayout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+        overflow-x: hidden;
     }
 
     .column:nth-child(3) {
@@ -681,20 +710,18 @@
     }
 
     .gameContentArea {
-        padding: 20px 10px;
-        min-height: 400px;
+        padding: 15px 10px;
+        min-height: auto;
+        border-radius: 16px;
     }
 
-    .ladderBoard {
-        height: 480px;
-        /* 사다리 높이 증가 */
-        margin-top: 100px;
-        /* 이름과 사다리 시작점 사이 공간 확보 */
+    .ladderBox {
+        align-items: flex-start;
+        /* 왼쪽부터 시작하도록 */
     }
 
-    .ladderFooterRow {
-        top: 580px;
-        /* 종료 지점 위치 조정 (높이 + 마진) */
+    .ladderScrollArea {
+        padding: 10px 0;
     }
 
     /* Roulette Mobile */

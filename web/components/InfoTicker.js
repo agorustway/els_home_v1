@@ -21,9 +21,12 @@ function getWeatherImagePath(code) {
     return '/images/weather/cloudy_3d.png';
 }
 
+import { useGeolocation } from '@/hooks/useGeolocation';
+
 export default function InfoTicker({ style, isEmployees = false }) {
     const router = useRouter();
     const { role } = useUserRole();
+    const { coords } = useGeolocation();
     const [mounted, setMounted] = useState(false);
     const [liveTime, setLiveTime] = useState(null);
     const [newsItems, setNewsItems] = useState([]);
@@ -58,6 +61,16 @@ export default function InfoTicker({ style, isEmployees = false }) {
 
             // 모든 지역 날씨 Fetch (순차적 또는 병렬)
             const newCache = { ...weatherCache };
+
+            // 현위치 정보가 있으면 추가
+            if (coords) {
+                try {
+                    const res = await fetch(`/api/weather?lat=${coords.lat}&lon=${coords.lon}`);
+                    const json = await res.json();
+                    if (!json.error) newCache['current'] = json;
+                } catch (e) { }
+            }
+
             for (const rid of OTHER_REGION_IDS) {
                 try {
                     const res = await fetch(`/api/weather?region=${rid}`);
@@ -72,17 +85,22 @@ export default function InfoTicker({ style, isEmployees = false }) {
         fetchAllData();
         const timer = setInterval(fetchAllData, 30 * 60 * 1000);
         return () => clearInterval(timer);
-    }, [lastFetchTime]);
+    }, [lastFetchTime, coords]);
 
     // 티커 날씨 지역 순환 (5초) - 서버 요청 없이 인덱스만 변경
+    // 현위치가 있는 경우 순환 목록에 포함시키거나 별도 처리
+    const activeRegionIds = coords && weatherCache['current']
+        ? ['current', ...OTHER_REGION_IDS]
+        : OTHER_REGION_IDS;
+
     useEffect(() => {
         const timer = setInterval(() => {
-            setTickerRegionIndex((prev) => (prev + 1) % OTHER_REGION_IDS.length);
+            setTickerRegionIndex((prev) => (prev + 1) % activeRegionIds.length);
         }, ROTATE_INTERVAL_MS);
         return () => clearInterval(timer);
-    }, []);
+    }, [activeRegionIds.length]);
 
-    const tickerWeather = weatherCache[OTHER_REGION_IDS[tickerRegionIndex]];
+    const tickerWeather = weatherCache[activeRegionIds[tickerRegionIndex]];
 
     if (!mounted) return null;
 
@@ -119,7 +137,7 @@ export default function InfoTicker({ style, isEmployees = false }) {
                             className={styles.tickerWeather}
                             onClick={() => handleRestrictedClick('/employees/weather')}
                             style={{ cursor: 'pointer' }}
-                            title="날씨 상세 보기"
+                            title={`${tickerWeather.region.name} 날씨 상세 보기`}
                         >
                             <img
                                 src={getWeatherImagePath(tickerWeather.hourly?.[0]?.code)}
@@ -127,7 +145,7 @@ export default function InfoTicker({ style, isEmployees = false }) {
                                 className={styles.tickerWeatherIcon}
                             />
                             <span className={styles.tickerWeatherText}>
-                                {tickerWeather.region.name} {typeof tickerWeather.hourly?.[0]?.temp === 'number' ? tickerWeather.hourly[0].temp.toFixed(1) : tickerWeather.hourly?.[0]?.temp}°C
+                                {tickerWeather.region.name === '현위치' ? '📍 내 주변' : tickerWeather.region.name} {typeof tickerWeather.hourly?.[0]?.temp === 'number' ? tickerWeather.hourly[0].temp.toFixed(1) : tickerWeather.hourly?.[0]?.temp}°C
                             </span>
                         </div>
                     )}

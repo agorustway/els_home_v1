@@ -19,27 +19,10 @@
     width: 100%;
     padding: 0 32px;
     height: 64px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 24px;
-}
-
-.leftGroup {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 32px;
-}
-
-.centerGroup {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.rightGroup {
-    display: flex;
 }
 
 .leftSection {
@@ -168,37 +151,6 @@
     color: #dc2626;
 }
 
-.shortcutBtn {
-    padding: 0 14px;
-    height: 36px;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #1e293b;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.shortcutBtn:hover {
-    background: #f8fafc;
-    border-color: #3b82f6;
-    color: #2563eb;
-    transform: translateY(-1px);
-}
-
-.shortcutIcon {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-}
-
 .searchWrap {
     flex: 0 0 240px;
 }
@@ -217,13 +169,15 @@
     .employeeHeader {
         position: sticky !important;
         top: 0 !important;
-        z-index: 1200;
-        height: 60px;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
+        z-index: 850;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
         border-bottom: 1px solid rgba(226, 232, 240, 0.8);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         padding: 0;
+        display: flex;
+        align-items: center;
     }
 
     .inner {
@@ -236,22 +190,10 @@
         gap: 0;
     }
 
-    .leftGroup {
-        gap: 10px;
-    }
-
-    .centerGroup {
-        justify-content: flex-end;
-    }
-
-    .rightGroup {
-        display: none;
-    }
-
     .leftSection {
         width: auto;
         justify-content: flex-start;
-        gap: 10px;
+        gap: 8px;
     }
 
     .mobileMenuBtn {
@@ -263,8 +205,9 @@
     }
 
     .logo {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         letter-spacing: -0.5px;
+        font-weight: 800;
     }
 
     .logoSub {
@@ -274,7 +217,7 @@
     .userArea {
         width: auto;
         justify-content: flex-end;
-        gap: 6px;
+        gap: 5px;
     }
 
     .greeting {
@@ -282,14 +225,14 @@
     }
 
     .links {
-        gap: 6px;
+        gap: 4px;
         width: auto;
     }
 
     .link,
     .linkBtn {
-        height: 32px;
-        padding: 0 10px;
+        height: 34px;
+        padding: 0 8px;
         font-size: 0.75rem;
         background: #f8fafc;
         border: 1px solid #f1f5f9;
@@ -297,12 +240,14 @@
         flex: none;
         max-width: none;
         min-height: auto;
+        font-weight: 700;
     }
 
     .link:last-child {
         background: var(--primary-blue);
-        color: #fff;
+        color: #fff !important;
         border-color: var(--primary-blue);
+        padding: 0 10px;
     }
 
     .searchWrap {

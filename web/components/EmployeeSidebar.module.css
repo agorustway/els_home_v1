@@ -29,12 +29,13 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 1100;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9000;
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .overlayOpen {
@@ -267,9 +268,9 @@
         left: 0;
         width: 280px;
         height: 100vh;
-        z-index: 1200;
+        z-index: 9001;
         transform: translateX(-100%);
-        box-shadow: 5px 0 25px rgba(0, 0, 0, 0.1);
+        box-shadow: 5px 0 25px rgba(0, 0, 0, 0.2);
         border-right: none;
     }
 

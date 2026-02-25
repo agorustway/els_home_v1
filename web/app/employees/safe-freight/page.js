@@ -55,6 +55,7 @@ export default function SafeFreightPage() {
   const [toastMessage, setToastMessage] = useState(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [autoRunCount, setAutoRunCount] = useState(0);
+  const resultRef = useRef(null);
 
   // 모달 오픈 시 바디 스크롤 방지 (모바일 터치 스크롤 호환)
   useEffect(() => {
@@ -609,6 +610,11 @@ export default function SafeFreightPage() {
         fare40: appliedRow.f40안전,
       });
 
+      // 결과 로드 후 결과 섹션으로 자동 스크롤
+      setTimeout(() => {
+        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+
       if (saveToTemp) {
         const appliedLabels = [
           ...appliedSurchargeInfo.pctApplied.map((s) =>
@@ -655,6 +661,9 @@ export default function SafeFreightPage() {
   };
 
   const clearSavedResults = () => {
+    setResultAll(null);
+    setResult(null);
+    setLookupError(null);
     setSavedResults([]);
     try {
       if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TEMP_RESULTS_KEY);
@@ -1285,60 +1294,123 @@ export default function SafeFreightPage() {
           {lookupError && <p className={styles.error}>{lookupError}</p>}
 
           {resultAll && resultAll.type === queryType && (
-            <section className={styles.resultSection}>
-              <p className={styles.tip}>
-                {resultAll.type === 'section' && '적용월을 참고해 위탁·운수자·안전 운임을 40FT·20FT 모두 확인할 수 있습니다.'}
-                {resultAll.type === 'distance' && '입력한 거리(km)에 해당하는 거리별 운임입니다.'}
-                {resultAll.type === 'other' && '이외구간에서 조회한 거리로 거리별 운임을 적용한 결과입니다.'}
-              </p>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th rowSpan={2}>적용</th>
-                    <th rowSpan={2}>기점</th>
-                    <th rowSpan={2}>행선지</th>
-                    <th rowSpan={2}>구분</th>
-                    <th rowSpan={2}>거리(KM)</th>
-                    <th colSpan={3} className={styles.thGroup}>40FT</th>
-                    <th colSpan={3} className={styles.thGroup}>20FT</th>
-                  </tr>
-                  <tr>
-                    <th>위탁</th>
-                    <th>운수자</th>
-                    <th>안전</th>
-                    <th>위탁</th>
-                    <th>운수자</th>
-                    <th>안전</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map((row, idx) => {
-                    const applied = applySurchargesToRow(row);
-                    const isBlank = row.isNotApplied || (applied.f40안전 === 0);
-                    const format = (val) => (isBlank || !val ? '-' : val.toLocaleString());
+            <section className={styles.resultSection} ref={resultRef}>
+              {/* PC 버전: 기존 테이블 유지 */}
+              <div className={styles.pcOnly}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th rowSpan={2}>적용</th>
+                      <th rowSpan={2}>기점</th>
+                      <th rowSpan={2}>행선지</th>
+                      <th rowSpan={2}>구분</th>
+                      <th rowSpan={2}>거리(KM)</th>
+                      <th colSpan={3} className={styles.thGroup}>40FT</th>
+                      <th colSpan={3} className={styles.thGroup}>20FT</th>
+                    </tr>
+                    <tr>
+                      <th>위탁</th>
+                      <th>운수자</th>
+                      <th>안전</th>
+                      <th>위탁</th>
+                      <th>운수자</th>
+                      <th>안전</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((row, idx) => {
+                      const applied = applySurchargesToRow(row);
+                      const isBlank = row.isNotApplied || (applied.f40안전 === 0);
+                      const format = (val) => (isBlank || !val ? '-' : val.toLocaleString());
 
-                    return (
-                      <tr key={idx}>
-                        <td>{applied.period}</td>
-                        <td>{resultAll.origin || '-'}</td>
-                        <td>{resultAll.destination || '-'}</td>
-                        <td>
-                          <span className={applied.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
-                            {applied.tripMode === 'oneWay' ? '편도' : '왕복'}
-                          </span>
-                        </td>
-                        <td className={styles.cellKm}>{applied.km}</td>
-                        <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
-                        <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
-                        <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
-                        <td className={styles.cellAmount}>{format(applied.f20위탁)}</td>
-                        <td className={styles.cellAmount}>{format(applied.f20운수자)}</td>
-                        <td className={styles.cellAmount}>{format(applied.f20안전)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={idx}>
+                          <td>{applied.period}</td>
+                          <td>{resultAll.origin || '-'}</td>
+                          <td>{resultAll.destination || '-'}</td>
+                          <td>
+                            <span className={applied.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
+                              {applied.tripMode === 'oneWay' ? '편도' : '왕복'}
+                            </span>
+                          </td>
+                          <td className={styles.cellKm}>{applied.km}</td>
+                          <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
+                          <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
+                          <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
+                          <td className={styles.cellAmount}>{format(applied.f20위탁)}</td>
+                          <td className={styles.cellAmount}>{format(applied.f20운수자)}</td>
+                          <td className={styles.cellAmount}>{format(applied.f20안전)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 모바일 버전: 카드 리스트 레이아웃 */}
+              <div className={styles.mobileOnly}>
+                {displayRows.map((row, idx) => {
+                  const applied = applySurchargesToRow(row);
+                  const isBlank = row.isNotApplied || (applied.f40안전 === 0);
+                  const format = (val) => (isBlank || !val ? '-' : val.toLocaleString());
+
+                  return (
+                    <div key={idx} className={styles.mobileResultCard}>
+                      <div className={styles.cardHead}>
+                        <div className={styles.cardRoute}>
+                          <span>🚩</span>
+                          <span>{resultAll.origin || '-'} ➔ {resultAll.destination || '-'}</span>
+                        </div>
+                        <span className={styles.cardPeriod}>{applied.period}</span>
+                      </div>
+
+                      <div className={styles.cardBody}>
+                        {/* 40FT 섹션 */}
+                        <div className={styles.fareBox}>
+                          <div className={styles.fareTitle}>🚛 40FT</div>
+                          <div className={styles.fareLine}>
+                            <span className={styles.fareLabel}>위탁</span>
+                            <span className={styles.fareValue}>{format(applied.f40위탁)}</span>
+                          </div>
+                          <div className={styles.fareLine}>
+                            <span className={styles.fareLabel}>운수자</span>
+                            <span className={styles.fareValue}>{format(applied.f40운수자)}</span>
+                          </div>
+                          <div className={styles.fareLine}>
+                            <span className={styles.fareLabel}>안전</span>
+                            <span className={styles.fareValueMain}>{format(applied.f40안전)}</span>
+                          </div>
+                        </div>
+
+                        {/* 20FT 섹션 */}
+                        <div className={styles.fareBox}>
+                          <div className={styles.fareTitle}>🚚 20FT</div>
+                          <div className={styles.fareLine}>
+                            <span className={styles.fareLabel}>위탁</span>
+                            <span className={styles.fareValue}>{format(applied.f20위탁)}</span>
+                          </div>
+                          <div className={styles.fareLine}>
+                            <span className={styles.fareLabel}>운수자</span>
+                            <span className={styles.fareValue}>{format(applied.f20운수자)}</span>
+                          </div>
+                          <div className={styles.fareLine}>
+                            <span className={styles.fareLabel}>안전</span>
+                            <span className={styles.fareValueMain}>{format(applied.f20안전)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.cardFoot}>
+                        <span className={applied.tripMode === 'oneWay' ? styles.tagOneWay : styles.tagRound}>
+                          {applied.tripMode === 'oneWay' ? '편도' : '왕복'}
+                        </span>
+                        <span>|</span>
+                        <span>주행거리: <strong>{applied.km}km</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
               {surchargeIds.size > 0 && (
                 <>
                   <p className={styles.fareNote}>

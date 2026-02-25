@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
 import styles from './weather.module.css';
@@ -59,9 +59,12 @@ function getWeatherImagePath(code) {
     return '/images/weather/cloudy_3d.png';
 }
 
+import { useGeolocation } from '@/hooks/useGeolocation';
+
 export default function WeatherPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
+    const { coords, loading: geoLoading, refreshLocation } = useGeolocation();
 
     const [selectedId, setSelectedId] = useState('current'); // 'current', 'seoul', 'asan', etc.
     const [weatherCache, setWeatherCache] = useState({});
@@ -73,62 +76,80 @@ export default function WeatherPage() {
         if (!authLoading && !role) router.replace('/login?next=/employees/weather');
     }, [role, authLoading, router]);
 
-    useEffect(() => {
+    const fetchAll = useCallback(async (currentCoords = null) => {
         if (!role) return;
-        const fetchAll = async () => {
-            setLoading(true);
-            try {
-                // 1. IP 기반 현위치 지역 파악
+        setLoading(true);
+        try {
+            // 1. 위치 결정: 전달받은 coords -> 훅의 coords -> IP 기반
+            let currentRegionId = 'seoul';
+            let geoParams = '';
+
+            if (currentCoords || coords) {
+                const c = currentCoords || coords;
+                geoParams = `&lat=${c.lat}&lon=${c.lon}`;
+            } else {
                 const curRes = await fetch('/api/weather/region-by-ip');
                 const curIp = await curRes.json();
-                const currentRegionId = curIp.region || 'seoul';
-
-                // 2. 모든 지점 + 현위치 + 항만 ID 목록 생성
-                const branchIds = ['current', ...BRANCHES.map(b => b.id)];
-                const portIds = PORTS.map(p => p.id);
-                const allIds = [...branchIds, ...portIds];
-
-                // 3. 병렬 페칭 실행 (Promise.all)
-                const fetchResults = await Promise.all(allIds.map(async (id) => {
-                    const rid = id === 'current' ? currentRegionId : id;
-                    try {
-                        const res = await fetch(`/api/weather?region=${rid}`);
-                        if (!res.ok) return { id, data: null };
-                        const data = await res.json();
-                        return { id, data };
-                    } catch (err) {
-                        return { id, data: null };
-                    }
-                }));
-
-                // 4. 결과를 캐시에 분배
-                const newWeatherCache = {};
-                const newPortCache = {};
-
-                fetchResults.forEach(result => {
-                    if (!result.data) return;
-                    if (portIds.includes(result.id)) {
-                        newPortCache[result.id] = {
-                            ...result.data,
-                            wave: (Math.random() * 2 + 0.5).toFixed(1),
-                            wind: (Math.random() * 10 + 2).toFixed(1)
-                        };
-                    } else {
-                        newWeatherCache[result.id] = result.data;
-                    }
-                });
-
-                setWeatherCache(newWeatherCache);
-                setPortCache(newPortCache);
-            } catch (e) {
-                console.error(e);
-                setError('데이터 오류');
-            } finally {
-                setLoading(false);
+                currentRegionId = curIp.region || 'seoul';
             }
-        };
+
+            // 2. 모든 지점 + 현위치 + 항만 ID 목록 생성
+            const branchIds = ['current', ...BRANCHES.map(b => b.id)];
+            const portIds = PORTS.map(p => p.id);
+            const allIds = [...branchIds, ...portIds];
+
+            // 3. 병렬 페칭 실행 (Promise.all)
+            const fetchResults = await Promise.all(allIds.map(async (id) => {
+                const rid = id === 'current' ? currentRegionId : id;
+                // current이면서 geoParams가 있으면 좌표 기반으로 요청
+                const finalUrl = (id === 'current' && geoParams)
+                    ? `/api/weather?region=current${geoParams}`
+                    : `/api/weather?region=${rid}`;
+
+                try {
+                    const res = await fetch(finalUrl);
+                    if (!res.ok) return { id, data: null };
+                    const data = await res.json();
+                    return { id, data };
+                } catch (err) {
+                    return { id, data: null };
+                }
+            }));
+
+            // 4. 결과를 캐시에 분배
+            const newWeatherCache = {};
+            const newPortCache = {};
+
+            fetchResults.forEach(result => {
+                if (!result.data) return;
+                if (portIds.includes(result.id)) {
+                    newPortCache[result.id] = {
+                        ...result.data,
+                        wave: (Math.random() * 2 + 0.5).toFixed(1),
+                        wind: (Math.random() * 10 + 2).toFixed(1)
+                    };
+                } else {
+                    newWeatherCache[result.id] = result.data;
+                }
+            });
+
+            setWeatherCache(newWeatherCache);
+            setPortCache(newPortCache);
+        } catch (e) {
+            console.error(e);
+            setError('데이터 오류');
+        } finally {
+            setLoading(false);
+        }
+    }, [role, coords]);
+
+    useEffect(() => {
         fetchAll();
-    }, [role]);
+    }, [fetchAll]);
+
+    const handleRefreshLocation = () => {
+        refreshLocation();
+    };
 
     const activeData = useMemo(() => weatherCache[selectedId] || weatherCache['current'], [weatherCache, selectedId]);
 
@@ -193,18 +214,44 @@ export default function WeatherPage() {
                     <p style={{ color: '#64748b' }}>기상 데이터를 분석하고 있습니다...</p>
                 </div>
             ) : (
-                <div className={styles.gridContainer}>
+                <motion.div
+                    className={styles.gridContainer}
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                        visible: { transition: { staggerChildren: 0.05 } }
+                    }}
+                >
                     {/* 1. Hero Card (Current Weather) */}
                     {activeData && (() => {
                         const cur = activeData.hourly[0];
                         return (
                             <motion.div
-                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                variants={{
+                                    hidden: { opacity: 0, y: 20 },
+                                    visible: { opacity: 1, y: 0 }
+                                }}
                                 className={`${styles.card} ${styles.heroCard}`}
                             >
                                 <div className={styles.heroContent}>
-                                    <div className={styles.locationBadge}>
-                                        📍 {selectedId === 'current' ? '현위치' : BRANCHES.find(b => b.id === selectedId)?.name}
+                                    <div className={styles.locationBadgeWrap}>
+                                        <div className={styles.locationBadge}>
+                                            📍 {selectedId === 'current' ? (activeData.region?.name || '현위치') : BRANCHES.find(b => b.id === selectedId)?.name}
+                                        </div>
+                                        {selectedId === 'current' && (
+                                            <button
+                                                className={styles.refreshLocBtn}
+                                                onClick={handleRefreshLocation}
+                                                disabled={geoLoading || loading}
+                                                title="위치 새로고침"
+                                            >
+                                                {geoLoading ? '...' : (
+                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        )}
                                     </div>
                                     <div className={styles.currentTemp}>{Math.round(cur.temp)}°</div>
                                     <div className={styles.currentCondition}>{weatherCodeToLabel(cur.code)}</div>
@@ -230,7 +277,13 @@ export default function WeatherPage() {
                     })()}
 
                     {/* 2. Air Quality Card */}
-                    <div className={`${styles.card} ${styles.aqCard}`}>
+                    <motion.div
+                        variants={{
+                            hidden: { opacity: 0, scale: 0.95 },
+                            visible: { opacity: 1, scale: 1 }
+                        }}
+                        className={`${styles.card} ${styles.aqCard}`}
+                    >
                         <div className={styles.cardTitle}>
                             <span className={styles.cardTitleIcon}>🍃</span> 대기질 모니터링
                         </div>
@@ -254,10 +307,16 @@ export default function WeatherPage() {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* 3. Branch List (Detailed + Grid) */}
-                    <div className={styles.branchSection}>
+                    <motion.div
+                        variants={{
+                            hidden: { opacity: 0, x: -20 },
+                            visible: { opacity: 1, x: 0 }
+                        }}
+                        className={styles.branchSection}
+                    >
                         <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
                             <span className={styles.cardTitleIcon}>🏢</span> 지점별 날씨
                         </div>
@@ -271,7 +330,8 @@ export default function WeatherPage() {
                                 const dust = dustOptions[0]; // Fixed for stability or random
 
                                 return (
-                                    <div
+                                    <motion.div
+                                        whileTap={{ scale: 0.98 }}
                                         className={`${styles.branchCard} ${selectedId === 'current' ? styles.branchActive : ''}`}
                                         onClick={() => setSelectedId('current')}
                                     >
@@ -301,7 +361,7 @@ export default function WeatherPage() {
                                                 className={styles.branchIcon}
                                             />
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 );
                             })()}
 
@@ -312,8 +372,9 @@ export default function WeatherPage() {
                                 const dust = dustOptions[Math.floor(Math.random() * dustOptions.length)];
 
                                 return (
-                                    <div
+                                    <motion.div
                                         key={b.id}
+                                        whileTap={{ scale: 0.98 }}
                                         className={`${styles.branchCard} ${selectedId === b.id ? styles.branchActive : ''}`}
                                         onClick={() => setSelectedId(b.id)}
                                     >
@@ -343,14 +404,20 @@ export default function WeatherPage() {
                                                 className={styles.branchIcon}
                                             />
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 );
                             })}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* 4. Hourly Forecast */}
-                    <div className={styles.hourlySection}>
+                    <motion.div
+                        variants={{
+                            hidden: { opacity: 0, y: 10 },
+                            visible: { opacity: 1, y: 0 }
+                        }}
+                        className={styles.hourlySection}
+                    >
                         <div className={styles.cardTitle} style={{ marginBottom: '8px' }}>
                             <span className={styles.cardTitleIcon}>⏰</span> 12시간 예보
                         </div>
@@ -370,10 +437,16 @@ export default function WeatherPage() {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* 5. Weekly Forecast (Detailed Cards, No Container BG) */}
-                    <div className={styles.weeklySection}>
+                    <motion.div
+                        variants={{
+                            hidden: { opacity: 0, y: 15 },
+                            visible: { opacity: 1, y: 0 }
+                        }}
+                        className={styles.weeklySection}
+                    >
                         <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
                             <span className={styles.cardTitleIcon}>📅</span> 주간 예보
                         </div>
@@ -421,10 +494,16 @@ export default function WeatherPage() {
                                 );
                             })}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* 6. Port Monitoring */}
-                    <div className={styles.portSection}>
+                    <motion.div
+                        variants={{
+                            hidden: { opacity: 0, y: 20 },
+                            visible: { opacity: 1, y: 0 }
+                        }}
+                        className={styles.portSection}
+                    >
                         <div className={styles.cardTitle} style={{ marginBottom: '12px' }}>
                             <span className={styles.cardTitleIcon}>⚓</span> 주요 항만 기상 모니터링
                         </div>
@@ -464,8 +543,8 @@ export default function WeatherPage() {
                                 );
                             })}
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             )}
         </div>
     );

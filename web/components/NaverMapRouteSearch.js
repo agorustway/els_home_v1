@@ -8,9 +8,12 @@ const DEFAULT_DESTINATION = "부산신항만컨테이너터미널";
 const DEFAULT_MAP_CENTER = [127.8, 36.5]; // 대한민국 중심 근처
 const DEFAULT_MAP_ZOOM = 7;
 
+import { useGeolocation } from '@/hooks/useGeolocation';
+
 export default function NaverMapRouteSearch() {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
+    const { coords, loading: geoLoading } = useGeolocation();
     const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
     const [destination, setDestination] = useState(DEFAULT_DESTINATION);
     const [loading, setLoading] = useState(false);
@@ -22,6 +25,27 @@ export default function NaverMapRouteSearch() {
     const [fuelCost, setFuelCost] = useState(null);
     const [originAddress, setOriginAddress] = useState({ road: null, jibun: null });
     const [destinationAddress, setDestinationAddress] = useState({ road: null, jibun: null });
+
+    // 좌표가 감지되면 출발지 자동 설정
+    useEffect(() => {
+        if (coords) {
+            const fetchOriginFromCoords = async () => {
+                try {
+                    const res = await fetch(`/api/naver-maps/reverse-geocode?coords=${coords.lng || coords.lon},${coords.lat}`);
+                    const data = await res.json();
+                    if (res.ok && data.status.code === 0) {
+                        const roadAddr = data.results.find(r => r.name === 'roadaddr');
+                        const jibunAddr = data.results.find(r => r.name === 'jibunaddr');
+                        const addr = roadAddr ? roadAddr.land.name : (jibunAddr ? jibunAddr.land.name : '');
+                        if (addr) setOrigin(addr);
+                    }
+                } catch (e) {
+                    console.error('Failed to set origin from coords:', e);
+                }
+            };
+            fetchOriginFromCoords();
+        }
+    }, [coords]);
 
     // Naver Map Script Loader (Network.js에서 재사용)
     useEffect(() => {
@@ -161,7 +185,7 @@ export default function NaverMapRouteSearch() {
                 throw new Error(`유가 정보 조회 실패: ${fuelData.error || '알 수 없는 오류'}`);
             }
             // 평균 연비 3km/l (임시값, 실제 값 적용 필요)
-            const fuelEfficiency = 3; 
+            const fuelEfficiency = 3;
             const dieselPricePerLiter = fuelData.price;
             const calculatedFuelCost = (totalDistance / 1000 / fuelEfficiency * dieselPricePerLiter);
             setFuelCost(calculatedFuelCost.toFixed(0));

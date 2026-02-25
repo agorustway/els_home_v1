@@ -221,15 +221,29 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
 
     const handleCreateShortcut = async () => {
         const isMac = navigator.userAgent.toLowerCase().includes('mac');
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const shortcut = isMac ? 'Cmd + D' : 'Ctrl + D';
 
         if (!deferredPrompt) {
-            alert(`브라우저가 자동 설치를 지원하지 않거나 이미 브라우저 내부에 앱이 설치되어 있습니다.\n\n⚠️ 참고: 바탕화면에서 아이콘만 지운 경우, 웹 브라우저에는 여전히 앱이 설치된 것으로 인식됩니다.\n\n재설치가 안 될 경우, 주소창 가장 우측의 [앱 제거] 버튼이나 PC 웹 브라우저 설정에서 기존 앱을 완전히 삭제하신 후 다시 시도해 주세요.\n\n(꿀팁: 키보드의 [${shortcut}] 키를 누르시면 브라우저 북마크에도 즉시 추가 가능합니다!)`);
+            if (isMobile) {
+                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isIOS) {
+                    alert('iOS(아이폰/아이패드)에서는 브라우저 하단의 [공유] 버튼을 누른 후 [홈 화면에 추가]를 선택하여 앱을 설치하실 수 있습니다.');
+                } else {
+                    alert('안드로이드 환경에서는 브라우저 우측 상단 메뉴(점 3개)에서 [앱 설치] 또는 [홈 화면에 추가]를 선택해 주세요.\n\n이미 설치되어 있다면 실행 중인 앱 목록에서 확인하실 수 있습니다.');
+                }
+            } else {
+                alert(`브라우저가 자동 설치를 지원하지 않거나 이미 브라우저 내부에 앱이 설치되어 있습니다.\n\n⚠️ 참고: 바탕화면에서 아이콘만 지운 경우, 웹 브라우저에는 여전히 앱이 설치된 것으로 인식됩니다.\n\n재설치가 안 될 경우, 주소창 가장 우측의 [앱 제거] 버튼이나 PC 웹 브라우저 설정에서 기존 앱을 완전히 삭제하신 후 다시 시도해 주세요.\n\n(꿀팁: 키보드의 [${shortcut}] 키를 누르시면 브라우저 북마크에도 즉시 추가 가능합니다!)`);
+            }
             return;
         }
 
-        // 먼저 북마크 안내
-        alert(`바탕화면(홈 화면) 앱 설치를 진행합니다!\n\n(참고: 웹 브라우저 북마크에도 추가하시려면 설치 후 키보드의 [${shortcut}] 키를 눌러주세요.)`);
+        // 먼저 안내
+        const installMsg = isMobile
+            ? '스마트폰 홈 화면에 "이엘에스솔루션" 앱을 설치하시겠습니까?\n\n설치 후에는 브라우저 없이도 즉시 실행이 가능합니다.'
+            : `바탕화면(홈 화면) 앱 설치를 진행합니다!\n\n(참고: 웹 브라우저 북마크에도 추가하시려면 설치 후 키보드의 [${shortcut}] 키를 눌러주세요.)`;
+
+        alert(installMsg);
 
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
@@ -445,21 +459,6 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
             );
         }
 
-        // PUSH SHORTCUT BUTTON AT THE VERY END
-        linkElements.push(
-            <div key="shortcut-btn" style={{ marginLeft: '15px', display: 'flex', alignItems: 'center' }}>
-                <button
-                    type="button"
-                    onClick={handleCreateShortcut}
-                    className={styles.shortcutBtn}
-                    title="바탕화면(홈 화면)에 앱을 설치합니다"
-                >
-                    <img src="/favicon.png" alt="ELS" className={styles.shortcutIcon} />
-                    앱 설치
-                </button>
-            </div>
-        );
-
         return linkElements;
     };
 
@@ -517,7 +516,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     return (
         <>
             <header
-                className={`${styles.header} ${isEmployees && !isIntranetHome ? styles.relativeHeader : ''} ${scrolled ? styles.scrolled : ''} ${darkVariant ? styles.darkVariant : ''}`}
+                className={`${styles.header} ${isEmployees && !isIntranetHome ? styles.relativeHeader : ''} ${isDarkHeader ? styles.darkVariant : ''}`}
                 style={{
                     backgroundColor: headerBg,
                     color: textColor,
@@ -603,8 +602,8 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                             gap: '8px'
                         }}
                     >
-                        <img src="/favicon.png" alt="ELS" style={{ width: '20px', height: '20px' }} />
-                        바로가기 설치 (바탕화면)
+                        <img src="/favicon.png" alt="ELS" style={{ width: '18px', height: '18px' }} />
+                        앱 설치
                     </button>
                 </div>
                 <div className={styles.mobileNavLinks}>

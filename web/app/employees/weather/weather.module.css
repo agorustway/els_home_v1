@@ -10,15 +10,28 @@
 
 /* Header Section (Blue Banner Style) */
 .headerBanner {
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
     color: #fff;
-    padding: 16px 24px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    padding: 20px 24px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.headerBanner::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
 }
 
 .headerText {
@@ -103,18 +116,51 @@
     z-index: 2;
 }
 
+.locationBadgeWrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
 .locationBadge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     background: rgba(255, 255, 255, 0.6);
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 999px;
     font-size: 0.85rem;
     font-weight: 700;
     color: #2563eb;
-    margin-bottom: 12px;
     backdrop-filter: blur(4px);
+}
+
+.refreshLocBtn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.6);
+    border: none;
+    border-radius: 50%;
+    color: #2563eb;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+    padding: 0;
+}
+
+.refreshLocBtn:hover:not(:disabled) {
+    background: #fff;
+    transform: rotate(180deg);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.refreshLocBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .currentTemp {
@@ -604,9 +650,16 @@
     }
 
     .heroIconWrap {
-        width: 120px;
-        height: 120px;
-        margin-right: -10px;
+        width: 130px;
+        height: 130px;
+        margin-right: -15px;
+        filter: drop-shadow(0 10px 20px rgba(37, 99, 235, 0.3));
+    }
+
+    .currentTemp {
+        font-size: 3.2rem;
+        letter-spacing: -0.05em;
+        margin-bottom: -5px;
     }
 
     .heroIcon {
@@ -658,17 +711,21 @@
     .branchGrid {
         display: flex;
         overflow-x: auto;
-        gap: 12px;
-        /* Tighter gap */
-        padding: 4px;
-        /* Add padding all around to prevent border clipping */
-        padding-right: 10px;
+        gap: 10px;
+        padding: 4px 4px 12px 4px;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
     }
 
     .branchCard {
-        min-width: 150px;
-        /* Reduced slightly more */
-        padding: 12px;
+        min-width: 165px;
+        /* 약간 넓혀서 다음 카드가 살짝 보이게 (Peek) */
+        flex-shrink: 0;
+        scroll-snap-align: start;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     .branchName {
@@ -694,15 +751,18 @@
         display: flex;
         overflow-x: auto;
         gap: 8px;
-        padding: 4px;
-        /* Add padding to prevent border clipping */
-        padding-right: 10px;
+        padding: 4px 4px 12px 4px;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
     }
 
     .hourlyCard {
-        min-width: 100px;
-        /* Adjusted for 1 line layout mobile */
-        padding: 8px;
+        min-width: 105px;
+        flex-shrink: 0;
+        scroll-snap-align: start;
+        padding: 10px 8px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 14px;
     }
 
     .hourTime {
@@ -728,9 +788,19 @@
 
     .weeklyCard,
     .portCard {
-        padding: 14px;
+        padding: 15px;
         flex-direction: row;
-        /* Ensure row layout */
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 18px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+    }
+
+    /* 주간 예보 좁은 화면에서 2열로 시도 (공간 절약) */
+    .weeklyGrid,
+    .portGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 8px;
     }
 
     .weekDay,
