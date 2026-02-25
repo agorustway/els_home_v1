@@ -149,18 +149,18 @@ function ContainerHistoryInner() {
                 const errData = await res.json().catch(() => ({}));
                 console.error('[계정 저장 실패]', res.status, errData);
                 const errMsg = errData.error || '접근 권한 없음';
-                setLogLines(prev => [...prev, `[알림] 계정 저장 API 오류 (${res.status}: ${errMsg}). sessionStorage에 임시 저장됨.`]);
+                setLogLines(prev => [...prev, `[알림] 계정 저장 API 오류 (${res.status}: ${errMsg}). sessionStorage에 임시 저장됨.`].slice(-100));
             }
         } catch (err) {
             console.error('[계정 저장 예외]', err);
-            setLogLines(prev => [...prev, `[알림] 계정 저장 중 네트워크 오류. sessionStorage에 임시 저장됨.`]);
+            setLogLines(prev => [...prev, `[알림] 계정 저장 중 네트워크 오류. sessionStorage에 임시 저장됨.`].slice(-100));
         }
     }, [userId, userPw]);
 
     const handleLogin = useCallback(async (id, pw) => {
         const loginId = id || userId; const loginPw = pw || userPw;
         if (failCount >= 2) {
-            setLogLines(prev => [...prev, '[경고] 로그인 2회 실패로 보안을 위해 자동 시도가 차단되었습니다. 비밀번호 확인 후 페이지를 새로고침하세요.']);
+            setLogLines(prev => [...prev, '[경고] 로그인 2회 실패로 보안을 위해 자동 시도가 차단되었습니다. 비밀번호 확인 후 페이지를 새로고침하세요.'].slice(-100));
             return;
         }
 
@@ -177,7 +177,12 @@ function ContainerHistoryInner() {
             if (!data.ok && data.error === "LOGIN_ERROR_CREDENTIALS") {
                 setFailCount(prev => prev + 1);
             }
-            if (data.log) setLogLines(prev => [...prev, ...data.log]);
+            if (data.log) {
+                setLogLines(prev => {
+                    const next = [...prev, ...data.log];
+                    return next.slice(-100);
+                });
+            }
             if (data.ok) {
                 setLoginSuccess(true);
                 setFailCount(0);
@@ -189,7 +194,7 @@ function ContainerHistoryInner() {
                     executeSearch(queue, loginId, loginPw);
                 }
             }
-        } catch (err) { setLogLines(prev => [...prev, `[오류] ${err.message}`]); }
+        } catch (err) { setLogLines(prev => [...prev, `[오류] ${err.message}`].slice(-100)); }
         finally { setLoginLoading(false); stopTimer(); }
     }, [userId, userPw, showBrowser, BACKEND_BASE_URL, startTimer, stopTimer, isSaveChecked, handleSaveCreds]);
 
@@ -207,7 +212,7 @@ function ContainerHistoryInner() {
                     setIsSaveChecked(true);
                     initialCreds.current = { id: data.elsId, pw: data.elsPw };
                     if (data.lastSaved) setLastSavedInfo(data.lastSaved);
-                    setLogLines(prev => [...prev, '[자동] 저장된 계정정보로 로그인을 시도합니다...']);
+                    setLogLines(prev => [...prev, '[자동] 저장된 계정정보로 로그인을 시도합니다...'].slice(-100));
                     handleLogin(data.elsId, data.elsPw);
                     return; // API 성공 시 여기서 끝
                 }
@@ -220,7 +225,7 @@ function ContainerHistoryInner() {
                         setUserId(id); setUserPw(pw);
                         setIsSaveChecked(true);
                         initialCreds.current = { id, pw };
-                        setLogLines(prev => [...prev, '[복원] 임시 저장된 계정으로 자동 로그인 시도...']);
+                        setLogLines(prev => [...prev, '[복원] 임시 저장된 계정으로 자동 로그인 시도...'].slice(-100));
                         handleLogin(id, pw);
                     }
                 }
@@ -287,21 +292,24 @@ function ContainerHistoryInner() {
                     setLogLines(prev => {
                         const last = prev[prev.length - 1];
                         const msg = `[대기] 다른 직원이 조회 중입니다... (현재 ${prog.completed}/${prog.total} 진행 중, ${retryCount}회차 대기)`;
+                        let next;
                         if (last && last.startsWith('[대기]')) {
-                            return [...prev.slice(0, -1), msg];
+                            next = [...prev.slice(0, -1), msg];
+                        } else {
+                            next = [...prev, msg];
                         }
-                        return [...prev, msg];
+                        return next.slice(-100); // [렉 방지]
                     });
                     retryCount++;
                     await new Promise(r => setTimeout(r, 5000)); // 5초 대기 후 재시도
                 } else {
                     isWaiting = false;
-                    if (retryCount > 0) setLogLines(prev => [...prev, '✓ 데몬이 준비되었습니다. 조회를 시작합니다!']);
+                    if (retryCount > 0) setLogLines(prev => [...prev, '✓ 데몬이 준비되었습니다. 조회를 시작합니다!'].slice(-100));
                 }
 
                 // 무한 대기 방지 (최대 10분)
                 if (retryCount > 120) {
-                    setLogLines(prev => [...prev, '![오류] 대기 시간이 너무 깁니다. 나중에 다시 시도해 주세요.']);
+                    setLogLines(prev => [...prev, '![오류] 대기 시간이 너무 깁니다. 나중에 다시 시도해 주세요.'].slice(-100));
                     setLoading(false); stopTimer();
                     return;
                 }
@@ -320,7 +328,7 @@ function ContainerHistoryInner() {
                 const chunk = decoder.decode(value);
                 const lines = chunk.split('\n');
                 lines.forEach(line => {
-                    if (line.startsWith('LOG:')) setLogLines(prev => [...prev, line.substring(4)]);
+                    if (line.startsWith('LOG:')) setLogLines(prev => [...prev, line.substring(4)].slice(-100));
                     else if (line.startsWith('RESULT_PARTIAL:')) {
                         // [실시간 출력] 부분 결과 수신 시 즉시 데이터 추가
                         try {
@@ -353,7 +361,7 @@ function ContainerHistoryInner() {
                         }
                         // 데몬 로그 출력
                         if (data.log && Array.isArray(data.log)) {
-                            setLogLines(prev => [...prev, ...data.log]);
+                            setLogLines(prev => [...prev, ...data.log].slice(-100));
                         }
                     }
                 });
@@ -369,7 +377,7 @@ function ContainerHistoryInner() {
         if (!containers.length) return alert('컨테이너 번호를 입력하세요');
         setTotalElapsed(null);
         if (!loginSuccess) {
-            setLogLines(prev => [...prev, '로그인 후 자동으로 조회를 시작합니다...']);
+            setLogLines(prev => [...prev, '로그인 후 자동으로 조회를 시작합니다...'].slice(-100));
             pendingSearchRef.current = containers;
             handleLogin();
         }
@@ -407,13 +415,13 @@ function ContainerHistoryInner() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
-            if (typeof XLSX === 'undefined') { setLogLines(prev => [...prev, '[오류] 엑셀 라이브러리 로드 실패']); return; }
+            if (typeof XLSX === 'undefined') { setLogLines(prev => [...prev, '[오류] 엑셀 라이브러리 로드 실패'].slice(-100)); return; }
             const data = new Uint8Array(evt.target.result);
             const wb = XLSX.read(data, { type: 'array' });
             const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
             const containers = rows.flat().filter(c => c && typeof c === 'string').map(c => c.trim().toUpperCase());
             setContainerInput(containers.join('\n'));
-            setLogLines(prev => [...prev, `[파일] ${containers.length}개 번호 추출 완료`]);
+            setLogLines(prev => [...prev, `[파일] ${containers.length}개 번호 추출 완료`].slice(-100));
         };
         reader.readAsArrayBuffer(file);
     };
@@ -617,61 +625,114 @@ function ContainerHistoryInner() {
                             {result && (
                                 <div className={styles.resultContainer}>
                                     <div className={styles.tableInnerWrapper}>
-                                        <table className={styles.table}>
-                                            <thead>
-                                                <tr>
-                                                    <th style={{ textAlign: 'center' }}>{HEADERS[0]}</th>
-                                                    {HEADERS.slice(1).map((h, i) => <th key={i}>{h}</th>)}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((cn, idx) => {
-                                                    const rows = result[cn];
-                                                    const isExpanded = expandedRows.has(cn);
-                                                    const hasHistory = rows.length > 1;
-                                                    const rowClass = idx % 2 === 0 ? styles.rowOdd : styles.rowEven;
+                                        {/* 모바일 환경 (1024px 이하) 에서는 카드 뷰, 그 외에는 테이블 뷰 */}
+                                        <div className={styles.desktopView}>
+                                            <table className={styles.table}>
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: 'center' }}>{HEADERS[0]}</th>
+                                                        {HEADERS.slice(1).map((h, i) => <th key={i}>{h}</th>)}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((cn, idx) => {
+                                                        const rows = result[cn];
+                                                        const isExpanded = expandedRows.has(cn);
+                                                        const hasHistory = rows.length > 1;
+                                                        const rowClass = idx % 2 === 0 ? styles.rowOdd : styles.rowEven;
 
-                                                    return (
-                                                        <React.Fragment key={cn}>
-                                                            {/* 대표 행 (최신 데이터, No. 1) */}
-                                                            <tr className={`${rowClass} ${isExpanded ? styles.expandedParentRow : ''}`}>
-                                                                <td className={styles.stickyColumn}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                        {hasHistory ? (
-                                                                            <button onClick={() => toggleRow(cn)} className={styles.toggleBtn}>
-                                                                                {isExpanded ? '▼' : '▶'}
-                                                                            </button>
-                                                                        ) : (
-                                                                            <span style={{ width: '18px' }}></span>
-                                                                        )}
-                                                                        <span style={{ fontWeight: 900 }}>{cn}</span>
-                                                                    </div>
-                                                                </td>
-                                                                <td className={styles.cellBorder}>{rows[0][1]}</td>
-                                                                <td className={styles.cellBorder}><StatusBadge label={rows[0][2]} /></td>
-                                                                <td className={styles.cellBorder}><StatusBadge label={rows[0][3]} /></td>
-                                                                {rows[0].slice(4).map((v, i) => (
-                                                                    <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
-                                                                ))}
-                                                            </tr>
-
-                                                            {/* 과거 이력 행들 (No. 2 이상) */}
-                                                            {isExpanded && rows.slice(1).map((row, hIdx) => (
-                                                                <tr key={`${cn}-h-${hIdx}-${row[1]}`} className={`${rowClass} ${styles.historyRow}`}>
-                                                                    <td className={styles.stickyColumn} style={{ borderRight: '1px solid #e2e8f0' }}></td>
-                                                                    <td className={styles.cellBorder}>{row[1]}</td>
-                                                                    <td className={styles.cellBorder}><StatusBadge label={row[2]} /></td>
-                                                                    <td className={styles.cellBorder}><StatusBadge label={row[3]} /></td>
-                                                                    {row.slice(4).map((v, i) => (
+                                                        return (
+                                                            <React.Fragment key={cn}>
+                                                                <tr className={`${rowClass} ${isExpanded ? styles.expandedParentRow : ''}`}>
+                                                                    <td className={styles.stickyColumn}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                            {hasHistory ? (
+                                                                                <button onClick={() => toggleRow(cn)} className={styles.toggleBtn}>
+                                                                                    {isExpanded ? '▼' : '▶'}
+                                                                                </button>
+                                                                            ) : (
+                                                                                <span style={{ width: '18px' }}></span>
+                                                                            )}
+                                                                            <span style={{ fontWeight: 900 }}>{cn}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className={styles.cellBorder}>{rows[0][1]}</td>
+                                                                    <td className={styles.cellBorder}><StatusBadge label={rows[0][2]} /></td>
+                                                                    <td className={styles.cellBorder}><StatusBadge label={rows[0][3]} /></td>
+                                                                    {rows[0].slice(4).map((v, i) => (
                                                                         <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
                                                                     ))}
                                                                 </tr>
-                                                            ))}
-                                                        </React.Fragment>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+
+                                                                {isExpanded && rows.slice(1).map((row, hIdx) => (
+                                                                    <tr key={`${cn}-h-${hIdx}-${row[1]}`} className={`${rowClass} ${styles.historyRow}`}>
+                                                                        <td className={styles.stickyColumn} style={{ borderRight: '1px solid #e2e8f0' }}></td>
+                                                                        <td className={styles.cellBorder}>{row[1]}</td>
+                                                                        <td className={styles.cellBorder}><StatusBadge label={row[2]} /></td>
+                                                                        <td className={styles.cellBorder}><StatusBadge label={row[3]} /></td>
+                                                                        {row.slice(4).map((v, i) => (
+                                                                            <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
+                                                                        ))}
+                                                                    </tr>
+                                                                ))}
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div className={styles.mobileView}>
+                                            {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((cn) => {
+                                                const rows = result[cn];
+                                                const isExpanded = expandedRows.has(cn);
+                                                return (
+                                                    <div key={cn} className={styles.mobileCard}>
+                                                        <div className={styles.mobileCardHeader} onClick={() => toggleRow(cn)}>
+                                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                                                                <span className={styles.mobileCardCn}>{cn}</span>
+                                                                <StatusBadge label={rows[0][2]} />
+                                                                <StatusBadge label={rows[0][3]} />
+                                                            </div>
+                                                            <div className={styles.mobileCardToggle}>{isExpanded ? '접기 ▲' : '이력 ▼'}</div>
+                                                        </div>
+                                                        <div className={styles.mobileCardBody}>
+                                                            <div className={styles.mobileCardRow}>
+                                                                <span className={styles.mobileCardLabel}>터미널:</span>
+                                                                <span className={styles.mobileCardValue}>{rows[0][4] || '-'}</span>
+                                                            </div>
+                                                            <div className={styles.mobileCardRow}>
+                                                                <span className={styles.mobileCardLabel}>MOVE TIME:</span>
+                                                                <span className={styles.mobileCardValue}>{rows[0][5] || '-'}</span>
+                                                            </div>
+                                                            <div className={styles.mobileCardRow}>
+                                                                <span className={styles.mobileCardLabel}>차량번호:</span>
+                                                                <span className={styles.mobileCardValue}>{rows[0][13] || '-'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {isExpanded && (
+                                                            <div className={styles.mobileHistoryList}>
+                                                                {rows.slice(1).map((row, hIdx) => (
+                                                                    <div key={hIdx} className={styles.mobileHistoryItem}>
+                                                                        <div className={styles.mobileHistoryHeader}>
+                                                                            <span className={styles.mobileHistoryNo}>이력 No.{row[1]}</span>
+                                                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                                                <StatusBadge label={row[2]} />
+                                                                                <StatusBadge label={row[3]} />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className={styles.mobileHistoryInfo}>
+                                                                            {row[4]} | {row[5]} | {row[13]}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
 
                                     <div className={styles.resultFooter}>

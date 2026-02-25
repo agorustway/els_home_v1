@@ -680,32 +680,40 @@ export default function SafeFreightPage() {
   };
 
   const clearSavedResults = () => {
-    // 결과 및 에러 초기화
+    // [최우선] 모든 결과 데이터 즉시 삭제
     setResultAll(null);
     setResult(null);
     setLookupError(null);
     setSavedResults([]);
+    setLookupLoading(false);
 
-    // 입력 필드 초기화 (기본값으로 복구)
+    // [중요] 주소 검색 및 입력 필드 완전히 비우기
     setAddressSearch('');
     setSearchResults([]);
     setInputKm('');
 
-    // 기본 기점/행선지 복구 (useEffect의 초기설정과 동일)
-    setOrigin('[왕복] 부산신항');
-    setRegion1('충남');
-    setRegion2('아산시');
-    setRegion3('인주면');
+    // 기점/행선지 주소 정보 초기화
+    setOrigin('');
+    setRegion1(null);
+    setRegion2(null);
+    setRegion3(null);
+    setDistanceItem(null);
 
-    // 할증 초기화
-    setSurchargeIds(new Set());
-    setGroupApply({ flexibag: false, hazard: false, oversize: false, heavy: false });
+    // 카카오 주소 검색용 하위 상태 초기화
+    setDestRegion1('');
+    setDestRegion2('');
+    setDestRegion3('');
 
+    // [보안] 세션 스토리지 삭제
     try {
-      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TEMP_RESULTS_KEY);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(TEMP_RESULTS_KEY);
+        // 혹시 모를 다른 키들도 초기화
+        sessionStorage.removeItem('els_input');
+      }
     } catch (_) { }
 
-    setToastMessage('조회 내역과 입력 조건이 초기화되었습니다.');
+    setToastMessage('모든 조회 데이터와 검색 설정이 초기화되었습니다.');
     setTimeout(() => setToastMessage(null), 2000);
   };
 

@@ -59,29 +59,38 @@ def open_els_menu(page, log_callback=None):
         # 현재 상태 확인 (URL/Title)
         curr_url = page.url
         curr_title = page.title
-        if log_callback: log_callback(f"진입 시도 ({attempt+1}/10) - URL: {curr_url}, Title: {curr_title}")
-
-        # 조회 페이지 도착 확인 (입력창 탐지)
-        if page.ele('css:input[id*="containerNo"]', timeout=3):
+        # 조회 페이지 도착 확인 (입력창 탐지 - WebSquare 렌더링 대기 포함)
+        # ID의 끝부분이 _input_containerNo 인 요소를 찾음 (가장 정확함)
+        if page.ele('css:input[id$="_input_containerNo"]', timeout=5) or \
+           page.ele('css:input[id*="containerNo"]', timeout=3):
             if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
             return True
 
         # URL 직접 이동 (3회차부터 시도)
         if attempt >= 2:
-            if log_callback: log_callback("직접 URL 이동 시도...")
-            page.get("https://etrans.klnet.co.kr/main/index.do?menuId=002001007")
-            time.sleep(4)
+            if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt+1}/10)")
+            # [수정] /main/index.do 대신 index.do로 바로 시도 (404 방지)
+            page.get("https://etrans.klnet.co.kr/index.do?menuId=002001007")
+            time.sleep(5) # WebSquare 초기 로딩 시간
         else:
-            # 메뉴 클릭 시도
-            target = page.ele('text:컨테이너 이동현황', timeout=3)
+            # 메뉴 클릭 시도 (다양한 텍스트 매칭 시도)
+            target = page.ele('text:컨테이너 이동현황', timeout=2) or \
+                     page.ele('text:컨테이너 이력조회', timeout=2) or \
+                     page.ele('text:컨테이너이동현황(국내)', timeout=2)
             if target:
-                if log_callback: log_callback("메뉴 텍스트 클릭!")
-                target.click()
-                time.sleep(3)
+                if log_callback: log_callback(f"메뉴 클릭 시도: {target.text}")
+                # [수정] 숨겨진 요소도 클릭 가능하도록 JavaScript 클릭 사용
+                target.click(by_js=True)
+                time.sleep(4)
             else:
-                # 상위 메뉴 '통합정보조회' 먼저 클릭 시도 (필요한 경우)
-                parent = page.ele('text:통합정보조회', timeout=2)
-                if parent: parent.click(); time.sleep(1)
+                # 상위 메뉴 클릭 시도
+                parent = page.ele('text:화물추적', timeout=2) or \
+                         page.ele('text:통합정보조회', timeout=2) or \
+                         page.ele('text:운송관리', timeout=1)
+                if parent: 
+                    if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
+                    parent.click()
+                    time.sleep(2)
         
     return False
 
@@ -218,32 +227,45 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         if not uid_input:
             page.quit()
             return (None, "로그인 페이지 로드 실패")
-            
-        uid_input.input(u_id)
+
+        uid_input.clear()
+        uid_input.input(u_id.strip())
+        if uid_input.value != u_id.strip():
+            page.run_js(f"document.querySelector('#mf_wfm_subContainer_ibx_userId').value = '{u_id.strip()}';")
+        
         pw_input = page.ele('#mf_wfm_subContainer_sct_password')
+        pw_input.clear()
         pw_input.input(u_pw)
+        if pw_input.value != u_pw:
+            page.run_js(f"document.querySelector('#mf_wfm_subContainer_sct_password').value = '{u_pw}';")
         
-        # 로그인 버튼 클릭 (엔터 대신 명시적 클릭 시도)
-        login_btn = page.ele('css:[id*="btnLogin"], css:[id*="btn_login"], text:로그인', timeout=5)
+        time.sleep(1) # 입력 후 잠시 대기
+        
+        # 로그인 버튼 클릭 시도
+        login_btn = page.ele('#mf_wfm_subContainer_btn_login', timeout=5)
         if login_btn:
-            _log("로그인 버튼 클릭...")
-            login_btn.click()
-        else:
-            _log("로그인 버튼을 못 찾아 엔터키로 시도...")
+            _log(f"로그인 버튼 탐지 성공: (ID: {login_btn.attr('id')})")
+            # 1. 엔터 입력 (대부분의 웹환경에서 가장 확실함)
             pw_input.input('\n')
+            time.sleep(1)
+            # 2. 버튼 클릭 (혹시 엔터가 안 먹힐 경우 대비)
+            try: login_btn.click()
+            except: pass
         
-        _log("로그인 시도 중 (엔터 전송)...")
-        time.sleep(7) # 충분한 로그인 처리 시간 확보
+        _log("로그인 처리 대기 중...")
+        time.sleep(12) # 처리 시간 충분히 확보 (WebSquare는 로딩이 깁니다)
         
         close_modals(page)
         
-        # 로그인 실패 확인 (alert 확인 등은 DrissionPage가 어느 정도 자동으로 처리하지만 직접 호출)
-        if "아이디를 입력" in page.html or "비밀번호를 입력" in page.html:
-             page.quit()
-             return (None, "로그인 정보 재요청됨 (실패 가능성)")
+        # 로그인 결과 검증
+        if "손님(GUEST)" in page.html or "로그인" in page.ele('text:로그인', timeout=2).text if page.ele('text:로그인', timeout=1) else "":
+             _log("로그인 실패 또는 아직 로그인 전 상태입니다. (GUEST 상태 탐지)")
+             # 알림창이 있는지 확인 후 닫기
+             check_alert(page)
+             # 여기서 종료하지 않고 일단 메뉴 진입 시도 (URL 접근으로 해결될 수도 있음)
 
         if open_els_menu(page, _log):
-            _log("메뉴 진입 성공")
+            _log("✅ 메뉴 진입 성공")
             return (page, None)
         
         # 실패 시 스크린샷 저장 (데몬에서 확인 가능)
