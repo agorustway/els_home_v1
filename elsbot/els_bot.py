@@ -190,7 +190,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         co.set_browser_path(chrome_path)
 
     if not show_browser:
-        co.set_headless(True)
+        co.headless(True)
     
     try:
         page = ChromiumPage(co)
