@@ -34,7 +34,7 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
         .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
 
     const handleLogout = async () => {
-        if (!confirm('로그아웃 하시겠습니까?')) return;
+        // 모바일/PWA 환경 호환성을 위해 confirm 제거
         await supabase.auth.signOut();
         window.location.href = '/login';
     };

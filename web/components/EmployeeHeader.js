@@ -18,7 +18,7 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
     const roleLabel = profile ? getRoleLabel(profile.role) : '';
 
     const handleLogout = async () => {
-        if (!confirm('로그아웃 하시겠습니까?')) return;
+        // 모바일에서 confirm 창이 차단되거나 반응 없는 문제를 방지하기 위해 확인 절차 제거
         await supabase.auth.signOut();
         window.location.href = '/login';
     };
