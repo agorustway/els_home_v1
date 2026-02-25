@@ -5,6 +5,7 @@ import sys
 import threading
 import random
 from queue import Queue, Empty
+from collections import deque
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
@@ -22,9 +23,17 @@ class DriverPool:
         self.lock = threading.Lock()
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
-        self.is_logging_in = False # [추가] 로그인 중복 실행 방지 플래그
-        # NAS 도커 병렬 처리를 위해 5개로 확장
+        self.is_logging_in = False 
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 5))
+        # [실시간 로그용] 최근 300개의 로그를 시간과 함께 보관
+        self.log_buffer = deque(maxlen=300)
+
+    def add_log(self, msg):
+        ts = time.strftime("%H:%M:%S")
+        formatted = f"[{ts}] {msg}"
+        with self.lock:
+            self.log_buffer.append(formatted)
+        print(formatted)
 
     def clear(self):
         with self.lock:
@@ -35,6 +44,8 @@ class DriverPool:
                 try: d.quit()
                 except: pass
             self.drivers = []
+            self.log_buffer.clear()
+            self.add_log("--- 드라이버 풀이 초기화되었습니다. ---")
 
     def is_same_user(self, u_id, show_browser):
         return self.current_user["id"] == u_id and self.current_user["show_browser"] == show_browser
@@ -101,15 +112,13 @@ def login():
         
         def _do_login(idx):
             nonlocal success_count
-            msg = f"[데몬] 브라우저 #{idx+1} 초기화 중..."
-            print(msg); logs.append(msg)
+            msg = f"브라우저 #{idx+1} 초기화 중..."
+            pool.add_log(msg)
             
-            # [NAS 최적화] 브라우저 간 부팅 간격을 12초로 단축 (타임아웃 방지)
-            if idx > 0: time.sleep(idx * 12)
+            if idx > 0: time.sleep(idx * 7) # 대기 간격 소폭 단축
             
             def _inner_log(m):
-                msg = f"[B#{idx+1}] {m}"
-                print(msg); logs.append(msg)
+                pool.add_log(f"[B#{idx+1}] {m}")
 
             # 각 세션마다 고유 포트 할당 (32000, 32001, ...)
             target_port = 32000 + idx
@@ -136,9 +145,9 @@ def login():
             pool.is_logging_in = False
 
     if success_count > 0:
-        return jsonify({"ok": True, "message": f"{success_count}개 세션 확보 성공", "log": logs})
+        return jsonify({"ok": True, "message": f"{success_count}개 세션 확보 성공", "log": list(pool.log_buffer)})
     else:
-        return jsonify({"ok": False, "error": "로그인 실패", "log": logs})
+        return jsonify({"ok": False, "error": "로그인 실패", "log": list(pool.log_buffer)})
 
 @app.route('/stop', methods=['POST'])
 def stop():
@@ -166,17 +175,16 @@ def run():
         # 조회를 시작하기 전에 현재 브라우저가 아직 로그인 상태인지 체크
         is_alive = False
         try:
-            # 1. 현재 URL 확인 (로그인 페이지로 튕겼는지)
-            if "login" not in driver.current_url.lower():
-                # 2. 핵심 요소(로그아웃 버튼 등)가 있는지 확인
-                page_text = driver.page_source or ""
-                if any(kw in page_text for kw in ["로그아웃", "Logout", "컨테이너", "Container"]):
+            # [최적화] page_source 대신 가벼운 element 체크로 변경
+            if "login" not in driver.url.lower():
+                # '로그아웃' 텍스트를 가진 요소가 있는지 타임아웃 1초로 아주 빠르게 체크
+                if driver.ele('text:로그아웃', timeout=1) or driver.ele('text:컨테이너', timeout=1):
                     is_alive = True
         except:
             pass
 
         if not is_alive:
-            print(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
+            pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
             # 세션이 죽었으면 다시 로그인 (pool에 저장된 계정 정보 사용)
             u_id = pool.current_user["id"]
             u_pw = pool.current_user["pw"]
@@ -192,7 +200,7 @@ def run():
             if res[0]:
                 driver = res[0]
                 driver.used_port = target_port
-                print("--- [세션 복구 성공] 조회를 계속합니다. ---")
+                pool.add_log(f"--- [세션 복구 성공] {cn} 조회를 계속합니다. ---")
             else:
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
 
@@ -221,11 +229,8 @@ def run():
                 grid_text = scrape_hyper_verify(driver, cn)
             
             if grid_text:
-                import re
-                # [DEBUG] 형, 데몬 터미널에 긁어온 생데이터 찍어볼게!
-                print(f"--- [DEBUG RAW TEXT: {cn}] ---")
-                print(grid_text[:1000]) # 앞부분 1000자만
-                print("-----------------------------------")
+                pool.add_log(f"--- [DEBUG RAW TEXT: {cn}] ---")
+                pool.add_log(grid_text[:200] + "...") 
                 
                 temp_rows = []
                 # 🎯 [끝판왕 파싱] 텍스트 전체에서 번호(1~100) + 상태 가 붙은 모든 조각을 찾아냄
@@ -270,7 +275,7 @@ def run():
             "containerNo": cn,
             "result": result_rows,
             "elapsed": round(time.time() - start_time, 1),
-            "log": logs
+            "log": list(pool.log_buffer) # 전체 로그 버퍼 반환
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -304,6 +309,10 @@ def get_screenshot():
         with open(path, "rb") as f:
             return Response(f.read(), mimetype='image/png')
     return jsonify({"ok": False, "error": "No screenshot"}), 404
+
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    return jsonify({"ok": True, "log": list(pool.log_buffer)})
 
 if __name__ == '__main__':
     print("========================================")

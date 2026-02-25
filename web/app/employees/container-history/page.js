@@ -172,29 +172,54 @@ function ContainerHistoryInner() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: loginId.trim(), userPw: loginPw, showBrowser }),
             });
-            const data = await res.json();
 
-            if (!data.ok && data.error === "LOGIN_ERROR_CREDENTIALS") {
-                setFailCount(prev => prev + 1);
-            }
-            if (data.log) {
-                setLogLines(prev => {
-                    const next = [...prev, ...data.log];
-                    return next.slice(-100);
+            // [실시간 로그 연동] 응답을 스트리밍으로 읽어 처리 (로그인 과정 가시화)
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let finalData = null;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                lines.forEach(line => {
+                    if (line.startsWith('LOG:')) {
+                        setLogLines(prev => [...prev, line.substring(4)].slice(-100));
+                    }
+                    else if (line.startsWith('RESULT:')) {
+                        try {
+                            finalData = JSON.parse(line.substring(7));
+                        } catch (e) { console.error('JSON Parse Error', e); }
+                    }
                 });
             }
-            if (data.ok) {
-                setLoginSuccess(true);
-                setFailCount(0);
-                sessionStorage.setItem('els_login_success', 'true');
-                sessionStorage.setItem('els_login_timestamp', Date.now().toString());
-                if (pendingSearchRef.current) {
-                    const queue = [...pendingSearchRef.current];
-                    pendingSearchRef.current = null;
-                    executeSearch(queue, loginId, loginPw);
+
+            if (finalData) {
+                if (!finalData.ok && finalData.error === "LOGIN_ERROR_CREDENTIALS") {
+                    setFailCount(prev => prev + 1);
+                }
+                if (finalData.ok) {
+                    setLoginSuccess(true);
+                    setFailCount(0);
+                    sessionStorage.setItem('els_login_success', 'true');
+                    sessionStorage.setItem('els_login_timestamp', Date.now().toString());
+                    if (pendingSearchRef.current) {
+                        const queue = [...pendingSearchRef.current];
+                        pendingSearchRef.current = null;
+                        executeSearch(queue, loginId, loginPw);
+                    }
+                } else {
+                    // 로그인 실패 알림
+                    setLogLines(prev => [...prev, `![로그인 실패] ${finalData.error || '알 수 없는 오류'}`].slice(-100));
                 }
             }
-        } catch (err) { setLogLines(prev => [...prev, `[오류] ${err.message}`].slice(-100)); }
+        } catch (err) {
+            console.error(err);
+            setLogLines(prev => [...prev, `![오류] ${err.message}`].slice(-100));
+        }
         finally { setLoginLoading(false); stopTimer(); }
     }, [userId, userPw, showBrowser, BACKEND_BASE_URL, startTimer, stopTimer, isSaveChecked, handleSaveCreds]);
 

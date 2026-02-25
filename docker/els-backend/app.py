@@ -144,37 +144,59 @@ def login():
     use_saved = data.get("useSavedCreds", True)
     uid = data.get("userId") or ""
     pw = data.get("userPw") or ""
-
     show_browser = data.get("showBrowser", False)
 
-    if _daemon_available():
+    if not _daemon_available():
+        return jsonify({"ok": False, "error": "ELS 데몬이 실행되지 않았습니다."}), 404
+
+    def generate():
         try:
             body = json.dumps({"useSavedCreds": use_saved, "userId": uid, "userPw": pw, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json"})
-            r = urlopen(req, timeout=180) # 안정 커밋 기준: 180초 (5개 세션 부팅 시간 고려)
-            raw_resp = r.read().decode("utf-8")
             
-            # RESULT: 이후의 JSON만 파싱 (LOG 출력 무시)
-            if "RESULT:" in raw_resp:
-                json_start = raw_resp.find("RESULT:") + 7
-                json_str = raw_resp[json_start:].strip()
-                daemon_result = json.loads(json_str)
-            else:
-                # RESULT:가 없으면 전체를 JSON으로 파싱 시도
-                daemon_result = json.loads(raw_resp)
-            
-            # 데몬 응답을 그대로 반환 (log 필드 포함)
-            if "LOGIN_ERROR_CREDENTIALS" in raw_resp or (isinstance(daemon_result, dict) and daemon_result.get("error") == "LOGIN_ERROR_CREDENTIALS"):
-                return jsonify({
-                    "ok": False, 
-                    "error": "LOGIN_ERROR_CREDENTIALS", 
-                    "message": "이트랜스 계정 정보 변경이 있었는지 우선 확인하세요."
-                })
+            login_result = {}
+            def _thread_login():
+                try:
+                    r = urlopen(req, timeout=180)
+                    login_result['resp'] = json.loads(r.read().decode("utf-8"))
+                except Exception as e:
+                    login_result['error'] = str(e)
 
-            return jsonify(daemon_result)
+            t = threading.Thread(target=_thread_login)
+            t.start()
+
+            sent_logs = set()
+            while t.is_alive():
+                try:
+                    l_req = urlopen(DAEMON_URL + "/logs", timeout=2)
+                    l_data = json.loads(l_req.read().decode("utf-8"))
+                    for line in l_data.get("log", []):
+                        if line not in sent_logs:
+                            yield f"LOG:{line}\n"
+                            sent_logs.add(line)
+                except: pass
+                time.sleep(1)
+            
+            t.join()
+            
+            if 'error' in login_result:
+                yield f"LOG:![오류] 데몬 로그인 실패: {login_result['error']}\n"
+                yield "RESULT:" + json.dumps({"ok": False, "error": login_result['error']}) + "\n"
+            else:
+                final = login_result.get('resp', {})
+                for line in final.get("log", []):
+                    if line not in sent_logs:
+                        yield f"LOG:{line}\n"
+                
+                if not final.get("ok") and final.get("error") == "LOGIN_ERROR_CREDENTIALS":
+                     yield f"LOG:![경고] 이트랜스 계정 정보가 틀립니다.\n"
+                
+                yield "RESULT:" + json.dumps(final, ensure_ascii=False) + "\n"
+
         except Exception as e:
-            app.logger.error(f"Daemon login failed: {e}. Raw response: {locals().get('raw_resp', 'N/A')}")
-            return jsonify({"ok": False, "error": f"데몬 통신 실패: {str(e)}"})
+            yield f"LOG:![점검] 로그인 스트리밍 중 오류: {e}\n"
+
+    return Response(generate(), mimetype="text/plain; charset=utf-8")
 
     extra = []
     if not use_saved: extra.extend(["--user-id", uid, "--user-pw", pw])
@@ -199,7 +221,7 @@ def stop_daemon():
     return jsonify({"ok": False, "error": "데몬 중지 실패"})
 
 def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
     global global_progress
     
     final_rows = []
@@ -207,50 +229,56 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     
     # 진행률 초기화
     global_progress = {"total": len(containers), "completed": 0, "is_running": True}
-    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건)\n"
+    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 3개 세션 구동)\n"
     
-    # 병렬 처리를 위한 함수 (전과 동일)
     def fetch_container(cn):
-        # ... (이전 코드와 동일하므로 생략하거나 유지)
         cn = cn.strip().upper()
         if not cn: return []
+        st = time.time()
         try:
             body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
             req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-            resp = urlopen(req, timeout=120) # 안정 커밋 기준: 120초
+            resp = urlopen(req, timeout=120)
             res_json = json.loads(resp.read().decode("utf-8"))
-            return res_json.get("result", []), cn, res_json.get("error")
+            return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1)
         except Exception as e:
-            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e)
+            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_to_cn = {executor.submit(fetch_container, cn): cn for cn in containers}
+    sent_daemon_logs = set()
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(fetch_container, cn): cn for cn in containers}
         
-        for future in as_completed(future_to_cn):
-            rows, cn, err = future.result()
-            final_rows.extend(rows)
-            
-            # 진행률 업데이트
-            global_progress["completed"] += 1
-            percent = int((global_progress["completed"] / global_progress["total"]) * 100)
-            
-            if err:
-                yield f"LOG:❌ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패: {err}\n"
-            else:
-                yield f"LOG:✔ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건)\n"
-                
-                # [실시간 전송 로직] 건별 완료 시 부분 결과 전송
-                if rows:
-                    # null/NaN 값 안전 처리
-                    def _safe_val(v):
-                        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
-                        return v
-                    
-                    partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
-                    
-                    # 부분 결과 JSON 전송 (프론트에서 누적 처리)
-                    yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
+        while futures:
+            # 🎯 [실시간 폴링] 작업이 진행되는 동안 데몬의 내부 딥로그를 계속 긁어옵니다.
+            try:
+                l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
+                l_data = json.loads(l_req.read().decode("utf-8"))
+                for line in l_data.get("log", []):
+                    if line not in sent_daemon_logs:
+                        yield f"LOG:{line}\n"
+                        sent_daemon_logs.add(line)
+            except: pass
 
+            # 완료된 작업이 있는지 체크 (0.5초 대기)
+            done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
+            for f in done:
+                rows, cn, err, elapsed = f.result()
+                final_rows.extend(rows)
+                global_progress["completed"] += 1
+                
+                if err:
+                    yield f"LOG:❌ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
+                else:
+                    yield f"LOG:✔ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
+                    if rows:
+                        def _safe_val(v):
+                            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
+                            return v
+                        partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
+                        yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
+                
+                del futures[f]
+    
     global_progress["is_running"] = False
     # Generate Final Result and Excel (이후 로직 동일)
     if final_rows:
