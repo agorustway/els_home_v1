@@ -694,9 +694,9 @@ export default function SafeFreightPage() {
 
     // 기점/행선지 주소 정보 초기화
     setOrigin('');
-    setRegion1(null);
-    setRegion2(null);
-    setRegion3(null);
+    setRegion1('');
+    setRegion2('');
+    setRegion3('');
     setDistanceItem(null);
 
     // 카카오 주소 검색용 하위 상태 초기화
@@ -710,6 +710,9 @@ export default function SafeFreightPage() {
         sessionStorage.removeItem(TEMP_RESULTS_KEY);
         sessionStorage.removeItem('els_input');
       }
+
+      // 자동 조회 트리거 초기화 (가장 중요: 초기화 후 다시 조회되는 현상 방지)
+      setAutoRunCount(0);
 
       // 할증 및 상세 설정 초기화
       setSurchargeIds(new Set());
