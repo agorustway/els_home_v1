@@ -190,10 +190,18 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         co.set_browser_path(chrome_path)
 
     if not show_browser:
+        co.set_argument('--headless=new')
         co.headless(True)
     
     try:
+        from DrissionPage.errors import BrowserConnectError
         page = ChromiumPage(co)
+    except Exception as e:
+        _log(f"브라우저 실행 실패: {str(e)}")
+        if 'page' in locals() and page: page.quit()
+        return (None, f"브라우저 실행 실패: {e}")
+
+    try:
         page.get("https://etrans.klnet.co.kr/index.do")
         
         # 로그인 정보 입력
