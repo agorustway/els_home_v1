@@ -148,7 +148,8 @@ function ContainerHistoryInner() {
             } else {
                 const errData = await res.json().catch(() => ({}));
                 console.error('[계정 저장 실패]', res.status, errData);
-                setLogLines(prev => [...prev, `[알림] 계정 저장 API 오류 (${res.status}). sessionStorage에 임시 저장됨.`]);
+                const errMsg = errData.error || '접근 권한 없음';
+                setLogLines(prev => [...prev, `[알림] 계정 저장 API 오류 (${res.status}: ${errMsg}). sessionStorage에 임시 저장됨.`]);
             }
         } catch (err) {
             console.error('[계정 저장 예외]', err);
@@ -206,6 +207,7 @@ function ContainerHistoryInner() {
                     setIsSaveChecked(true);
                     initialCreds.current = { id: data.elsId, pw: data.elsPw };
                     if (data.lastSaved) setLastSavedInfo(data.lastSaved);
+                    setLogLines(prev => [...prev, '[자동] 저장된 계정정보로 로그인을 시도합니다...']);
                     handleLogin(data.elsId, data.elsPw);
                     return; // API 성공 시 여기서 끝
                 }
