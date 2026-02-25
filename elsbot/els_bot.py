@@ -202,10 +202,20 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     co.set_argument('--window-size=1920,1080')
     co.set_argument('--disable-blink-features=AutomationControlled')
     
-    # Docker 환경에서 Chrome 경로 강제 지정 (Dockerfile 설정에 맞춤)
-    chrome_path = "/usr/bin/google-chrome"
+    # Docker/NAS 환경 고려: CHROME_BIN 환경 변수 우선 사용
+    chrome_path = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
+    if not os.path.exists(chrome_path):
+        # 만약 설정된 경로에 없으면 chromium도 시도
+        if os.path.exists("/usr/bin/chromium"):
+            chrome_path = "/usr/bin/chromium"
+        elif os.path.exists("/usr/bin/chromium-browser"):
+            chrome_path = "/usr/bin/chromium-browser"
+    
     if os.path.exists(chrome_path):
+        _log(f"브라우저 경로 설정: {chrome_path}")
         co.set_browser_path(chrome_path)
+    else:
+        _log("경고: 명시된 브라우저 경로를 찾을 수 없습니다. 시스템 기본값을 시도합니다.")
 
     if not show_browser:
         co.set_argument('--headless=new')
@@ -213,7 +223,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     
     try:
         from DrissionPage.errors import BrowserConnectError
+        _log("ChromiumPage 인스턴스 생성 중...")
         page = ChromiumPage(co)
+        _log("ChromiumPage 생성 완료.")
     except Exception as e:
         _log(f"브라우저 실행 실패: {str(e)}")
         if 'page' in locals() and page: page.quit()

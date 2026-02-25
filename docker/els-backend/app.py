@@ -180,10 +180,10 @@ def login():
                             sent_logs.add(line)
                 except: pass
                 
-                # 데몬이 바빠서 로그를 못 줄 때를 위한 백엔드 자체 심박 로그
+                # 데몬으로부터 새로운 로그가 한동안 없을 때만 백엔드 심박 로그를 출력
                 retry_count += 1
-                if retry_count % 15 == 0:
-                    yield f"LOG:[백엔드] 세션 초기화 대기 중... ({retry_count}s)\n"
+                if retry_count % 20 == 0:
+                    yield f"LOG:[백엔드] 세션 초기화 상태 확인 중... ({retry_count}s)\n"
                 
                 time.sleep(1)
             

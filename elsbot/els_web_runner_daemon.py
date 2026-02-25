@@ -143,7 +143,8 @@ def login():
     
     # [핵심] 첫 번째 드라이버가 준비될 때까지만 기다리고 즉시 응답 반환!
     start_wait = time.time()
-    while time.time() - start_wait < 400:
+    # 백엔드(400s)보다 약간 짧게 잡아서 데몬이 먼저 응답을 주게 함 (Race Condition 방지)
+    while time.time() - start_wait < 350:
         if pool.available_queue.qsize() > 0:
              return jsonify({
                  "ok": True, 
@@ -154,7 +155,7 @@ def login():
             break
         time.sleep(1)
 
-    return jsonify({"ok": False, "error": "초기 세션 확보 실패", "log": list(pool.log_buffer)})
+    return jsonify({"ok": False, "error": "초기 세션 확보 실패 (시간 초과 또는 올인원 로그인 실패)", "log": list(pool.log_buffer)})
 
 @app.route('/stop', methods=['POST'])
 def stop():
