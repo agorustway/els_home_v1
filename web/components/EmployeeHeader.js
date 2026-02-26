@@ -25,7 +25,7 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
 
     return (
         <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
-            <div className={`${styles.inner} container`}>
+            <div className={styles.inner}>
                 <div className={styles.brandGroup}>
                     <div className={styles.leftSection}>
                         <button
