@@ -191,7 +191,8 @@ export default function WeatherPage() {
             result.push({
                 dayName: i === 0 ? '오늘' : days[next.getDay()],
                 temp: realData ? realData.temp : (baseTemp + (Math.random() * 4 - 2)).toFixed(1),
-                code: realData ? realData.code : [0, 1, 2, 3, 51, 61][Math.floor(Math.random() * 6)]
+                code: realData ? realData.code : [0, 1, 2, 3, 51, 61][Math.floor(Math.random() * 6)],
+                apparent_temperature: realData ? realData.apparent_temperature : null
             });
         }
         return result;
@@ -258,6 +259,9 @@ export default function WeatherPage() {
                                     {activeData.dailySummary && (
                                         <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#475569', opacity: 0.9 }}>
                                             {activeData.dailySummary.split('.')[0]}.
+                                            {cur.apparent_temperature != null && (
+                                                <span style={{ marginLeft: '8px', fontWeight: 700 }}> (체감 {Math.round(cur.apparent_temperature)}°)</span>
+                                            )}
                                         </p>
                                     )}
                                 </div>
@@ -324,7 +328,7 @@ export default function WeatherPage() {
                             {/* Current Location as First Branch */}
                             {(() => {
                                 const curData = weatherCache['current']?.hourly[0];
-                                const feelsLike = curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-';
+                                const feelsLike = curData?.apparent_temperature ?? (curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-');
                                 // Mock Dust for branch
                                 const dustOptions = [{ label: '좋음', color: '#10b981' }, { label: '보통', color: '#f59e0b' }];
                                 const dust = dustOptions[0]; // Fixed for stability or random
@@ -367,7 +371,9 @@ export default function WeatherPage() {
 
                             {BRANCHES.map(b => {
                                 const curData = weatherCache[b.id]?.hourly[0];
-                                const feelsLike = curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-';
+                                const feelsLike = curData?.apparent_temperature ?? (curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-');
+                                // For branches, we don't have specific air quality data in activeData, so we keep the mock for now.
+                                // If branch-specific AQ data becomes available, this should be updated.
                                 const dustOptions = [{ label: '좋음', color: '#10b981' }, { label: '보통', color: '#f59e0b' }];
                                 const dust = dustOptions[Math.floor(Math.random() * dustOptions.length)];
 
@@ -422,9 +428,9 @@ export default function WeatherPage() {
                             <span className={styles.cardTitleIcon}>⏰</span> 12시간 예보
                         </div>
                         <div className={styles.hourlyTrack}>
-                            {activeData?.hourly?.slice(0, 12).map((h, i) => (
+                            {activeData?.hourly?.slice(1, 13).map((h, i) => (
                                 <div key={i} className={styles.hourlyCard}>
-                                    <span className={styles.hourTime}>{new Date(h.time).getHours()}시</span>
+                                    <span className={styles.hourTime}>{new Date(h.time + ":00+09:00").getHours()}시</span>
                                     <div className={styles.hourIconWrap}>
                                         <Image
                                             src={getWeatherImagePath(h.code)}
@@ -452,8 +458,8 @@ export default function WeatherPage() {
                         </div>
                         <div className={styles.weeklyGrid}>
                             {getWeeklyForecast().map((w, i) => {
-                                // Mock Detailed Data
-                                const feelsLike = (Number(w.temp) - 1.5).toFixed(1);
+                                // API 체감온도가 있으면 사용, 없으면 기존대로 계산(폴백)
+                                const feelsLike = w.apparent_temperature != null ? w.apparent_temperature : (Number(w.temp) - 1.5).toFixed(1);
                                 const dustOptions = [
                                     { label: '좋음', color: '#10b981', val: '25' },
                                     { label: '보통', color: '#f59e0b', val: '45' },

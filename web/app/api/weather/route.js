@@ -10,8 +10,8 @@ const REGIONS = {
     ulsan: { name: '울산', lat: 35.5384, lon: 129.3114 },
     suwon: { name: '수원', lat: 37.2636, lon: 127.0286 },
     changwon: { name: '창원', lat: 35.2281, lon: 128.6811 },
-    sejong: { name: '세종', lat: 36.5450, lon: 127.3505 }, // 중부지점(ICD) 근처로 조정
-    asan: { name: '아산', lat: 36.9243, lon: 127.0570 },  // 아산지점 실제 좌표
+    sejong: { name: '세종', lat: 36.4800, lon: 127.2890 }, // 세종시청 중심
+    asan: { name: '아산', lat: 36.7898, lon: 127.0018 },  // 아산시청 중심 (정밀화)
     dangjin: { name: '당진', lat: 36.9762, lon: 126.6867 }, // 당진지점
     yesan: { name: '예산', lat: 36.6766, lon: 126.7515 },   // 예산지점
 };
@@ -129,8 +129,8 @@ export async function GET(request) {
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia/Seoul`;
 
         const [weatherRes, airRes] = await Promise.all([
-            fetch(weatherUrl, { next: { revalidate: 1800 } }),
-            fetch(airUrl, { next: { revalidate: 1800 } })
+            fetch(weatherUrl, { next: { revalidate: 900 } }), // 15분으로 단축
+            fetch(airUrl, { next: { revalidate: 900 } })
         ]);
 
         if (!weatherRes.ok) throw new Error('날씨 API 오류');
@@ -141,11 +141,21 @@ export async function GET(request) {
 
         const now = new Date();
         const allTimes = weatherData.hourly?.time || [];
-        // 현재 시각보다 같거나 큰 첫 번째 인덱스 찾기 (가장 가까운 미래/현재 시각)
-        let startIndex = allTimes.findIndex(t => new Date(t) >= now);
-        if (startIndex === -1) startIndex = 0; // 예외 처리
 
-        const hourly = allTimes.slice(startIndex, startIndex + 24).map((time, i) => {
+        /** 
+         * [시간 로직 수정] 
+         * Open-Meteo 시간 문자열(KST)을 정확하게 파싱하여 비교.
+         * 현재 시각 10:25일 때, startIndex를 11:00이 아닌 10:00(가장 최근 과거)으로 잡음.
+         * 그래야 '현재 날씨' 카드에 10:00 데이터가 나옴.
+         */
+        let startIndex = allTimes.findIndex(t => {
+            const itemTime = new Date(t + ":00+09:00"); // KST 강제 지정
+            return itemTime > now;
+        }) - 1;
+
+        if (startIndex < 0) startIndex = 0;
+
+        const hourly = allTimes.slice(startIndex, startIndex + 48).map((time, i) => {
             const actualIdx = startIndex + i;
             return {
                 time,
@@ -159,10 +169,15 @@ export async function GET(request) {
         // Current Air Quality (using the same index logic if possible, or usually just current hour)
         let currentAir = null;
         if (airData && airData.hourly) {
-            // Find index in air quality data (times should align but safety check)
             const airTimes = airData.hourly.time || [];
-            let airIdx = airTimes.findIndex(t => new Date(t) >= now);
-            if (airIdx === -1) airIdx = 0;
+            /** 
+             * [대기질 시간 로직 수정] 날씨와 동일하게 KST 기준 가장 가까운 과거/현재 인덱스 선택
+             */
+            let airIdx = airTimes.findIndex(t => {
+                const itemTime = new Date(t + ":00+09:00");
+                return itemTime > now;
+            }) - 1;
+            if (airIdx < 0) airIdx = 0;
 
             currentAir = {
                 pm10: airData.hourly.pm10?.[airIdx] ?? null,
