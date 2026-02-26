@@ -25,16 +25,35 @@
     gap: 24px;
 }
 
+@media (max-width: 768px) {
+    .inner {
+        padding: 0 12px;
+        gap: 8px;
+    }
+}
+
 .brandGroup {
     display: flex;
     align-items: center;
     gap: 24px;
 }
 
+@media (max-width: 768px) {
+    .brandGroup {
+        gap: 8px;
+    }
+}
+
 .leftSection {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .leftSection {
+        gap: 6px;
+    }
 }
 
 .mobileMenuBtn {
@@ -79,6 +98,7 @@
     pointer-events: auto;
     white-space: nowrap;
 }
+
 
 .greeting {
     font-size: 0.95rem;
@@ -216,7 +236,7 @@
     }
 
     .logo {
-        font-size: 1.1rem;
+        font-size: 1rem;
         letter-spacing: -0.5px;
         font-weight: 800;
     }
@@ -230,7 +250,9 @@
         transform: none;
         width: auto;
         justify-content: flex-end;
-        gap: 5px;
+        gap: 4px;
+        flex-wrap: wrap;
+        /* 좁은 화면에서 개행 허용 */
     }
 
     .greeting {

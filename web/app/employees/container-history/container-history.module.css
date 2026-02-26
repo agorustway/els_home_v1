@@ -93,15 +93,29 @@
 /* 3열 대시보드 그리드 */
 .topRow {
     display: grid;
-    grid-template-columns: 400px 1fr 450px;
+    grid-template-columns: 1fr;
+    /* 모바일 우선: 기본 1열 */
     gap: 0.5rem;
     margin-bottom: 0.5rem;
-    min-height: 620px;
+    min-height: auto;
     transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.topRow.logCollapsed {
-    grid-template-columns: 400px 1fr 60px;
+@media (min-width: 1025px) {
+    .topRow {
+        grid-template-columns: 400px 1fr 450px;
+        min-height: 620px;
+    }
+
+    .topRow.logCollapsed {
+        grid-template-columns: 400px 1fr 60px;
+    }
+}
+
+@media (min-width: 1025px) and (max-width: 1400px) {
+    .topRow {
+        grid-template-columns: 340px 1fr 360px;
+    }
 }
 
 .leftColumn,
@@ -795,9 +809,10 @@
     margin-top: 10px;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1024px) {
     .topRow {
-        grid-template-columns: 340px 1fr 360px;
+        grid-template-columns: 1fr;
+        min-height: auto;
     }
 }
 
