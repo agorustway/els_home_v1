@@ -20,7 +20,8 @@ CORS(app)
 class DriverPool:
     def __init__(self):
         self.drivers = []
-        self.lock = threading.Lock()
+        # [수정] RLock(Reentrant Lock)을 사용하여 동일 쓰레드 내 중복 잠금 허용 (데드락 방지)
+        self.lock = threading.RLock()
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 

@@ -174,16 +174,23 @@ def login():
                     # 데몬의 /logs 엔드포인트에서 최신 로그 긁어오기
                     l_req = urlopen(DAEMON_URL + "/logs", timeout=5)
                     l_data = json.loads(l_req.read().decode("utf-8"))
+                    has_new_daemon_log = False
                     for line in l_data.get("log", []):
                         if line not in sent_logs:
                             yield f"LOG:{line}\n"
                             sent_logs.add(line)
+                            has_new_daemon_log = True
+                    
+                    if has_new_daemon_log:
+                        retry_count = 0 # 데몬 로그가 찍히면 백엔드 심박 타이머 리셋 (사용자 혼란 방지)
                 except: pass
                 
                 # 데몬으로부터 새로운 로그가 한동안 없을 때만 백엔드 심박 로그를 출력
                 retry_count += 1
-                if retry_count % 20 == 0:
-                    yield f"LOG:[백엔드] 세션 초기화 상태 확인 중... ({retry_count}s)\n"
+                if retry_count >= 20: 
+                    yield f"LOG:[백엔드] 세션 초기화 대기 중... ({retry_count}s)\n"
+                    # 심박 로그 출력 후 타이머를 약간 늦게 돌려 도배 방지
+                    retry_count = 5 
                 
                 time.sleep(1)
             
