@@ -12,7 +12,7 @@ import io
 import math
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 
 import pandas as pd
 from flask import Flask, request, jsonify, Response, send_file
@@ -187,10 +187,10 @@ def login():
                 
                 # 데몬으로부터 새로운 로그가 한동안 없을 때만 백엔드 심박 로그를 출력
                 retry_count += 1
-                if retry_count >= 20: 
+                if retry_count >= 10: 
                     yield f"LOG:[백엔드] 세션 초기화 대기 중... ({retry_count}s)\n"
                     # 심박 로그 출력 후 타이머를 약간 늦게 돌려 도배 방지
-                    retry_count = 5 
+                    retry_count = 3 
                 
                 time.sleep(1)
             
@@ -468,6 +468,12 @@ def screenshot():
         try:
             r = urlopen(DAEMON_URL + "/screenshot", timeout=5)
             return Response(r.read(), mimetype='image/png')
+        except HTTPError as e:
+            # 데몬이 404 등을 반환한 경우 (스크린샷이 아직 없음 등)
+            return jsonify({"error": f"Daemon returned {e.code}"}), e.code
+        except URLError as e:
+            # 데몬 연결 자체가 안되는 경우
+            return jsonify({"error": f"Daemon connection failed: {e.reason}"}), 503
         except Exception as e:
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Daemon not available"}), 404
