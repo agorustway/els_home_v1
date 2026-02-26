@@ -204,8 +204,8 @@ def run():
             else:
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
 
-        # [속도 개선] 사이트 차단 방지 지연 시간을 1.5 ~ 3.0초로 단축하여 릴레이 속도 향상
-        time.sleep(random.uniform(1.5, 3.0))
+        # [초가속] 사이트 차단 방지 지연 시간을 0.6 ~ 1.2초로 추가 단축하여 성능 극대화
+        time.sleep(random.uniform(0.6, 1.2))
         
         start_time = time.time()
         

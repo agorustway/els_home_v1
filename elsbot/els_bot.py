@@ -171,11 +171,15 @@ def solve_input_and_search(page, container_no, log_callback=None):
 
         # 2. 로딩바 사라질 때까지 대기 (최대 10초)
         for _ in range(20):
-            # WebSquare 로딩바 ID (사이트마다 다를 수 있으나 통상 mf_wfm_subContainer_... 하위에 위치)
-            spinner = page.ele('css:[id*="progress_img"]', timeout=0.1) or \
+            # WebSquare 로딩바 (mf_progress 등) 존재 여부 및 가시성 체크
+            spinner = page.ele('css:[id*="_progress_"]', timeout=0.1) or \
                       page.ele('css:.w2group_mf_progress', timeout=0.1)
-            if not spinner or not spinner.display:
-                break
+            # 요소가 없거나, 스타일이 none이거나, 투명도가 0이면 완료된 것으로 간주
+            if not spinner: break
+            try:
+                style = spinner.attrs.get('style', '')
+                if 'display: none' in style or 'visibility: hidden' in style: break
+            except: break
             time.sleep(0.5)
 
         return True
@@ -198,23 +202,28 @@ def scrape_hyper_verify(page, search_no):
                 
                 var rowVals = [];
                 for (var k = 0; k < cells.length; k++) {
-                    rowVals.push(cells[k].innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' '));
+                    // 🎯 innerText 추출 시 불필요한 공백 제거
+                    rowVals.push(cells[k].innerText.trim().replace(/\s+/g, ' '));
                 }
                 var rowText = rowVals.join('|');
-                var rowClean = rowText.replace(/[^A-Z0-9]/g, '');
-
-                // 🎯 [정합성 강화] 입력창 값이 아닌, 실제 테이블 행 데이터 중에 검색어가 포함되어야 함
-                if (rowClean.indexOf(searchNo) !== -1) {
-                    if (/^\d+\|/.test(rowText) && (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1)) {
-                        results.push(rowText);
-                    }
+                
+                // 🎯 [복구] 행별 체크가 아니라 일단 모든 데이터 후보를 수집
+                if (/^\d+\|/.test(rowText) && (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1)) {
+                    results.push(rowText);
                 }
             }
             for (var i = 0; i < win.frames.length; i++) { dive(win.frames[i]); }
         } catch (e) {}
     }
     dive(window);
-    return Array.from(new Set(results)).join('\n');
+    
+    // 🎯 [정합성 강화] 수집된 결과물 중 '진짜' 데이터(컨테이너 번호 포함)가 있는지 최종 확인
+    var finalData = Array.from(new Set(results));
+    var hasTarget = finalData.some(function(line) {
+        return line.replace(/[^A-Z0-9]/g, '').indexOf(searchNo) !== -1;
+    });
+
+    return hasTarget ? finalData.join('\n') : "";
     """
     
     for _ in range(10):
