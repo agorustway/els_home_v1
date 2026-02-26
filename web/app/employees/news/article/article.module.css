@@ -9,15 +9,18 @@
     font-weight: 600;
     color: #2563eb;
     text-decoration: none;
-    padding: 5px 0; /* 링크처럼 보이도록 패딩 조정 */
+    padding: 5px 0;
+    /* 링크처럼 보이도록 패딩 조정 */
 }
+
 .backLink:hover {
     text-decoration: underline;
 }
 
 .card {
     background: #fff;
-    padding: 16px 28px 0 28px; /* 상단 패딩 축소, 하단 패딩 제거 (푸터가 생기므로) */
+    padding: 16px 28px 0 28px;
+    /* 상단 패딩 축소, 하단 패딩 제거 (푸터가 생기므로) */
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     border: 1px solid #f1f5f9;
@@ -36,10 +39,12 @@
     color: #64748b;
     margin: 0 0 20px 0;
 }
+
 .sourceLink {
     color: #2563eb;
     word-break: break-all;
 }
+
 .sourceLink:hover {
     text-decoration: underline;
 }
@@ -53,9 +58,11 @@
 .body p {
     margin: 0 0 1em 0;
 }
+
 .body p:last-child {
     margin-bottom: 0;
 }
+
 .body h1,
 .body h2,
 .body h3,
@@ -64,12 +71,14 @@
     font-weight: 700;
     color: #1e293b;
 }
+
 .body h1:first-child,
 .body h2:first-child,
 .body h3:first-child,
 .body h4:first-child {
     margin-top: 0;
 }
+
 .body img {
     max-width: 100%;
     height: auto;
@@ -77,27 +86,33 @@
     display: block;
     margin: 1em 0;
 }
+
 .body a {
     color: #2563eb;
     text-decoration: none;
 }
+
 .body a:hover {
     text-decoration: underline;
 }
+
 .body ul,
 .body ol {
     margin: 0.75em 0;
     padding-left: 1.5em;
 }
+
 .body blockquote {
     margin: 1em 0;
     padding-left: 1em;
     border-left: 4px solid #e2e8f0;
     color: #64748b;
 }
+
 .body figure {
     margin: 1em 0;
 }
+
 .body figcaption {
     font-size: 0.875rem;
     color: #64748b;
@@ -110,17 +125,21 @@
     font-size: 0.95rem;
     color: #64748b;
 }
+
 .error {
     color: #dc2626;
 }
+
 .errorBlock {
     padding: 20px 0;
 }
+
 .errorHint {
     font-size: 0.9rem;
     color: #64748b;
     margin: 8px 0 16px 0;
 }
+
 .originalLink {
     display: inline-block;
     padding: 10px 20px;
@@ -131,6 +150,7 @@
     border-radius: 8px;
     font-size: 0.95rem;
 }
+
 .originalLink:hover {
     background: #1d4ed8;
 }
@@ -138,10 +158,13 @@
 /* iframe 관련 스타일 추가 */
 .articleIframe {
     width: 100%;
-    height: calc(100vh - 200px); /* 상단 헤더, 하단 푸터, 카드 패딩 등 고려한 높이 */
+    height: calc(100vh - 200px);
+    /* 상단 헤더, 하단 푸터, 카드 패딩 등 고려한 높이 */
     border: none;
-    display: block; /* iframe 아래 기본 공백 제거 */
-    background-color: #fff; /* 로딩 중 흰 배경 */
+    display: block;
+    /* iframe 아래 기본 공백 제거 */
+    background-color: #fff;
+    /* 로딩 중 흰 배경 */
 }
 
 .infoText {
@@ -155,52 +178,80 @@
 }
 
 .iframeFooter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0; /* 상하 패딩 조정 */
-  border-top: 1px solid #e2e8f0; /* 상단 구분선 */
-  margin-top: 16px; /* iframe과 푸터 사이 여백 */
-  flex-shrink: 0; /* 푸터가 iframe에 의해 축소되지 않도록 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    /* 상하 패딩 조정 */
+    border-top: 1px solid #e2e8f0;
+    /* 상단 구분선 */
+    margin-top: 16px;
+    /* iframe과 푸터 사이 여백 */
+    flex-shrink: 0;
+    /* 푸터가 iframe에 의해 축소되지 않도록 */
 }
 
 /* iframeFooter 내 링크 스타일 조정 */
 .iframeFooter .backLink,
 .iframeFooter .originalLink {
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: 8px;
-  transition: background 0.2s, color 0.2s;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: background 0.2s, color 0.2s;
 }
 
 .iframeFooter .backLink {
-  background: #f1f5f9;
-  color: #334155;
+    background: #f1f5f9;
+    color: #334155;
 }
 
 .iframeFooter .backLink:hover {
-  background: #e2e8f0;
-  color: #1e293b;
+    background: #e2e8f0;
+    color: #1e293b;
 }
 
 .iframeFooter .originalLink {
-  background: #eff6ff;
-  color: #2563eb;
+    background: #eff6ff;
+    color: #2563eb;
 }
 
 .iframeFooter .originalLink:hover {
-  background: #dbeafe;
-  color: #1e40af;
+    background: #dbeafe;
+    color: #1e40af;
 }
 
 @media (max-width: 768px) {
-    .card {
-        padding: 16px 18px;
+    .page {
+        padding: 0;
+        background: #fff;
     }
+
+    .card {
+        padding: 0;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .articleIframe {
+        height: calc(100vh - 120px);
+        /* Header + EmployeeHeader 공간만 제외 */
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .iframeFooter {
+        margin-top: 0;
+        padding: 10px 15px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
     .title {
         font-size: 1.25rem;
     }
+
     .body {
         font-size: 0.95rem;
     }

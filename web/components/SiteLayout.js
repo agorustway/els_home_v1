@@ -22,6 +22,8 @@ export default function SiteLayout({ children }) {
 
     const isMinimal = MINIMAL_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
     const isEmployees = pathname?.startsWith('/employees') || pathname?.startsWith('/admin');
+    const isNewsPage = pathname?.startsWith('/employees/news'); // [수정] 뉴스 목록 및 기사 전체 포함
+    const isNewsArticle = pathname === '/employees/news/article';
     const isVisitor = profile?.role === 'visitor';
 
     useEffect(() => {
@@ -109,8 +111,8 @@ export default function SiteLayout({ children }) {
         <>
             <Header isEmployees={isEmployees} isSidebarOpen={isSidebarOpen} />
 
-            {/* 배경 및 상단 영역 */}
-            {hero ? (
+            {/* 배경 및 상단 영역: 뉴스 페이지 모바일에서는 공간 확보를 위해 숨김 */}
+            {hero && !(isNewsPage && isMobile) ? (
                 <SubPageHero
                     title={hero.title}
                     subtitle={hero.subtitle}
@@ -119,8 +121,8 @@ export default function SiteLayout({ children }) {
                 />
             ) : null}
 
-            {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링, 모바일 제외) */}
-            {isEmployees && !isMobile ? (
+            {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링, 모바일 제외) 뉴스 페이지 모바일에서도 숨김 */}
+            {isEmployees && !isMobile && !isNewsPage ? (
                 <InfoTicker isEmployees={isEmployees} style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
             ) : null}
 
@@ -134,8 +136,8 @@ export default function SiteLayout({ children }) {
                 <SubNav topOffset={isEmployees ? 114 : 70} />
             )}
 
-            {/* 본문 영역 */}
-            <div className={isEmployees ? styles.bodyWrap : ''}>
+            {/* 본문 영역: 뉴스 기사의 경우 모바일에서 패딩 최소화 */}
+            <div className={`${isEmployees ? styles.bodyWrap : ''} ${isNewsPage && isMobile ? styles.newsArticleFull : ''}`}>
                 {isEmployees && (
                     <EmployeeSidebar
                         isOpen={isSidebarOpen}
@@ -145,7 +147,7 @@ export default function SiteLayout({ children }) {
                 <main className={styles.mainContent}>{children}</main>
             </div>
 
-            <Footer />
+            {!(isNewsPage && isMobile) && <Footer />}
             <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
             <PwaMigrationNotice />
         </>

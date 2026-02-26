@@ -89,6 +89,14 @@
     }
 }
 
+@media (max-width: 768px) {
+    .newsArticleFull .mainContent {
+        padding: 0 !important;
+        margin: 0 !important;
+        background-color: #fff;
+    }
+}
+
 @media (max-width: 480px) {
 
     .bodyWrap .mainContent,
