@@ -16,7 +16,7 @@ def test_user_containers():
     
     print(f"[TEST] {u_id} 계정 정보로 로컬 테스트 시작...")
     
-    driver, error = login_and_prepare(u_id, u_pw, log_callback=print, show_browser=True, port=38000)
+    driver, error = login_and_prepare(u_id, u_pw, log_callback=print, show_browser=False, port=38005)
     
     if error:
         print(f"[FAIL] 로그인 실패: {error}")

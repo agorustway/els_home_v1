@@ -61,7 +61,7 @@
     object-fit: contain;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .headerBanner {
         flex-direction: column;
         align-items: flex-start;
@@ -136,6 +136,16 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    /* 강제 오버플로우 방지 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .section {
+        padding: 1rem;
+    }
 }
 
 .sectionHeader {
@@ -205,12 +215,31 @@
     color: #64748b;
 }
 
+@media (max-width: 768px) {
+    .loginRow {
+        grid-template-columns: 1fr;
+    }
+
+    .loginActionRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .loginActionRow>div {
+        margin-left: 0 !important;
+        justify-content: space-around !important;
+        padding-top: 10px;
+        border-top: 1px dashed #e2e8f0;
+    }
+}
+
 .lastSavedText {
     font-size: 0.7rem;
     color: #94a3b8;
     text-align: left;
     padding-left: 2px;
     margin-top: 4px;
+    word-break: break-all;
 }
 
 .input {
@@ -655,6 +684,23 @@
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid #e2e8f0;
+    gap: 10px;
+}
+
+@media (max-width: 600px) {
+    .resultFooter {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .inputSearchCompact {
+        width: 100% !important;
+    }
+
+    .pagination {
+        justify-content: center;
+        padding: 5px 0;
+    }
 }
 
 .inputSearchCompact {
