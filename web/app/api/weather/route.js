@@ -10,8 +10,8 @@ const REGIONS = {
     ulsan: { name: '울산', lat: 35.5384, lon: 129.3114 },
     suwon: { name: '수원', lat: 37.2636, lon: 127.0286 },
     changwon: { name: '창원', lat: 35.2281, lon: 128.6811 },
-    sejong: { name: '세종', lat: 36.4800, lon: 127.2890 }, // 세종시청 중심
-    asan: { name: '아산', lat: 36.7898, lon: 127.0018 },  // 아산시청 중심 (정밀화)
+    sejong: { name: '세종', lat: 36.5450, lon: 127.3505 }, // 세종지점 근처
+    asan: { name: '아산', lat: 36.9243, lon: 127.0570 },   // 아산지점 (외곽/둔포면)
     dangjin: { name: '당진', lat: 36.9762, lon: 126.6867 }, // 당진지점
     yesan: { name: '예산', lat: 36.6766, lon: 126.7515 },   // 예산지점
 };
