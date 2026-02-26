@@ -66,31 +66,34 @@ def open_els_menu(page, log_callback=None):
             if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
             return True
 
-        # URL 직접 이동 (2회차부터 시도)
-        if attempt >= 1:
-            if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt+1}/5)")
+        # URL 직접 이동 (1~3회차 시도)
+        if 1 <= attempt <= 3:
+            if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt}/5)")
             # [수정] /main/index.do 대신 index.do로 바로 시도 (404 방지)
             page.get("https://etrans.klnet.co.kr/index.do?menuId=002001007")
             time.sleep(15) # [NAS 최적화] WebSquare 초기 로딩 시간 대폭 연장
-            continue
-            # 메뉴 클릭 시도 (다양한 텍스트 매칭 시도)
-            target = page.ele('text:컨테이너 이동현황', timeout=2) or \
-                     page.ele('text:컨테이너 이력조회', timeout=2) or \
-                     page.ele('text:컨테이너이동현황(국내)', timeout=2)
-            if target:
-                if log_callback: log_callback(f"메뉴 클릭 시도: {target.text}")
-                # [수정] 숨겨진 요소도 클릭 가능하도록 JavaScript 클릭 사용
-                target.click(by_js=True)
-                time.sleep(4)
-            else:
-                # 상위 메뉴 클릭 시도
-                parent = page.ele('text:화물추적', timeout=2) or \
-                         page.ele('text:통합정보조회', timeout=2) or \
-                         page.ele('text:운송관리', timeout=1)
-                if parent: 
-                    if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
-                    parent.click()
-                    time.sleep(2)
+            save_screenshot(page, "debug") # [추가] 이동 후 화면 캡처
+        
+        # 메뉴 클릭 시도 (다양한 텍스트 매칭 시도)
+        target = page.ele('text:컨테이너 이동현황', timeout=2) or \
+                 page.ele('text:컨테이너 이력조회', timeout=2) or \
+                 page.ele('text:컨테이너이동현황(국내)', timeout=2)
+        if target:
+            if log_callback: log_callback(f"메뉴 클릭 시도: {target.text}")
+            save_screenshot(page, "debug") # [추가] 클릭 전 캡처
+            # [수정] 숨겨진 요소도 클릭 가능하도록 JavaScript 클릭 사용
+            target.click(by_js=True)
+            time.sleep(5)
+        else:
+            # 상위 메뉴 클릭 시도
+            parent = page.ele('text:화물추적', timeout=2) or \
+                     page.ele('text:통합정보조회', timeout=2) or \
+                     page.ele('text:운송관리', timeout=1)
+            if parent: 
+                if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
+                parent.click()
+                time.sleep(3)
+                save_screenshot(page, "debug")
         
     return False
 
@@ -237,10 +240,12 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         _log("이트랜스 접속 중 (etrans.klnet.co.kr)...")
         page.get("https://etrans.klnet.co.kr/index.do")
         _log("페이지 로드 완료. ID 입력창 탐색 중...")
+        save_screenshot(page, "debug") # [추가] 초기 화면 캡처
         
         # [NAS 최적화] WebSquare 초기 렌더링 지연 고려하여 타임아웃 60초로 연장
         uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=60)
         if not uid_input:
+            save_screenshot(page, "debug_error")
             page.quit()
             return (None, "로그인 페이지 로드 실패")
 
@@ -274,10 +279,12 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         login_verified = False
         for i in range(12): # 5초씩 12회 = 60초
             time.sleep(5)
+            save_screenshot(page, "debug") # [추가] 로그인 대기 중 실시간 캡처
             close_modals(page)
             # 성공 지표: '로그아웃' 버튼 또는 '님 안녕하세요' 텍스트
             if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=1):
                 _log("✅ 로그인 성공 확인!")
+                save_screenshot(page, "debug") # [추가] 로그인 성공 직후 캡처
                 login_verified = True
                 break
             
