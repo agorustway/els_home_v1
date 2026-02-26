@@ -227,12 +227,16 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         page = ChromiumPage(co)
         _log("ChromiumPage 생성 완료.")
     except Exception as e:
-        _log(f"브라우저 실행 실패: {str(e)}")
+        import traceback
+        err_detail = traceback.format_exc()
+        _log(f"브라우저 실행 실패: {str(e)}\n{err_detail}")
         if 'page' in locals() and page: page.quit()
         return (None, f"브라우저 실행 실패: {e}")
 
     try:
+        _log("이트랜스 접속 중 (etrans.klnet.co.kr)...")
         page.get("https://etrans.klnet.co.kr/index.do")
+        _log("페이지 로드 완료. ID 입력창 탐색 중...")
         
         # 로그인 정보 입력
         uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=30)

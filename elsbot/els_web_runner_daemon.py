@@ -25,8 +25,9 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 5))
-        self.active_init_threads = 0 # [추가] 현재 초기화 중인 쓰레드 수
+        # [NAS 최적화] 리소스 점유율을 고려하여 5개에서 3개로 하향 조정 (안정화 후 증설 검토)
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
+        self.active_init_threads = 0 
         # [실시간 로그용] 최근 300개의 로그를 시간과 함께 보관
         self.log_buffer = deque(maxlen=300)
 
