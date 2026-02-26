@@ -43,12 +43,46 @@ def check_alert(page):
 def close_modals(page):
     """이트랜스 공지사항 등 모달 창 닫기 (DrissionPage 버전)"""
     try:
-        # WebSquare 전용 모달 강제 파괴/숨김
+        # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
+        # WebSquare 특유의 모달 타이틀 확인
+        modal_titles = page.eles('css:.w2modal_title')
+        for title in modal_titles:
+            if "로그인" in title.text:
+                return "SESSION_EXPIRED"
+
+        # 일반적인 공지사항 등 닫기 시도
         page.run_js("""
-            document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => e.style.display = 'none');
+            document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => {
+                // '로그인' 팝업은 자바스크립트로 닫지 말고 그냥 숨겨버리면 안 됨 (세션이 이미 없음)
+                if (e.innerText.indexOf('로그인') === -1) {
+                    e.style.display = 'none';
+                }
+            });
             document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => e.click());
         """)
     except: pass
+    return "OK"
+
+def is_session_valid(page):
+    """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 철저히 검사"""
+    try:
+        # 1. URL 체크 (로그인 페이지로 튕겼는지)
+        if "login" in page.url.lower() and "main" not in page.url.lower():
+            return False
+            
+        # 2. 로그인 팝업 체크
+        modal_titles = page.eles('css:.w2modal_title')
+        for title in modal_titles:
+            if "로그인" in title.text:
+                return False
+        
+        # 3. 로그아웃 버튼 존재 여부 (가장 확실함)
+        if page.ele('text:로그아웃') or page.ele('text:LOGOUT'):
+            return True
+            
+        return False
+    except:
+        return False
 
 def open_els_menu(page, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중 (DrissionPage)...")

@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 # 핵심 함수들 가져오기
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid
 import re
 import pandas as pd
 
@@ -181,17 +181,8 @@ def run():
         return jsonify({"ok": False, "error": "가용한 세션 없음"})
 
     try:
-        # 🎯 [형의 조언/로그 참조] 세션 끊김(invalid session id) 방어 로직 추가
-        # 조회를 시작하기 전에 현재 브라우저가 아직 로그인 상태인지 체크
-        is_alive = False
-        try:
-            # [최적화] page_source 대신 가벼운 element 체크로 변경
-            if "login" not in driver.url.lower():
-                # '로그아웃' 텍스트를 가진 요소가 있는지 타임아웃 1초로 아주 빠르게 체크
-                if driver.ele('text:로그아웃', timeout=1) or driver.ele('text:컨테이너', timeout=1):
-                    is_alive = True
-        except:
-            pass
+        # 🎯 [전면 수정] 세션 유효성 체크를 전담 함수에 맡김
+        is_alive = is_session_valid(driver)
 
         if not is_alive:
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
@@ -226,6 +217,11 @@ def run():
         # 조회 로직
         status = solve_input_and_search(driver, cn, log_callback=_log_cb)
         
+        # [추가] 조회 시도 후에도 모달 박스(로그인 등)가 생겼는지 확인
+        modal_res = close_modals(driver)
+        if modal_res == "SESSION_EXPIRED":
+            status = "세션 만료 (로그인 모달 감지)"
+
         result_rows = []
         # [핵심 수정] status가 True(bool) 또는 문자열일 수 있음
         is_success = (status is True) or (isinstance(status, str) and ("완료" in status or "조회시도완료" in status))

@@ -378,9 +378,9 @@ function ContainerHistoryInner() {
                     else if (line.startsWith('RESULT:')) {
                         const data = JSON.parse(line.substring(7));
                         if (data.ok) {
-                            // 최종 결과는 덮어쓰기보다는 정합성 확인 용도로 사용하거나
-                            // 다운로드 토큰만 업데이트 (이미 PARTIAL로 다 받았을 것이므로)
-                            if (!result) setResult(groupByContainer(data.result || [])); // 혹시 못 받은 게 있으면 덮어쓰기
+                            // [안전 장치] 실시간(PARTIAL) 수신 중 누락된 데이터가 있을 수 있으므로 
+                            // 마지막 성공 시점에 최종 전체 데이터를 한 번 더 덮어씌워 정합성을 맞춤
+                            setResult(groupByContainer(data.result || []));
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);
                         }

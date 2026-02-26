@@ -213,7 +213,10 @@ def login():
         except Exception as e:
             yield f"LOG:![점검] 로그인 스트리밍 중 오류: {e}\n"
 
-    return Response(generate(), mimetype="text/plain; charset=utf-8")
+    return Response(generate(), mimetype="text/plain; charset=utf-8", headers={
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache"
+    })
 
     extra = []
     if not use_saved: extra.extend(["--user-id", uid, "--user-pw", pw])
@@ -265,16 +268,20 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {executor.submit(fetch_container, cn): cn for cn in containers}
         
+        log_poll_counter = 0
         while futures:
-            # 🎯 [실시간 폴링] 작업이 진행되는 동안 데몬의 내부 딥로그를 계속 긁어옵니다.
-            try:
-                l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
-                l_data = json.loads(l_req.read().decode("utf-8"))
-                for line in l_data.get("log", []):
-                    if line not in sent_daemon_logs:
-                        yield f"LOG:{line}\n"
-                        sent_daemon_logs.add(line)
-            except: pass
+            # 🎯 [실시간 폴링 지연] 매 루프마다 가져오지 않고 3회에 한 번만(약 1.5초 주기) 가져옴으로써 NAS 부하 감소
+            log_poll_counter += 1
+            if log_poll_counter >= 3:
+                try:
+                    l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
+                    l_data = json.loads(l_req.read().decode("utf-8"))
+                    for line in l_data.get("log", []):
+                        if line not in sent_daemon_logs:
+                            yield f"LOG:{line}\n"
+                            sent_daemon_logs.add(line)
+                except: pass
+                log_poll_counter = 0
 
             # 완료된 작업이 있는지 체크 (0.5초 대기)
             done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
@@ -413,7 +420,10 @@ def _stream_run(containers, use_saved, uid, pw, show_browser=False):
 @app.route("/api/els/run", methods=["POST"])
 def run():
     data = request.get_json(silent=True) or {}
-    return Response(_stream_run(data.get("containers", []), data.get("useSavedCreds", True), data.get("userId", ""), data.get("userPw", ""), data.get("showBrowser", False) ), mimetype="text/plain; charset=utf-8")
+    return Response(_stream_run(data.get("containers", []), data.get("useSavedCreds", True), data.get("userId", ""), data.get("userPw", ""), data.get("showBrowser", False) ), mimetype="text/plain; charset=utf-8", headers={
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache"
+    })
 
 @app.route("/api/els/parse-xlsx", methods=["POST"])
 def parse_xlsx():
@@ -470,7 +480,10 @@ def screenshot():
             return Response(r.read(), mimetype='image/png')
         except HTTPError as e:
             # 데몬이 404 등을 반환한 경우 (스크린샷이 아직 없음 등)
-            return jsonify({"error": f"Daemon returned {e.code}"}), e.code
+            error_msg = f"Daemon returned {e.code}"
+            try: error_msg += " - " + e.read().decode('utf-8')
+            except: pass
+            return jsonify({"error": error_msg}), e.code
         except URLError as e:
             # 데몬 연결 자체가 안되는 경우
             return jsonify({"error": f"Daemon connection failed: {e.reason}"}), 503
