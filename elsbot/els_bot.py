@@ -157,8 +157,27 @@ def solve_input_and_search(page, container_no, log_callback=None):
 
         if log_callback: log_callback(f"[{container_no}] 조회 버튼 클릭 완료")
         
-        # 팝업 대기 및 처리
-        time.sleep(1)
+        # 🎯 [NAS 최적화] WebSquare 로딩 지연 및 알럿 메시지 감지
+        time.sleep(1.5) 
+        
+        # 1. 알럿 메시지 확인 (내역 없음 등)
+        try:
+            alert_text = page.handle_alert(timeout=1)
+            if alert_text:
+                if any(msg in alert_text for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "입력하세요"]):
+                    if log_callback: log_callback(f"[{container_no}] 결과 메시지: {alert_text}")
+                    return "내역없음확인"
+        except: pass
+
+        # 2. 로딩바 사라질 때까지 대기 (최대 10초)
+        for _ in range(20):
+            # WebSquare 로딩바 ID (사이트마다 다를 수 있으나 통상 mf_wfm_subContainer_... 하위에 위치)
+            spinner = page.ele('css:[id*="progress_img"]', timeout=0.1) or \
+                      page.ele('css:.w2group_mf_progress', timeout=0.1)
+            if not spinner or not spinner.display:
+                break
+            time.sleep(0.5)
+
         return True
     except Exception as e:
         return str(e)
@@ -172,23 +191,20 @@ def scrape_hyper_verify(page, search_no):
     
     function dive(win) {
         try {
-            var bodyText = (win.document.body ? win.document.body.innerText : "").toUpperCase();
-            var inputs = win.document.querySelectorAll('input');
-            var allContent = bodyText;
-            for(var i=0; i<inputs.length; i++) { allContent += " " + (inputs[i].value || "").toUpperCase(); }
-            var cleanedContent = allContent.replace(/[^A-Z0-9]/g, '');
+            var rows = win.document.querySelectorAll('tr');
+            for (var j = 0; j < rows.length; j++) {
+                var cells = rows[j].cells;
+                if (!cells || cells.length < 5) continue;
+                
+                var rowVals = [];
+                for (var k = 0; k < cells.length; k++) {
+                    rowVals.push(cells[k].innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' '));
+                }
+                var rowText = rowVals.join('|');
+                var rowClean = rowText.replace(/[^A-Z0-9]/g, '');
 
-            if (cleanedContent.indexOf(searchNo) !== -1) {
-                var rows = win.document.querySelectorAll('tr');
-                for (var j = 0; j < rows.length; j++) {
-                    var cells = rows[j].cells;
-                    if (!cells || cells.length < 5) continue;
-                    
-                    var rowVals = [];
-                    for (var k = 0; k < cells.length; k++) {
-                        rowVals.push(cells[k].innerText.trim().replace(/\n/g, ' '));
-                    }
-                    var rowText = rowVals.join('|');
+                // 🎯 [정합성 강화] 입력창 값이 아닌, 실제 테이블 행 데이터 중에 검색어가 포함되어야 함
+                if (rowClean.indexOf(searchNo) !== -1) {
                     if (/^\d+\|/.test(rowText) && (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1)) {
                         results.push(rowText);
                     }
@@ -209,12 +225,12 @@ def scrape_hyper_verify(page, search_no):
         except: pass
         time.sleep(1)
         
-    # 데이터 없음 확인
+    # 데이터 없음 2차 확인 (텍스트 기반)
     try:
         full_text = page.html
-        for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다"]:
+        for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다", "결과가 없습니다"]:
             if msg in full_text:
-                return "NODATA_CONFIRMED"
+                return "내역없음확인"
     except: pass
         
     return None

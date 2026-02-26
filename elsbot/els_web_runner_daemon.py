@@ -173,8 +173,7 @@ def run():
     if not cn: return jsonify({"ok": False, "error": "번호 누락"})
 
     # 조회가 동시에 몰려도 시작 시점을 약간씩 어긋나게 해서 릴레이 효과를 줌
-    # (이미 전역 lock이 필요한 수준은 아니지만, 시작 간격 조절용)
-    time.sleep(random.uniform(0.3, 1.0))
+    time.sleep(random.uniform(0.1, 0.3))
 
     driver = pool.get_driver()
     if not driver:
@@ -205,8 +204,8 @@ def run():
             else:
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
 
-        # [형의 조언 반영] 사이트 차단 방지를 위한 더 긴 랜덤 지연 (3.0 ~ 7.0초)
-        time.sleep(random.uniform(3.0, 7.0))
+        # [속도 개선] 사이트 차단 방지 지연 시간을 1.5 ~ 3.0초로 단축하여 릴레이 속도 향상
+        time.sleep(random.uniform(1.5, 3.0))
         
         start_time = time.time()
         
