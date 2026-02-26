@@ -26,23 +26,28 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
     return (
         <header className={`${styles.employeeHeader} ${isEmployees ? styles.relativeHeader : ''}`}>
             <div className={`${styles.inner} container`}>
-                <div className={styles.leftSection}>
-                    <button
-                        className={styles.mobileMenuBtn}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (onMenuClick) onMenuClick();
-                            else window.dispatchEvent(new Event('openSidebar'));
-                        }}
-                        aria-label="Open Sidebar"
-                    >
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 12h18M3 6h18M3 18h18" />
-                        </svg>
-                    </button>
-                    <Link href="/employees" className={styles.logo}>
-                        ELS <span className={styles.logoSub}>Intranet</span>
-                    </Link>
+                <div className={styles.brandGroup}>
+                    <div className={styles.leftSection}>
+                        <button
+                            className={styles.mobileMenuBtn}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onMenuClick) onMenuClick();
+                                else window.dispatchEvent(new Event('openSidebar'));
+                            }}
+                            aria-label="Open Sidebar"
+                        >
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 12h18M3 6h18M3 18h18" />
+                            </svg>
+                        </button>
+                        <Link href="/employees" className={styles.logo}>
+                            ELS <span className={styles.logoSub}>Intranet</span>
+                        </Link>
+                    </div>
+                    <div className={styles.searchWrap}>
+                        <IntranetSearch placeholder="메뉴·게시글 검색" className={styles.searchInputWrap} />
+                    </div>
                 </div>
 
                 <div className={styles.userArea}>
@@ -71,10 +76,6 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
                             문의하기
                         </Link>
                     </div>
-                </div>
-
-                <div className={styles.searchWrap}>
-                    <IntranetSearch placeholder="메뉴·게시글 검색" className={styles.searchInputWrap} />
                 </div>
             </div>
         </header>

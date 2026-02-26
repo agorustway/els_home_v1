@@ -21,7 +21,13 @@
     height: 64px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    position: relative;
+    gap: 24px;
+}
+
+.brandGroup {
+    display: flex;
+    align-items: center;
     gap: 24px;
 }
 
@@ -53,6 +59,7 @@
     font-weight: 800;
     color: #1e293b;
     text-decoration: none;
+    white-space: nowrap;
     letter-spacing: -0.5px;
 }
 
@@ -65,7 +72,12 @@
     display: flex;
     align-items: center;
     gap: 20px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: auto;
+    white-space: nowrap;
 }
 
 .greeting {
@@ -74,7 +86,6 @@
     display: flex;
     align-items: center;
     height: 36px;
-    /* 높이 강제 통일 */
 }
 
 .greeting strong {
@@ -215,6 +226,8 @@
     }
 
     .userArea {
+        position: static;
+        transform: none;
         width: auto;
         justify-content: flex-end;
         gap: 5px;
