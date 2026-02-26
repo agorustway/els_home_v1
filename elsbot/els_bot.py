@@ -71,8 +71,8 @@ def open_els_menu(page, log_callback=None):
             if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt+1}/5)")
             # [수정] /main/index.do 대신 index.do로 바로 시도 (404 방지)
             page.get("https://etrans.klnet.co.kr/index.do?menuId=002001007")
-            time.sleep(5) # WebSquare 초기 로딩 시간
-        else:
+            time.sleep(15) # [NAS 최적화] WebSquare 초기 로딩 시간 대폭 연장
+            continue
             # 메뉴 클릭 시도 (다양한 텍스트 매칭 시도)
             target = page.ele('text:컨테이너 이동현황', timeout=2) or \
                      page.ele('text:컨테이너 이력조회', timeout=2) or \
@@ -238,8 +238,8 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         page.get("https://etrans.klnet.co.kr/index.do")
         _log("페이지 로드 완료. ID 입력창 탐색 중...")
         
-        # 로그인 정보 입력
-        uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=30)
+        # [NAS 최적화] WebSquare 초기 렌더링 지연 고려하여 타임아웃 60초로 연장
+        uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=60)
         if not uid_input:
             page.quit()
             return (None, "로그인 페이지 로드 실패")
@@ -269,15 +269,31 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
             except: pass
         
         _log("로그인 처리 대기 중...")
-        time.sleep(12) # 처리 시간 충분히 확보 (WebSquare는 로딩이 깁니다)
         
-        close_modals(page)
+        # [NAS 최적화] 로그인 후 페이지 전환 및 WebSquare 렌더링을 위해 최대 60초 대기
+        login_verified = False
+        for i in range(12): # 5초씩 12회 = 60초
+            time.sleep(5)
+            close_modals(page)
+            # 성공 지표: '로그아웃' 버튼 또는 '님 안녕하세요' 텍스트
+            if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=1):
+                _log("✅ 로그인 성공 확인!")
+                login_verified = True
+                break
+            
+            # 페이지 내 '손님(GUEST)' 텍스트가 사라졌는지 확인
+            if "손님(GUEST)" not in page.html and not page.ele('text:로그인', timeout=1):
+                # GUEST도 아니고 로그인 버튼도 없으면 로딩 중일 가능성이 큼
+                _log(f"로그인 처리 중 (로딩)... { (i+1)*5 }s")
+                continue
+            
+            _log(f"로그인 대기 중... { (i+1)*5 }s")
+            # 알림창(비번 만료 등)이 뜨면 확인 후 닫기
+            check_alert(page)
         
-        # 로그인 결과 검증
-        if "손님(GUEST)" in page.html or "로그인" in page.ele('text:로그인', timeout=2).text if page.ele('text:로그인', timeout=1) else "":
-             _log("로그인 실패 또는 아직 로그인 전 상태입니다. (GUEST 상태 탐지)")
-             # 알림창이 있는지 확인 후 닫기
-             check_alert(page)
+        if not login_verified:
+             _log("로그인 성공 확인 불가 (GUEST 상태 지속 또는 타임아웃)")
+             # 실패해도 일단 메뉴 진입 시도는 해봄 (간혹 탐지가 안될 수 있음)
              # 여기서 종료하지 않고 일단 메뉴 진입 시도 (URL 접근으로 해결될 수도 있음)
 
         if open_els_menu(page, _log):
