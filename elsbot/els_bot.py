@@ -90,44 +90,39 @@ def open_els_menu(page, log_callback=None):
     for attempt in range(5):
         close_modals(page)
         
-        # 현재 상태 확인 (URL/Title)
-        curr_url = page.url
-        curr_title = page.title
-        # 조회 페이지 도착 확인 (입력창 탐지 - WebSquare 렌더링 대기 포함)
-        # ID의 끝부분이 _input_containerNo 인 요소를 찾음 (가장 정확함)
-        if page.ele('css:input[id$="_input_containerNo"]', timeout=5) or \
-           page.ele('css:input[id*="containerNo"]', timeout=3):
+        # 조회 페이지 도착 확인 (입력창 탐지)
+        if page.ele('css:input[id*="containerNo"]', timeout=3):
             if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
             return True
 
-        # URL 직접 이동 (1~3회차 시도)
-        if 1 <= attempt <= 3:
-            if log_callback: log_callback(f"직접 URL 이동 시도... ({attempt}/5)")
-            # [수정] /main/index.do 대신 index.do로 바로 시도 (404 방지)
-            page.get("https://etrans.klnet.co.kr/index.do?menuId=002001007")
-            time.sleep(15) # [NAS 최적화] WebSquare 초기 로딩 시간 대폭 연장
-            save_screenshot(page, "debug") # [추가] 이동 후 화면 캡처
-        
-        # 메뉴 클릭 시도 (다양한 텍스트 매칭 시도)
-        target = page.ele('text:컨테이너 이동현황', timeout=2) or \
-                 page.ele('text:컨테이너 이력조회', timeout=2) or \
-                 page.ele('text:컨테이너이동현황(국내)', timeout=2)
-        if target:
-            if log_callback: log_callback(f"메뉴 클릭 시도: {target.text}")
-            save_screenshot(page, "debug") # [추가] 클릭 전 캡처
-            # [수정] 숨겨진 요소도 클릭 가능하도록 JavaScript 클릭 사용
-            target.click(by_js=True)
+        # 메인 페이지(main.do)가 아니면 이동
+        if "main" not in page.url.lower():
+            if log_callback: log_callback("메인 화면으로 이동 시도...")
+            page.get("https://etrans.klnet.co.kr/main.do")
             time.sleep(5)
-        else:
-            # 상위 메뉴 클릭 시도
-            parent = page.ele('text:화물추적', timeout=2) or \
-                     page.ele('text:통합정보조회', timeout=2) or \
-                     page.ele('text:운송관리', timeout=1)
-            if parent: 
-                if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
-                parent.click()
-                time.sleep(3)
+            close_modals(page)
+
+        # 1단계: 상위 메뉴 '화물추적' 클릭
+        parent = page.ele('text:화물추적', timeout=2)
+        if parent:
+            if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
+            parent.click(by_js=True)
+            time.sleep(2)
+            
+            # 2단계: 하위 메뉴 '컨테이너이동현황(국내)' 클릭
+            target = page.ele('text:컨테이너이동현황(국내)', timeout=3) or \
+                     page.ele('text:컨테이너 이동현황', timeout=2)
+            if target:
+                if log_callback: log_callback(f"하위 메뉴 클릭: {target.text}")
+                target.click(by_js=True)
+                time.sleep(5) # 탭 열리고 렌더링될 때까지 대기
                 save_screenshot(page, "debug")
+            else:
+                if log_callback: log_callback("하위 메뉴를 찾을 수 없습니다.")
+        else:
+            if log_callback: log_callback("상위 메뉴(화물추적)를 찾을 수 없습니다.")
+            save_screenshot(page, "debug")
+            time.sleep(3)
         
     return False
 
