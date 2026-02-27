@@ -25,8 +25,8 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
-        # [NAS 최적화] 리소스 점유율을 고려하여 3개 -> 2개로 하향 조정 (안정화 후 증설 검토)
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 2))
+        # [NAS 최적화] 리소스 점유율 고려 (사용자 요청으로 3개로 상향)
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
         self.active_init_threads = 0 
         # [실시간 로그용] 최근 300개의 로그를 시간과 함께 보관
         self.log_buffer = deque(maxlen=300)
@@ -204,8 +204,8 @@ def run():
             else:
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
 
-        # [초가속] 사이트 차단 방지 지연 시간을 0.6 ~ 1.2초로 추가 단축하여 성능 극대화
-        time.sleep(random.uniform(0.6, 1.2))
+        # [초가속] 사이트 차단 방지 지연 시간을 0.2 ~ 0.5초로 추가 단축하여 성능 극대화 (사용자 요청)
+        time.sleep(random.uniform(0.2, 0.5))
         
         start_time = time.time()
         

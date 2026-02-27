@@ -167,8 +167,8 @@ def solve_input_and_search(page, container_no, log_callback=None):
 
         if log_callback: log_callback(f"[{container_no}] 조회 버튼 클릭 완료")
         
-        # 🎯 [NAS 최적화] WebSquare 로딩 지연 및 알럿 메시지 감지
-        time.sleep(1.5) 
+        # 🎯 [NAS 최적화] WebSquare 초기 로딩 지연 단축
+        time.sleep(0.5) 
         
         # 1. 알럿 메시지 확인 (내역 없음 등)
         try:
