@@ -139,6 +139,21 @@ def solve_input_and_search(page, container_no, log_callback=None):
         input_ele.clear()
         input_ele.input(container_no)
         
+        # 🎯 [핵심] 검색 전 이전 데이터 지우기 (오류로 갱신 실패시 이전 데이터 긁는 버그 방지)
+        try:
+            page.run_js("""
+                document.querySelectorAll('tr').forEach(tr => {
+                    var txt = tr.innerText || '';
+                    if(txt.indexOf('수출') !== -1 || txt.indexOf('수입') !== -1 || txt.indexOf('반출') !== -1 || txt.indexOf('반입') !== -1) {
+                        Array.from(tr.cells).forEach(cell => {
+                            // DOM 자체를 지우지 않고 텍스트만 덮어씌워 WebSquare 에러 방지
+                            cell.innerText = 'STALE_DATA_CLEARED';
+                        });
+                    }
+                });
+            """)
+        except: pass
+        
         # 조회 버튼 클릭
         btn = page.ele('css:[id*="btnSearch"]', timeout=2)
         if not btn:
