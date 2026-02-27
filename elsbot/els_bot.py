@@ -212,13 +212,9 @@ def scrape_hyper_verify(page, search_no):
     }
     dive(window);
     
-    // 🎯 [정합성 강화] 수집된 결과물 중 '진짜' 데이터(컨테이너 번호 포함)가 있는지 최종 확인
+    // 🎯 [정합성 강화] 검색한 컨테이너에 대한 결과이므로, 그리드 행(수출입/반입 포함)이 있으면 유효데이터로 판정
     var finalData = Array.from(new Set(results));
-    var hasTarget = finalData.some(function(line) {
-        return line.replace(/[^A-Z0-9]/g, '').indexOf(searchNo) !== -1;
-    });
-
-    return hasTarget ? finalData.join('\n') : "";
+    return finalData.length > 0 ? finalData.join('\n') : "";
     """
     
     for _ in range(10):
@@ -263,7 +259,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     chrome_path = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
     if not os.path.exists(chrome_path):
         # 만약 설정된 경로에 없으면 chromium도 시도
-        if os.path.exists("/usr/bin/chromium"):
+        if os.path.exists("/usr/bin/google-chrome-stable"):
+            chrome_path = "/usr/bin/google-chrome-stable"
+        elif os.path.exists("/usr/bin/chromium"):
             chrome_path = "/usr/bin/chromium"
         elif os.path.exists("/usr/bin/chromium-browser"):
             chrome_path = "/usr/bin/chromium-browser"
