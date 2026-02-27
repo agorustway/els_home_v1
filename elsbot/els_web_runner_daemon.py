@@ -25,8 +25,8 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
-        # [NAS 최적화] 리소스 점유율을 고려하여 5개 -> 3개로 조정 (안정화 후 증설 검토)
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
+        # [NAS 최적화] 리소스 점유율을 고려하여 3개 -> 2개로 하향 조정 (안정화 후 증설 검토)
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 2))
         self.active_init_threads = 0 
         # [실시간 로그용] 최근 300개의 로그를 시간과 함께 보관
         self.log_buffer = deque(maxlen=300)
@@ -113,8 +113,8 @@ def login():
     
     def _do_login(idx):
         try:
-            # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 25초로 설정 (이동/로딩 시간 확보)
-            if idx > 0: time.sleep(idx * 25)
+            # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
+            if idx > 0: time.sleep(idx * 60)
             
             msg = f"브라우저 #{idx+1} 초기화 중..."
             pool.add_log(msg)

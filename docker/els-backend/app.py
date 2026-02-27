@@ -249,7 +249,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     
     # 진행률 초기화
     global_progress = {"total": len(containers), "completed": 0, "is_running": True}
-    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 3개 세션 구동)\n"
+    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 2개 세션 구동)\n"
     
     def fetch_container(cn):
         cn = cn.strip().upper()
@@ -265,7 +265,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1)
 
     sent_daemon_logs = set()
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {executor.submit(fetch_container, cn): cn for cn in containers}
         
         log_poll_counter = 0
