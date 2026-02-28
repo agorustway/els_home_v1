@@ -278,6 +278,7 @@ def run():
         return jsonify({
             "ok": True,
             "containerNo": cn,
+            "worker_id": getattr(driver, 'used_port', 32000) - 32000 + 1,
             "result": result_rows,
             "elapsed": round(time.time() - start_time, 1),
             "log": list(pool.log_buffer) # 전체 로그 버퍼 반환

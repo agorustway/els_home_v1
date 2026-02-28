@@ -795,7 +795,7 @@ function ContainerHistoryInner() {
                                 {!isLogCollapsed && (
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <button onClick={handleResetDaemon} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' }}>데몬 리셋</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>브라우저 보기</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>활동 확인</button>
                                         <button onClick={(e) => { e.stopPropagation(); setLogLines([]); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
                                     </div>
                                 )}

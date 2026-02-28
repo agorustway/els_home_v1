@@ -249,7 +249,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     
     # 진행률 초기화
     global_progress = {"total": len(containers), "completed": 0, "is_running": True}
-    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 2개 세션 구동)\n"
+    yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 3개 세션 구동)\n"
     
     def fetch_container(cn):
         cn = cn.strip().upper()
@@ -260,12 +260,13 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
             resp = urlopen(req, timeout=120)
             res_json = json.loads(resp.read().decode("utf-8"))
-            return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1)
+            worker_id = res_json.get("worker_id", "?")
+            return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1), worker_id
         except Exception as e:
-            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1)
+            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1), "?"
 
     sent_daemon_logs = set()
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {executor.submit(fetch_container, cn): cn for cn in containers}
         
         log_poll_counter = 0
@@ -286,14 +287,14 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             # 완료된 작업이 있는지 체크 (0.5초 대기)
             done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
             for f in done:
-                rows, cn, err, elapsed = f.result()
+                rows, cn, err, elapsed, worker_id = f.result()
                 final_rows.extend(rows)
                 global_progress["completed"] += 1
                 
                 if err:
-                    yield f"LOG:❌ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
+                    yield f"LOG:❌ [B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
                 else:
-                    yield f"LOG:✔ [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
+                    yield f"LOG:✔ [B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
                     if rows:
                         def _safe_val(v):
                             if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
