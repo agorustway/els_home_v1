@@ -206,7 +206,15 @@ export default function SafeFreightPage() {
                 // 행정동명이나 법정동명 기반으로 포함 여부 확인
                 const clean = (s) => s ? s.replace(/[0-9.]/g, '').replace(/(동|읍|면)$/, '') : '';
                 const target = clean(item.hDong || item.bDong || targetDong);
-                const fuzzyMatch = availableDongs.find(d => clean(d).includes(target));
+
+                let fuzzyMatch = availableDongs.find(d => clean(d).includes(target));
+
+                // [예외 처리] 안전운임 고시에는 법정동 대신 행정동(예: 온양1동)이 기준인 경우가 있음
+                if (!fuzzyMatch) {
+                  const targetStr = (item.hDong || item.bDong || targetDong).replace(/\s/g, '');
+                  if (targetStr.includes('온천동')) fuzzyMatch = availableDongs.find(d => d.includes('온양1'));
+                }
+
                 if (fuzzyMatch) {
                   setRegion3(fuzzyMatch);
                 } else {
@@ -360,12 +368,12 @@ export default function SafeFreightPage() {
     }
     setRegion3('');
   }, [region2, queryType]);
-  // 기본 행선지(충남·아산시)일 때 읍·면·동 기본값 '인주면' 유지 (region2 변경 시 region3 비우는 효과 이후 복구)
-  useEffect(() => {
-    if (options && region1 === '충남' && region2 === '아산시' && region3 === '') {
-      setRegion3('인주면');
-    }
-  }, [options, region1, region2, region3]);
+  // 기능 제거: 단순 행선지 변경 시 region3가 무조건 인주면으로 덮어씌워지는 부작용 방지
+  // useEffect(() => {
+  //   if (options && region1 === '충남' && region2 === '아산시' && region3 === '') {
+  //     setRegion3('인주면');
+  //   }
+  // }, [options, region1, region2, region3]);
   useEffect(() => {
     setResultAll(null);
     setResult(null);
