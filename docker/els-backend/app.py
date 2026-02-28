@@ -267,7 +267,8 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
 
     sent_daemon_logs = set()
     with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {executor.submit(fetch_container, cn): cn for cn in containers}
+        # 딕셔너리에 (컨테이너번호, 재시도횟수) 상태 저장
+        futures = {executor.submit(fetch_container, cn): (cn, 0) for cn in containers}
         
         log_poll_counter = 0
         while futures:
@@ -287,7 +288,17 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             # 완료된 작업이 있는지 체크 (0.5초 대기)
             done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
             for f in done:
-                rows, cn, err, elapsed, worker_id = f.result()
+                cn, retries = futures[f]
+                rows, _, err, elapsed, worker_id = f.result()
+                
+                # 🎯 에러 발생 시 재시도 로직 (1회 한정하여 다른 데몬에게 하청/재조회 시도)
+                if err and retries < 1:
+                    yield f"LOG:⚠️ [B#{worker_id}] [{cn}] 오류 발생, 다른 데몬으로 재시도합니다... ({err})\n"
+                    new_f = executor.submit(fetch_container, cn)
+                    futures[new_f] = (cn, retries + 1)
+                    del futures[f]
+                    continue
+                
                 final_rows.extend(rows)
                 global_progress["completed"] += 1
                 

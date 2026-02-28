@@ -600,7 +600,10 @@ function ContainerHistoryInner() {
                     <div className={styles.centerColumn}>
                         <div className={styles.section} style={{ flex: 1, minHeight: 0 }}>
                             <div className={styles.sectionHeader}>
-                                <h2 className={styles.sectionTitle}>조회 데이터 결과</h2>
+                                <h2 className={styles.sectionTitle}>
+                                    조회 데이터 결과
+                                    {result && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500, marginLeft: '8px' }}>(총 {Object.keys(result).length}건)</span>}
+                                </h2>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     {result && downloadToken && (
                                         <button onClick={() => window.open(`${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${resultFileName}`, '_blank')} className={styles.buttonExcelCompact}>엑셀 저장</button>
@@ -693,9 +696,15 @@ function ContainerHistoryInner() {
                                                                             <span style={{ fontWeight: 900 }}>{cn}</span>
                                                                         </div>
                                                                     </td>
-                                                                    <td className={styles.cellBorder}>{rows[0][1]}</td>
-                                                                    <td className={styles.cellBorder}><StatusBadge label={rows[0][2]} /></td>
-                                                                    <td className={styles.cellBorder}><StatusBadge label={rows[0][3]} /></td>
+                                                                    <td className={styles.cellBorder}>
+                                                                        {rows[0][1] === 'ERROR' ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>ERROR</span> : rows[0][1]}
+                                                                    </td>
+                                                                    <td className={styles.cellBorder}>
+                                                                        {rows[0][1] === 'ERROR' ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{rows[0][2]}</span> : <StatusBadge label={rows[0][2]} />}
+                                                                    </td>
+                                                                    <td className={styles.cellBorder}>
+                                                                        {rows[0][1] === 'ERROR' ? '-' : <StatusBadge label={rows[0][3]} />}
+                                                                    </td>
                                                                     {rows[0].slice(4).map((v, i) => (
                                                                         <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
                                                                     ))}
@@ -728,8 +737,14 @@ function ContainerHistoryInner() {
                                                         <div className={styles.mobileCardHeader} onClick={() => toggleRow(cn)}>
                                                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                                                                 <span className={styles.mobileCardCn}>{cn}</span>
-                                                                <StatusBadge label={rows[0][2]} />
-                                                                <StatusBadge label={rows[0][3]} />
+                                                                {rows[0][1] === 'ERROR' ? (
+                                                                    <span style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.8rem' }}>{rows[0][2]}</span>
+                                                                ) : (
+                                                                    <>
+                                                                        <StatusBadge label={rows[0][2]} />
+                                                                        <StatusBadge label={rows[0][3]} />
+                                                                    </>
+                                                                )}
                                                             </div>
                                                             <div className={styles.mobileCardToggle}>{isExpanded ? '접기 ▲' : '이력 ▼'}</div>
                                                         </div>
