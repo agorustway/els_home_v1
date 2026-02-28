@@ -71,6 +71,10 @@ def close_modals(page):
 def is_session_valid(page):
     """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 철저히 검사"""
     try:
+        # -1. 58분(3480초) 경과 시 선제적 세션 만료 (사용자 요청: 1시간마다 갱신)
+        if hasattr(page, 'login_time') and time.time() - page.login_time > 3480:
+            return False
+
         # 0. 세션 만료 알림 텍스트 확인
         html = page.html
         if "Session이 종료" in html or "세션이 만료" in html or "로그아웃 되었습니다" in html:
@@ -227,13 +231,14 @@ def scrape_hyper_verify(page, search_no):
     return finalData.length > 0 ? finalData.join('\n') : "";
     """
     
-    for _ in range(10):
+    # 🎯 [끝판왕 최적화] 기존 1초 단위 대기 10번(10초)에서 -> 0.3초 단위 20번(6초)로 변경하여 결과 발견 즉시 반환
+    for _ in range(20):
         try:
             res = page.run_js(script, search_no)
             if res and '|' in res and len(res.strip()) > 10:
                 return res
         except: pass
-        time.sleep(1)
+        time.sleep(0.3)
         
     # 데이터 없음 2차 확인 (텍스트 기반)
     try:
@@ -367,6 +372,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
 
         if open_els_menu(page, _log):
             _log("✅ 메뉴 진입 성공")
+            page.login_time = time.time() # 세션 수명 계산을 위한 로그인 시간 기록
             return (page, None)
         
         # 실패 시 스크린샷 저장 (데몬에서 확인 가능)
