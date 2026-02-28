@@ -53,6 +53,8 @@ function ContainerHistoryInner() {
     const [isDebugOpen, setIsDebugOpen] = useState(false); // [추가] 디버그 모달 상태
     const [screenshotUrl, setScreenshotUrl] = useState(''); // [추가] 스크린샷 URL
     const [isLogCollapsed, setIsLogCollapsed] = useState(true); // [추가] 로그 접힘 상태 (기본값 접기)
+    const [isLeftCollapsed, setIsLeftCollapsed] = useState(false); // [추가] 왼쪽 패널 접힘 상태 (기본값 열림)
+    const [runHistory, setRunHistory] = useState([]); // [추가] 조회 이력 차수 관리
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -115,6 +117,18 @@ function ContainerHistoryInner() {
     useEffect(() => {
         sessionStorage.setItem('els_input', containerInput);
     }, [containerInput]);
+
+    useEffect(() => {
+        sessionStorage.setItem('els_run_history', JSON.stringify(runHistory));
+    }, [runHistory]);
+
+    // 마운트 후 데이터 복구 (runHistory)
+    useEffect(() => {
+        const savedHistory = sessionStorage.getItem('els_run_history');
+        if (savedHistory) {
+            try { setRunHistory(JSON.parse(savedHistory)); } catch (e) { }
+        }
+    }, []);
 
     // [추가] 디버그 모달 열려있을 때 3초마다 스크린샷 갱신
     useEffect(() => {
@@ -378,11 +392,20 @@ function ContainerHistoryInner() {
                     else if (line.startsWith('RESULT:')) {
                         const data = JSON.parse(line.substring(7));
                         if (data.ok) {
-                            // [안전 장치] 실시간(PARTIAL) 수신 중 누락된 데이터가 있을 수 있으므로 
-                            // 마지막 성공 시점에 최종 전체 데이터를 한 번 더 덮어씌워 정합성을 맞춤
-                            setResult(groupByContainer(data.result || []));
+                            const newResult = groupByContainer(data.result || []);
+                            setResult(newResult);
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);
+
+                            // 이력 저장
+                            setRunHistory(prev => {
+                                const next = [...prev, {
+                                    id: prev.length + 1,
+                                    total: Object.keys(newResult).length,
+                                    time: elapsedSecondsRef.current
+                                }];
+                                return next.slice(-3); // 최근 3건만 보관 (공간 부족 방지)
+                            });
                         }
                         // 데몬 로그 출력
                         if (data.log && Array.isArray(data.log)) {
@@ -473,7 +496,7 @@ function ContainerHistoryInner() {
 
     const resetAll = () => {
         if (confirm('모든 데이터를 초기화할까요?')) {
-            setLogLines([]); setResult(null); setContainerInput('');
+            setLogLines([]); setResult(null); setContainerInput(''); setRunHistory([]);
             sessionStorage.clear(); window.location.reload();
         }
     };
@@ -521,80 +544,96 @@ function ContainerHistoryInner() {
                     </div>
                 </div>
 
-                <div className={`${styles.topRow} ${isLogCollapsed ? styles.logCollapsed : ''}`}>
-                    <div className={styles.leftColumn}>
-                        <div className={styles.section}>
-                            <h2 className={styles.sectionTitle}>자동 로그인 연동</h2>
-                            <div className={styles.inputGroup}>
-                                <div className={styles.loginRow}>
-                                    <input type="text" placeholder="아이디" value={userId} onChange={e => setUserId(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
-                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호" value={userPw} onChange={e => setUserPw(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
+                <div className={`${styles.topRow} ${isLogCollapsed ? styles.logCollapsed : ''} ${isLeftCollapsed ? styles.leftCollapsed : ''}`}>
+                    <div className={`${styles.leftColumn} ${isLeftCollapsed ? styles.collapsed : ''}`}>
+                        {isLeftCollapsed ? (
+                            <div className={styles.section} style={{ flex: 1, padding: 0 }}>
+                                <div onClick={() => setIsLeftCollapsed(false)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: '0.8rem', writingMode: 'vertical-rl', textOrientation: 'mixed', gap: '10px' }}>
+                                    <div className={styles.pulseIcon} style={{ transform: 'rotate(-90deg)' }}>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                                    </div>
+                                    <span>입력창 펼치기</span>
                                 </div>
-                                <div className={styles.loginActionRow}>
-                                    <button
-                                        onClick={() => handleLogin()}
-                                        disabled={loginLoading || failCount >= 2}
-                                        className={styles.button}
-                                        style={{ flex: 1, backgroundColor: failCount >= 2 ? '#ef4444' : undefined }}
-                                    >
-                                        {failCount >= 2 ? '로그인 차단됨' : (loginLoading ? '접속 시도 중...' : '자동 로그인 연동')}
-                                    </button>
-                                    <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
-                                        <label className={styles.saveControl}>
-                                            <input
-                                                type="checkbox"
-                                                checked={isSaveChecked}
-                                                onChange={async (e) => {
-                                                    const checked = e.target.checked;
-                                                    setIsSaveChecked(checked);
-                                                    if (!checked) {
-                                                        // [중요] 저장 체크 해제 시 즉시 데몬 중지
-                                                        try {
-                                                            await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
-                                                            setLogLines(prev => [...prev, '✓ 자동 로그인 연동이 해제되고 세션이 종료되었습니다.']);
-                                                            setLoginSuccess(false);
-                                                            sessionStorage.removeItem('els_login_success');
-                                                            setFailCount(0); // 정지하면 카운트도 초기화
-                                                        } catch (err) { console.error(err); }
-                                                    }
-                                                }}
-                                            />
-                                            <span style={{ fontSize: '0.8rem' }}>저장</span>
-                                        </label>
-                                        <label className={styles.saveControl}>
-                                            <input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} />
-                                            <span style={{ fontSize: '0.8rem' }}>보기</span>
-                                        </label>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={styles.section}>
+                                    <div className={styles.sectionHeader} style={{ marginBottom: '0.5rem' }}>
+                                        <h2 className={styles.sectionTitle}>자동 로그인 연동</h2>
+                                        <button onClick={() => setIsLeftCollapsed(true)} className={styles.buttonSecondary} style={{ padding: '2px 8px', fontSize: '0.7rem', border: 'none', background: 'transparent' }}>접기 ◀</button>
+                                    </div>
+                                    <div className={styles.inputGroup}>
+                                        <div className={styles.loginRow}>
+                                            <input type="text" placeholder="아이디" value={userId} onChange={e => setUserId(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
+                                            <input type={showPassword ? "text" : "password"} placeholder="비밀번호" value={userPw} onChange={e => setUserPw(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
+                                        </div>
+                                        <div className={styles.loginActionRow}>
+                                            <button
+                                                onClick={() => handleLogin()}
+                                                disabled={loginLoading || failCount >= 2}
+                                                className={styles.button}
+                                                style={{ flex: 1, backgroundColor: failCount >= 2 ? '#ef4444' : undefined }}
+                                            >
+                                                {failCount >= 2 ? '로그인 차단됨' : (loginLoading ? '접속 시도 중...' : '자동 로그인 연동')}
+                                            </button>
+                                            <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
+                                                <label className={styles.saveControl}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSaveChecked}
+                                                        onChange={async (e) => {
+                                                            const checked = e.target.checked;
+                                                            setIsSaveChecked(checked);
+                                                            if (!checked) {
+                                                                // [중요] 저장 체크 해제 시 즉시 데몬 중지
+                                                                try {
+                                                                    await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
+                                                                    setLogLines(prev => [...prev, '✓ 자동 로그인 연동이 해제되고 세션이 종료되었습니다.']);
+                                                                    setLoginSuccess(false);
+                                                                    sessionStorage.removeItem('els_login_success');
+                                                                    setFailCount(0); // 정지하면 카운트도 초기화
+                                                                } catch (err) { console.error(err); }
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span style={{ fontSize: '0.8rem' }}>저장</span>
+                                                </label>
+                                                <label className={styles.saveControl}>
+                                                    <input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} />
+                                                    <span style={{ fontSize: '0.8rem' }}>보기</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {lastSavedInfo && <div className={styles.lastSavedText}>암호화 저장됨: {lastSavedInfo}</div>}
                                     </div>
                                 </div>
-                                {lastSavedInfo && <div className={styles.lastSavedText}>암호화 저장됨: {lastSavedInfo}</div>}
-                            </div>
-                        </div>
 
-                        <div className={styles.section} style={{ flex: 1 }}>
-                            <div className={styles.sectionHeader}>
-                                <h2 className={styles.sectionTitle}>조회 대상 입력</h2>
-                            </div>
-                            <div
-                                onDrop={handleFileDrop}
-                                onDragOver={e => e.preventDefault()}
-                                style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-                            >
-                                <textarea
-                                    placeholder="번호를 입력하거나 엑셀 파일을 여기에 끌어다 놓으세요."
-                                    value={containerInput}
-                                    onChange={e => setContainerInput(e.target.value)}
-                                    className={styles.textarea}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => fileInputRef.current.click()} className={styles.buttonSecondary} style={{ flex: 1 }}>엑셀 불러오기</button>
-                                <button onClick={runSearch} disabled={loading} className={styles.button} style={{ flex: 2 }}>
-                                    {loading ? '데이터 추출 중...' : '실시간 이력 조회'}
-                                </button>
-                            </div>
-                            <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileUpload} style={{ display: 'none' }} />
-                        </div>
+                                <div className={styles.section} style={{ flex: 1 }}>
+                                    <div className={styles.sectionHeader}>
+                                        <h2 className={styles.sectionTitle}>조회 대상 입력</h2>
+                                    </div>
+                                    <div
+                                        onDrop={handleFileDrop}
+                                        onDragOver={e => e.preventDefault()}
+                                        style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                                    >
+                                        <textarea
+                                            placeholder="번호를 입력하거나 엑셀 파일을 여기에 끌어다 놓으세요."
+                                            value={containerInput}
+                                            onChange={e => setContainerInput(e.target.value)}
+                                            className={styles.textarea}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => fileInputRef.current.click()} className={styles.buttonSecondary} style={{ flex: 1 }}>엑셀 불러오기</button>
+                                        <button onClick={runSearch} disabled={loading} className={styles.button} style={{ flex: 2 }}>
+                                            {loading ? '데이터 추출 중...' : '실시간 이력 조회'}
+                                        </button>
+                                    </div>
+                                    <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className={styles.centerColumn}>
@@ -788,7 +827,19 @@ function ContainerHistoryInner() {
                                     </div>
 
                                     <div className={styles.resultFooter}>
-                                        <input type="text" placeholder="결과 검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.inputSearchCompact} />
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <input type="text" placeholder="결과 검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.inputSearchCompact} style={{ width: '120px' }} />
+                                            {/* 이력 표시 패널 */}
+                                            {runHistory.length > 0 && (
+                                                <div style={{ display: 'flex', gap: '6px', fontSize: '0.75rem', color: '#64748b', fontWeight: 600, borderLeft: '1px solid #e2e8f0', paddingLeft: '8px' }}>
+                                                    {runHistory.map(h => (
+                                                        <span key={h.id} style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                                            {h.id}차: {h.total}건 ({h.time.toFixed(1)}초)
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className={styles.pagination}>
                                             <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>&lt;</button>
                                             <span>{currentPage}</span>
