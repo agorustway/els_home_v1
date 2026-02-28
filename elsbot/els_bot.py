@@ -43,6 +43,11 @@ def check_alert(page):
 def close_modals(page):
     """이트랜스 공지사항 등 모달 창 닫기 (DrissionPage 버전)"""
     try:
+        # 세션 종료 텍스트 확인
+        html = page.html
+        if "Session이 종료" in html or "세션이 만료" in html or "로그아웃 되었습니다" in html:
+            return "SESSION_EXPIRED"
+
         # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
         # WebSquare 특유의 모달 타이틀 확인
         modal_titles = page.eles('css:.w2modal_title')
@@ -66,6 +71,11 @@ def close_modals(page):
 def is_session_valid(page):
     """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 철저히 검사"""
     try:
+        # 0. 세션 만료 알림 텍스트 확인
+        html = page.html
+        if "Session이 종료" in html or "세션이 만료" in html or "로그아웃 되었습니다" in html:
+            return False
+
         # 1. URL 체크 (로그인 페이지로 튕겼는지)
         if "login" in page.url.lower() and "main" not in page.url.lower():
             return False
