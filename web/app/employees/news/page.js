@@ -73,7 +73,7 @@ export default function NewsPage() {
                         <h2 className={styles.sectionTitle}>오늘의 헤드라인</h2>
                         {headline && (
                             <Link href={`/employees/news/article?url=${encodeURIComponent(headline.link)}`} className={styles.card + ' ' + styles.headlineCard}>
-                                {headline.thumbnail && <img src={headline.thumbnail} alt="" className={styles.headlineThumb} />}
+                                {headline.thumbnail && <img src={headline.thumbnail} alt="" className={styles.headlineThumb} onError={(e) => { e.target.onerror = null; e.target.src = '/images/news-placeholder.svg'; }} />}
                                 <div className={styles.headlineBody}>
                                     <span className={styles.headlineTag}>TOP NEWS</span>
                                     <h2 className={styles.headlineTitle}>{headline.title}</h2>
@@ -89,7 +89,7 @@ export default function NewsPage() {
                         <div className={styles.newsGrid}>
                             {restNews.map((item, i) => (
                                 <Link key={i} href={`/employees/news/article?url=${encodeURIComponent(item.link)}`} className={styles.newsItem}>
-                                    {item.thumbnail && <img src={item.thumbnail} alt="" className={styles.newsThumbSmall} />}
+                                    {item.thumbnail && <img src={item.thumbnail} alt="" className={styles.newsThumbSmall} onError={(e) => { e.target.onerror = null; e.target.src = '/images/news-placeholder.svg'; }} />}
                                     <div className={styles.newsBody}>
                                         <h3 className={styles.newsTitle}>{item.title}</h3>
                                         <div className={styles.newsMeta}>{formatPubDate(item.pubDate)}</div>
@@ -105,11 +105,11 @@ export default function NewsPage() {
                         <div className={styles.card + ' ' + styles.statusCard}>
                             <div className={styles.statusItem}><span>기사 수</span><strong>{items.length}개</strong></div>
                             <div className={styles.statusItem}><span>출처</span><strong>연합뉴스 (Yonhap)</strong></div>
-                            <div className={styles.statusItem}><span>상태</span><strong style={{color: '#059669'}}>정상 작동 중</strong></div>
+                            <div className={styles.statusItem}><span>상태</span><strong style={{ color: '#059669' }}>정상 작동 중</strong></div>
                         </div>
                         <div className={styles.card}>
-                            <h3 style={{fontSize: '0.9rem', marginBottom: '10px'}}>💡 이용 안내</h3>
-                            <p style={{fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0}}>
+                            <h3 style={{ fontSize: '0.9rem', marginBottom: '10px' }}>💡 이용 안내</h3>
+                            <p style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
                                 제목을 클릭하면 상세 내용을 확인하실 수 있습니다. 실시간으로 수집되는 정보이므로 가장 최신 소식을 전해드립니다.
                             </p>
                         </div>
