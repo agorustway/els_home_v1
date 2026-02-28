@@ -460,7 +460,7 @@
     border-spacing: 0;
     font-size: 0.82rem;
     /* 전체 폰트 축소 */
-    min-width: 1130px;
+    min-width: 1200px;
     /* 컬럼 너비 합계에 맞춤 */
     table-layout: fixed;
 }
@@ -472,94 +472,94 @@
     white-space: nowrap;
 }
 
-/* 폰트와 토글 버튼을 고려한 최종 너비 튜닝 */
+/* 컨테이너번호 */
 .table th:nth-child(1),
 .table td:nth-child(1) {
     width: 150px;
 }
 
-/* 컨테이너번호 (확대) */
+/* No */
 .table th:nth-child(2),
 .table td:nth-child(2) {
-    width: 30px;
-}
-
-/* No */
-.table th:nth-child(3),
-.table td:nth-child(3) {
-    width: 55px;
+    width: 45px;
 }
 
 /* 수출입 */
-.table th:nth-child(4),
-.table td:nth-child(4) {
-    width: 55px;
+.table th:nth-child(3),
+.table td:nth-child(3) {
+    width: 70px;
 }
 
 /* 구분 */
-.table th:nth-child(5),
-.table td:nth-child(5) {
-    width: 210px;
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    width: 75px;
 }
 
-/* 터미널 (조금 축소) */
+/* 터미널 */
+.table th:nth-child(5),
+.table td:nth-child(5) {
+    width: 170px;
+}
+
+/* MOVE TIME */
 .table th:nth-child(6),
 .table td:nth-child(6) {
     width: 115px;
 }
 
-/* MOVE TIME (축소) */
+/* 모선 */
 .table th:nth-child(7),
 .table td:nth-child(7) {
-    width: 80px;
+    width: 50px;
 }
 
-/* 모선 (축소) */
+/* 항차 */
 .table th:nth-child(8),
 .table td:nth-child(8) {
-    width: 40px;
-}
-
-/* 항차 (축소) */
-.table th:nth-child(9),
-.table td:nth-child(9) {
-    width: 50px;
+    width: 65px;
 }
 
 /* 선사 */
-.table th:nth-child(10),
-.table td:nth-child(10) {
-    width: 40px;
+.table th:nth-child(9),
+.table td:nth-child(9) {
+    width: 55px;
 }
 
 /* 적공 */
-.table th:nth-child(11),
-.table td:nth-child(11) {
-    width: 50px;
+.table th:nth-child(10),
+.table td:nth-child(10) {
+    width: 65px;
 }
 
 /* SIZE */
-.table th:nth-child(12),
-.table td:nth-child(12) {
-    width: 80px;
+.table th:nth-child(11),
+.table td:nth-child(11) {
+    width: 60px;
 }
 
 /* POD */
-.table th:nth-child(13),
-.table td:nth-child(13) {
-    width: 45px;
+.table th:nth-child(12),
+.table td:nth-child(12) {
+    width: 55px;
 }
 
 /* POL */
+.table th:nth-child(13),
+.table td:nth-child(13) {
+    width: 55px;
+}
+
+/* 차량번호 */
 .table th:nth-child(14),
 .table td:nth-child(14) {
     width: 100px;
 }
 
-/* 차량번호 */
+/* RFID */
 .table th:nth-child(15),
 .table td:nth-child(15) {
-    width: 30px;
+    width: 40px;
 }
 
 /* RFID */

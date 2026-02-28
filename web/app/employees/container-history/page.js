@@ -43,7 +43,7 @@ function ContainerHistoryInner() {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [totalElapsed, setTotalElapsed] = useState(null);
     const [searchFilter, setSearchFilter] = useState('');
-    const [activeStatFilters, setActiveStatFilters] = useState(new Set(['수출', '수입', '반입', '반출', '양하', '적하']));
+    const [activeStatFilters, setActiveStatFilters] = useState(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [showPassword, setShowPassword] = useState(false);
@@ -612,9 +612,9 @@ function ContainerHistoryInner() {
                                 </div>
                             </div>
 
-                            {totalElapsed && (
+                            {(totalElapsed !== null || loading) && (
                                 <div style={{ padding: '0 24px 12px', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>
-                                    ⏱️ 총 소요 시간: {totalElapsed.toFixed(1)}초
+                                    ⏱️ {loading ? `조회 진행 중... (${elapsedSeconds.toFixed(1)}초)` : `총 소요 시간: ${totalElapsed?.toFixed(1) || 0}초`}
                                 </div>
                             )}
 
