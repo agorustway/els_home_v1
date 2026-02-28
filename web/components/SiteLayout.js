@@ -22,8 +22,6 @@ export default function SiteLayout({ children }) {
 
     const isMinimal = MINIMAL_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
     const isEmployees = pathname?.startsWith('/employees') || pathname?.startsWith('/admin');
-    const isNewsPage = pathname?.startsWith('/employees/news'); // [수정] 뉴스 목록 및 기사 전체 포함
-    const isNewsArticle = pathname === '/employees/news/article';
     const isVisitor = profile?.role === 'visitor';
 
     useEffect(() => {
@@ -111,19 +109,19 @@ export default function SiteLayout({ children }) {
         <>
             <Header isEmployees={isEmployees} isSidebarOpen={isSidebarOpen} />
 
-            {/* 배경 및 상단 영역: 뉴스 페이지 모바일에서는 공간 확보를 위해 숨김 */}
-            {hero && !(isNewsPage && isMobile) ? (
+            {/* 배경 및 상단 영역: 인트라넷 환경에서는 업무 효율성 및 공간 확보를 위해 랜딩 이미지 숨김 */}
+            {hero && !isEmployees ? (
                 <SubPageHero
                     title={hero.title}
                     subtitle={hero.subtitle}
                     bgImage={hero.bgImage}
-                    compact={isEmployees} // 인트라넷은 히어로 축소
+                    compact={false}
                 />
             ) : null}
 
-            {/* 실시간 티커 (인트라넷 페이지에서만 보이도록 조건부 렌더링, 모바일 제외) 뉴스 페이지 모바일에서도 숨김 */}
-            {isEmployees && !isMobile && !isNewsPage ? (
-                <InfoTicker isEmployees={isEmployees} style={hero && !isEmployees ? { marginTop: '-44px' } : {}} />
+            {/* 실시간 티커: 인트라넷 데스크탑(PC) 환경에서만 렌더링, 모바일은 숨김 */}
+            {isEmployees && !isMobile ? (
+                <InfoTicker isEmployees={isEmployees} />
             ) : null}
 
             {/* 부가 헤더 */}
@@ -133,11 +131,11 @@ export default function SiteLayout({ children }) {
                     onMenuClick={handleSidebarToggle}
                 />
             ) : (
-                <SubNav topOffset={isEmployees ? 114 : 70} />
+                <SubNav topOffset={70} />
             )}
 
-            {/* 본문 영역: 뉴스 기사의 경우 모바일에서 패딩 최소화 */}
-            <div className={`${isEmployees ? styles.bodyWrap : ''} ${isNewsPage && isMobile ? styles.newsArticleFull : ''}`}>
+            {/* 본문 영역: 인트라넷 모바일 전체에 뉴스 기사처럼 패딩/여백 최소화 레이아웃(newsArticleFull) 적용 */}
+            <div className={`${isEmployees ? styles.bodyWrap : ''} ${isEmployees && isMobile ? styles.newsArticleFull : ''}`}>
                 {isEmployees && (
                     <EmployeeSidebar
                         isOpen={isSidebarOpen}
@@ -147,7 +145,8 @@ export default function SiteLayout({ children }) {
                 <main className={styles.mainContent}>{children}</main>
             </div>
 
-            {!(isNewsPage && isMobile) && <Footer />}
+            {/* 푸터 영역: 인트라넷 모바일 환경에서는 낭비되는 면적을 줄이기 위해 푸터를 숨김 */}
+            {!(isEmployees && isMobile) && <Footer />}
             <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
             <PwaMigrationNotice />
         </>
