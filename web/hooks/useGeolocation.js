@@ -66,17 +66,27 @@ export function useGeolocation() {
         }
 
         // 캐시된 좌표 불러오기
+        let hasCache = false;
         const cached = localStorage.getItem('els_last_coords');
         if (cached) {
             try {
                 const parsed = JSON.parse(cached);
-                // 1시간 이내의 데이터만 유효한 것으로 간주
-                if (Date.now() - parsed.timestamp < 3600000) {
+                // 10분 이내의 데이터만 유효한 것으로 간주 (정확도를 위해 시간 단축)
+                if (Date.now() - parsed.timestamp < 600000) {
                     setCoords({ lat: parsed.lat, lon: parsed.lon });
+                    hasCache = true;
                 }
             } catch (e) { }
         }
-    }, []);
+
+        // 캐시가 없거나 만료되었으면 마운트 시 자동으로 실제 GPS 위치 요청
+        if (!hasCache) {
+            // Slight delay to avoid blocking initial render
+            setTimeout(() => {
+                refreshLocation();
+            }, 500);
+        }
+    }, [refreshLocation]);
 
     return { coords, loading, error, permissionStatus, refreshLocation };
 }
