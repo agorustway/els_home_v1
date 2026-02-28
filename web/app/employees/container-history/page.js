@@ -397,6 +397,18 @@ function ContainerHistoryInner() {
         finally { setLoading(false); stopTimer(); }
     };
 
+    const handleResetDaemon = async (e) => {
+        if (e) e.stopPropagation();
+        if (!confirm('백그라운드 봇의 세션을 강제로 닫고 다시 로그인 하시겠습니까?')) return;
+        try {
+            await fetch(`${BACKEND_BASE_URL}/api/els/stop`, { method: "POST" });
+            setLogLines(prev => [...prev, '✓ 수동 초기화: 데몬 세션을 닫고 다시 로그인을 시도합니다...'].slice(-100));
+            setLoginSuccess(false);
+            sessionStorage.removeItem('els_login_success');
+            setTimeout(() => handleLogin(), 1000); // 1초 후 로그인 시도
+        } catch (err) { console.error(err); }
+    };
+
     const runSearch = () => {
         const containers = parseContainerInput(containerInput);
         if (!containers.length) return alert('컨테이너 번호를 입력하세요');
@@ -782,6 +794,7 @@ function ContainerHistoryInner() {
                                 </h2>
                                 {!isLogCollapsed && (
                                     <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={handleResetDaemon} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' }}>데몬 리셋</button>
                                         <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>브라우저 보기</button>
                                         <button onClick={(e) => { e.stopPropagation(); setLogLines([]); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
                                     </div>
