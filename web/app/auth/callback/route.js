@@ -126,7 +126,19 @@ export async function GET(request) {
                         });
                 }
             }
-            return NextResponse.redirect(`${origin}${next}`);
+
+            // --- 역할에 따른 리다이렉트 분기 ---
+            const userRole = existingRoleByEmail ? existingRoleByEmail.role : 'visitor';
+            let finalNext = next;
+            // 명시적인 목적지가 없고 홈('/')으로 갈 때 역할별 분기
+            if (next === '/' || next === '/login') {
+                if (['employee', 'admin', 'editor'].includes(userRole.toLowerCase())) {
+                    finalNext = '/employees/weather';
+                } else {
+                    finalNext = '/';
+                }
+            }
+            return NextResponse.redirect(`${origin}${finalNext}`);
 
         } catch (error) {
             console.error('Naver OIDC Callback Error:', error);
@@ -182,7 +194,17 @@ export async function GET(request) {
                     });
             }
 
-            return NextResponse.redirect(`${origin}${next}`);
+            // --- 역할에 따른 리다이렉트 분기 ---
+            const userRole = existingRole ? existingRole.role : 'visitor';
+            let finalNext = next;
+            if (next === '/' || next === '/login') {
+                if (['employee', 'admin', 'editor'].includes(userRole.toLowerCase())) {
+                    finalNext = '/employees/weather';
+                } else {
+                    finalNext = '/';
+                }
+            }
+            return NextResponse.redirect(`${origin}${finalNext}`);
         }
     }
     return redirectToError('인증 코드가 유효하지 않습니다.');
