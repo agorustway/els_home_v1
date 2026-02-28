@@ -223,6 +223,29 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         const isMac = navigator.userAgent.toLowerCase().includes('mac');
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const shortcut = isMac ? 'Cmd + D' : 'Ctrl + D';
+        const ua = navigator.userAgent.toLowerCase();
+
+        // --- 1. 인앱 브라우저(카카오, 네이버, 인스타 등) 차단 우회 ---
+        const isInApp = /(kakaotalk|naver|line|instagram|inapp|fba|fb_iab)/i.test(ua);
+        if (isInApp && isMobile) {
+            const currentUrl = window.location.href;
+            const domainAndPath = currentUrl.replace(/^https?:\/\//i, '');
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            if (!isIOS) { // 안드로이드
+                alert("현재 카카오/네이버 등 내장 브라우저에서는 앱 설치가 제한되어 있습니다.\n\n[확인]을 누르시면 일반 브라우저(Chrome)로 자동 전환됩니다. 전환 후 우측 상단 메뉴(점 3개)에서 [앱 설정] 또는 [홈 화면에 추가]를 진행해 주세요!");
+                window.location.href = `intent://${domainAndPath}#Intent;scheme=https;package=com.android.chrome;end;`;
+                return;
+            } else { // iOS
+                if (ua.includes('kakaotalk')) {
+                    alert("카카오톡 내장 브라우저에서는 앱 설치가 지원되지 않습니다.\nSafari 브라우저로 전환합니다.");
+                    window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(currentUrl)}`;
+                } else {
+                    alert("앱 설치는 Safari 브라우저에서만 지원됩니다.\n\n화면 하단(또는 우측)의 [메뉴]를 눌러 [다른 브라우저로 열기(Safari)]를 선택하신 후, Safari에서 하단의 [공유(네모 안 화살표)] ➔ [홈 화면에 추가]를 진행해 주세요.");
+                }
+                return;
+            }
+        }
 
         if (!deferredPrompt) {
             if (isMobile) {
