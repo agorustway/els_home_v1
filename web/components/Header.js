@@ -276,9 +276,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     };
 
     // Determine visual styles based on state
-    // 새로운 인트라넷 홈(/employees/weather)에서는 일반 페이지처럼 투명 헤더 적용
-    const isIntranetHome = pathname === '/employees/weather' || pathname === '/employees/weather/';
-    const isDarkHeader = scrolled || darkVariant || (isEmployees && !isIntranetHome);
+    const isDarkHeader = scrolled || darkVariant || isEmployees;
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
     const textColor = isDarkHeader ? '#000000' : '#ffffff';
     const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
@@ -539,13 +537,13 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     return (
         <>
             <header
-                className={`${styles.header} ${isEmployees && !isIntranetHome ? styles.relativeHeader : ''} ${isDarkHeader ? styles.darkVariant : ''}`}
+                className={`${styles.header} ${isEmployees ? styles.relativeHeader : ''} ${isDarkHeader ? styles.darkVariant : ''}`}
                 style={{
                     backgroundColor: headerBg,
                     color: textColor,
                     height: '70px',
                     transition: 'background-color 0.3s, color 0.3s',
-                    position: (isIntranetHome || !isEmployees) ? 'fixed' : 'relative',
+                    position: !isEmployees ? 'fixed' : 'relative',
                     top: 0,
                     left: 0,
                     width: '100%',
