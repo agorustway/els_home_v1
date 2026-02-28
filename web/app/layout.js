@@ -34,11 +34,13 @@ export const viewport = {
 import { Suspense } from 'react';
 import ActivityLogger from "@/components/ActivityLogger";
 import SiteLayout from "@/components/SiteLayout";
+import SplashScreen from "@/components/SplashScreen";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
+        <SplashScreen />
         <Suspense fallback={null}>
           <ActivityLogger />
         </Suspense>
