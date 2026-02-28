@@ -50,7 +50,7 @@ def close_modals(page):
 
         # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
         # WebSquare 특유의 모달 타이틀 확인
-        modal_titles = page.eles('css:.w2modal_title')
+        modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
         for title in modal_titles:
             if "로그인" in title.text:
                 return "SESSION_EXPIRED"
@@ -85,13 +85,13 @@ def is_session_valid(page):
             return False
             
         # 2. 로그인 팝업 체크
-        modal_titles = page.eles('css:.w2modal_title')
+        modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
         for title in modal_titles:
             if "로그인" in title.text:
                 return False
         
         # 3. 로그아웃 버튼 존재 여부 (가장 확실함)
-        if page.ele('text:로그아웃') or page.ele('text:LOGOUT'):
+        if page.ele('text:로그아웃', timeout=0.1) or page.ele('text:LOGOUT', timeout=0.1):
             return True
             
         return False
