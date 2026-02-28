@@ -98,14 +98,26 @@ export default function WeatherPage() {
             const portIds = PORTS.map(p => p.id);
             const allIds = [...branchIds, ...portIds];
 
-            // 3. 병렬 페칭 실행 (Promise.all)
-            const fetchResults = await Promise.all(allIds.map(async (id) => {
-                const rid = id === 'current' ? currentRegionId : id;
-                // current이면서 geoParams가 있으면 좌표 기반으로 요청
-                const finalUrl = (id === 'current' && geoParams)
-                    ? `/api/weather?region=current${geoParams}`
-                    : `/api/weather?region=${rid}`;
+            // 3. 필수 데이터(현위치) 우선 개별 로딩하여 화면 렌더링 블로킹 해제
+            const currentUrl = geoParams
+                ? `/api/weather?region=current${geoParams}`
+                : `/api/weather?region=${currentRegionId}`;
 
+            fetch(currentUrl).then(async (res) => {
+                if (res.ok) {
+                    const data = await res.json();
+                    setWeatherCache(prev => ({ ...prev, current: data }));
+                    setLoading(false); // ✅ 여기서 로딩을 풀어서 화면을 즉시 띄움
+                }
+            }).catch(() => {
+                setLoading(false); // 실패하더라도 화면은 띄움
+            });
+
+            // 4. 나머지 지점/항만 데이터는 백그라운드 병렬 페칭
+            const restIds = allIds.filter(id => id !== 'current');
+            const fetchResults = await Promise.all(restIds.map(async (id) => {
+                const rid = id === 'current' ? currentRegionId : id;
+                const finalUrl = `/api/weather?region=${rid}`;
                 try {
                     const res = await fetch(finalUrl);
                     if (!res.ok) return { id, data: null };
@@ -116,29 +128,32 @@ export default function WeatherPage() {
                 }
             }));
 
-            // 4. 결과를 캐시에 분배
-            const newWeatherCache = {};
-            const newPortCache = {};
-
-            fetchResults.forEach(result => {
-                if (!result.data) return;
-                if (portIds.includes(result.id)) {
-                    newPortCache[result.id] = {
-                        ...result.data,
-                        wave: (Math.random() * 2 + 0.5).toFixed(1),
-                        wind: (Math.random() * 10 + 2).toFixed(1)
-                    };
-                } else {
-                    newWeatherCache[result.id] = result.data;
-                }
+            // 5. 남은 결과를 캐시에 병합 (이전 cache 보존)
+            setWeatherCache(prev => {
+                const newC = { ...prev };
+                fetchResults.forEach(r => {
+                    if (r.data && !portIds.includes(r.id)) newC[r.id] = r.data;
+                });
+                return newC;
             });
 
-            setWeatherCache(newWeatherCache);
-            setPortCache(newPortCache);
+            setPortCache(prev => {
+                const newP = { ...prev };
+                fetchResults.forEach(r => {
+                    if (r.data && portIds.includes(r.id)) {
+                        newP[r.id] = {
+                            ...r.data,
+                            wave: (Math.random() * 2 + 0.5).toFixed(1),
+                            wind: (Math.random() * 10 + 2).toFixed(1)
+                        };
+                    }
+                });
+                return newP;
+            });
+
         } catch (e) {
             console.error(e);
             setError('데이터 오류');
-        } finally {
             setLoading(false);
         }
     }, [role, coords]);
@@ -389,11 +404,11 @@ export default function WeatherPage() {
                                             <div className={styles.branchStats}>
                                                 <div className={`${styles.statItem} ${styles.temp}`}>
                                                     <span className={styles.statLabel}>기온</span>
-                                                    <span className={styles.statVal}>{Math.round(curData?.temp ?? 0)}°</span>
+                                                    <span className={styles.statVal}>{curData ? `${Math.round(curData.temp)}°` : '-'}</span>
                                                 </div>
                                                 <div className={`${styles.statItem} ${styles.feels}`}>
                                                     <span className={styles.statLabel}>체감</span>
-                                                    <span className={styles.statVal}>{Math.round(feelsLike)}°</span>
+                                                    <span className={styles.statVal}>{curData ? `${Math.round(feelsLike)}°` : '-'}</span>
                                                 </div>
                                                 <div className={`${styles.statItem} ${styles.dust}`}>
                                                     <span className={styles.statLabel}>미세</span>
@@ -524,15 +539,15 @@ export default function WeatherPage() {
                                             <div className={styles.portStats}>
                                                 <div className={`${styles.statItem} ${styles.temp}`}>
                                                     <span className={styles.statLabel}>기온</span>
-                                                    <span className={styles.statVal}>{Math.round(cur?.temp ?? 0)}°</span>
+                                                    <span className={styles.statVal}>{cur ? `${Math.round(cur.temp)}°` : '-'}</span>
                                                 </div>
                                                 <div className={`${styles.statItem} ${styles.wave}`}>
                                                     <span className={styles.statLabel}>파고</span>
-                                                    <span className={styles.statVal}>{data?.wave}m</span>
+                                                    <span className={styles.statVal}>{data ? `${data.wave}m` : '-'}</span>
                                                 </div>
                                                 <div className={`${styles.statItem} ${styles.wind}`}>
                                                     <span className={styles.statLabel}>풍속</span>
-                                                    <span className={styles.statVal}>{data?.wind}m/s</span>
+                                                    <span className={styles.statVal}>{data ? `${data.wind}m/s` : '-'}</span>
                                                 </div>
                                             </div>
                                         </div>
