@@ -191,13 +191,16 @@ function ContainerHistoryInner() {
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             let finalData = null;
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                // 마지막 요소는 불완전한 줄일 수 있으므로 버퍼에 남김
+                buffer = lines.pop();
 
                 lines.forEach(line => {
                     if (line.startsWith('LOG:')) {
@@ -209,6 +212,11 @@ function ContainerHistoryInner() {
                         } catch (e) { console.error('JSON Parse Error', e); }
                     }
                 });
+            }
+
+            // 스트림이 거의 끝났을 때 남은 버퍼 처리
+            if (buffer.startsWith('RESULT:')) {
+                try { finalData = JSON.parse(buffer.substring(7)); } catch (e) { }
             }
 
             if (finalData) {
@@ -361,35 +369,24 @@ function ContainerHistoryInner() {
             });
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-                lines.forEach(line => {
-                    if (line.startsWith('LOG:')) setLogLines(prev => [...prev, line.substring(4)].slice(-100));
-                    else if (line.startsWith('RESULT_PARTIAL:')) {
-                        // [실시간 출력] 부분 결과 수신 시 즉시 데이터 추가
-                        try {
-                            const part = JSON.parse(line.substring(15));
-                            if (part.result && Array.isArray(part.result)) {
+            let buffer = '';
 
-                                setResult(prev => {
-                                    // 기존 결과에 새 결과 병합 (함수형 업데이트로 최신 상태 보장)
-                                    // groupByContainer 로직을 재사용하기 위해 'raw array' 형태로 관리하거나
-                                    // 여기서 바로 병합해야 함. 편의상 병합 후 groupBy 재적용 방식을 씀 (데이터 양 적을 때 유효)
-
-                                    // 1. 기존 데이터의 flat 한 배열 형태로 변환 (비효율적일 수 있으나 안전함)
-                                    const prevRows = prev ? Object.values(prev).flat() : [];
-                                    // 2. 새 데이터 추가
-                                    const newRows = [...prevRows, ...part.result];
-                                    // 3. 다시 그룹핑
-                                    return groupByContainer(newRows);
-                                });
-                            }
-                        } catch (e) { console.error('Partial Parse Error', e); }
-                    }
-                    else if (line.startsWith('RESULT:')) {
+            const processLine = (line) => {
+                if (line.startsWith('LOG:')) setLogLines(prev => [...prev, line.substring(4)].slice(-100));
+                else if (line.startsWith('RESULT_PARTIAL:')) {
+                    try {
+                        const part = JSON.parse(line.substring(15));
+                        if (part.result && Array.isArray(part.result)) {
+                            setResult(prev => {
+                                const prevRows = prev ? Object.values(prev).flat() : [];
+                                const newRows = [...prevRows, ...part.result];
+                                return groupByContainer(newRows);
+                            });
+                        }
+                    } catch (e) { console.error('Partial Parse Error', e); }
+                }
+                else if (line.startsWith('RESULT:')) {
+                    try {
                         const data = JSON.parse(line.substring(7));
                         if (data.ok) {
                             const newResult = groupByContainer(data.result || []);
@@ -397,23 +394,36 @@ function ContainerHistoryInner() {
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);
 
-                            // 이력 저장
                             setRunHistory(prev => {
                                 const next = [...prev, {
                                     id: prev.length + 1,
                                     total: Object.keys(newResult).length,
                                     time: elapsedSecondsRef.current
                                 }];
-                                return next.slice(-3); // 최근 3건만 보관 (공간 부족 방지)
+                                return next.slice(-3);
                             });
                         }
-                        // 데몬 로그 출력
                         if (data.log && Array.isArray(data.log)) {
                             setLogLines(prev => [...prev, ...data.log].slice(-100));
                         }
-                    }
-                });
+                    } catch (e) { console.error('RESULT Parse Error', e); }
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // 마지막 불완전한 조각 저장
+
+                lines.forEach(processLine);
             }
+            if (buffer) {
+                processLine(buffer);
+            }
+
             // 총 소요시간 계산 (타이머)
             setTotalElapsed(elapsedSecondsRef.current);
         } catch (err) { console.error(err); }
