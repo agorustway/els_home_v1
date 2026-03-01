@@ -256,23 +256,31 @@
     }
 
     .greeting {
-        display: block;
-        font-size: 0.75rem;
-        margin-right: 4px;
-        max-width: 140px;
+        display: inline-block;
+        font-size: 0.7rem;
+        /* Reduce slightly more */
+        margin-right: 6px;
+        max-width: 151px;
+        /* Allow a bit more space but handle it */
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         color: #64748b;
+        vertical-align: middle;
     }
 
     .greeting strong {
-        color: #1e293b;
+        font-weight: 800;
+        font-size: 0.72rem;
+        display: inline;
+        /* Ensure child doesn't break parent ellipsis */
     }
 
     .titleText {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         opacity: 0.8;
+        display: inline;
+        /* Ensure child doesn't break parent ellipsis */
     }
 
     .roleBadge {

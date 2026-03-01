@@ -381,9 +381,9 @@ export default function AsanDashboard({ data, headers, viewType }) {
 
                 <div className={styles.tablePanel}>
                     <div className={styles.panelHeaderWrap}>
-                        <h3 className={styles.panelTitle}>상세 데이터 요약표 (트리 구조)</h3>
+                        <h3 className={styles.panelTitle}>데이터 요약 (트리)</h3>
                         <div className={styles.dragGroupInfo}>
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginRight: 8 }}>우측 항목을 드래그하여 순서 변경:</span>
+                            <span className={styles.dragLabel}>순서 변경(드래그):</span>
                             {currentGroups.map((g, index) => (
                                 <div key={g} draggable
                                     onDragStart={(e) => (dragItem.current = index)}
@@ -401,8 +401,8 @@ export default function AsanDashboard({ data, headers, viewType }) {
                         <div className={styles.thNameGroup}>
                             <span className={styles.thName}>항목 분류계층 ({currentGroups.join(' ▶ ')})</span>
                             <div className={styles.expandActions}>
-                                <button className={styles.expandBtn} onClick={() => setForceExpand({ targetState: true, ts: Date.now() })}>전체열기 📂</button>
-                                <button className={styles.expandBtn} onClick={() => setForceExpand({ targetState: false, ts: Date.now() })}>전체닫기 📁</button>
+                                <button className={styles.expandBtn} onClick={() => setForceExpand({ targetState: true, ts: Date.now() })}>열기 📂</button>
+                                <button className={styles.expandBtn} onClick={() => setForceExpand({ targetState: false, ts: Date.now() })}>닫기 📁</button>
                             </div>
                         </div>
                         <span className={styles.thVal}>총 합산수량</span>
@@ -413,8 +413,8 @@ export default function AsanDashboard({ data, headers, viewType }) {
                         ))}
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

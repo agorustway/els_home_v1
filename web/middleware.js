@@ -46,6 +46,13 @@ export async function middleware(request) {
         return NextResponse.redirect(url)
     }
 
+    // 0.1 Redirect authenticated users (non-visitors) to weather page if on landing
+    if (user && path === '/' && userRole !== 'visitor') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/employees/weather'
+        return NextResponse.redirect(url)
+    }
+
     // 1. Protected Routes (Access Control)
     if (path.startsWith('/admin') || path.startsWith('/employees')) {
         // If not authenticated, redirect to login

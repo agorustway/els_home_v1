@@ -307,11 +307,11 @@ export default function NaverMapRouteSearch() {
                             <p>{mapLoadingStatus}</p>
                             {mapError && (
                                 <div style={{ fontSize: '0.8rem', marginTop: '10px', color: '#ff6b6b' }}>
-                                    <p>네이버 지도 로드 오류. NCP 콘솔에</p>
-                                    <p style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '2px 5px', borderRadius: '4px', margin: '5px 0' }}>
-                                        {typeof window !== 'undefined' ? window.location.origin : ''}
+                                    <p>지도 인증 오류가 발생했습니다.</p>
+                                    <p style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', margin: '8px 0', cursor: 'pointer', color: '#fff' }} onClick={() => window.location.href = 'https://nollae.com'}>
+                                        nollae.com 으로 이동 ➔
                                     </p>
-                                    <p>을(를) Web 서비스 URL로 등록했는지 확인해주세요.</p>
+                                    <p style={{ opacity: 0.6, fontSize: '0.7rem' }}>NCP Console URL: {typeof window !== 'undefined' ? window.location.origin : ''}</p>
                                 </div>
                             )}
                         </div>
