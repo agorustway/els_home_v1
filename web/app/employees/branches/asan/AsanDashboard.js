@@ -166,8 +166,13 @@ export default function AsanDashboard({ data, headers, viewType }) {
 
                     const wp = row[hWorkplace] || '미분류';
                     const ln = row[hLine] || '미분류';
-                    chartAggs['작업지'][wp] = (chartAggs['작업지'][wp] || 0) + weight;
-                    chartAggs['라인/선사'][ln] = (chartAggs['라인/선사'][ln] || 0) + weight;
+                    if (!chartAggs['작업지'][wp]) chartAggs['작업지'][wp] = { total: 0, breakdown: {} };
+                    chartAggs['작업지'][wp].total += weight;
+                    chartAggs['작업지'][wp].breakdown[wp] = (chartAggs['작업지'][wp].breakdown[wp] || 0) + weight;
+
+                    if (!chartAggs['라인/선사'][ln]) chartAggs['라인/선사'][ln] = { total: 0, breakdown: {} };
+                    chartAggs['라인/선사'][ln].total += weight;
+                    chartAggs['라인/선사'][ln].breakdown[ln] = (chartAggs['라인/선사'][ln].breakdown[ln] || 0) + weight;
                 }
             });
 
@@ -208,9 +213,16 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 const wp = rec.originalRow[hWorkplace] || '미분류';
                 const ln = rec.originalRow[hLine] || '미분류';
                 const comp = rec.__virtual_company || '미분류';
-                chartAggs['작업지'][wp] = (chartAggs['작업지'][wp] || 0) + rec.__virtual_count;
-                chartAggs['라인/선사'][ln] = (chartAggs['라인/선사'][ln] || 0) + rec.__virtual_count;
-                chartAggs['업체명'][comp] = (chartAggs['업체명'][comp] || 0) + rec.__virtual_count;
+
+                const _addAgg = (cat, key) => {
+                    if (!chartAggs[cat][key]) chartAggs[cat][key] = { total: 0, breakdown: {} };
+                    chartAggs[cat][key].total += rec.__virtual_count;
+                    chartAggs[cat][key].breakdown[comp] = (chartAggs[cat][key].breakdown[comp] || 0) + rec.__virtual_count;
+                };
+
+                _addAgg('작업지', wp);
+                _addAgg('라인/선사', ln);
+                _addAgg('업체명', comp);
             });
 
             const groupKeysInfo = dispatcherGroups.map(k => {
@@ -227,8 +239,14 @@ export default function AsanDashboard({ data, headers, viewType }) {
     const displayChartData = useMemo(() => {
         if (!pivotData || pivotData.root.total === 0) return [];
         const rawAggr = pivotData.chartAggs[chartMode] || {};
-        return Object.entries(rawAggr).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+        return Object.entries(rawAggr).map(([name, data]) => ({ name, total: data.total, breakdown: data.breakdown })).sort((a, b) => b.total - a.total);
     }, [pivotData, chartMode]);
+
+    const getHashColor = (str) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        return Math.abs(hash);
+    };
 
     if (!pivotData || pivotData.root.total === 0) return <div className={styles.empty}>데이터가 부족합니다.</div>;
 
@@ -332,7 +350,19 @@ export default function AsanDashboard({ data, headers, viewType }) {
                                         <span className={styles.bVal}>{item.total.toLocaleString()} <small>({pctOfTotal}%)</small></span>
                                     </div>
                                     <div className={styles.barTrack}>
-                                        <div className={styles.barFill} style={{ width: `${pctOfMax}%`, background: `hsl(${(idx * 50) % 360}, 60%, 55%)` }}></div>
+                                        {Object.entries(item.breakdown).sort((a, b) => b[1] - a[1]).map(([compName, compCount]) => {
+                                            const segmentPct = Math.max(0.5, (compCount / maxTotal) * 100);
+                                            const hue = viewMode === 'dispatcher' ? (getHashColor(compName) % 360) : ((idx * 50) % 360);
+                                            const titleStr = viewMode === 'dispatcher' ? `${compName} ${compCount.toLocaleString()}대 (${Math.round((compCount / item.total) * 100)}%)` : `${item.name} ${item.total.toLocaleString()}대`;
+                                            return (
+                                                <div
+                                                    key={compName}
+                                                    title={titleStr}
+                                                    className={styles.barFill}
+                                                    style={{ width: `${segmentPct}%`, background: `hsl(${hue}, 60%, 55%)` }}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );
