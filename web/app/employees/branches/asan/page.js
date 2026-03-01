@@ -107,7 +107,7 @@ function savePrefs(vt, p) {
 
 // ===== 컴포넌트 =====
 export default function AsanDispatchPage() {
-    const [viewType, setViewType] = useState('glovis');
+    const [viewType, setViewType] = useState('integrated');
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
@@ -143,7 +143,17 @@ export default function AsanDispatchPage() {
             const r = await fetch(`/api/branches/asan/dispatch?type=${type}`); const j = await r.json();
             const items = j.data || []; setData(items);
             const today = new Date().toISOString().split('T')[0];
-            const ti = items.findIndex(d => d.target_date === today);
+
+            // 1. 오늘 날짜 찾기
+            let ti = items.findIndex(d => d.target_date === today);
+
+            // 2. 오늘 데이터가 없으면(또는 아예 오늘 탭이 없으면) 미래의 데이터가 있는 첫 번째 탭 찾기
+            if (ti === -1 || (items[ti] && (!items[ti].data || items[ti].data.length === 0))) {
+                const nextDataIdx = items.findIndex(d => d.target_date >= today && d.data && d.data.length > 0);
+                if (nextDataIdx !== -1) ti = nextDataIdx;
+            }
+
+            // 3. 그래도 못찾으면 마지막 탭
             setActiveTab(ti >= 0 ? ti : items.length - 1);
         } catch { setData([]); } finally { setLoading(false); }
     };

@@ -412,8 +412,11 @@
     border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     min-width: 180px;
+    max-width: calc(100vw - 32px);
+    /* 화면을 넘어가지 않게 제한 */
     max-height: 350px;
     overflow-y: auto;
+    overflow-x: hidden;
     margin-top: 4px;
     padding: 8px 0;
 }

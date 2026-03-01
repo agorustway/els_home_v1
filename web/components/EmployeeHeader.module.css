@@ -249,38 +249,36 @@
         position: static;
         transform: none;
         width: auto;
-        justify-content: flex-end;
-        gap: 4px;
-        flex-wrap: wrap;
-        /* 좁은 화면에서 개행 허용 */
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        justify-content: center;
     }
 
     .greeting {
-        display: inline-block;
+        display: inline-flex;
+        align-items: baseline;
         font-size: 0.7rem;
-        /* Reduce slightly more */
         margin-right: 6px;
-        max-width: 151px;
-        /* Allow a bit more space but handle it */
+        max-width: 180px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         color: #64748b;
-        vertical-align: middle;
     }
 
     .greeting strong {
-        font-weight: 800;
-        font-size: 0.72rem;
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: #1e293b;
         display: inline;
-        /* Ensure child doesn't break parent ellipsis */
     }
 
     .titleText {
-        font-size: 0.7rem;
-        opacity: 0.8;
+        font-size: 0.65rem;
+        opacity: 0.7;
         display: inline;
-        /* Ensure child doesn't break parent ellipsis */
     }
 
     .roleBadge {
@@ -295,16 +293,18 @@
 
     .link,
     .linkBtn {
-        height: 34px;
-        padding: 0 8px;
-        font-size: 0.75rem;
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
+        height: 30px;
+        /* 더 컴팩트하게 */
+        padding: 0 10px;
+        font-size: 0.72rem;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
         border-radius: 6px;
         flex: none;
         max-width: none;
         min-height: auto;
         font-weight: 700;
+        color: #475569;
     }
 
     .link:last-child {
