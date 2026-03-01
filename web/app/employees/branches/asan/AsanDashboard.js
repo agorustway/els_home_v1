@@ -91,6 +91,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
     const [dispatcherGroups, setDispatcherGroups] = useState(['업체명', '작업지', '라인/선사']);
     const [selectedPath, setSelectedPath] = useState(null);
     const [forceExpand, setForceExpand] = useState(null);
+    const [chartMode, setChartMode] = useState('작업지'); // '작업지', '라인/선사', '업체명'
 
     // 드래그 앤 드롭 상태
     const dragItem = useRef();
@@ -103,6 +104,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
     const handleViewModeChange = (mode) => {
         setViewMode(mode);
         setSelectedPath(null);
+        setChartMode(mode === 'customer' ? '작업지' : '업체명');
     };
 
     const handleSort = () => {
@@ -146,6 +148,11 @@ export default function AsanDashboard({ data, headers, viewType }) {
         const hGubun = colMap['구분'];
         const hType = colMap['TYPE'];
 
+        // 막대 차트(버튼 전환용) 데이터 모음
+        const chartAggs = { '작업지': {}, '라인/선사': {}, '업체명': {} };
+        const hWorkplace = colMap['작업지'];
+        const hLine = colMap['라인/선사'];
+
         if (viewMode === 'customer') {
             data.forEach(row => {
                 const weight = ['glovis', 'integrated'].includes(viewType) ? (parseInt(row[hOrder]) || 0) : (parseInt(row[hQty]) || 0);
@@ -156,13 +163,17 @@ export default function AsanDashboard({ data, headers, viewType }) {
                     pieAggs.hwaju[hw] = (pieAggs.hwaju[hw] || 0) + weight;
                     pieAggs.gubun[gb] = (pieAggs.gubun[gb] || 0) + weight;
                     pieAggs.type[ty] = (pieAggs.type[ty] || 0) + weight;
+
+                    const wp = row[hWorkplace] || '미분류';
+                    const ln = row[hLine] || '미분류';
+                    chartAggs['작업지'][wp] = (chartAggs['작업지'][wp] || 0) + weight;
+                    chartAggs['라인/선사'][ln] = (chartAggs['라인/선사'][ln] || 0) + weight;
                 }
             });
 
             const groupKeysInfo = customerGroups.map(k => ({ name: k, idx: colMap[k] })).filter(x => x.idx >= 0);
             const root = buildPivot(data, groupKeysInfo, (row) => ['glovis', 'integrated'].includes(viewType) ? (parseInt(row[hOrder]) || 0) : (parseInt(row[hQty]) || 0));
-            const pData = Object.values(root.children).sort((a, b) => b.total - a.total);
-            return { root, chartData: pData, type: 'customer', headers, groups: currentGroups, pieAggs };
+            return { root, chartAggs, type: 'customer', headers, groups: currentGroups, pieAggs };
         } else {
             const dispatchRecords = [];
             data.forEach(row => {
@@ -193,6 +204,13 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 pieAggs.hwaju[hw] = (pieAggs.hwaju[hw] || 0) + rec.__virtual_count;
                 pieAggs.gubun[gb] = (pieAggs.gubun[gb] || 0) + rec.__virtual_count;
                 pieAggs.type[ty] = (pieAggs.type[ty] || 0) + rec.__virtual_count;
+
+                const wp = rec.originalRow[hWorkplace] || '미분류';
+                const ln = rec.originalRow[hLine] || '미분류';
+                const comp = rec.__virtual_company || '미분류';
+                chartAggs['작업지'][wp] = (chartAggs['작업지'][wp] || 0) + rec.__virtual_count;
+                chartAggs['라인/선사'][ln] = (chartAggs['라인/선사'][ln] || 0) + rec.__virtual_count;
+                chartAggs['업체명'][comp] = (chartAggs['업체명'][comp] || 0) + rec.__virtual_count;
             });
 
             const groupKeysInfo = dispatcherGroups.map(k => {
@@ -202,15 +220,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
 
             const root = buildPivot(dispatchRecords, groupKeysInfo, (row) => row.__virtual_count);
 
-            // 차트 데이터 (1레벨 기준이 아니라 업체명 수집)
-            const companyRoot = {};
-            dispatchRecords.forEach(r => {
-                if (!companyRoot[r.__virtual_company]) companyRoot[r.__virtual_company] = 0;
-                companyRoot[r.__virtual_company] += r.__virtual_count;
-            });
-            const chartData = Object.entries(companyRoot).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
-
-            return { root, chartData, type: 'dispatcher', headers, groups: currentGroups, pieAggs };
+            return { root, chartAggs, type: 'dispatcher', headers, groups: currentGroups, pieAggs };
         }
     }, [data, headers, viewType, viewMode, customerGroups, dispatcherGroups]);
 
@@ -218,28 +228,9 @@ export default function AsanDashboard({ data, headers, viewType }) {
 
     const displayChartData = useMemo(() => {
         if (!pivotData) return [];
-        if (!selectedPath || selectedPath.length === 0) {
-            // 선택된 게 없으면 최상위(1차) 항목들을 보여줌
-            return pivotData.chartData;
-        } else {
-            // 트리에서 선택된 노드 찾기
-            let curr = pivotData.root;
-            for (const p of selectedPath) {
-                if (curr.children && curr.children[p]) curr = curr.children[p];
-                else break;
-            }
-            if (!curr) return [];
-
-            // 선택된 노드의 하위(자식) 레벨을 보여줌
-            const childrenKeys = Object.keys(curr.children || {});
-            if (childrenKeys.length > 0) {
-                return Object.values(curr.children).sort((a, b) => b.total - a.total);
-            } else {
-                // 자식이 더 이상 없으면 본인 보여줌
-                return [curr];
-            }
-        }
-    }, [pivotData, selectedPath]);
+        const rawAggr = pivotData.chartAggs[chartMode] || {};
+        return Object.entries(rawAggr).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+    }, [pivotData, chartMode]);
 
     const renderFeatures = (features) => {
         const getCol = (...names) => {
@@ -320,19 +311,14 @@ export default function AsanDashboard({ data, headers, viewType }) {
             <div className={styles.dashContent}>
                 <div className={styles.chartPanel}>
                     <div className={styles.panelHeaderWrap}>
-                        <h3 className={styles.panelTitle}>
-                            {selectedPath ? (
-                                <>
-                                    <span style={{ color: '#0ea5e9', cursor: 'pointer', marginRight: 4 }} onClick={() => setSelectedPath(null)}>전체보기</span>
-                                    / {selectedPath[selectedPath.length - 1]} 하위 비중 분석
-                                </>
-                            ) : (
-                                viewMode === 'customer' ? '비중 차트 (전체 최상위 기준)' : '비중 차트 (전체 업체명 기준)'
-                            )}
-                        </h3>
-                        {selectedPath && (
-                            <button className={styles.clearBtn} onClick={() => setSelectedPath(null)}>초기화 ↺</button>
-                        )}
+                        <h3 className={styles.panelTitle}>비중 차트 ({chartMode} 기준)</h3>
+                        <div className={styles.chartTabs}>
+                            {(viewMode === 'customer' ? ['작업지', '라인/선사'] : ['업체명', '작업지', '라인/선사']).map(m => (
+                                <button key={m} className={`${styles.chartTabBtn} ${chartMode === m ? styles.chartTabBtnActive : ''}`} onClick={() => setChartMode(m)}>
+                                    {m}별
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <div className={styles.barChart}>
                         {displayChartData.map((item, idx, arr) => {
