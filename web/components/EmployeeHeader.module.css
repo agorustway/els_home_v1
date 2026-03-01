@@ -256,7 +256,28 @@
     }
 
     .greeting {
+        display: block;
+        font-size: 0.75rem;
+        margin-right: 4px;
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #64748b;
+    }
+
+    .greeting strong {
+        color: #1e293b;
+    }
+
+    .titleText {
+        font-size: 0.72rem;
+        opacity: 0.8;
+    }
+
+    .roleBadge {
         display: none;
+        /* Hide role on super narrow screens to save space */
     }
 
     .links {

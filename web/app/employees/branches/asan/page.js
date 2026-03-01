@@ -360,36 +360,46 @@ export default function AsanDispatchPage() {
     // ===== 렌더링 =====
     return (
         <div className={styles.container} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
-            {/* 헤더 */}
-            <header className={styles.header}>
-                <div className={styles.headerLeft}>
-                    <h1 className={styles.title}>아산지점 배차판</h1>
-                    {dateInfo && (
-                        <span className={`${styles.dateLabel} ${dateInfo.isRed ? styles.dateLabelRed : ''} ${isAllTab ? styles.dateLabelGreen : ''}`}>
-                            {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
-                        </span>
-                    )}
-                </div>
-                {(dateInfo?.fileModStr || elapsed || syncStatus) && (
-                    <div className={styles.fileMeta}>
-                        <span className={styles.fileMetaLabel}>엑셀 저장</span>
-                        <div className={styles.fileMetaRow}>
-                            {dateInfo?.fileModStr && <span className={styles.fileMetaTime}>{dateInfo.fileModStr}</span>}
-                            {elapsed && <span className={styles.fileMetaElapsed}>{elapsed}</span>}
-                            {syncStatus && (
-                                <span className={`${styles.syncToast} ${syncStatus.isError ? styles.syncToastError : ''}`}>
-                                    {syncStatus.isError ? '❌' : '✅'} {syncStatus.message}
-                                </span>
-                            )}
-                        </div>
+            {/* Premium Header Banner (Matching Weather Tone) */}
+            <div className={styles.pageHeaderBanner}>
+                <div className={styles.headerBannerLeft}>
+                    <h1 className={styles.mainTitle}>아산지점 배차판</h1>
+                    <p className={styles.bannerSubtitle}>실시간 배차 현황 및 운송 실무 관리 시스템</p>
+                    <div className={styles.headerDateBadgeWrap}>
+                        {dateInfo && (
+                            <span className={`${styles.headerDateBadge} ${dateInfo.isRed ? styles.headerDateBadgeRed : ''}`}>
+                                {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
+                            </span>
+                        )}
                     </div>
-                )}
-                <div className={styles.headerActions}>
-                    <button className={styles.downloadBtn} onClick={handleDownload} title="현재 뷰 엑셀 다운로드">📥 다운로드</button>
-                    <button className={styles.settingsBtn} onClick={() => setShowSettings(true)}>⚙️ 파일 설정</button>
-                    <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>{syncing ? '⏳ 동기화 중...' : '🔄 NAS 동기화'}</button>
                 </div>
-            </header>
+
+                <div className={styles.headerBannerRight}>
+                    <div className={styles.metaAndStatus}>
+                        {(dateInfo?.fileModStr || elapsed) && (
+                            <div className={styles.fileMetaCompact}>
+                                <span className={styles.fileMetaLabel}>엑셀 저장:</span>
+                                <span className={styles.fileMetaTime}>{dateInfo?.fileModStr}</span>
+                                {elapsed && <span className={styles.fileMetaElapsed}>{elapsed}</span>}
+                            </div>
+                        )}
+                        {syncStatus && (
+                            <div className={`${styles.syncToastBanner} ${syncStatus.isError ? styles.syncToastError : ''}`}>
+                                {syncStatus.isError ? '❌' : '✅'} {syncStatus.message}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={styles.bannerActionGroup}>
+                        <button className={styles.bannerActionBtn} onClick={handleDownload}>📥 엑셀</button>
+                        <button className={styles.bannerActionBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                        <button className={`${styles.bannerActionBtn} ${styles.syncBtnMain}`} onClick={handleSync} disabled={syncing}>
+                            {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
 
             {/* 상단 바: 뷰전환 + 검색 */}
             <div className={styles.topBar}>
@@ -413,7 +423,7 @@ export default function AsanDispatchPage() {
                 </div>
                 {mainView === 'grid' && (
                     <div className={styles.searchWrap}>
-                        <input className={styles.searchInput} placeholder="업체명 검색 (예: 선진, 대신)" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+                        <input className={styles.searchInput} placeholder="업체명 검색 (예: 이지, 대신)" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
                         {searchInput && <button className={styles.searchClear} onClick={() => { setSearchInput(''); setSearchTerm(''); }}>✕</button>}
                     </div>
                 )}
