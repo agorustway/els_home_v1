@@ -455,7 +455,7 @@ export default function AsanDispatchPage() {
             {loading ? (
                 <div className={styles.emptyState}>데이터 불러오는 중...</div>
             ) : !currentView ? (
-                <div className={styles.emptyState}>데이터가 없습니다. 상단 '🔄 NAS 동기화' 버튼을 누르세요.</div>
+                <div className={styles.emptyState}>데이터가 없습니다. 상단 &apos;🔄 NAS 동기화&apos; 버튼을 누르세요.</div>
             ) : mainView === 'dashboard' ? (
                 <AsanDashboard data={allData} headers={headers} viewType={viewType} />
             ) : (
