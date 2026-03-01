@@ -1,5 +1,8 @@
 import { createClient } from './supabase/client';
 
+let supabaseClient = null;
+let cachedSessionPromise = null;
+
 /**
  * Logs user activity to Supabase
  * @param {string} actionType - 'PAGE_VIEW', 'CLICK', 'DOWNLOAD', etc.
@@ -7,14 +10,25 @@ import { createClient } from './supabase/client';
  * @param {object} metadata - Additional info (button name, device info, etc.)
  */
 export function logActivity(actionType, path, metadata = {}) {
-    const supabase = createClient();
+    if (typeof window !== 'undefined' && !supabaseClient) {
+        supabaseClient = createClient();
+    } else if (typeof window === 'undefined') {
+        // 서버사이드일때는 매크번 새로 생성
+        supabaseClient = createClient();
+    }
 
-    // getSession()으로 빠르게 확인 후, 로그 삽입은 비동기(fire-and-forget) 처리해 페이지 전환을 막지 않음
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 서버 사이드거나 브라우저 캐시가 없을때
+    let sessionPromise = cachedSessionPromise;
+    if (!sessionPromise || typeof window === 'undefined') {
+        sessionPromise = supabaseClient.auth.getSession();
+        if (typeof window !== 'undefined') cachedSessionPromise = sessionPromise;
+    }
+
+    sessionPromise.then(({ data: { session } }) => {
         const user = session?.user;
         if (!user) return;
 
-        supabase.from('user_activity_logs').insert({
+        supabaseClient.from('user_activity_logs').insert({
             user_id: user.id,
             user_email: user.email,
             action_type: actionType,
@@ -24,7 +38,16 @@ export function logActivity(actionType, path, metadata = {}) {
                 userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Server',
             }
         }).then(({ error }) => {
-            if (error) console.error('Logging failed:', error);
-        }).catch((err) => console.error('Error during activity logging:', err));
-    }).catch((err) => console.error('Error getting session for activity log:', err));
+            if (error) {
+                // Ignore table not found errors quietly, complain otherwise
+                if (error.code !== 'PGRST205' && error.code !== '42P01') {
+                    console.error('[ActivityLogger] Logging failed:', error.message);
+                }
+            }
+        }).catch((err) => {
+            // Error connecting to DB for logs, ignore quietly
+        });
+    }).catch((err) => {
+        if (typeof window !== 'undefined') cachedSessionPromise = null;
+    });
 }
