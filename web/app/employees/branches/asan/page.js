@@ -360,45 +360,41 @@ export default function AsanDispatchPage() {
     // ===== 렌더링 =====
     return (
         <div className={styles.container} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
-            {/* Premium Header Banner (Matching Weather Tone) */}
-            <div className={styles.pageHeaderBanner}>
-                <div className={styles.headerBannerLeft}>
-                    <h1 className={styles.mainTitle}>아산지점 배차판</h1>
-                    <p className={styles.bannerSubtitle}>실시간 배차 현황 및 운송 실무 관리 시스템</p>
-                    <div className={styles.headerDateBadgeWrap}>
-                        {dateInfo && (
-                            <span className={`${styles.headerDateBadge} ${dateInfo.isRed ? styles.headerDateBadgeRed : ''}`}>
-                                {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
-                            </span>
-                        )}
-                    </div>
+            {/* 헤더 섹션: 기존 구조를 유지하되 톤앤매너를 위해 배경색 적용 */}
+            <header className={styles.compactHeader}>
+                <div className={styles.headerTitleArea}>
+                    <h1 className={styles.pageTitle}>아산지점 배차판</h1>
+                    {dateInfo && (
+                        <div className={`${styles.headerBadge} ${dateInfo.isRed ? styles.headerBadgeRed : ''}`}>
+                            {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
+                        </div>
+                    )}
                 </div>
 
-                <div className={styles.headerBannerRight}>
-                    <div className={styles.metaAndStatus}>
+                <div className={styles.headerStatusArea}>
+                    <div className={styles.statusInfo}>
                         {(dateInfo?.fileModStr || elapsed) && (
-                            <div className={styles.fileMetaCompact}>
-                                <span className={styles.fileMetaLabel}>엑셀 저장:</span>
-                                <span className={styles.fileMetaTime}>{dateInfo?.fileModStr}</span>
-                                {elapsed && <span className={styles.fileMetaElapsed}>{elapsed}</span>}
+                            <div className={styles.fileMod}>
+                                <span className={styles.label}>저장:</span>
+                                <span className={styles.time}>{dateInfo?.fileModStr}</span>
+                                {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
                             </div>
                         )}
                         {syncStatus && (
-                            <div className={`${styles.syncToastBanner} ${syncStatus.isError ? styles.syncToastError : ''}`}>
+                            <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
                                 {syncStatus.isError ? '❌' : '✅'} {syncStatus.message}
                             </div>
                         )}
                     </div>
-
-                    <div className={styles.bannerActionGroup}>
-                        <button className={styles.bannerActionBtn} onClick={handleDownload}>📥 엑셀</button>
-                        <button className={styles.bannerActionBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
-                        <button className={`${styles.bannerActionBtn} ${styles.syncBtnMain}`} onClick={handleSync} disabled={syncing}>
+                    <div className={styles.headerButtons}>
+                        <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>
+                        <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                        <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncing}>
                             {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
                         </button>
                     </div>
                 </div>
-            </div>
+            </header>
 
 
             {/* 상단 바: 뷰전환 + 검색 */}
