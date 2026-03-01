@@ -25,11 +25,10 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
-        # [NAS 최적화] 리소스 점유율 고려 (사용자 요청으로 3개로 상향)
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
         self.active_init_threads = 0 
-        # [실시간 로그용] 최근 300개의 로그를 시간과 함께 보관
         self.log_buffer = deque(maxlen=300)
+        self.consecutive_login_failures = 0 # 5회 계정 잠금 방지를 위해 3회 반복 실패 시 멈춤
 
     def add_log(self, msg):
         ts = time.strftime("%H:%M:%S")
@@ -47,6 +46,7 @@ class DriverPool:
                 try: d.quit()
                 except: pass
             self.drivers = []
+            self.consecutive_login_failures = 0
             self.log_buffer.clear()
             self.add_log("--- 드라이버 풀이 초기화되었습니다. ---")
 
@@ -113,6 +113,11 @@ def login():
     
     def _do_login(idx):
         try:
+            with pool.lock:
+                if pool.consecutive_login_failures >= 3:
+                    pool.add_log(f"❌ [보안경고] 연속 로그인 실패 3회 누적! 계정 잠금을 방지하기 위해 드라이버 #{idx+1} 초기화를 취소합니다.")
+                    return
+
             # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
             if idx > 0: time.sleep(idx * 60)
             
@@ -127,10 +132,13 @@ def login():
             if res[0]:
                 res[0].used_port = target_port 
                 with pool.lock:
+                    pool.consecutive_login_failures = 0
                     pool.add_driver(res[0])
                 pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
             else:
-                pool.add_log(f"❌ 브라우저 #{idx+1} 실패: {res[1]}")
+                with pool.lock:
+                    pool.consecutive_login_failures += 1
+                pool.add_log(f"❌ 브라우저 #{idx+1} 실패 ({pool.consecutive_login_failures}/3): {res[1]}")
         finally:
             with pool.lock:
                 pool.active_init_threads -= 1
@@ -181,10 +189,20 @@ def run():
 
     try:
         # 🎯 [전면 수정] 세션 유효성 체크를 전담 함수에 맡김
-        is_alive = is_session_valid(driver)
+        is_alive = False
+        try:
+            is_alive = is_session_valid(driver)
+        except: pass
 
         if not is_alive:
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
+            
+            with pool.lock:
+                if pool.consecutive_login_failures >= 3:
+                    pool.add_log("❌ [보안경고] 연속 로그인 3회 실패 상태이므로 재로그인 시도를 중지합니다.")
+                    pool.return_driver(driver) # 혹시 나중에 쓸 일이 없으니 안 돌려줘도 되지만 구조상 리턴
+                    return jsonify({"ok": False, "error": "로그인 3회 이상 실패로 계정 보호 모드 발동. 다시 로그인(시작)을 눌러주세요."})
+
             # 세션이 죽었으면 다시 로그인 (pool에 저장된 계정 정보 사용)
             u_id = pool.current_user["id"]
             u_pw = pool.current_user["pw"]
@@ -194,15 +212,24 @@ def run():
             try: driver.quit()
             except: pass
             
+            with pool.lock:
+                if driver in pool.drivers:
+                    pool.drivers.remove(driver)
+            
             # 원래 사용하던 포트 유지
             target_port = getattr(driver, 'used_port', 9222)
             res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
-                driver = res[0]
-                driver.used_port = target_port
+                with pool.lock:
+                    pool.consecutive_login_failures = 0
+                    driver = res[0]
+                    driver.used_port = target_port
+                    pool.drivers.append(driver)
                 pool.add_log(f"--- [세션 복구 성공] {cn} 조회를 계속합니다. ---")
             else:
-                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패: {res[1]}"})
+                with pool.lock:
+                    pool.consecutive_login_failures += 1
+                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
 
         # [초가속] 사이트 차단 방지 지연 시간을 0.2 ~ 0.5초로 추가 단축하여 성능 극대화 (사용자 요청)
         time.sleep(random.uniform(0.2, 0.5))
@@ -320,9 +347,88 @@ def get_screenshot():
 def get_logs():
     return jsonify({"ok": True, "log": list(pool.log_buffer)})
 
+def session_keeper():
+    """백그라운드에서 58분 갱신 및 세션 만료를 지속 모니터링하여 복구하는 스레드"""
+    while True:
+        time.sleep(60) # 1분마다 순회
+        with pool.lock:
+            # 설정된 유저정보가 없고 드라이버가 없으면 패스
+            if not pool.current_user or not pool.current_user.get("id"):
+                continue
+            if pool.consecutive_login_failures >= 3:
+                continue
+
+        q_size = pool.available_queue.qsize()
+        for _ in range(q_size):
+            try:
+                driver = pool.available_queue.get_nowait()
+            except Empty:
+                break
+                
+            needs_refresh = False
+            reason = ""
+            try:
+                login_time = getattr(driver, 'login_time', 0)
+                elapsed = time.time() - login_time
+                if elapsed >= 3420: # 57분에 선제 갱신 시도 (사용자 요청: 58분. 여유있게 57분)
+                    needs_refresh = True
+                    reason = f"57분 경과({int(elapsed)}s) 등 선제적 갱신"
+                elif not is_session_valid(driver):
+                    needs_refresh = True
+                    reason = "세션 만료 감지"
+            except Exception as e:
+                needs_refresh = True
+                reason = "세션 유효성 검사 중 에러"
+
+            if needs_refresh:
+                pool.add_log(f"--- [백그라운드 세션관리] {reason} 사유로 재로그인을 시도합니다. ---")
+                
+                with pool.lock:
+                    if pool.consecutive_login_failures >= 3:
+                        pool.add_log("❌ [백그라운드 세션관리] 연속 로그인 3회 실패 상태. 복구 시도 취소.")
+                        try: driver.quit()
+                        except: pass
+                        if driver in pool.drivers:
+                            pool.drivers.remove(driver)
+                        continue
+
+                u_id = pool.current_user["id"]
+                u_pw = pool.current_user["pw"]
+                show_browser = pool.current_user["show_browser"]
+                target_port = getattr(driver, 'used_port', 9222)
+                
+                try: driver.quit()
+                except: pass
+                
+                with pool.lock:
+                    if driver in pool.drivers:
+                        pool.drivers.remove(driver)
+                        
+                res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
+                if res[0]:
+                    with pool.lock:
+                        pool.consecutive_login_failures = 0
+                        new_driver = res[0]
+                        new_driver.used_port = target_port
+                        pool.drivers.append(new_driver)
+                        pool.available_queue.put(new_driver)
+                    pool.add_log(f"--- [백그라운드 세션관리] 복구 성공! (포트: {target_port}) ---")
+                else:
+                    with pool.lock:
+                        pool.consecutive_login_failures += 1
+                    pool.add_log(f"❌ [백그라운드 세션관리] 복구 실패({pool.consecutive_login_failures}/3): {res[1]}")
+            else:
+                # 정상적인 드라이버면 다시 큐에 넣음
+                pool.available_queue.put(driver)
+
 if __name__ == '__main__':
     print("========================================")
     print("   ELS NAS STABLE DAEMON STARTED")
     print("   SESSION AUTO-RECOVERY ENABLED")
     print("========================================")
+    
+    # 세션 관리기 백그라운드 스레드 시작
+    keeper = threading.Thread(target=session_keeper, daemon=True)
+    keeper.start()
+    
     app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)
