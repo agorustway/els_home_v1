@@ -94,6 +94,7 @@ export const SIDEBAR_ITEMS = {
     admin: [
         { label: '권한관리', path: '/admin/users' },
         { label: '고객 문의 관리', path: '/admin' },
+        { label: '활동 로그 관리', path: '/admin/logs' },
     ],
 };
 

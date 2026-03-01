@@ -96,7 +96,7 @@ const navLinks = [
                     { href: '/employees/branches/yesan', label: '예산지점', isSubItem: true },
                 ]
             },
-            { type: 'divider' },
+            { type: 'divider', isAdmin: true },
             { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
             { href: '/admin', label: '고객 문의 관리', isAdmin: true },
             { href: '/admin/logs', label: '활동 로그 관리', isAdmin: true },
