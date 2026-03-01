@@ -224,13 +224,13 @@ export default function AsanDashboard({ data, headers, viewType }) {
         }
     }, [data, headers, viewType, viewMode, customerGroups, dispatcherGroups]);
 
-    if (!pivotData || pivotData.root.total === 0) return <div className={styles.empty}>데이터가 부족합니다.</div>;
-
     const displayChartData = useMemo(() => {
-        if (!pivotData) return [];
+        if (!pivotData || pivotData.root.total === 0) return [];
         const rawAggr = pivotData.chartAggs[chartMode] || {};
         return Object.entries(rawAggr).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
     }, [pivotData, chartMode]);
+
+    if (!pivotData || pivotData.root.total === 0) return <div className={styles.empty}>데이터가 부족합니다.</div>;
 
     const renderFeatures = (features) => {
         const getCol = (...names) => {
