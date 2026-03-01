@@ -99,10 +99,14 @@ export async function GET(request) {
         ws.columns.forEach(col => {
             let maxLen = 6;
             col.eachCell({ includeEmpty: false }, cell => {
-                const len = cell.value ? String(cell.value).length : 0;
-                if (len > maxLen) maxLen = Math.min(len, 30);
+                const val = cell.value ? String(cell.value) : '';
+                let len = 0;
+                for (let i = 0; i < val.length; i++) {
+                    len += val.charCodeAt(i) > 127 ? 2.1 : 1.1;
+                }
+                if (len > maxLen) maxLen = len;
             });
-            col.width = maxLen + 2;
+            col.width = Math.min(Math.ceil(maxLen) + 2, 80);
         });
     });
 
