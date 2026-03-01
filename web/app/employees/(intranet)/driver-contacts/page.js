@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ExcelButtonGroup from '@/components/ExcelButtonGroup';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../intranet.module.css';
 
@@ -34,8 +35,9 @@ export default function DriverContactsPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>운전원정보</h1>
             </div>
-            <div className={styles.controls}>
-                <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>등록</Link>
+            <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
+                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>
