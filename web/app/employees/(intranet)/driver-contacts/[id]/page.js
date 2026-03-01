@@ -59,6 +59,10 @@ export default function DriverContactsDetailPage() {
                             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>{item.name}</div>
                         </div>
                         <div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>소속지점</label>
+                            <div style={{ fontSize: '1.2rem', color: '#10b981', fontWeight: 600 }}>{item.branch || '-'}</div>
+                        </div>
+                        <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>연락처</label>
                             <div style={{ fontSize: '1.2rem', color: '#2563eb', fontWeight: 600 }}>{item.phone || '-'}</div>
                         </div>

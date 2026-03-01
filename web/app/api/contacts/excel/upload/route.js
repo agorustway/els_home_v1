@@ -114,11 +114,12 @@ export async function POST(request) {
         // 4. 운전원정보 (운전원명 2번 col 필수)
         await processSheet('운전원정보', 'driver_contacts', 2, (row) => ({
             name: getVal(row, 2),
-            business_number: getVal(row, 3),
-            driver_id: getVal(row, 4),
-            phone: getVal(row, 5),
-            vehicle_type: getVal(row, 6),
-            chassis_type: getVal(row, 7)
+            branch: getVal(row, 3),
+            business_number: getVal(row, 4),
+            driver_id: getVal(row, 5),
+            phone: getVal(row, 6),
+            vehicle_type: getVal(row, 7),
+            chassis_type: getVal(row, 8)
         }));
 
         // 5. 작업지안내 (주소 2번 col 필수)

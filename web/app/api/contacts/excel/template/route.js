@@ -110,10 +110,11 @@ export async function GET(request) {
     ], partnerData);
 
     // 4. 운전원정보
-    const { data: driverData } = await supabase.from('driver_contacts').select('id, name, business_number, driver_id, phone, vehicle_type, chassis_type').order('created_at', { ascending: true });
+    const { data: driverData } = await supabase.from('driver_contacts').select('id, name, branch, business_number, driver_id, phone, vehicle_type, chassis_type').order('created_at', { ascending: true });
     setupSheet('운전원정보', [
         { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
-        { header: '운전원명(필수)', key: 'name', width: 15 },
+        { header: '이름(필수)', key: 'name', width: 15 },
+        { header: '소속지점', key: 'branch', width: 15 },
         { header: '영업넘버', key: 'business_number', width: 20 },
         { header: '아이디(E코드)', key: 'driver_id', width: 15 },
         { header: '연락처', key: 'phone', width: 20 },

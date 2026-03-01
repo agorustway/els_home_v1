@@ -296,30 +296,40 @@ function ContainerHistoryInner() {
         init();
     }, []);
 
-    const groupByContainer = (data) => {
-        const grouped = {};
+    const groupByContainer = (data, targets = []) => {
+        const tempGrouped = {};
         data.forEach(row => {
             const cn = row[0];
-            if (!grouped[cn]) grouped[cn] = [];
-            grouped[cn].push(row);
+            if (!tempGrouped[cn]) tempGrouped[cn] = [];
+            tempGrouped[cn].push(row);
         });
 
-        // 데이터 정렬 및 필터링
-        Object.keys(grouped).forEach(cn => {
-            // 백엔드에서 이미 유효성 검증(1~20번, 데이터 존재 여부)을 거쳤으므로
-            // 프론트엔드에서는 과도한 필터링을 제거하고 모든 데이터를 표시함
-
-            // 공란 제거 로직 삭제 -> 넘어온 데이터는 무조건 표시
-
-            // No 기준 오름차순 정렬 (1번이 맨 위)
-            grouped[cn].sort((a, b) => {
+        // No 기준 데이터 오름차순 정렬
+        Object.keys(tempGrouped).forEach(cn => {
+            tempGrouped[cn].sort((a, b) => {
                 const noA = Number(a[1]) || 0;
                 const noB = Number(b[1]) || 0;
                 return noA - noB;
             });
         });
 
-        return grouped;
+        // 사용자가 입력한 컨테이너 번호(targets) 순서에 맞춰서 객체 Key 순서 보장
+        if (targets && targets.length > 0) {
+            const finalGrouped = {};
+            targets.forEach(cn => {
+                if (tempGrouped[cn]) {
+                    finalGrouped[cn] = tempGrouped[cn];
+                    delete tempGrouped[cn];
+                }
+            });
+            // 요청 목록에 없는데 내려온 남은 항목들도 맨 뒤에 붙임
+            Object.keys(tempGrouped).forEach(cn => {
+                finalGrouped[cn] = tempGrouped[cn];
+            });
+            return finalGrouped;
+        }
+
+        return tempGrouped;
     };
 
     const executeSearch = async (targets, id, pw) => {
@@ -380,7 +390,7 @@ function ContainerHistoryInner() {
                             setResult(prev => {
                                 const prevRows = prev ? Object.values(prev).flat() : [];
                                 const newRows = [...prevRows, ...part.result];
-                                return groupByContainer(newRows);
+                                return groupByContainer(newRows, targets);
                             });
                         }
                     } catch (e) { console.error('Partial Parse Error', e); }
@@ -389,7 +399,7 @@ function ContainerHistoryInner() {
                     try {
                         const data = JSON.parse(line.substring(7));
                         if (data.ok) {
-                            const newResult = groupByContainer(data.result || []);
+                            const newResult = groupByContainer(data.result || [], targets);
                             setResult(newResult);
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);

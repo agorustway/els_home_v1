@@ -12,6 +12,7 @@ export default function DriverContactsNewPage() {
 
     const [formData, setFormData] = useState({
         business_number: '',
+        branch: '',
         name: '',
         phone: '',
         driver_id: '',
@@ -125,6 +126,10 @@ export default function DriverContactsNewPage() {
                         <div className={styles.formGroup}>
                             <label className={styles.label}>이름 *</label>
                             <input name="name" className={styles.input} value={formData.name} onChange={handleInputChange} placeholder="운전원 이름" required />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>소속지점</label>
+                            <input name="branch" className={styles.input} value={formData.branch} onChange={handleInputChange} placeholder="예: 부산지점, 서울지점" />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>

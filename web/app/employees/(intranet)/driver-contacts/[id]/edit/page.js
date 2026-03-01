@@ -12,7 +12,7 @@ export default function DriverContactsEditPage() {
     const params = useParams();
 
     const [formData, setFormData] = useState({
-        business_number: '', name: '', phone: '', driver_id: '', vehicle_type: '', chassis_type: '', photo_url: ''
+        business_number: '', branch: '', name: '', phone: '', driver_id: '', vehicle_type: '', chassis_type: '', photo_url: ''
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -29,8 +29,8 @@ export default function DriverContactsEditPage() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.item) {
-                        const { business_number, name, phone, driver_id, vehicle_type, chassis_type, photo_url, additional_docs } = data.item;
-                        setFormData({ business_number, name, phone, driver_id, vehicle_type, chassis_type, photo_url });
+                        const { business_number, branch, name, phone, driver_id, vehicle_type, chassis_type, photo_url, additional_docs } = data.item;
+                        setFormData({ business_number, branch, name, phone, driver_id, vehicle_type, chassis_type, photo_url });
                         setAttachments(additional_docs || []);
                     }
                 })
@@ -100,6 +100,7 @@ export default function DriverContactsEditPage() {
                     </div>
                     <div className={styles.gridContainer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div className={styles.formGroup}><label className={styles.label}>이름 *</label><input name="name" className={styles.input} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>소속지점</label><input className={styles.input} value={formData.branch} onChange={(e) => setFormData({ ...formData, branch: e.target.value })} placeholder="예: 부산지점, 서울지점" /></div>
                         <div className={styles.formGroup}><label className={styles.label}>연락처</label><input name="phone" className={styles.input} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
                         <div className={styles.formGroup}><label className={styles.label}>영업넘버</label><input className={styles.input} value={formData.business_number} onChange={(e) => setFormData({ ...formData, business_number: e.target.value })} /></div>
                         <div className={styles.formGroup}><label className={styles.label}>아이디</label><input className={styles.input} value={formData.driver_id} onChange={(e) => setFormData({ ...formData, driver_id: e.target.value })} /></div>
