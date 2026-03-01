@@ -59,7 +59,7 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
 
     const isActive = (path) => pathname === path || pathname.startsWith(path + '/');
 
-    const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
+    const displayName = profile?.name || profile?.full_name || profile?.user_metadata?.name || profile?.email?.split('@')[0] || '사용자';
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     return (

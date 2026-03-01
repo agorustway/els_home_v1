@@ -12,7 +12,7 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
     const { profile, loading } = useUserProfile();
     const supabase = createClient();
 
-    const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
+    const displayName = profile?.name || profile?.full_name || profile?.user_metadata?.name || profile?.email?.split('@')[0] || '사용자';
     const rank = profile?.rank || '';
     const position = profile?.position || '';
     const roleLabel = profile ? getRoleLabel(profile.role) : '';

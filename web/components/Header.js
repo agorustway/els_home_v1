@@ -283,7 +283,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     const logoFilter = isDarkHeader ? 'none' : 'brightness(0) invert(1)';
     const shadow = (isDarkHeader && !isEmployees) ? '0 4px 20px rgba(0, 0, 0, 0.1)' : 'none';
 
-    const displayName = profile?.full_name || profile?.email?.split('@')[0] || '사용자';
+    const displayName = profile?.name || profile?.full_name || profile?.user_metadata?.name || profile?.email?.split('@')[0] || '사용자';
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
 
     const renderNavLinks = (isMobile = false) => {
