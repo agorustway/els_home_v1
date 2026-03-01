@@ -87,8 +87,8 @@ export default function AsanDashboard({ data, headers, viewType }) {
     const [viewMode, setViewMode] = useState('customer'); // 'customer' | 'dispatcher'
 
     // 사용자 지정 그룹핑 순서 상태
-    const [customerGroups, setCustomerGroups] = useState(['작업지', '라인/선사', 'TYPE']);
-    const [dispatcherGroups, setDispatcherGroups] = useState(['업체명', '작업지', '라인/선사', 'TYPE']);
+    const [customerGroups, setCustomerGroups] = useState(['작업지', '라인/선사']);
+    const [dispatcherGroups, setDispatcherGroups] = useState(['업체명', '작업지', '라인/선사']);
     const [selectedPath, setSelectedPath] = useState(null);
     const [forceExpand, setForceExpand] = useState(null);
 
@@ -140,10 +140,11 @@ export default function AsanDashboard({ data, headers, viewType }) {
         const dispatchRegions = ['배차예정', '기타/철송', '기타', '아산', '부산', '신항', '광양', '평택', '중부', '부곡', '인천']
             .map(r => ({ name: r, idx: findCol(headers, r) })).filter(x => x.idx >= 0);
 
-        // 파이 차트 데이터 (화주, 구분 전체 기준)
-        const pieAggs = { hwaju: {}, gubun: {} };
+        // 파이 차트 데이터 (화주, 구분, TYPE 전체 기준)
+        const pieAggs = { hwaju: {}, gubun: {}, type: {} };
         const hHwaju = colMap['화주'];
         const hGubun = colMap['구분'];
+        const hType = colMap['TYPE'];
 
         if (viewMode === 'customer') {
             data.forEach(row => {
@@ -151,8 +152,10 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 if (weight > 0) {
                     const hw = row[hHwaju] || '미분류';
                     const gb = row[hGubun] || '미분류';
+                    const ty = row[hType] || '미분류';
                     pieAggs.hwaju[hw] = (pieAggs.hwaju[hw] || 0) + weight;
                     pieAggs.gubun[gb] = (pieAggs.gubun[gb] || 0) + weight;
+                    pieAggs.type[ty] = (pieAggs.type[ty] || 0) + weight;
                 }
             });
 
@@ -186,8 +189,10 @@ export default function AsanDashboard({ data, headers, viewType }) {
             dispatchRecords.forEach(rec => {
                 const hw = rec.originalRow[hHwaju] || '미분류';
                 const gb = rec.originalRow[hGubun] || '미분류';
+                const ty = rec.originalRow[hType] || '미분류';
                 pieAggs.hwaju[hw] = (pieAggs.hwaju[hw] || 0) + rec.__virtual_count;
                 pieAggs.gubun[gb] = (pieAggs.gubun[gb] || 0) + rec.__virtual_count;
+                pieAggs.type[ty] = (pieAggs.type[ty] || 0) + rec.__virtual_count;
             });
 
             const groupKeysInfo = dispatcherGroups.map(k => {
@@ -305,10 +310,11 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 <div className={styles.dashTotal}>전체 총계: <b>{pivotData.root.total.toLocaleString()}</b></div>
             </div>
 
-            {/* 상단 점유율 원형 다이어그램 (화주, 구분) */}
+            {/* 상단 점유율 원형 다이어그램 (화주, 구분, TYPE) */}
             <div className={styles.pieModules}>
                 <PieChart data={pivotData.pieAggs.hwaju} title="화주 (고객사)" />
                 <PieChart data={pivotData.pieAggs.gubun} title="구분 (수출/수입 등)" />
+                <PieChart data={pivotData.pieAggs.type} title="TYPE (40FT/20FT 등)" />
             </div>
 
             <div className={styles.dashContent}>
