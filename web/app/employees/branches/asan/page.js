@@ -123,6 +123,7 @@ export default function AsanDispatchPage() {
     const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid'
     const [searchTerm, setSearchTerm] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
+    const [colorFilter, setColorFilter] = useState(null);
     const [filterDropdown, setFilterDropdown] = useState(null);
     const [tooltip, setTooltip] = useState(null);
     const [hiddenCols, setHiddenCols] = useState(new Set());
@@ -177,7 +178,7 @@ export default function AsanDispatchPage() {
     };
 
     // ===== Effects =====
-    useEffect(() => { fetchData(viewType); fetchSettings(); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); }, [viewType]);
+    useEffect(() => { fetchData(viewType); fetchSettings(); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setColorFilter(null); }, [viewType]);
     // 검색 디바운스 (300ms)
     useEffect(() => { const t = setTimeout(() => setSearchTerm(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
     useEffect(() => {
@@ -284,14 +285,31 @@ export default function AsanDispatchPage() {
 
     // 필터 적용된 행 (Set으로 검색 최적화)
     const displayRows = useMemo(() => {
-        let rows = allData.map((row, idx) => ({ row, idx }));
+        let rows = allData.map((row, idx) => {
+            let status = 'normal';
+            if (row.some(c => String(c || '').includes('?'))) {
+                status = 'warn';
+            } else {
+                const getVal = (name) => parseInt(row[findCol(headers, name)]) || 0;
+                let o = 0, d = 0;
+                if (viewType === 'glovis') { o = getVal('오더'); d = getVal('배차'); }
+                else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getVal('배차'); }
+                else { o = getVal('오더(계)') || getVal('수량'); d = getVal('배차'); }
+                if (o !== d) status = 'warn';
+            }
+            return { row, idx, status };
+        });
+
         if (searchResult.indices) {
             const idxSet = new Set(searchResult.indices);
             rows = rows.filter(r => idxSet.has(r.idx));
         }
         Object.entries(columnFilters).forEach(([col, val]) => { rows = rows.filter(r => r.row[parseInt(col)] === val); });
+
+        if (colorFilter) { rows = rows.filter(r => r.status === colorFilter); }
+
         return rows;
-    }, [allData, searchResult, columnFilters]);
+    }, [allData, headers, viewType, searchResult, columnFilters, colorFilter]);
 
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
@@ -480,6 +498,9 @@ export default function AsanDispatchPage() {
                                 {(hiddenCols.size > 0 || Object.keys(colWidths).length > 0) && (
                                     <button className={styles.resetBtnSm} onClick={resetPrefs}>↩️</button>
                                 )}
+                                <div className={styles.colorFilters}>
+                                    <button className={`${styles.colorFilterBtn} ${colorFilter === 'warn' ? styles.colorFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'warn' ? null : 'warn')}>🚨 특이사항(?/언매치)</button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -533,8 +554,8 @@ export default function AsanDispatchPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {limitedRows.map(({ row, idx: origIdx }, ri) => (
-                                        <tr key={origIdx} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
+                                    {limitedRows.map(({ row, idx: origIdx, status }, ri) => (
+                                        <tr key={origIdx} className={`${ri % 2 === 0 ? styles.evenRow : styles.oddRow} ${status === 'warn' ? styles.rowWarn : ''}`}>
                                             {visibleCols.map(ci => {
                                                 const ck = `${origIdx}:${ci}`;
                                                 const hc = !!comments[ck];

@@ -240,6 +240,39 @@
     background: #fef2f2;
 }
 
+.colorFilters {
+    display: flex;
+    align-items: center;
+    margin-left: 8px;
+}
+
+.colorFilterBtn {
+    padding: 5px 10px;
+    border: 1px solid #fca5a5;
+    border-radius: 7px;
+    background: #fff5f5;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #dc2626;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.colorFilterBtn:hover {
+    background: #fee2e2;
+}
+
+.colorFilterBtnActive {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+}
+
+.colorFilterBtnActive:hover {
+    background: #dc2626;
+}
+
 .colPanel {
     position: absolute;
     top: 100%;
@@ -776,6 +809,14 @@
 
 .table tbody tr:hover {
     background: #eef2ff !important;
+}
+
+.table tbody tr.rowWarn {
+    background-color: #fee2e2 !important;
+}
+
+.table tbody tr.rowWarn:hover {
+    background-color: #fecaca !important;
 }
 
 .centerCell {
