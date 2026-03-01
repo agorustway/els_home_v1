@@ -166,13 +166,14 @@ export default function AsanDashboard({ data, headers, viewType }) {
 
                     const wp = row[hWorkplace] || '미분류';
                     const ln = row[hLine] || '미분류';
+
                     if (!chartAggs['작업지'][wp]) chartAggs['작업지'][wp] = { total: 0, breakdown: {} };
                     chartAggs['작업지'][wp].total += weight;
-                    chartAggs['작업지'][wp].breakdown[wp] = (chartAggs['작업지'][wp].breakdown[wp] || 0) + weight;
+                    chartAggs['작업지'][wp].breakdown[ln] = (chartAggs['작업지'][wp].breakdown[ln] || 0) + weight;
 
                     if (!chartAggs['라인/선사'][ln]) chartAggs['라인/선사'][ln] = { total: 0, breakdown: {} };
                     chartAggs['라인/선사'][ln].total += weight;
-                    chartAggs['라인/선사'][ln].breakdown[ln] = (chartAggs['라인/선사'][ln].breakdown[ln] || 0) + weight;
+                    chartAggs['라인/선사'][ln].breakdown[wp] = (chartAggs['라인/선사'][ln].breakdown[wp] || 0) + weight;
                 }
             });
 
@@ -214,15 +215,15 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 const ln = rec.originalRow[hLine] || '미분류';
                 const comp = rec.__virtual_company || '미분류';
 
-                const _addAgg = (cat, key) => {
+                const _addAgg = (cat, key, bdKey) => {
                     if (!chartAggs[cat][key]) chartAggs[cat][key] = { total: 0, breakdown: {} };
                     chartAggs[cat][key].total += rec.__virtual_count;
-                    chartAggs[cat][key].breakdown[comp] = (chartAggs[cat][key].breakdown[comp] || 0) + rec.__virtual_count;
+                    chartAggs[cat][key].breakdown[bdKey] = (chartAggs[cat][key].breakdown[bdKey] || 0) + rec.__virtual_count;
                 };
 
-                _addAgg('작업지', wp);
-                _addAgg('라인/선사', ln);
-                _addAgg('업체명', comp);
+                _addAgg('작업지', wp, comp);
+                _addAgg('라인/선사', ln, comp);
+                _addAgg('업체명', comp, wp);
             });
 
             const groupKeysInfo = dispatcherGroups.map(k => {
@@ -350,19 +351,27 @@ export default function AsanDashboard({ data, headers, viewType }) {
                                         <span className={styles.bVal}>{item.total.toLocaleString()} <small>({pctOfTotal}%)</small></span>
                                     </div>
                                     <div className={styles.barTrack}>
-                                        {Object.entries(item.breakdown).sort((a, b) => b[1] - a[1]).map(([compName, compCount]) => {
-                                            const segmentPct = Math.max(0.5, (compCount / maxTotal) * 100);
-                                            const hue = viewMode === 'dispatcher' ? (getHashColor(compName) % 360) : ((idx * 50) % 360);
-                                            const titleStr = viewMode === 'dispatcher' ? `${compName} ${compCount.toLocaleString()}대 (${Math.round((compCount / item.total) * 100)}%)` : `${item.name} ${item.total.toLocaleString()}대`;
+                                        {Object.entries(item.breakdown || {}).sort((a, b) => b[1] - a[1]).map(([bdName, bdCount], subIdx) => {
+                                            const segmentPct = Math.max(0.5, (bdCount / maxTotal) * 100);
+                                            const bdTotalPct = Math.round((bdCount / item.total) * 100);
+                                            const titleStr = `${bdName} ${bdCount.toLocaleString()}대 (${bdTotalPct}%)`;
+                                            const hue = getHashColor(bdName) % 360;
                                             return (
                                                 <div
-                                                    key={compName}
-                                                    title={titleStr}
+                                                    key={bdName}
                                                     className={styles.barFill}
+                                                    data-tooltip={titleStr}
                                                     style={{ width: `${segmentPct}%`, background: `hsl(${hue}, 60%, 55%)` }}
                                                 />
                                             );
                                         })}
+                                        {Object.keys(item.breakdown || {}).length === 0 && (
+                                            <div
+                                                className={styles.barFill}
+                                                data-tooltip={`${item.name} ${item.total.toLocaleString()}대`}
+                                                style={{ width: `${Math.max(0.5, (item.total / maxTotal) * 100)}%`, background: `hsl(${((idx * 50) % 360)}, 60%, 55%)` }}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             );
