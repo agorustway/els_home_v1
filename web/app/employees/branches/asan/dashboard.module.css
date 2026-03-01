@@ -126,6 +126,23 @@
     color: #fff;
 }
 
+.clearBtn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clearBtn:hover {
+    background-color: #e2e8f0;
+    color: #334155;
+}
+
 /* 막대 차트 */
 .barChart {
     display: flex;
@@ -214,12 +231,17 @@
 .treeHeader {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+}
+
+.treeIcon {
+    font-size: 1.1rem;
+    line-height: 1;
 }
 
 .expander {
-    font-size: 0.6rem;
     color: #94a3b8;
+    font-size: 0.75rem;
     width: 12px;
     text-align: center;
 }

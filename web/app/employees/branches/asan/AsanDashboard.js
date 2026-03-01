@@ -56,8 +56,7 @@ const TreeNode = ({ node, level, featuresRenderer, path, selectedPath, onSelect 
         <div className={styles.treeNode}>
             <div className={`${styles.treeRow} ${isSelected ? styles.treeRowSelected : ''}`} style={{ paddingLeft: `${level * 20}px` }} onClick={handleClick}>
                 <div className={styles.treeHeader}>
-                    {hasChildren && <span className={styles.expander}>{expanded ? '▼' : '▶'}</span>}
-                    {!hasChildren && <span className={styles.dot}>•</span>}
+                    <span className={styles.treeIcon}>{hasChildren ? (expanded ? '📂' : '📁') : '📄'}</span>
                     <span className={styles.nodeName}>{node.name}</span>
                 </div>
                 <div className={styles.treeTotal}>{node.total.toLocaleString()}</div>
@@ -299,12 +298,28 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 <div className={styles.dashTotal}>전체 총계: <b>{pivotData.root.total.toLocaleString()}</b></div>
             </div>
 
+            {/* 상단 점유율 원형 다이어그램 (화주, 구분) */}
+            <div className={styles.pieModules}>
+                <PieChart data={pivotData.pieAggs.hwaju} title="화주 (고객사)" />
+                <PieChart data={pivotData.pieAggs.gubun} title="구분 (수출/수입 등)" />
+            </div>
+
             <div className={styles.dashContent}>
                 <div className={styles.chartPanel}>
                     <div className={styles.panelHeaderWrap}>
                         <h3 className={styles.panelTitle}>
-                            {selectedPath ? `${selectedPath[selectedPath.length - 1]} 하위 비중 분석` : (viewMode === 'customer' ? '비중 차트 (1차 항목)' : '비중 차트 (업체명 기준)')}
+                            {selectedPath ? (
+                                <>
+                                    <span style={{ color: '#0ea5e9', cursor: 'pointer', marginRight: 4 }} onClick={() => setSelectedPath(null)}>전체보기</span>
+                                    / {selectedPath[selectedPath.length - 1]} 하위 비중 분석
+                                </>
+                            ) : (
+                                viewMode === 'customer' ? '비중 차트 (전체 최상위 기준)' : '비중 차트 (전체 업체명 기준)'
+                            )}
                         </h3>
+                        {selectedPath && (
+                            <button className={styles.clearBtn} onClick={() => setSelectedPath(null)}>초기화 ↺</button>
+                        )}
                     </div>
                     <div className={styles.barChart}>
                         {displayChartData.map((item, idx, arr) => {
@@ -354,12 +369,6 @@ export default function AsanDashboard({ data, headers, viewType }) {
                         ))}
                     </div>
                 </div>
-            </div>
-
-            {/* 하단 점유율 원형 다이어그램 (화주, 구분) */}
-            <div className={styles.pieModules}>
-                <PieChart data={pivotData.pieAggs.hwaju} title="화주 (고객사)" />
-                <PieChart data={pivotData.pieAggs.gubun} title="구분 (수출/수입 등)" />
             </div>
         </div>
     );
