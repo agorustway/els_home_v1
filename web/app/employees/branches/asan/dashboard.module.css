@@ -193,15 +193,22 @@
 .treeRow {
     display: flex;
     justify-content: space-between;
-    padding: 4px 8px;
+    padding: 6px 4px;
+    border-bottom: 1px dashed #e2e8f0;
     cursor: pointer;
-    border-radius: 6px;
-    transition: background 0.1s;
-    align-items: center;
+    font-size: 0.85rem;
+    transition: background 0.2s;
 }
 
 .treeRow:hover {
     background: #f8fafc;
+}
+
+.treeRowSelected {
+    background: #e0f2fe;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #0369a1;
 }
 
 .treeHeader {
@@ -264,10 +271,83 @@
 }
 
 .fName {
-    color: #64748b;
+    flex: 1;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .fVal {
     font-weight: 700;
-    color: #ea580c;
+    color: #334155;
+}
+
+/* Pie Charts */
+.pieModules {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.pieCard {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.pieTitle {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #334155;
+    margin: 0 0 16px;
+}
+
+.pieWrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.pieCircle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.pieLegend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+
+.pieLegendRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pieDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.pieLabel {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #475569;
+}
+
+.pieVal {
+    font-weight: bold;
+    color: #0f172a;
 }

@@ -386,9 +386,9 @@ export default function AsanDispatchPage() {
                     </div>
                     <div className={styles.viewDivider} />
                     <div className={styles.viewSwitch}>
-                        {['glovis', 'mobis', 'integrated'].map(t => (
+                        {['integrated', 'glovis', 'mobis'].map(t => (
                             <button key={t} className={`${styles.viewBtn} ${viewType === t ? styles.viewBtnActive : ''}`} onClick={() => setViewType(t)}>
-                                {t === 'glovis' ? '글로비스 KD 외' : t === 'mobis' ? '모비스 AS' : '통합배차판'}
+                                {t === 'integrated' ? '통합현황' : t === 'glovis' ? '글로비스 KD 외' : '모비스 AS'}
                             </button>
                         ))}
                     </div>
