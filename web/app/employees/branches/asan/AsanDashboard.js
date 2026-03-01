@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import styles from './dashboard.module.css';
 
 // 헬퍼: 테이블 헤더에서 특정 열 인덱스 찾기
@@ -40,8 +40,14 @@ function buildPivot(data, groupKeysInfo, valueExtractor) {
     return root;
 }
 
-const TreeNode = ({ node, level, featuresRenderer, path, selectedPath, onSelect }) => {
-    const [expanded, setExpanded] = useState(level < 1);
+const TreeNode = ({ node, level, featuresRenderer, path, selectedPath, onSelect, forceExpand }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    useEffect(() => {
+        if (forceExpand) {
+            setExpanded(forceExpand.targetState);
+        }
+    }, [forceExpand]);
     const hasChildren = Object.keys(node.children).length > 0;
 
     const currentPath = [...path, node.name];
@@ -64,7 +70,7 @@ const TreeNode = ({ node, level, featuresRenderer, path, selectedPath, onSelect 
             {expanded && hasChildren && (
                 <div className={styles.treeChildren}>
                     {Object.values(node.children).sort((a, b) => b.total - a.total).map(child => (
-                        <TreeNode key={child.name} node={child} level={level + 1} featuresRenderer={featuresRenderer} path={currentPath} selectedPath={selectedPath} onSelect={onSelect} />
+                        <TreeNode key={child.name} node={child} level={level + 1} featuresRenderer={featuresRenderer} path={currentPath} selectedPath={selectedPath} onSelect={onSelect} forceExpand={forceExpand} />
                     ))}
                 </div>
             )}
@@ -84,6 +90,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
     const [customerGroups, setCustomerGroups] = useState(['작업지', '라인/선사', 'TYPE']);
     const [dispatcherGroups, setDispatcherGroups] = useState(['업체명', '작업지', '라인/선사', 'TYPE']);
     const [selectedPath, setSelectedPath] = useState(null);
+    const [forceExpand, setForceExpand] = useState(null);
 
     // 드래그 앤 드롭 상태
     const dragItem = useRef();
@@ -360,12 +367,18 @@ export default function AsanDashboard({ data, headers, viewType }) {
                     </div>
 
                     <div className={styles.treeHeader}>
-                        <span className={styles.thName}>항목 분류계층 ({currentGroups.join(' ▶ ')})</span>
+                        <div className={styles.thNameGroup}>
+                            <span className={styles.thName}>항목 분류계층 ({currentGroups.join(' ▶ ')})</span>
+                            <div className={styles.expandActions}>
+                                <button className={styles.expandBtn} onClick={() => setForceExpand({ targetState: true, ts: Date.now() })}>전체열기 📂</button>
+                                <button className={styles.expandBtn} onClick={() => setForceExpand({ targetState: false, ts: Date.now() })}>전체닫기 📁</button>
+                            </div>
+                        </div>
                         <span className={styles.thVal}>총 합산수량</span>
                     </div>
                     <div className={styles.treeBody}>
                         {Object.values(pivotData.root.children).sort((a, b) => b.total - a.total).map(child => (
-                            <TreeNode key={child.name} node={child} level={0} featuresRenderer={renderFeatures} path={[]} selectedPath={selectedPath} onSelect={setSelectedPath} />
+                            <TreeNode key={child.name} node={child} level={0} featuresRenderer={renderFeatures} path={[]} selectedPath={selectedPath} onSelect={setSelectedPath} forceExpand={forceExpand} />
                         ))}
                     </div>
                 </div>
