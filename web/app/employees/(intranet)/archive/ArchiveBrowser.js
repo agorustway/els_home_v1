@@ -551,12 +551,10 @@ export default function ArchiveBrowser() {
                                         }
                                         if (selectionMode) toggleSelect(file.path);
                                         else if (file.type === 'directory') handleNavigate(file.name);
-                                        else if (isImage(file.name)) {
-                                            // Images: open preview in new tab
-                                            window.open(`/api/nas/preview?path=${encodeURIComponent(file.path)}`);
-                                        } else {
-                                            // Other files: background streaming download
-                                            handleDownloadFile(file);
+                                        else {
+                                            // 일반 클릭 시 다운로드/미리보기 대신 파일 선택 상태로 전환
+                                            setSelectionMode(true);
+                                            setSelectedPaths(new Set([file.path]));
                                         }
                                     }}>
                                         <span className={styles.icon}>{file.type === 'directory' ? '📁' : '📄'}</span>
@@ -602,12 +600,10 @@ export default function ArchiveBrowser() {
                                     }
                                     if (selectionMode) toggleSelect(file.path);
                                     else if (file.type === 'directory') handleNavigate(file.name);
-                                    else if (isImage(file.name)) {
-                                        // Images: open preview in new tab
-                                        window.open(`/api/nas/preview?path=${encodeURIComponent(file.path)}`);
-                                    } else {
-                                        // Other files: background streaming download
-                                        handleDownloadFile(file);
+                                    else {
+                                        // 일반 클릭 시 다운로드/미리보기 대신 파일 선택 상태로 전환
+                                        setSelectionMode(true);
+                                        setSelectedPaths(new Set([file.path]));
                                     }
                                 }}
                             >
