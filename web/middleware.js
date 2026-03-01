@@ -58,11 +58,12 @@ export async function middleware(request) {
         }
 
         // 2. 방문객(visitor) 권한 제한: 임직원 홈, 마이페이지 외 접근 차단
+        // (현재 /employees 가 /employees/weather 로 자동 이동하므로 weather도 허용하거나, 아예 홈으로 이동)
         const isVisitorAllowedPath = path === '/employees' || path === '/employees/' || path.startsWith('/employees/mypage');
 
         if (userRole === 'visitor' && !isVisitorAllowedPath) {
             const url = request.nextUrl.clone()
-            url.pathname = '/employees'
+            url.pathname = '/' // 무한 리다이렉트를 막기 위해 방문자는 홈페이지(루트)로 돌려보냄
             url.searchParams.set('error', '방문객 권한으로는 접근할 수 없는 메뉴입니다. 관리자 승인이 필요합니다.')
             return NextResponse.redirect(url)
         }

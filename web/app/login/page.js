@@ -16,21 +16,8 @@ function LoginForm() {
     useEffect(() => {
         const ua = navigator.userAgent.toLowerCase();
         // 네이버, 카카오, 인스타그램 등 인앱 브라우저 여부 확인
-        const isNaver = ua.indexOf('naver') !== -1;
-        const isKakao = ua.indexOf('kakao') !== -1;
-        const isInstagram = ua.indexOf('instagram') !== -1;
         const isInApp = /kakao|instagram|line|naver|fbav|fb_iab|messenger/i.test(ua);
-
         setIsInAppBrowser(isInApp);
-
-        // 안드로이드 인앱 브라우저에서 크롬 자동 열기 시도
-        if (isInApp && ua.indexOf('android') !== -1) {
-            const url = window.location.href.replace(/https?:\/\//, '');
-            // 딜레이를 주어 페이지 로드 후 실행
-            setTimeout(() => {
-                window.location.href = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`;
-            }, 500);
-        }
     }, []);
 
     const copyToClipboard = () => {
