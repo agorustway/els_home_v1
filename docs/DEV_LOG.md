@@ -15,8 +15,31 @@
 # ║  - /ELS_FIX_REPORT.md                                          ║
 # ╚══════════════════════════════════════════════════════════════════╝
 #
-# 마지막 업데이트: 2026-02-25
-# 업데이트한 사람: Antigravity Agent (실시간 로그 및 성능 최적화)
+# 마지막 업데이트: 2026-03-01
+# 업데이트한 사람: Antigravity Agent (모바일 UI 최적화 및 PWA 스플래시 활성화)
+
+## 📅 2026-03-01: 모바일 UI 전면 최적화 및 PWA 스플래시 활성화
+
+### 핵심 성과
+- **EmployeeHeader 모바일 한 줄 리디자인**: 햄버거+이름(이름만)+내정보+로그아웃+문의 구성으로 44px 높이 1줄에 담백하게 정리. CSS `font-size: 0` 트릭으로 "님 안녕하세요?" 숨기고 이름만 표시.
+- **아산 배차판 기본 뷰 변경**: 글로비스 KD 외 → 통합현황이 기본값. 오늘 데이터 없으면 가장 가까운 미래 날짜로 자동 이동.
+- **컬럼 선택 패널 바텀시트**: 모바일에서 왼쪽으로 삐져나가던 메뉴를 `position: fixed; bottom: 0` 바텀시트로 전환. 슬라이드업 애니메이션+닫기 버튼 추가.
+- **PWA 스플래시 활성화**: 만들어져 있었으나 어디서도 import하지 않던 `SplashScreen.js`를 `layout.js`에 추가. PWA 앱 실행 시 `splash.jpg` 전체화면 1.5초 표시 후 페이드아웃.
+- **manifest.json 최적화**: 아이콘 사이즈(192/512) 분리, `any`/`maskable` 별도 선언, `background_color`를 splash 톤에 맞춤.
+- **로그인 자동 리다이렉트**: 권한 있는 사용자가 로그인된 상태로 접속 시 자동으로 날씨 페이지로 이동.
+- **네이버 지도 오류 메시지 개선**: 기술적 URL 대신 'nollae.com 으로 이동' 링크 표시.
+
+### 변경 파일
+- `web/components/EmployeeHeader.js` — 모바일용 축약 라벨 (`내정보`, `문의`)
+- `web/components/EmployeeHeader.module.css` — 모바일 1줄 헤더 + mobileOnly/desktopOnly 토글
+- `web/app/employees/branches/asan/page.js` — 기본 viewType 변경, 스마트 탭 선택, 컬럼 패널 닫기 버튼
+- `web/app/employees/branches/asan/dispatch.module.css` — 바텀시트 colPanel, 모바일 summaryBar 정돈
+- `web/app/layout.js` — SplashScreen 컴포넌트 추가
+- `web/public/manifest.json` — 아이콘 분리 및 배경색 최적화
+- `web/middleware.js` — 로그인 사용자 자동 리다이렉트
+- `web/components/Network.js`, `NaverMapRouteSearch.js` — 지도 오류 메시지 개선
+
+---
 
 ## 📅 2026-02-27: NAS 극한 환경 안정화 (보강)
 - **세션 수 강제 하향**: 동시 브라우저 세션 수를 3개에서 2개로 물리적 강제 조정 (`els_web_runner_daemon.py`, `app.py`).

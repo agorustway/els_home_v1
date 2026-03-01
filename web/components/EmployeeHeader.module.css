@@ -196,125 +196,149 @@
     }
 }
 
+/* 반응형 텍스트 토글 */
+.mobileOnly {
+    display: none;
+}
+
+.desktopOnly {
+    display: inline;
+}
+
+@media (max-width: 768px) {
+    .mobileOnly {
+        display: inline;
+    }
+
+    .desktopOnly {
+        display: none;
+    }
+}
+
 @media (max-width: 768px) {
     .employeeHeader {
         position: sticky !important;
         top: 0 !important;
         z-index: 850;
-        height: 64px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        height: 44px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
         padding: 0;
-        display: flex;
-        align-items: center;
     }
 
     .inner {
-        padding: 0 12px;
-        height: 100%;
+        padding: 0 6px;
+        height: 44px;
         display: flex;
         flex-direction: row;
         align-items: center;
-        justify-content: space-between;
         gap: 0;
     }
 
-    .leftSection {
-        width: auto;
-        justify-content: flex-start;
-        gap: 8px;
+    /* brandGroup에서 로고, 검색 숨기기 - 햄버거만 남김 */
+    .brandGroup {
+        display: contents;
     }
 
-    .mobileMenuBtn {
-        display: flex;
-        padding: 6px;
-        background: #f1f5f9;
-        border-radius: 8px;
-        color: var(--primary-blue);
+    .leftSection {
+        display: contents;
     }
 
     .logo {
-        font-size: 1rem;
-        letter-spacing: -0.5px;
-        font-weight: 800;
+        display: none;
     }
 
     .logoSub {
         display: none;
     }
 
+    .searchWrap {
+        display: none;
+    }
+
+    .mobileMenuBtn {
+        display: flex;
+        padding: 6px;
+        background: none;
+        border-radius: 6px;
+        color: #475569;
+        flex-shrink: 0;
+    }
+
+    .mobileMenuBtn:active {
+        background: #f1f5f9;
+    }
+
+    /* userArea를 가로 1줄로 - 중앙 정렬 */
     .userArea {
         position: static;
         transform: none;
-        width: auto;
+        flex: 1;
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 2px;
+        flex-direction: row;
+        align-items: center;
         justify-content: center;
+        gap: 5px;
+        min-width: 0;
     }
 
+    /* 인사말: "님 안녕하세요?" 숨기고 이름만 표시 */
     .greeting {
-        display: inline-flex;
-        align-items: baseline;
-        font-size: 0.7rem;
-        margin-right: 6px;
-        max-width: 180px;
+        font-size: 0;
+        /* 기본 텍스트 숨김 */
+        color: transparent;
+        display: flex;
+        align-items: center;
+        margin: 0;
+        padding: 0 6px;
         overflow: hidden;
-        text-overflow: ellipsis;
         white-space: nowrap;
-        color: #64748b;
+        flex-shrink: 0;
     }
 
     .greeting strong {
+        font-size: 0.82rem;
         font-weight: 700;
-        font-size: 0.75rem;
         color: #1e293b;
-        display: inline;
+        letter-spacing: -0.02em;
     }
 
     .titleText {
-        font-size: 0.65rem;
-        opacity: 0.7;
-        display: inline;
+        display: none;
     }
 
     .roleBadge {
         display: none;
-        /* Hide role on super narrow screens to save space */
     }
 
+    /* 버튼들 */
     .links {
+        display: flex;
         gap: 4px;
-        width: auto;
+        flex-shrink: 0;
+        align-items: center;
     }
 
     .link,
     .linkBtn {
-        height: 30px;
-        /* 더 컴팩트하게 */
-        padding: 0 10px;
-        font-size: 0.72rem;
-        background: #f1f5f9;
+        height: 28px;
+        padding: 0 8px;
+        font-size: 0.7rem;
+        background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
         flex: none;
-        max-width: none;
-        min-height: auto;
-        font-weight: 700;
+        font-weight: 600;
         color: #475569;
+        white-space: nowrap;
     }
 
     .link:last-child {
-        background: var(--primary-blue);
+        background: #2563eb;
         color: #fff !important;
-        border-color: var(--primary-blue);
+        border-color: #2563eb;
+        font-weight: 700;
         padding: 0 10px;
-    }
-
-    .searchWrap {
-        display: none;
     }
 }

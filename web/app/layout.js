@@ -34,6 +34,7 @@ export const viewport = {
 import { Suspense } from 'react';
 import ActivityLogger from "@/components/ActivityLogger";
 import SiteLayout from "@/components/SiteLayout";
+import SplashScreen from "@/components/SplashScreen";
 
 export default function RootLayout({ children }) {
   return (
@@ -41,6 +42,7 @@ export default function RootLayout({ children }) {
       <body className={inter.className}>
         <Suspense fallback={null}>
           <ActivityLogger />
+          <SplashScreen />
         </Suspense>
         <SiteLayout>{children}</SiteLayout>
         <Script id="register-sw" strategy="afterInteractive">

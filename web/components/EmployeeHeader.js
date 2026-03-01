@@ -67,13 +67,16 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
                     )}
                     <div className={styles.links}>
                         <Link href="/employees/mypage" className={styles.link}>
-                            개인정보수정
+                            <span className={styles.desktopOnly}>개인정보수정</span>
+                            <span className={styles.mobileOnly}>내정보</span>
                         </Link>
                         <button type="button" onClick={handleLogout} className={styles.linkBtn}>
-                            로그아웃
+                            <span className={styles.desktopOnly}>로그아웃</span>
+                            <span className={styles.mobileOnly}>로그아웃</span>
                         </button>
                         <Link href="/contact" className={styles.link}>
-                            문의하기
+                            <span className={styles.desktopOnly}>문의하기</span>
+                            <span className={styles.mobileOnly}>문의</span>
                         </Link>
                     </div>
                 </div>

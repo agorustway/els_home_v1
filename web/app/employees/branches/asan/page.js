@@ -499,7 +499,10 @@ export default function AsanDispatchPage() {
                                     </button>
                                     {showColPanel && (
                                         <div className={styles.colPanel} onClick={e => e.stopPropagation()}>
-                                            <div className={styles.colPanelTitle}>컬럼 표시/숨기기</div>
+                                            <div className={styles.colPanelHeader}>
+                                                <span className={styles.colPanelTitle}>컬럼 표시/숨기기</span>
+                                                <button className={styles.colPanelClose} onClick={() => setShowColPanel(false)}>✕ 닫기</button>
+                                            </div>
                                             <div className={styles.colPanelList}>
                                                 {headers.map((h, i) => (
                                                     <label key={i} className={styles.colPanelItem}>
