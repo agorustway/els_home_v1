@@ -29,7 +29,7 @@ export default function SplashScreen() {
     if (!show) return null;
 
     return (
-        <div style={{
+        <div className="splash-container" style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -57,6 +57,12 @@ export default function SplashScreen() {
                 @keyframes customFadeOut {
                     from { opacity: 1; visibility: visible; }
                     to { opacity: 0; visibility: hidden; }
+                }
+                /* 데스크탑(1024px 이상)에서는 컴포넌트를 아예 보이지 않게 처리 */
+                @media (min-width: 1024px) {
+                    .splash-container {
+                        display: none !important;
+                    }
                 }
             `}} />
         </div>
