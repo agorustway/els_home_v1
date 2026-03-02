@@ -520,34 +520,38 @@
     }
 
     .headerBanner {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 12px;
-        gap: 10px;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        padding: 8px 10px;
+        gap: 6px;
         margin-bottom: 6px;
     }
 
     .title {
-        font-size: 1.25rem;
+        font-size: 1.05rem;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .controls {
-        width: 100%;
+        width: auto;
         justify-content: flex-end;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         margin-bottom: 0;
-        /* no margin when inside headerBanner */
-        gap: 8px;
+        gap: 4px;
     }
 
     .btnPrimary,
     .btnSecondary,
     .btnDelete {
-        height: 44px;
-        padding: 0 16px;
-        font-size: 0.9rem;
-        width: 100%;
-        /* Full width for easier touch */
+        height: 32px;
+        padding: 0 8px;
+        font-size: 0.75rem;
+        width: auto;
+        white-space: nowrap;
         justify-content: center;
         box-sizing: border-box;
     }

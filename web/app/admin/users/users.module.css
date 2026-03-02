@@ -88,6 +88,30 @@
 }
 
 @media (max-width: 768px) {
+    .compactHeader {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .pageTitle {
+        font-size: 1.05rem;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .btn {
+        height: 32px;
+        padding: 0 8px;
+        font-size: 0.75rem;
+        width: auto;
+        white-space: nowrap;
+    }
+
     .tableWrapper {
         display: none;
         /* Hide table on mobile */

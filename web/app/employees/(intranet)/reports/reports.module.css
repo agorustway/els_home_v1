@@ -253,10 +253,11 @@
 
 @media (max-width: 768px) {
     .headerBanner {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 12px;
-        gap: 12px;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        padding: 8px 10px;
+        gap: 6px;
     }
 
     .title {
@@ -276,10 +277,11 @@
 
 @media (max-width: 480px) {
     .headerBanner {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 12px;
-        gap: 10px;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        padding: 8px 10px;
+        gap: 6px;
     }
 
     .title {
@@ -287,23 +289,24 @@
     }
 
     .controls {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
+        width: auto;
+        justify-content: flex-end;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 4px;
         margin-bottom: 0px;
     }
 
     .btnPrimary,
     .btnSecondary,
     .btnDelete {
-        width: 100%;
-        text-align: center;
-        height: 48px;
-        /* Taller touch target */
-        display: flex;
-        align-items: center;
+        height: 32px;
+        padding: 0 8px;
+        font-size: 0.75rem;
+        width: auto;
+        white-space: nowrap;
         justify-content: center;
-        font-size: 1rem;
+        box-sizing: border-box;
     }
 
     .detailCard,
