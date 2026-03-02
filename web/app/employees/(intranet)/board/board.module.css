@@ -1,22 +1,24 @@
 .container {
-    padding: 0;
+    padding: 6px;
 }
 
 .headerBanner {
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-    color: #fff;
-    padding: 16px 24px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .title {
-    font-size: 1.4rem;
-    font-weight: 800;
+    font-size: 1.25rem;
+    font-weight: 900;
     margin: 0;
-    color: #fff;
-    letter-spacing: -0.02em;
+    color: #0f172a;
+    letter-spacing: -0.03em;
+    padding-left: 12px;
+    border-left: 3px solid #2563eb;
 }
 
 /* 3열 레이아웃 */
@@ -133,7 +135,7 @@
 
 @media (max-width: 768px) {
     .container {
-        padding: 12px 10px 20px;
+        padding: 6px;
     }
 
     .splitLayout {
@@ -159,13 +161,12 @@
 
     /* Remove container padding -> use card padding */
     .headerBanner {
-        padding: 14px 16px;
-        margin-bottom: 12px;
-        border-radius: 0;
+        padding: 8px 10px;
+        margin-bottom: 6px;
     }
 
     .title {
-        font-size: 1.3rem;
+        font-size: 1.1rem;
     }
 
     .card,

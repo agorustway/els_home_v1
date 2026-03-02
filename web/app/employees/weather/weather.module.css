@@ -1,58 +1,50 @@
-/* weather.module.css - Denser Dashboard Style (Korean) */
+/* weather.module.css - 디자인 시스템 통일 */
 
 .page {
     width: 100%;
-    /* max-width 제거하여 전체 너비 사용 (대시보드 스타일) */
-    padding: 0;
+    padding: 6px;
+    /* 인트라넷 기준: 초타이트 여백 */
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #1e293b;
 }
 
-/* Header Section (Blue Banner Style) */
+/* 페이지 헤더 (클린 스타일) */
 .headerBanner {
-    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-    color: #fff;
-    padding: 20px 24px;
-    border-radius: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: relative;
-    overflow: hidden;
 }
 
 .headerBanner::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 250px;
-    height: 250px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
-    border-radius: 50%;
-    pointer-events: none;
-    /* 클릭 이벤트 통과 */
+    display: none;
 }
 
 .headerText {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 12px;
 }
 
 .mainTitle {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #0f172a;
     margin: 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
+    padding-left: 12px;
+    border-left: 3px solid #2563eb;
 }
 
 .subTitle {
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.78rem;
+    color: #64748b;
     margin: 0;
     font-weight: 500;
 }
@@ -61,23 +53,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 8px 16px;
-    border-radius: 8px;
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.9rem;
+    background: #eff6ff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: #2563eb;
+    font-weight: 700;
+    font-size: 0.78rem;
     text-decoration: none;
-    backdrop-filter: blur(4px);
-    transition: all 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.15s;
+    border: 1px solid #bfdbfe;
     position: relative;
     z-index: 1;
-    /* ::after 장식 위에 표시 */
 }
 
 .kmaShortcut:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: #dbeafe;
     transform: translateY(-1px);
 }
 
@@ -588,32 +578,29 @@
 
 @media (max-width: 768px) {
     .page {
-        padding: 10px;
-        /* Reduced for narrow screens */
+        padding: 6px;
     }
 
-    /* Header Optimization */
+    /* Header - 모바일 */
     .headerBanner {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 16px;
-        /* Slightly tighter */
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
     }
 
     .mainTitle {
-        font-size: 1.4rem;
-        /* Adjusted for mobile */
+        font-size: 1.1rem;
     }
 
     .subTitle {
-        font-size: 0.85rem;
+        display: none;
     }
 
     .kmaShortcut {
-        width: 100%;
-        font-size: 0.85rem;
-        padding: 10px;
+        font-size: 0.72rem;
+        padding: 5px 8px;
+        white-space: nowrap;
     }
 
     .gridContainer {

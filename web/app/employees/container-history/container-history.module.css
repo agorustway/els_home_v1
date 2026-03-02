@@ -1,7 +1,7 @@
 .page {
     min-height: 100vh;
     background: #f1f5f9;
-    padding: 0.5rem;
+    padding: 6px;
 }
 
 .container {
@@ -10,49 +10,49 @@
     padding: 0;
 }
 
-/* 타 페이지와 통일된 블루 그라데이션 헤더 */
+/* 페이지 헤더 (클린 스타일) */
 .headerBanner {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-    color: #fff;
-    padding: 14px 24px;
-    border-radius: 12px;
-    margin-bottom: 0.5rem;
-    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .title {
     font-size: 1.25rem;
     font-weight: 900;
-    color: #fff;
+    color: #0f172a;
     margin: 0;
     letter-spacing: -0.03em;
+    padding-left: 12px;
+    border-left: 3px solid #2563eb;
 }
 
 .shortcutGroup {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     flex-shrink: 0;
 }
 
 .etransShortcut {
     display: flex;
     align-items: center;
-    padding: 6px 14px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    padding: 6px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    transition: all 0.15s;
     flex-shrink: 0;
 }
 
 .etransShortcut:hover {
-    background: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: #f1f5f9;
+    border-color: #cbd5e1;
 }
 
 .etransShortcut img {
@@ -63,10 +63,10 @@
 
 @media (max-width: 768px) {
     .headerBanner {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 16px;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
     }
 
     .title {
@@ -74,19 +74,15 @@
     }
 
     .shortcutGroup {
-        width: 100%;
-        justify-content: flex-start;
-        gap: 8px;
+        gap: 6px;
     }
 
     .etransShortcut {
-        flex: 1;
-        justify-content: center;
-        padding: 8px 12px;
+        padding: 5px 8px;
     }
 
     .etransShortcut img {
-        height: 16px;
+        height: 14px;
     }
 }
 

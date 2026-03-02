@@ -1,33 +1,36 @@
 .page {
-    padding: 0;
+    padding: 6px;
 }
 
 .headerBanner {
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-    color: #fff;
-    padding: 16px 24px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .title {
-    font-size: 1.4rem;
-    font-weight: 800;
+    font-size: 1.25rem;
+    font-weight: 900;
     margin: 0;
-    color: #fff;
+    color: #0f172a;
+    letter-spacing: -0.03em;
+    padding-left: 12px;
+    border-left: 3px solid #2563eb;
 }
 
 .subtitle {
-    font-size: 0.9rem;
-    opacity: 0.9;
+    font-size: 0.78rem;
+    color: #64748b;
     margin: 4px 0 0 0;
 }
 
 .updated {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin-top: 8px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 4px;
 }
 
 /* 3열 레이아웃 */
@@ -195,12 +198,12 @@
 
 @media (max-width: 768px) {
     .page {
-        padding: 0;
+        padding: 6px;
     }
 
     .headerBanner {
-        border-radius: 0;
-        margin-bottom: 0;
+        padding: 8px 10px;
+        margin-bottom: 6px;
     }
 
     .splitLayout {

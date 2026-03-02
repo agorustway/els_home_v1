@@ -1,10 +1,10 @@
 .page {
-  padding: 10px;
+  padding: 6px;
+  /* 인트라넷 기준: 초타이트 여백 */
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow: visible !important;
-  /* 🎯 하위 요소 가둠 방지 */
   position: relative;
   z-index: 1;
 }
@@ -19,26 +19,28 @@
 }
 
 .headerBanner {
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-  color: #fff;
-  padding: 6px 20px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .title {
   font-size: 1.25rem;
-  font-weight: 800;
-  color: #fff;
+  font-weight: 900;
+  color: #0f172a;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  padding-left: 12px;
+  border-left: 3px solid #2563eb;
 }
 
 .desc {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 4px 0 0 0;
   line-height: 1.5;
 }
 
@@ -1286,12 +1288,12 @@
 
 @media (max-width: 768px) {
   .page {
-    padding: 8px;
+    padding: 6px;
   }
 
   .headerBanner {
-    padding: 12px 16px;
-    margin-bottom: 12px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
   }
 
   .title {
