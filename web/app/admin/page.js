@@ -127,7 +127,7 @@ export default function AdminPage() {
         <div className={styles.adminPage}>
             <div className={styles.mainContent}>
                 <header className={styles.compactHeader}>
-                    <h1 className={styles.pageTitle}>관리자 통합 대시보드</h1>
+                    <h1 className={styles.pageTitle}>고객문의 관리</h1>
                 </header>
 
                 <div className={styles.fullWidthContainer}>

@@ -1,6 +1,69 @@
 /* Admin Users Page Styles */
-.usersPage {
-    padding: 20px;
+.adminContainer {
+    padding: 12px 14px 36px;
+    background: #fcfdfe;
+    min-height: calc(100vh - 70px);
+}
+
+.mainContent {
+    max-width: 1060px;
+    /* 1092px - padding */
+    margin: 0 auto;
+}
+
+/* 페이지 헤더 (클린 스타일) */
+.compactHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.pageTitle {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.03em;
+    padding-left: 12px;
+    border-left: 3px solid #2563eb;
+}
+
+/* 표준 버튼 통일 */
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    background: #f1f5f9;
+}
+
+.btnPoint {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+}
+
+.btnPoint:hover {
+    background: #dbeafe;
 }
 
 .cardList {
