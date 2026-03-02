@@ -106,8 +106,8 @@ git config --global core.quotepath false
 - 단순히 크기만 줄이는 반응형이 아니라, 디바이스에 최적화된 UX를 제공한다.
 - 모바일: 터치 위주 (Galaxy S24 = 360x780 기준), 데스크탑: 정보 밀도 위주.
 - **프리미엄 미감**: 기본 색상 금지, 조화로운 팔레트 사용.
-- **여백 최소화**: container padding 6px 기준.
-- **폰트/버튼/헤더 통일**: DESIGN_SYSTEM.md 체계 준수.
+- **여백 최소화**: container padding 6px, 테이블 셀 10~12px 등 데스크탑 고밀도 기준 (아산 배차판 기반).
+- **폰트/버튼/헤더 통일**: DESIGN_SYSTEM.md 체계 준수. (버튼 소형화 32px 등)
 
 ### 5-3. TDD (Test-Driven Development)
 - 새 기능 추가 시 테스트 코드를 먼저 작성하거나 동시에 작성한다.

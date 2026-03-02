@@ -70,6 +70,7 @@
 | **container padding** | `6px` | 인트라넷 전 페이지 기준 |
 | **컴포넌트 간 gap** | `6px ~ 8px` | 최소화 |
 | **카드 내부 padding** | `10px ~ 14px` | 내용 밀도에 따라 |
+| **테이블 셀 (th, td)** | `10px 12px` | (기존 14~16px에서 고밀도로 축소) |
 
 ---
 
@@ -101,9 +102,9 @@
 2. **제목은 반드시 1줄** → 넘치면 아래로 분리
 3. 제목 좌측에 `border-left: 3px solid #2563eb` 포인트 바
 
-### CSS 기준 (`.compactHeader`)
+### CSS 기준 (`.compactHeader` 및 `.headerBanner`)
 ```css
-.compactHeader {
+.headerBanner {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -114,6 +115,7 @@
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+/* 모바일 화면에서는 flex-direction: column 적용 */
 
 .pageTitle {
     font-size: 1.25rem;
@@ -154,6 +156,10 @@
     color: #475569;
     font-weight: 700;
     font-size: 0.78rem;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -245,16 +251,13 @@
 |--------|----------|-----------|
 | 아산 배차판 | `dispatch.module.css` | ✅ **기준** |
 | 아산 대시보드 | `dashboard.module.css` | 🔄 진행 중 |
-| 날씨 | `weather.module.css` | ⬜ 대기 |
-| 안전운임 | `safe-freight.module.css` | ⬜ 대기 |
-| 컨테이너 이력 | `container-history.module.css` | ⬜ 대기 |
-| 뉴스 | `news.module.css` | ⬜ 대기 |
-| 뉴스 기사 | `article.module.css` | ⬜ 대기 |
-| 게시판 | `board.module.css` | ⬜ 대기 |
-| 업무보고 | `reports.module.css` | ⬜ 대기 |
-| NAS 자료실 | `archive.module.css` | ⬜ 대기 |
+| 관리자 (권한/로그/대시보드) | `admin.module.css`, `users.module.css` | ✅ 완료 |
+| 게시판 | `board.module.css` | ✅ 완료 |
+| 업무보고 | `reports.module.css` | ✅ 완료 |
+| NAS 자료실 | `archive.module.css` | ✅ 완료 |
+| 사내/외부/운전원/협력사 연락처 | `intranet.module.css` | ✅ 완료 |
+| 템플릿/작업지안내 | `intranet.module.css` | ✅ 완료 |
 | 마이페이지 | `mypage.module.css` | ⬜ 대기 |
-| 사내정보 | `intranet.module.css` | ⬜ 대기 |
 | 랜덤게임 | `random-game.module.css` | ⬜ 대기 |
 | 웹진 | `webzine.module.css` | ⬜ 대기 |
 
