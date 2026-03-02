@@ -15,7 +15,7 @@
     min-width: 0;
     width: 100%;
     min-height: calc(100vh - 280px);
-    padding: 20px 20px 48px;
+    padding: 12px 14px 36px;
     background-color: #f8fafc;
 }
 
@@ -45,11 +45,11 @@
 
     /* 768px 이상에서만 적용되도록 min-width 추가하거나, 768px 룰이 덮어쓸 수 있게 주의 */
     .bodyWrap .mainContent {
-        padding: 16px 16px 32px;
+        padding: 10px 10px 24px;
     }
 
     .mainContent {
-        padding: 16px 20px 32px;
+        padding: 10px 14px 24px;
     }
 }
 
@@ -60,8 +60,8 @@
     }
 
     .bodyWrap .mainContent {
-        padding: 20px 12px 40px;
-        /* 상단 20px로 일관성 부여 */
+        padding: 8px 6px 28px;
+        /* 상단 타이트하게 */
         min-height: auto;
         overflow-x: hidden;
         background-color: #f8fbff;
@@ -75,7 +75,7 @@
     }
 
     .mainContent {
-        padding: 20px 12px 40px !important;
+        padding: 8px 6px 28px !important;
         max-width: 100%;
         width: 100%;
         box-sizing: border-box;
@@ -101,6 +101,6 @@
 
     .bodyWrap .mainContent,
     .mainContent {
-        padding: 20px 8px 40px !important;
+        padding: 6px 4px 24px !important;
     }
 }

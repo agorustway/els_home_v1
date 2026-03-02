@@ -116,6 +116,15 @@ export default function AsanDashboard({ data, headers, viewType }) {
         setCurrentGroups(_groups);
     };
 
+    // 모바일용: 화살표 버튼으로 순서 변경
+    const moveGroup = (index, direction) => {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= currentGroups.length) return;
+        const _groups = [...currentGroups];
+        [_groups[index], _groups[newIndex]] = [_groups[newIndex], _groups[index]];
+        setCurrentGroups(_groups);
+    };
+
     const pivotData = useMemo(() => {
         if (!data || data.length === 0 || !headers) return null;
 
@@ -383,15 +392,23 @@ export default function AsanDashboard({ data, headers, viewType }) {
                     <div className={styles.panelHeaderWrap}>
                         <h3 className={styles.panelTitle}>데이터 요약 (트리)</h3>
                         <div className={styles.dragGroupInfo}>
-                            <span className={styles.dragLabel}>순서 변경(드래그):</span>
+                            <span className={styles.dragLabel}>순서 변경:</span>
                             {currentGroups.map((g, index) => (
-                                <div key={g} draggable
-                                    onDragStart={(e) => (dragItem.current = index)}
-                                    onDragEnter={(e) => (dragOverItem.current = index)}
-                                    onDragEnd={handleSort}
-                                    onDragOver={(e) => e.preventDefault()}
-                                    className={styles.draggablePill}>
-                                    {g}
+                                <div key={g} className={styles.draggablePillWrap}>
+                                    {index > 0 && (
+                                        <button className={styles.moveBtn} onClick={() => moveGroup(index, -1)} title="왼쪽으로">◀</button>
+                                    )}
+                                    <div draggable
+                                        onDragStart={() => (dragItem.current = index)}
+                                        onDragEnter={() => (dragOverItem.current = index)}
+                                        onDragEnd={handleSort}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        className={styles.draggablePill}>
+                                        {g}
+                                    </div>
+                                    {index < currentGroups.length - 1 && (
+                                        <button className={styles.moveBtn} onClick={() => moveGroup(index, 1)} title="오른쪽으로">▶</button>
+                                    )}
                                 </div>
                             ))}
                         </div>

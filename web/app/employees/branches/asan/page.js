@@ -178,7 +178,12 @@ export default function AsanDispatchPage() {
         try { const r = await fetch(`/api/nas/files?path=${encodeURIComponent(path)}`); const j = await r.json(); if (j.files) setBrowserFiles(j.files); setBrowserPath(path); } catch { }
         finally { setBrowserLoading(false); }
     };
-    const openBrowser = async (target) => { setBrowseTarget(target); setShowSettings(false); await loadFolder(browserPath); setShowBrowser(true); };
+    const openBrowser = async (target) => {
+        setBrowseTarget(target);
+        await loadFolder(browserPath);
+        // 모달 전환을 한 번에 처리해서 깜빡임 방지
+        queueMicrotask(() => { setShowSettings(false); setShowBrowser(true); });
+    };
     const selectFile = (file) => {
         if (file.type === 'directory') loadFolder(file.path);
         else if (file.name.match(/\.xls[mx]$/i)) { setSettings(p => ({ ...p, [`${browseTarget}_path`]: file.path })); setShowBrowser(false); setShowSettings(true); }

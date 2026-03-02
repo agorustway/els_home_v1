@@ -32,6 +32,8 @@
     height: 250px;
     background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
     border-radius: 50%;
+    pointer-events: none;
+    /* 클릭 이벤트 통과 */
 }
 
 .headerText {
@@ -69,6 +71,9 @@
     backdrop-filter: blur(4px);
     transition: all 0.2s;
     border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    z-index: 1;
+    /* ::after 장식 위에 표시 */
 }
 
 .kmaShortcut:hover {

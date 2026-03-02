@@ -133,6 +133,33 @@
     color: #fff;
 }
 
+.draggablePillWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.moveBtn {
+    border: none;
+    background: none;
+    color: #94a3b8;
+    font-size: 0.6rem;
+    padding: 2px 3px;
+    cursor: pointer;
+    border-radius: 4px;
+    line-height: 1;
+    transition: all 0.15s;
+}
+
+.moveBtn:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.moveBtn:active {
+    background: #cbd5e1;
+}
+
 .chartTabs {
     display: flex;
     gap: 4px;
