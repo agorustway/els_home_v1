@@ -42,11 +42,11 @@ export default function InternalContactDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>사내연락망</h1>
-            </div>
             <div className={styles.controls}>
                 <Link href={'/employees/internal-contacts/' + id + '/edit'} className={styles.btnSecondary}>수정</Link>
                 <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
                 <Link href="/employees/internal-contacts" className={styles.btnSecondary}>목록</Link>
+            </div>
             </div>
             <div className={styles.card}>
                 <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>

@@ -14,9 +14,7 @@
 }
 
 .mainContent {
-    max-width: 1060px;
-    /* 1092px - padding */
-    margin: 0 auto;
+    width: 100%;
 }
 
 /* 페이지 헤더 (클린 스타일) */

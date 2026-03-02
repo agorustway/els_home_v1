@@ -41,11 +41,11 @@ export default function PartnerContactsDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보 · 상세</h1>
-            </div>
             <div className={styles.controls}>
                 <Link href={`/employees/partner-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
                 <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
                 <Link href="/employees/partner-contacts" className={styles.btnSecondary}>목록</Link>
+            </div>
             </div>
 
             <div className={styles.card}>

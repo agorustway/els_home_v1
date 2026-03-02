@@ -34,10 +34,10 @@ export default function PartnerContactsPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보</h1>
-            </div>
             <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
                 <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
                 <Link href="/employees/partner-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
+            </div>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>

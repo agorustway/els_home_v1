@@ -53,11 +53,11 @@ export default function WorkReportsPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>{pageTitle}</h1>
-            </div>
-            <div className={styles.controls}>
-                <Link href="/employees/reports/new" className={styles.btnPrimary}>
-                    보고서 작성
-                </Link>
+                <div className={styles.controls}>
+                    <Link href="/employees/reports/new" className={styles.btnPrimary}>
+                        보고서 작성
+                    </Link>
+                </div>
             </div>
 
             <div className={styles.detailCard}>

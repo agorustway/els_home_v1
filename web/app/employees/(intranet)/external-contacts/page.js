@@ -34,10 +34,10 @@ export default function ExternalContactsPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>외부연락처</h1>
-            </div>
-            <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
-                <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
+                <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
+                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                    <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
+                </div>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>

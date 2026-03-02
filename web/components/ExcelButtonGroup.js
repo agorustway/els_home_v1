@@ -44,19 +44,20 @@ export default function ExcelButtonGroup({ onUploadSuccess }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '40px',
-        padding: '0 16px',
-        borderRadius: '8px',
-        fontSize: '0.9rem',
-        fontWeight: 'bold',
+        height: '32px',
+        padding: '6px 12px',
+        borderRadius: '6px',
+        fontSize: '0.78rem',
+        fontWeight: '700',
         cursor: 'pointer',
         textDecoration: 'none',
         border: 'none',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        whiteSpace: 'nowrap'
     };
 
     return (
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             <a
                 href="/api/contacts/excel/template"
                 download

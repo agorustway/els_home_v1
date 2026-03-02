@@ -91,11 +91,11 @@ export default function WorkSiteDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>작업지확인</h1>
-            </div>
             <div className={styles.controls}>
                 <Link href={'/employees/work-sites/' + id + '/edit'} className={styles.btnSecondary}>수정</Link>
                 <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
                 <Link href="/employees/work-sites" className={styles.btnSecondary}>목록</Link>
+            </div>
             </div>
             <div className={styles.card}>
                 <div style={{ marginBottom: 32 }}>

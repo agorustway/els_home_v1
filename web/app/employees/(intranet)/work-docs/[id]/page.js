@@ -78,11 +78,11 @@ export default function WorkDocDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>업무자료실</h1>
-            </div>
             <div className={styles.controls}>
                 <Link href={`/employees/work-docs/${id}/edit`} className={styles.btnSecondary}>수정</Link>
                 <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
                 <Link href="/employees/work-docs" className={styles.btnSecondary}>목록</Link>
+            </div>
             </div>
             <div className={styles.card}>
                 <h2 className={styles.detailTitle}>{item.title}</h2>

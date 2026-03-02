@@ -34,10 +34,10 @@ export default function WorkSitesPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>작업지안내</h1>
-            </div>
             <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
                 <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
                 <Link href="/employees/work-sites/new" className={styles.btnPrimary}>단건 등록</Link>
+            </div>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>
