@@ -469,32 +469,32 @@ export default function ArchiveBrowser() {
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
-                <div className={styles.titleArea}>
-                    <h1 className={styles.title}>자료실 (NAS)</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h1 className={styles.title}>자료실</h1>
                     <div className={styles.pathBadge}>{path}</div>
                 </div>
-            </div>
 
-            <div className={styles.controls} style={{ marginBottom: '16px' }}>
-                {selectionMode ? (
-                    <div className={styles.selectionToolbar}>
-                        <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
-                        <button onClick={handleZipDownload} className={styles.btnZip}>📦 압축 다운로드</button>
-                        <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btnCancel}>취소</button>
-                    </div>
-                ) : (
-                    <>
-                        <div className={styles.viewToggle}>
-                            <button onClick={() => setViewMode('list')} className={`${styles.viewBtn} ${viewMode === 'list' ? styles.activeView : ''}`}>📊 리스트</button>
-                            <button onClick={() => setViewMode('grid')} className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.activeView : ''}`}>🖼️ 아이콘</button>
+                <div className={styles.headerControls}>
+                    {selectionMode ? (
+                        <div className={styles.selectionToolbar}>
+                            <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
+                            <button onClick={handleZipDownload} className={`${styles.btn} ${styles.btnPoint}`}>📦 다운로드</button>
+                            <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btn}>취소</button>
                         </div>
-                        <button onClick={handleCreateFolder} className={styles.btnSecondary}>새 폴더</button>
-                        <label className={styles.btnPrimary}>
-                            {uploading ? '업로드 중...' : '파일 업로드'}
-                            <input type="file" multiple onChange={(e) => handleUpload(e.target.files)} style={{ display: 'none' }} disabled={uploading} />
-                        </label>
-                    </>
-                )}
+                    ) : (
+                        <>
+                            <div className={styles.viewToggle}>
+                                <button onClick={() => setViewMode('list')} className={`${styles.viewBtn} ${viewMode === 'list' ? styles.activeView : ''}`}>리스트</button>
+                                <button onClick={() => setViewMode('grid')} className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.activeView : ''}`}>아이콘</button>
+                            </div>
+                            <button onClick={handleCreateFolder} className={styles.btn}>새 폴더</button>
+                            <label className={`${styles.btn} ${styles.btnPoint}`} style={{ margin: 0, cursor: 'pointer' }}>
+                                {uploading ? '업로드 중...' : '파일 업로드'}
+                                <input type="file" multiple onChange={(e) => handleUpload(e.target.files)} style={{ display: 'none' }} disabled={uploading} />
+                            </label>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className={styles.breadcrumbs}>

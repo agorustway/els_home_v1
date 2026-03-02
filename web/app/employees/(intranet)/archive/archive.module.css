@@ -72,17 +72,17 @@
     align-items: center;
 }
 
+.headerControls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .selectionToolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: #edf2f7;
-    padding: 8px 16px;
-    border-radius: 12px;
+    gap: 8px;
     animation: slideIn 0.3s ease;
-    flex-wrap: wrap;
-    width: 100%;
-    justify-content: space-between;
 }
 
 @keyframes slideIn {
@@ -99,68 +99,63 @@
 
 .selectionCount {
     font-weight: 700;
-    color: #2d3748;
-    font-size: 0.9rem;
+    color: #0f172a;
+    font-size: 0.8rem;
+    margin-right: 4px;
 }
 
-.btnZip {
-    background: #3182ce;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btnCancel {
-    background: white;
-    color: #4a5568;
+/* 표준 버튼 통일 */
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
     border: 1px solid #e2e8f0;
-    padding: 8px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-/* Existing Buttons */
-.btnPrimary {
-    background: #2563eb;
-    color: white;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    background: #f8fafc;
+    color: #475569;
     font-weight: 700;
+    font-size: 0.78rem;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
 }
 
-.btnSecondary {
-    background: white;
+.btn:hover {
+    background: #f1f5f9;
+}
+
+.btnPoint {
+    background: #eff6ff;
     color: #2563eb;
-    border: 1px solid #2563eb;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    border-color: #bfdbfe;
+}
+
+.btnPoint:hover {
+    background: #dbeafe;
 }
 
 .viewToggle {
     display: flex;
     background: #f1f5f9;
-    padding: 4px;
-    border-radius: 10px;
+    padding: 2px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
 }
 
 .viewBtn {
     border: none;
     background: none;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 0.85rem;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
     cursor: pointer;
     color: #64748b;
+    height: 26px;
+    display: flex;
+    align-items: center;
 }
 
 .activeView {
@@ -450,41 +445,27 @@
     }
 
     .headerBanner {
-        flex-direction: row;
-        align-items: center;
-        padding: 8px 10px;
-        gap: 8px;
-    }
-
-    .titleArea {
-        text-align: left;
+        flex-direction: column;
         align-items: flex-start;
-        width: 100%;
+        padding: 10px;
+        gap: 10px;
     }
 
-    .controls {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        padding-bottom: 0;
+    .headerControls {
         width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
     .viewToggle {
-        grid-column: span 2;
-        display: flex;
+        flex: 1;
         justify-content: center;
     }
 
-    .btnSecondary,
-    .btnPrimary {
-        width: 100%;
-        padding: 12px 8px;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
+    .btn {
+        flex: 1;
         justify-content: center;
-        margin: 0;
     }
 
     .hideMobile {

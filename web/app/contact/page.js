@@ -239,178 +239,185 @@ export default function ContactPage() {
 
     return (
         <div className={styles.contactPage}>
-            <section className={styles.section}>
-                <div className="container">
-                    <div className={styles.grid}>
-                        {/* Left: Input Form */}
-                        <motion.div
-                            className={styles.formWrapper}
-                            initial={{ opacity: 0, x: -30 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <h2 className={styles.formTitle}>문의 내용 작성</h2>
-                            {profileLoading ? (
-                                <div className={styles.loginRequired}><p>로딩 중...</p></div>
-                            ) : !profile ? (
-                                <div className={styles.loginRequired}>
-                                    <p>🔒 문의 작성은 로그인이 필요합니다.</p>
-                                    <button
-                                        className={styles.loginBtn}
-                                        onClick={() => router.push('/login?next=/contact')}
-                                    >
-                                        로그인하기
-                                    </button>
-                                </div>
-                            ) : (
-                                <form className={styles.form} onSubmit={handleSubmit}>
-                                    <div className={styles.inputGroup}>
-                                        <label>회사명 (선택)</label>
-                                        <input
-                                            type="text"
-                                            className={styles.input}
-                                            placeholder="회사명을 입력해주세요"
-                                            value={formData.company_name}
-                                            onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className={styles.inputGroup}>
-                                        <label>연락처 (선택)</label>
-                                        <input
-                                            type="tel"
-                                            className={styles.input}
-                                            placeholder="010-0000-0000"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
-                                        />
-                                    </div>
-                                    <div className={styles.inputGroup}>
-                                        <label>제목 *</label>
-                                        <input
-                                            type="text"
-                                            className={styles.input}
-                                            placeholder="문의 제목을 입력해주세요"
-                                            value={formData.subject}
-                                            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className={styles.inputGroup}>
-                                        <label>문의 내용 *</label>
-                                        <textarea
-                                            className={styles.textarea}
-                                            placeholder="문의사항이나 의견을 자유롭게 남겨주세요."
-                                            value={formData.message}
-                                            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        className={styles.submitBtn}
-                                        disabled={inquiryStatus === 'submitting'}
-                                    >
-                                        {inquiryStatus === 'submitting' ? '등록 중...' : '등록하기'}
-                                    </button>
-                                    {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 등록되고 관리자에게 메일이 발송되었습니다.</p>}
-                                    {inquiryStatus === 'error' && <p className={styles.errorMsg}>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>}
-                                </form>
-                            )}
-                        </motion.div>
-
-                        {/* Right: Board */}
-                        <div className={styles.boardWrapper}>
-                            <div className={styles.boardHeader}>
-                                <h3 className={styles.boardTitle}>
-                                    {profile ? '내 문의 내역' : '전체 문의 내역'}
-                                </h3>
-                                <span className={styles.boardCount}>총 {inquiries.length}건</span>
-                            </div>
-
-                            {!profile && !profileLoading && (
-                                <div className={styles.publicList}>
-                                    <p className={styles.publicNotice}>🔒 로그인하면 문의 내용 전체를 확인할 수 있습니다.</p>
-                                </div>
-                            )}
-
-                            {loading ? (
-                                <div className={styles.emptyState}>
-                                    <p>로딩 중...</p>
-                                </div>
-                            ) : inquiries.length === 0 ? (
-                                <div className={styles.emptyState}>
-                                    <p>아직 등록된 문의가 없습니다.</p>
-                                </div>
-                            ) : (
-                                <div className={styles.postList}>
-                                    <AnimatePresence mode="popLayout">
-                                        {inquiries.map((inquiry) => {
-                                            const badge = profile ? getStatusBadge(inquiry.status) : null;
-                                            return (
-                                                <motion.div
-                                                    key={inquiry.id}
-                                                    className={styles.postCard}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.98 }}
-                                                    layout
-                                                    onClick={() => handleInquiryClick(inquiry)}
-                                                >
-                                                    <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
-                                                    <h4 className={styles.postSubject}>{inquiry.subject}</h4>
-
-                                                    {badge && (
-                                                        <span
-                                                            className={styles.statusBadge}
-                                                            style={{ backgroundColor: badge.color }}
-                                                        >
-                                                            {badge.text}
-                                                        </span>
-                                                    )}
-                                                </motion.div>
-                                            );
-                                        })}
-                                    </AnimatePresence>
-                                </div>
-                            )}
-                        </div>
+            <div className={styles.mainContent}>
+                <header className={styles.compactHeader}>
+                    <h1 className={styles.pageTitle}>문의 및 제보</h1>
+                    <div className={styles.headerControls}>
+                        {profile ? (
+                            <button className={`${styles.btn} ${styles.btnPoint}`} onClick={() => window.scrollTo(0, 0)}>새 문의 작성</button>
+                        ) : null}
                     </div>
+                </header>
 
-                    {/* Bottom: Whistleblowing Report Section */}
+                <div className={styles.grid}>
+                    {/* Left: Input Form */}
                     <motion.div
-                        className={styles.reportContainer}
-                        initial={{ opacity: 0, y: 40 }}
-                        whileInView={{ opacity: 1, y: 0 }}
+                        className={styles.formWrapper}
+                        initial={{ opacity: 0, x: -30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: 0.2 }}
                     >
-                        <span className={styles.reportBadge}>비공개·익명 보장</span>
-                        <h2 className={styles.reportTitle}>부조리 및 인권 침해 제보</h2>
-                        <p className={styles.reportDesc}>
-                            이엘에스솔루션은 투명한 경영을 지향합니다.<br />
-                            작성하신 내용은 익명이 철저히 보장되며, 담당자에게 즉시 메일로 전달됩니다.
-                        </p>
-                        <form className={styles.reportForm} onSubmit={handleReport}>
-                            <textarea
-                                className={styles.reportTextarea}
-                                placeholder="제보 내용을 상세히 입력해주세요. 제보자의 신원은 절대 노출되지 않습니다."
-                                value={reportContent}
-                                onChange={(e) => setReportContent(e.target.value)}
-                                required
-                            />
-                            <button
-                                type="submit"
-                                className={styles.reportSubmit}
-                                disabled={reportStatus === 'submitting'}
-                            >
-                                {reportStatus === 'submitting' ? '제출 중...' : '제보하기'}
-                            </button>
-                            {reportStatus === 'success' && <p className={styles.reportSuccessMsg}>제보가 안전하게 접수되어 관리자에게 전달되었습니다.</p>}
-                            {reportStatus === 'error' && <p className={styles.reportErrorMsg}>제출 중 오류가 발생했습니다. 다시 시도해주세요.</p>}
-                        </form>
+                        <h2 className={styles.formTitle}>문의 내용 작성</h2>
+                        {profileLoading ? (
+                            <div className={styles.loginRequired}><p>로딩 중...</p></div>
+                        ) : !profile ? (
+                            <div className={styles.loginRequired}>
+                                <p>🔒 문의 작성은 로그인이 필요합니다.</p>
+                                <button
+                                    className={styles.loginBtn}
+                                    onClick={() => router.push('/login?next=/contact')}
+                                >
+                                    로그인하기
+                                </button>
+                            </div>
+                        ) : (
+                            <form className={styles.form} onSubmit={handleSubmit}>
+                                <div className={styles.inputGroup}>
+                                    <label>회사명 (선택)</label>
+                                    <input
+                                        type="text"
+                                        className={styles.input}
+                                        placeholder="회사명을 입력해주세요"
+                                        value={formData.company_name}
+                                        onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                                    />
+                                </div>
+                                <div className={styles.inputGroup}>
+                                    <label>연락처 (선택)</label>
+                                    <input
+                                        type="tel"
+                                        className={styles.input}
+                                        placeholder="010-0000-0000"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
+                                    />
+                                </div>
+                                <div className={styles.inputGroup}>
+                                    <label>제목 *</label>
+                                    <input
+                                        type="text"
+                                        className={styles.input}
+                                        placeholder="문의 제목을 입력해주세요"
+                                        value={formData.subject}
+                                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className={styles.inputGroup}>
+                                    <label>문의 내용 *</label>
+                                    <textarea
+                                        className={styles.textarea}
+                                        placeholder="문의사항이나 의견을 자유롭게 남겨주세요."
+                                        value={formData.message}
+                                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtn}
+                                    disabled={inquiryStatus === 'submitting'}
+                                >
+                                    {inquiryStatus === 'submitting' ? '등록 중...' : '등록하기'}
+                                </button>
+                                {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 등록되고 관리자에게 메일이 발송되었습니다.</p>}
+                                {inquiryStatus === 'error' && <p className={styles.errorMsg}>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>}
+                            </form>
+                        )}
                     </motion.div>
+
+                    {/* Right: Board */}
+                    <div className={styles.boardWrapper}>
+                        <div className={styles.boardHeader}>
+                            <h3 className={styles.boardTitle}>
+                                {profile ? '내 문의 내역' : '전체 문의 내역'}
+                            </h3>
+                            <span className={styles.boardCount}>총 {inquiries.length}건</span>
+                        </div>
+
+                        {!profile && !profileLoading && (
+                            <div className={styles.publicList}>
+                                <p className={styles.publicNotice}>🔒 로그인하면 문의 내용 전체를 확인할 수 있습니다.</p>
+                            </div>
+                        )}
+
+                        {loading ? (
+                            <div className={styles.emptyState}>
+                                <p>로딩 중...</p>
+                            </div>
+                        ) : inquiries.length === 0 ? (
+                            <div className={styles.emptyState}>
+                                <p>아직 등록된 문의가 없습니다.</p>
+                            </div>
+                        ) : (
+                            <div className={styles.postList}>
+                                <AnimatePresence mode="popLayout">
+                                    {inquiries.map((inquiry) => {
+                                        const badge = profile ? getStatusBadge(inquiry.status) : null;
+                                        return (
+                                            <motion.div
+                                                key={inquiry.id}
+                                                className={styles.postCard}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.98 }}
+                                                layout
+                                                onClick={() => handleInquiryClick(inquiry)}
+                                            >
+                                                <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
+                                                <h4 className={styles.postSubject}>{inquiry.subject}</h4>
+
+                                                {badge && (
+                                                    <span
+                                                        className={styles.statusBadge}
+                                                        style={{ backgroundColor: badge.color }}
+                                                    >
+                                                        {badge.text}
+                                                    </span>
+                                                )}
+                                            </motion.div>
+                                        );
+                                    })}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </section>
+
+                {/* Bottom: Whistleblowing Report Section */}
+                <motion.div
+                    className={styles.reportContainer}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                >
+                    <span className={styles.reportBadge}>비공개·익명 보장</span>
+                    <h2 className={styles.reportTitle}>부조리 및 인권 침해 제보</h2>
+                    <p className={styles.reportDesc}>
+                        이엘에스솔루션은 투명한 경영을 지향합니다.<br />
+                        작성하신 내용은 익명이 철저히 보장되며, 담당자에게 즉시 메일로 전달됩니다.
+                    </p>
+                    <form className={styles.reportForm} onSubmit={handleReport}>
+                        <textarea
+                            className={styles.reportTextarea}
+                            placeholder="제보 내용을 상세히 입력해주세요. 제보자의 신원은 절대 노출되지 않습니다."
+                            value={reportContent}
+                            onChange={(e) => setReportContent(e.target.value)}
+                            required
+                        />
+                        <button
+                            type="submit"
+                            className={styles.reportSubmit}
+                            disabled={reportStatus === 'submitting'}
+                        >
+                            {reportStatus === 'submitting' ? '제출 중...' : '제보하기'}
+                        </button>
+                        {reportStatus === 'success' && <p className={styles.reportSuccessMsg}>제보가 안전하게 접수되어 관리자에게 전달되었습니다.</p>}
+                        {reportStatus === 'error' && <p className={styles.reportErrorMsg}>제출 중 오류가 발생했습니다. 다시 시도해주세요.</p>}
+                    </form>
+                </motion.div>
+            </div>
 
             <AnimatePresence>
                 {selectedInquiry && (
