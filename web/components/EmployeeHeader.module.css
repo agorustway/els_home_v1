@@ -259,11 +259,13 @@
 
     .mobileMenuBtn {
         display: flex;
-        padding: 6px;
+        padding: 8px;
         background: none;
         border-radius: 6px;
-        color: #475569;
+        color: #334155;
         flex-shrink: 0;
+        font-size: 1.3rem;
+        /* 햄버거 아이콘 크게 */
     }
 
     .mobileMenuBtn:active {
@@ -279,7 +281,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 5px;
+        gap: 8px;
         min-width: 0;
     }
 
@@ -291,7 +293,7 @@
         display: flex;
         align-items: center;
         margin: 0;
-        padding: 0 6px;
+        padding: 0 10px;
         overflow: hidden;
         white-space: nowrap;
         flex-shrink: 0;

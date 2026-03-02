@@ -8,8 +8,8 @@
 # ║  📏 이 파일을 수정할 때는 형의 명시적 동의가 필요하다.          ║
 # ╚══════════════════════════════════════════════════════════════════╝
 #
-# 마지막 업데이트: 2026-02-23
-# 근거: 기존 web/AGENT_GUIDELINES.md 통합 + 페르소나 확정 + 정책 강화
+# 마지막 업데이트: 2026-03-02
+# 근거: 기존 web/AGENT_GUIDELINES.md 통합 + 페르소나 확정 + 디자인 시스템 추가
 
 ---
 
@@ -57,8 +57,9 @@
 
 1. `docs/MISSION_CONTROL.md` — 현재 프로젝트 상태 파악
 2. `docs/RULES.md` — 이 파일 (규칙 확인)
-3. Docker 상태 (필요 시): `/api/els/capabilities` → `available: true` 확인
-4. `ELS_BACKEND_URL` 환경 변수 정확성 확인
+3. `docs/DESIGN_SYSTEM.md` — **UI/UX 디자인 기준** (여백, 폰트, 버튼, 헤더 등 통일 규칙)
+4. Docker 상태 (필요 시): `/api/els/capabilities` → `available: true` 확인
+5. `ELS_BACKEND_URL` 환경 변수 정확성 확인
 
 ---
 
@@ -101,9 +102,12 @@ git config --global core.quotepath false
 - **중복 제거**: 같은 기능이 여러 파일에 있으면 통합 제안.
 
 ### 5-2. UI/UX
+- **디자인 시스템 필수 참조**: `docs/DESIGN_SYSTEM.md`의 규칙을 반드시 따른다.
 - 단순히 크기만 줄이는 반응형이 아니라, 디바이스에 최적화된 UX를 제공한다.
-- 모바일: 터치 위주, 데스크탑: 정보 밀도 위주.
+- 모바일: 터치 위주 (Galaxy S24 = 360x780 기준), 데스크탑: 정보 밀도 위주.
 - **프리미엄 미감**: 기본 색상 금지, 조화로운 팔레트 사용.
+- **여백 최소화**: container padding 6px 기준.
+- **폰트/버튼/헤더 통일**: DESIGN_SYSTEM.md 체계 준수.
 
 ### 5-3. TDD (Test-Driven Development)
 - 새 기능 추가 시 테스트 코드를 먼저 작성하거나 동시에 작성한다.
@@ -209,6 +213,7 @@ docs/
 ├── DEV_LOG.md          ← ✅ 사용 중
 ├── ARCHITECTURE.md     ← ✅ 사용 중
 ├── RUNBOOK.md          ← ✅ 사용 중
+├── DESIGN_SYSTEM.md   ← ✅ 사용 중 (UI/UX 디자인 기준)
 ├── BACKLOG.md          ← 🔮 미래: 요구사항/아이디어 백로그
 ├── DECISIONS.md        ← 🔮 미래: 아키텍처 결정 기록 (ADR)
 ├── GLOSSARY.md         ← 🔮 미래: 물류/ELS 용어 사전
