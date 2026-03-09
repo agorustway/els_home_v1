@@ -134,15 +134,13 @@ export default function FormTemplateDetailPage() {
                                     <span style={{ fontSize: '1.4rem' }}>📄</span>
                                     <a
                                         href={dUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
                                         style={{ fontWeight: 800, color: '#4f46e5', fontSize: '1rem', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                                     >
                                         {item.file_name || '파일 다운로드'}
                                     </a>
                                 </div>
                                 <div style={{ display: 'flex', gap: 10 }}>
-                                    <a href={dUrl} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary} style={{ flex: 1, height: '42px', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
+                                    <a href={dUrl} className={styles.btnPrimary} style={{ flex: 1, height: '42px', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
                                         내려받기
                                     </a>
                                     <button

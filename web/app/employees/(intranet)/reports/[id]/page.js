@@ -140,8 +140,6 @@ export default function ReportDetailPage() {
                                         <a
                                             key={idx}
                                             href={downloadUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',

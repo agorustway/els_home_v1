@@ -110,7 +110,7 @@ export default function PostDetailPage() {
                                     const downloadUrl = getSafeUrl(file);
 
                                     return (
-                                        <a key={idx} href={downloadUrl} target="_blank" rel="noopener noreferrer"
+                                        <a key={idx} href={downloadUrl}
                                             style={{
                                                 padding: '10px 16px', background: '#f8fafc', borderRadius: '8px',
                                                 color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem',

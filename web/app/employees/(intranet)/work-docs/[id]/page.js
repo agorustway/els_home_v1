@@ -148,8 +148,6 @@ export default function WorkDocDetailPage() {
                                                     <a
                                                         href={dUrl}
                                                         className={styles.attachmentLink}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
                                                         style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}
                                                     >
                                                         {file.name}
@@ -158,7 +156,7 @@ export default function WorkDocDetailPage() {
                                                 <span style={{ fontSize: '0.8rem', color: '#94a3b8', flexShrink: 0 }}>{(file.size / 1024).toFixed(1)} KB</span>
                                             </div>
                                             <div style={{ display: 'flex', gap: 8 }}>
-                                                <a href={dUrl} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary} style={{ flex: 1, height: '36px', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <a href={dUrl} className={styles.btnPrimary} style={{ flex: 1, height: '36px', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     내려받기
                                                 </a>
                                                 <button
