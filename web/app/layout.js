@@ -12,7 +12,7 @@ export const metadata = {
   icons: {
     icon: '/favicon.png', // 브라우저 탭 아이콘 (파비콘) 유지
     shortcut: '/favicon.png',
-    apple: '/icon.jpg', // iOS 바탕화면 아이콘
+    apple: '/icon.png', // iOS 바탕화면 아이콘
   },
   appleWebApp: {
     capable: true,
