@@ -16,32 +16,71 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 #
 # 마지막 업데이트: 2026-03-09
-# 업데이트한 사람: Antigravity Agent (안전운임 구간/경로 조회 UI/UX 전면 고도화)
+# 업데이트한 사람: Antigravity Agent (자료실 다운로드 일원화 및 브라우저 호환성 강화)
 
-## 📅 2026-03-09: 안전운임 구간/경로 조회 UI/UX 전면 고도화
+## 📅 2026-03-09: 자료실(업무/서식) 다운로드 로직 일원화 및 브라우저 호환성 강화
 
 ### 핵심 성과
-- **고시(2026 제정안) 기점 최적화**: '부산신항(HMM/HPNT)', '부산북항(BPT)', '의왕ICD' 등 고시 매칭이 확실한 대표 터미널/기점 명칭 및 정밀 좌표(Gate 기준) 적용.
-- **입력 UX 지능화**: 
-  - 1번 줄 검색 시 자동으로 '행정복지센터' 최우선 노출 및 선택 시 텍스트 자동 변환 로직 적용.
-  - 3번 줄(행정동 드롭다운) 선택 시 1, 2번 줄 자동 초기화로 혼선 방지.
-  - 3번 줄 단독 선택 시에도 해당 지역 중심(행정복지센터 등)으로 경로 조회 가능하도록 백엔드 fallback 로직 보강.
-  - 상세주소(2번 줄) placeholder를 `"상세주소 입력 (정확한 주소지로 검색)"`으로 직관적 변경.
-- **결과 저장 및 영속성 개선**:
-  - 메인 페이지와 충돌 방지를 위해 `safeFreightRouteSearchResults`로 전용 SessionStorage 키 분리.
-  - 다중 운임(거리별, 구간별, 편도) 각각을 독립된 이력으로 동시 저장 기능 구현.
-- **엑셀 리포트 고도화**:
-  - XLSX 다운로드 시 데이터 길이에 맞춰 모든 열(Column) 너비 자동 확장(`!cols` 적용).
-  - 현재 조회 결과 및 전체 이전 내역 통합 다운로드 지원.
-- **디자인 통일**: 초기화 버튼 신설 및 검색 버튼과 높이(44px), 곡률(10px), 톤앤매너 완벽 일치.
+- **다운로드 프록시 구현 (NAS)**:
+  - 그동안 NAS 파일을 브라우저에서 직접 열려고 할 때 발생하던 권한 및 브라우저 호환성 문제를 해결하기 위해, 서버 측에서 파일을 스트리밍하는 **다운로드 프록시(`api/nas/files?download=true`)** 로직 구현.
+- **브라우저 호환성 및 한글 파일명 깨짐 해결**:
+  - `Content-Disposition` 헤더에 RFC 5987 표준(`filename*=UTF-8''`)을 적용하여 Chrome, Edge, Safari, Firefox 등 모든 브라우저에서 한글 파일명이 정식으로 내려받아지도록 최적화.
+- **자료실 UI/UX 통일 (Consistency)**:
+  - 업무자료실과 서식자료실의 상세 페이지 UI를 동일한 레이아웃과 톤앤매너로 매칭.
+  - 첨부파일 섹션을 기본적으로 펼쳐진 상태로 노출하여 사용자 접근성 향상.
+  - S3와 NAS 저장소 위치에 상관없이 동일한 사용자 경험 제공.
 
 ### 변경 파일
-- `web/app/employees/safe-freight/route-search/RouteSearchView.js` — 장소 선택/검색 로직, 저장/엑셀 고도화
-- `web/app/employees/safe-freight/route-search/LocationBlock.js` — 터미널 리스트 고시 기준 업데이트, UI 연동 수정
-- `web/app/employees/safe-freight/route-search/route-search.module.css` — 버튼 디자인 및 레이아웃 통일
-- `web/app/api/safe-freight/place-search/route.js` — 행정복지센터 우선 검색 백엔드 로직 추가
+- `web/app/api/nas/files/route.js` — NAS 다운로드 프록시 처리 추가
+- `web/app/api/s3/files/route.js` — 한글 파일명 호환성 헤더 최적화
+- `web/app/employees/(intranet)/work-docs/[id]/page.js` — 상세 페이지 UI 및 다운로드 로직 개선
+- `web/app/employees/(intranet)/form-templates/[id]/page.js` — 업무자료실과 통일된 디자인 및 로직 적용
 
 ---
+
+## 📅 2026-03-09: 자유게시판 UI/UX 고도화 및 작성자 표시 보강
+
+### 핵심 성과
+- **작성자 식별 자동화**: 
+  - 게시글 작성자 ID(UUID) 대신 실명과 직급이 표시되도록 개선.
+  - `profiles` 테이블과 `user_roles` 테이블을 교차 검증하여, 프로필이 없는 사용자도 권한 테이블의 이름을 참조하여 "알 수 없음" 노출 최소화.
+  - 목록과 상세 페이지 모두에 **성함 + 직급** (예: 홍길동 과장) 포맷 적용.
+- **상세 페이지 디자인 전면 개편 (Premium Look)**:
+  - 기존의 망가진 레이아웃을 폐기하고, **프리미엄 대쉬보드 스타일**의 `detailCard` 디자인 적용.
+  - 제목 폰트 강조, 메타정보(작성자, 날짜, 조회수) 아이콘화, 본문 가독성(행간 1.8) 최적화.
+  - 첨부파일 영역 구분 및 다운로드 버튼 디자인 개선.
+- **반응형 대응 및 인터랙션**:
+  - `framer-motion`을 활용한 부드러운 진입 애니메이션 추가.
+  - 모바일 환경에서 버튼이 겹치지 않도록 세로 정렬 및 크기 최적화.
+
+### 변경 파일
+- `web/app/api/board/route.js` — 목록 API 이름 조회 로직 강화
+- `web/app/api/board/[id]/route.js` — 상세 API 작성자 교차 검증 로직 구현
+- `web/app/employees/(intranet)/board/free/[id]/page.js` — 상세 페이지 UI 전면 재구축
+- `web/app/employees/(intranet)/board/free/page.js` — 목록 페이지 직급 표시 추가
+- `web/app/employees/(intranet)/board/board.module.css` — 프리미엄 디자인 클래스 추가 및 폼 스타일 보강
+
+---
+
+## 📅 2026-03-09: 컨테이너 이력조회 UI/UX 보강 및 현황판 업데이트
+
+### 핵심 성과
+- **컨테이너 이력조회 편의성 개선**:
+  - 로그 터미널 패널을 기본적으로 펼쳐진 상태(`isLogCollapsed: false`)로 변경하여 실무 가시성 확보.
+  - 서버 측 토큰 방식의 엑셀 다운로드 오류를 해결하기 위해, 브라우저에서 즉시 생성되는 **클라이언트 사이드 엑셀 다운로드(XLSX)** 로직 전면 재구축.
+  - 데이터 평면화 및 최적화된 열 너비(`!cols`) 적용으로 엑셀 가독성 향상.
+- **MISSION_CONTROL & DEV_LOG 동기화**: 프로젝트 누적 성과를 최신화하고 AI 통합 메모리 체계 정비.
+- **안전운임 구간/경로 조회 UI/UX 전면 고도화**: (아래 실무 내역 참조)
+  - 고시(2026 제정안) 기점/좌표 최적화, 행정복지센터 자동 검색/변환, 3번 줄 연동 UX 개선 등.
+
+### 변경 파일
+- `web/app/employees/container-history/page.js` — 로그 기본값 및 엑셀 다운로드 로직 수정
+- `docs/MISSION_CONTROL.md` — 현황판 업데이트
+- `docs/DEV_LOG.md` — 개발 이력 업데이트 (현재 파일)
+
+---
+
+## 📅 2026-03-09: 안전운임 구간/경로 조회 UI/UX 전면 고도화 (오전 작업)
 
 ## 📅 2026-02-27: NAS 극한 환경 안정화 (보강)
 - **세션 수 강제 하향**: 동시 브라우저 세션 수를 3개에서 2개로 물리적 강제 조정 (`els_web_runner_daemon.py`, `app.py`).

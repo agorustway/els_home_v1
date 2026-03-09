@@ -65,7 +65,7 @@ export default function FreeBoardPage() {
                 {/* 1열: 커뮤니티 정보 */}
                 <aside className={styles.column}>
                     <Link href="/employees/board/free/new" className={styles.btnPrimary}>새 글 작성하기</Link>
-                    
+
                     <div className={styles.card}>
                         <h2 className={styles.sectionTitle}>게시판 통계</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', textAlign: 'center' }}>
@@ -100,18 +100,18 @@ export default function FreeBoardPage() {
                         <h2 className={styles.sectionTitle}>최신 게시글 리스트</h2>
                         <div className={styles.postList}>
                             {posts.map((post, i) => (
-                                <motion.div 
-                                    key={post.id} 
+                                <motion.div
+                                    key={post.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.05 }}
-                                    className={styles.postItem} 
+                                    className={styles.postItem}
                                     onClick={() => router.push(`/employees/board/free/${post.id}`)}
                                 >
                                     <div className={styles.postMain}>
                                         <span className={styles.postTitle}>{post.title}</span>
                                         <div className={styles.postMeta}>
-                                            <span>👤 {post.author?.name || '익명'}</span>
+                                            <span>👤 {post.author?.name || '익명'}{post.author?.rank ? ` ${post.author.rank}` : ''}</span>
                                             <span>📅 {new Date(post.created_at).toLocaleDateString()}</span>
                                             <span>👁️ {post.view_count || 0}</span>
                                         </div>
@@ -119,7 +119,7 @@ export default function FreeBoardPage() {
                                     <div style={{ color: '#cbd5e1', fontSize: '1.2rem' }}>→</div>
                                 </motion.div>
                             ))}
-                            {posts.length === 0 && <p style={{textAlign: 'center', color: '#94a3b8', padding: '40px'}}>등록된 게시글이 없습니다.</p>}
+                            {posts.length === 0 && <p style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>등록된 게시글이 없습니다.</p>}
                         </div>
                     </div>
                 </main>

@@ -51,7 +51,7 @@ export default function WorkDocsNewPage() {
                         key: key,
                         size: file.size,
                         type: file.type,
-                        url: `${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`
+                        url: `/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`
                     };
                     setAttachments(prev => [...prev, newFile]);
                 }

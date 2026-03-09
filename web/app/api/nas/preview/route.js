@@ -60,8 +60,12 @@ export async function GET(request) {
             'Cache-Control': 'public, max-age=31536000, immutable'
         };
 
+        const requestedName = searchParams.get('name') || fileName;
         if (isDownload || !mimeMap[ext]) {
-            headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(fileName)}"`;
+            const encodedName = encodeURIComponent(requestedName).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+            const safeName = requestedName.replace(/[^\x00-\x7F]/g, '_');
+            headers['Content-Disposition'] = `attachment; filename="${safeName}"; filename*=UTF-8''${encodedName}`;
+            headers['Cache-Control'] = 'no-cache'; // Downloads shouldn't be cached aggressively
         }
 
         // 3. Convert Node Stream to Web ReadableStream

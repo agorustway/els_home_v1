@@ -36,16 +36,23 @@ export async function GET(request) {
     // If author_email is null (old data not migrated), we can't show author info easily without migration.
 
     let profiles = [];
+    let userRoles = [];
     if (uniqueEmails.length > 0) {
-        const { data: pData } = await supabase
-            .from('profiles')
-            .select('email, full_name, avatar_url, rank, position')
-            .in('email', uniqueEmails);
+        const [{ data: pData }, { data: rData }] = await Promise.all([
+            supabase.from('profiles').select('email, full_name, avatar_url, rank, position').in('email', uniqueEmails),
+            supabase.from('user_roles').select('email, name, rank').in('email', uniqueEmails)
+        ]);
         profiles = pData || [];
+        userRoles = rData || [];
     }
 
     const profileMap = {};
     profiles.forEach(p => { profileMap[p.email] = p; });
+    userRoles.forEach(r => {
+        if (!profileMap[r.email]) profileMap[r.email] = {};
+        if (!profileMap[r.email].full_name) profileMap[r.email].full_name = r.name;
+        if (!profileMap[r.email].rank) profileMap[r.email].rank = r.rank;
+    });
 
     const mergedPosts = data.map(post => {
         const email = post.author_email;

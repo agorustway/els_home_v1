@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { listFiles, createFolder, deleteFile, moveFile, copyFile, getNasClient } from '@/lib/nas';
 import { createClient } from '@/utils/supabase/server';
 import { ROLE_LABELS } from '@/utils/roles';
+import { Readable } from 'stream';
 
 // Helper to check for Korean characters
 const hasKorean = (text) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
@@ -65,6 +66,7 @@ function getPermissions(userRole, userCanSecurity, path) {
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const path = searchParams.get('path') || '/';
+    const isDownload = searchParams.get('download') === 'true';
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -75,6 +77,51 @@ export async function GET(request) {
         const userRole = roleData?.role || 'visitor';
         const userCanSecurity = roleData?.can_read_security || false;
         const isAdmin = userRole === 'admin';
+
+        // 1. Download Mode
+        if (isDownload) {
+            const perms = getPermissions(userRole, userCanSecurity, path);
+            if (!perms.canRead) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+            const client = getNasClient();
+            if (!await client.exists(path)) return NextResponse.json({ error: 'File not found' }, { status: 404 });
+
+            const stream = await client.createReadStream(path);
+            const fileName = searchParams.get('name') || path.split('/').pop();
+            const encodedFileName = encodeURIComponent(fileName);
+            // safeName for legacy browsers (ASCII only)
+            const safeName = fileName.replace(/[^\x20-\x7E]/g, '_');
+
+            // Better Content-Type mapping
+            let finalContentType = 'application/octet-stream';
+            const ext = fileName.split('.').pop().toLowerCase();
+            const mimeMap = {
+                'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'xls': 'application/vnd.ms-excel',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc': 'application/msword',
+                'pdf': 'application/pdf',
+                'png': 'image/png',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'gif': 'image/gif',
+                'txt': 'text/plain',
+                'csv': 'text/csv',
+                'zip': 'application/zip'
+            };
+            finalContentType = mimeMap[ext] || 'application/octet-stream';
+
+            // Convert Node.js stream to Web ReadableStream for Next.js
+            const webStream = Readable.toWeb(stream);
+
+            return new NextResponse(webStream, {
+                headers: {
+                    'Content-Type': finalContentType,
+                    'Content-Disposition': `attachment; filename="${safeName}"; filename*=UTF-8''${encodedFileName}`,
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        }
 
         const rawFiles = await listFiles(path);
 

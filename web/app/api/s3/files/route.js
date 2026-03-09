@@ -49,26 +49,49 @@ export async function POST(request) {
     }
 }
 
-// Proxy Download (Serve file from S3 to Client)
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
     if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 });
 
     try {
+        // Proxy Download (Serve file from S3 to Client)
         const { buffer, contentType } = await getFileBufferFromS3(key);
         const fileName = searchParams.get('name') || key.split('/').pop();
 
         // Background logging
         logActivityServer('FILE_VIEW', key, { source: 's3' }).catch(console.error);
 
+        const encodedFileName = encodeURIComponent(fileName);
+        const safeName = fileName.replace(/[^\x20-\x7E]/g, '_');
+
+        // Better Content-Type mapping
+        let finalContentType = contentType;
+        if (!finalContentType || finalContentType === 'application/octet-stream') {
+            const ext = fileName.split('.').pop().toLowerCase();
+            const mimeMap = {
+                'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'xls': 'application/vnd.ms-excel',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc': 'application/msword',
+                'pdf': 'application/pdf',
+                'png': 'image/png',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'gif': 'image/gif',
+                'txt': 'text/plain',
+                'csv': 'text/csv',
+                'zip': 'application/zip'
+            };
+            finalContentType = mimeMap[ext] || 'application/octet-stream';
+        }
+
         return new NextResponse(buffer, {
             headers: {
-                'Content-Type': contentType || 'application/octet-stream',
-                'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
-                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Content-Type': finalContentType,
+                'Content-Disposition': `attachment; filename="${safeName}"; filename*=UTF-8''${encodedFileName}`,
+                'Cache-Control': 'no-cache',
                 'Content-Length': buffer.length.toString(),
-                'X-Content-Type-Options': 'nosniff',
             },
         });
     } catch (error) {

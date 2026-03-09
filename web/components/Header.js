@@ -135,7 +135,6 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         document.body.style.overflow = menuOpen ? 'hidden' : 'unset';
     }, [menuOpen]);
 
-    // Close menus when clicking outside
     useEffect(() => {
         const handleClickOutside = () => {
             if (userMenuOpen) setUserMenuOpen(false);
@@ -173,7 +172,10 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         setMenuOpen(nextState);
     };
 
-    const toggleUserMenu = () => setUserMenuOpen(!userMenuOpen);
+    const toggleUserMenu = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setUserMenuOpen(!userMenuOpen);
+    };
 
     const handleLinkClick = () => {
         setMenuOpen(false);
@@ -221,59 +223,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     };
 
     const handleCreateShortcut = async () => {
-        const isMac = navigator.userAgent.toLowerCase().includes('mac');
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const shortcut = isMac ? 'Cmd + D' : 'Ctrl + D';
-        const ua = navigator.userAgent.toLowerCase();
-
-        // --- 1. 인앱 브라우저(카카오, 네이버, 인스타 등) 차단 우회 ---
-        const isInApp = /(kakaotalk|naver|line|instagram|inapp|fba|fb_iab)/i.test(ua);
-        if (isInApp && isMobile) {
-            const currentUrl = window.location.href;
-            const domainAndPath = currentUrl.replace(/^https?:\/\//i, '');
-            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-            if (!isIOS) { // 안드로이드
-                alert("현재 카카오/네이버 등 내장 브라우저에서는 앱 설치가 제한되어 있습니다.\n\n[확인]을 누르시면 일반 브라우저(Chrome)로 자동 전환됩니다. 전환 후 우측 상단 메뉴(점 3개)에서 [앱 설정] 또는 [홈 화면에 추가]를 진행해 주세요!");
-                window.location.href = `intent://${domainAndPath}#Intent;scheme=https;package=com.android.chrome;end;`;
-                return;
-            } else { // iOS
-                if (ua.includes('kakaotalk')) {
-                    alert("카카오톡 내장 브라우저에서는 앱 설치가 지원되지 않습니다.\nSafari 브라우저로 전환합니다.");
-                    window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(currentUrl)}`;
-                } else {
-                    alert("앱 설치는 Safari 브라우저에서만 지원됩니다.\n\n화면 하단(또는 우측)의 [메뉴]를 눌러 [다른 브라우저로 열기(Safari)]를 선택하신 후, Safari에서 하단의 [공유(네모 안 화살표)] ➔ [홈 화면에 추가]를 진행해 주세요.");
-                }
-                return;
-            }
-        }
-
-        if (!deferredPrompt) {
-            if (isMobile) {
-                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-                if (isIOS) {
-                    alert('iOS(아이폰/아이패드)에서는 브라우저 하단의 [공유] 버튼을 누른 후 [홈 화면에 추가]를 선택하여 앱을 설치하실 수 있습니다.');
-                } else {
-                    alert('안드로이드 환경에서는 브라우저 우측 상단 메뉴(점 3개)에서 [앱 설치] 또는 [홈 화면에 추가]를 선택해 주세요.\n\n이미 설치되어 있다면 실행 중인 앱 목록에서 확인하실 수 있습니다.');
-                }
-            } else {
-                alert(`브라우저가 자동 설치를 지원하지 않거나 이미 브라우저 내부에 앱이 설치되어 있습니다.\n\n⚠️ 참고: 바탕화면에서 아이콘만 지운 경우, 웹 브라우저에는 여전히 앱이 설치된 것으로 인식됩니다.\n\n재설치가 안 될 경우, 주소창 가장 우측의 [앱 제거] 버튼이나 PC 웹 브라우저 설정에서 기존 앱을 완전히 삭제하신 후 다시 시도해 주세요.\n\n(꿀팁: 키보드의 [${shortcut}] 키를 누르시면 브라우저 북마크에도 즉시 추가 가능합니다!)`);
-            }
-            return;
-        }
-
-        // 먼저 안내
-        const installMsg = isMobile
-            ? '스마트폰 홈 화면에 "이엘에스솔루션" 앱을 설치하시겠습니까?\n\n설치 후에는 브라우저 없이도 즉시 실행이 가능합니다.'
-            : `바탕화면(홈 화면) 앱 설치를 진행합니다!\n\n(참고: 웹 브라우저 북마크에도 추가하시려면 설치 후 키보드의 [${shortcut}] 키를 눌러주세요.)`;
-
-        alert(installMsg);
-
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            setDeferredPrompt(null);
-        }
+        // 앱 설치는 인트라넷 헤더에서만 지원 (사용자 요청에 따라 메인 헤더 기능 제거)
     };
 
     // Determine visual styles based on state
@@ -299,14 +249,11 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                             onClick={(e) => {
                                 if (isMobile) {
                                     e.preventDefault();
-
-                                    // Special logic for '인트라넷' parent item on mobile
                                     if (link.isEmployee) {
                                         handleIntranetClick(e, link.href);
                                         if (link.href) router.push(link.href);
                                         return;
                                     }
-
                                     toggleDropdown(link.label);
                                 } else if (link.isEmployee) {
                                     handleProtectedClick(e);
@@ -314,9 +261,10 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                             }}
                         >
                             {link.label}
-                            {isMobile && !link.isEmployee && <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}><path d="m6 9 6 6 6-6" /></svg>}
+                            {isMobile && !link.isEmployee && (
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}><path d="m6 9 6 6 6-6" /></svg>
+                            )}
                         </a>
-                        {/* Render children only if NOT Employee menu on mobile (since it opens sidebar instead) */}
                         {(!isMobile || !link.isEmployee) && (
                             <div className={isMobile ? `${styles.mobileSub} ${isExpanded ? styles.showSub : ''}` : styles.dropdown}>
                                 {renderSubLinks(link.children, isMobile)}
@@ -333,149 +281,42 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                     className={isMobile ? styles.mobileLink : ''}
                     style={{ color: isMobile ? '#333' : textColor }}
                     onClick={handleLinkClick}
-                    prefetch={false} // 모바일 세션 충돌 방지
+                    prefetch={false}
                 >
                     {link.label}
                 </Link>
             );
-        }).filter(Boolean); // Filter out nulls from conditional rendering
+        }).filter(Boolean);
 
-        // Push Employee Portal link on Desktop if not loading and user is not a visitor
-        if (!isMobile && !loading && profile && profile.role !== 'visitor') {
-            // This block is already being handled within the map filter above.
-            // If the original navLinks already contain an entry for '임직원전용',
-            // this duplicate push might be problematic. Let's make sure it's not a duplicate.
-            // Assuming the `navLinks` array contains a top-level `isEmployee` item.
-            // If so, the filter above is sufficient.
-            // Remove the push logic from here, as the filtering in map should take care of it.
-        }
-
-        // PUSH AUTH BUTTON FIRST
+        // 데스크탑 전용: 프로필 썸네일 복구 (인트라넷 버튼 옆)
         if (!isMobile && !loading) {
             linkElements.push(
-                <div key="auth-btn" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
+                <div key="desktop-auth-profile" className={styles.desktopNavAuth}>
                     {profile ? (
-                        <>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleUserMenu();
-                                }}
-                                title="사용자 메뉴"
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                }}
-                            >
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <button onClick={(e) => toggleUserMenu(e)} title="사용자 메뉴" className={styles.googleStyleAuthBtn}>
                                 {profile?.avatar_url ? (
-                                    <img
-                                        src={profile.avatar_url}
-                                        alt={displayName}
-                                        style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            borderRadius: '50%',
-                                            border: '2px solid white',
-                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                                            objectFit: 'cover'
-                                        }}
-                                    />
+                                    <img src={profile.avatar_url} alt={displayName} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', objectFit: 'cover' }} />
                                 ) : (
-                                    <span style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        backgroundColor: '#3b82f6',
-                                        color: 'white',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontWeight: 'bold',
-                                        fontSize: '0.9rem',
-                                        border: '2px solid white',
-                                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                                    }}>
-                                        {displayInitial}
-                                    </span>
+                                    <span className={styles.userInitial}>{displayInitial}</span>
                                 )}
                             </button>
-
                             {userMenuOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '120%',
-                                    right: 0,
-                                    background: 'white',
-                                    borderRadius: '12px',
-                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                                    padding: '8px 0',
-                                    minWidth: '160px',
-                                    zIndex: 1000,
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ padding: '8px 20px', borderBottom: '1px solid #f1f5f9', marginBottom: '4px' }}>
-                                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>
+                                <div className={styles.userDropdownMenu}>
+                                    <div className={styles.userDropdownHeader}>
+                                        <div className={styles.userDropdownName}>
                                             {displayName}
-                                            {(profile.rank || profile.position) && (
-                                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 400, marginLeft: '4px' }}>
-                                                    {profile.rank}{profile.position ? `(${profile.position})` : ''}
-                                                </span>
-                                            )}
-                                            님
+                                            {(profile.rank || profile.position) && <span className={styles.userDropdownTitle}>{profile.rank}{profile.position ? `(${profile.position})` : ''}</span>}
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{getRoleLabel(profile.role)}</div>
+                                        <div className={styles.userDropdownRole}>{getRoleLabel(profile.role)}</div>
                                     </div>
-                                    <Link
-                                        href="/employees/mypage"
-                                        style={{ display: 'block', padding: '10px 20px', fontSize: '0.9rem', color: '#334155', textDecoration: 'none', transition: 'background 0.2s' }}
-                                        onClick={() => setUserMenuOpen(false)}
-                                        onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
-                                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                                    >
-                                        내 정보 수정
-                                    </Link>
-                                    <button
-                                        onClick={handleLogout}
-                                        style={{
-                                            display: 'block',
-                                            width: '100%',
-                                            textAlign: 'left',
-                                            padding: '10px 20px',
-                                            fontSize: '0.9rem',
-                                            color: '#ef4444',
-                                            background: 'transparent',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
-                                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                                    >
-                                        로그아웃
-                                    </button>
+                                    <Link href="/employees/mypage" className={styles.dropdownItem} onClick={() => setUserMenuOpen(false)}>내 정보 수정</Link>
+                                    <button onClick={handleLogout} className={styles.dropdownItem} style={{ color: '#ef4444', border: 'none', background: 'transparent', cursor: 'pointer', width: '100%', textAlign: 'left' }}>로그아웃</button>
                                 </div>
                             )}
-                        </>
+                        </div>
                     ) : (
-                        <Link
-                            href={`/login?next=${encodeURIComponent(pathname)}`}
-                            style={{
-                                backgroundColor: '#0056b3',
-                                color: 'white',
-                                padding: '8px 16px',
-                                borderRadius: '4px',
-                                fontSize: '0.85rem',
-                                fontWeight: '600',
-                                textDecoration: 'none',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            로그인
-                        </Link>
+                        <Link href={`/login?next=${encodeURIComponent(pathname)}`} className={styles.googleStyleLoginLink}>로그인</Link>
                     )}
                 </div>
             );
@@ -483,6 +324,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
 
         return linkElements;
     };
+
 
     const renderSubLinks = (subLinks, isMobile) => {
         return subLinks.map((subLink, subIndex) => {
@@ -518,12 +360,10 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                     href={subLink.href}
                     className={className}
                     onClick={(e) => {
-                        if (subLink.href?.startsWith('/employees') || subLink.href?.startsWith('/admin')) {
-                            handleProtectedClick(e);
-                        }
+                        if (subLink.href?.startsWith('/employees') || subLink.href?.startsWith('/admin')) handleProtectedClick(e);
                         if (!e.defaultPrevented) handleLinkClick();
                     }}
-                    prefetch={false} // 모바일 세션 충돌 방지
+                    prefetch={false}
                 >
                     {subLink.label}
                 </Link>
@@ -554,24 +394,14 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                 <div className="container">
                     <div className={styles.inner}>
                         <Link href="/" className={styles.logo} onClick={handleLinkClick}>
-                            <img
-                                src="/images/logo.png"
-                                alt="ELS SOLUTION"
-                                className={styles.logoImage}
-                                style={{
-                                    filter: logoFilter,
-                                    height: '27px',
-                                    transition: 'filter 0.3s'
-                                }}
-                            />
+                            <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} style={{ filter: logoFilter, height: '27px', transition: 'filter 0.3s' }} />
                         </Link>
 
                         <nav className={styles.nav}>
                             {renderNavLinks(false)}
                         </nav>
 
-                        {/* Mobile Toggle Button Only */}
-                        <div className={styles.utility} style={{ marginLeft: '0' }}>
+                        <div className={styles.utility}>
                             <button
                                 className={`${styles.mobileToggle} ${menuOpen ? styles.active : ''}`}
                                 onClick={toggleMenu}
@@ -589,44 +419,17 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
 
             <div className={`${styles.mobileNav} ${menuOpen ? styles.mobileNavOpen : ''}`}>
                 <div className={styles.mobileNavHeader}>
-                    {!loading && (profile ?
+                    {!isEmployees && !loading && (profile ?
                         <>
                             <div className={styles.welcomeMsg}>
                                 환영합니다, <strong>{displayName}</strong>
-                                {(profile.rank || profile.position) && (
-                                    <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>
-                                        &nbsp;{profile.rank}{profile.position ? `(${profile.position})` : ''}
-                                    </span>
-                                )} 님!<br />
+                                {(profile.rank || profile.position) && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>&nbsp;{profile.rank}{profile.position ? `(${profile.position})` : ''}</span>} 님!<br />
                                 <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>({getRoleLabel(profile.role)})</span>
                             </div>
                             <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
                         </> :
                         <button onClick={handleLoginClick} className={styles.mobileAuthBtn}>로그인</button>
                     )}
-                    <button
-                        type="button"
-                        onClick={handleCreateShortcut}
-                        className={styles.mobileShortcutBtn}
-                        style={{
-                            width: '100%',
-                            marginTop: '10px',
-                            padding: '12px',
-                            background: '#fff',
-                            color: '#1a1a1a',
-                            border: '1px solid #ddd',
-                            borderRadius: '8px',
-                            fontSize: '0.95rem',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
-                        }}
-                    >
-                        <img src="/favicon.png" alt="ELS" style={{ width: '18px', height: '18px' }} />
-                        앱 설치
-                    </button>
                 </div>
                 <div className={styles.mobileNavLinks}>
                     {renderNavLinks(true)}

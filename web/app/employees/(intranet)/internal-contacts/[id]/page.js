@@ -13,6 +13,18 @@ export default function InternalContactDetailPage() {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const getSafeUrl = (url) => {
+        if (!url) return '';
+        let target = url;
+        if (target.startsWith('http')) {
+            try {
+                const parsed = new URL(target);
+                target = parsed.pathname + parsed.search;
+            } catch (e) { }
+        }
+        return target;
+    };
+
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/internal-contacts/' + id);
     }, [role, authLoading, router, id]);
@@ -42,16 +54,16 @@ export default function InternalContactDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>사내연락망</h1>
-            <div className={styles.controls}>
-                <Link href={'/employees/internal-contacts/' + id + '/edit'} className={styles.btnSecondary}>수정</Link>
-                <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
-                <Link href="/employees/internal-contacts" className={styles.btnSecondary}>목록</Link>
-            </div>
+                <div className={styles.controls}>
+                    <Link href={'/employees/internal-contacts/' + id + '/edit'} className={styles.btnSecondary}>수정</Link>
+                    <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
+                    <Link href="/employees/internal-contacts" className={styles.btnSecondary}>목록</Link>
+                </div>
             </div>
             <div className={styles.card}>
                 <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     {item.photo_url && (
-                        <img src={item.photo_url} alt="" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12 }} />
+                        <img src={getSafeUrl(item.photo_url)} alt="" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12 }} />
                     )}
                     <div style={{ flex: 1, minWidth: 200 }}>
                         <h2 className={styles.detailTitle}>{item.name}</h2>

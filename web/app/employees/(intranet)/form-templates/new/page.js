@@ -56,7 +56,7 @@ export default function FormTemplatesNewPage() {
 
             if (res.ok) {
                 setFileName(file.name);
-                setFileUrl(`${window.location.origin}/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`);
+                setFileUrl(`/api/s3/files?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`);
             } else {
                 alert('업로드 실패');
             }

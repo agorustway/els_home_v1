@@ -13,6 +13,26 @@ export default function DriverContactsDetailPage() {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const getSafeUrl = (url, name) => {
+        if (!url) return '';
+        let target = url;
+        if (target.startsWith('http')) {
+            try {
+                const parsed = new URL(target);
+                target = parsed.pathname + parsed.search;
+            } catch (e) { }
+        }
+
+        // Add name parameter if it's an API call and name is provided
+        if (name && (target.includes('/api/s3/files') || target.includes('/api/nas/files'))) {
+            if (!target.includes('name=')) {
+                const connector = target.includes('?') ? '&' : '?';
+                target = `${target}${connector}name=${encodeURIComponent(name)}`;
+            }
+        }
+        return target;
+    };
+
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/driver-contacts/' + params.id);
     }, [role, authLoading, router, params.id]);
@@ -41,17 +61,21 @@ export default function DriverContactsDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>운전원정보 · 상세</h1>
-            <div className={styles.controls}>
-                <Link href={`/employees/driver-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
-                <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
-                <Link href="/employees/driver-contacts" className={styles.btnSecondary}>목록</Link>
-            </div>
+                <div className={styles.controls}>
+                    <Link href={`/employees/driver-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
+                    <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
+                    <Link href="/employees/driver-contacts" className={styles.btnSecondary}>목록</Link>
+                </div>
             </div>
 
             <div className={styles.card}>
                 <div style={{ display: 'flex', gap: '40px', marginBottom: '30px' }}>
                     <div style={{ width: 140, height: 140, borderRadius: '20px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {item.photo_url ? <img src={item.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '3rem' }}>👤</span>}
+                        {item.photo_url ? (
+                            <img src={getSafeUrl(item.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <span style={{ fontSize: '3rem' }}>👤</span>
+                        )}
                     </div>
                     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
@@ -89,7 +113,7 @@ export default function DriverContactsDetailPage() {
                     <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>📎 추가 서류 (최대 10개)</label>
                     <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {(item.additional_docs || []).map((file, idx) => (
-                            <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#334155', border: '1px solid #e2e8f0' }}>
+                            <a key={idx} href={getSafeUrl(file.url, file.name)} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#334155', border: '1px solid #e2e8f0' }}>
                                 <span>📎 {file.name}</span>
                                 <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>📥 다운로드</span>
                             </a>

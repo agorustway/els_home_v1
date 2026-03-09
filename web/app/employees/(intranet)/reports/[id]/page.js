@@ -113,9 +113,28 @@ export default function ReportDetailPage() {
                             <h4 style={{ marginBottom: '15px', color: '#1e293b', fontWeight: '700' }}>첨부파일</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {post.attachments.map((file, idx) => {
-                                    const downloadUrl = file.type === 's3'
-                                        ? `/api/s3/files?key=${encodeURIComponent(file.path)}`
-                                        : `/api/nas/files?path=${encodeURIComponent(file.path)}&download=true`;
+                                    const getSafeUrl = (file) => {
+                                        let url = file.path || '';
+                                        // Ensure name parameter for correct filename display
+                                        const nameParam = `&name=${encodeURIComponent(file.name || '첨부파일')}`;
+
+                                        // Fix: Strip external domain if any
+                                        if (url.startsWith('http')) {
+                                            try {
+                                                const parsed = new URL(url);
+                                                url = parsed.pathname + parsed.search;
+                                            } catch (e) { }
+                                        }
+
+                                        if (file.type === 's3') {
+                                            const key = url.includes('key=') ? url.split('key=')[1].split('&')[0] : url;
+                                            return `/api/s3/files?key=${encodeURIComponent(key)}${nameParam}`;
+                                        }
+                                        const path = url.includes('path=') ? url.split('path=')[1].split('&')[0] : url;
+                                        return `/api/nas/files?path=${encodeURIComponent(path)}&download=true${nameParam}`;
+                                    };
+
+                                    const downloadUrl = getSafeUrl(file);
 
                                     return (
                                         <a

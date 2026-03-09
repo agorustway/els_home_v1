@@ -80,15 +80,22 @@ export default function WebzineDetail() {
 
     const getThumbnailSrc = (url) => {
         if (!url) return '';
-        if (url.startsWith('http')) return url;
+        let target = url;
+        if (target.startsWith('http')) {
+            try {
+                const parsed = new URL(target);
+                target = parsed.pathname + parsed.search;
+            } catch (e) { }
+        }
+        if (target.includes('/api/')) return target;
 
         // Check for S3 prefixes
         const s3Prefixes = ['webzine/', 'board/', 'report/'];
-        if (s3Prefixes.some(prefix => url.toLowerCase().startsWith(prefix))) {
-            return `/api/s3/files?key=${encodeURIComponent(url)}`;
+        if (s3Prefixes.some(prefix => target.toLowerCase().startsWith(prefix))) {
+            return `/api/s3/files?key=${encodeURIComponent(target)}`;
         }
 
-        const path = url.startsWith('/') ? url : `/${url}`;
+        const path = target.startsWith('/') ? target : `/${target}`;
         return `/api/nas/preview?path=${encodeURIComponent(path)}`;
     };
 

@@ -13,6 +13,18 @@ export default function ExternalContactDetailPage() {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const getSafeUrl = (url) => {
+        if (!url) return '';
+        let target = url;
+        if (target.startsWith('http')) {
+            try {
+                const parsed = new URL(target);
+                target = parsed.pathname + parsed.search;
+            } catch (e) { }
+        }
+        return target;
+    };
+
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/external-contacts/' + id);
     }, [role, authLoading, router, id]);
@@ -42,11 +54,11 @@ export default function ExternalContactDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>외부연락처</h1>
-            <div className={styles.controls}>
-                <Link href={'/employees/external-contacts/' + id + '/edit'} className={styles.btnSecondary}>수정</Link>
-                <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
-                <Link href="/employees/external-contacts" className={styles.btnSecondary}>목록</Link>
-            </div>
+                <div className={styles.controls}>
+                    <Link href={'/employees/external-contacts/' + id + '/edit'} className={styles.btnSecondary}>수정</Link>
+                    <button type="button" onClick={handleDelete} className={styles.btnDelete}>삭제</button>
+                    <Link href="/employees/external-contacts" className={styles.btnSecondary}>목록</Link>
+                </div>
             </div>
             <div className={styles.card}>
                 <h2 className={styles.detailTitle}>{item.company_name}</h2>

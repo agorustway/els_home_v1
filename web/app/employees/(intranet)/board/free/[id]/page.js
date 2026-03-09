@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../../board.module.css';
+import { motion } from 'framer-motion';
 
 export default function PostDetailPage() {
     const { id } = useParams();
@@ -19,24 +20,15 @@ export default function PostDetailPage() {
     }, [role, authLoading, router, id]);
 
     useEffect(() => {
-        if (role) {
-            fetchPost();
-        }
+        if (role) fetchPost();
     }, [role, id]);
 
     async function fetchPost() {
         try {
-            console.log('Fetching post ID:', id);
             const res = await fetch(`/api/board/${id}`);
-            if (!res.ok) {
-                const errData = await res.json();
-                console.error('Fetch Error:', errData);
-                throw new Error(errData.error || 'Failed to fetch');
-            }
+            if (!res.ok) throw new Error('게시글을 불러올 수 없습니다.');
             const data = await res.json();
-            if (data.post) {
-                setPost(data.post);
-            }
+            if (data.post) setPost(data.post);
         } catch (error) {
             console.error(error);
         } finally {
@@ -59,13 +51,8 @@ export default function PostDetailPage() {
         }
     };
 
-    if (authLoading || loading) {
-        return <div style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
-    }
-
-    if (!post) {
-        return <div style={{ padding: '100px', textAlign: 'center' }}>게시글을 찾을 수 없습니다.</div>;
-    }
+    if (authLoading || loading) return <div className={styles.container} style={{ padding: '100px', textAlign: 'center' }}>로딩 중...</div>;
+    if (!post) return <div className={styles.container} style={{ padding: '100px', textAlign: 'center' }}>게시글을 찾을 수 없습니다.</div>;
 
     const isAuthor = user?.id === post.author_id;
     const isAdmin = role === 'admin';
@@ -76,52 +63,61 @@ export default function PostDetailPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>자유게시판</h1>
             </div>
-            <div className={styles.detailCard}>
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={styles.detailCard}
+            >
                 <div className={styles.detailHeader}>
                     <h1 className={styles.detailTitle}>{post.title}</h1>
                     <div className={styles.detailMeta}>
-                        <span>작성자: {post.author?.name || post.author?.email?.split('@')[0]}</span>
-                        <span>작성일: {new Date(post.created_at).toLocaleString()}</span>
-                        <span>조회수: {post.view_count || 0}</span>
+                        <span>👤 {post.author?.name || '익명'}{post.author?.rank ? ` ${post.author.rank}` : ''}</span>
+                        <span>📅 {new Date(post.created_at).toLocaleString('ko-KR')}</span>
+                        <span>👁️ {post.view_count || 0}회</span>
                     </div>
                 </div>
 
                 <div className={styles.contentBody}>
-                    <div style={{ minHeight: '300px', whiteSpace: 'pre-wrap' }}>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
                         {post.content}
                     </div>
 
-                    {/* Attachments Display */}
                     {post.attachments && post.attachments.length > 0 && (
                         <div style={{ marginTop: '50px', borderTop: '1px solid #f1f5f9', paddingTop: '30px' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#1e293b', fontWeight: '700' }}>첨부파일</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#1e293b', fontWeight: '800', fontSize: '1rem' }}>📎 첨부파일 ({post.attachments.length})</h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                 {post.attachments.map((file, idx) => {
-                                    const downloadUrl = file.type === 's3'
-                                        ? `/api/s3/files?key=${encodeURIComponent(file.path)}`
-                                        : `/api/nas/files?path=${encodeURIComponent(file.path)}&download=true`;
+                                    const getSafeUrl = (file) => {
+                                        let url = file.path || '';
+                                        const nameParam = `&name=${encodeURIComponent(file.name || '첨부파일')}`;
+
+                                        if (url.startsWith('http')) {
+                                            try {
+                                                const parsed = new URL(url);
+                                                url = parsed.pathname + parsed.search;
+                                            } catch (e) { }
+                                        }
+
+                                        if (file.type === 's3') {
+                                            const key = url.includes('key=') ? url.split('key=')[1].split('&')[0] : url;
+                                            return `/api/s3/files?key=${encodeURIComponent(key)}${nameParam}`;
+                                        }
+                                        const path = url.includes('path=') ? url.split('path=')[1].split('&')[0] : url;
+                                        return `/api/nas/files?path=${encodeURIComponent(path)}&download=true${nameParam}`;
+                                    };
+
+                                    const downloadUrl = getSafeUrl(file);
 
                                     return (
-                                        <a
-                                            key={idx}
-                                            href={downloadUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                        <a key={idx} href={downloadUrl} target="_blank" rel="noopener noreferrer"
                                             style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                padding: '12px 16px',
-                                                background: '#f8fafc',
-                                                borderRadius: '8px',
-                                                color: '#2563eb',
-                                                textDecoration: 'none',
-                                                fontSize: '0.95rem',
-                                                width: 'fit-content',
-                                                border: '1px solid #e2e8f0'
+                                                padding: '10px 16px', background: '#f8fafc', borderRadius: '8px',
+                                                color: '#2563eb', textDecoration: 'none', fontSize: '0.9rem',
+                                                border: '1px solid #e2e8f0', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px'
                                             }}
                                         >
-                                            📎 {file.name}
+                                            {file.name}
                                         </a>
                                     );
                                 })}
@@ -132,22 +128,22 @@ export default function PostDetailPage() {
 
                 <div className={styles.actions}>
                     <button onClick={() => router.push('/employees/board/free')} className={styles.btnSecondary}>
-                        목록으로
+                        ← 목록으로
                     </button>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         {canManage && (
                             <>
                                 <button onClick={() => router.push(`/employees/board/free/${id}/edit`)} className={styles.btnPrimary}>
-                                    수정
+                                    글 수정
                                 </button>
                                 <button onClick={handleDelete} className={styles.btnDelete}>
-                                    삭제
+                                    삭제하기
                                 </button>
                             </>
                         )}
                     </div>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

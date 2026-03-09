@@ -199,13 +199,13 @@ export default function ArchiveBrowser() {
         const filePath = file.path;
         const fileName = file.name;
 
-        // Use absolute URL for sharing and native browser download manager
-        const downloadUrl = `${window.location.origin}/api/nas/preview?path=${encodeURIComponent(filePath)}&download=true`;
+        // Add name parameter for better filename handling
+        const downloadUrl = `/api/nas/preview?path=${encodeURIComponent(filePath)}&download=true&name=${encodeURIComponent(fileName)}`;
         window.location.href = downloadUrl;
     };
 
     const handleCopyShareLink = (file) => {
-        const downloadUrl = `${window.location.origin}/api/nas/preview?path=${encodeURIComponent(file.path)}&download=true`;
+        const downloadUrl = `${window.location.origin}/api/nas/preview?path=${encodeURIComponent(file.path)}&download=true&name=${encodeURIComponent(file.name)}`;
         navigator.clipboard.writeText(downloadUrl).then(() => {
             alert('외부 공유용 다운로드 링크가 복사되었습니다.');
         }).catch(err => {

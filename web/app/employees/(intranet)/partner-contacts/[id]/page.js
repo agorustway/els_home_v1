@@ -13,6 +13,26 @@ export default function PartnerContactsDetailPage() {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const getSafeUrl = (url, name) => {
+        if (!url) return '';
+        let target = url;
+        if (target.startsWith('http')) {
+            try {
+                const parsed = new URL(target);
+                target = parsed.pathname + parsed.search;
+            } catch (e) { }
+        }
+
+        // Add name parameter if it's an API call and name is provided
+        if (name && (target.includes('/api/s3/files') || target.includes('/api/nas/files'))) {
+            if (!target.includes('name=')) {
+                const connector = target.includes('?') ? '&' : '?';
+                target = `${target}${connector}name=${encodeURIComponent(name)}`;
+            }
+        }
+        return target;
+    };
+
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/partner-contacts/' + params.id);
     }, [role, authLoading, router, params.id]);
@@ -41,11 +61,11 @@ export default function PartnerContactsDetailPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보 · 상세</h1>
-            <div className={styles.controls}>
-                <Link href={`/employees/partner-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
-                <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
-                <Link href="/employees/partner-contacts" className={styles.btnSecondary}>목록</Link>
-            </div>
+                <div className={styles.controls}>
+                    <Link href={`/employees/partner-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
+                    <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
+                    <Link href="/employees/partner-contacts" className={styles.btnSecondary}>목록</Link>
+                </div>
             </div>
 
             <div className={styles.card}>
@@ -85,7 +105,7 @@ export default function PartnerContactsDetailPage() {
                     <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>📎 첨부 서류</label>
                     <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {(item.attachments || []).map((file, idx) => (
-                            <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#334155', border: '1px solid #e2e8f0' }}>
+                            <a key={idx} href={getSafeUrl(file.url, file.name)} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#334155', border: '1px solid #e2e8f0' }}>
                                 <span><span style={{ fontWeight: 'bold', color: '#2563eb', marginRight: '10px' }}>[{file.category}]</span> {file.name}</span>
                                 <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>📥 다운로드</span>
                             </a>

@@ -90,7 +90,7 @@
 .userArea {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 24px;
     flex-wrap: nowrap;
     position: absolute;
     left: 50%;
@@ -281,7 +281,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 20px;
+        gap: 8px;
         min-width: 0;
     }
 
