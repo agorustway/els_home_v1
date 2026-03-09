@@ -1,0 +1,1681 @@
+/* ═══════════════════════════════════════════
+   구간조회 — 네이버 지도 기반 경로 탐색
+   3단 레이아웃: 옵션바 → 입력+지도 → 결과
+   v2: 법규팝업, 실시간, 터미널안내
+   ═══════════════════════════════════════════ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ── 헤더 ── */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: -0.03em;
+}
+
+.titleIcon {
+    font-size: 1.2rem;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legalBtn {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.legalBtn:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.backBtn {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.backBtn:hover {
+    background: #e2e8f0;
+}
+
+/* ═══════════════════════════════════════════
+   ROW 1: 옵션 바 (풀와이드)
+   ═══════════════════════════════════════════ */
+.optionBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    align-items: flex-end;
+}
+
+.optionItem {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 120px;
+}
+
+.miniLabel {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.02em;
+}
+
+.miniSelect,
+.miniInput {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #1e293b;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.miniSelect:focus,
+.miniInput:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+
+/* ── 출발시간 모드 ── */
+.timeModeRow {
+    display: flex;
+    gap: 4px;
+}
+
+.timeModeBtn {
+    padding: 4px 8px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.timeModeBtn:hover {
+    border-color: #94a3b8;
+}
+
+.timeModeBtnActive {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+
+.radioRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    height: 30px;
+}
+
+.radioLabel {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: #334155;
+    font-weight: 500;
+}
+
+.radioLabel input[type="radio"] {
+    accent-color: #2563eb;
+}
+
+/* ═══════════════════════════════════════════
+   ROW 2: 입력(좌) + 지도(우) — 고정 높이
+   ═══════════════════════════════════════════ */
+.mainGrid {
+    display: grid;
+    grid-template-columns: 520px 1fr;
+    /* 480px -> 520px 로 확장하여 글자 잘림 방지 */
+    gap: 14px;
+    height: 600px;
+    margin-bottom: 0;
+}
+
+/* ── 좌측 패널 ── */
+.leftPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.leftPanel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.leftPanel::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+/* ── 경로 입력 ── */
+.routeInputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.locationBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e2e8f0;
+    position: relative;
+}
+
+.locationBlock:focus-within {
+    z-index: 1000;
+}
+
+.locationBlock:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.routeField {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.fieldDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.fieldWrap {
+    flex: 1;
+    position: relative;
+}
+
+.placeInput {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+
+.placeInput:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+
+.coordBadge {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+}
+
+.removeWpBtn {
+    background: #fee2e2;
+    border: none;
+    color: #dc2626;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.removeWpBtn:hover {
+    background: #fecaca;
+}
+
+.addWpBtn {
+    background: none;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: 18px;
+}
+
+.addWpBtn:hover {
+    border-color: #3b82f6;
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+/* ── 장소 검색 드롭다운 ── */
+.placeDropdown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 500;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.placeItem {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.1s;
+}
+
+.placeItem:last-child {
+    border-bottom: none;
+}
+
+.placeItem:hover {
+    background: #eff6ff;
+}
+
+.placeName {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.placeTypeBadge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.placeAddr {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* ── 경로 옵션 칩 ── */
+.routeOptionsBar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.optionChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chip {
+    padding: 4px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.chip:hover {
+    border-color: #94a3b8;
+}
+
+.chipActive {
+    background: #eff6ff;
+    border-width: 2px;
+}
+
+/* ── 검색 버튼 ── */
+.searchBtn {
+    flex: 1;
+    padding: 12px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.02em;
+    height: 44px;
+}
+
+.searchBtn:hover:not(:disabled) {
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transform: translateY(-1px);
+}
+
+.searchBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.errorText {
+    padding: 8px 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: #dc2626;
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+/* ── 우측: 지도 (고정 높이) ── */
+.rightPanel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.mapWrap {
+    position: relative;
+    flex: 1;
+    min-height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+}
+
+.mapCanvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.mapLoading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 250, 252, 0.9);
+    z-index: 5;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── 지도 안내 (풀와이드) ── */
+.mapNotice {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.5;
+    padding: 8px 12px;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    margin-top: 8px;
+    margin-bottom: 14px;
+}
+
+.mapNotice strong {
+    color: #1e40af;
+}
+
+/* ═══════════════════════════════════════════
+   ROW 3: 결과 영역 (풀와이드, 2열 그리드)
+   ═══════════════════════════════════════════ */
+.resultSection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 16px 0 0;
+    border-top: 2px solid #e2e8f0;
+    animation: fadeSlideUp 0.35s ease-out;
+}
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── 결과 좌측: 경로 카드 ── */
+.resultRoutes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+/* ── 섹션 라벨 ── */
+.sectionLabel {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.routeCard {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+}
+
+.routeCard:hover {
+    background: #eff6ff;
+}
+
+.routeCardActive {
+    background: #eff6ff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.routeColor {
+    width: 6px;
+    height: 32px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.routeCardBody {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.routeLabel {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.routeStats {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.routeCosts {
+    font-size: 0.68rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.fuelPriceBadge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #059669;
+}
+
+.routeCheck {
+    font-size: 1rem;
+    color: #2563eb;
+    font-weight: 700;
+}
+
+/* ── 결과 우측: 운임 결과 ── */
+.resultFare {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
+}
+
+/* ── 운행비용 요약 ── */
+.drivingSummary {
+    padding: 12px;
+    background: linear-gradient(135deg, #f0f9ff, #ecfdf5);
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+}
+
+.drivingTitle {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #0369a1;
+    margin: 0 0 8px 0;
+}
+
+.drivingGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.drivingItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    font-size: 0.78rem;
+}
+
+.drivingLabel {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.drivingValue {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.drivingItemTotal {
+    grid-column: 1 / -1;
+    background: #fff;
+    border: 1.5px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.drivingValueTotal {
+    color: #0369a1;
+    font-weight: 800;
+    font-size: 0.9rem;
+}
+
+.distanceSummary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 0.82rem;
+}
+
+.distRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #475569;
+}
+
+.distRow strong {
+    color: #1e293b;
+}
+
+.distTotal {
+    padding-top: 6px;
+    margin-top: 4px;
+    border-top: 1px solid #e2e8f0;
+    font-weight: 600;
+}
+
+.distTotal strong {
+    color: #2563eb;
+    font-size: 0.9rem;
+}
+
+.fareTable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.78rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.fareTable th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 0.78rem;
+}
+
+.fareTable th:first-child {
+    text-align: left;
+}
+
+.fareTable td {
+    padding: 8px 10px;
+    text-align: right;
+    border-top: 1px solid #f1f5f9;
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.fareRowLabel {
+    text-align: left !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+}
+
+.fareHighlight {
+    color: #2563eb !important;
+    font-weight: 700 !important;
+}
+
+/* ── 터미널 안내 박스 (#4) ── */
+.terminalInfoBox {
+    padding: 10px 12px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+}
+
+.terminalInfoTitle {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #166534;
+    margin: 0 0 4px 0;
+}
+
+.terminalInfoDesc {
+    font-size: 0.73rem;
+    color: #475569;
+    margin: 0 0 6px 0;
+    line-height: 1.4;
+}
+
+.terminalInfoItem {
+    font-size: 0.75rem;
+    color: #334155;
+    margin: 2px 0;
+    font-weight: 500;
+}
+
+.saveBtn {
+    flex: 1;
+    padding: 10px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.saveBtn:hover {
+    background: #047857;
+}
+
+.actionBtnRow {
+    display: flex;
+    gap: 8px;
+}
+
+.excelBtn {
+    flex: 1;
+    padding: 10px;
+    background: #1e40af;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.excelBtn:hover {
+    background: #1e3a8a;
+}
+
+/* ═══════════════════════════════════════════
+   관련 법규 팝업
+   ═══════════════════════════════════════════ */
+.legalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.legalPopup {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 640px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: popIn 0.25s ease-out;
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.legalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.legalHeader h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.legalHeader button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.legalHeader button:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.legalBody {
+    padding: 16px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legalItem {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.legalItemTitle {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.legalItemDesc {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.legalNote {
+    margin-top: 8px;
+    padding: 12px;
+    background: #fffbeb;
+    border: 1px solid #fef3c7;
+    border-radius: 8px;
+}
+
+.legalNote p {
+    font-size: 0.8rem;
+    margin: 0 0 8px 0;
+    color: #1e293b;
+}
+
+.terminalTable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.terminalTable th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 0.72rem;
+}
+
+.terminalTable td {
+    padding: 5px 10px;
+    border-top: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.75rem;
+}
+
+.terminalTableNote {
+    font-size: 0.72rem !important;
+    color: #b45309 !important;
+    margin-top: 8px !important;
+    font-weight: 600;
+}
+
+/* ── 토스트 ── */
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 9000;
+    animation: toastIn 0.3s ease-out;
+    white-space: nowrap;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* ═══════════════════════════════════════════
+   반응형
+   ═══════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+    .mainGrid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .leftPanel {
+        order: 2;
+    }
+
+    .rightPanel {
+        order: 1;
+        min-height: 350px;
+        height: 350px;
+    }
+
+    .resultSection {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 10px 0;
+    }
+
+    .headerRight {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .title {
+        font-size: 0.95rem;
+    }
+
+    .optionBar {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .optionItem {
+        min-width: 100px;
+    }
+
+    .timeModeRow {
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .rightPanel {
+        min-height: 280px;
+        height: 280px;
+    }
+
+    .resultSection {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .resultRoutes,
+    .resultFare {
+        padding: 10px;
+    }
+
+    .fareTable {
+        font-size: 0.78rem;
+    }
+
+    .fareTable th,
+    .fareTable td {
+        padding: 6px 8px;
+    }
+
+    .placeInput {
+        font-size: 0.82rem;
+        padding: 7px 28px 7px 8px;
+    }
+
+    .searchBtn {
+        padding: 10px;
+        font-size: 0.88rem;
+    }
+
+    .legalPopup {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .toast {
+        left: 16px;
+        right: 16px;
+        transform: none;
+        text-align: center;
+    }
+
+    @keyframes toastIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .optionBar {
+        flex-direction: column;
+    }
+
+    .optionItem {
+        min-width: 100%;
+    }
+
+    .optionChips {
+        gap: 4px;
+    }
+
+    .chip {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+}
+
+/* ═══════════════════════════════════════════
+   출발지 주소 검색 + 시도/시군구/읍면동 드롭다운
+   ═══════════════════════════════════════════ */
+
+.originAddrSection {
+    margin: 2px 0 8px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.jusoSearchWrap {
+    position: relative;
+}
+
+.jusoInput {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: #334155;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+
+.jusoInput:focus {
+    border-color: #93c5fd;
+    background: #fff;
+}
+
+.jusoInput::placeholder {
+    color: #94a3b8;
+    font-size: 0.78rem;
+}
+
+.jusoDropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.jusoItem {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.1s;
+}
+
+.jusoItem:hover,
+.jusoItemActive {
+    background: #eff6ff;
+}
+
+.jusoItem:last-child {
+    border-bottom: none;
+}
+
+.jusoMain {
+    font-size: 0.8rem;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.jusoSub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+
+.jusoAdm {
+    font-size: 0.72rem;
+    color: #2563eb;
+}
+
+.jusoBadge {
+    display: inline-block;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-right: 4px;
+    letter-spacing: -0.02em;
+}
+
+.regionDropdowns {
+    display: flex;
+    gap: 4px;
+}
+
+.regionSelect {
+    flex: 1;
+    padding: 6px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: #334155;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+    min-width: 0;
+}
+
+.regionSelect:focus {
+    border-color: #93c5fd;
+}
+
+.regionSelect:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.regionHintText {
+    font-size: 0.72rem;
+    color: #2563eb;
+    margin: 0;
+    padding: 0;
+    letter-spacing: -0.02em;
+}
+
+/* ── 운임 섹션 헤더 (거리별/구간별/편도 구분) ── */
+.fareSectionHeader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6px;
+    padding-top: 4px;
+}
+
+.fareSectionBadge {
+    display: inline-block;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: -0.02em;
+}
+
+.noSectionNote {
+    margin: 12px 0 4px 0;
+    padding: 8px 12px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: #92400e;
+    line-height: 1.5;
+}
+
+/* ── 터미널 빠른선택 드롭다운 ── */
+.terminalQuickSelect {
+    flex-shrink: 0;
+    width: auto;
+    min-width: 0;
+    padding: 0 8px;
+    font-size: 0.85rem;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.terminalQuickSelect:hover {
+    border-color: #94a3b8;
+}
+
+.terminalQuickSelect:focus {
+    border-color: #3b82f6;
+}
+
+/* ── 편도 참고값 표시 ── */
+.oneWayNote {
+    font-size: 0.72rem;
+    color: #6b7280;
+    font-weight: 400;
+}
+
+/* ───── 이전 조회 내역 (Saved Results) ───── */
+.searchActionRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 24px;
+}
+
+.resetBtn {
+    flex: 0 0 auto;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-size: 0.92rem;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 44px;
+}
+
+.resetBtn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.savedSection {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 2px solid #e2e8f0;
+    max-width: 1200px;
+}
+
+.savedHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.clearBtn {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
+.clearBtn:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.savedSection,
+.savedSectionFull {
+    margin-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 20px;
+}
+
+.savedSectionFull {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.savedHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.savedList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.savedItem {
+    width: 100%;
+    max-width: none;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.savedHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.savedHeadLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sNo {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #64748b;
+}
+
+.sDate {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.sBadge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.sOneWay,
+.sRound {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #fff;
+}
+
+.sOneWay {
+    background: #64748b;
+}
+
+.sRound {
+    background: #0f172a;
+}
+
+.sDel {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.65rem;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.sDel:hover {
+    color: #ef4444;
+}
+
+.savedBody {
+    padding: 10px 12px;
+}
+
+.sRouteInfo {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #f1f5f9;
+}
+
+.sRouteLine {
+    font-size: 0.82rem;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.sRouteMeta {
+    display: flex;
+    gap: 12px;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.sDataGrid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+    align-items: start;
+    width: 100%;
+}
+
+.sCostBox {
+    background: #f0f9ff;
+    border: 1px solid #e0f2fe;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.sBoxTitle {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #0369a1;
+    margin-bottom: 6px;
+}
+
+.sCostTable {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sCostRow {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #475569;
+}
+
+.sCostRowTotal {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #bae6fd;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #0369a1;
+}
+
+.sFareBox {
+    flex: 1;
+}
+
+.sFareTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+}
+
+.sFareTable th {
+    background: #f8fafc;
+    padding: 3px 6px;
+    text-align: right;
+    border: 1px solid #f1f5f9;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.sFareTable th:first-child {
+    text-align: left;
+}
+
+.sFareTable td {
+    padding: 4px 6px;
+    text-align: right;
+    border: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.sFareTable td:first-child {
+    text-align: left;
+    font-weight: 700;
+    color: #475569;
+}
+
+.sHi {
+    color: #2563eb;
+    font-weight: 800;
+}
+
+@media (max-width: 1024px) {
+    .sDataGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 9999;
+}
+
+/* 폰트 크기 미세 조정 */
+.placeInput,
+.jusoInput {
+    font-size: 0.88rem;
+}
+
+.miniSelect,
+.miniInput {
+    font-size: 0.82rem;
+}
+
+.terminalQuickSelect {
+    font-size: 0.82rem;
+}

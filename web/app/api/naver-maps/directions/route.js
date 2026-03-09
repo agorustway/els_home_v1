@@ -19,10 +19,10 @@ export async function GET(request) {
     if (!clientId || !clientSecret) {
         return NextResponse.json({ error: 'Naver API credentials are not configured on the server.' }, { status: 500 });
     }
-    
+
     // 네이버 지도 API는 '경로 우선' 옵션을 trafast로 받습니다.
     const routeOption = option || 'trafast'; // 기본값: 추천경로
-    const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=${start}&goal=${goal}&option=${routeOption}`;
+    const apiUrl = `https://maps.apigw.ntruss.com/map-direction/v1/driving?start=${start}&goal=${goal}&option=${routeOption}`;
 
     try {
         const apiRes = await fetch(apiUrl, {
@@ -33,7 +33,7 @@ export async function GET(request) {
         });
 
         const data = await apiRes.json();
-        
+
         if (apiRes.status !== 200 || data.code !== 0) {
             return NextResponse.json({ error: data.message || 'Failed to fetch from Naver Directions API', details: data }, { status: apiRes.status });
         }

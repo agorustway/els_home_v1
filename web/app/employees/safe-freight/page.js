@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './safe-freight.module.css';
 import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
-import NaverMapRouteSearch from '@/components/NaverMapRouteSearch';
+import RouteSearchView from './route-search/RouteSearchView';
 
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
@@ -873,8 +873,8 @@ export default function SafeFreightPage() {
             type="button"
             className={
               t.id === 'other'
-                ? (queryType === t.id ? styles.tabActiveRed : styles.tabRed)
-                : (queryType === t.id ? styles.tabActive : styles.tab)
+                ? (view === 'default' && queryType === t.id ? styles.tabActiveRed : styles.tabRed)
+                : (view === 'default' && queryType === t.id ? styles.tabActive : styles.tab)
             }
             onClick={() => { setView('default'); setQueryType(t.id); }}
           >
@@ -886,15 +886,18 @@ export default function SafeFreightPage() {
           </button>
         ))}
 
-        {/* 구간조회(개발중) */}
+        {/* 구간조회 (네이버 지도) */}
         <button
           type="button"
-          className={styles.tabDeveloping}
-          onClick={() => setView('naver-map')}
-          title="네이버 지도로 경로 조회 (개발중)"
+          className={view === 'naver-map' ? styles.tabActive : styles.tab}
+          onClick={() => {
+            setView('naver-map');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          title="네이버 지도로 경로 조회"
         >
-          <span className={styles.tabLabel}>구간조회(개발중)</span>
-          <span className={styles.tabDesc}>지도 기반 거리/경로 조회</span>
+          <span className={styles.tabLabel}>구간조회</span>
+          <span className={styles.tabDesc}>지도 기반 경로/운임 조회</span>
         </button>
 
         {/* 관련 법령·고시 안내 */}
@@ -977,6 +980,14 @@ export default function SafeFreightPage() {
             </ul>
           </div>
         </div>
+      )}
+
+      {view === 'naver-map' && (
+        <RouteSearchView
+          options={options}
+          period={period}
+          onBack={() => setView('default')}
+        />
       )}
 
       {view === 'default' && (

@@ -23,7 +23,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Naver API credentials are not configured on the server.' }, { status: 500 });
     }
 
-    const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(query)}`;
+    const apiUrl = `https://maps.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(query)}`;
 
     try {
         const apiRes = await fetch(apiUrl, {
@@ -34,9 +34,9 @@ export async function GET(request) {
         });
 
         const data = await apiRes.json();
-        
+
         if (apiRes.status !== 200 || data.status !== 'OK') {
-             return NextResponse.json({ error: data.errorMessage || 'Failed to fetch from Naver Geocoding API', details: data }, { status: apiRes.status });
+            return NextResponse.json({ error: data.errorMessage || 'Failed to fetch from Naver Geocoding API', details: data }, { status: apiRes.status });
         }
 
         return NextResponse.json(data);
