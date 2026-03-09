@@ -6,7 +6,6 @@
   box-sizing: border-box;
   overflow: visible !important;
   position: relative;
-  z-index: 1;
 }
 
 .container {
