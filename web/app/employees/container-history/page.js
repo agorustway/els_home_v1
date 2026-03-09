@@ -52,7 +52,7 @@ function ContainerHistoryInner() {
     const [resultFileName, setResultFileName] = useState('');
     const [isDebugOpen, setIsDebugOpen] = useState(false); // [추가] 디버그 모달 상태
     const [screenshotUrl, setScreenshotUrl] = useState(''); // [추가] 스크린샷 URL
-    const [isLogCollapsed, setIsLogCollapsed] = useState(true); // [추가] 로그 접힘 상태 (기본값 접기)
+    const [isLogCollapsed, setIsLogCollapsed] = useState(false); // [변경] 로그 접힘 상태 (기본값 펼침)
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false); // [추가] 왼쪽 패널 접힘 상태 (기본값 열림)
     const [runHistory, setRunHistory] = useState([]); // [추가] 조회 이력 차수 관리
 
@@ -506,6 +506,50 @@ function ContainerHistoryInner() {
         reader.readAsArrayBuffer(file);
     };
 
+    const downloadExcel = () => {
+        if (!result) return;
+        if (typeof XLSX === 'undefined') {
+            setLogLines(prev => [...prev, '[오류] 엑셀 라이브러리가 아직 로드되지 않았습니다.'].slice(-100));
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        const rows = [HEADERS];
+
+        // 데이터 평면화
+        Object.keys(result).forEach(cn => {
+            result[cn].forEach(row => {
+                rows.push(row);
+            });
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        // 컬럼 너비 설정 (가장 긴 데이터 기준 가늠)
+        ws['!cols'] = [
+            { wch: 15 }, // 컨테이너번호
+            { wch: 5 },  // No
+            { wch: 8 },  // 수출입
+            { wch: 8 },  // 구분
+            { wch: 25 }, // 터미널
+            { wch: 20 }, // MOVE TIME
+            { wch: 15 }, // 모선
+            { wch: 8 },  // 항차
+            { wch: 8 },  // 선사
+            { wch: 8 },  // 적공
+            { wch: 8 },  // SIZE
+            { wch: 8 },  // POD
+            { wch: 8 },  // POL
+            { wch: 15 }, // 차량번호
+            { wch: 8 }   // RFID
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, '컨테이너이력');
+        const filename = `컨테이너이력조회_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        setLogLines(prev => [...prev, `[다운로드] ${filename} 생성이 완료되었습니다.`].slice(-100));
+    };
+
     const handleFileDrop = (e) => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
@@ -664,8 +708,8 @@ function ContainerHistoryInner() {
                                     {result && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500, marginLeft: '8px' }}>(총 {Object.keys(result).length}건)</span>}
                                 </h2>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    {result && downloadToken && (
-                                        <button onClick={() => window.open(`${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${resultFileName}`, '_blank')} className={styles.buttonExcelCompact}>엑셀 저장</button>
+                                    {result && (
+                                        <button onClick={downloadExcel} className={styles.buttonExcelCompact}>엑셀 저장</button>
                                     )}
                                     <button onClick={resetAll} className={styles.buttonReset}>초기화</button>
                                 </div>
