@@ -2,6 +2,7 @@
     min-height: 100vh;
     background: #f1f5f9;
     padding: 6px;
+    overflow-x: hidden;
 }
 
 .container {
@@ -63,22 +64,28 @@
 
 @media (max-width: 768px) {
     .headerBanner {
-        flex-direction: row;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
     }
 
     .title {
         font-size: 1.1rem;
+        padding-left: 10px;
+        width: 100%;
     }
 
     .shortcutGroup {
         gap: 6px;
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .etransShortcut {
-        padding: 5px 8px;
+        padding: 5px 10px;
+        flex: 1;
+        justify-content: center;
     }
 
     .etransShortcut img {
@@ -418,6 +425,7 @@
     flex: 1;
     overflow-x: auto;
     overflow-y: auto;
+    max-width: 100%;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     background: #fff;

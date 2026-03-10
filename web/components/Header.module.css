@@ -458,9 +458,19 @@
 
 /* Mobile Menu Internal Styles */
 .mobileNavHeader {
-    padding: 30px 25px;
+    padding: 25px 25px;
     background: #f8f9fa;
     border-bottom: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.mobileLogo {
+    display: flex;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #ddd;
 }
 
 .welcomeMsg {
