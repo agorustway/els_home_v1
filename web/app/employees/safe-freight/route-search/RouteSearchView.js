@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import Script from 'next/script';
 import styles from './route-search.module.css';
 import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
