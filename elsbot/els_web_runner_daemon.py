@@ -31,7 +31,9 @@ class DriverPool:
         self.consecutive_login_failures = 0 # 5회 계정 잠금 방지를 위해 3회 반복 실패 시 멈춤
 
     def add_log(self, msg):
-        ts = time.strftime("%H:%M:%S")
+        from datetime import datetime, timezone, timedelta
+        kst = timezone(timedelta(hours=9))
+        ts = datetime.now(kst).strftime("%H:%M:%S")
         formatted = f"[{ts}] {msg}"
         with self.lock:
             self.log_buffer.append(formatted)
@@ -90,11 +92,12 @@ def login():
     show_browser = os.environ.get("ELS_SHOW_BROWSER", "false").lower() == "true"
     
     if pool.is_same_user(u_id, show_browser):
-        if len(pool.drivers) >= pool.max_drivers:
+        # [수정] 풀이 꽉 차지 않았더라도 1개 이상의 브라우저가 살아있으면 불필요한 전체 초기화를 방지
+        if len(pool.drivers) > 0:
             return jsonify({
                 "ok": True, 
-                "message": "이미 안정화된 세션이 준비되어 있습니다.", 
-                "log": [f"[데몬] 이미 {u_id} 계정으로 {len(pool.drivers)}개 세션이 준비되었습니다."]
+                "message": f"세션 유지 중 ({len(pool.drivers)}개 활성)", 
+                "log": [f"[데몬] 이미 {u_id} 계정으로 세션이 존재하여 페이지 로드 시의 전체 초기화를 생략합니다."]
             })
         if pool.is_logging_in:
             return jsonify({
