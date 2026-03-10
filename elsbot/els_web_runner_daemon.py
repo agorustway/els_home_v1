@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 # 핵심 함수들 가져오기
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu
 import re
 import pandas as pd
 
@@ -245,8 +245,13 @@ def run():
         logs = []
         def _log_cb(msg): logs.append(msg)
         
-        # 조회 로직
-        status = solve_input_and_search(driver, cn, log_callback=_log_cb)
+        # [수정] 백그라운드 갱신으로 인해 메인 페이지로 이동했을 수 있으므로 다시 메뉴 진입 확인
+        menu_opened = open_els_menu(driver, log_callback=_log_cb)
+        if not menu_opened:
+            status = "INPUT_NOT_FOUND (메뉴 진입 실패)"
+        else:
+            # 조회 로직
+            status = solve_input_and_search(driver, cn, log_callback=_log_cb)
         
         # [추가] 조회 시도 후에도 모달 박스(로그인 등)가 생겼는지 확인
         modal_res = close_modals(driver)
