@@ -21,8 +21,8 @@ export const MAIN_TABS = [
     {
         id: 'contacts',
         label: '연락처',
-        defaultPath: '/employees/work-sites',
-        pathPatterns: ['/employees/work-sites', '/employees/internal-contacts', '/employees/external-contacts', '/employees/partner-contacts', '/employees/driver-contacts'],
+        defaultPath: '/employees/internal-contacts',
+        pathPatterns: ['/employees/internal-contacts', '/employees/external-contacts', '/employees/work-sites', '/employees/partner-contacts', '/employees/driver-contacts'],
         displayOrder: 11,
     },
     {
@@ -68,9 +68,9 @@ export const SIDEBAR_ITEMS = {
         { label: '서식자료실', path: '/employees/form-templates' },
     ],
     contacts: [
-        { label: '작업지안내', path: '/employees/work-sites' },
         { label: '사내연락망', path: '/employees/internal-contacts' },
         { label: '외부연락처', path: '/employees/external-contacts' },
+        { label: '고객사정보', path: '/employees/work-sites' },
         { label: '협력사정보', path: '/employees/partner-contacts' },
         { label: '운전원정보', path: '/employees/driver-contacts' },
     ],

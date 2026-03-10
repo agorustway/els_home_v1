@@ -35,6 +35,7 @@ export default function ExternalContactsNewPage() {
                     contact_type: contactType,
                     address,
                     phone,
+                    phone_2: phone2,
                     email,
                     contact_person: contactPerson,
                     memo,
@@ -81,8 +82,12 @@ export default function ExternalContactsNewPage() {
                         <input className={styles.input} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="주소" />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>연락처</label>
+                        <label className={styles.label}>대표 연락처</label>
                         <input className={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="전화번호" />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>직통/기타 연락처</label>
+                        <input className={styles.input} value={phone2} onChange={(e) => setPhone2(e.target.value)} placeholder="추가 연락처" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이메일</label>

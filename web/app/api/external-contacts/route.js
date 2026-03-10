@@ -22,6 +22,7 @@ export async function POST(request) {
             contact_type: body.contact_type || '고객사',
             address: body.address ?? '',
             phone: body.phone ?? '',
+            phone_2: body.phone_2 ?? '',
             email: body.email ?? '',
             contact_person: body.contact_person ?? '',
             memo: body.memo ?? '',

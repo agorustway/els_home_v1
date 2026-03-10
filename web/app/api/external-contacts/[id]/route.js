@@ -22,6 +22,7 @@ export async function PATCH(request, { params }) {
         if (body.contact_type !== undefined) updates.contact_type = body.contact_type;
         if (body.address !== undefined) updates.address = body.address;
         if (body.phone !== undefined) updates.phone = body.phone;
+        if (body.phone_2 !== undefined) updates.phone_2 = body.phone_2;
         if (body.email !== undefined) updates.email = body.email;
         if (body.contact_person !== undefined) updates.contact_person = body.contact_person;
         if (body.memo !== undefined) updates.memo = body.memo;

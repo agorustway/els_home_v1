@@ -32,12 +32,20 @@
   - 한글 가중치를 고려한 정밀한 **자동 열 너비(Auto Width)** 로직 적용으로 가독성 극대화.
   - 제목열 및 조건부 셀 스타일(수입/반입)의 폰트를 `맑은 고딕`으로 통합.
 
+- **연락처 메뉴 개편 및 필드 확장**:
+  - **명칭 변경**: '작업지안내' 메뉴를 **'고객사정보'**로 변경하여 직관성 강화.
+  - **메뉴 재정렬**: 사용자 요청에 맞춰 사이드바 순서 조정(사내 → 외부 → 고객사 → 협력사 → 운전원).
+  - **외부연락처 확장**: '대표 연락처' 외에 **'직통/기타 연락처(phone_2)'** 필드를 전역(DB, API, UI, 엑셀)에 추가.
+  - **일괄 삭제 기능**: 엑셀 업로드 양식에 **'데이터 삭제(Y)'** 컬럼을 추가하여, ID가 있는 행에 'Y' 표기 시 일괄 삭제가 가능하도록 로직 구현.
+  - **엑셀 업로드 양식 현행화**: 변경된 명칭(고객사정보) 및 추가 필드, 삭제 기능을 반영한 통합 엑셀 템플릿/업로드 로직 업데이트.
+
 ### 변경 파일
-- `docs/DESIGN_SYSTEM.md` — 엑셀 다운로드 표준 규격 추가
-- `web/app/api/branches/asan/export/route.js` — 통합현황 지원 및 표준 스타일 적용
-- `web/app/api/branches/asan/dispatch/route.js` — 모비스 국가 데이터 매핑 수정
-- `web/lib/asan-dispatch.js` — 엑셀 파싱 헤더 정규화('국가명' -> '국가')
-- `web/app/employees/container-history/page.js` — 엑셀 틀고정/필터/열너비 로직 고도화
+- `web/constants/intranetMenu.js` — 메뉴 명칭 및 순서 변경
+- `web/supabase_sql/supabase_intranet_tables.sql` — `external_contacts` 테이블 `phone_2` 컬럼 추가
+- `web/app/api/external-contacts/` (route.js, [id]/route.js) — CRUD API에 `phone_2` 반영
+- `web/app/api/contacts/excel/` (template, upload) — 엑셀 양식 명칭 및 컬럼 현행화
+- `web/app/employees/(intranet)/external-contacts/` (전체) — 리스트, 상세, 등록/수정 UI에 필드 추가
+- `web/app/employees/(intranet)/work-sites/page.js` — 페이지 내 텍스트 명칭 변경('고객사정보')
 
 ---
 

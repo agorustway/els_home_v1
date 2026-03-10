@@ -28,6 +28,7 @@ export async function POST(request) {
 
         let totalInserted = 0;
         let totalUpdated = 0;
+        let totalDeleted = 0;
         let errors = [];
 
         // 데이터 파싱 헬퍼
@@ -39,11 +40,12 @@ export async function POST(request) {
             return cell.value ? String(cell.value).trim() : '';
         };
 
-        const processSheet = async (sheetName, tableName, requiredColIndex, mapFunction) => {
+        const processSheet = async (sheetName, tableName, requiredColIndex, deleteColIndex, mapFunction) => {
             const sheet = workbook.getWorksheet(sheetName);
             if (!sheet) return;
 
             const rowsToUpsert = [];
+            const idsToDelete = [];
 
             // 1번 줄은 Header
             sheet.eachRow((row, rowNumber) => {
@@ -51,6 +53,15 @@ export async function POST(request) {
 
                 const idVal = getVal(row, 1);
                 const reqVal = getVal(row, requiredColIndex);
+                const deleteVal = getVal(row, deleteColIndex);
+
+                // 삭제 체크 (ID가 있고 삭제 컬럼이 Y인 경우)
+                if (deleteVal?.toUpperCase() === 'Y') {
+                    if (idVal && idVal.length === 36) {
+                        idsToDelete.push(idVal);
+                    }
+                    return;
+                }
 
                 // 필수값이 비어있거나 '예시 데이터 입력'인지 확인
                 if (!reqVal || reqVal === '예시 데이터 입력') return;
@@ -63,14 +74,24 @@ export async function POST(request) {
                 rowsToUpsert.push(dbObj);
             });
 
+            // 1. 삭제 처리
+            if (idsToDelete.length > 0) {
+                const { error: delError } = await supabase.from(tableName).delete().in('id', idsToDelete);
+                if (delError) {
+                    errors.push(`[${sheetName}] 데이터 삭제 실패: ${delError.message}`);
+                } else {
+                    totalDeleted += idsToDelete.length;
+                }
+            }
+
+            // 2. 등록/수정 처리
             if (rowsToUpsert.length > 0) {
                 // Upsert into Supabase
-                const { data, error } = await supabase.from(tableName).upsert(rowsToUpsert, { onConflict: 'id', returning: 'representation' }).select('id');
+                const { data, error } = await supabase.from(tableName).upsert(rowsToUpsert, { onConflict: 'id' }).select('id');
                 if (error) {
                     errors.push(`[${sheetName}] 데이터 처리 실패: ${error.message}`);
                     console.error('Upsert Error:', error);
                 } else {
-                    // 계산(임시로 일괄 성공 처리)
                     const newCount = rowsToUpsert.filter(r => !r.id).length;
                     const updateCount = rowsToUpsert.length - newCount;
                     totalInserted += newCount;
@@ -79,8 +100,8 @@ export async function POST(request) {
             }
         };
 
-        // 1. 사내연락망 (이름 2번 col 필수)
-        await processSheet('사내연락망', 'internal_contacts', 2, (row) => ({
+        // 1. 사내연락망 (이름 2번 col 필수, 삭제 8번)
+        await processSheet('사내연락망', 'internal_contacts', 2, 8, (row) => ({
             name: getVal(row, 2),
             department: getVal(row, 3),
             position: getVal(row, 4),
@@ -89,19 +110,20 @@ export async function POST(request) {
             memo: getVal(row, 7)
         }));
 
-        // 2. 외부연락처 (회사명 2번 col 필수)
-        await processSheet('외부연락처', 'external_contacts', 2, (row) => ({
+        // 2. 외부연락처 (회사명 2번 col 필수, 삭제 10번)
+        await processSheet('외부연락처', 'external_contacts', 2, 10, (row) => ({
             company_name: getVal(row, 2),
             contact_type: getVal(row, 3),
             address: getVal(row, 4),
             phone: getVal(row, 5),
-            email: getVal(row, 6),
-            contact_person: getVal(row, 7),
-            memo: getVal(row, 8)
+            phone_2: getVal(row, 6),
+            email: getVal(row, 7),
+            contact_person: getVal(row, 8),
+            memo: getVal(row, 9)
         }));
 
-        // 3. 협력사정보 (회사명 2번 col 필수)
-        await processSheet('협력사정보', 'partner_contacts', 2, (row) => ({
+        // 3. 협력사정보 (회사명 2번 col 필수, 삭제 9번)
+        await processSheet('협력사정보', 'partner_contacts', 2, 9, (row) => ({
             company_name: getVal(row, 2),
             ceo_name: getVal(row, 3),
             phone: getVal(row, 4),
@@ -111,8 +133,8 @@ export async function POST(request) {
             memo: getVal(row, 8)
         }));
 
-        // 4. 운전원정보 (운전원명 2번 col 필수)
-        await processSheet('운전원정보', 'driver_contacts', 2, (row) => ({
+        // 4. 운전원정보 (운전원명 2번 col 필수, 삭제 9번)
+        await processSheet('운전원정보', 'driver_contacts', 2, 9, (row) => ({
             name: getVal(row, 2),
             branch: getVal(row, 3),
             business_number: getVal(row, 4),
@@ -122,19 +144,21 @@ export async function POST(request) {
             chassis_type: getVal(row, 8)
         }));
 
-        // 5. 작업지안내 (주소 2번 col 필수)
-        await processSheet('작업지안내', 'work_sites', 2, (row) => ({
+        // 5. 고객사정보 (주소 2번 col 필수, 삭제 6번)
+        await processSheet('고객사정보', 'work_sites', 2, 6, (row) => ({
             address: getVal(row, 2),
             contact: getVal(row, 3),
             work_method: getVal(row, 4),
             notes: getVal(row, 5)
         }));
 
+        const resultMsg = `정상적으로 일괄 적용되었습니다!\n- 신규 등록: ${totalInserted}건\n- 기존 수정: ${totalUpdated}건\n- 일괄 삭제: ${totalDeleted}건`;
+
         if (errors.length > 0) {
-            return NextResponse.json({ success: true, message: `일부 에러가 있었습니다.\n- 등록: ${totalInserted}건\n- 수정: ${totalUpdated}건\n오류 내용:\n${errors.join('\n')}` });
+            return NextResponse.json({ success: true, message: `일부 에러가 있었습니다.\n${resultMsg}\n오류 내용:\n${errors.join('\n')}` });
         }
 
-        return NextResponse.json({ success: true, message: `정상적으로 일괄 적용되었습니다!\n- 신규 등록: ${totalInserted}건\n- 기존 수정: ${totalUpdated}건` });
+        return NextResponse.json({ success: true, message: resultMsg });
 
     } catch (err) {
         console.error(err);

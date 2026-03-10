@@ -33,11 +33,11 @@ export default function WorkSitesPage() {
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
-                <h1 className={styles.title}>작업지안내</h1>
-            <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
-                <Link href="/employees/work-sites/new" className={styles.btnPrimary}>단건 등록</Link>
-            </div>
+                <h1 className={styles.title}>고객사정보</h1>
+                <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
+                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                    <Link href="/employees/work-sites/new" className={styles.btnPrimary}>단건 등록</Link>
+                </div>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>
@@ -67,7 +67,7 @@ export default function WorkSitesPage() {
                             </tr>
                         ))}
                         {list.length === 0 && (
-                            <tr><td colSpan="6" className={styles.empty}>등록된 작업지가 없습니다.</td></tr>
+                            <tr><td colSpan="6" className={styles.empty}>등록된 고객사 정보가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

@@ -91,22 +91,36 @@ export async function GET(request) {
         { header: '연락처', key: 'phone', width: 20 },
         { header: '이메일', key: 'email', width: 25 },
         { header: '메모', key: 'memo', width: 40 },
+        { header: '데이터 삭제(Y)', key: 'is_delete', width: 15 },
     ], internalData);
 
     // 2. 외부연락처
-    const { data: externalData } = await supabase.from('external_contacts').select('id, company_name, contact_type, address, phone, email, contact_person, memo').order('created_at', { ascending: true });
+    const { data: externalData } = await supabase.from('external_contacts').select('id, company_name, contact_type, address, phone, phone_2, email, contact_person, memo').order('created_at', { ascending: true });
     setupSheet('외부연락처', [
         { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
         { header: '회사명/소속(필수)', key: 'company_name', width: 25 },
         { header: '구분(고객사등)', key: 'contact_type', width: 15 },
         { header: '주소', key: 'address', width: 40 },
         { header: '대표 연락처', key: 'phone', width: 20 },
+        { header: '직통/기타 연락처', key: 'phone_2', width: 20 },
         { header: '이메일', key: 'email', width: 25 },
         { header: '담당자명', key: 'contact_person', width: 15 },
         { header: '메모', key: 'memo', width: 40 },
+        { header: '데이터 삭제(Y)', key: 'is_delete', width: 15 },
     ], externalData);
 
-    // 3. 협력사정보
+    // 3. 고객사정보 (기존 작업지안내)
+    const { data: siteData } = await supabase.from('work_sites').select('id, address, contact, work_method, notes').order('created_at', { ascending: true });
+    setupSheet('고객사정보', [
+        { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
+        { header: '고객사(작업지) 주소(필수)', key: 'address', width: 50 },
+        { header: '담당자 연락처(다수기재가)', key: 'contact', width: 25 },
+        { header: '작업방식', key: 'work_method', width: 30 },
+        { header: '참고사항', key: 'notes', width: 40 },
+        { header: '데이터 삭제(Y)', key: 'is_delete', width: 15 },
+    ], siteData);
+
+    // 4. 협력사정보
     const { data: partnerData } = await supabase.from('partner_contacts').select('id, company_name, ceo_name, phone, address, manager_name, manager_phone, memo').order('created_at', { ascending: true });
     setupSheet('협력사정보', [
         { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
@@ -117,9 +131,10 @@ export async function GET(request) {
         { header: '담당자명', key: 'manager_name', width: 15 },
         { header: '담당자 연락처', key: 'manager_phone', width: 20 },
         { header: '메모', key: 'memo', width: 40 },
+        { header: '데이터 삭제(Y)', key: 'is_delete', width: 15 },
     ], partnerData);
 
-    // 4. 운전원정보
+    // 5. 운전원정보
     const { data: driverData } = await supabase.from('driver_contacts').select('id, name, branch, business_number, driver_id, phone, vehicle_type, chassis_type').order('created_at', { ascending: true });
     setupSheet('운전원정보', [
         { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
@@ -130,17 +145,8 @@ export async function GET(request) {
         { header: '연락처', key: 'phone', width: 20 },
         { header: '차종', key: 'vehicle_type', width: 20 },
         { header: '샤시종류', key: 'chassis_type', width: 25 },
+        { header: '데이터 삭제(Y)', key: 'is_delete', width: 15 },
     ], driverData);
-
-    // 5. 작업지안내
-    const { data: siteData } = await supabase.from('work_sites').select('id, address, contact, work_method, notes').order('created_at', { ascending: true });
-    setupSheet('작업지안내', [
-        { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
-        { header: '작업지 주소(필수)', key: 'address', width: 50 },
-        { header: '담당자 연락처(다수기재가)', key: 'contact', width: 25 },
-        { header: '작업방식', key: 'work_method', width: 30 },
-        { header: '참고사항', key: 'notes', width: 40 },
-    ], siteData);
 
     const buffer = await workbook.xlsx.writeBuffer();
     return new NextResponse(buffer, {

@@ -46,7 +46,8 @@ export default function ExternalContactsPage() {
                             <th className={styles.colTitle}>회사명</th>
                             <th className={styles.colCategory} style={{ width: '100px' }}>구분</th>
                             <th style={{ width: '110px' }}>담당자</th>
-                            <th className={styles.colAuthor} style={{ width: '140px' }}>연락처</th>
+                            <th style={{ width: '130px' }}>대표 연락처</th>
+                            <th style={{ width: '130px' }}>직통번호</th>
                             <th style={{ width: '180px' }}>이메일</th>
                             <th>주소</th>
                         </tr>
@@ -62,6 +63,7 @@ export default function ExternalContactsPage() {
                                 </td>
                                 <td style={{ fontWeight: 600, color: '#475569' }}>{item.contact_person}</td>
                                 <td className={styles.colAuthor}>{item.phone}</td>
+                                <td className={styles.colAuthor} style={{ color: '#64748b' }}>{item.phone_2 || '—'}</td>
                                 <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{item.email}</td>
                                 <td className={styles.colDate} style={{ width: 'auto', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.address}>
                                     {item.address || '—'}

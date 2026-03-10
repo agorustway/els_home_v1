@@ -34,6 +34,7 @@ export default function ExternalContactEditPage() {
                         setContactType(data.item.contact_type || '고객사');
                         setAddress(data.item.address ?? '');
                         setPhone(data.item.phone ?? '');
+                        setPhone2(data.item.phone_2 ?? '');
                         setEmail(data.item.email ?? '');
                         setContactPerson(data.item.contact_person ?? '');
                         setMemo(data.item.memo ?? '');
@@ -56,6 +57,7 @@ export default function ExternalContactEditPage() {
                     contact_type: contactType,
                     address,
                     phone,
+                    phone_2: phone2,
                     email,
                     contact_person: contactPerson,
                     memo,
@@ -98,8 +100,12 @@ export default function ExternalContactEditPage() {
                         <input className={styles.input} value={address} onChange={(e) => setAddress(e.target.value)} />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>연락처</label>
+                        <label className={styles.label}>대표 연락처</label>
                         <input className={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>직통/기타 연락처</label>
+                        <input className={styles.input} value={phone2} onChange={(e) => setPhone2(e.target.value)} />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이메일</label>

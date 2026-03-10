@@ -9,7 +9,7 @@ export default function ExcelButtonGroup({ onUploadSuccess }) {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!confirm('선택한 엑셀 파일로 일괄 등록/수정을 진행하시겠습니까?\n주의: 변경사항은 즉시 반영됩니다.')) {
+        if (!confirm('선택한 엑셀 파일로 일괄 등록/수정/삭제를 진행하시겠습니까?\n\n- ID가 있고 삭제 컬럼에 Y를 쓰면 데이터가 삭제됩니다.\n- ID가 있고 내용을 바꾸면 데이터가 수정됩니다.\n- ID가 없으면 신규 데이터로 등록됩니다.')) {
             e.target.value = '';
             return;
         }
@@ -69,9 +69,9 @@ export default function ExcelButtonGroup({ onUploadSuccess }) {
 
             <label
                 style={{ ...btnStyle, background: '#f59e0b', color: 'white', cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}
-                title="다운로드한 양식을 채워 올려주시면 일괄 등록 및 수정됩니다."
+                title="양식을 채워 올려주시면 일괄 등록, 수정 및 삭제(Y표기 시)가 진행됩니다."
             >
-                {uploading ? '⏳ 처리중...' : '⬆️ 엑셀 일괄등록'}
+                {uploading ? '⏳ 처리중...' : '⬆️ 엑셀 일괄작업'}
                 <input
                     type="file"
                     accept=".xlsx, .xls"

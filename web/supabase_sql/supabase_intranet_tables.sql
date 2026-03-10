@@ -94,6 +94,7 @@ create table if not exists public.external_contacts (
   contact_type text default '고객사',
   address text default '',
   phone text default '',
+  phone_2 text default '',
   email text default '',
   contact_person text default '',
   memo text default '',
