@@ -16,14 +16,14 @@ export async function GET(request) {
     workbook.modified = new Date();
 
     const headerStyle = {
-        font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 },
-        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }, // Slate-800
+        font: { bold: true, color: { argb: 'FF000000' }, size: 10 },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, // Slate-100 (옅은 회색)
         alignment: { vertical: 'middle', horizontal: 'center' },
         border: {
-            top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-            bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+            left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+            bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
+            right: { style: 'thin', color: { argb: 'FF94A3B8' } }
         }
     };
 
@@ -31,8 +31,8 @@ export async function GET(request) {
         const sheet = workbook.addWorksheet(sheetName);
         sheet.columns = columns;
 
-        // 스타일 적용 (Header)
-        sheet.getRow(1).height = 30;
+        // 헤더 스타일 및 틀 고정
+        sheet.getRow(1).height = 25;
         sheet.getRow(1).eachCell((cell) => {
             cell.font = headerStyle.font;
             cell.fill = headerStyle.fill;
@@ -40,18 +40,30 @@ export async function GET(request) {
             cell.border = headerStyle.border;
         });
 
+        // 1행 고정 (틀 고정)
+        sheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 0 }];
+
+        // 자동 필터 적용
+        sheet.autoFilter = {
+            from: { row: 1, column: 1 },
+            to: { row: 1, column: columns.length }
+        };
+
         // 데이터 삽입
         if (data && data.length > 0) {
-            data.forEach(row => sheet.addRow(row));
+            data.forEach(row => {
+                const newRow = sheet.addRow(row);
+                newRow.font = { size: 10 };
+            });
         } else {
             // 빈 데이터일 경우 예시 추가
             const exampleRow = {};
             columns.forEach(col => exampleRow[col.key] = col.key === 'id' ? '' : '예시 데이터 입력');
-            sheet.addRow(exampleRow);
-            sheet.getRow(2).font = { italic: true, color: { argb: 'FF94A3B8' } };
+            const newRow = sheet.addRow(exampleRow);
+            newRow.font = { size: 10, italic: true, color: { argb: 'FF94A3B8' } };
         }
 
-        // 전체 데이터 보더 주기
+        // 전체 데이터 보더 및 폰트
         sheet.eachRow((row, rowNumber) => {
             if (rowNumber > 1) {
                 row.eachCell((cell) => {
@@ -66,9 +78,7 @@ export async function GET(request) {
             }
         });
 
-        sheet.getColumn('id').hidden = false; // ID 열 표시 여부. 빈 값일 시 신규 추가.
-        sheet.getColumn('id').width = 40;
-        sheet.getCell('A1').note = '고유 ID입니다. 수정하지 마세요! 비워두면 신규 데이터로 등록됩니다.';
+        sheet.getColumn('id').width = 35;
     };
 
     // 1. 사내연락망
