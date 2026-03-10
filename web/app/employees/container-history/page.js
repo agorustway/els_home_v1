@@ -24,8 +24,29 @@ function StatusBadge({ type, label }) {
 
 function parseContainerInput(text) {
     if (!text || !text.trim()) return [];
+
+    // ISO 6346 체크섬 검증
+    const isValidCN = (cn) => {
+        if (!cn || cn.length !== 11) return false;
+        const charMap = {
+            'A': 10, 'B': 12, 'C': 13, 'D': 14, 'E': 15, 'F': 16, 'G': 17, 'H': 18, 'I': 19, 'J': 20,
+            'K': 21, 'L': 23, 'M': 24, 'N': 25, 'O': 26, 'P': 27, 'Q': 28, 'R': 29, 'S': 30, 'T': 31,
+            'U': 32, 'V': 34, 'W': 35, 'X': 36, 'Y': 37, 'Z': 38
+        };
+        let sum = 0;
+        for (let i = 0; i < 10; i++) {
+            const c = cn[i];
+            const val = (c >= '0' && c <= '9') ? parseInt(c, 10) : charMap[c];
+            if (val === undefined) return false;
+            sum += val * Math.pow(2, i);
+        }
+        const rem = sum % 11;
+        return (rem === 10 ? 0 : rem) === parseInt(cn[10], 10);
+    };
+
     const raw = text.split(/[\n,;\s]+/).map(s => s.replace(/\s/g, '').toUpperCase()).filter(Boolean);
-    return [...new Set(raw)];
+    const valid = raw.filter(isValidCN);
+    return [...new Set(valid)];
 }
 
 function ContainerHistoryInner() {
@@ -334,6 +355,14 @@ function ContainerHistoryInner() {
 
     const executeSearch = async (targets, id, pw) => {
         setLoading(true); startTimer();
+
+        // 검색 즉시 사용자가 입력한 순서대로 빈 슬롯을 만들기 위해 더미 데이터 셋업
+        const initialResult = {};
+        targets.forEach(cn => {
+            initialResult[cn] = [[cn, "-", "조회 대기중", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]];
+        });
+        setResult(initialResult);
+
         try {
             // [병목/경합 방지] 조회를 시작하기 전에 현재 데몬을 다른 사람이 쓰고 있는지 체크
             let isWaiting = true;
@@ -388,9 +417,17 @@ function ContainerHistoryInner() {
                         const part = JSON.parse(line.substring(15));
                         if (part.result && Array.isArray(part.result)) {
                             setResult(prev => {
-                                const prevRows = prev ? Object.values(prev).flat() : [];
+                                const prevRows = prev ? Object.values(prev).flat().filter(r => r[2] !== "조회 대기중") : [];
                                 const newRows = [...prevRows, ...part.result];
-                                return groupByContainer(newRows, targets);
+                                const grouped = groupByContainer(newRows, targets);
+
+                                // 아직 결과가 오지 않은 컨테이너는 순서를 유지하기 위해 다시 빈 슬롯으로 채워넣음
+                                targets.forEach(cn => {
+                                    if (!grouped[cn] || grouped[cn].length === 0) {
+                                        grouped[cn] = [[cn, "-", "조회 진행중", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]];
+                                    }
+                                });
+                                return grouped;
                             });
                         }
                     } catch (e) { console.error('Partial Parse Error', e); }
@@ -400,6 +437,14 @@ function ContainerHistoryInner() {
                         const data = JSON.parse(line.substring(7));
                         if (data.ok) {
                             const newResult = groupByContainer(data.result || [], targets);
+
+                            // 최종 응답에도 누락된 데이터 대응
+                            targets.forEach(cn => {
+                                if (!newResult[cn] || newResult[cn].length === 0) {
+                                    newResult[cn] = [[cn, "ERROR", "추출 내역 누락", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]];
+                                }
+                            });
+
                             setResult(newResult);
                             setDownloadToken(data.downloadToken);
                             setResultFileName(data.fileName);
@@ -454,7 +499,12 @@ function ContainerHistoryInner() {
 
     const runSearch = () => {
         const containers = parseContainerInput(containerInput);
-        if (!containers.length) return alert('컨테이너 번호를 입력하세요');
+        if (!containerInput.trim()) {
+            return alert('컨테이너 번호를 입력하세요');
+        }
+        if (!containers.length) {
+            return alert('입력된 컨테이너 번호 중 유효한 ISO 6346 규격의 번호가 없습니다.');
+        }
         setTotalElapsed(null);
         if (!loginSuccess) {
             setLogLines(prev => [...prev, '로그인 후 자동으로 조회를 시작합니다...'].slice(-100));
@@ -584,7 +634,8 @@ function ContainerHistoryInner() {
         // 다중 필터 적용: 선택된 필터가 하나라도 있으면 필터링 수행
         if (activeStatFilters.size > 0) {
             const r = result[cn][0];
-            if (!r) return false;
+            if (!r || r[2] === '조회 대기중' || r[2] === '조회 진행중') return false;
+
             // 수출입(idx 2) 또는 구분(idx 3) 중 하나라도 선택된 필터에 포함되면 통과
             const status = r[2];
             const type = r[3];

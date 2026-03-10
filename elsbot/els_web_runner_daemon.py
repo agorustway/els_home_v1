@@ -313,6 +313,7 @@ def run():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
     finally:
+        driver.last_activity = time.time()
         pool.return_driver(driver)
 
 @app.route('/quit', methods=['POST'])
@@ -368,14 +369,21 @@ def session_keeper():
             needs_refresh = False
             reason = ""
             try:
-                login_time = getattr(driver, 'login_time', 0)
-                elapsed = time.time() - login_time
-                if elapsed >= 3420: # 57분에 선제 갱신 시도 (사용자 요청: 58분. 여유있게 57분)
-                    needs_refresh = True
-                    reason = f"57분 경과({int(elapsed)}s) 등 선제적 갱신"
-                elif not is_session_valid(driver):
+                last_ac = getattr(driver, 'last_activity', getattr(driver, 'login_time', time.time()))
+                elapsed_active = time.time() - last_ac
+                
+                if not is_session_valid(driver):
                     needs_refresh = True
                     reason = "세션 만료 감지"
+                elif elapsed_active >= 1200: # 20분(1200초) 이상 활동이 없으면 세션 연장
+                    try:
+                        driver.get("https://etrans.klnet.co.kr/main.do")
+                        close_modals(driver)
+                        driver.last_activity = time.time()
+                        pool.add_log(f"--- [백그라운드] 20분 무활동. 세션 유지를 위해 페이지를 갱신했습니다 (재로그인 X). ---")
+                    except Exception as e:
+                        needs_refresh = True
+                        reason = "세션 연장(새로고침) 실패"
             except Exception as e:
                 needs_refresh = True
                 reason = "세션 유효성 검사 중 에러"
@@ -410,6 +418,7 @@ def session_keeper():
                         pool.consecutive_login_failures = 0
                         new_driver = res[0]
                         new_driver.used_port = target_port
+                        new_driver.last_activity = time.time()
                         pool.drivers.append(new_driver)
                         pool.available_queue.put(new_driver)
                     pool.add_log(f"--- [백그라운드 세션관리] 복구 성공! (포트: {target_port}) ---")
