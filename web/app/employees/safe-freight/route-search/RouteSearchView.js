@@ -1268,7 +1268,15 @@ export default function RouteSearchView({ options, period, onBack }) {
             XLSX.utils.book_append_sheet(wb, wsHistory, '이전조회내역');
         }
 
-        const dateStr = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+
+        const dateStr = `${yyyy}${MM}${dd}${hh}${mm}${ss}`;
         XLSX.writeFile(wb, `안전운임_구간조회_${dateStr}.xlsx`);
         showToast('📄 엑셀 파일이 다운로드되었습니다.');
     };
