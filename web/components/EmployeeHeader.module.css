@@ -337,10 +337,11 @@
     }
 
     .link:last-child {
-        background: #2563eb;
+        background: #2563eb !important;
         color: #fff !important;
-        border-color: #2563eb;
+        border: none !important;
         font-weight: 700;
-        padding: 0 10px;
+        padding: 0 12px;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
     }
 }

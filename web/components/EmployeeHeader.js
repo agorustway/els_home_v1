@@ -65,9 +65,9 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
             if (isMobile) {
                 const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
                 if (isIOS) {
-                    alert('iOS(아이폰/아이패드)에서는 브라우저 하단의 [공유] 버튼을 누른 후 [홈 화면에 추가]를 선택하여 앱을 설치하실 수 있습니다.');
+                    alert('iOS(아이폰/아이패드)에서는 브라우저 하단의 [공유(네모 안 화살표)] 버튼을 누른 후 [홈 화면에 추가]를 선택하여 설치해 주세요.');
                 } else {
-                    alert('안드로이드 환경에서는 브라우저 우측 상단 메뉴(점 3개)에서 [앱 설치] 또는 [홈 화면에 추가]를 선택해 주세요.\n\n이미 설치되어 있다면 실행 중인 앱 목록에서 확인하실 수 있습니다.');
+                    alert('안드로이드 환경에서는 브라우저(Chrome 권장) 우측 상단 [점 3개] 메뉴를 누른 후 [앱 설치] 또는 [홈 화면에 추가]를 선택하시면 바탕화면에 설치됩니다.\n\n자동 설치 팝업이 뜨지 않을 경우 이 방법을 이용해 주세요!');
                 }
             } else {
                 alert(`브라우저가 자동 설치를 지원하지 않거나 이미 브라우저 내부에 앱이 설치되어 있습니다.\n\n⚠️ 참고: 바탕화면에서 아이콘만 지운 경우, 웹 브라우저에는 여전히 앱이 설치된 것으로 인식됩니다.\n\n재설치가 안 될 경우, 주소창 가장 우측의 [앱 제거] 버튼이나 PC 웹 브라우저 설정에서 기존 앱을 완전히 삭제하신 후 다시 시도해 주세요.\n\n(꿀팁: 키보드의 [${shortcut}] 키를 누르시면 브라우저 북마크에도 즉시 추가 가능합니다!)`);
@@ -148,12 +148,6 @@ export default function EmployeeHeader({ isEmployees = false, onMenuClick }) {
                             type="button"
                             onClick={handleCreateShortcut}
                             className={styles.link}
-                            style={{
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                marginLeft: '8px',
-                                gap: '6px'
-                            }}
                             title="바탕화면에 앱 설치하기"
                         >
                             <img src="/favicon.png" alt="App" style={{ width: '14px', height: '14px' }} />
