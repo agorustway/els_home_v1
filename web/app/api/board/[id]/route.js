@@ -12,20 +12,20 @@ export async function GET(request, { params }) {
 
     // 2. Fetch Author Info (Robust: ID -> Email -> fallback)
     let authorData = null;
-    if (post.author_id || post.author_email) {
-        const emailToUse = post.author_email || '';
-        const idToUse = post.author_id;
+    const emailToUse = post.author_email || '';
+    const idToUse = post.author_id;
 
-        // Try Profile
+    if (idToUse || emailToUse) {
+        // Try Profile (Prefer Email as it's the primary key for many sync logic)
         let pQuery = supabase.from('profiles').select('email, full_name, rank');
-        if (idToUse) pQuery = pQuery.eq('id', idToUse);
-        else pQuery = pQuery.eq('email', emailToUse);
+        if (emailToUse) pQuery = pQuery.eq('email', emailToUse);
+        else pQuery = pQuery.eq('id', idToUse);
         const { data: profile } = await pQuery.maybeSingle();
 
         // Try User Role
         let rQuery = supabase.from('user_roles').select('email, name, rank');
-        if (idToUse) rQuery = rQuery.eq('id', idToUse);
-        else rQuery = rQuery.eq('email', emailToUse);
+        if (emailToUse) rQuery = rQuery.eq('email', emailToUse);
+        else rQuery = rQuery.eq('id', idToUse);
         const { data: roleData } = await rQuery.maybeSingle();
 
         authorData = {

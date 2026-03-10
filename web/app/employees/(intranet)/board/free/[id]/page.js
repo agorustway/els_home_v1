@@ -72,9 +72,11 @@ export default function PostDetailPage() {
                 <div className={styles.detailHeader}>
                     <h1 className={styles.detailTitle}>{post.title}</h1>
                     <div className={styles.detailMeta}>
-                        <span>👤 {post.author?.name || '익명'}{post.author?.rank ? ` ${post.author.rank}` : ''}</span>
-                        <span>📅 {new Date(post.created_at).toLocaleString('ko-KR')}</span>
-                        <span>👁️ {post.view_count || 0}회</span>
+                        <span>{post.author?.name || '익명'}{post.author?.rank ? ` ${post.author.rank}` : ''}</span>
+                        <span className={styles.metaDivider}>|</span>
+                        <span>{new Date(post.created_at).toLocaleString('ko-KR')}</span>
+                        <span className={styles.metaDivider}>|</span>
+                        <span>조회 {post.view_count || 0}</span>
                     </div>
                 </div>
 
