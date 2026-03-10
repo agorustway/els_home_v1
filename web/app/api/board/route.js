@@ -57,6 +57,21 @@ export async function GET(request) {
     const mergedPosts = data.map(post => {
         const email = post.author_email;
         const profile = profileMap[email] || {};
+
+        // 익명 처리 로직 추가
+        if (post.is_anonymous) {
+            return {
+                ...post,
+                author: {
+                    name: '익명',
+                    rank: '',
+                    email: '', // 익명이면 이메일도 숨김
+                    avatar_url: null,
+                    position: ''
+                }
+            };
+        }
+
         return {
             ...post,
             author: {
@@ -83,7 +98,7 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { title, content, board_type, branch_tag, attachments, report_kind } = body;
+        const { title, content, board_type, branch_tag, attachments, report_kind, is_anonymous } = body;
 
         const row = {
             title,
@@ -92,7 +107,8 @@ export async function POST(request) {
             branch_tag,
             author_id: user.id,
             author_email: user.email,
-            attachments: attachments || []
+            attachments: attachments || [],
+            is_anonymous: is_anonymous || false // 익명 여부 저장
         };
         if (board_type === 'report' && (report_kind === 'daily' || report_kind === 'monthly')) {
             row.report_kind = report_kind;

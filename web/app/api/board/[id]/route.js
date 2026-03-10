@@ -35,6 +35,15 @@ export async function GET(request, { params }) {
         };
     }
 
+    // 3. Anonymous Check
+    if (post.is_anonymous) {
+        authorData = {
+            name: '익명',
+            rank: '',
+            email: ''
+        };
+    }
+
     return NextResponse.json({
         post: {
             ...post,

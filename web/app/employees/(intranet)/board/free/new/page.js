@@ -12,6 +12,7 @@ export default function NewPostPage() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [attachments, setAttachments] = useState([]);
+    const [isAnonymous, setIsAnonymous] = useState(false); // [추가] 익명 여부 상태
     const [submitting, setSubmitting] = useState(false);
     const [uploading, setUploading] = useState(false);
 
@@ -69,7 +70,8 @@ export default function NewPostPage() {
                     title,
                     content,
                     board_type: 'free',
-                    attachments
+                    attachments,
+                    is_anonymous: isAnonymous // [추가] 익명 여부 서버 전송
                 }),
             });
 
@@ -97,7 +99,7 @@ export default function NewPostPage() {
                 <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)', marginTop: '6px' }}>자유로운 소통과 정보 공유를 위한 공간입니다.</p>
             </div>
 
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={styles.editorCard}
@@ -134,13 +136,13 @@ export default function NewPostPage() {
                                 disabled={uploading}
                                 style={{ display: 'none' }}
                             />
-                            <label htmlFor="file-upload" style={{ 
-                                background: '#f8fafc', 
-                                padding: '10px 24px', 
+                            <label htmlFor="file-upload" style={{
+                                background: '#f8fafc',
+                                padding: '10px 24px',
                                 border: '1.5px solid #e2e8f0',
-                                borderRadius: '10px', 
-                                fontSize: '0.9rem', 
-                                fontWeight: 700, 
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                fontWeight: 700,
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -160,10 +162,22 @@ export default function NewPostPage() {
                         </div>
                     </div>
                     <div className={styles.editorActions}>
-                        <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>돌아가기</button>
-                        <button type="submit" disabled={submitting || uploading} className={styles.btnPrimary}>
-                            {submitting ? '등록 중...' : '게시글 등록하기'}
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => setIsAnonymous(!isAnonymous)}>
+                            <input
+                                type="checkbox"
+                                checked={isAnonymous}
+                                onChange={() => { }}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#475569' }}>익명으로 작성하기</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button type="button" onClick={() => router.back()} className={styles.btnSecondary}>돌아가기</button>
+                            <button type="submit" disabled={submitting || uploading} className={styles.btnPrimary}>
+                                {submitting ? '등록 중...' : '게시글 등록하기'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </motion.div>
