@@ -594,17 +594,32 @@ function ContainerHistoryInner() {
             // 자동 열 너비 계산
             const range = XLSX.utils.decode_range(ws['!ref']);
             const colWidths = HEADERS.map((h, i) => {
-                let maxLen = h.length + 6;
+                let maxLen = 0;
+                // 헤더 길이 포함
+                for (let cIdx = 0; cIdx < h.length; cIdx++) {
+                    maxLen += h.charCodeAt(cIdx) > 127 ? 2.1 : 1.1;
+                }
+                maxLen += 2;
+
                 for (let r = 1; r <= range.e.r; r++) {
                     const cell = ws[XLSX.utils.encode_cell({ r, c: i })];
                     if (cell && cell.v) {
-                        const cellLen = String(cell.v).length + 2;
-                        if (cellLen > maxLen) maxLen = cellLen;
+                        const val = String(cell.v);
+                        let cellLen = 0;
+                        for (let cIdx = 0; cIdx < val.length; cIdx++) {
+                            cellLen += val.charCodeAt(cIdx) > 127 ? 2.1 : 1.1;
+                        }
+                        if (cellLen + 2 > maxLen) maxLen = cellLen + 2;
                     }
                 }
-                return { wch: Math.min(maxLen, 60) };
+                return { wch: Math.min(maxLen, 80) };
             });
             ws['!cols'] = colWidths;
+
+            // [추가] 틀 고정 (SheetJS 스타일 확장 규격)
+            ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+            // 자동 필터
+            ws['!autofilter'] = { ref: range };
 
             // [핵심] 제목 회색, 수입 빨강, 반입 파랑 스타일 적용
             // 주의: 기본 SheetJS(xlsx)는 스타일을 지원하지 않지만, 
@@ -633,8 +648,8 @@ function ContainerHistoryInner() {
                     // 제목 행 (회색)
                     if (r === 0) {
                         cell.s = {
-                            fill: { fgColor: { rgb: "F1F5F9" } }, // Slate-100
-                            font: { bold: true, size: 10 },
+                            fill: { fgColor: { rgb: "F2F2F2" } },
+                            font: { bold: true, size: 10, name: '맑은 고딕' },
                             alignment: { horizontal: "center", vertical: "center" },
                             border: {
                                 top: { style: "thin", color: { rgb: "94A3B8" } },

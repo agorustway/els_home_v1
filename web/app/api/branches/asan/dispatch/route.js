@@ -64,7 +64,7 @@ export async function GET(request) {
                 "화주": getCol(["화주"]),
                 "담당자": getCol(["담당자", "당당자"]),
                 "작업지": getCol(["작업지"]),
-                "고객사(국가)": itemType === 'glovis' ? getCol(["고객사"]) : getCol(["국가"]),
+                "고객사(국가)": itemType === 'glovis' ? getCol(["고객사"]) : getCol(["국가", "국가명"]),
                 "포트(도착항)": itemType === 'glovis' ? getCol(["포트"]) : getCol(["도착항"]),
                 "특이사항(Nomi,구간)": itemType === 'glovis' ? getCol(["특이사항"]) : getCol(["Nomi,구간", "특이사항"]),
                 "라인(선사명)": itemType === 'glovis' ? getCol(["라인", "선사"]) : getCol(["선사명", "선사"]),

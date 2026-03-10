@@ -95,6 +95,7 @@ function parseSheet(sheet, type) {
         let val = safeValue(headerRow.getCell(c)).replace(/\n/g, ' ').trim();
         if (val === '당당자') val = '담당자';
         if (val === 'T') val = 'TYPE';
+        if (val === '국가명') val = '국가';
         headers.push(val || `col_${c}`);
     }
 
