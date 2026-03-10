@@ -64,7 +64,10 @@ export async function GET(request) {
             const label = `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
             (item.data || []).forEach(row => {
                 const r = sheet.addRow([label, ...row]);
-                r.eachCell(cell => { cell.border = CELL_BORDER; });
+                r.eachCell(cell => {
+                    cell.border = CELL_BORDER;
+                    cell.font = { size: 10 };
+                });
             });
         });
 
@@ -87,7 +90,10 @@ export async function GET(request) {
 
         (item.data || []).forEach(row => {
             const r = sheet.addRow(row);
-            r.eachCell(cell => { cell.border = CELL_BORDER; });
+            r.eachCell(cell => {
+                cell.border = CELL_BORDER;
+                cell.font = { size: 10 };
+            });
         });
 
         sheet.autoFilter = { from: 'A1', to: { row: 1, column: headers.length } };

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
+import Script from 'next/script';
 import styles from './route-search.module.css';
 import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
 
@@ -1114,14 +1115,22 @@ export default function RouteSearchView({ options, period, onBack }) {
 
         const wb = XLSX.utils.book_new();
 
-        // 헤더용 스타일 핼퍼 함수 (xlsx-js-style 또는 pro 버전에서 주로 호환됨)
+        // 헤더용 스타일 핼퍼 함수 (xlsx-js-style 전용)
+        const baseStyle = { font: { size: 10, name: '맑은 고딕' }, alignment: { vertical: 'center' } };
         const headerStyle = {
-            fill: { fgColor: { rgb: "E2E8F0" } },
-            font: { bold: true, color: { rgb: "1E293B" } },
-            alignment: { horizontal: "center", vertical: "center" }
+            ...baseStyle,
+            fill: { fgColor: { rgb: "F1F5F9" } }, // Slate-100
+            font: { bold: true, size: 10, name: '맑은 고딕' },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+                top: { style: 'thin', color: { rgb: '94A3B8' } },
+                left: { style: 'thin', color: { rgb: '94A3B8' } },
+                bottom: { style: 'thin', color: { rgb: '94A3B8' } },
+                right: { style: 'thin', color: { rgb: '94A3B8' } }
+            }
         };
         const titleStyle = {
-            font: { bold: true, sz: 14, color: { rgb: "2563EB" } },
+            font: { bold: true, sz: 12, color: { rgb: "2563EB" }, name: '맑은 고딕' },
         };
 
         // Sheet 1: 현재 운임 조회 결과
@@ -1176,6 +1185,23 @@ export default function RouteSearchView({ options, period, onBack }) {
 
             const ws1 = XLSX.utils.aoa_to_sheet(fareRows);
             ws1['!cols'] = [{ wch: 25 }, { wch: 45 }, { wch: 15 }, { wch: 15 }];
+
+            // 스타일 및 틀고정 적용
+            const r1 = XLSX.utils.decode_range(ws1['!ref']);
+            for (let r = 0; r <= r1.e.r; r++) {
+                for (let c = 0; c <= r1.e.c; c++) {
+                    const ref = XLSX.utils.encode_cell({ r, c });
+                    if (!ws1[ref]) ws1[ref] = { v: '', t: 's' };
+                    ws1[ref].s = { ...baseStyle };
+                    if (r === 0) ws1[ref].s = titleStyle;
+                    if (fareRows[r]?.[0]?.toString().startsWith('[') || fareRows[r]?.[0] === '항목') {
+                        ws1[ref].s = headerStyle;
+                    }
+                }
+            }
+            ws1['!freeze'] = { xSplit: 0, ySplit: 1 };
+            ws1['!autofilter'] = { ref: 'A3:D3' }; // 항목행 필터
+
             XLSX.utils.book_append_sheet(wb, ws1, '현재조회결과');
 
             // Sheet 1-2: 전체 경로 비교
@@ -1190,6 +1216,19 @@ export default function RouteSearchView({ options, period, onBack }) {
             ];
             const ws2 = XLSX.utils.aoa_to_sheet(routeRows);
             ws2['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+
+            const r2 = XLSX.utils.decode_range(ws2['!ref']);
+            for (let r = 0; r <= r2.e.r; r++) {
+                for (let c = 0; c <= r2.e.c; c++) {
+                    const ref = XLSX.utils.encode_cell({ r, c });
+                    if (!ws2[ref]) ws2[ref] = { v: '', t: 's' };
+                    ws2[ref].s = { ...baseStyle };
+                    if (r === 2) ws2[ref].s = headerStyle;
+                }
+            }
+            ws2['!freeze'] = { xSplit: 0, ySplit: 3 };
+            ws2['!autofilter'] = { ref: 'A3:G3' };
+
             XLSX.utils.book_append_sheet(wb, ws2, '경로비교');
         }
 
@@ -1214,14 +1253,17 @@ export default function RouteSearchView({ options, period, onBack }) {
             const wsHistory = XLSX.utils.aoa_to_sheet(historyRows);
             wsHistory['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 50 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
 
-            // C3~M3 범위 (헤더) 색칠 시도
-            const rangeInfo = XLSX.utils.decode_range(wsHistory['!ref']);
-            for (let c = 0; c <= rangeInfo.e.c; ++c) {
-                const cellRef = XLSX.utils.encode_cell({ c, r: 2 }); // r: 2 는 3번째 줄(헤더)
-                if (!wsHistory[cellRef]) wsHistory[cellRef] = { t: 's', v: '' };
-                wsHistory[cellRef].s = headerStyle;
+            const rh = XLSX.utils.decode_range(wsHistory['!ref']);
+            for (let r = 0; r <= rh.e.r; r++) {
+                for (let c = 0; c <= rh.e.c; c++) {
+                    const ref = XLSX.utils.encode_cell({ r, c });
+                    if (!wsHistory[ref]) wsHistory[ref] = { v: '', t: 's' };
+                    wsHistory[ref].s = { ...baseStyle };
+                    if (r === 2) wsHistory[ref].s = headerStyle;
+                }
             }
-            if (wsHistory['A1']) wsHistory['A1'].s = titleStyle;
+            wsHistory['!freeze'] = { xSplit: 0, ySplit: 3 };
+            wsHistory['!autofilter'] = { ref: 'A3:M3' };
 
             XLSX.utils.book_append_sheet(wb, wsHistory, '이전조회내역');
         }
@@ -1278,8 +1320,10 @@ export default function RouteSearchView({ options, period, onBack }) {
        렌더링
        ═══════════════════════════════════════════════ */
     return (
-        <div className={styles.container}>
-            {/* ── 헤더 ── */}
+        <div className={styles.wrapper}>
+            <Script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" strategy="afterInteractive" />
+
+            {/* 상단 헤더 & 정보 */}
             <div className={styles.header}>
                 <h2 className={styles.title}>
                     <span className={styles.titleIcon}>🗺️</span>
