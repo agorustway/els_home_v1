@@ -144,9 +144,12 @@
     font-weight: 600;
     color: #475569;
     text-decoration: none;
+    border: none;
+    background: transparent;
     border-radius: 6px;
     transition: background 0.2s, color 0.2s;
     display: inline-flex;
+    cursor: pointer;
     /* 텍스트 수직 중앙 정렬 핵심 */
     align-items: center;
     justify-content: center;
@@ -342,6 +345,6 @@
         border: none !important;
         font-weight: 700;
         padding: 0 12px;
-        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        box-shadow: none !important;
     }
 }
