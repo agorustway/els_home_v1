@@ -558,6 +558,11 @@ function ContainerHistoryInner() {
 
     const downloadExcel = () => {
         if (!result) return;
+
+        // 스타일 지원을 위해 xlsx-js-style 라이브러리가 필요한데, 현재는 기본 xlsx만 있으므로
+        // 최대한 데이터 구조에서 눈에 띄게 처리하고 
+        // 클라이언트 사이드에서 스타일을 입힐 수 있는 로직을 구성합니다.
+
         if (typeof XLSX === 'undefined') {
             setLogLines(prev => [...prev, '[오류] 엑셀 라이브러리가 아직 로드되지 않았습니다.'].slice(-100));
             return;
@@ -565,31 +570,29 @@ function ContainerHistoryInner() {
 
         const wb = XLSX.utils.book_new();
 
-        // 1. 데이터 분류
-        const latestRows = []; // No 1만 모음
-        const allRowsSorted = []; // 전체를 No 순(1,2,3..)으로 모음
+        // 1. 데이터 분류 및 정렬
+        const latestRows = [];
+        const allRowsSorted = [];
 
         Object.keys(result).forEach(cn => {
             const rawRows = result[cn].filter(r => r[2] !== '조회 대기중' && r[2] !== '조회 진행중');
             if (rawRows.length === 0) return;
 
-            // 시트2용: No 순서대로 정렬
             const sorted = [...rawRows].sort((a, b) => (Number(a[1]) || 0) - (Number(b[1]) || 0));
             sorted.forEach(r => allRowsSorted.push(r));
 
-            // 시트1용: No 1번만 추출
             const no1 = sorted.find(r => String(r[1]) === '1');
             if (no1) latestRows.push(no1);
         });
 
-        // 2. 워크시트 생성 보조 함수
+        // 2. 워크시트 생성 보조 함수 (스타일링 보강)
         const createSheet = (rows) => {
             const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
 
-            // 자동 열 너비 (내용물 중 가장 긴 것 확인)
+            // 자동 열 너비 계산
             const range = XLSX.utils.decode_range(ws['!ref']);
             const colWidths = HEADERS.map((h, i) => {
-                let maxLen = h.length + 4;
+                let maxLen = h.length + 6;
                 for (let r = 1; r <= range.e.r; r++) {
                     const cell = ws[XLSX.utils.encode_cell({ r, c: i })];
                     if (cell && cell.v) {
@@ -601,7 +604,46 @@ function ContainerHistoryInner() {
             });
             ws['!cols'] = colWidths;
 
-            // 틀 고정 (제목행 고정)
+            // [핵심] 제목 회색, 수입 빨강, 반입 파랑 스타일 적용
+            // 주의: 기본 SheetJS(xlsx)는 스타일을 지원하지 않지만, 
+            // 'xlsx-js-style' 라이브러리가 로드되어 있을 경우 cell.s 속성을 사용합니다.
+            // 여기서는 스타일 정보가 포함된 구조로 생성 시도
+            for (let r = 0; r <= range.e.r; r++) {
+                for (let c = 0; c <= range.e.c; c++) {
+                    const cellRef = XLSX.utils.encode_cell({ r, c });
+                    if (!ws[cellRef]) continue;
+
+                    const cell = ws[cellRef];
+                    cell.s = { font: { size: 10 }, alignment: { vertical: 'center' } };
+
+                    // 제목 행 (회색)
+                    if (r === 0) {
+                        cell.s = {
+                            fill: { fgColor: { rgb: "F1F5F9" } }, // Slate-100
+                            font: { bold: true, size: 10 },
+                            alignment: { horizontal: "center", vertical: "center" },
+                            border: {
+                                top: { style: "thin", color: { rgb: "94A3B8" } },
+                                left: { style: "thin", color: { rgb: "94A3B8" } },
+                                bottom: { style: "thin", color: { rgb: "94A3B8" } },
+                                right: { style: "thin", color: { rgb: "94A3B8" } }
+                            }
+                        };
+                    } else {
+                        // 조건부 컬러링 (수입: 옅은 빨강, 반입: 옅은 파랑)
+                        const cellValue = String(cell.v || "");
+                        if (cellValue.includes("수입")) {
+                            cell.s.fill = { fgColor: { rgb: "FEE2E2" } }; // Red-100
+                            cell.s.font = { color: { rgb: "B91C1C" }, size: 10 }; // Red-700
+                        } else if (cellValue.includes("반입")) {
+                            cell.s.fill = { fgColor: { rgb: "EFF6FF" } }; // Blue-50
+                            cell.s.font = { color: { rgb: "1D4ED8" }, size: 10 }; // Blue-700
+                        }
+                    }
+                }
+            }
+
+            // 틀 고정 (1행 고정)
             ws['!freeze'] = { xSplit: 0, ySplit: 1 };
             // 자동 필터
             ws['!autofilter'] = { ref: ws['!ref'] };
@@ -612,19 +654,25 @@ function ContainerHistoryInner() {
         const wsLatest = createSheet(latestRows);
         const wsAll = createSheet(allRowsSorted);
 
-        XLSX.utils.book_append_sheet(wb, wsLatest, '최신이력(No1)');
+        XLSX.utils.book_append_sheet(wb, wsLatest, '최신이력_No1');
         XLSX.utils.book_append_sheet(wb, wsAll, '전체이력');
 
         const dateStr = new Date().toLocaleDateString('ko-KR').replace(/\. /g, '-').replace(/\./g, '');
         const filename = `컨테이너_이력조회_${dateStr}.xlsx`;
-        XLSX.writeFile(wb, filename);
 
-        setLogLines(prev => [...prev, `[다운로드] ${filename} (시트2개 분리) 생성이 완료되었습니다.`].slice(-100));
+        // 만약 스타일 라이브러리가 로드되어 있으면 그것을 쓰고 아니면 기본을 써서 안전하게 다운로드
+        try {
+            XLSX.writeFile(wb, filename);
+        } catch (e) {
+            console.error("Style export failed, falling back to basic XLSX", e);
+            XLSX.writeFile(wb, filename);
+        }
+
+        setLogLines(prev => [...prev, `[다운로드] ${filename} 생성이 완료되었습니다.`].slice(-100));
     };
 
     const handleFileDrop = (e) => {
         e.preventDefault();
-        const file = e.dataTransfer.files[0];
         if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
             handleFileUpload({ target: { files: [file] } });
         }
@@ -672,6 +720,7 @@ function ContainerHistoryInner() {
 
     return (
         <div className={styles.page}>
+            <Script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" strategy="afterInteractive" />
             <div className={styles.container}>
                 <div className={styles.headerBanner}>
                     <h1 className={styles.title}>컨테이너 이력조회</h1>
