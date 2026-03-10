@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Script from 'next/script';
+import * as XLSX from 'xlsx-js-style';
 import styles from './container-history.module.css';
 
 const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
@@ -670,10 +671,17 @@ function ContainerHistoryInner() {
         XLSX.utils.book_append_sheet(wb, wsLatest, '최신이력_No1');
         XLSX.utils.book_append_sheet(wb, wsAll, '전체이력');
 
-        const dateStr = new Date().toLocaleDateString('ko-KR').replace(/\. /g, '-').replace(/\./g, '');
-        const filename = `컨테이너_이력조회_${dateStr}.xlsx`;
+        // 파일명: "페이지이름_생성연월일시분초" 형식
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const filename = `컨테이너이력조회_${yyyy}${MM}${dd}${hh}${mm}${ss}.xlsx`;
 
-        // 만약 스타일 라이브러리가 로드되어 있으면 그것을 쓰고 아니면 기본을 써서 안전하게 다운로드
+        // xlsx-js-style 라이브러리가 로드되어 있으므로 그대로 writeFile 호출하면 스타일이 병합됩니다
         try {
             XLSX.writeFile(wb, filename);
         } catch (e) {
@@ -733,7 +741,6 @@ function ContainerHistoryInner() {
 
     return (
         <div className={styles.page}>
-            <Script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" strategy="afterInteractive" />
             <div className={styles.container}>
                 <div className={styles.headerBanner}>
                     <h1 className={styles.title}>컨테이너 이력조회</h1>
@@ -1126,8 +1133,6 @@ function ContainerHistoryInner() {
                     </div>
                 </div>
             )}
-
-            <Script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" strategy="lazyOnload" />
         </div>
     );
 }
