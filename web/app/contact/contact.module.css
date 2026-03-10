@@ -10,8 +10,56 @@
 .grid {
     display: grid;
     grid-template-columns: 1fr 1.5fr;
-    gap: 50px;
+    gap: 40px;
     align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.compactHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 30px;
+    padding: 40px 20px 0;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.pageTitle {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: -1.5px;
+}
+
+.headerControls {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btnPoint {
+    background: #2563eb;
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btnPoint:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
 }
 
 /* Form Styles */
@@ -504,31 +552,52 @@
 
 @media (max-width: 768px) {
     .section {
-        padding: 40px 0;
+        padding: 20px 0;
     }
 
-    .formWrapper {
-        padding: 25px 15px;
-        border-radius: 20px;
+    .compactHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 30px 20px 0;
     }
 
-    .formTitle {
-        font-size: 1.5rem;
-    }
-
-    .reportTitle {
+    .pageTitle {
         font-size: 1.8rem;
     }
 
+    .formWrapper {
+        padding: 25px 20px;
+        border-radius: 24px;
+        margin: 0 10px;
+    }
+
+    .formTitle {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+    }
+
+    .boardWrapper {
+        padding: 0 10px;
+    }
+
+    .boardTitle {
+        font-size: 1.3rem;
+    }
+
+    .reportTitle {
+        font-size: 1.6rem;
+    }
+
     .reportContainer {
-        padding: 40px 15px;
-        margin-top: 40px;
+        padding: 40px 20px;
+        margin: 40px 10px 20px;
         border-radius: 30px;
     }
 
     .postCard {
-        padding: 15px;
-        gap: 12px;
+        padding: 20px;
+        gap: 10px;
         align-items: flex-start;
         flex-direction: column;
     }
@@ -540,5 +609,11 @@
 
     .statusBadge {
         align-self: flex-start;
+    }
+
+    .input,
+    .textarea {
+        padding: 12px 16px;
+        font-size: 0.95rem;
     }
 }
