@@ -304,16 +304,20 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                 final_rows.extend(rows)
                 global_progress["completed"] += 1
                 
+                # 안전한 JSON 전송을 위한 처리
+                def _safe_val(v):
+                    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
+                    return v
+                partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
+
                 if err:
                     yield f"LOG:❌ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
+                    # 에러 상태도 즉시 프론트에 전달
+                    yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
                 else:
                     yield f"LOG:✔ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
-                    if rows:
-                        def _safe_val(v):
-                            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
-                            return v
-                        partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
-                        yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
+                    # 성공 결과 전달 (내역 없음 포함)
+                    yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
                 
                 del futures[f]
     

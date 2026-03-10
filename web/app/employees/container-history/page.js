@@ -417,7 +417,8 @@ function ContainerHistoryInner() {
                         const part = JSON.parse(line.substring(15));
                         if (part.result && Array.isArray(part.result)) {
                             setResult(prev => {
-                                const prevRows = prev ? Object.values(prev).flat().filter(r => r[2] !== "조회 대기중") : [];
+                                // [핵심] 조회가 완료된 실제 데이터만 유지하고 '대기/진행'용 가짜 행은 모두 필터링함 (중복 방지)
+                                const prevRows = prev ? Object.values(prev).flat().filter(r => r[2] !== "조회 대기중" && r[2] !== "조회 진행중") : [];
                                 const newRows = [...prevRows, ...part.result];
                                 const grouped = groupByContainer(newRows, targets);
 
