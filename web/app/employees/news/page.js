@@ -141,33 +141,14 @@ export default function NewsPage() {
                         {/* 탭 메뉴 */}
                         <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
                             <button onClick={() => setEggTab(1)} style={{ flex: 1, padding: '12px', background: eggTab === 1 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 1 ? '3px solid #2563eb' : '3px solid transparent', fontWeight: eggTab === 1 ? 800 : 600, color: eggTab === 1 ? '#2563eb' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>네이트판</button>
-                            <button onClick={() => setEggTab(2)} style={{ flex: 1, padding: '12px', background: eggTab === 2 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 2 ? '3px solid #e11d48' : '3px solid transparent', fontWeight: eggTab === 2 ? 800 : 600, color: eggTab === 2 ? '#e11d48' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>데이식스</button>
-                            <button onClick={() => setEggTab(3)} style={{ flex: 1, padding: '12px', background: eggTab === 3 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 3 ? '3px solid #059669' : '3px solid transparent', fontWeight: eggTab === 3 ? 800 : 600, color: eggTab === 3 ? '#059669' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>YES24티켓</button>
+                            <button onClick={() => setEggTab(2)} style={{ flex: 1, padding: '12px', background: eggTab === 2 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 2 ? '3px solid #059669' : '3px solid transparent', fontWeight: eggTab === 2 ? 800 : 600, color: eggTab === 2 ? '#059669' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>YES24티켓</button>
                         </div>
                         {/* 본문 콘텐츠 */}
                         <div style={{ flex: 1, overflow: 'hidden', background: '#f1f5f9', position: 'relative' }}>
                             {eggTab === 1 && (
-                                <iframe src="https://pann.nate.com/" style={{ width: '100%', height: '100%', border: 'none' }} title="네이트판" Sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
+                                <iframe src="https://pann.nate.com/" style={{ width: '100%', height: '100%', border: 'none' }} title="네이트판" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
                             )}
                             {eggTab === 2 && (
-                                <div style={{ padding: '60px 40px', textAlign: 'center', background: '#fff', height: '100%' }}>
-                                    <span style={{ fontSize: '3rem', display: 'block', marginBottom: '20px' }}>🍋</span>
-                                    <h3 style={{ fontSize: '1.5rem', color: '#1e293b', marginBottom: '20px', fontWeight: 800 }}>DAY6 (데이식스) 팬 라운지 오픈 준비 중</h3>
-                                    <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', marginBottom: '30px' }}>
-                                        데이식스의 실시간 뉴스, 인스타/트위터 피드, 커뮤니티 인기글 등을 한데 모아볼 맞춤형 공간을 꾸미고 있습니다.
-                                    </p>
-                                    <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '12px', maxWidth: '600px', margin: '0 auto', textAlign: 'left', border: '1px solid #e2e8f0' }}>
-                                        <h4 style={{ margin: '0 0 12px 0', color: '#1e293b', fontSize: '1rem', fontWeight: 700 }}>📌 맞춤형 연동을 위해 필요한 정보</h4>
-                                        <ul style={{ color: '#64748b', lineHeight: 1.6, margin: 0, paddingLeft: '20px', fontSize: '0.95rem' }}>
-                                            <li><strong style={{ color: '#334155' }}>RSS/뉴스 주소</strong>: 네이버 검색 RSS 등 특정 키워드 뉴스 주소</li>
-                                            <li><strong style={{ color: '#334155' }}>SNS 계정</strong>: 인스타그램, 공식 트위터 등 모아보고 싶은 계정 링크</li>
-                                            <li><strong style={{ color: '#334155' }}>커뮤니티/사이트</strong>: 디시인사이드 갤러리, 특정 팬카페 링크 등</li>
-                                        </ul>
-                                    </div>
-                                    <p style={{ marginTop: '20px', color: '#94a3b8', fontSize: '0.9rem' }}>해당 정보나 링크를 알려주시면 이 탭에 깔끔한 피드 형식으로 연동해 드리겠습니다!</p>
-                                </div>
-                            )}
-                            {eggTab === 3 && (
                                 <iframe src="https://ticket.yes24.com/" style={{ width: '100%', height: '100%', border: 'none' }} title="YES24티켓" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
                             )}
                         </div>
