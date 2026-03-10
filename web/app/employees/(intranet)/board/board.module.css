@@ -69,15 +69,45 @@
 }
 
 .postItem {
-    padding: 10px 14px;
+    padding: 16px 20px;
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.postMain {
+    flex: 1;
+    min-width: 0;
+    padding-right: 20px;
+}
+
+.postTitle {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #334155;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.postMeta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    flex-shrink: 0;
+}
+
+.metaDivider {
+    color: #e2e8f0;
+    font-size: 0.8rem;
 }
 
 .postItem:hover {
@@ -313,19 +343,23 @@
     }
 
     .postTitle {
-        font-size: 1.05rem;
-        margin-bottom: 4px;
-        display: block;
-        font-weight: 800;
+        font-size: 1rem;
+        margin-bottom: 6px;
+        white-space: normal;
     }
 
     .postMeta {
         width: 100%;
         display: flex;
         justify-content: flex-start;
-        gap: 12px;
+        gap: 8px;
         font-size: 0.8rem;
         color: #94a3b8;
+    }
+
+    .metaDivider {
+        display: none;
+        /* 모바일에서는 구분선 숨기기 설계도 가능, 혹은 유지 */
     }
 
     /* Hide the arrow on mobile to save space */

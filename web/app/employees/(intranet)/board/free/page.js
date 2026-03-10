@@ -110,13 +110,14 @@ export default function FreeBoardPage() {
                                 >
                                     <div className={styles.postMain}>
                                         <span className={styles.postTitle}>{post.title}</span>
-                                        <div className={styles.postMeta}>
-                                            <span>👤 {post.author?.name || '익명'}{post.author?.rank ? ` ${post.author.rank}` : ''}</span>
-                                            <span>📅 {new Date(post.created_at).toLocaleDateString()}</span>
-                                            <span>👁️ {post.view_count || 0}</span>
-                                        </div>
                                     </div>
-                                    <div style={{ color: '#cbd5e1', fontSize: '1.2rem' }}>→</div>
+                                    <div className={styles.postMeta}>
+                                        <span>{post.author?.name || '익명'}{post.author?.rank ? ` ${post.author.rank}` : ''}</span>
+                                        <span className={styles.metaDivider}>|</span>
+                                        <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                                        <span className={styles.metaDivider}>|</span>
+                                        <span>조회 {post.view_count || 0}</span>
+                                    </div>
                                 </motion.div>
                             ))}
                             {posts.length === 0 && <p style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>등록된 게시글이 없습니다.</p>}
