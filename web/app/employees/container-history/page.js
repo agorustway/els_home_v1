@@ -564,40 +564,62 @@ function ContainerHistoryInner() {
         }
 
         const wb = XLSX.utils.book_new();
-        const rows = [HEADERS];
 
-        // 데이터 평면화
+        // 1. 데이터 분류
+        const latestRows = []; // No 1만 모음
+        const allRowsSorted = []; // 전체를 No 순(1,2,3..)으로 모음
+
         Object.keys(result).forEach(cn => {
-            result[cn].forEach(row => {
-                rows.push(row);
-            });
+            const rawRows = result[cn].filter(r => r[2] !== '조회 대기중' && r[2] !== '조회 진행중');
+            if (rawRows.length === 0) return;
+
+            // 시트2용: No 순서대로 정렬
+            const sorted = [...rawRows].sort((a, b) => (Number(a[1]) || 0) - (Number(b[1]) || 0));
+            sorted.forEach(r => allRowsSorted.push(r));
+
+            // 시트1용: No 1번만 추출
+            const no1 = sorted.find(r => String(r[1]) === '1');
+            if (no1) latestRows.push(no1);
         });
 
-        const ws = XLSX.utils.aoa_to_sheet(rows);
+        // 2. 워크시트 생성 보조 함수
+        const createSheet = (rows) => {
+            const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
 
-        // 컬럼 너비 설정 (가장 긴 데이터 기준 가늠)
-        ws['!cols'] = [
-            { wch: 15 }, // 컨테이너번호
-            { wch: 5 },  // No
-            { wch: 8 },  // 수출입
-            { wch: 8 },  // 구분
-            { wch: 25 }, // 터미널
-            { wch: 20 }, // MOVE TIME
-            { wch: 15 }, // 모선
-            { wch: 8 },  // 항차
-            { wch: 8 },  // 선사
-            { wch: 8 },  // 적공
-            { wch: 8 },  // SIZE
-            { wch: 8 },  // POD
-            { wch: 8 },  // POL
-            { wch: 15 }, // 차량번호
-            { wch: 8 }   // RFID
-        ];
+            // 자동 열 너비 (내용물 중 가장 긴 것 확인)
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const colWidths = HEADERS.map((h, i) => {
+                let maxLen = h.length + 4;
+                for (let r = 1; r <= range.e.r; r++) {
+                    const cell = ws[XLSX.utils.encode_cell({ r, c: i })];
+                    if (cell && cell.v) {
+                        const cellLen = String(cell.v).length + 2;
+                        if (cellLen > maxLen) maxLen = cellLen;
+                    }
+                }
+                return { wch: Math.min(maxLen, 60) };
+            });
+            ws['!cols'] = colWidths;
 
-        XLSX.utils.book_append_sheet(wb, ws, '컨테이너이력');
-        const filename = `컨테이너이력조회_${new Date().toISOString().split('T')[0]}.xlsx`;
+            // 틀 고정 (제목행 고정)
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+            // 자동 필터
+            ws['!autofilter'] = { ref: ws['!ref'] };
+
+            return ws;
+        };
+
+        const wsLatest = createSheet(latestRows);
+        const wsAll = createSheet(allRowsSorted);
+
+        XLSX.utils.book_append_sheet(wb, wsLatest, '최신이력(No1)');
+        XLSX.utils.book_append_sheet(wb, wsAll, '전체이력');
+
+        const dateStr = new Date().toLocaleDateString('ko-KR').replace(/\. /g, '-').replace(/\./g, '');
+        const filename = `컨테이너_이력조회_${dateStr}.xlsx`;
         XLSX.writeFile(wb, filename);
-        setLogLines(prev => [...prev, `[다운로드] ${filename} 생성이 완료되었습니다.`].slice(-100));
+
+        setLogLines(prev => [...prev, `[다운로드] ${filename} (시트2개 분리) 생성이 완료되었습니다.`].slice(-100));
     };
 
     const handleFileDrop = (e) => {
