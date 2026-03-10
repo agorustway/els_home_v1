@@ -37,7 +37,8 @@ if not ELSBOT_DIR.exists():
 
 RUNNER = ELSBOT_DIR / "els_web_runner.py"
 CONFIG_PATH = ELSBOT_DIR / "els_config.json"
-DAEMON_URL = "http://127.0.0.1:31999"
+# [수정] 데몬 주소를 환경변수에서 가져오도록 변경
+DAEMON_URL = os.environ.get("DAEMON_URL", "http://127.0.0.1:31999")
 
 # --- 전역 변수 ---
 file_store = {}
@@ -261,9 +262,10 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             resp = urlopen(req, timeout=120)
             res_json = json.loads(resp.read().decode("utf-8"))
             worker_id = res_json.get("worker_id", "?")
-            return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1), worker_id
+            daemon_id = res_json.get("daemon_id", "1") # [추가] 데몬 식별 ID 수집
+            return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1), worker_id, daemon_id
         except Exception as e:
-            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1), "?"
+            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1), "?", "ER"
 
     sent_daemon_logs = set()
     with ThreadPoolExecutor(max_workers=3) as executor:
@@ -289,11 +291,11 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
             done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
             for f in done:
                 cn, retries = futures[f]
-                rows, _, err, elapsed, worker_id = f.result()
+                rows, _, err, elapsed, worker_id, daemon_id = f.result()
                 
                 # 🎯 에러 발생 시 재시도 로직 (1회 한정하여 다른 데몬에게 하청/재조회 시도)
                 if err and retries < 1:
-                    yield f"LOG:⚠️ [B#{worker_id}] [{cn}] 오류 발생, 다른 데몬으로 재시도합니다... ({err})\n"
+                    yield f"LOG:⚠️ [D#{daemon_id}-B#{worker_id}] [{cn}] 오류 발생, 재조회 시도 중... ({err})\n"
                     new_f = executor.submit(fetch_container, cn)
                     futures[new_f] = (cn, retries + 1)
                     del futures[f]
@@ -303,9 +305,9 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                 global_progress["completed"] += 1
                 
                 if err:
-                    yield f"LOG:❌ [B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
+                    yield f"LOG:❌ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
                 else:
-                    yield f"LOG:✔ [B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
+                    yield f"LOG:✔ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
                     if rows:
                         def _safe_val(v):
                             if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None

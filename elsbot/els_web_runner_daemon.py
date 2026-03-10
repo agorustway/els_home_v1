@@ -26,6 +26,7 @@ class DriverPool:
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
+        self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0 
         self.log_buffer = deque(maxlen=300)
         self.consecutive_login_failures = 0 # 5회 계정 잠금 방지를 위해 3회 반복 실패 시 멈춤
@@ -34,7 +35,8 @@ class DriverPool:
         from datetime import datetime, timezone, timedelta
         kst = timezone(timedelta(hours=9))
         ts = datetime.now(kst).strftime("%H:%M:%S")
-        formatted = f"[{ts}] {msg}"
+        # [수정] 로그에 데몬 ID를 포함하여 여러 데몬 운영 시 원인 파악 용이하게 개선
+        formatted = f"[{ts}][D#{self.daemon_id}] {msg}"
         with self.lock:
             self.log_buffer.append(formatted)
         print(formatted)
@@ -309,6 +311,7 @@ def run():
             "ok": True,
             "containerNo": cn,
             "worker_id": getattr(driver, 'used_port', 32000) - 32000 + 1,
+            "daemon_id": pool.daemon_id, # [추가] 데몬 식별 ID 반환
             "result": result_rows,
             "elapsed": round(time.time() - start_time, 1),
             "log": list(pool.log_buffer) # 전체 로그 버퍼 반환
