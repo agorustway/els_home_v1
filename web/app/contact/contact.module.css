@@ -65,10 +65,10 @@
 /* Form Styles */
 .formWrapper {
     background: #ffffff;
-    padding: 40px;
-    border-radius: 30px;
-    box-shadow: 0 20px 50px rgba(0, 50, 150, 0.05);
-    border: 1px solid #f0f4f9;
+    padding: 32px;
+    border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(0, 50, 150, 0.04);
+    border: 1px solid #f1f5f9;
 }
 
 .formTitle {
@@ -154,9 +154,9 @@
 }
 
 .boardTitle {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     font-weight: 800;
-    color: #111;
+    color: #1e293b;
 }
 
 .boardCount {
@@ -310,8 +310,8 @@
 
 .reportDesc {
     color: #94a3b8;
-    font-size: 1.1rem;
-    margin-bottom: 40px;
+    font-size: 1rem;
+    margin-bottom: 30px;
     line-height: 1.6;
 }
 
