@@ -611,10 +611,22 @@ function ContainerHistoryInner() {
             for (let r = 0; r <= range.e.r; r++) {
                 for (let c = 0; c <= range.e.c; c++) {
                     const cellRef = XLSX.utils.encode_cell({ r, c });
-                    if (!ws[cellRef]) continue;
+                    if (!ws[cellRef]) {
+                        ws[cellRef] = { v: "", t: "s" }; // 빈 셀도 스타일 적용을 위해 객체 생성
+                    }
 
                     const cell = ws[cellRef];
-                    cell.s = { font: { size: 10 }, alignment: { vertical: 'center' } };
+                    // 기본 폰트 크기 10 강제 적용
+                    cell.s = {
+                        font: { size: 10, name: '맑은 고딕' },
+                        alignment: { vertical: 'center' },
+                        border: {
+                            top: { style: "thin", color: { rgb: "E2E8F0" } },
+                            left: { style: "thin", color: { rgb: "E2E8F0" } },
+                            bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+                            right: { style: "thin", color: { rgb: "E2E8F0" } }
+                        }
+                    };
 
                     // 제목 행 (회색)
                     if (r === 0) {
