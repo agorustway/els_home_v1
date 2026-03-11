@@ -55,6 +55,8 @@ class DriverPool:
             self.add_log("--- 드라이버 풀이 초기화되었습니다. ---")
 
     def is_same_user(self, u_id, show_browser):
+        if not self.current_user:
+            return False
         return self.current_user["id"] == u_id and self.current_user["show_browser"] == show_browser
 
     def add_driver(self, driver):
