@@ -78,13 +78,20 @@ def health():
     with pool.lock:
         active_count = len(pool.drivers)
         available_count = pool.available_queue.qsize()
+        
+        # 안전한 큐 스냅샷 복사본 생성 (데드락 및 런타임 에러 방지)
+        try:
+            available_drivers_list = list(pool.available_queue.queue)
+        except:
+            available_drivers_list = []
+            
         workers = []
         for d in pool.drivers:
             workers.append({
                 "port": getattr(d, 'used_port', 0),
                 "id": getattr(d, 'used_port', 32000) - 32000 + 1,
                 "last_activity": getattr(d, 'last_activity', 0),
-                "is_available": d in list(pool.available_queue.queue)
+                "is_available": d in available_drivers_list
             })
         
         return jsonify({
