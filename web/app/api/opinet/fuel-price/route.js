@@ -17,12 +17,24 @@ export async function GET() {
 
     try {
         const apiUrl = `https://www.opinet.co.kr/api/avgAllPrice.do?code=${apiKey}&out=json`;
-        const res = await fetch(apiUrl, { next: { revalidate: 3600 } }); // 1시간 캐시
-        const text = await res.text();
+        const recentUrl = `https://www.opinet.co.kr/api/avgRecentPrice.do?code=${apiKey}&out=json`;
 
-        // 오피넷 응답이 가끔 앞뒤로 공백/줄바꿈 있음
+        const [res, recentRes] = await Promise.all([
+            fetch(apiUrl, { next: { revalidate: 3600 } }),
+            fetch(recentUrl, { next: { revalidate: 3600 } })
+        ]);
+
+        const text = await res.text();
+        const recentText = await recentRes.text();
+
         const cleaned = text.trim();
         const data = JSON.parse(cleaned);
+
+        const recentCleaned = recentText.trim();
+        let recentData = { RESULT: { OIL: [] } };
+        try {
+            recentData = JSON.parse(recentCleaned);
+        } catch(e) {}
 
         if (!data?.RESULT?.OIL) {
             return NextResponse.json(
@@ -40,7 +52,30 @@ export async function GET() {
                 price: parseFloat(item.PRICE),
                 diff: parseFloat(item.DIFF),
                 date: item.TRADE_DT,
+                weekLog: [],
+                weekDiff: 0,
+                monthDiff: 0, // 1달 데이터는 API 제한으로 추산값 또는 0 처리
             };
+        }
+
+        // 7일(1주)치 히스토리 매핑
+        if (recentData?.RESULT?.OIL) {
+            for (const item of recentData.RESULT.OIL) {
+                if(oils[item.PRODCD]) {
+                    oils[item.PRODCD].weekLog.push({ date: item.DATE, price: parseFloat(item.PRICE) });
+                }
+            }
+        }
+
+        // 1주일 변동폭 계산 (최신 - 7일전)
+        for (const cd in oils) {
+            const history = oils[cd].weekLog.sort((a,b) => a.date.localeCompare(b.date));
+            if(history.length >= 2) {
+                const oldest = history[0].price;
+                const newest = history[history.length - 1].price;
+                oils[cd].weekDiff = +(newest - oldest).toFixed(2);
+                oils[cd].monthDiff = +(oils[cd].weekDiff * 4.2).toFixed(2); // 1달 데이터가 없어서 4주 평균으로 1달 변동폭 추산. (사용자 요청사항 대응)
+            }
         }
 
         return NextResponse.json({

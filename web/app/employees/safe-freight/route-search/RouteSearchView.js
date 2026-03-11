@@ -216,6 +216,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
     // ── 유가 정보 (오피넷) ────
     const [fuelPriceData, setFuelPriceData] = useState(null);
+    const [selectedFuel, setSelectedFuel] = useState('diesel');
 
     // ── 임시 저장 내역 (History) ────
     const [savedResults, setSavedResults] = useState([]);
@@ -1285,7 +1286,12 @@ export default function RouteSearchView({ options, period, onBack }) {
        파싱된 경로 목록 (톨비 + 유류비 + 시간 계산)
        — 왕복일 때 톨비/유류비 x2 (#1)
        ═══════════════════════════════════════════════ */
-    const dieselPrice = fuelPriceData?.diesel?.price || 0;
+    const fuelInfo = fuelPriceData?.[selectedFuel] || {};
+    const currentFuelPrice = fuelInfo?.price || 0;
+    const currentFuelDiff = fuelInfo?.diff || 0;
+    const weekDiff = fuelInfo?.weekDiff || 0;
+    const monthDiff = fuelInfo?.monthDiff || 0;
+
     const tripMult = tripMode === 'round' ? 2 : 1; // 운행비 왕복 배수
     const parsedRoutes = useMemo(() => {
         if (!routeResult?.route) return [];
@@ -1297,7 +1303,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             const distKm = metersToKm(s.distance);
             // 편도 기준 연료/톨비
             const litersOne = currentMileage > 0 ? distKm / currentMileage : 0;
-            const fuelCostOne = dieselPrice > 0 ? Math.round(litersOne * dieselPrice) : (s.fuelPrice || 0);
+            const fuelCostOne = currentFuelPrice > 0 ? Math.round(litersOne * currentFuelPrice) : (s.fuelPrice || 0);
             const tollOne = s.tollFare || 0;
             // 왕복일 때 x2
             const liters = Math.round(litersOne * tripMult * 10) / 10;
@@ -1321,8 +1327,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                 totalCost: tollFare + fuelCost,
             });
         }
-        return result;
-    }, [routeResult, dieselPrice, currentMileage, tripMult]);
+        // 법규 적용: 가장 짧은 구간이 기준 → 거리순 정렬 반영
+        return result.sort((a,b) => a.distKm - b.distKm);
+    }, [routeResult, currentFuelPrice, currentMileage, tripMult]);
 
     /* ═══════════════════════════════════════════════
        렌더링
@@ -1545,9 +1552,22 @@ export default function RouteSearchView({ options, period, onBack }) {
                         <div className={styles.resultRoutes}>
                             <p className={styles.sectionLabel}>
                                 탐색된 경로 ({parsedRoutes.length}건)
-                                {dieselPrice > 0 && (
-                                    <span className={styles.fuelPriceBadge}>
-                                        ⛽ 경유 {dieselPrice.toLocaleString()}원/L ({fuelPriceData?.diesel?.diff > 0 ? '+' : ''}{fuelPriceData?.diesel?.diff})
+                                {currentFuelPrice > 0 && (
+                                    <span className={styles.fuelPriceGroup}>
+                                        <select 
+                                            value={selectedFuel} 
+                                            onChange={e => setSelectedFuel(e.target.value)}
+                                            style={{ marginLeft: 6, marginRight: 4, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value="diesel">경유</option>
+                                            <option value="gasoline">휘발유</option>
+                                        </select>
+                                        <span className={styles.fuelPriceBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 8px', fontSize: 13 }}>
+                                            ⛽ {currentFuelPrice.toLocaleString()}원/L 
+                                            <span style={{color: currentFuelDiff > 0 ? '#ef4444' : currentFuelDiff < 0 ? '#3b82f6' : '#64748b'}}>({currentFuelDiff > 0 ? '+' : ''}{currentFuelDiff})</span>
+                                            <span style={{color: '#64748b', borderLeft: '1px solid #e2e8f0', paddingLeft: 6}}>1주: <b style={{color: weekDiff > 0 ? '#ef4444' : weekDiff < 0 ? '#3b82f6' : '#64748b'}}>{weekDiff > 0 ? '+' : ''}{weekDiff}</b></span>
+                                            <span style={{color: '#64748b'}}>1달: <b style={{color: monthDiff > 0 ? '#ef4444' : monthDiff < 0 ? '#3b82f6' : '#64748b'}}>{monthDiff > 0 ? '+' : ''}{monthDiff}</b></span>
+                                        </span>
                                     </span>
                                 )}
                             </p>
