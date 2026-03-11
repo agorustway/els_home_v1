@@ -836,9 +836,20 @@ export default function RouteSearchView({ options, period, onBack }) {
             }
 
             // 2. Directions 15 호출 — option 최대 3개 제한이므로 2회 분할
+            let startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
+            let goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
+
+            // [추가] 출발지와 도착지가 동일한데 경유지가 있는 경우 (A -> B -> A), 
+            // 네이버 API가 "출발지와 도착지가 동일합니다" 에러를 내뱉는 것을 방지하기 위해 
+            // 도착지 좌표에 아주 미세한 오프셋을 추가합니다.
+            if (resolvedOrigin.lng === resolvedDest.lng && resolvedOrigin.lat === resolvedDest.lat && resolvedWps.length > 0) {
+                const tinyOffsetLng = Number(resolvedDest.lng) + 0.00001;
+                goalCoord = `${tinyOffsetLng},${resolvedDest.lat}`;
+            }
+
             const baseParams = {
-                start: `${resolvedOrigin.lng},${resolvedOrigin.lat}`,
-                goal: `${resolvedDest.lng},${resolvedDest.lat}`,
+                start: startCoord,
+                goal: goalCoord,
                 cartype: String(cartype),
                 fueltype: 'diesel',
             };
