@@ -231,6 +231,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     const mapContainerRef = useRef(null);
     const mapInstance = useRef(null);
     const mapMarkersRef = useRef([]);
+    const inputMarkersRef = useRef([]); // 사용자 입력 단계의 임시 마커
     const mapPolylinesRef = useRef([]);
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);
@@ -446,9 +447,12 @@ export default function RouteSearchView({ options, period, onBack }) {
                 position: new naver.maps.LatLng(activeSummary.start.location[1], activeSummary.start.location[0]),
                 map: mapInstance.current,
                 icon: {
-                    content: `<div style="background:#2563eb;color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">출발</div>`,
+                    content: `<div style="background:#2563eb;color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;cursor:pointer;">출발</div>`,
                     anchor: new naver.maps.Point(20, 15),
                 },
+            });
+            naver.maps.Event.addListener(startMarker, 'click', () => {
+                panToLocation(activeSummary.start.location[0], activeSummary.start.location[1], 14);
             });
             mapMarkersRef.current.push(startMarker);
 
@@ -456,9 +460,12 @@ export default function RouteSearchView({ options, period, onBack }) {
                 position: new naver.maps.LatLng(activeSummary.goal.location[1], activeSummary.goal.location[0]),
                 map: mapInstance.current,
                 icon: {
-                    content: `<div style="background:#dc2626;color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">도착</div>`,
+                    content: `<div style="background:#dc2626;color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;cursor:pointer;">도착</div>`,
                     anchor: new naver.maps.Point(20, 15),
                 },
+            });
+            naver.maps.Event.addListener(endMarker, 'click', () => {
+                panToLocation(activeSummary.goal.location[0], activeSummary.goal.location[1], 14);
             });
             mapMarkersRef.current.push(endMarker);
 
@@ -468,9 +475,12 @@ export default function RouteSearchView({ options, period, onBack }) {
                         position: new naver.maps.LatLng(wp.location[1], wp.location[0]),
                         map: mapInstance.current,
                         icon: {
-                            content: `<div style="background:#f59e0b;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">경유${i + 1}</div>`,
+                            content: `<div style="background:#f59e0b;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;cursor:pointer;">경유${i + 1}</div>`,
                             anchor: new naver.maps.Point(22, 15),
                         },
+                    });
+                    naver.maps.Event.addListener(wpMarker, 'click', () => {
+                        panToLocation(wp.location[0], wp.location[1], 14);
                     });
                     mapMarkersRef.current.push(wpMarker);
                 });
@@ -501,7 +511,56 @@ export default function RouteSearchView({ options, period, onBack }) {
         mapMarkersRef.current = [];
         mapPolylinesRef.current.forEach(p => p.setMap(null));
         mapPolylinesRef.current = [];
+        inputMarkersRef.current.forEach(m => m.setMap(null));
+        inputMarkersRef.current = [];
     }, []);
+
+    /* ─── 입력된 1~n개의 거점을 지도상에 표시하는 임시 마커 (조회 전) ─── */
+    useEffect(() => {
+        if (!mapInstance.current || !window.naver?.maps) return;
+        
+        // 탐색된 경로가 없을 때만 사용자 입력 기반 마커를 그림
+        if (routeResult) return;
+
+        inputMarkersRef.current.forEach(m => m.setMap(null));
+        inputMarkersRef.current = [];
+        const naver = window.naver;
+        let bounds = new naver.maps.LatLngBounds();
+        let validCoords = 0;
+
+        const addInputMarker = (loc, label, color) => {
+            if (loc.lng && loc.lat) {
+                const pos = new naver.maps.LatLng(loc.lat, loc.lng);
+                const marker = new naver.maps.Marker({
+                    position: pos,
+                    map: mapInstance.current,
+                    icon: {
+                        content: `<div style="background:${color};color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;cursor:pointer;">${label}</div>`,
+                        anchor: new naver.maps.Point(20, 15),
+                    },
+                });
+                naver.maps.Event.addListener(marker, 'click', () => {
+                    panToLocation(loc.lng, loc.lat, 14);
+                });
+                inputMarkersRef.current.push(marker);
+                bounds.extend(pos);
+                validCoords++;
+            }
+        };
+
+        addInputMarker(origin, '출발', '#2563eb');
+        addInputMarker(destination, '도착', '#dc2626');
+        waypoints.forEach((wp, i) => {
+            addInputMarker(wp, `경유 ${i+1}`, '#f59e0b');
+        });
+
+        if (validCoords > 1 && !routeResult) {
+             mapInstance.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
+        } else if (validCoords === 1) {
+             const singlePos = bounds.getMax();
+             panToLocation(singlePos.lng(), singlePos.lat(), 12);
+        }
+    }, [origin.lng, origin.lat, destination.lng, destination.lat, waypoints, routeResult, panToLocation]);
 
     /* ─── 장소 검색 (디바운스) ─── */
     const handlePlaceSearch = useCallback((val, field) => {
@@ -1429,10 +1488,12 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 key={`wp${i}`}
                                 fieldKey={`wp${i}`}
                                 locState={wp}
-                                setLocState={val => {
-                                    const next = [...waypoints];
-                                    next[i] = typeof val === 'function' ? val(next[i]) : val;
-                                    setWaypoints(next);
+                                setLocState={valOrFn => {
+                                    setWaypoints(prevArray => {
+                                        const next = [...prevArray];
+                                        next[i] = typeof valOrFn === 'function' ? valOrFn(next[i]) : valOrFn;
+                                        return next;
+                                    });
                                 }}
                                 placeholder={`경유지 ${i + 1}`}
                                 dotColor="#f59e0b"
