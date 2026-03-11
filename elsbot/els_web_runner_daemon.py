@@ -256,7 +256,7 @@ def run():
             res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
                 with pool.lock:
-                    pool.consecutive_login_failures = 0
+                    pool.consecutive_login_failures = 0 # 성공 시 즉시 0으로 초기화 (아침에 살아날 수 있는 핵심)
                     driver = res[0]
                     driver.used_port = target_port
                     pool.drivers.append(driver)
@@ -265,7 +265,12 @@ def run():
                 with pool.lock:
                     pool.consecutive_login_failures += 1
                     pool.last_failure_time = time.time()
-                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
+                    
+                    if pool.consecutive_login_failures >= 4:
+                        pool.add_log("🛑 [보안 중단] 누적 로그인 4회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다. 비번을 확인하세요.")
+                        return jsonify({"ok": False, "error": "로그인 4회 연속 실패로 보안 모드 발동. 비번 확인 후 수동으로 다시 시작해 주세요."})
+                        
+                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/4): {res[1]}"})
 
         # [초가속] 사이트 차단 방지 지연 시간을 0.2 ~ 0.5초로 추가 단축하여 성능 극대화 (사용자 요청)
         time.sleep(random.uniform(0.2, 0.5))
