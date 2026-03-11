@@ -15,14 +15,14 @@ const SIDO_MAP_SHORT = {
 };
 
 export const TERMINAL_LIST = [
-    { key: 'port_pusan_new', name: '부산신항(HMM/HPNT)', aliases: ['부산신항기점', 'HMM', 'HPNT', '부산신항'], r1: '부산시', r2: '강서구', r3: '가덕도동', lat: 35.07452, lng: 128.82654 },
-    { key: 'port_pusan_north', name: '부산북항(BPT)', aliases: ['부산북항기점', '부산항', 'BPT', '신선대터미널'], r1: '부산시', r2: '남구', r3: '감만1동', lat: 35.1055, lng: 129.1025 },
-    { key: 'port_icn_new', name: '인천신항(HJIT)', aliases: ['인천신항기점', '한진신항터미널', '선광신항터미널'], r1: '인천시', r2: '연수구', r3: '송도1동', lat: 37.3308, lng: 126.6575 },
-    { key: 'port_icn_old', name: '인천내항(ICT)', aliases: ['인천항기점', '인천남항', 'ICT터미널'], r1: '인천시', r2: '중구', r3: '신흥동3가', lat: 37.4475, lng: 126.6015 },
-    { key: 'port_kt_icd', name: '의왕ICD', aliases: ['의왕기점', '부곡역', '의왕터미널'], r1: '경기도', r2: '의왕시', r3: '고천동', lat: 37.3245, lng: 126.9655 },
-    { key: 'port_phs', name: '평택항(PCTC)', aliases: ['평택기점', '평택컨테이너터미널'], r1: '경기도', r2: '평택시', r3: '포승읍', lat: 36.9675, lng: 126.8525 },
-    { key: 'port_gwangyang', name: '광양항(GWCT)', aliases: ['광양기점', '광양터미널'], r1: '전남', r2: '광양시', r3: '태인동', lat: 34.9085, lng: 127.6975 },
-    { key: 'port_ulsan_new', name: '울산신항(UNCT)', aliases: ['울산항기점', '울산신항컨테이너'], r1: '울산시', r2: '남구', r3: '야음장생포동', lat: 35.4855, lng: 129.3775 }
+    { key: 'port_pusan_new', name: '부산신항(HMM/HPNT)', aliases: ['부산신항기점', 'HMM', 'HPNT', '부산신항'], r1: '부산시', r2: '강서구', r3: '가덕도동', lat: 35.07850, lng: 128.82500 },
+    { key: 'port_pusan_north', name: '부산북항(BPT)', aliases: ['부산북항기점', '부산항', 'BPT', '신선대터미널'], r1: '부산시', r2: '남구', r3: '감만1동', lat: 35.11211, lng: 129.10091 },
+    { key: 'port_icn_new', name: '인천신항(HJIT)', aliases: ['인천신항기점', '한진신항터미널', '선광신항터미널'], r1: '인천시', r2: '연수구', r3: '송도1동', lat: 37.34534, lng: 126.62711 },
+    { key: 'port_icn_old', name: '인천내항(ICT)', aliases: ['인천항기점', '인천남항', 'ICT터미널'], r1: '인천시', r2: '중구', r3: '신흥동3가', lat: 37.44681, lng: 126.60273 },
+    { key: 'port_kt_icd', name: '의왕ICD', aliases: ['의왕기점', '부곡역', '의왕터미널'], r1: '경기도', r2: '의왕시', r3: '고천동', lat: 37.32366, lng: 126.96507 },
+    { key: 'port_phs', name: '평택항(PCTC)', aliases: ['평택기점', '평택컨테이너터미널'], r1: '경기도', r2: '평택시', r3: '포승읍', lat: 36.96667, lng: 126.85800 },
+    { key: 'port_gwangyang', name: '광양항(GWCT)', aliases: ['광양기점', '광양터미널'], r1: '전남', r2: '광양시', r3: '태인동', lat: 34.88764, lng: 127.69616 },
+    { key: 'port_ulsan_new', name: '울산신항(UNCT)', aliases: ['울산항기점', '울산신항컨테이너'], r1: '울산시', r2: '남구', r3: '야음장생포동', lat: 35.45896, lng: 129.36438 }
 ];
 
 export const TERMINAL_COORDS = TERMINAL_LIST.reduce((acc, t) => {
