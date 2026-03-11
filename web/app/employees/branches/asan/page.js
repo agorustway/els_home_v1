@@ -288,7 +288,13 @@ export default function AsanDispatchPage() {
         const dateParam = isAllTab ? 'all' : activeItem?.target_date;
         if (!dateParam) return;
         const monthParam = isAllTab && allTabMonth ? `&month=${allTabMonth}` : '';
-        window.open(`/api/branches/asan/export?type=${viewType}&date=${dateParam}${monthParam}`, '_blank');
+        
+        const url = `/api/branches/asan/export?type=${viewType}&date=${dateParam}${monthParam}`;
+        const a = document.createElement('a');
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     };
 
     const centerCols = useMemo(() => { const s = new Set(); headers.forEach((h, i) => { if (CENTER_HEADERS.has(h.trim())) s.add(i); }); return s; }, [headers]);
