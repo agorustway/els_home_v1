@@ -75,15 +75,28 @@ pool = DriverPool()
 
 @app.route('/health', methods=['GET'])
 def health():
-    active_count = len(pool.drivers)
-    available_count = pool.available_queue.qsize()
-    return jsonify({
-        "status": "ok", 
-        "driver_active": active_count > 0,
-        "total_drivers": active_count,
-        "available_drivers": available_count,
-        "user_id": pool.current_user["id"]
-    })
+    with pool.lock:
+        active_count = len(pool.drivers)
+        available_count = pool.available_queue.qsize()
+        workers = []
+        for d in pool.drivers:
+            workers.append({
+                "port": getattr(d, 'used_port', 0),
+                "id": getattr(d, 'used_port', 32000) - 32000 + 1,
+                "last_activity": getattr(d, 'last_activity', 0),
+                "is_available": d in list(pool.available_queue.queue)
+            })
+        
+        return jsonify({
+            "status": "ok", 
+            "driver_active": active_count > 0,
+            "total_drivers": active_count,
+            "max_drivers": pool.max_drivers,
+            "available_drivers": available_count,
+            "user_id": pool.current_user["id"] if pool.current_user else None,
+            "workers": workers,
+            "daemon_id": pool.daemon_id
+        })
 
 @app.route('/login', methods=['POST'])
 def login():

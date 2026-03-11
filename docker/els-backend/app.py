@@ -103,7 +103,9 @@ def capabilities():
         "available": daemon_status["available"],
         "driver_active": daemon_status["driver_active"],
         "user_id": daemon_status.get("user_id"),
-        "progress": global_progress, # 진행률 정보 포함
+        "progress": global_progress,
+        "workers": data.get("workers", []) if 'data' in locals() else [],
+        "max_drivers": data.get("max_drivers", 3) if 'data' in locals() else 3,
         "parseAvailable": True
     })
 
@@ -381,7 +383,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                             cell.font = header_font
 
                         # (2) 틀 고정 (1행)
-                        ws.freeze_panes = 'A2'
+                        ws.freeze_panes = ws['A2']
 
                         # (3) 자동 필터 (정렬 가능)
                         ws.auto_filter.ref = ws.dimensions

@@ -77,6 +77,8 @@ function ContainerHistoryInner() {
     const [isLogCollapsed, setIsLogCollapsed] = useState(false); // [변경] 로그 접힘 상태 (기본값 펼침)
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false); // [추가] 왼쪽 패널 접힘 상태 (기본값 열림)
     const [runHistory, setRunHistory] = useState([]); // [추가] 조회 이력 차수 관리
+    const [workers, setWorkers] = useState([]); // [추가] 데몬 워커(브라우저)별 상태 관리
+    const [maxDrivers, setMaxDrivers] = useState(3); // [추가] 최대 드라이버 수
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -102,6 +104,20 @@ function ContainerHistoryInner() {
         if (savedResult) {
             try { setResult(JSON.parse(savedResult)); } catch (e) { console.error(e); }
         }
+
+        // [추가] 타이머 및 상태 모니터링
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            if (loading || loginLoading) return; // 작업 중엔 인터럽트 방지 (내부 폴링 수행)
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/els/capabilities`);
+                const data = await res.json();
+                if (data.workers) setWorkers(data.workers);
+                if (data.max_drivers) setMaxDrivers(data.max_drivers);
+            } catch(e) {}
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [loading, loginLoading, BACKEND_BASE_URL]);
 
         if (sessionStorage.getItem('els_login_success') === 'true') {
             setLoginSuccess(true);
@@ -372,6 +388,10 @@ function ContainerHistoryInner() {
             while (isWaiting) {
                 const capRes = await fetch(`${BACKEND_BASE_URL}/api/els/capabilities`);
                 const capData = await capRes.json();
+                
+                // 워커 상태 업데이트
+                if (capData.workers) setWorkers(capData.workers);
+                if (capData.max_drivers) setMaxDrivers(capData.max_drivers);
 
                 // 데몬이 다른 사용자의 요청을 처리 중인지 확인 (backend app.py에서 내려주는 progress 정보 활용)
                 if (capData.progress && capData.progress.is_running) {
@@ -626,6 +646,9 @@ function ContainerHistoryInner() {
                     activePane: 'bottomLeft'
                 }
             ];
+            // [최종 병기] !freeze 속성 중첩 적용 (일부 구버전/특이 환경 대응)
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+            
             // 자동 필터
             ws['!autofilter'] = { ref: range };
 
@@ -680,6 +703,8 @@ function ContainerHistoryInner() {
                 }
             }
 
+            // [최종 병기] !freeze 속성 중첩 적용 (일부 구버전/특이 환경 대응)
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
             // 자동 필터
             ws['!autofilter'] = { ref: ws['!ref'] };
 
@@ -869,6 +894,16 @@ function ContainerHistoryInner() {
                                 <h2 className={styles.sectionTitle}>
                                     조회 데이터 결과
                                     {result && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500, marginLeft: '8px' }}>(총 {Object.keys(result).length}건)</span>}
+                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', marginRight: '10px' }}>
+                                        {[...Array(maxDrivers)].map((_, i) => {
+                                            const w = workers.find(work => work.id === i + 1);
+                                            const isActive = !!w;
+                                            const isBusy = isActive && !w.is_available;
+                                            return (
+                                                <div key={i} title={isActive ? `B#${i+1} 활성 (Last: ${new Date(w.last_activity * 1000).toLocaleTimeString()})` : `B#${i+1} 비활성`} style={{ width: '10px', height: '10px', borderRadius: '50%', background: isActive ? (isBusy ? '#f59e0b' : '#22c55e') : '#e2e8f0', border: '1px solid #cbd5e1' }}></div>
+                                            );
+                                        })}
+                                    </div>
                                 </h2>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     {result && (
