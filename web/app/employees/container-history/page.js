@@ -511,7 +511,7 @@ function ContainerHistoryInner() {
         if (e) e.stopPropagation();
         if (!confirm('백그라운드 봇의 세션을 강제로 닫고 다시 로그인 하시겠습니까?')) return;
         try {
-            await fetch(`${BACKEND_BASE_URL}/api/els/stop`, { method: "POST" });
+            await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
             setLogLines(prev => [...prev, '✓ 수동 초기화: 데몬 세션을 닫고 다시 로그인을 시도합니다...'].slice(-100));
             setLoginSuccess(false);
             sessionStorage.removeItem('els_login_success');
