@@ -1041,8 +1041,23 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                 // ── 3) 수도권 편도 구간 찾기 ──
                 const oneWayOrigin = originsList.find(o => {
-                    const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                    return o.id.includes('[편도]') && (termClean.includes(cleanId) || cleanId.includes(termClean));
+                    if (!o.id.includes('[편도]')) return false;
+                    const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); // "의왕-부산신항"
+                    
+                    if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0,4))) return true;
+                    
+                    if (cleanId.includes('-')) {
+                        const parts = cleanId.split('-');
+                        const addrFull = (reqR1 || '') + (reqR2 || '') + (reqR3 || '');
+                        const termStart = termClean.substring(0,4);
+                        const addrStart = addrFull.substring(0,2);
+                        const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) && 
+                                       (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
+                        const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) && 
+                                       (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
+                        return match1 || match2;
+                    }
+                    return false;
                 });
                 if (oneWayOrigin) {
                     try {
