@@ -105,24 +105,24 @@ function ContainerHistoryInner() {
             try { setResult(JSON.parse(savedResult)); } catch (e) { console.error(e); }
         }
 
-        // [추가] 타이머 및 상태 모니터링
+        if (sessionStorage.getItem('els_login_success') === 'true') {
+            setLoginSuccess(true);
+        }
+    }, []);
+
+    // 타이머 및 상태 모니터링 (10초 주기 폴링)
     useEffect(() => {
         const interval = setInterval(async () => {
-            if (loading || loginLoading) return; // 작업 중엔 인터럽트 방지 (내부 폴링 수행)
+            if (loading || loginLoading) return; // 작업 중엔 인터럽트 방지
             try {
                 const res = await fetch(`${BACKEND_BASE_URL}/api/els/capabilities`);
                 const data = await res.json();
                 if (data.workers) setWorkers(data.workers);
                 if (data.max_drivers) setMaxDrivers(data.max_drivers);
-            } catch(e) {}
+            } catch (e) { }
         }, 10000);
         return () => clearInterval(interval);
     }, [loading, loginLoading, BACKEND_BASE_URL]);
-
-        if (sessionStorage.getItem('els_login_success') === 'true') {
-            setLoginSuccess(true);
-        }
-    }, []);
 
     const startTimer = useCallback(() => {
         setElapsedSeconds(0); elapsedSecondsRef.current = 0;
