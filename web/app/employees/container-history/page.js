@@ -102,7 +102,18 @@ function ContainerHistoryInner() {
 
         const savedResult = sessionStorage.getItem('els_result');
         if (savedResult) {
-            try { setResult(JSON.parse(savedResult)); } catch (e) { console.error(e); }
+            try { 
+                const data = JSON.parse(savedResult);
+                // 새 방식(토큰 포함 전체 객체) 처리
+                if (data.downloadToken) {
+                    setResult(data.result);
+                    setDownloadToken(data.downloadToken);
+                    setResultFileName(data.fileName);
+                } else {
+                    // 구버전(결과 리스트만 있는 경우)
+                    setResult(data);
+                }
+            } catch (e) { console.error(e); }
         }
 
         if (sessionStorage.getItem('els_login_success') === 'true') {
@@ -149,8 +160,11 @@ function ContainerHistoryInner() {
     }, [logLines]);
 
     useEffect(() => {
-        if (result) sessionStorage.setItem('els_result', JSON.stringify(result));
-    }, [result]);
+        if (result) {
+            const dataToSave = downloadToken ? { result, downloadToken, fileName: resultFileName } : result;
+            sessionStorage.setItem('els_result', JSON.stringify(dataToSave));
+        }
+    }, [result, downloadToken, resultFileName]);
 
     useEffect(() => {
         sessionStorage.setItem('els_input', containerInput);
@@ -581,8 +595,21 @@ function ContainerHistoryInner() {
     const downloadExcel = () => {
         if (!result) return;
 
-        // 스타일 지원을 위해 xlsx-js-style 라이브러리가 필요한데, 현재는 기본 xlsx만 있으므로
-        // 최대한 데이터 구조에서 눈에 띄게 처리하고 
+        // 1순위: 백엔드(openpyxl)에서 미리 생성해둔 완벽한 틀고정/서식 엑셀 파일이 있다면 그것을 다운로드
+        if (downloadToken) {
+            const url = `${BACKEND_BASE_URL}/api/els/download/${downloadToken}?filename=${encodeURIComponent(resultFileName || 'Container_History.xlsx')}`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = resultFileName || 'Container_History.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setLogLines(prev => [...prev, `[다운로드] 서버에서 최적화된(틀고정/색상 지원) 엑셀을 다운로드합니다.`].slice(-100));
+            return;
+        }
+
+        // 2순위: 토큰이 만료되었거나 페이지 새로고침 등에 의해 프론트에서 임시로 생성할 경우
+        // 기본 xlsx로 fallback 처리
         // 클라이언트 사이드에서 스타일을 입힐 수 있는 로직을 구성합니다.
 
         if (typeof XLSX === 'undefined') {
