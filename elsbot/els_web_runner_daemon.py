@@ -29,7 +29,9 @@ class DriverPool:
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0 
         self.log_buffer = deque(maxlen=300)
-        self.consecutive_login_failures = 0 # 5회 계정 잠금 방지를 위해 3회 반복 실패 시 멈춤
+        self.consecutive_login_failures = 0 
+        self.last_failure_time = 0 # [추가] 마지막 로그인 실패 시점 기록
+        self.fail_cooldown = 600 # [추가] 10분 쿨타임 (초)
 
     def add_log(self, msg):
         from datetime import datetime, timezone, timedelta
@@ -225,10 +227,16 @@ def run():
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
             
             with pool.lock:
+                # 10분 지났으면 실패 횟수 초기화하고 다시 기회 주기
                 if pool.consecutive_login_failures >= 3:
-                    pool.add_log("❌ [보안경고] 연속 로그인 3회 실패 상태이므로 재로그인 시도를 중지합니다.")
-                    pool.return_driver(driver) # 혹시 나중에 쓸 일이 없으니 안 돌려줘도 되지만 구조상 리턴
-                    return jsonify({"ok": False, "error": "로그인 3회 이상 실패로 계정 보호 모드 발동. 다시 로그인(시작)을 눌러주세요."})
+                    if time.time() - pool.last_failure_time > pool.fail_cooldown:
+                        pool.add_log("🔄 [자동복구] 10분이 경과하여 로그인 실패 횟수를 초기화하고 재시도합니다.")
+                        pool.consecutive_login_failures = 0
+                    else:
+                        wait_min = int((pool.fail_cooldown - (time.time() - pool.last_failure_time)) / 60)
+                        pool.add_log(f"🕒 [대기중] 연속 로그인 실패로 보호 모드 작동 중... ({wait_min}분 후 자동 재시도)")
+                        pool.return_driver(driver)
+                        return jsonify({"ok": False, "error": f"로그인 연속 실패 보호 모드. 약 {wait_min}분 후 자동 재시도됩니다."})
 
             # 세션이 죽었으면 다시 로그인 (pool에 저장된 계정 정보 사용)
             u_id = pool.current_user["id"]
@@ -256,6 +264,7 @@ def run():
             else:
                 with pool.lock:
                     pool.consecutive_login_failures += 1
+                    pool.last_failure_time = time.time()
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
 
         # [초가속] 사이트 차단 방지 지연 시간을 0.2 ~ 0.5초로 추가 단축하여 성능 극대화 (사용자 요청)
