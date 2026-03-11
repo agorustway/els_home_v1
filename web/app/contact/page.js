@@ -241,33 +241,42 @@ export default function ContactPage() {
         <div className={styles.contactPage}>
             <div className={styles.mainContent}>
                 <header className={styles.compactHeader}>
-                    <h1 className={styles.pageTitle}>문의 및 제보</h1>
-                    <div className={styles.headerControls}>
-                        {profile ? (
-                            <button className={`${styles.btn} ${styles.btnPoint}`} onClick={() => window.scrollTo(0, 0)}>새 문의 작성</button>
-                        ) : null}
-                    </div>
+                    <motion.h1
+                        className={styles.pageTitle}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        문의 및 제보
+                    </motion.h1>
+                    <motion.p
+                        className={styles.pageDesc}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        ELS 솔루션은 여러분의 소중한 의견을 기다립니다.
+                    </motion.p>
                 </header>
 
                 <div className={styles.grid}>
                     {/* Left: Input Form */}
                     <motion.div
-                        className={styles.formWrapper}
+                        className={styles.glassCard}
                         initial={{ opacity: 0, x: -30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                     >
-                        <h2 className={styles.formTitle}>문의 내용 작성</h2>
+                        <h2 className={styles.formTitle}>새 문의 작성</h2>
                         {profileLoading ? (
-                            <div className={styles.loginRequired}><p>로딩 중...</p></div>
+                            <div className={styles.loginRequired}><p>환경을 구성 중입니다...</p></div>
                         ) : !profile ? (
                             <div className={styles.loginRequired}>
-                                <p>🔒 문의 작성은 로그인이 필요합니다.</p>
+                                <p>비공개 문의 작성을 위해 로그인이 필요합니다.</p>
                                 <button
                                     className={styles.loginBtn}
                                     onClick={() => router.push('/login?next=/contact')}
                                 >
-                                    로그인하기
+                                    로그인 후 이용하기
                                 </button>
                             </div>
                         ) : (
@@ -277,7 +286,7 @@ export default function ContactPage() {
                                     <input
                                         type="text"
                                         className={styles.input}
-                                        placeholder="회사명을 입력해주세요"
+                                        placeholder="소속 회사명을 입력해주세요"
                                         value={formData.company_name}
                                         onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                                     />
@@ -293,21 +302,21 @@ export default function ContactPage() {
                                     />
                                 </div>
                                 <div className={styles.inputGroup}>
-                                    <label>제목 *</label>
+                                    <label>제목</label>
                                     <input
                                         type="text"
                                         className={styles.input}
-                                        placeholder="문의 제목을 입력해주세요"
+                                        placeholder="문의 제목을 간단히 입력해주세요"
                                         value={formData.subject}
                                         onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                                         required
                                     />
                                 </div>
                                 <div className={styles.inputGroup}>
-                                    <label>문의 내용 *</label>
+                                    <label>상세 내용</label>
                                     <textarea
                                         className={styles.textarea}
-                                        placeholder="문의사항이나 의견을 자유롭게 남겨주세요."
+                                        placeholder="궁금하신 사항이나 개선 의견을 자유롭게 남겨주세요."
                                         value={formData.message}
                                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                         required
@@ -318,36 +327,39 @@ export default function ContactPage() {
                                     className={styles.submitBtn}
                                     disabled={inquiryStatus === 'submitting'}
                                 >
-                                    {inquiryStatus === 'submitting' ? '등록 중...' : '등록하기'}
+                                    {inquiryStatus === 'submitting' ? '처리 중...' : '문의 등록하기'}
                                 </button>
-                                {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 등록되고 관리자에게 메일이 발송되었습니다.</p>}
-                                {inquiryStatus === 'error' && <p className={styles.errorMsg}>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>}
+                                {inquiryStatus === 'success' && <p className={styles.successMsg}>문의가 성공적으로 접수되었습니다.</p>}
+                                {inquiryStatus === 'error' && <p className={styles.errorMsg}>등록 중 오류가 발생했습니다. 다시 시도해주세요.</p>}
                             </form>
                         )}
                     </motion.div>
 
                     {/* Right: Board */}
-                    <div className={styles.boardWrapper}>
-                        <div className={styles.boardHeader}>
-                            <h3 className={styles.boardTitle}>
-                                {profile ? '내 문의 내역' : '전체 문의 내역'}
-                            </h3>
-                            <span className={styles.boardCount}>총 {inquiries.length}건</span>
-                        </div>
+                    <motion.div
+                        className={styles.glassCard}
+                        initial={{ opacity: 0, x: 30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                    >
+                        <h3 className={styles.boardTitle}>
+                            <span>{profile ? '내 문의 내역' : '전체 문의 현황'}</span>
+                            <span className={styles.boardCount}>{inquiries.length}</span>
+                        </h3>
 
                         {!profile && !profileLoading && (
-                            <div className={styles.publicList}>
-                                <p className={styles.publicNotice}>🔒 로그인하면 문의 내용 전체를 확인할 수 있습니다.</p>
+                            <div className={styles.publicNotice} style={{ marginBottom: 20, textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
+                                로그인하시면 본인이 작성한 문의의 상세 내용을 확인할 수 있습니다.
                             </div>
                         )}
 
                         {loading ? (
                             <div className={styles.emptyState}>
-                                <p>로딩 중...</p>
+                                <p>내역을 불러오고 있습니다...</p>
                             </div>
                         ) : inquiries.length === 0 ? (
                             <div className={styles.emptyState}>
-                                <p>아직 등록된 문의가 없습니다.</p>
+                                <p>등록된 문의가 없습니다.</p>
                             </div>
                         ) : (
                             <div className={styles.postList}>
@@ -364,24 +376,25 @@ export default function ContactPage() {
                                                 layout
                                                 onClick={() => handleInquiryClick(inquiry)}
                                             >
-                                                <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
+                                                <div className={styles.postMeta}>
+                                                    <span className={styles.postDate}>{formatDate(inquiry.created_at)}</span>
+                                                    {badge && (
+                                                        <span
+                                                            className={styles.statusBadge}
+                                                            style={{ backgroundColor: badge.color }}
+                                                        >
+                                                            {badge.text}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <h4 className={styles.postSubject}>{inquiry.subject}</h4>
-
-                                                {badge && (
-                                                    <span
-                                                        className={styles.statusBadge}
-                                                        style={{ backgroundColor: badge.color }}
-                                                    >
-                                                        {badge.text}
-                                                    </span>
-                                                )}
                                             </motion.div>
                                         );
                                     })}
                                 </AnimatePresence>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
                 </div>
 
                 {/* Bottom: Whistleblowing Report Section */}
@@ -392,16 +405,15 @@ export default function ContactPage() {
                     viewport={{ once: true }}
                     transition={{ delay: 0.2 }}
                 >
-                    <span className={styles.reportBadge}>비공개·익명 보장</span>
+                    <span className={styles.reportBadge}>익명성 및 기밀 보장</span>
                     <h2 className={styles.reportTitle}>부조리 및 인권 침해 제보</h2>
                     <p className={styles.reportDesc}>
-                        이엘에스솔루션은 투명한 경영을 지향합니다.<br />
-                        작성하신 내용은 익명이 철저히 보장되며, 담당자에게 즉시 메일로 전달됩니다.
+                        이엘에스솔루션은 윤리 경영을 원칙으로 합니다. 제보자의 신원은 철저히 보호되며, 작성하신 내용은 담당자에게 즉시 메일로 전달됩니다.
                     </p>
                     <form className={styles.reportForm} onSubmit={handleReport}>
                         <textarea
                             className={styles.reportTextarea}
-                            placeholder="제보 내용을 상세히 입력해주세요. 제보자의 신원은 절대 노출되지 않습니다."
+                            placeholder="제보 내용을 상세히 입력해주세요. 사실 확인을 위해 구체적인 정황을 포함해주시면 큰 도움이 됩니다."
                             value={reportContent}
                             onChange={(e) => setReportContent(e.target.value)}
                             required
@@ -411,9 +423,9 @@ export default function ContactPage() {
                             className={styles.reportSubmit}
                             disabled={reportStatus === 'submitting'}
                         >
-                            {reportStatus === 'submitting' ? '제출 중...' : '제보하기'}
+                            {reportStatus === 'submitting' ? '제출 중...' : '안전하게 제보하기'}
                         </button>
-                        {reportStatus === 'success' && <p className={styles.reportSuccessMsg}>제보가 안전하게 접수되어 관리자에게 전달되었습니다.</p>}
+                        {reportStatus === 'success' && <p className={styles.reportSuccessMsg}>제보가 안전하게 접수되었습니다.</p>}
                         {reportStatus === 'error' && <p className={styles.reportErrorMsg}>제출 중 오류가 발생했습니다. 다시 시도해주세요.</p>}
                     </form>
                 </motion.div>
@@ -425,33 +437,38 @@ export default function ContactPage() {
                         <motion.div
                             className={styles.modal}
                             onClick={e => e.stopPropagation()}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
                         >
+                            <button className={styles.closeBtn} onClick={() => setSelectedInquiry(null)}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+
                             <div className={styles.modalHeader}>
-                                <div>
-                                    <div className={styles.modalMeta}>
-                                        {formatDate(selectedInquiry.created_at)} · {getStatusBadge(selectedInquiry.status).text}
-                                    </div>
-                                    {isEditing ? (
-                                        <input
-                                            type="text"
-                                            className={styles.modalInput}
-                                            value={editForm.subject}
-                                            onChange={e => setEditForm({ ...editForm, subject: e.target.value })}
-                                        />
-                                    ) : (
-                                        <h3 className={styles.modalTitle}>{selectedInquiry.subject}</h3>
-                                    )}
+                                <div className={styles.modalMeta}>
+                                    {formatDate(selectedInquiry.created_at)} · {getStatusBadge(selectedInquiry.status).text}
                                 </div>
-                                <button className={styles.closeBtn} onClick={() => setSelectedInquiry(null)}>&times;</button>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        className={styles.input}
+                                        style={{ marginBottom: 16 }}
+                                        value={editForm.subject}
+                                        onChange={e => setEditForm({ ...editForm, subject: e.target.value })}
+                                    />
+                                ) : (
+                                    <h3 className={styles.modalTitle}>{selectedInquiry.subject}</h3>
+                                )}
                             </div>
 
                             <div className={styles.modalBody}>
                                 {isEditing ? (
                                     <textarea
-                                        className={styles.modalTextarea}
+                                        className={styles.textarea}
                                         value={editForm.message}
                                         onChange={e => setEditForm({ ...editForm, message: e.target.value })}
                                     />
@@ -463,16 +480,16 @@ export default function ContactPage() {
                             <div className={styles.modalActions}>
                                 {isEditing ? (
                                     <>
-                                        <button className={`${styles.modalBtn} ${styles.btnSecondary}`} onClick={() => setIsEditing(false)}>취소</button>
-                                        <button className={`${styles.modalBtn} ${styles.btnPrimary}`} onClick={handleUpdate}>저장</button>
+                                        <button className={`${styles.btnAction} ${styles.btnSecondary}`} onClick={() => setIsEditing(false)}>취소</button>
+                                        <button className={`${styles.btnAction} ${styles.btnPrimary}`} onClick={handleUpdate}>저장하기</button>
                                     </>
                                 ) : (
                                     <>
                                         {profile && profile.id === selectedInquiry.user_id && (
-                                            <button className={`${styles.modalBtn} ${styles.btnDanger}`} onClick={handleDelete}>삭제</button>
+                                            <button className={`${styles.btnAction} ${styles.btnDanger}`} onClick={handleDelete}>삭제</button>
                                         )}
                                         {profile && profile.id === selectedInquiry.user_id && (
-                                            <button className={`${styles.modalBtn} ${styles.btnPrimary}`} onClick={() => setIsEditing(true)}>수정</button>
+                                            <button className={`${styles.btnAction} ${styles.btnPrimary}`} onClick={() => setIsEditing(true)}>수정하기</button>
                                         )}
                                     </>
                                 )}
