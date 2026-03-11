@@ -1199,7 +1199,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     }
                 }
             }
-            ws1['!freeze'] = { xSplit: 0, ySplit: 1 };
+            ws1['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
             ws1['!autofilter'] = { ref: 'A3:D3' }; // 항목행 필터
 
             XLSX.utils.book_append_sheet(wb, ws1, '현재조회결과');
@@ -1226,7 +1226,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     if (r === 2) ws2[ref].s = headerStyle;
                 }
             }
-            ws2['!freeze'] = { xSplit: 0, ySplit: 3 };
+            ws2['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 3, topLeftCell: 'A4', activePane: 'bottomLeft' }];
             ws2['!autofilter'] = { ref: 'A3:G3' };
 
             XLSX.utils.book_append_sheet(wb, ws2, '경로비교');
@@ -1262,7 +1262,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     if (r === 2) wsHistory[ref].s = headerStyle;
                 }
             }
-            wsHistory['!freeze'] = { xSplit: 0, ySplit: 3 };
+            wsHistory['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 3, topLeftCell: 'A4', activePane: 'bottomLeft' }];
             wsHistory['!autofilter'] = { ref: 'A3:M3' };
 
             XLSX.utils.book_append_sheet(wb, wsHistory, '이전조회내역');

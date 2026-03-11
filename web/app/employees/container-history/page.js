@@ -617,7 +617,15 @@ function ContainerHistoryInner() {
             ws['!cols'] = colWidths;
 
             // [추가] 틀 고정 (SheetJS 스타일 확장 규격)
-            ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+            ws['!views'] = [
+                {
+                    state: 'frozen',
+                    xSplit: 0,
+                    ySplit: 1,
+                    topLeftCell: 'A2',
+                    activePane: 'bottomLeft'
+                }
+            ];
             // 자동 필터
             ws['!autofilter'] = { ref: range };
 
@@ -672,8 +680,6 @@ function ContainerHistoryInner() {
                 }
             }
 
-            // 틀 고정 (1행 고정)
-            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
             // 자동 필터
             ws['!autofilter'] = { ref: ws['!ref'] };
 
