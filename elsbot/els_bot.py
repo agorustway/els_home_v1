@@ -71,30 +71,36 @@ def close_modals(page):
 def is_session_valid(page):
     """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 철저히 검사"""
     try:
-        # -1. 58분(3480초) 경과 시 선제적 세션 만료 (사용자 요청: 1시간마다 갱신)
+        # 0. 브라우저 연결 상태 확인 (가장 기본)
+        if not page or not page.url:
+            return False
+
+        # 1. 58분(3480초) 경과 시 선제적 세션 만료
         if hasattr(page, 'login_time') and time.time() - page.login_time > 3480:
             return False
 
-        # 0. 세션 만료 알림 텍스트 확인
+        # 2. 세션 만료 알림 텍스트 확인
         html = page.html
-        if "Session이 종료" in html or "세션이 만료" in html or "로그아웃 되었습니다" in html:
+        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return False
 
-        # 1. URL 체크 (로그인 페이지로 튕겼는지)
-        if "login" in page.url.lower() and "main" not in page.url.lower():
-            return False
-            
-        # 2. 로그인 팝업 체크
+        # 3. 로그인 팝업 체크
         modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
         for title in modal_titles:
             if "로그인" in title.text:
                 return False
         
-        # 3. 로그아웃 버튼 존재 여부 (가장 확실함)
-        if page.ele('text:로그아웃', timeout=0.1) or page.ele('text:LOGOUT', timeout=0.1):
+        # 4. 로그아웃 버튼이나 사용자 정보 확인
+        if page.ele('text:로그아웃', timeout=0.1) or page.ele('text:님 안녕하세요', timeout=0.1):
             return True
             
-        return False
+        # 5. [추가] 마지막 수단: 페이지가 살아있는지 빈 JS 실행으로 확인
+        try:
+            page.run_js("return 1", timeout=1)
+            # 만약 위 조건들에 안 걸렸는데 JS 실행이 된다면 일단 살려둠
+            return True
+        except:
+            return False
     except:
         return False
 
@@ -265,6 +271,14 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     user_data_dir = f"/tmp/drission_port_{port}"
     co.set_user_data_path(user_data_dir)
     
+    # [추가] 실행 전 기존 사용자 데이터 디렉토리 정리 (불안정성 해소 핵심)
+    import shutil
+    try:
+        if os.path.exists(user_data_dir):
+            shutil.rmtree(user_data_dir, ignore_errors=True)
+        os.makedirs(user_data_dir, exist_ok=True)
+    except: pass
+    
     co.set_argument('--no-sandbox')
     co.set_argument('--disable-dev-shm-usage')
     co.set_argument('--window-size=1920,1080')
@@ -291,17 +305,22 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         co.set_argument('--headless=new')
         co.headless(True)
     
-    try:
-        from DrissionPage.errors import BrowserConnectError
-        _log("ChromiumPage 인스턴스 생성 중...")
-        page = ChromiumPage(co)
-        _log("ChromiumPage 생성 완료.")
-    except Exception as e:
-        import traceback
-        err_detail = traceback.format_exc()
-        _log(f"브라우저 실행 실패: {str(e)}\n{err_detail}")
-        if 'page' in locals() and page: page.quit()
-        return (None, f"브라우저 실행 실패: {e}")
+    retry_count = 3
+    for attempt in range(retry_count):
+        try:
+            _log(f"ChromiumPage 인스턴스 생성 중... (시도 {attempt+1}/{retry_count})")
+            page = ChromiumPage(co)
+            _log("ChromiumPage 생성 완료.")
+            break
+        except Exception as e:
+            if attempt < retry_count - 1:
+                _log(f"브라우저 생성 실패, 3초 후 재시도... ({e})")
+                time.sleep(3)
+                continue
+            import traceback
+            err_detail = traceback.format_exc()
+            _log(f"브라우저 실행 최종 실패: {str(e)}\n{err_detail}")
+            return (None, f"브라우저 실행 실패: {e}")
 
     try:
         _log("이트랜스 접속 중 (etrans.klnet.co.kr)...")
@@ -312,9 +331,11 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         # [NAS 최적화] WebSquare 초기 렌더링 지연 고려하여 타임아웃 60초로 연장
         uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=60)
         if not uid_input:
+            _log(f"로그인 입력창 탐색 실패. 현재 URL: {page.url}")
+            _log(f"HTML 스니펫: {page.html[:300]}...")
             save_screenshot(page, "debug_error")
             page.quit()
-            return (None, "로그인 페이지 로드 실패")
+            return (None, "로그인 페이지 로드 실패 (ID 입력창 없음)")
 
         uid_input.clear()
         uid_input.input(u_id.strip())

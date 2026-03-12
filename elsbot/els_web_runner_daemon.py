@@ -61,6 +61,18 @@ class DriverPool:
             return False
         return self.current_user["id"] == u_id and self.current_user["show_browser"] == show_browser
 
+    def cleanup_lingering_chrome(self, port):
+        """[추가] 해당 포트를 사용 중인 크롬 프로세스를 강제 종료하여 충돌 방지"""
+        import subprocess
+        try:
+            # Linux 환경 (fuser 사용)
+            subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True)
+            # 혹은 pkill -f 사용하여 관련 유저 데이터 디렉토리 사용 중인 것들 정리
+            subprocess.run(["pkill", "-9", "-f", f"drission_port_{port}"], capture_output=True)
+            time.sleep(1)
+        except:
+            pass
+
     def add_driver(self, driver):
         self.drivers.append(driver)
         self.available_queue.put(driver)
@@ -157,6 +169,10 @@ def login():
                 pool.add_log(f"[B#{idx+1}] {m}")
 
             target_port = 32000 + idx
+            
+            # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
+            pool.cleanup_lingering_chrome(target_port)
+
             res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
             if res[0]:
                 res[0].used_port = target_port 
@@ -253,6 +269,10 @@ def run():
             
             # 원래 사용하던 포트 유지
             target_port = getattr(driver, 'used_port', 9222)
+            
+            # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
+            pool.cleanup_lingering_chrome(target_port)
+
             res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
                 with pool.lock:
@@ -266,11 +286,11 @@ def run():
                     pool.consecutive_login_failures += 1
                     pool.last_failure_time = time.time()
                     
-                    if pool.consecutive_login_failures >= 4:
-                        pool.add_log("🛑 [보안 중단] 누적 로그인 4회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다. 비번을 확인하세요.")
-                        return jsonify({"ok": False, "error": "로그인 4회 연속 실패로 보안 모드 발동. 비번 확인 후 수동으로 다시 시작해 주세요."})
+                    if pool.consecutive_login_failures >= 3:
+                        pool.add_log("🛑 [보안 중단] 누적 로그인 3회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다. 비번을 확인하세요.")
+                        return jsonify({"ok": False, "error": "로그인 3회 연속 실패로 보안 모드 발동. 비번 확인 후 수동으로 다시 시작해 주세요."})
                         
-                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/4): {res[1]}"})
+                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
 
         # [초가속] 사이트 차단 방지 지연 시간을 0.2 ~ 0.5초로 추가 단축하여 성능 극대화 (사용자 요청)
         time.sleep(random.uniform(0.2, 0.5))
@@ -459,6 +479,9 @@ def session_keeper():
                     if driver in pool.drivers:
                         pool.drivers.remove(driver)
                         
+                # [추가] 재로그인 전 찌꺼기 프로세스 청소
+                pool.cleanup_lingering_chrome(target_port)
+
                 res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
                 if res[0]:
                     with pool.lock:
