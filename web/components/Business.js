@@ -14,16 +14,6 @@ const services = [
         desc: '현대제철, 현대글로비스 등 주요 화주의 코일, 열연, 철근 등 다양한 품목의 안전 운송 수행',
         img: '/images/steel_logistics.png',
     },
-    {
-        title: 'KD 부품 포장 및 용역',
-        desc: '울산/서산 지점에서 현대/기아차, 현대트랜시스 등의 KD부품 저장, 포장, 보급 및 일체 관리',
-        img: '/images/kd_packaging.png',
-    },
-    {
-        title: '자동차 부품 제조 및 도급',
-        desc: '포레시아 코리아의 자동차 시트 및 배기 부품 생산 업무 수행 (영천, 금호, 임고지점)',
-        img: '/images/auto_manufacturing.png',
-    },
 ];
 
 export default function Business() {

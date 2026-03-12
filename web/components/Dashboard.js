@@ -1,172 +1,176 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import styles from './Dashboard.module.css';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 
-const mockLogs = [
-    { id: 1, loc: '아산CY', action: '컨테이너 반출', vehicle: '95바 2081', time: '09:12' },
-    { id: 2, loc: '중부ICD', action: '운송 시작', vehicle: '88사 3015', time: '08:45' },
-    { id: 3, loc: '울산지점', action: 'KD부품 입고', vehicle: '91다 4127', time: '07:30' },
-    { id: 4, loc: '서산지점', action: '검수 완료', vehicle: '84무 1159', time: '06:15' },
-    { id: 5, loc: '당진지점', action: '배차 완료', vehicle: '82가 1042', time: '05:50' },
+const chartData = [
+    { year: '21년', value: 591.5 },
+    { year: '22년', value: 749.6 },
+    { year: '23년', value: 765.8 },
+    { year: '24년', value: 766.4 },
+];
+
+const MIN_VALUE = 550; // 하단의 생략할 최솟값
+const MAX_VALUE = 800; // 상단의 최댓값
+
+const certs = [
+    { id: 1, name: 'EcoVadis 실버 메달', img: '' },
+    { id: 2, name: 'ISO 14001 인증', img: '' },
+    { id: 3, name: 'ISO 9001 인증', img: '' },
+    { id: 4, name: 'ISO 45001 인증', img: '' },
+    { id: 5, name: '운송사업허가증', img: '' },
+    { id: 6, name: '우수물류기업 인증', img: '' },
+    { id: 7, name: '위험물운송자격', img: '' }
 ];
 
 export default function Dashboard() {
-    const [logs, setLogs] = useState(mockLogs);
-    const [stats, setStats] = useState({
-        active: 112, // 70~150 사이 초기값
-        today: 185,  // active의 1~2배 사이 초기값
-        safety: 99.8,
-        efficiency: 94
-    });
-
-    useEffect(() => {
-        let timeoutId;
-
-        const updateDashboard = () => {
-            const locations = ['아산CY', '중부ICD', '울산지점', '서산지점', '당진지점', '영천지점', '금호지점', '임고지점', '예산지점'];
-            const actions = ['배차 완료', '운송 시작', '목적지 도착', '컨테이너 상차', '검수 통과'];
-            const labels = ['가', '나', '다', '라', '마', '거', '너', '더', '러', '머', '바', '사', '아', '자', '하', '허', '호'];
-
-            const now = new Date();
-            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-            const newLog = {
-                id: Date.now(),
-                loc: locations[Math.floor(Math.random() * locations.length)],
-                action: actions[Math.floor(Math.random() * actions.length)],
-                vehicle: `${Math.floor(Math.random() * 20) + 80}${labels[Math.floor(Math.random() * labels.length)]} ${Math.floor(Math.random() * 9000) + 1000}`,
-                time: timeStr
-            };
-
-            setLogs(prev => [newLog, ...prev.slice(0, 4)]);
-
-            setStats(prev => {
-                // active: 70 ~ 150 범위 유지
-                let nextActive = prev.active + (Math.random() > 0.5 ? 1 : -1);
-                if (nextActive < 70) nextActive = 70;
-                if (nextActive > 150) nextActive = 150;
-
-                // today: active의 1.0배 ~ 2.0배 유지
-                let nextToday = prev.today + (Math.random() > 0.3 ? 1 : 0);
-                if (nextToday < nextActive) nextToday = nextActive;
-                if (nextToday > nextActive * 2) nextToday = Math.floor(nextActive * 1.8);
-
-                return {
-                    ...prev,
-                    active: nextActive,
-                    today: nextToday
-                };
-            });
-
-            // 업데이트 간격: 30분(1,800,000ms) ~ 2시간(7,200,000ms) 랜덤
-            const minInterval = 30 * 60 * 1000;
-            const maxInterval = 120 * 60 * 1000;
-            const nextInterval = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
-
-            timeoutId = setTimeout(updateDashboard, nextInterval);
-        };
-
-        // 첫 업데이트 예약
-        const initialDelay = 5000; // 페이지 진입 후 5초 뒤 첫 업데이트
-        timeoutId = setTimeout(updateDashboard, initialDelay);
-
-        return () => clearTimeout(timeoutId);
-    }, []);
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true, margin: '-100px' });
+    const [selectedCert, setSelectedCert] = useState(null);
 
     return (
-        <section id="dashboard" className={styles.dashboard}>
+        <section id="dashboard" className={styles.section} ref={ref}>
             <div className="container">
                 <div className={styles.header}>
-                    <span className={styles.tag}>Live Dashboard</span>
-                    <h2 className={styles.title}>실적현황</h2>
+                    <span className={styles.tag}>Financial & Trust Overview</span>
+                    <h2 className={styles.title}>재무 및 신뢰 지표</h2>
                 </div>
 
-                <div className={styles.grid}>
-                    {/* 1. 통계 카드 */}
+                {/* Section 1: Financial & Facts (6:4 ratio) */}
+                <div className={styles.financialGrid}>
+                    {/* Left: Bar Chart */}
                     <motion.div
-                        className={styles.card}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
+                        className={styles.chartCard}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={isInView ? { opacity: 1, y: 0 } : {}}
+                        transition={{ duration: 0.6 }}
                     >
-                        <div className={styles.cardTitle}>
-                            <div className={styles.liveDot} />
-                            <span>Fleet Statistics</span>
-                        </div>
-                        <div className={styles.statsGrid}>
-                            <div className={styles.statItem}>
-                                <span className={styles.statValue}>{stats.active}</span>
-                                <span className={styles.statLabel}>운행 중 차량</span>
-                            </div>
-                            <div className={styles.statItem}>
-                                <span className={styles.statValue}>{stats.today}</span>
-                                <span className={styles.statLabel}>오늘의 배차량</span>
-                            </div>
-                            <div className={styles.statItem}>
-                                <span className={styles.statValue}>{stats.safety}%</span>
-                                <span className={styles.statLabel}>안전 운행지수</span>
-                            </div>
-                            <div className={styles.statItem}>
-                                <span className={styles.statValue}>{stats.efficiency}%</span>
-                                <span className={styles.statLabel}>통합 운영효율</span>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* 2. 가동률 센터 */}
-                    <motion.div
-                        className={styles.card}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                    >
-                        <div className={styles.cardTitle}>System Status</div>
-                        <div className={styles.statusCenter}>
-                            <div className={styles.waveContainer}>
-                                <div className={styles.wave} />
-                                <div className={styles.wave} />
-                                <div className={styles.wave} />
-                                <div className={styles.centerContent}>
-                                    <span className={styles.percent}>98.4%</span>
-                                    <p className={styles.percentLabel}>시스템 가동률</p>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* 3. 실시간 로그 */}
-                    <motion.div
-                        className={styles.card}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <div className={styles.cardTitle}>Real-time Log</div>
-                        <div className={styles.logContainer}>
-                            <div className={styles.logList}>
-                                <AnimatePresence mode="popLayout">
-                                    {logs.map((log) => (
-                                        <motion.div
-                                            key={log.id}
-                                            className={styles.logItem}
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: -20 }}
-                                            layout
+                        <div className={styles.cardTitle}>연도별 매출 성장 (단위: 억 원)</div>
+                        <div className={styles.chartContainer}>
+                            {chartData.map((item, idx) => {
+                                // 550 아래는 자르고, 차이를 시각적으로 과장하기 위해 나머지 값만 15%~100% 범위로 스케일링
+                                const heightPercent = 15 + ((item.value - MIN_VALUE) / (MAX_VALUE - MIN_VALUE)) * 85;
+                                return (
+                                    <div key={idx} className={styles.barWrapper}>
+                                        <div className={styles.barValue}>{item.value}</div>
+                                        <div
+                                            className={styles.bar}
+                                            style={{ height: isInView ? `${heightPercent}%` : '0%' }}
                                         >
-                                            <span className={styles.logTime}>{log.time}</span>
-                                            <span className={styles.logMsg}>
-                                                <strong>{log.loc}</strong>: {log.vehicle} {log.action}
-                                            </span>
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                            <div className={styles.fader} />
+                                            <div className={styles.barCut}>~</div>
+                                        </div>
+                                        <div className={styles.barLabel}>{item.year}</div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </motion.div>
+
+                    {/* Right: Facts Grid (3 rows) */}
+                    <div className={styles.statsGrid}>
+                        <motion.div
+                            className={styles.statCard}
+                            initial={{ opacity: 0, x: 30 }}
+                            animate={isInView ? { opacity: 1, x: 0 } : {}}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                        >
+                            <div className={styles.statIcon}>🏢</div>
+                            <div className={styles.statInfo}>
+                                <div className={styles.statValue}>국내 4개 지점</div>
+                                <div className={styles.statLabel}>및 2개 통합 전용 DEPOT 운영</div>
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            className={styles.statCard}
+                            initial={{ opacity: 0, x: 30 }}
+                            animate={isInView ? { opacity: 1, x: 0 } : {}}
+                            transition={{ duration: 0.6, delay: 0.3 }}
+                        >
+                            <div className={styles.statIcon}>👥</div>
+                            <div className={styles.statInfo}>
+                                <div className={styles.statValue}>총 임직원 25명</div>
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            className={styles.statCard}
+                            initial={{ opacity: 0, x: 30 }}
+                            animate={isInView ? { opacity: 1, x: 0 } : {}}
+                            transition={{ duration: 0.6, delay: 0.4 }}
+                        >
+                            <div className={styles.statIcon}>📦</div>
+                            <div className={styles.statInfo}>
+                                <div className={styles.statValue}>월 3,000 FEU</div>
+                                <div className={styles.statLabel}>컨테이너 수송 및 KD포장 실적</div>
+                            </div>
+                        </motion.div>
+                    </div>
                 </div>
+
+                {/* Section 2: Certifications Gallery */}
+                <motion.div
+                    className={styles.certSection}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                    <div className={styles.certTitle}>Certifications & Licenses</div>
+                    <div className={styles.certGrid}>
+                        {certs.map((cert) => (
+                            <div
+                                key={cert.id}
+                                className={styles.certCard}
+                                onClick={() => setSelectedCert(cert)}
+                            >
+                                <div className={styles.certImgBox}>
+                                    {cert.img ? (
+                                        <img src={cert.img} alt={cert.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div className={styles.certPlaceholder}>
+                                            Image<br />Placeholder
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={styles.certName}>{cert.name}</div>
+                            </div>
+                        ))}
+                    </div>
+                </motion.div>
             </div>
+
+            {/* Modal */}
+            <AnimatePresence>
+                {selectedCert && (
+                    <motion.div
+                        className={styles.modalOverlay}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSelectedCert(null)}
+                    >
+                        <motion.div
+                            className={styles.modalContent}
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button className={styles.closeBtn} onClick={() => setSelectedCert(null)}>✕</button>
+                            <div className={styles.modalImgBox}>
+                                {selectedCert.img ? (
+                                    <img src={selectedCert.img} alt={selectedCert.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                ) : (
+                                    <div className={styles.certPlaceholder} style={{ fontSize: '1.2rem' }}>
+                                        [ {selectedCert.name} ]<br /><br />실제 이미지 등록 필요
+                                    </div>
+                                )}
+                            </div>
+                            <div className={styles.modalTitle}>{selectedCert.name}</div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </section>
     );
 }
