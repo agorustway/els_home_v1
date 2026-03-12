@@ -403,6 +403,29 @@
     background: #dc2626;
 }
 
+.otherFilterBtn {
+    padding: 5px 10px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #ea580c;
+    white-space: nowrap;
+    transition: all 0.2s;
+    border-radius: 7px;
+}
+
+.otherFilterBtn:hover {
+    background: #ffedd5;
+}
+
+.otherFilterBtnActive {
+    background: #f97316;
+    color: #fff;
+    border-color: #f97316;
+}
+
 .colPanel {
     position: absolute;
     top: 100%;
@@ -713,34 +736,42 @@
 }
 
 .dateTab {
-    padding: 6px 12px;
-    border: 1px solid #d1d5db;
+    padding: 6px 14px;
+    border: 1px solid #e2e8f0;
     border-bottom: none;
-    border-radius: 6px 6px 0 0;
+    border-radius: 8px 8px 0 0;
     cursor: pointer;
     white-space: nowrap;
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.82rem;
+    font-weight: 700;
     transition: all 0.15s;
     display: flex;
     gap: 4px;
     align-items: center;
-    background: #fff;
-    color: #334155;
-    min-width: 70px;
+    background: #f8fafc;
+    color: #64748b;
+    min-width: 75px;
     justify-content: center;
 }
 
 .dateTab:hover {
-    background: #eef2ff;
+    background: #f1f5f9;
+    color: #334155;
 }
 
 .dateTabActive {
+    background: #2563eb !important; /* 진한 파랑 (선택됨) */
+    color: #fff !important;
+    border-color: #1d4ed8 !important;
     position: relative;
     top: 2px;
-    border-color: #2563eb;
-    font-weight: 800;
-    z-index: 1;
+    font-weight: 900;
+    z-index: 10;
+    box-shadow: 0 -2px 10px rgba(37, 99, 235, 0.2);
+}
+
+.dateTabActive .tabDay {
+    color: #dbeafe !important;
 }
 
 .tabMonth {
@@ -749,54 +780,54 @@
 
 .tabDay {
     font-size: 0.7rem;
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .tab_past {
     background: #f1f5f9;
-    color: #94a3b8;
+    color: #cbd5e1;
     border-color: #e2e8f0;
 }
 
 .tab_past .tabDay {
-    color: #cbd5e1;
+    color: #e2e8f0;
 }
 
 .tab_past_holiday {
-    background: #fef2f2;
-    color: #d4a0a0;
+    background: #fff1f2;
+    color: #fda4af;
     border-color: #fecaca;
 }
 
 .tab_past_holiday .tabDay {
-    color: #e8b4b4;
+    color: #fecaca;
 }
 
 .tab_today {
-    background: #2563eb;
-    color: #fff !important;
-    border-color: #2563eb;
+    background: #e0f2fe; /* 옅은 파란색 (기본 오늘) */
+    color: #0284c7 !important;
+    border-color: #bae6fd;
 }
 
 .tab_today .tabDay {
-    color: #bfdbfe;
-}
-
-.tab_today.dateTabActive {
-    border-color: #1d4ed8;
-    background: #1d4ed8;
+    color: #7dd3fc;
 }
 
 .tab_future {
     background: #fff;
-    color: #334155;
-    border-color: #d1d5db;
+    color: #475569;
+    border-color: #e2e8f0;
 }
 
 .tab_holiday {
-    background: #fff5f5;
+    background: #fef2f2;
     color: #ef4444;
     border-color: #fecaca;
+}
+
+.tab_holiday.dateTabActive {
+    background: #dc2626 !important; /* 공휴일 선택 시 진한 빨강 */
+    border-color: #b91c1c !important;
 }
 
 .tab_holiday .tabDay {
@@ -969,11 +1000,25 @@
 }
 
 .table tbody tr.rowWarn {
-    background-color: #fee2e2 !important;
+    background-color: #fee2e2 !important; /* 언매치 기본 */
 }
 
 .table tbody tr.rowWarn:hover {
     background-color: #fecaca !important;
+}
+
+.rowOther {
+    background-color: #fef2f2 !important; /* 특이구분 기본 */
+    border-left: 4px solid #ef4444;
+}
+
+.rowOther td {
+    color: #b91c1c !important;
+    font-weight: 700;
+}
+
+.rowOther:hover {
+    background-color: #fee2e2 !important;
 }
 
 .centerCell {

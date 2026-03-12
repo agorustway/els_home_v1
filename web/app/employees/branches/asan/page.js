@@ -298,25 +298,65 @@ export default function AsanDispatchPage() {
     };
 
     const centerCols = useMemo(() => { const s = new Set(); headers.forEach((h, i) => { if (CENTER_HEADERS.has(h.trim())) s.add(i); }); return s; }, [headers]);
-    const summary = useMemo(() => calcSummary(headers, allData, viewType), [headers, allData, viewType]);
-    const searchResult = useMemo(() => doSearch(allData, headers, searchTerm), [allData, headers, searchTerm]);
+    
+    // ===== 통합현황 데이터 정렬 (글로비스 KD -> 모비스 AS 순서) =====
+    const processedData = useMemo(() => {
+        if (viewType !== 'integrated' || !allData || allData.length === 0) return allData;
+        const shipperIdx = findCol(headers, '화주');
+        if (shipperIdx === -1) return allData;
+
+        return [...allData].sort((a, b) => {
+            const valA = String(a[shipperIdx] || '');
+            const valB = String(b[shipperIdx] || '');
+            
+            // 글로비스 우선순위 1
+            const isGlovisA = valA.includes('글로비스');
+            const isGlovisB = valB.includes('글로비스');
+            if (isGlovisA && !isGlovisB) return -1;
+            if (!isGlovisA && isGlovisB) return 1;
+
+            // 모비스 우선순위 2
+            const isMobisA = valA.includes('모비스');
+            const isMobisB = valB.includes('모비스');
+            if (isMobisA && !isMobisB) return -1;
+            if (!isMobisA && isMobisB) return 1;
+
+            return 0;
+        });
+    }, [allData, headers, viewType]);
+
+    const summary = useMemo(() => calcSummary(headers, processedData, viewType), [headers, processedData, viewType]);
+    const searchResult = useMemo(() => doSearch(processedData, headers, searchTerm), [processedData, headers, searchTerm]);
 
     // 보이는 컬럼 인덱스
     const visibleCols = useMemo(() => headers.map((h, i) => i).filter(i => !hiddenCols.has(headers[i])), [headers, hiddenCols]);
 
     // 필터 적용된 행 (Set으로 검색 최적화)
     const displayRows = useMemo(() => {
-        let rows = allData.map((row, idx) => {
+        let rows = processedData.map((row, idx) => {
             let status = 'normal';
-            if (row.some(c => String(c || '').includes('?'))) {
-                status = 'warn';
-            } else {
-                const getVal = (name) => parseInt(row[findCol(headers, name)]) || 0;
-                let o = 0, d = 0;
-                if (viewType === 'glovis') { o = getVal('오더'); d = getVal('배차'); }
-                else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getVal('배차'); }
-                else { o = getVal('오더(계)') || getVal('수량'); d = getVal('배차'); }
-                if (o !== d) status = 'warn';
+            
+            // 1. 특이사항(구분이 수출/수입 외 다른 것일 때) - 최우선 순위
+            const gIdx = findCol(headers, '구분');
+            if (gIdx !== -1) {
+                const gVal = String(row[gIdx] || '').trim();
+                if (gVal && !['수출', '수입'].includes(gVal)) {
+                    status = 'other_category';
+                }
+            }
+
+            // 2. 언매치/미확정(?) 체크
+            if (status !== 'other_category') {
+                if (row.some(c => String(c || '').includes('?'))) {
+                    status = 'warn';
+                } else {
+                    const getVal = (name) => parseInt(row[findCol(headers, name)]) || 0;
+                    let o = 0, d = 0;
+                    if (viewType === 'glovis') { o = getVal('오더'); d = getVal('배차'); }
+                    else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getVal('배차'); }
+                    else { o = getVal('오더(계)') || getVal('수량'); d = getVal('배차'); }
+                    if (o !== d) status = 'warn';
+                }
             }
             return { row, idx, status };
         });
@@ -529,7 +569,8 @@ export default function AsanDispatchPage() {
                                     <button className={styles.resetBtnSm} onClick={resetPrefs}>↩️</button>
                                 )}
                                 <div className={styles.colorFilters}>
-                                    <button className={`${styles.colorFilterBtn} ${colorFilter === 'warn' ? styles.colorFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'warn' ? null : 'warn')}>🚨 특이사항(?/언매치)</button>
+                                    <button className={`${styles.colorFilterBtn} ${colorFilter === 'warn' ? styles.colorFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'warn' ? null : 'warn')}>🚨 언매치</button>
+                                    <button className={`${styles.otherFilterBtn} ${colorFilter === 'other_category' ? styles.otherFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'other_category' ? null : 'other_category')}>🚨 특이구분</button>
                                 </div>
                             </div>
                         </div>
@@ -585,7 +626,11 @@ export default function AsanDispatchPage() {
                                 </thead>
                                 <tbody>
                                     {limitedRows.map(({ row, idx: origIdx, status }, ri) => (
-                                        <tr key={origIdx} className={`${ri % 2 === 0 ? styles.evenRow : styles.oddRow} ${status === 'warn' ? styles.rowWarn : ''}`}>
+                                        <tr key={origIdx} className={`
+                                            ${ri % 2 === 0 ? styles.evenRow : styles.oddRow} 
+                                            ${status === 'warn' ? styles.rowWarn : ''}
+                                            ${status === 'other_category' ? styles.rowOther : ''}
+                                        `}>
                                             {visibleCols.map(ci => {
                                                 const ck = `${origIdx}:${ci}`;
                                                 const hc = !!comments[ck];
