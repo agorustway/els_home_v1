@@ -45,8 +45,8 @@ export async function GET(request) {
 
   // ========== 거리별운임 조회 ==========
   if (type === 'distance') {
-    if (Number.isNaN(km) || km < 1) {
-      return NextResponse.json({ error: '거리(km)를 입력하세요.' }, { status: 400 });
+    if (Number.isNaN(km) || km < 0) {
+      return NextResponse.json({ error: '유효한 거리(km)를 입력하세요.' }, { status: 400 });
     }
 
     const periods = data.periods || [];

@@ -369,7 +369,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     }, [handleMapClick]);
 
     /* ─── 📍 지도를 특정 좌표로 이동 & 줌 ─── */
-    const panToLocation = useCallback((lng, lat, zoom = 13) => {
+    const panToLocation = useCallback((lng, lat, zoom = 10) => {
         if (!mapInstance.current || !window.naver?.maps) return;
         const pos = new window.naver.maps.LatLng(Number(lat), Number(lng));
         mapInstance.current.setCenter(pos);
@@ -452,7 +452,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 },
             });
             naver.maps.Event.addListener(startMarker, 'click', () => {
-                panToLocation(activeSummary.start.location[0], activeSummary.start.location[1], 14);
+                panToLocation(activeSummary.start.location[0], activeSummary.start.location[1], 11);
             });
             mapMarkersRef.current.push(startMarker);
 
@@ -465,7 +465,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 },
             });
             naver.maps.Event.addListener(endMarker, 'click', () => {
-                panToLocation(activeSummary.goal.location[0], activeSummary.goal.location[1], 14);
+                panToLocation(activeSummary.goal.location[0], activeSummary.goal.location[1], 11);
             });
             mapMarkersRef.current.push(endMarker);
 
@@ -480,7 +480,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                         },
                     });
                     naver.maps.Event.addListener(wpMarker, 'click', () => {
-                        panToLocation(wp.location[0], wp.location[1], 14);
+                        panToLocation(wp.location[0], wp.location[1], 10);
                     });
                     mapMarkersRef.current.push(wpMarker);
                 });
@@ -540,7 +540,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     },
                 });
                 naver.maps.Event.addListener(marker, 'click', () => {
-                    panToLocation(loc.lng, loc.lat, 14);
+                    panToLocation(loc.lng, loc.lat, 10);
                 });
                 inputMarkersRef.current.push(marker);
                 bounds.extend(pos);
@@ -555,10 +555,10 @@ export default function RouteSearchView({ options, period, onBack }) {
         });
 
         if (validCoords > 1 && !routeResult) {
-            mapInstance.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
+            mapInstance.current.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
         } else if (validCoords === 1) {
             const singlePos = bounds.getMax();
-            panToLocation(singlePos.lng(), singlePos.lat(), 12);
+            panToLocation(singlePos.lng(), singlePos.lat(), 10);
         }
     }, [origin.lng, origin.lat, destination.lng, destination.lat, waypoints, routeResult, panToLocation]);
 
@@ -655,7 +655,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
         // 📍 지도를 선택한 장소로 줌 (#2)
         if (item.lng && item.lat) {
-            panToLocation(item.lng, item.lat, 13);
+            panToLocation(item.lng, item.lat, 10);
         }
     }, [panToLocation]);
 
@@ -819,7 +819,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
             // 좌표 확보 시 지도 이동 (#2)
             if (resolvedOrigin.lng && resolvedOrigin.lat) {
-                panToLocation(resolvedOrigin.lng, resolvedOrigin.lat, 10);
+                panToLocation(resolvedOrigin.lng, resolvedOrigin.lat, 8);
             }
 
             const resolvedWps = [];
@@ -836,6 +836,8 @@ export default function RouteSearchView({ options, period, onBack }) {
             }
 
             // 2. Directions 15 호출 — option 최대 3개 제한이므로 2회 분할
+            // [수정] 출발지와 도착지가 완전히 동일한 경우(0km) 네이버 API 호출 시 오류가 발생하므로, 
+            // 0.0001도(약 10m) 이내면 동일 위치로 간주하고 가상 결과를 생성합니다.
             const isSameLoc = Math.abs(Number(resolvedOrigin.lng) - Number(resolvedDest.lng)) < 0.0001 &&
                 Math.abs(Number(resolvedOrigin.lat) - Number(resolvedDest.lat)) < 0.0001;
 
@@ -887,39 +889,63 @@ export default function RouteSearchView({ options, period, onBack }) {
                 };
             };
 
-            for (const chunk of chunks) {
-                let data;
-                if (isSameLoc && resolvedWps.length > 0) {
-                    // [왕복/분할] 출발지와 도착지가 같으면 네이버 API가 거절하므로 두 개의 세그먼트로 나누어 호출
-                    const lastWp = resolvedWps[resolvedWps.length - 1];
-                    const otherWps = resolvedWps.slice(0, -1);
+            if (isSameLoc && resolvedWps.length === 0) {
+                // [동일위치] 경유지가 없는 경우 Map API 호출 없이 0km 결과 생성
+                const startLng = Number(resolvedOrigin.lng);
+                const startLat = Number(resolvedOrigin.lat);
+                firstData = {
+                    code: 0,
+                    route: {
+                        traoptimal: [{
+                            summary: {
+                                distance: 0,
+                                duration: 0,
+                                fuelPrice: 0,
+                                tollFare: 0,
+                                start: { location: [startLng, startLat] },
+                                goal: { location: [startLng, startLat] }
+                            },
+                            path: [[startLng, startLat]]
+                        }]
+                    }
+                };
+                mergedRoute = firstData.route;
+            } else {
+                // [일반/분할] 경로 탐색 진행
+                for (const chunk of chunks) {
+                    let data;
+                    if (isSameLoc && resolvedWps.length > 0) {
+                        // [왕복/분할] 출발지와 도착지가 같으면 네이버 API가 거절하므로 두 개의 세그먼트로 나누어 호출
+                        const lastWp = resolvedWps[resolvedWps.length - 1];
+                        const otherWps = resolvedWps.slice(0, -1);
 
-                    const startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
-                    const midCoord = `${lastWp.lng},${lastWp.lat}`;
-                    const goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
+                        const startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
+                        const midCoord = `${lastWp.lng},${lastWp.lat}`;
+                        const goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
 
-                    // 세그먼트 1: 출발지 -> 마지막 경유지 (이전 경유지들 포함)
-                    const data1 = await fetchDirections(startCoord, midCoord, otherWps, chunk);
-                    // 세그먼트 2: 마지막 경유지 -> 도착지
-                    const data2 = await fetchDirections(midCoord, goalCoord, [], chunk);
+                        // 세그먼트 1: 출발지 -> 마지막 경유지 (이전 경유지들 포함)
+                        const data1 = await fetchDirections(startCoord, midCoord, otherWps, chunk);
+                        // 세그먼트 2: 마지막 경유지 -> 도착지
+                        const data2 = await fetchDirections(midCoord, goalCoord, [], chunk);
 
-                    // 각 옵션별로 데이터 병합
-                    data = { ...data1, route: {} };
-                    chunk.forEach(opt => {
-                        if (data1.route?.[opt] && data2.route?.[opt]) {
-                            data.route[opt] = [mergeOptionData(data1.route[opt][0], data2.route[opt][0])];
-                        }
-                    });
-                } else {
-                    // [일반] 출발지와 도착지가 다르면 한 번에 호출
-                    const startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
-                    const goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
-                    data = await fetchDirections(startCoord, goalCoord, resolvedWps, chunk);
-                }
+                        // 각 옵션별로 데이터 병합
+                        data = { ...data1, route: {} };
+                        chunk.forEach(opt => {
+                            if (data1.route?.[opt] && data2.route?.[opt]) {
+                                data.route[opt] = [mergeOptionData(data1.route[opt][0], data2.route[opt][0])];
+                            }
+                        });
+                    } else {
+                        // [일반] 출발지와 도착지가 다르면 한 번에 호출
+                        const startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
+                        const goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
+                        data = await fetchDirections(startCoord, goalCoord, resolvedWps, chunk);
+                    }
 
-                if (!firstData) firstData = data;
-                if (data.route) {
-                    mergedRoute = { ...mergedRoute, ...data.route };
+                    if (!firstData) firstData = data;
+                    if (data.route) {
+                        mergedRoute = { ...mergedRoute, ...data.route };
+                    }
                 }
             }
 
@@ -927,7 +953,6 @@ export default function RouteSearchView({ options, period, onBack }) {
             setRouteResult(fullResult);
 
             // 터미널 정보 (안내용, 거리 추가 X) (#4)
-            // 원래 입력 텍스트(origin.text)도 함께 전달 — 교정 후에도 매칭되도록
             const tOrigin = findTerminalInfo(resolvedOrigin.text, origin.text);
             const tDest = findTerminalInfo(resolvedDest.text, destination.text);
             setTerminalInfo({ origin: tOrigin, dest: tDest });
@@ -937,7 +962,6 @@ export default function RouteSearchView({ options, period, onBack }) {
             if (routeKeys.length > 0) {
                 const firstKey = routeKeys[0];
                 setSelectedRouteKey(firstKey);
-                // 전체 경로 동시 표시 (네이버 웹처럼)
                 drawAllRoutes(fullResult.route, firstKey);
                 const firstRoute = fullResult.route[firstKey]?.[0];
                 if (firstRoute) {
