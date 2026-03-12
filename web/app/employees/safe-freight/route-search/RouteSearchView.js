@@ -204,8 +204,8 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [routeResult, setRouteResult] = useState(null); // Directions 15 응답 (합산)
     const [selectedRouteKey, setSelectedRouteKey] = useState(null);
     const [distFareResult, setDistFareResult] = useState(null);     // 거리별운임 (항상)
-    const [sectionFareResult, setSectionFareResult] = useState(null); // 구간별운임 (있으면)
-    const [sectionFareOneWay, setSectionFareOneWay] = useState(null); // 수도권 편도 (있으면)
+    const [sectionFareResults, setSectionFareResults] = useState([]); // 구간별운임 리스트
+    const [sectionFareOneWayResults, setSectionFareOneWayResults] = useState([]); // 수도권 편도 리스트
     const [terminalInfo, setTerminalInfo] = useState({ origin: null, dest: null });
 
     // ── UI 상태 ────
@@ -1030,47 +1030,50 @@ export default function RouteSearchView({ options, period, onBack }) {
             setDistFareResult(null);
         }
 
-        // ── 2) 구간별운임 — 도착지(기점) + 출발지(행선지) 등 동적 매칭 ──
-        setSectionFareResult(null);
-        setSectionFareOneWay(null);
+        // ── 2) 구간별운임 — 모든 거점(출발/도착/경유) 중 터미널 기점과 매칭되는 구간을 모두 찾음 ──
+        setSectionFareResults([]);
+        setSectionFareOneWayResults([]);
 
-        // 어느 것이 터미널(기점)이고 어느 것이 주소(행선지)인지 판단
-        let termObj = origin;
-        let addrObj = destination;
+        // 기점(Terminal) 찾기: 출발지 -> 도착지 -> 경유지 순으로 터미널 속성이 있는 지점을 기점으로 선정
+        const termObj = [origin, destination, ...waypoints].find(p => p.terminalKey) || origin;
+        const originsList = options?.origins || [];
+        const termClean = (termObj.text || '').replace(/\s/g, '');
 
-        if (destination.terminalKey && !origin.terminalKey) {
-            termObj = destination;
-            addrObj = origin;
-        } else if (origin.terminalKey && !destination.terminalKey) {
-            termObj = origin;
-            addrObj = destination;
-        } else {
-            // 둘 다 터미널이거나 둘 다 주소인 경우 기존 로직에 따라 도착지를 기점 키워드로 시도
-            termObj = destination;
-            addrObj = origin;
-        }
+        // 왕복 기점 찾기
+        let matchedOrigin = originsList.find(o => {
+            const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
+            return termClean.includes(cleanId) || cleanId.includes(termClean);
+        });
+        const roundOrigin = originsList.find(o => {
+            const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
+            return o.id.includes('[왕복]') && (termClean.includes(cleanId) || cleanId.includes(termClean));
+        });
+        if (roundOrigin) matchedOrigin = roundOrigin;
 
-        const reqR1 = addrObj.r1;
-        const reqR2 = addrObj.r2;
-        const reqR3 = addrObj.r3;
+        // 행선지 후보들: 모든 지점 중 기점과 지역(r3)이 다른 지점들을 우선적으로 탐색
+        // (기점과 같은 지역의 경우, 다른 경유지가 있다면 제외하여 "부산신항-부산" 노출 방지)
+        const allLocs = [origin, destination, ...waypoints].filter(p => p.r1 && p.r2 && p.r3);
+        const hasOtherRegion = allLocs.some(p => p.r3 !== termObj.r3);
+        const addrCandidates = allLocs.filter(p => {
+            if (p === termObj) return false;
+            // 다른 지역 경유지가 있다면, 기점과 동일한 지역(자체 구간)은 건너뜀
+            if (hasOtherRegion && p.r3 === termObj.r3) return false;
+            return true;
+        });
 
-        if (reqR1 && reqR2 && reqR3) {
-            // 터미널 텍스트에서 기점 매칭 시도 (부산신항 → [왕복] 부산신항)
-            const originsList = options?.origins || [];
-            const termClean = (termObj.text || '').replace(/\s/g, '');
-            // 왕복 기점 찾기
-            let matchedOrigin = originsList.find(o => {
-                const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                return termClean.includes(cleanId) || cleanId.includes(termClean);
-            });
-            // 왕복 우선 매칭
-            const roundOrigin = originsList.find(o => {
-                const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                return o.id.includes('[왕복]') && (termClean.includes(cleanId) || cleanId.includes(termClean));
-            });
-            if (roundOrigin) matchedOrigin = roundOrigin;
+        if (matchedOrigin && addrCandidates.length > 0) {
+            const tempSections = [];
+            const tempOneWays = [];
+            const seenKeys = new Set();
 
-            if (matchedOrigin) {
+            for (const addrObj of addrCandidates) {
+                const reqR1 = addrObj.r1;
+                const reqR2 = addrObj.r2;
+                const reqR3 = addrObj.r3;
+                const regionKey = `${reqR1}|${reqR2}|${reqR3}`;
+                if (seenKeys.has(regionKey)) continue;
+                seenKeys.add(regionKey);
+
                 try {
                     const sParams = new URLSearchParams({
                         type: 'section',
@@ -1086,7 +1089,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                     if (sRes.ok && sData.rows?.length > 0) {
                         const sRow = sData.rows[0];
-                        setSectionFareResult({
+                        tempSections.push({
                             origin: matchedOrigin.id,
                             destination: `${reqR1} ${reqR2} ${reqR3}`,
                             period: sRow.period,
@@ -1106,23 +1109,22 @@ export default function RouteSearchView({ options, period, onBack }) {
                 // ── 3) 수도권 편도 구간 찾기 ──
                 const oneWayOrigin = originsList.find(o => {
                     if (!o.id.includes('[편도]')) return false;
-                    const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); // "의왕-부산신항"
-
+                    const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); 
                     if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0, 4))) return true;
-
                     if (cleanId.includes('-')) {
                         const parts = cleanId.split('-');
                         const addrFull = (reqR1 || '') + (reqR2 || '') + (reqR3 || '');
                         const termStart = termClean.substring(0, 4);
                         const addrStart = addrFull.substring(0, 2);
                         const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) &&
-                            (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
+                                        (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
                         const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) &&
-                            (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
+                                        (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
                         return match1 || match2;
                     }
                     return false;
                 });
+
                 if (oneWayOrigin) {
                     try {
                         const owParams = new URLSearchParams({
@@ -1139,7 +1141,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                         if (owRes.ok && owData.rows?.length > 0) {
                             const owRow = owData.rows[0];
-                            setSectionFareOneWay({
+                            tempOneWays.push({
                                 origin: oneWayOrigin.id,
                                 destination: `${reqR1} ${reqR2} ${reqR3}`,
                                 period: owRow.period,
@@ -1157,6 +1159,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                     }
                 }
             }
+            setSectionFareResults(tempSections);
+            setSectionFareOneWayResults(tempOneWays);
         }
     };
 
@@ -1211,14 +1215,14 @@ export default function RouteSearchView({ options, period, onBack }) {
         newEntries.push(createEntry(distFareResult, false, '거리제조회'));
 
         // 2. 구간제 (왕복 기준) 저장
-        if (sectionFareResult) {
-            newEntries.push(createEntry(sectionFareResult, true, '구간제조회'));
-        }
+        sectionFareResults.forEach(fare => {
+            newEntries.push(createEntry(fare, true, '구간제조회'));
+        });
 
         // 3. 수도권 편도 구간제 저장
-        if (sectionFareOneWay) {
-            newEntries.push(createEntry(sectionFareOneWay, true, '수도권편도제'));
-        }
+        sectionFareOneWayResults.forEach(fare => {
+            newEntries.push(createEntry(fare, true, '수도권편도제'));
+        });
 
         setSavedResults(prev => {
             const next = [...newEntries.reverse(), ...prev];
@@ -1291,16 +1295,17 @@ export default function RouteSearchView({ options, period, onBack }) {
                 ['40FT', distFareResult.f40위탁, distFareResult.f40운수자, distFareResult.f40안전],
                 ['20FT', distFareResult.f20위탁, distFareResult.f20운수자, distFareResult.f20안전],
             ];
-            if (sectionFareResult) {
-                fareRows.push([], [`[구간별운임] ${sectionFareResult.origin}`, '위탁', '운수자', '안전운임']);
-                fareRows.push(['40FT', sectionFareResult.f40위탁, sectionFareResult.f40운수자, sectionFareResult.f40안전]);
-                fareRows.push(['20FT', sectionFareResult.f20위탁, sectionFareResult.f20운수자, sectionFareResult.f20안전]);
-            }
-            if (sectionFareOneWay) {
-                fareRows.push([], [`[편도구간] ${sectionFareOneWay.origin}`, '위탁', '운수자', '안전운임']);
-                fareRows.push(['40FT', sectionFareOneWay.f40위탁, sectionFareOneWay.f40운수자, sectionFareOneWay.f40안전]);
-                fareRows.push(['20FT', sectionFareOneWay.f20위탁, sectionFareOneWay.f20운수자, sectionFareOneWay.f20안전]);
-            }
+            sectionFareResults.forEach(fare => {
+                fareRows.push([], [`[구간별운임] ${fare.origin}`, '위탁', '운수자', '안전운임']);
+                fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
+                fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
+            });
+
+            sectionFareOneWayResults.forEach(fare => {
+                fareRows.push([], [`[편도구간] ${fare.origin}`, '위탁', '운수자', '안전운임']);
+                fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
+                fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
+            });
 
             if (sel) {
                 fareRows.push([], ['[운행비용 상세 (편도기준)]']);
@@ -1841,25 +1846,25 @@ export default function RouteSearchView({ options, period, onBack }) {
                             </>
                         )}
 
-                        {/* ── 구간별운임 (있으면만 표시) ── */}
-                        {sectionFareResult && (
-                            <>
+                        {/* ── 구간별운임 (있으면 리스트 매핑) ── */}
+                        {sectionFareResults.map((fare, fIdx) => (
+                            <div key={`section-${fIdx}`}>
                                 <div className={styles.fareSectionHeader} style={{ marginTop: '16px' }}>
                                     <span className={styles.fareSectionBadge} style={{ background: '#059669' }}>구간별</span>
-                                    구간별운임 — {sectionFareResult.origin}
+                                    구간별운임 — {fare.origin}
                                 </div>
                                 <div className={styles.distanceSummary}>
                                     <div className={styles.distRow}>
                                         <span>기점</span>
-                                        <strong>{sectionFareResult.origin}</strong>
+                                        <strong>{fare.origin}</strong>
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>행선지</span>
-                                        <strong>{sectionFareResult.destination}</strong>
+                                        <strong>{fare.destination}</strong>
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>고시 거리 / 기간</span>
-                                        <strong>{sectionFareResult.km}km · {sectionFareResult.period}</strong>
+                                        <strong>{fare.km}km · {fare.period}</strong>
                                     </div>
                                 </div>
                                 <table className={styles.fareTable}>
@@ -1869,40 +1874,40 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     <tbody>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{formatWon(sectionFareResult.f40위탁)}</td>
-                                            <td>{formatWon(sectionFareResult.f40운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(sectionFareResult.f40안전)}</td>
+                                            <td>{formatWon(fare.f40위탁)}</td>
+                                            <td>{formatWon(fare.f40운수자)}</td>
+                                            <td className={styles.fareHighlight}>{formatWon(fare.f40안전)}</td>
                                         </tr>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{formatWon(sectionFareResult.f20위탁)}</td>
-                                            <td>{formatWon(sectionFareResult.f20운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(sectionFareResult.f20안전)}</td>
+                                            <td>{formatWon(fare.f20위탁)}</td>
+                                            <td>{formatWon(fare.f20운수자)}</td>
+                                            <td className={styles.fareHighlight}>{formatWon(fare.f20안전)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
-                            </>
-                        )}
+                            </div>
+                        ))}
 
-                        {/* ── 수도권 편도 구간운임 (있으면만 표시) ── */}
-                        {sectionFareOneWay && (
-                            <>
+                        {/* ── 수도권 편도 구간운임 (있으면 리스트 매핑) ── */}
+                        {sectionFareOneWayResults.map((fare, oIdx) => (
+                            <div key={`oneway-${oIdx}`}>
                                 <div className={styles.fareSectionHeader} style={{ marginTop: '16px' }}>
                                     <span className={styles.fareSectionBadge} style={{ background: '#d97706' }}>편도</span>
-                                    수도권 편도구간 — {sectionFareOneWay.origin}
+                                    수도권 편도구간 — {fare.origin}
                                 </div>
                                 <div className={styles.distanceSummary}>
                                     <div className={styles.distRow}>
                                         <span>기점</span>
-                                        <strong>{sectionFareOneWay.origin}</strong>
+                                        <strong>{fare.origin}</strong>
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>행선지</span>
-                                        <strong>{sectionFareOneWay.destination}</strong>
+                                        <strong>{fare.destination}</strong>
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>고시 거리 / 기간</span>
-                                        <strong>{sectionFareOneWay.km}km · {sectionFareOneWay.period}</strong>
+                                        <strong>{fare.km}km · {fare.period}</strong>
                                     </div>
                                 </div>
                                 <table className={styles.fareTable}>
@@ -1912,23 +1917,23 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     <tbody>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{formatWon(sectionFareOneWay.f40위탁)}</td>
-                                            <td>{formatWon(sectionFareOneWay.f40운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(sectionFareOneWay.f40안전)}</td>
+                                            <td>{formatWon(fare.f40위탁)}</td>
+                                            <td>{formatWon(fare.f40운수자)}</td>
+                                            <td className={styles.fareHighlight}>{formatWon(fare.f40안전)}</td>
                                         </tr>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{formatWon(sectionFareOneWay.f20위탁)}</td>
-                                            <td>{formatWon(sectionFareOneWay.f20운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(sectionFareOneWay.f20안전)}</td>
+                                            <td>{formatWon(fare.f20위탁)}</td>
+                                            <td>{formatWon(fare.f20운수자)}</td>
+                                            <td className={styles.fareHighlight}>{formatWon(fare.f20안전)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
-                            </>
-                        )}
+                            </div>
+                        ))}
 
                         {/* 구간별운임 미존재 안내 */}
-                        {!sectionFareResult && distFareResult && (
+                        {sectionFareResults.length === 0 && distFareResult && (
                             <p className={styles.noSectionNote}>
                                 ※ 해당 구간은 구간별운임(고시 별표6)에 등록되지 않은 구간입니다. 위 거리별운임을 참고하세요.
                             </p>
