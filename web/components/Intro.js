@@ -57,48 +57,33 @@ export default function Intro() {
 
                     <div className={styles.visualColumn}>
                         <motion.div
-                            className={styles.logoIntroFrame}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 1.2 }}
+                            className={styles.infoCard}
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.8 }}
                         >
-                            <div className={styles.logoCenter}>
-                                <Image
-                                    src="/images/logo.png"
-                                    alt="ELS Solution Logo"
-                                    width={400}
-                                    height={120}
-                                    style={{ height: 'auto', width: 'auto', maxWidth: '100%' }}
-                                />
+                            <div className={styles.cardHeader}>
+                                <div className={styles.blueBar} />
+                                <h4>Business Focus</h4>
                             </div>
-                            
-                            <div className={styles.summaryGrid}>
-                                <div className={styles.summaryItem}>
-                                    <span className={styles.summaryLabel}>전문 분야</span>
-                                    <span className={styles.summaryVal}>컨테이너, 벌크, KD부품, 철강</span>
+                            <div className={styles.focusList}>
+                                <div className={styles.focusItem}>
+                                    <span className={styles.focusLabel}>핵심 역량</span>
+                                    <p>컨테이너 & 철강 내륙 운송 전문</p>
                                 </div>
-                                <div className={styles.summaryItem}>
-                                    <span className={styles.summaryLabel}>주요 거점</span>
-                                    <span className={styles.summaryVal}>아산, 울산, 평택, 당진 外</span>
+                                <div className={styles.focusItem}>
+                                    <span className={styles.focusLabel}>운영 거점</span>
+                                    <p>전국 9개 지점 및 주요 항만 거점</p>
                                 </div>
-                                <div className={styles.summaryItem}>
-                                    <span className={styles.summaryLabel}>운영 철학</span>
-                                    <span className={styles.summaryVal}>안전 최우선 & 실시간 대응</span>
+                                <div className={styles.focusItem}>
+                                    <span className={styles.focusLabel}>대응 체계</span>
+                                    <p>긴급 물동량 실시간 유연 대응</p>
                                 </div>
                             </div>
-                            
-                            <motion.div
-                                className={styles.smartBadge}
-                                initial={{ y: 20, opacity: 0 }}
-                                whileInView={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.6, duration: 0.8 }}
-                            >
-                                <div className={styles.badgeIcon}>🏢</div>
-                                <div>
-                                    <h4>스마트 물류 시스템</h4>
-                                    <p>실시간 관제 및 가시화 플랫폼 운영</p>
-                                </div>
-                            </motion.div>
+                            <div className={styles.cardFooter}>
+                                <img src="/images/logo.png" alt="ELS Logo" className={styles.smallLogo} />
+                                <span>Global Logistics Solution</span>
+                            </div>
                         </motion.div>
                     </div>
                 </div>
