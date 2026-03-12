@@ -1,14 +1,14 @@
 .content {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    gap: 40px;
+    gap: 80px;
     padding: 60px 0;
 }
 
 .textColumn {
-    flex: 1;
-    max-width: 540px;
+    flex: 0 1 auto;
+    max-width: 580px;
 }
 
 .title {
@@ -102,10 +102,10 @@
 
 /* Visual Column - Refined Info Card */
 .visualColumn {
-    flex: 0.8;
+    flex: 0 0 auto;
     position: relative;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .infoCard {
