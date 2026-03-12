@@ -16,6 +16,19 @@ export default function BranchPage({ params }) {
         headquarters: '서울본사'
     }[branch] || '지점';
 
+    if (branch === 'jungbu') {
+        return (
+            <div className={styles.branchMainFull}>
+                <iframe
+                    src="https://docs.google.com/spreadsheets/d/1EQ1mu9vyDFXMlqNi1SRJoptSjiqBFJzRQWvpVnA9c2I/edit?rm=minimal"
+                    className={styles.iframeContainer}
+                    title="중부지점 업무보고"
+                    allowFullScreen
+                />
+            </div>
+        );
+    }
+
     return (
         <div className={styles.branchMain}>
             <div className={styles.page}>
