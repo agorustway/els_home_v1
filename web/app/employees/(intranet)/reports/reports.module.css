@@ -33,16 +33,18 @@
 .btnPrimary {
     background: #2563eb;
     color: #fff;
-    padding: 6px 12px;
+    padding: 0 16px;
     border-radius: 6px;
     font-weight: 700;
     text-decoration: none;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
 }
 
 .btnPrimary:hover {
@@ -190,11 +192,16 @@
     background: #fee2e2;
     color: #ef4444;
     border: 1px solid #fecaca;
-    padding: 10px 20px;
-    border-radius: 8px;
+    height: 32px;
+    padding: 0 16px;
+    border-radius: 6px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
 }
 
 .btnDelete:hover {
@@ -206,11 +213,16 @@
     background: #fff;
     border: 1px solid #e2e8f0;
     color: #64748b;
-    padding: 12px 28px;
-    border-radius: 10px;
+    height: 32px;
+    padding: 0 16px;
+    border-radius: 6px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
 }
 
 .btnSecondary:hover {

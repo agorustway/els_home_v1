@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { formatPhoneNumber } from '@/utils/format';
+import { getRoleLabel } from '@/utils/roles';
 import styles from '../reports.module.css';
 
 export default function NewReportPage() {
@@ -24,9 +25,11 @@ export default function NewReportPage() {
             if (!role || role === 'visitor') {
                 router.replace('/login?next=/employees/reports/new');
             } else {
+                // 관리자/본사 권한이 아니면 자신의 지점을 강제 선택
                 if (!['admin', 'headquarters'].includes(role)) {
                     setBranch(role);
                 } else if (!branch) {
+                    // 관리자면 기본값으로 본사 선택
                     setBranch('headquarters');
                 }
                 if (user) {
@@ -35,7 +38,7 @@ export default function NewReportPage() {
                 }
             }
         }
-    }, [role, user, authLoading, router, branch]);
+    }, [role, user, authLoading, router]);
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
@@ -72,7 +75,9 @@ export default function NewReportPage() {
         if (!title.trim() || !content.trim()) return;
         setSubmitting(true);
         try {
-            const finalContent = `${content}\n\n---\n[작성자 정보]\n성함: ${reporterName}\n지점: ${branch}\n연락처: ${reporterPhone}`;
+            // [작성자 정보] 레이블 및 지점명 한글 매핑 변경
+            const branchLabel = getRoleLabel(branch);
+            const finalContent = `${content}\n\n---\n[작성자 정보]\n이름: ${reporterName}\n지점: ${branchLabel}\n연락처: ${reporterPhone}`;
             const res = await fetch('/api/board', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
