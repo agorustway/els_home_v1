@@ -100,35 +100,97 @@
     font-weight: 600;
 }
 
-/* Visual Column */
+/* Visual Column - Logo centric */
 .visualColumn {
     flex: 1.2;
     position: relative;
-}
-
-.mainVisualWrapper {
-    position: relative;
-    z-index: 2;
-}
-
-.mainImageFrame {
-    position: relative;
+    padding: 40px;
+    background: #fff;
     border-radius: 40px;
-    overflow: hidden;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.15);
-    border: 8px solid #fff;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f5f9;
 }
 
-.premiumImg {
+.logoIntroFrame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+}
+
+.logoCenter {
+    padding: 40px 0;
+    width: 80%;
+    display: flex;
+    justify-content: center;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.summaryGrid {
     width: 100%;
-    height: auto;
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
 }
 
-.imageOverlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.2));
+.summaryItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+}
+
+.summaryLabel {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+    white-space: nowrap;
+}
+
+.summaryVal {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    text-align: right;
+}
+
+.smartBadge {
+    width: 100%;
+    background: var(--text-dark);
+    color: #fff;
+    padding: 20px 24px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+.badgeIcon {
+    font-size: 1.5rem;
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.smartBadge h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.smartBadge p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
 }
 
 .floatingCard {

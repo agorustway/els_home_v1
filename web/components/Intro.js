@@ -56,38 +56,50 @@ export default function Intro() {
                     </motion.div>
 
                     <div className={styles.visualColumn}>
-                        <div className={styles.mainVisualWrapper}>
-                            <motion.div
-                                className={styles.mainImageFrame}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 1.2 }}
-                            >
+                        <motion.div
+                            className={styles.logoIntroFrame}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 1.2 }}
+                        >
+                            <div className={styles.logoCenter}>
                                 <Image
-                                    src="/images/integrated_logistics_premium_showcase.png"
-                                    alt="ELS Solution Logistics"
-                                    width={1000}
-                                    height={800}
-                                    className={styles.premiumImg}
-                                    priority
+                                    src="/images/logo.png"
+                                    alt="ELS Solution Logo"
+                                    width={400}
+                                    height={120}
+                                    style={{ height: 'auto', width: 'auto', maxWidth: '100%' }}
                                 />
-                                <div className={styles.imageOverlay} />
-                            </motion.div>
-
+                            </div>
+                            
+                            <div className={styles.summaryGrid}>
+                                <div className={styles.summaryItem}>
+                                    <span className={styles.summaryLabel}>전문 분야</span>
+                                    <span className={styles.summaryVal}>컨테이너, 벌크, KD부품, 철강</span>
+                                </div>
+                                <div className={styles.summaryItem}>
+                                    <span className={styles.summaryLabel}>주요 거점</span>
+                                    <span className={styles.summaryVal}>아산, 울산, 평택, 당진 外</span>
+                                </div>
+                                <div className={styles.summaryItem}>
+                                    <span className={styles.summaryLabel}>운영 철학</span>
+                                    <span className={styles.summaryVal}>안전 최우선 & 실시간 대응</span>
+                                </div>
+                            </div>
+                            
                             <motion.div
-                                className={styles.floatingCard}
-                                initial={{ y: 50, opacity: 0 }}
+                                className={styles.smartBadge}
+                                initial={{ y: 20, opacity: 0 }}
                                 whileInView={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.6, duration: 0.8 }}
                             >
-                                <div className={styles.cardIcon}>📱</div>
+                                <div className={styles.badgeIcon}>🏢</div>
                                 <div>
-                                    <h4>스마트 모니터링</h4>
-                                    <p>운송 경로 실시간 가시화 시스템 구축 중</p>
+                                    <h4>스마트 물류 시스템</h4>
+                                    <p>실시간 관제 및 가시화 플랫폼 운영</p>
                                 </div>
                             </motion.div>
-                        </div>
-                        <div className={styles.decoOrb} />
+                        </motion.div>
                     </div>
                 </div>
             </div>
