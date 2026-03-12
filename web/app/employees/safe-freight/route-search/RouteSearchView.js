@@ -518,7 +518,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     /* ─── 입력된 1~n개의 거점을 지도상에 표시하는 임시 마커 (조회 전) ─── */
     useEffect(() => {
         if (!mapInstance.current || !window.naver?.maps) return;
-        
+
         // 탐색된 경로가 없을 때만 사용자 입력 기반 마커를 그림
         if (routeResult) return;
 
@@ -551,14 +551,14 @@ export default function RouteSearchView({ options, period, onBack }) {
         addInputMarker(origin, '출발', '#2563eb');
         addInputMarker(destination, '도착', '#dc2626');
         waypoints.forEach((wp, i) => {
-            addInputMarker(wp, `경유 ${i+1}`, '#f59e0b');
+            addInputMarker(wp, `경유 ${i + 1}`, '#f59e0b');
         });
 
         if (validCoords > 1 && !routeResult) {
-             mapInstance.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
+            mapInstance.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
         } else if (validCoords === 1) {
-             const singlePos = bounds.getMax();
-             panToLocation(singlePos.lng(), singlePos.lat(), 12);
+            const singlePos = bounds.getMax();
+            panToLocation(singlePos.lng(), singlePos.lat(), 12);
         }
     }, [origin.lng, origin.lat, destination.lng, destination.lat, waypoints, routeResult, panToLocation]);
 
@@ -836,38 +836,15 @@ export default function RouteSearchView({ options, period, onBack }) {
             }
 
             // 2. Directions 15 호출 — option 최대 3개 제한이므로 2회 분할
-            let startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
-            let goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
-
-            // [추가] 출발지와 도착지가 동일하거나 매우 가까운 경우 (A -> B -> A), 
-            // 네이버 API가 "출발지와 도착지가 동일합니다" 에러를 내뱉는 것을 방지하기 위해 
-            // 도착지 좌표에 미세한 오프셋을 추가합니다. (약 10m 이내면 동일한 것으로 간주)
-            const isSameLoc = Math.abs(Number(resolvedOrigin.lng) - Number(resolvedDest.lng)) < 0.0001 && 
-                              Math.abs(Number(resolvedOrigin.lat) - Number(resolvedDest.lat)) < 0.0001;
-
-            if (isSameLoc && resolvedWps.length > 0) {
-                // 약 100m 정도의 오프셋을 주어 확실하게 다른 지점으로 인식하게 함
-                const tinyOffsetLng = Number(resolvedDest.lng) + 0.001; 
-                goalCoord = `${tinyOffsetLng},${resolvedDest.lat}`;
-            }
+            const isSameLoc = Math.abs(Number(resolvedOrigin.lng) - Number(resolvedDest.lng)) < 0.0001 &&
+                Math.abs(Number(resolvedOrigin.lat) - Number(resolvedDest.lat)) < 0.0001;
 
             const baseParams = {
-                start: startCoord,
-                goal: goalCoord,
                 cartype: String(cartype),
                 fueltype: 'diesel',
             };
 
-            if (resolvedWps.length > 0) {
-                baseParams.waypoints = resolvedWps.map(w => `${w.lng},${w.lat}`).join('|');
-            }
-
-            // 출발시간 (#3, #6)
-            if (timeMode === 'realtime') {
-                // 실시간 = departtime 없이 호출 (현재 시각 기준)
-                // API에서 departtime 미전송 시 현재 교통 상황 반영
-            } else {
-                // 06:00 기준
+            if (timeMode !== 'realtime') {
                 baseParams.departtime = recent0600.departtime;
             }
 
@@ -881,17 +858,63 @@ export default function RouteSearchView({ options, period, onBack }) {
             let mergedRoute = {};
             let firstData = null;
 
-            for (const chunk of chunks) {
-                const params = new URLSearchParams({
-                    ...baseParams,
-                    option: chunk.join(':'),
-                });
-
+            // 로컬 헬퍼: 경로 호출 및 기초 검증
+            const fetchDirections = async (start, goal, wps, options) => {
+                const params = new URLSearchParams({ ...baseParams, start, goal, option: options.join(':') });
+                if (wps && wps.length > 0) {
+                    params.set('waypoints', wps.map(w => `${w.lng},${w.lat}`).join('|'));
+                }
                 const res = await fetch(`/api/naver-maps/directions15?${params.toString()}`);
                 const data = await res.json();
+                if (!res.ok || data.code !== 0) throw new Error(data.error || data.message || '경로 탐색 실패');
+                return data;
+            };
 
-                if (!res.ok || data.code !== 0) {
-                    throw new Error(data.error || data.message || '경로 탐색에 실패했습니다.');
+            // 로컬 헬퍼: 두 옵션 데이터 병합 (왕복/분할 경로용)
+            const mergeOptionData = (opt1, opt2) => {
+                if (!opt1) return opt2;
+                if (!opt2) return opt1;
+                return {
+                    summary: {
+                        ...opt1.summary,
+                        distance: opt1.summary.distance + opt2.summary.distance,
+                        duration: opt1.summary.duration + opt2.summary.duration,
+                        fuelPrice: (opt1.summary.fuelPrice || 0) + (opt2.summary.fuelPrice || 0),
+                        tollFare: (opt1.summary.tollFare || 0) + (opt2.summary.tollFare || 0),
+                        taxiFare: (opt1.summary.taxiFare || 0) + (opt2.summary.taxiFare || 0),
+                    },
+                    path: [...opt1.path.slice(0, -1), ...opt2.path], // 연결점 중복 제거
+                };
+            };
+
+            for (const chunk of chunks) {
+                let data;
+                if (isSameLoc && resolvedWps.length > 0) {
+                    // [왕복/분할] 출발지와 도착지가 같으면 네이버 API가 거절하므로 두 개의 세그먼트로 나누어 호출
+                    const lastWp = resolvedWps[resolvedWps.length - 1];
+                    const otherWps = resolvedWps.slice(0, -1);
+
+                    const startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
+                    const midCoord = `${lastWp.lng},${lastWp.lat}`;
+                    const goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
+
+                    // 세그먼트 1: 출발지 -> 마지막 경유지 (이전 경유지들 포함)
+                    const data1 = await fetchDirections(startCoord, midCoord, otherWps, chunk);
+                    // 세그먼트 2: 마지막 경유지 -> 도착지
+                    const data2 = await fetchDirections(midCoord, goalCoord, [], chunk);
+
+                    // 각 옵션별로 데이터 병합
+                    data = { ...data1, route: {} };
+                    chunk.forEach(opt => {
+                        if (data1.route?.[opt] && data2.route?.[opt]) {
+                            data.route[opt] = [mergeOptionData(data1.route[opt][0], data2.route[opt][0])];
+                        }
+                    });
+                } else {
+                    // [일반] 출발지와 도착지가 다르면 한 번에 호출
+                    const startCoord = `${resolvedOrigin.lng},${resolvedOrigin.lat}`;
+                    const goalCoord = `${resolvedDest.lng},${resolvedDest.lat}`;
+                    data = await fetchDirections(startCoord, goalCoord, resolvedWps, chunk);
                 }
 
                 if (!firstData) firstData = data;
@@ -1058,18 +1081,18 @@ export default function RouteSearchView({ options, period, onBack }) {
                 const oneWayOrigin = originsList.find(o => {
                     if (!o.id.includes('[편도]')) return false;
                     const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); // "의왕-부산신항"
-                    
-                    if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0,4))) return true;
-                    
+
+                    if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0, 4))) return true;
+
                     if (cleanId.includes('-')) {
                         const parts = cleanId.split('-');
                         const addrFull = (reqR1 || '') + (reqR2 || '') + (reqR3 || '');
-                        const termStart = termClean.substring(0,4);
-                        const addrStart = addrFull.substring(0,2);
-                        const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) && 
-                                       (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
-                        const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) && 
-                                       (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
+                        const termStart = termClean.substring(0, 4);
+                        const addrStart = addrFull.substring(0, 2);
+                        const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) &&
+                            (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
+                        const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) &&
+                            (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
                         return match1 || match2;
                     }
                     return false;
@@ -1417,7 +1440,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             });
         }
         // 법규 적용: 가장 짧은 구간이 기준 → 거리순 정렬 반영
-        return result.sort((a,b) => a.distKm - b.distKm);
+        return result.sort((a, b) => a.distKm - b.distKm);
     }, [routeResult, currentFuelPrice, currentMileage, tripMult]);
 
     /* ═══════════════════════════════════════════════
@@ -1645,8 +1668,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 탐색된 경로 ({parsedRoutes.length}건)
                                 {currentFuelPrice > 0 && (
                                     <span className={styles.fuelPriceGroup}>
-                                        <select 
-                                            value={selectedFuel} 
+                                        <select
+                                            value={selectedFuel}
                                             onChange={e => setSelectedFuel(e.target.value)}
                                             style={{ marginLeft: 6, marginRight: 4, borderRadius: 4, border: '1px solid #cbd5e1' }}
                                         >
@@ -1654,10 +1677,10 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             <option value="gasoline">휘발유</option>
                                         </select>
                                         <span className={styles.fuelPriceBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 8px', fontSize: 13 }}>
-                                            ⛽ {currentFuelPrice.toLocaleString()}원/L 
-                                            <span style={{color: currentFuelDiff > 0 ? '#ef4444' : currentFuelDiff < 0 ? '#3b82f6' : '#64748b'}}>({currentFuelDiff > 0 ? '+' : ''}{currentFuelDiff})</span>
-                                            <span style={{color: '#64748b', borderLeft: '1px solid #e2e8f0', paddingLeft: 6}}>1주: <b style={{color: weekDiff > 0 ? '#ef4444' : weekDiff < 0 ? '#3b82f6' : '#64748b'}}>{weekDiff > 0 ? '+' : ''}{weekDiff}</b></span>
-                                            <span style={{color: '#64748b'}}>1달: <b style={{color: monthDiff > 0 ? '#ef4444' : monthDiff < 0 ? '#3b82f6' : '#64748b'}}>{monthDiff > 0 ? '+' : ''}{monthDiff}</b></span>
+                                            ⛽ {currentFuelPrice.toLocaleString()}원/L
+                                            <span style={{ color: currentFuelDiff > 0 ? '#ef4444' : currentFuelDiff < 0 ? '#3b82f6' : '#64748b' }}>({currentFuelDiff > 0 ? '+' : ''}{currentFuelDiff})</span>
+                                            <span style={{ color: '#64748b', borderLeft: '1px solid #e2e8f0', paddingLeft: 6 }}>1주: <b style={{ color: weekDiff > 0 ? '#ef4444' : weekDiff < 0 ? '#3b82f6' : '#64748b' }}>{weekDiff > 0 ? '+' : ''}{weekDiff}</b></span>
+                                            <span style={{ color: '#64748b' }}>1달: <b style={{ color: monthDiff > 0 ? '#ef4444' : monthDiff < 0 ? '#3b82f6' : '#64748b' }}>{monthDiff > 0 ? '+' : ''}{monthDiff}</b></span>
                                         </span>
                                     </span>
                                 )}
