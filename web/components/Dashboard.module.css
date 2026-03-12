@@ -29,7 +29,7 @@
 .financialGrid {
     display: grid;
     grid-template-columns: 6fr 4fr;
-    gap: 24px;
+    gap: 12px;
     margin-bottom: 80px;
 }
 

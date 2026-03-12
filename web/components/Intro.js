@@ -73,7 +73,7 @@ export default function Intro() {
                                 </div>
                                 <div className={styles.focusItem}>
                                     <span className={styles.focusLabel}>운영 거점</span>
-                                    <p>전국 9개 지점 및 주요 항만 거점</p>
+                                    <p>아산, 세종, 당진, 예산 주요 거점</p>
                                 </div>
                                 <div className={styles.focusItem}>
                                     <span className={styles.focusLabel}>대응 체계</span>
@@ -82,7 +82,7 @@ export default function Intro() {
                             </div>
                             <div className={styles.cardFooter}>
                                 <img src="/images/logo.png" alt="ELS Logo" className={styles.smallLogo} />
-                                <span>Global Logistics Solution</span>
+                                <span>Logistics Solution</span>
                             </div>
                         </motion.div>
                     </div>
