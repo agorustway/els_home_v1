@@ -841,9 +841,12 @@ export default function RouteSearchView({ options, period, onBack }) {
 
             // [추가] 출발지와 도착지가 동일한데 경유지가 있는 경우 (A -> B -> A), 
             // 네이버 API가 "출발지와 도착지가 동일합니다" 에러를 내뱉는 것을 방지하기 위해 
-            // 도착지 좌표에 아주 미세한 오프셋을 추가합니다.
-            if (resolvedOrigin.lng === resolvedDest.lng && resolvedOrigin.lat === resolvedDest.lat && resolvedWps.length > 0) {
-                const tinyOffsetLng = Number(resolvedDest.lng) + 0.00001;
+            // 도착지 좌표에 아주 미세한 오프셋을 추가합니다. (타입 불일치 방지를 위해 Number 변환)
+            const isSameLoc = Number(resolvedOrigin.lng) === Number(resolvedDest.lng) && 
+                              Number(resolvedOrigin.lat) === Number(resolvedDest.lat);
+
+            if (isSameLoc && resolvedWps.length > 0) {
+                const tinyOffsetLng = Number(resolvedDest.lng) + 0.0001; // 약 10m 오차
                 goalCoord = `${tinyOffsetLng},${resolvedDest.lat}`;
             }
 
