@@ -369,7 +369,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     }, [handleMapClick]);
 
     /* ─── 📍 지도를 특정 좌표로 이동 & 줌 ─── */
-    const panToLocation = useCallback((lng, lat, zoom = 10) => {
+    const panToLocation = useCallback((lng, lat, zoom = 14) => {
         if (!mapInstance.current || !window.naver?.maps) return;
         const pos = new window.naver.maps.LatLng(Number(lat), Number(lng));
         mapInstance.current.setCenter(pos);
@@ -452,7 +452,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 },
             });
             naver.maps.Event.addListener(startMarker, 'click', () => {
-                panToLocation(activeSummary.start.location[0], activeSummary.start.location[1], 11);
+                panToLocation(activeSummary.start.location[0], activeSummary.start.location[1], 14);
             });
             mapMarkersRef.current.push(startMarker);
 
@@ -465,7 +465,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 },
             });
             naver.maps.Event.addListener(endMarker, 'click', () => {
-                panToLocation(activeSummary.goal.location[0], activeSummary.goal.location[1], 11);
+                panToLocation(activeSummary.goal.location[0], activeSummary.goal.location[1], 14);
             });
             mapMarkersRef.current.push(endMarker);
 
@@ -480,7 +480,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                         },
                     });
                     naver.maps.Event.addListener(wpMarker, 'click', () => {
-                        panToLocation(wp.location[0], wp.location[1], 10);
+                        panToLocation(wp.location[0], wp.location[1], 14);
                     });
                     mapMarkersRef.current.push(wpMarker);
                 });
@@ -540,7 +540,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     },
                 });
                 naver.maps.Event.addListener(marker, 'click', () => {
-                    panToLocation(loc.lng, loc.lat, 10);
+                    panToLocation(loc.lng, loc.lat, 14);
                 });
                 inputMarkersRef.current.push(marker);
                 bounds.extend(pos);
@@ -558,7 +558,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             mapInstance.current.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
         } else if (validCoords === 1) {
             const singlePos = bounds.getMax();
-            panToLocation(singlePos.lng(), singlePos.lat(), 10);
+            panToLocation(singlePos.lng(), singlePos.lat(), 14);
         }
     }, [origin.lng, origin.lat, destination.lng, destination.lat, waypoints, routeResult, panToLocation]);
 
@@ -655,7 +655,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
         // 📍 지도를 선택한 장소로 줌 (#2)
         if (item.lng && item.lat) {
-            panToLocation(item.lng, item.lat, 10);
+            panToLocation(item.lng, item.lat, 15);
         }
     }, [panToLocation]);
 
@@ -819,13 +819,15 @@ export default function RouteSearchView({ options, period, onBack }) {
 
             // 좌표 확보 시 지도 이동 (#2)
             if (resolvedOrigin.lng && resolvedOrigin.lat) {
-                panToLocation(resolvedOrigin.lng, resolvedOrigin.lat, 8);
+                panToLocation(resolvedOrigin.lng, resolvedOrigin.lat, 12);
             }
 
             const resolvedWps = [];
             for (let i = 0; i < waypoints.length; i++) {
-                if (waypoints[i].text.trim()) {
-                    const rw = await resolveCoords(waypoints[i]);
+                const wp = waypoints[i];
+                // 텍스트가 없더라도 상세주소(juso)나 행정동(r1) 정보가 있으면 좌표 해결 시도
+                if (wp.text?.trim() || wp.juso || wp.r1) {
+                    const rw = await resolveCoords(wp);
                     resolvedWps.push(rw);
                     setWaypoints(prev => {
                         const next = [...prev];
