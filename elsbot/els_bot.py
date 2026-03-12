@@ -75,11 +75,7 @@ def is_session_valid(page):
         if not page or not page.url:
             return False
 
-        # 1. 58분(3480초) 경과 시 선제적 세션 만료
-        if hasattr(page, 'login_time') and time.time() - page.login_time > 3480:
-            return False
-
-        # 2. 세션 만료 알림 텍스트 확인
+        # 1. 세션 만료 알림 텍스트 확인
         html = page.html
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return False
