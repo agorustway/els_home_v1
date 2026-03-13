@@ -18,7 +18,7 @@ const services = [
                 tag: '아산 CY',
                 location: '충남 아산시 관암리 410-3',
                 img: '/images/asan/KakaoTalk_20260119_110613230_01.jpg',
-                objectPos: 'center 80%',
+                objectPos: 'center 30%',
                 advantages: [
                     '현대글로비스 운영 N/W 전담 운송',
                     'CY 운영 및 자가장비(R/S) 보유',
