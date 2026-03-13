@@ -5,28 +5,28 @@ import styles from './Hero.module.css';
 
 const slides = [
     {
+        image: '/images/asan/KakaoTalk_20260119_110613230.jpg',
+        title: 'Strategic CY Operations',
+        subtitle: '아산 및 중부 전용 DEPOT(CY) 운영을 통한 독보적 물류 인프라',
+        pos: 'center 85%'
+    },
+    {
+        image: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
+        title: 'Total Logistics Network',
+        subtitle: '동북아 물류 거점을 잇는 최적화된 운송망과 통합 물류 거점 서비스',
+        pos: 'center 75%'
+    },
+    {
         image: '/images/office_intro.png',
         title: 'Precision Logistics Solution',
         subtitle: '최상의 운송 품질과 전문적인 물류 솔루션을 제공합니다',
         pos: 'center 30%'
     },
     {
-        image: '/images/asan/KakaoTalk_20260119_110613230.jpg',
-        title: 'Strategic CY Operations',
-        subtitle: '아산 및 중부 전용 DEPOT(CY) 운영을 통한 독보적 물류 인프라',
-        pos: 'center 60%'
-    },
-    {
-        image: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
-        title: 'Total Logistics Network',
-        subtitle: '동북아 물류 거점을 잇는 최적화된 운송망과 통합 물류 거점 서비스',
-        pos: 'center 50%'
-    },
-    {
         image: '/images/steel_logistics.png',
         title: 'Integrated SCM Partner',
         subtitle: '최근단 인프라를 통한 신속하고 안전한 철강 및 종합 물류 서비스',
-        pos: 'center 70%'
+        pos: 'center 80%'
     }
 ];
 
