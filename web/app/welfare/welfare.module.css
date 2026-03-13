@@ -30,92 +30,159 @@
     border-radius: 100px;
 }
 
-.satisfactionList {
+.diagramHeader {
+    text-align: center;
+    margin-bottom: 80px;
+}
+
+.sectionSubtitle {
+    font-size: 1.2rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.diagramWrapper {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 60px 0;
+}
+
+.topNode {
     display: flex;
     flex-direction: column;
-    gap: 60px;
-    max-width: 1100px;
-    margin: 0 auto;
-}
-
-.satItem {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 40px;
     align-items: center;
+    margin-bottom: 0px;
 }
 
-.satItem:nth-child(even) {
-    direction: rtl;
-}
-
-.satItem:nth-child(even) .satContent {
-    direction: ltr;
-}
-
-.satVisual {
-    height: 300px;
-    border-radius: 30px;
+.coreCircle {
+    width: 160px;
+    height: 160px;
+    background: var(--primary-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 900;
+    font-size: 1.1rem;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(0, 102, 255, 0.3);
     position: relative;
-    overflow: hidden;
-    background: #000;
+    z-index: 5;
 }
 
-.satImage {
+.mainConnector {
+    width: 100%;
+    height: 100px;
+    margin-top: -10px;
+}
+
+.connectorSvg {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    opacity: 0.8;
-    transition: transform 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
-.satItem:hover .satImage {
-    transform: scale(1.1);
-}
 
-.satOverlay {
+.pulseRing {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 40%, rgba(0, 0, 0, 0.8));
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+.diagramGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+}
+
+.diagramItem {
+    background: #f8fbff;
+    padding: 50px 30px;
+    border-radius: 40px;
+    border: 1px solid #eef2f8;
+    position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    padding: 30px;
-    color: #fff;
+    align-items: center;
+    text-align: center;
+    transition: all 0.4s;
 }
 
-.satOverlay h3 {
+.diagramItem:hover {
+    transform: translateY(-10px);
+    background: #fff;
+    box-shadow: 0 30px 60px rgba(0, 102, 255, 0.05);
+}
+
+.diagramVisual {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.abstractIcon {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 30px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
+}
+
+.svgIcon {
+    width: 70px;
+    height: 70px;
+}
+
+.topicBadge {
+    display: inline-block;
+    padding: 6px 15px;
+    background: rgba(0, 102, 255, 0.08);
+    color: var(--primary-blue);
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    margin-bottom: 15px;
+}
+
+.diagramContent h3 {
     font-size: 1.5rem;
     font-weight: 900;
-    margin-bottom: 5px;
-    color: #fff !important;
-}
-
-.satOverlay p {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    color: white;
-}
-
-.satContent {
-    padding: 0;
-}
-
-.satContent h3 {
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     color: #111;
-    letter-spacing: -0.5px;
 }
 
-.satContent p {
-    font-size: 1.15rem;
-    line-height: 1.8;
-    color: #555;
+.diagramContent p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #666;
+}
+
+@media (max-width: 1024px) {
+    .centralNode {
+        position: static;
+        transform: none;
+        margin: 0 auto 40px;
+    }
+
+    .diagramGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .coreCircle {
+        width: 140px;
+        height: 140px;
+    }
 }
 
 /* Grievance Procedure */

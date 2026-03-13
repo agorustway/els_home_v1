@@ -89,53 +89,91 @@ export default function WelfarePage() {
         }
     ];
 
-    const roadmapItems = [
-        "인권 및 안전 관련 글로벌 수준의 외부 인증 획득 추진",
-        "임직원 만족도 조사 정례화를 통한 현장 피드백의 경영 반영 극대화",
-        "다양성과 포용성을 존중하는 조직 문화 및 인권 경영 체계 정착"
-    ];
+const HealthIcon = () => (
+    <svg viewBox="0 0 100 100" className={styles.svgIcon}>
+        <motion.circle cx="50" cy="50" r="40" stroke="#0066ff" strokeWidth="2" fill="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, repeat: Infinity }} />
+        <motion.path d="M30 50 Q 40 30, 50 50 T 70 50" stroke="#0066ff" strokeWidth="4" fill="none" animate={{ y: [0, -5, 0] }} transition={{ duration: 1.5, repeat: Infinity }} />
+        <circle cx="50" cy="50" r="5" fill="#0066ff" />
+    </svg>
+);
+
+const AwarenessIcon = () => (
+    <svg viewBox="0 0 100 100" className={styles.svgIcon}>
+        <motion.path d="M50 20 L80 35 V60 Q 50 85, 20 60 V35 Z" stroke="#0066ff" strokeWidth="2" fill="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, repeat: Infinity }} />
+        <motion.circle cx="50" cy="45" r="10" stroke="#0066ff" strokeWidth="2" fill="none" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} />
+    </svg>
+);
+
+const EnvironmentIcon = () => (
+    <svg viewBox="0 0 100 100" className={styles.svgIcon}>
+        <motion.path d="M20 70 Q 50 20, 80 70" stroke="#00c853" strokeWidth="2" fill="none" />
+        <motion.circle cx="50" cy="70" r="25" fill="#00c853" opacity="0.1" animate={{ r: [25, 30, 25], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 3, repeat: Infinity }} />
+        <path d="M40 70 L50 60 L60 70" stroke="#00c853" strokeWidth="3" fill="none" />
+    </svg>
+);
+
+const roadmapItems = [
+    "인권 및 안전 관련 글로벌 수준의 외부 인증 획득 추진",
+    "임직원 만족도 조사 정례화를 통한 현장 피드백의 경영 반영 극대화",
+    "다양성과 포용성을 존중하는 조직 문화 및 인권 경영 체계 정착"
+];
 
     return (
         <div className={styles.page}>
             <main>
                 <section id="satisfaction" className={styles.satisfactionSection}>
                     <div className="container">
-                        <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
-                        <div className={styles.satisfactionList}>
-                            {[
-                                {
-                                    ...satisfactionPoints[0],
-                                    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
-                                },
-                                {
-                                    ...satisfactionPoints[1],
-                                    image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80"
-                                },
-                                {
-                                    ...satisfactionPoints[2],
-                                    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
-                                }
-                            ].map((point, i) => (
-                                <motion.div
-                                    key={i}
-                                    className={styles.satItem}
-                                    initial={{ opacity: 0, y: 50 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.8, delay: i * 0.1 }}
-                                >
-                                    <div className={styles.satVisual}>
-                                        <img src={point.image} alt={point.topic} className={styles.satImage} />
-                                        <div className={styles.satOverlay}>
-                                            <h3>{point.topic}</h3>
+                        <div className={styles.diagramHeader}>
+                            <h2 className={styles.sectionTitle}>임직원 만족 및 안전보건 방침</h2>
+                            <p className={styles.sectionSubtitle}>사람과 안전을 최우선으로 하는 기업 문화를 지향합니다</p>
+                        </div>
+                        
+                        <div className={styles.diagramWrapper}>
+                            <div className={styles.topNode}>
+                                <div className={styles.coreCircle}>
+                                    <span>SAFETY<br/>& HEALTH</span>
+                                    <div className={styles.pulseRing}></div>
+                                </div>
+                                <div className={styles.mainConnector}>
+                                    <svg viewBox="0 0 1200 150" className={styles.connectorSvg}>
+                                        <motion.path 
+                                            d="M 600 0 V 50 M 600 50 H 200 V 150 M 600 50 H 600 V 150 M 600 50 H 1000 V 150" 
+                                            stroke="rgba(0,102,255,0.2)" 
+                                            strokeWidth="2" 
+                                            fill="none"
+                                            initial={{ pathLength: 0 }}
+                                            whileInView={{ pathLength: 1 }}
+                                            transition={{ duration: 1.5 }}
+                                        />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className={styles.diagramGrid}>
+                                {satisfactionPoints.map((point, i) => (
+                                    <motion.div
+                                        key={i}
+                                        className={styles.diagramItem}
+                                        initial={{ opacity: 0, y: 30 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ duration: 0.8, delay: i * 0.2 }}
+                                    >
+                                        <div className={styles.diagramVisual}>
+                                            <div className={`${styles.abstractIcon} ${styles[`icon${i}`]}`}>
+                                                {i === 0 && <HealthIcon />}
+                                                {i === 1 && <AwarenessIcon />}
+                                                {i === 2 && <EnvironmentIcon />}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className={styles.satContent}>
-                                        <h3>{point.topic}</h3>
-                                        <p>{point.description}</p>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                        <div className={styles.diagramContent}>
+                                            <div className={styles.topicBadge}>{point.icon} POINT 0{i+1}</div>
+                                            <h3>{point.topic}</h3>
+                                            <p>{point.description}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </section>
