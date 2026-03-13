@@ -26,6 +26,7 @@ export default function Organization() {
                                 <div className={styles.branchPill}>아산지점</div>
                                 <div className={styles.branchPill}>중부지점</div>
                                 <div className={styles.branchPill}>예산지점</div>
+                                <div className={styles.branchPill}>당진지점</div>
                             </div>
                         </div>
 
@@ -34,7 +35,7 @@ export default function Organization() {
                             <div className={styles.deptBox}>영업지원부</div>
                             <div className={styles.verticalLine}></div>
                             <div className={styles.branchList}>
-                                <div className={styles.branchPill}>당진지점</div>
+                                {/* 지점 이동됨 */}
                             </div>
                         </div>
 
@@ -43,25 +44,21 @@ export default function Organization() {
                             <div className={styles.deptBox}>경영지원부</div>
                             <div className={styles.verticalLine}></div>
                             <div className={styles.branchList}>
-                                {/* 지점 없음 (요청된 4개 지점 외 제외) */}
+                                {/* 지점 없음 */}
                             </div>
                         </div>
                     </div>
 
-                    {/* Personnel Summary Table */}
+                    {/* Personnel Summary Table (Simplified) */}
                     <div className={styles.summaryTableWrapper}>
                         <div className={styles.unitText}>(단위:명)</div>
                         <table className={styles.summaryTable}>
                             <thead>
                                 <tr>
-                                    <th rowSpan="2">총 원</th>
-                                    <th rowSpan="2">경영 지원</th>
-                                    <th rowSpan="2">영업 관리</th>
-                                    <th colSpan="2">사업 지점</th>
-                                </tr>
-                                <tr>
+                                    <th>총 원</th>
+                                    <th>경영 지원</th>
+                                    <th>영업 관리</th>
                                     <th>운영 관리</th>
-                                    <th>현장직</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -70,7 +67,6 @@ export default function Organization() {
                                     <td>4</td>
                                     <td>4</td>
                                     <td>17</td>
-                                    <td>-</td>
                                 </tr>
                             </tbody>
                         </table>
