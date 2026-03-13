@@ -1,211 +1,168 @@
-/* Base Section Style */
-.section {
-    padding: 120px 0;
-}
-
 .bg {
-    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    background: #f8fbff;
+    padding: 100px 0;
 }
 
-/* Chart Layout */
-.chartWrapper {
-    width: 100%;
+.chartContainer {
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+    padding-top: 20px;
+}
+
+/* Level 1: CEO */
+.ceoWrapper {
     display: flex;
     justify-content: center;
-    padding: 40px 0;
-}
-
-.tree {
-    width: 100%;
-}
-
-.tree * {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.tree ul {
-    padding-top: 40px;
+    margin-bottom: 60px;
     position: relative;
-    transition: all 0.5s;
-    display: flex;
-    justify-content: center;
 }
 
-.tree li {
-    float: left;
-    text-align: center;
-    list-style-type: none;
-    position: relative;
-    padding: 20px 5px 0 5px;
-    transition: all 0.5s;
-}
-
-/* Connector Lines */
-.tree li::before,
-.tree li::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 50%;
-    border-top: 2px solid #e0e6ed;
-    width: 50%;
-    height: 20px;
-}
-
-.tree li::after {
-    right: auto;
-    left: 50%;
-    border-left: 2px solid #e0e6ed;
-}
-
-/* Remove markers from connectors */
-.tree li:only-child::after,
-.tree li:only-child::before {
-    display: none;
-}
-
-.tree li:only-child {
-    padding-top: 0;
-}
-
-.tree li:first-child::before,
-.tree li:last-child::after {
-    border: 0 none;
-}
-
-.tree li:last-child::before {
-    border-right: 2px solid #e0e6ed;
-    border-radius: 0 5px 0 0;
-}
-
-.tree li:first-child::after {
-    border-radius: 5px 0 0 0;
-}
-
-.tree ul ul::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    border-left: 2px solid #e0e6ed;
-    width: 0;
-    height: 20px;
-}
-
-/* Node Styles */
-.ceoNode {
-    display: inline-block;
-    background: #111;
+.ceoBox {
+    background: #3e629f;
     color: white;
-    padding: 25px 50px;
-    border-radius: 20px;
-    position: relative;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ceoNode:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 86, 179, 0.15);
-    background: var(--primary-blue);
-}
-
-.deptNode {
-    display: inline-block;
-    background: white;
-    padding: 30px;
-    border-radius: 25px;
-    width: 260px;
-    position: relative;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-    border: 2px solid #f0f4f8;
-}
-
-.deptNode.highlight {
-    border-color: rgba(0, 120, 255, 0.2);
-    background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
-}
-
-.deptNode:hover {
-    transform: translateY(-5px);
-    border-color: var(--primary-blue);
-    box-shadow: 0 20px 40px rgba(0, 120, 255, 0.08);
-}
-
-.nodeLabel {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-    color: var(--primary-blue);
-}
-
-.ceoNode .nodeLabel {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.nodeTitle {
-    font-size: 1.4rem;
-    font-weight: 800;
-    margin-bottom: 15px;
-}
-
-.subTeams {
+    width: 220px;
+    height: 60px;
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #f0f4f8;
+    border-radius: 30px 30px 0 0; /* Top rounded only like screenshot */
+    font-size: 1.8rem;
+    font-weight: 800;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    position: relative;
 }
 
-.subTeams span {
-    font-size: 0.8rem;
+.ceoBox::after {
+    content: '';
+    position: absolute;
+    bottom: -60px;
+    left: 50%;
+    width: 2px;
+    height: 60px;
+    background: #477d94;
+}
+
+/* Level 2 & 3 Grid */
+.treeGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-bottom: 80px;
+    position: relative;
+    padding-top: 2px;
+    border-top: 2px solid #477d94;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.column::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    width: 2px;
+    height: 30px;
+    background: #477d94;
+}
+
+.deptBox {
+    background: #00acc1;
+    color: white;
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 25px;
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #666;
-    background: #f8fafc;
-    padding: 4px 12px;
-    border-radius: 30px;
+    margin-top: 30px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* Mobile Responsive */
-@media (max-width: 1024px) {
-    .tree ul {
-        flex-direction: column;
-        align-items: center;
-        padding-top: 0;
-    }
+.verticalLine {
+    width: 2px;
+    height: 40px;
+    background: #477d94;
+}
 
-    .tree li {
-        width: 100%;
-        padding: 40px 0 0 0;
-    }
+.branchList {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    align-items: center;
+}
 
-    .tree li::before,
-    .tree li::after,
-    .tree ul ul::before {
+.branchPill {
+    background: #9fa8bc;
+    color: white;
+    width: 80%;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+/* Summary Table */
+.summaryTableWrapper {
+    margin-top: 50px;
+    width: 100%;
+}
+
+.unitText {
+    text-align: right;
+    font-size: 0.85rem;
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.summaryTable {
+    width: 100%;
+    border-collapse: collapse;
+    border-top: 2px solid #008eb7;
+}
+
+.summaryTable th {
+    background: #008eb7;
+    color: white;
+    padding: 12px;
+    border: 1px solid #7cb9cb;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.summaryTable td {
+    background: white;
+    padding: 12px;
+    border: 1px solid #ccc;
+    text-align: center;
+    font-weight: 700;
+    color: #111;
+}
+
+@media (max-width: 768px) {
+    .treeGrid {
+        grid-template-columns: 1fr;
+        border-top: none;
+    }
+    
+    .ceoBox::after, .column::before {
         display: none;
     }
 
-    .tree li::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 50%;
-        height: 40px;
-        width: 2px;
-        background: #e0e6ed;
-    }
-
-    .deptNode {
-        width: 90%;
-        max-width: 350px;
+    .deptBox {
+        margin-top: 10px;
     }
 }

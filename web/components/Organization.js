@@ -8,75 +8,72 @@ export default function Organization() {
             <div className="container">
                 <h2 className="sectionTitle">조직 구성</h2>
 
-                <div className={styles.chartWrapper}>
-                    <div className={styles.tree}>
-                        <ul>
-                            <li>
-                                <motion.div
-                                    className={styles.ceoNode}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                >
-                                    <span className={styles.nodeLabel}>CEO</span>
-                                    <h3 className={styles.nodeTitle}>대표이사</h3>
-                                </motion.div>
+                <div className={styles.chartContainer}>
+                    {/* Level 1: CEO */}
+                    <div className={styles.ceoWrapper}>
+                        <div className={styles.ceoBox}>
+                            <span className={styles.ceoText}>CEO</span>
+                        </div>
+                    </div>
 
-                                <ul className={styles.level2}>
-                                    <li>
-                                        <motion.div
-                                            className={styles.deptNode}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: 0.1 }}
-                                        >
-                                            <span className={styles.nodeLabel}>사업부</span>
-                                            <h3 className={styles.nodeTitle}>물류사업부</h3>
-                                            <div className={styles.subTeams}>
-                                                <span>운송팀</span>
-                                                <span>CY운영팀</span>
-                                                <span>지점관리팀</span>
-                                            </div>
-                                        </motion.div>
-                                    </li>
-                                    <li>
-                                        <motion.div
-                                            className={`${styles.deptNode} ${styles.highlight}`}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: 0.2 }}
-                                        >
-                                            <span className={styles.nodeLabel}>본부</span>
-                                            <h3 className={styles.nodeTitle}>경영기획본부</h3>
-                                            <div className={styles.subTeams}>
-                                                <span>인사팀</span>
-                                                <span>재무회계팀</span>
-                                                <span>안전보건팀</span>
-                                            </div>
-                                        </motion.div>
-                                    </li>
-                                    <li>
-                                        <motion.div
-                                            className={styles.deptNode}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: 0.3 }}
-                                        >
-                                            <span className={styles.nodeLabel}>지원부</span>
-                                            <h3 className={styles.nodeTitle}>영업지원부</h3>
-                                            <div className={styles.subTeams}>
-                                                <span>영업팀</span>
-                                                <span>CS팀</span>
-                                                <span>정산팀</span>
-                                            </div>
-                                        </motion.div>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
+                    {/* Level 2: Departments & Branches */}
+                    <div className={styles.treeGrid}>
+                        {/* 물류사업부 */}
+                        <div className={styles.column}>
+                            <div className={styles.deptBox}>물류사업부</div>
+                            <div className={styles.verticalLine}></div>
+                            <div className={styles.branchList}>
+                                <div className={styles.branchPill}>아산지점</div>
+                                <div className={styles.branchPill}>중부지점</div>
+                                <div className={styles.branchPill}>예산지점</div>
+                            </div>
+                        </div>
+
+                        {/* 영업지원부 */}
+                        <div className={styles.column}>
+                            <div className={styles.deptBox}>영업지원부</div>
+                            <div className={styles.verticalLine}></div>
+                            <div className={styles.branchList}>
+                                <div className={styles.branchPill}>당진지점</div>
+                            </div>
+                        </div>
+
+                        {/* 경영지원부 */}
+                        <div className={styles.column}>
+                            <div className={styles.deptBox}>경영지원부</div>
+                            <div className={styles.verticalLine}></div>
+                            <div className={styles.branchList}>
+                                {/* 지점 없음 (요청된 4개 지점 외 제외) */}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Personnel Summary Table */}
+                    <div className={styles.summaryTableWrapper}>
+                        <div className={styles.unitText}>(단위:명)</div>
+                        <table className={styles.summaryTable}>
+                            <thead>
+                                <tr>
+                                    <th rowSpan="2">총 원</th>
+                                    <th rowSpan="2">경영 지원</th>
+                                    <th rowSpan="2">영업 관리</th>
+                                    <th colSpan="2">사업 지점</th>
+                                </tr>
+                                <tr>
+                                    <th>운영 관리</th>
+                                    <th>현장직</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>25</td>
+                                    <td>4</td>
+                                    <td>4</td>
+                                    <td>17</td>
+                                    <td>-</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
