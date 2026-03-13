@@ -14,11 +14,11 @@ const services = [
         type: 'container',
         branches: [
             {
-                name: '아산지점 (KD 센타 / CY)',
-                tag: '현대글로비스 아산KD 센타 / 아산 CY',
+                name: '아산지점 (CY)',
+                tag: '아산 CY',
                 location: '충남 아산시 관암리 410-3',
-                img: '/images/joogbu/KakaoTalk_20260313_161417917_03.jpg',
-                objectPos: '50% 70%',
+                img: '/images/asan/KakaoTalk_20260119_110613230_01.jpg',
+                objectPos: 'center 80%',
                 advantages: [
                     '현대글로비스 운영 N/W 전담 운송',
                     'CY 운영 및 자가장비(R/S) 보유',
@@ -155,13 +155,13 @@ export default function Business() {
                                 <div key={i} className={styles.branchCard}>
                                     <div className={styles.branchNameTag}>{br.tag || br.name}</div>
                                     <div className={styles.branchImgBox}>
-                                        <Image 
-                                            src={br.img} 
+                                        <Image
+                                            src={br.img}
                                             alt={br.name} width={600} height={350} className={styles.branchImg}
                                             style={{ objectPosition: br.objectPos || 'center', objectFit: 'cover' }}
                                         />
                                     </div>
-                                    
+
                                     {br.advantages && (
                                         <div className={styles.advantagesCompact}>
                                             <h4>■ 주요 장점</h4>
