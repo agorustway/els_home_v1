@@ -56,6 +56,19 @@ export default function WebzineDetailPage() {
             }
 
             setPost({ ...postData, author: authorInfo });
+
+            // author_name 보강 (profiles에 없을 경우 user_roles에서 다시 확인)
+            if (authorInfo.name === '알 수 없음' || authorInfo.name === authorInfo.email?.split('@')[0]) {
+                const { data: roleData } = await supabase
+                    .from('user_roles')
+                    .select('name')
+                    .eq('email', postData.author_email)
+                    .single();
+                if (roleData?.name) {
+                    setPost(prev => ({ ...prev, author: { ...prev.author, name: roleData.name } }));
+                }
+            }
+
             supabase.rpc('increment_view_count', { post_id: id }).catch(() => { });
             setLoading(false);
         };

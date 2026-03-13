@@ -62,19 +62,11 @@ export default function NewWebzinePage() {
                 thumbnailUrl = key;
             }
 
-            // 작성자 이름 가져오기
-            const { data: profile } = await supabase
-                .from('user_roles')
-                .select('name')
-                .eq('email', user.email)
-                .single();
-
             const { error } = await supabase.from('posts').insert({
                 title,
                 content,
                 author_id: user.id,
                 author_email: user.email,
-                author_name: profile?.name || user.email?.split('@')[0], // 이름 저장
                 board_type: 'webzine',
                 thumbnail_url: thumbnailUrl,
                 attachments: []

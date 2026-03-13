@@ -17,13 +17,30 @@ export default function WebzineListPage() {
 
     const fetchPosts = async () => {
         try {
-            const { data, error } = await supabase
+            const { data: postsData, error } = await supabase
                 .from('posts')
                 .select('*')
                 .eq('board_type', 'webzine')
                 .order('created_at', { ascending: false });
+            
             if (error) throw error;
-            setPosts(data || []);
+
+            // 작성자 이름 실시간 매칭
+            const emails = [...new Set(postsData.map(p => p.author_email))];
+            const { data: roles } = await supabase
+                .from('user_roles')
+                .select('email, name')
+                .in('email', emails);
+
+            const nameMap = {};
+                roles?.forEach(r => { nameMap[r.email] = r.name; });
+
+            const enrichedPosts = postsData.map(post => ({
+                ...post,
+                author_name: nameMap[post.author_email] || post.author_email?.split('@')[0]
+            }));
+
+            setPosts(enrichedPosts);
         } catch (error) {
             console.error('Error fetching webzine posts:', error);
         } finally {
