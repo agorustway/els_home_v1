@@ -57,7 +57,10 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
         }));
     };
 
-    const isActive = (path) => pathname === path || pathname.startsWith(path + '/');
+    const isActive = (item) => {
+        if (item.exact) return pathname === item.path;
+        return pathname === item.path || pathname.startsWith(item.path + '/');
+    };
 
     const displayName = profile?.name || profile?.full_name || profile?.user_metadata?.name || profile?.email?.split('@')[0] || '사용자';
     const displayInitial = displayName[0]?.toUpperCase() || 'U';
@@ -82,7 +85,7 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
                         const isTabActive = activeTabId === tab.id;
 
                         // Check if any child is active
-                        const hasActiveChild = items.some(item => isActive(item.path));
+                        const hasActiveChild = items.some(item => isActive(item));
 
                         return (
                             <div key={tab.id} className={`${styles.accordionItem} ${isOpenSection ? styles.open : ''}`}>
@@ -115,7 +118,7 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
                                             <Link
                                                 key={item.path}
                                                 href={item.path}
-                                                className={`${styles.subItem} ${isActive(item.path) ? styles.activeSub : ''}`}
+                                                className={`${styles.subItem} ${isActive(item) ? styles.activeSub : ''}`}
                                                 onClick={handleProtectedClick}
                                             >
                                                 {item.label}

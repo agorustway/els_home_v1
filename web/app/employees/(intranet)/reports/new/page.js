@@ -134,7 +134,7 @@ export default function NewReportPage() {
                                 <option value="dangjin">당진지점</option>
                                 <option value="yesan">예산지점</option>
                                 <option value="seosan">서산지점</option>
-                                <option value="yeoncheon">연천지점</option>
+                                <option value="yeoncheon">영천지점</option>
                                 <option value="ulsan">울산지점</option>
                                 <option value="imgo">임고지점</option>
                                 <option value="bulk">벌크사업부</option>
