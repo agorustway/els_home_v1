@@ -65,6 +65,13 @@ else:
             merged_image.paste(img, (0, y_offset))
             y_offset += img.height
 
+        # 웹 업로드용 용량 최적화: 가로 길이를 최대 1600px로 제한
+        if max_width > 1600:
+            ratio = 1600 / max_width
+            new_height = int(total_height * ratio)
+            merged_image = merged_image.resize((1600, new_height), Image.Resampling.LANCZOS)
+
         output_path = os.path.join(base_path, output_name)
-        merged_image.save(output_path, "JPEG", quality=95)
+        # 퀄리티를 85로 낮추고 최적화 옵션 활성화 (용량 대폭 감소)
+        merged_image.save(output_path, "JPEG", quality=85, optimize=True)
         print(f"✨ 완료되었습니다! 저장 위치: {output_path}")
