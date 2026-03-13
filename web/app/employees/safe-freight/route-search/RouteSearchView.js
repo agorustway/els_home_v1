@@ -718,8 +718,8 @@ export default function RouteSearchView({ options, period, onBack }) {
         setRouteResult(null);
         setSelectedRouteKey(null);
         setDistFareResult(null);
-        setSectionFareResult(null);
-        setSectionFareOneWay(null);
+        setSectionFareResults([]);
+        setSectionFareOneWayResults([]);
         setTerminalInfo({ origin: null, dest: null });
         // 지도 초기 위치
         if (mapInstance.current) {
@@ -738,12 +738,14 @@ export default function RouteSearchView({ options, period, onBack }) {
         setRouteResult(null);
         setSelectedRouteKey(null);
         setDistFareResult(null);
-        setSectionFareResult(null);
-        setSectionFareOneWay(null);
+        setSectionFareResults([]);
+        setSectionFareOneWayResults([]);
 
         try {
             // 1. 좌표 확보 (터미널 자동교정 포함)
             const resolveCoords = async (loc) => {
+                let finalLoc = null;
+
                 // 🚀 최우선: 상세 주소(juso)가 입력되어 있다면 해당 지점을 좌표로 우선 변환
                 if (loc.juso) {
                     try {
@@ -751,7 +753,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                         if (res.ok) {
                             const data = await res.json();
                             if (data.addresses?.length > 0) {
-                                return { ...loc, text: loc.juso, lng: data.addresses[0].x, lat: data.addresses[0].y };
+                                finalLoc = { ...loc, text: loc.juso, lng: data.addresses[0].x, lat: data.addresses[0].y };
                             }
                         }
                     } catch (e) {
@@ -760,62 +762,99 @@ export default function RouteSearchView({ options, period, onBack }) {
                 }
 
                 // 2순위: 이미 정확한 좌표가 있는 경우 (터미널 선택 등)
-                if (loc.lng && loc.lat) return loc;
+                if (!finalLoc && loc.lng && loc.lat) {
+                    finalLoc = loc;
+                }
 
                 // 3순위: 터미널 키워드 자동 교정
-                const termMatch = matchTerminalCoords(loc.text);
-                if (termMatch) {
-                    return { ...loc, text: termMatch.name, lng: termMatch.lng, lat: termMatch.lat };
+                if (!finalLoc) {
+                    const termMatch = matchTerminalCoords(loc.text);
+                    if (termMatch) {
+                        finalLoc = { ...loc, text: termMatch.name, lng: termMatch.lng, lat: termMatch.lat };
+                    }
                 }
 
                 // 4순위: 카카오 place-search → 행정복지센터 우선 검색
-                let fallbackText = loc.text || '';
-                // text나 juso 값이 하나도 없고, 3번 줄(selectbox)만 선택된 경우
-                if (!fallbackText && !loc.juso && loc.r1) {
-                    fallbackText = `${loc.r1} ${loc.r2} ${loc.r3}`.trim();
-                }
+                if (!finalLoc) {
+                    let fallbackText = loc.text || '';
+                    if (!fallbackText && !loc.juso && loc.r1) {
+                        fallbackText = `${loc.r1} ${loc.r2} ${loc.r3}`.trim();
+                    }
 
-                if (fallbackText) {
-                    try {
-                        const adminSuffix = /(면|읍|동)$/.test(fallbackText.trim());
-                        const searchKeywords = adminSuffix
-                            ? [`${fallbackText.trim()} 행정복지센터`, fallbackText]
-                            : [fallbackText];
+                    if (fallbackText) {
+                        try {
+                            const adminSuffix = /(면|읍|동)$/.test(fallbackText.trim());
+                            const searchKeywords = adminSuffix
+                                ? [`${fallbackText.trim()} 행정복지센터`, fallbackText]
+                                : [fallbackText];
 
-                        for (const keyword of searchKeywords) {
-                            const kakaoRes = await fetch(`/api/safe-freight/place-search?keyword=${encodeURIComponent(keyword)}`);
-                            const kakaoData = await kakaoRes.json();
-                            if (kakaoData.results?.length > 0) {
-                                const sorted = prioritizeAdminCenter(kakaoData.results);
-                                const first = sorted[0];
-                                return { ...loc, text: first.name || first.address || fallbackText, lng: first.lng, lat: first.lat };
+                            for (const keyword of searchKeywords) {
+                                const kakaoRes = await fetch(`/api/safe-freight/place-search?keyword=${encodeURIComponent(keyword)}`);
+                                const kakaoData = await kakaoRes.json();
+                                if (kakaoData.results?.length > 0) {
+                                    const sorted = prioritizeAdminCenter(kakaoData.results);
+                                    const first = sorted[0];
+                                    finalLoc = { ...loc, text: first.name || first.address || fallbackText, lng: first.lng, lat: first.lat };
+                                    break;
+                                }
                             }
+                        } catch (e) {
+                            console.warn('Kakao place search fallback:', e);
                         }
-                    } catch (e) {
-                        console.warn('Kakao place search fallback:', e);
                     }
 
                     // 5순위: 일반 텍스트 네이버 지오코딩
-                    try {
-                        const res = await fetch(`/api/naver-maps/geocode?query=${encodeURIComponent(fallbackText)}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.addresses?.length > 0) {
-                                return { ...loc, text: fallbackText, lng: data.addresses[0].x, lat: data.addresses[0].y };
+                    if (!finalLoc && fallbackText) {
+                        try {
+                            const res = await fetch(`/api/naver-maps/geocode?query=${encodeURIComponent(fallbackText)}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.addresses?.length > 0) {
+                                    finalLoc = { ...loc, text: fallbackText, lng: data.addresses[0].x, lat: data.addresses[0].y };
+                                }
                             }
+                        } catch (e) {
+                            console.warn('Naver geocode fallback:', e);
                         }
-                    } catch (e) {
-                        console.warn('Naver geocode fallback:', e);
                     }
                 }
 
-                throw new Error(`"${fallbackText || '선택한 위치'}" 정보를 좌표로 변환할 수 없습니다. 검색 결과에서 선택해주세요.`);
+                if (!finalLoc) {
+                    throw new Error(`"${loc.text || loc.juso || '선택한 위치'}" 정보를 좌표로 변환할 수 없습니다. 검색 결과에서 선택해주세요.`);
+                }
+
+                // 🚀 추가: 좌표는 확보했으나 r1, r2, r3(행정동) 정보가 없는 경우 보완 (구간 조회를 위함)
+                if (finalLoc.lng && finalLoc.lat && (!finalLoc.r1 || !finalLoc.r3)) {
+                    try {
+                        const res = await fetch(`/api/safe-freight/coord2region?x=${finalLoc.lng}&y=${finalLoc.lat}`);
+                        const data = await res.json();
+                        if (data.result) {
+                            const r = data.result;
+                            finalLoc.r1 = SIDO_MAP_SHORT[r.region_1depth_name] || r.region_1depth_name;
+                            finalLoc.r2 = r.region_2depth_name;
+                            finalLoc.r3 = r.region_3depth_name;
+                        }
+                    } catch (e) {
+                        console.warn('coord2region in resolveCoords failed:', e);
+                    }
+                }
+
+                return finalLoc;
             };
 
+            console.log('--- Start Route Search ---');
             const resolvedOrigin = await resolveCoords(origin);
-            setOrigin(resolvedOrigin);
             const resolvedDest = await resolveCoords(destination);
+            
+            if (!resolvedOrigin.lat || !resolvedOrigin.lng || !resolvedDest.lat || !resolvedDest.lng) {
+                throw new Error('좌표를 찾을 수 없는 지점이 있습니다. 주소를 다시 확인해주세요.');
+            }
+
+            setOrigin(resolvedOrigin);
             setDestination(resolvedDest);
+            
+            console.log('Resolved Origin:', resolvedOrigin.text, resolvedOrigin.lat, resolvedOrigin.lng);
+            console.log('Resolved Dest:', resolvedDest.text, resolvedDest.lat, resolvedDest.lng);
 
             // 좌표 확보 시 지도 이동 (#2)
             if (resolvedOrigin.lng && resolvedOrigin.lat) {
@@ -840,7 +879,8 @@ export default function RouteSearchView({ options, period, onBack }) {
             // 2. Directions 15 호출 — option 최대 3개 제한이므로 2회 분할
             // [수정] 출발지와 도착지가 완전히 동일한 경우(0km) 네이버 API 호출 시 오류가 발생하므로, 
             // 0.0001도(약 10m) 이내면 동일 위치로 간주하고 가상 결과를 생성합니다.
-            const isSameLoc = Math.abs(Number(resolvedOrigin.lng) - Number(resolvedDest.lng)) < 0.0001 &&
+            const isSameLoc = (resolvedOrigin.lng && resolvedDest.lng) &&
+                Math.abs(Number(resolvedOrigin.lng) - Number(resolvedDest.lng)) < 0.0001 &&
                 Math.abs(Number(resolvedOrigin.lat) - Number(resolvedDest.lat)) < 0.0001;
 
             const baseParams = {
@@ -848,7 +888,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 fueltype: 'diesel',
             };
 
-            if (timeMode !== 'realtime') {
+            if (timeMode !== 'realtime' && recent0600?.departtime) {
                 baseParams.departtime = recent0600.departtime;
             }
 
@@ -967,7 +1007,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                 drawAllRoutes(fullResult.route, firstKey);
                 const firstRoute = fullResult.route[firstKey]?.[0];
                 if (firstRoute) {
-                    await lookupFare(firstRoute.summary.distance, destination.text);
+                    // [중요] 상태 업데이트는 비동기이므로, setDestination 직후에 lookupFare를 호출할 때는 
+                    // 상태값인 destination.text 대신 방금 해결된 resolvedDest를 직접 전달함
+                    await lookupFare(firstRoute.summary.distance, resolvedOrigin, resolvedDest);
                 }
             }
 
@@ -989,14 +1031,18 @@ export default function RouteSearchView({ options, period, onBack }) {
 
         const route = routeResult.route[key][0];
         if (!route) return;
-        await lookupFare(route.summary.distance, destination.text);
+        await lookupFare(route.summary.distance, origin, destination);
     };
 
     /* ═══════════════════════════════════════════════
        운임 조회 — 거리별(항상) + 구간별(있으면)
        ═══════════════════════════════════════════════ */
-    const lookupFare = async (distanceMeters, destText) => {
+    const lookupFare = async (distanceMeters, resolvedOrigin, resolvedDest) => {
         const totalKm = metersToKm(distanceMeters);
+        
+        // 상태가 아직 업데이트되지 않았을 경우를 대비해 인자로 받은 resolved 객체들 사용
+        const useOrigin = resolvedOrigin || origin;
+        const useDest = resolvedDest || destination;
 
         // ── 1) 거리별운임 (항상 조회) ──
         try {
@@ -1006,6 +1052,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 km: String(totalKm),
             });
             const res = await fetch(`/api/safe-freight/lookup?${params.toString()}`);
+            if (!res.ok) throw new Error('Distance fare lookup failed');
             const data = await res.json();
 
             if (data.rows?.length > 0) {
@@ -1034,10 +1081,16 @@ export default function RouteSearchView({ options, period, onBack }) {
         setSectionFareResults([]);
         setSectionFareOneWayResults([]);
 
-        // 기점(Terminal) 찾기: 출발지 -> 도착지 -> 경유지 순으로 터미널 속성이 있는 지점을 기점으로 선정
-        const termObj = [origin, destination, ...waypoints].find(p => p.terminalKey) || origin;
+        // 기점(Terminal) 찾기
+        const termObj = [useOrigin, useDest, ...waypoints].find(p => p.terminalKey) || useOrigin;
         const originsList = options?.origins || [];
-        const termClean = (termObj.text || '').replace(/\s/g, '');
+        // 의왕ICD 등 특정 키워드 보정
+        const termRawText = termObj.terminalKey === 'port_kt_icd' ? '의왕ICD' : (termObj.text || '');
+        const termClean = termRawText.replace(/\s/g, '');
+
+        console.log('Fare Lookup Start - Terminal:', termClean);
+
+        if (!termClean) return;
 
         // 왕복 기점 찾기
         let matchedOrigin = originsList.find(o => {
@@ -1050,13 +1103,11 @@ export default function RouteSearchView({ options, period, onBack }) {
         });
         if (roundOrigin) matchedOrigin = roundOrigin;
 
-        // 행선지 후보들: 모든 지점 중 기점과 지역(r3)이 다른 지점들을 우선적으로 탐색
-        // (기점과 같은 지역의 경우, 다른 경유지가 있다면 제외하여 "부산신항-부산" 노출 방지)
-        const allLocs = [origin, destination, ...waypoints].filter(p => p.r1 && p.r2 && p.r3);
+        // 행선지 후보들
+        const allLocs = [useOrigin, useDest, ...waypoints].filter(p => p.r1 && p.r2 && p.r3);
         const hasOtherRegion = allLocs.some(p => p.r3 !== termObj.r3);
         const addrCandidates = allLocs.filter(p => {
             if (p === termObj) return false;
-            // 다른 지역 경유지가 있다면, 기점과 동일한 지역(자체 구간)은 건너뜀
             if (hasOtherRegion && p.r3 === termObj.r3) return false;
             return true;
         });
@@ -1085,22 +1136,23 @@ export default function RouteSearchView({ options, period, onBack }) {
                         mode: 'latest',
                     });
                     const sRes = await fetch(`/api/safe-freight/lookup?${sParams.toString()}`);
-                    const sData = await sRes.json();
-
-                    if (sRes.ok && sData.rows?.length > 0) {
-                        const sRow = sData.rows[0];
-                        tempSections.push({
-                            origin: matchedOrigin.id,
-                            destination: `${reqR1} ${reqR2} ${reqR3}`,
-                            period: sRow.period,
-                            km: sRow.km,
-                            f40위탁: sRow.f40위탁 || 0,
-                            f40운수자: sRow.f40운수자 || 0,
-                            f40안전: sRow.f40안전 || 0,
-                            f20위탁: sRow.f20위탁 || 0,
-                            f20운수자: sRow.f20운수자 || 0,
-                            f20안전: sRow.f20안전 || 0,
-                        });
+                    if (sRes.ok) {
+                        const sData = await sRes.json();
+                        if (sData.rows?.length > 0) {
+                            const sRow = sData.rows[0];
+                            tempSections.push({
+                                origin: matchedOrigin.id,
+                                destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                period: sRow.period,
+                                km: sRow.km,
+                                f40위탁: sRow.f40위탁 || 0,
+                                f40운수자: sRow.f40운수자 || 0,
+                                f40안전: sRow.f40안전 || 0,
+                                f20위탁: sRow.f20위탁 || 0,
+                                f20운수자: sRow.f20운수자 || 0,
+                                f20안전: sRow.f20안전 || 0,
+                            });
+                        }
                     }
                 } catch (err) {
                     console.warn('Section fare lookup error:', err);
@@ -1137,22 +1189,23 @@ export default function RouteSearchView({ options, period, onBack }) {
                             mode: 'latest',
                         });
                         const owRes = await fetch(`/api/safe-freight/lookup?${owParams.toString()}`);
-                        const owData = await owRes.json();
-
-                        if (owRes.ok && owData.rows?.length > 0) {
-                            const owRow = owData.rows[0];
-                            tempOneWays.push({
-                                origin: oneWayOrigin.id,
-                                destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                period: owRow.period,
-                                km: owRow.km,
-                                f40위탁: owRow.f40위탁 || 0,
-                                f40운수자: owRow.f40운수자 || 0,
-                                f40안전: owRow.f40안전 || 0,
-                                f20위탁: owRow.f20위탁 || 0,
-                                f20운수자: owRow.f20운수자 || 0,
-                                f20안전: owRow.f20안전 || 0,
-                            });
+                        if (owRes.ok) {
+                            const owData = await owRes.json();
+                            if (owData.rows?.length > 0) {
+                                const owRow = owData.rows[0];
+                                tempOneWays.push({
+                                    origin: oneWayOrigin.id,
+                                    destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                    period: owRow.period,
+                                    km: owRow.km,
+                                    f40위탁: owRow.f40위탁 || 0,
+                                    f40운수자: owRow.f40운수자 || 0,
+                                    f40안전: owRow.f40안전 || 0,
+                                    f20위탁: owRow.f20위탁 || 0,
+                                    f20운수자: owRow.f20운수자 || 0,
+                                    f20안전: owRow.f20안전 || 0,
+                                });
+                            }
                         }
                     } catch (err) {
                         console.warn('One-way section fare lookup error:', err);
