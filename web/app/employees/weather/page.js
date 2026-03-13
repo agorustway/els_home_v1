@@ -14,8 +14,8 @@ const BRANCHES = [
     { id: 'seoul', name: '서울본사' },
     { id: 'asan', name: '아산지점' },
     { id: 'jungbu', name: '중부지점' },
-    { id: 'dangjin', name: '당진지점' },
-    { id: 'yesan', name: '예산지점' }
+    { id: 'yesan', name: '예산지점' },
+    { id: 'dangjin', name: '당진지점' }
 ];
 
 const PORTS = [

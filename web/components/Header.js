@@ -92,8 +92,8 @@ const navLinks = [
                     { label: '충청권 지점', type: 'label' },
                     { href: '/employees/branches/asan', label: '아산지점', isSubItem: true },
                     { href: '/employees/branches/jungbu', label: '중부지점', isSubItem: true },
-                    { href: '/employees/branches/dangjin', label: '당진지점', isSubItem: true },
                     { href: '/employees/branches/yesan', label: '예산지점', isSubItem: true },
+                    { href: '/employees/branches/dangjin', label: '당진지점', isSubItem: true },
                 ]
             },
             { type: 'divider', isAdmin: true },

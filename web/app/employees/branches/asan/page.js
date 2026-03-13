@@ -22,10 +22,20 @@ const PREFS_KEY = 'asan_dispatch_prefs';
 function getTabType(dateStr) {
     const today = new Date().toISOString().split('T')[0];
     const d = new Date(dateStr + 'T00:00:00');
-    const isRed = d.getDay() === 0 || d.getDay() === 6 || HOLIDAYS.has(dateStr);
+    const day = d.getDay();
+    const isHoliday = HOLIDAYS.has(dateStr);
+    const isRed = day === 0 || isHoliday;
+    const isSaturday = day === 6 && !isHoliday;
+
     if (dateStr === today) return 'today';
-    if (dateStr < today) return isRed ? 'past_holiday' : 'past';
-    return isRed ? 'holiday' : 'future';
+    if (dateStr < today) {
+        if (isRed) return 'past_holiday';
+        if (isSaturday) return 'past_saturday';
+        return 'past';
+    }
+    if (isRed) return 'holiday';
+    if (isSaturday) return 'saturday';
+    return 'future';
 }
 function formatTabLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');

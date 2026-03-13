@@ -113,5 +113,39 @@ export async function GET(request) {
         return NextResponse.json({ data: integratedData });
     }
 
-    return NextResponse.json({ data: data || [] });
+    if (type !== 'integrated') {
+        // Filter out junk columns for specific views (e.g. col_31, A, B...)
+        const filteredData = (data || []).map(item => {
+            const validIndices = [];
+            const newHeaders = item.headers.filter((h, i) => {
+                const trimmed = (h || '').trim();
+                const isJunk = /^(col_\d+|[A-Z])$/i.test(trimmed) || trimmed === '함축';
+                if (!isJunk) validIndices.push(i);
+                return !isJunk;
+            });
+
+            const newData = (item.data || []).map(row =>
+                validIndices.map(vi => row[vi])
+            );
+
+            const newComments = {};
+            if (item.comments) {
+                Object.entries(item.comments).forEach(([k, v]) => {
+                    const [ri, ci] = k.split(':').map(Number);
+                    const newCi = validIndices.indexOf(ci);
+                    if (newCi !== -1) {
+                        newComments[`${ri}:${newCi}`] = v;
+                    }
+                });
+            }
+
+            return {
+                ...item,
+                headers: newHeaders,
+                data: newData,
+                comments: newComments
+            };
+        });
+        return NextResponse.json({ data: filteredData });
+    }
 }

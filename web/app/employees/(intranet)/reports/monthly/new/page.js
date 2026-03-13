@@ -116,8 +116,8 @@ export default function NewMonthlyReportPage() {
                                 <option value="asan_cy">아산CY</option>
                                 <option value="headquarters">서울본사</option>
                                 <option value="jungbu">중부지점</option>
-                                <option value="dangjin">당진지점</option>
                                 <option value="yesan">예산지점</option>
+                                <option value="dangjin">당진지점</option>
                                 <option value="seosan">서산지점</option>
                                 <option value="yeoncheon">영천지점</option>
                                 <option value="ulsan">울산지점</option>

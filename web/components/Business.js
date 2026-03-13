@@ -9,14 +9,16 @@ const services = [
         title: '컨테이너 물류 (CY 운영)',
         subtitle: '① 아산지점, 중부지점',
         desc: '아산 및 중부지점은 현대글로비스, 현대/기아자동차 및 현대스틸의 수출/입 운송을 전담하고 있으며, 2개의 컨테이너 전용 DEPOT와 대고객 서비스에 특화된 우수한 인력, 전담차량 및 우수한 협력사를 다수 보유하고 있습니다.',
-        img: '/images/container_logistics.png',
+        img: '/images/joogbu/KakaoTalk_20260313_161417917_03.jpg',
+        objectPos: '50% 65%',
         type: 'container',
         branches: [
             {
                 name: '아산지점 (KD 센타 / CY)',
                 tag: '현대글로비스 아산KD 센타 / 아산 CY',
                 location: '충남 아산시 관암리 410-3',
-                img: '/images/office_intro.png',
+                img: '/images/joogbu/KakaoTalk_20260313_161417917_03.jpg',
+                objectPos: '50% 70%',
                 advantages: [
                     '현대글로비스 운영 N/W 전담 운송',
                     'CY 운영 및 자가장비(R/S) 보유',
@@ -35,7 +37,8 @@ const services = [
                 name: '중부 ICD',
                 tag: '중부 ICD',
                 location: '세종시 연동면 연청로 745-86',
-                img: '/images/hero_cy.png',
+                img: '/images/joogbu/KakaoTalk_20260313_161417917_08.jpg',
+                objectPos: '55% 50%',
                 advantages: [
                     '경부·중부내륙고속도로 인접 요충지',
                     '중부ICD내 타업체와 복화 물량 SWAP',
@@ -120,6 +123,7 @@ export default function Business() {
                                         fill
                                         sizes="(max-width: 768px) 100vw, 400px"
                                         className={styles.img}
+                                        style={{ objectPosition: service.objectPos || 'center' }}
                                     />
                                     <div className={styles.imgOverlay} />
                                 </div>
@@ -153,7 +157,8 @@ export default function Business() {
                                     <div className={styles.branchImgBox}>
                                         <Image 
                                             src={br.img} 
-                                            alt={br.name} width={600} height={350} className={styles.branchImg} 
+                                            alt={br.name} width={600} height={350} className={styles.branchImg}
+                                            style={{ objectPosition: br.objectPos || 'center', objectFit: 'cover' }}
                                         />
                                     </div>
                                     

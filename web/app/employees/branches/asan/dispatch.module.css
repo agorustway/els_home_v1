@@ -813,6 +813,14 @@
     color: #7dd3fc;
 }
 
+.tab_today.dateTabActive {
+    color: #fff !important;
+}
+
+.tab_today.dateTabActive .tabDay {
+    color: #e0f2fe !important;
+}
+
 .tab_future {
     background: #fff;
     color: #475569;
@@ -832,6 +840,30 @@
 
 .tab_holiday .tabDay {
     color: #f87171;
+}
+
+/* 토요일 스타일 (옅은 노란색) */
+.tab_saturday {
+    background: #fefce8;
+    color: #ca8a04;
+    border-color: #fef08a;
+}
+
+.tab_saturday.dateTabActive {
+    background: #facc15 !important; /* 선택 시 노란색 */
+    color: #854d0e !important;
+    border-color: #eab308 !important;
+}
+
+.tab_saturday.dateTabActive .tabDay {
+    color: #854d0e !important;
+    opacity: 0.7;
+}
+
+.tab_past_saturday {
+    background: #fefce8;
+    color: #eab308;
+    opacity: 0.6;
 }
 
 /* 월별 필터 (전체 탭 전용) */

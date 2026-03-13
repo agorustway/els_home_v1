@@ -88,8 +88,8 @@ export const SIDEBAR_ITEMS = {
         { label: '서울본사', path: '/employees/branches/headquarters' },
         { label: '아산지점', path: '/employees/branches/asan' },
         { label: '중부지점', path: '/employees/branches/jungbu' },
-        { label: '당진지점', path: '/employees/branches/dangjin' },
         { label: '예산지점', path: '/employees/branches/yesan' },
+        { label: '당진지점', path: '/employees/branches/dangjin' },
     ],
     admin: [
         { label: '권한관리', path: '/admin/users' },
