@@ -86,7 +86,7 @@ export default function WebzineListPage() {
                                 <div className={styles.featuredHeader}>
                                     <h2 className={styles.featuredTitle}>{featuredPost.title}</h2>
                                     <div className={styles.featuredMeta}>
-                                        <span>작성자: {featuredPost.author_email?.split('@')[0] || '관리자'}</span>
+                                        <span>작성자: {featuredPost.author_name || featuredPost.author_email?.split('@')[0] || '관리자'}</span>
                                         <span>날짜: {new Date(featuredPost.created_at).toLocaleDateString()}</span>
                                         <span>조회수: {featuredPost.view_count || 0}</span>
                                     </div>
@@ -153,7 +153,7 @@ export default function WebzineListPage() {
                                                 <h2 className={styles.cardTitle}>{post.title}</h2>
                                                 <p className={styles.excerpt}>{getExcerpt(post.content)}</p>
                                                 <div className={styles.meta}>
-                                                    <span className={styles.author}>{post.author_email?.split('@')[0] || '관리자'}</span>
+                                                    <span className={styles.author}>{post.author_name || post.author_email?.split('@')[0] || '관리자'}</span>
                                                     <span className={styles.date}>{new Date(post.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>

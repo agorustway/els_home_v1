@@ -117,14 +117,16 @@ export default function WebzineDetailPage() {
                     </div>
                 )}
 
-                <div className={styles.content}>
+                <div 
+                    className={styles.content}
+                    dangerouslySetInnerHTML={{ __html: (post.content || '').replace(/\n/g, '<br/>') }}
                     onClick={(e) => {
                         if (e.target.tagName === 'IMG') {
                             setZoomImage(e.target.src);
                             setScale(0);
                         }
                     }}
-                </div>
+                />
 
                 <div className={styles.actions}>
                     <Link href="/webzine" className={styles.backBtn}>목록으로</Link>

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const historyData = [
     {
-        year: '2020-2023',
+        year: '2020-2025',
         event: '안정적 성장 및 사업 다각화',
         detail: 'ISO 45001:2018 취득, 포레시아 코리아 수소탱크 운송계약 및 영천배기/시트 도급계약'
     },

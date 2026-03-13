@@ -3,8 +3,8 @@ import re
 from PIL import Image
 
 # 1. 경로 설정 (반드시 본인의 경로로 다시 확인하세요)
-base_path = r"C:\Users\hoon\Desktop\ilovepdf_pages-to-jpg"
-output_name = "ELS_2026안전운임설명_v1.jpg"
+base_path = r"C:\Users\hoon\Desktop\2026국제물류\The_2026_Adaptive_Enterprise"
+output_name = "ELS_2026국제물류_v1.jpg"
 
 def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
