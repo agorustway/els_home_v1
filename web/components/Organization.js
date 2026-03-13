@@ -33,19 +33,13 @@ export default function Organization() {
                         {/* 영업지원부 */}
                         <div className={styles.column}>
                             <div className={styles.deptBox}>영업지원부</div>
-                            <div className={styles.verticalLine}></div>
-                            <div className={styles.branchList}>
-                                {/* 지점 이동됨 */}
-                            </div>
+                            {/* 하위 지점 없으므로 라인 제거 */}
                         </div>
 
                         {/* 경영지원부 */}
                         <div className={styles.column}>
                             <div className={styles.deptBox}>경영지원부</div>
-                            <div className={styles.verticalLine}></div>
-                            <div className={styles.branchList}>
-                                {/* 지점 없음 */}
-                            </div>
+                            {/* 하위 지점 없으므로 라인 제거 */}
                         </div>
                     </div>
 
@@ -55,10 +49,10 @@ export default function Organization() {
                         <table className={styles.summaryTable}>
                             <thead>
                                 <tr>
-                                    <th>총 원</th>
-                                    <th>경영 지원</th>
-                                    <th>영업 관리</th>
-                                    <th>운영 관리</th>
+                                    <th className={styles.fixedCol}>총 원</th>
+                                    <th className={styles.fixedCol}>경영 지원</th>
+                                    <th className={styles.fixedCol}>영업 관리</th>
+                                    <th className={styles.fixedCol}>운영 관리</th>
                                 </tr>
                             </thead>
                             <tbody>
