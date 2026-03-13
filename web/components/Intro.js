@@ -73,7 +73,7 @@ export default function Intro() {
                                 </div>
                                 <div className={styles.focusItem}>
                                     <span className={styles.focusLabel}>운영 거점</span>
-                                    <p>아산, 세종, 예산, 당진 주요 거점</p>
+                                    <p>아산, 중부, 예산, 당진 주요 거점</p>
                                 </div>
                                 <div className={styles.focusItem}>
                                     <span className={styles.focusLabel}>대응 체계</span>

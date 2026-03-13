@@ -76,7 +76,7 @@ export default function Dashboard() {
                         >
                             <div className={styles.statIcon}>🏢</div>
                             <div className={styles.statInfo}>
-                                <div className={styles.statValue}>아산, 세종, 당진, 예산</div>
+                                <div className={styles.statValue}>아산, 중부, 예산, 당진</div>
                                 <div className={styles.statLabel}>충청권 주요 거점 및 통합 DEPOT 운영</div>
                             </div>
                         </motion.div>
