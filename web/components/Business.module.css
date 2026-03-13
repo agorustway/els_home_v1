@@ -5,57 +5,63 @@
 
 .header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 50px;
+    justify-content: center;
+    align-items: flex-start;
+    margin-bottom: 60px;
+    position: relative;
+    width: 100%;
 }
 
 .backBtn {
+    position: absolute;
+    right: 0;
     background: var(--primary-blue);
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border-radius: 30px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 86, 179, 0.2);
 }
 
 .backBtn:hover {
     background: #004a99;
-    transform: translateX(-5px);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 86, 179, 0.3);
 }
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 40px;
 }
 
 .card {
     background: var(--white);
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .imageBox {
-    height: 240px;
+    height: 280px;
     overflow: hidden;
     position: relative;
 }
 
 .img {
     object-fit: cover;
-    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .card:hover .img {
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
 .imgOverlay {
@@ -64,11 +70,11 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.4));
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
 }
 
 .contentBox {
-    padding: 30px;
+    padding: 40px;
     position: relative;
     flex: 1;
 }
@@ -76,26 +82,26 @@
 .number {
     position: absolute;
     top: -20px;
-    right: 30px;
-    font-size: 3rem;
+    right: 40px;
+    font-size: 4rem;
     font-weight: 900;
     color: rgba(0, 86, 179, 0.05);
     z-index: 0;
 }
 
 .contentBox h3 {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     color: var(--text-dark);
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     position: relative;
     z-index: 1;
 }
 
 .contentBox p {
     color: var(--text-gray);
-    margin-bottom: 5px;
-    line-height: 1.7;
-    font-size: 0.95rem;
+    margin-bottom: 20px;
+    line-height: 1.8;
+    font-size: 1rem;
     z-index: 1;
     position: relative;
 }
@@ -103,91 +109,114 @@
 .more {
     color: var(--primary-blue);
     font-weight: 700;
-    font-size: 0.85rem;
-    display: block;
-    margin-top: 10px;
+    font-size: 0.9rem;
+    display: inline-block;
+    padding-bottom: 2px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
 }
 
-/* Detail Common */
+.card:hover .more {
+    border-bottom-color: var(--primary-blue);
+}
+
+/* Detail UI */
 .detailWrapper {
     background: white;
-    border-radius: 30px;
-    padding: 60px;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.08);
+    border-radius: 40px;
+    padding: 80px;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.08);
 }
 
 .detailHeader {
-    margin-bottom: 60px;
-    border-bottom: 2px solid #f0f4f8;
-    padding-bottom: 30px;
+    margin-bottom: 80px;
+    text-align: center;
 }
 
 .titleGroup {
     display: flex;
-    align-items: baseline;
-    gap: 15px;
-    margin-bottom: 20px;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 30px;
 }
 
 .detailTitle {
-    font-size: 2.2rem;
+    font-size: 2.8rem;
     font-weight: 800;
     color: var(--text-dark);
 }
 
 .detailSubtitle {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     color: var(--primary-blue);
     font-weight: 600;
 }
 
 .detailBody {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     color: #44566c;
     line-height: 1.8;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
-/* Container Detail (Page 10) */
+/* Container Detail (Multi-section) */
+.sectionBlock {
+    margin-bottom: 100px;
+}
+
+.sectionBlock:last-child {
+    margin-bottom: 0;
+}
+
+.sectionDivider {
+    height: 1px;
+    background: #edf2f7;
+    margin: 80px 0;
+}
+
 .centerTitleGroup {
     display: flex;
     justify-content: center;
-    margin-bottom: 40px;
-}
-
-.centerTag {
-    background: #e2e8f0;
-    padding: 12px 60px;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #475569;
-    border-radius: 10px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.imageGallery {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
     margin-bottom: 50px;
 }
 
-.galleryImg {
+.centerTag {
+    background: #f1f5f9;
+    padding: 15px 80px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #334155;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.imageGallerySingle {
+    width: 100%;
+    margin-bottom: 60px;
+}
+
+.galleryImgLarge {
     width: 100%;
     height: auto;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    object-fit: cover;
 }
 
 .bottomGrid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 40px;
+    gap: 60px;
 }
 
 .advantages h4 {
-    font-size: 1.3rem;
-    margin-bottom: 20px;
+    font-size: 1.5rem;
+    margin-bottom: 30px;
     color: var(--text-dark);
+    font-weight: 800;
 }
 
 .advantages ul {
@@ -196,24 +225,26 @@
 }
 
 .advantages li {
-    font-size: 1.05rem;
-    margin-bottom: 12px;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
     color: #4a5568;
+    line-height: 1.6;
 }
 
 .specTableWrapper {
     border: 1px solid #e2e8f0;
-    border-radius: 15px;
+    border-radius: 20px;
     overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
 }
 
 .tableHead {
-    background: #2b6cb0;
+    background: #0056b3;
     color: white;
-    padding: 12px;
+    padding: 18px;
     text-align: center;
-    font-weight: 600;
-    font-size: 1rem;
+    font-weight: 700;
+    font-size: 1.1rem;
 }
 
 .detailTable {
@@ -224,7 +255,7 @@
 .detailTable th {
     background: #f8fafc;
     width: 35%;
-    padding: 15px;
+    padding: 20px;
     border: 1px solid #e2e8f0;
     text-align: center;
     font-weight: 700;
@@ -232,66 +263,77 @@
 }
 
 .detailTable td {
-    padding: 15px;
+    padding: 20px;
     border: 1px solid #e2e8f0;
     color: #1a202c;
-    font-weight: 500;
+    font-weight: 600;
 }
 
-/* Steel Detail (Page 11) */
+/* Steel Detail */
 .branchGrid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 40px;
+    gap: 60px;
 }
 
 .branchCard {
-    background: #fdfdfd;
+    background: #ffffff;
 }
 
 .branchNameTag {
-     background: #e2e8f0;
-    padding: 8px 40px;
-    font-size: 1rem;
+    background: #f1f5f9;
+    padding: 10px 60px;
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #475569;
-    border-radius: 5px;
+    color: #334155;
+    border-radius: 10px;
     display: inline-block;
-    margin-bottom: 20px;
-    margin-left: 50%;
+    margin-bottom: 30px;
+    position: relative;
+    left: 50%;
     transform: translateX(-50%);
+    border: 1px solid #e2e8f0;
 }
 
 .branchImgBox {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
 }
 
 .branchImg {
     width: 100%;
-    height: 300px;
+    height: 400px;
     object-fit: cover;
-    border-radius: 15px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    border-radius: 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.12);
 }
 
-@media (max-width: 1024px) {
-    .bottomGrid, .branchGrid, .imageGallery {
-        grid-template-columns: 1fr;
-    }
+@media (max-width: 1200px) {
     .detailWrapper {
-        padding: 30px;
+        padding: 50px;
+    }
+    .bottomGrid, .branchGrid {
+        grid-template-columns: 1fr;
+        gap: 40px;
     }
 }
 
 @media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 20px;
+    }
+    .backBtn {
+        position: static;
+        width: 100%;
+    }
     .grid {
         grid-template-columns: 1fr;
     }
     .detailTitle {
-        font-size: 1.6rem;
+        font-size: 2rem;
     }
-    .titleGroup {
-        flex-direction: column;
-        gap: 5px;
+    .detailWrapper {
+        padding: 30px;
+        border-radius: 24px;
     }
 }
