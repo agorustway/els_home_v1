@@ -25,22 +25,31 @@ export default function WebzineListPage() {
             
             if (error) throw error;
 
-            // 작성자 이름 실시간 매칭
-            const emails = [...new Set(postsData.map(p => p.author_email))];
-            const { data: roles } = await supabase
-                .from('user_roles')
-                .select('email, name')
-                .in('email', emails);
+            if (postsData && postsData.length > 0) {
+                // 작성자 이름 실시간 매칭 (이메일 리스트 추출)
+                const emails = [...new Set(postsData.map(p => p.author_email).filter(Boolean))];
+                
+                let nameMap = {};
+                if (emails.length > 0) {
+                    const { data: roles } = await supabase
+                        .from('user_roles')
+                        .select('email, name')
+                        .in('email', emails);
 
-            const nameMap = {};
-                roles?.forEach(r => { nameMap[r.email] = r.name; });
+                    roles?.forEach(r => {
+                        if (r.email) nameMap[r.email] = r.name;
+                    });
+                }
 
-            const enrichedPosts = postsData.map(post => ({
-                ...post,
-                author_name: nameMap[post.author_email] || post.author_email?.split('@')[0]
-            }));
+                const enrichedPosts = postsData.map(post => ({
+                    ...post,
+                    author_name: nameMap[post.author_email] || post.author_email?.split('@')[0] || '관리자'
+                }));
 
-            setPosts(enrichedPosts);
+                setPosts(enrichedPosts);
+            } else {
+                setPosts([]);
+            }
         } catch (error) {
             console.error('Error fetching webzine posts:', error);
         } finally {

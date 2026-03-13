@@ -24,53 +24,57 @@ export default function WebzineDetailPage() {
 
     useEffect(() => {
         const fetchPost = async () => {
-            const { data: postData, error: postError } = await supabase
-                .from('posts')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (postError) {
-                console.error('Error fetching post:', postError);
-                setLoading(false);
-                return;
-            }
-
-            let authorInfo = { name: '알 수 없음', email: '' };
-            if (postData.author_id) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('email, full_name')
-                    .eq('id', postData.author_id)
+            try {
+                const { data: postData, error: postError } = await supabase
+                    .from('posts')
+                    .select('*')
+                    .eq('id', id)
                     .single();
-                if (profile) {
-                    authorInfo = { email: profile.email, name: profile.full_name };
-                } else {
-                    const { data: role } = await supabase
-                        .from('user_roles')
-                        .select('email')
+
+                if (postError) throw postError;
+
+                let authorInfo = { name: '알 수 없음', email: '' };
+                
+                // 1. 프로필 정보 조회
+                if (postData.author_id) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('email, full_name')
                         .eq('id', postData.author_id)
                         .single();
-                    if (role) authorInfo = { email: role.email, name: role.email?.split('@')[0] };
+                    
+                    if (profile) {
+                        authorInfo = { email: profile.email, name: profile.full_name };
+                    }
                 }
-            }
 
-            setPost({ ...postData, author: authorInfo });
-
-            // author_name 보강 (profiles에 없을 경우 user_roles에서 다시 확인)
-            if (authorInfo.name === '알 수 없음' || authorInfo.name === authorInfo.email?.split('@')[0]) {
-                const { data: roleData } = await supabase
-                    .from('user_roles')
-                    .select('name')
-                    .eq('email', postData.author_email)
-                    .single();
-                if (roleData?.name) {
-                    setPost(prev => ({ ...prev, author: { ...prev.author, name: roleData.name } }));
+                // 2. 실명 보강 (profiles에 없거나 이름이 미비할 경우 user_roles에서 조회)
+                if (authorInfo.name === '알 수 없음' || !authorInfo.name) {
+                    const searchEmail = postData.author_email || authorInfo.email;
+                    if (searchEmail) {
+                        const { data: roleData } = await supabase
+                            .from('user_roles')
+                            .select('name, email')
+                            .eq('email', searchEmail)
+                            .single();
+                        
+                        if (roleData?.name) {
+                            authorInfo.name = roleData.name;
+                            if (!authorInfo.email) authorInfo.email = roleData.email;
+                        } else if (searchEmail) {
+                            authorInfo.name = searchEmail.split('@')[0];
+                        }
+                    }
                 }
-            }
 
-            supabase.rpc('increment_view_count', { post_id: id }).catch(() => { });
-            setLoading(false);
+                setPost({ ...postData, author: authorInfo });
+                supabase.rpc('increment_view_count', { post_id: id }).catch(() => { });
+                
+            } catch (error) {
+                console.error('Error fetching webzine post:', error);
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchPost();
