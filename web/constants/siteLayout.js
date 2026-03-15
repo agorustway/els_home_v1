@@ -36,17 +36,17 @@ export const HERO_MAP = {
     '/contact': {
         title: '문의하기',
         subtitle: '이엘에스솔루션에 궁금하신 점을 남겨주세요',
-        bgImage: '/images/hero_logistics.png',
+        bgImage: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
     },
     '/services': {
         title: 'Service',
         subtitle: '고객의 가치를 최우선으로 하는 맞춤형 물류 및 제조 서비스',
-        bgImage: '/images/hero_cy.png',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/network': {
         title: '네트워크',
         subtitle: '전국 주요 거점을 잇는 이엘에스솔루션의 인프라',
-        bgImage: '/images/hero_cy.png',
+        bgImage: '/images/container_logistics.png',
     },
     '/employees': {
         title: 'Intranet',
