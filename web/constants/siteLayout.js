@@ -56,7 +56,7 @@ export const HERO_MAP = {
     '/dashboard': {
         title: '실적현황',
         subtitle: '실시간 물류 현황 및 지표 데이터',
-        bgImage: '/images/hero_logistics.png',
+        bgImage: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
     },
     '/webzine': {
         title: '웹진',
