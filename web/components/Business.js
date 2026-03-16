@@ -75,7 +75,8 @@ const services = [
             {
                 name: '당진지점',
                 location: '충남 당진시 송산면 가곡로 21',
-                img: '/images/hero_logistics.png',
+                img: '/images/dangjin/KakaoTalk_20260316_110004318.jpg',
+                objectPos: 'center 50%',
                 specs: [
                     { label: '물동량(월)', value: '코일류 8,000 톤' },
                     { label: '보유차량', value: '25톤 카고 15대' },
