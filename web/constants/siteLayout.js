@@ -36,7 +36,7 @@ export const HERO_MAP = {
     '/contact': {
         title: '문의하기',
         subtitle: '이엘에스솔루션에 궁금하신 점을 남겨주세요',
-        bgImage: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
+        bgImage: '/images/asan/KakaoTalk_20260313_173710759_08.jpg',
     },
     '/services': {
         title: 'Service',
@@ -46,7 +46,7 @@ export const HERO_MAP = {
     '/network': {
         title: '네트워크',
         subtitle: '전국 주요 거점을 잇는 이엘에스솔루션의 인프라',
-        bgImage: '/images/container_logistics.png',
+        bgImage: '/images/asan/KakaoTalk_20260312_161338080_06.jpg',
     },
     '/employees': {
         title: 'Intranet',
@@ -61,7 +61,7 @@ export const HERO_MAP = {
     '/webzine': {
         title: '웹진',
         subtitle: '회사 소식과 이야기를 전합니다.',
-        bgImage: '/images/hero_logistics.png',
+        bgImage: '/images/steel_logistics.png',
     },
     '/admin': {
         title: '관리',
