@@ -16,7 +16,7 @@ const SIDO_MAP_SHORT = {
 
 export const TERMINAL_LIST = [
     { key: 'port_pusan_north', name: '부산북항(신선대터미널)', aliases: ['부산북항기점', '신선대', 'BPT'], r1: '부산시', r2: '남구', r3: '용당동', lat: 35.11351, lng: 129.09860 },
-    { key: 'port_pusan_new', name: '부산신항(HMMPSA 신항만, HPNT)', aliases: ['부산신항기점', 'HMM', 'HPNT', '부산신항'], r1: '부산시', r2: '강서구', r3: '성북동', lat: 35.07470, lng: 128.82390 },
+    { key: 'port_pusan_new', name: '부산신항(HMMPSA 신항만, HPNT)', aliases: ['부산신항기점', 'HMM', 'HPNT', '부산신항'], r1: '부산시', r2: '강서구', r3: '성북동', lat: 35.07061, lng: 128.83298 },
     { key: 'port_icn_old', name: '인천항(인천컨테이너터미널, ICT)', aliases: ['인천항기점', '인천남항', 'ICT'], r1: '인천시', r2: '중구', r3: '연안동', lat: 37.44110, lng: 126.60220 },
     { key: 'port_icn_new', name: '인천신항(한진인천컨테이너터미널)', aliases: ['인천신항기점', 'HJIT', '선광신항터미널'], r1: '인천시', r2: '연수구', r3: '송도동', lat: 37.34620, lng: 126.62820 },
     { key: 'port_icn_intl', name: '인천항국제여객터미널', aliases: ['인천항신국제여객터미널'], r1: '인천시', r2: '연수구', r3: '송도동', lat: 37.42370, lng: 126.60530 },
