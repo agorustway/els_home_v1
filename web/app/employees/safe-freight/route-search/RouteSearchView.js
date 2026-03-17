@@ -1853,7 +1853,14 @@ export default function RouteSearchView({ options, period, onBack }) {
                         {(() => {
                             const renderFareValue = (amt, isOneWayBase = false) => {
                                 if (tripMode === 'round') {
-                                    if (isOneWayBase) return formatWon(amt * 2);
+                                    if (isOneWayBase) {
+                                        return (
+                                            <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
+                                                <span>{formatWon(amt * 2)}</span>
+                                                <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 추정치)</span>
+                                            </span>
+                                        );
+                                    }
                                     return formatWon(amt);
                                 } else {
                                     // 편도 모드일 때 (편도금액 위에, 왕복금액 괄호로 아래에 작게 표시)
@@ -1862,7 +1869,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     return (
                                         <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
                                             <span>{formatWon(oneWayAmt)}</span>
-                                            <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 {formatWon(roundAmt)})</span>
+                                            <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 {isOneWayBase ? '추정치 ' : ''}{formatWon(roundAmt)})</span>
                                         </span>
                                     );
                                 }
