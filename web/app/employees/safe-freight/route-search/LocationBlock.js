@@ -55,18 +55,25 @@ const LocationBlock = ({
     /* ─── 행정구역 드롭다운 목록 (regionsData prop 기반) ─── */
     const r1List = useMemo(() => Object.keys(regionsData), [regionsData]);
     const r2List = useMemo(() => {
-        if (!locState.r1 || !regionsData[locState.r1]) return [];
+        if (!locState.r1 || !regionsData[locState.r1]) return locState.r2 ? [locState.r2] : [];
         const val = regionsData[locState.r1];
-        return Array.isArray(val) ? val : Object.keys(val);
-    }, [regionsData, locState.r1]);
-    const r3List = useMemo(() => {
-        if (!locState.r1 || !locState.r2 || !regionsData[locState.r1]) return [];
-        const sigungu = regionsData[locState.r1];
-        if (!sigungu) return [];
-        const dongs = sigungu[locState.r2];
-        if (!dongs) return [];
-        return Array.isArray(dongs) ? dongs : Object.keys(dongs);
+        let list = Array.isArray(val) ? val : (val ? Object.keys(val) : []);
+        if (locState.r2 && !list.includes(locState.r2)) {
+            list = [...list, locState.r2];
+        }
+        return list;
     }, [regionsData, locState.r1, locState.r2]);
+    const r3List = useMemo(() => {
+        if (!locState.r1 || !locState.r2 || !regionsData[locState.r1]) return locState.r3 ? [locState.r3] : [];
+        const sigungu = regionsData[locState.r1];
+        if (!sigungu) return locState.r3 ? [locState.r3] : [];
+        const dongs = sigungu[locState.r2];
+        let list = Array.isArray(dongs) ? dongs : (dongs ? Object.keys(dongs) : []);
+        if (locState.r3 && !list.includes(locState.r3)) {
+            list = [...list, locState.r3];
+        }
+        return list;
+    }, [regionsData, locState.r1, locState.r2, locState.r3]);
 
     /* ─── 카카오 주소검색 (2번 줄 입력) ─── */
     const handleJusoInput = useCallback((val) => {
