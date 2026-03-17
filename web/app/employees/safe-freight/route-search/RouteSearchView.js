@@ -1081,140 +1081,129 @@ export default function RouteSearchView({ options, period, onBack }) {
         setSectionFareResults([]);
         setSectionFareOneWayResults([]);
 
-        // 기점(Terminal) 찾기
-        const termObj = [useOrigin, useDest, ...waypoints].find(p => p.terminalKey) || useOrigin;
+        // 기점(Terminal) 찾기 (라우트 내 모든 위치 확인)
+        const routeLocs = [useOrigin, ...waypoints, useDest].filter(p => !!p);
+        const terminalsInRoute = routeLocs.filter(p => p.terminalKey);
+        if (terminalsInRoute.length === 0) terminalsInRoute.push(useOrigin);
+
         const originsList = options?.origins || [];
-        // 의왕ICD 등 특정 키워드 보정
-        const termRawText = termObj.terminalKey === 'port_kt_icd' ? '의왕ICD' : (termObj.text || '');
-        const termClean = termRawText.replace(/\s/g, '');
+        const tempSections = [];
+        const tempOneWays = [];
+        const seenSectionKeys = new Set();
+        const seenOneWayKeys = new Set();
 
-        console.log('Fare Lookup Start - Terminal:', termClean);
+        for (const termObj of terminalsInRoute) {
+            const termRawText = termObj.terminalKey === 'port_kt_icd' ? '의왕ICD' : (termObj.text || '');
+            const termClean = termRawText.replace(/\s/g, '');
 
-        if (!termClean) return;
+            console.log('Fare Lookup Start - Terminal Check:', termClean);
+            if (!termClean) continue;
 
-        // 왕복 기점 찾기
-        let matchedOrigin = originsList.find(o => {
-            const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-            return termClean.includes(cleanId) || cleanId.includes(termClean);
-        });
-        const roundOrigin = originsList.find(o => {
-            const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-            return o.id.includes('[왕복]') && (termClean.includes(cleanId) || cleanId.includes(termClean));
-        });
-        if (roundOrigin) matchedOrigin = roundOrigin;
+            // 왕복/일반 기점 찾기
+            let matchedOrigin = originsList.find(o => {
+                const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
+                return termClean.includes(cleanId) || cleanId.includes(termClean);
+            });
+            const roundOrigin = originsList.find(o => {
+                const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
+                return o.id.includes('[왕복]') && (termClean.includes(cleanId) || cleanId.includes(termClean));
+            });
+            if (roundOrigin) matchedOrigin = roundOrigin;
 
-        // 행선지 후보들
-        const allLocs = [useOrigin, useDest, ...waypoints].filter(p => p.r1 && p.r2 && p.r3);
-        const hasOtherRegion = allLocs.some(p => p.r3 !== termObj.r3);
-        const addrCandidates = allLocs.filter(p => {
-            if (p === termObj) return false;
-            if (hasOtherRegion && p.r3 === termObj.r3) return false;
-            return true;
-        });
+            // 행선지 후보들
+            const allLocs = routeLocs.filter(p => p.r1 && p.r2 && p.r3);
+            const hasOtherRegion = allLocs.some(p => p.r3 !== termObj.r3);
+            const addrCandidates = allLocs.filter(p => {
+                if (p === termObj) return false;
+                if (hasOtherRegion && p.r3 === termObj.r3) return false;
+                return true;
+            });
 
-        if (matchedOrigin && addrCandidates.length > 0) {
-            const tempSections = [];
-            const tempOneWays = [];
-            const seenKeys = new Set();
+            if (addrCandidates.length > 0) {
+                for (const addrObj of addrCandidates) {
+                    const reqR1 = addrObj.r1;
+                    const reqR2 = addrObj.r2;
+                    const reqR3 = addrObj.r3;
 
-            for (const addrObj of addrCandidates) {
-                const reqR1 = addrObj.r1;
-                const reqR2 = addrObj.r2;
-                const reqR3 = addrObj.r3;
-                const regionKey = `${reqR1}|${reqR2}|${reqR3}`;
-                if (seenKeys.has(regionKey)) continue;
-                seenKeys.add(regionKey);
-
-                try {
-                    const sParams = new URLSearchParams({
-                        type: 'section',
-                        period: displayPeriod,
-                        origin: matchedOrigin.id,
-                        region1: reqR1,
-                        region2: reqR2,
-                        region3: reqR3,
-                        mode: 'latest',
-                    });
-                    const sRes = await fetch(`/api/safe-freight/lookup?${sParams.toString()}`);
-                    if (sRes.ok) {
-                        const sData = await sRes.json();
-                        if (sData.rows?.length > 0) {
-                            const sRow = sData.rows[0];
-                            tempSections.push({
-                                origin: matchedOrigin.id,
-                                destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                period: sRow.period,
-                                km: sRow.km,
-                                f40위탁: sRow.f40위탁 || 0,
-                                f40운수자: sRow.f40운수자 || 0,
-                                f40안전: sRow.f40안전 || 0,
-                                f20위탁: sRow.f20위탁 || 0,
-                                f20운수자: sRow.f20운수자 || 0,
-                                f20안전: sRow.f20안전 || 0,
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.warn('Section fare lookup error:', err);
-                }
-
-                // ── 3) 수도권 편도 구간 찾기 ──
-                const oneWayOrigin = originsList.find(o => {
-                    if (!o.id.includes('[편도]')) return false;
-                    const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); 
-                    if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0, 4))) return true;
-                    if (cleanId.includes('-')) {
-                        const parts = cleanId.split('-');
-                        const addrFull = (reqR1 || '') + (reqR2 || '') + (reqR3 || '');
-                        const termStart = termClean.substring(0, 4);
-                        const addrStart = addrFull.substring(0, 2);
-                        const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) &&
-                                        (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
-                        const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) &&
-                                        (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
-                        return match1 || match2;
-                    }
-                    return false;
-                });
-
-                if (oneWayOrigin) {
-                    try {
-                        const owParams = new URLSearchParams({
-                            type: 'section',
-                            period: displayPeriod,
-                            origin: oneWayOrigin.id,
-                            region1: reqR1,
-                            region2: reqR2,
-                            region3: reqR3,
-                            mode: 'latest',
-                        });
-                        const owRes = await fetch(`/api/safe-freight/lookup?${owParams.toString()}`);
-                        if (owRes.ok) {
-                            const owData = await owRes.json();
-                            if (owData.rows?.length > 0) {
-                                const owRow = owData.rows[0];
-                                tempOneWays.push({
-                                    origin: oneWayOrigin.id,
-                                    destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                    period: owRow.period,
-                                    km: owRow.km,
-                                    f40위탁: owRow.f40위탁 || 0,
-                                    f40운수자: owRow.f40운수자 || 0,
-                                    f40안전: owRow.f40안전 || 0,
-                                    f20위탁: owRow.f20위탁 || 0,
-                                    f20운수자: owRow.f20운수자 || 0,
-                                    f20안전: owRow.f20안전 || 0,
+                    if (matchedOrigin) {
+                        const sectionKey = `${matchedOrigin.id}|${reqR1}|${reqR2}|${reqR3}`;
+                        if (!seenSectionKeys.has(sectionKey)) {
+                            seenSectionKeys.add(sectionKey);
+                            try {
+                                const sParams = new URLSearchParams({
+                                    type: 'section', period: displayPeriod, origin: matchedOrigin.id,
+                                    region1: reqR1, region2: reqR2, region3: reqR3, mode: 'latest'
                                 });
+                                const sRes = await fetch(`/api/safe-freight/lookup?${sParams.toString()}`);
+                                if (sRes.ok) {
+                                    const sData = await sRes.json();
+                                    if (sData.rows?.length > 0) {
+                                        const sRow = sData.rows[0];
+                                        tempSections.push({
+                                            origin: matchedOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                            period: sRow.period, km: sRow.km,
+                                            f40위탁: sRow.f40위탁 || 0, f40운수자: sRow.f40운수자 || 0, f40안전: sRow.f40안전 || 0,
+                                            f20위탁: sRow.f20위탁 || 0, f20운수자: sRow.f20운수자 || 0, f20안전: sRow.f20안전 || 0,
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                console.warn('Section fare lookup error:', err);
                             }
                         }
-                    } catch (err) {
-                        console.warn('One-way section fare lookup error:', err);
+                    }
+
+                    // ── 3) 수도권 편도 구간 찾기 ──
+                    const oneWayOrigins = originsList.filter(o => {
+                        if (!o.id.includes('[편도]')) return false;
+                        const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); 
+                        if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0, 4))) return true;
+                        if (cleanId.includes('-')) {
+                            const parts = cleanId.split('-');
+                            const addrFull = (reqR1 || '') + (reqR2 || '') + (reqR3 || '');
+                            const termStart = termClean.substring(0, 4);
+                            const addrStart = addrFull.substring(0, 2);
+                            const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) &&
+                                            (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
+                            const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) &&
+                                            (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
+                            return match1 || match2;
+                        }
+                        return false;
+                    });
+
+                    for (const oneWayOrigin of oneWayOrigins) {
+                        const owKey = `${oneWayOrigin.id}|${reqR1}|${reqR2}|${reqR3}`;
+                        if (!seenOneWayKeys.has(owKey)) {
+                            seenOneWayKeys.add(owKey);
+                            try {
+                                const owParams = new URLSearchParams({
+                                    type: 'section', period: displayPeriod, origin: oneWayOrigin.id,
+                                    region1: reqR1, region2: reqR2, region3: reqR3, mode: 'latest'
+                                });
+                                const owRes = await fetch(`/api/safe-freight/lookup?${owParams.toString()}`);
+                                if (owRes.ok) {
+                                    const owData = await owRes.json();
+                                    if (owData.rows?.length > 0) {
+                                        const owRow = owData.rows[0];
+                                        tempOneWays.push({
+                                            origin: oneWayOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                            period: owRow.period, km: owRow.km,
+                                            f40위탁: owRow.f40위탁 || 0, f40운수자: owRow.f40운수자 || 0, f40안전: owRow.f40안전 || 0,
+                                            f20위탁: owRow.f20위탁 || 0, f20운수자: owRow.f20운수자 || 0, f20안전: owRow.f20안전 || 0,
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                console.warn('One-way section fare lookup error:', err);
+                            }
+                        }
                     }
                 }
             }
-            setSectionFareResults(tempSections);
-            setSectionFareOneWayResults(tempOneWays);
         }
+        setSectionFareResults(tempSections);
+        setSectionFareOneWayResults(tempOneWays);
     };
 
     /* ─── 결과 저장 ─── */
