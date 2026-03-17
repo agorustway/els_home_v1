@@ -11,12 +11,12 @@ import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
    ═══════════════════════════════════════════════════ */
 
 const CAR_TYPES = [
-    { id: 1, label: '소형차 (1종)', mileage: 12 },
-    { id: 2, label: '중형차 (2종)', mileage: 8 },
-    { id: 3, label: '대형차 (3종)', mileage: 5 },
-    { id: 4, label: '소형화물차 (4종)', mileage: 6 },
-    { id: 5, label: '중형화물차 (5종)', mileage: 4.5 },
-    { id: 6, label: '대형화물차 (6종)', mileage: 3.5 },
+    { id: 1, label: '승용차/소형/1톤이하 (1종)', mileage: 12 },
+    { id: 2, label: '중형승합/중형화물 (2종)', mileage: 8 },
+    { id: 3, label: '대형승합/2축대형화물 (3종)', mileage: 5 },
+    { id: 4, label: '대형화물차 (4종, 3축)', mileage: 4.5 },
+    { id: 5, label: '특수화물차 (5종, 4축이상)', mileage: 3.5 },
+    { id: 6, label: '경차 (할인)', mileage: 15 },
 ];
 
 /** Directions 15 API 경로 옵션 (최대 3개씩 요청 가능) — 네이버 웹 지도와 유사한 명칭 */
@@ -194,7 +194,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [origin, setOrigin] = useState({ text: '', lng: null, lat: null, r1: '', r2: '', r3: '', terminalKey: '' });
     const [destination, setDestination] = useState({ text: '', lng: null, lat: null, r1: '', r2: '', r3: '', terminalKey: '' });
     const [waypoints, setWaypoints] = useState([]); // [{text, lng, lat, r1, r2, r3, terminalKey}]
-    const [cartype, setCartype] = useState(6);
+    const [cartype, setCartype] = useState(5);
     const [timeMode, setTimeMode] = useState('scheduled'); // 'scheduled' | 'realtime'
     const [selectedOptions, setSelectedOptions] = useState(['trafast', 'tracomfort', 'traoptimal', 'traavoidtoll', 'traavoidcaronly']);
     const [tripMode, setTripMode] = useState('round');
@@ -1486,7 +1486,6 @@ export default function RouteSearchView({ options, period, onBack }) {
     const currentFuelPrice = fuelInfo?.price || 0;
     const currentFuelDiff = fuelInfo?.diff || 0;
     const weekDiff = fuelInfo?.weekDiff || 0;
-    const monthDiff = fuelInfo?.monthDiff || 0;
 
     const tripMult = tripMode === 'round' ? 2 : 1; // 운행비 왕복 배수
     const parsedRoutes = useMemo(() => {
@@ -1764,7 +1763,6 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             ⛽ {currentFuelPrice.toLocaleString()}원/L
                                             <span style={{ color: currentFuelDiff > 0 ? '#ef4444' : currentFuelDiff < 0 ? '#3b82f6' : '#64748b' }}>({currentFuelDiff > 0 ? '+' : ''}{currentFuelDiff})</span>
                                             <span style={{ color: '#64748b', borderLeft: '1px solid #e2e8f0', paddingLeft: 6 }}>1주: <b style={{ color: weekDiff > 0 ? '#ef4444' : weekDiff < 0 ? '#3b82f6' : '#64748b' }}>{weekDiff > 0 ? '+' : ''}{weekDiff}</b></span>
-                                            <span style={{ color: '#64748b' }}>1달: <b style={{ color: monthDiff > 0 ? '#ef4444' : monthDiff < 0 ? '#3b82f6' : '#64748b' }}>{monthDiff > 0 ? '+' : ''}{monthDiff}</b></span>
                                         </span>
                                     </span>
                                 )}

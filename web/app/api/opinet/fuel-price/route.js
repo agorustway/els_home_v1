@@ -54,7 +54,6 @@ export async function GET() {
                 date: item.TRADE_DT,
                 weekLog: [],
                 weekDiff: 0,
-                monthDiff: 0, // 1달 데이터는 API 제한으로 추산값 또는 0 처리
             };
         }
 
@@ -74,7 +73,6 @@ export async function GET() {
                 const oldest = history[0].price;
                 const newest = history[history.length - 1].price;
                 oils[cd].weekDiff = +(newest - oldest).toFixed(2);
-                oils[cd].monthDiff = +(oils[cd].weekDiff * 4.2).toFixed(2); // 1달 데이터가 없어서 4주 평균으로 1달 변동폭 추산. (사용자 요청사항 대응)
             }
         }
 
