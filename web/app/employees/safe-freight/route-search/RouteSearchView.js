@@ -1768,7 +1768,6 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 )}
                             </p>
                             {parsedRoutes.map(r => {
-                                const isRound = tripMode === 'round';
                                 return (
                                     <button
                                         key={r.key}
@@ -1781,15 +1780,13 @@ export default function RouteSearchView({ options, period, onBack }) {
                                         <div className={styles.routeCardBody}>
                                             <span className={styles.routeLabel}>{r.desc}</span>
                                             <span className={styles.routeStats}>
-                                                {r.distKm}km · {msToTime(r.durationOneWay || r.duration)}
-                                                {isRound && ` (왕복 ${msToTime(r.duration)})`}
+                                                {r.distKm}km · {msToTime(r.durationOneWay)}
+                                                {` (왕복 ${msToTime(r.durationOneWay * 2)})`}
                                             </span>
                                             <span className={styles.routeCosts}>
-                                                {r.tollOneWay > 0 && <>🛣️ 통행료 {r.tollOneWay.toLocaleString()}원</>}
-                                                {isRound && r.tollFare > 0 && ` (왕복 ${r.tollFare.toLocaleString()}원)`}
-                                                {(r.tollOneWay > 0 || r.tollFare > 0) && r.fuelCostOneWay > 0 && ' · '}
-                                                {r.fuelCostOneWay > 0 && <>⛽ 유류비 {r.fuelCostOneWay.toLocaleString()}원</>}
-                                                {isRound && r.fuelCost > 0 && ` (왕복 ${r.fuelCost.toLocaleString()}원)`}
+                                                {r.tollOneWay > 0 && <>🛣️ 통행료 {r.tollOneWay.toLocaleString()}원 (왕복 {(r.tollOneWay * 2).toLocaleString()}원)</>}
+                                                {r.tollOneWay > 0 && r.fuelCostOneWay > 0 && ' · '}
+                                                {r.fuelCostOneWay > 0 && <>⛽ 유류비 {r.fuelCostOneWay.toLocaleString()}원 (왕복 {(r.fuelCostOneWay * 2).toLocaleString()}원)</>}
                                             </span>
                                         </div>
                                         {selectedRouteKey === r.key && <span className={styles.routeCheck}>✓</span>}
@@ -1807,10 +1804,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                         {(() => {
                             const sel = parsedRoutes.find(r => r.key === selectedRouteKey);
                             if (!sel) return null;
-                            const isRound = tripMode === 'round';
                             return (
                                 <div className={styles.drivingSummary}>
-                                    <p className={styles.drivingTitle}>🚛 선택 경로 운행비용 {isRound ? '(왕복 기준 정보 포함)' : '(편도)'}</p>
+                                    <p className={styles.drivingTitle}>🚛 선택 경로 운행비용 (편도 및 왕복 정보)</p>
                                     <div className={styles.drivingGrid}>
                                         <div className={styles.drivingItem}>
                                             <span className={styles.drivingLabel}>거리</span>
@@ -1820,34 +1816,34 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             <span className={styles.drivingLabel}>소요시간 (편도)</span>
                                             <span className={styles.drivingValue}>
                                                 {msToTime(sel.durationOneWay)}
-                                                {isRound && <span className={styles.oneWayNote}> (왕복 {msToTime(sel.duration)})</span>}
+                                                <span className={styles.oneWayNote}> (왕복 {msToTime(sel.durationOneWay * 2)})</span>
                                             </span>
                                         </div>
                                         <div className={styles.drivingItem}>
                                             <span className={styles.drivingLabel}>🛣️ 통행료 (편도)</span>
                                             <span className={styles.drivingValue}>
                                                 {sel.tollOneWay > 0 ? `${sel.tollOneWay.toLocaleString()}원` : '무료'}
-                                                {isRound && sel.tollFare > 0 && <span className={styles.oneWayNote}> (왕복 {sel.tollFare.toLocaleString()}원)</span>}
+                                                {sel.tollOneWay > 0 && <span className={styles.oneWayNote}> (왕복 {(sel.tollOneWay * 2).toLocaleString()}원)</span>}
                                             </span>
                                         </div>
                                         <div className={styles.drivingItem}>
                                             <span className={styles.drivingLabel}>⛽ 유류비 (편도)</span>
                                             <span className={styles.drivingValue}>
                                                 {sel.fuelCostOneWay > 0 ? `${sel.fuelCostOneWay.toLocaleString()}원` : '-'}
-                                                {isRound && sel.fuelCost > 0 && <span className={styles.oneWayNote}> (왕복 {sel.fuelCost.toLocaleString()}원)</span>}
+                                                {sel.fuelCostOneWay > 0 && <span className={styles.oneWayNote}> (왕복 {(sel.fuelCostOneWay * 2).toLocaleString()}원)</span>}
                                             </span>
                                         </div>
                                         <div className={styles.drivingItem}>
                                             <span className={styles.drivingLabel}>예상 연료 (편도)</span>
                                             <span className={styles.drivingValue}>
                                                 {sel.litersOneWay}L (연비 {currentMileage}km/L)
-                                                {isRound && <span className={styles.oneWayNote}> (왕복 {sel.liters}L)</span>}
+                                                <span className={styles.oneWayNote}> (왕복 {Math.round(sel.litersOneWay * 2 * 10) / 10}L)</span>
                                             </span>
                                         </div>
                                         <div className={`${styles.drivingItem} ${styles.drivingItemTotal}`}>
                                             <span className={styles.drivingLabel}>운행비 합계 (편도)</span>
                                             <span className={styles.drivingValueTotal}>{(sel.tollOneWay + sel.fuelCostOneWay).toLocaleString()}원</span>
-                                            {isRound && <span className={styles.oneWayNote} style={{ marginLeft: '6px' }}> (왕복 {sel.totalCost.toLocaleString()}원)</span>}
+                                            <span className={styles.oneWayNote} style={{ marginLeft: '6px' }}> (왕복 {((sel.tollOneWay + sel.fuelCostOneWay) * 2).toLocaleString()}원)</span>
                                         </div>
                                     </div>
                                 </div>
