@@ -1850,7 +1850,27 @@ export default function RouteSearchView({ options, period, onBack }) {
                             );
                         })()}
 
-                        {/* ── 거리별운임 (항상 표시) ── */}
+                        {(() => {
+                            const renderFareValue = (amt, isOneWayBase = false) => {
+                                if (tripMode === 'round') {
+                                    if (isOneWayBase) return formatWon(amt * 2);
+                                    return formatWon(amt);
+                                } else {
+                                    // 편도 모드일 때 (편도금액 위에, 왕복금액 괄호로 아래에 작게 표시)
+                                    const oneWayAmt = isOneWayBase ? amt : amt / 2;
+                                    const roundAmt = isOneWayBase ? amt * 2 : amt;
+                                    return (
+                                        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
+                                            <span>{formatWon(oneWayAmt)}</span>
+                                            <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 {formatWon(roundAmt)})</span>
+                                        </span>
+                                    );
+                                }
+                            };
+
+                            return (
+                                <>
+                                    {/* ── 거리별운임 (항상 표시) ── */}
                         {distFareResult && (
                             <>
                                 <div className={styles.fareSectionHeader}>
@@ -1878,15 +1898,15 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     <tbody>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{formatWon(distFareResult.f40위탁)}</td>
-                                            <td>{formatWon(distFareResult.f40운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(distFareResult.f40안전)}</td>
+                                            <td>{renderFareValue(distFareResult.f40위탁)}</td>
+                                            <td>{renderFareValue(distFareResult.f40운수자)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f40안전)}</td>
                                         </tr>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{formatWon(distFareResult.f20위탁)}</td>
-                                            <td>{formatWon(distFareResult.f20운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(distFareResult.f20안전)}</td>
+                                            <td>{renderFareValue(distFareResult.f20위탁)}</td>
+                                            <td>{renderFareValue(distFareResult.f20운수자)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f20안전)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1964,15 +1984,15 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     <tbody>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{formatWon(fare.f40위탁)}</td>
-                                            <td>{formatWon(fare.f40운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(fare.f40안전)}</td>
+                                            <td>{renderFareValue(fare.f40위탁, true)}</td>
+                                            <td>{renderFareValue(fare.f40운수자, true)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f40안전, true)}</td>
                                         </tr>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{formatWon(fare.f20위탁)}</td>
-                                            <td>{formatWon(fare.f20운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(fare.f20안전)}</td>
+                                            <td>{renderFareValue(fare.f20위탁, true)}</td>
+                                            <td>{renderFareValue(fare.f20운수자, true)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f20안전, true)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -2015,6 +2035,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 📄 엑셀
                             </button>
                         </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
