@@ -11,27 +11,27 @@ export const HERO_MAP = {
     '/vision': {
         title: '경영이념',
         subtitle: '이엘에스솔루션이 추구하는 핵심 가치와 미래상',
-        bgImage: '/images/hero_cy.png',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/esg': {
         title: 'ESG',
         subtitle: '지속가능한 물류의 미래를 위한 약속',
-        bgImage: '/images/container_logistics.png',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/team': {
         title: '조직도',
         subtitle: '효율적인 의사결정과 전문성을 갖춘 조직 구성',
-        bgImage: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/history': {
         title: '연혁',
         subtitle: '끊임없는 변화와 성장의 발걸음',
-        bgImage: '/images/hero_logistics.png',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/welfare': {
         title: '사원복지',
         subtitle: '구성원과 함께 성장하는 회사',
-        bgImage: '/images/hero_logistics.png',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/contact': {
         title: '문의하기',
