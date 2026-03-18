@@ -1,0 +1,20 @@
+{
+  "id": "/driver-app",
+  "scope": "/driver-app",
+  "name": "ELS 운전원 전용",
+  "short_name": "ELS 운전원",
+  "description": "ELS Driver Tracking App",
+  "start_url": "/driver-app",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e293b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2555/2555013.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,15 +1,15 @@
 'use client';
 import { useEffect } from 'react';
-import Hero from '../components/Hero';
-import Intro from '../components/Intro';
-import History from '../components/History';
-import Organization from '../components/Organization';
-import Vision from '../components/Vision';
-import ESG from '../components/ESG';
-import Dashboard from '../components/Dashboard';
-import WebzineSection from '../components/WebzineSection';
-import Network from '../components/Network';
-import Business from '../components/Business';
+import Hero from '../../components/Hero';
+import Intro from '../../components/Intro';
+import History from '../../components/History';
+import Organization from '../../components/Organization';
+import Vision from '../../components/Vision';
+import ESG from '../../components/ESG';
+import Dashboard from '../../components/Dashboard';
+import WebzineSection from '../../components/WebzineSection';
+import Network from '../../components/Network';
+import Business from '../../components/Business';
 
 export default function Home() {
   useEffect(() => {

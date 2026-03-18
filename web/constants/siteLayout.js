@@ -76,7 +76,7 @@ export function isEmployeesPath(pathname) {
 }
 
 /** 이 경로들은 상단 네비·사이드바 없이 Header + children + Footer 만 (또는 children만) */
-export const MINIMAL_LAYOUT_PATHS = ['/login', '/auth'];
+export const MINIMAL_LAYOUT_PATHS = ['/login', '/auth', '/driver-app'];
 
 /**
  * 본문 상단 서브메뉴: 그룹별 하위 메뉴 목록
