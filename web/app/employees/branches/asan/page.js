@@ -20,7 +20,8 @@ const PREFS_KEY = 'asan_dispatch_prefs';
 
 // ===== 헬퍼 =====
 function getTabType(dateStr) {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const d = new Date(dateStr + 'T00:00:00');
     const day = d.getDay();
     const isHoliday = HOLIDAYS.has(dateStr);
@@ -152,7 +153,8 @@ export default function AsanDispatchPage() {
         try {
             const r = await fetch(`/api/branches/asan/dispatch?type=${type}`); const j = await r.json();
             const items = j.data || []; setData(items);
-            const today = new Date().toISOString().split('T')[0];
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
             // 1. 오늘 날짜 찾기
             let ti = items.findIndex(d => d.target_date === today);
