@@ -36,7 +36,7 @@ export const HERO_MAP = {
     '/contact': {
         title: '문의하기',
         subtitle: '이엘에스솔루션에 궁금하신 점을 남겨주세요',
-        bgImage: '/images/asan/KakaoTalk_20260313_173710759_08.jpg',
+        bgImage: '/images/office_intro.png',
     },
     '/services': {
         title: 'Service',
