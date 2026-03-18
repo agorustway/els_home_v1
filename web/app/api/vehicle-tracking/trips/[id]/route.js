@@ -76,7 +76,7 @@ export async function PATCH(request, { params }) {
 
     try {
         const body = await request.json();
-        const { action, photos, special_notes, container_number, seal_number, container_type, vehicle_id } = body;
+        const { action, photos, special_notes, container_number, seal_number, container_type, vehicle_id, driver_name, driver_phone, vehicle_number } = body;
 
         const updates = { updated_at: new Date().toISOString() };
 
@@ -98,6 +98,9 @@ export async function PATCH(request, { params }) {
         if (seal_number !== undefined) updates.seal_number = seal_number;
         if (container_type !== undefined) updates.container_type = container_type;
         if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
+        if (driver_name !== undefined) updates.driver_name = driver_name;
+        if (driver_phone !== undefined) updates.driver_phone = driver_phone;
+        if (vehicle_number !== undefined) updates.vehicle_number = vehicle_number;
 
         const { data, error } = await supabase
             .from('vehicle_trips')

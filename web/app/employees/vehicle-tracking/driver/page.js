@@ -290,14 +290,24 @@ export default function DriverPage() {
         }
     };
 
-    // 재개
+    // 재개 (재개 시 수정한 정보도 함께 서버로 전송)
     const handleResume = async () => {
         if (!activeTrip) return;
         try {
             const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'resume' }),
+                body: JSON.stringify({
+                    action: 'resume',
+                    driver_name: driverName,
+                    driver_phone: driverPhone,
+                    vehicle_number: vehicleNumber,
+                    vehicle_id: vehicleId,
+                    container_number: containerNumber,
+                    seal_number: sealNumber,
+                    container_type: containerType,
+                    special_notes: specialNotes,
+                }),
             });
             const data = await res.json();
             if (data.trip) {
@@ -320,7 +330,17 @@ export default function DriverPage() {
             const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'complete' }),
+                body: JSON.stringify({ 
+                    action: 'complete',
+                    driver_name: driverName,
+                    driver_phone: driverPhone,
+                    vehicle_number: vehicleNumber,
+                    vehicle_id: vehicleId,
+                    container_number: containerNumber,
+                    seal_number: sealNumber,
+                    container_type: containerType,
+                    special_notes: specialNotes,
+                }),
             });
             const data = await res.json();
             if (data.trip) {
@@ -427,6 +447,7 @@ export default function DriverPage() {
     };
 
     const isActive = tripStatus === 'driving' || tripStatus === 'paused';
+    const isDriving = tripStatus === 'driving'; // 운행 중에만 입력 잠금 (일시정지 시 수정 가능)
 
     return (
         <div className={styles.driverPage}>
@@ -473,7 +494,7 @@ export default function DriverPage() {
                                 placeholder="충남11바1234"
                                 value={vehicleNumber}
                                 onChange={e => setVehicleNumber(e.target.value)}
-                                disabled={isActive}
+                                disabled={isDriving}
                             />
                         </div>
                         <div className={styles.formRow}>
@@ -483,7 +504,7 @@ export default function DriverPage() {
                                 placeholder="ABCD1234"
                                 value={vehicleId}
                                 onChange={e => setVehicleId(e.target.value.toUpperCase())}
-                                disabled={isActive}
+                                disabled={isDriving}
                                 maxLength={8}
                                 style={{ textTransform: 'uppercase', letterSpacing: '1px' }}
                             />
@@ -498,7 +519,7 @@ export default function DriverPage() {
                                 placeholder="홍길동"
                                 value={driverName}
                                 onChange={e => setDriverName(e.target.value)}
-                                disabled={isActive}
+                                disabled={isDriving}
                             />
                         </div>
                         <div className={styles.formRow}>
@@ -508,7 +529,7 @@ export default function DriverPage() {
                                 placeholder="010-0000-0000"
                                 value={driverPhone}
                                 onChange={e => setDriverPhone(e.target.value)}
-                                disabled={isActive}
+                                disabled={isDriving}
                                 type="tel"
                             />
                         </div>
@@ -522,7 +543,7 @@ export default function DriverPage() {
                                 placeholder="CAIU1234567"
                                 value={containerNumber}
                                 onChange={e => setContainerNumber(e.target.value)}
-                                disabled={isActive}
+                                disabled={isDriving}
                             />
                         </div>
                         <div className={styles.formRow}>
@@ -532,7 +553,7 @@ export default function DriverPage() {
                                 placeholder="ABC1234"
                                 value={sealNumber}
                                 onChange={e => setSealNumber(e.target.value)}
-                                disabled={isActive}
+                                disabled={isDriving}
                             />
                         </div>
                     </div>
@@ -544,7 +565,7 @@ export default function DriverPage() {
                                 className={styles.formSelect}
                                 value={containerType}
                                 onChange={e => setContainerType(e.target.value)}
-                                disabled={isActive}
+                                disabled={isDriving}
                             >
                                 {CONTAINER_TYPES.map(t => (
                                     <option key={t} value={t}>{t}</option>
@@ -560,7 +581,7 @@ export default function DriverPage() {
                             placeholder="리퍼, 위험물 등 추가 메모"
                             value={specialNotes}
                             onChange={e => setSpecialNotes(e.target.value)}
-                            disabled={isActive}
+                            disabled={isDriving}
                         />
                     </div>
 
