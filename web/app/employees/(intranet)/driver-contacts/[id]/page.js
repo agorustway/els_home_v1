@@ -83,8 +83,16 @@ export default function DriverContactsDetailPage() {
                             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>{item.name}</div>
                         </div>
                         <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>소속지점</label>
-                            <div style={{ fontSize: '1.2rem', color: '#10b981', fontWeight: 600 }}>{item.branch || '-'}</div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>계약유형</label>
+                            <div>
+                                <span style={{
+                                    display: 'inline-block', padding: '3px 12px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600,
+                                    background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
+                                    color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
+                                }}>
+                                    {item.contract_type === 'contracted' ? '계약차량' : '미계약차량'}
+                                </span>
+                            </div>
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>연락처</label>
@@ -93,6 +101,14 @@ export default function DriverContactsDetailPage() {
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>영업넘버</label>
                             <div>{item.business_number || '-'}</div>
+                        </div>
+                        <div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량번호</label>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.vehicle_number || '-'}</div>
+                        </div>
+                        <div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량아이디</label>
+                            <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || '-'}</div>
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>아이디</label>
@@ -106,8 +122,41 @@ export default function DriverContactsDetailPage() {
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>샤시종류</label>
                             <div>{item.chassis_type || '-'}</div>
                         </div>
+                        <div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>소속지점</label>
+                            <div style={{ color: '#10b981', fontWeight: 600 }}>{item.branch || '-'}</div>
+                        </div>
                     </div>
                 </div>
+
+                {/* 마지막 운행 정보 */}
+                {item.last_container_number && (
+                    <div style={{ marginTop: '20px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.9rem', marginBottom: '10px' }}>🚛 마지막 운행 정보</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '16px' }}>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>컨테이너</div>
+                                <div style={{ fontWeight: 600 }}>{item.last_container_number}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>씰넘버</div>
+                                <div>{item.last_seal_number || '-'}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>타입</div>
+                                <div>{item.last_container_type || '-'}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>운행시작</div>
+                                <div style={{ fontSize: '0.85rem' }}>{item.last_trip_started_at ? new Date(item.last_trip_started_at).toLocaleString() : '-'}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>운행종료</div>
+                                <div style={{ fontSize: '0.85rem' }}>{item.last_trip_completed_at ? new Date(item.last_trip_completed_at).toLocaleString() : '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className={styles.detailItem} style={{ marginTop: '30px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
                     <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>📎 추가 서류 (최대 10개)</label>

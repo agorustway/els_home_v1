@@ -91,11 +91,15 @@ export default function VehicleTrackingPage() {
             const isDriving = trip.status === 'driving';
             const markerColor = isDriving ? '#10b981' : '#f59e0b';
 
+            // 차량번호 뒷 4자리 추출
+            const vNum = trip.vehicle_number || '';
+            const vLabel = vNum.length >= 4 ? vNum.slice(-4) : '';
+
             const marker = new naver.maps.Marker({
                 position: pos, map,
                 icon: {
-                    content: `<div style="width:32px;height:32px;background:${markerColor};border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;">🚛</div>`,
-                    anchor: new naver.maps.Point(16, 16),
+                    content: `<div style="min-width:38px;height:24px;padding:0 6px;background:${markerColor};border:2px solid #fff;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;letter-spacing:0.5px;">${vLabel || '───'}</div>`,
+                    anchor: new naver.maps.Point(22, 12),
                 },
             });
 
@@ -265,6 +269,7 @@ export default function VehicleTrackingPage() {
                                         <th>상태</th>
                                         <th>운전원</th>
                                         <th>차량번호</th>
+                                        <th>차량ID</th>
                                         <th>컨테이너</th>
                                         <th>타입</th>
                                         <th>특이사항</th>
@@ -282,6 +287,7 @@ export default function VehicleTrackingPage() {
                                             </td>
                                             <td><strong>{trip.driver_name}</strong></td>
                                             <td>{trip.vehicle_number}</td>
+                                            <td style={{ fontSize: '0.78rem', color: '#64748b', letterSpacing: '0.5px' }}>{trip.vehicle_id || '-'}</td>
                                             <td>{trip.container_number || '-'}</td>
                                             <td>{trip.container_type}</td>
                                             <td style={{ color: trip.special_notes ? '#ef4444' : '#94a3b8', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -361,6 +367,7 @@ export default function VehicleTrackingPage() {
                                         <th>운전원</th>
                                         <th>전화번호</th>
                                         <th>차량번호</th>
+                                        <th>차량ID</th>
                                         <th>컨테이너</th>
                                         <th>씰넘버</th>
                                         <th>타입</th>
@@ -381,6 +388,7 @@ export default function VehicleTrackingPage() {
                                             <td><strong>{trip.driver_name}</strong></td>
                                             <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{trip.driver_phone || '-'}</td>
                                             <td>{trip.vehicle_number}</td>
+                                            <td style={{ fontSize: '0.78rem', color: '#64748b', letterSpacing: '0.5px' }}>{trip.vehicle_id || '-'}</td>
                                             <td>{trip.container_number || '-'}</td>
                                             <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{trip.seal_number || '-'}</td>
                                             <td>{trip.container_type}</td>

@@ -44,12 +44,15 @@ export default function DriverContactsPage() {
                     <thead>
                         <tr>
                             <th style={{ width: '80px', textAlign: 'center' }}>사진</th>
+                            <th style={{ width: '70px', textAlign: 'center' }}>계약</th>
                             <th style={{ width: '120px' }}>영업넘버</th>
-                            <th style={{ width: '120px' }}>소속지점</th>
                             <th className={styles.colTitle}>이름</th>
                             <th style={{ width: '150px' }}>전화번호</th>
-                            <th style={{ width: '120px' }}>아이디</th>
-                            <th style={{ width: '120px' }}>차종</th>
+                            <th style={{ width: '120px' }}>차량번호</th>
+                            <th style={{ width: '90px' }}>차량ID</th>
+                            <th style={{ width: '110px' }}>마지막 컨테이너</th>
+                            <th style={{ width: '60px' }}>타입</th>
+                            <th style={{ width: '100px' }}>마지막 운행</th>
                             <th className={styles.colDate}>등록일</th>
                         </tr>
                     </thead>
@@ -63,17 +66,30 @@ export default function DriverContactsPage() {
                                         <div style={{ width: 44, height: 44, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.2rem' }}>👤</div>
                                     )}
                                 </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    <span style={{
+                                        display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: 600,
+                                        background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
+                                        color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
+                                    }}>
+                                        {item.contract_type === 'contracted' ? '계약' : '미계약'}
+                                    </span>
+                                </td>
                                 <td>{item.business_number}</td>
-                                <td>{item.branch || '-'}</td>
                                 <td className={styles.colTitle}>{item.name}</td>
                                 <td>{item.phone}</td>
-                                <td style={{ color: '#64748b', fontSize: '0.9rem' }}>{item.driver_id}</td>
-                                <td style={{ color: '#64748b' }}>{item.vehicle_type}</td>
+                                <td style={{ fontWeight: 600 }}>{item.vehicle_number || '-'}</td>
+                                <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px' }}>{item.vehicle_id || '-'}</td>
+                                <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.last_container_number || '-'}</td>
+                                <td style={{ fontSize: '0.8rem' }}>{item.last_container_type || '-'}</td>
+                                <td style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                    {item.last_trip_started_at ? new Date(item.last_trip_started_at).toLocaleDateString() : '-'}
+                                </td>
                                 <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
                         {list.length === 0 && (
-                            <tr><td colSpan="8" className={styles.empty}>등록된 운전원 정보가 없습니다.</td></tr>
+                            <tr><td colSpan="11" className={styles.empty}>등록된 운전원 정보가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

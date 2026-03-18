@@ -24,6 +24,7 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 export default function DriverPage() {
     // 폼 상태
     const [vehicleNumber, setVehicleNumber] = useState('');
+    const [vehicleId, setVehicleId] = useState('');
     const [driverName, setDriverName] = useState('');
     const [driverPhone, setDriverPhone] = useState('');
     const [containerNumber, setContainerNumber] = useState('');
@@ -32,6 +33,7 @@ export default function DriverPage() {
     const [specialNotes, setSpecialNotes] = useState('');
     const [photos, setPhotos] = useState([]); // { previewUrl, uploaded, url, key }[]
     const [uploading, setUploading] = useState(false);
+    const [driverContactLoaded, setDriverContactLoaded] = useState(false);
 
     // 운행 상태
     const [activeTrip, setActiveTrip] = useState(null); // 현재 활성 운행
@@ -60,6 +62,10 @@ export default function DriverPage() {
                 if (data.profile) {
                     setDriverName(data.profile.full_name || '');
                     setDriverPhone(data.profile.phone || '');
+                    // 프로필 로드 후 운전원정보 매칭 시도
+                    if (data.profile.phone) {
+                        loadDriverContact(data.profile.phone);
+                    }
                 }
             } catch { }
         })();
@@ -72,6 +78,31 @@ export default function DriverPage() {
     useEffect(() => {
         fetchHistory();
     }, [historyMonth]);
+
+    // 운전원정보에서 기존 차량 데이터 로드 (전화번호 기준)
+    const loadDriverContact = async (phone, vehicleNum) => {
+        if (driverContactLoaded) return;
+        try {
+            const res = await fetch('/api/driver-contacts');
+            const data = await res.json();
+            if (data.list) {
+                const normalPhone = (phone || '').replace(/[^0-9]/g, '');
+                let match = null;
+                if (normalPhone) {
+                    match = data.list.find(d => (d.phone || '').replace(/[^0-9]/g, '').endsWith(normalPhone.slice(-8)));
+                }
+                if (!match && vehicleNum) {
+                    match = data.list.find(d => d.vehicle_number === vehicleNum);
+                }
+                if (match) {
+                    if (match.vehicle_number && !vehicleNumber) setVehicleNumber(match.vehicle_number);
+                    if (match.vehicle_id && !vehicleId) setVehicleId(match.vehicle_id);
+                    if (match.name && !driverName) setDriverName(match.name);
+                    setDriverContactLoaded(true);
+                }
+            }
+        } catch { }
+    };
 
     const checkActiveTrip = async () => {
         try {
@@ -217,6 +248,7 @@ export default function DriverPage() {
                     driver_name: driverName,
                     driver_phone: driverPhone,
                     vehicle_number: vehicleNumber,
+                    vehicle_id: vehicleId,
                     container_number: containerNumber,
                     seal_number: sealNumber,
                     container_type: containerType,
@@ -433,15 +465,29 @@ export default function DriverPage() {
             <div className={styles.formSection}>
                 <div className={styles.formTitle}>🚛 운행 정보</div>
                 <div className={styles.formGrid}>
-                    <div className={styles.formRow}>
-                        <label className={styles.formLabel}>차량번호 *</label>
-                        <input
-                            className={styles.formInput}
-                            placeholder="충남11바1234"
-                            value={vehicleNumber}
-                            onChange={e => setVehicleNumber(e.target.value)}
-                            disabled={isActive}
-                        />
+                    <div className={styles.formRow2col}>
+                        <div className={styles.formRow}>
+                            <label className={styles.formLabel}>차량번호 *</label>
+                            <input
+                                className={styles.formInput}
+                                placeholder="충남11바1234"
+                                value={vehicleNumber}
+                                onChange={e => setVehicleNumber(e.target.value)}
+                                disabled={isActive}
+                            />
+                        </div>
+                        <div className={styles.formRow}>
+                            <label className={styles.formLabel}>차량아이디</label>
+                            <input
+                                className={styles.formInput}
+                                placeholder="ABCD1234"
+                                value={vehicleId}
+                                onChange={e => setVehicleId(e.target.value.toUpperCase())}
+                                disabled={isActive}
+                                maxLength={8}
+                                style={{ textTransform: 'uppercase', letterSpacing: '1px' }}
+                            />
+                        </div>
                     </div>
 
                     <div className={styles.formRow2col}>

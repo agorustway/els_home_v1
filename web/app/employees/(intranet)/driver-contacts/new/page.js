@@ -18,7 +18,10 @@ export default function DriverContactsNewPage() {
         driver_id: '',
         vehicle_type: '',
         chassis_type: '',
-        photo_url: ''
+        photo_url: '',
+        contract_type: 'uncontracted',
+        vehicle_number: '',
+        vehicle_id: '',
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -128,12 +131,27 @@ export default function DriverContactsNewPage() {
                             <input name="name" className={styles.input} value={formData.name} onChange={handleInputChange} placeholder="운전원 이름" required />
                         </div>
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>소속지점</label>
-                            <input name="branch" className={styles.input} value={formData.branch} onChange={handleInputChange} placeholder="예: 부산지점, 서울지점" />
+                            <label className={styles.label}>계약유형</label>
+                            <select name="contract_type" className={styles.input} value={formData.contract_type} onChange={handleInputChange} style={{ height: '42px' }}>
+                                <option value="contracted">계약차량</option>
+                                <option value="uncontracted">미계약차량</option>
+                            </select>
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
                             <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="전화번호" />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>소속지점</label>
+                            <input name="branch" className={styles.input} value={formData.branch} onChange={handleInputChange} placeholder="예: 부산지점, 서울지점" />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>차량번호</label>
+                            <input name="vehicle_number" className={styles.input} value={formData.vehicle_number} onChange={handleInputChange} placeholder="충남11바1234" />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>차량 아이디 (영문4+숫자4)</label>
+                            <input name="vehicle_id" className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value.toUpperCase() }))} placeholder="ABCD1234" maxLength={8} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>영업넘버</label>

@@ -12,7 +12,8 @@ export default function DriverContactsEditPage() {
     const params = useParams();
 
     const [formData, setFormData] = useState({
-        business_number: '', branch: '', name: '', phone: '', driver_id: '', vehicle_type: '', chassis_type: '', photo_url: ''
+        business_number: '', branch: '', name: '', phone: '', driver_id: '', vehicle_type: '', chassis_type: '', photo_url: '',
+        contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '',
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -29,8 +30,8 @@ export default function DriverContactsEditPage() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.item) {
-                        const { business_number, branch, name, phone, driver_id, vehicle_type, chassis_type, photo_url, additional_docs } = data.item;
-                        setFormData({ business_number, branch, name, phone, driver_id, vehicle_type, chassis_type, photo_url });
+                        const { business_number, branch, name, phone, driver_id, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, vehicle_number, vehicle_id } = data.item;
+                        setFormData({ business_number, branch, name, phone, driver_id, vehicle_type, chassis_type, photo_url, contract_type: contract_type || 'uncontracted', vehicle_number: vehicle_number || '', vehicle_id: vehicle_id || '' });
                         setAttachments(additional_docs || []);
                     }
                 })
@@ -100,10 +101,21 @@ export default function DriverContactsEditPage() {
                     </div>
                     <div className={styles.gridContainer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div className={styles.formGroup}><label className={styles.label}>이름 *</label><input name="name" className={styles.input} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required /></div>
-                        <div className={styles.formGroup}><label className={styles.label}>소속지점</label><input className={styles.input} value={formData.branch} onChange={(e) => setFormData({ ...formData, branch: e.target.value })} placeholder="예: 부산지점, 서울지점" /></div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>계약유형</label>
+                            <select className={styles.input} value={formData.contract_type} onChange={(e) => setFormData({ ...formData, contract_type: e.target.value })} style={{ height: '42px' }}>
+                                <option value="contracted">계약차량</option>
+                                <option value="uncontracted">미계약차량</option>
+                            </select>
+                        </div>
                         <div className={styles.formGroup}><label className={styles.label}>연락처</label><input name="phone" className={styles.input} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>소속지점</label><input className={styles.input} value={formData.branch} onChange={(e) => setFormData({ ...formData, branch: e.target.value })} placeholder="예: 부산지점" /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>차량번호</label><input className={styles.input} value={formData.vehicle_number} onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })} placeholder="충남11바1234" /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>차량아이디</label><input className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value.toUpperCase() })} placeholder="ABCD1234" maxLength={8} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} /></div>
                         <div className={styles.formGroup}><label className={styles.label}>영업넘버</label><input className={styles.input} value={formData.business_number} onChange={(e) => setFormData({ ...formData, business_number: e.target.value })} /></div>
                         <div className={styles.formGroup}><label className={styles.label}>아이디</label><input className={styles.input} value={formData.driver_id} onChange={(e) => setFormData({ ...formData, driver_id: e.target.value })} /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>차종</label><input className={styles.input} value={formData.vehicle_type} onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })} /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>샤시종류</label><input className={styles.input} value={formData.chassis_type} onChange={(e) => setFormData({ ...formData, chassis_type: e.target.value })} /></div>
                     </div>
                     <div className={styles.formGroup} style={{ marginTop: 20 }}>
                         <label className={styles.label}>📎 추가 서류 (최대 10개)</label>

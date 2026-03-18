@@ -2,6 +2,66 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
 /**
+ * 운전원정보(driver_contacts) 매칭 및 갱신
+ * 매칭 우선순위: 1. 전화번호 → 2. 차량번호
+ */
+async function syncDriverContact(supabase, trip) {
+    const phone = (trip.driver_phone || '').replace(/[^0-9]/g, '');
+    const vehicleNumber = trip.vehicle_number;
+
+    // 1차: 전화번호로 매칭
+    let driver = null;
+    if (phone) {
+        const { data } = await supabase
+            .from('driver_contacts')
+            .select('*')
+            .ilike('phone', `%${phone.slice(-8)}%`) // 뒷 8자리 매칭
+            .limit(1)
+            .maybeSingle();
+        driver = data;
+    }
+
+    // 2차: 차량번호로 매칭 (전화번호 매칭 실패 시)
+    if (!driver && vehicleNumber) {
+        const { data } = await supabase
+            .from('driver_contacts')
+            .select('*')
+            .eq('vehicle_number', vehicleNumber)
+            .limit(1)
+            .maybeSingle();
+        driver = data;
+    }
+
+    const lastTripInfo = {
+        vehicle_number: vehicleNumber,
+        vehicle_id: trip.vehicle_id || null,
+        last_container_number: trip.container_number,
+        last_seal_number: trip.seal_number,
+        last_container_type: trip.container_type,
+        last_trip_started_at: trip.started_at,
+        last_trip_completed_at: trip.completed_at || new Date().toISOString(),
+    };
+
+    if (driver) {
+        // 기존 운전원 → 마지막 운행 정보 갱신
+        await supabase
+            .from('driver_contacts')
+            .update(lastTripInfo)
+            .eq('id', driver.id);
+    } else {
+        // 신규 운전원 → 미계약 차량으로 자동 등록
+        await supabase
+            .from('driver_contacts')
+            .insert([{
+                name: trip.driver_name,
+                phone: trip.driver_phone,
+                contract_type: 'uncontracted',
+                ...lastTripInfo,
+            }]);
+    }
+}
+
+/**
  * PATCH /api/vehicle-tracking/trips/[id]
  * 상태 변경: pause, resume, complete + 사진/메모 업데이트
  */
@@ -16,7 +76,7 @@ export async function PATCH(request, { params }) {
 
     try {
         const body = await request.json();
-        const { action, photos, special_notes, container_number, seal_number, container_type } = body;
+        const { action, photos, special_notes, container_number, seal_number, container_type, vehicle_id } = body;
 
         const updates = { updated_at: new Date().toISOString() };
 
@@ -37,6 +97,7 @@ export async function PATCH(request, { params }) {
         if (container_number !== undefined) updates.container_number = container_number;
         if (seal_number !== undefined) updates.seal_number = seal_number;
         if (container_type !== undefined) updates.container_type = container_type;
+        if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
 
         const { data, error } = await supabase
             .from('vehicle_trips')
@@ -46,6 +107,16 @@ export async function PATCH(request, { params }) {
             .single();
 
         if (error) throw error;
+
+        // 운행 종료 시 운전원정보 자동 갱신/등록
+        if (action === 'complete' && data) {
+            try {
+                await syncDriverContact(supabase, data);
+            } catch (syncErr) {
+                console.error('운전원정보 동기화 오류 (무시):', syncErr);
+            }
+        }
+
         return NextResponse.json({ trip: data });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
