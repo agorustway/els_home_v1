@@ -21,7 +21,7 @@ export const HERO_MAP = {
     '/team': {
         title: '조직도',
         subtitle: '효율적인 의사결정과 전문성을 갖춘 조직 구성',
-        bgImage: '/images/steel_logistics.png',
+        bgImage: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
     },
     '/history': {
         title: '연혁',
@@ -61,7 +61,7 @@ export const HERO_MAP = {
     '/webzine': {
         title: '웹진',
         subtitle: '회사 소식과 이야기를 전합니다.',
-        bgImage: '/images/steel_logistics.png',
+        bgImage: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
     },
     '/admin': {
         title: '관리',

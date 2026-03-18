@@ -58,13 +58,15 @@ const services = [
         title: '철강재 및 일반 물류',
         subtitle: '② 예산지점, 당진지점',
         desc: '예산 및 당진지점은 현대스틸과 심원개발의 코일, 열연, 내연 및 H/S등 주요철강재와 다양한 제품을 안전하게 운송하여 다변화하는 고객 Needs를 충족시키고, 고품질 서비스를 위하여 운영 경쟁력을 강화하고 있습니다.',
-        img: '/images/steel_logistics.png',
+        img: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
+        objectPos: 'center 80%',
         type: 'steel',
         branches: [
             {
                 name: '예산지점',
                 location: '충남 예산군 삽교읍 산단3길 69',
-                img: '/images/steel_logistics.png',
+                img: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
+                objectPos: 'center 80%',
                 specs: [
                     { label: '물동량(월)', value: '자동차 가공품 12,000 톤' },
                     { label: '보유차량', value: '25톤 카고 5대 / 14톤 윙바디 21대' },

@@ -23,7 +23,7 @@ const slides = [
         pos: 'center 30%'
     },
     {
-        image: '/images/steel_logistics.png',
+        image: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
         title: 'Integrated SCM Partner',
         subtitle: '최근단 인프라를 통한 신속하고 안전한 철강 및 종합 물류 서비스',
         pos: 'center 80%'
