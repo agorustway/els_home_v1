@@ -222,9 +222,12 @@ export default function VehicleTrackingPage() {
                     <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>
                         🔄 새로고침
                     </button>
-                    <Link href="/employees/vehicle-tracking/driver" className={styles.driverLinkBtn}>
-                        📱 운전원 페이지 →
-                    </Link>
+                    <button 
+                        className={styles.driverLinkBtn} 
+                        onClick={() => window.open('/driver-app', 'DriverApp', 'width=420,height=800,menubar=no,toolbar=no,location=no,status=no')}
+                    >
+                        📱 운전원 페이지 (팝업) →
+                    </button>
                 </div>
             </div>
 
