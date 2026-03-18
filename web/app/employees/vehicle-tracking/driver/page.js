@@ -30,7 +30,8 @@ export default function DriverPage() {
     const [sealNumber, setSealNumber] = useState('');
     const [containerType, setContainerType] = useState('40FT');
     const [specialNotes, setSpecialNotes] = useState('');
-    const [photos, setPhotos] = useState([]); // { file, previewUrl }[]
+    const [photos, setPhotos] = useState([]); // { previewUrl, uploaded, url, key }[]
+    const [uploading, setUploading] = useState(false);
 
     // 운행 상태
     const [activeTrip, setActiveTrip] = useState(null); // 현재 활성 운행
@@ -88,6 +89,16 @@ export default function DriverPage() {
                     setSealNumber(active.seal_number || '');
                     setContainerType(active.container_type || '40FT');
                     setSpecialNotes(active.special_notes || '');
+                    // 기존 업로드된 사진 복원
+                    if (active.photos && active.photos.length > 0) {
+                        setPhotos(active.photos.map(p => ({
+                            previewUrl: p.url,
+                            uploaded: true,
+                            url: p.url,
+                            key: p.key,
+                            name: p.name,
+                        })));
+                    }
                     // 활성 운행이 있으면 GPS 재시작
                     if (active.status === 'driving') {
                         startGPS(active.id);
@@ -305,18 +316,60 @@ export default function DriverPage() {
         }
     };
 
-    // 사진 추가 (프리뷰만, 실제 업로드는 Phase 4)
-    const handlePhotoAdd = (e) => {
+    // 사진 추가 및 업로드 (NAS)
+    const handlePhotoAdd = async (e) => {
         const files = Array.from(e.target.files);
         if (photos.length + files.length > 10) {
             alert('사진은 최대 10장까지 가능합니다.');
             return;
         }
+
+        // 프리뷰 먼저 추가
         const newPhotos = files.map(f => ({
             file: f,
             previewUrl: URL.createObjectURL(f),
+            uploaded: false,
+            name: f.name,
         }));
         setPhotos(prev => [...prev, ...newPhotos]);
+
+        // 운행 중이면 즉시 서버 업로드
+        if (activeTrip) {
+            setUploading(true);
+            try {
+                const formData = new FormData();
+                formData.append('trip_id', activeTrip.id);
+                files.forEach(f => formData.append('photos', f));
+
+                const res = await fetch('/api/vehicle-tracking/photos', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await res.json();
+                if (data.photos) {
+                    // 서버 응답으로 사진 목록 갱신
+                    setPhotos(data.photos.map(p => ({
+                        previewUrl: p.url,
+                        uploaded: true,
+                        url: p.url,
+                        key: p.key,
+                        name: p.name,
+                    })));
+                } else {
+                    alert(data.error || '사진 업로드 실패');
+                }
+            } catch (err) {
+                console.error('사진 업로드 오류:', err);
+                alert('사진 업로드 중 오류가 발생했습니다.');
+            } finally {
+                setUploading(false);
+            }
+        }
+    };
+
+    // 사진 삭제
+    const handlePhotoRemove = (index) => {
+        setPhotos(prev => prev.filter((_, i) => i !== index));
     };
 
     // 월 네비게이션
@@ -465,27 +518,34 @@ export default function DriverPage() {
                         />
                     </div>
 
-                    {/* 사진 업로드 */}
                     <div className={styles.photoSection}>
-                        <label className={styles.formLabel}>📷 사진 첨부</label>
+                        <label className={styles.formLabel}>📷 사진 첨부 {uploading && '(업로드 중...)'}</label>
                         <div className={styles.photoGrid}>
                             {photos.map((p, i) => (
-                                <img key={i} src={p.previewUrl} alt="" className={styles.photoThumb} />
+                                <div key={i} style={{ position: 'relative' }}>
+                                    <img src={p.previewUrl} alt="" className={styles.photoThumb} />
+                                    {!p.uploaded && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(245,158,11,0.9)', color: '#fff', fontSize: '0.6rem', textAlign: 'center', borderRadius: '0 0 6px 6px' }}>대기</div>}
+                                    <button onClick={() => handlePhotoRemove(i)} style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                </div>
                             ))}
-                            {photos.length < 10 && !isActive && (
+                            {photos.length < 10 && (
                                 <label className={styles.photoAddBtn}>
-                                    +
+                                    {uploading ? '⏳' : '+'}
                                     <input
                                         type="file"
                                         accept="image/*"
                                         multiple
                                         hidden
                                         onChange={handlePhotoAdd}
+                                        disabled={uploading}
                                     />
                                 </label>
                             )}
                         </div>
-                        <div className={styles.photoCount}>{photos.length}/10장 (업로드 기능은 추후 활성화)</div>
+                        <div className={styles.photoCount}>
+                            {photos.length}/10장
+                            {photos.filter(p => p.uploaded).length > 0 && ` (${photos.filter(p => p.uploaded).length}장 업로드 완료)`}
+                        </div>
                     </div>
                 </div>
             </div>

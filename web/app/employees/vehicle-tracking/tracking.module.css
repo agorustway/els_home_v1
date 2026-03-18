@@ -217,4 +217,141 @@
     .titleBar h2 {
         font-size: 1rem;
     }
+
+    .filterBar {
+        flex-direction: column;
+    }
+}
+
+/* 탭 네비게이션 */
+.tabNav {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.tab {
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.tab:hover {
+    color: #334155;
+}
+
+.tabActive {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+/* 필터 바 */
+.filterBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.filterInput {
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0 10px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    min-width: 140px;
+}
+
+.filterInput:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.filterSelect {
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    background: #fff;
+    min-width: 100px;
+}
+
+.filterDateInput {
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 0.82rem;
+    font-family: inherit;
+}
+
+.filterSearchBtn {
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.filterSearchBtn:hover {
+    background: #1d4ed8;
+}
+
+.filterResetBtn {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    color: #64748b;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.filterResetBtn:hover {
+    background: #f3f4f6;
+}
+
+/* 삭제 버튼 (테이블 내) */
+.deleteBtn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid #fecaca;
+    border-radius: 5px;
+    background: #fff;
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    transition: all 0.15s;
+}
+
+.deleteBtn:hover {
+    background: #fef2f2;
+    border-color: #ef4444;
 }
