@@ -53,26 +53,63 @@ export default function DriverPage() {
     const lastPosRef = useRef(null);
     const idleCountRef = useRef(0);
 
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
     // 프로필 로드 (이름, 전화번호 자동 채움)
     useEffect(() => {
+        // 로컬 저장소에서 기존 정보 로드 (로그인 안 된 경우 대비)
+        const storedPhone = localStorage.getItem('els_driver_phone');
+        const storedVehicle = localStorage.getItem('els_driver_vehicle');
+        const storedVehicleId = localStorage.getItem('els_driver_vehicle_id');
+        const storedName = localStorage.getItem('els_driver_name');
+
+        if (storedPhone) setDriverPhone(storedPhone);
+        if (storedVehicle) setVehicleNumber(storedVehicle);
+        if (storedVehicleId) setVehicleId(storedVehicleId);
+        if (storedName) setDriverName(storedName);
+
         (async () => {
             try {
                 const res = await fetch('/api/users/me');
                 const data = await res.json();
                 if (data.profile) {
-                    setDriverName(data.profile.full_name || '');
-                    setDriverPhone(data.profile.phone || '');
+                    setIsLoggedIn(true);
+                    // 로그인 된 경우 프로필 정보 우선 (이미 입력된 게 없을 때만)
+                    if (!driverName) setDriverName(data.profile.full_name || '');
+                    if (!driverPhone) setDriverPhone(data.profile.phone || '');
+                    
                     // 프로필 로드 후 운전원정보 매칭 시도
                     if (data.profile.phone) {
                         loadDriverContact(data.profile.phone);
                     }
                 }
-            } catch { }
+            } catch { 
+                setIsLoggedIn(false);
+            }
         })();
 
         // 기존 활성 운행 확인
         checkActiveTrip();
     }, []);
+
+    // 정보 변경 시 로컬 스토리지 저장 (자동 완성용)
+    useEffect(() => {
+        if (driverPhone) localStorage.setItem('els_driver_phone', driverPhone);
+        if (vehicleNumber) localStorage.setItem('els_driver_vehicle', vehicleNumber);
+        if (vehicleId) localStorage.setItem('els_driver_vehicle_id', vehicleId);
+        if (driverName) localStorage.setItem('els_driver_name', driverName);
+    }, [driverPhone, vehicleNumber, vehicleId, driverName]);
+
+    // 전화번호나 차량번호가 입력되면 다시 체크 (로그인 안 한 경우)
+    useEffect(() => {
+        if (!isLoggedIn && (driverPhone || vehicleNumber)) {
+            const timer = setTimeout(() => {
+                checkActiveTrip();
+                fetchHistory();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [driverPhone, vehicleNumber, isLoggedIn]);
 
     // 운송기록 월별 로드
     useEffect(() => {
@@ -106,7 +143,12 @@ export default function DriverPage() {
 
     const checkActiveTrip = async () => {
         try {
-            const res = await fetch('/api/vehicle-tracking/trips?mode=my');
+            // 로그인 정보를 모르거나 전화번호/차량번호 기반으로 조회할 수 있도록 쿼리 추가
+            const params = new URLSearchParams({ mode: 'my' });
+            if (driverPhone) params.append('phone', driverPhone);
+            if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
+
+            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
             const data = await res.json();
             if (data.trips) {
                 const active = data.trips.find(t => t.status === 'driving' || t.status === 'paused');
@@ -140,8 +182,12 @@ export default function DriverPage() {
     };
 
     const fetchHistory = async () => {
+        const params = new URLSearchParams({ mode: 'my', month: historyMonth });
+        if (driverPhone) params.append('phone', driverPhone);
+        if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
+
         try {
-            const res = await fetch(`/api/vehicle-tracking/trips?mode=my&month=${historyMonth}`);
+            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
             const data = await res.json();
             if (data.trips) {
                 setHistory(data.trips.filter(t => t.status === 'completed'));

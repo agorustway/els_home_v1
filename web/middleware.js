@@ -54,9 +54,12 @@ export async function middleware(request) {
     }
 
     // 1. Protected Routes (Access Control)
+    // 🚨 예외: 운전원 모바일 페이지는 로그인 없이 누구나 접근 가능해야 함
+    const isDriverPage = path.startsWith('/employees/vehicle-tracking/driver');
+
     if (path.startsWith('/admin') || path.startsWith('/employees')) {
-        // If not authenticated, redirect to login
-        if (!user && path !== '/login') { // 로그인 페이지가 아닐 때만 리다이렉트
+        // If not authenticated, redirect to login (except driver page)
+        if (!user && path !== '/login' && !isDriverPage) {
             const url = request.nextUrl.clone()
             url.pathname = '/login'
             url.searchParams.set('next', path) // Redirect back after login

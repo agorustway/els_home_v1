@@ -114,15 +114,25 @@ export async function GET(request) {
         // ─── mode=my: 본인 기록 ───
         if (mode === 'my') {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            const phone = searchParams.get('phone');
+            const vNum = searchParams.get('vehicle_number');
+
+            if (!user && !phone && !vNum) {
+                return NextResponse.json({ error: '인증 정보나 차량번호가 필요합니다.' }, { status: 401 });
             }
 
             let query = supabase
                 .from('vehicle_trips')
                 .select('*')
-                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
+
+            if (user) {
+                query = query.eq('user_id', user.id);
+            } else if (phone) {
+                query = query.eq('driver_phone', phone);
+            } else if (vNum) {
+                query = query.eq('vehicle_number', vNum);
+            }
 
             if (month) {
                 const start = `${month}-01T00:00:00+09:00`;
@@ -151,10 +161,6 @@ export async function POST(request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     try {
         const body = await request.json();
         const {
@@ -175,8 +181,8 @@ export async function POST(request) {
         const { data, error } = await supabase
             .from('vehicle_trips')
             .insert([{
-                user_id: user.id,
-                user_email: user.email,
+                user_id: user?.id || null,
+                user_email: user?.email || null,
                 driver_name,
                 driver_phone,
                 vehicle_number,

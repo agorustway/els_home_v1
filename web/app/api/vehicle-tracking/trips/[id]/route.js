@@ -68,9 +68,6 @@ async function syncDriverContact(supabase, trip) {
 export async function PATCH(request, { params }) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { id } = await params;
 
