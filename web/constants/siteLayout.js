@@ -6,7 +6,7 @@ export const HERO_MAP = {
     '/intro': {
         title: '회사소개',
         subtitle: '고객공감 서비스를 실현하는 운송 및 제조 서비스 전문 기업',
-        bgImage: '/images/office_intro.png',
+        bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/vision': {
         title: '경영이념',
