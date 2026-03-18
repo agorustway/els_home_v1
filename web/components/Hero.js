@@ -7,26 +7,26 @@ const slides = [
     {
         image: '/images/asan/KakaoTalk_20260119_110613230.jpg',
         title: 'Strategic CY Operations',
-        subtitle: '아산 및 중부 전용 DEPOT(CY) 운영을 통한 독보적 물류 인프라',
+        subtitle: '아산,중부DEPOT (CY/ICD) 운영을 통한 물류인프라',
         pos: 'center 85%'
     },
     {
         image: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
         title: 'Total Logistics Network',
-        subtitle: '동북아 물류 거점을 잇는 최적화된 운송망과 통합 물류 거점 서비스',
+        subtitle: '물류거점을 잇는 최적화된 운송망',
         pos: 'center 75%'
-    },
-    {
-        image: '/images/office_intro.png',
-        title: 'Precision Logistics Solution',
-        subtitle: '최상의 운송 품질과 전문적인 물류 솔루션을 제공합니다',
-        pos: 'center 30%'
     },
     {
         image: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
         title: 'Integrated SCM Partner',
-        subtitle: '최근단 인프라를 통한 신속하고 안전한 철강 및 종합 물류 서비스',
+        subtitle: '신속하고 안전한 벌크 카고 및 컨테이너 통합물류서비스',
         pos: 'center 80%'
+    },
+    {
+        image: '/images/office_intro.png',
+        title: 'Precision Logistics Solution',
+        subtitle: '최상의 운송품질과 전문적인 물류서비스를 제공합니다',
+        pos: 'center 30%'
     }
 ];
 
@@ -50,7 +50,7 @@ export default function Hero() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 1.5, ease: "easeInOut" }}
                     className={styles.slide}
-                    style={{ 
+                    style={{
                         backgroundImage: `url(${slides[current].image})`,
                         backgroundPosition: slides[current].pos || 'center'
                     }}
