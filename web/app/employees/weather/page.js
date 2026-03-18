@@ -344,9 +344,8 @@ export default function WeatherPage() {
                             {(() => {
                                 const curData = weatherCache['current']?.hourly[0];
                                 const feelsLike = curData?.apparent_temperature ?? (curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-');
-                                // Mock Dust for branch
-                                const dustOptions = [{ label: '좋음', color: '#10b981' }, { label: '보통', color: '#f59e0b' }];
-                                const dust = dustOptions[0]; // Fixed for stability or random
+                                const branchAq = weatherCache['current']?.airQuality;
+                                const dust = getAirQualityStatus(branchAq?.pm10, 'pm10');
 
                                 return (
                                     <motion.div
@@ -387,10 +386,8 @@ export default function WeatherPage() {
                             {BRANCHES.map(b => {
                                 const curData = weatherCache[b.id]?.hourly[0];
                                 const feelsLike = curData?.apparent_temperature ?? (curData ? (Number(curData.temp) - 1.5).toFixed(1) : '-');
-                                // For branches, we don't have specific air quality data in activeData, so we keep the mock for now.
-                                // If branch-specific AQ data becomes available, this should be updated.
-                                const dustOptions = [{ label: '좋음', color: '#10b981' }, { label: '보통', color: '#f59e0b' }];
-                                const dust = dustOptions[Math.floor(Math.random() * dustOptions.length)];
+                                const branchAq = weatherCache[b.id]?.airQuality;
+                                const dust = getAirQualityStatus(branchAq?.pm10, 'pm10');
 
                                 return (
                                     <motion.div
