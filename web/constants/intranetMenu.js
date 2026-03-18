@@ -29,7 +29,7 @@ export const MAIN_TABS = [
         id: 'automation',
         label: '자동화시스템',
         defaultPath: '/employees/safe-freight',
-        pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/safe-freight'],
+        pathPatterns: ['/employees/archive', '/employees/container-history', '/employees/safe-freight', '/employees/vehicle-tracking'],
         displayOrder: 6, // Moved right after Home (5)
     },
     {
@@ -77,6 +77,7 @@ export const SIDEBAR_ITEMS = {
     automation: [
         { label: '안전운임 조회', path: '/employees/safe-freight' },
         { label: '컨테이너 이력조회', path: '/employees/container-history' },
+        { label: '차량위치관제', path: '/employees/vehicle-tracking' },
         { label: '자료실 (NAS)', path: '/employees/archive' },
     ],
     reports: [
