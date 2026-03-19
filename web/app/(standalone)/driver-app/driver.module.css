@@ -69,17 +69,23 @@
 .formLabel { font-size: 0.8rem; font-weight: 600; color: #64748b; }
 
 .formInput {
-    height: 52px;
+    height: 44px;
     border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    padding: 0 16px;
-    font-size: 1.1rem;
+    border-radius: 8px;
+    padding: 0 12px;
+    font-size: 1rem;
     width: 100%;
     box-sizing: border-box;
     transition: all 0.2s;
     background: #f8fafc;
 }
 .formInput:focus { outline: none; border-color: #2563eb; background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
+
+.formRowFlex { display: flex; gap: 8px; align-items: flex-end; }
+.colName { flex: 0 0 30%; }
+.colPhone { flex: 1; }
+.colSeal { flex: 1; }
+.colType { flex: 0 0 35%; }
 
 .formTextarea {
     border: 1px solid #cbd5e1;
@@ -191,3 +197,29 @@
 .historyContainer { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 2px 0; }
 .historyMeta { font-size: 0.8rem; color: #64748b; }
 .historyEmpty { text-align: center; padding: 32px; color: #94a3b8; font-size: 0.9rem; }
+
+/* Floating Timer */
+.floatingTimer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border: 2px solid #3b82f6;
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from { transform: translateY(100px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

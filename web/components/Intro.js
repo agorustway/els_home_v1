@@ -87,7 +87,7 @@ export default function Intro() {
                                 </div>
                             </a>
                             <div className={styles.appUrlInfo}>
-                                🔗 접속주소: {typeof window !== 'undefined' ? (window.location.origin + '/driver-app') : 'https://.../driver-app'}
+                                🔗 <a href="/driver-app" className={styles.appDirectLink}>접속주소: {typeof window !== 'undefined' ? (window.location.origin + '/driver-app') : 'https://.../driver-app'}</a>
                             </div>
                         </div>
                     </motion.div>

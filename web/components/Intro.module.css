@@ -133,13 +133,23 @@
 }
 
 .appUrlInfo {
-    font-size: 0.85rem;
-    color: #475569;
+    margin-top: 15px;
+    font-size: 0.9rem;
+    color: #64748b;
     font-weight: 700;
-    margin-top: 8px;
     padding-left: 4px;
     opacity: 0.8;
     word-break: break-all;
+}
+
+.appDirectLink {
+    color: #3b82f6;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.appDirectLink:hover {
+    color: #2563eb;
 }
 
 /* Stats Grid */

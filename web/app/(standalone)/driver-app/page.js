@@ -66,11 +66,29 @@ export default function DriverAppPage() {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
-    // ─── 1. 초기화 ───
+    const [showFloatingTimer, setShowFloatingTimer] = useState(false);
+    const scrollContainerRef = useRef(null);
+
+    // ─── 초기화 ───
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
             
+            const handleScroll = () => {
+                const statusEl = document.getElementById('status-section');
+                if (statusEl) {
+                    const rect = statusEl.getBoundingClientRect();
+                    setShowFloatingTimer(rect.bottom < 0);
+                }
+            };
+            window.addEventListener('scroll', handleScroll);
+            return () => window.removeEventListener('scroll', handleScroll);
+        }
+    }, []);
+
+    // ─── 비즈니스 액션 ───
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
             const storedPhone = localStorage.getItem('els_driver_phone');
             const storedVehicle = localStorage.getItem('els_driver_vehicle');
             const storedVehicleId = localStorage.getItem('els_driver_vehicle_id');
@@ -364,12 +382,13 @@ export default function DriverAppPage() {
     };
 
     const handleInstallClick = () => {
-        // PWA 설치 로직은 브라우저의 beforeinstallprompt 이벤트를 캡처해야 함 (여기선 생략)
         alert('브라우저 메뉴의 "홈 화면에 추가"를 선택하여 앱으로 설치해주세요.');
     };
 
     const isActive = tripStatus === 'driving' || tripStatus === 'paused';
     const isDriving = tripStatus === 'driving';
+
+    const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
     return (
         <div className={styles.driverPage}>
@@ -384,7 +403,7 @@ export default function DriverAppPage() {
             <div className={styles.devBanner}>
                 <div>ELS 차량용 운송 관리</div>
                 {!isPwa && (
-                    <button onClick={handleInstallClick} style={{ marginTop: '10px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '20px', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff' }}>
+                    <button onClick={handleInstallClick} style={{ marginTop: '8px', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '20px', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff' }}>
                         📥 앱 다운로드
                     </button>
                 )}
@@ -396,18 +415,24 @@ export default function DriverAppPage() {
                     GPS {gpsActive ? '정상 수신' : '수신 대기'}
                 </span>
                 {lastCoords && <span style={{fontSize: '0.7rem'}}>📍 {lastCoords.lat.toFixed(5)}, {lastCoords.lng.toFixed(5)}</span>}
-                {sendCount > 0 && <span>기록 {sendCount}</span>}
             </div>
 
             {isActive && (
-                <div className={isDriving ? styles.activeStatus : styles.pausedStatus}>
+                <div id="status-section" className={isDriving ? styles.activeStatus : styles.pausedStatus}>
                     <div className={isDriving ? styles.activeStatusTitle : styles.pausedStatusTitle}>
                         {isDriving ? '🟢 운행 중' : '🟡 일시정지'}
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '10px 0', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '5px 0', fontFamily: 'monospace' }}>
                         {formatTime(elapsedSeconds)}
                     </div>
-                    <div className={styles.activeStatusSub}>{activeTrip?.vehicle_number}</div>
+                    <div className={styles.activeStatusSub}>{activeTrip?.vehicle_number} | {activeTrip?.driver_name}</div>
+                </div>
+            )}
+
+            {isActive && showFloatingTimer && (
+                <div className={styles.floatingTimer} onClick={scrollToTop}>
+                    <span>{isDriving ? '🟢' : '🟡'}</span>
+                    <span>{formatTime(elapsedSeconds)}</span>
                 </div>
             )}
 
@@ -424,33 +449,38 @@ export default function DriverAppPage() {
                             <input className={styles.formInput} style={{background: '#f1f5f9'}} placeholder="아이디" value={vehicleId} onChange={e => setVehicleId(e.target.value.toUpperCase())} disabled={isDriving} />
                         </div>
                     </div>
-                    <div className={styles.formRow2col}>
-                        <div className={styles.formRow}>
+                    <div className={styles.formRowFlex}>
+                        <div className={`${styles.formRow} ${styles.colName}`}>
                             <label className={styles.formLabel}>이름 *</label>
                             <input className={styles.formInput} placeholder="성함" value={driverName} onChange={e => setDriverName(e.target.value)} disabled={isDriving} />
                         </div>
-                        <div className={styles.formRow}>
+                        <div className={`${styles.formRow} ${styles.colPhone}`}>
                             <label className={styles.formLabel}>전화번호</label>
                             <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} disabled={isDriving} />
                         </div>
                     </div>
-                    <div className={styles.formRow2col}>
-                        <div className={styles.formRow}>
-                            <label className={styles.formLabel}>컨테이너</label>
-                            <input className={styles.formInput} placeholder="번호 입력" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} disabled={isDriving} />
-                        </div>
-                        <div className={styles.formRow}>
+                    
+                    <div className={styles.formRow}>
+                        <label className={styles.formLabel}>컨테이너</label>
+                        <input className={styles.formInput} placeholder="번호 입력" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} disabled={isDriving} />
+                    </div>
+
+                    <div className={styles.formRowFlex}>
+                        <div className={`${styles.formRow} ${styles.colSeal}`}>
                             <label className={styles.formLabel}>씰넘버</label>
                             <input className={styles.formInput} placeholder="번호 입력" value={sealNumber} onChange={e => setSealNumber(e.target.value.toUpperCase())} disabled={isDriving} />
                         </div>
-                    </div>
-                    <div className={styles.formRow}>
-                        <label className={styles.formLabel}>컨테이너 타입</label>
-                        <select className={styles.formInput} value={containerType} onChange={e => setContainerType(e.target.value)} disabled={isDriving}>
-                            {['20FT', '40FT', '45FT', 'REFRIGERATED', 'OPEN-TOP', 'FLAT-RACK'].map(t => (
-                                <option key={t} value={t}>{t}</option>
-                            ))}
-                        </select>
+                        <div className={`${styles.formRow} ${styles.colType}`}>
+                            <label className={styles.formLabel}>타입</label>
+                            <select className={styles.formInput} value={containerType} onChange={e => setContainerType(e.target.value)} disabled={isDriving}>
+                                <option value="40FT">40FT</option>
+                                <option value="20FT">20FT</option>
+                                <option value="45FT">45FT</option>
+                                <option value="REFRIGERATED">REF</option>
+                                <option value="OPEN-TOP">OT</option>
+                                <option value="FLAT-RACK">FR</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div className={styles.photoSection}>
@@ -459,7 +489,7 @@ export default function DriverAppPage() {
                             {photos.map((p, i) => (
                                 <div key={i} style={{position: 'relative'}}>
                                     <img src={p.previewUrl} className={styles.photoThumb} alt="" />
-                                    {p.uploaded && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#10b981', color:'#fff', borderRadius:'4px'}}>완료</span>}
+                                    {p.uploaded && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#10b981', color:'#fff', borderRadius:'4px', zIndex: 5}}>완료</span>}
                                 </div>
                             ))}
                             {photos.length < 10 && (
