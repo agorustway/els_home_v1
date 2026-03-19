@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './admin.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '../../../utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 
 export default function AdminPage() {
     const [user, setUser] = useState(null);

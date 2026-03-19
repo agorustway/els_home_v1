@@ -1,7 +1,7 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '../../../utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import styles from './login.module.css';
 import { motion } from 'framer-motion';

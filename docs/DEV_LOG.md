@@ -23,7 +23,7 @@
   - **오류 원인 파악**: Route Group(`(main)`, `(standalone)`) 도입으로 최상위 루트 레이아웃(`app/layout.js`)이 제거된 상태에서, 최상위에 방치된 `not-found.js`와 `error.js`가 레이아웃 누락으로 빌드 에러를 유발함(`not-found.js doesn't have a root layout`).
   - **구조적 해결**: 최상위 `not-found.js`와 `error.js`를 삭제하고, 각각의 Route Group 내부로 이동/재생성하여 각 그룹의 전용 레이아웃을 타도록 수정.
 - **경로 오류 수정 (Build Error)**:
-  - Route Group 이동 후 상대 경로(`../../`)가 어긋난 `admin/page.js`, `login/page.js`, `(main)/page.js`의 임포트 경로 수정.
+  - Route Group 이동 후 상대 경로(`../../`)가 어긋난 `admin/page.js`, `login/page.js`, `(main)/page.js`의 임포트 경로를 **별칭(Alias, `@/`)** 방식으로 변경하여 빌드 안정성 확보.
   - `@/app/employees` 별칭이 `@/app/(main)/employees`로 변경됨에 따라 관련 파일(`webzine`) 수정.
   - `(main)/layout.js` 내 잘못된 `globals.css` 로컬 임포트 제거.
 - **그룹별 전용 에러 핸들링**:
