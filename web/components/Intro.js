@@ -53,6 +53,22 @@ export default function Intro() {
                                 <strong>긴급 상황 시 가장 유연하게 대응</strong>하는 것이 우리의 핵심 경쟁력입니다.
                             </p>
                         </div>
+
+                        {/* 🚛 운전원 앱 다운로드 섹션 */}
+                        <div className={styles.appDownloadSection}>
+                            <div className={styles.appDownloadTitle}>
+                                🚛 ELS 운전원 전용 앱
+                            </div>
+                            <a href="/driver-app" className={styles.appButton}>
+                                <div className={styles.appBtnIcon}>
+                                    <img src="/driver_icon.png" alt="" className={styles.appIconImg} />
+                                </div>
+                                <div className={styles.appBtnText}>
+                                    <div className={styles.appBtnLabel}>운전원 전용 앱 다운로드</div>
+                                    <div className={styles.appBtnDesc}>실시간 운행 관리 및 배차 정보 확인</div>
+                                </div>
+                            </a>
+                        </div>
                     </motion.div>
 
                     <div className={styles.visualColumn}>
