@@ -1049,7 +1049,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             const params = new URLSearchParams({
                 type: 'distance',
                 period: displayPeriod,
-                km: String(totalKm),
+                km: String(totalKm / 2),
             });
             const res = await fetch(`/api/safe-freight/lookup?${params.toString()}`);
             if (!res.ok) throw new Error('Distance fare lookup failed');
@@ -1841,24 +1841,22 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                         {(() => {
                             const renderFareValue = (amt, isOneWayBase = false) => {
+                                const oneWayAmt = isOneWayBase ? amt : amt / 2;
+                                const roundAmt = isOneWayBase ? amt * 2 : amt;
+
                                 if (tripMode === 'round') {
-                                    if (isOneWayBase) {
-                                        return (
-                                            <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
-                                                <span>{formatWon(amt * 2)}</span>
-                                                <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 추정치)</span>
-                                            </span>
-                                        );
-                                    }
-                                    return formatWon(amt);
+                                    return (
+                                        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
+                                            <span>{formatWon(roundAmt)}</span>
+                                            <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(편도 {formatWon(oneWayAmt)})</span>
+                                        </span>
+                                    );
                                 } else {
                                     // 편도 모드일 때 (편도금액 위에, 왕복금액 괄호로 아래에 작게 표시)
-                                    const oneWayAmt = isOneWayBase ? amt : amt / 2;
-                                    const roundAmt = isOneWayBase ? amt * 2 : amt;
                                     return (
                                         <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
                                             <span>{formatWon(oneWayAmt)}</span>
-                                            <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 {isOneWayBase ? '추정치 ' : ''}{formatWon(roundAmt)})</span>
+                                            <span style={{ fontSize: '0.85em', color: '#64748b', fontWeight: 'normal' }}>(왕복 {formatWon(roundAmt)})</span>
                                         </span>
                                     );
                                 }
@@ -1937,15 +1935,15 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     <tbody>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{formatWon(fare.f40위탁)}</td>
-                                            <td>{formatWon(fare.f40운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(fare.f40안전)}</td>
+                                            <td>{renderFareValue(fare.f40위탁)}</td>
+                                            <td>{renderFareValue(fare.f40운수자)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f40안전)}</td>
                                         </tr>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{formatWon(fare.f20위탁)}</td>
-                                            <td>{formatWon(fare.f20운수자)}</td>
-                                            <td className={styles.fareHighlight}>{formatWon(fare.f20안전)}</td>
+                                            <td>{renderFareValue(fare.f20위탁)}</td>
+                                            <td>{renderFareValue(fare.f20운수자)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f20안전)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
