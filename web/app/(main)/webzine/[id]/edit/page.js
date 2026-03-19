@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
-import styles from '@/app/employees/(intranet)/board/board.module.css';
+import styles from '@/app/(main)/employees/(intranet)/board/board.module.css';
 
 export default function EditWebzinePage() {
     const { id } = useParams();

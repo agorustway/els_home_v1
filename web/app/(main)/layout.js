@@ -1,6 +1,4 @@
 import { Inter } from "next/font/google";
-import "./globals.css"; // Fixed by directory move or keep if globals.css moved too? 
-// No, I'll update it to ../ as it's now in one level deeper.
 import "../globals.css";
 import Script from "next/script";
 
