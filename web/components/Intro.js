@@ -11,6 +11,24 @@ export default function Intro() {
         setIsMounted(true);
     }, []);
 
+    const handleDriverAppClick = (e) => {
+        e.preventDefault();
+        const url = window.location.origin + '/driver-app';
+        const userAgent = navigator.userAgent.toLowerCase();
+        
+        // 카카오톡, 네이버 등 인앱 브라우저 체크
+        const isInApp = /kakaotalk|naver|line|fbav|instagram/.test(userAgent);
+        const isAndroid = /android/.test(userAgent);
+
+        if (isAndroid && isInApp) {
+            // 안드로이드 인앱 브라우저에서 크롬 강제 실행
+            const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+            window.location.href = intentUrl;
+        } else {
+            window.location.href = url;
+        }
+    };
+
     if (!isMounted) {
         return (
             <section id="intro" className="section">
@@ -59,7 +77,7 @@ export default function Intro() {
                             <div className={styles.appDownloadTitle}>
                                 🚛 ELS 운전원 전용 앱
                             </div>
-                            <a href="/driver-app" className={styles.appButton}>
+                            <a href="/driver-app" onClick={handleDriverAppClick} className={styles.appButton}>
                                 <div className={styles.appBtnIcon}>
                                     <img src="/driver_icon.png" alt="" className={styles.appIconImg} />
                                 </div>
@@ -68,6 +86,9 @@ export default function Intro() {
                                     <div className={styles.appBtnDesc}>실시간 운행 관리 및 배차 정보 확인</div>
                                 </div>
                             </a>
+                            <div className={styles.appUrlInfo}>
+                                🔗 접속주소: {typeof window !== 'undefined' ? (window.location.origin + '/driver-app') : 'https://.../driver-app'}
+                            </div>
                         </div>
                     </motion.div>
 
