@@ -1,20 +1,26 @@
 {
   "id": "/driver-app",
   "scope": "/driver-app",
-  "name": "ELS 운전원 전용",
-  "short_name": "ELS 운전원",
-  "description": "ELS Driver Tracking App",
+  "name": "ELS 차량용 운송관리",
+  "short_name": "ELS 운송",
+  "description": "ELS 운전원 전용 운송 관리 시스템",
   "start_url": "/driver-app",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f8fafc",
   "theme_color": "#1e293b",
-  "orientation": "any",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2555/2555013.png",
+      "src": "/driver_icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/driver_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -9,13 +9,13 @@
 .devBanner {
     background: linear-gradient(135deg, #1e293b, #334155);
     border-radius: 12px;
-    padding: 12px;
-    font-size: 0.9rem;
+    padding: 16px;
+    font-size: 1.1rem;
     color: #fff;
     text-align: center;
     margin-bottom: 16px;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    font-weight: 800;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .gpsBar {
@@ -69,16 +69,17 @@
 .formLabel { font-size: 0.8rem; font-weight: 600; color: #64748b; }
 
 .formInput {
-    height: 42px;
+    height: 52px;
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    padding: 0 12px;
-    font-size: 0.95rem;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-size: 1.1rem;
     width: 100%;
     box-sizing: border-box;
     transition: all 0.2s;
+    background: #f8fafc;
 }
-.formInput:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
+.formInput:focus { outline: none; border-color: #2563eb; background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
 
 .formTextarea {
     border: 1px solid #cbd5e1;
@@ -125,14 +126,30 @@
 .startBtn {
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+    height: 64px;
+    font-size: 1.2rem;
+    width: 100%;
+    border: none;
+    border-radius: 16px;
 }
-.startBtn:active { transform: scale(0.98); }
+.startBtn:active { transform: scale(0.96); }
 
 .actionRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.actionRow button {
+    height: 64px;
+    border-radius: 16px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
 .pauseBtn { background: #f59e0b; color: #fff; }
 .resumeBtn { background: #3b82f6; color: #fff; }
 .stopBtn { background: #ef4444; color: #fff; }
+
+.actionFullRow { grid-column: span 2; margin-top: 12px; }
 
 .activeStatus {
     background: #ecfdf5;

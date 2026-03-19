@@ -3,17 +3,17 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: 'ELS 운전원 전용',
+  title: 'ELS 차량용 운송관리',
   description: 'ELS Driver Tracking Standalone App',
   manifest: '/manifest_driver.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'ELS 운전원',
+    title: 'ELS 운송',
   },
   icons: {
-    icon: '/favicon.png',
-    apple: 'https://cdn-icons-png.flaticon.com/512/2555/2555013.png',
+    icon: '/driver_icon.png',
+    apple: '/driver_icon.png',
   }
 };
 

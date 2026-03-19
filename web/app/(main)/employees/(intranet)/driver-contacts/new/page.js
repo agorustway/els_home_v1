@@ -8,6 +8,13 @@ import styles from '../../intranet.module.css';
 
 export default function DriverContactsNewPage() {
     const { role, loading: authLoading } = useUserRole();
+    const formatPhone = (val) => {
+        const num = val.replace(/[^0-9]/g, '');
+        if (num.length <= 3) return num;
+        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+    };
+
     const router = useRouter();
 
     const [formData, setFormData] = useState({
@@ -33,7 +40,11 @@ export default function DriverContactsNewPage() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        if (name === 'phone') {
+            setFormData(prev => ({ ...prev, [name]: formatPhone(value) }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handlePhotoUpload = async (e) => {
@@ -91,7 +102,11 @@ export default function DriverContactsNewPage() {
             const res = await fetch('/api/driver-contacts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, additional_docs: attachments }),
+                body: JSON.stringify({ 
+                    ...formData, 
+                    phone: formData.phone.replace(/[^0-9]/g, ''), 
+                    additional_docs: attachments 
+                }),
             });
             if (res.ok) {
                 const data = await res.json();

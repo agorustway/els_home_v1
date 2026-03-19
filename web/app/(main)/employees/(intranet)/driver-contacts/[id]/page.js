@@ -54,6 +54,14 @@ export default function DriverContactsDetailPage() {
         else alert('삭제 실패');
     };
 
+    const formatPhone = (val) => {
+        if (!val) return '-';
+        const num = val.replace(/[^0-9]/g, '');
+        if (num.length <= 3) return num;
+        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+    };
+
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!item) return <div className={styles.empty}>항목을 찾을 수 없습니다.</div>;
 
@@ -96,7 +104,7 @@ export default function DriverContactsDetailPage() {
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>연락처</label>
-                            <div style={{ fontSize: '1.2rem', color: '#2563eb', fontWeight: 600 }}>{item.phone || '-'}</div>
+                            <div style={{ fontSize: '1.2rem', color: '#2563eb', fontWeight: 600 }}>{formatPhone(item.phone)}</div>
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>영업넘버</label>
