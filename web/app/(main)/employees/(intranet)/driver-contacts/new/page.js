@@ -8,6 +8,10 @@ import styles from '../../intranet.module.css';
 
 export default function DriverContactsNewPage() {
     const { role, loading: authLoading } = useUserRole();
+    const router = useRouter();
+
+    const BRANCHES = ['아산지점', '중부지점', '예산지점', '당진지점', '부산지점', '상암지점'];
+
     const formatPhone = (val) => {
         const num = val.replace(/[^0-9]/g, '');
         if (num.length <= 3) return num;
@@ -15,20 +19,9 @@ export default function DriverContactsNewPage() {
         return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
     };
 
-    const router = useRouter();
-
     const [formData, setFormData] = useState({
-        business_number: '',
-        branch: '',
-        name: '',
-        phone: '',
-        driver_id: '',
-        vehicle_type: '',
-        chassis_type: '',
-        photo_url: '',
-        contract_type: 'uncontracted',
-        vehicle_number: '',
-        vehicle_id: '',
+        branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
+        contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '',
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -130,12 +123,16 @@ export default function DriverContactsNewPage() {
             </div>
             <div className={styles.card}>
                 <form onSubmit={handleSubmit}>
-                    <div className={styles.formGroup} style={{ marginBottom: 30 }}>
-                        <label className={styles.label}>프로필 사진</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                            <div style={{ width: 100, height: 100, borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {formData.photo_url ? <img src={formData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2.5rem' }}>👤</span>}
-                            </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 30 }}>
+                        <div style={{ width: 100, height: 100, borderRadius: '50%', background: '#f8fafc', overflow: 'hidden', border: '2px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {formData.photo_url ? (
+                                <img src={formData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <span style={{ fontSize: '2.5rem' }}>👤</span>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label className={styles.label} style={{ marginBottom: 0 }}>프로필 사진</label>
                             <input type="file" onChange={handlePhotoUpload} accept="image/*" style={{ fontSize: '0.9rem' }} />
                         </div>
                     </div>
@@ -158,23 +155,18 @@ export default function DriverContactsNewPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소속지점</label>
-                            <input name="branch" className={styles.input} value={formData.branch} onChange={handleInputChange} placeholder="예: 부산지점, 서울지점" />
+                            <select name="branch" className={styles.input} value={formData.branch} onChange={handleInputChange} style={{ height: '42px' }}>
+                                <option value="">지점 선택</option>
+                                {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>차량번호</label>
                             <input name="vehicle_number" className={styles.input} value={formData.vehicle_number} onChange={handleInputChange} placeholder="충남11바1234" />
                         </div>
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>차량 아이디 (영문4+숫자4)</label>
+                            <label className={styles.label}>차량 아이디</label>
                             <input name="vehicle_id" className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value.toUpperCase() }))} placeholder="ABCD1234" maxLength={8} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>영업넘버</label>
-                            <input name="business_number" className={styles.input} value={formData.business_number} onChange={handleInputChange} placeholder="영업용 넘버" />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>아이디 (영문4+숫자4)</label>
-                            <input name="driver_id" className={styles.input} value={formData.driver_id} onChange={handleInputChange} placeholder="예: ABCD1234" />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>차종</label>
@@ -186,13 +178,13 @@ export default function DriverContactsNewPage() {
                         </div>
                     </div>
 
-                    <div className={styles.formGroup} style={{ marginTop: '20px' }}>
-                        <label className={styles.label}>📎 추가 서류 (최대 10개 - 계약서, 사업자등록증, 면허증 등)</label>
+                    <div className={styles.formGroup} style={{ marginTop: 30 }}>
+                        <label className={styles.label}>📎 추가 서류 (최대 10개)</label>
                         <div style={{ border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '8px', background: '#f8fafc' }}>
                             <input type="file" multiple onChange={handleDocUpload} style={{ marginBottom: '10px' }} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {attachments.map((file, idx) => (
-                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '6px 12px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.9rem' }}>
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.9rem' }}>
                                         <span>📎 {file.name}</span>
                                         <span onClick={() => removeDoc(idx)} style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕</span>
                                     </div>
@@ -202,8 +194,7 @@ export default function DriverContactsNewPage() {
                     </div>
 
                     <div className={styles.actions} style={{ marginTop: '30px' }}>
-                        <button type="submit" className={styles.btnPrimary} disabled={submitting}>{submitting ? '저장 중...' : '저장'}</button>
-                        <Link href="/employees/driver-contacts" className={styles.btnSecondary}>취소</Link>
+                        <button type="submit" className={styles.btnPrimary} style={{ height: '44px', width: '120px' }} disabled={submitting}>{submitting ? '저장 중...' : '저장하기'}</button>
                     </div>
                 </form>
             </div>

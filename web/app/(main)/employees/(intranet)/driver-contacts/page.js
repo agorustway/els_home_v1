@@ -13,6 +13,14 @@ export default function DriverContactsPage() {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const formatPhone = (val) => {
+        if (!val) return '-';
+        const num = val.replace(/[^0-9]/g, '');
+        if (num.length <= 3) return num;
+        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+    };
+
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/driver-contacts');
     }, [role, authLoading, router]);
@@ -34,10 +42,10 @@ export default function DriverContactsPage() {
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>운전원정보</h1>
-            <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
-                <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
-            </div>
+                <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
+                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                    <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
+                </div>
             </div>
             <div className={styles.card}>
                 <table className={styles.table}>
@@ -45,7 +53,6 @@ export default function DriverContactsPage() {
                         <tr>
                             <th style={{ width: '80px', textAlign: 'center' }}>사진</th>
                             <th style={{ width: '70px', textAlign: 'center' }}>계약</th>
-                            <th style={{ width: '120px' }}>영업넘버</th>
                             <th className={styles.colTitle}>이름</th>
                             <th style={{ width: '150px' }}>전화번호</th>
                             <th style={{ width: '120px' }}>차량번호</th>
@@ -75,9 +82,8 @@ export default function DriverContactsPage() {
                                         {item.contract_type === 'contracted' ? '계약' : '미계약'}
                                     </span>
                                 </td>
-                                <td>{item.business_number}</td>
                                 <td className={styles.colTitle}>{item.name}</td>
-                                <td>{item.phone}</td>
+                                <td>{formatPhone(item.phone)}</td>
                                 <td style={{ fontWeight: 600 }}>{item.vehicle_number || '-'}</td>
                                 <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px' }}>{item.vehicle_id || '-'}</td>
                                 <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.last_container_number || '-'}</td>

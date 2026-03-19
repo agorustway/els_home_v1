@@ -107,22 +107,12 @@ export default function DriverContactsDetailPage() {
                             <div style={{ fontSize: '1.2rem', color: '#2563eb', fontWeight: 600 }}>{formatPhone(item.phone)}</div>
                         </div>
                         <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>영업넘버</label>
-                            <div>{item.business_number || '-'}</div>
-                        </div>
-                        <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량번호</label>
                             <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.vehicle_number || '-'}</div>
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량아이디</label>
                             <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || '-'}</div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>아이디</label>
-                            <div style={{ color: '#64748b' }}>{item.driver_id || '-'}</div>
-                        </div>
-                        <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차종</label>
                             <div>{item.vehicle_type || '-'}</div>
                         </div>
