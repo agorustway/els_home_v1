@@ -99,6 +99,13 @@ def capabilities():
         if attempt < 3:
             time.sleep(0.5) # 잠시 대기 후 재시도
     
+    # [추가] 20분 이상 지난 작업은 좀비 프로세스로 간주하여 강제 해제 (배경 동시조회 꼬임 방지)
+    if global_progress.get("is_running") and global_progress.get("start_time"):
+        if time.time() - global_progress["start_time"] > 1200:
+            app.logger.warning(f"[좀비복구] {global_progress.get('user')}의 작업이 20분을 초과하여 강제 종료 처리합니다.")
+            global_progress["is_running"] = False
+            global_progress["completed"] = global_progress["total"]
+
     return jsonify({
         "available": daemon_status["available"],
         "driver_active": daemon_status["driver_active"],
@@ -234,10 +241,14 @@ def login():
 
 @app.route("/api/els/stop-daemon", methods=["POST"])
 def stop_daemon():
+    global global_progress
     if _daemon_available():
         try:
             req = Request(DAEMON_URL + "/stop", method="POST")
             urlopen(req, timeout=5)
+            # [추가] 데몬 중지 시 백엔드의 진행률 락도 강제 해제
+            global_progress["is_running"] = False
+            global_progress["completed"] = global_progress.get("total", 0)
             return jsonify({"ok": True})
         except:
             pass
@@ -250,80 +261,88 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     final_rows = []
     headers = ["컨테이너번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
     
-    # 진행률 초기화
-    global_progress = {"total": len(containers), "completed": 0, "is_running": True}
+    # 진행률 초기화 (시작 시간 기록하여 데드락 감지용 활용)
+    global_progress = {
+        "total": len(containers), 
+        "completed": 0, 
+        "is_running": True, 
+        "start_time": time.time(),
+        "user": uid
+    }
     yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 3개 세션 구동)\n"
     
-    def fetch_container(cn):
-        cn = cn.strip().upper()
-        if not cn: return []
-        st = time.time()
-        try:
-            body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
-            req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-            resp = urlopen(req, timeout=120)
-            res_json = json.loads(resp.read().decode("utf-8"))
-            worker_id = res_json.get("worker_id", "?")
-            daemon_id = res_json.get("daemon_id", "1") # [추가] 데몬 식별 ID 수집
-            return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1), worker_id, daemon_id
-        except Exception as e:
-            return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1), "?", "ER"
+    try:
+        def fetch_container(cn):
+            cn = cn.strip().upper()
+            if not cn: return []
+            st = time.time()
+            try:
+                body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
+                req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
+                resp = urlopen(req, timeout=120)
+                res_json = json.loads(resp.read().decode("utf-8"))
+                worker_id = res_json.get("worker_id", "?")
+                daemon_id = res_json.get("daemon_id", "1") # [추가] 데몬 식별 ID 수집
+                return res_json.get("result", []), cn, res_json.get("error"), round(time.time() - st, 1), worker_id, daemon_id
+            except Exception as e:
+                return [[cn, "ERROR", str(e)] + [""]*12], cn, str(e), round(time.time() - st, 1), "?", "ER"
 
-    sent_daemon_logs = set()
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        # 딕셔너리에 (컨테이너번호, 재시도횟수) 상태 저장
-        futures = {executor.submit(fetch_container, cn): (cn, 0) for cn in containers}
-        
-        log_poll_counter = 0
-        while futures:
-            # 🎯 [실시간 폴링 지연] 매 루프마다 가져오지 않고 3회에 한 번만(약 1.5초 주기) 가져옴으로써 NAS 부하 감소
-            log_poll_counter += 1
-            if log_poll_counter >= 3:
-                try:
-                    l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
-                    l_data = json.loads(l_req.read().decode("utf-8"))
-                    for line in l_data.get("log", []):
-                        if line not in sent_daemon_logs:
-                            yield f"LOG:{line}\n"
-                            sent_daemon_logs.add(line)
-                except: pass
-                log_poll_counter = 0
+        sent_daemon_logs = set()
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            # 딕셔너리에 (컨테이너번호, 재시도횟수) 상태 저장
+            futures = {executor.submit(fetch_container, cn): (cn, 0) for cn in containers}
+            
+            log_poll_counter = 0
+            while futures:
+                # 🎯 [실시간 폴링 지연] 매 루프마다 가져오지 않고 3회에 한 번만(약 1.5초 주기) 가져옴으로써 NAS 부하 감소
+                log_poll_counter += 1
+                if log_poll_counter >= 3:
+                    try:
+                        l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
+                        l_data = json.loads(l_req.read().decode("utf-8"))
+                        for line in l_data.get("log", []):
+                            if line not in sent_daemon_logs:
+                                yield f"LOG:{line}\n"
+                                sent_daemon_logs.add(line)
+                    except: pass
+                    log_poll_counter = 0
 
-            # 완료된 작업이 있는지 체크 (0.5초 대기)
-            done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
-            for f in done:
-                cn, retries = futures[f]
-                rows, _, err, elapsed, worker_id, daemon_id = f.result()
-                
-                # 🎯 에러 발생 시 재시도 로직 (1회 한정하여 다른 데몬에게 하청/재조회 시도)
-                if err and retries < 1:
-                    yield f"LOG:⚠️ [D#{daemon_id}-B#{worker_id}] [{cn}] 오류 발생, 재조회 시도 중... ({err})\n"
-                    new_f = executor.submit(fetch_container, cn)
-                    futures[new_f] = (cn, retries + 1)
+                # 완료된 작업이 있는지 체크 (0.5초 대기)
+                done, not_done = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
+                for f in done:
+                    cn, retries = futures[f]
+                    rows, _, err, elapsed, worker_id, daemon_id = f.result()
+                    
+                    # 🎯 에러 발생 시 재시도 로직 (1회 한정하여 다른 데몬에게 하청/재조회 시도)
+                    if err and retries < 1:
+                        yield f"LOG:⚠️ [D#{daemon_id}-B#{worker_id}] [{cn}] 오류 발생, 재조회 시도 중... ({err})\n"
+                        new_f = executor.submit(fetch_container, cn)
+                        futures[new_f] = (cn, retries + 1)
+                        del futures[f]
+                        continue
+                    
+                    final_rows.extend(rows)
+                    global_progress["completed"] += 1
+                    
+                    # 안전한 JSON 전송을 위한 처리
+                    def _safe_val(v):
+                        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
+                        return v
+                    partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
+
+                    if err:
+                        yield f"LOG:❌ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
+                        # 에러 상태도 즉시 프론트에 전달
+                        yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
+                    else:
+                        yield f"LOG:✔ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
+                        # 성공 결과 전달 (내역 없음 포함)
+                        yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
+                    
                     del futures[f]
-                    continue
-                
-                final_rows.extend(rows)
-                global_progress["completed"] += 1
-                
-                # 안전한 JSON 전송을 위한 처리
-                def _safe_val(v):
-                    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)): return None
-                    return v
-                partial_rows = [[_safe_val(cell) for cell in row] for row in rows]
-
-                if err:
-                    yield f"LOG:❌ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 실패 ({elapsed}s): {err}\n"
-                    # 에러 상태도 즉시 프론트에 전달
-                    yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
-                else:
-                    yield f"LOG:✔ [D#{daemon_id}-B#{worker_id}] [{global_progress['completed']}/{global_progress['total']}] [{cn}] 완료 ({len(rows)}건) ({elapsed}s)\n"
-                    # 성공 결과 전달 (내역 없음 포함)
-                    yield "RESULT_PARTIAL:" + json.dumps({"result": partial_rows}, ensure_ascii=False) + "\n"
-                
-                del futures[f]
-    
-    global_progress["is_running"] = False
+    finally:
+        global_progress["is_running"] = False
+        global_progress["completed"] = global_progress["total"]
     # Generate Final Result and Excel (이후 로직 동일)
     if final_rows:
         try:

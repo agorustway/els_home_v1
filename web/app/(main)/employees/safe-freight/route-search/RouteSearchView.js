@@ -1049,7 +1049,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             const params = new URLSearchParams({
                 type: 'distance',
                 period: displayPeriod,
-                km: String(totalKm / 2),
+                km: String(totalKm),
             });
             const res = await fetch(`/api/safe-freight/lookup?${params.toString()}`);
             if (!res.ok) throw new Error('Distance fare lookup failed');
