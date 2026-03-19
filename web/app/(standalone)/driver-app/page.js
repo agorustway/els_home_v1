@@ -31,6 +31,7 @@ export default function DriverAppPage() {
     const [sendCount, setSendCount] = useState(0);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isPwa, setIsPwa] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     const [history, setHistory] = useState([]);
     const [historyMonth, setHistoryMonth] = useState(() => {
@@ -74,6 +75,12 @@ export default function DriverAppPage() {
         if (typeof window !== 'undefined') {
             setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
             
+            const handleBeforeInstallPrompt = (e) => {
+                e.preventDefault();
+                setDeferredPrompt(e);
+            };
+            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
             const handleScroll = () => {
                 const statusEl = document.getElementById('status-section');
                 if (statusEl) {
@@ -82,7 +89,10 @@ export default function DriverAppPage() {
                 }
             };
             window.addEventListener('scroll', handleScroll);
-            return () => window.removeEventListener('scroll', handleScroll);
+            return () => {
+                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                window.removeEventListener('scroll', handleScroll);
+            };
         }
     }, []);
 
@@ -112,6 +122,10 @@ export default function DriverAppPage() {
 
     // ─── 2. 운전원 정보 자동 매칭 (Search API) ───
     useEffect(() => {
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW register error:', err));
+        }
+
         const phone = cleanPhone(driverPhone);
         if (phone.length >= 10 || vehicleNumber.length >= 4) {
             const timer = setTimeout(async () => {
@@ -275,6 +289,28 @@ export default function DriverAppPage() {
             });
             const data = await res.json();
             if (data.trip) {
+                // 운행 시작 전 추가해둔 사진이 있다면 즉시 업로드
+                const localPhotos = photos.filter(p => !p.uploaded && p.file);
+                if (localPhotos.length > 0) {
+                    setUploading(true);
+                    const photoFormData = new FormData();
+                    photoFormData.append('trip_id', data.trip.id);
+                    localPhotos.forEach(p => photoFormData.append('photos', p.file));
+                    try {
+                        const photoRes = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: photoFormData });
+                        const photoData = await photoRes.json();
+                        if (photoData.photos) {
+                            setPhotos(photoData.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
+                        } else if (photoData.error) {
+                            alert('사진 업로드 실패: ' + photoData.error);
+                        }
+                    } catch (pe) { 
+                        console.error('Photo upload error at start:', pe); 
+                        alert('사진 업로드 오류 (네트워크)');
+                    }
+                    finally { setUploading(false); }
+                }
+
                 setActiveTrip(data.trip);
                 setTripStatus('driving');
                 setElapsedSeconds(0);
@@ -371,18 +407,36 @@ export default function DriverAppPage() {
             const formData = new FormData();
             formData.append('trip_id', activeTrip.id);
             files.forEach(f => formData.append('photos', f));
-            try {
-                const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.photos) {
-                    setPhotos(data.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
-                }
-            } catch { alert('업로드 실패'); } finally { setUploading(false); }
-        }
+                try {
+                    const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.photos) {
+                        setPhotos(data.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
+                    } else if (data.error) {
+                        alert('사진 전송 실패: ' + data.error);
+                    }
+                } catch (e) { 
+                    alert('사진 전송 오류 (네트워크)');
+                } finally { setUploading(false); }
+            }
     };
 
-    const handleInstallClick = () => {
-        alert('브라우저 메뉴의 "홈 화면에 추가"를 선택하여 앱으로 설치해주세요.');
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                setDeferredPrompt(null);
+            }
+        } else {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            const isIos = /iphone|ipad|ipod/.test(userAgent);
+            if (isIos) {
+                alert('iOS는 Safari에서 "공유 버튼(↑)" -> "홈 화면에 추가"를 눌러 설치해 주세요.');
+            } else {
+                alert('이미 설치되어 있거나, 브라우저 메뉴의 "홈 화면에 추가"를 선택해 주세요.');
+            }
+        }
     };
 
     const isActive = tripStatus === 'driving' || tripStatus === 'paused';
@@ -394,6 +448,7 @@ export default function DriverAppPage() {
         <div className={styles.driverPage}>
             {/* 📍 PWA & Mobile Meta Tags */}
             <title>ELS 차량용 운송관리</title>
+            <link rel="manifest" href="/manifest_driver.json" />
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
             <meta name="apple-mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
