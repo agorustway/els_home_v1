@@ -243,16 +243,16 @@ export default function DriverAppPage() {
             checkActiveTrip(storedPhone, storedVehicle);
         }
 
-        const handleScroll = () => {
-            const statusEl = document.getElementById('status-section');
-            if (statusEl) {
-                const rect = statusEl.getBoundingClientRect();
-                setShowFloatingTimer(rect.bottom < 0);
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden' && isActive) {
+                // 홈버튼 누르면 루프라도 돌게 함 (PiP는 브라우저 정책따름)
+                if (isMinimized) drawPip();
             }
         };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+
+        window.addEventListener('visibilitychange', handleVisibility);
+        return () => window.removeEventListener('visibilitychange', handleVisibility);
+    }, [isActive, isMinimized, drawPip]);
 
     // 정적인 시간 계산용 타이머 (부드럽게 움지기게 수정)
     useEffect(() => {
@@ -330,17 +330,25 @@ export default function DriverAppPage() {
         // 타이머
         ctx.font = '900 64px monospace';
         ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
         ctx.fillText(formatTime(elapsedSeconds), canvas.width/2, 130);
 
         // 컨테이너 번호 (조그맣게 밑에)
         ctx.font = 'bold 24px sans-serif';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText(`📦 ${containerNumber || 'No Container'}`, canvas.width/2, 180);
+        ctx.textAlign = 'center';
+        ctx.fillText(`📦 ${containerNumber || '미입력'}`, canvas.width/2, 180);
+
+        // GPS 상태 (우측 상단)
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = gpsActive ? '#10b981' : '#ef4444';
+        ctx.textAlign = 'right';
+        ctx.fillText(gpsActive ? '📡 수신중' : '❌ 끊김', canvas.width - 20, 35);
 
         if (isMinimized) {
             requestRef.current = requestAnimationFrame(drawPip);
         }
-    }, [elapsedSeconds, isDriving, containerNumber, isMinimized]);
+    }, [elapsedSeconds, isDriving, containerNumber, isMinimized, gpsActive]);
 
     const enterPiP = async () => {
         if (!pipVideoRef.current || !canvasRef.current) return;
@@ -742,6 +750,9 @@ export default function DriverAppPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{fontSize: '0.9rem'}}>{isDriving ? '🟢' : '⏸️'}</span>
                             <span style={{ fontSize: '1.3rem' }}>{formatTime(elapsedSeconds)}</span>
+                            <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                                {gpsActive ? '📡' : '🔴'}
+                            </span>
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📦 {containerNumber || '미입력'}</div>
                     </motion.div>
