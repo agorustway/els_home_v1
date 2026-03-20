@@ -37,6 +37,8 @@ export default function DriverAppPage() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isIOS, setIsIOS] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false); // 최소화 모드
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
 
     const [history, setHistory] = useState([]);
     const [historyMonth, setHistoryMonth] = useState(() => {
@@ -150,6 +152,7 @@ export default function DriverAppPage() {
 
     // ─── 6. 비즈니스 액션 ───
     const checkActiveTrip = useCallback(async (p, v) => {
+        setIsRefreshing(true);
         try {
             const params = new URLSearchParams({ mode: 'my' });
             const phone = p ? cleanPhone(p) : cleanPhone(driverPhone);
@@ -158,9 +161,14 @@ export default function DriverAppPage() {
             if (phone) params.append('phone', phone);
             if (veh) params.append('vehicle_number', veh);
             
-            if (!phone && !veh) return; // 정보 없으면 패스
+            if (!phone && !veh) {
+                setIsRefreshing(false);
+                return;
+            }
 
             const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
+            if (!res.ok) throw new Error('서버 데이터를 불러올 수 없습니다.');
+            
             const data = await res.json();
             if (data.trips) {
                 const active = data.trips.find(t => t.status === 'driving' || t.status === 'paused');
@@ -182,11 +190,20 @@ export default function DriverAppPage() {
                     
                     if (active.photos?.length > 0) setPhotos(active.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
                     if (active.status === 'driving') { startGPS(active.id, 'driving'); playSilence(); }
+                } else {
+                    // 진행 중인 것이 없으면 상태 비움
+                    setActiveTrip(null);
+                    setTripStatus(null);
                 }
-                // 진행 중인 것이 있든 없든, 내역(History)은 가져오도록 함
                 fetchHistory();
+                initPipContext(); // PiP 준비
             }
-        } catch { }
+        } catch (e) { 
+            console.error('CheckActive Error:', e);
+            // alert('연결 상태를 확인해 주세요.'); 
+        } finally {
+            setIsRefreshing(false);
+        }
     }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory, cleanPhone]);
 
     // ─── PWA 설치 프로프트 ───
@@ -329,19 +346,37 @@ export default function DriverAppPage() {
         if (!pipVideoRef.current || !canvasRef.current) return;
         
         try {
-            // 캔버스 스트림 생성
+            // 캔버스 스트림 생성 (최초 1회만)
             if (!pipVideoRef.current.srcObject) {
-                const stream = canvasRef.current.captureStream(1); // 1fps면 충분
+                const stream = canvasRef.current.captureStream(10); // 10fps로 품질 상향
                 pipVideoRef.current.srcObject = stream;
             }
             
+            // 모바일 브라우저 대응: 비디오를 강제로 재생함
             await pipVideoRef.current.play();
-            await pipVideoRef.current.requestPictureInPicture();
+
+            // PiP 지원 여부 확인 후 요청
+            if (document.pictureInPictureEnabled || pipVideoRef.current.webkitSupportsPresentationMode) {
+                if (pipVideoRef.current.requestPictureInPicture) {
+                    await pipVideoRef.current.requestPictureInPicture();
+                } else if (pipVideoRef.current.webkitSetPresentationMode) {
+                    // iOS 대응용 웹킷 모드
+                    pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
+                }
+            }
+            
             setIsMinimized(true);
-            drawPip();
+            // React 상태 업데이트 전 즉시 렌더 루프 시작
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+            const startLoop = () => {
+                drawPip();
+                requestRef.current = requestAnimationFrame(startLoop);
+            };
+            startLoop();
+            
         } catch (e) {
             console.error('PiP Error:', e);
-            // PiP 실패 시 기존 플로팅 모드로 대체
+            // PiP 실패/미지원 시 브라우저 내부용 미니 위젯 모드로 강제 진입
             setIsMinimized(true);
         }
     };
@@ -365,6 +400,24 @@ export default function DriverAppPage() {
             if (video) video.removeEventListener('leavepictureinpicture', handleLeavePiP);
         };
     }, []);
+
+    const initPipContext = async () => {
+        if (!pipVideoRef.current || !canvasRef.current) return;
+        try {
+            if (!pipVideoRef.current.srcObject) {
+                const stream = canvasRef.current.captureStream(10);
+                pipVideoRef.current.srcObject = stream;
+            }
+            await pipVideoRef.current.play();
+            // 루프 시작 (백그라운드에서 캔버스는 계속 그려져야 함)
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+            const startLoop = () => {
+                drawPip();
+                requestRef.current = requestAnimationFrame(startLoop);
+            };
+            startLoop();
+        } catch (e) { console.error('PiP Init Error:', e); }
+    };
 
 
     // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
@@ -396,10 +449,13 @@ export default function DriverAppPage() {
     }, [tripStatus, activeTrip, elapsedSeconds, vehicleNumber, driverName, containerNumber, sealNumber]);
 
 
+    // ─── 3. 정보 갱신 및 이력 수정 로직 ───
     const handleUpdateInfo = async () => {
-        if (!activeTrip) return;
+        const targetId = selectedHistoryId || activeTrip?.id;
+        if (!targetId) return;
+        
         try {
-            const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
+            const res = await fetch(`/api/vehicle-tracking/trips/${targetId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -414,10 +470,32 @@ export default function DriverAppPage() {
                 }),
             });
             if (res.ok) {
-                alert('정보가 수정되었습니다.');
-                checkActiveTrip(); // 상태 갱신
+                alert(selectedHistoryId ? '운송 기록이 수정되었습니다. (로그 기록됨)' : '현재 운행 정보가 수정되었습니다.');
+                if (!selectedHistoryId) checkActiveTrip(); // 실시간이면 갱신
+                else { 
+                    fetchHistory();
+                    setSelectedHistoryId(null); // 수정 완료 후 해제
+                }
             }
         } catch (e) { alert('오류: ' + e.message); }
+    };
+
+    const handleSelectHistory = (trip) => {
+        if (isActive && !confirm('현재 진행 중인 운행이 있습니다. 이력 수정 모드로 전환하시겠습니까? (현재 입력값은 초기화됩니다)')) return;
+        
+        setSelectedHistoryId(trip.id);
+        setVehicleNumber(trip.vehicle_number || '');
+        setVehicleId(trip.vehicle_id || '');
+        setDriverName(trip.driver_name || '');
+        setDriverPhone(formatPhone(trip.driver_phone || ''));
+        setContainerNumber(trip.container_number || '');
+        setSealNumber(trip.seal_number || '');
+        setContainerType(trip.container_type || '40FT');
+        setContainerKind(trip.container_kind || 'DRY');
+        setSpecialNotes(trip.special_notes || '');
+        setPhotos(trip.photos?.map(p => ({ ...p, previewUrl: p.url, uploaded: true })) || []);
+        
+        scrollToTop();
     };
 
     const handleStart = async () => {
@@ -463,6 +541,7 @@ export default function DriverAppPage() {
                 setElapsedSeconds(0);
                 startGPS(data.trip.id, 'driving');
                 playSilence();
+                initPipContext(); // PiP 준비 (홈버튼 시 자동 전환용)
             }
         } catch (e) { alert('오류: ' + e.message); }
     };
@@ -505,6 +584,7 @@ export default function DriverAppPage() {
                 stopGPS();
                 startGPS(activeTrip.id, 'driving');
                 playSilence();
+                initPipContext(); // PiP 준비
             }
         } catch (e) { alert('오류: ' + e.message); }
     };
@@ -636,9 +716,9 @@ export default function DriverAppPage() {
 
             <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
 
-            {/* 진짜 플로팅 위젯을 위한 숨김 요소 */}
-            <canvas ref={canvasRef} width="300" height="220" style={{ display: 'none' }} />
-            <video ref={pipVideoRef} muted playsInline style={{ display: 'none' }} />
+            {/* 진짜 플로팅 위젯을 위한 보이지 않는 요소 (일부 브라우저는 숨김 시 PiP 차단하므로 opactiy 0 사용) */}
+            <canvas ref={canvasRef} width="300" height="220" style={{ position: 'fixed', bottom: -1000, pointerEvents: 'none', opacity: 0 }} />
+            <video ref={pipVideoRef} muted playsInline autoPictureInPicture={true} style={{ position: 'fixed', bottom: -1000, width: 1, height: 1, pointerEvents: 'none', opacity: 0 }} />
 
             {/* 최소화 시 브라우저 내부에 보일 백업 위젯 (PiP 미지원 대비) */}
             <AnimatePresence>
@@ -693,13 +773,14 @@ export default function DriverAppPage() {
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button 
                                 onClick={() => checkActiveTrip()}
-                                style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.1)', color: '#334155', fontWeight: 700 }}
+                                disabled={isRefreshing}
+                                style={{ fontSize: '0.8rem', padding: '6px 12px', borderRadius: '8px', background: isRefreshing ? '#e2e8f0' : 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.1)', color: '#334155', fontWeight: 800, transition: 'all 0.2s' }}
                             >
-                                🔄 갱신
+                                {isRefreshing ? '⌛' : '🔄'} 갱신
                             </button>
                             <button 
                                 onClick={enterPiP}
-                                style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '6px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 800, boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)' }}
+                                style={{ fontSize: '0.8rem', padding: '6px 12px', borderRadius: '8px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 800, boxShadow: '0 3px 10px rgba(59, 130, 246, 0.4)' }}
                             >
                                 🔳 최소화
                             </button>
@@ -785,9 +866,21 @@ export default function DriverAppPage() {
                         </div>
                     </div>
 
-                    {isActive && (
-                        <button className={styles.updateInlineBtn} onClick={handleUpdateInfo}>
-                            📝 정보 수정내용 저장
+                    {/* 수정 모드 안내 */}
+                    {selectedHistoryId && (
+                        <div style={{ background: '#fef3c7', padding: '10px 14px', borderRadius: '10px', marginBottom: 15, border: '1px solid #fcd34d', display: 'flex', justifyContent: 'space-between', alignItems:'center' }}>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400e' }}>🚨 과거 운송 기록 수정 모드</div>
+                            <button onClick={() => { setSelectedHistoryId(null); checkActiveTrip(); }} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background:'#fff', fontSize:'0.75rem', fontWeight:700 }}>해제 (X)</button>
+                        </div>
+                    )}
+
+                    {(isActive || selectedHistoryId) && (
+                        <button 
+                            className={styles.updateInlineBtn} 
+                            onClick={handleUpdateInfo}
+                            style={{ background: selectedHistoryId ? '#dbeafe' : '#f8fafc', borderColor: selectedHistoryId ? '#3b82f6' : '#cbd5e1', color: selectedHistoryId ? '#1e40af' : '#475569' }}
+                        >
+                            {selectedHistoryId ? '✍️ 기록 수정내역 확인 및 저장' : '📝 현재 정보 수정내역 저장'}
                         </button>
                     )}
                     
@@ -850,7 +943,7 @@ export default function DriverAppPage() {
                 
                 <div className={styles.historyList}>
                     {history.length > 0 ? history.map((h, i) => (
-                        <div key={i} className={styles.historyCard}>
+                        <div key={i} className={`${styles.historyCard} ${selectedHistoryId === h.id ? styles.historyCardActive : ''}`} onClick={() => handleSelectHistory(h)}>
                             <div className={styles.historyHeader}>
                                 <div className={styles.historyDate}>{new Date(h.started_at).toLocaleString()}</div>
                                 <div className={`${styles.statusBadge} ${styles['status' + h.status]}`}>

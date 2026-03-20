@@ -243,6 +243,13 @@
     border-radius: 10px;
     padding: 12px;
     background: #f8fafc;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.historyCardActive {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 0 0 1px #3b82f6;
 }
 .historyDate { font-size: 0.75rem; color: #94a3b8; }
 .historyContainer { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 2px 0; }

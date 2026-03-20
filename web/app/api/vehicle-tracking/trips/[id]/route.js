@@ -76,6 +76,13 @@ export async function PATCH(request, { params }) {
         const body = await request.json();
         const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, vehicle_id, driver_name, driver_phone, vehicle_number } = body;
 
+        // 기존 데이터 조회 (로그용)
+        const { data: oldData } = await supabase
+            .from('vehicle_trips')
+            .select('*')
+            .eq('id', id)
+            .single();
+
         const updates = { updated_at: new Date().toISOString() };
 
         if (action === 'pause') {
@@ -109,6 +116,27 @@ export async function PATCH(request, { params }) {
             .single();
 
         if (error) throw error;
+
+        // 수정 로그 기록 (수정 모드일 경우)
+        if (oldData && !action) {
+            const logEntries = [];
+            const checkFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'special_notes'];
+            checkFields.forEach(f => {
+                if (updates[f] !== undefined && updates[f] !== oldData[f]) {
+                    logEntries.push({
+                        trip_id: id,
+                        field_name: f,
+                        old_value: String(oldData[f] || '-'),
+                        new_value: String(updates[f] || '-'),
+                        modified_by: driver_name || oldData.driver_name,
+                        created_at: new Date().toISOString()
+                    });
+                }
+            });
+            if (logEntries.length > 0) {
+                await supabase.from('vehicle_trip_logs').insert(logEntries);
+            }
+        }
 
         // 운행 종료 시 운전원정보 자동 갱신/등록
         if (action === 'complete' && data) {
