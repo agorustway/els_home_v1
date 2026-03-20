@@ -44,6 +44,9 @@ export default function DriverAppPage() {
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
 
+    const isActive = tripStatus === 'driving' || tripStatus === 'paused';
+    const isDriving = tripStatus === 'driving';
+
     // ─── Refs ───
     const gpsIntervalRef = useRef(null);
     const timerIntervalRef = useRef(null);
@@ -284,18 +287,6 @@ export default function DriverAppPage() {
         }
     }, [driverPhone, vehicleNumber]);
 
-    // ─── 3. 타이머 로직 (절대 시간 기준) ───
-    useEffect(() => {
-        if (tripStatus === 'driving' && activeTrip?.started_at) {
-            timerIntervalRef.current = setInterval(() => {
-                const startAt = new Date(activeTrip.started_at).getTime();
-                setElapsedSeconds(Math.floor((Date.now() - startAt) / 1000));
-            }, 1000);
-        } else {
-            clearInterval(timerIntervalRef.current);
-        }
-        return () => clearInterval(timerIntervalRef.current);
-    }, [tripStatus, activeTrip]);
 
     // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
     useEffect(() => {
@@ -552,8 +543,6 @@ export default function DriverAppPage() {
         }
     };
 
-    const isActive = tripStatus === 'driving' || tripStatus === 'paused';
-    const isDriving = tripStatus === 'driving';
 
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
