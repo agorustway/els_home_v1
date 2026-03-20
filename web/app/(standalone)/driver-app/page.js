@@ -23,6 +23,43 @@ const formatTime = (totalSeconds) => {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+const formatPhone = (val) => {
+    const num = (val || '').replace(/[^0-9]/g, '');
+    if (num.length <= 3) return num;
+    if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+    return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+};
+
+// ─── 이미지 압축 및 리사이징 (최신 이미지 압축 기술 적용) ───
+const resizeImage = (file, maxWidth = 1200, maxHeight = 1200) => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > height) {
+                    if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+                } else {
+                    if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    const resizedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+                    resolve(resizedFile);
+                }, 'image/jpeg', 0.8);
+            };
+        };
+    });
+};
+
 export default function DriverAppPage() {
     // ─── States ───
     const [vehicleNumber, setVehicleNumber] = useState('');
@@ -75,6 +112,22 @@ export default function DriverAppPage() {
 
     const playSilence = useCallback(() => { if (audioRef.current) audioRef.current.play().catch(() => {}); }, []);
     const stopSilence = useCallback(() => { if (audioRef.current) audioRef.current.pause(); }, []);
+    const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const fetchHistory = useCallback(async () => {
+        const phone = cleanPhone(driverPhone);
+        if (!phone && !vehicleNumber) return;
+        
+        const params = new URLSearchParams({ mode: 'my', month: historyMonth });
+        if (phone) params.append('phone', phone);
+        if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
+        
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
+            const data = await res.json();
+            if (data.trips) setHistory(data.trips);
+        } catch { }
+    }, [driverPhone, vehicleNumber, historyMonth]);
 
     // ─── 5. 위치 전송 로직 ───
     const sendLocation = useCallback(async (tripId) => {
@@ -125,21 +178,6 @@ export default function DriverAppPage() {
         setGpsActive(false);
         idleCountRef.current = 0;
     }, []);
-
-    const fetchHistory = useCallback(async () => {
-        const phone = cleanPhone(driverPhone);
-        if (!phone && !vehicleNumber) return;
-        
-        const params = new URLSearchParams({ mode: 'my', month: historyMonth });
-        if (phone) params.append('phone', phone);
-        if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
-        
-        try {
-            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
-            const data = await res.json();
-            if (data.trips) setHistory(data.trips);
-        } catch { }
-    }, [driverPhone, vehicleNumber, historyMonth]);
 
     // ─── 6. 비즈니스 액션 ───
     const checkActiveTrip = useCallback(async (p, v) => {
@@ -316,24 +354,6 @@ export default function DriverAppPage() {
         } catch (e) { console.error('PiP Init Error:', e); }
     };
 
-
-    const formatPhone = useCallback((val) => {
-        const num = val.replace(/[^0-9]/g, '');
-        if (num.length <= 3) return num;
-        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    }, []);
-
-    const handleInstallApp = async () => {
-        if (!deferredPrompt) {
-            if (isIOS) alert('아이폰(iOS)은 사파리 브라우저 하단의 [공유] → [홈 화면에 추가]를 눌러주세요.');
-            else alert('이 브라우저는 직접 설치를 지원하지 않습니다. 크롬 브라우저를 이용해 주세요.');
-            return;
-        }
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') setDeferredPrompt(null);
-    };
 
     // ─── 3. 정보 갱신 및 이력 수정 로직 ───
     const handleUpdateInfo = async () => {
@@ -627,35 +647,7 @@ export default function DriverAppPage() {
     }, [driverPhone, vehicleNumber]);
 
 
-    // ─── 이미지 압축 및 리사이징 (최신 이미지 압축 기술 적용) ───
-    const resizeImage = (file, maxWidth = 1200, maxHeight = 1200) => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height) {
-                        if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
-                    } else {
-                        if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => {
-                        const resizedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
-                        resolve(resizedFile);
-                    }, 'image/jpeg', 0.8); // 80% 품질로 압축
-                };
-            };
-        });
-    };
+
 
     const handlePhotoAdd = async (e) => {
         if (!e.target.files) return;
@@ -722,7 +714,8 @@ export default function DriverAppPage() {
     };
 
 
-    const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+
 
     return (
         <>
