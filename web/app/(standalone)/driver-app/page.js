@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 
@@ -35,6 +36,7 @@ export default function DriverAppPage() {
     const [isPwa, setIsPwa] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isIOS, setIsIOS] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(false); // 최소화 모드
 
     const [history, setHistory] = useState([]);
     const [historyMonth, setHistoryMonth] = useState(() => {
@@ -205,50 +207,48 @@ export default function DriverAppPage() {
         if (outcome === 'accepted') setDeferredPrompt(null);
     };
 
-    // ─── 초기화 ───
+    // ─── 초기화 및 타이머 ───
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
-            
-            const handleBeforeInstallPrompt = (e) => {
-                e.preventDefault();
-                setDeferredPrompt(e);
-            };
-            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        if (typeof window === 'undefined') return;
+        
+        setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
+        
+        const storedPhone = localStorage.getItem('els_driver_phone');
+        const storedVehicle = localStorage.getItem('els_driver_vehicle');
+        const storedName = localStorage.getItem('els_driver_name');
 
-            const handleScroll = () => {
-                const statusEl = document.getElementById('status-section');
-                if (statusEl) {
-                    const rect = statusEl.getBoundingClientRect();
-                    setShowFloatingTimer(rect.bottom < 0);
-                }
-            };
-            window.addEventListener('scroll', handleScroll);
-            return () => {
-                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-                window.removeEventListener('scroll', handleScroll);
-            };
+        if (storedPhone || storedVehicle) {
+            checkActiveTrip(storedPhone, storedVehicle);
         }
+
+        const handleScroll = () => {
+            const statusEl = document.getElementById('status-section');
+            if (statusEl) {
+                const rect = statusEl.getBoundingClientRect();
+                setShowFloatingTimer(rect.bottom < 0);
+            }
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // ─── 비즈니스 액션 ───
+    // 정적인 시간 계산용 타이머 (부드럽게 움지기게 수정)
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const storedPhone = localStorage.getItem('els_driver_phone');
-            const storedVehicle = localStorage.getItem('els_driver_vehicle');
-            const storedVehicleId = localStorage.getItem('els_driver_vehicle_id');
-            const storedName = localStorage.getItem('els_driver_name');
-
-            let p = ''; let v = '';
-            if (storedPhone) { p = storedPhone; setDriverPhone(formatPhone(storedPhone)); }
-            if (storedVehicle) { v = storedVehicle; setVehicleNumber(storedVehicle); }
-            if (storedVehicleId) setVehicleId(storedVehicleId);
-            if (storedName) setDriverName(storedName);
-
-            // 저장된 정보가 있으면 즉시 진행 중인 운행 확인
-            checkActiveTrip(p, v);
+        let timer;
+        if (isActive && isDriving && activeTrip?.started_at) {
+            const started = new Date(activeTrip.started_at).getTime();
+            timer = setInterval(() => {
+                const now = Date.now();
+                setElapsedSeconds(Math.floor((now - started) / 1000));
+            }, 1000);
+        } else if (isActive && !isDriving) {
+            // 일시정지 중에는 시간이 멈춤. 
+            // 다만 다시 '운행 재개' 시 started_at이 갱신되는지 확인 필요.
+            // 현재 로직상 일시정지 중에도 started_at은 그대로라면, 실제 운행한 시간만 계산하려면 로직이 더 필요함.
+            // 일단은 현재 초수를 그대로 유지하나, 1초마다 다시 계산하진 않음.
         }
-    }, [checkActiveTrip]);
+        return () => clearInterval(timer);
+    }, [isActive, isDriving, activeTrip?.started_at]);
 
     // 정보 로컬 저장
     useEffect(() => {
@@ -284,17 +284,18 @@ export default function DriverAppPage() {
         }
     }, [driverPhone, vehicleNumber]);
 
-    // ─── 3. 타이머 로직 ───
+    // ─── 3. 타이머 로직 (절대 시간 기준) ───
     useEffect(() => {
-        if (tripStatus === 'driving') {
+        if (tripStatus === 'driving' && activeTrip?.started_at) {
             timerIntervalRef.current = setInterval(() => {
-                setElapsedSeconds(prev => prev + 1);
+                const startAt = new Date(activeTrip.started_at).getTime();
+                setElapsedSeconds(Math.floor((Date.now() - startAt) / 1000));
             }, 1000);
         } else {
             clearInterval(timerIntervalRef.current);
         }
         return () => clearInterval(timerIntervalRef.current);
-    }, [tripStatus]);
+    }, [tripStatus, activeTrip]);
 
     // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
     useEffect(() => {
@@ -457,52 +458,75 @@ export default function DriverAppPage() {
     };
 
 
+    // ─── 이미지 압축 및 리사이징 (최신 이미지 압축 기술 적용) ───
+    const resizeImage = (file, maxWidth = 1200, maxHeight = 1200) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+                    } else {
+                        if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        const resizedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+                        resolve(resizedFile);
+                    }, 'image/jpeg', 0.8); // 80% 품질로 압축
+                };
+            };
+        });
+    };
+
     const handlePhotoAdd = async (e) => {
-        const files = Array.from(e.target.files);
-        if (photos.length + files.length > 10) { alert('사진은 최대 10장까지 가능합니다.'); return; }
+        if (!e.target.files) return;
+        const rawFiles = Array.from(e.target.files);
+        if (photos.length + rawFiles.length > 10) { alert('사진은 최대 10장까지 가능합니다.'); return; }
         
-        // 미리보기 URL 생성 및 상태 업데이트
-        const newPhotos = files.map(f => ({ file: f, previewUrl: URL.createObjectURL(f), uploaded: false, name: f.name, uploading: true }));
-        setPhotos(prev => [...prev, ...newPhotos]);
+        // 미리보기 및 업로드 중 상태 표시
+        const tempPhotos = rawFiles.map(f => ({ previewUrl: URL.createObjectURL(f), uploaded: false, uploading: true, name: f.name }));
+        setPhotos(prev => [...prev, ...tempPhotos]);
 
         if (activeTrip) {
-            setUploading(true); // 전체 업로드 상태
+            setUploading(true);
             try {
                 const formData = new FormData();
                 formData.append('trip_id', activeTrip.id);
                 
-                // 용량 체크: 총 합이 4.5MB 넘으면 Vercel에서 거절됨
-                let totalSize = 0;
-                for(const f of files) {
-                    if (f.size > 4 * 1024 * 1024) {
-                        alert(`파일 용량이 너무 큽니다: ${f.name} (${(f.size/1024/1024).toFixed(1)}MB)\n4MB 이하의 사진만 전송 가능합니다.`);
-                        setPhotos(prev => prev.filter(p => !p.uploading)); // 업로드 중인 마크 제거
-                        return;
-                    }
-                    totalSize += f.size;
-                    formData.append('photos', f);
+                for (const f of rawFiles) {
+                    const compressed = await resizeImage(f);
+                    formData.append('photos', compressed);
+                    console.log(`Compressed: ${f.name} (${(f.size/1024/1024).toFixed(1)}MB -> ${(compressed.size/1024/1024).toFixed(1)}MB)`);
                 }
 
-                const res = await fetch('/api/vehicle-tracking/photos', {
-                    method: 'POST',
-                    body: formData,
-                });
-
+                const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
                 if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.error || '업로드 실패');
+                    const errText = await res.text();
+                    try {
+                        const err = JSON.parse(errText);
+                        throw new Error(err.error || '업로드 실패');
+                    } catch {
+                        throw new Error('서버 오류 (용량이 너무 클 수 있습니다)');
+                    }
                 }
-
                 const data = await res.json();
-                // 서버에서 반환된 URL로 업데이트
                 setPhotos(prev => prev.map(p => {
-                    const uploadedPhoto = data.photos.find(up => up.original_name === p.name);
+                    const uploadedPhoto = data.photos.find(up => up.original_name === p.name || up.name === p.name);
                     return uploadedPhoto ? { ...p, previewUrl: uploadedPhoto.url, uploaded: true, uploading: false } : p;
                 }));
             } catch (e) {
                 console.error(e);
                 alert('사진 전송 오류: ' + e.message);
-                // 업로드 중인 마크 제거
                 setPhotos(prev => prev.filter(p => !p.uploading));
             } finally {
                 setUploading(false);
@@ -534,7 +558,7 @@ export default function DriverAppPage() {
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
     return (
-        <div className={styles.driverPage}>
+        <>
             {/* 📍 PWA & Mobile Meta Tags */}
             <title>ELS 차량용 운송관리</title>
             <link rel="manifest" href="/manifest_driver.json" />
@@ -544,6 +568,32 @@ export default function DriverAppPage() {
 
             <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
 
+            {/* 최소화 시 뜨는 플로팅 위젯 (드래그 가능) */}
+            <AnimatePresence>
+                {isMinimized && isActive && (
+                    <motion.div 
+                        drag
+                        dragConstraints={{ left: 10, right: 300, top: 10, bottom: 600 }}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        onClick={() => setIsMinimized(false)}
+                        style={{
+                            position: 'fixed', bottom: 100, right: 20, zIndex: 100000,
+                            background: '#1e293b', color: '#fff', padding: '12px 18px',
+                            borderRadius: '30px', fontWeight: 900, fontSize: '1.2rem',
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)', border: '2px solid #3b82f6',
+                            display: 'flex', alignItems: 'center', gap: 10, cursor: 'move',
+                            touchAction: 'none'
+                        }}
+                    >
+                        <span style={{fontSize: '0.9rem', color: isDriving ? '#10b981' : '#f59e0b'}}>{isDriving ? '🟢' : '⏸️'}</span>
+                        <span>{formatTime(elapsedSeconds)}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className={styles.driverPage} style={{ display: isMinimized ? 'none' : 'block' }}>
             {/* 상단 헤더: 로고 + 제목 */}
             <div className={styles.header}>
                 <img src="/images/logo.png" alt="ELS Logo" className={styles.headerLogo} />
@@ -561,10 +611,26 @@ export default function DriverAppPage() {
 
             {isActive && (
                 <div id="status-section" className={isDriving ? styles.activeStatus : styles.pausedStatus}>
-                    <div className={isDriving ? styles.activeStatusTitle : styles.pausedStatusTitle}>
-                        {isDriving ? '🟢 운행 중' : '🟡 일시정지'}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <div className={isDriving ? styles.activeStatusTitle : styles.pausedStatusTitle}>
+                            {isDriving ? '🟢 운행 중' : '🟡 일시정지'}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button 
+                                onClick={() => checkActiveTrip()}
+                                style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '5px', background: '#fff', border: '1px solid #cbd5e1', color: '#64748b' }}
+                            >
+                                🔄 갱신
+                            </button>
+                            <button 
+                                onClick={() => setIsMinimized(true)}
+                                style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '5px', background: '#fff', border: '1px solid #cbd5e1', color: '#64748b' }}
+                            >
+                                🔳 최소화
+                            </button>
+                        </div>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '5px 0', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '5px 0', fontFamily: 'monospace', letterSpacing: '2px' }}>
                         {formatTime(elapsedSeconds)}
                     </div>
                     <div className={styles.activeStatusSub}>{activeTrip?.vehicle_number} | {activeTrip?.driver_name}</div>
@@ -727,7 +793,9 @@ export default function DriverAppPage() {
             <style jsx global>{`
                 body { margin: 0; background: #f8fafc; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
                 select { -webkit-appearance: none; appearance: none; }
+                @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             `}</style>
-        </div>
+            </div>
+        </>
     );
 }
