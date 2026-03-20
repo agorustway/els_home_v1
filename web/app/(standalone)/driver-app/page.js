@@ -40,6 +40,8 @@ export default function DriverAppPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
 
+    const hasInitializedRef = useRef(false);
+
     const [history, setHistory] = useState([]);
     const [historyMonth, setHistoryMonth] = useState(() => {
         const now = new Date();
@@ -231,7 +233,7 @@ export default function DriverAppPage() {
 
     // ─── 초기화 ───
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        if (typeof window === 'undefined' || hasInitializedRef.current) return;
         setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
         
         const storedPhone = localStorage.getItem('els_driver_phone');
@@ -239,7 +241,8 @@ export default function DriverAppPage() {
         if (storedPhone || storedVehicle) {
             checkActiveTrip(storedPhone, storedVehicle);
         }
-    }, []); // 처음 한 번만 실행 (무한 루프 방지)
+        hasInitializedRef.current = true;
+    }, [checkActiveTrip]); 
 
     // ─── 이벤트 리스너 ───
     useEffect(() => {
@@ -247,7 +250,22 @@ export default function DriverAppPage() {
 
         const handleVisibility = () => {
             if (document.visibilityState === 'hidden' && isActive) {
-                if (isMinimized) drawPip();
+                // 백그라운드 전환 로직 (필요시 추가)
+                // PiP 모드일 경우 drawPip을 계속 호출하여 캔버스 업데이트
+                if (isMinimized && typeof requestAnimationFrame !== 'undefined') {
+                    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+                    const startLoop = () => {
+                        drawPip();
+                        requestRef.current = requestAnimationFrame(startLoop);
+                    };
+                    startLoop();
+                }
+            } else if (document.visibilityState === 'visible') {
+                // 앱이 다시 포그라운드로 돌아왔을 때 PiP 렌더링 루프 중지
+                if (requestRef.current) {
+                    cancelAnimationFrame(requestRef.current);
+                    requestRef.current = null;
+                }
             }
         };
 
@@ -423,20 +441,16 @@ export default function DriverAppPage() {
     }, []);
 
     const initPipContext = async () => {
-        if (!pipVideoRef.current || !canvasRef.current) return;
+        if (!pipVideoRef.current || !canvasRef.current || !canvasRef.current.captureStream) return;
         try {
             if (!pipVideoRef.current.srcObject) {
                 const stream = canvasRef.current.captureStream(10);
                 pipVideoRef.current.srcObject = stream;
             }
-            await pipVideoRef.current.play();
-            // 루프 시작 (백그라운드에서 캔버스는 계속 그려져야 함)
-            if (requestRef.current) cancelAnimationFrame(requestRef.current);
-            const startLoop = () => {
-                drawPip();
-                requestRef.current = requestAnimationFrame(startLoop);
-            };
-            startLoop();
+            if (pipVideoRef.current.paused) {
+                await pipVideoRef.current.play().catch(() => {});
+            }
+            // 루프는 필요할 때만 호출 (enterPiP에서 시작)
         } catch (e) { console.error('PiP Init Error:', e); }
     };
 

@@ -199,6 +199,9 @@ export default function VehicleTrackingPage() {
                 if (infoWindowRef.current) infoWindowRef.current.close();
                 infoWindow.open(map, marker);
                 infoWindowRef.current = infoWindow;
+                // 클릭 시 배율 줌 및 센터링
+                map.setZoom(16);
+                map.setCenter(pos);
             });
             markersRef.current.push(marker);
         });
