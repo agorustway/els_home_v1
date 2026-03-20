@@ -12,7 +12,17 @@ import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/
  * - Media Session API를 통한 백그라운드 타이머 및 제어
  * - GPS 주기 최적화 (이동 30초, 정지 1분, 대기 2분)
  * - 사진 최대 10장 지원 및 상세 입기
- */
+  */
+
+const cleanPhone = (val) => (val || '').replace(/[^0-9]/g, '');
+
+const formatTime = (totalSeconds) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
 export default function DriverAppPage() {
     // ─── States ───
     const [vehicleNumber, setVehicleNumber] = useState('');
@@ -59,27 +69,6 @@ export default function DriverAppPage() {
     const canvasRef = useRef(null);
     const pipVideoRef = useRef(null);
     const requestRef = useRef(null);
-
-    const GPS_INTERVALS = { driving: 30000, paused: 60000, idle: 120000 };
-    const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
-
-    const cleanPhone = (val) => val.replace(/[^0-9]/g, '');
-
-    // ─── Helper: Phone Formatting ───
-    const formatPhone = useCallback((val) => {
-        const num = val.replace(/[^0-9]/g, '');
-        if (num.length <= 3) return num;
-        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    }, []);
-
-    // ─── Helper: Timer Formatting ───
-    const formatTime = (totalSeconds) => {
-        const h = Math.floor(totalSeconds / 3600);
-        const m = Math.floor((totalSeconds % 3600) / 60);
-        const s = totalSeconds % 60;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    };
 
     const [showFloatingTimer, setShowFloatingTimer] = useState(false);
     const scrollContainerRef = useRef(null);
@@ -208,134 +197,7 @@ export default function DriverAppPage() {
         }
     }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory, cleanPhone]);
 
-    // ─── PWA 설치 프로프트 ───
-    useEffect(() => {
-        const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); };
-        window.addEventListener('beforeinstallprompt', handler);
-        
-        // iOS 여부 확인
-        const userAgent = window.navigator.userAgent.toLowerCase();
-        setIsIOS(/iphone|ipad|ipod/.test(userAgent));
-        
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleInstallApp = async () => {
-        if (!deferredPrompt) {
-            if (isIOS) alert('아이폰(iOS)은 사파리 브라우저 하단의 [공유] → [홈 화면에 추가]를 눌러주세요.');
-            else alert('이 브라우저는 직접 설치를 지원하지 않습니다. 크롬 브라우저를 이용해 주세요.');
-            return;
-        }
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') setDeferredPrompt(null);
-    };
-
-    // ─── 초기화 ───
-    useEffect(() => {
-        if (typeof window === 'undefined' || hasInitializedRef.current) return;
-        setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
-        
-        const storedPhone = localStorage.getItem('els_driver_phone');
-        const storedVehicle = localStorage.getItem('els_driver_vehicle');
-        if (storedPhone || storedVehicle) {
-            checkActiveTrip(storedPhone, storedVehicle);
-        }
-        hasInitializedRef.current = true;
-    }, [checkActiveTrip]); 
-
-    // ─── 이벤트 리스너 ───
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const handleVisibility = () => {
-            if (document.visibilityState === 'hidden' && isActive) {
-                // 백그라운드 전환 로직 (필요시 추가)
-                // PiP 모드일 경우 drawPip을 계속 호출하여 캔버스 업데이트
-                if (isMinimized && typeof requestAnimationFrame !== 'undefined') {
-                    if (requestRef.current) cancelAnimationFrame(requestRef.current);
-                    const startLoop = () => {
-                        drawPip();
-                        requestRef.current = requestAnimationFrame(startLoop);
-                    };
-                    startLoop();
-                }
-            } else if (document.visibilityState === 'visible') {
-                // 앱이 다시 포그라운드로 돌아왔을 때 PiP 렌더링 루프 중지
-                if (requestRef.current) {
-                    cancelAnimationFrame(requestRef.current);
-                    requestRef.current = null;
-                }
-            }
-        };
-
-        const handleScroll = () => {
-            const statusEl = document.getElementById('status-section');
-            if (statusEl) {
-                const rect = statusEl.getBoundingClientRect();
-                setShowFloatingTimer(rect.bottom < 0);
-            }
-        };
-
-        window.addEventListener('visibilitychange', handleVisibility);
-        window.addEventListener('scroll', handleScroll);
-        return () => {
-            window.removeEventListener('visibilitychange', handleVisibility);
-            window.removeEventListener('scroll', handleScroll);
-        };
-    }, [isActive, isMinimized, drawPip]);
-
-    // 정적인 시간 계산용 타이머 (부드럽게 움지기게 수정)
-    useEffect(() => {
-        let timer;
-        if (isActive && isDriving && activeTrip?.started_at) {
-            const started = new Date(activeTrip.started_at).getTime();
-            timer = setInterval(() => {
-                const now = Date.now();
-                setElapsedSeconds(Math.floor((now - started) / 1000));
-            }, 1000);
-        } else if (isActive && !isDriving) {
-            // 일시정지 중에는 시간이 멈춤. 
-            // 다만 다시 '운행 재개' 시 started_at이 갱신되는지 확인 필요.
-            // 현재 로직상 일시정지 중에도 started_at은 그대로라면, 실제 운행한 시간만 계산하려면 로직이 더 필요함.
-            // 일단은 현재 초수를 그대로 유지하나, 1초마다 다시 계산하진 않음.
-        }
-        return () => clearInterval(timer);
-    }, [isActive, isDriving, activeTrip?.started_at]);
-
-    // 정보 로컬 저장
-    useEffect(() => {
-        if (driverPhone) localStorage.setItem('els_driver_phone', cleanPhone(driverPhone));
-        if (vehicleNumber) localStorage.setItem('els_driver_vehicle', vehicleNumber);
-        if (vehicleId) localStorage.setItem('els_driver_vehicle_id', vehicleId);
-        if (driverName) localStorage.setItem('els_driver_name', driverName);
-    }, [driverPhone, vehicleNumber, vehicleId, driverName]);
-
-    // ─── 2. 운전원 정보 자동 매칭 (Search API) ───
-    useEffect(() => {
-        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW register error:', err));
-        }
-
-        const phone = cleanPhone(driverPhone);
-        if (phone.length >= 10 || vehicleNumber.length >= 4) {
-            const timer = setTimeout(async () => {
-                try {
-                    const params = new URLSearchParams();
-                    if (phone) params.append('phone', phone);
-                    if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
-                    
-                    const res = await fetch(`/api/driver-contacts/search?${params.toString()}`);
-                    const data = await res.json();
-                    if (data.item) {
-                        if (!driverName) setDriverName(data.item.name);
-                        if (!vehicleId) setVehicleId(data.item.vehicle_id || '');
-                    }
-                } catch (e) { console.error('Profile search error:', e); }
-            }, 800);
-            return () => clearTimeout(timer);
-        }
-    }, [driverPhone, vehicleNumber]);
+    // ─── Photo Hooks placeholder (will move useEffects to bottom) ───
     // ─── 8. 캔버스 기반 PiP (진짜 플로팅 위젯) ───
     const drawPip = useCallback(() => {
         const canvas = canvasRef.current;
@@ -455,33 +317,50 @@ export default function DriverAppPage() {
     };
 
 
+    const formatPhone = useCallback((val) => {
+        const num = val.replace(/[^0-9]/g, '');
+        if (num.length <= 3) return num;
+        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+    }, []);
+
+    const handleInstallApp = async () => {
+        if (!deferredPrompt) {
+            if (isIOS) alert('아이폰(iOS)은 사파리 브라우저 하단의 [공유] → [홈 화면에 추가]를 눌러주세요.');
+            else alert('이 브라우저는 직접 설치를 지원하지 않습니다. 크롬 브라우저를 이용해 주세요.');
+            return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') setDeferredPrompt(null);
+    };
+
     // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
-    useEffect(() => {
+    const setupMediaSession = useCallback(() => {
         if (!('mediaSession' in navigator) || !activeTrip) return;
 
         const updateMetadata = () => {
             const statusLabel = tripStatus === 'driving' ? '운행 중' : '일시정지';
             const timeLabel = formatTime(elapsedSeconds);
             
-            navigator.mediaSession.metadata = new window.MediaMetadata({
-                title: `${statusLabel} [${timeLabel}]`,
-                artist: `${vehicleNumber} (${driverName})`,
-                album: `컨테이너: ${containerNumber || '미입력'} / 씰: ${sealNumber || '-'}`,
-                artwork: [
-                    { src: 'https://cdn-icons-png.flaticon.com/512/2555/2555013.png', sizes: '512x512', type: 'image/png' }
-                ]
-            });
+            if (typeof MediaMetadata !== 'undefined') {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `${statusLabel} [${timeLabel}]`,
+                    artist: `${vehicleNumber} (${driverName})`,
+                    album: `컨테이너: ${containerNumber || '미입력'} / 씰: ${sealNumber || '-'}`,
+                    artwork: [
+                        { src: 'https://cdn-icons-png.flaticon.com/512/2555/2555013.png', sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+            }
         };
 
         updateMetadata();
-        
-        // 핸들러 등록
         navigator.mediaSession.setActionHandler('play', handleResume);
         navigator.mediaSession.setActionHandler('pause', handlePause);
 
-        const metaInterval = setInterval(updateMetadata, 1000);
-        return () => clearInterval(metaInterval);
-    }, [tripStatus, activeTrip, elapsedSeconds, vehicleNumber, driverName, containerNumber, sealNumber]);
+        return updateMetadata;
+    }, [tripStatus, activeTrip, elapsedSeconds, vehicleNumber, driverName, containerNumber, sealNumber, handleResume, handlePause]);
 
 
     // ─── 3. 정보 갱신 및 이력 수정 로직 ───
@@ -623,6 +502,111 @@ export default function DriverAppPage() {
             }
         } catch (e) { alert('오류: ' + e.message); }
     };
+
+    // ─── 모든 Side Effects 모음 (정의된 후 실행) ───
+
+    // PWA & iOS 체크
+    useEffect(() => {
+        const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+        window.addEventListener('beforeinstallprompt', handler);
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    // 초기화
+    useEffect(() => {
+        if (typeof window === 'undefined' || hasInitializedRef.current) return;
+        setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
+        const storedPhone = localStorage.getItem('els_driver_phone');
+        const storedVehicle = localStorage.getItem('els_driver_vehicle');
+        if (storedPhone || storedVehicle) {
+            checkActiveTrip(storedPhone, storedVehicle);
+        }
+        hasInitializedRef.current = true;
+    }, [checkActiveTrip]);
+
+    // 이벤트 리스너 (Visibility, Scroll)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden' && isActive) {
+                if (isMinimized && typeof requestAnimationFrame !== 'undefined') {
+                    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+                    const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
+                    loop();
+                }
+            } else if (document.visibilityState === 'visible') {
+                if (requestRef.current) { cancelAnimationFrame(requestRef.current); requestRef.current = null; }
+            }
+        };
+        const handleScroll = () => {
+            const statusEl = document.getElementById('status-section');
+            if (statusEl) {
+                const rect = statusEl.getBoundingClientRect();
+                setShowFloatingTimer(rect.bottom < 0);
+            }
+        };
+        window.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [isActive, isMinimized, drawPip]);
+
+    // 타이머
+    useEffect(() => {
+        let timer;
+        if (isActive && isDriving && activeTrip?.started_at) {
+            const started = new Date(activeTrip.started_at).getTime();
+            timer = setInterval(() => {
+                const now = Date.now();
+                setElapsedSeconds(Math.floor((now - started) / 1000));
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [isActive, isDriving, activeTrip?.started_at]);
+
+    // MediaSession
+    useEffect(() => {
+        const update = setupMediaSession();
+        if (!update) return;
+        const interval = setInterval(update, 1000);
+        return () => clearInterval(interval);
+    }, [setupMediaSession]);
+
+    // 로컬 저장
+    useEffect(() => {
+        if (driverPhone) localStorage.setItem('els_driver_phone', cleanPhone(driverPhone));
+        if (vehicleNumber) localStorage.setItem('els_driver_vehicle', vehicleNumber);
+        if (vehicleId) localStorage.setItem('els_driver_vehicle_id', vehicleId);
+        if (driverName) localStorage.setItem('els_driver_name', driverName);
+    }, [driverPhone, vehicleNumber, vehicleId, driverName]);
+
+    // 프로필 자동 매칭 및 SW
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+        const phone = cleanPhone(driverPhone);
+        if (phone.length >= 10 || vehicleNumber.length >= 4) {
+            const timer = setTimeout(async () => {
+                try {
+                    const params = new URLSearchParams();
+                    if (phone) params.append('phone', phone);
+                    if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
+                    const res = await fetch(`/api/driver-contacts/search?${params.toString()}`);
+                    const data = await res.json();
+                    if (data.item) {
+                        if (!driverName) setDriverName(data.item.name);
+                        if (!vehicleId) setVehicleId(data.item.vehicle_id || '');
+                    }
+                } catch { }
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [driverPhone, vehicleNumber]);
 
     const handleStop = async () => {
         if (!activeTrip || !confirm('운행을 종료하시겠습니까?')) return;
