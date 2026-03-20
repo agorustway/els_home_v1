@@ -83,7 +83,6 @@ export default function DriverAppPage() {
     const [isPwa, setIsPwa] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isIOS, setIsIOS] = useState(false);
-    const [isMinimized, setIsMinimized] = useState(false); // 최소화 모드
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
 
@@ -103,9 +102,6 @@ export default function DriverAppPage() {
     const lastPosRef = useRef(null);
     const idleCountRef = useRef(0);
     const audioRef = useRef(null);
-    const canvasRef = useRef(null);
-    const pipVideoRef = useRef(null);
-    const requestRef = useRef(null);
 
     const [showFloatingTimer, setShowFloatingTimer] = useState(false);
     const scrollContainerRef = useRef(null);
@@ -220,140 +216,19 @@ export default function DriverAppPage() {
                     if (active.photos?.length > 0) setPhotos(active.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
                     if (active.status === 'driving') { startGPS(active.id, 'driving'); playSilence(); }
                 } else {
-                    // 진행 중인 것이 없으면 상태 비움
                     setActiveTrip(null);
                     setTripStatus(null);
                 }
                 fetchHistory();
-                initPipContext(); // PiP 준비
             }
         } catch (e) { 
             console.error('CheckActive Error:', e);
-            // alert('연결 상태를 확인해 주세요.'); 
         } finally {
             setIsRefreshing(false);
         }
     }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory, cleanPhone]);
 
-    // ─── Photo Hooks placeholder (will move useEffects to bottom) ───
-    // ─── 8. 캔버스 기반 PiP (진짜 플로팅 위젯) ───
-    const drawPip = useCallback(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
 
-        // 배경 채우기 (다크 테마)
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 테두리
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 12;
-        ctx.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
-
-        // 상태 이모지 및 텍스트
-        ctx.font = 'bold 32px sans-serif';
-        ctx.fillStyle = isDriving ? '#10b981' : '#f59e0b';
-        ctx.textAlign = 'center';
-        ctx.fillText(isDriving ? '🟢 운행 중' : '🟡 일시정지', canvas.width/2, 60);
-
-        // 타이머
-        ctx.font = '900 64px monospace';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(formatTime(elapsedSeconds), canvas.width/2, 130);
-
-        // 컨테이너 번호 (조그맣게 밑에)
-        ctx.font = 'bold 24px sans-serif';
-        ctx.fillStyle = '#94a3b8';
-        ctx.textAlign = 'center';
-        ctx.fillText(`📦 ${containerNumber || '미입력'}`, canvas.width/2, 180);
-
-        // GPS 상태 (우측 상단)
-        ctx.font = 'bold 18px sans-serif';
-        ctx.fillStyle = gpsActive ? '#10b981' : '#ef4444';
-        ctx.textAlign = 'right';
-        ctx.fillText(gpsActive ? '📡 수신중' : '❌ 끊김', canvas.width - 20, 35);
-
-        if (isMinimized) {
-            requestRef.current = requestAnimationFrame(drawPip);
-        }
-    }, [elapsedSeconds, isDriving, containerNumber, isMinimized, gpsActive]);
-
-    const enterPiP = async () => {
-        if (!pipVideoRef.current || !canvasRef.current) return;
-        
-        try {
-            setIsMinimized(true);
-            
-            // 1. 비디오 재생 확인
-            if (pipVideoRef.current.paused) {
-                try {
-                    await pipVideoRef.current.play();
-                } catch (pe) {
-                    console.warn('Video play failed, attempting PiP anyway');
-                }
-            }
-
-            // 2. PiP 요청 (유저 제스처 내에서 실행)
-            if (document.pictureInPictureEnabled && pipVideoRef.current.requestPictureInPicture) {
-                await pipVideoRef.current.requestPictureInPicture();
-            } else if (pipVideoRef.current.webkitSetPresentationMode) {
-                pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
-            } else {
-                // PiP를 전혀 지원하지 않는 경우 (예: 일부 안드로이드 브라우저)
-                // alert('이 브라우저는 시스템 플로팅을 지원하지 않습니다. 앱 내부 최소화 모드로 전환합니다.');
-            }
-            
-            // 3. 렌더 루프 강제 시작
-            if (requestRef.current) cancelAnimationFrame(requestRef.current);
-            const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
-            loop();
-            
-        } catch (e) {
-            console.error('PiP Request Error:', e);
-            setIsMinimized(true);
-            // 에러 발생 시 fallback widget이 나오도록 함
-            if (requestRef.current) cancelAnimationFrame(requestRef.current);
-            const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
-            loop();
-        }
-    };
-
-    const exitPiP = async () => {
-        if (document.pictureInPictureElement) {
-            await document.exitPictureInPicture();
-        }
-        setIsMinimized(false);
-        if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-
-    useEffect(() => {
-        const handleLeavePiP = () => {
-            setIsMinimized(false);
-            if (requestRef.current) cancelAnimationFrame(requestRef.current);
-        };
-        const video = pipVideoRef.current;
-        if (video) video.addEventListener('leavepictureinpicture', handleLeavePiP);
-        return () => {
-            if (video) video.removeEventListener('leavepictureinpicture', handleLeavePiP);
-        };
-    }, []);
-
-    const initPipContext = async () => {
-        if (!pipVideoRef.current || !canvasRef.current) return;
-        try {
-            if (!pipVideoRef.current.srcObject) {
-                const stream = canvasRef.current.captureStream ? canvasRef.current.captureStream(10) : canvasRef.current.mozCaptureStream?.(10);
-                if (stream) pipVideoRef.current.srcObject = stream;
-            }
-            if (pipVideoRef.current.paused) {
-                await pipVideoRef.current.play().catch(() => {});
-            }
-            drawPip(); // 초기 프레임 한번 그려줌
-        } catch (e) { console.error('PiP Init Error:', e); }
-    };
 
 
     // ─── 3. 정보 갱신 및 이력 수정 로직 ───
@@ -448,7 +323,6 @@ export default function DriverAppPage() {
                 setElapsedSeconds(0);
                 startGPS(data.trip.id, 'driving');
                 playSilence();
-                initPipContext(); // PiP 준비 (홈버튼 시 자동 전환용)
             }
         } catch (e) { alert('오류: ' + e.message); }
     };
@@ -565,31 +439,9 @@ export default function DriverAppPage() {
         hasInitializedRef.current = true;
     }, [checkActiveTrip]);
 
-    // 이벤트 리스너 (Visibility, Scroll)
+    // 이벤트 리스너 (Scroll)
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        const handleVisibility = async () => {
-            if (document.visibilityState === 'hidden' && isActive) {
-                // 홈버튼 누름 시 자동 플로팅 상태 전환
-                setIsMinimized(true);
-                if (requestRef.current) cancelAnimationFrame(requestRef.current);
-                const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
-                loop();
-
-                // 가능한 경우 브라우저 레벨 PiP 요청 (단, 유저 제스처 없이는 거부될 수 있음)
-                if (!document.pictureInPictureElement) {
-                    try {
-                        if (pipVideoRef.current.requestPictureInPicture) {
-                            await pipVideoRef.current.requestPictureInPicture();
-                        } else if (pipVideoRef.current.webkitSetPresentationMode) {
-                            pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
-                        }
-                    } catch (e) { /* background에서의 호출은 정책상 무시될 수 있음 */ }
-                }
-            } else if (document.visibilityState === 'visible') {
-                if (requestRef.current) { cancelAnimationFrame(requestRef.current); requestRef.current = null; }
-            }
-        };
         const handleScroll = () => {
             const statusEl = document.getElementById('status-section');
             if (statusEl) {
@@ -597,13 +449,11 @@ export default function DriverAppPage() {
                 setShowFloatingTimer(rect.bottom < 0);
             }
         };
-        window.addEventListener('visibilitychange', handleVisibility);
         window.addEventListener('scroll', handleScroll);
         return () => {
-            window.removeEventListener('visibilitychange', handleVisibility);
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [isActive, drawPip]);
+    }, []);
 
     // 타이머
     useEffect(() => {
@@ -618,13 +468,7 @@ export default function DriverAppPage() {
         return () => clearInterval(timer);
     }, [isActive, isDriving, activeTrip?.started_at]);
 
-    // MediaSession
-    useEffect(() => {
-        const update = setupMediaSession();
-        if (!update) return;
-        const interval = setInterval(update, 1000);
-        return () => clearInterval(interval);
-    }, [setupMediaSession]);
+
 
     // 로컬 저장
     useEffect(() => {
@@ -740,43 +584,9 @@ export default function DriverAppPage() {
 
             <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
 
-            {/* 진짜 플로팅 위젯을 위한 보이지 않는 요소 (일부 브라우저는 숨김 시 PiP 차단하므로 opactiy 0.1 사용) */}
-            <canvas ref={canvasRef} width="300" height="220" style={{ position: 'fixed', bottom: -1000, pointerEvents: 'none', opacity: 0.1 }} />
-            <video ref={pipVideoRef} muted playsInline autoPictureInPicture={true} style={{ position: 'fixed', bottom: 0, right: 0, width: 2, height: 2, pointerEvents: 'none', opacity: 0.1, zIndex: -1 }} />
 
-            {/* 최소화 시 브라우저 내부에 보일 백업 위젯 (PiP 미지원 대비) */}
-            <AnimatePresence>
-                {isMinimized && (
-                    <motion.div 
-                        drag
-                        dragConstraints={{ left: 10, right: 300, top: 10, bottom: 600 }}
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.5, opacity: 0 }}
-                        onClick={exitPiP}
-                        style={{
-                            position: 'fixed', bottom: 100, right: 20, zIndex: 100000,
-                            background: '#1e293b', color: '#fff', padding: '16px 20px',
-                            borderRadius: '24px', fontWeight: 900,
-                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)', border: '2px solid #3b82f6',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'move',
-                            touchAction: 'none'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{fontSize: '0.9rem'}}>{isDriving ? '🟢' : '⏸️'}</span>
-                            <span style={{ fontSize: '1.3rem' }}>{formatTime(elapsedSeconds)}</span>
-                            <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                                {gpsActive ? '📡' : '🔴'}
-                            </span>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📦 {containerNumber || '미입력'}</div>
-                        <div style={{ fontSize: '0.6rem', color: '#3b82f6', marginTop: 4 }}>Tap to expand</div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
-            <div className={styles.driverPage} style={{ display: isMinimized ? 'none' : 'block' }}>
+            <div className={styles.driverPage}>
             {/* 상단 헤더: 로고 + 제목 */}
             <div className={styles.header}>
                 <img src="/images/logo.png" alt="ELS Logo" className={styles.headerLogo} />
@@ -805,12 +615,6 @@ export default function DriverAppPage() {
                                 style={{ fontSize: '0.8rem', padding: '6px 12px', borderRadius: '8px', background: isRefreshing ? '#e2e8f0' : 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.1)', color: '#334155', fontWeight: 800, transition: 'all 0.2s' }}
                             >
                                 {isRefreshing ? '⌛' : '🔄'} 갱신
-                            </button>
-                            <button 
-                                onClick={enterPiP}
-                                style={{ fontSize: '0.8rem', padding: '6px 12px', borderRadius: '8px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 800, boxShadow: '0 3px 10px rgba(59, 130, 246, 0.4)' }}
-                            >
-                                🔳 최소화
                             </button>
                         </div>
                     </div>
