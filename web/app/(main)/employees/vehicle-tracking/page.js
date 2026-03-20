@@ -13,6 +13,7 @@ export default function VehicleTrackingPage() {
     // 상세 조회 상태
     const [selectedTrip, setSelectedTrip] = useState(null);
     const [selectedTripLocations, setSelectedTripLocations] = useState([]);
+    const [tripLogs, setTripLogs] = useState([]);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
 
     // 실시간 관제 데이터
@@ -103,15 +104,26 @@ export default function VehicleTrackingPage() {
         setSelectedTrip(trip);
         setIsDetailLoading(true);
         setSelectedTripLocations([]);
+        setTripLogs([]); // 초기화
         try {
-            const res = await fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`);
-            const data = await res.json();
-            if (data.locations) {
-                setSelectedTripLocations(data.locations);
-                drawTripPath(data.locations);
+            // 경로 데이터와 수정 로그를 동시에 가져옴
+            const [locRes, logRes] = await Promise.all([
+                fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`),
+                fetch(`/api/vehicle-tracking/trips/${trip.id}/logs`)
+            ]);
+            
+            const locData = await locRes.json();
+            if (locData.locations) {
+                setSelectedTripLocations(locData.locations);
+                drawTripPath(locData.locations);
+            }
+            
+            const logData = await logRes.json();
+            if (logData.logs) {
+                setTripLogs(logData.logs);
             }
         } catch (e) {
-            console.error('상세 경로 조회 실패:', e);
+            console.error('상세 정보 조회 실패:', e);
         } finally {
             setIsDetailLoading(false);
         }
@@ -367,6 +379,43 @@ export default function VehicleTrackingPage() {
                                         <div className={styles.locAddress}>{loc.address || '주소 정보 없음'}</div>
                                     </div>
                                 ))}
+                            </div>
+                            {/* 수정 이력 로그 섹션 추가 */}
+                            <div className={styles.detailSection} style={{ marginTop: 24, borderTop: '1px solid #eee', paddingTop: 20 }}>
+                                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    📋 운송 기록 수정 이력 (Logs)
+                                </h3>
+                                
+                                <div className={styles.logList}>
+                                    {tripLogs.length > 0 ? (
+                                        tripLogs.map((log, li) => (
+                                            <div key={li} className={styles.logItem}>
+                                                <div className={styles.logHeader}>
+                                                    <span className={styles.logField}>{
+                                                        {
+                                                            'container_number': '📦 컨테이너 번호',
+                                                            'seal_number': '🔒 씰 넘버',
+                                                            'container_type': '📏 타입',
+                                                            'container_kind': '🚚 종류',
+                                                            'special_notes': '📝 특이사항'
+                                                        }[log.field_name] || log.field_name
+                                                    }</span>
+                                                    <span className={styles.logTime}>{new Date(log.created_at).toLocaleString()}</span>
+                                                </div>
+                                                <div className={styles.logChange}>
+                                                    <span className={styles.logOld}>{log.old_value}</span>
+                                                    <span className={styles.logArrow}>→</span>
+                                                    <span className={styles.logNew}>{log.new_value}</span>
+                                                </div>
+                                                <div className={styles.logUser}>수정자: {log.modified_by}</div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8', fontSize: '0.9rem' }}>
+                                            수정 이력이 없습니다.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

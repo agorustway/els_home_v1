@@ -620,6 +620,50 @@
     background: #059669;
 }
 
+/* ─── 수정 이력 로그 스타일 ─── */
+.logList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.logItem {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.85rem;
+}
+.logHeader {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.logField {
+    font-weight: 800;
+    color: #1e293b;
+}
+.logTime {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+.logChange {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #fff;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+.logOld { color: #94a3b8; text-decoration: line-through; }
+.logArrow { color: #cbd5e1; }
+.logNew { color: #2563eb; font-weight: 700; }
+.logUser {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-align: right;
+}
+
 .zipDownloadBtn:disabled {
     background: #d1d5db;
     cursor: not-allowed;
