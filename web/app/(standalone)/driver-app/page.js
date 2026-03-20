@@ -289,7 +289,11 @@ export default function DriverAppPage() {
             
             // 1. 비디오 재생 확인
             if (pipVideoRef.current.paused) {
-                await pipVideoRef.current.play();
+                try {
+                    await pipVideoRef.current.play();
+                } catch (pe) {
+                    console.warn('Video play failed, attempting PiP anyway');
+                }
             }
 
             // 2. PiP 요청 (유저 제스처 내에서 실행)
@@ -297,23 +301,23 @@ export default function DriverAppPage() {
                 await pipVideoRef.current.requestPictureInPicture();
             } else if (pipVideoRef.current.webkitSetPresentationMode) {
                 pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
+            } else {
+                // PiP를 전혀 지원하지 않는 경우 (예: 일부 안드로이드 브라우저)
+                // alert('이 브라우저는 시스템 플로팅을 지원하지 않습니다. 앱 내부 최소화 모드로 전환합니다.');
             }
             
-            // 3. 렌더 루프 강제 시작 (이전 캔슬 후 재시작)
+            // 3. 렌더 루프 강제 시작
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
-            const startLoop = () => {
-                drawPip();
-                requestRef.current = requestAnimationFrame(startLoop);
-            };
-            startLoop();
+            const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
+            loop();
             
         } catch (e) {
-            console.error('PiP Error:', e);
-            // 지원하지 않는 환경에서도 최소화 모드 UI는 작동하게 함
+            console.error('PiP Request Error:', e);
             setIsMinimized(true);
+            // 에러 발생 시 fallback widget이 나오도록 함
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
-            const startLoop = () => { drawPip(); requestRef.current = requestAnimationFrame(startLoop); };
-            startLoop();
+            const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
+            loop();
         }
     };
 
@@ -742,7 +746,7 @@ export default function DriverAppPage() {
 
             {/* 최소화 시 브라우저 내부에 보일 백업 위젯 (PiP 미지원 대비) */}
             <AnimatePresence>
-                {isMinimized && isActive && !document.pictureInPictureElement && (
+                {isMinimized && (
                     <motion.div 
                         drag
                         dragConstraints={{ left: 10, right: 300, top: 10, bottom: 600 }}
@@ -767,6 +771,7 @@ export default function DriverAppPage() {
                             </span>
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📦 {containerNumber || '미입력'}</div>
+                        <div style={{ fontSize: '0.6rem', color: '#3b82f6', marginTop: 4 }}>Tap to expand</div>
                     </motion.div>
                 )}
             </AnimatePresence>
