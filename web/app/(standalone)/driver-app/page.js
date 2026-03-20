@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import styles from './driver.module.css';
+import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 
 /**
  * 🚛 ELS 차량용 운송 관리 (Enhanced Driver App)
@@ -20,6 +21,7 @@ export default function DriverAppPage() {
     const [containerNumber, setContainerNumber] = useState('');
     const [sealNumber, setSealNumber] = useState('');
     const [containerType, setContainerType] = useState('40FT');
+    const [containerKind, setContainerKind] = useState('DRY');
     const [specialNotes, setSpecialNotes] = useState('');
     const [photos, setPhotos] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -49,15 +51,15 @@ export default function DriverAppPage() {
     const GPS_INTERVALS = { driving: 30000, paused: 60000, idle: 120000 };
     const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
+    const cleanPhone = (val) => val.replace(/[^0-9]/g, '');
+
     // ─── Helper: Phone Formatting ───
-    const formatPhone = (val) => {
+    const formatPhone = useCallback((val) => {
         const num = val.replace(/[^0-9]/g, '');
         if (num.length <= 3) return num;
         if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
         return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    };
-
-    const cleanPhone = (val) => val.replace(/[^0-9]/g, '');
+    }, []);
 
     // ─── Helper: Timer Formatting ───
     const formatTime = (totalSeconds) => {
@@ -69,6 +71,114 @@ export default function DriverAppPage() {
 
     const [showFloatingTimer, setShowFloatingTimer] = useState(false);
     const scrollContainerRef = useRef(null);
+
+    const playSilence = useCallback(() => { if (audioRef.current) audioRef.current.play().catch(() => {}); }, []);
+    const stopSilence = useCallback(() => { if (audioRef.current) audioRef.current.pause(); }, []);
+
+    // ─── 5. 위치 전송 로직 ───
+    const sendLocation = useCallback(async (tripId) => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
+                setLastCoords({ lat, lng });
+                setGpsActive(true);
+
+                const isMoved = !lastPosRef.current || 
+                    Math.abs(lastPosRef.current.lat - lat) > 0.0001 || 
+                    Math.abs(lastPosRef.current.lng - lng) > 0.0001;
+
+                if (isMoved) { idleCountRef.current = 0; lastPosRef.current = { lat, lng }; }
+                else { idleCountRef.current += 1; }
+
+                try {
+                    await fetch('/api/vehicle-tracking/location', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed }),
+                    });
+                    setSendCount(prev => prev + 1);
+                } catch { }
+            },
+            () => setGpsActive(false),
+            GPS_OPTIONS
+        );
+    }, []);
+
+    const startGPS = useCallback((tripId, status) => {
+        if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
+        const tick = () => {
+            let interval = GPS_INTERVALS.driving;
+            if (status === 'paused') interval = GPS_INTERVALS.paused;
+            else if (idleCountRef.current >= 3) interval = GPS_INTERVALS.idle;
+
+            sendLocation(tripId);
+            gpsIntervalRef.current = setTimeout(tick, interval);
+        };
+        tick();
+    }, [sendLocation]);
+
+    const stopGPS = useCallback(() => {
+        if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
+        gpsIntervalRef.current = null;
+        setGpsActive(false);
+        idleCountRef.current = 0;
+    }, []);
+
+    const fetchHistory = useCallback(async () => {
+        const phone = cleanPhone(driverPhone);
+        if (!phone && !vehicleNumber) return;
+        
+        const params = new URLSearchParams({ mode: 'my', month: historyMonth });
+        if (phone) params.append('phone', phone);
+        if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
+        
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
+            const data = await res.json();
+            if (data.trips) setHistory(data.trips);
+        } catch { }
+    }, [driverPhone, vehicleNumber, historyMonth]);
+
+    // ─── 6. 비즈니스 액션 ───
+    const checkActiveTrip = useCallback(async (p, v) => {
+        try {
+            const params = new URLSearchParams({ mode: 'my' });
+            const phone = p ? cleanPhone(p) : cleanPhone(driverPhone);
+            const veh = v || vehicleNumber;
+
+            if (phone) params.append('phone', phone);
+            if (veh) params.append('vehicle_number', veh);
+            
+            if (!phone && !veh) return; // 정보 없으면 패스
+
+            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
+            const data = await res.json();
+            if (data.trips) {
+                const active = data.trips.find(t => t.status === 'driving' || t.status === 'paused');
+                if (active) {
+                    setActiveTrip(active);
+                    setTripStatus(active.status);
+                    setVehicleNumber(active.vehicle_number);
+                    setVehicleId(active.vehicle_id || '');
+                    setDriverName(active.driver_name);
+                    setDriverPhone(formatPhone(active.driver_phone || ''));
+                    setContainerNumber(active.container_number || '');
+                    setSealNumber(active.seal_number || '');
+                    setContainerType(active.container_type || '40FT');
+                    setContainerKind(active.container_kind || 'DRY');
+                    setSpecialNotes(active.special_notes || '');
+                    
+                    const started = new Date(active.started_at);
+                    setElapsedSeconds(Math.floor((Date.now() - started.getTime()) / 1000));
+                    
+                    if (active.photos?.length > 0) setPhotos(active.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
+                    if (active.status === 'driving') { startGPS(active.id, 'driving'); playSilence(); }
+                    fetchHistory();
+                }
+            }
+        } catch { }
+    }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory]);
 
     // ─── 초기화 ───
     useEffect(() => {
@@ -189,97 +299,30 @@ export default function DriverAppPage() {
         return () => clearInterval(metaInterval);
     }, [tripStatus, activeTrip, elapsedSeconds, vehicleNumber, driverName, containerNumber, sealNumber]);
 
-    const playSilence = () => { if (audioRef.current) audioRef.current.play().catch(() => {}); };
-    const stopSilence = () => { if (audioRef.current) audioRef.current.pause(); };
 
-    // ─── 5. 위치 전송 로직 ───
-    const sendLocation = useCallback(async (tripId) => {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
-                setLastCoords({ lat, lng });
-                setGpsActive(true);
-
-                const isMoved = !lastPosRef.current || 
-                    Math.abs(lastPosRef.current.lat - lat) > 0.0001 || 
-                    Math.abs(lastPosRef.current.lng - lng) > 0.0001;
-
-                if (isMoved) { idleCountRef.current = 0; lastPosRef.current = { lat, lng }; }
-                else { idleCountRef.current += 1; }
-
-                try {
-                    await fetch('/api/vehicle-tracking/location', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed }),
-                    });
-                    setSendCount(prev => prev + 1);
-                } catch { }
-            },
-            () => setGpsActive(false),
-            GPS_OPTIONS
-        );
-    }, []);
-
-    const startGPS = useCallback((tripId, status) => {
-        if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
-        const tick = () => {
-            let interval = GPS_INTERVALS.driving;
-            if (status === 'paused') interval = GPS_INTERVALS.paused;
-            else if (idleCountRef.current >= 3) interval = GPS_INTERVALS.idle;
-
-            sendLocation(tripId);
-            gpsIntervalRef.current = setTimeout(tick, interval);
-        };
-        tick();
-    }, [sendLocation]);
-
-    const stopGPS = useCallback(() => {
-        if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
-        gpsIntervalRef.current = null;
-        setGpsActive(false);
-        idleCountRef.current = 0;
-    }, []);
-
-    // ─── 6. 비즈니스 액션 ───
-    const checkActiveTrip = useCallback(async (p, v) => {
+    const handleUpdateInfo = async () => {
+        if (!activeTrip) return;
         try {
-            const params = new URLSearchParams({ mode: 'my' });
-            const phone = p ? cleanPhone(p) : cleanPhone(driverPhone);
-            const veh = v || vehicleNumber;
-
-            if (phone) params.append('phone', phone);
-            if (veh) params.append('vehicle_number', veh);
-            
-            if (!phone && !veh) return; // 정보 없으면 패스
-
-            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
-            const data = await res.json();
-            if (data.trips) {
-                const active = data.trips.find(t => t.status === 'driving' || t.status === 'paused');
-                if (active) {
-                    setActiveTrip(active);
-                    setTripStatus(active.status);
-                    setVehicleNumber(active.vehicle_number);
-                    setVehicleId(active.vehicle_id || '');
-                    setDriverName(active.driver_name);
-                    setDriverPhone(formatPhone(active.driver_phone || ''));
-                    setContainerNumber(active.container_number || '');
-                    setSealNumber(active.seal_number || '');
-                    setContainerType(active.container_type || '40FT');
-                    setSpecialNotes(active.special_notes || '');
-                    
-                    const started = new Date(active.started_at);
-                    setElapsedSeconds(Math.floor((Date.now() - started.getTime()) / 1000));
-                    
-                    if (active.photos?.length > 0) setPhotos(active.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
-                    if (active.status === 'driving') { startGPS(active.id, 'driving'); playSilence(); }
-                    fetchHistory();
-                }
+            const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    container_number: containerNumber,
+                    seal_number: sealNumber,
+                    container_type: containerType,
+                    container_kind: containerKind,
+                    special_notes: specialNotes,
+                    vehicle_number: vehicleNumber,
+                    driver_name: driverName,
+                    vehicle_id: vehicleId
+                }),
+            });
+            if (res.ok) {
+                alert('정보가 수정되었습니다.');
+                checkActiveTrip(); // 상태 갱신
             }
-        } catch { }
-    }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory]);
+        } catch (e) { alert('오류: ' + e.message); }
+    };
 
     const handleStart = async () => {
         if (!vehicleNumber.trim() || !driverName.trim()) { alert('차량번호와 이름은 필수입니다.'); return; }
@@ -291,7 +334,8 @@ export default function DriverAppPage() {
                     driver_name: driverName, driver_phone: cleanPhone(driverPhone),
                     vehicle_number: vehicleNumber, vehicle_id: vehicleId,
                     container_number: containerNumber, seal_number: sealNumber,
-                    container_type: containerType, special_notes: specialNotes,
+                    container_type: containerType, container_kind: containerKind,
+                    special_notes: specialNotes,
                 }),
             });
             const data = await res.json();
@@ -387,20 +431,6 @@ export default function DriverAppPage() {
         } catch (e) { alert('오류: ' + e.message); }
     };
 
-    const fetchHistory = async () => {
-        const phone = cleanPhone(driverPhone);
-        if (!phone && !vehicleNumber) return;
-        
-        const params = new URLSearchParams({ mode: 'my', month: historyMonth });
-        if (phone) params.append('phone', phone);
-        if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
-        
-        try {
-            const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
-            const data = await res.json();
-            if (data.trips) setHistory(data.trips.filter(t => t.status === 'completed'));
-        } catch { }
-    };
 
     const handlePhotoAdd = async (e) => {
         const files = Array.from(e.target.files);
@@ -504,46 +534,59 @@ export default function DriverAppPage() {
                     <div className={styles.formRow2col}>
                         <div className={styles.formRow}>
                             <label className={styles.formLabel}>차량번호 *</label>
-                            <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value.replace(/\s/g,''))} disabled={isDriving} />
+                            <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value.replace(/\s/g,''))} />
                         </div>
                         <div className={styles.formRow}>
                             <label className={styles.formLabel}>차량ID (자동)</label>
-                            <input className={styles.formInput} style={{background: '#f1f5f9'}} placeholder="아이디" value={vehicleId} onChange={e => setVehicleId(e.target.value.toUpperCase())} disabled={isDriving} />
+                            <input className={styles.formInput} style={{background: '#f1f5f9'}} placeholder="아이디" value={vehicleId} onChange={e => setVehicleId(e.target.value.toUpperCase())} />
                         </div>
                     </div>
                     <div className={styles.formRowFlex}>
                         <div className={`${styles.formRow} ${styles.colName}`}>
                             <label className={styles.formLabel}>이름 *</label>
-                            <input className={styles.formInput} placeholder="성함" value={driverName} onChange={e => setDriverName(e.target.value)} disabled={isDriving} />
+                            <input className={styles.formInput} placeholder="성함" value={driverName} onChange={e => setDriverName(e.target.value)} />
                         </div>
                         <div className={`${styles.formRow} ${styles.colPhone}`}>
                             <label className={styles.formLabel}>전화번호</label>
-                            <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} disabled={isDriving} />
+                            <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
                         </div>
                     </div>
                     
-                    <div className={styles.formRow}>
-                        <label className={styles.formLabel}>컨테이너</label>
-                        <input className={styles.formInput} placeholder="번호 입력" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} disabled={isDriving} />
-                    </div>
-
                     <div className={styles.formRowFlex}>
-                        <div className={`${styles.formRow} ${styles.colSeal}`}>
-                            <label className={styles.formLabel}>씰넘버</label>
-                            <input className={styles.formInput} placeholder="번호 입력" value={sealNumber} onChange={e => setSealNumber(e.target.value.toUpperCase())} disabled={isDriving} />
+                        <div className={styles.formRow} style={{flex: 1}}>
+                            <label className={styles.formLabel}>컨테이너</label>
+                            <input className={styles.formInput} placeholder="번호 입력" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} />
                         </div>
                         <div className={`${styles.formRow} ${styles.colType}`}>
                             <label className={styles.formLabel}>타입</label>
-                            <select className={styles.formInput} value={containerType} onChange={e => setContainerType(e.target.value)} disabled={isDriving}>
-                                <option value="40FT">40FT</option>
-                                <option value="20FT">20FT</option>
-                                <option value="45FT">45FT</option>
-                                <option value="REFRIGERATED">REF</option>
-                                <option value="OPEN-TOP">OT</option>
-                                <option value="FLAT-RACK">FR</option>
+                            <select className={styles.formInput} value={containerType} onChange={e => setContainerType(e.target.value)}>
+                                {CONTAINER_TYPES.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
+
+                    <div className={styles.formRowFlex}>
+                        <div className={styles.formRow} style={{flex: 1}}>
+                            <label className={styles.formLabel}>씰넘버</label>
+                            <input className={styles.formInput} placeholder="번호 입력" value={sealNumber} onChange={e => setSealNumber(e.target.value.toUpperCase())} />
+                        </div>
+                        <div className={styles.formRow} style={{flex: 1}}>
+                            <label className={styles.formLabel}>종류</label>
+                            <select className={styles.formInput} value={containerKind} onChange={e => setContainerKind(e.target.value)}>
+                                {CONTAINER_KINDS.map(kind => (
+                                    <option key={kind} value={kind}>{kind}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {isActive && (
+                        <button className={styles.updateInlineBtn} onClick={handleUpdateInfo}>
+                            📝 정보 수정내용 저장
+                        </button>
+                    )}
                     
                     <div className={styles.photoSection}>
                         <label className={styles.formLabel}>사진 등록 (최대 10장)</label>
@@ -595,14 +638,19 @@ export default function DriverAppPage() {
                 <div className={styles.historyList}>
                     {history.length > 0 ? history.map((h, i) => (
                         <div key={i} className={styles.historyCard}>
-                            <div className={styles.historyDate}>{new Date(h.started_at).toLocaleString()}</div>
+                            <div className={styles.historyHeader}>
+                                <div className={styles.historyDate}>{new Date(h.started_at).toLocaleString()}</div>
+                                <div className={`${styles.statusBadge} ${styles['status' + h.status]}`}>
+                                    {h.status === 'driving' ? '운행중' : h.status === 'paused' ? '일시정지' : '운행종료'}
+                                </div>
+                            </div>
                             <div className={styles.historyContainer}>📦 {h.container_number || '미입력'} ({h.container_type})</div>
                             <div className={styles.historyMeta}>
                                 {h.vehicle_number} | {h.driver_name}
                             </div>
                         </div>
                     )) : (
-                        <div className={styles.historyEmpty}>해당 월의 운송 기록이 없습니다.</div>
+                        <div className={styles.historyEmpty}>해당 월의 기록이 없습니다.</div>
                     )}
                 </div>
             </div>

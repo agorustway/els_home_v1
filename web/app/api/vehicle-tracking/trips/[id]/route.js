@@ -38,6 +38,7 @@ async function syncDriverContact(supabase, trip) {
         last_container_number: trip.container_number,
         last_seal_number: trip.seal_number,
         last_container_type: trip.container_type,
+        last_container_kind: trip.container_kind,
         last_trip_started_at: trip.started_at,
         last_trip_completed_at: trip.completed_at || new Date().toISOString(),
     };
@@ -73,7 +74,7 @@ export async function PATCH(request, { params }) {
 
     try {
         const body = await request.json();
-        const { action, photos, special_notes, container_number, seal_number, container_type, vehicle_id, driver_name, driver_phone, vehicle_number } = body;
+        const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, vehicle_id, driver_name, driver_phone, vehicle_number } = body;
 
         const updates = { updated_at: new Date().toISOString() };
 
@@ -94,6 +95,7 @@ export async function PATCH(request, { params }) {
         if (container_number !== undefined) updates.container_number = container_number;
         if (seal_number !== undefined) updates.seal_number = seal_number;
         if (container_type !== undefined) updates.container_type = container_type;
+        if (container_kind !== undefined) updates.container_kind = container_kind;
         if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
         if (driver_name !== undefined) updates.driver_name = driver_name;
         if (driver_phone !== undefined) updates.driver_phone = driver_phone;

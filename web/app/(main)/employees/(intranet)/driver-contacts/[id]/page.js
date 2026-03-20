@@ -131,7 +131,7 @@ export default function DriverContactsDetailPage() {
                 {item.last_container_number && (
                     <div style={{ marginTop: '20px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                         <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.9rem', marginBottom: '10px' }}>🚛 마지막 운행 정보</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.5fr)', gap: '16px' }}>
                             <div>
                                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>컨테이너</div>
                                 <div style={{ fontWeight: 600 }}>{item.last_container_number}</div>
@@ -143,6 +143,10 @@ export default function DriverContactsDetailPage() {
                             <div>
                                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>타입</div>
                                 <div>{item.last_container_type || '-'}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>종류</div>
+                                <div>{item.last_container_kind || '-'}</div>
                             </div>
                             <div>
                                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>운행시작</div>

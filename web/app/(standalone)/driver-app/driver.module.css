@@ -81,11 +81,10 @@
 }
 .formInput:focus { outline: none; border-color: #2563eb; background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
 
-.formRowFlex { display: flex; gap: 8px; align-items: flex-end; }
-.colName { flex: 0 0 30%; }
+.formRowFlex { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 4px; }
+.colName { flex: 0 0 35%; }
 .colPhone { flex: 1; }
-.colSeal { flex: 1; }
-.colType { flex: 0 0 35%; }
+.colType { flex: 0 0 32%; }
 
 .formTextarea {
     border: 1px solid #cbd5e1;
@@ -222,4 +221,44 @@
 @keyframes slideInUp {
     from { transform: translateY(100px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+/* ─── 내역 상태 뱃지 ─── */
+.historyHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.statusBadge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+.statusdriving { background: #dcfce7; color: #166534; }
+.statuspaused { background: #fef3c7; color: #92400e; }
+.statuscompleted { background: #f1f5f9; color: #475569; }
+
+/* ─── 정보 수정 버튼 ─── */
+.updateInlineBtn {
+    width: 100%;
+    padding: 10px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: all 0.2s;
+}
+.updateInlineBtn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+.updateInlineBtn:active {
+    background: #e2e8f0;
 }

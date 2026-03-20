@@ -171,6 +171,7 @@ export async function POST(request) {
             container_number,
             seal_number,
             container_type = '40FT',
+            container_kind = 'DRY',
             special_notes,
         } = body;
 
@@ -178,11 +179,10 @@ export async function POST(request) {
             return NextResponse.json({ error: '차량번호와 이름은 필수입니다.' }, { status: 400 });
         }
 
-        const { data, error } = await supabase
+        const { data: trip, error } = await supabase
             .from('vehicle_trips')
             .insert([{
                 user_id: user?.id || null,
-                user_email: user?.email || null,
                 driver_name,
                 driver_phone,
                 vehicle_number,
@@ -190,6 +190,7 @@ export async function POST(request) {
                 container_number,
                 seal_number,
                 container_type,
+                container_kind,
                 special_notes,
                 status: 'driving',
                 started_at: new Date().toISOString(),
@@ -198,7 +199,7 @@ export async function POST(request) {
             .single();
 
         if (error) throw error;
-        return NextResponse.json({ trip: data });
+        return NextResponse.json({ trip });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

@@ -13,13 +13,13 @@ export const GPS_INTERVALS = {
 
 // GPS 옵션
 export const GPS_OPTIONS = {
-    enableHighAccuracy: false,  // false=기지국/Wi-Fi(배터리 절약), true=GPS(정밀)
+    enableHighAccuracy: true,   // true=GPS(정밀), false=기지국/Wi-Fi
     timeout: 15000,             // 15초 타임아웃
-    maximumAge: 10000,          // 10초 이내 캐시 허용
+    maximumAge: 0,              // 캐시 사용 안함 (신선한 데이터)
 };
 
 // 무이동 감지 임계값 (m) — 이 거리 이내면 "정지"로 판단
-export const IDLE_DISTANCE_THRESHOLD = 50; // 50m
+export const IDLE_DISTANCE_THRESHOLD = 30; // 30m
 
 // 사진 업로드 설정
 export const PHOTO_CONFIG = {
@@ -31,8 +31,9 @@ export const PHOTO_CONFIG = {
     nasBasePath: '/vehicle-tracking/photos',
 };
 
-// 컨테이너 타입 옵션
-export const CONTAINER_TYPES = ['40FT', '20FT'];
+// 컨테이너 타입 및 종류 옵션
+export const CONTAINER_TYPES = ['40FT', '20FT', '45FT'];
+export const CONTAINER_KINDS = ['DRY', 'REEFER(냉동)', 'OPEN-TOP', '위험물(일반)', '위험물(화약류)', '냉동위험물'];
 
 // 운행 상태
 export const TRIP_STATUS = {

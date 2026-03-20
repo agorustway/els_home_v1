@@ -59,6 +59,7 @@ export default function DriverContactsPage() {
                             <th style={{ width: '90px' }}>차량ID</th>
                             <th style={{ width: '110px' }}>마지막 컨테이너</th>
                             <th style={{ width: '60px' }}>타입</th>
+                            <th style={{ width: '90px' }}>종류</th>
                             <th style={{ width: '100px' }}>마지막 운행</th>
                             <th className={styles.colDate}>등록일</th>
                         </tr>
@@ -88,6 +89,7 @@ export default function DriverContactsPage() {
                                 <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px' }}>{item.vehicle_id || '-'}</td>
                                 <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.last_container_number || '-'}</td>
                                 <td style={{ fontSize: '0.8rem' }}>{item.last_container_type || '-'}</td>
+                                <td style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.last_container_kind || '-'}</td>
                                 <td style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                                     {item.last_trip_started_at ? new Date(item.last_trip_started_at).toLocaleDateString() : '-'}
                                 </td>

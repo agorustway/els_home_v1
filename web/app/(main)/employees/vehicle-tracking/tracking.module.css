@@ -355,3 +355,213 @@
     background: #fef2f2;
     border-color: #ef4444;
 }
+
+/* ═══ 추가 기능 스타일 ═══ */
+
+/* 전체화면 지도 */
+.mapFullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 2000 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+.fullscreenBtn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 2001;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 상세 정보 패널 */
+.detailOverlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 500px;
+    background: #fff;
+    box-shadow: -8px 0 30px rgba(0,0,0,0.15);
+    z-index: 2100;
+    display: flex;
+    flex-direction: column;
+    animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.detailHeader {
+    padding: 20px;
+    background: #1e293b;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.detailHeader h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.closeBtn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.detailContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* 상세 섹션 카드 */
+.detailSection {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+}
+
+.sectionTitle {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #64748b;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.detailInfoGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.infoLabel { font-size: 0.75rem; color: #94a3b8; font-weight: 700; }
+.infoValue { font-size: 0.9rem; font-weight: 700; color: #1e293b; }
+
+/* 사진 목록 */
+.photoGallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.photoWrapper {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    position: relative;
+}
+
+.photoWrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.photoWrapper:hover img {
+    transform: scale(1.1);
+}
+
+/* 위치 이력 목록 */
+.locationList {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.locationItem {
+    padding: 10px 14px;
+    background: #fff;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: background 0.1s;
+    cursor: pointer;
+}
+
+.locationItem:hover {
+    background: #f0f9ff;
+}
+
+.locationItem:last-child { border-bottom: none; }
+
+.locTime { font-size: 0.72rem; color: #94a3b8; font-weight: 700; }
+.locAddress { font-size: 0.85rem; color: #1e293b; font-weight: 700; }
+.locMeta { font-size: 0.75rem; color: #64748b; }
+
+/* 압축 다운로드 버튼 */
+.zipDownloadBtn {
+    width: 100%;
+    height: 44px;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.zipDownloadBtn:hover {
+    background: #059669;
+}
+
+.zipDownloadBtn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}

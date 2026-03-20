@@ -11,25 +11,38 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { trip_id, lat, lng, accuracy, speed } = body;
+        const { trip_id, lat, lng, accuracy, speed, method = 'GPS' } = body;
 
         if (!trip_id || lat === undefined || lng === undefined) {
             return NextResponse.json({ error: 'trip_id, lat, lng는 필수입니다.' }, { status: 400 });
         }
 
-        // 운행 상태가 driving/paused인지 확인
-        const { data: trip } = await supabase
-            .from('vehicle_trips')
-            .select('status, user_id')
-            .eq('id', trip_id)
-            .single();
+        // 역지오코딩 (Naver API)
+        let address = null;
+        let place_name = null;
 
-        if (!trip) {
-            return NextResponse.json({ error: '운행 기록을 찾을 수 없습니다.' }, { status: 404 });
-        }
+        try {
+            const naverRes = await fetch(
+                `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${lng},${lat}&output=json&orders=admcode,roadaddr`,
+                {
+                    headers: {
+                        'X-NCP-APIGW-API-KEY-ID': process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID,
+                        'X-NCP-APIGW-API-KEY': process.env.NAVER_MAP_CLIENT_SECRET,
+                    }
+                }
+            );
+            const naverData = await naverRes.json();
+            if (naverData.status?.code === 0 && naverData.results?.length > 0) {
+                const reg = naverData.results[0].region;
+                address = [reg.area1.name, reg.area2.name, reg.area3.name, reg.area4.name]
+                    .map(a => a.name).filter(Boolean).join(' ');
+            }
+        } catch (e) { console.error('Geocode err:', e); }
 
-        if (trip.status === 'completed') {
-            return NextResponse.json({ error: '이미 종료된 운행입니다.' }, { status: 400 });
+        // 운행 상태 확인 (이미 종료된 경우 기록 안함)
+        const { data: trip } = await supabase.from('vehicle_trips').select('status').eq('id', trip_id).single();
+        if (!trip || trip.status === 'completed') {
+            return NextResponse.json({ error: '운행 중이 아닙니다.' }, { status: 400 });
         }
 
         const { data, error } = await supabase
@@ -40,6 +53,9 @@ export async function POST(request) {
                 lng,
                 accuracy: accuracy || null,
                 speed: speed || null,
+                method,
+                address,
+                place_name,
                 recorded_at: new Date().toISOString(),
             }])
             .select()
