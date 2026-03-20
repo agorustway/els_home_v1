@@ -175,11 +175,12 @@ export default function DriverAppPage() {
                     
                     if (active.photos?.length > 0) setPhotos(active.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
                     if (active.status === 'driving') { startGPS(active.id, 'driving'); playSilence(); }
-                    fetchHistory();
                 }
+                // 진행 중인 것이 있든 없든, 내역(History)은 가져오도록 함
+                fetchHistory();
             }
         } catch { }
-    }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory]);
+    }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory, cleanPhone]);
 
     // ─── PWA 설치 프로프트 ───
     useEffect(() => {
