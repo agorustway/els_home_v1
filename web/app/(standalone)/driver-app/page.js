@@ -335,34 +335,6 @@ export default function DriverAppPage() {
         if (outcome === 'accepted') setDeferredPrompt(null);
     };
 
-    // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
-    const setupMediaSession = useCallback(() => {
-        if (!('mediaSession' in navigator) || !activeTrip) return;
-
-        const updateMetadata = () => {
-            const statusLabel = tripStatus === 'driving' ? '운행 중' : '일시정지';
-            const timeLabel = formatTime(elapsedSeconds);
-            
-            if (typeof MediaMetadata !== 'undefined') {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: `${statusLabel} [${timeLabel}]`,
-                    artist: `${vehicleNumber} (${driverName})`,
-                    album: `컨테이너: ${containerNumber || '미입력'} / 씰: ${sealNumber || '-'}`,
-                    artwork: [
-                        { src: 'https://cdn-icons-png.flaticon.com/512/2555/2555013.png', sizes: '512x512', type: 'image/png' }
-                    ]
-                });
-            }
-        };
-
-        updateMetadata();
-        navigator.mediaSession.setActionHandler('play', handleResume);
-        navigator.mediaSession.setActionHandler('pause', handlePause);
-
-        return updateMetadata;
-    }, [tripStatus, activeTrip, elapsedSeconds, vehicleNumber, driverName, containerNumber, sealNumber, handleResume, handlePause]);
-
-
     // ─── 3. 정보 갱신 및 이력 수정 로직 ───
     const handleUpdateInfo = async () => {
         const targetId = selectedHistoryId || activeTrip?.id;
@@ -503,6 +475,52 @@ export default function DriverAppPage() {
         } catch (e) { alert('오류: ' + e.message); }
     };
 
+    const handleStop = async () => {
+        if (!activeTrip || !confirm('운행을 종료하시겠습니까?')) return;
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'complete', driver_name: driverName, driver_phone: cleanPhone(driverPhone),
+                    vehicle_number: vehicleNumber, vehicle_id: vehicleId,
+                }),
+            });
+            if (res.ok) {
+                stopGPS(); stopSilence(); setActiveTrip(null); setTripStatus(null); setElapsedSeconds(0);
+                fetchHistory();
+            }
+        } catch (e) { alert('오류: ' + e.message); }
+    };
+
+
+    // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
+    const setupMediaSession = useCallback(() => {
+        if (!('mediaSession' in navigator) || !activeTrip) return;
+
+        const updateMetadata = () => {
+            const statusLabel = tripStatus === 'driving' ? '운행 중' : '일시정지';
+            const timeLabel = formatTime(elapsedSeconds);
+            
+            if (typeof MediaMetadata !== 'undefined') {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `${statusLabel} [${timeLabel}]`,
+                    artist: `${vehicleNumber} (${driverName})`,
+                    album: `컨테이너: ${containerNumber || '미입력'} / 씰: ${sealNumber || '-'}`,
+                    artwork: [
+                        { src: 'https://cdn-icons-png.flaticon.com/512/2555/2555013.png', sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+            }
+        };
+
+        updateMetadata();
+        navigator.mediaSession.setActionHandler('play', handleResume);
+        navigator.mediaSession.setActionHandler('pause', handlePause);
+
+        return updateMetadata;
+    }, [tripStatus, activeTrip, elapsedSeconds, vehicleNumber, driverName, containerNumber, sealNumber, handleResume, handlePause]);
+
     // ─── 모든 Side Effects 모음 (정의된 후 실행) ───
 
     // PWA & iOS 체크
@@ -607,24 +625,6 @@ export default function DriverAppPage() {
             return () => clearTimeout(timer);
         }
     }, [driverPhone, vehicleNumber]);
-
-    const handleStop = async () => {
-        if (!activeTrip || !confirm('운행을 종료하시겠습니까?')) return;
-        try {
-            const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'complete', driver_name: driverName, driver_phone: cleanPhone(driverPhone),
-                    vehicle_number: vehicleNumber, vehicle_id: vehicleId,
-                }),
-            });
-            if (res.ok) {
-                stopGPS(); stopSilence(); setActiveTrip(null); setTripStatus(null); setElapsedSeconds(0);
-                fetchHistory();
-            }
-        } catch (e) { alert('오류: ' + e.message); }
-    };
 
 
     // ─── 이미지 압축 및 리사이징 (최신 이미지 압축 기술 적용) ───
