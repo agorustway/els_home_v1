@@ -104,13 +104,16 @@ export default function DriverAppPage() {
             const storedVehicleId = localStorage.getItem('els_driver_vehicle_id');
             const storedName = localStorage.getItem('els_driver_name');
 
-            if (storedPhone) setDriverPhone(formatPhone(storedPhone));
-            if (storedVehicle) setVehicleNumber(storedVehicle);
+            let p = ''; let v = '';
+            if (storedPhone) { p = storedPhone; setDriverPhone(formatPhone(storedPhone)); }
+            if (storedVehicle) { v = storedVehicle; setVehicleNumber(storedVehicle); }
             if (storedVehicleId) setVehicleId(storedVehicleId);
             if (storedName) setDriverName(storedName);
+
+            // 저장된 정보가 있으면 즉시 진행 중인 운행 확인
+            checkActiveTrip(p, v);
         }
-        checkActiveTrip();
-    }, []);
+    }, [checkActiveTrip]);
 
     // 정보 로컬 저장
     useEffect(() => {
@@ -240,13 +243,17 @@ export default function DriverAppPage() {
     }, []);
 
     // ─── 6. 비즈니스 액션 ───
-    const checkActiveTrip = async () => {
+    const checkActiveTrip = useCallback(async (p, v) => {
         try {
             const params = new URLSearchParams({ mode: 'my' });
-            const phone = cleanPhone(driverPhone);
+            const phone = p ? cleanPhone(p) : cleanPhone(driverPhone);
+            const veh = v || vehicleNumber;
+
             if (phone) params.append('phone', phone);
-            if (vehicleNumber) params.append('vehicle_number', vehicleNumber);
+            if (veh) params.append('vehicle_number', veh);
             
+            if (!phone && !veh) return; // 정보 없으면 패스
+
             const res = await fetch(`/api/vehicle-tracking/trips?${params.toString()}`);
             const data = await res.json();
             if (data.trips) {
@@ -272,7 +279,7 @@ export default function DriverAppPage() {
                 }
             }
         } catch { }
-    };
+    }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory]);
 
     const handleStart = async () => {
         if (!vehicleNumber.trim() || !driverName.trim()) { alert('차량번호와 이름은 필수입니다.'); return; }

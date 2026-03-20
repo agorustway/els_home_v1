@@ -7,8 +7,12 @@ import { useState, useEffect } from 'react';
 export default function Intro() {
     const [isMounted, setIsMounted] = useState(false);
 
+    const [isIos, setIsIos] = useState(false);
+
     useEffect(() => {
         setIsMounted(true);
+        const ua = navigator.userAgent.toLowerCase();
+        setIsIos(/iphone|ipad|ipod/.test(ua));
     }, []);
 
     const handleDriverAppClick = (e) => {
@@ -88,6 +92,13 @@ export default function Intro() {
                             </a>
                             <div className={styles.appUrlInfo}>
                                 🔗 <a href="/driver-app" className={styles.appDirectLink}>접속주소: {typeof window !== 'undefined' ? (window.location.origin + '/driver-app') : 'https://.../driver-app'}</a>
+                            </div>
+                            <div className={styles.appInstallGuide}>
+                                {isIos ? (
+                                    <span>💡 iOS(아이폰)는 <strong>Safari 하단 [공유] → [홈 화면에 추가]</strong>를 눌러 설치해 주세요.</span>
+                                ) : (
+                                    <span>💡 안드로이드는 <strong>크롬 브라우저 접속 → 우측 상단 [점3개] → [앱 설치]</strong>를 권장합니다.</span>
+                                )}
                             </div>
                         </div>
                     </motion.div>

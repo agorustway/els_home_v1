@@ -142,6 +142,21 @@
     word-break: break-all;
 }
 
+.appInstallGuide {
+    font-size: 0.85rem;
+    color: #475569;
+    padding: 12px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
+    line-height: 1.5;
+}
+
+.appInstallGuide strong {
+    color: var(--primary-blue);
+    font-weight: 800;
+}
+
 .appDirectLink {
     color: #3b82f6;
     text-decoration: underline;
