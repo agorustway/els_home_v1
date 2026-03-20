@@ -35,12 +35,14 @@ import { Suspense } from 'react';
 import ActivityLogger from "@/components/ActivityLogger";
 import SiteLayout from "@/components/SiteLayout";
 import SplashScreen from "@/components/SplashScreen";
+import BrowserGuard from "@/components/BrowserGuard";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
         <Suspense fallback={null}>
+          <BrowserGuard />
           <ActivityLogger />
           <SplashScreen />
         </Suspense>

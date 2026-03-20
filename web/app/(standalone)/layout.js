@@ -1,4 +1,6 @@
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
+import BrowserGuard from "@/components/BrowserGuard";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,6 +30,9 @@ export default function StandaloneLayout({ children }) {
   return (
     <html lang="ko">
       <body className={inter.className} style={{ margin: 0, padding: 0, overflow: 'hidden' }}>
+        <Suspense fallback={null}>
+          <BrowserGuard />
+        </Suspense>
         <div id="standalone-root" style={{ width: '100vw', height: '100vh', overflow: 'auto', background: '#f8fafc' }}>
           {children}
         </div>
