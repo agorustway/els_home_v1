@@ -285,27 +285,21 @@ export default function DriverAppPage() {
         if (!pipVideoRef.current || !canvasRef.current) return;
         
         try {
-            // 캔버스 스트림 생성 (최초 1회만)
-            if (!pipVideoRef.current.srcObject) {
-                const stream = canvasRef.current.captureStream(10); // 10fps로 품질 상향
-                pipVideoRef.current.srcObject = stream;
-            }
-            
-            // 모바일 브라우저 대응: 비디오를 강제로 재생함
-            await pipVideoRef.current.play();
-
-            // PiP 지원 여부 확인 후 요청
-            if (document.pictureInPictureEnabled || pipVideoRef.current.webkitSupportsPresentationMode) {
-                if (pipVideoRef.current.requestPictureInPicture) {
-                    await pipVideoRef.current.requestPictureInPicture();
-                } else if (pipVideoRef.current.webkitSetPresentationMode) {
-                    // iOS 대응용 웹킷 모드
-                    pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
-                }
-            }
-            
             setIsMinimized(true);
-            // React 상태 업데이트 전 즉시 렌더 루프 시작
+            
+            // 1. 비디오 재생 확인
+            if (pipVideoRef.current.paused) {
+                await pipVideoRef.current.play();
+            }
+
+            // 2. PiP 요청 (유저 제스처 내에서 실행)
+            if (document.pictureInPictureEnabled && pipVideoRef.current.requestPictureInPicture) {
+                await pipVideoRef.current.requestPictureInPicture();
+            } else if (pipVideoRef.current.webkitSetPresentationMode) {
+                pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
+            }
+            
+            // 3. 렌더 루프 강제 시작 (이전 캔슬 후 재시작)
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
             const startLoop = () => {
                 drawPip();
@@ -315,8 +309,11 @@ export default function DriverAppPage() {
             
         } catch (e) {
             console.error('PiP Error:', e);
-            // PiP 실패/미지원 시 브라우저 내부용 미니 위젯 모드로 강제 진입
+            // 지원하지 않는 환경에서도 최소화 모드 UI는 작동하게 함
             setIsMinimized(true);
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+            const startLoop = () => { drawPip(); requestRef.current = requestAnimationFrame(startLoop); };
+            startLoop();
         }
     };
 
@@ -341,16 +338,16 @@ export default function DriverAppPage() {
     }, []);
 
     const initPipContext = async () => {
-        if (!pipVideoRef.current || !canvasRef.current || !canvasRef.current.captureStream) return;
+        if (!pipVideoRef.current || !canvasRef.current) return;
         try {
             if (!pipVideoRef.current.srcObject) {
-                const stream = canvasRef.current.captureStream(10);
-                pipVideoRef.current.srcObject = stream;
+                const stream = canvasRef.current.captureStream ? canvasRef.current.captureStream(10) : canvasRef.current.mozCaptureStream?.(10);
+                if (stream) pipVideoRef.current.srcObject = stream;
             }
             if (pipVideoRef.current.paused) {
                 await pipVideoRef.current.play().catch(() => {});
             }
-            // 루프는 필요할 때만 호출 (enterPiP에서 시작)
+            drawPip(); // 초기 프레임 한번 그려줌
         } catch (e) { console.error('PiP Init Error:', e); }
     };
 
@@ -567,12 +564,23 @@ export default function DriverAppPage() {
     // 이벤트 리스너 (Visibility, Scroll)
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        const handleVisibility = () => {
+        const handleVisibility = async () => {
             if (document.visibilityState === 'hidden' && isActive) {
-                if (isMinimized && typeof requestAnimationFrame !== 'undefined') {
-                    if (requestRef.current) cancelAnimationFrame(requestRef.current);
-                    const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
-                    loop();
+                // 홈버튼 누름 시 자동 플로팅 상태 전환
+                setIsMinimized(true);
+                if (requestRef.current) cancelAnimationFrame(requestRef.current);
+                const loop = () => { drawPip(); requestRef.current = requestAnimationFrame(loop); };
+                loop();
+
+                // 가능한 경우 브라우저 레벨 PiP 요청 (단, 유저 제스처 없이는 거부될 수 있음)
+                if (!document.pictureInPictureElement) {
+                    try {
+                        if (pipVideoRef.current.requestPictureInPicture) {
+                            await pipVideoRef.current.requestPictureInPicture();
+                        } else if (pipVideoRef.current.webkitSetPresentationMode) {
+                            pipVideoRef.current.webkitSetPresentationMode('picture-in-picture');
+                        }
+                    } catch (e) { /* background에서의 호출은 정책상 무시될 수 있음 */ }
                 }
             } else if (document.visibilityState === 'visible') {
                 if (requestRef.current) { cancelAnimationFrame(requestRef.current); requestRef.current = null; }
@@ -591,7 +599,7 @@ export default function DriverAppPage() {
             window.removeEventListener('visibilitychange', handleVisibility);
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [isActive, isMinimized, drawPip]);
+    }, [isActive, drawPip]);
 
     // 타이머
     useEffect(() => {
@@ -728,9 +736,9 @@ export default function DriverAppPage() {
 
             <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
 
-            {/* 진짜 플로팅 위젯을 위한 보이지 않는 요소 (일부 브라우저는 숨김 시 PiP 차단하므로 opactiy 0 사용) */}
-            <canvas ref={canvasRef} width="300" height="220" style={{ position: 'fixed', bottom: -1000, pointerEvents: 'none', opacity: 0 }} />
-            <video ref={pipVideoRef} muted playsInline autoPictureInPicture={true} style={{ position: 'fixed', bottom: -1000, width: 1, height: 1, pointerEvents: 'none', opacity: 0 }} />
+            {/* 진짜 플로팅 위젯을 위한 보이지 않는 요소 (일부 브라우저는 숨김 시 PiP 차단하므로 opactiy 0.1 사용) */}
+            <canvas ref={canvasRef} width="300" height="220" style={{ position: 'fixed', bottom: -1000, pointerEvents: 'none', opacity: 0.1 }} />
+            <video ref={pipVideoRef} muted playsInline autoPictureInPicture={true} style={{ position: 'fixed', bottom: 0, right: 0, width: 2, height: 2, pointerEvents: 'none', opacity: 0.1, zIndex: -1 }} />
 
             {/* 최소화 시 브라우저 내부에 보일 백업 위젯 (PiP 미지원 대비) */}
             <AnimatePresence>
@@ -904,7 +912,7 @@ export default function DriverAppPage() {
                         <div className={styles.photoGrid}>
                             {photos.map((p, i) => (
                                 <div key={i} style={{position: 'relative'}}>
-                                    <img src={p.previewUrl} className={styles.photoThumb} alt="" />
+                                    <img src={p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.previewUrl} className={styles.photoThumb} alt="" />
                                     {p.uploaded && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#10b981', color:'#fff', borderRadius:'4px', zIndex: 5}}>완료</span>}
                                     {p.uploading && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#f97316', color:'#fff', borderRadius:'4px', zIndex: 5}}>업로드 중</span>}
                                 </div>

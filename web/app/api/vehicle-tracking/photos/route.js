@@ -68,8 +68,8 @@ export async function POST(request) {
                 ContentType: file.type || 'image/jpeg',
             }));
 
-            // 접근 URL 구성
-            const url = `${process.env.NAS_ENDPOINT}/${BUCKET}/${key}`;
+            // 접근 URL 구성 (직접 S3 URL 대신 프록시 API 사용)
+            const url = `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(key)}`;
             uploadedUrls.push({
                 url,
                 key,

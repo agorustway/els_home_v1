@@ -371,7 +371,14 @@ export default function VehicleTrackingPage() {
                         </div>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>증빙 사진 ({selectedTrip.photos?.length || 0}) {selectedTrip.photos?.length > 0 && <button className={styles.zipDownloadBtn} style={{width:'auto', height:24, padding:'0 10px', fontSize:'0.7rem'}} onClick={() => handleDownloadZip(selectedTrip)}>📦 ZIP 다운로드</button>}</div>
-                            <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => <div key={i} className={styles.photoWrapper} onClick={() => window.open(p.url, '_blank')}><img src={p.url} alt="photo" /></div>)}</div>
+                         <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => {
+                                const finalUrl = p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
+                                return (
+                                    <div key={i} className={styles.photoWrapper} onClick={() => window.open(finalUrl, '_blank')}>
+                                        <img src={finalUrl} alt="photo" />
+                                    </div>
+                                );
+                            })}</div>
                         </div>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>이동 경로 ({selectedTripLocations.length})</div>
