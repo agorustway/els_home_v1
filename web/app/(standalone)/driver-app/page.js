@@ -460,26 +460,53 @@ export default function DriverAppPage() {
         const files = Array.from(e.target.files);
         if (photos.length + files.length > 10) { alert('사진은 최대 10장까지 가능합니다.'); return; }
         
-        const newPhotos = files.map(f => ({ file: f, previewUrl: URL.createObjectURL(f), uploaded: false, name: f.name }));
+        // 미리보기 URL 생성 및 상태 업데이트
+        const newPhotos = files.map(f => ({ file: f, previewUrl: URL.createObjectURL(f), uploaded: false, name: f.name, uploading: true }));
         setPhotos(prev => [...prev, ...newPhotos]);
 
         if (activeTrip) {
-            setUploading(true);
-            const formData = new FormData();
-            formData.append('trip_id', activeTrip.id);
-            files.forEach(f => formData.append('photos', f));
-                try {
-                    const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
-                    const data = await res.json();
-                    if (data.photos) {
-                        setPhotos(data.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
-                    } else if (data.error) {
-                        alert('사진 전송 실패: ' + data.error);
+            setUploading(true); // 전체 업로드 상태
+            try {
+                const formData = new FormData();
+                formData.append('trip_id', activeTrip.id);
+                
+                // 용량 체크: 총 합이 4.5MB 넘으면 Vercel에서 거절됨
+                let totalSize = 0;
+                for(const f of files) {
+                    if (f.size > 4 * 1024 * 1024) {
+                        alert(`파일 용량이 너무 큽니다: ${f.name} (${(f.size/1024/1024).toFixed(1)}MB)\n4MB 이하의 사진만 전송 가능합니다.`);
+                        setPhotos(prev => prev.filter(p => !p.uploading)); // 업로드 중인 마크 제거
+                        return;
                     }
-                } catch (e) { 
-                    alert('사진 전송 오류 (네트워크)');
-                } finally { setUploading(false); }
+                    totalSize += f.size;
+                    formData.append('photos', f);
+                }
+
+                const res = await fetch('/api/vehicle-tracking/photos', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || '업로드 실패');
+                }
+
+                const data = await res.json();
+                // 서버에서 반환된 URL로 업데이트
+                setPhotos(prev => prev.map(p => {
+                    const uploadedPhoto = data.photos.find(up => up.original_name === p.name);
+                    return uploadedPhoto ? { ...p, previewUrl: uploadedPhoto.url, uploaded: true, uploading: false } : p;
+                }));
+            } catch (e) {
+                console.error(e);
+                alert('사진 전송 오류: ' + e.message);
+                // 업로드 중인 마크 제거
+                setPhotos(prev => prev.filter(p => !p.uploading));
+            } finally {
+                setUploading(false);
             }
+        }
     };
 
     const handleInstallClick = async () => {
@@ -516,15 +543,13 @@ export default function DriverAppPage() {
 
             <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
 
-            <div className={styles.devBanner}>
-                <div>ELS 차량용 운송 관리</div>
-                {!isPwa && (
-                    <button onClick={handleInstallClick} style={{ marginTop: '8px', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '20px', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff' }}>
-                        📥 앱 다운로드
-                    </button>
-                )}
+            {/* 상단 헤더: 로고 + 제목 */}
+            <div className={styles.header}>
+                <img src="/images/logo.png" alt="ELS Logo" className={styles.headerLogo} />
+                <div className={styles.headerTitle}>차량용 운송 관리</div>
             </div>
 
+            {/* GPS 상태바 */}
             <div className={styles.gpsBar}>
                 <span>
                     <span className={`${styles.gpsDot} ${gpsActive ? styles.gpsDotActive : styles.gpsDotInactive}`} />
@@ -619,6 +644,7 @@ export default function DriverAppPage() {
                                 <div key={i} style={{position: 'relative'}}>
                                     <img src={p.previewUrl} className={styles.photoThumb} alt="" />
                                     {p.uploaded && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#10b981', color:'#fff', borderRadius:'4px', zIndex: 5}}>완료</span>}
+                                    {p.uploading && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#f97316', color:'#fff', borderRadius:'4px', zIndex: 5}}>업로드 중</span>}
                                 </div>
                             ))}
                             {photos.length < 10 && (
@@ -635,8 +661,8 @@ export default function DriverAppPage() {
             <div className={styles.actionSection}>
                 {!isActive ? (
                     <>
-                        <button className={styles.loginBtn} onClick={handleStart} style={{ marginTop: 20 }}>
-                            운송 시작하기
+                        <button className={styles.startBtn} onClick={handleStart} style={{ marginTop: 12 }}>
+                            🏁 운송 시작하기
                         </button>
 
                         {/* PWA 설치 유도 */}
@@ -646,7 +672,7 @@ export default function DriverAppPage() {
                             </div>
                             <button 
                                 className={styles.outlineBtn} 
-                                onClick={handleInstallApp}
+                                onClick={handleInstallClick}
                                 style={{ width: '100%', border: '2px solid #2563eb', color: '#2563eb', fontWeight: 800 }}
                             >
                                 {isIOS ? '설치 방법 확인' : '앱(PWA) 다운로드 설치 ⚡'}

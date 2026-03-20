@@ -6,30 +6,36 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.devBanner {
-    background: linear-gradient(135deg, #1e293b, #334155);
-    border-radius: 12px;
-    padding: 16px;
-    font-size: 1.1rem;
-    color: #fff;
-    text-align: center;
-    margin-bottom: 16px;
+.header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    margin-bottom: 8px;
+}
+.headerLogo {
+    height: 28px;
+    margin-bottom: 4px;
+    object-fit: contain;
+}
+.headerTitle {
+    font-size: 1.05rem;
     font-weight: 800;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    color: #1e293b;
+    letter-spacing: -0.5px;
 }
 
 .gpsBar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
+    padding: 8px 14px;
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    margin-bottom: 16px;
-    font-size: 0.8rem;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
     color: #64748b;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .gpsDot {
@@ -51,9 +57,8 @@
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 12px 14px;
+    margin-bottom: 12px;
 }
 
 .formTitle {
@@ -69,11 +74,11 @@
 .formLabel { font-size: 0.8rem; font-weight: 600; color: #64748b; }
 
 .formInput {
-    height: 44px;
+    height: 38px;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
-    padding: 0 12px;
-    font-size: 1rem;
+    padding: 0 10px;
+    font-size: 0.95rem;
     width: 100%;
     box-sizing: border-box;
     transition: all 0.2s;
@@ -128,17 +133,36 @@
     transition: all 0.2s;
 }
 
+/* 시작 버튼 고도화 */
 .startBtn {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: linear-gradient(135deg, #1e293b, #334155);
     color: #fff;
-    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
-    height: 64px;
-    font-size: 1.2rem;
+    height: 54px;
+    font-size: 1.1rem;
     width: 100%;
     border: none;
-    border-radius: 16px;
+    border-radius: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(30, 41, 59, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
 }
-.startBtn:active { transform: scale(0.96); }
+
+.startBtn:active { transform: scale(0.96); opacity: 0.9; }
+
+/* PWA 설치 관련 버튼 */
+.outlineBtn {
+    height: 42px;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.outlineBtn:active { background: #f1f5f9; }
 
 .actionRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .actionRow button {
