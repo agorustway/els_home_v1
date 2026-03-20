@@ -229,29 +229,42 @@ export default function DriverAppPage() {
         if (outcome === 'accepted') setDeferredPrompt(null);
     };
 
-    // ─── 초기화 및 타이머 ───
+    // ─── 초기화 ───
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        
         setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
         
         const storedPhone = localStorage.getItem('els_driver_phone');
         const storedVehicle = localStorage.getItem('els_driver_vehicle');
-        const storedName = localStorage.getItem('els_driver_name');
-
         if (storedPhone || storedVehicle) {
             checkActiveTrip(storedPhone, storedVehicle);
         }
+    }, []); // 처음 한 번만 실행 (무한 루프 방지)
+
+    // ─── 이벤트 리스너 ───
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
 
         const handleVisibility = () => {
             if (document.visibilityState === 'hidden' && isActive) {
-                // 홈버튼 누르면 루프라도 돌게 함 (PiP는 브라우저 정책따름)
                 if (isMinimized) drawPip();
             }
         };
 
+        const handleScroll = () => {
+            const statusEl = document.getElementById('status-section');
+            if (statusEl) {
+                const rect = statusEl.getBoundingClientRect();
+                setShowFloatingTimer(rect.bottom < 0);
+            }
+        };
+
         window.addEventListener('visibilitychange', handleVisibility);
-        return () => window.removeEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('scroll', handleScroll);
+        };
     }, [isActive, isMinimized, drawPip]);
 
     // 정적인 시간 계산용 타이머 (부드럽게 움지기게 수정)
