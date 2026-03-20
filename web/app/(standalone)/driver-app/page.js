@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
+import { Capacitor } from '@capacitor/core';
+
+// Capacitor Custom Plugin for Overlay
+const Overlay = (typeof window !== 'undefined' && Capacitor.isNativePlatform()) 
+    ? require('@capacitor/core').registerPlugin('Overlay') 
+    : null;
 
 /**
  * 🚛 ELS 차량용 운송 관리 (Enhanced Driver App)
@@ -214,7 +220,19 @@ export default function DriverAppPage() {
                     setElapsedSeconds(Math.floor((Date.now() - started.getTime()) / 1000));
                     
                     if (active.photos?.length > 0) setPhotos(active.photos.map(p => ({ ...p, previewUrl: p.url, uploaded: true })));
-                    if (active.status === 'driving') { startGPS(active.id, 'driving'); playSilence(); }
+                    if (active.status === 'driving') { 
+                        startGPS(active.id, 'driving'); 
+                        playSilence(); 
+                        
+                        // 앱 재접속 시 네이티브 오버레이 다시 띄우기
+                        if (Overlay) {
+                            Overlay.showOverlay({ 
+                                timer: formatTime(elapsedSeconds), 
+                                container: `📦 ${active.container_number || '미입력'}`,
+                                tripId: active.id
+                            });
+                        }
+                    }
                 } else {
                     setActiveTrip(null);
                     setTripStatus(null);
@@ -323,6 +341,17 @@ export default function DriverAppPage() {
                 setElapsedSeconds(0);
                 startGPS(data.trip.id, 'driving');
                 playSilence();
+                
+                // Native Overlay & Background GPS Start
+                if (Overlay) {
+                    Overlay.requestPermission().then(() => {
+                        Overlay.showOverlay({ 
+                            timer: "00:00:00", 
+                            container: `📦 ${containerNumber}`,
+                            tripId: data.trip.id
+                        });
+                    });
+                }
             }
         } catch (e) { alert('오류: ' + e.message); }
     };
@@ -455,18 +484,27 @@ export default function DriverAppPage() {
         };
     }, []);
 
-    // 타이머
+    // 타이머 및 Native Overlay 업데이트
     useEffect(() => {
         let timer;
         if (isActive && isDriving && activeTrip?.started_at) {
             const started = new Date(activeTrip.started_at).getTime();
             timer = setInterval(() => {
                 const now = Date.now();
-                setElapsedSeconds(Math.floor((now - started) / 1000));
+                const diff = Math.floor((now - started) / 1000);
+                setElapsedSeconds(diff);
+
+                // 만약 안드로이드 네이티브라면 오버레이 업데이트
+                if (Overlay) {
+                    Overlay.updateOverlay({ 
+                        timer: formatTime(diff),
+                        container: `📦 ${containerNumber || '미입력'}` 
+                    }).catch(() => {});
+                }
             }, 1000);
         }
         return () => clearInterval(timer);
-    }, [isActive, isDriving, activeTrip?.started_at]);
+    }, [isActive, isDriving, activeTrip?.started_at, containerNumber]);
 
 
 
