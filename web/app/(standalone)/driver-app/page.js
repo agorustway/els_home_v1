@@ -36,8 +36,8 @@ const formatPhone = (val) => {
     return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
 };
 
-// ─── 이미지 압축 및 리사이징 (최신 이미지 압축 기술 적용) ───
-const resizeImage = (file, maxWidth = 1200, maxHeight = 1200) => {
+// ─── 이미지 압축 및 리사이징 (Vercel 4.5MB 제한 및 속도 최적화) ───
+const resizeImage = (file, maxWidth = 1024, maxHeight = 1024) => {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -56,11 +56,13 @@ const resizeImage = (file, maxWidth = 1200, maxHeight = 1200) => {
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(img, 0, 0, width, height);
                 canvas.toBlob((blob) => {
                     const resizedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
                     resolve(resizedFile);
-                }, 'image/jpeg', 0.8);
+                }, 'image/jpeg', 0.7); // 0.7 퀄리티로 압축 강화
             };
         };
     });
@@ -548,44 +550,71 @@ export default function DriverAppPage() {
         const rawFiles = Array.from(e.target.files);
         if (photos.length + rawFiles.length > 10) { alert('사진은 최대 10장까지 가능합니다.'); return; }
         
-        // 미리보기 및 업로드 중 상태 표시
-        const tempPhotos = rawFiles.map(f => ({ previewUrl: URL.createObjectURL(f), uploaded: false, uploading: true, name: f.name }));
-        setPhotos(prev => [...prev, ...tempPhotos]);
+        // 미리보기 및 업로드 중 상태 표시용 초기 배열 추가
+        const tempIndices = [];
+        setPhotos(prev => {
+            const next = [...prev];
+            rawFiles.forEach(f => {
+                tempIndices.push(next.length);
+                next.push({ previewUrl: URL.createObjectURL(f), uploaded: false, uploading: true, name: f.name });
+            });
+            return next;
+        });
 
+        // 한 장씩 순차적으로 업로드 (Vercel 4.5MB 몸체 제한 우회)
         if (activeTrip) {
             setUploading(true);
             try {
-                const formData = new FormData();
-                formData.append('trip_id', activeTrip.id);
-                
-                for (const f of rawFiles) {
-                    const compressed = await resizeImage(f);
+                for (let i = 0; i < rawFiles.length; i++) {
+                    const file = rawFiles[i];
+                    const compressed = await resizeImage(file);
+                    
+                    const formData = new FormData();
+                    formData.append('trip_id', activeTrip.id);
                     formData.append('photos', compressed);
-                    console.log(`Compressed: ${f.name} (${(f.size/1024/1024).toFixed(1)}MB -> ${(compressed.size/1024/1024).toFixed(1)}MB)`);
-                }
 
-                const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
-                if (!res.ok) {
-                    const errText = await res.text();
-                    try {
-                        const err = JSON.parse(errText);
-                        throw new Error(err.error || '업로드 실패');
-                    } catch {
-                        throw new Error('서버 오류 (용량이 너무 클 수 있습니다)');
-                    }
+                    const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
+                    if (!res.ok) throw new Error(`${file.name} 업로드 중 오류 발생`);
+                    
+                    const data = await res.json();
+                    setPhotos(prev => prev.map(p => {
+                        const uploadedPhoto = data.photos.find(up => up.name === file.name || up.original_name === file.name);
+                        return (p.uploading && (p.name === file.name)) ? { ...p, previewUrl: uploadedPhoto.url, key: uploadedPhoto.key, uploaded: true, uploading: false } : p;
+                    }));
                 }
-                const data = await res.json();
-                setPhotos(prev => prev.map(p => {
-                    const uploadedPhoto = data.photos.find(up => up.original_name === p.name || up.name === p.name);
-                    return uploadedPhoto ? { ...p, previewUrl: uploadedPhoto.url, uploaded: true, uploading: false } : p;
-                }));
             } catch (e) {
                 console.error(e);
                 alert('사진 전송 오류: ' + e.message);
                 setPhotos(prev => prev.filter(p => !p.uploading));
             } finally {
                 setUploading(false);
+                checkActiveTrip(); // 최종 서버 데이터 동기화
             }
+        }
+    };
+
+    const handlePhotoDelete = async (photo) => {
+        if (!activeTrip) {
+            // 아직 서버에 안 올라간 경우 로컬에서만 삭제
+            setPhotos(prev => prev.filter(p => p.previewUrl !== photo.previewUrl));
+            return;
+        }
+
+        if (!confirm('해당 사진을 삭제하시겠습니까?')) return;
+
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}/photos`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: photo.key }),
+            });
+            if (res.ok) {
+                setPhotos(prev => prev.filter(p => p.key !== photo.key));
+            } else {
+                throw new Error('삭제 실패');
+            }
+        } catch (e) {
+            alert('삭제 오류: ' + e.message);
         }
     };
 
@@ -760,6 +789,14 @@ export default function DriverAppPage() {
                             {photos.map((p, i) => (
                                 <div key={i} style={{position: 'relative'}}>
                                     <img src={p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.previewUrl} className={styles.photoThumb} alt="" />
+                                    {p.uploaded && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handlePhotoDelete(p); }}
+                                            style={{position: 'absolute', top: -5, right: -5, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, boxShadow: '0 2px 5px rgba(0,0,0,0.3)'}}
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
                                     {p.uploaded && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#10b981', color:'#fff', borderRadius:'4px', zIndex: 5}}>완료</span>}
                                     {p.uploading && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#f97316', color:'#fff', borderRadius:'4px', zIndex: 5}}>업로드 중</span>}
                                 </div>
