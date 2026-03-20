@@ -1840,9 +1840,17 @@ export default function RouteSearchView({ options, period, onBack }) {
                         })()}
 
                         {(() => {
-                            const renderFareValue = (amt, isOneWayBase = false) => {
+                            const renderFareValue = (amt, isOneWayBase = false, forceOneWayOnly = false) => {
                                 const oneWayAmt = isOneWayBase ? amt : amt / 2;
                                 const roundAmt = isOneWayBase ? amt * 2 : amt;
+
+                                if (forceOneWayOnly) {
+                                    return (
+                                        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.3' }}>
+                                            <span>{formatWon(oneWayAmt)}</span>
+                                        </span>
+                                    );
+                                }
 
                                 if (tripMode === 'round') {
                                     return (
@@ -1978,15 +1986,15 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     <tbody>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{renderFareValue(fare.f40위탁, true)}</td>
-                                            <td>{renderFareValue(fare.f40운수자, true)}</td>
-                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f40안전, true)}</td>
+                                            <td>{renderFareValue(fare.f40위탁, true, true)}</td>
+                                            <td>{renderFareValue(fare.f40운수자, true, true)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f40안전, true, true)}</td>
                                         </tr>
                                         <tr>
                                             <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{renderFareValue(fare.f20위탁, true)}</td>
-                                            <td>{renderFareValue(fare.f20운수자, true)}</td>
-                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f20안전, true)}</td>
+                                            <td>{renderFareValue(fare.f20위탁, true, true)}</td>
+                                            <td>{renderFareValue(fare.f20운수자, true, true)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(fare.f20안전, true, true)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
