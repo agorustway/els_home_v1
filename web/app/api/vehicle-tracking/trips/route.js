@@ -117,21 +117,26 @@ export async function GET(request) {
             const phone = searchParams.get('phone');
             const vNum = searchParams.get('vehicle_number');
 
-            if (!user && !phone && !vNum) {
-                return NextResponse.json({ error: '인증 정보나 차량번호가 필요합니다.' }, { status: 401 });
+            // user_id가 있더라도 phone구나 vNum으로도 찾을 수 있게 합집합(or) 처리하거나,
+            // 인증 안된 상태에서도 phone/vNum으로 찾을 수 있게 개선
+            let conditions = [];
+            if (user) conditions.push(`user_id.eq.${user.id}`);
+            if (phone) {
+                // 전화번호는 대시 포함 여부 상관없이 끝 8~11자리 매칭되게 ilike 사용
+                const clean = phone.replace(/[^0-9]/g, '');
+                conditions.push(`driver_phone.ilike.%${clean.slice(-8)}%`);
             }
+            if (vNum) conditions.push(`vehicle_number.eq.${vNum}`);
 
             let query = supabase
                 .from('vehicle_trips')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (user) {
-                query = query.eq('user_id', user.id);
-            } else if (phone) {
-                query = query.eq('driver_phone', phone);
-            } else if (vNum) {
-                query = query.eq('vehicle_number', vNum);
+            if (conditions.length > 0) {
+                query = query.or(conditions.join(','));
+            } else {
+                return NextResponse.json({ error: '인증 정보나 차량번호가 필요합니다.' }, { status: 401 });
             }
 
             if (month) {

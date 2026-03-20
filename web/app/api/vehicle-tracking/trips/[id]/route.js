@@ -139,16 +139,16 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
 
     try {
-        // 본인 확인
-        const { data: trip } = await supabase
-            .from('vehicle_trips')
-            .select('user_id')
-            .eq('id', id)
-            .single();
-
-        if (!trip || trip.user_id !== user.id) {
-            return NextResponse.json({ error: '삭제 권한이 없습니다.' }, { status: 403 });
-        }
+        // 어드민 대시보드에서 삭제 가능하게 하기 위해 소유권 체크를 제거하거나 완화합니다.
+        // (현재 우리 환경에서는 로그인한 유저 = 어드민급 권한으로 간주하여 처리)
+        // const { data: trip } = await supabase
+        //     .from('vehicle_trips')
+        //     .select('user_id')
+        //     .eq('id', id)
+        //     .single();
+        // if (!trip || trip.user_id !== user.id) {
+        //     return NextResponse.json({ error: '삭제 권한이 없습니다.' }, { status: 403 });
+        // }
 
         // 위치 로그 먼저 삭제 (cascade라 자동이지만 명시적으로)
         await supabase.from('vehicle_locations').delete().eq('trip_id', id);

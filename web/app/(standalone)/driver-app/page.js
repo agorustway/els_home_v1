@@ -34,6 +34,7 @@ export default function DriverAppPage() {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isPwa, setIsPwa] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isIOS, setIsIOS] = useState(false);
 
     const [history, setHistory] = useState([]);
     const [historyMonth, setHistoryMonth] = useState(() => {
@@ -179,6 +180,29 @@ export default function DriverAppPage() {
             }
         } catch { }
     }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory]);
+
+    // ─── PWA 설치 프로프트 ───
+    useEffect(() => {
+        const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+        window.addEventListener('beforeinstallprompt', handler);
+        
+        // iOS 여부 확인
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+        
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallApp = async () => {
+        if (!deferredPrompt) {
+            if (isIOS) alert('아이폰(iOS)은 사파리 브라우저 하단의 [공유] → [홈 화면에 추가]를 눌러주세요.');
+            else alert('이 브라우저는 직접 설치를 지원하지 않습니다. 크롬 브라우저를 이용해 주세요.');
+            return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') setDeferredPrompt(null);
+    };
 
     // ─── 초기화 ───
     useEffect(() => {
@@ -610,7 +634,25 @@ export default function DriverAppPage() {
 
             <div className={styles.actionSection}>
                 {!isActive ? (
-                    <button className={styles.startBtn} onClick={handleStart}>🏁 운행 시작</button>
+                    <>
+                        <button className={styles.loginBtn} onClick={handleStart} style={{ marginTop: 20 }}>
+                            운송 시작하기
+                        </button>
+
+                        {/* PWA 설치 유도 */}
+                        <div style={{ marginTop: 24, padding: '16px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b', marginBottom: 8 }}>
+                                {isIOS ? '💡 아이폰은 전용 앱으로 더욱 편하게' : '📦 전용 앱을 설치하여 더욱 편하게'}
+                            </div>
+                            <button 
+                                className={styles.outlineBtn} 
+                                onClick={handleInstallApp}
+                                style={{ width: '100%', border: '2px solid #2563eb', color: '#2563eb', fontWeight: 800 }}
+                            >
+                                {isIOS ? '설치 방법 확인' : '앱(PWA) 다운로드 설치 ⚡'}
+                            </button>
+                        </div>
+                    </>
                 ) : (
                     <div className={styles.actionRow}>
                         {isDriving ? (

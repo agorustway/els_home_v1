@@ -132,28 +132,42 @@ export default function VehicleTrackingPage() {
         map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
     };
 
-    // 네이버맵 초기화
+    // 네이버맵 초기화 및 탭 전환 대응
     useEffect(() => {
-        if (window.naver?.maps) { initMap(); return; }
-        const script = document.createElement('script');
-        script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
-        script.async = true;
-        script.onload = () => initMap();
-        document.head.appendChild(script);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-    }, []);
+        if (activeTab !== 'live') {
+            // 탭 변경 시 기존 잉여 마커/폴리라인 제거 및 상태 초기화 추천
+            mapInstanceRef.current = null;
+            setMapReady(false);
+            return;
+        }
 
-    const initMap = () => {
-        if (!mapRef.current || mapInstanceRef.current) return;
-        const map = new naver.maps.Map(mapRef.current, {
-            center: new naver.maps.LatLng(36.5, 127.0),
-            zoom: 7,
-            zoomControl: true,
-            zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT },
-        });
-        mapInstanceRef.current = map;
-        setMapReady(true);
-    };
+        const handleInit = () => {
+            if (!mapRef.current) return;
+            // 이미 이 컨테이너에 지도가 있다면 초기화 중복 방지
+            if (mapInstanceRef.current) return; 
+
+            const map = new naver.maps.Map(mapRef.current, {
+                center: new naver.maps.LatLng(36.5, 127.0),
+                zoom: 7,
+                zoomControl: true,
+                zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT },
+            });
+            mapInstanceRef.current = map;
+            setMapReady(true);
+        };
+
+        if (window.naver?.maps) {
+            handleInit();
+        } else {
+            const script = document.createElement('script');
+            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
+            script.async = true;
+            script.onload = () => handleInit();
+            document.head.appendChild(script);
+        }
+        
+        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    }, [activeTab]);
 
     // 실시간 fetch + 30초 자동 새로고침 (상세 조회 중 아닐 때만)
     useEffect(() => {
