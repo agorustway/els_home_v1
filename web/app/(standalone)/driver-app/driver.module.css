@@ -201,6 +201,34 @@
 }
 .pausedStatusTitle { font-size: 1.15rem; font-weight: 800; color: #d97706; }
 
+.statusActionRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0 16px 0;
+}
+
+.statusActionRow button {
+    height: 74px;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+    line-height: 1.3;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.statusActionRow button:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+.statusPauseBtn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d !important; }
+.statusResumeBtn { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd !important; }
+.statusStopBtn { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca !important; }
+
 .historySection {
     background: #fff;
     border: 1px solid #e2e8f0;

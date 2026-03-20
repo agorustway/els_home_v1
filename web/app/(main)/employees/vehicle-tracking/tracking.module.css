@@ -62,6 +62,52 @@
     background: #1d4ed8;
 }
 
+/* ═══ 통합 대시보드 ═══ */
+.missionDashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.statCard {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s ease;
+}
+
+.statCard:hover {
+    transform: translateY(-4px);
+}
+
+.statLabel {
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.statValue {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.statUnit {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
 /* 지도 영역 */
 .mapContainer {
     width: 100%;
@@ -220,6 +266,19 @@
 
     .filterBar {
         flex-direction: column;
+    }
+
+    .missionDashboard {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .statCard {
+        padding: 1rem;
+    }
+
+    .statValue {
+        font-size: 1.75rem;
     }
 }
 

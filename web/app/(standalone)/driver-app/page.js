@@ -49,10 +49,12 @@ export default function DriverAppPage() {
 
     // ─── Refs ───
     const gpsIntervalRef = useRef(null);
-    const timerIntervalRef = useRef(null);
     const lastPosRef = useRef(null);
     const idleCountRef = useRef(0);
     const audioRef = useRef(null);
+    const canvasRef = useRef(null);
+    const pipVideoRef = useRef(null);
+    const requestRef = useRef(null);
 
     const GPS_INTERVALS = { driving: 30000, paused: 60000, idle: 120000 };
     const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
@@ -286,6 +288,83 @@ export default function DriverAppPage() {
             return () => clearTimeout(timer);
         }
     }, [driverPhone, vehicleNumber]);
+    // ─── 8. 캔버스 기반 PiP (진짜 플로팅 위젯) ───
+    const drawPip = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // 배경 채우기 (다크 테마)
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 테두리
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 12;
+        ctx.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
+
+        // 상태 이모지 및 텍스트
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillStyle = isDriving ? '#10b981' : '#f59e0b';
+        ctx.textAlign = 'center';
+        ctx.fillText(isDriving ? '🟢 운행 중' : '🟡 일시정지', canvas.width/2, 60);
+
+        // 타이머
+        ctx.font = '900 64px monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(formatTime(elapsedSeconds), canvas.width/2, 130);
+
+        // 컨테이너 번호 (조그맣게 밑에)
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`📦 ${containerNumber || 'No Container'}`, canvas.width/2, 180);
+
+        if (isMinimized) {
+            requestRef.current = requestAnimationFrame(drawPip);
+        }
+    }, [elapsedSeconds, isDriving, containerNumber, isMinimized]);
+
+    const enterPiP = async () => {
+        if (!pipVideoRef.current || !canvasRef.current) return;
+        
+        try {
+            // 캔버스 스트림 생성
+            if (!pipVideoRef.current.srcObject) {
+                const stream = canvasRef.current.captureStream(1); // 1fps면 충분
+                pipVideoRef.current.srcObject = stream;
+            }
+            
+            await pipVideoRef.current.play();
+            await pipVideoRef.current.requestPictureInPicture();
+            setIsMinimized(true);
+            drawPip();
+        } catch (e) {
+            console.error('PiP Error:', e);
+            // PiP 실패 시 기존 플로팅 모드로 대체
+            setIsMinimized(true);
+        }
+    };
+
+    const exitPiP = async () => {
+        if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+        }
+        setIsMinimized(false);
+        if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+
+    useEffect(() => {
+        const handleLeavePiP = () => {
+            setIsMinimized(false);
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+        };
+        const video = pipVideoRef.current;
+        if (video) video.addEventListener('leavepictureinpicture', handleLeavePiP);
+        return () => {
+            if (video) video.removeEventListener('leavepictureinpicture', handleLeavePiP);
+        };
+    }, []);
 
 
     // ─── 4. MediaSession 설정 (상태바 컨트롤 & 리얼타임 타이머) ───
@@ -557,27 +636,34 @@ export default function DriverAppPage() {
 
             <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
 
-            {/* 최소화 시 뜨는 플로팅 위젯 (드래그 가능) */}
+            {/* 진짜 플로팅 위젯을 위한 숨김 요소 */}
+            <canvas ref={canvasRef} width="300" height="220" style={{ display: 'none' }} />
+            <video ref={pipVideoRef} muted playsInline style={{ display: 'none' }} />
+
+            {/* 최소화 시 브라우저 내부에 보일 백업 위젯 (PiP 미지원 대비) */}
             <AnimatePresence>
-                {isMinimized && isActive && (
+                {isMinimized && isActive && !document.pictureInPictureElement && (
                     <motion.div 
                         drag
                         dragConstraints={{ left: 10, right: 300, top: 10, bottom: 600 }}
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.5, opacity: 0 }}
-                        onClick={() => setIsMinimized(false)}
+                        onClick={exitPiP}
                         style={{
                             position: 'fixed', bottom: 100, right: 20, zIndex: 100000,
-                            background: '#1e293b', color: '#fff', padding: '12px 18px',
-                            borderRadius: '30px', fontWeight: 900, fontSize: '1.2rem',
+                            background: '#1e293b', color: '#fff', padding: '16px 20px',
+                            borderRadius: '24px', fontWeight: 900,
                             boxShadow: '0 10px 40px rgba(0,0,0,0.5)', border: '2px solid #3b82f6',
-                            display: 'flex', alignItems: 'center', gap: 10, cursor: 'move',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'move',
                             touchAction: 'none'
                         }}
                     >
-                        <span style={{fontSize: '0.9rem', color: isDriving ? '#10b981' : '#f59e0b'}}>{isDriving ? '🟢' : '⏸️'}</span>
-                        <span>{formatTime(elapsedSeconds)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{fontSize: '0.9rem'}}>{isDriving ? '🟢' : '⏸️'}</span>
+                            <span style={{ fontSize: '1.3rem' }}>{formatTime(elapsedSeconds)}</span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📦 {containerNumber || '미입력'}</div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -607,31 +693,43 @@ export default function DriverAppPage() {
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button 
                                 onClick={() => checkActiveTrip()}
-                                style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '5px', background: '#fff', border: '1px solid #cbd5e1', color: '#64748b' }}
+                                style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.1)', color: '#334155', fontWeight: 700 }}
                             >
                                 🔄 갱신
                             </button>
                             <button 
-                                onClick={() => setIsMinimized(true)}
-                                style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '5px', background: '#fff', border: '1px solid #cbd5e1', color: '#64748b' }}
+                                onClick={enterPiP}
+                                style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '6px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 800, boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)' }}
                             >
                                 🔳 최소화
                             </button>
                         </div>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '5px 0', fontFamily: 'monospace', letterSpacing: '2px' }}>
+
+                    <div style={{ fontSize: '2.2rem', fontWeight: 900, margin: '8px 0', fontFamily: 'monospace', letterSpacing: '1px', color: '#1e293b' }}>
                         {formatTime(elapsedSeconds)}
                     </div>
+
+                    {/* 한손 조작을 위한 중앙 배치 버튼 */}
+                    <div className={styles.statusActionRow}>
+                        {isDriving ? (
+                            <button className={styles.statusPauseBtn} onClick={handlePause}>
+                                <span style={{fontSize:'1.4rem'}}>⏸️</span><br/>일시정지
+                            </button>
+                        ) : (
+                            <button className={styles.statusResumeBtn} onClick={handleResume}>
+                                <span style={{fontSize:'1.4rem'}}>▶️</span><br/>운행재개
+                            </button>
+                        )}
+                        <button className={styles.statusStopBtn} onClick={handleStop}>
+                            <span style={{fontSize:'1.4rem'}}>⏹️</span><br/>운행종료
+                        </button>
+                    </div>
+
                     <div className={styles.activeStatusSub}>{activeTrip?.vehicle_number} | {activeTrip?.driver_name}</div>
                 </div>
             )}
 
-            {isActive && showFloatingTimer && (
-                <div className={styles.floatingTimer} onClick={scrollToTop}>
-                    <span>{isDriving ? '🟢' : '🟡'}</span>
-                    <span>{formatTime(elapsedSeconds)}</span>
-                </div>
-            )}
 
             <div className={styles.formSection}>
                 <div className={styles.formTitle}>🚛 정보 및 컨테이너 입력</div>
@@ -715,10 +813,10 @@ export default function DriverAppPage() {
             </div>
 
             <div className={styles.actionSection}>
-                {!isActive ? (
+                {!isActive && (
                     <>
                         <button className={styles.startBtn} onClick={handleStart} style={{ marginTop: 12 }}>
-                            🏁 운송 시작하기
+                            🏁 운송 시작하기 (Start)
                         </button>
 
                         {/* PWA 설치 유도 */}
@@ -735,15 +833,6 @@ export default function DriverAppPage() {
                             </button>
                         </div>
                     </>
-                ) : (
-                    <div className={styles.actionRow}>
-                        {isDriving ? (
-                            <button className={styles.pauseBtn} onClick={handlePause}>⏸️ 일시정지</button>
-                        ) : (
-                            <button className={styles.resumeBtn} onClick={handleResume}>▶️ 다시 시작</button>
-                        )}
-                        <button className={styles.stopBtn} onClick={handleStop}>⏹️ 운행 종료</button>
-                    </div>
                 )}
             </div>
 
