@@ -6,8 +6,13 @@ const config: CapacitorConfig = {
   webDir: 'out',
   // 로컬 파일에서 앱 로딩 (원격 서버 의존 제거)
   server: {
-    androidScheme: 'http',
+    androidScheme: 'https',
     cleartext: true
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    }
   }
 };
 
