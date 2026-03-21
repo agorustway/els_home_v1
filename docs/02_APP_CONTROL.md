@@ -1,6 +1,6 @@
 # 📱 ELS 운송관리 네이티브 앱 개발 현황판 (APP_MISSION_CONTROL)
 
-**마지막 업데이트**: 2026-03-21
+**마지막 업데이트**: 2026-03-22
 **목적**: 기존 `nollae.com/driver-app` 웹뷰(WebView) 기반 PWA 방식에서 벗어나, 완전히 로컬에서 구동되는 독립형 안드로이드 네이티브(Standalone Native) 앱에 대한 개발 목표와 아키텍처, 작업 이력을 집중 관리하는 문서.
 
 ---
@@ -38,6 +38,12 @@
 - [x] **Foreground Service 궤도 안착**: `NotificationChannel`을 통해 앱이 죽지 않고 백그라운드에서도 GPS(`https://nollae.com/api/vehicle-tracking/locations`) 실시간 전송.
 - [x] **플로팅 위젯 양방향 제어(Two-Way)**: `OverlayPlugin.java`의 `BroadcastReceiver`를 통해 안드로이드 네이티브 버튼(일시정지, 종료) 신호를 `app.js`로 쏘아 TMAP 위에서도 즉시 앱 제어 가능 및 상태(색상) 자동 변환 처리.
 
-### 🏃 Phase 3: 완벽한 오프라인 컨트롤 시나리오 (진행 중)
+### ✅ Phase 3: UI 안정화 및 통신 브릿지 확보 (완료)
+- [x] **그리드 기반 UI 개편**: `display: grid`를 도입하여 소형 기기에서도 입력 필드가 잘리거나 겹치지 않도록 레이아웃 정예화.
+- [x] **CORS 타파 (Capacitor Http)**: 브라우저 `fetch`가 아닌 네이티브 Http 브릿지를 통한 서버 통신(`smartFetch`) 기능을 구현하여 CORS 및 네트워크 정책 이슈 원천 차단.
+- [x] **초기화 타이밍 보정**: 브릿지 로딩 대기 로직(0.5s)을 통해 `Overlay` 등 네이티브 플러그인 로드 안정성 확보.
+
+### 🏃 Phase 4: 오프라인 데이터 큐잉 및 싱크 (진행 예정)
 - [ ] **에러 방어력**: 네트워크가 없는 상태에서 운송 시작/종료 시 로컬 스토리지에 Action을 큐잉(Queue).
 - [ ] **백그라운드 싱크**: 앱이 다시 `online` 이벤트를 받을 때 큐잉된 내역을 순차적으로 서버에 전송.
+
