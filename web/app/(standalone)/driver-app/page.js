@@ -674,6 +674,23 @@ export default function DriverAppPage() {
         }
     };
 
+    const handleLocationRequest = async () => {
+        if (!navigator.geolocation) return;
+        triggerHaptic();
+        navigator.geolocation.getCurrentPosition(() => {}, () => {});
+        alert('위치 권한을 "항상 허용"으로 설정해 주셔야 앱이 꺼져도 관제가 유지됩니다.');
+    };
+
+    const handleCameraRequest = async () => {
+        triggerHaptic();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(t => t.stop());
+        } catch (e) {
+            alert('카메라 및 갤러리 권한을 허용해 주세요.');
+        }
+    };
+
     const checkOverlayPermission = async () => {
         if (Overlay) {
             try {
@@ -733,19 +750,29 @@ export default function DriverAppPage() {
                         <div className={styles.onboardingStep}>
                             <h2 className={styles.onboardingTitle}>필수 권한 안내</h2>
                             <div className={styles.permissionList}>
-                                <div className={styles.permissionItem}>
+                                <div 
+                                    className={styles.permissionItem}
+                                    onClick={handleLocationRequest}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     <div className={styles.permIcon}>📍</div>
                                     <div className={styles.permInfo}>
                                         <div className={styles.permTitle}>위치 정보 (항상 허용)</div>
                                         <div className={styles.permDesc}>운행 중 백그라운드 경로 추적 및 배차 관리</div>
                                     </div>
+                                    <div className={styles.blinkDot} />
                                 </div>
-                                <div className={styles.permissionItem}>
+                                <div 
+                                    className={styles.permissionItem}
+                                    onClick={handleCameraRequest}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     <div className={styles.permIcon}>🖼️</div>
                                     <div className={styles.permInfo}>
                                         <div className={styles.permTitle}>카메라 및 갤러리</div>
                                         <div className={styles.permDesc}>상/하차 컨테이너 및 씰 사진 등록</div>
                                     </div>
+                                    <div className={styles.blinkDot} />
                                 </div>
                                 <div 
                                     className={`${styles.permissionItem} ${!overlayGranted ? styles.blinkBorder : ''}`}

@@ -11,8 +11,6 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import com.getcapacitor.PermissionCallback;
-
 @CapacitorPlugin(name = "Overlay")
 public class OverlayPlugin extends Plugin {
 

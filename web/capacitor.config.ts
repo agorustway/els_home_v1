@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://nollae.com/driver-app',
     allowNavigation: ["nollae.com"],
+    hostname: "nollae.com",
     cleartext: true
   }
 };
