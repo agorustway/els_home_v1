@@ -28,6 +28,9 @@
   - 내역 존재 시 이름, 차량번호, ID를 **자동 채움(Autofill)** 처리하고, 신규 등록일 경우 백엔드 API (`POST /api/vehicle-tracking/drivers`)를 호출하여 미계약 차량으로 운전원 정보 자동 인서트 및 동기화 구현.
 - **다크 테마(Dark Theme) 및 장비 지향 UX 디자인 설계**:
   - `docs/DESIGN_SYSTEM.md`에 앱 전용 '안드로이드 독립 앱 규격(Section 13)' 추가. 웹 냄새를 완전히 지우기 위해 순흑색(#0d1117) 기반 모노톤 UI 및 One-handed 거대 버튼(56px~72px) 채택.
+- **플로팅 위젯 양방향 제어(Two-Way Control) 구축**:
+  - `OverlayPlugin.java` 및 `FloatingWidgetService.java` 고도화.
+  - TMAP 등 다른 앱 실행 시 화면을 덮는 위젯에 [일시정지], [종료] 네이티브 버튼을 배치하고, 이 버튼 클릭 시 BroadcastReceiver를 통해 자바스크립트(`app.js`) 쪽으로 Action 이벤트를 역파송하여 상태 통제 구현.
 
 ## 📅 2026-03-20: 안전운임 거리 매칭 로직 교정 및 이력조회 동시성 개선
 ### 핵심 성과
