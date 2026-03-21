@@ -13,6 +13,17 @@ import { createClient } from '@/utils/supabase/server';
  *  ?month=2026-03
  *  ?from=2026-03-01&to=2026-03-18  (날짜 범위)
  */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function GET(request) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
@@ -204,7 +215,12 @@ export async function POST(request) {
             .single();
 
         if (error) throw error;
-        return NextResponse.json({ trip });
+        
+        return NextResponse.json({ id: trip.id, trip }, {
+            headers: {
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
