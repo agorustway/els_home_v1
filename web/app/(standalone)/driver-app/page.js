@@ -126,6 +126,7 @@ export default function DriverAppPage() {
     const audioRef = useRef(null);
 
     const [showFloatingTimer, setShowFloatingTimer] = useState(false);
+    const [alertMessage, setAlertMessage] = useState(''); // 커스텀 알림용
     const scrollContainerRef = useRef(null);
 
     const playSilence = useCallback(() => { if (audioRef.current) audioRef.current.play().catch(() => {}); }, []);
@@ -687,7 +688,7 @@ export default function DriverAppPage() {
         if (!navigator.geolocation) return;
         triggerHaptic();
         navigator.geolocation.getCurrentPosition(() => {}, () => {});
-        alert('위치 권한을 "항상 허용"으로 설정해 주셔야 앱이 꺼져도 관제가 유지됩니다.');
+        setAlertMessage('위치 권한을 "항상 허용"으로 설정해 주셔야 앱이 꺼져도 관제가 유지됩니다.');
     };
 
     const handleCameraRequest = async () => {
@@ -696,7 +697,7 @@ export default function DriverAppPage() {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             stream.getTracks().forEach(t => t.stop());
         } catch (e) {
-            alert('카메라 및 갤러리 권한을 허용해 주세요.');
+            setAlertMessage('카메라 및 갤러리 권한을 허용해 주세요.');
         }
     };
 
@@ -725,7 +726,7 @@ export default function DriverAppPage() {
     const finishOnboarding = async () => {
         const isGranted = await checkOverlayPermission();
         if (!isGranted) {
-            alert('안전한 운행 관리를 위해 "다른 앱 위에 표시" 권한이 반드시 필요합니다. 설정창에서 ELS 앱을 찾아 허용해 주세요!');
+            setAlertMessage('안전한 운행 관리를 위해 "다른 앱 위에 표시" 권한이 반드시 필요합니다. 설정창에서 ELS 앱을 찾아 허용해 주세요!');
             handleOverlayRequest();
             return;
         }
@@ -734,7 +735,7 @@ export default function DriverAppPage() {
 
     const saveProfileAndFinish = () => {
         if (!driverName || !driverPhone || !vehicleNumber || !driverId) {
-            alert('기사 성함, 연락처, 차량 번호, 아이디를 모두 입력해 주세요.');
+            setAlertMessage('기사 성함, 연락처, 차량 번호, 아이디를 모두 입력해 주세요.');
             return;
         }
         triggerHaptic('HEAVY');
@@ -1057,6 +1058,20 @@ export default function DriverAppPage() {
                 body { margin: 0; background: #f8fafc; font-family: -apple-system, sans-serif; overflow-x: hidden; }
                 * { -webkit-tap-highlight-color: transparent; }
             `}</style>
+            {/* Custom Alert Modal */}
+            <AnimatePresence>
+                {alertMessage && (
+                    <div className={styles.onboardingOverlay} style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setAlertMessage('')}>
+                        <motion.div className={styles.onboardingStep} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+                            <div className={styles.formSection} style={{ border: '1px solid #38bdf8' }}>
+                                <div className={styles.onboardingTitle} style={{ fontSize: '1.2rem', color: '#38bdf8' }}>ELS 알림</div>
+                                <p className={styles.onboardingDesc} style={{ fontSize: '0.95rem' }}>{alertMessage}</p>
+                                <button className={styles.onboardingBtn} onClick={() => setAlertMessage('')}>확인</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

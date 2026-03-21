@@ -1,35 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root_container"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_floating_widget"
+    android:padding="8dp"
+    android:elevation="10dp">
 
-    <LinearLayout
-        android:layout_width="160dp"
+    <TextView
+        android:id="@+id/tv_timer"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="#DD1e293b"
-        android:orientation="vertical"
-        android:padding="12dp"
-        android:elevation="8dp">
+        android:text="00:00:00"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_gravity="center" />
 
-        <TextView
-            android:id="@+id/floating_timer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="00:00:00"
-            android:textColor="#ffffff"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/floating_container"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="4dp"
-            android:text="📦 미입력"
-            android:textColor="#94a3b8"
-            android:textSize="12sp" />
-    </LinearLayout>
-</FrameLayout>
+    <TextView
+        android:id="@+id/tv_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📦 주행 중"
+        android:textColor="#BBBBBB"
+        android:textSize="10sp"
+        android:layout_gravity="center" />
+</LinearLayout>
