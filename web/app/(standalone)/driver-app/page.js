@@ -726,11 +726,16 @@ export default function DriverAppPage() {
     const finishOnboarding = async () => {
         const isGranted = await checkOverlayPermission();
         if (!isGranted) {
-            setAlertMessage('안전한 운행 관리를 위해 "다른 앱 위에 표시" 권한이 반드시 필요합니다. 설정창에서 ELS 앱을 찾아 허용해 주세요!');
+            setAlertMessage('운행 중 타이머 표시를 위해 "다른 앱 위에 표시" 권한이 반드시 필요합니다. 설정창에서 ELS 앱을 찾아 허용해 주세요!');
             handleOverlayRequest();
             return;
         }
         setOnboardingStep(3); // 프로필 입력 단계로 이동
+    };
+
+    const resetOnboarding = () => {
+        localStorage.removeItem('els_onboarding_done');
+        window.location.reload();
     };
 
     const saveProfileAndFinish = () => {
@@ -745,7 +750,7 @@ export default function DriverAppPage() {
         localStorage.setItem('els_driver_id', driverId);
         localStorage.setItem('els_onboarding_done', 'true');
         setOnboardingStep(0);
-        checkActiveTrip(); // 정보 입력 후 바로 기존 운행 확인
+        checkActiveTrip(); 
     };
 
     const renderOnboarding = () => (
@@ -802,10 +807,10 @@ export default function DriverAppPage() {
                                     onClick={handleOverlayRequest}
                                     style={{ cursor: 'pointer' }}
                                 >
-                                    <div className={styles.permIcon}>🪟</div>
+                                    <div className={styles.permIcon} style={{background: '#38bdf8'}} />
                                     <div className={styles.permInfo}>
-                                        <div className={styles.permTitle}>다른 앱 위에 표시 {!overlayGranted && '(탭하여 설정)'}</div>
-                                        <div className={styles.permDesc}>내비게이션 사용 중 실시간 타이머 표시</div>
+                                        <div className={styles.permTitle}>다른 앱 위에 표시 {!overlayGranted && '(설정 필요)'}</div>
+                                        <div className={styles.permDesc}>내비게이션 사용 중 실시간 상태 표시</div>
                                     </div>
                                     {!overlayGranted && <div className={styles.blinkDot} />}
                                 </div>
@@ -846,104 +851,92 @@ export default function DriverAppPage() {
 
     const renderHome = () => (
         <motion.div className={styles.tabContent} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            {/* 상단 통합 알림 카드 (상태 & 정보) */}
+            {/* 상단 상태 통합 대시보드 */}
             <div className={styles.gpsBar}>
                 <span>
                     <span className={`${styles.gpsDot} ${gpsActive ? styles.gpsDotActive : styles.gpsDotInactive}`} />
-                    GPS {gpsActive ? '정상 수신' : '수신 대기'}
+                    GPS {gpsActive ? '정상 수신 중' : '위치 대기 중'}
                 </span>
-                {lastCoords && <span style={{fontSize: '0.7rem'}}>📍 {lastCoords.lat.toFixed(5)}, {lastCoords.lng.toFixed(5)}</span>}
             </div>
 
-            {isActive && (
-                <div id="status-section" className={isDriving ? styles.activeStatus : styles.pausedStatus}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <div className={isDriving ? styles.activeStatusTitle : styles.pausedStatusTitle}>
-                            {isDriving ? '🟢 운행 중' : '🟡 일시정지'}
-                        </div>
-                        <button onClick={() => { triggerHaptic('LIGHT'); checkActiveTrip(); }} disabled={isRefreshing} className={styles.outlineBtn} style={{ padding: '4px 12px', height: 'auto', border: '1px solid #ddd' }}>
-                            {isRefreshing ? '⌛' : '🔄'}
-                        </button>
-                    </div>
-
-                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '12px 0', fontFamily: 'monospace', color: '#1e293b' }}>
+            {isActive ? (
+                /* 운행 활성화 상태: 대시보드 집중 모드 */
+                <div id="status-dashboard" className={styles.activeDashboard}>
+                    <div className={styles.dashboardLabel}>{isDriving ? 'REALTIME TRACKING' : 'IDLE / PAUSED'}</div>
+                    <div className={styles.dashboardTimer}>
                         {formatTime(elapsedSeconds)}
                     </div>
+                    
+                    <div className={styles.dashboardInfoRow}>
+                        <div className={styles.infoCol}>
+                            <span>차량번호</span>
+                            <strong>{vehicleNumber}</strong>
+                        </div>
+                        <div className={styles.infoCol}>
+                            <span>컨테이너</span>
+                            <strong>{containerNumber || '-'}</strong>
+                        </div>
+                    </div>
 
-                    <div className={styles.statusActionRow}>
+                    <div className={styles.dashboardActionGrid}>
                         {isDriving ? (
-                            <button className={styles.statusPauseBtn} onClick={() => { triggerHaptic(); handlePause(); }}>
-                                <span style={{fontSize:'1.4rem'}}>⏸️</span><br/>일시정지
+                            <button className={styles.dashSecondaryBtn} onClick={handlePause}>
+                                일시정지
                             </button>
                         ) : (
-                            <button className={styles.statusResumeBtn} onClick={() => { triggerHaptic(); handleResume(); }}>
-                                <span style={{fontSize:'1.4rem'}}>▶️</span><br/>운행재개
+                            <button className={styles.dashPrimaryBtn} onClick={handleResume}>
+                                운송 재개
                             </button>
                         )}
-                        <button className={styles.statusStopBtn} onClick={() => { triggerHaptic('HEAVY'); handleStop(); }}>
-                            <span style={{fontSize:'1.4rem'}}>⏹️</span><br/>운행종료
+                        <button className={styles.dashStopBtn} onClick={handleStop}>
+                            운송 종료 (FINISH)
                         </button>
                     </div>
-                </div>
-            )}
-
-            {/* 정보 입력 및 사진 섹션 */}
-            <div className={styles.formSection}>
-                <div className={styles.formTitle}>🚛 운송 정보 입력</div>
-                <div className={styles.formGrid}>
-                    <div className={styles.formRow2col}>
-                        <div className={styles.formRow}>
-                            <label className={styles.formLabel}>차량번호 *</label>
-                            <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value.replace(/\s/g,''))} />
-                        </div>
-                        <div className={styles.formRow}>
-                            <label className={styles.formLabel}>차량ID (자동)</label>
-                            <input className={styles.formInput} style={{background: '#f1f5f9'}} value={vehicleId} readOnly />
-                        </div>
-                    </div>
                     
-                    <div className={styles.formRowFlex}>
-                        <div className={styles.formRow} style={{flex: 1}}>
-                            <label className={styles.formLabel}>컨테이너 번호</label>
-                            <input className={styles.formInput} placeholder="ABCD1234567" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} />
-                        </div>
-                        <div className={styles.formRow} style={{width: 80}}>
-                            <label className={styles.formLabel}>타입</label>
-                            <select className={styles.formInput} value={containerType} onChange={e => setContainerType(e.target.value)}>
-                                {CONTAINER_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className={styles.photoSection}>
-                        <label className={styles.formLabel}>사진 등록 ({photos.length}/10)</label>
-                        <div className={styles.photoGrid}>
-                            {photos.map((p, i) => (
-                                <div key={i} style={{position: 'relative'}}>
-                                    <img src={p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.previewUrl} className={styles.photoThumb} alt="" />
-                                    {p.uploaded && (
-                                        <button onClick={() => { triggerHaptic('LIGHT'); handlePhotoDelete(p); }} style={{position: 'absolute', top: -5, right: -5, width: 22, height: 22, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'}}>✕</button>
+                    <button className={styles.outlineBtn} style={{width: '100%', marginTop: 20, opacity: 0.6}} onClick={() => setAlertMessage('운행 중에는 정보를 수정할 수 없습니다. 종료 후 수정해주세요.')}>
+                        상세 정보 보기
+                    </button>
+                </div>
+            ) : (
+                /* 운행 대기 상태: 입력 및 시작 모드 */
+                <div id="registration-dashboard">
+                    <div className={styles.formSection}>
+                        <div className={styles.formTitle}>운송 정보 등록</div>
+                        <div className={styles.formGrid}>
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel}>차량번호</label>
+                                <input className={styles.formInput} placeholder="예: 부산00바0000" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value.replace(/\s/g,''))} />
+                            </div>
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel}>컨테이너 번호</label>
+                                <input className={styles.formInput} placeholder="예: ABCD1234567" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} />
+                            </div>
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel}>컨테이너 사진 ({photos.length}/10)</label>
+                                <div className={styles.photoGrid}>
+                                    {photos.map((p, i) => (
+                                        <div key={i} style={{position: 'relative'}}>
+                                            <img src={p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.previewUrl} className={styles.photoThumb} alt="" />
+                                            {p.uploaded && (
+                                                <button onClick={() => { triggerHaptic('LIGHT'); handlePhotoDelete(p); }} className={styles.photoDelBtn}>✕</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {photos.length < 10 && (
+                                        <label className={styles.photoAddBtn} onClick={() => triggerHaptic('LIGHT')}>
+                                            {uploading ? '⏳' : '+'}
+                                            <input type="file" multiple accept="image/*" hidden onChange={handlePhotoAdd} />
+                                        </label>
                                     )}
                                 </div>
-                            ))}
-                            {photos.length < 10 && (
-                                <label className={styles.photoAddBtn} onClick={() => triggerHaptic('LIGHT')}>
-                                    {uploading ? '⏳' : '+'}
-                                    <input type="file" multiple accept="image/*" hidden onChange={handlePhotoAdd} />
-                                </label>
-                            )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div className={styles.actionSection}>
-                {!isActive && (
-                    <button className={styles.startBtn} onClick={() => { triggerHaptic('HEAVY'); handleStart(); }}>
-                        🏁 운송 시작하기 (Start)
+                    <button className={styles.startBtn} onClick={handleStart}>
+                        운송 시작하기 (START)
                     </button>
-                )}
-            </div>
+                </div>
+            )}
         </motion.div>
     );
 

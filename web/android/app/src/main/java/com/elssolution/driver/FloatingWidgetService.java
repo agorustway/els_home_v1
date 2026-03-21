@@ -205,8 +205,8 @@ public class FloatingWidgetService extends Service {
 
     private void updateWidget(String timer, String container) {
         if (mFloatingWidget != null) {
-            TextView txtTimer = mFloatingWidget.findViewById(R.id.floating_timer);
-            TextView txtContainer = mFloatingWidget.findViewById(R.id.floating_container);
+            TextView txtTimer = mFloatingWidget.findViewById(R.id.tv_timer);
+            TextView txtContainer = mFloatingWidget.findViewById(R.id.tv_container);
             if (txtTimer != null) txtTimer.setText(timer);
             if (txtContainer != null) txtContainer.setText(container);
         }
