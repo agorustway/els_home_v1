@@ -2,9 +2,34 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 export async function middleware(request) {
+    const path = request.nextUrl.pathname;
+
+    // ─── API CORS 핸들링 (모바일 앱 대응) ───
+    if (path.startsWith('/api/vehicle-tracking')) {
+        // 프리플라이트(OPTIONS) 요청 처리
+        if (request.method === 'OPTIONS') {
+            return new NextResponse(null, {
+                status: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+                    'Access-Control-Max-Age': '86400',
+                },
+            });
+        }
+    }
+
     let supabaseResponse = NextResponse.next({
         request,
     })
+
+    // API 응답에 CORS 헤더 추가 (일반 요청)
+    if (path.startsWith('/api/vehicle-tracking')) {
+        supabaseResponse.headers.set('Access-Control-Allow-Origin', '*');
+        supabaseResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        supabaseResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
 
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -19,6 +44,10 @@ export async function middleware(request) {
                     supabaseResponse = NextResponse.next({
                         request,
                     })
+                    // API가 아닌 경우에만 쿠키 기반 응답에 CORS 헤더 다시 세팅 (NextResponse.next가 새로 생성되므로)
+                    if (path.startsWith('/api/vehicle-tracking')) {
+                        supabaseResponse.headers.set('Access-Control-Allow-Origin', '*');
+                    }
                     cookiesToSet.forEach(({ name, value, options }) =>
                         supabaseResponse.cookies.set(name, value, options)
                     )
@@ -36,8 +65,6 @@ export async function middleware(request) {
         const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', user.email).single();
         userRole = roleData?.role || 'visitor';
     }
-
-    const path = request.nextUrl.pathname;
 
     // 0. Redirect authenticated users away from login page
     if (user && path === '/login') {
