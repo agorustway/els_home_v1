@@ -724,14 +724,14 @@ export default function DriverAppPage() {
     };
 
     const saveProfileAndFinish = () => {
-        if (!driverName || !driverPhone || !driverVehicle) {
+        if (!driverName || !driverPhone || !vehicleNumber) {
             alert('기사 성함, 연락처, 차량 번호를 모두 입력해 주세요.');
             return;
         }
         triggerHaptic('HEAVY');
         localStorage.setItem('els_driver_name', driverName);
         localStorage.setItem('els_driver_phone', driverPhone);
-        localStorage.setItem('els_driver_vehicle', driverVehicle);
+        localStorage.setItem('els_driver_vehicle', vehicleNumber);
         localStorage.setItem('els_onboarding_done', 'true');
         setOnboardingStep(0);
         checkActiveTrip(); // 정보 입력 후 바로 기존 운행 확인
@@ -818,7 +818,7 @@ export default function DriverAppPage() {
                                 </div>
                                 <div className={styles.formRow}>
                                     <label className={styles.formLabel}>차량 번호 (영업용)</label>
-                                    <input className={styles.formInput} placeholder="12가3456" value={driverVehicle} onChange={e => setDriverVehicle(e.target.value)} />
+                                    <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} />
                                 </div>
                             </div>
                             <button className={styles.onboardingBtn} onClick={saveProfileAndFinish}>준비 완료! 시작하기</button>
@@ -830,8 +830,8 @@ export default function DriverAppPage() {
     );
 
     const renderHome = () => (
-        <div className={styles.tabContent}>
-            {/* GPS 상태바 */}
+        <motion.div className={styles.tabContent} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            {/* 상단 통합 알림 카드 (상태 & 정보) */}
             <div className={styles.gpsBar}>
                 <span>
                     <span className={`${styles.gpsDot} ${gpsActive ? styles.gpsDotActive : styles.gpsDotInactive}`} />
@@ -872,6 +872,7 @@ export default function DriverAppPage() {
                 </div>
             )}
 
+            {/* 정보 입력 및 사진 섹션 */}
             <div className={styles.formSection}>
                 <div className={styles.formTitle}>🚛 운송 정보 입력</div>
                 <div className={styles.formGrid}>
@@ -928,12 +929,12 @@ export default function DriverAppPage() {
                     </button>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 
     const renderHistory = () => (
-        <div className={styles.tabContent}>
-            <div className={styles.historySection}>
+        <motion.div className={styles.tabContent} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className={styles.formSection}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div className={styles.historyTitle}>📅 운송 기록</div>
                     <input type="month" value={historyMonth} onChange={(e) => setHistoryMonth(e.target.value)} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
@@ -951,11 +952,11 @@ export default function DriverAppPage() {
                     )) : <div className={styles.historyEmpty}>기록이 없습니다.</div>}
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 
     const renderSettings = () => (
-        <div className={styles.tabContent}>
+        <motion.div className={styles.tabContent} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <div className={styles.formSection}>
                 <div className={styles.formTitle}>👤 내 프로필 설정</div>
                 <div className={styles.formGrid}>
@@ -964,8 +965,12 @@ export default function DriverAppPage() {
                         <input className={styles.formInput} value={driverName} onChange={e => setDriverName(e.target.value)} />
                     </div>
                     <div className={styles.formRow}>
+                        <label className={styles.formLabel}>연락처</label>
+                        <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
+                    </div>
+                    <div className={styles.formRow}>
                         <label className={styles.formLabel}>차량 번호</label>
-                        <input className={styles.formInput} placeholder="12가3456" value={driverVehicle} onChange={e => setDriverVehicle(e.target.value)} />
+                        <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} />
                     </div>
                 </div>
             </div>
@@ -989,7 +994,7 @@ export default function DriverAppPage() {
                     <button onClick={() => { localStorage.clear(); window.location.reload(); }} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10, color: '#ef4444' }}>초기화 (로그아웃)</button>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 
     return (
