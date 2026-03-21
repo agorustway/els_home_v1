@@ -82,6 +82,7 @@ export default function DriverAppPage() {
     const [vehicleId, setVehicleId] = useState('');
     const [driverName, setDriverName] = useState('');
     const [driverPhone, setDriverPhone] = useState('');
+    const [driverId, setDriverId] = useState('');
     const [containerNumber, setContainerNumber] = useState('');
     const [sealNumber, setSealNumber] = useState('');
     const [containerType, setContainerType] = useState('40FT');
@@ -477,8 +478,8 @@ export default function DriverAppPage() {
         
         // Native UI Init
         if (Capacitor.isNativePlatform() && StatusBar) {
-            StatusBar.setBackgroundColor({ color: '#f8fafc' });
-            StatusBar.setStyle({ style: 'light' });
+            StatusBar.setBackgroundColor({ color: '#0f172a' });
+            StatusBar.setStyle({ style: 'dark' });
         }
 
         const onboardingDone = localStorage.getItem('els_onboarding_done');
@@ -489,6 +490,14 @@ export default function DriverAppPage() {
         setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
         const storedPhone = localStorage.getItem('els_driver_phone');
         const storedVehicle = localStorage.getItem('els_driver_vehicle');
+        const storedId = localStorage.getItem('els_driver_id');
+        const storedName = localStorage.getItem('els_driver_name');
+        
+        if (storedName) setDriverName(storedName);
+        if (storedPhone) setDriverPhone(storedPhone);
+        if (storedVehicle) setVehicleNumber(storedVehicle);
+        if (storedId) setDriverId(storedId);
+        
         if (storedPhone || storedVehicle) {
             checkActiveTrip(storedPhone, storedVehicle);
         }
@@ -724,14 +733,15 @@ export default function DriverAppPage() {
     };
 
     const saveProfileAndFinish = () => {
-        if (!driverName || !driverPhone || !vehicleNumber) {
-            alert('기사 성함, 연락처, 차량 번호를 모두 입력해 주세요.');
+        if (!driverName || !driverPhone || !vehicleNumber || !driverId) {
+            alert('기사 성함, 연락처, 차량 번호, 아이디를 모두 입력해 주세요.');
             return;
         }
         triggerHaptic('HEAVY');
         localStorage.setItem('els_driver_name', driverName);
         localStorage.setItem('els_driver_phone', driverPhone);
         localStorage.setItem('els_driver_vehicle', vehicleNumber);
+        localStorage.setItem('els_driver_id', driverId);
         localStorage.setItem('els_onboarding_done', 'true');
         setOnboardingStep(0);
         checkActiveTrip(); // 정보 입력 후 바로 기존 운행 확인
@@ -810,15 +820,19 @@ export default function DriverAppPage() {
                             <div className={styles.formGrid} style={{ margin: '20px 0' }}>
                                 <div className={styles.formRow}>
                                     <label className={styles.formLabel}>기사 성함</label>
-                                    <input className={styles.formInput} placeholder="이름 입력" value={driverName} onChange={e => setDriverName(e.target.value)} />
+                                    <input className={styles.formInput} placeholder="예: 홍길동" value={driverName} onChange={e => setDriverName(e.target.value)} />
                                 </div>
                                 <div className={styles.formRow}>
                                     <label className={styles.formLabel}>연락처</label>
-                                    <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
+                                    <input className={styles.formInput} placeholder="예: 01012345678" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
                                 </div>
                                 <div className={styles.formRow}>
                                     <label className={styles.formLabel}>차량 번호 (영업용)</label>
-                                    <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} />
+                                    <input className={styles.formInput} placeholder="예: 부산00바0000" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} />
+                                </div>
+                                <div className={styles.formRow}>
+                                    <label className={styles.formLabel}>아이디</label>
+                                    <input className={styles.formInput} placeholder="예: ABCD1234" value={driverId} onChange={e => setDriverId(e.target.value)} />
                                 </div>
                             </div>
                             <button className={styles.onboardingBtn} onClick={saveProfileAndFinish}>준비 완료! 시작하기</button>
@@ -970,7 +984,11 @@ export default function DriverAppPage() {
                     </div>
                     <div className={styles.formRow}>
                         <label className={styles.formLabel}>차량 번호</label>
-                        <input className={styles.formInput} placeholder="12가3456" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} />
+                        <input className={styles.formInput} placeholder="예: 부산00바0000" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} />
+                    </div>
+                    <div className={styles.formRow}>
+                        <label className={styles.formLabel}>아이디</label>
+                        <input className={styles.formInput} placeholder="예: ABCD1234" value={driverId} onChange={e => setDriverId(e.target.value)} />
                     </div>
                 </div>
             </div>
