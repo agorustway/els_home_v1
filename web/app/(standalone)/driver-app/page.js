@@ -6,6 +6,16 @@ import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 import { Capacitor } from '@capacitor/core';
 
+import { Capacitor } from '@capacitor/core';
+
+// Native Plugins
+let Haptics, StatusBar, App;
+if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+    Haptics = require('@capacitor/haptics').Haptics;
+    StatusBar = require('@capacitor/status-bar').StatusBar;
+    App = require('@capacitor/app').App;
+}
+
 // Capacitor Custom Plugin for Overlay
 const Overlay = (typeof window !== 'undefined' && Capacitor.isNativePlatform()) 
     ? require('@capacitor/core').registerPlugin('Overlay') 
@@ -62,7 +72,7 @@ const resizeImage = (file, maxWidth = 1024, maxHeight = 1024) => {
                 canvas.toBlob((blob) => {
                     const resizedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
                     resolve(resizedFile);
-                }, 'image/jpeg', 0.7); // 0.7 퀄리티로 압축 강화
+                }, 'image/jpeg', 0.6); // 압축 퀄리티 0.6으로 더 강화
             };
         };
     });
@@ -93,6 +103,10 @@ export default function DriverAppPage() {
     const [isIOS, setIsIOS] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
+    
+    // --- Native App UI States ---
+    const [onboardingStep, setOnboardingStep] = useState(0); // 0: Hide, 1: Step1, 2: Step2
+    const [activeTab, setActiveTab] = useState('home'); // home, history, settings
 
     const hasInitializedRef = useRef(false);
 
@@ -461,6 +475,16 @@ export default function DriverAppPage() {
     // 초기화
     useEffect(() => {
         if (typeof window === 'undefined' || hasInitializedRef.current) return;
+        
+        // Native UI Init
+        if (Capacitor.isNativePlatform() && StatusBar) {
+            StatusBar.setBackgroundColor({ color: '#f8fafc' });
+            StatusBar.setStyle({ style: 'light' });
+        }
+
+        const onboardingDone = localStorage.getItem('els_onboarding_done');
+        if (!onboardingDone) setOnboardingStep(1);
+
         setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
         const storedPhone = localStorage.getItem('els_driver_phone');
         const storedVehicle = localStorage.getItem('els_driver_vehicle');
@@ -640,26 +664,78 @@ export default function DriverAppPage() {
 
 
 
-    return (
-        <>
-            {/* 📍 PWA & Mobile Meta Tags */}
-            <title>ELS 차량용 운송관리</title>
-            <link rel="manifest" href="/manifest_driver.json" />
-            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-            <meta name="apple-mobile-web-app-capable" content="yes" />
-            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    // --- Native Components & Tab Renders ---
+    
+    const triggerHaptic = (style = 'MEDIUM') => {
+        if (Haptics) {
+            const hStyle = style === 'LIGHT' ? 'LIGHT' : style === 'HEAVY' ? 'HEAVY' : 'MEDIUM';
+            Haptics.impact({ style: hStyle });
+        }
+    };
 
-            <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
+    const finishOnboarding = () => {
+        triggerHaptic('HEAVY');
+        localStorage.setItem('els_onboarding_done', 'true');
+        setOnboardingStep(0);
+    };
 
+    const renderOnboarding = () => (
+        <AnimatePresence>
+            {onboardingStep > 0 && (
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className={styles.onboardingOverlay}
+                >
+                    {onboardingStep === 1 ? (
+                        <div className={styles.onboardingStep}>
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className={styles.onboardingIcon}>👋</motion.div>
+                            <h2 className={styles.onboardingTitle}>반가워요, 기사님!</h2>
+                            <p className={styles.onboardingText}>
+                                ELS 운송관리 전용 앱에 오신 것을 환영합니다.<br/>
+                                안전하고 스마트한 운행을 위해<br/>몇 가지 권한 설정이 필요합니다.
+                            </p>
+                            <div className={styles.onboardingDots}>
+                                <div className={`${styles.dot} ${styles.dotActive}`} />
+                                <div className={styles.dot} />
+                            </div>
+                            <button className={styles.onboardingBtn} onClick={() => { triggerHaptic(); setOnboardingStep(2); }}>시작하기</button>
+                        </div>
+                    ) : (
+                        <div className={styles.onboardingStep}>
+                            <h2 className={styles.onboardingTitle}>필수 권한 안내</h2>
+                            <div className={styles.permissionList}>
+                                <div className={styles.permissionItem}>
+                                    <div className={styles.permIcon}>📍</div>
+                                    <div className={styles.permInfo}>
+                                        <div className={styles.permTitle}>위치 정보 (항상 허용)</div>
+                                        <div className={styles.permDesc}>운행 중 백그라운드 경로 추적 및 배차 관리</div>
+                                    </div>
+                                </div>
+                                <div className={styles.permissionItem}>
+                                    <div className={styles.permIcon}>🖼️</div>
+                                    <div className={styles.permInfo}>
+                                        <div className={styles.permTitle}>카메라 및 갤러리</div>
+                                        <div className={styles.permDesc}>상/하차 컨테이너 및 씰 사진 등록</div>
+                                    </div>
+                                </div>
+                                <div className={styles.permissionItem}>
+                                    <div className={styles.permIcon}>🪟</div>
+                                    <div className={styles.permInfo}>
+                                        <div className={styles.permTitle}>다른 앱 위에 표시</div>
+                                        <div className={styles.permDesc}>내비게이션 사용 중 실시간 타이머 표시</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button className={styles.onboardingBtn} onClick={finishOnboarding}>확인했습니다</button>
+                        </div>
+                    )}
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
 
-
-            <div className={styles.driverPage}>
-            {/* 상단 헤더: 로고 + 제목 */}
-            <div className={styles.header}>
-                <img src="/images/logo.png" alt="ELS Logo" className={styles.headerLogo} />
-                <div className={styles.headerTitle}>차량용 운송 관리</div>
-            </div>
-
+    const renderHome = () => (
+        <div className={styles.tabContent}>
             {/* GPS 상태바 */}
             <div className={styles.gpsBar}>
                 <span>
@@ -675,44 +751,34 @@ export default function DriverAppPage() {
                         <div className={isDriving ? styles.activeStatusTitle : styles.pausedStatusTitle}>
                             {isDriving ? '🟢 운행 중' : '🟡 일시정지'}
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button 
-                                onClick={() => checkActiveTrip()}
-                                disabled={isRefreshing}
-                                style={{ fontSize: '0.8rem', padding: '6px 12px', borderRadius: '8px', background: isRefreshing ? '#e2e8f0' : 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.1)', color: '#334155', fontWeight: 800, transition: 'all 0.2s' }}
-                            >
-                                {isRefreshing ? '⌛' : '🔄'} 갱신
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style={{ fontSize: '2.2rem', fontWeight: 900, margin: '8px 0', fontFamily: 'monospace', letterSpacing: '1px', color: '#1e293b' }}>
-                        {formatTime(elapsedSeconds)}
-                    </div>
-
-                    {/* 한손 조작을 위한 중앙 배치 버튼 */}
-                    <div className={styles.statusActionRow}>
-                        {isDriving ? (
-                            <button className={styles.statusPauseBtn} onClick={handlePause}>
-                                <span style={{fontSize:'1.4rem'}}>⏸️</span><br/>일시정지
-                            </button>
-                        ) : (
-                            <button className={styles.statusResumeBtn} onClick={handleResume}>
-                                <span style={{fontSize:'1.4rem'}}>▶️</span><br/>운행재개
-                            </button>
-                        )}
-                        <button className={styles.statusStopBtn} onClick={handleStop}>
-                            <span style={{fontSize:'1.4rem'}}>⏹️</span><br/>운행종료
+                        <button onClick={() => { triggerHaptic('LIGHT'); checkActiveTrip(); }} disabled={isRefreshing} className={styles.outlineBtn} style={{ padding: '4px 12px', height: 'auto', border: '1px solid #ddd' }}>
+                            {isRefreshing ? '⌛' : '🔄'}
                         </button>
                     </div>
 
-                    <div className={styles.activeStatusSub}>{activeTrip?.vehicle_number} | {activeTrip?.driver_name}</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 900, margin: '12px 0', fontFamily: 'monospace', color: '#1e293b' }}>
+                        {formatTime(elapsedSeconds)}
+                    </div>
+
+                    <div className={styles.statusActionRow}>
+                        {isDriving ? (
+                            <button className={styles.statusPauseBtn} onClick={() => { triggerHaptic(); handlePause(); }}>
+                                <span style={{fontSize:'1.4rem'}}>⏸️</span><br/>일시정지
+                            </button>
+                        ) : (
+                            <button className={styles.statusResumeBtn} onClick={() => { triggerHaptic(); handleResume(); }}>
+                                <span style={{fontSize:'1.4rem'}}>▶️</span><br/>운행재개
+                            </button>
+                        )}
+                        <button className={styles.statusStopBtn} onClick={() => { triggerHaptic('HEAVY'); handleStop(); }}>
+                            <span style={{fontSize:'1.4rem'}}>⏹️</span><br/>운행종료
+                        </button>
+                    </div>
                 </div>
             )}
 
-
             <div className={styles.formSection}>
-                <div className={styles.formTitle}>🚛 정보 및 컨테이너 입력</div>
+                <div className={styles.formTitle}>🚛 운송 정보 입력</div>
                 <div className={styles.formGrid}>
                     <div className={styles.formRow2col}>
                         <div className={styles.formRow}>
@@ -721,88 +787,36 @@ export default function DriverAppPage() {
                         </div>
                         <div className={styles.formRow}>
                             <label className={styles.formLabel}>차량ID (자동)</label>
-                            <input className={styles.formInput} style={{background: '#f1f5f9'}} placeholder="아이디" value={vehicleId} onChange={e => setVehicleId(e.target.value.toUpperCase())} />
-                        </div>
-                    </div>
-                    <div className={styles.formRowFlex}>
-                        <div className={`${styles.formRow} ${styles.colName}`}>
-                            <label className={styles.formLabel}>이름 *</label>
-                            <input className={styles.formInput} placeholder="성함" value={driverName} onChange={e => setDriverName(e.target.value)} />
-                        </div>
-                        <div className={`${styles.formRow} ${styles.colPhone}`}>
-                            <label className={styles.formLabel}>전화번호</label>
-                            <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
+                            <input className={styles.formInput} style={{background: '#f1f5f9'}} value={vehicleId} readOnly />
                         </div>
                     </div>
                     
                     <div className={styles.formRowFlex}>
                         <div className={styles.formRow} style={{flex: 1}}>
-                            <label className={styles.formLabel}>컨테이너</label>
-                            <input className={styles.formInput} placeholder="번호 입력" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} />
+                            <label className={styles.formLabel}>컨테이너 번호</label>
+                            <input className={styles.formInput} placeholder="ABCD1234567" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} />
                         </div>
-                        <div className={`${styles.formRow} ${styles.colType}`}>
+                        <div className={styles.formRow} style={{width: 80}}>
                             <label className={styles.formLabel}>타입</label>
                             <select className={styles.formInput} value={containerType} onChange={e => setContainerType(e.target.value)}>
-                                {CONTAINER_TYPES.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
+                                {CONTAINER_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                             </select>
                         </div>
                     </div>
 
-                    <div className={styles.formRowFlex}>
-                        <div className={styles.formRow} style={{flex: 1}}>
-                            <label className={styles.formLabel}>씰넘버</label>
-                            <input className={styles.formInput} placeholder="번호 입력" value={sealNumber} onChange={e => setSealNumber(e.target.value.toUpperCase())} />
-                        </div>
-                        <div className={styles.formRow} style={{flex: 1}}>
-                            <label className={styles.formLabel}>종류</label>
-                            <select className={styles.formInput} value={containerKind} onChange={e => setContainerKind(e.target.value)}>
-                                {CONTAINER_KINDS.map(kind => (
-                                    <option key={kind} value={kind}>{kind}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* 수정 모드 안내 */}
-                    {selectedHistoryId && (
-                        <div style={{ background: '#fef3c7', padding: '10px 14px', borderRadius: '10px', marginBottom: 15, border: '1px solid #fcd34d', display: 'flex', justifyContent: 'space-between', alignItems:'center' }}>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400e' }}>🚨 과거 운송 기록 수정 모드</div>
-                            <button onClick={() => { setSelectedHistoryId(null); checkActiveTrip(); }} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background:'#fff', fontSize:'0.75rem', fontWeight:700 }}>해제 (X)</button>
-                        </div>
-                    )}
-
-                    {(isActive || selectedHistoryId) && (
-                        <button 
-                            className={styles.updateInlineBtn} 
-                            onClick={handleUpdateInfo}
-                            style={{ background: selectedHistoryId ? '#dbeafe' : '#f8fafc', borderColor: selectedHistoryId ? '#3b82f6' : '#cbd5e1', color: selectedHistoryId ? '#1e40af' : '#475569' }}
-                        >
-                            {selectedHistoryId ? '✍️ 기록 수정내역 확인 및 저장' : '📝 현재 정보 수정내역 저장'}
-                        </button>
-                    )}
-                    
                     <div className={styles.photoSection}>
-                        <label className={styles.formLabel}>사진 등록 (최대 10장)</label>
+                        <label className={styles.formLabel}>사진 등록 ({photos.length}/10)</label>
                         <div className={styles.photoGrid}>
                             {photos.map((p, i) => (
                                 <div key={i} style={{position: 'relative'}}>
                                     <img src={p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.previewUrl} className={styles.photoThumb} alt="" />
                                     {p.uploaded && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handlePhotoDelete(p); }}
-                                            style={{position: 'absolute', top: -5, right: -5, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, boxShadow: '0 2px 5px rgba(0,0,0,0.3)'}}
-                                        >
-                                            ✕
-                                        </button>
+                                        <button onClick={() => { triggerHaptic('LIGHT'); handlePhotoDelete(p); }} style={{position: 'absolute', top: -5, right: -5, width: 22, height: 22, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'}}>✕</button>
                                     )}
-                                    {p.uploaded && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#10b981', color:'#fff', borderRadius:'4px', zIndex: 5}}>완료</span>}
-                                    {p.uploading && <span style={{position: 'absolute', bottom: -5, right: -5, fontSize: '0.6rem', padding: '2px 4px', background: '#f97316', color:'#fff', borderRadius:'4px', zIndex: 5}}>업로드 중</span>}
                                 </div>
                             ))}
                             {photos.length < 10 && (
-                                <label className={styles.photoAddBtn}>
+                                <label className={styles.photoAddBtn} onClick={() => triggerHaptic('LIGHT')}>
                                     {uploading ? '⏳' : '+'}
                                     <input type="file" multiple accept="image/*" hidden onChange={handlePhotoAdd} />
                                 </label>
@@ -814,66 +828,109 @@ export default function DriverAppPage() {
 
             <div className={styles.actionSection}>
                 {!isActive && (
-                    <>
-                        <button className={styles.startBtn} onClick={handleStart} style={{ marginTop: 12 }}>
-                            🏁 운송 시작하기 (Start)
-                        </button>
-
-                        {/* PWA 설치 유도 */}
-                        <div style={{ marginTop: 24, padding: '16px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b', marginBottom: 8 }}>
-                                {isIOS ? '💡 아이폰은 전용 앱으로 더욱 편하게' : '📦 전용 앱을 설치하여 더욱 편하게'}
-                            </div>
-                            <button 
-                                className={styles.outlineBtn} 
-                                onClick={handleInstallClick}
-                                style={{ width: '100%', border: '2px solid #2563eb', color: '#2563eb', fontWeight: 800 }}
-                            >
-                                {isIOS ? '설치 방법 확인' : '앱(PWA) 다운로드 설치 ⚡'}
-                            </button>
-                        </div>
-                    </>
+                    <button className={styles.startBtn} onClick={() => { triggerHaptic('HEAVY'); handleStart(); }}>
+                        🏁 운송 시작하기 (Start)
+                    </button>
                 )}
             </div>
+        </div>
+    );
 
-            {/* 운송 히스토리 */}
+    const renderHistory = () => (
+        <div className={styles.tabContent}>
             <div className={styles.historySection}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div className={styles.historyTitle}>📅 운송 기록</div>
-                    <input 
-                        type="month" 
-                        value={historyMonth} 
-                        onChange={(e) => setHistoryMonth(e.target.value)}
-                        style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '0.8rem' }}
-                    />
+                    <input type="month" value={historyMonth} onChange={(e) => setHistoryMonth(e.target.value)} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                 </div>
-                
                 <div className={styles.historyList}>
                     {history.length > 0 ? history.map((h, i) => (
-                        <div key={i} className={`${styles.historyCard} ${selectedHistoryId === h.id ? styles.historyCardActive : ''}`} onClick={() => handleSelectHistory(h)}>
+                        <div key={i} className={`${styles.historyCard} ${selectedHistoryId === h.id ? styles.historyCardActive : ''}`} onClick={() => { triggerHaptic('LIGHT'); handleSelectHistory(h); setActiveTab('home'); }}>
                             <div className={styles.historyHeader}>
                                 <div className={styles.historyDate}>{new Date(h.started_at).toLocaleString()}</div>
-                                <div className={`${styles.statusBadge} ${styles['status' + h.status]}`}>
-                                    {h.status === 'driving' ? '운행중' : h.status === 'paused' ? '일시정지' : '운행종료'}
-                                </div>
+                                <div className={`${styles.statusBadge} ${styles['status' + h.status]}`}>{h.status === 'driving' ? '운행중' : '종료'}</div>
                             </div>
                             <div className={styles.historyContainer}>📦 {h.container_number || '미입력'} ({h.container_type})</div>
-                            <div className={styles.historyMeta}>
-                                {h.vehicle_number} | {h.driver_name}
-                            </div>
+                            <div className={styles.historyMeta}>{h.vehicle_number} | {h.driver_name}</div>
                         </div>
-                    )) : (
-                        <div className={styles.historyEmpty}>해당 월의 기록이 없습니다.</div>
-                    )}
+                    )) : <div className={styles.historyEmpty}>기록이 없습니다.</div>}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderSettings = () => (
+        <div className={styles.tabContent}>
+            <div className={styles.formSection}>
+                <div className={styles.formTitle}>👤 내 프로필 설정</div>
+                <div className={styles.formGrid}>
+                    <div className={styles.formRow}>
+                        <label className={styles.formLabel}>기사 성함</label>
+                        <input className={styles.formInput} value={driverName} onChange={e => setDriverName(e.target.value)} />
+                    </div>
+                    <div className={styles.formRow}>
+                        <label className={styles.formLabel}>연락처</label>
+                        <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
+                    </div>
                 </div>
             </div>
 
-            <style jsx global>{`
-                body { margin: 0; background: #f8fafc; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-                select { -webkit-appearance: none; appearance: none; }
-                @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            `}</style>
+            <div className={styles.formSection}>
+                <div className={styles.formTitle}>ℹ️ 앱 정보</div>
+                <div style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                    <p>버전: v2.0.0 (Native Optimized)</p>
+                    <p>플랫폼: {Capacitor.getPlatform()} Native</p>
+                    {!Capacitor.isNativePlatform() && (
+                        <button onClick={handleInstallClick} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10 }}>앱 설치 가이드 보기</button>
+                    )}
+                    <button onClick={() => { localStorage.clear(); window.location.reload(); }} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10, color: '#ef4444' }}>초기화 (로그아웃)</button>
+                </div>
             </div>
-        </>
+        </div>
+    );
+
+    return (
+        <div className={styles.driverPage}>
+            <title>ELS-운송관리</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+            
+            <audio ref={audioRef} loop muted playsInline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" />
+
+            {renderOnboarding()}
+
+            {/* Sticky Header */}
+            <div className={styles.header}>
+                <img src="/images/logo.png" alt="ELS Logo" className={styles.headerLogo} />
+                <div className={styles.headerTitle}>운송 관리</div>
+            </div>
+
+            {/* Tab Body */}
+            <main>
+                {activeTab === 'home' && renderHome()}
+                {activeTab === 'history' && renderHistory()}
+                {activeTab === 'settings' && renderSettings()}
+            </main>
+
+            {/* Bottom Navigation */}
+            <nav className={styles.bottomNav}>
+                <button className={`${styles.navItem} ${activeTab === 'home' ? styles.navItemActive : ''}`} onClick={() => { triggerHaptic('LIGHT'); setActiveTab('home'); }}>
+                    <span className={styles.navIcon}>🏠</span>
+                    <span>운행</span>
+                </button>
+                <button className={`${styles.navItem} ${activeTab === 'history' ? styles.navItemActive : ''}`} onClick={() => { triggerHaptic('LIGHT'); setActiveTab('history'); }}>
+                    <span className={styles.navIcon}>📋</span>
+                    <span>기록</span>
+                </button>
+                <button className={`${styles.navItem} ${activeTab === 'settings' ? styles.navItemActive : ''}`} onClick={() => { triggerHaptic('LIGHT'); setActiveTab('settings'); }}>
+                    <span className={styles.navIcon}>⚙️</span>
+                    <span>설정</span>
+                </button>
+            </nav>
+
+            <style jsx global>{`
+                body { margin: 0; background: #f8fafc; font-family: -apple-system, sans-serif; overflow-x: hidden; }
+                * { -webkit-tap-highlight-color: transparent; }
+            `}</style>
+        </div>
     );
 }

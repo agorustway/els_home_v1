@@ -301,23 +301,155 @@
 .statuscompleted { background: #f1f5f9; color: #475569; }
 
 /* ─── 정보 수정 버튼 ─── */
-.updateInlineBtn {
-    width: 100%;
-    padding: 10px;
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    color: #475569;
-    font-size: 0.85rem;
+/* ─── Premium Native Refinements ─── */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    background: rgba(248, 250, 252, 0.8);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+    margin: -12px -12px 12px -12px;
+    padding: 16px 0 10px 0;
+}
+
+.bottomNav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1000;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
+}
+
+.navItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #94a3b8;
+    background: none;
+    border: none;
+    font-size: 0.7rem;
     font-weight: 700;
-    cursor: pointer;
-    margin-top: 4px;
-    transition: all 0.2s;
+    width: 25%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.updateInlineBtn:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
+
+.navItemActive {
+    color: #2563eb;
+    transform: translateY(-2px);
 }
-.updateInlineBtn:active {
+
+.navIcon {
+    font-size: 1.4rem;
+}
+
+.onboardingOverlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #fff;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.onboardingStep {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.onboardingIcon {
+    font-size: 4rem;
+    margin-bottom: 24px;
+    filter: drop-shadow(0 10px 15px rgba(37, 99, 235, 0.2));
+}
+
+.onboardingTitle {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.onboardingText {
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.onboardingDots {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 40px;
+}
+
+.dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
     background: #e2e8f0;
+}
+
+.dotActive {
+    width: 24px;
+    background: #2563eb;
+}
+
+.permissionList {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.permissionItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    text-align: left;
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.permIcon { font-size: 1.5rem; }
+.permInfo { flex: 1; }
+.permTitle { font-size: 0.9rem; font-weight: 800; color: #1e293b; }
+.permDesc { font-size: 0.75rem; color: #64748b; }
+
+.onboardingBtn {
+    width: 100%;
+    height: 56px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+}
+
+.tabContent {
+    padding-bottom: 100px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

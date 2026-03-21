@@ -112,7 +112,7 @@ public class FloatingWidgetService extends Service {
             public void run() {
                 try {
                     // 서버 API 엔드포인트에 직접 POST
-                    URL url = new URL("https://els-home-v1.vercel.app/api/vehicle-tracking/locations");
+                    URL url = new URL("https://nollae.com/api/vehicle-tracking/locations");
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("POST");
                     conn.setRequestProperty("Content-Type", "application/json");
