@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 
 export async function GET(request) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { searchParams } = new URL(request.url);
     const phone = searchParams.get('phone');
 
@@ -34,7 +34,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     try {
         const body = await request.json();
