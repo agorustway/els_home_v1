@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     url: 'https://nollae.com/driver-app',
+    allowNavigation: ["nollae.com"],
     cleartext: true
   }
 };

@@ -6,8 +6,6 @@ import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 import { Capacitor } from '@capacitor/core';
 
-import { Capacitor } from '@capacitor/core';
-
 // Native Plugins
 let Haptics, StatusBar, App;
 if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
