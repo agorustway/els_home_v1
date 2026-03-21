@@ -103,7 +103,7 @@ export default function DriverAppPage() {
     const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
     
     // --- Native App UI States ---
-    const [onboardingStep, setOnboardingStep] = useState(0); // 0: Hide, 1: Step1, 2: Step2
+    const [onboardingStep, setOnboardingStep] = useState(0); // 0: Hide, 1: Step1, 2: Step2, 3: Step3(Profile)
     const [activeTab, setActiveTab] = useState('home'); // home, history, settings
     const [overlayGranted, setOverlayGranted] = useState(true);
 
@@ -720,9 +720,21 @@ export default function DriverAppPage() {
             handleOverlayRequest();
             return;
         }
+        setOnboardingStep(3); // 프로필 입력 단계로 이동
+    };
+
+    const saveProfileAndFinish = () => {
+        if (!driverName || !driverPhone || !driverVehicle) {
+            alert('기사 성함, 연락처, 차량 번호를 모두 입력해 주세요.');
+            return;
+        }
         triggerHaptic('HEAVY');
+        localStorage.setItem('els_driver_name', driverName);
+        localStorage.setItem('els_driver_phone', driverPhone);
+        localStorage.setItem('els_driver_vehicle', driverVehicle);
         localStorage.setItem('els_onboarding_done', 'true');
         setOnboardingStep(0);
+        checkActiveTrip(); // 정보 입력 후 바로 기존 운행 확인
     };
 
     const renderOnboarding = () => (
@@ -788,6 +800,28 @@ export default function DriverAppPage() {
                                 </div>
                             </div>
                             <button className={styles.onboardingBtn} onClick={finishOnboarding}>확인했습니다</button>
+                        </div>
+                    )}
+
+                    {onboardingStep === 3 && (
+                        <div className={styles.onboardingStep}>
+                            <h2 className={styles.onboardingTitle}>기사님 정보 등록</h2>
+                            <p className={styles.onboardingDesc}>운행 기록 관리를 위해 기초 정보를 입력해 주세요.</p>
+                            <div className={styles.formGrid} style={{ margin: '20px 0' }}>
+                                <div className={styles.formRow}>
+                                    <label className={styles.formLabel}>기사 성함</label>
+                                    <input className={styles.formInput} placeholder="이름 입력" value={driverName} onChange={e => setDriverName(e.target.value)} />
+                                </div>
+                                <div className={styles.formRow}>
+                                    <label className={styles.formLabel}>연락처</label>
+                                    <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
+                                </div>
+                                <div className={styles.formRow}>
+                                    <label className={styles.formLabel}>차량 번호 (영업용)</label>
+                                    <input className={styles.formInput} placeholder="12가3456" value={driverVehicle} onChange={e => setDriverVehicle(e.target.value)} />
+                                </div>
+                            </div>
+                            <button className={styles.onboardingBtn} onClick={saveProfileAndFinish}>준비 완료! 시작하기</button>
                         </div>
                     )}
                 </motion.div>
@@ -930,9 +964,17 @@ export default function DriverAppPage() {
                         <input className={styles.formInput} value={driverName} onChange={e => setDriverName(e.target.value)} />
                     </div>
                     <div className={styles.formRow}>
-                        <label className={styles.formLabel}>연락처</label>
-                        <input className={styles.formInput} placeholder="010-0000-0000" type="tel" value={driverPhone} onChange={e => setDriverPhone(formatPhone(e.target.value))} />
+                        <label className={styles.formLabel}>차량 번호</label>
+                        <input className={styles.formInput} placeholder="12가3456" value={driverVehicle} onChange={e => setDriverVehicle(e.target.value)} />
                     </div>
+                </div>
+            </div>
+
+            <div className={styles.formSection}>
+                <div className={styles.formTitle}>🛠️ 앱 권한 재설정</div>
+                <div className={styles.formGrid}>
+                    <button onClick={handleLocationRequest} className={styles.outlineBtn} style={{ marginBottom: 8 }}>📍 위치 권한 설정 안내</button>
+                    <button onClick={handleOverlayRequest} className={styles.outlineBtn}>🪟 다른 앱 위에 표시 설정</button>
                 </div>
             </div>
 
