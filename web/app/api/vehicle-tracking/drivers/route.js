@@ -10,34 +10,24 @@ export async function GET(request) {
         return NextResponse.json({ error: '전화번호가 필요합니다.' }, { status: 400 });
     }
 
-    // 전화번호에서 숫자만 추출 (DB에는 숫자만 저장되거나 하이픈이 섞여 있을 수 있음)
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-
     if (cleanPhone.length < 8) {
         return NextResponse.json({ error: '유효하지 않은 전화번호' }, { status: 400 });
     }
 
     try {
-        // 전화번호 뒤 8자리를 4자리씩 분리하여 중간에 하이픈 등 임의의 문자 허용
         const last8 = cleanPhone.slice(-8);
-        const part1 = last8.slice(0, 4);
-        const part2 = last8.slice(4, 8);
+        const p1 = last8.slice(0, 4);
+        const p2 = last8.slice(4, 8);
         
         const { data, error } = await supabase
             .from('driver_contacts')
             .select('*')
-            .ilike('phone', `%${part1}%${part2}%`)
-            .limit(1);
+            .ilike('phone', `%${p1}%${p2}%`)
+            .maybeSingle();
 
-        if (error) {
-            throw error;
-        }
-        
-        if (!data || data.length === 0) {
-            return NextResponse.json({ driver: null }); // 찾지 못함
-        }
-
-        return NextResponse.json({ driver: data[0] });
+        if (error) throw error;
+        return NextResponse.json({ driver: data });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -54,20 +44,19 @@ export async function POST(request) {
             return NextResponse.json({ error: '이름과 전화번호는 필수입니다.' }, { status: 400 });
         }
 
-        // 전화번호 정제
         const cleanPhone = phone.replace(/[^0-9]/g, '');
-
-        // 기존 존재 여부 확인
         const last8 = cleanPhone.slice(-8);
         const p1 = last8.slice(0, 4);
         const p2 = last8.slice(4, 8);
 
-        const { data: existingData } = await supabase
+        // 기존 존재 여부 확인
+        const { data: existingData, error: checkError } = await supabase
             .from('driver_contacts')
             .select('*')
             .ilike('phone', `%${p1}%${p2}%`)
-            .limit(1)
-            .single();
+            .maybeSingle();
+
+        if (checkError) throw checkError;
 
         if (existingData) {
             // 업데이트 (기존 계약유형 등은 유지, 입력받은 정보만 덮어쓰기)
@@ -80,7 +69,7 @@ export async function POST(request) {
                 })
                 .eq('id', existingData.id)
                 .select()
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
             return NextResponse.json({ driver: data, message: 'updated' });
@@ -96,7 +85,7 @@ export async function POST(request) {
                     contract_type: 'uncontracted'
                 }])
                 .select()
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
             return NextResponse.json({ driver: data, message: 'created' });

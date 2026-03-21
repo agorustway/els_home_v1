@@ -68,13 +68,21 @@ public class OverlayPlugin extends Plugin {
             try {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:" + getContext().getPackageName()));
-                getActivity().startActivity(intent);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (getActivity() != null) {
+                    getActivity().startActivity(intent);
+                } else {
+                    getContext().startActivity(intent);
+                }
             } catch (Exception e) {
-                // Settings activity not found (e.g. on Android TV or custom ROMs)
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         Uri.parse("package:" + getContext().getPackageName()));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(intent);
+                if (getActivity() != null) {
+                    getActivity().startActivity(intent);
+                } else {
+                    getContext().startActivity(intent);
+                }
             }
             call.resolve();
         } else {
@@ -127,11 +135,21 @@ public class OverlayPlugin extends Plugin {
             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
             Uri uri = Uri.fromParts("package", getContext().getPackageName(), null);
             intent.setData(uri);
-            getActivity().startActivity(intent);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getActivity() != null) {
+                 getActivity().startActivity(intent);
+            } else {
+                 getContext().startActivity(intent);
+            }
         } catch (Exception e) {
             try {
                 Intent intent = new Intent(Settings.ACTION_SETTINGS);
-                getActivity().startActivity(intent);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (getActivity() != null) {
+                    getActivity().startActivity(intent);
+                } else {
+                    getContext().startActivity(intent);
+                }
             } catch (Exception e2) {}
         }
         call.resolve();
