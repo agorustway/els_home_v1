@@ -18,11 +18,15 @@ export async function GET(request) {
     }
 
     try {
-        // 전화번호 뒤 8자리로 검색 (ilike)
+        // 전화번호 뒤 8자리를 4자리씩 분리하여 중간에 하이픈 등 임의의 문자 허용
+        const last8 = cleanPhone.slice(-8);
+        const part1 = last8.slice(0, 4);
+        const part2 = last8.slice(4, 8);
+        
         const { data, error } = await supabase
             .from('driver_contacts')
             .select('*')
-            .ilike('phone', `%${cleanPhone.slice(-8)}%`)
+            .ilike('phone', `%${part1}%${part2}%`)
             .limit(1)
             .single();
 
@@ -54,10 +58,14 @@ export async function POST(request) {
         const cleanPhone = phone.replace(/[^0-9]/g, '');
 
         // 기존 존재 여부 확인
+        const last8 = cleanPhone.slice(-8);
+        const p1 = last8.slice(0, 4);
+        const p2 = last8.slice(4, 8);
+
         const { data: existingData } = await supabase
             .from('driver_contacts')
             .select('*')
-            .ilike('phone', `%${cleanPhone.slice(-8)}%`)
+            .ilike('phone', `%${p1}%${p2}%`)
             .limit(1)
             .single();
 
