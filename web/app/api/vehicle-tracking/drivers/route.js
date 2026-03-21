@@ -27,17 +27,17 @@ export async function GET(request) {
             .from('driver_contacts')
             .select('*')
             .ilike('phone', `%${part1}%${part2}%`)
-            .limit(1)
-            .single();
+            .limit(1);
 
         if (error) {
-            if (error.code === 'PGRST116') {
-                return NextResponse.json({ driver: null }); // 찾지 못함
-            }
             throw error;
         }
+        
+        if (!data || data.length === 0) {
+            return NextResponse.json({ driver: null }); // 찾지 못함
+        }
 
-        return NextResponse.json({ driver: data });
+        return NextResponse.json({ driver: data[0] });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
