@@ -75,15 +75,16 @@
 
 ```
 els_home_v1/
-├── docs/                   ← 🧠 AI 통합 메모리 (이 파일이 여기 있음)
-│   ├── MISSION_CONTROL.md  ← 종합 현황판 (지금 읽고 있는 것)
-│   ├── APP_MISSION_CONTROL.md ← 📱 앱 전용 현황판 (운전원 앱 개발)
-│   ├── RULES.md            ← 협업 규칙
-│   ├── DEV_LOG.md          ← 개발 이력 (통합본)
-│   ├── ARCHITECTURE.md     ← 시스템 아키텍처 상세
-│   ├── RUNBOOK.md          ← 운영/배포/트러블슈팅 가이드
-│   └── _archive/           ← 통합 전 기존 파일 백업 (gitignore)
-├── scripts/                ← 운영 스크립트 (ps1, bat, sh)
+├── docs/                      ← 🧠 AI 통합 메모리 (이 파일이 여기 있음)
+│   ├── 01_MISSION_CONTROL.md  ← 종합 현황판 (웹+앱 전체 상황 및 목표)
+│   ├── 02_APP_CONTROL.md      ← 📱 운전원 네이티브 앱 전용 현황판
+│   ├── 03_RULES.md            ← AI 협업 룰 및 코드 컨벤션
+│   ├── 04_ARCHITECTURE.md     ← 시스템/통신/DB 설계도
+│   ├── 05_DESIGN_SYSTEM.md    ← 웹/앱 공통 UI & 디자인 정책
+│   ├── 06_DEV_LOG.md          ← 시간순 프로젝트 일기장 (작업 이력)
+│   ├── 07_RUNBOOK.md          ← 운영, 배포, 서버 데몬 끄고 켜는 매뉴얼
+│   └── _archive/              ← 예전 자료 백업본 (무시)
+├── scripts/                   ← 운영 스크립트 (ps1, bat, sh)
 ├── .tmp_test/              ← 🧪 테스트 임시 공간 (자동 생성/삭제, gitignore)
 ├── .tmp_issues/            ← 🐛 미해결 이슈 보관 (해결 시 삭제, gitignore)
 ├── web/                    ← Next.js 프론트엔드
@@ -102,4 +103,4 @@ els_home_v1/
 - **호칭**: 사용자를 **'형'**이라 부름
 - **Push 정책**: 형이 명시적으로 요청할 때만 push
 - **테스트**: `.tmp_test/`에서만 수행, 완료 후 삭제
-- **상세 규칙**: `docs/RULES.md` 참조
+- **상세 규칙**: `docs/03_RULES.md` 참조
