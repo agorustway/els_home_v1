@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
 
@@ -68,7 +69,11 @@ public class FloatingWidgetService extends Service {
                 startLocationTracking();
             }
             if (intent.hasExtra("timer")) {
-                updateWidget(intent.getStringExtra("timer"), intent.getStringExtra("container"));
+                updateWidget(
+                    intent.getStringExtra("timer"),
+                    intent.getStringExtra("container"),
+                    intent.getStringExtra("status")
+                );
             }
         }
         return START_STICKY;
@@ -169,6 +174,23 @@ public class FloatingWidgetService extends Service {
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mWindowManager.addView(mFloatingWidget, params);
 
+        Button btnPauseResume = mFloatingWidget.findViewById(R.id.btn_pause_resume);
+        Button btnStop = mFloatingWidget.findViewById(R.id.btn_stop);
+
+        btnPauseResume.setOnClickListener(v -> {
+            String currentText = btnPauseResume.getText().toString();
+            String action = currentText.equals("일시정지") ? "pause" : "resume";
+            Intent i = new Intent("com.elssolution.driver.WIDGET_ACTION");
+            i.putExtra("action", action);
+            sendBroadcast(i);
+        });
+
+        btnStop.setOnClickListener(v -> {
+            Intent i = new Intent("com.elssolution.driver.WIDGET_ACTION");
+            i.putExtra("action", "stop");
+            sendBroadcast(i);
+        });
+
         mFloatingWidget.findViewById(R.id.root_container).setOnTouchListener(new View.OnTouchListener() {
             private int initialX;
             private int initialY;
@@ -203,12 +225,26 @@ public class FloatingWidgetService extends Service {
         });
     }
 
-    private void updateWidget(String timer, String container) {
+    private void updateWidget(String timer, String container, String status) {
         if (mFloatingWidget != null) {
             TextView txtTimer = mFloatingWidget.findViewById(R.id.tv_timer);
             TextView txtContainer = mFloatingWidget.findViewById(R.id.tv_container);
-            if (txtTimer != null) txtTimer.setText(timer);
-            if (txtContainer != null) txtContainer.setText(container);
+            Button btnPauseResume = mFloatingWidget.findViewById(R.id.btn_pause_resume);
+            
+            if (txtTimer != null && timer != null) txtTimer.setText(timer);
+            if (txtContainer != null && container != null) txtContainer.setText(container);
+            
+            if (btnPauseResume != null && status != null) {
+                if ("paused".equals(status)) {
+                    btnPauseResume.setText("운행재개");
+                    btnPauseResume.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#58a6ff")));
+                    btnPauseResume.setTextColor(android.graphics.Color.WHITE);
+                } else {
+                    btnPauseResume.setText("일시정지");
+                    btnPauseResume.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#d29922")));
+                    btnPauseResume.setTextColor(android.graphics.Color.BLACK);
+                }
+            }
         }
     }
 
