@@ -11,22 +11,28 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import com.getcapacitor.PermissionCallback;
+
 @CapacitorPlugin(name = "Overlay")
 public class OverlayPlugin extends Plugin {
 
     @PluginMethod
+    public void checkPermission(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("granted", Settings.canDrawOverlays(getContext()));
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void requestPermission(PluginCall call) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(getContext())) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getContext().getPackageName()));
-                getActivity().startActivityForResult(intent, 5469);
-                call.resolve();
-            } else {
-                call.resolve(new JSObject().put("granted", true));
-            }
+        if (!Settings.canDrawOverlays(getContext())) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getContext().getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
         } else {
-            call.resolve(new JSObject().put("granted", true));
+            call.resolve();
         }
     }
 

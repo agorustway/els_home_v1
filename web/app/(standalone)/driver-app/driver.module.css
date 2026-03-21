@@ -153,6 +153,30 @@
 
 .startBtn:active { transform: scale(0.96); opacity: 0.9; }
 
+.blinkBorder {
+    border: 2px solid #ef4444 !important;
+    animation: pulsateBorder 1.5s infinite;
+}
+
+.blinkDot {
+    width: 10px; height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: pulsateDot 1.5s infinite;
+}
+
+@keyframes pulsateBorder {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulsateDot {
+    0% { transform: scale(0.9); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+    100% { transform: scale(0.9); opacity: 1; }
+}
+
 /* PWA 설치 관련 버튼 */
 .outlineBtn {
     height: 42px;

@@ -105,6 +105,7 @@ export default function DriverAppPage() {
     // --- Native App UI States ---
     const [onboardingStep, setOnboardingStep] = useState(0); // 0: Hide, 1: Step1, 2: Step2
     const [activeTab, setActiveTab] = useState('home'); // home, history, settings
+    const [overlayGranted, setOverlayGranted] = useState(true);
 
     const hasInitializedRef = useRef(false);
 
@@ -483,6 +484,8 @@ export default function DriverAppPage() {
         const onboardingDone = localStorage.getItem('els_onboarding_done');
         if (!onboardingDone) setOnboardingStep(1);
 
+        checkOverlayPermission();
+
         setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
         const storedPhone = localStorage.getItem('els_driver_phone');
         const storedVehicle = localStorage.getItem('els_driver_vehicle');
@@ -671,7 +674,35 @@ export default function DriverAppPage() {
         }
     };
 
-    const finishOnboarding = () => {
+    const checkOverlayPermission = async () => {
+        if (Overlay) {
+            try {
+                const { granted } = await Overlay.checkPermission();
+                setOverlayGranted(granted);
+                return granted;
+            } catch { return true; }
+        }
+        return true;
+    };
+
+    const handleOverlayRequest = async () => {
+        if (Overlay) {
+            triggerHaptic();
+            await Overlay.requestPermission();
+            // 폰 설정화면 갔다오는 사이 체크를 위해 포커스 이벤트 대기
+            window.addEventListener('focus', () => {
+                checkOverlayPermission();
+            }, { once: true });
+        }
+    };
+
+    const finishOnboarding = async () => {
+        const isGranted = await checkOverlayPermission();
+        if (!isGranted) {
+            alert('안전한 운행 관리를 위해 "다른 앱 위에 표시" 권한이 반드시 필요합니다. 설정창에서 ELS 앱을 찾아 허용해 주세요!');
+            handleOverlayRequest();
+            return;
+        }
         triggerHaptic('HEAVY');
         localStorage.setItem('els_onboarding_done', 'true');
         setOnboardingStep(0);
@@ -716,12 +747,17 @@ export default function DriverAppPage() {
                                         <div className={styles.permDesc}>상/하차 컨테이너 및 씰 사진 등록</div>
                                     </div>
                                 </div>
-                                <div className={styles.permissionItem}>
+                                <div 
+                                    className={`${styles.permissionItem} ${!overlayGranted ? styles.blinkBorder : ''}`}
+                                    onClick={handleOverlayRequest}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     <div className={styles.permIcon}>🪟</div>
                                     <div className={styles.permInfo}>
-                                        <div className={styles.permTitle}>다른 앱 위에 표시</div>
+                                        <div className={styles.permTitle}>다른 앱 위에 표시 {!overlayGranted && '(탭하여 설정)'}</div>
                                         <div className={styles.permDesc}>내비게이션 사용 중 실시간 타이머 표시</div>
                                     </div>
+                                    {!overlayGranted && <div className={styles.blinkDot} />}
                                 </div>
                             </div>
                             <button className={styles.onboardingBtn} onClick={finishOnboarding}>확인했습니다</button>
