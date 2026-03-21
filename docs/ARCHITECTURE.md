@@ -50,14 +50,16 @@
                             └──────────────────────────────────────┘
 
 별도 클라우드:
-┌──────────────────────┐
-│   Supabase           │
-│   - Auth (OAuth)     │
-│   - PostgreSQL       │
-│   - profiles         │
-│   - user_roles       │
-│   - posts            │
-└──────────────────────┘
+┌──────────────────────┐    ┌──────────────────────────────────────┐
+│   Supabase           │    │   운전원 (기사님) 스마트폰            │
+│   - Auth (OAuth)     │    │                                      │
+│   - PostgreSQL       │    │  ┌─────────────────────────────┐    │
+│   - profiles         │    │  │ Standalone Android App      │    │
+│   - driver_contacts  │◄───┤  │ (Capacitor 8.x + Local HTML)│    │
+│   - vehicle_trips    │    │  │ - Foreground Service (위치) │    │
+└──────────────────────┘    │  │ - Floating Widget (제어)    │    │
+                            │  └─────────────────────────────┘    │
+                            └──────────────────────────────────────┘
 ```
 
 ---
@@ -141,15 +143,15 @@ web/app/
 
 | 항목 | 설명 |
 |------|------|
-| **프레임워크** | Electron |
-| **상태** | 개발 중 (기본 구조만 존재) |
-| **목적** | Vercel에서 불가능한 봇 기능을 로컬 PC에서 실행 |
+| **프레임워크** | 에셋 내장형 Android App (Capacitor + Vanilla JS/HTML/CSS) |
+| **상태** | 네이티브 모듈 및 오프라인-First 구조 안착 |
+| **목적** | 인터넷 단절 대응, 플로팅 위젯, 무중단 위치관제 제공 |
 
-**데스크탑 + 안드로이드 연동 구조:**
+**운전원 독립 앱 연동 구조:**
 ```
-[데스크탑 앱 (Electron)]  ←→  [안드로이드 앱 (WebView)]
-     PC에서 서버 역할              같은 Wi-Fi로 접속
-     port 2929                     PC IP:2929 입력
+[Android (100% 로컬 렌더링)]  ← 데이터 연동 →  [Next.js (Vercel API) + Supabase]
+     앱 설치 (APK)                          /api/vehicle-tracking/*
+     (오프라인 대응 큐)
 ```
 
 ---
@@ -197,7 +199,7 @@ web/app/
 
 ### 준비된 것 (인프라 있음)
 - [ ] 데스크탑 앱 Windows 인스톨러 완성
-- [ ] 안드로이드 WebView APK 생성
+- [x] 안드로이드 Standalone App 빌드 파이프라인 (npx cap sync android)
 
 ### 미래 고려 (인프라 미정)
 - [ ] ETRANS 외 다른 물류 플랫폼 봇 추가

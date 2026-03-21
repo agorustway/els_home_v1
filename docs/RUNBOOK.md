@@ -143,6 +143,17 @@ sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate
 sudo docker logs -f els-backend
 ```
 
+### 3-4. 안드로이드 네이티브 앱 빌드 및 배포
+독립형 운전원 앱(Capacitor) 배포 과정:
+1. `c:\Users\hoon\Desktop\els_home_v1\web\out` 폴더 내 `app.js`, `style.css`, `index.html` 로직 완성.
+2. Android 에셋 동기화 실행 (Vercel 프론트엔드 빌드 무관):
+   ```powershell
+   cd web
+   npx cap sync android
+   ```
+3. Android Studio(또는 실기기)에서 프로젝트 열고 `Run` (재빌드) 실행.
+4. 테스트: 인터넷을 끈 상태에서 앱이 정상 렌더링(Offline Bar 노출)되는지 확인.
+
 ---
 
 ## 4. 트러블슈팅
