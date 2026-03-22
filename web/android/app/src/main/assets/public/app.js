@@ -12,13 +12,20 @@
       return {
         checkPermission: () => new Promise(r => { const c='c'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','checkPermission',{},c); }),
         requestPermission: () => new Promise(r => { const c='r'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','requestPermission',{},c); }),
-        showOverlay: (o) => { Cap.toNative('Overlay','showOverlay',o,'s'+Date.now()); },
+        showOverlay: (o) => { Cap.toNative('Overlay','showOverlay',o||{},'s'+Date.now()); },
         hideOverlay: () => { Cap.toNative('Overlay','hideOverlay',{},'h'+Date.now()); },
-        updateOverlay: (o) => { Cap.toNative('Overlay','updateOverlay',o,'u'+Date.now()); }
+        updateOverlay: (o) => { Cap.toNative('Overlay','updateOverlay',o||{},'u'+Date.now()); }
       };
     }
     return null;
   };
+
+  async function waitForBridge(attempts=0){
+    if(window.Capacitor && window.Capacitor.Plugins) return true;
+    if(attempts > 5) return false;
+    await new Promise(r=>setTimeout(r,300));
+    return waitForBridge(attempts+1);
+  }
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
 
   // ── 상태 ──
@@ -47,7 +54,9 @@
 
   // ── 초기화 ──
   async function initApp(){
-    console.log('ELS v3.4.0');
+    console.log('ELS v3.6.1 Init');
+    await waitForBridge();
+    
     window.onPipModeChanged=function(isInPip){
       isPipMode=isInPip;const pip=document.getElementById('pip-overlay');
       if(isInPip){document.body.classList.add('pip-active');if(pip){pip.style.display='flex';updatePipDisplay();}}
@@ -178,8 +187,15 @@
     if(!isOnline){showModal('알림','인터넷 필요');return;}
     const ph=document.getElementById('inp-phone').value.trim();if(ph.length<10){showModal('오류','올바른 전화번호');return;}
     try{const r=await fetch(`https://www.nollae.com/api/driver-contacts/search?phone=${encodeURIComponent(ph)}`);const d=await safeJson(r);
-    if(r.ok&&d&&d.item){if(d.item.name)document.getElementById('inp-name').value=d.item.name;if(d.item.business_number)document.getElementById('inp-vehicle').value=d.item.business_number;if(d.item.driver_id)document.getElementById('inp-id').value=d.item.driver_id;haptic('Heavy');showModal('조회 성공',`${d.item.name} 기사님 정보 로드`);}
-    else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message);}
+    if(r.ok&&d&&d.item){
+      const it = d.item;
+      if(it.name) document.getElementById('inp-name').value=it.name;
+      if(it.business_number) document.getElementById('inp-vehicle').value=it.business_number;
+      if(it.vehicle_number && !it.business_number) document.getElementById('inp-vehicle').value=it.vehicle_number;
+      if(it.driver_id) document.getElementById('inp-id').value=it.driver_id;
+      if(it.vehicle_id && !it.driver_id) document.getElementById('inp-id').value=it.vehicle_id;
+      haptic('Heavy'); showModal('조회 성공',`${it.name} 기사님 정보 로드`);
+    } else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message);}
   }
   async function saveProfile(){
     const n=document.getElementById('inp-name').value.trim(),p=document.getElementById('inp-phone').value.trim(),v=document.getElementById('inp-vehicle').value.trim(),i=document.getElementById('inp-id').value.trim().toUpperCase();
@@ -294,10 +310,15 @@
     try{
       const memo=(document.getElementById('inp-memo')||{}).value||'';
       const r=await smartPost(`${API_BASE}/trips`,{
-        vehicle_number:localStorage.getItem('els_vehicle')||'',driver_name:localStorage.getItem('els_name')||'',driver_phone:localStorage.getItem('els_phone')||'',
-        container_number:c,seal_number:document.getElementById('inp-seal').value.trim().toUpperCase(),
+        vehicle_number:localStorage.getItem('els_vehicle')||'',
+        vehicle_id:localStorage.getItem('els_id')||'',
+        driver_name:localStorage.getItem('els_name')||'',
+        driver_phone:localStorage.getItem('els_phone')||'',
+        container_number:c,
+        seal_number:document.getElementById('inp-seal').value.trim().toUpperCase(),
         container_type:(document.getElementById('inp-cont-size')||{}).value||'40FT',
-        container_kind:(document.getElementById('inp-cont-type')||{}).value||'DRY',special_notes:memo.trim()
+        container_kind:(document.getElementById('inp-cont-type')||{}).value||'DRY',
+        special_notes:memo.trim()
       });
       if(r.ok){
         tripId=r.data.id||r.data.trip_id;lastTripId=tripId;tripStatus=r.data.status||'driving';elapsedSeconds=0;
@@ -363,7 +384,7 @@
   async function uploadSinglePhoto(idx,uid){
     try{const p=photos[idx];if(!p||!p.file||p.uploaded)return;
       const base64 = await encodeFileToBase64(p.file);
-      const payload = { trip_id: uid, photos: [{ name: p.file.name||`photo_${Date.now()}.jpg`, type: p.file.type||'image/jpeg', base64: base64 }] };
+      const payload = { trip_id: uid, photos: [{ name: p.file.name||`photo_${Date.now()}.jpg`, type: p.file.type||'image/jpeg', size: p.file.size, base64: base64 }] };
       const res=await fetch(`${API_BASE}/photos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await safeJson(res);
       if(res.ok){photos[idx].uploaded=true;if(d.photos&&d.photos.length>0)photos[idx].key=d.photos[d.photos.length-1].key;renderPhotos();}
       else showModal('업로드 실패',(d?.error||res.status)+'');
