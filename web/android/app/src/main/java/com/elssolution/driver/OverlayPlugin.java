@@ -52,16 +52,22 @@ public class OverlayPlugin extends Plugin {
                 startActivityForResult(call, intent, "overlayPermResult");
                 Log.d(TAG, "오버레이 권한 설정 화면 열기 시도 (직접)");
             } catch (Exception e1) {
-                Log.w(TAG, "직접 오버레이 설정 실패, 앱 상세 정보로 폴백: " + e1.getMessage());
+                Log.w(TAG, "직접 오버레이 설정 실패: " + e1.getMessage());
                 try {
-                    // 방법 2: 앱 상세 정보 화면 (여기서 수동으로 오버레이 찾기)
-                    Intent intentApp = new Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.parse("package:" + getContext().getPackageName())
-                    );
-                    startActivityForResult(call, intentApp, "overlayPermResult");
-                    Log.d(TAG, "앱 상세 정보 화면 열기 시도");
-                } catch (Exception e2) {
+                    // 방법 2: 패키지 지정 없이 전체 오버레이 권한 리스트 화면으로 이동 (안드로이드 11+ 일부 기기 대응)
+                    Intent intentList = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                    startActivityForResult(call, intentList, "overlayPermResult");
+                    Log.d(TAG, "오버레이 권한 설정 리스트 화면 열기 시도");
+                } catch (Exception e1b) {
+                    try {
+                        // 방법 3: 앱 상세 정보 화면 (여기서 수동으로 오버레이 찾기)
+                        Intent intentApp = new Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getContext().getPackageName())
+                        );
+                        startActivityForResult(call, intentApp, "overlayPermResult");
+                        Log.d(TAG, "앱 상세 정보 화면 열기 시도");
+                    } catch (Exception e2) {
                     Log.e(TAG, "앱 상세 정보도 실패: " + e2.getMessage());
                     try {
                         // 방법 3: 최후의 폴백 - 전체 앱 관리 화면
@@ -74,6 +80,7 @@ public class OverlayPlugin extends Plugin {
                         ret.put("granted", false);
                         ret.put("error", "설정 화면을 열 수 없습니다.");
                         call.resolve(ret);
+                        }
                     }
                 }
             }

@@ -1,8 +1,24 @@
 /* ELS 운송관리 v3.4.0 - GPS 관제 + 오버레이/PIP 이중 */
 (() => {
-  const Capacitor = window.Capacitor || {};
-  const CapacitorPlugins = Capacitor.Plugins || {};
-  const getOverlay = () => (Capacitor.registerPlugin ? Capacitor.registerPlugin('Overlay') : CapacitorPlugins.Overlay);
+  const getDynamicCapacitor = () => window.Capacitor || {};
+  const getDynamicPlugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
+
+  const getOverlay = () => {
+    const Cap = getDynamicCapacitor();
+    const Plugins = getDynamicPlugins();
+    if (Cap.registerPlugin) return Cap.registerPlugin('Overlay');
+    if (Plugins.Overlay) return Plugins.Overlay;
+    if (Cap.toNative) {
+      return {
+        checkPermission: () => new Promise(r => { const c='c'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','checkPermission',{},c); }),
+        requestPermission: () => new Promise(r => { const c='r'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','requestPermission',{},c); }),
+        showOverlay: (o) => { Cap.toNative('Overlay','showOverlay',o,'s'+Date.now()); },
+        hideOverlay: () => { Cap.toNative('Overlay','hideOverlay',{},'h'+Date.now()); },
+        updateOverlay: (o) => { Cap.toNative('Overlay','updateOverlay',o,'u'+Date.now()); }
+      };
+    }
+    return null;
+  };
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
 
   // ── 상태 ──
@@ -56,8 +72,9 @@
     checkOverlayPerm();
 
     // 홈 버튼(앱 최소화) 감지 — Capacitor App 플러그인
-    if(CapacitorPlugins.App){
-      CapacitorPlugins.App.addListener('appStateChange',function(state){
+    const Plugins = getDynamicPlugins();
+    if(Plugins.App){
+      Plugins.App.addListener('appStateChange',function(state){
         if(!state.isActive && (tripStatus==='driving'||tripStatus==='paused')){
           // 앱 백그라운드로 → 오버레이 또는 PIP
           if(hasOverlayPerm && getOverlay()){
@@ -89,7 +106,7 @@
   function showModal(t,m){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').textContent=m;document.getElementById('modal-alert').style.display='flex';}
   function closeModal(){document.getElementById('modal-alert').style.display='none';}
   function updateOfflineBar(){const b=document.getElementById('offline-bar');if(b)b.style.display=isOnline?'none':'block';}
-  function haptic(s){try{if(CapacitorPlugins.Haptics)CapacitorPlugins.Haptics.impact({style:s||'Medium'});}catch(e){}}
+  function haptic(s){try{const Plugins=getDynamicPlugins();if(Plugins.Haptics)Plugins.Haptics.impact({style:s||'Medium'});}catch(e){}}
 
   // ═══ 권한 ═══
   async function requestLocationPerm(){haptic();try{await new Promise((r,j)=>{navigator.geolocation.getCurrentPosition(()=>r(true),e=>j(e),{enableHighAccuracy:true,timeout:5000});});markPermGranted('perm-location');document.getElementById('gps-indicator').className='gps-on';}catch(e){alert('위치 권한을 허용해 주세요.');}}
@@ -160,8 +177,8 @@
   async function checkPhone(){
     if(!isOnline){showModal('알림','인터넷 필요');return;}
     const ph=document.getElementById('inp-phone').value.trim();if(ph.length<10){showModal('오류','올바른 전화번호');return;}
-    try{const r=await fetch(`${API_BASE}/drivers?phone=${encodeURIComponent(ph)}`);const d=await safeJson(r);
-    if(r.ok&&d&&d.driver){if(d.driver.name)document.getElementById('inp-name').value=d.driver.name;if(d.driver.vehicle_number)document.getElementById('inp-vehicle').value=d.driver.vehicle_number;if(d.driver.vehicle_id||d.driver.driver_id)document.getElementById('inp-id').value=(d.driver.vehicle_id||d.driver.driver_id);haptic('Heavy');showModal('조회 성공',`${d.driver.name} 기사님 정보 로드`);}
+    try{const r=await fetch(`https://www.nollae.com/api/driver-contacts/search?phone=${encodeURIComponent(ph)}`);const d=await safeJson(r);
+    if(r.ok&&d&&d.item){if(d.item.name)document.getElementById('inp-name').value=d.item.name;if(d.item.business_number)document.getElementById('inp-vehicle').value=d.item.business_number;if(d.item.driver_id)document.getElementById('inp-id').value=d.item.driver_id;haptic('Heavy');showModal('조회 성공',`${d.item.name} 기사님 정보 로드`);}
     else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message);}
   }
   async function saveProfile(){
@@ -187,7 +204,7 @@
   function exitApp(){
     if(tripStatus==='driving'||tripStatus==='paused'){showModal('경고','운행 중 종료 불가. 먼저 운행을 종료해 주세요.');return;}
     if(!confirm('앱을 종료합니까?'))return;
-    try{if(CapacitorPlugins.App&&CapacitorPlugins.App.exitApp)CapacitorPlugins.App.exitApp();else window.close();}catch(e){window.close();}
+    try{const Plugins=getDynamicPlugins();if(Plugins.App&&Plugins.App.exitApp)Plugins.App.exitApp();else window.close();}catch(e){window.close();}
   }
 
   // ═══ GPS ═══
@@ -345,8 +362,9 @@
   }
   async function uploadSinglePhoto(idx,uid){
     try{const p=photos[idx];if(!p||!p.file||p.uploaded)return;
-      const fd = new FormData(); fd.append('trip_id', uid); fd.append('photos', p.file, p.file.name||`photo_${Date.now()}.jpg`);
-      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:fd}); const d=await safeJson(res);
+      const base64 = await encodeFileToBase64(p.file);
+      const payload = { trip_id: uid, photos: [{ name: p.file.name||`photo_${Date.now()}.jpg`, type: p.file.type||'image/jpeg', base64: base64 }] };
+      const res=await fetch(`${API_BASE}/photos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await safeJson(res);
       if(res.ok){photos[idx].uploaded=true;if(d.photos&&d.photos.length>0)photos[idx].key=d.photos[d.photos.length-1].key;renderPhotos();}
       else showModal('업로드 실패',(d?.error||res.status)+'');
     }catch(e){showModal('업로드 오류',e.message);}
@@ -369,8 +387,9 @@
     if(!selectedTripId){showModal('오류','기록 선택 필요');return;}if(!isOnline){showModal('오프라인','인터넷 필요');return;}
     const files=event.target.files;if(!files.length)return;
     for(const file of files){try{const resized=await resizeImage(file,1200,0.7);
-      const fd = new FormData(); fd.append('trip_id', selectedTripId); fd.append('photos', resized, file.name||`photo_${Date.now()}.jpg`);
-      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:fd}); const d=await safeJson(res);
+      const base64 = await encodeFileToBase64(resized);
+      const payload = { trip_id: selectedTripId, photos: [{ name: file.name||`photo_${Date.now()}.jpg`, type: file.type||'image/jpeg', base64: base64 }] };
+      const res=await fetch(`${API_BASE}/photos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await safeJson(res);
       if(res.ok&&d.photos&&d.photos.length>0){historyPhotos.push({key:d.photos[d.photos.length-1].key,url:d.photos[d.photos.length-1].url});renderHistoryPhotos();}
       else showModal('업로드 실패',(d?.error||res.status)+'');
     }catch(e){showModal('업로드 오류',e.message);}}event.target.value='';

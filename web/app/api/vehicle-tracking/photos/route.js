@@ -42,7 +42,7 @@ export async function POST(request) {
             tripId = formData.get('trip_id');
             const files = formData.getAll('photos');
             for (const file of files) {
-                if (!(file instanceof File)) continue;
+                if (!file || typeof file !== 'object' || typeof file.arrayBuffer !== 'function') continue;
                 filesData.push({
                     name: file.name,
                     type: file.type || 'image/jpeg',

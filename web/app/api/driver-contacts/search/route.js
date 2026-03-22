@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 
 /**
  * GET /api/driver-contacts/search?phone=01012345678&vehicle_number=1234
  * - 운전원 정보(driver_contacts)에서 매칭되는 프로필 검색
  */
 export async function GET(request) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { searchParams } = new URL(request.url);
     const phone = searchParams.get('phone');
     const vehicleNumber = searchParams.get('vehicle_number');
