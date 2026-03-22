@@ -66,7 +66,6 @@ public class FloatingWidgetService extends Service {
         } else {
             startForeground(1, notification);
         }
-        }
 
         if (intent != null) {
             String tripId = intent.getStringExtra("tripId");
