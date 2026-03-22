@@ -20,19 +20,24 @@ const BUCKET = process.env.NAS_BUCKET || 'els-files';
  */
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
-    const key = searchParams.get('key');
+    let key = searchParams.get('key');
 
     if (!key) {
         return new Response('Key is required', { status: 400 });
     }
 
+    // [중요] URL 인코딩된 키를 한 번 더 풀어서 NAS(S3) 실제 경로와 맞춰줌
+    key = decodeURIComponent(key);
+
     try {
+        console.log(`[NAS-VIEW] 이미지 요청: bucket=${BUCKET}, key=${key}`);
         const command = new GetObjectCommand({
             Bucket: BUCKET,
             Key: key,
         });
 
         const response = await s3.send(command);
+        console.log(`[NAS-VIEW] S3 응답 성공: type=${response.ContentType}, length=${response.ContentLength}`);
         const data = await response.Body.transformToUint8Array();
 
         return new Response(data, {
@@ -42,7 +47,13 @@ export async function GET(request) {
             },
         });
     } catch (error) {
-        console.error('Photo Proxy Error:', error);
-        return new Response('Photo not found', { status: 404 });
+        console.error(`[NAS-VIEW-ERROR] ${key}:`, error);
+        
+        // 형이 앱에서 볼 수 있게 에러 메시지를 텍스트로 보냄
+        const errorMsg = `NAS 에러: ${error.message} (BUCKET: ${BUCKET}, KEY: ${key}, ENDPOINT: ${process.env.NAS_ENDPOINT})`;
+        return new Response(errorMsg, { 
+            status: 500,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
     }
 }

@@ -142,14 +142,14 @@
         hasOverlayPerm=true;
         markPermGranted('perm-overlay');
         haptic('Heavy');
-        showModal('성공','오버레이 권한이 허용되었습니다!\n최소화 시 TMAP처럼 플로팅 위젯이 표시됩니다.');
+        showModal('성공','오버레이 권한이 허용되었습니다!\n최고화 시 TMAP처럼 플로팅 위젯이 표시됩니다.');
       }else{
         hasOverlayPerm=false;
-        showModal('설정 안내','"다른 앱 위에 표시" 권한을 켜 주세요.\n설정 화면에서 토글을 켜고 뒤로 나오면 됩니다.');
+        showModal('설정 안내','"다른 앱 위에 표시" 권한을 켜 주세요.\n만약 설정 화면이 열리지 않으면 [휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 켜주시면 됩니다.');
       }
     }catch(e){
       console.error('오버레이 권한 요청 오류:',e);
-      showModal('오류','설정 화면을 열 수 없습니다: '+e.message);
+      showModal('오류','설정 화면을 자동으로 열 수 없습니다.\n[휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 권한을 켜주세요.');
     }
   }
 
@@ -384,13 +384,29 @@
     event.target.value='';
   }
   async function uploadSinglePhoto(idx,uid){
-    try{const p=photos[idx];if(!p||!p.file||p.uploaded)return;
-      const base64 = await encodeFileToBase64(p.file);
-      const payload = { trip_id: uid, photos: [{ name: p.file.name||`photo_${Date.now()}.jpg`, type: p.file.type||'image/jpeg', size: p.file.size, base64: base64 }] };
-      const res=await fetch(`${API_BASE}/photos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await safeJson(res);
-      if(res.ok){photos[idx].uploaded=true;if(d.photos&&d.photos.length>0)photos[idx].key=d.photos[d.photos.length-1].key;renderPhotos();}
-      else showModal('업로드 실패',(d?.error||res.status)+'');
-    }catch(e){showModal('업로드 오류',e.message);}
+    try{
+      const p=photos[idx];if(!p||!p.file||p.uploaded)return;
+      const formData = new FormData();
+      formData.append('trip_id', uid);
+      formData.append('photos', p.file);
+      
+      console.log(`[DEBUG] 업로드 시작: trip_id=${uid}, file=${p.file.name}`);
+      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:formData});
+      const d=await safeJson(res);
+      
+      console.log(`[DEBUG] 서버 응답 상태: ${res.status}`);
+      if(res.ok){
+        photos[idx].uploaded=true;
+        if(d.photos&&d.photos.length>0) photos[idx].key=d.photos[d.photos.length-1].key;
+        renderPhotos();
+      }else{
+        const errDetail = d?.error || JSON.stringify(d) || '상세내용 없음';
+        showModal('업로드 실패', `상태: ${res.status}\n오류: ${errDetail}`);
+      }
+    }catch(e){
+      console.error('[DEBUG] 업로드 예외:', e);
+      showModal('통신/JS 오류', `${e.name}: ${e.message}\n${e.stack?.split('\n')[0]}`);
+    }
   }
   async function uploadPendingPhotos(){const uid=tripId||lastTripId;if(!uid||!isOnline)return;for(let i=0;i<photos.length;i++){if(!photos[i].uploaded)await uploadSinglePhoto(i,uid);}}
   function resizeImage(f,mx,q){return new Promise((r,j)=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>mx||h>mx){if(w>h){h=Math.round(h*mx/w);w=mx;}else{w=Math.round(w*mx/h);h=mx;}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);c.toBlob(b=>r(new File([b],f.name||'photo.jpg',{type:'image/jpeg'})),'image/jpeg',q);};img.onerror=()=>j(new Error('지원하지 않는 형식이거나 권한 오류입니다.'));img.src=URL.createObjectURL(f);});}
@@ -404,7 +420,23 @@
       const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deletePhoto(i);w.appendChild(d);g.appendChild(w);});
     document.getElementById('photo-add-label').style.display=photos.length>=10?'none':'flex';
   }
-  function zoomImage(src){const m=document.getElementById('modal-photo'),img=document.getElementById('zoom-img');if(m&&img){img.src=src;m.style.display='flex';}}
+  function zoomImage(src){
+    const m=document.getElementById('modal-photo'),img=document.getElementById('zoom-img');
+    if(m&&img){
+      console.log(`[DEBUG] 이미지 상세 보기: ${src}`);
+      img.src=src;
+      img.onerror=async function(){
+        try{
+          const r = await fetch(src);
+          const text = await r.text();
+          showModal('이미지 로드 실패', `URL: ${src}\n상세: ${text}`);
+        }catch(e){
+          showModal('네트워크 오류', `URL: ${src}\n에러: ${e.message}`);
+        }
+      };
+      m.style.display='flex';
+    }
+  }
   async function deletePhoto(idx){const p=photos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}photos.splice(idx,1);renderPhotos();}
 
   // ═══ 기록 사진 ═══
@@ -412,9 +444,12 @@
     if(!selectedTripId){showModal('오류','기록 선택 필요');return;}if(!isOnline){showModal('오프라인','인터넷 필요');return;}
     const files=event.target.files;if(!files.length)return;
     for(const file of files){try{const resized=await resizeImage(file,1200,0.7);
-      const base64 = await encodeFileToBase64(resized);
-      const payload = { trip_id: selectedTripId, photos: [{ name: file.name||`photo_${Date.now()}.jpg`, type: file.type||'image/jpeg', base64: base64 }] };
-      const res=await fetch(`${API_BASE}/photos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await safeJson(res);
+      const formData = new FormData();
+      formData.append('trip_id', selectedTripId);
+      formData.append('photos', resized);
+      
+      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:formData});
+      const d=await safeJson(res);
       if(res.ok&&d.photos&&d.photos.length>0){historyPhotos.push({key:d.photos[d.photos.length-1].key,url:d.photos[d.photos.length-1].url});renderHistoryPhotos();}
       else showModal('업로드 실패',(d?.error||res.status)+'');
     }catch(e){showModal('업로드 오류',e.message);}}event.target.value='';

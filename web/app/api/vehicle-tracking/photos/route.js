@@ -87,12 +87,19 @@ export async function POST(request) {
             const timestamp = Date.now();
             const key = `${PHOTO_PREFIX}/${tripId}/${timestamp}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-            await s3.send(new PutObjectCommand({
-                Bucket: BUCKET,
-                Key: key,
-                Body: buffer,
-                ContentType: file.type || 'image/jpeg',
-            }));
+            try {
+                console.log(`[NAS] S3 업로드 시도: ${key}, size=${buffer.length}`);
+                await s3.send(new PutObjectCommand({
+                    Bucket: BUCKET,
+                    Key: key,
+                    Body: buffer,
+                    ContentType: file.type || 'image/jpeg',
+                }));
+                console.log(`[NAS] S3 업로드 성공: ${key}`);
+            } catch (s3Error) {
+                console.error(`[NAS] S3 전송 에러 (${key}):`, s3Error);
+                throw new Error(`NAS 전송 실패: ${s3Error.message}`);
+            }
 
             // 접근 URL 구성 (직접 S3 URL 대신 프록시 API 사용)
             const url = `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(key)}`;
