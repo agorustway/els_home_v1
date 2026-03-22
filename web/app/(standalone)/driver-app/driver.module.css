@@ -42,7 +42,7 @@
 .dashboardTimer {
     font-size: 3.5rem;
     font-weight: 900;
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-family: -apple-system, 'Pretendard', 'Inter', sans-serif;
     margin: 16px 0;
     letter-spacing: -2px;
 }

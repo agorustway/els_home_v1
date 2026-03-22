@@ -123,6 +123,7 @@ export default function DriverAppPage() {
     const gpsIntervalRef = useRef(null);
     const lastPosRef = useRef(null);
     const idleCountRef = useRef(0);
+    const speedRef = useRef(0);
     const audioRef = useRef(null);
 
     const [showFloatingTimer, setShowFloatingTimer] = useState(false);
@@ -154,7 +155,7 @@ export default function DriverAppPage() {
         navigator.geolocation.getCurrentPosition(
             async (pos) => {
                 const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
-                setLastCoords({ lat, lng });
+                setLastCoords({ lat, lng, speed: (speed || 0) * 3.6 });
                 setGpsActive(true);
 
                 const isMoved = !lastPosRef.current || 
@@ -170,6 +171,7 @@ export default function DriverAppPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed }),
                     });
+                    speedRef.current = (speed || 0) * 3.6; // km/h
                     setSendCount(prev => prev + 1);
                 } catch { }
             },
@@ -181,9 +183,13 @@ export default function DriverAppPage() {
     const startGPS = useCallback((tripId, status) => {
         if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
         const tick = () => {
-            let interval = GPS_INTERVALS.driving;
-            if (status === 'paused') interval = GPS_INTERVALS.paused;
-            else if (idleCountRef.current >= 3) interval = GPS_INTERVALS.idle;
+            let interval = 30000; // 기본 30초
+            if (status === 'paused') {
+                interval = 600000; // 10분
+            } else {
+                if (idleCountRef.current >= 6) interval = 120000; // 3분(6틱) 정차 시 2분
+                else if (speedRef.current < 10) interval = 60000; // 서행 시 1분
+            }
 
             sendLocation(tripId);
             gpsIntervalRef.current = setTimeout(tick, interval);
@@ -855,7 +861,7 @@ export default function DriverAppPage() {
             <div className={styles.gpsBar}>
                 <span>
                     <span className={`${styles.gpsDot} ${gpsActive ? styles.gpsDotActive : styles.gpsDotInactive}`} />
-                    GPS {gpsActive ? '정상 수신 중' : '위치 대기 중'}
+                    {gpsActive ? `GPS정상 (${idleCountRef.current >= 6 ? '2분-정차' : (lastCoords?.speed < 10 ? '1분-서행' : '30초-주행')})` : 'GPS수집대기'}
                 </span>
             </div>
 
@@ -987,13 +993,6 @@ export default function DriverAppPage() {
                 </div>
             </div>
 
-            <div className={styles.formSection}>
-                <div className={styles.formTitle}>🛠️ 앱 권한 재설정</div>
-                <div className={styles.formGrid}>
-                    <button onClick={handleLocationRequest} className={styles.outlineBtn} style={{ marginBottom: 8 }}>📍 위치 권한 설정 안내</button>
-                    <button onClick={handleOverlayRequest} className={styles.outlineBtn}>🪟 다른 앱 위에 표시 설정</button>
-                </div>
-            </div>
 
             <div className={styles.formSection}>
                 <div className={styles.formTitle}>ℹ️ 앱 정보</div>
@@ -1003,7 +1002,7 @@ export default function DriverAppPage() {
                     {!Capacitor.isNativePlatform() && (
                         <button onClick={handleInstallClick} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10 }}>앱 설치 가이드 보기</button>
                     )}
-                    <button onClick={() => { localStorage.clear(); window.location.reload(); }} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10, color: '#ef4444' }}>초기화 (로그아웃)</button>
+                    <button onClick={() => { if(confirm('기사 정보 및 설정을 초기화하고 다시 시작하시겠습니까?')) { localStorage.clear(); window.location.reload(); } }} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10, color: '#ef4444' }}>초기화 (재설정)</button>
                 </div>
             </div>
         </motion.div>
