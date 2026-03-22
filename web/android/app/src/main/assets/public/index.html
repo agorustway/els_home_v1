@@ -8,159 +8,78 @@
 </head>
 <body>
 
-  <!-- ===== 온보딩: 권한 설정 ===== -->
+  <div id="pip-overlay">
+    <div id="pip-status">● 운행중</div>
+    <div id="pip-timer">00:00:00</div>
+    <div id="pip-gps">GPS ○</div>
+  </div>
+
+  <!-- 온보딩 권한 -->
   <div id="screen-permissions" class="screen" style="display:none">
     <div class="onboard-wrap">
       <h1>앱 권한 설정</h1>
       <p class="sub">원활한 운행 관리를 위해 아래 권한이 필요합니다.</p>
-
       <div class="perm-list">
-        <div class="perm-item" id="perm-location">
+        <div class="perm-item" id="perm-location"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">위치 (항상 사용)</div><div class="perm-desc">GPS 실시간 위치 관제</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-camera"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">카메라</div><div class="perm-desc">컨테이너 사진 촬영</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-photo"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">사진 / 동영상</div><div class="perm-desc">갤러리 접근 및 업로드</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-notify"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">알림</div><div class="perm-desc">운행 상태 알림</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-phone"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">전화</div><div class="perm-desc">기사 연락처 확인</div></div><div class="perm-arrow">›</div></div>
+                <div class="perm-item" id="perm-overlay">
           <div class="perm-dot dot-red"></div>
-          <div class="perm-info">
-            <div class="perm-name">위치 권한 (항상 허용)</div>
-            <div class="perm-desc">앱이 꺼져도 실시간 위치 관제 유지</div>
-          </div>
-          <div class="perm-arrow">→</div>
-        </div>
-        
-          <div class="perm-info">
-            <div class="perm-name">다른 앱 위에 표시</div>
-            <div class="perm-desc">최소화 시 플로팅 타이머 표시</div>
-          </div>
-          <div class="perm-arrow">→</div>
-        </div>
-        <div class="perm-item" id="perm-camera">
-          <div class="perm-dot dot-red"></div>
-          <div class="perm-info">
-            <div class="perm-name">카메라 / 저장소</div>
-            <div class="perm-desc">컨테이너 사진 촬영 및 업로드</div>
-          </div>
-          <div class="perm-arrow">→</div>
-        </div>
-      </div>
-
+          <div class="perm-info"><div class="perm-name">다른 앱 위에 표시 (선택)</div><div class="perm-desc">TMAP처럼 플로팅 위젯 표시</div></div>
+          <div class="perm-arrow">›</div>
+        </div>      </div>
       <button id="btn-finish-perms" class="btn-primary">다음 단계로</button>
     </div>
   </div>
 
-  <!-- ===== 온보딩: 프로필 등록 ===== -->
+  <!-- 프로필 -->
   <div id="screen-profile" class="screen" style="display:none">
     <div class="onboard-wrap">
       <h1>기사 정보 등록</h1>
       <p class="sub">운행 기록 관리를 위한 기본 정보를 입력해 주세요.</p>
-
       <div class="form-stack">
-        <label>기사 성함</label>
-        <input type="text" id="inp-name" placeholder="기사 성함">
-
-        <label>연락처 (숫자만)</label>
-        <div style="display:flex; gap:8px;">
-          <input type="tel" id="inp-phone" placeholder="01012345678" style="flex:1;">
-          <button id="btn-check-phone" class="btn-secondary" style="width:70px; height:52px;">조회</button>
-        </div>
-
-        <label>차량 번호</label>
-        <input type="text" id="inp-vehicle" placeholder="부산00바0000">
-
-        <label>아이디 (D-ID)</label>
-        <input type="text" id="inp-id" placeholder="ABCD1234 (8자리)" maxlength="8" oninput="this.value=this.value.toUpperCase()">
+        <label>기사 성함</label><input type="text" id="inp-name" placeholder="기사 성함">
+        <label>연락처(숫자만)</label>
+        <div style="display:flex;gap:8px;"><input type="tel" id="inp-phone" placeholder="01012345678" style="flex:1;"><button id="btn-check-phone" class="btn-secondary" style="width:70px;height:48px;">조회</button></div>
+        <label>차량 번호</label><input type="text" id="inp-vehicle" placeholder="부산01가0000">
+        <label>아이디(D-ID)</label><input type="text" id="inp-id" placeholder="ABCD1234" maxlength="8" oninput="this.value=this.value.toUpperCase()">
       </div>
-
       <button id="btn-save-profile" class="btn-primary">등록 완료</button>
     </div>
   </div>
 
-  <!-- ===== 메인 화면 ===== -->
+  <!-- 메인 -->
   <div id="screen-main" class="screen" style="display:none">
-
-    <!-- 헤더 -->
     <header id="main-header">
-      <div class="header-left">
-        <div class="header-logo">ELS</div>
-        <div class="header-title">운송관리</div>
-      </div>
+      <div class="header-left"><div class="header-logo">ELS</div><div class="header-title">운송관리</div></div>
       <div id="gps-indicator" class="gps-off">GPS</div>
     </header>
 
-    <!-- 상태 바 (운행 중일 때) -->
-    <div id="active-banner" style="display:none">
-      <div id="banner-status">TRACKING</div>
-      <div id="banner-timer">00:00:00</div>
-    </div>
+    <div id="active-banner" style="display:none"><div id="banner-status">● 운행중</div></div>
+    <div id="offline-bar" style="display:none">인터넷 연결이 끊겼습니다.</div>
 
-    <!-- 네트워크 에러 바 -->
-    <div id="offline-bar" style="display:none">
-      인터넷 연결이 끊겼습니다. 연결 복구 후 자동 동기화됩니다.
-    </div>
-
-    <!-- 메인 컨텐츠 -->
     <main id="main-content">
-
-      <!-- 기사 정보 요약 (한줄 형) -->
-      <div id="driver-summary" style="display:flex; justify-content:center; align-items:center; gap:8px; padding: 10px 0; font-size: 1.05rem; font-weight:800; color:var(--accent); border-bottom: 1px solid var(--border); margin-bottom:12px;">
-        <span id="disp-name">-</span> • 
-        <span id="disp-vehicle">-</span> • 
-        <span id="disp-id">-</span>
+      <div id="driver-summary" style="display:flex;justify-content:center;align-items:center;gap:8px;padding:8px 0;font-size:1rem;font-weight:800;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:10px;">
+        <span id="disp-name">-</span> · <span id="disp-vehicle">-</span> · <span id="disp-id">-</span>
       </div>
 
-      <!-- 운송 정보 입력 -->
-      <div class="card" id="card-input" style="padding: 14px 16px; margin-bottom:12px;">
-        <div class="form-stack" style="gap:8px;">
-          
-          <!-- 컨테이너/씰 (2단 분리 유지하되 겹치지 않게 조절) -->
-          <div style="display:grid; grid-template-columns: 0.9fr 1.1fr; gap:10px;">
-            <div>
-              <label>컨테이너 번호</label>
-              <input type="text" id="inp-container" placeholder="ABCD1234567" oninput="this.value=this.value.toUpperCase()">
-            </div>
-            <div>
-              <label>씰 번호</label>
-              <input type="text" id="inp-seal" placeholder="KR1234567" oninput="this.value=this.value.toUpperCase()">
-            </div>
-          </div>
-
-          <!-- 사이즈/종류 -->
-          <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:10px;">
-            <div>
-              <label>사이즈</label>
-              <select id="inp-cont-size">
-                <option value="40FT">40FT</option>
-                <option value="20FT">20FT</option>
-                <option value="45FT">45FT</option>
-              </select>
-            </div>
-            <div>
-              <label>컨테이너 종류</label>
-              <select id="inp-cont-type">
-                <option value="DRY">DRY (일반)</option>
-                <option value="REEFER">REEFER (냉동)</option>
-                <option value="FLAT">FLAT RACK</option>
-                <option value="OT">OPEN TOP</option>
-                <option value="TANK">TANK</option>
-              </select>
-            </div>
-          </div>
-
-          <label>사진 첨부</label>
-          <div class="photo-area">
-            <div id="photo-grid"></div>
-            <label class="photo-add-btn" id="photo-add-label">
-              +
-              <input type="file" accept="image/*" multiple hidden onchange="handlePhotos(event)">
-            </label>
+      <!-- ① 컨테이너 정보 입력 -->
+      <div class="card" id="card-input" style="padding:12px 14px;margin-bottom:10px;">
+        <div class="form-stack" style="gap:6px;margin-bottom:0;">
+          <div><label>컨테이너 번호</label><input type="text" id="inp-container" placeholder="ABCD1234567" oninput="this.value=this.value.toUpperCase()"></div>
+          <div><label>씰 번호</label><input type="text" id="inp-seal" placeholder="KR1234567" oninput="this.value=this.value.toUpperCase()"></div>
+          <div style="display:grid;grid-template-columns:100px 1fr;gap:8px;">
+            <div><label>사이즈</label><select id="inp-cont-size"><option value="40FT">40FT</option><option value="20FT">20FT</option><option value="45FT">45FT</option></select></div>
+            <div><label>컨테이너 종류</label><select id="inp-cont-type"><option value="DRY">DRY (일반)</option><option value="REEFER">REEFER (냉동)</option><option value="FLAT">FLAT RACK</option><option value="OT">OPEN TOP</option><option value="TANK">TANK</option></select></div>
           </div>
         </div>
       </div>
 
-      <!-- 액션 버튼 구역 -->
-      <div id="action-area">
-        <!-- 대기 상태 -->
-        <button id="btn-start" class="btn-action btn-start" onclick="startTrip()">
-          운송 시작 (START)
-        </button>
-
-        <!-- 운행 상태 (숨김) -->
+      <!-- ② 운행 시작/종료 버튼 (한손 조작 위치) -->
+      <div id="action-area" style="margin-bottom:10px;">
+        <button id="btn-start" class="btn-action btn-start" onclick="startTrip()">운송 시작 (START)</button>
         <div id="trip-controls" style="display:none">
           <div id="trip-timer-display">00:00:00</div>
           <div class="control-grid">
@@ -170,59 +89,104 @@
           </div>
         </div>
       </div>
+
+      <!-- ③ 사진 (운행 전/중/일시정지 모두 가능) -->
+      <div class="card" id="card-photos" style="padding:12px 14px;margin-bottom:10px;">
+        <label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">사진 첨부</label>
+        <div class="photo-area">
+          <div id="photo-grid"></div>
+          <label class="photo-add-btn" id="photo-add-label">+<input type="file" accept="image/*" multiple hidden onchange="handlePhotos(event)"></label>
+        </div>
+      </div>
+
+      <!-- ④ 메모 -->
+      <div class="card" id="card-memo" style="padding:12px 14px;margin-bottom:10px;">
+        <label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">메모</label>
+        <textarea id="inp-memo" placeholder="특이사항 입력" style="width:100%;height:64px;background:var(--bg-input);border:2px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:0.9rem;resize:none;outline:none;"></textarea>
+      </div>
     </main>
 
-    <!-- 하단 네비 -->
     <nav id="bottom-nav">
       <button class="nav-btn active" onclick="switchTab('home')">운행</button>
       <button class="nav-btn" onclick="switchTab('history')">기록</button>
       <button class="nav-btn" onclick="switchTab('settings')">설정</button>
     </nav>
 
-    <!-- 기록 탭 (숨김) -->
+    <!-- 기록 탭 -->
     <div id="tab-history" class="tab-panel" style="display:none">
-      <div class="card">
-        <div class="card-title">운송 기록</div>
-        <input type="month" id="history-month" onchange="loadHistory()">
-        <div id="history-list"></div>
-      </div>
+      <div class="card"><div class="card-title">운송 기록</div><input type="month" id="history-month" onchange="loadHistory()"><div id="history-list"></div></div>
     </div>
 
-    <!-- 설정 탭 (숨김) -->
+    <!-- 설정 탭 -->
     <div id="tab-settings" class="tab-panel" style="display:none">
       <div class="card">
         <div class="card-title">내 정보 수정</div>
         <div class="form-stack">
-          <label>기사 성함</label>
-          <input type="text" id="set-name">
-          <label>연락처</label>
-          <input type="tel" id="set-phone">
-          <label>차량 번호</label>
-          <input type="text" id="set-vehicle">
-          <label>아이디</label>
-          <input type="text" id="set-id" maxlength="8" oninput="this.value=this.value.toUpperCase()">
+          <label>기사 성함</label><input type="text" id="set-name">
+          <label>연락처</label><input type="tel" id="set-phone">
+          <label>차량 번호</label><input type="text" id="set-vehicle">
+          <label>아이디</label><input type="text" id="set-id" maxlength="8" oninput="this.value=this.value.toUpperCase()">
         </div>
         <button id="btn-update-profile" class="btn-secondary" style="margin-top:16px">저장</button>
       </div>
       <div class="card">
         <div class="card-title">앱 권한</div>
-        <button id="btn-req-loc" class="btn-outline">위치 권한 재설정</button>
-        
+        <button id="btn-req-loc" class="btn-outline">위치 권한</button>
+        <button id="btn-req-cam" class="btn-outline" style="margin-top:6px">카메라 권한</button>
+        <button id="btn-req-photo" class="btn-outline" style="margin-top:6px">사진/동영상 권한</button>
+        <button id="btn-req-notify" class="btn-outline" style="margin-top:6px">알림 권한</button>
+        <button id="btn-req-phone" class="btn-outline" style="margin-top:6px">전화 권한</button>
+        <button id="btn-req-overlay" class="btn-outline" style="margin-top:6px">다른 앱 위에 표시 (플로팅)</button>
+      </div>
+      <div class="card">
+        <div class="card-title">GPS 수집 설정</div>
+        <div class="card-row"><span class="card-label">고속 (≥10km/h)</span><span class="card-value" id="disp-gps-fast">30초</span></div>
+        <div class="card-row"><span class="card-label">저속 (<10km/h)</span><span class="card-value" id="disp-gps-slow">60초</span></div>
+        <div class="card-row"><span class="card-label">정차 (0km/h 3분+)</span><span class="card-value" id="disp-gps-stop">120초</span></div>
       </div>
       <div class="card">
         <div class="card-title">앱 정보</div>
-        <p class="text-muted">버전 3.0.0 (Standalone Native)</p>
-        <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화 (모든 데이터 삭제)</button>
+        <p class="text-muted">버전 3.4.0 (Standalone Native)</p>
+        <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화(모든 데이터 삭제)</button>
+        <button id="btn-exit-app" class="btn-outline" style="margin-top:8px">앱 종료</button>
       </div>
     </div>
   </div>
 
-  <!-- 커스텀 알림 모달 -->
-  <div id="modal-alert" class="modal-overlay" style="display:none" onclick="closeModal()">
+  <!-- 알림 모달 -->
+  <div id="modal-alert" class="modal-overlay" style="display:none">
     <div class="modal-box" onclick="event.stopPropagation()">
       <div class="modal-title" id="modal-title">알림</div>
       <div class="modal-body" id="modal-body"></div>
-      <button id="btn-modal-close" class="btn-primary">확인</button>
+      <button id="btn-modal-close" class="btn-secondary" onclick="closeModal()">확인</button>
+    </div>
+  </div>
+
+  <!-- 기록 상세 모달 -->
+  <div id="modal-history" class="modal-overlay" style="display:none" onclick="closeHistoryModal()">
+    <div class="modal-box" style="max-height:90vh;" onclick="event.stopPropagation()">
+      <div class="modal-title">운송 기록 상세</div>
+      <div class="hist-status-line"><span style="font-size:0.8rem;font-weight:700;">상태</span><span id="h-status" style="font-weight:800;">-</span></div>
+      <div class="hist-time-info" id="h-time-info">시작: - | 종료: -</div>
+      <div class="edit-form-group"><label>컨테이너 번호</label><input type="text" id="edit-container" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="edit-form-group"><label>씰 번호</label><input type="text" id="edit-seal" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="edit-form-row">
+        <div class="edit-form-group"><label>사이즈</label><select id="edit-cont-size"><option value="40FT">40FT</option><option value="20FT">20FT</option><option value="45FT">45FT</option></select></div>
+        <div class="edit-form-group"><label>종류</label><select id="edit-cont-type"><option value="DRY">DRY</option><option value="REEFER">REEFER</option><option value="FLAT">FLAT RACK</option><option value="OT">OPEN TOP</option><option value="TANK">TANK</option></select></div>
+      </div>
+      <div class="edit-form-group"><label>메모</label><textarea id="edit-notes" placeholder="특이사항"></textarea></div>
+      <div class="edit-form-group">
+        <label>사진 (<span id="h-photo-count">0</span>장)</label>
+        <div class="photo-area" id="h-photo-area">
+          <div id="h-photo-grid"></div>
+          <label class="photo-add-btn" id="h-photo-add-label">+<input type="file" accept="image/*" multiple hidden onchange="handleHistoryPhotos(event)"></label>
+        </div>
+      </div>
+      <div class="modal-btn-group">
+        <button class="btn-save-edit" onclick="saveHistoryEdit()">수정 저장</button>
+        <button class="btn-close-edit" onclick="closeHistoryModal()">닫기</button>
+      </div>
+      <button id="btn-force-stop" class="btn-force-stop-sm" style="display:none" onclick="forceStopTrip()">이 운행을 강제 종료 처리</button>
     </div>
   </div>
 

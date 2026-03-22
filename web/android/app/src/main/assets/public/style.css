@@ -1,5 +1,6 @@
 /* ===================================
    ELS 운송관리 - 네이티브 앱 스타일시트
+   v3.1.0 - 2026-03-22 전체 UI 개편
    =================================== */
 
 :root {
@@ -104,21 +105,27 @@ body {
 
 .form-stack label:first-child { margin-top: 0; }
 
-.form-stack input, .form-stack select {
+.form-stack input, .form-stack select, .form-stack textarea {
   width: 100%;
   box-sizing: border-box;
-  height: 52px;
+  height: 48px;
   background: var(--bg-input);
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 0 16px;
+  padding: 0 14px;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 0.95rem;
   outline: none;
   transition: border-color 0.2s;
 }
 
-.form-stack input:focus { border-color: var(--accent); }
+.form-stack textarea {
+  height: 64px;
+  padding: 10px 14px;
+  resize: none;
+}
+
+.form-stack input:focus, .form-stack select:focus, .form-stack textarea:focus { border-color: var(--accent); }
 .form-stack input::placeholder { color: #484f58; }
 
 .btn-primary {
@@ -200,18 +207,22 @@ body {
 .gps-on { background: rgba(63,185,80,0.15); color: var(--success); }
 .gps-off { background: rgba(248,81,73,0.15); color: var(--danger); }
 
+/* 상단 배너 - 상태만 표시 (타이머 제거, 컴팩트화) */
 #active-banner {
   position: fixed;
   top: var(--header-height); left: 0; right: 0;
-  background: var(--accent-dark);
+  background: linear-gradient(135deg, rgba(31,111,235,0.9), rgba(31,111,235,0.7));
   color: #fff;
   text-align: center;
-  padding: 8px 0;
+  padding: 6px 0;
   z-index: 99;
 }
 
-#banner-status { font-size: 0.65rem; font-weight: 800; letter-spacing: 3px; opacity: 0.7; }
-#banner-timer { font-size: 1.4rem; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 2px; }
+#banner-status {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
 
 #offline-bar {
   position: fixed;
@@ -226,7 +237,7 @@ body {
 }
 
 #main-content { padding: calc(16px + var(--header-height)) 16px calc(24px + var(--safe-bottom) + 72px); }
-#screen-main.trip-active #main-content { padding-top: calc(80px + var(--header-height)); }
+#screen-main.trip-active #main-content { padding-top: calc(48px + var(--header-height)); }
 
 .card {
   background: var(--bg-card);
@@ -248,7 +259,9 @@ body {
 .card-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
 .card-value { font-size: 0.9rem; font-weight: 700; }
 
-.photo-area { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: flex-start; }
+.photo-area { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; margin-top: 8px; align-items: center; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+
+#photo-grid { display: flex; flex-direction: row; gap: 8px; flex-shrink: 0; }
 
 .photo-wrapper {
   position: relative;
@@ -291,6 +304,21 @@ body {
   justify-content: center;
 }
 
+.photo-badge {
+  position: absolute;
+  bottom: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: var(--success);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
 .btn-action {
   width: 100%;
   border: none;
@@ -303,21 +331,21 @@ body {
 
 .btn-action:active { transform: scale(0.97); }
 
-.btn-start { height: 72px; background: var(--accent); color: #fff; }
-.btn-pause { height: 56px; background: var(--warning); color: #000; }
-.btn-resume { height: 56px; background: var(--accent); color: #fff; }
-.btn-stop { height: 56px; background: var(--danger); color: #fff; }
+.btn-start { height: 64px; background: var(--accent); color: #fff; }
+.btn-pause { height: 48px; background: var(--warning); color: #000; }
+.btn-resume { height: 48px; background: var(--accent); color: #fff; }
+.btn-stop { height: 48px; background: var(--danger); color: #fff; }
 
 #trip-timer-display {
   text-align: center;
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: 900;
   font-family: 'Courier New', monospace;
-  margin: 20px 0;
+  margin: 12px 0;
   letter-spacing: 2px;
 }
 
-.control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 #bottom-nav {
   position: fixed;
@@ -335,7 +363,7 @@ body {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.95rem; /* 버튼 텍스트 키움 */
+  font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
   transition: color 0.2s;
@@ -366,23 +394,29 @@ body {
   border-radius: var(--radius);
   margin-bottom: 8px;
   border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.2s;
 }
 
-.history-top { display: flex; justify-content: space-between; margin-bottom: 6px; }
-.history-date { font-size: 0.75rem; color: var(--text-muted); }
-.history-badge {
+.history-item:active { border-color: var(--accent); background: rgba(88,166,255,0.05); }
+
+.hist-header { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; }
+.hist-date { font-size: 0.75rem; color: var(--text-muted); }
+.hist-title { font-weight: 700; font-size: 0.95rem; }
+.hist-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+.badge {
   font-size: 0.65rem;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
 }
 .badge-driving { background: rgba(63,185,80,0.2); color: var(--success); }
+.badge-paused { background: rgba(210,153,34,0.2); color: var(--warning); }
 .badge-finished { background: rgba(125,133,144,0.2); color: var(--text-muted); }
 
-.history-container { font-weight: 700; font-size: 0.95rem; }
-.history-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
-
 .text-muted { color: var(--text-muted); font-size: 0.8rem; }
+.text-red { color: var(--danger); }
 .text-empty { text-align: center; padding: 40px 0; color: var(--text-muted); }
 
 .modal-overlay {
@@ -399,9 +433,11 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 28px 24px;
+  padding: 24px 20px;
   width: 100%;
-  max-width: 340px;
+  max-width: 360px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-title {
@@ -415,16 +451,164 @@ body {
   font-size: 0.9rem;
   color: var(--text-muted);
   line-height: 1.6;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-/* Final PIP Style for Android 16 */
-body.pip-active { background: #000 !important; color: #fff !important; font-family: sans-serif; overflow: hidden; }
-body.pip-active #pip-container { 
-  display: flex !important; flex-direction: column; align-items: center; justify-content: center; 
-  height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 99999; background: #000;
+/* 기록 수정 모달 스타일 */
+.edit-form-group {
+  margin-bottom: 10px;
 }
-body.pip-active #pip-timer { font-size: 40px !important; font-weight: bold; color: #58a6ff; }
-body.pip-active #pip-status { font-size: 20px; color: #238636; margin-bottom: 10px; }
-body.pip-active #pip-gps { font-size: 14px; color: #8b949e; margin-top: 10px; }
-body.pip-active .main-ui, body.pip-active .nav-bar, body.pip-active .header, body.pip-active .card-input { display: none !important; }
+
+.edit-form-group label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.edit-form-group input,
+.edit-form-group select,
+.edit-form-group textarea {
+  width: 100%;
+  height: 40px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.edit-form-group textarea {
+  height: 56px;
+  padding: 8px 10px;
+  resize: none;
+}
+
+.edit-form-group input:focus,
+.edit-form-group select:focus,
+.edit-form-group textarea:focus {
+  border-color: var(--accent);
+}
+
+.edit-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.hist-status-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hist-time-info {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.modal-btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.modal-btn-group button {
+  height: 42px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-save-edit {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-close-edit {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border) !important;
+}
+
+.btn-force-stop-sm {
+  width: 100%;
+  height: 36px;
+  background: none;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* ═══════════════════════════════
+   PIP Mode Styles
+   ═══════════════════════════════ */
+
+#pip-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 99999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+}
+
+#pip-status {
+  font-size: 16px;
+  font-weight: 800;
+  color: #3fb950;
+  margin-bottom: 4px;
+}
+
+#pip-timer {
+  font-size: 28px;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  color: #58a6ff;
+  letter-spacing: 2px;
+}
+
+#pip-gps {
+  font-size: 11px;
+  color: #7d8590;
+  margin-top: 4px;
+}
+
+#pip-hint {
+  font-size: 8px;
+  color: #484f58;
+  margin-top: 8px;
+  letter-spacing: 0.5px;
+}
+
+/* PIP 모드 활성 시 기본 UI 숨기기 */
+body.pip-active #screen-main,
+body.pip-active #main-header,
+body.pip-active #bottom-nav,
+body.pip-active #active-banner,
+body.pip-active .modal-overlay {
+  display: none !important;
+}
+
+body.pip-active {
+  background: #000 !important;
+  overflow: hidden;
+}

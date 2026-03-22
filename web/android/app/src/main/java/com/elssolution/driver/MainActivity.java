@@ -17,12 +17,13 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         registerPlugin(OverlayPlugin.class);
 
-        // 안드로이드 13 이상에서 알림 및 미디어 권한 무조건 요청
+        // 안드로이드 13 이상에서 알림, 미디어, 전화 권한 요청
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             String[] permissions = {
                 Manifest.permission.POST_NOTIFICATIONS,
                 Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_PHONE_STATE
             };
             
             boolean needRequest = false;
