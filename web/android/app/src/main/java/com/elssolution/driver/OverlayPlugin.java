@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResult;
 
@@ -48,6 +49,7 @@ public class OverlayPlugin extends Plugin {
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getContext().getPackageName())
                 );
+                Toast.makeText(getContext(), "설정 화면을 엽니다 (패키지 지정)", Toast.LENGTH_SHORT).show();
                 // startActivityForResult: 사용자가 설정에서 돌아올 때까지 대기
                 startActivityForResult(call, intent, "overlayPermResult");
                 Log.d(TAG, "오버레이 권한 설정 화면 열기 시도 (직접)");
@@ -56,6 +58,7 @@ public class OverlayPlugin extends Plugin {
                 try {
                     // 방법 2: 패키지 지정 없이 전체 오버레이 권한 리스트 화면으로 이동 (안드로이드 11+ 일부 기기 대응)
                     Intent intentList = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                    Toast.makeText(getContext(), "설정 화면을 엽니다 (목록)", Toast.LENGTH_SHORT).show();
                     startActivityForResult(call, intentList, "overlayPermResult");
                     Log.d(TAG, "오버레이 권한 설정 리스트 화면 열기 시도");
                 } catch (Exception e1b) {
@@ -96,7 +99,7 @@ public class OverlayPlugin extends Plugin {
      * 사용자가 설정 화면에서 돌아왔을 때 호출되는 콜백
      */
     @ActivityCallback
-    private void overlayPermResult(PluginCall call, ActivityResult result) {
+    public void overlayPermResult(PluginCall call, ActivityResult result) {
         if (call == null) {
             Log.w(TAG, "콜백: call이 null");
             return;

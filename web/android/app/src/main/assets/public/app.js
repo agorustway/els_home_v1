@@ -190,12 +190,14 @@
     if(r.ok&&d&&d.item){
       const it = d.item;
       if(it.name) document.getElementById('inp-name').value=it.name;
-      if(it.business_number) document.getElementById('inp-vehicle').value=it.business_number;
-      if(it.vehicle_number && !it.business_number) document.getElementById('inp-vehicle').value=it.vehicle_number;
-      if(it.driver_id) document.getElementById('inp-id').value=it.driver_id;
-      if(it.vehicle_id && !it.driver_id) document.getElementById('inp-id').value=it.vehicle_id;
+      // 매칭 우선순위: business_number -> vehicle_number
+      const vNum = it.business_number || it.vehicle_number || '';
+      if(vNum) document.getElementById('inp-vehicle').value=vNum;
+      // 매칭 우선순위: driver_id -> vehicle_id -> id
+      const vId = it.driver_id || it.vehicle_id || it.id || '';
+      if(vId) document.getElementById('inp-id').value=vId;
       haptic('Heavy'); showModal('조회 성공',`${it.name} 기사님 정보 로드`);
-    } else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message);}
+    } else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message+'\n'+JSON.stringify(e));}
   }
   async function saveProfile(){
     const n=document.getElementById('inp-name').value.trim(),p=document.getElementById('inp-phone').value.trim(),v=document.getElementById('inp-vehicle').value.trim(),i=document.getElementById('inp-id').value.trim().toUpperCase();
@@ -396,11 +398,13 @@
   function renderPhotos(){
     const g=document.getElementById('photo-grid');g.innerHTML='';
     photos.forEach((p,i)=>{const w=document.createElement('div');w.className='photo-wrapper';const img=document.createElement('img');
-      img.src=p.key?`${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}`:p.previewUrl;w.appendChild(img);
+      const src=p.key?`${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}`:p.previewUrl;
+      img.src=src; img.onclick=()=>zoomImage(src); w.appendChild(img);
       if(p.uploaded){const b=document.createElement('div');b.className='photo-badge';b.textContent='✓';w.appendChild(b);}
       const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deletePhoto(i);w.appendChild(d);g.appendChild(w);});
     document.getElementById('photo-add-label').style.display=photos.length>=10?'none':'flex';
   }
+  function zoomImage(src){const m=document.getElementById('modal-photo'),img=document.getElementById('zoom-img');if(m&&img){img.src=src;m.style.display='flex';}}
   async function deletePhoto(idx){const p=photos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}photos.splice(idx,1);renderPhotos();}
 
   // ═══ 기록 사진 ═══
@@ -418,7 +422,8 @@
   function renderHistoryPhotos(){
     const g=document.getElementById('h-photo-grid');g.innerHTML='';const cnt=document.getElementById('h-photo-count');if(cnt)cnt.textContent=historyPhotos.length;
     historyPhotos.forEach((p,i)=>{const w=document.createElement('div');w.className='photo-wrapper';const img=document.createElement('img');
-      img.src=p.url||`${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}`;img.onerror=function(){this.style.background='#1c2128';};
+      const src=p.url||`${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}`;
+      img.src=src; img.onclick=()=>zoomImage(src); img.onerror=function(){this.style.background='#1c2128';};
       w.appendChild(img);const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deleteHistoryPhoto(i);w.appendChild(d);g.appendChild(w);});
   }
   async function deleteHistoryPhoto(idx){const p=historyPhotos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}historyPhotos.splice(idx,1);renderHistoryPhotos();}
