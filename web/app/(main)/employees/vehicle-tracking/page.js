@@ -282,7 +282,7 @@ export default function VehicleTrackingPage() {
                 <h2><span>🚛</span> 차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
                 <div className={styles.titleBtns}>
                     <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>🔄 새로고침</button>
-                    <button className={styles.driverLinkBtn} onClick={() => window.open('/driver-app', 'DriverApp', 'width=420,height=800')}>📱 차량용 웹 페이지 (팝업)</button>
+
                 </div>
             </div>
             
