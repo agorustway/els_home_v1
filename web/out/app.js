@@ -765,7 +765,7 @@
   window.handlePhotos=handlePhotos;window.handleHistoryPhotos=handleHistoryPhotos;
   window.switchTab=switchTab;window.loadHistory=loadHistory;window.showHistoryDetail=showHistoryDetail;
   window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;window.exitApp=exitApp;
-  window.resetTripData=resetTripData;
+  window.resetTripData=resetTripData;window.showScreen=showScreen;
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
 })();
