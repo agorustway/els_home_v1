@@ -2,7 +2,7 @@
 (() => {
   const Capacitor = window.Capacitor || {};
   const CapacitorPlugins = Capacitor.Plugins || {};
-  const getOverlay = () => window.Capacitor?.Plugins?.Overlay;
+  const getOverlay = () => (Capacitor.registerPlugin ? Capacitor.registerPlugin('Overlay') : CapacitorPlugins.Overlay);
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
 
   // ── 상태 ──
@@ -161,7 +161,7 @@
     if(!isOnline){showModal('알림','인터넷 필요');return;}
     const ph=document.getElementById('inp-phone').value.trim();if(ph.length<10){showModal('오류','올바른 전화번호');return;}
     try{const r=await fetch(`${API_BASE}/drivers?phone=${encodeURIComponent(ph)}`);const d=await safeJson(r);
-    if(r.ok&&d&&d.driver){if(d.driver.name)document.getElementById('inp-name').value=d.driver.name;if(d.driver.vehicle_number)document.getElementById('inp-vehicle').value=d.driver.vehicle_number;if(d.driver.vehicle_id)document.getElementById('inp-id').value=d.driver.vehicle_id;haptic('Heavy');showModal('조회 성공',`${d.driver.name} 기사님 정보 로드`);}
+    if(r.ok&&d&&d.driver){if(d.driver.name)document.getElementById('inp-name').value=d.driver.name;if(d.driver.vehicle_number)document.getElementById('inp-vehicle').value=d.driver.vehicle_number;if(d.driver.vehicle_id||d.driver.driver_id)document.getElementById('inp-id').value=(d.driver.vehicle_id||d.driver.driver_id);haptic('Heavy');showModal('조회 성공',`${d.driver.name} 기사님 정보 로드`);}
     else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message);}
   }
   async function saveProfile(){
@@ -344,10 +344,11 @@
     event.target.value='';
   }
   async function uploadSinglePhoto(idx,uid){
-    try{const p=photos[idx];if(!p||!p.file||p.uploaded)return;const b64=await encodeFileToBase64(p.file);
-      const r=await smartPost(`${API_BASE}/photos`,{trip_id:uid,photos:[{name:p.file.name||`photo_${Date.now()}.jpg`,type:'image/jpeg',base64:b64}]});
-      if(r.ok){photos[idx].uploaded=true;if(r.data.photos&&r.data.photos.length>0)photos[idx].key=r.data.photos[r.data.photos.length-1].key;renderPhotos();}
-      else showModal('업로드 실패',(r.data?.error||r.status)+'');
+    try{const p=photos[idx];if(!p||!p.file||p.uploaded)return;
+      const fd = new FormData(); fd.append('trip_id', uid); fd.append('photos', p.file, p.file.name||`photo_${Date.now()}.jpg`);
+      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:fd}); const d=await safeJson(res);
+      if(res.ok){photos[idx].uploaded=true;if(d.photos&&d.photos.length>0)photos[idx].key=d.photos[d.photos.length-1].key;renderPhotos();}
+      else showModal('업로드 실패',(d?.error||res.status)+'');
     }catch(e){showModal('업로드 오류',e.message);}
   }
   async function uploadPendingPhotos(){const uid=tripId||lastTripId;if(!uid||!isOnline)return;for(let i=0;i<photos.length;i++){if(!photos[i].uploaded)await uploadSinglePhoto(i,uid);}}
@@ -367,10 +368,11 @@
   async function handleHistoryPhotos(event){
     if(!selectedTripId){showModal('오류','기록 선택 필요');return;}if(!isOnline){showModal('오프라인','인터넷 필요');return;}
     const files=event.target.files;if(!files.length)return;
-    for(const file of files){try{const resized=await resizeImage(file,1200,0.7);const b64=await encodeFileToBase64(resized);
-      const r=await smartPost(`${API_BASE}/photos`,{trip_id:selectedTripId,photos:[{name:file.name||`photo_${Date.now()}.jpg`,type:'image/jpeg',base64:b64}]});
-      if(r.ok&&r.data.photos&&r.data.photos.length>0){historyPhotos.push({key:r.data.photos[r.data.photos.length-1].key,url:r.data.photos[r.data.photos.length-1].url});renderHistoryPhotos();}
-      else showModal('업로드 실패',(r.data?.error||r.status)+'');
+    for(const file of files){try{const resized=await resizeImage(file,1200,0.7);
+      const fd = new FormData(); fd.append('trip_id', selectedTripId); fd.append('photos', resized, file.name||`photo_${Date.now()}.jpg`);
+      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:fd}); const d=await safeJson(res);
+      if(res.ok&&d.photos&&d.photos.length>0){historyPhotos.push({key:d.photos[d.photos.length-1].key,url:d.photos[d.photos.length-1].url});renderHistoryPhotos();}
+      else showModal('업로드 실패',(d?.error||res.status)+'');
     }catch(e){showModal('업로드 오류',e.message);}}event.target.value='';
   }
   function renderHistoryPhotos(){
@@ -444,7 +446,7 @@
   window.startTrip=startTrip;window.pauseTrip=pauseTrip;window.resumeTrip=resumeTrip;window.stopTrip=stopTrip;
   window.handlePhotos=handlePhotos;window.handleHistoryPhotos=handleHistoryPhotos;
   window.switchTab=switchTab;window.loadHistory=loadHistory;window.showHistoryDetail=showHistoryDetail;
-  window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;
+  window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;window.exitApp=exitApp;
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
 })();
