@@ -1,12 +1,12 @@
 (() => {
-  // Capacitor Core init (실제 파일 생성 시 Capacitor 번들 포함)
+  // ELS Solution Optimized JS
   const API_BASE = "https://nollae.com/api/vehicle-tracking";
   let tripId = localStorage.getItem('els_active_trip_id') || null;
-  let tripStatus = null;
+  let tripStatus = localStorage.getItem('els_active_trip_status') || null;
+  let timerInterval = null;
+  let elapsedSeconds = 0;
   let isBusy = false;
-  let historyData = [];
 
-  // API 호출 규격 (TDD 기반)
   async function api(url, method, body) {
     try {
       const res = await fetch(url, {
@@ -19,7 +19,25 @@
     } catch (e) { return { ok: false, error: e.message }; }
   }
 
-  // ---------------- UI Functions ----------------
+  // ---------------- Tmap 스타일 오버레이 제어 ----------------
+  window.showOverlay = async function() {
+    if (typeof Capacitor === 'undefined' || !tripId || tripStatus !== 'driving') return;
+    try {
+      await Capacitor.Plugins.Overlay.showOverlay({
+        timer: formatTime(elapsedSeconds),
+        container: document.getElementById('inp-container')?.value || localStorage.getItem('els_last_container') || '-',
+        tripId: tripId,
+        status: tripStatus
+      });
+    } catch (e) {}
+  };
+
+  window.hideOverlay = async function() {
+    if (typeof Capacitor === 'undefined') return;
+    try { await Capacitor.Plugins.Overlay.hideOverlay(); } catch (e) {}
+  };
+
+  // ---------------- 운행 로직 ----------------
   window.startTrip = async function() {
     if (isBusy) return;
     const container = document.getElementById("inp-container")?.value.trim().toUpperCase();
@@ -31,16 +49,17 @@
       driver_phone: localStorage.getItem("els_phone"),
       vehicle_number: localStorage.getItem("els_vehicle"),
       container_number: container,
-      seal_number: document.getElementById("inp-seal")?.value.trim().toUpperCase() || "",
-      container_type: document.getElementById("inp-cont-size")?.value || "40FT",
-      container_kind: document.getElementById("inp-cont-type")?.value || "DRY"
+      status: "driving"
     };
 
     const res = await api(`${API_BASE}/trips`, "POST", body);
     if (res.ok) {
-      // TDD 결과 반영: res.data.id 또는 res.data.trip.id 대응
       tripId = res.data.id || (res.data.trip && res.data.trip.id);
+      tripStatus = "driving";
       localStorage.setItem("els_active_trip_id", tripId);
+      localStorage.setItem("els_active_trip_status", tripStatus);
+      localStorage.setItem("els_last_container", container);
+      startTimer();
       alert("운행이 시작되었습니다.");
       location.reload();
     } else {
@@ -57,129 +76,113 @@
     const res = await api(`${API_BASE}/trips/${id}`, "PATCH", { action: "complete" });
     if (res.ok) {
       localStorage.removeItem("els_active_trip_id");
+      localStorage.removeItem("els_active_trip_status");
+      tripId = null;
+      tripStatus = null;
+      clearInterval(timerInterval);
+      await window.hideOverlay();
       alert("종료되었습니다.");
       location.reload();
-    } else {
-      alert("종료 실패");
     }
   };
 
-  window.handlePhotos = async function(event) {
-    const id = tripId || localStorage.getItem('els_active_trip_id');
-    if (!id) { alert("운행 정보가 없습니다. 운행 시작 후 업로드하세요."); return; }
-    
-    const files = event.target.files;
-    if (!files.length) return;
+  function startTimer() {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      if (tripStatus === 'driving') {
+        elapsedSeconds++;
+        const str = formatTime(elapsedSeconds);
+        const d = document.getElementById('trip-timer-display');
+        if(d) d.textContent = str;
+        // 5초마다 오버레이 정보 갱신
+        if (elapsedSeconds % 5 === 0) {
+          if (typeof Capacitor !== 'undefined' && Capacitor.Plugins.Overlay) {
+            Capacitor.Plugins.Overlay.updateOverlay({ timer: str, tripId, status: tripStatus }).catch(()=>{});
+          }
+        }
+      }
+    }, 1000);
+  }
 
-    for (let file of files) {
-      const base64 = await new Promise(r => {
-        const reader = new FileReader();
-        reader.onload = () => r(reader.result.split(',')[1]);
-        reader.readAsDataURL(file);
-      });
+  function formatTime(sec) {
+    const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+    const m = String(Math.floor(sec % 3600 / 60)).padStart(2, "0");
+    const s = String(sec % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  }
 
-      const res = await api(`${API_BASE}/photos`, "POST", {
-        trip_id: id,
-        photos: [{ name: file.name, type: "image/jpeg", base64 }]
+  // ---------------- 초기화 및 이벤트 바인딩 ----------------
+  async function init() {
+    if (typeof Capacitor !== 'undefined') {
+      const { App } = Capacitor.Plugins;
+      // 앱 상태 감지 (Tmap 스타일 핵심)
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive && tripStatus === 'driving') window.showOverlay();
+        else if (isActive) window.hideOverlay();
       });
-      if (res.ok) alert("사진 업로드 성공!");
-      else alert("업로드 실패: " + JSON.stringify(res.data));
     }
-  };
 
+    const phone = localStorage.getItem("els_phone");
+    if (phone) {
+      const res = await api(`${API_BASE}/trips?mode=my&phone=${phone}`, "GET");
+      if (res.ok) {
+        const list = document.getElementById("history-list");
+        if (list) {
+          list.innerHTML = res.data.trips.map(t => `
+            <div onclick="window.openTripDetail('${t.id}')" style="padding:15px; border-bottom:1px solid #30363d; cursor:pointer;">
+              <div style="display:flex; justify-content:space-between;">
+                <div style="font-weight:bold; font-size:16px;">${t.container_number || '미입력'}</div>
+                <div style="background:${t.status==='driving'?'#238636':'#8b949e'}; font-size:11px; padding:2px 6px; border-radius:4px;">${t.status==='driving'?'운행중':'종료'}</div>
+              </div>
+              <div style="font-size:12px; color:#8b949e; margin-top:5px;">${new Date(t.started_at).toLocaleString()} | ${t.vehicle_number}</div>
+            </div>
+          `).join('');
+        }
+        
+        // 현재 운행 중인게 있다면 타이머 재시작
+        const active = res.data.trips.find(t => t.status === 'driving');
+        if (active) {
+          tripId = active.id;
+          tripStatus = 'driving';
+          const start = new Date(active.started_at).getTime();
+          elapsedSeconds = Math.floor((Date.now() - start) / 1000);
+          startTimer();
+        }
+      }
+    }
+  }
+
+  // 전역 노출 및 초기화
+  window.startTrip = startTrip;
+  window.stopTrip = stopTrip;
   window.openTripDetail = async function(id) {
-    if (!id) return;
     const res = await api(`${API_BASE}/trips/${id}`, "GET");
-    if (!res.ok) { alert("상세 조회 실패 (405 해결 필요)"); return; }
-    
+    if (!res.ok) return;
     const t = res.data;
-    const modalBody = document.getElementById("modal-body");
-    modalBody.innerHTML = `
+    document.getElementById("modal-body").innerHTML = `
       <div style="text-align:left; color:#e6edf3; padding:10px;">
-        <div id="view-mode">
-          <p><strong>컨테이너:</strong> ${t.container_number}</p>
-          <p><strong>씰 번호:</strong> ${t.seal_number || '-'}</p>
-          <p><strong>규격:</strong> ${t.container_type} / ${t.container_kind}</p>
-          <p><strong>상태:</strong> ${t.status === 'driving' ? '운행중' : '종료'}</p>
-          <button onclick="window.enableEditMode()" style="width:100%; padding:10px; margin-top:10px; background:#30363d; color:white; border:1px solid #8b949e; border-radius:6px;">정보 수정</button>
-          ${t.status === 'driving' ? `<button onclick="window.forceFinish('${t.id}')" style="background:#f85149; color:white; width:100%; padding:10px; border:none; border-radius:6px; margin-top:10px;">강제종료</button>` : ""}
-        </div>
-        <div id="edit-mode" style="display:none;">
-          <input type="text" id="edit-cont" class="inp-main" value="${t.container_number}" style="margin-bottom:10px;">
-          <input type="text" id="edit-seal" class="inp-main" value="${t.seal_number || ''}" placeholder="씰 번호" style="margin-bottom:10px;">
-          <button onclick="window.saveEdit('${t.id}')" style="width:100%; padding:10px; background:#238636; color:white; border:none; border-radius:6px;">저장</button>
-          <button onclick="window.disableEditMode()" style="width:100%; padding:10px; margin-top:5px; background:transparent; color:#8b949e; border:none;">취소</button>
-        </div>
+        <p><strong>컨테이너:</strong> ${t.container_number}</p>
+        <p><strong>차량:</strong> ${t.vehicle_number}</p>
+        <p><strong>상태:</strong> ${t.status === 'driving' ? '운행중' : '종료'}</p>
+        ${t.status === 'driving' ? `<button onclick="window.stopTrip()" style="background:#f85149; color:white; width:100%; padding:10px; border:none; border-radius:6px; margin-top:10px;">운행종료</button>` : ""}
       </div>
     `;
     document.getElementById("modal-alert").style.display = "flex";
   };
-
-  window.enableEditMode = () => { document.getElementById("view-mode").style.display = "none"; document.getElementById("edit-mode").style.display = "block"; };
-  window.disableEditMode = () => { document.getElementById("view-mode").style.display = "block"; document.getElementById("edit-mode").style.display = "none"; };
-
-  window.saveEdit = async function(id) {
-    const container_number = document.getElementById("edit-cont").value;
-    const seal_number = document.getElementById("edit-seal").value;
-    const res = await api(`${API_BASE}/trips/${id}`, "PATCH", { container_number, seal_number });
-    if (res.ok) { alert("수정 성공"); location.reload(); }
-  };
-
-  window.forceFinish = async function(id) {
-    if (!confirm("정말 강제 종료하시겠습니까?")) return;
-    const res = await api(`${API_BASE}/trips/${id}`, "PATCH", { action: "complete" });
-    if (res.ok) { alert("종료 성공"); location.reload(); }
-  };
-
-  window.requestOverlayPerm = async function() {
-    if (typeof Capacitor === 'undefined') return;
-    try {
-      const Overlay = Capacitor.Plugins.Overlay;
-      alert("잠시 후 설정창으로 이동합니다.\n목록에서 '다른 앱 위에 표시'를 찾아 '허용'으로 바꿔주세요.");
-      await Overlay.requestPermission();
-    } catch (e) { alert("설정창 호출 실패: " + e.message); }
-  };
-
   window.closeModal = () => document.getElementById("modal-alert").style.display = "none";
-
-  window.checkPhone = async function() {
-    const phone = document.getElementById("inp-phone")?.value.trim();
-    if (!phone) return;
-    const res = await api(`${API_BASE}/drivers?phone=${encodeURIComponent(phone)}`, "GET");
-    if (res.ok && res.data.driver) {
-      const d = res.data.driver;
-      document.getElementById("inp-name").value = d.name || "";
-      document.getElementById("inp-vehicle").value = d.vehicle_number || "";
-      document.getElementById("inp-id").value = d.vehicle_id || "";
-      // 로컬 스토리지 저장 (ID 포함)
-      localStorage.setItem("els_name", d.name || "");
-      localStorage.setItem("els_phone", phone);
-      localStorage.setItem("els_vehicle", d.vehicle_number || "");
-      localStorage.setItem("els_id", d.vehicle_id || "");
-      alert("정보를 불러왔습니다.");
-    } else {
-      alert("등록된 정보가 없습니다. 직접 입력해주세요.");
-    }
-  };
-
-  window.requestCameraPerm = async function() {
-    alert("카메라 및 '사진/동영상' 권한이 필요합니다.\n설정창이 뜨면 모두 '허용'해 주세요.");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(t => t.stop());
-      alert("권한이 확인되었습니다.");
-    } catch(e) {
-      alert("권한 요청 실패. 앱 설정에서 수동으로 허용해 주세요.");
-      if(typeof Capacitor !== 'undefined') Capacitor.Plugins.Overlay.openAppSettings();
-    }
+  window.handlePhotos = async function(event) {
+    if (!tripId) { alert("운행 정보가 없습니다."); return; }
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      const res = await api(`${API_BASE}/photos`, "POST", { trip_id: tripId, photos: [{ name: file.name, type: "image/jpeg", base64 }] });
+      if (res.ok) alert("사진 업로드 성공!");
+      else alert("실패: " + JSON.stringify(res.data));
+    };
+    reader.readAsDataURL(file);
   };
 
   document.addEventListener("DOMContentLoaded", init);
-  
-  // Capacitor App State Change
-  if (typeof Capacitor !== 'undefined') {
-    Capacitor.Plugins.App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) init(); // 다시 돌아올 때 목록 갱신
-    });
-  }
 })();

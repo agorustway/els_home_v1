@@ -47,23 +47,25 @@ public class FloatingWidgetService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         createNotificationChannel();
-        
+
         Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this,
-                0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("실시간 운송 추적 중")
-                .setContentText("위치 정보를 서버로 전송하고 있습니다.")
+                .setContentTitle("ELS 운송 관리")
+                .setContentText("운행 정보를 기록 중입니다.")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
         } else {
             startForeground(1, notification);
+        }
         }
 
         if (intent != null) {
