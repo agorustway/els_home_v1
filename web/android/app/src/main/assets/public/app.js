@@ -347,7 +347,7 @@
     localStorage.setItem('els_name',n);localStorage.setItem('els_phone',p);localStorage.setItem('els_vehicle',v);localStorage.setItem('els_id',i);
     loadSavedProfile();haptic();showModal('완료','프로필 저장');
   }
-  function resetApp(){if(confirm('모든 데이터 삭제?')){localStorage.clear();location.reload();}}
+  function resetApp(){if(confirm('설정 정보(기사 정보 등)를 모두 초기화하고\n앱을 다시 시작하시겠습니까?')){localStorage.clear();location.reload();}}
   function exitApp(){
     if(tripStatus==='driving'||tripStatus==='paused'){showModal('경고','운행 중 종료 불가. 먼저 운행을 종료해 주세요.');return;}
     if(!confirm('앱을 종료합니까?'))return;

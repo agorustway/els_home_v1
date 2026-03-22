@@ -117,7 +117,7 @@
       <div class="card"><div class="card-title">운송 기록</div><input type="month" id="history-month" onchange="loadHistory()"><div id="history-list"></div></div>
     </div>
 
-    <!-- 설정 탭 -->       <!-- 앱 권한 및 환경 설정 -->
+    <!-- 설정 탭 -->
     <div id="tab-settings" class="tab-panel" style="display:none">
       <div class="card">
         <div class="card-title">내 정보 수정</div>
@@ -129,13 +129,7 @@
         </div>
         <button id="btn-update-profile" class="btn-secondary" style="margin-top:16px">저장</button>
       </div>
-      <div class="card" style="padding:16px;">
-        <div class="card-title" style="margin-bottom:8px;">🛠️ 앱 권한 및 환경 설정</div>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px; line-height:1.5;">
-          위치 수집 및 카메라 등 앱 필수 권한 상태를 확인하고 재설정할 수 있습니다. 수집에 문제가 있을 경우 아래 버튼을 통해 확인하세요.
-        </p>
-        <button class="btn-primary" style="height:48px; font-size:0.9rem;" onclick="showScreen('screen-permissions'); haptic();">권한 상태 확인 및 재설정</button>
-      </div>
+
 
       <div class="card">
         <div class="card-title">GPS 수집 설정</div>
@@ -146,7 +140,7 @@
       <div class="card">
         <div class="card-title">앱 정보</div>
         <p class="text-muted">버전 3.4.0 (Standalone Native)</p>
-        <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화(모든 데이터 삭제)</button>
+        <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화 (재설정)</button>
         <button id="btn-exit-app" class="btn-outline" style="margin-top:8px">앱 종료</button>
       </div>
     </div>
