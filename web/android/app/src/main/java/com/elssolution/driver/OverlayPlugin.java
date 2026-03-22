@@ -76,24 +76,19 @@ public class OverlayPlugin extends Plugin {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                             getActivity().startActivity(intent);
                             success = true;
-                        } catch (Exception e) {}
-            
-                        if (!success) {
+                        } catch (Exception e) {
+                            // 패키지 지정 방식이 실패하면 전체 오버레이 설정 목록을 열어줌
                             try {
                                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 getActivity().startActivity(intent);
                                 success = true;
-                            } catch (Exception e) {}
-                        }
-            
-                        if (!success) {
-                            try {
-                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                            } catch (Exception e2) {
+                                // 설정 페이지로 이동 (마지막 수단)
+                                Intent intent = new Intent(Settings.ACTION_SETTINGS);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 getActivity().startActivity(intent);
-                            } catch (Exception e) {}
+                            }
                         }
                         call.resolve();
                     }

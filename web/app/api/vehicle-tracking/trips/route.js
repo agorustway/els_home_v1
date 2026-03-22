@@ -195,6 +195,22 @@ export async function POST(request) {
             return NextResponse.json({ error: '차량번호와 이름은 필수입니다.' }, { status: 400 });
         }
 
+        // 중복 생성 방지: 동일 차량/기사로 이미 'driving'인 건이 있는지 확인 (시간 범위를 5분으로 확장)
+        const now = new Date();
+        const fiveMinAgo = new Date(now.getTime() - 300000).toISOString();
+        const { data: existing } = await supabase
+            .from('vehicle_trips')
+            .select('id')
+            .eq('vehicle_number', vehicle_number)
+            .eq('driver_name', driver_name)
+            .eq('status', 'driving')
+            .gte('created_at', fiveMinAgo)
+            .limit(1);
+
+        if (existing && existing.length > 0) {
+            return NextResponse.json({ id: existing[0].id, message: '이미 운행 중인 기록이 있어 해당 기록으로 연결합니다.' });
+        }
+
         const { data: trip, error } = await supabase
             .from('vehicle_trips')
             .insert([{
