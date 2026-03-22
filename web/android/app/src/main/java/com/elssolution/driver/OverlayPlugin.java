@@ -17,82 +17,28 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "Overlay")
 public class OverlayPlugin extends Plugin {
 
-    private BroadcastReceiver widgetActionReceiver;
-
-    @Override
-    public void load() {
-        super.load();
-        widgetActionReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if ("com.elssolution.driver.WIDGET_ACTION".equals(intent.getAction())) {
-                    String action = intent.getStringExtra("action");
-                    JSObject ret = new JSObject();
-                    ret.put("action", action);
-                    notifyListeners("onWidgetAction", ret);
-                }
-            }
-        };
-        // 안드로이드 14 지원을 위한 Exported 속성 (RECEIVER_NOT_EXPORTED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getContext().registerReceiver(widgetActionReceiver, new IntentFilter("com.elssolution.driver.WIDGET_ACTION"), Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            getContext().registerReceiver(widgetActionReceiver, new IntentFilter("com.elssolution.driver.WIDGET_ACTION"));
-        }
-    }
-
-    @Override
-    protected void handleOnDestroy() {
-        super.handleOnDestroy();
-        if (widgetActionReceiver != null) {
-            try {
-                getContext().unregisterReceiver(widgetActionReceiver);
-            } catch (Exception e) {}
-        }
-    }
-
     @PluginMethod
     public void checkPermission(PluginCall call) {
         JSObject ret = new JSObject();
-        boolean granted = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            granted = Settings.canDrawOverlays(getContext());
-        }
-        ret.put("granted", granted);
+        ret.put("granted", Settings.canDrawOverlays(getContext()));
         call.resolve(ret);
     }
 
     @PluginMethod
     public void requestPermission(final PluginCall call) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(getContext())) {
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                // 1단계: 내 앱 전용 오버레이 설정창 시도
-                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                        Uri.parse("package:" + getContext().getPackageName()));
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                getActivity().startActivity(intent);
-                            } catch (Exception e) {
-                                // 2단계: 실패 시 가장 확실한 '앱 정보 설정' 페이지로 이동 (형의 요청사항)
-                                try {
-                                    Intent intentDetails = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                    intentDetails.setData(Uri.fromParts("package", getContext().getPackageName(), null));
-                                    intentDetails.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    getActivity().startActivity(intentDetails);
-                                } catch (Exception e2) {
-                                    // 3단계: 전체 오버레이 목록창
-                                    Intent intentGeneral = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                                    intentGeneral.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    getActivity().startActivity(intentGeneral);
-                                }
-                            }
-                        }
-                    });
-                }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
+            // 패키지 지정 방식 시도
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getContext().getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                getContext().startActivity(intent);
+            } catch (Exception e) {
+                // 실패 시 앱 상세 정보 창 (가장 확실한 폴백)
+                Intent intentApp = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getContext().getPackageName()));
+                intentApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intentApp);
             }
         }
         call.resolve();
@@ -104,9 +50,8 @@ public class OverlayPlugin extends Plugin {
             call.reject("Permission denied");
             return;
         }
-
         String timer = call.getString("timer", "00:00:00");
-        String container = call.getString("container", "📦 미입력");
+        String container = call.getString("container", "-");
         String status = call.getString("status", "driving");
         String tripId = call.getString("tripId");
 
@@ -121,17 +66,12 @@ public class OverlayPlugin extends Plugin {
 
     @PluginMethod
     public void updateOverlay(PluginCall call) {
-        String timer = call.getString("timer");
-        String container = call.getString("container");
-        String status = call.getString("status");
-        String tripId = call.getString("tripId");
-
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
-        intent.putExtra("timer", timer);
-        intent.putExtra("container", container);
-        intent.putExtra("status", status);
-        intent.putExtra("tripId", tripId);
-        getContext().startService(intent); // Already running, will call onStartCommand
+        intent.putExtra("timer", call.getString("timer"));
+        intent.putExtra("container", call.getString("container"));
+        intent.putExtra("status", call.getString("status"));
+        intent.putExtra("tripId", call.getString("tripId"));
+        getContext().startService(intent);
         call.resolve();
     }
 
@@ -143,52 +83,18 @@ public class OverlayPlugin extends Plugin {
 
     @PluginMethod
     public void openAppSettings(final PluginCall call) {
-        if (getActivity() != null) {
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        getActivity().startActivity(intent);
-                    } catch (Exception e) {
-                        try {
-                            Intent intent2 = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                            intent2.setData(Uri.fromParts("package", getContext().getPackageName(), null));
-                            intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            getActivity().startActivity(intent2);
-                        } catch (Exception e2) {}
-                    }
-                    call.resolve();
-                }
-            });
-        } else {
-            call.resolve();
-        }
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:" + getContext().getPackageName()));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
+        call.resolve();
     }
 
     @PluginMethod
     public void openLocationSettings(final PluginCall call) {
-        if (getActivity() != null) {
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        getActivity().startActivity(intent);
-                    } catch (Exception e) {
-                        try {
-                            Intent intent2 = new Intent(Settings.ACTION_SETTINGS);
-                            intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            getActivity().startActivity(intent2);
-                        } catch (Exception e2) {}
-                    }
-                    call.resolve();
-                }
-            });
-        } else {
-            call.resolve();
-        }
+        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
+        call.resolve();
     }
 }
