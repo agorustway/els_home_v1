@@ -2,7 +2,7 @@
 (() => {
   const Capacitor = window.Capacitor || {};
   const CapacitorPlugins = Capacitor.Plugins || {};
-  const Overlay = CapacitorPlugins.Overlay || null;
+  const getOverlay = () => window.Capacitor?.Plugins?.Overlay;
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
 
   // ── 상태 ──
@@ -60,7 +60,7 @@
       CapacitorPlugins.App.addListener('appStateChange',function(state){
         if(!state.isActive && (tripStatus==='driving'||tripStatus==='paused')){
           // 앱 백그라운드로 → 오버레이 또는 PIP
-          if(hasOverlayPerm && Overlay){
+          if(hasOverlayPerm && getOverlay()){
             showFloatingWidget();
           }
           // PIP는 MainActivity.onUserLeaveHint에서 자동 진입
@@ -100,15 +100,17 @@
 
   // 오버레이 권한 (TMAP 방식 플로팅)
   async function checkOverlayPerm(){
-    if(!Overlay)return;
-    try{const r=await Overlay.checkPermission();hasOverlayPerm=r.granted;if(hasOverlayPerm)markPermGranted('perm-overlay');}catch(e){}
+    const O = getOverlay();
+    if(!O)return;
+    try{const r=await O.checkPermission();hasOverlayPerm=r.granted;if(hasOverlayPerm)markPermGranted('perm-overlay');}catch(e){}
   }
   async function requestOverlayPerm(){
     haptic();
-    if(!Overlay){showModal('알림','이 기능은 안드로이드 앱에서만 사용 가능합니다.');return;}
+    const O = getOverlay();
+    if(!O){showModal('알림','이 기능은 안드로이드 앱에서만 사용 가능합니다.');return;}
     try{
       // OverlayPlugin.requestPermission → 설정 화면 열기 → 사용자가 돌아오면 결과 리턴
-      const result=await Overlay.requestPermission();
+      const result=await O.requestPermission();
       console.log('오버레이 권한 결과:',result);
       if(result.granted){
         hasOverlayPerm=true;
@@ -127,9 +129,10 @@
 
   // 플로팅 위젯 표시/숨기기
   function showFloatingWidget(){
-    if(!Overlay||!hasOverlayPerm)return;
+    const O = getOverlay();
+    if(!O||!hasOverlayPerm)return;
     try{
-      Overlay.showOverlay({
+      O.showOverlay({
         timer:formatTime(elapsedSeconds),
         container:document.getElementById('inp-container')?.value||'-',
         status:tripStatus||'driving',
@@ -139,14 +142,15 @@
       clearInterval(overlayTimerInterval);
       overlayTimerInterval=setInterval(()=>{
         if(!tripStatus)return;
-        try{Overlay.updateOverlay({timer:formatTime(elapsedSeconds),status:tripStatus,tripId:tripId||''});}catch(e){}
+        try{O.updateOverlay({timer:formatTime(elapsedSeconds),status:tripStatus,tripId:tripId||''});}catch(e){}
       },1000);
     }catch(e){console.error('플로팅 위젯 표시 오류:',e);}
   }
   function hideFloatingWidget(){
     clearInterval(overlayTimerInterval);
-    if(!Overlay)return;
-    try{Overlay.hideOverlay();}catch(e){}
+    const O = getOverlay();
+    if(!O)return;
+    try{O.hideOverlay();}catch(e){}
   }
 
   function markPermGranted(id){const it=document.getElementById(id);if(!it)return;const d=it.querySelector('.perm-dot');if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}const a=it.querySelector('.perm-arrow');if(a)a.textContent='✓';}
@@ -162,7 +166,7 @@
   }
   async function saveProfile(){
     const n=document.getElementById('inp-name').value.trim(),p=document.getElementById('inp-phone').value.trim(),v=document.getElementById('inp-vehicle').value.trim(),i=document.getElementById('inp-id').value.trim().toUpperCase();
-    if(!n||!p||!v||!i){showModal('입력 필요','모든 항목 입력');return;}if(!/^[A-Z]{4}[0-9]{4}$/.test(i)){showModal('형식 오류','아이디: 영문4+숫자4');return;}
+    if(!n||!p||!v||!i){showModal('입력 필요','모든 항목 입력');return;}
     if(isOnline){try{await smartPost(`${API_BASE}/drivers`,{name:n,phone:p,vehicle_number:v,vehicle_id:i});}catch(e){}}
     localStorage.setItem('els_name',n);localStorage.setItem('els_phone',p);localStorage.setItem('els_vehicle',v);localStorage.setItem('els_id',i);localStorage.setItem('els_setup_done','true');
     haptic('Heavy');loadSavedProfile();showScreen('screen-main');startGPS();

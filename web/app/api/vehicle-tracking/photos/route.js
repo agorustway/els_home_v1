@@ -24,7 +24,6 @@ const PHOTO_PREFIX = 'vehicle-tracking/photos';
  */
 export async function POST(request) {
     const supabase = await createAdminClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     try {
         let tripId;
@@ -65,7 +64,7 @@ export async function POST(request) {
             .from('vehicle_trips')
             .select('photos')
             .eq('id', tripId)
-            .single();
+            .maybeSingle();
 
         const existingPhotos = trip?.photos || [];
         if (existingPhotos.length + filesData.length > 10) {

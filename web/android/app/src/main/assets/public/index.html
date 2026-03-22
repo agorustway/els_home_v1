@@ -27,7 +27,7 @@
         <div class="perm-item" id="perm-phone"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">전화</div><div class="perm-desc">기사 연락처 확인</div></div><div class="perm-arrow">›</div></div>
                 <div class="perm-item" id="perm-overlay">
           <div class="perm-dot dot-red"></div>
-          <div class="perm-info"><div class="perm-name">다른 앱 위에 표시 (선택)</div><div class="perm-desc">TMAP처럼 플로팅 위젯 표시</div></div>
+          <div class="perm-info"><div class="perm-name">다른 앱 위에 표시</div><div class="perm-desc">TMAP처럼 플로팅 위젯 표시</div></div>
           <div class="perm-arrow">›</div>
         </div>      </div>
       <button id="btn-finish-perms" class="btn-primary">다음 단계로</button>
@@ -44,7 +44,7 @@
         <label>연락처(숫자만)</label>
         <div style="display:flex;gap:8px;"><input type="tel" id="inp-phone" placeholder="01012345678" style="flex:1;"><button id="btn-check-phone" class="btn-secondary" style="width:70px;height:48px;">조회</button></div>
         <label>차량 번호</label><input type="text" id="inp-vehicle" placeholder="부산01가0000">
-        <label>아이디(D-ID)</label><input type="text" id="inp-id" placeholder="ABCD1234" maxlength="8" oninput="this.value=this.value.toUpperCase()">
+        <label>아이디(차량코드)</label><input type="text" id="inp-id" placeholder="차량코드" maxlength="8" oninput="this.value=this.value.toUpperCase()">
       </div>
       <button id="btn-save-profile" class="btn-primary">등록 완료</button>
     </div>
@@ -110,6 +110,7 @@
       <button class="nav-btn active" onclick="switchTab('home')">운행</button>
       <button class="nav-btn" onclick="switchTab('history')">기록</button>
       <button class="nav-btn" onclick="switchTab('settings')">설정</button>
+      <button class="nav-btn" onclick="exitApp()" style="color:#f85149;">종료</button>
     </nav>
 
     <!-- 기록 탭 -->
