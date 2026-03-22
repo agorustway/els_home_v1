@@ -71,21 +71,23 @@ public class OverlayPlugin extends Plugin {
                         @Override
                         public void run() {
                             try {
+                                // 1단계: 내 앱 전용 오버레이 설정창 시도
                                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                         Uri.parse("package:" + getContext().getPackageName()));
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 getActivity().startActivity(intent);
                             } catch (Exception e) {
+                                // 2단계: 실패 시 가장 확실한 '앱 정보 설정' 페이지로 이동 (형의 요청사항)
                                 try {
-                                    Intent intentFallback = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                                    intentFallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    getActivity().startActivity(intentFallback);
+                                    Intent intentDetails = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                    intentDetails.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                                    intentDetails.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    getActivity().startActivity(intentDetails);
                                 } catch (Exception e2) {
-                                    // 마지막 수단: 앱 설정창
-                                    Intent intentApp = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                            Uri.parse("package:" + getContext().getPackageName()));
-                                    intentApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    getActivity().startActivity(intentApp);
+                                    // 3단계: 전체 오버레이 목록창
+                                    Intent intentGeneral = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                                    intentGeneral.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    getActivity().startActivity(intentGeneral);
                                 }
                             }
                         }

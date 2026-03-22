@@ -134,9 +134,10 @@
   window.requestOverlayPerm = async function() {
     if (typeof Capacitor === 'undefined') return;
     try {
-      await Capacitor.Plugins.Overlay.requestPermission();
-      alert("설정 창이 열리면 '허용'을 누르고 앱으로 돌아오세요.");
-    } catch (e) { alert("호출 실패: " + e.message); }
+      const Overlay = Capacitor.Plugins.Overlay;
+      alert("잠시 후 설정창으로 이동합니다.\n목록에서 '다른 앱 위에 표시'를 찾아 '허용'으로 바꿔주세요.");
+      await Overlay.requestPermission();
+    } catch (e) { alert("설정창 호출 실패: " + e.message); }
   };
 
   window.closeModal = () => document.getElementById("modal-alert").style.display = "none";
