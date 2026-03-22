@@ -181,7 +181,7 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const {
+        let {
             driver_name,
             driver_phone,
             vehicle_number,
@@ -190,8 +190,15 @@ export async function POST(request) {
             seal_number,
             container_type = '40FT',
             container_kind = 'DRY',
-            special_notes,
+            special_notes = '',
         } = body;
+
+        // 45FT 등 DB 체크 제약조건 회피용 매핑
+        const allowedTypes = ['20FT', '40FT', '40FT_HQ'];
+        if (!allowedTypes.includes(container_type)) {
+            special_notes = `[원래사이즈:${container_type}] ` + special_notes;
+            container_type = '40FT_HQ';
+        }
 
         if (!vehicle_number || !driver_name) {
             return NextResponse.json({ error: '차량번호와 이름은 필수입니다.' }, { status: 400 });

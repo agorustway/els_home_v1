@@ -380,7 +380,7 @@
       try{const resized=await resizeImage(file,1200,0.7);const prev=URL.createObjectURL(resized);
         photos.push({file:resized,previewUrl:prev,uploaded:false,key:null});renderPhotos();
         const uid=tripId||lastTripId;if(uid&&isOnline)await uploadSinglePhoto(photos.length-1,uid);
-      }catch(e){console.error('사진 처리:',e);}}
+      }catch(e){showModal('사진 처리 제한','이미지를 불러올수 없습니다.\n'+e.message);}}
     event.target.value='';
   }
   async function uploadSinglePhoto(idx,uid){
@@ -393,7 +393,7 @@
     }catch(e){showModal('업로드 오류',e.message);}
   }
   async function uploadPendingPhotos(){const uid=tripId||lastTripId;if(!uid||!isOnline)return;for(let i=0;i<photos.length;i++){if(!photos[i].uploaded)await uploadSinglePhoto(i,uid);}}
-  function resizeImage(f,mx,q){return new Promise(r=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>mx||h>mx){if(w>h){h=Math.round(h*mx/w);w=mx;}else{w=Math.round(w*mx/h);h=mx;}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);c.toBlob(b=>r(new File([b],f.name||'photo.jpg',{type:'image/jpeg'})),'image/jpeg',q);};img.src=URL.createObjectURL(f);});}
+  function resizeImage(f,mx,q){return new Promise((r,j)=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>mx||h>mx){if(w>h){h=Math.round(h*mx/w);w=mx;}else{w=Math.round(w*mx/h);h=mx;}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);c.toBlob(b=>r(new File([b],f.name||'photo.jpg',{type:'image/jpeg'})),'image/jpeg',q);};img.onerror=()=>j(new Error('지원하지 않는 형식이거나 권한 오류입니다.'));img.src=URL.createObjectURL(f);});}
   function encodeFileToBase64(f){return new Promise((r,j)=>{const rd=new FileReader();rd.readAsDataURL(f);rd.onload=()=>r(rd.result.split(',')[1]);rd.onerror=e=>j(e);});}
   function renderPhotos(){
     const g=document.getElementById('photo-grid');g.innerHTML='';
