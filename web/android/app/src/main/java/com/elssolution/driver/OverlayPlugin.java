@@ -66,16 +66,30 @@ public class OverlayPlugin extends Plugin {
     public void requestPermission(final PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(getContext())) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getContext().getPackageName()));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                try {
-                    getContext().startActivity(intent);
-                } catch (Exception e) {
-                    // 패키지 지정 방식이 실패하는 일부 기기(삼성 등)를 위한 폴백
-                    Intent intentFallback = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                    intentFallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    getContext().startActivity(intentFallback);
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:" + getContext().getPackageName()));
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                getActivity().startActivity(intent);
+                            } catch (Exception e) {
+                                try {
+                                    Intent intentFallback = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                                    intentFallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    getActivity().startActivity(intentFallback);
+                                } catch (Exception e2) {
+                                    // 마지막 수단: 앱 설정창
+                                    Intent intentApp = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            Uri.parse("package:" + getContext().getPackageName()));
+                                    intentApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    getActivity().startActivity(intentApp);
+                                }
+                            }
+                        }
+                    });
                 }
             }
         }

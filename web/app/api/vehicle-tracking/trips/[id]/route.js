@@ -63,17 +63,44 @@ async function syncDriverContact(supabase, trip) {
 }
 
 /**
+ * GET /api/vehicle-tracking/trips/[id]
+ * 상세 정보 조회
+ */
+export async function GET(request, { params }) {
+    const supabase = await createClient();
+    const { id } = await params;
+
+    try {
+        const { data, error } = await supabase
+            .from('vehicle_trips')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+        if (!data) return NextResponse.json({ error: '데이터를 찾을 수 없습니다.' }, { status: 404 });
+
+        return NextResponse.json(data);
+    } catch (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+/**
  * PATCH /api/vehicle-tracking/trips/[id]
  * 상태 변경: pause, resume, complete + 사진/메모 업데이트
  */
 export async function PATCH(request, { params }) {
     const supabase = await createAdminClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
     const { id } = await params;
+
+    if (!id || id === 'undefined' || id === 'null') {
+        return NextResponse.json({ error: '유효하지 않은 Trip ID입니다.' }, { status: 400 });
+    }
 
     try {
         const body = await request.json();
+        // ... (이하 동일)
         const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, vehicle_id, driver_name, driver_phone, vehicle_number } = body;
 
         // 기존 데이터 조회 (로그용)
