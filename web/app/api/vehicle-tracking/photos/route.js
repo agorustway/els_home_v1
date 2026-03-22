@@ -68,7 +68,7 @@ export async function POST(request) {
             .single();
 
         const existingPhotos = trip?.photos || [];
-        if (existingPhotos.length + files.length > 10) {
+        if (existingPhotos.length + filesData.length > 10) {
             return NextResponse.json({ error: '사진은 최대 10장까지 가능합니다.' }, { status: 400 });
         }
 
