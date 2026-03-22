@@ -497,9 +497,41 @@ export default function DriverPage() {
 
     return (
         <div className={styles.driverPage}>
+            {/* 📥 APK 다운로드 안내 */}
+            <div style={{
+                background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                color: '#fff',
+                padding: '16px',
+                borderRadius: '12px',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+                <div style={{display:'flex', alignItems:'center', gap: '12px'}}>
+                    <div style={{background:'#fff', borderRadius:'8px', padding:'6px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                        <img src="/favicon.png" alt="ELS" style={{width:'100%', height:'100%', objectFit:'contain'}} />
+                    </div>
+                    <div>
+                        <div style={{fontSize:'0.9rem', fontWeight:'800'}}>전용 앱 설치 (안드로이드)</div>
+                        <div style={{fontSize:'0.7rem', color:'#94a3b8'}}>더 안정적인 GPS 수집이 가능합니다</div>
+                    </div>
+                </div>
+                <a href="/apk/els_driver.apk" download style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: '700',
+                    textDecoration: 'none'
+                }}>다운로드</a>
+            </div>
+
             {/* 개발 중 배너 */}
             <div className={styles.devBanner}>
-                🚧 차량위치관제 시스템은 현재 개발 중입니다. 일부 기능이 제한될 수 있습니다.
+                🚧 현재 브라우저(Web) 버전입니다. 앱(APK) 설치를 권장합니다.
             </div>
 
             {/* GPS 상태 인디케이터 */}

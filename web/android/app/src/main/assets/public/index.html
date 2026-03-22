@@ -92,7 +92,10 @@
 
       <!-- ③ 사진 (운행 전/중/일시정지 모두 가능) -->
       <div class="card" id="card-photos" style="padding:12px 14px;margin-bottom:10px;">
-        <label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">사진 첨부</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);">사진 첨부</label>
+          <button onclick="resetTripData()" style="font-size:0.7rem; background:#21262d; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; padding:2px 6px;">초기화</button>
+        </div>
         <div class="photo-area">
           <div id="photo-grid"></div>
           <label class="photo-add-btn" id="photo-add-label">+<input type="file" accept="image/*" multiple hidden onchange="handlePhotos(event)"></label>
@@ -130,15 +133,18 @@
         </div>
         <button id="btn-update-profile" class="btn-secondary" style="margin-top:16px">저장</button>
       </div>
-      <div class="card">
-        <div class="card-title">앱 권한</div>
-        <button id="btn-req-loc" class="btn-outline">위치 권한</button>
-        <button id="btn-req-cam" class="btn-outline" style="margin-top:6px">카메라 권한</button>
-        <button id="btn-req-photo" class="btn-outline" style="margin-top:6px">사진/동영상 권한</button>
-        <button id="btn-req-notify" class="btn-outline" style="margin-top:6px">알림 권한</button>
-        <button id="btn-req-phone" class="btn-outline" style="margin-top:6px">전화 권한</button>
-        <button id="btn-req-overlay" class="btn-outline" style="margin-top:6px">다른 앱 위에 표시 (플로팅)</button>
+      <div class="card" style="padding:10px 14px;">
+        <div class="card-title" style="margin-bottom:6px;">앱 권한</div>
+        <div class="perm-list" style="gap:4px;">
+          <div class="perm-item" id="set-perm-location" style="padding:8px 10px;" onclick="requestLocationPerm()"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name" style="font-size:0.85rem;">위치 (GPS)</div></div><div class="perm-arrow">›</div></div>
+          <div class="perm-item" id="set-perm-camera" style="padding:8px 10px;" onclick="requestCameraPerm()"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name" style="font-size:0.85rem;">카메라</div></div><div class="perm-arrow">›</div></div>
+          <div class="perm-item" id="set-perm-photo" style="padding:8px 10px;" onclick="requestPhotoPerm()"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name" style="font-size:0.85rem;">사진 / 동영상</div></div><div class="perm-arrow">›</div></div>
+          <div class="perm-item" id="set-perm-notify" style="padding:8px 10px;" onclick="requestNotifyPerm()"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name" style="font-size:0.85rem;">알림</div></div><div class="perm-arrow">›</div></div>
+          <div class="perm-item" id="set-perm-phone" style="padding:8px 10px;" onclick="requestPhonePerm()"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name" style="font-size:0.85rem;">전화</div></div><div class="perm-arrow">›</div></div>
+          <div class="perm-item" id="set-perm-overlay" style="padding:8px 10px;" onclick="requestOverlayPerm()"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name" style="font-size:0.85rem;">다른 앱 위에 표시</div></div><div class="perm-arrow">›</div></div>
+        </div>
       </div>
+
       <div class="card">
         <div class="card-title">GPS 수집 설정</div>
         <div class="card-row"><span class="card-label">고속 (≥10km/h)</span><span class="card-value" id="disp-gps-fast">30초</span></div>
@@ -192,9 +198,12 @@
   </div>
 
   <!-- 사진 확대 모달 -->
-  <div id="modal-photo" class="modal-overlay" style="display:none" onclick="this.style.display='none'">
-    <div class="modal-box" style="max-width:95vw; max-height:95vh; padding:10px; background:transparent; border:none; display:flex; align-items:center; justify-content:center;">
-       <img id="zoom-img" style="max-width:100%; max-height:90vh; border-radius:8px; object-fit:contain; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+  <div id="modal-photo" class="modal-overlay" style="display:none">
+    <div style="position:fixed; top:60px; right:20px; z-index:1100; display:flex; flex-direction:column; gap:20px;">
+      <button onclick="document.getElementById('modal-photo').style.display='none'" style="width:60px; height:60px; border-radius:15px; background:rgba(248,81,73,0.9); color:white; border:none; font-size:1.5rem; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3);">✕</button>
+    </div>
+    <div id="zoom-container" style="width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:none; background:rgba(0,0,0,0.9);">
+       <img id="zoom-img" style="max-width:95%; max-height:95%; object-fit:contain; transition:transform 0.1s ease-out;">
     </div>
   </div>
 

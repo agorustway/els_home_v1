@@ -79,26 +79,26 @@ export default function Intro() {
                         {/* 🚛 운전원 앱 다운로드 섹션 */}
                         <div className={styles.appDownloadSection}>
                             <div className={styles.appDownloadTitle}>
-                                🚛 ELS 운전원 전용 앱
+                                📱 ELS 운전원 전용 앱 (안드로이드)
                             </div>
-                            <a href="/driver-app" onClick={handleDriverAppClick} className={styles.appButton}>
+                            <a href="/apk/els_driver.apk" className={styles.appButton} download>
                                 <div className={styles.appBtnIcon}>
-                                    <img src="/driver_icon.png" alt="" className={styles.appIconImg} />
+                                    <img src="/favicon.png" alt="" className={styles.appIconImg} />
                                 </div>
                                 <div className={styles.appBtnText}>
-                                    <div className={styles.appBtnLabel}>운전원 전용 앱 다운로드</div>
-                                    <div className={styles.appBtnDesc}>실시간 운행 관리 및 배차 정보 확인</div>
+                                    <div className={styles.appBtnLabel}>기사용 앱 다운로드 (.APK)</div>
+                                    <div className={styles.appBtnDesc}>안드로이드 전용 설치 파일</div>
                                 </div>
                             </a>
-                            <div className={styles.appUrlInfo}>
-                                🔗 <a href="/driver-app" className={styles.appDirectLink}>접속주소: {typeof window !== 'undefined' ? (window.location.origin + '/driver-app') : 'https://.../driver-app'}</a>
-                            </div>
                             <div className={styles.appInstallGuide}>
-                                {isIos ? (
-                                    <span>💡 아이폰: <strong>Safari 하단 [공유] → [홈 화면에 추가]</strong>를 눌러주세요.</span>
-                                ) : (
-                                    <span>💡 안드로이드: <strong>/driver-app 접속 후 [앱 다운로드 설치]</strong> 버튼을 눌러주세요.</span>
-                                )}
+                                <h4>✅ 안드로이드 설치 방법 (APK)</h4>
+                                <ul>
+                                    <li>1. 위 버튼을 눌러 <strong>[els_driver.apk]</strong> 파일을 다운로드합니다.</li>
+                                    <li>2. 파일 다운로드 완료 후 알림창에서 파일을 누릅니다.</li>
+                                    <li>3. '출처를 알 수 없는 앱' 경고창이 뜨면 <strong>[설정]</strong>을 눌러 <strong>'이 출처 허용'</strong>을 켭니다.</li>
+                                    <li>4. 화면 하단의 <strong>[설치]</strong> 버튼을 눌러 완료합니다.</li>
+                                </ul>
+                                <p style={{marginTop: '10px', fontSize: '0.8rem', opacity: 0.7}}>* 이 앱은 구글 플레이스토어가 아닌 사내 전용 배포 파일로 설치됩니다.</p>
                             </div>
                         </div>
                     </motion.div>

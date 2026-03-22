@@ -20,6 +20,47 @@
     return null;
   };
 
+  // ── 안드로이드 하드웨어 뒤로가기 버튼 처리 ──
+  async function initBackButton(){
+    const Cap = getDynamicCapacitor();
+    const Plugins = getDynamicPlugins();
+    
+    // Capacitor App 플러그인 확인 및 리스너 등록
+    const App = Plugins.App;
+    if(App && App.addListener){
+      App.addListener('backButton', ({canGoBack}) => {
+        const modalPhoto = document.getElementById('modal-photo');
+        const modalHistory = document.getElementById('modal-history');
+        const modalAlert = document.getElementById('modal-alert');
+
+        if(modalPhoto && modalPhoto.style.display === 'flex'){
+          modalPhoto.style.display = 'none';
+          haptic();
+        } else if(modalHistory && modalHistory.style.display === 'flex'){
+          closeHistoryModal();
+          haptic();
+        } else if(modalAlert && modalAlert.style.display === 'flex'){
+          closeModal();
+          haptic();
+        } else {
+          // 홈 탭이 아니면 홈으로, 홈이면 앱 종료 확인
+          const activeTabBtn = document.querySelector('.nav-btn.active');
+          const isHome = activeTabBtn && (activeTabBtn.textContent.includes('운행') || activeTabBtn.getAttribute('onclick')?.includes('home'));
+          
+          if(isHome){
+            if(confirm('앱을 종료하시겠습니까?')) exitApp();
+          } else {
+            switchTab('home');
+            haptic();
+          }
+        }
+      });
+      console.log('뒤로가기 버튼 리스너 등록 완료');
+    } else {
+      console.warn('App 플러그인을 찾을 수 없어 뒤로가기 버튼이 작동하지 않을 수 있습니다.');
+    }
+  }
+
   async function waitForBridge(attempts=0){
     if(window.Capacitor && window.Capacitor.Plugins) return true;
     if(attempts > 5) return false;
@@ -58,10 +99,33 @@
     await waitForBridge();
     
     window.onPipModeChanged=function(isInPip){
-      isPipMode=isInPip;const pip=document.getElementById('pip-overlay');
-      if(isInPip){document.body.classList.add('pip-active');if(pip){pip.style.display='flex';updatePipDisplay();}}
-      else{document.body.classList.remove('pip-active');if(pip)pip.style.display='none';}
+      isPipMode=isInPip;
+      const overlay=document.getElementById('pip-overlay');
+      if(overlay)overlay.style.display=isInPip?'flex':'none';
+      if(!isInPip)updateTripUI();
     };
+
+    // 컨테이너 입력창 실시간 포맷팅 및 검증 연결
+    const inpContainer = document.getElementById('inp-container');
+    if(inpContainer){
+      inpContainer.oninput = function(){
+        this.value = this.value.toUpperCase().replace(/\s/g, ''); // 대문자 + 공백제거
+        const isValid = validateContainerNumber(this.value);
+        this.style.borderColor = (this.value.length >= 11 && !isValid) ? '#f85149' : '';
+        // 간단한 팁 메시지 표시용
+        let tip = document.getElementById('cont-tip');
+        if(!tip){
+          tip = document.createElement('div'); tip.id='cont-tip'; tip.style.fontSize='0.7rem'; tip.style.marginTop='2px';
+          this.parentNode.appendChild(tip);
+        }
+        if(this.value.length >= 11){
+          tip.textContent = isValid ? '✅ 유효한 컨테이너 번호' : '❌ 유효하지 않은 번호 (규칙 미달)';
+          tip.style.color = isValid ? '#3fb950' : '#f85149';
+        } else {
+          tip.textContent = '';
+        }
+      };
+    }
     window.addEventListener('online',()=>{isOnline=true;updateOfflineBar();});
     window.addEventListener('offline',()=>{isOnline=false;updateOfflineBar();});
 
@@ -72,9 +136,9 @@
     B('btn-finish-perms',finishPermissions);B('btn-check-phone',checkPhone);B('btn-save-profile',saveProfile);
     B('btn-start',startTrip);B('btn-pause',pauseTrip);B('btn-resume',resumeTrip);B('btn-stop',stopTrip);
     B('btn-update-profile',updateProfile);
-    B('btn-req-loc',requestLocationPerm);B('btn-req-cam',requestCameraPerm);
-    B('btn-req-photo',requestPhotoPerm);B('btn-req-notify',requestNotifyPerm);B('btn-req-phone',requestPhonePerm);
-    B('btn-req-overlay',requestOverlayPerm);
+    B('set-perm-location',requestLocationPerm);B('set-perm-camera',requestCameraPerm);
+    B('set-perm-photo',requestPhotoPerm);B('set-perm-notify',requestNotifyPerm);B('set-perm-phone',requestPhonePerm);
+    B('set-perm-overlay',requestOverlayPerm);
     B('btn-reset-app',resetApp);B('btn-modal-close',closeModal);B('btn-exit-app',exitApp);
 
     // 오버레이 권한 초기 체크
@@ -100,8 +164,24 @@
     const mO=document.getElementById('modal-alert');if(mO)mO.addEventListener('click',closeModal);
     const mB=document.querySelector('#modal-alert .modal-box');if(mB)mB.addEventListener('click',e=>e.stopPropagation());
 
-    if(!localStorage.getItem('els_setup_done'))showScreen('screen-permissions');
-    else{loadSavedProfile();showScreen('screen-main');startGPS();checkActiveTrip();}
+    if(localStorage.getItem('els_setup_done') === 'true'){
+      showScreen('screen-main');
+      startGPS();
+      loadSavedProfile();
+      checkActiveTrip();
+    } else {
+      showScreen('screen-permissions');
+    }
+    initBackButton();
+  }
+
+  // ── 순차적 권한 설정 흐름 (Onboarding) ──
+  async function checkPermissionsFlow(){
+    const p = ['perm-location','perm-camera','perm-photo','perm-notify','perm-phone','perm-overlay'];
+    for(const id of p){
+       // 각 권한 항목 클릭 유도 또는 상태 체크 로직 (여기서는 UI 표시 위주)
+       console.log('Permission Check:', id);
+    }
   }
 
   function updatePipDisplay(){
@@ -179,7 +259,16 @@
     try{O.hideOverlay();}catch(e){}
   }
 
-  function markPermGranted(id){const it=document.getElementById(id);if(!it)return;const d=it.querySelector('.perm-dot');if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}const a=it.querySelector('.perm-arrow');if(a)a.textContent='✓';}
+  function markPermGranted(id){
+    // 온보딩 권한 아이템 업데이트
+    const it=document.getElementById(id);
+    if(it){const d=it.querySelector('.perm-dot');if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}const a=it.querySelector('.perm-arrow');if(a)a.textContent='✓';}
+    // 설정 탭 권한 아이템도 동기화 (set-perm-location ↔ perm-location)
+    const setId = 'set-' + id; // e.g. set-perm-location
+    const sit=document.getElementById(setId);
+    if(sit){const sd=sit.querySelector('.perm-dot');if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}const sa=sit.querySelector('.perm-arrow');if(sa)sa.textContent='✓';}
+  }
+
   function finishPermissions(){haptic('Heavy');showScreen('screen-profile');}
 
   // ═══ 프로필 ═══
@@ -229,11 +318,15 @@
   function startGPS(){
     if(!navigator.geolocation)return;
     gpsWatchId=navigator.geolocation.watchPosition(
-      ()=>{document.getElementById('gps-indicator').className='gps-on';document.getElementById('gps-indicator').textContent='GPS';},
-      ()=>{document.getElementById('gps-indicator').className='gps-off';},
+      ()=>{
+        const gi=document.getElementById('gps-indicator');
+        if(gi){ gi.className='gps-on'; if(gi.textContent==='GPS'||gi.textContent==='GPS오류') gi.textContent='GPS수신중'; }
+      },
+      ()=>{const gi=document.getElementById('gps-indicator');if(gi){gi.className='gps-off';gi.textContent='GPS오류';}},
       {enableHighAccuracy:true,maximumAge:5000}
     );
   }
+
 
   // ═══ GPS 관제 수집 ═══
   function startGPSTracking(){
@@ -274,6 +367,23 @@
 
     // 서버로 위치 전송
     sendLocation(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,speedKmh);
+    
+    // GPS 상태 텍스트 업데이트
+    updateGPSStatusText(speedKmh, interval);
+  }
+
+  function updateGPSStatusText(speed, interval){
+    const gi = document.getElementById('gps-indicator');
+    if(!gi) return;
+    let mode = interval >= 120000 ? '2분(정차)' : (interval >= 60000 ? '1분(서행)' : '30초(주행)');
+    gi.textContent = `GPS정상(${mode})`;
+    gi.className = 'gps-on';
+    
+    // 배너 텍스트도 상세화
+    const bs = document.getElementById('banner-status');
+    if(bs && tripStatus === 'driving'){
+       bs.textContent = `● 운행중 (수집:${mode})`;
+    }
   }
 
   function onGPSError(err){
@@ -303,11 +413,43 @@
     },()=>{},{enableHighAccuracy:true,timeout:5000});
   }
 
+  // ═══ 컨테이너 번호 ISO 6346 검증 (MOD 11) ═══
+  function validateContainerNumber(num){
+    if(!num || num.length !== 11) return false;
+    const charCode = (c) => {
+      const v = "0123456789A?BCDEFGHIJK?LMNOPQRSTU?VWXYZ".indexOf(c);
+      return v === -1 ? 0 : v;
+    };
+    let sum = 0;
+    for(let i=0; i<10; i++){
+      let val = charCode(num[i]);
+      sum += val * Math.pow(2, i);
+    }
+    const checkDigit = (sum % 11) % 10;
+    return checkDigit === parseInt(num[10]);
+  }
+
   // ═══ 운송 ═══
   async function startTrip(){
     if(!isOnline){showModal('오프라인','인터넷 필요');return;}if(isSubmitting)return;
-    const c=document.getElementById('inp-container').value.trim().toUpperCase();
-    if(!c){showModal('입력 필요','컨테이너 번호를 입력해 주세요.');return;}
+    
+    // [변경] 컨테이너 번호 추출 (없을 수도 있음)
+    const c=document.getElementById('inp-container').value.replace(/\s/g, '').toUpperCase();
+    const vNum = localStorage.getItem('els_vehicle') || '';
+    let cSize = (document.getElementById('inp-cont-size')||{}).value||'40FT';
+    let cKind = (document.getElementById('inp-cont-type')||{}).value||'DRY';
+    let memo = (document.getElementById('inp-memo')||{}).value||'';
+
+    // 차량 정보가 없으면 컨테이너 번호라도 필수
+    if(!vNum && !c){
+      showModal('입력 필요','차량 정보가 없으므로 컨테이너 번호를 입력해야 합니다.');
+      return;
+    }
+
+    // 컨테이너 번호가 있지만 유효하지 않은 경우만 경고 (강제 시작 가능)
+    if(c && !validateContainerNumber(c)){
+      if(!confirm('유효하지 않은 컨테이너 번호 형식입니다.\n나중에 수정하시겠습니까?')) return;
+    }
     isSubmitting=true;const btn=document.getElementById('btn-start');btn.disabled=true;btn.textContent='처리 중...';
     try{
       const memo=(document.getElementById('inp-memo')||{}).value||'';
@@ -346,27 +488,60 @@
   }
 
   async function stopTrip(){
-    if(!tripId){showModal('오류','종료할 운행 없음');return;}
+    if(!tripId||isSubmitting){return;}
     if(!confirm('운송을 종료하시겠습니까?'))return;
-    haptic('Heavy');const cid=tripId;
-    // GPS: 마지막 위치 마킹 후 수집 종료 (관제 웹: 회색 아이콘)
-    await sendStopLocation(cid);
-    stopGPSTracking();
-    if(isOnline){try{const r=await smartPatch(`${API_BASE}/trips/${cid}`,{action:'complete'});if(!r.ok)showModal('경고','서버 종료 처리 실패');}catch(e){showModal('경고','통신 실패');}}
-    lastTripId=cid;tripId=null;tripStatus=null;clearInterval(timerInterval);timerInterval=null;elapsedSeconds=0;updateTripUI();
-    showModal('완료','운송이 종료되었습니다. 수고하셨습니다.');
+    isSubmitting=true;
+    try{
+      haptic('Heavy');const cid=tripId;
+      await sendStopLocation(cid);
+      stopGPSTracking();
+      if(isOnline){try{const r=await smartPatch(`${API_BASE}/trips/${cid}`,{action:'complete'});if(!r.ok)showModal('경고','서버 종료 처리 실패');}catch(e){showModal('경고','통신 실패');}}
+      lastTripId=cid;tripId=null;tripStatus=null;clearInterval(timerInterval);timerInterval=null;elapsedSeconds=0;
+      photos=[]; renderPhotos();
+      document.getElementById('inp-container').value='';
+      document.getElementById('inp-seal').value='';
+      document.getElementById('inp-memo').value='';
+      updateTripUI();
+      showModal('완료','운송이 종료되었습니다. 수고하셨습니다.');
+    }finally{isSubmitting=false;}
+  }
+
+  // 강제 데이터 초기화 (버튼용)
+  function resetTripData(){
+    if(!confirm('진행 중인 모든 입력을 초기화할까요?\n(운행 상태는 변하지 않습니다)'))return;
+    photos=[]; renderPhotos();
+    document.getElementById('inp-container').value='';
+    document.getElementById('inp-seal').value='';
+    document.getElementById('inp-memo').value='';
+    showModal('초기화','사진 및 입력 정보가 초기화되었습니다.');
   }
 
   function updateTripUI(){
     const a=tripStatus==='driving'||tripStatus==='paused',d=tripStatus==='driving';
     const bn=document.getElementById('active-banner');bn.style.display=a?'block':'none';
-    const bs=document.getElementById('banner-status');bs.textContent=d?'● 운행중':'■ 일시정지';bs.style.color=d?'#3fb950':'#d29922';
+    const bs=document.getElementById('banner-status');
+    const gi=document.getElementById('gps-indicator');
+
+    if(d){
+      bs.textContent='● 운행중 (수집대기)';
+      bs.style.color='#3fb950';
+      if(gi) gi.textContent = 'GPS수집중';
+    } else if(tripStatus === 'paused'){
+      bs.textContent='■ 일시정지 (휴식상태)';
+      bs.style.color='#d29922';
+      if(gi) { gi.textContent = '휴식상태'; gi.className = 'gps-paused'; }
+    } else {
+      if(gi) { gi.textContent = 'GPS'; gi.className = 'gps-off'; }
+    }
+
     document.getElementById('screen-main').classList.toggle('trip-active',a);
     document.getElementById('btn-start').style.display=a?'none':'block';
     document.getElementById('trip-controls').style.display=a?'block':'none';
     document.getElementById('btn-pause').style.display=d?'block':'none';
     document.getElementById('btn-resume').style.display=(!d&&a)?'block':'none';
-    const ic=document.getElementById('card-input');if(ic){ic.style.opacity=a?'0.5':'1';ic.style.pointerEvents=a?'none':'auto';}
+    const ic=document.getElementById('card-input');
+    // [변경] 운행 중에도 수정 가능하도록 pointerEvents 차단 해제, 대신 opacity로만 상태 표시
+    if(ic){ic.style.opacity='1';ic.style.pointerEvents='auto';}
     if(isPipMode)updatePipDisplay();
   }
 
@@ -420,23 +595,41 @@
       const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deletePhoto(i);w.appendChild(d);g.appendChild(w);});
     document.getElementById('photo-add-label').style.display=photos.length>=10?'none':'flex';
   }
+  let zoomScale=1, zoomStartX=0, zoomStartY=0, zoomBaseDistance=0, zoomBaseScale=1, zoomCurX=0, zoomCurY=0;
   function zoomImage(src){
-    const m=document.getElementById('modal-photo'),img=document.getElementById('zoom-img');
-    if(m&&img){
-      console.log(`[DEBUG] 이미지 상세 보기: ${src}`);
-      img.src=src;
-      img.onerror=async function(){
-        try{
-          const r = await fetch(src);
-          const text = await r.text();
-          showModal('이미지 로드 실패', `URL: ${src}\n상세: ${text}`);
-        }catch(e){
-          showModal('네트워크 오류', `URL: ${src}\n에러: ${e.message}`);
-        }
-      };
-      m.style.display='flex';
-    }
+    const m=document.getElementById('modal-photo'),img=document.getElementById('zoom-img'),box=document.getElementById('zoom-container');
+    if(!m||!img)return;
+    img.src=src; zoomScale=1; zoomCurX=0; zoomCurY=0; updateZoomTransform();
+    m.style.display='flex';
+    
+    // 터치/마우스 핸들러
+    const start=(e)=>{
+      const t=e.touches;
+      if(t && t.length===2){
+        zoomBaseDistance=Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+        zoomBaseScale=zoomScale;
+      } else {
+        const point=t?t[0]:e;
+        zoomStartX=point.clientX-zoomCurX; zoomStartY=point.clientY-zoomCurY;
+      }
+    };
+    const move=(e)=>{
+      e.preventDefault();
+      const t=e.touches;
+      if(t && t.length===2){
+        const dist=Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+        zoomScale=Math.max(1, zoomBaseScale * (dist/zoomBaseDistance));
+      } else {
+        const point=t?t[0]:e;
+        zoomCurX=point.clientX-zoomStartX; zoomCurY=point.clientY-zoomStartY;
+      }
+      updateZoomTransform();
+    };
+    box.onmousedown=start; box.ontouchstart=start;
+    window.onmousemove=e=>{if(box.onmousedown)move(e)}; window.ontouchmove=move;
+    window.onmouseup=()=>{box.onmousedown=null;};
   }
+  function updateZoomTransform(){ const i=document.getElementById('zoom-img'); if(i)i.style.transform=`translate(${zoomCurX}px, ${zoomCurY}px) scale(${zoomScale})`; }
   async function deletePhoto(idx){const p=photos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}photos.splice(idx,1);renderPhotos();}
 
   // ═══ 기록 사진 ═══
@@ -456,10 +649,22 @@
   }
   function renderHistoryPhotos(){
     const g=document.getElementById('h-photo-grid');g.innerHTML='';const cnt=document.getElementById('h-photo-count');if(cnt)cnt.textContent=historyPhotos.length;
-    historyPhotos.forEach((p,i)=>{const w=document.createElement('div');w.className='photo-wrapper';const img=document.createElement('img');
-      const src=p.url||`${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}`;
-      img.src=src; img.onclick=()=>zoomImage(src); img.onerror=function(){this.style.background='#1c2128';};
-      w.appendChild(img);const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deleteHistoryPhoto(i);w.appendChild(d);g.appendChild(w);});
+    historyPhotos.forEach((p,i)=>{
+      const w=document.createElement('div');w.className='photo-wrapper';
+      const img=document.createElement('img');
+      // [중요] 기록 탭에서도 무조건 Proxy API (?key=) 주소로 보여줌
+      const src=p.key ? `${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
+      console.log(`[DEBUG-HIST] 렌더링 사진(${i}): key=${p.key}, final_src=${src}`);
+      img.src=src; 
+      img.onclick=()=>zoomImage(src);
+      img.onerror=function(){
+        console.error(`[DEBUG-HIST] 사진 로드 에러: ${src}`);
+        this.style.background='#1c2128';
+      };
+      w.appendChild(img);
+      const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deleteHistoryPhoto(i);
+      w.appendChild(d);g.appendChild(w);
+    });
   }
   async function deleteHistoryPhoto(idx){const p=historyPhotos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}historyPhotos.splice(idx,1);renderHistoryPhotos();}
 
@@ -502,8 +707,27 @@
   function closeHistoryModal(){document.getElementById('modal-history').style.display='none';}
   async function saveHistoryEdit(){
     if(!selectedTripId)return;
-    try{const r=await smartPatch(`${API_BASE}/trips/${selectedTripId}`,{container_number:document.getElementById('edit-container').value.trim().toUpperCase(),seal_number:document.getElementById('edit-seal').value.trim().toUpperCase(),container_type:document.getElementById('edit-cont-size').value,container_kind:document.getElementById('edit-cont-type').value,special_notes:document.getElementById('edit-notes').value.trim()});
-    if(r.ok){haptic('Heavy');showModal('저장','기록 수정 완료');closeHistoryModal();loadHistory();}else showModal('오류','수정 실패: '+(r.data?.error||r.status));}catch(e){showModal('오류',e.message);}
+    try{
+      // [변경] 45FT 직접 지원 (DB 잠금 해제 완료)
+      const r=await smartPatch(`${API_BASE}/trips/${selectedTripId}`,{
+        container_number:document.getElementById('edit-container').value.trim().toUpperCase(),
+        seal_number:document.getElementById('edit-seal').value.trim().toUpperCase(),
+        container_type: document.getElementById('edit-cont-size').value,
+        container_kind:document.getElementById('edit-cont-type').value,
+        special_notes: document.getElementById('edit-notes').value.trim(),
+        photos: historyPhotos
+      });
+      if(r.ok){
+        haptic('Heavy');
+        showModal('저장','기록 수정 완료');
+        closeHistoryModal();
+        loadHistory();
+      }else{
+        showModal('오류','수정 실패: '+(r.data?.error||r.status));
+      }
+    }catch(e){
+      showModal('오류',e.message);
+    }
   }
   async function forceStopTrip(){
     if(!selectedTripId||!confirm('강제 종료?'))return;
@@ -527,6 +751,7 @@
   window.handlePhotos=handlePhotos;window.handleHistoryPhotos=handleHistoryPhotos;
   window.switchTab=switchTab;window.loadHistory=loadHistory;window.showHistoryDetail=showHistoryDetail;
   window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;window.exitApp=exitApp;
+  window.resetTripData=resetTripData;
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
 })();
