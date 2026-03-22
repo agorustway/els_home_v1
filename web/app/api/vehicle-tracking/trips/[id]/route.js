@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 /**
  * 운전원정보(driver_contacts) 매칭 및 갱신
@@ -67,7 +67,7 @@ async function syncDriverContact(supabase, trip) {
  * 상태 변경: pause, resume, complete + 사진/메모 업데이트
  */
 export async function PATCH(request, { params }) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     const { id } = await params;

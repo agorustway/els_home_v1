@@ -63,53 +63,44 @@ public class OverlayPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void requestPermission(PluginCall call) {
+    public void requestPermission(final PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
-            boolean success = false;
-            try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
-                if (getActivity() != null) {
-                    getActivity().startActivity(intent);
-                } else {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    getContext().startActivity(intent);
-                }
-                success = true;
-            } catch (Exception e) {
-                // Ignore
-            }
-
-            if (!success) {
-                try {
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                    if (getActivity() != null) {
-                        getActivity().startActivity(intent);
-                    } else {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        getContext().startActivity(intent);
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        boolean success = false;
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                            intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            getActivity().startActivity(intent);
+                            success = true;
+                        } catch (Exception e) {}
+            
+                        if (!success) {
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                getActivity().startActivity(intent);
+                                success = true;
+                            } catch (Exception e) {}
+                        }
+            
+                        if (!success) {
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                getActivity().startActivity(intent);
+                            } catch (Exception e) {}
+                        }
+                        call.resolve();
                     }
-                    success = true;
-                } catch (Exception e) {
-                    // Ignore
-                }
+                });
+            } else {
+                call.resolve();
             }
-
-            if (!success) {
-                try {
-                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                    intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
-                    if (getActivity() != null) {
-                        getActivity().startActivity(intent);
-                    } else {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        getContext().startActivity(intent);
-                    }
-                } catch (Exception e) {
-                    // Ignore
-                }
-            }
-            call.resolve();
         } else {
             call.resolve();
         }
@@ -125,11 +116,13 @@ public class OverlayPlugin extends Plugin {
         String timer = call.getString("timer", "00:00:00");
         String container = call.getString("container", "📦 미입력");
         String status = call.getString("status", "driving");
+        String tripId = call.getString("tripId");
 
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
         intent.putExtra("timer", timer);
         intent.putExtra("container", container);
         intent.putExtra("status", status);
+        intent.putExtra("tripId", tripId);
         getContext().startService(intent);
         call.resolve();
     }
@@ -139,11 +132,13 @@ public class OverlayPlugin extends Plugin {
         String timer = call.getString("timer");
         String container = call.getString("container");
         String status = call.getString("status");
+        String tripId = call.getString("tripId");
 
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
         intent.putExtra("timer", timer);
         intent.putExtra("container", container);
         intent.putExtra("status", status);
+        intent.putExtra("tripId", tripId);
         getContext().startService(intent); // Already running, will call onStartCommand
         call.resolve();
     }
@@ -155,28 +150,53 @@ public class OverlayPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void openAppSettings(PluginCall call) {
-        try {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-            Uri uri = Uri.fromParts("package", getContext().getPackageName(), null);
-            intent.setData(uri);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getActivity() != null) {
-                 getActivity().startActivity(intent);
-            } else {
-                 getContext().startActivity(intent);
-            }
-        } catch (Exception e) {
-            try {
-                Intent intent = new Intent(Settings.ACTION_SETTINGS);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (getActivity() != null) {
-                    getActivity().startActivity(intent);
-                } else {
-                    getContext().startActivity(intent);
+    public void openAppSettings(final PluginCall call) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        getActivity().startActivity(intent);
+                    } catch (Exception e) {
+                        try {
+                            Intent intent2 = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            intent2.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                            intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            getActivity().startActivity(intent2);
+                        } catch (Exception e2) {}
+                    }
+                    call.resolve();
                 }
-            } catch (Exception e2) {}
+            });
+        } else {
+            call.resolve();
         }
-        call.resolve();
+    }
+
+    @PluginMethod
+    public void openLocationSettings(final PluginCall call) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        getActivity().startActivity(intent);
+                    } catch (Exception e) {
+                        try {
+                            Intent intent2 = new Intent(Settings.ACTION_SETTINGS);
+                            intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            getActivity().startActivity(intent2);
+                        } catch (Exception e2) {}
+                    }
+                    call.resolve();
+                }
+            });
+        } else {
+            call.resolve();
+        }
     }
 }
