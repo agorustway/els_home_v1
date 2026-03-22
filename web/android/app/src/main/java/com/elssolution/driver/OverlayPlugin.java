@@ -64,46 +64,22 @@ public class OverlayPlugin extends Plugin {
 
     @PluginMethod
     public void requestPermission(final PluginCall call) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        boolean success = false;
-                        try {
-                            // 1단계: 패키지명 포함하여 다이렉트 호출
-                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    Uri.parse("package:" + getContext().getPackageName()));
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_HISTORY);
-                            getActivity().startActivity(intent);
-                            success = true;
-                        } catch (Exception e) {
-                            try {
-                                // 2단계: 실패 시 전체 오버레이 설정 목록 호출
-                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                getActivity().startActivity(intent);
-                                success = true;
-                            } catch (Exception e2) {
-                                // 3단계: 애플리케이션 정보 페이지 (수동 설정 유도)
-                                try {
-                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                    intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    getActivity().startActivity(intent);
-                                    success = true;
-                                } catch (Exception e3) {}
-                            }
-                        }
-                        call.resolve();
-                    }
-                });
-            } else {
-                call.resolve();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(getContext())) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getContext().getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    getContext().startActivity(intent);
+                } catch (Exception e) {
+                    // 패키지 지정 방식이 실패하는 일부 기기(삼성 등)를 위한 폴백
+                    Intent intentFallback = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                    intentFallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    getContext().startActivity(intentFallback);
+                }
             }
-        } else {
-            call.resolve();
         }
+        call.resolve();
     }
 
     @PluginMethod
