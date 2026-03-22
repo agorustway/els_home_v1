@@ -38,7 +38,10 @@ export async function GET(request) {
 
         const response = await s3.send(command);
         console.log(`[NAS-VIEW] S3 응답 성공: type=${response.ContentType}, length=${response.ContentLength}`);
-        const data = await response.Body.transformToUint8Array();
+        
+        // [중요] transformToUint8Array가 없는 환경을 위해 더 호환성 좋은 방식 사용
+        const bytes = await response.Body.transformToByteArray();
+        const data = new Uint8Array(bytes);
 
         return new Response(data, {
             headers: {
