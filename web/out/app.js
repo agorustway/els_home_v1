@@ -283,7 +283,14 @@
     if(sit){const sd=sit.querySelector('.perm-dot');if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}const sa=sit.querySelector('.perm-arrow');if(sa)sa.textContent='✓';}
   }
 
-  function finishPermissions(){haptic('Heavy');showScreen('screen-profile');}
+  function finishPermissions(){
+    haptic('Heavy');
+    if(localStorage.getItem('els_setup_done') === 'true'){
+      showScreen('screen-main');
+    } else {
+      showScreen('screen-profile');
+    }
+  }
 
   // ═══ 프로필 ═══
   async function checkPhone(){
