@@ -71,23 +71,25 @@ public class OverlayPlugin extends Plugin {
                     public void run() {
                         boolean success = false;
                         try {
-                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                            intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                            // 1순위: 내 앱 전용 설정 페이지 직접 호출
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:" + getContext().getPackageName()));
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            getActivity().startActivity(intent);
+                            getContext().startActivity(intent);
                             success = true;
                         } catch (Exception e) {
-                            // 패키지 지정 방식이 실패하면 전체 오버레이 설정 목록을 열어줌
                             try {
+                                // 2순위: 전체 오버레이 설정 목록 페이지 호출
                                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                getActivity().startActivity(intent);
+                                getContext().startActivity(intent);
                                 success = true;
                             } catch (Exception e2) {
-                                // 설정 페이지로 이동 (마지막 수단)
-                                Intent intent = new Intent(Settings.ACTION_SETTINGS);
+                                // 3순위: 애플리케이션 상세 정보 페이지 (여기서 사용자가 수동으로 권한 찾아야 함)
+                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                getActivity().startActivity(intent);
+                                getContext().startActivity(intent);
                             }
                         }
                         call.resolve();
