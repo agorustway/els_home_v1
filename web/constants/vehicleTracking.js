@@ -32,7 +32,7 @@ export const PHOTO_CONFIG = {
 };
 
 // 컨테이너 타입 및 종류 옵션
-export const CONTAINER_TYPES = ['40FT', '20FT', '45FT'];
+export const CONTAINER_TYPES = ['40FT', '20FT'];
 export const CONTAINER_KINDS = ['DRY', 'REEFER(냉동)', 'OPEN-TOP', '위험물(일반)', '위험물(화약류)', '냉동위험물'];
 
 // 운행 상태
