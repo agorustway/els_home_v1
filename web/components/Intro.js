@@ -94,10 +94,11 @@ export default function Intro() {
                                 <h4>✅ 안드로이드 설치 방법 (APK)</h4>
                                 <ul>
                                     <li>1. 위 버튼을 눌러 <strong>[els_driver.apk]</strong> 파일을 다운로드합니다.</li>
-                                    <li>2. 파일 다운로드 완료 후 알림창에서 파일을 누릅니다.</li>
-                                    <li>3. &apos;출처를 알 수 없는 앱&apos; 경고창이 뜨면 <strong>[설정]</strong>을 눌러 <strong>&apos;이 출처 허용&apos;</strong>을 켭니다.</li>
+                                    <li>2. 완료 후 실행 시 &apos;출처를 알 수 없는 앱&apos; 혹은 &lt;보안 메시지&gt;가 뜨면 <strong>[무시하고 설치]</strong> 또는 <strong>[설정]</strong>을 누릅니다.</li>
+                                    <li>3. (배포용 앱 안내) <strong>[더보기]</strong> 또는 <strong>[세부정보 보기]</strong>를 한 번 더 눌러 <strong>&apos;무시하고 설치&apos;</strong>를 완료합니다.</li>
                                     <li>4. 화면 하단의 <strong>[설치]</strong> 버튼을 눌러 완료합니다.</li>
                                 </ul>
+                                <p style={{marginTop: '10px', fontSize: '0.8rem', opacity: 0.8, color: '#f85149', fontWeight: '800'}}>* 안드로이드 14~16 버전은 Play 프로텍트 경고 시 &apos;무시하고 설치&apos;를 선택해야 합니다.</p>
                                 <p style={{marginTop: '10px', fontSize: '0.8rem', opacity: 0.7}}>* 이 앱은 구글 플레이스토어가 아닌 사내 전용 배포 파일로 설치됩니다.</p>
                             </div>
                         </div>
