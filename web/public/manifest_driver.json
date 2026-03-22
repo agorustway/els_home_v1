@@ -3,7 +3,7 @@
   "scope": "/driver-app",
   "name": "ELS 차량용 운송관리",
   "short_name": "ELS 운송",
-  "description": "ELS 운전원 전용 운송 관리 시스템",
+  "description": "ELS 차량용 운송 관리 시스템",
   "start_url": "/driver-app",
   "display": "standalone",
   "background_color": "#f8fafc",

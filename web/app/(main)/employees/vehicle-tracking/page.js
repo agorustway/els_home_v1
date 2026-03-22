@@ -282,7 +282,7 @@ export default function VehicleTrackingPage() {
                 <h2><span>🚛</span> 차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
                 <div className={styles.titleBtns}>
                     <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>🔄 새로고침</button>
-                    <button className={styles.driverLinkBtn} onClick={() => window.open('/driver-app', 'DriverApp', 'width=420,height=800')}>📱 운전원 페이지 (팝업)</button>
+                    <button className={styles.driverLinkBtn} onClick={() => window.open('/driver-app', 'DriverApp', 'width=420,height=800')}>📱 차량용 웹 페이지 (팝업)</button>
                 </div>
             </div>
             
@@ -306,7 +306,7 @@ export default function VehicleTrackingPage() {
                 <div className={styles.tableSection}>
                     <h3>📋 현재 운행 현황 ({liveTrips.length}건)</h3>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>운전원</th><th>차량번호</th><th>컨테이너</th><th>타입</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>타입</th><th>관리</th></tr></thead>
                         <tbody>
                             {liveTrips.map(trip => (
                                 <tr key={trip.id}>
@@ -335,7 +335,7 @@ export default function VehicleTrackingPage() {
                 <div className={styles.tableSection}>
                     <h3>📋 운행 기록 ({recordsTotal}건)</h3>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>운전원</th><th>차량번호</th><th>컨테이너</th><th>시작</th><th>종료</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>시작</th><th>종료</th><th>관리</th></tr></thead>
                         <tbody>
                             {records.map(trip => (
                                 <tr key={trip.id}>

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const metadata = {
-  title: 'ELS 운전원 전용 앱',
+  title: 'ELS 차량용 앱',
   description: 'ELS 차량 위치 관제 및 운송 현황 관리 시스템',
   manifest: '/manifest_driver.json',
   appleWebApp: {

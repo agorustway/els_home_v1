@@ -79,14 +79,14 @@ export default function Intro() {
                         {/* 🚛 운전원 앱 다운로드 섹션 */}
                         <div className={styles.appDownloadSection}>
                             <div className={styles.appDownloadTitle}>
-                                📱 ELS 운전원 전용 앱 (안드로이드)
+                                📱 ELS 차량용 앱 (안드로이드)
                             </div>
                             <a href="/apk/els_driver.apk" className={styles.appButton} download>
                                 <div className={styles.appBtnIcon}>
                                     <img src="/favicon.png" alt="" className={styles.appIconImg} />
                                 </div>
                                 <div className={styles.appBtnText}>
-                                    <div className={styles.appBtnLabel}>기사용 앱 다운로드 (.APK)</div>
+                                    <div className={styles.appBtnLabel}>차량용 앱 다운로드 (.APK)</div>
                                     <div className={styles.appBtnDesc}>안드로이드 전용 설치 파일</div>
                                 </div>
                             </a>
