@@ -43,29 +43,29 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 32px 24px;
+  padding: var(--safe-top) 24px var(--safe-bottom);
 }
 
 .onboard-wrap h1 {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   font-weight: 800;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .onboard-wrap .sub {
   color: var(--text-muted);
-  font-size: 0.9rem;
-  margin-bottom: 32px;
-  line-height: 1.5;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  line-height: 1.4;
 }
 
-.perm-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+.perm-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
 
 .perm-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 16px;
+  gap: 12px;
+  padding: 12px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
