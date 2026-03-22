@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 /**
  * GET /api/vehicle-tracking/trips
@@ -174,7 +174,7 @@ export async function GET(request) {
  * 운행 시작 — 새 trip 생성
  */
 export async function POST(request) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     try {

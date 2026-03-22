@@ -44,9 +44,9 @@
 - [x] **초기화 타이밍 보정**: 브릿지 로딩 대기 로직(0.5s)을 통해 `Overlay` 등 네이티브 플러그인 로드 안정성 확보.
 
 ### 🚨 해결 과제 (TODO)
-- [ ] **다른 앱 위에 표시 전환 오류**: `requestPermission` 호출 시 삼성 갤럭시 최신 기기(Android 15+)에서 설정창으로 자동 이동되지 않는 현상 분석 및 커스텀 인텐트 보강.
-- [ ] **사진 업로드(FormData) 실패**: `CapacitorHttp` 활성화 상태에서 `MULTIPART/FORM-DATA` 전송 시 바운더리 누락 또는 본문 손상 이슈 해결 (`fetch` vs `CapacitorHttp.uploadFile`).
-- [ ] **운송 시작(Start Trip) 서버 연결 불가**: `POST` 요청 시 간헐적인 통신 오류 분석 (CORS 재점검 또는 엔드포인트 도달 확인).
+- [x] **다른 앱 위에 표시 전환 오류**: 삼성 갤럭시(Android 14+) 등에서 `package:` 스킴 인텐트가 막히는 현상에 대응하여, Fallback 인텐트(옵션 미지정 및 앱 상세 정보) 2단계를 적용하여 해결 완료.
+- [x] **사진 업로드(FormData) 실패**: Blob이 포함된 FormData가 CapacitorHttp 환경에서 깨지는 현상 원천 차단. 사진을 `Base64` 문자열로 변환 후 순수 `application/json`으로 업로드하도록 구조 변경 (서버 API 동시 개편).
+- [x] **운송 시작(Start Trip) 서버 연결 불가**: 미인증(Anon) 세션에서의 Supabase RLS 차단 문제로 판명, POST 백엔드 엔드포인트에 `createAdminClient`를 도입하여 RLS 우회 처리.
 - [ ] **오프라인 데이터 큐잉 및 싱크 (진행 예정)**: 네트워크가 없는 상태에서 운송 시작/종료 시 로컬 스토리지에 Action을 큐잉(Queue).
 - [ ] **백그라운드 싱크**: 앱이 다시 `online` 이벤트를 받을 때 큐잉된 내역을 순차적으로 서버에 전송.
 

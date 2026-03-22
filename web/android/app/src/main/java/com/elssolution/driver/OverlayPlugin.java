@@ -65,23 +65,48 @@ public class OverlayPlugin extends Plugin {
     @PluginMethod
     public void requestPermission(PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
+            boolean success = false;
             try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getContext().getPackageName()));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
                 if (getActivity() != null) {
                     getActivity().startActivity(intent);
                 } else {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     getContext().startActivity(intent);
                 }
+                success = true;
             } catch (Exception e) {
-                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.parse("package:" + getContext().getPackageName()));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (getActivity() != null) {
-                    getActivity().startActivity(intent);
-                } else {
-                    getContext().startActivity(intent);
+                // Ignore
+            }
+
+            if (!success) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                    if (getActivity() != null) {
+                        getActivity().startActivity(intent);
+                    } else {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        getContext().startActivity(intent);
+                    }
+                    success = true;
+                } catch (Exception e) {
+                    // Ignore
+                }
+            }
+
+            if (!success) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+                    if (getActivity() != null) {
+                        getActivity().startActivity(intent);
+                    } else {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        getContext().startActivity(intent);
+                    }
+                } catch (Exception e) {
+                    // Ignore
                 }
             }
             call.resolve();

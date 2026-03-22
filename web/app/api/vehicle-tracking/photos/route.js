@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const s3 = new S3Client({
@@ -23,19 +23,40 @@ const PHOTO_PREFIX = 'vehicle-tracking/photos';
  * - photos: 파일 (multiple)
  */
 export async function POST(request) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     try {
-        const formData = await request.formData();
-        const tripId = formData.get('trip_id');
-        const files = formData.getAll('photos');
+        let tripId;
+        let filesData = [];
+
+        const contentType = request.headers.get('content-type') || '';
+        
+        if (contentType.includes('application/json')) {
+            const body = await request.json();
+            tripId = body.trip_id;
+            if (body.photos && Array.isArray(body.photos)) {
+                filesData = body.photos; // { name, type, base64 }
+            }
+        } else {
+            const formData = await request.formData();
+            tripId = formData.get('trip_id');
+            const files = formData.getAll('photos');
+            for (const file of files) {
+                if (!(file instanceof File)) continue;
+                filesData.push({
+                    name: file.name,
+                    type: file.type || 'image/jpeg',
+                    buffer: Buffer.from(await file.arrayBuffer())
+                });
+            }
+        }
 
         if (!tripId) {
             return NextResponse.json({ error: 'trip_id는 필수입니다.' }, { status: 400 });
         }
 
-        if (!files || files.length === 0) {
+        if (filesData.length === 0) {
             return NextResponse.json({ error: '업로드할 사진이 없습니다.' }, { status: 400 });
         }
 
@@ -53,10 +74,16 @@ export async function POST(request) {
 
         const uploadedUrls = [];
 
-        for (const file of files) {
-            if (!(file instanceof File)) continue;
+        for (const file of filesData) {
+            let buffer;
+            if (file.buffer) {
+                buffer = file.buffer;
+            } else if (file.base64) {
+                buffer = Buffer.from(file.base64, 'base64');
+            } else {
+                continue;
+            }
 
-            const buffer = Buffer.from(await file.arrayBuffer());
             const ext = file.name.split('.').pop() || 'jpg';
             const timestamp = Date.now();
             const key = `${PHOTO_PREFIX}/${tripId}/${timestamp}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
