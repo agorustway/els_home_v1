@@ -142,6 +142,23 @@
 
   window.closeModal = () => document.getElementById("modal-alert").style.display = "none";
 
+  // ---------------- PIP UI 제어 ----------------
+  window.onPipModeChanged = function(isInPip) {
+    const body = document.body;
+    const mainContent = document.getElementById("main-content");
+    const nav = document.querySelector(".nav-bar"); // 하단 탭바
+    
+    if (isInPip) {
+      // PIP 모드: 타이머와 컨테이너 번호만 강조
+      body.classList.add("pip-active");
+      // 기존 모달 등 방해 요소 숨김
+      window.closeModal();
+    } else {
+      // 일반 모드 복귀
+      body.classList.remove("pip-active");
+    }
+  };
+
   // ---------------- 초기화 ----------------
   async function init() {
     const phone = localStorage.getItem("els_phone");
