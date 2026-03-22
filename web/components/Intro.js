@@ -95,7 +95,7 @@ export default function Intro() {
                                 <ul>
                                     <li>1. 위 버튼을 눌러 <strong>[els_driver.apk]</strong> 파일을 다운로드합니다.</li>
                                     <li>2. 파일 다운로드 완료 후 알림창에서 파일을 누릅니다.</li>
-                                    <li>3. '출처를 알 수 없는 앱' 경고창이 뜨면 <strong>[설정]</strong>을 눌러 <strong>'이 출처 허용'</strong>을 켭니다.</li>
+                                    <li>3. &apos;출처를 알 수 없는 앱&apos; 경고창이 뜨면 <strong>[설정]</strong>을 눌러 <strong>&apos;이 출처 허용&apos;</strong>을 켭니다.</li>
                                     <li>4. 화면 하단의 <strong>[설치]</strong> 버튼을 눌러 완료합니다.</li>
                                 </ul>
                                 <p style={{marginTop: '10px', fontSize: '0.8rem', opacity: 0.7}}>* 이 앱은 구글 플레이스토어가 아닌 사내 전용 배포 파일로 설치됩니다.</p>

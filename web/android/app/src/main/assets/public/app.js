@@ -197,8 +197,22 @@
   function updateOfflineBar(){const b=document.getElementById('offline-bar');if(b)b.style.display=isOnline?'none':'block';}
   function haptic(s){try{const Plugins=getDynamicPlugins();if(Plugins.Haptics)Plugins.Haptics.impact({style:s||'Medium'});}catch(e){}}
 
-  // ═══ 권한 ═══
-  async function requestLocationPerm(){haptic();try{await new Promise((r,j)=>{navigator.geolocation.getCurrentPosition(()=>r(true),e=>j(e),{enableHighAccuracy:true,timeout:5000});});markPermGranted('perm-location');document.getElementById('gps-indicator').className='gps-on';}catch(e){alert('위치 권한을 허용해 주세요.');}}
+  async function requestLocationPerm(){
+    haptic();
+    try{
+      await new Promise((r,j)=>{
+        navigator.geolocation.getCurrentPosition(
+          ()=>r(true),
+          (e)=>{ if(e.code===1) j(e); else r(true); }, // code 1 is PERMISSION_DENIED. Other errors mean permitted but no signal
+          {enableHighAccuracy:true,timeout:10000}
+        );
+      });
+      markPermGranted('perm-location');
+      document.getElementById('gps-indicator').className='gps-on';
+    }catch(e){
+      alert('위치 권한을 허용해 주세요. (앱 설정에서 권한 허용)');
+    }
+  }
   async function requestCameraPerm(){haptic();try{const s=await navigator.mediaDevices.getUserMedia({video:true});s.getTracks().forEach(t=>t.stop());markPermGranted('perm-camera');}catch(e){alert('카메라 권한 허용 필요');}}
   async function requestPhotoPerm(){haptic();markPermGranted('perm-photo');showModal('알림','사진/동영상 권한은 앱 설치 시 자동 요청됩니다.');}
   async function requestNotifyPerm(){haptic();try{if('Notification'in window){const r=await Notification.requestPermission();if(r==='granted')markPermGranted('perm-notify');else showModal('알림','알림 권한을 허용해 주세요.');}else markPermGranted('perm-notify');}catch(e){markPermGranted('perm-notify');}}
