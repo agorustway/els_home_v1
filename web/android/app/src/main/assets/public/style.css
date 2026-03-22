@@ -340,7 +340,7 @@ body {
   text-align: center;
   font-size: 2.5rem;
   font-weight: 900;
-  font-family: 'Courier New', monospace;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   margin: 12px 0;
   letter-spacing: 2px;
 }
@@ -581,7 +581,7 @@ body {
 #pip-timer {
   font-size: 28px;
   font-weight: 900;
-  font-family: 'Courier New', monospace;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: #58a6ff;
   letter-spacing: 2px;
 }

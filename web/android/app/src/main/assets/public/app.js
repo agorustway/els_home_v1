@@ -186,9 +186,28 @@
 
   function updatePipDisplay(){
     const ps=document.getElementById('pip-status'),pt=document.getElementById('pip-timer'),pg=document.getElementById('pip-gps');
-    if(ps){ps.textContent=tripStatus==='driving'?'● 운행중':(tripStatus==='paused'?'■ 일시정지':'○ 대기');ps.style.color=tripStatus==='driving'?'#3fb950':(tripStatus==='paused'?'#d29922':'#7d8590');}
-    if(pt)pt.textContent=formatTime(elapsedSeconds);
-    if(pg){const g=document.getElementById('gps-indicator');const on=g&&g.className==='gps-on';pg.textContent=on?'GPS ●':'GPS ○';pg.style.color=on?'#3fb950':'#f85149';}
+    const bs=document.getElementById('banner-status');
+    const gi=document.getElementById('gps-indicator');
+    
+    if(ps){
+      if(bs && bs.textContent && (tripStatus==='driving' || tripStatus==='paused')){
+        ps.textContent = bs.textContent;
+      } else {
+        ps.textContent=tripStatus==='driving'?'● 운행중':(tripStatus==='paused'?'■ 일시정지':'○ 대기');
+      }
+      ps.style.color=tripStatus==='driving'?'#3fb950':(tripStatus==='paused'?'#d29922':'#7d8590');
+    }
+    
+    if(pt) pt.textContent=formatTime(elapsedSeconds);
+    
+    if(pg){
+      if(gi && gi.textContent){
+        pg.textContent = gi.textContent;
+        pg.style.color = gi.className.includes('on') ? '#3fb950' : (gi.className.includes('paused') ? '#d29922' : '#f85149');
+      } else {
+        pg.textContent='GPS -';
+      }
+    }
   }
 
   function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.style.display='none');const el=document.getElementById(id);if(el)el.style.display='block';}
@@ -405,6 +424,7 @@
     if(bs && tripStatus === 'driving'){
        bs.textContent = `● 운행중 (수집:${mode})`;
     }
+    if(isPipMode) updatePipDisplay();
   }
 
   function onGPSError(err){
