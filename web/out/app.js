@@ -142,27 +142,37 @@
 
   window.closeModal = () => document.getElementById("modal-alert").style.display = "none";
 
-  // ---------------- Initialization ----------------
-  async function init() {
-    const phone = localStorage.getItem("els_phone");
-    if (phone) {
-      const res = await api(`${API_BASE}/trips?mode=my&phone=${phone}`, "GET");
-      if (res.ok) {
-        const list = document.getElementById("history-list");
-        if (list) {
-          list.innerHTML = res.data.trips.map(t => `
-            <div onclick="window.openTripDetail('${t.id}')" style="padding:15px; border-bottom:1px solid #30363d; cursor:pointer;">
-              <div style="display:flex; justify-content:space-between;">
-                <div style="font-weight:bold; font-size:16px;">${t.container_number || '미입력'}</div>
-                <div style="background:${t.status==='driving'?'#238636':'#8b949e'}; font-size:11px; padding:2px 6px; border-radius:4px;">${t.status==='driving'?'운행중':'종료'}</div>
-              </div>
-              <div style="font-size:12px; color:#8b949e; margin-top:5px;">${new Date(t.started_at).toLocaleString()} | ${t.vehicle_number}</div>
-            </div>
-          `).join('');
-        }
-      }
+  window.checkPhone = async function() {
+    const phone = document.getElementById("inp-phone")?.value.trim();
+    if (!phone) return;
+    const res = await api(`${API_BASE}/drivers?phone=${encodeURIComponent(phone)}`, "GET");
+    if (res.ok && res.data.driver) {
+      const d = res.data.driver;
+      document.getElementById("inp-name").value = d.name || "";
+      document.getElementById("inp-vehicle").value = d.vehicle_number || "";
+      document.getElementById("inp-id").value = d.vehicle_id || "";
+      // 로컬 스토리지 저장 (ID 포함)
+      localStorage.setItem("els_name", d.name || "");
+      localStorage.setItem("els_phone", phone);
+      localStorage.setItem("els_vehicle", d.vehicle_number || "");
+      localStorage.setItem("els_id", d.vehicle_id || "");
+      alert("정보를 불러왔습니다.");
+    } else {
+      alert("등록된 정보가 없습니다. 직접 입력해주세요.");
     }
-  }
+  };
+
+  window.requestCameraPerm = async function() {
+    alert("카메라 및 '사진/동영상' 권한이 필요합니다.\n설정창이 뜨면 모두 '허용'해 주세요.");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(t => t.stop());
+      alert("권한이 확인되었습니다.");
+    } catch(e) {
+      alert("권한 요청 실패. 앱 설정에서 수동으로 허용해 주세요.");
+      if(typeof Capacitor !== 'undefined') Capacitor.Plugins.Overlay.openAppSettings();
+    }
+  };
 
   document.addEventListener("DOMContentLoaded", init);
   
