@@ -623,6 +623,17 @@ export default function DriverAppPage() {
         if (driverName) localStorage.setItem('els_driver_name', driverName);
     }, [driverPhone, vehicleNumber, vehicleId, driverName]);
 
+    // ── 백그라운드 유지 보조용 모션 센서 ──
+    useEffect(() => {
+        const handleMotion = () => { /* 가속도 사용 알림용 */ };
+        window.addEventListener('devicemotion', handleMotion, { passive: true });
+        window.addEventListener('deviceorientation', handleMotion, { passive: true });
+        return () => {
+            window.removeEventListener('devicemotion', handleMotion);
+            window.removeEventListener('deviceorientation', handleMotion);
+        };
+    }, []);
+
     // 프로필 자동 매칭 및 SW
     useEffect(() => {
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -925,24 +936,27 @@ export default function DriverAppPage() {
             <div className={styles.gpsBar}>
                 <span>
                     <span className={`${styles.gpsDot} ${gpsActive ? styles.gpsDotActive : styles.gpsDotInactive}`} />
-                    {isActive ? (
-                        isDriving ? (
-                            `GPS수신중 (${speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})`
-                        ) : 'GPS 수신정지'
-                    ) : 'GPS 수신종료'}
+                    {!isActive ? 'GPS정상' : (
+                        isDriving ? '운행중' : '일시정지'
+                    )}
                 </span>
                 <span style={{marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8'}}>
-                    {isActive ? (isDriving ? '운행중' : '일시정지') : '운행종료'}
+                    {isActive ? (isDriving ? `수신중(${speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})` : 'GPS정지') : '대기중'}
                 </span>
             </div>
 
             {isActive ? (
                 /* 운행 활성화 상태: 대시보드 집중 모드 */
                 <div id="status-dashboard" className={styles.activeDashboard}>
-                    <div className={styles.dashboardLabel}>{isDriving ? '운행 중 (GPS정상)' : '일시정지 (GPS정지)'}</div>
+                    <div className={styles.dashboardLabel}>{isDriving ? '운송 중' : '일시정지 (휴식)'}</div>
                     <div className={styles.dashboardTimer}>
                         {formatTime(elapsedSeconds)}
                     </div>
+                    {isDriving && (
+                        <div style={{textAlign:'center', color:'var(--accent)', fontSize:'0.8rem', fontWeight:700, marginTop:'-10px', marginBottom:'15px'}}>
+                            GPS수집중 ({speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})
+                        </div>
+                    )}
                     
                     <div className={styles.dashboardInfoRow}>
                         <div className={styles.infoCol}>

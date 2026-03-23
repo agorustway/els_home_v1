@@ -168,11 +168,17 @@ export async function GET(request) {
                 query = query.eq('status', statusFilter);
             }
 
-            if (month) {
+            const date = searchParams.get('date');
+            if (date) {
+                // 정확한 특정 일자 필터링
+                const start = `${date}T00:00:00+09:00`;
+                const end = `${date}T23:59:59+09:00`;
+                query = query.gte('started_at', start).lte('started_at', end);
+            } else if (month) {
                 const start = `${month}-01T00:00:00+09:00`;
                 const endDate = new Date(Number(month.split('-')[0]), Number(month.split('-')[1]), 0);
                 const end = `${month}-${String(endDate.getDate()).padStart(2, '0')}T23:59:59+09:00`;
-                query = query.gte('created_at', start).lte('created_at', end);
+                query = query.gte('started_at', start).lte('started_at', end);
             }
 
             const { data, error } = await query;

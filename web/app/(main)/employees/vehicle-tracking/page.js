@@ -45,7 +45,7 @@ export default function VehicleTrackingPage() {
                 naver.maps.Event.trigger(mapInstanceRef.current, 'resize');
                 if (activeTab === 'live' && liveTrips.length > 0) {
                     const bounds = new naver.maps.LatLngBounds();
-                    liveTrips.forEach(t => { if(t.lastLocation) bounds.extend(new naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng)); });
+                    liveTrips.forEach(t => { if (t.lastLocation) bounds.extend(new naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng)); });
                     if (!bounds.isEmpty()) mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
                 }
             }, 200);
@@ -105,8 +105,8 @@ export default function VehicleTrackingPage() {
     const handleSelectTrip = async (trip) => {
         setIsDetailLoading(true);
         setSelectedTripLocations([]);
-        setTripLogs([]); 
-        
+        setTripLogs([]);
+
         try {
             // 상세 정보, 경로 데이터, 수정 로그를 동시에 가져옴
             const [tripRes, locRes, logRes] = await Promise.all([
@@ -114,7 +114,7 @@ export default function VehicleTrackingPage() {
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`),
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/logs`)
             ]);
-            
+
             const tripData = await tripRes.json();
             if (tripData) setSelectedTrip(tripData);
             else setSelectedTrip(trip); // 실패시 기존 데이터 유지
@@ -124,7 +124,7 @@ export default function VehicleTrackingPage() {
                 setSelectedTripLocations(locData.locations);
                 drawTripPath(locData.locations);
             }
-            
+
             const logData = await logRes.json();
             if (logData.logs) {
                 setTripLogs(logData.logs);
@@ -201,7 +201,22 @@ export default function VehicleTrackingPage() {
                 },
             });
 
-            const infoHtml = `<div style="padding:10px 12px;min-width:200px;font-size:13px;line-height:1.6;"><strong>${trip.driver_name}</strong><br/><span style="color:#64748b;">🚛 ${trip.vehicle_number}</span><br/>📍 ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</div>`;
+            const infoHtml = `
+                <div style="padding:16px; min-width:240px; font-family:'Pretendard',sans-serif;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                        <div>
+                            <div style="font-size:16px; font-weight:800; color:#1e293b; margin-bottom:2px;">${trip.driver_name}</div>
+                            <div style="font-size:11px; font-weight:600; color:#64748b;">🚛 ${trip.vehicle_number}</div>
+                        </div>
+                        <span style="font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; background:${markerColor}15; color:${markerColor}; border:1px solid ${markerColor}40;">${TRIP_STATUS_LABELS[trip.status]}</span>
+                    </div>
+                    <div style="padding:10px; background:#f8fafc; border-radius:10px; font-size:13px; color:#334155; line-height:1.5; border:1px solid #f1f5f9; margin-top:4px;">
+                        <span style="display:block; font-weight:800; color:#0ea5e9; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Current Location</span>
+                        ${loc.address || '주소 정보 확인 중...'}
+                    </div>
+                    ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
+                </div>
+            `;
             const infoWindow = new naver.maps.InfoWindow({ content: infoHtml, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' });
 
             naver.maps.Event.addListener(marker, 'click', () => {
@@ -255,7 +270,7 @@ export default function VehicleTrackingPage() {
     const handleBulkDelete = async () => {
         if (selectedIds.length === 0) return;
         if (!confirm(`선택한 ${selectedIds.length}건의 기록을 모두 삭제하시겠습니까?`)) return;
-        
+
         try {
             // 순차적 또는 병렬로 삭제 처리 (서버에서 bulk delete API 지원하면 더 좋음)
             const deletePromises = selectedIds.map(id => fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' }));
@@ -274,7 +289,7 @@ export default function VehicleTrackingPage() {
             direction = 'asc';
         }
         setSortConfig({ key, direction });
-        
+
         const sortedRecords = [...records].sort((a, b) => {
             if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
             if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
@@ -292,7 +307,7 @@ export default function VehicleTrackingPage() {
     };
 
     const toggleSelect = (id) => {
-        setSelectedIds(prev => 
+        setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
         );
     };
@@ -300,7 +315,7 @@ export default function VehicleTrackingPage() {
     // 주소 역지오코딩 함수
     const fetchMissingAddress = (location, index) => {
         if (!window.naver?.maps?.Service) return;
-        
+
         naver.maps.Service.reverseGeocode({
             coords: new naver.maps.LatLng(location.lat, location.lng),
             orders: [
@@ -315,7 +330,7 @@ export default function VehicleTrackingPage() {
 
             // 상세 주소 및 상호명(빌딩명 등) 추출 시도
             let address = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-            
+
             // 근처 상호/건물명 정보가 있을 경우 추가 (naver maps v3 api에선 직접적인 POI 상호명을 주진 않지만 건물명 검색 가능)
             const roadAddr = items.find(it => it.name === 'roadaddr');
             const land = roadAddr?.land;
@@ -338,8 +353,8 @@ export default function VehicleTrackingPage() {
         // 여러 좌표를 찍는 것은 복잡하므로 시작/끝 위주로 구성하거나 전체 URL 생성
         const start = locations[0];
         const end = locations[locations.length - 1];
-        const url = `https://map.naver.com/v5/directions/-/` + 
-            `${start.lng},${start.lat},출발,,/-/` + 
+        const url = `https://map.naver.com/v5/directions/-/` +
+            `${start.lng},${start.lat},출발,,/-/` +
             `${end.lng},${end.lat},도착,,/car`;
         window.open(url, '_blank');
     };
@@ -390,10 +405,10 @@ export default function VehicleTrackingPage() {
 
                 </div>
             </div>
-            
+
             <div className={styles.missionDashboard}>
-                <div className={styles.statCard}><div className={styles.statLabel}>📡 실시간 운행차량</div><div className={styles.statValue} style={{color: '#10b981'}}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
-                <div className={styles.statCard}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{color: '#f59e0b'}}>{liveTrips.filter(t => t.status === 'paused').length} <span className={styles.statUnit}>대</span></div></div>
+                <div className={styles.statCard}><div className={styles.statLabel}>📡 실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
+                <div className={styles.statCard}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b' }}>{liveTrips.filter(t => t.status === 'paused').length} <span className={styles.statUnit}>대</span></div></div>
                 <div className={styles.statCard}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
             </div>
 
@@ -447,7 +462,7 @@ export default function VehicleTrackingPage() {
                     </div>
                     <button className={styles.filterSearchBtn} onClick={handleSearch}>🔍 검색</button>
                     <button className={styles.filterResetBtn} onClick={handleReset}>초기화</button>
-                    
+
                     {selectedIds.length > 0 && (
                         <button className={styles.bulkDeleteBtn} onClick={handleBulkDelete}>
                             🗑️ {selectedIds.length}건 삭제
@@ -509,8 +524,8 @@ export default function VehicleTrackingPage() {
                             </div>
                         </div>
                         <div className={styles.detailSection}>
-                            <div className={styles.sectionTitle}>증빙 사진 ({selectedTrip.photos?.length || 0}) {selectedTrip.photos?.length > 0 && <button className={styles.zipDownloadBtn} style={{width:'auto', height:24, padding:'0 10px', fontSize:'0.7rem'}} onClick={() => handleDownloadZip(selectedTrip)}>📦 ZIP 다운로드</button>}</div>
-                         <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => {
+                            <div className={styles.sectionTitle}>증빙 사진 ({selectedTrip.photos?.length || 0}) {selectedTrip.photos?.length > 0 && <button className={styles.zipDownloadBtn} style={{ width: 'auto', height: 24, padding: '0 10px', fontSize: '0.7rem' }} onClick={() => handleDownloadZip(selectedTrip)}>📦 ZIP 다운로드</button>}</div>
+                            <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => {
                                 const finalUrl = p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
                                 return (
                                     <div key={i} className={styles.photoWrapper} onClick={() => window.open(finalUrl, '_blank')}>
@@ -522,7 +537,7 @@ export default function VehicleTrackingPage() {
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>
                                 <span>이동 경로 ({selectedTripLocations.length})</span>
-                                <div style={{display:'flex', gap:8}}>
+                                <div style={{ display: 'flex', gap: 8 }}>
                                     <button className={styles.resetZoomBtn} onClick={() => drawTripPath(selectedTripLocations)}>🎯 전체보기</button>
                                     <button className={styles.naverMapBtn} onClick={() => handleOpenNaverMap(selectedTripLocations)}>🗺️ 네이버 지도</button>
                                 </div>
@@ -533,11 +548,24 @@ export default function VehicleTrackingPage() {
                                     const hasAddr = loc.address && loc.address !== '주소 정보 없음';
                                     return (
                                         <div key={i} className={styles.locationItem} onClick={() => { mapInstanceRef.current?.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mapInstanceRef.current?.setZoom(16); }}>
-                                            <div className={styles.locHeader}>
-                                                <div className={styles.locTime}>{new Date(loc.recorded_at).toLocaleTimeString()}</div>
-                                                {!hasAddr && <button className={styles.searchAddrBtn} onClick={(e) => { e.stopPropagation(); fetchMissingAddress(loc, realIndex); }}>🔍 주소찾기</button>}
+                                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:2}}>
+                                                <div className={styles.locTime}>{new Date(loc.timestamp || loc.recorded_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
+                                                <div style={{fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 500}}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</div>
                                             </div>
-                                            <div className={styles.locAddress}>{loc.address || '주소 정보 없음'}</div>
+                                            <div className={styles.locContent} style={{display:'flex', alignItems:'center', gap:8}}>
+                                                <div className={styles.locAddress} style={{flex: 1, color: hasAddr ? '#1e293b' : '#94a3b8', fontSize:'0.85rem', fontWeight: 600}}>
+                                                    {loc.address || '주소 확인 필요'}
+                                                </div>
+                                                {!hasAddr && (
+                                                    <button 
+                                                        className={styles.searchAddrBtn} 
+                                                        style={{padding: '3px 8px', fontSize: '0.7rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', whiteSpace:'nowrap'}}
+                                                        onClick={(e) => { e.stopPropagation(); fetchMissingAddress(loc, realIndex); }}
+                                                    >
+                                                        주소 확인
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -547,7 +575,7 @@ export default function VehicleTrackingPage() {
                                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
                                     📋 운송 기록 수정 이력 (Logs)
                                 </h3>
-                                
+
                                 <div className={styles.logList}>
                                     {tripLogs.length > 0 ? (
                                         tripLogs.map((log, li) => (
