@@ -1,5 +1,31 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-03-23 - 관제 UI 고도화 및 빌드 안정화 v3.7.0
+### 주제: 주소 중심 관제 시스템 개편 및 Gradle 빌드 오류 해결
+
+#### 주요 변경 사항
+1. **주소 중심 관제 UI (Admin)**:
+   - **지도 정보창(InfoWindow)**: 좌표 숫자 대신 실시간 **주소**를 가장 크고 명확하게 표시하도록 디자인 개편.
+   - **이동 경로 상세보기**: 경로 정보 리스트에서 주소를 기본 노출하고, 좌표는 보조 수단(작은 텍스트)으로 축소하여 관리자 편의성 극대화.
+   - **주소 찾기 로직 최적화**: 주소 데이터가 없는 지점은 '주소 확인' 미니 버튼을 배치하여 실시간 확인 가능하도록 구현.
+2. **빌드 시스템 안정화 (Android)**:
+   - **Gradle 플러그인 다운그레이드**: 최신 미리보기(9.1.0) 버전에서 발생하는 호환성 문제를 해결하기 위해 안정 버전인 **8.7.3**으로 조정.
+   - **구글 서비스 예외 처리**: `google-services.json` 파일 부재 시 빌드가 중단되는 현상을 방지하기 위해 `build.gradle`에 파일 존재 여부 체크 로직 추가.
+3. **백그라운드 유지 기술 적용 (Driver App)**:
+   - **오디오 루프(Audio Loop)**: 무음 오디오 재생을 통해 백그라운드에서 앱이 강제 종료되는 현상 방지.
+   - **네이티브 포그라운드 서비스**: `@capacitor-community/background-geolocation`을 사용하여 상태바 알림과 함께 안정적인 위치 수집 보장.
+4. **최신 APK 배포**:
+   - 오늘 작업 내용이 모두 포함된 `els_driver.apk`를 `web/public/apk/` 경로에 최종 빌드 및 복사 완료.
+
+#### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/android/build.gradle`
+- `web/android/app/build.gradle`
+- `web/public/apk/els_driver.apk`
+
+---
+
 ## 📅 2026-03-22 (새벽) - 데이터 바인딩 및 브릿지 안정화 v3.6.2
 ### 주제: 차량번호 조회 로직 복구 및 오버레이 권한 진입 이슈 해결
 
