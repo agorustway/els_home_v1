@@ -14,50 +14,22 @@
     <div id="pip-gps">GPS 연결확인 중...</div>
   </div>
 
-  <!-- 온보딩 권한 (프리미엄 개편) -->
+  <!-- 온보딩 권한 -->
   <div id="screen-permissions" class="screen" style="display:none">
-    <div class="onboard-wrap" style="padding-top: max(40px, env(safe-area-inset-top));">
-      <div style="text-align:center; margin-bottom:24px;">
-        <div class="header-logo" style="display:inline-block; font-size:1.2rem; margin-bottom:12px;">ELS Solution</div>
-        <h1 style="font-size:1.6rem;">앱 이용 권한 안내</h1>
-        <p class="sub">원활한 운송 관리를 위해 아래 권한이 필요합니다.</p>
+    <div class="onboard-wrap" style="padding-top: max(80px, env(safe-area-inset-top)); justify-content: flex-start;">
+      <h1>앱 권한 설정</h1>
+      <p class="sub">원활한 운행 관리를 위해 아래 권한이 필요합니다.</p>
+      <div class="perm-list">
+        <div class="perm-item" id="perm-location"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">위치 (항상 사용)</div><div class="perm-desc">GPS 실시간 위치 관제</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-camera"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">카메라</div><div class="perm-desc">컨테이너 사진 촬영</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-photo"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">사진 / 동영상</div><div class="perm-desc">갤러리 접근 및 업로드</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-notify"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">알림</div><div class="perm-desc">운행 상태 알림</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-phone"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">전화</div><div class="perm-desc">기사 연락처 확인</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-overlay"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">다른 앱 위에 표시</div><div class="perm-desc">오버레이/플로팅 위젯 권한</div></div><div class="perm-arrow">›</div></div>
       </div>
-
-      <div class="perm-section">
-        <label class="perm-section-label">필수적 접근권한</label>
-        <div class="perm-list">
-          <div class="perm-item" id="perm-location">
-            <div class="perm-icon">📍</div>
-            <div class="perm-info">
-              <div class="perm-name">위치 정보 (항상 허용)</div>
-              <div class="perm-desc">실시간 위치 관제 및 운행 기록 수집</div>
-            </div>
-            <div class="perm-status dot-red"></div>
-          </div>
-          <div class="perm-item" id="perm-overlay">
-            <div class="perm-icon">🪟</div>
-            <div class="perm-info">
-              <div class="perm-name">다른 앱 위에 표시 (오버레이)</div>
-              <div class="perm-desc">T-Map 등 타 앱 위에서 상태 확인</div>
-            </div>
-            <div class="perm-status dot-red"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="perm-section" style="margin-top:20px;">
-        <label class="perm-section-label">선택적 접근권한</label>
-        <div class="perm-list">
-          <div class="perm-item" id="perm-camera"><div class="perm-icon">📸</div><div class="perm-info"><div class="perm-name">카메라 / 사진</div><div class="perm-desc">컨테이너 및 씰 사진 촬영/수집</div></div><div class="perm-status dot-red"></div></div>
-          <div class="perm-item" id="perm-notify"><div class="perm-icon">🔔</div><div class="perm-info"><div class="perm-name">알림</div><div class="perm-desc">배차 및 운행 상태 알림 수신</div></div><div class="perm-status dot-red"></div></div>
-          <div class="perm-item" id="perm-phone"><div class="perm-icon">📞</div><div class="perm-info"><div class="perm-name">전화</div><div class="perm-desc">기사 연결 및 연락처 확인</div></div><div class="perm-status dot-red"></div></div>
-        </div>
-      </div>
-
-      <div id="overlay-guide-box" style="margin-top:20px; padding:12px; background:rgba(248,81,73,0.1); border:1px dashed var(--danger); border-radius:12px; font-size:0.75rem; color:var(--danger); display:none;">
-        <strong>💡 오버레이 권한이 목록에 없나요?</strong><br>
-        [설정] > [앱 정보] > [ELS차량용] > 우측 상단 [⋮] 버튼 > <strong>[제한된 설정 허용]</strong>을 누른 후 다시 시도해 주세요.
-      </div>
+      <button id="btn-finish-perms" class="btn-primary" style="margin-bottom: max(24px, env(safe-area-inset-bottom));">다음 단계로</button>
+    </div>
+  </div>
 
       <div style="flex:1;"></div>
       
