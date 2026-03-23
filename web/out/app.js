@@ -204,8 +204,17 @@
     const ps=document.getElementById('pip-status'),pt=document.getElementById('pip-timer'),pg=document.getElementById('pip-gps');
     
     if(ps){
-      ps.textContent=tripStatus==='driving'?'● 운행중':(tripStatus==='paused'?'■ 일시정지':'○ 대기중(정상)');
-      ps.style.color=tripStatus==='driving'?'#3fb950':(tripStatus==='paused'?'#d29922':'#7d8590');
+      if(tripStatus === 'driving'){
+        ps.textContent = '● 운행중';
+        ps.style.color = '#3fb950';
+      } else if(tripStatus === 'paused'){
+        ps.textContent = '■ 일시정지';
+        ps.style.color = '#d29922';
+      } else {
+        // 운송 기록이 있었는데 null이 되었다면 '운행종료', 아예 시작 전이면 '대기중'
+        ps.textContent = lastTripId ? '○ 운행종료' : '○ 대기중';
+        ps.style.color = '#7d8590';
+      }
     }
     
     if(pt) pt.textContent=formatTime(elapsedSeconds);
@@ -218,7 +227,7 @@
         const isNormal = gi.className.includes('on') || tripStatus === 'driving';
         pg.style.color = isNormal ? '#3fb950' : (gi.className.includes('paused') ? '#d29922' : '#f85149');
       } else {
-        pg.textContent = tripStatus ? 'GPS수신대기' : 'GPS정상';
+        pg.textContent = lastTripId ? '전송완료' : '연결 대기중';
         pg.style.color = '#7d8590';
       }
     }
