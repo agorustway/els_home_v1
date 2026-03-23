@@ -1,4 +1,4 @@
-/* ELS 운송관리 v3.4.0 - GPS 관제 + 오버레이/PIP 이중 */
+/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
 (() => {
   const getDynamicCapacitor = () => window.Capacitor || {};
   const getDynamicPlugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};

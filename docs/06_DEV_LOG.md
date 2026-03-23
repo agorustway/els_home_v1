@@ -1,4 +1,26 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-23 - 오버레이 제거 및 APK 최적화 v3.8.0
+### 주제: APK 배포 환경에서의 사용자 경험 개선 및 백그라운드 GPS 안정성 확보
+#### 주요 변경 사항
+1. **오버레이(다른 앱 위에 표시) 기능 완전 제거**:
+   - 삼성 최신 기기 등 APK 직접 설치 시 발생하는 '제한된 설정' 이슈로 인해 오버레이 기능을 제거하고 PIP 모드에 집중.
+   - 온보딩 권한 설정 및 설정 탭에서 오버레이 관련 UI/가이드 전면 삭제.
+   - `AndroidManifest.xml`에서 `SYSTEM_ALERT_WINDOW` 권한 삭제.
+2. **백그라운드 GPS 수집 최적화**:
+   - 오버레이 UI는 삭제했으나, 운행 시작 시 **네이티브 포그라운드 서비스(Foreground Service)**가 상단 알림과 함께 실행되도록 유지.
+   - 화면이 꺼진 상태에서도 OS에 의해 앱이 종료되지 않고 안정적으로 위치를 수집할 수 있도록 최적화.
+3. **개인정보 처리방침 구현**:
+   - 구글 정책 대응을 위한 `web/public/privacy.html` 작성 및 앱 내 링크 연결 완료.
+4. **최종 APK 배포**:
+   - 모든 수정사항이 반영된 정식 APK를 `web/public/apk/els_driver.apk` 경로에 빌드 및 복사 완료.
+
+#### 주요 파일
+- `web/out/app.js`, `web/out/index.html`
+- `web/android/app/src/main/AndroidManifest.xml`
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/public/apk/els_driver.apk`
+
+---
 ## 📅 2026-03-23 - GPS 가시성 개선 및 백그라운드 안정화 v3.7.1
 ### 주제: 드라이버 앱 GPS UI 직관성 강화 및 센서 기반 유지력 확보
 
