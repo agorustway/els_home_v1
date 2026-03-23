@@ -278,14 +278,18 @@
         hasOverlayPerm=true;
         markPermGranted('perm-overlay');
         haptic('Heavy');
-        showModal('성공','오버레이 권한이 허용되었습니다!\n최고화 시 TMAP처럼 플로팅 위젯이 표시됩니다.');
       }else{
         hasOverlayPerm=false;
-        showModal('설정 안내','"다른 앱 위에 표시" 권한을 켜 주세요.\n만약 설정 화면이 열리지 않으면 [휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 켜주시면 됩니다.');
+        // 리스트에서 못 찾았을 가능성 높음 → '제한된 설정 허용' 안내
+        if(confirm('권한 목록에서 [ELS차량용]을 찾을 수 없었나요?\n\n[확인]을 누르면 앱 정보 화면을 엽니다.\n→ 우측 상단 ⋮ 메뉴 > [제한된 설정 허용] 후 다시 시도하세요.')){
+          try{ await O.openRestrictedSettings(); }catch(e2){ showModal('안내','[설정 > 앱 > ELS차량용]에서 ⋮ 메뉴 > 제한된 설정 허용을 해주세요.'); }
+        }
       }
     }catch(e){
       console.error('오버레이 권한 요청 오류:',e);
-      showModal('오류','설정 화면을 자동으로 열 수 없습니다.\n[휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 권한을 켜주세요.');
+      // 설정 화면 자체가 안 열릴 때 → 앱 정보 화면으로 안내
+      try{ await O.openRestrictedSettings(); }catch(e2){}
+      showModal('안내','앱 정보 화면에서\n① 우측 상단 ⋮ 메뉴 > [제한된 설정 허용]\n② 뒤로가기 후 [다른 앱 위에 표시] 클릭');
     }
     checkPermissionsFlow();
   }

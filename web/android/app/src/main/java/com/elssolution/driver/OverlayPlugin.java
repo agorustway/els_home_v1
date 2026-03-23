@@ -37,27 +37,38 @@ public class OverlayPlugin extends Plugin {
     }
 
     /**
-     * 오버레이 권한 설정 화면 열기 (핵심 변경!)
+     * 오버레이 권한 설정 화면 열기
      * startActivityForResult로 열고, 사용자가 돌아오면 결과를 JS로 리턴
+     * Toast로 사용자에게 앱 이름을 안내하여 헤매지 않도록 함
      */
     @PluginMethod
     public void requestPermission(final PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
             getActivity().runOnUiThread(() -> {
                 try {
-                    // 안드로이드 16 등 최신 OS에서 정확한 앱 설정 창을 열기 위해 package URI 명시
                     Intent intent = new Intent(
                         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:" + getActivity().getPackageName())
                     );
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    
+                    // 🔑 Toast 안내: 사용자가 설정 화면에서 앱을 찾을 수 있도록 가이드
+                    Toast.makeText(getContext(), 
+                        "📌 [ELS차량용]을 찾아 허용해주세요", 
+                        Toast.LENGTH_LONG).show();
+                    
                     startActivityForResult(call, intent, "overlayPermResult");
-                    Log.d(TAG, "오버레이 권한 설정 화면 열기 시도 (패키지 지정)");
+                    Log.d(TAG, "오버레이 권한 설정 화면 열기 시도 (패키지 지정 + Toast 안내)");
                 } catch (Exception e) {
                     Log.w(TAG, "패키지 지정 설정 창 열기 실패, 일반 목록 시도: " + e.getMessage());
                     try {
                         Intent intentList = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
                         intentList.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        
+                        Toast.makeText(getContext(), 
+                            "📌 목록에서 [ELS차량용]을 찾아 허용해주세요", 
+                            Toast.LENGTH_LONG).show();
+                        
                         startActivityForResult(call, intentList, "overlayPermResult");
                     } catch (Exception e2) {
                         call.reject("설정 화면을 열 수 없습니다.");
@@ -85,10 +96,41 @@ public class OverlayPlugin extends Plugin {
             granted = true;
         }
 
+        if (granted) {
+            Toast.makeText(getContext(), "✅ 오버레이 권한이 허용되었습니다!", Toast.LENGTH_SHORT).show();
+        }
+
         Log.d(TAG, "오버레이 권한 확인 콜백 결과: " + granted);
         JSObject ret = new JSObject();
         ret.put("granted", granted);
         call.resolve(ret);
+    }
+
+    /**
+     * 앱 상세 정보 화면 열기 (제한된 설정 허용을 위해)
+     * ⋮ 메뉴 > '제한된 설정 허용'을 사용자에게 안내
+     */
+    @PluginMethod
+    public void openRestrictedSettings(final PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getContext().getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                
+                // 🔑 제한된 설정 허용 안내 Toast (길게 표시)
+                Toast.makeText(getContext(), 
+                    "⚙️ 우측 상단 ⋮ 메뉴 → [제한된 설정 허용]을 눌러주세요", 
+                    Toast.LENGTH_LONG).show();
+                
+                getContext().startActivity(intent);
+                Log.d(TAG, "앱 상세 정보 화면 열기 (제한된 설정 허용 안내)");
+                call.resolve();
+            } catch (Exception e) {
+                Log.e(TAG, "앱 상세 정보 화면 열기 실패: " + e.getMessage());
+                call.reject("설정 화면을 열 수 없습니다.");
+            }
+        });
     }
 
     /**
