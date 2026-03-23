@@ -35,6 +35,8 @@ export default function VehicleTrackingPage() {
     const [filterFrom, setFilterFrom] = useState('');
     const [filterTo, setFilterTo] = useState('');
     const [recordsTotal, setRecordsTotal] = useState(0);
+    const [selectedIds, setSelectedIds] = useState([]); // 일괄 삭제용
+    const [sortConfig, setSortConfig] = useState({ key: 'started_at', direction: 'desc' }); // 정렬 상태
 
     // ─── 0. 지도 리사이즈 및 탭 전환 대응 ───
     useEffect(() => {
@@ -101,17 +103,22 @@ export default function VehicleTrackingPage() {
     };
 
     const handleSelectTrip = async (trip) => {
-        setSelectedTrip(trip);
         setIsDetailLoading(true);
         setSelectedTripLocations([]);
-        setTripLogs([]); // 초기화
+        setTripLogs([]); 
+        
         try {
-            // 경로 데이터와 수정 로그를 동시에 가져옴
-            const [locRes, logRes] = await Promise.all([
+            // 상세 정보, 경로 데이터, 수정 로그를 동시에 가져옴
+            const [tripRes, locRes, logRes] = await Promise.all([
+                fetch(`/api/vehicle-tracking/trips/${trip.id}`),
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`),
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/logs`)
             ]);
             
+            const tripData = await tripRes.json();
+            if (tripData) setSelectedTrip(tripData);
+            else setSelectedTrip(trip); // 실패시 기존 데이터 유지
+
             const locData = await locRes.json();
             if (locData.locations) {
                 setSelectedTripLocations(locData.locations);
@@ -124,6 +131,7 @@ export default function VehicleTrackingPage() {
             }
         } catch (e) {
             console.error('상세 정보 조회 실패:', e);
+            setSelectedTrip(trip); // 오류 시 리스트 데이터라도 사용
         } finally {
             setIsDetailLoading(false);
         }
@@ -146,7 +154,7 @@ export default function VehicleTrackingPage() {
             handleInit();
         } else {
             const script = document.createElement('script');
-            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
+            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
             script.async = true;
             script.onload = () => handleInit();
             document.head.appendChild(script);
@@ -180,9 +188,10 @@ export default function VehicleTrackingPage() {
             const pos = new naver.maps.LatLng(loc.lat, loc.lng);
             bounds.extend(pos);
             const isDriving = trip.status === 'driving';
-            const markerColor = isDriving ? '#10b981' : '#f59e0b';
+            const isPaused = trip.status === 'paused';
+            const markerColor = isDriving ? '#10b981' : (isPaused ? '#f59e0b' : '#6b7280');
             const vNum = trip.vehicle_number || '';
-            const vLabel = vNum.length >= 4 ? vNum.slice(-4) : '';
+            const vLabel = vNum.length >= 4 ? vNum.slice(-4) : vNum;
 
             const marker = new naver.maps.Marker({
                 position: pos, map,
@@ -219,8 +228,10 @@ export default function VehicleTrackingPage() {
             const res = await fetch(`/api/vehicle-tracking/trips?${params}`);
             const data = await res.json();
             if (data.trips) {
+                // 각 트립의 마지막 위치 주소 가져오기 (필요한 경우)
                 setRecords(data.trips);
                 setRecordsTotal(data.total || data.trips.length);
+                setSelectedIds([]); // 검색 시 선택 초기화
             }
         } catch (e) { console.error('기록 조회 실패:', e); }
         finally { setRecordsLoading(false); }
@@ -234,9 +245,103 @@ export default function VehicleTrackingPage() {
     const handleDeleteRecord = async (id) => {
         if (!confirm('이 운행 기록을 삭제하시겠습니까?')) return;
         try {
-            await fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('삭제 실패');
             setRecords(prev => prev.filter(t => t.id !== id));
+            setSelectedIds(prev => prev.filter(sid => sid !== id));
         } catch (e) { alert('삭제 실패: ' + e.message); }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`선택한 ${selectedIds.length}건의 기록을 모두 삭제하시겠습니까?`)) return;
+        
+        try {
+            // 순차적 또는 병렬로 삭제 처리 (서버에서 bulk delete API 지원하면 더 좋음)
+            const deletePromises = selectedIds.map(id => fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' }));
+            await Promise.all(deletePromises);
+            setRecords(prev => prev.filter(t => !selectedIds.includes(t.id)));
+            setSelectedIds([]);
+            alert('삭제되었습니다.');
+        } catch (e) {
+            alert('일부 삭제 중 오류가 발생했습니다.');
+        }
+    };
+
+    const handleSort = (key) => {
+        let direction = 'desc';
+        if (sortConfig.key === key && sortConfig.direction === 'desc') {
+            direction = 'asc';
+        }
+        setSortConfig({ key, direction });
+        
+        const sortedRecords = [...records].sort((a, b) => {
+            if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+            if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+        setRecords(sortedRecords);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === records.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(records.map(r => r.id));
+        }
+    };
+
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+        );
+    };
+
+    // 주소 역지오코딩 함수
+    const fetchMissingAddress = (location, index) => {
+        if (!window.naver?.maps?.Service) return;
+        
+        naver.maps.Service.reverseGeocode({
+            coords: new naver.maps.LatLng(location.lat, location.lng),
+            orders: [
+                naver.maps.Service.OrderType.ADDR,
+                naver.maps.Service.OrderType.ROAD_ADDR
+            ].join(',')
+        }, (status, response) => {
+            if (status !== naver.maps.Service.Status.OK) return;
+
+            const items = response.v2.results;
+            if (!items || items.length === 0) return;
+
+            // 상세 주소 및 상호명(빌딩명 등) 추출 시도
+            let address = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+            
+            // 근처 상호/건물명 정보가 있을 경우 추가 (naver maps v3 api에선 직접적인 POI 상호명을 주진 않지만 건물명 검색 가능)
+            const roadAddr = items.find(it => it.name === 'roadaddr');
+            const land = roadAddr?.land;
+            if (land && land.name) {
+                address += ` (${land.name})`;
+            }
+
+            // 상태 업데이트
+            setSelectedTripLocations(prev => {
+                const newList = [...prev];
+                newList[index] = { ...newList[index], address };
+                return newList;
+            });
+        });
+    };
+
+    const handleOpenNaverMap = (locations) => {
+        if (!locations.length) return;
+        // 네이버 지도에서 경로 보기 (웹 링크)
+        // 여러 좌표를 찍는 것은 복잡하므로 시작/끝 위주로 구성하거나 전체 URL 생성
+        const start = locations[0];
+        const end = locations[locations.length - 1];
+        const url = `https://map.naver.com/v5/directions/-/` + 
+            `${start.lng},${start.lat},출발,,/-/` + 
+            `${end.lng},${end.lat},도착,,/car`;
+        window.open(url, '_blank');
     };
 
     const handleDownloadZip = async (trip) => {
@@ -306,7 +411,7 @@ export default function VehicleTrackingPage() {
                 <div className={styles.tableSection}>
                     <h3>📋 현재 운행 현황 ({liveTrips.length}건)</h3>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>타입</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>현재위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {liveTrips.map(trip => (
                                 <tr key={trip.id}>
@@ -314,7 +419,7 @@ export default function VehicleTrackingPage() {
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
-                                    <td>{trip.container_type}</td>
+                                    <td className={styles.narrowCol} title={trip.lastLocation?.address || '주소 정보 없음'}>{trip.lastLocation?.address || '-'}</td>
                                     <td><button className={styles.filterSearchBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button></td>
                                 </tr>
                             ))}
@@ -325,29 +430,63 @@ export default function VehicleTrackingPage() {
 
             <div style={{ display: activeTab === 'records' ? 'block' : 'none' }}>
                 <div className={styles.filterBar}>
-                    <select className={styles.filterSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                        <option value="all">전체 상태</option><option value="driving">🟢 운행 중</option><option value="paused">🟡 일시중지</option><option value="completed">⚪ 운행 완료</option>
-                    </select>
-                    <input className={styles.filterInput} placeholder="이름/차량/컨테이너" value={filterKeyword} onChange={e => setFilterKeyword(e.target.value)} />
-                    <button className={styles.filterSearchBtn} onClick={handleSearch}>검색</button>
+                    <div className={styles.filterGroup}>
+                        <span className={styles.filterLabel}>상태</span>
+                        <select className={styles.filterSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                            <option value="all">전체</option><option value="driving">🟢 운행 중</option><option value="paused">🟡 일시중지</option><option value="completed">⚪ 운행 완료</option>
+                        </select>
+                    </div>
+                    <div className={styles.filterGroup}>
+                        <span className={styles.filterLabel}>기간</span>
+                        <input type="date" className={styles.filterDateInput} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+                        <span>~</span>
+                        <input type="date" className={styles.filterDateInput} value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+                    </div>
+                    <div className={styles.filterGroup}>
+                        <input className={styles.filterInput} placeholder="이름/차량/컨테이너" value={filterKeyword} onChange={e => setFilterKeyword(e.target.value)} />
+                    </div>
+                    <button className={styles.filterSearchBtn} onClick={handleSearch}>🔍 검색</button>
                     <button className={styles.filterResetBtn} onClick={handleReset}>초기화</button>
+                    
+                    {selectedIds.length > 0 && (
+                        <button className={styles.bulkDeleteBtn} onClick={handleBulkDelete}>
+                            🗑️ {selectedIds.length}건 삭제
+                        </button>
+                    )}
                 </div>
                 <div className={styles.tableSection}>
-                    <h3>📋 운행 기록 ({recordsTotal}건)</h3>
+                    <div className={styles.tableHeaderInfo}>
+                        <h3>📋 운행 기록 ({recordsTotal}건)</h3>
+                        <div className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</div>
+                    </div>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>시작</th><th>종료</th><th>관리</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length} onChange={toggleSelectAll} /></th>
+                                <th>상태</th>
+                                <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th>차량번호</th>
+                                <th>컨테이너</th>
+                                <th onClick={() => handleSort('started_at')} className={styles.sortable}>시작 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th onClick={() => handleSort('completed_at')} className={styles.sortable}>종료 {sortConfig.key === 'completed_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th>최종위치</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             {records.map(trip => (
-                                <tr key={trip.id}>
+                                <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''}>
+                                    <td><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
                                     <td>{formatDateTime(trip.started_at)}</td>
                                     <td>{formatDateTime(trip.completed_at)}</td>
-                                    <td>
-                                        <button className={styles.filterSearchBtn} onClick={() => handleSelectTrip(trip)}>보기</button>
-                                        <button className={styles.deleteBtn} onClick={() => handleDeleteRecord(trip.id)}>🗑️</button>
+                                    <td className={styles.narrowCol} title={trip.last_location_address || '주소 정보 없음'}>{trip.last_location_address || '-'}</td>
+                                    <td className={styles.actionCol}>
+                                        <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>보기</button>
+                                        <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>🗑️</button>
                                     </td>
                                 </tr>
                             ))}
@@ -381,14 +520,24 @@ export default function VehicleTrackingPage() {
                             })}</div>
                         </div>
                         <div className={styles.detailSection}>
-                            <div className={styles.sectionTitle}>이동 경로 ({selectedTripLocations.length})</div>
+                            <div className={styles.sectionTitle}>
+                                <span>이동 경로 ({selectedTripLocations.length})</span>
+                                <button className={styles.naverMapBtn} onClick={() => handleOpenNaverMap(selectedTripLocations)}>🗺️ 네이버 지도로 보기</button>
+                            </div>
                             <div className={styles.locationList}>
-                                {selectedTripLocations.slice().reverse().map((loc, i) => (
-                                    <div key={i} className={styles.locationItem} onClick={() => { mapInstanceRef.current?.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mapInstanceRef.current?.setZoom(16); }}>
-                                        <div className={styles.locTime}>{new Date(loc.recorded_at).toLocaleTimeString()}</div>
-                                        <div className={styles.locAddress}>{loc.address || '주소 정보 없음'}</div>
-                                    </div>
-                                ))}
+                                {selectedTripLocations.slice().reverse().map((loc, i) => {
+                                    const realIndex = selectedTripLocations.length - 1 - i;
+                                    const hasAddr = loc.address && loc.address !== '주소 정보 없음';
+                                    return (
+                                        <div key={i} className={styles.locationItem} onClick={() => { mapInstanceRef.current?.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mapInstanceRef.current?.setZoom(16); }}>
+                                            <div className={styles.locHeader}>
+                                                <div className={styles.locTime}>{new Date(loc.recorded_at).toLocaleTimeString()}</div>
+                                                {!hasAddr && <button className={styles.searchAddrBtn} onClick={(e) => { e.stopPropagation(); fetchMissingAddress(loc, realIndex); }}>🔍 주소찾기</button>}
+                                            </div>
+                                            <div className={styles.locAddress}>{loc.address || '주소 정보 없음'}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                             {/* 수정 이력 로그 섹션 추가 */}
                             <div className={styles.detailSection} style={{ marginTop: 24, borderTop: '1px solid #eee', paddingTop: 20 }}>

@@ -35,12 +35,17 @@ export async function GET(request) {
     const to = searchParams.get('to');
 
     try {
-        // ─── mode=active: 관제맵용 (운행 중 + 위치) ───
+        // ─── mode=active: 관제맵용 (운행 중/일시정지 + '오늘' 완료 건 포함) ───
         if (mode === 'active') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const KST_OFFSET = 9 * 60 * 60 * 1000;
+            const todayKstStr = new Date(today.getTime() + KST_OFFSET).toISOString().split('T')[0];
+
             let query = supabase
                 .from('vehicle_trips')
                 .select('*')
-                .in('status', ['driving', 'paused'])
+                .or(`status.in.(driving,paused),and(status.eq.completed,started_at.gte.${todayKstStr}T00:00:00+09:00)`)
                 .order('started_at', { ascending: false });
 
             const { data, error } = await query;
@@ -50,6 +55,7 @@ export async function GET(request) {
             const tripIds = data.map(t => t.id);
             let locations = [];
             if (tripIds.length > 0) {
+                // rpc 또는 단건 조회
                 const { data: locData, error: locError } = await supabase
                     .rpc('get_latest_vehicle_locations', { trip_ids: tripIds });
 
@@ -85,7 +91,7 @@ export async function GET(request) {
             let query = supabase
                 .from('vehicle_trips')
                 .select('*')
-                .order('created_at', { ascending: false })
+                .order('started_at', { ascending: false })
                 .limit(200);
 
             // 상태 필터
@@ -105,21 +111,31 @@ export async function GET(request) {
                 query = query.gte('started_at', start).lte('started_at', end);
             }
 
+            // 키워드 필터 (Supabase ilike 지원 컬럼만)
+            if (keyword) {
+                // driver_name, vehicle_number, container_number 중 하나라도 포함
+                query = query.or(`driver_name.ilike.%${keyword}%,vehicle_number.ilike.%${keyword}%,container_number.ilike.%${keyword}%`);
+            }
+
             const { data, error } = await query;
             if (error) throw error;
 
-            // 키워드 필터 (클라이언트 측 — Supabase free tier에 full-text 없으므로)
-            let filtered = data;
-            if (keyword) {
-                const kw = keyword.toLowerCase();
-                filtered = data.filter(t =>
-                    (t.driver_name || '').toLowerCase().includes(kw) ||
-                    (t.vehicle_number || '').toLowerCase().includes(kw) ||
-                    (t.container_number || '').toLowerCase().includes(kw)
-                );
+            // 각 트립의 마지막 위치 주소 가져오기
+            const tripIds = data.map(t => t.id);
+            if (tripIds.length > 0) {
+                const { data: locData, error: locError } = await supabase
+                    .rpc('get_latest_vehicle_locations', { trip_ids: tripIds });
+                
+                if (!locError && locData) {
+                    const locMap = {};
+                    locData.forEach(l => { locMap[l.trip_id] = l.address; });
+                    data.forEach(t => {
+                        t.last_location_address = locMap[t.id] || null;
+                    });
+                }
             }
 
-            return NextResponse.json({ trips: filtered, total: filtered.length });
+            return NextResponse.json({ trips: data, total: data.length });
         }
 
         // ─── mode=my: 본인 기록 ───
