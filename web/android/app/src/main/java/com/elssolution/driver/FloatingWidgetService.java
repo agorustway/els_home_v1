@@ -164,99 +164,20 @@ public class FloatingWidgetService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mFloatingWidget = LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null);
-
-        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSLUCENT);
-
-        params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.x = 100;
-        params.y = 100;
-
-        mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        mWindowManager.addView(mFloatingWidget, params);
-
-        Button btnPauseResume = mFloatingWidget.findViewById(R.id.btn_pause_resume);
-        Button btnStop = mFloatingWidget.findViewById(R.id.btn_stop);
-
-        btnPauseResume.setOnClickListener(v -> {
-            String currentText = btnPauseResume.getText().toString();
-            String action = currentText.equals("일시정지") ? "pause" : "resume";
-            Intent i = new Intent("com.elssolution.driver.WIDGET_ACTION");
-            i.putExtra("action", action);
-            sendBroadcast(i);
-        });
-
-        btnStop.setOnClickListener(v -> {
-            Intent i = new Intent("com.elssolution.driver.WIDGET_ACTION");
-            i.putExtra("action", "stop");
-            sendBroadcast(i);
-        });
-
-        mFloatingWidget.findViewById(R.id.root_container).setOnTouchListener(new View.OnTouchListener() {
-            private int initialX;
-            private int initialY;
-            private float initialTouchX;
-            private float initialTouchY;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        initialX = params.x;
-                        initialY = params.y;
-                        initialTouchX = event.getRawX();
-                        initialTouchY = event.getRawY();
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
-                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        mWindowManager.updateViewLayout(mFloatingWidget, params);
-                        return true;
-                    case MotionEvent.ACTION_UP:
-                        // 앱으로 복귀하는 로직 추가 가능
-                        if (Math.abs(event.getRawX() - initialTouchX) < 10 && Math.abs(event.getRawY() - initialTouchY) < 10) {
-                            Intent i = new Intent(FloatingWidgetService.this, MainActivity.class);
-                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                            startActivity(i);
-                        }
-                        return true;
-                }
-                return false;
-            }
-        });
+        // [삭제] 오버레이 위젯 UI 관련 코드 제거 (APK 최적화)
+        Log.d("DriverApp", "Background Service Created (Foreground Service mode)");
     }
 
     private void updateWidget(String timer, String container, String status) {
-        if (mFloatingWidget != null) {
-            TextView txtTimer = mFloatingWidget.findViewById(R.id.tv_timer);
-            TextView txtContainer = mFloatingWidget.findViewById(R.id.tv_container);
-            Button btnPauseResume = mFloatingWidget.findViewById(R.id.btn_pause_resume);
-            
-            if (txtTimer != null && timer != null) txtTimer.setText(timer);
-            if (txtContainer != null && container != null) txtContainer.setText(container);
-            
-            if (btnPauseResume != null && status != null) {
-                if ("paused".equals(status)) {
-                    btnPauseResume.setText("운행재개");
-                    btnPauseResume.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#58a6ff")));
-                    btnPauseResume.setTextColor(android.graphics.Color.WHITE);
-                } else {
-                    btnPauseResume.setText("일시정지");
-                    btnPauseResume.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#d29922")));
-                    btnPauseResume.setTextColor(android.graphics.Color.BLACK);
-                }
-            }
-        }
+        // [삭제] 위젯 업데이트 미사용
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mFloatingWidget != null) mWindowManager.removeView(mFloatingWidget);
+        if (mLocationManager != null && mLocationListener != null) {
+            mLocationManager.removeUpdates(mLocationListener);
+        }
+        Log.d("DriverApp", "Background Service Destroyed");
     }
 }
