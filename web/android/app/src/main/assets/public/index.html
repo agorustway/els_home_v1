@@ -25,7 +25,6 @@
         <div class="perm-item" id="perm-photo"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">사진 / 동영상</div><div class="perm-desc">갤러리 접근 및 업로드</div></div><div class="perm-arrow">›</div></div>
         <div class="perm-item" id="perm-notify"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">알림</div><div class="perm-desc">운행 상태 알림</div></div><div class="perm-arrow">›</div></div>
         <div class="perm-item" id="perm-phone"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">전화</div><div class="perm-desc">기사 연락처 확인</div></div><div class="perm-arrow">›</div></div>
-        <div class="perm-item" id="perm-overlay"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">다른 앱 위에 표시</div><div class="perm-desc">오버레이/플로팅 위젯 권한</div></div><div class="perm-arrow">›</div></div>
       </div>
       <button id="btn-finish-perms" class="btn-primary" style="margin-bottom: max(24px, env(safe-area-inset-bottom));">다음 단계로</button>
     </div>
@@ -147,7 +146,8 @@
       </div>
       <div class="card">
         <div class="card-title">앱 정보</div>
-        <p class="text-muted">버전 3.7.1 (Standalone Native Optimized)</p>
+        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem;">v3.7.5 (Standalone Native Optimized)</div>
+        <div style="text-align:center; margin-top:10px;"><a href="privacy.html" target="_blank" style="color:var(--accent); font-size:0.8rem; text-decoration:none;">📄 개인정보 처리방침</a></div>
         <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화 (재설정)</button>
         <button id="btn-exit-app" class="btn-outline" style="margin-top:8px">앱 종료</button>
       </div>
@@ -202,6 +202,8 @@
     <div id="zoom-container" style="width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:none; background:rgba(0,0,0,0.9);">
        <img id="zoom-img" style="max-width:95%; max-height:95%; object-fit:contain; transition:transform 0.1s ease-out;">
     </div>
+  </div>
+
   </div>
 
   <script src="app.js"></script>

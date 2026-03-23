@@ -133,31 +133,21 @@
     const B=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',fn);};
     B('perm-location',requestLocationPerm);B('perm-camera',requestCameraPerm);
     B('perm-photo',requestPhotoPerm);B('perm-notify',requestNotifyPerm);B('perm-phone',requestPhonePerm);
-    B('perm-overlay',requestOverlayPerm);
     B('btn-finish-perms',finishPermissions);B('btn-check-phone',checkPhone);B('btn-save-profile',saveProfile);
     B('btn-start',startTrip);B('btn-pause',pauseTrip);B('btn-resume',resumeTrip);B('btn-stop',stopTrip);
     B('btn-update-profile',updateProfile);
     B('set-perm-location',requestLocationPerm);B('set-perm-camera',requestCameraPerm);
     B('set-perm-photo',requestPhotoPerm);B('set-perm-notify',requestNotifyPerm);B('set-perm-phone',requestPhonePerm);
-    B('set-perm-overlay',requestOverlayPerm);
     B('btn-reset-app',resetApp);B('btn-modal-close',closeModal);B('btn-exit-app',exitApp);
 
-    // 오버레이 권한 초기 체크
-    checkOverlayPerm();
-
-    // 홈 버튼(앱 최소화) 감지 — Capacitor App 플러그인
     const Plugins = getDynamicPlugins();
+    // 홈 버튼(앱 최소화) 감지 — Capacitor App 플러그인
     if(Plugins.App){
       Plugins.App.addListener('appStateChange',function(state){
         if(!state.isActive && (tripStatus==='driving'||tripStatus==='paused')){
-          // 앱 백그라운드로 → 오버레이 또는 PIP
-          if(hasOverlayPerm && getOverlay()){
-            showFloatingWidget();
-          }
           // PIP는 MainActivity.onUserLeaveHint에서 자동 진입
         } else if(state.isActive){
-          // 앱 포그라운드 복귀 → 오버레이 숨기기
-          hideFloatingWidget();
+          // 앱 포그라운드 복귀
         }
       });
     }
@@ -194,7 +184,7 @@
 
   // ── 순차적 권한 설정 흐름 (Onboarding) ──
   async function checkPermissionsFlow(){
-    const p = ['perm-location','perm-camera','perm-photo','perm-notify','perm-phone','perm-overlay'];
+    const p = ['perm-location','perm-camera','perm-photo','perm-notify','perm-phone'];
     for(const id of p){
        console.log('Permission Check:', id);
     }
@@ -236,6 +226,9 @@
   function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.style.display='none');const el=document.getElementById(id);if(el)el.style.display='block';}
   function showModal(t,m){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').textContent=m;document.getElementById('modal-alert').style.display='flex';}
   function closeModal(){document.getElementById('modal-alert').style.display='none';}
+
+  // 💎 시각적 가이드 제어 (제한된 설정) - [삭제] 오버레이 미사용으로 주석 처리
+
   function updateOfflineBar(){const b=document.getElementById('offline-bar');if(b)b.style.display=isOnline?'none':'block';}
   function haptic(s){try{const Plugins=getDynamicPlugins();if(Plugins.Haptics)Plugins.Haptics.impact({style:s||'Medium'});}catch(e){}}
 
@@ -260,44 +253,14 @@
   async function requestNotifyPerm(){haptic();try{if('Notification'in window){const r=await Notification.requestPermission();if(r==='granted')markPermGranted('perm-notify');else showModal('알림','알림 권한을 허용해 주세요.');}else markPermGranted('perm-notify');}catch(e){markPermGranted('perm-notify');}}
   async function requestPhonePerm(){haptic();markPermGranted('perm-phone');showModal('알림','전화 권한은 앱 설치 시 자동 요청됩니다.');}
 
-  // 오버레이 권한 (TMAP 방식 플로팅)
-  async function checkOverlayPerm(){
-    const O = getOverlay();
-    if(!O)return;
-    try{const r=await O.checkPermission();hasOverlayPerm=r.granted;if(hasOverlayPerm)markPermGranted('perm-overlay');}catch(e){}
-  }
-  async function requestOverlayPerm(){
-    haptic();
-    const O = getOverlay();
-    if(!O){showModal('알림','이 기능은 안드로이드 앱에서만 사용 가능합니다.');return;}
-    try{
-      // OverlayPlugin.requestPermission → 설정 화면 열기 → 사용자가 돌아오면 결과 리턴
-      const result=await O.requestPermission();
-      console.log('오버레이 권한 결과:',result);
-      if(result.granted){
-        hasOverlayPerm=true;
-        markPermGranted('perm-overlay');
-        haptic('Heavy');
-      }else{
-        hasOverlayPerm=false;
-        // 리스트에서 못 찾았을 가능성 높음 → '제한된 설정 허용' 안내
-        if(confirm('권한 목록에서 [ELS차량용]을 찾을 수 없었나요?\n\n[확인]을 누르면 앱 정보 화면을 엽니다.\n→ 우측 상단 ⋮ 메뉴 > [제한된 설정 허용] 후 다시 시도하세요.')){
-          try{ await O.openRestrictedSettings(); }catch(e2){ showModal('안내','[설정 > 앱 > ELS차량용]에서 ⋮ 메뉴 > 제한된 설정 허용을 해주세요.'); }
-        }
-      }
-    }catch(e){
-      console.error('오버레이 권한 요청 오류:',e);
-      // 설정 화면 자체가 안 열릴 때 → 앱 정보 화면으로 안내
-      try{ await O.openRestrictedSettings(); }catch(e2){}
-      showModal('안내','앱 정보 화면에서\n① 우측 상단 ⋮ 메뉴 > [제한된 설정 허용]\n② 뒤로가기 후 [다른 앱 위에 표시] 클릭');
-    }
-    checkPermissionsFlow();
-  }
+  // 오버레이 권한 (미사용)
+  async function checkOverlayPerm(){}
+  async function requestOverlayPerm(){}
 
-  // 플로팅 위젯 표시/숨기기
+  // 백그라운드 서비스 제어 (GPS 안정성 확보용)
   function showFloatingWidget(){
     const O = getOverlay();
-    if(!O||!hasOverlayPerm)return;
+    if(!O)return;
     try{
       O.showOverlay({
         timer:formatTime(elapsedSeconds),
@@ -305,16 +268,9 @@
         status:tripStatus||'driving',
         tripId:tripId||''
       });
-      // 오버레이 타이머 업데이트
-      clearInterval(overlayTimerInterval);
-      overlayTimerInterval=setInterval(()=>{
-        if(!tripStatus)return;
-        try{O.updateOverlay({timer:formatTime(elapsedSeconds),status:tripStatus,tripId:tripId||''});}catch(e){}
-      },1000);
-    }catch(e){console.error('플로팅 위젯 표시 오류:',e);}
+    }catch(e){console.error('백그라운드 서비스 시작 오류:',e);}
   }
   function hideFloatingWidget(){
-    clearInterval(overlayTimerInterval);
     const O = getOverlay();
     if(!O)return;
     try{O.hideOverlay();}catch(e){}
@@ -547,6 +503,7 @@
       if(r.ok){
         tripId=r.data.id||r.data.trip_id;lastTripId=tripId;tripStatus=r.data.status||'driving';elapsedSeconds=0;
         haptic('Heavy');updateTripUI();startTimer();startGPSTracking();uploadPendingPhotos();
+        showFloatingWidget(); // 🚀 백그라운드 GPS 안정을 위한 포그라운드 서비스 시작
       }else throw new Error(r.data?.error||'서버 오류('+r.status+')');
     }catch(e){showModal('오류','운송 시작 실패: '+e.message);}
     finally{isSubmitting=false;btn.disabled=false;btn.textContent='운송 시작 (START)';}
@@ -575,6 +532,7 @@
       haptic('Heavy');const cid=tripId;
       await sendStopLocation(cid);
       stopGPSTracking();
+      hideFloatingWidget(); // 🚀 백그라운드 서비스 종료
       if(isOnline){try{const r=await smartPatch(`${API_BASE}/trips/${cid}`,{action:'complete'});if(!r.ok)showModal('경고','서버 종료 처리 실패');}catch(e){showModal('경고','통신 실패');}}
       lastTripId=cid;tripId=null;tripStatus=null;clearInterval(timerInterval);timerInterval=null;elapsedSeconds=0;
       photos=[]; renderPhotos();
