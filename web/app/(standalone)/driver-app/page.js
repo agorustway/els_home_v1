@@ -14,9 +14,12 @@ if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
     App = require('@capacitor/app').App;
 }
 
-// Capacitor Custom Plugin for Overlay
+// Capacitor Custom Plugin for Overlay & Geolocation
 const Overlay = (typeof window !== 'undefined' && Capacitor.isNativePlatform()) 
     ? require('@capacitor/core').registerPlugin('Overlay') 
+    : null;
+const BackgroundGeolocation = (typeof window !== 'undefined' && Capacitor.isNativePlatform())
+    ? require('@capacitor/core').registerPlugin('BackgroundGeolocation')
     : null;
 
 /**
@@ -102,6 +105,8 @@ export default function DriverAppPage() {
     const [isIOS, setIsIOS] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
+    const [selectedTripLocations, setSelectedTripLocations] = useState([]); // 상세보기용 위치 데이터
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
     
     // --- Native App UI States ---
     const [onboardingStep, setOnboardingStep] = useState(0); // 0: Hide, 1: Step1, 2: Step2, 3: Step3(Profile)
@@ -149,57 +154,100 @@ export default function DriverAppPage() {
         } catch { }
     }, [driverPhone, vehicleNumber, historyMonth]);
 
-    // ─── 5. 위치 전송 로직 ───
-    const sendLocation = useCallback(async (tripId) => {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
-                setLastCoords({ lat, lng, speed: (speed || 0) * 3.6 });
-                setGpsActive(true);
+    const lastWatcherIdRef = useRef(null);
 
-                const isMoved = !lastPosRef.current || 
-                    Math.abs(lastPosRef.current.lat - lat) > 0.0001 || 
-                    Math.abs(lastPosRef.current.lng - lng) > 0.0001;
+    const sendLocation = useCallback(async (tripId, pos) => {
+        const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
+        setLastCoords({ lat, lng, speed: (speed || 0) * 3.6 });
+        setGpsActive(true);
 
-                if (isMoved) { idleCountRef.current = 0; lastPosRef.current = { lat, lng }; }
-                else { idleCountRef.current += 1; }
+        const isMoved = !lastPosRef.current || 
+            Math.abs(lastPosRef.current.lat - lat) > 0.0001 || 
+            Math.abs(lastPosRef.current.lng - lng) > 0.0001;
 
-                try {
-                    await fetch('/api/vehicle-tracking/location', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed }),
-                    });
-                    speedRef.current = (speed || 0) * 3.6; // km/h
-                    setSendCount(prev => prev + 1);
-                } catch { }
-            },
-            () => setGpsActive(false),
-            GPS_OPTIONS
-        );
+        if (isMoved) { idleCountRef.current = 0; lastPosRef.current = { lat, lng }; }
+        else { idleCountRef.current += 1; }
+
+        try {
+            await fetch('/api/vehicle-tracking/location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed }),
+            });
+            speedRef.current = (speed || 0) * 3.6; // km/h
+            setSendCount(prev => prev + 1);
+        } catch { }
     }, []);
 
-    const startGPS = useCallback((tripId, status) => {
-        if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
-        const tick = () => {
-            let interval = 30000; // 기본 30초
-            if (status === 'paused') {
-                interval = 600000; // 10분
-            } else {
-                if (idleCountRef.current >= 6) interval = 120000; // 3분(6틱) 정차 시 2분
-                else if (speedRef.current < 10) interval = 60000; // 서행 시 1분
-            }
+    const startGPS = useCallback(async (tripId, status) => {
+        if (lastWatcherIdRef.current && BackgroundGeolocation) {
+            await BackgroundGeolocation.removeWatcher({ id: lastWatcherIdRef.current });
+        }
 
-            sendLocation(tripId);
-            gpsIntervalRef.current = setTimeout(tick, interval);
-        };
-        tick();
+        if (status === 'paused') {
+            setGpsActive(false);
+            return;
+        }
+
+        if (BackgroundGeolocation) {
+            // Native Background Geolocation
+            try {
+                const watcherId = await BackgroundGeolocation.addWatcher({
+                    backgroundMessage: "ELS 실시간 운송 관제가 진행 중입니다.",
+                    backgroundTitle: "운행 중",
+                    requestPermissions: true,
+                    stale: false,
+                    distanceFilter: 10 // 10미터 이동 시마다 수집 (선택적)
+                }, (location) => {
+                    // 속도에 따른 동적 전송 필터링 (클라이언트측)
+                    const speedKm = (location.speed || 0) * 3.6;
+                    const now = Date.now();
+                    const lastSent = lastPosRef.current?.lastSentAt || 0;
+                    
+                    let minInterval = 30000; // 기본 30초
+                    if (speedKm >= 70) minInterval = 30000;
+                    else if (speedKm >= 20) minInterval = 60000;
+                    else if (speedKm >= 5) minInterval = 180000;
+                    else minInterval = 300000;
+
+                    if (now - lastSent >= minInterval) {
+                         sendLocation(tripId, location);
+                         if (lastPosRef.current) lastPosRef.current.lastSentAt = now;
+                    }
+                });
+                lastWatcherIdRef.current = watcherId;
+            } catch (e) {
+                console.error('Core Background Geo Error:', e);
+            }
+        } else {
+            // Fallback: Web Geolocation
+            if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
+            const tick = () => {
+                let interval = 30000;
+                const speedKm = speedRef.current;
+                if (speedKm >= 70) interval = 30000;
+                else if (speedKm >= 20) interval = 60000;
+                else if (speedKm >= 5) interval = 180000;
+                else interval = 300000;
+
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    sendLocation(tripId, pos);
+                }, () => {}, GPS_OPTIONS);
+                gpsIntervalRef.current = setTimeout(tick, interval);
+            };
+            tick();
+        }
     }, [sendLocation]);
 
-    const stopGPS = useCallback(() => {
-        if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
-        gpsIntervalRef.current = null;
+    const stopGPS = useCallback(async () => {
+        if (BackgroundGeolocation && lastWatcherIdRef.current) {
+            await BackgroundGeolocation.removeWatcher({ id: lastWatcherIdRef.current });
+            lastWatcherIdRef.current = null;
+        }
+        if (gpsIntervalRef.current) {
+            clearTimeout(gpsIntervalRef.current);
+            gpsIntervalRef.current = null;
+        }
         setGpsActive(false);
         idleCountRef.current = 0;
     }, []);
@@ -303,7 +351,7 @@ export default function DriverAppPage() {
         } catch (e) { alert('오류: ' + e.message); }
     };
 
-    const handleSelectHistory = (trip) => {
+    const handleSelectHistory = async (trip) => {
         if (isActive && !confirm('현재 진행 중인 운행이 있습니다. 이력 수정 모드로 전환하시겠습니까? (현재 입력값은 초기화됩니다)')) return;
         
         setSelectedHistoryId(trip.id);
@@ -318,7 +366,23 @@ export default function DriverAppPage() {
         setSpecialNotes(trip.special_notes || '');
         setPhotos(trip.photos?.map(p => ({ ...p, previewUrl: p.url, uploaded: true })) || []);
         
+        // 위치 데이터 가져오기
+        setIsDetailLoading(true);
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`);
+            const data = await res.json();
+            if (data.locations) setSelectedTripLocations(data.locations);
+        } catch { } finally { setIsDetailLoading(false); }
+
         scrollToTop();
+    };
+
+    const handleOpenExternalMap = (locations) => {
+        if (!locations || locations.length < 2) { alert('이동 경로가 부족합니다.'); return; }
+        const start = locations[0];
+        const end = locations[locations.length - 1];
+        const url = `https://map.naver.com/v5/directions/${start.lng},${start.lat},출발/${end.lng},${end.lat},도착/-/car?c=15,0,0,0,dh`;
+        window.open(url, '_blank');
     };
 
     const handleStart = async () => {
@@ -861,14 +925,21 @@ export default function DriverAppPage() {
             <div className={styles.gpsBar}>
                 <span>
                     <span className={`${styles.gpsDot} ${gpsActive ? styles.gpsDotActive : styles.gpsDotInactive}`} />
-                    {gpsActive ? `GPS정상 (${idleCountRef.current >= 6 ? '2분-정차' : (lastCoords?.speed < 10 ? '1분-서행' : '30초-주행')})` : 'GPS수집대기'}
+                    {isActive ? (
+                        isDriving ? (
+                            `GPS수신중 (${speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})`
+                        ) : 'GPS 수신정지'
+                    ) : 'GPS 수신종료'}
+                </span>
+                <span style={{marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8'}}>
+                    {isActive ? (isDriving ? '운행중' : '일시정지') : '운행종료'}
                 </span>
             </div>
 
             {isActive ? (
                 /* 운행 활성화 상태: 대시보드 집중 모드 */
                 <div id="status-dashboard" className={styles.activeDashboard}>
-                    <div className={styles.dashboardLabel}>{isDriving ? 'REALTIME TRACKING' : 'IDLE / PAUSED'}</div>
+                    <div className={styles.dashboardLabel}>{isDriving ? '운행 중 (GPS정상)' : '일시정지 (GPS정지)'}</div>
                     <div className={styles.dashboardTimer}>
                         {formatTime(elapsedSeconds)}
                     </div>
@@ -895,19 +966,44 @@ export default function DriverAppPage() {
                             </button>
                         )}
                         <button className={styles.dashStopBtn} onClick={handleStop}>
-                            운송 종료 (FINISH)
+                            운송 종료
                         </button>
                     </div>
-                    
-                    <button className={styles.outlineBtn} style={{width: '100%', marginTop: 20, opacity: 0.6}} onClick={() => setAlertMessage('운행 중에는 정보를 수정할 수 없습니다. 종료 후 수정해주세요.')}>
-                        상세 정보 보기
-                    </button>
+
+                    {/* 당일 운송 기록 요약 (차수별) */}
+                    <div className={styles.todaySummary}>
+                        <div className={styles.summaryTitle}>📅 오늘의 운송 기록</div>
+                        <div className={styles.summaryList}>
+                            {history.filter(h => new Date(h.started_at).toDateString() === new Date().toDateString()).map((h, idx) => (
+                                <div key={idx} className={styles.summaryItem} onClick={() => handleSelectHistory(h)}>
+                                    <span className={styles.summaryIndex}>{history.length - idx}차</span>
+                                    <span className={styles.summaryTime}>{new Date(h.started_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                    <span className={styles.summaryCont}>{h.container_number || '-'}</span>
+                                    <span className={styles.summaryStatus}>{h.status === 'completed' ? '✅' : '🔴'}</span>
+                                </div>
+                            ))}
+                            {history.filter(h => new Date(h.started_at).toDateString() === new Date().toDateString()).length === 0 && (
+                                <div className={styles.summaryEmpty}>오늘 운송 기록이 없습니다.</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             ) : (
                 /* 운행 대기 상태: 입력 및 시작 모드 */
                 <div id="registration-dashboard">
                     <div className={styles.formSection}>
                         <div className={styles.formTitle}>운송 정보 등록</div>
+                        <div className={styles.formRow} style={{marginBottom: 15}}>
+                            <label className={styles.formLabel}>운송 날짜</label>
+                            <input type="date" className={styles.formInput} 
+                                value={historyMonth.includes('-') && historyMonth.split('-').length === 2 ? `${historyMonth}-${new Date().getDate().toString().padStart(2,'0')}` : new Date().toISOString().split('T')[0]} 
+                                onChange={e => {
+                                    const val = e.target.value; // YYYY-MM-DD
+                                    setHistoryMonth(val.substring(0, 7)); // YYYY-MM
+                                    fetchHistory();
+                                }} 
+                            />
+                        </div>
                         <div className={styles.formGrid}>
                             <div className={styles.formRow}>
                                 <label className={styles.formLabel}>차량번호</label>
@@ -941,6 +1037,30 @@ export default function DriverAppPage() {
                     <button className={styles.startBtn} onClick={handleStart}>
                         운송 시작하기 (START)
                     </button>
+
+                    {/* 이력 수정/상세 모드일 때만 보이는 위치 정보 */}
+                    {selectedHistoryId && (
+                        <div className={styles.formSection} style={{marginTop: 20}}>
+                            <div className={styles.formTitle} style={{display:'flex', justifyContent:'space-between'}}>
+                                📍 이동 경로 상세
+                                <button className={styles.outlineBtn} style={{fontSize:'0.7rem', padding:'2px 8px'}} onClick={() => handleOpenExternalMap(selectedTripLocations)}>네이버 지도로 보기</button>
+                            </div>
+                            <div className={styles.historyLocations}>
+                                {isDetailLoading ? <div className={styles.summaryEmpty}>로딩 중...</div> : (
+                                    selectedTripLocations.length > 0 ? (
+                                        selectedTripLocations.slice().reverse().map((loc, idx) => (
+                                            <div key={idx} className={styles.locationRow}>
+                                                <span className={styles.locTime}>{new Date(loc.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                                                <span className={styles.locSpeed}>{Math.round((loc.speed || 0) * 3.6)}km/h</span>
+                                                <span className={styles.locAddr}>{loc.address || '좌표 수집됨'}</span>
+                                            </div>
+                                        ))
+                                    ) : <div className={styles.summaryEmpty}>좌표 데이터가 없습니다.</div>
+                                )}
+                            </div>
+                            <button className={styles.outlineBtn} style={{width:'100%', marginTop: 15}} onClick={() => { setSelectedHistoryId(null); setSelectedTripLocations([]); }}>운송 등록 화면으로 돌아가기</button>
+                        </div>
+                    )}
                 </div>
             )}
         </motion.div>

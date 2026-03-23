@@ -547,6 +547,22 @@
     color: #fff;
 }
 
+.resetZoomBtn {
+    font-size: 0.75rem;
+    background: #fff;
+    border: 1px solid #2563eb;
+    color: #2563eb;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.resetZoomBtn:hover {
+    background: #2563eb;
+    color: #fff;
+}
+
 /* ═══ 추가 기능 스타일 ═══ */
 
 /* 전체화면 지도 */

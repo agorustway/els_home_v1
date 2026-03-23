@@ -99,7 +99,7 @@ export default function VehicleTrackingPage() {
             });
             markersRef.current.push(endMarker);
         }
-        map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+        map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
     };
 
     const handleSelectTrip = async (trip) => {
@@ -522,7 +522,10 @@ export default function VehicleTrackingPage() {
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>
                                 <span>이동 경로 ({selectedTripLocations.length})</span>
-                                <button className={styles.naverMapBtn} onClick={() => handleOpenNaverMap(selectedTripLocations)}>🗺️ 네이버 지도로 보기</button>
+                                <div style={{display:'flex', gap:8}}>
+                                    <button className={styles.resetZoomBtn} onClick={() => drawTripPath(selectedTripLocations)}>🎯 전체보기</button>
+                                    <button className={styles.naverMapBtn} onClick={() => handleOpenNaverMap(selectedTripLocations)}>🗺️ 네이버 지도</button>
+                                </div>
                             </div>
                             <div className={styles.locationList}>
                                 {selectedTripLocations.slice().reverse().map((loc, i) => {
