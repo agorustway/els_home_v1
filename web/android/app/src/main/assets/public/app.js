@@ -167,6 +167,7 @@
     if(localStorage.getItem('els_setup_done') === 'true'){
       showScreen('screen-main');
       startGPS();
+      startSensors(); // 센서 활성화 (백그라운드 유지용)
       loadSavedProfile();
       checkActiveTrip();
     } else {
@@ -175,37 +176,76 @@
     initBackButton();
   }
 
+  // ── 자이로/가속도 센서 (백그라운드 수명 연장용) ──
+  function startSensors(){
+    console.log('Sensors logic applied (v3.7.1)');
+    try {
+      window.addEventListener('devicemotion', (e) => {
+        // 가속도 센서 데이터가 발생하면 OS가 앱을 '활성' 상태로 인지할 확률이 높아짐
+      }, { passive: true });
+      window.addEventListener('deviceorientation', (e) => {
+        // 자이로스코프 데이터
+      }, { passive: true });
+    } catch(e) {
+      console.warn('Sensors not supported');
+    }
+  }
+
   // ── 순차적 권한 설정 흐름 (Onboarding) ──
   async function checkPermissionsFlow(){
     const p = ['perm-location','perm-camera','perm-photo','perm-notify','perm-phone','perm-overlay'];
-    for(const id of p){
-       // 각 권한 항목 클릭 유도 또는 상태 체크 로직 (여기서는 UI 표시 위주)
-       console.log('Permission Check:', id);
+    let all = true;
+    for(let id of p){
+      let r = false;
+      if(id === 'perm-location') {
+        try {
+          const res = await new Promise(r => navigator.geolocation.getCurrentPosition(()=>r(true),()=>r(false),{timeout:1000}));
+          r = res;
+        } catch(e) {}
+      } else if(id === 'perm-overlay') {
+        r = hasOverlayPerm;
+        const gBox = document.getElementById('overlay-guide-box');
+        if(gBox) gBox.style.display = r ? 'none' : 'block';
+      } else {
+        // 카메라, 알림 등은 브라우저 제약상 실제 체크가 어려우므로 내부 상태 플래그나 허용 시도 결과 사용
+        // 여기서는 간단히 이전에 허용된 이력이 있는지 확인 (클래스 기반)
+        const dot = document.getElementById(id)?.querySelector('.perm-status');
+        r = dot && dot.classList.contains('dot-green');
+      }
+
+      const el = document.getElementById(id);
+      if(el){
+        const dot = el.querySelector('.perm-status');
+        if(dot) dot.className = `perm-status ${r ? 'dot-green' : 'dot-red'}`;
+      }
+      if(!r) all = false;
     }
+    
+    const btn = document.getElementById('btn-finish-perms');
+    if(btn) btn.textContent = all ? '동의 및 시작하기' : '일부 권한 미동의 (나중에 설정)';
+    return all;
   }
 
   function updatePipDisplay(){
     const ps=document.getElementById('pip-status'),pt=document.getElementById('pip-timer'),pg=document.getElementById('pip-gps');
-    const bs=document.getElementById('banner-status');
-    const gi=document.getElementById('gps-indicator');
     
     if(ps){
-      if(bs && bs.textContent && (tripStatus==='driving' || tripStatus==='paused')){
-        ps.textContent = bs.textContent;
-      } else {
-        ps.textContent=tripStatus==='driving'?'● 운행중':(tripStatus==='paused'?'■ 일시정지':'○ 대기');
-      }
+      ps.textContent=tripStatus==='driving'?'● 운행중':(tripStatus==='paused'?'■ 일시정지':'○ 대기중(정상)');
       ps.style.color=tripStatus==='driving'?'#3fb950':(tripStatus==='paused'?'#d29922':'#7d8590');
     }
     
     if(pt) pt.textContent=formatTime(elapsedSeconds);
     
     if(pg){
-      if(gi && gi.textContent){
+      const gi=document.getElementById('gps-indicator');
+      if(gi && gi.textContent !== 'GPS' && gi.textContent !== 'GPS오류'){
         pg.textContent = gi.textContent;
-        pg.style.color = gi.className.includes('on') ? '#3fb950' : (gi.className.includes('paused') ? '#d29922' : '#f85149');
+        // GPS 상태 색상: 정상(on)이면 초록, 정지(paused)면 노랑
+        const isNormal = gi.className.includes('on') || tripStatus === 'driving';
+        pg.style.color = isNormal ? '#3fb950' : (gi.className.includes('paused') ? '#d29922' : '#f85149');
       } else {
-        pg.textContent='GPS -';
+        pg.textContent = tripStatus ? 'GPS수신대기' : 'GPS정상';
+        pg.style.color = '#7d8590';
       }
     }
   }
@@ -250,20 +290,22 @@
     try{
       // OverlayPlugin.requestPermission → 설정 화면 열기 → 사용자가 돌아오면 결과 리턴
       const result=await O.requestPermission();
-      console.log('오버레이 권한 결과:',result);
       if(result.granted){
         hasOverlayPerm=true;
         markPermGranted('perm-overlay');
         haptic('Heavy');
-        showModal('성공','오버레이 권한이 허용되었습니다!\n최고화 시 TMAP처럼 플로팅 위젯이 표시됩니다.');
       }else{
         hasOverlayPerm=false;
-        showModal('설정 안내','"다른 앱 위에 표시" 권한을 켜 주세요.\n만약 설정 화면이 열리지 않으면 [휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 켜주시면 됩니다.');
+        const gBox = document.getElementById('overlay-guide-box');
+        if(gBox) gBox.style.display = 'block';
+        showModal('설정 안내','리스트에서 [ELS차량용]을 찾아 선택해 주세요.\n\n목록에 없거나 선택이 안 된다면,\n[앱 정보 > ⋮ 메뉴 > 제한된 설정 허용]을 먼저 해주셔야 합니다.');
       }
     }catch(e){
-      console.error('오버레이 권한 요청 오류:',e);
-      showModal('오류','설정 화면을 자동으로 열 수 없습니다.\n[휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 권한을 켜주세요.');
+      const gBox = document.getElementById('overlay-guide-box');
+      if(gBox) gBox.style.display = 'block';
+      showModal('안내','설정 화면으로 이동합니다. [ELS차량용]을 찾아 권한을 켜주세요.\n(목록에 없으면 "제한된 설정 허용" 확인 필요)');
     }
+    checkPermissionsFlow();
   }
 
   // 플로팅 위젯 표시/숨기기
@@ -295,11 +337,18 @@
   function markPermGranted(id){
     // 온보딩 권한 아이템 업데이트
     const it=document.getElementById(id);
-    if(it){const d=it.querySelector('.perm-dot');if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}const a=it.querySelector('.perm-arrow');if(a)a.textContent='✓';}
+    if(it){
+      const d=it.querySelector('.perm-status');
+      if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}
+    }
     // 설정 탭 권한 아이템도 동기화 (set-perm-location ↔ perm-location)
-    const setId = 'set-' + id; // e.g. set-perm-location
+    const setId = 'set-' + id; 
     const sit=document.getElementById(setId);
-    if(sit){const sd=sit.querySelector('.perm-dot');if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}const sa=sit.querySelector('.perm-arrow');if(sa)sa.textContent='✓';}
+    if(sit){
+      const sd=sit.querySelector('.perm-status');
+      if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}
+    }
+    checkPermissionsFlow(); // 상태 갱신
   }
 
   function finishPermissions(){
@@ -360,7 +409,11 @@
     gpsWatchId=navigator.geolocation.watchPosition(
       ()=>{
         const gi=document.getElementById('gps-indicator');
-        if(gi){ gi.className='gps-on'; if(gi.textContent==='GPS'||gi.textContent==='GPS오류') gi.textContent='GPS수신중'; }
+        if(gi){ 
+          gi.className='gps-on'; 
+          if(!tripStatus) gi.textContent='GPS정상'; 
+          else if(tripStatus === 'driving' && gi.textContent === 'GPS정상') gi.textContent = 'GPS수신중';
+        }
       },
       ()=>{const gi=document.getElementById('gps-indicator');if(gi){gi.className='gps-off';gi.textContent='GPS오류';}},
       {enableHighAccuracy:true,maximumAge:5000}
@@ -414,16 +467,23 @@
 
   function updateGPSStatusText(speed, interval){
     const gi = document.getElementById('gps-indicator');
+    const bs = document.getElementById('banner-status');
     if(!gi) return;
+    
     let mode = interval >= 120000 ? '2분(정차)' : (interval >= 60000 ? '1분(서행)' : '30초(주행)');
-    gi.textContent = `GPS정상(${mode})`;
+    
+    // 사용 요청: 운행 중일 때는 상단에서 주기 제거, 하단 등에 상세히 표시
+    gi.textContent = `GPS수신중(${mode})`;
     gi.className = 'gps-on';
     
-    // 배너 텍스트도 상세화
-    const bs = document.getElementById('banner-status');
     if(bs && tripStatus === 'driving'){
-       bs.textContent = `● 운행중 (수집:${mode})`;
+       bs.textContent = `● 운행중`; // 상단 배너에서는 '운행중'만 깔끔하게
     }
+    
+    // 운행 대시보드 내 상세 GPS 텍스트 업데이트
+    const dashGps = document.getElementById('dash-gps-info');
+    if(dashGps) dashGps.textContent = `GPS수신중(${mode})`;
+
     if(isPipMode) updatePipDisplay();
   }
 
@@ -564,15 +624,17 @@
     const gi=document.getElementById('gps-indicator');
 
     if(d){
-      bs.textContent='● 운행중 (수집대기)';
+      bs.textContent='● 운행중';
       bs.style.color='#3fb950';
-      if(gi) gi.textContent = 'GPS수집중';
+      if(gi && gi.textContent === 'GPS정상') gi.textContent = 'GPS수신중';
     } else if(tripStatus === 'paused'){
       bs.textContent='■ 일시정지 (휴식상태)';
       bs.style.color='#d29922';
-      if(gi) { gi.textContent = '휴식상태'; gi.className = 'gps-paused'; }
+      if(gi) { gi.textContent = 'GPS정지'; gi.className = 'gps-paused'; }
     } else {
-      if(gi) { gi.textContent = 'GPS'; gi.className = 'gps-off'; }
+      bs.textContent='○ 대기중';
+      bs.style.color='#7d8590';
+      if(gi) { gi.textContent = 'GPS정상'; gi.className = 'gps-on'; }
     }
 
     document.getElementById('screen-main').classList.toggle('trip-active',a);
@@ -714,11 +776,11 @@
 
   // ═══ 기록 ═══
   async function loadHistory(){
-    const mi=document.getElementById('history-month');if(!mi.value){const n=new Date();mi.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+    const mi=document.getElementById('history-month');if(!mi.value){const n=new Date();mi.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
     const ph=localStorage.getItem('els_phone')||'',ve=localStorage.getItem('els_vehicle')||'';
     const list=document.getElementById('history-list');list.innerHTML='<div style="text-align:center;padding:20px;color:#7d8590;">불러오는 중...</div>';
     if(!isOnline){list.innerHTML='<div style="text-align:center;padding:20px;color:#7d8590;">인터넷 필요</div>';return;}
-    try{const params=new URLSearchParams({mode:'my',month:mi.value});if(ph)params.append('phone',ph);if(ve)params.append('vehicle_number',ve);
+    try{const params=new URLSearchParams({mode:'my',date:mi.value});if(ph)params.append('phone',ph);if(ve)params.append('vehicle_number',ve);
       const r=await fetch(`${API_BASE}/trips?${params}`);if(r.ok){const d=await safeJson(r);const trips=d.trips||d;historyData=trips;list.innerHTML='';
         if(!trips.length){list.innerHTML='<div style="text-align:center;padding:20px;color:#7d8590;">기록 없음</div>';return;}
         trips.forEach(t=>{const date=new Date(t.started_at).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -742,6 +804,29 @@
     else{se.textContent='○ 종료';se.style.color='#7d8590';}
     document.getElementById('h-time-info').textContent='시작: '+new Date(trip.started_at).toLocaleString('ko-KR')+' | 종료: '+(trip.completed_at?new Date(trip.completed_at).toLocaleString('ko-KR'):'-');
     document.getElementById('btn-force-stop').style.display=trip.status!=='completed'?'block':'none';
+    
+    // 종료 주소 표시 로직
+    const addrInfo = document.getElementById('h-address-info');
+    const addrVal = document.getElementById('h-address-val');
+    if(trip.status === 'completed' && addrInfo && addrVal){
+      addrInfo.style.display = 'block';
+      addrVal.textContent = '불러오는 중...';
+      // 서버에서 주소 정보를 명시적으로 요청하거나, trip 객체에 있는 경우 바로 표시
+      if(trip.end_address){
+        addrVal.textContent = trip.end_address;
+      } else {
+        // 주소가 없으면 위치 데이터의 마지막 항목에서 주소를 확인 시도
+        fetch(`${API_BASE}/trips/${id}/locations?limit=1`).then(r=>r.json()).then(data=>{
+          const loc = data.locations ? data.locations[0] : (data[0] || null);
+          if(loc && loc.address) addrVal.textContent = loc.address;
+          else if(loc) addrVal.textContent = `좌표수집됨 (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`;
+          else addrVal.textContent = '주소 정보 없음';
+        }).catch(()=> { addrVal.textContent='주소 로드 실패'; });
+      }
+    } else if(addrInfo) {
+      addrInfo.style.display = 'none';
+    }
+
     historyPhotos=(trip.photos||[]).map(p=>({key:p.key||'',url:p.url||''}));renderHistoryPhotos();
     document.getElementById('modal-history').style.display='flex';
   }

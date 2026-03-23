@@ -194,10 +194,36 @@
   // ── 순차적 권한 설정 흐름 (Onboarding) ──
   async function checkPermissionsFlow(){
     const p = ['perm-location','perm-camera','perm-photo','perm-notify','perm-phone','perm-overlay'];
-    for(const id of p){
-       // 각 권한 항목 클릭 유도 또는 상태 체크 로직 (여기서는 UI 표시 위주)
-       console.log('Permission Check:', id);
+    let all = true;
+    for(let id of p){
+      let r = false;
+      if(id === 'perm-location') {
+        try {
+          const res = await new Promise(r => navigator.geolocation.getCurrentPosition(()=>r(true),()=>r(false),{timeout:1000}));
+          r = res;
+        } catch(e) {}
+      } else if(id === 'perm-overlay') {
+        r = hasOverlayPerm;
+        const gBox = document.getElementById('overlay-guide-box');
+        if(gBox) gBox.style.display = r ? 'none' : 'block';
+      } else {
+        // 카메라, 알림 등은 브라우저 제약상 실제 체크가 어려우므로 내부 상태 플래그나 허용 시도 결과 사용
+        // 여기서는 간단히 이전에 허용된 이력이 있는지 확인 (클래스 기반)
+        const dot = document.getElementById(id)?.querySelector('.perm-status');
+        r = dot && dot.classList.contains('dot-green');
+      }
+
+      const el = document.getElementById(id);
+      if(el){
+        const dot = el.querySelector('.perm-status');
+        if(dot) dot.className = `perm-status ${r ? 'dot-green' : 'dot-red'}`;
+      }
+      if(!r) all = false;
     }
+    
+    const btn = document.getElementById('btn-finish-perms');
+    if(btn) btn.textContent = all ? '동의 및 시작하기' : '일부 권한 미동의 (나중에 설정)';
+    return all;
   }
 
   function updatePipDisplay(){
@@ -264,20 +290,22 @@
     try{
       // OverlayPlugin.requestPermission → 설정 화면 열기 → 사용자가 돌아오면 결과 리턴
       const result=await O.requestPermission();
-      console.log('오버레이 권한 결과:',result);
       if(result.granted){
         hasOverlayPerm=true;
         markPermGranted('perm-overlay');
         haptic('Heavy');
-        showModal('성공','오버레이 권한이 허용되었습니다!\n최고화 시 TMAP처럼 플로팅 위젯이 표시됩니다.');
       }else{
         hasOverlayPerm=false;
-        showModal('설정 안내','"다른 앱 위에 표시" 권한을 켜 주세요.\n만약 설정 화면이 열리지 않으면 [휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 켜주시면 됩니다.');
+        const gBox = document.getElementById('overlay-guide-box');
+        if(gBox) gBox.style.display = 'block';
+        showModal('설정 안내','리스트에서 [ELS차량용]을 찾아 선택해 주세요.\n\n목록에 없거나 선택이 안 된다면,\n[앱 정보 > ⋮ 메뉴 > 제한된 설정 허용]을 먼저 해주셔야 합니다.');
       }
     }catch(e){
-      console.error('오버레이 권한 요청 오류:',e);
-      showModal('오류','설정 화면을 자동으로 열 수 없습니다.\n[휴대폰 설정 > 애플리케이션 > ELS Driver > 다른 앱 위에 표시]에서 직접 권한을 켜주세요.');
+      const gBox = document.getElementById('overlay-guide-box');
+      if(gBox) gBox.style.display = 'block';
+      showModal('안내','설정 화면으로 이동합니다. [ELS차량용]을 찾아 권한을 켜주세요.\n(목록에 없으면 "제한된 설정 허용" 확인 필요)');
     }
+    checkPermissionsFlow();
   }
 
   // 플로팅 위젯 표시/숨기기
@@ -309,11 +337,18 @@
   function markPermGranted(id){
     // 온보딩 권한 아이템 업데이트
     const it=document.getElementById(id);
-    if(it){const d=it.querySelector('.perm-dot');if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}const a=it.querySelector('.perm-arrow');if(a)a.textContent='✓';}
+    if(it){
+      const d=it.querySelector('.perm-status');
+      if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}
+    }
     // 설정 탭 권한 아이템도 동기화 (set-perm-location ↔ perm-location)
-    const setId = 'set-' + id; // e.g. set-perm-location
+    const setId = 'set-' + id; 
     const sit=document.getElementById(setId);
-    if(sit){const sd=sit.querySelector('.perm-dot');if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}const sa=sit.querySelector('.perm-arrow');if(sa)sa.textContent='✓';}
+    if(sit){
+      const sd=sit.querySelector('.perm-status');
+      if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}
+    }
+    checkPermissionsFlow(); // 상태 갱신
   }
 
   function finishPermissions(){
