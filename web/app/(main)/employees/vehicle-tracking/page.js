@@ -752,7 +752,7 @@ export default function VehicleTrackingPage() {
                                 </div>
                             </div>
                             {!newNotice.isViewMode && <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>🚀 공지하기</button>}
-                            {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{marginTop:10, height:40}}>닫기</button>}
+                            {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{marginTop:10, height:40, flex:1}}>닫기</button>`r`n                                <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id)} style={{marginTop:10, height:40, width:'80px', flex:'none', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5'}}>🗑️ 삭제</button>`r`n                            </div>
                         </div>
                     </div>
                 </div>
@@ -965,6 +965,7 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
+
 
 
 
