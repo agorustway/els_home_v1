@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { listFiles, createFolder, deleteFile, moveFile, copyFile, getNasClient } from '@/lib/nas';
 import { createClient } from '@/utils/supabase/server';
 import { ROLE_LABELS } from '@/utils/roles';
@@ -56,7 +56,7 @@ function getPermissions(userRole, userCanSecurity, path) {
 
     // Write Permission Check
     let canWrite = false;
-    if (rootFolder === userBranchName || rootFolder === '자료실') {
+    if (rootFolder === userBranchName || rootFolder === '자료실' || rootFolder === '공지사항_첨부') {
         canWrite = true;
     }
 
@@ -261,3 +261,4 @@ export async function PATCH(request) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+
