@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.2';
+  const APP_VERSION = '3.9.3';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -135,14 +135,23 @@
     haptic();
     const O = getOverlay();
     if(O){
-      showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제한 없음]으로 선택</b><br><br>위 단계를 꼭 확인해 주세요.');
-      setTimeout(async () => {
-        try {
-          // 삼성 등 최신 기기에서 '제한된 설정'을 뚫기 위해 앱 상세 설정으로 유도
+      // [개선] 삼성/최신 안드로이드 대응 직통 인텐트 시도
+      try {
+        if(O.requestBatteryOptimization) {
+           // 1순위: '배터리 최적화 제외' 팝업 직접 호출
+           await O.requestBatteryOptimization();
+           showModal('알림', '[허용]을 눌러주시면 설정이 완료됩니다.');
+        } else {
+           throw new Error('No direct method');
+        }
+      } catch (e) {
+        // 2순위: 팝업 불가 시 앱 정보 상세 페이지로 유도
+        showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제한 없음]으로 선택</b><br><br>위 단계를 꼭 확인해 주세요.');
+        setTimeout(() => {
           if(O.openAppSettings) O.openAppSettings();
-          else if(O.requestBatteryOptimization) await O.requestBatteryOptimization();
-        } catch (e) { console.error(e); }
-      }, 3000);
+          else if(O.openRestrictedSettings) O.openRestrictedSettings();
+        }, 3000);
+      }
       setTimeout(checkBatteryOptimizationStatus, 8000);
     } else {
       showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
@@ -224,9 +233,55 @@
       loadSavedProfile();
       checkActiveTrip();
     } else {
+      // 🚀 업데이트 후 자동 로그인 시도 (클립보드 또는 이전 세션 백업 확인)
+      tryAutoLoginByPhone();
       showScreen('screen-permissions');
     }
     initBackButton();
+  }
+
+  // 🚀 [신규] 전화번호 기반 자동 로그인 시도
+  async function tryAutoLoginByPhone(){
+    let ph = localStorage.getItem('els_phone');
+    
+    // 로컬에 없으면 클립보드 확인 (브라우저 정책상 포커스 시점 등에만 가능하므로 보조적 사용)
+    if(!ph && navigator.clipboard && navigator.clipboard.readText){
+       try { ph = await navigator.clipboard.readText(); } catch(e){}
+    }
+    
+    // 전화번호 형식(10~11자리 숫자)이면 자동 조회 시도
+    if(ph && ph.replace(/[^0-9]/g, '').length >= 10){
+       ph = ph.replace(/[^0-9]/g, '');
+       console.log('자동 로그인 시도:', ph);
+       try {
+         const r = await fetch(`https://www.nollae.com/api/driver-contacts/search?phone=${ph}`);
+         const d = await r.json();
+         if(r.ok && d && d.item){
+           const it = d.item;
+           const vNum = it.business_number || it.vehicle_number || '';
+           const vId = it.driver_id || it.vehicle_id || it.id || '';
+           
+           if(it.name && vNum && vId){
+             localStorage.setItem('els_name', it.name);
+             localStorage.setItem('els_phone', ph);
+             localStorage.setItem('els_vehicle', vNum);
+             localStorage.setItem('els_id', vId);
+             localStorage.setItem('els_setup_done', 'true');
+             
+             console.log('자동 로그인 성공:', vNum);
+             // 헤더 업데이트 및 메인 진입
+             const hVeh = document.getElementById('header-vh-no');
+             if(hVeh) hVeh.textContent = vNum;
+             
+             setTimeout(() => {
+               showScreen('screen-main');
+               startGPS();
+               loadSavedProfile();
+             }, 1000);
+           }
+         }
+       } catch(e){ console.warn('자동 로그인 실패:', e); }
+    }
   }
 
   // ── 자이로/가속도 센서 (백그라운드 수명 연장용) ──
@@ -436,9 +491,26 @@
     haptic('Heavy');loadSavedProfile();showScreen('screen-main');startGPS();
   }
   function loadSavedProfile(){
-    const n=localStorage.getItem('els_name')||'',p=localStorage.getItem('els_phone')||'',v=localStorage.getItem('els_vehicle')||'',i=localStorage.getItem('els_id')||'';
-    const dn=document.getElementById('disp-name');if(dn)dn.textContent=n;const dv=document.getElementById('disp-vehicle');if(dv)dv.textContent=v;const di=document.getElementById('disp-id');if(di)di.textContent=i;
-    const sn=document.getElementById('set-name');if(sn){sn.value=n;document.getElementById('set-phone').value=p;document.getElementById('set-vehicle').value=v;document.getElementById('set-id').value=i;}
+    const n = localStorage.getItem('els_name') || '';
+    const p = localStorage.getItem('els_phone') || '';
+    const v = localStorage.getItem('els_vehicle') || '';
+    const i = localStorage.getItem('els_id') || '';
+    
+    const dn = document.getElementById('disp-name'); if(dn) dn.textContent = n;
+    const dv = document.getElementById('disp-vehicle'); if(dv) dv.textContent = v;
+    const di = document.getElementById('disp-id'); if(di) di.textContent = i;
+    
+    // 🚀 헤더 차량번호 최우선 동기화
+    const hVeh = document.getElementById('header-vh-no');
+    if(hVeh) hVeh.textContent = v || '로그인 필요';
+
+    const sn = document.getElementById('set-name');
+    if(sn){
+      sn.value = n;
+      document.getElementById('set-phone').value = p;
+      document.getElementById('set-vehicle').value = v;
+      document.getElementById('set-id').value = i;
+    }
   }
   async function updateProfile(){
     const n=document.getElementById('set-name').value.trim(),p=document.getElementById('set-phone').value.trim(),v=document.getElementById('set-vehicle').value.trim(),i=document.getElementById('set-id').value.trim().toUpperCase();
@@ -1030,11 +1102,17 @@
   window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;window.exitApp=exitApp;
   window.resetTripData=resetTripData;window.showScreen=showScreen;
 
-  // ═══ 업데이트 시작 전 청소 로직 ═══
+  // 업데이트 시작 전 청소 및 정보 백업 로직
   window.startUpdate = async function(url){
     haptic('Heavy');
     const O = getOverlay();
     
+    // 🚀 [중요] 업데이트 전 전화번호 클립보드에 백업 (자동 로그인용)
+    const ph = localStorage.getItem('els_phone');
+    if(ph && navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(ph); } catch(e){}
+    }
+
     // 버튼 텍스트 변경으로 진행 상태 표시
     const btn = event.target;
     if(btn && btn.tagName === 'BUTTON') {

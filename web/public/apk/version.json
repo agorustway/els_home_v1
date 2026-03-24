@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.9.2",
-  "changeLog": "- 상단 헤더 차량번호 표시 방식 간소화 (깔끔한 UI)\n- 삼성 기기용 배터리 설정 진입 경로 개선\n- 공지사항 상세 보기 오류 수정",
+  "latestVersion": "3.9.3",
+  "changeLog": "- 배터리 최적화 설정 직통 경로 추가 (삼성 기기 대응)\n- 업데이트 후 전화번호 기반 자동 로그인 기능 적용\n- 차량번호 헤더 표시 우선순위 상향",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }
