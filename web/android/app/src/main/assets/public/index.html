@@ -5,6 +5,158 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ELS 운송관리</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      --bg: #f2f5f8;
+      --card-bg: #ffffff;
+      --text-main: #1a1a1a;
+      --text-muted: #5f6368;
+      --accent: #0056b3;
+      --accent-soft: #eaf1fb;
+      --border: #e0e0e0;
+      --safe-red: #d93025;
+      --safe-green: #1e8e3e;
+      --safe-orange: #f29900;
+    }
+    
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      margin: 0;
+      /* 안드로이드 상태바 겹침 방지: 확실한 40px 여백 */
+      padding-top: calc(env(safe-area-inset-top) + 40px);
+      padding-bottom: env(safe-area-inset-bottom);
+      overflow-x: hidden;
+      line-height: 1.4;
+    }
+
+    /* 세련된 화이트 카드 스타일 */
+    .card {
+      background: var(--card-bg) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04) !important;
+      padding: 16px !important;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-weight: 800;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      border-left: 5px solid var(--accent);
+      padding-left: 10px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    input, select, button {
+      font-family: inherit;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    input[type="text"], input[type="tel"], select {
+      background: #f8f9fa !important;
+      border: 1px solid #ced4da !important;
+      border-radius: 8px !important;
+      color: var(--text-main) !important;
+      padding: 12px;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 댄디 & 비비드 버튼 */
+    .btn-action, .btn-primary {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border: none !important;
+      border-radius: 10px !important;
+      font-weight: 800 !important;
+      height: 54px;
+      font-size: 1.05rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,86,179,0.2);
+    }
+
+    .btn-secondary {
+      background: var(--accent-soft) !important;
+      color: var(--accent) !important;
+      border: 1px solid var(--accent) !important;
+      border-radius: 10px !important;
+      font-weight: 700 !important;
+    }
+
+    .btn-start { background: var(--safe-green) !important; box-shadow: 0 4px 10px rgba(30,142,62,0.2); }
+    .btn-stop { background: var(--safe-red) !important; box-shadow: 0 4px 10px rgba(217,48,37,0.2); }
+
+    /* 메인 헤더: 상단 고조 및 남는 공간 활용 */
+    #main-header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      height: 64px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    #header-vinfo {
+      flex: 1;
+      text-align: center;
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 1.25rem;
+      letter-spacing: -0.5px;
+    }
+
+    #main-content { padding: 90px 16px 20px; }
+
+    #bottom-nav {
+      background: #fff !important;
+      border-top: 1px solid var(--border) !important;
+      height: 70px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    #bottom-nav .nav-btn {
+      color: var(--text-muted);
+      font-weight: 800;
+      font-size: 0.9rem;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #bottom-nav .nav-btn.active {
+      color: var(--accent) !important;
+    }
+    #bottom-nav .nav-btn.active::after {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+      margin-top: 2px;
+    }
+
+    .modal-box {
+      border-radius: 20px !important;
+      padding: 24px !important;
+    }
+  </style>
+</head>
 </head>
 <body>
 
@@ -51,7 +203,8 @@
   <!-- 메인 -->
   <div id="screen-main" class="screen" style="display:none">
     <header id="main-header">
-      <div class="header-left"><div class="header-logo">ELS</div><div class="header-title">운송관리</div></div>
+      <div class="header-left"><div class="header-logo">ELS</div></div>
+      <div id="header-vinfo">연페 - <span id="header-vh-no">차량번호</span></div>
       <div id="gps-indicator" class="gps-off">GPS</div>
     </header>
 
@@ -59,20 +212,15 @@
     <div id="offline-bar" style="display:none">인터넷 연결이 끊겼습니다.</div>
 
     <main id="main-content" class="tab-panel">
-      <!-- 🔋 배터리 최적화 경고 배너 -->
-      <div id="battery-warning" class="card" style="display:none; background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.4); margin-bottom:16px; padding:12px;">
+      <!-- 배터리 최적화 경고 -->
+      <div id="battery-warning" class="card" style="display:none; border-left:4px solid var(--safe-orange) !important;">
         <div style="display:flex; align-items:center; gap:12px;">
-          <span style="font-size:1.4rem;">🔋</span>
           <div style="flex:1;">
-            <div style="font-weight:800; color:#f59e0b; font-size:0.85rem;">배터리 최적화 해제 필요</div>
-            <p style="font-size:0.75rem; margin:2px 0; color:var(--text-muted); line-height:1.4;">안정적인 백그라운드 GPS 수집을 위해<br><b>[제한 없음]</b> 설정이 권장됩니다.</p>
+            <div style="font-weight:800; color:var(--safe-orange); font-size:0.9rem;">배터리 최적화 설정 필요</div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">실시간 위치 관제를 위해 [제한 없음] 권한이 필요합니다.</p>
           </div>
-          <button id="btn-fix-battery" style="padding:8px 12px; background:#f59e0b; border-radius:8px; font-size:0.75rem; font-weight:800; color:#fff; border:none; box-shadow:0 2px 4px rgba(0,0,0,0.2);">설정하기</button>
+          <button id="btn-fix-battery" style="background:var(--safe-orange); padding:8px 16px; border:none; color:#fff; font-weight:700;">설정 이동</button>
         </div>
-      </div>
-
-      <div id="driver-summary" style="display:flex;justify-content:center;align-items:center;gap:8px;padding:8px 0;font-size:1rem;font-weight:800;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:10px;">
-        <span id="disp-name">-</span> · <span id="disp-vehicle">-</span> · <span id="disp-id">-</span>
       </div>
 
       <!-- ① 컨테이너 정보 입력 -->
@@ -120,12 +268,48 @@
       </div>
     </main>
 
+    <style>
+      /* 80년도 플랫(Retro Flat) 스타일 하단 네비게이션 */
+      #bottom-nav {
+        display: flex;
+        background: #0000aa; /* 80s MS-DOS Blue */
+        padding: 0;
+        border-top: 3px solid #000;
+        box-shadow: none;
+      }
+      #bottom-nav .nav-btn {
+        flex: 1;
+        height: 52px;
+        background: #0000aa;
+        color: #aaaaaa;
+        border: none;
+        border-right: 2px solid #000;
+        font-family: "Courier New", monospace, sans-serif;
+        font-weight: 900;
+        font-size: 0.85rem;
+        letter-spacing: -0.5px;
+        text-transform: uppercase;
+        border-radius: 0;
+        transition: none;
+      }
+      #bottom-nav .nav-btn:last-child {
+        border-right: none;
+      }
+      #bottom-nav .nav-btn.active {
+        background: #00aaaa; /* 80s Cyan */
+        color: #000000;
+        border-bottom: 3px solid #000;
+      }
+      #bottom-nav .nav-btn[onclick*="exitApp"] {
+        color: #ff5555 !important; /* 80s Light Red */
+      }
+    </style>
     <nav id="bottom-nav">
       <button class="nav-btn active" onclick="switchTab('home')">운행</button>
       <button class="nav-btn" onclick="switchTab('history')">기록</button>
       <button class="nav-btn" onclick="switchTab('notice')">공지</button>
       <button class="nav-btn" onclick="switchTab('settings')">설정</button>
-      <button class="nav-btn" onclick="exitApp()" style="color:#f85149;">종료</button>
+      <button class="nav-btn" onclick="exitApp()">종료</button>
     </nav>
 
     <!-- 기록 탭 -->
@@ -178,11 +362,11 @@
       </div>
       <div class="card">
         <div class="card-title">앱 정보</div>
-        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem;">v3.8.3 (Standalone Native Optimized)</div>
-        <div style="text-align:center; margin-top:10px;"><a href="privacy.html" target="_blank" style="color:var(--accent); font-size:0.8rem; text-decoration:none;">📄 개인정보 처리방침</a></div>
-        <button id="btn-check-update" class="btn-outline" style="margin-top:8px">🔄 수동 업데이트 확인</button>
-        <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화 (재설정)</button>
-        <button id="btn-exit-app" class="btn-outline" style="margin-top:8px">앱 종료</button>
+        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem;">v3.8.3 (Standalone Native)</div>
+        <button onclick="window.open('privacy.html','_blank')" style="width:100%; height:44px; margin-top:16px; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px; font-weight:700;">📄 개인정보 처리방침</button>
+        <button id="btn-check-update" style="width:100%; height:44px; margin-top:8px; background:#238636; border:none; color:#fff; border-radius:8px; font-weight:800; cursor:pointer;">🔄 수동 업데이트 확인</button>
+        <button id="btn-reset-app" style="width:100%; height:44px; margin-top:8px; background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.5); color:#f85149; border-radius:8px; font-weight:700;">초기화 (재설정)</button>
+        <button id="btn-exit-app" style="width:100%; height:44px; margin-top:8px; background:#0d1117; border:1px solid #30363d; color:#7d8590; border-radius:8px; font-weight:700;">앱 종료</button>
       </div>
     </div>
   </div>
