@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.9.4",
-  "changeLog": "- 설정 탭 권한 상태 실시간 동기화 개선\n- 공지사항 내용 보기 오류 수정 및 시인성 보강\n- 사진 삭제 버튼 등 조작부 가독성 향상",
+  "latestVersion": "3.9.5",
+  "changeLog": "- 삼성 기기용 배터리 설정 진입 경로 100% 호환성 패치\n- 업데이트 시 클립보드 백업 지연 현상 수정\n- 전체 UI 안정성 및 권한 동기화 보강",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

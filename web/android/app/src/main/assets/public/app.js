@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.4';
+  const APP_VERSION = '3.9.5';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -135,22 +135,18 @@
     haptic();
     const O = getOverlay();
     if(O){
-      // [개선] 삼성/최신 안드로이드 대응 직통 인텐트 시도
-      try {
-        if(O.requestBatteryOptimization) {
-           // 1순위: '배터리 최적화 제외' 팝업 직접 호출
-           await O.requestBatteryOptimization();
-           showModal('알림', '[허용]을 눌러주시면 설정이 완료됩니다.');
-        } else {
-           throw new Error('No direct method');
-        }
-      } catch (e) {
-        // 2순위: 팝업 불가 시 앱 정보 상세 페이지로 유도
-        showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제한 없음]으로 선택</b><br><br>위 단계를 꼭 확인해 주세요.');
-        setTimeout(() => {
-          if(O.openAppSettings) O.openAppSettings();
-          else if(O.openRestrictedSettings) O.openRestrictedSettings();
-        }, 3000);
+      // [삼성 100% 대응] 팝업 대신 앱 상세 설정으로 바로 유도
+      showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제한 없음]으로 선택</b><br><br>확인 버튼을 누르면 설정 화면으로 이동합니다.');
+      
+      const btnClose = document.getElementById('btn-modal-close');
+      if(btnClose){
+        btnClose.onclick = function(){
+          closeModal();
+          setTimeout(() => {
+            if(O.openAppSettings) O.openAppSettings();
+            else if(O.openRestrictedSettings) O.openRestrictedSettings();
+          }, 300);
+        };
       }
       setTimeout(checkBatteryOptimizationStatus, 8000);
     } else {
@@ -1120,11 +1116,13 @@
     haptic('Heavy');
     const O = getOverlay();
     
-    // 🚀 [중요] 업데이트 전 전화번호 클립보드에 백업 (자동 로그인용)
-    const ph = localStorage.getItem('els_phone');
-    if(ph && navigator.clipboard && navigator.clipboard.writeText) {
-      try { await navigator.clipboard.writeText(ph); } catch(e){}
-    }
+    // 🚀 [중요] 업데이트 전 전화번호 클립보드에 백업 (실패해도 무시)
+    try {
+      const ph = localStorage.getItem('els_phone');
+      if(ph && navigator.clipboard && navigator.clipboard.writeText) {
+         await navigator.clipboard.writeText(ph);
+      }
+    } catch(e){ console.error('Clip backup fail'); }
 
     // 버튼 텍스트 변경으로 진행 상태 표시
     const btn = event.target;
