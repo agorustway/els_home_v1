@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -88,7 +88,7 @@ export default function VehicleTrackingPage() {
             .from('notices')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(5);
+            $120);
         if (!error && data) setNotices(data);
     }, []);
 
@@ -119,7 +119,7 @@ export default function VehicleTrackingPage() {
         if (!confirm('이 공지사항을 삭제하시겠습니까?')) return;
         try {
             const { error } = await supabase.from('notices').delete().eq('id', id);
-            if (error) throw error;
+            if (error) throw error;`n            setNotices(prev => prev.filter(n => n.id !== id));
             setShowWriteModal(false);
             setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
             fetchNotices();
@@ -964,4 +964,5 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
+
 

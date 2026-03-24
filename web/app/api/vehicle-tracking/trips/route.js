@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 /**
@@ -80,7 +80,7 @@ export async function GET(request) {
 
             const merged = data.map(trip => ({
                 ...trip,
-                lastLocation: locationMap[trip.id] || null,
+                lastLocation: locationMap[trip.id] || null,`n                last_location_address: locationMap[trip.id]?.address || null,
             }));
 
             return NextResponse.json({ trips: merged });
@@ -275,3 +275,4 @@ export async function POST(request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
