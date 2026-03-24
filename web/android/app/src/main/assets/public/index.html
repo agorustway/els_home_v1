@@ -62,7 +62,19 @@
     <div id="active-banner" style="display:none"><div id="banner-status">● 운행중</div></div>
     <div id="offline-bar" style="display:none">인터넷 연결이 끊겼습니다.</div>
 
-    <main id="main-content">
+    <main id="main-content" class="tab-panel">
+      <!-- 🔋 배터리 최적화 경고 배너 -->
+      <div id="battery-warning" class="card" style="display:none; background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.4); margin-bottom:16px; padding:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:1.4rem;">🔋</span>
+          <div style="flex:1;">
+            <div style="font-weight:800; color:#f59e0b; font-size:0.85rem;">배터리 최적화 해제 필요</div>
+            <p style="font-size:0.75rem; margin:2px 0; color:var(--text-muted); line-height:1.4;">안정적인 백그라운드 GPS 수집을 위해<br><b>[제한 없음]</b> 설정이 권장됩니다.</p>
+          </div>
+          <button id="btn-fix-battery" style="padding:8px 12px; background:#f59e0b; border-radius:8px; font-size:0.75rem; font-weight:800; color:#fff; border:none; box-shadow:0 2px 4px rgba(0,0,0,0.2);">설정하기</button>
+        </div>
+      </div>
+
       <div id="driver-summary" style="display:flex;justify-content:center;align-items:center;gap:8px;padding:8px 0;font-size:1rem;font-weight:800;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:10px;">
         <span id="disp-name">-</span> · <span id="disp-vehicle">-</span> · <span id="disp-id">-</span>
       </div>
@@ -159,8 +171,16 @@
         <button id="btn-update-profile" class="btn-secondary" style="margin-top:16px">저장</button>
       </div>
 
-
       <div class="card">
+        <div class="card-title">⚙️ 시스템 설정 및 권한</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+          <button class="btn btn-secondary" id="set-perm-location" style="font-size:0.75rem; padding:10px;">📍 위치 권한</button>
+          <button class="btn btn-secondary" id="set-perm-phone" style="font-size:0.75rem; padding:10px;">📞 전화 권한</button>
+          <button class="btn btn-secondary" id="set-perm-notify" style="font-size:0.75rem; padding:10px;">🔔 알림 권한</button>
+          <button class="btn btn-secondary" id="btn-battery-settings" style="font-size:0.75rem; padding:10px; border:1px solid #f59e0b; color:#f59e0b;">🔋 배터리 설정</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px; background:transparent; border:none; box-shadow:none;">
         <div class="card-title">GPS 수집 설정</div>
         <div class="card-row"><span class="card-label">고속 (≥10km/h)</span><span class="card-value" id="disp-gps-fast">30초</span></div>
         <div class="card-row"><span class="card-label">저속 (<10km/h)</span><span class="card-value" id="disp-gps-slow">60초</span></div>

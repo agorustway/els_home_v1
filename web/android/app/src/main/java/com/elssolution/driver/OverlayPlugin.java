@@ -1,6 +1,7 @@
 package com.elssolution.driver;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -201,6 +202,49 @@ public class OverlayPlugin extends Plugin {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
         call.resolve();
+    }
+
+    /**
+     * 배터리 최적화 제외 상태 확인
+     */
+    @PluginMethod
+    public void checkBatteryOptimization(PluginCall call) {
+        JSObject ret = new JSObject();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            android.os.PowerManager pm = (android.os.PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+            ret.put("isIgnoring", pm.isIgnoringBatteryOptimizations(getContext().getPackageName()));
+        } else {
+            ret.put("isIgnoring", true);
+        }
+        call.resolve(ret);
+    }
+
+    /**
+     * 배터리 최적화 제외 설정 화면 열기
+     */
+    @PluginMethod
+    public void requestBatteryOptimization(final PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getActivity().runOnUiThread(() -> {
+                try {
+                    // 1단계: 바로 제외 요청 다이얼로그 시도 (권한 필요: REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    // 만약 거부되면 설정 목록 화면으로 이동
+                    Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    
+                    Toast.makeText(getContext(), 
+                        "🔋 목록에서 [ELS차량용] → [제한 없음]으로 변경해주세요", 
+                        Toast.LENGTH_LONG).show();
+                        
+                    getContext().startActivity(intent);
+                    call.resolve();
+                } catch (Exception e) {
+                    call.reject("배터리 설정 화면을 열 수 없습니다.");
+                }
+            });
+        } else {
+            call.resolve();
+        }
     }
 
     /**

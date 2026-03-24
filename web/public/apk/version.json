@@ -1,6 +1,6 @@
 {
-  "latestVersion": "3.8.0",
-  "minVersion": "3.7.0",
+  "latestVersion": "3.8.2",
+  "minVersion": "3.8.0",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk",
-  "changeLog": "오버레이 기능 제거 및 백그라운드 GPS 안정성 최적화"
+  "changeLog": "배터리 최적화 안내 가이드 추가 및 즉시 위치(시작/종료) 수집 강화"
 }

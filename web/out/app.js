@@ -93,13 +93,37 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.8.0';
+  const APP_VERSION = '3.8.2';
+
+  async function checkBatteryOptimizationStatus(){
+    const Plugins = getDynamicPlugins();
+    if(Plugins.Overlay && typeof Plugins.Overlay.checkBatteryOptimization === 'function'){
+      const r = await Plugins.Overlay.checkBatteryOptimization();
+      const banner = document.getElementById('battery-warning');
+      const btn = document.getElementById('btn-battery-settings');
+      if(banner) banner.style.display = r.isIgnoring ? 'none' : 'block';
+      if(btn && r.isIgnoring){
+        btn.textContent = '✅ 배터리 설정 완료';
+        btn.style.borderColor = '#3fb950';
+        btn.style.color = '#3fb950';
+      }
+      
+      // 온보딩 초기 화면용
+      const dot = document.getElementById('battery-dot-init');
+      if(dot){
+        dot.className = r.isIgnoring ? 'perm-dot dot-green' : 'perm-dot dot-red';
+        const desc = document.getElementById('battery-desc-init');
+        if(desc) desc.textContent = r.isIgnoring ? '설정이 적용되었습니다' : '안정적인 주행 기록을 위해 필요';
+      }
+    }
+  }
 
   // ── 초기화 ──
   async function initApp(){
     console.log(`ELS v${APP_VERSION} Init`);
     await waitForBridge();
     checkUpdates(); // 업데이트 확인 로직 추가 (v3.8.0 정책)
+    checkBatteryOptimizationStatus(); // 배터리 최적화 상태 체크
     
     window.onPipModeChanged=function(isInPip){
       isPipMode=isInPip;
@@ -142,6 +166,9 @@
     B('set-perm-location',requestLocationPerm);B('set-perm-camera',requestCameraPerm);
     B('set-perm-photo',requestPhotoPerm);B('set-perm-notify',requestNotifyPerm);B('set-perm-phone',requestPhonePerm);
     B('btn-reset-app',resetApp);B('btn-modal-close',closeModal);B('btn-exit-app',exitApp);
+    B('btn-fix-battery', requestBatteryOptimization);
+    B('btn-battery-settings', requestBatteryOptimization);
+    B('btn-fix-battery-init', requestBatteryOptimization);
 
     const Plugins = getDynamicPlugins();
     // 홈 버튼(앱 최소화) 감지 — Capacitor App 플러그인
@@ -507,6 +534,7 @@
         tripId=r.data.id||r.data.trip_id;lastTripId=tripId;tripStatus=r.data.status||'driving';elapsedSeconds=0;
         haptic('Heavy');updateTripUI();startTimer();startGPSTracking();uploadPendingPhotos();
         showFloatingWidget(); // 🚀 백그라운드 GPS 안정을 위한 포그라운드 서비스 시작
+        sendImmediateLocation('start'); // [신규] 즉시 위치 전송 (시작점 마킹)
       }else throw new Error(r.data?.error||'서버 오류('+r.status+')');
     }catch(e){showModal('오류','운송 시작 실패: '+e.message);}
     finally{isSubmitting=false;btn.disabled=false;btn.textContent='운송 시작 (START)';}
@@ -534,6 +562,7 @@
     try{
       haptic('Heavy');const cid=tripId;
       await sendStopLocation(cid);
+      sendImmediateLocation('stop'); // [신규] 즉시 위치 전송 (종합점 마킹)
       stopGPSTracking();
       hideFloatingWidget(); // 🚀 백그라운드 서비스 종료
       if(isOnline){try{const r=await smartPatch(`${API_BASE}/trips/${cid}`,{action:'complete'});if(!r.ok)showModal('경고','서버 종료 처리 실패');}catch(e){showModal('경고','통신 실패');}}

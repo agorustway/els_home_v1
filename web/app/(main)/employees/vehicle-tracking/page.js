@@ -121,8 +121,22 @@ export default function VehicleTrackingPage() {
 
             const locData = await locRes.json();
             if (locData.locations) {
-                setSelectedTripLocations(locData.locations);
-                drawTripPath(locData.locations);
+                const locations = locData.locations;
+                setSelectedTripLocations(locations);
+                drawTripPath(locations);
+                
+                // [신규] 주요 지점 주소 자동 로드 (사용자 요청: 상세보기 시 즉시 노출)
+                if (window.naver?.maps?.Service && locations.length > 0) {
+                    // 마지막(최신) 지점
+                    fetchMissingAddress(locations[locations.length - 1], locations.length - 1);
+                    // 시작 지점
+                    if (locations.length > 1) fetchMissingAddress(locations[0], 0);
+                    // 중간 지점 (약 3개 정도 균등 배분)
+                    if (locations.length > 5) {
+                        const mid = Math.floor(locations.length / 2);
+                        fetchMissingAddress(locations[mid], mid);
+                    }
+                }
             }
 
             const logData = await logRes.json();
@@ -183,6 +197,23 @@ export default function VehicleTrackingPage() {
         if (tripsWithLocation.length === 0) return;
 
         const bounds = new naver.maps.LatLngBounds();
+        const generateInfoWindowHtml = (trip, loc, markerColor) => `
+            <div style="padding:16px; min-width:240px; font-family:'Pretendard',sans-serif;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:16px; font-weight:800; color:#1e293b; margin-bottom:2px;">${trip.driver_name}</div>
+                        <div style="font-size:11px; font-weight:600; color:#64748b;">🚛 ${trip.vehicle_number}</div>
+                    </div>
+                    <span style="font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; background:${markerColor}15; color:${markerColor}; border:1px solid ${markerColor}40;">${TRIP_STATUS_LABELS[trip.status]}</span>
+                </div>
+                <div style="padding:10px; background:#f8fafc; border-radius:10px; font-size:13px; color:#334155; line-height:1.5; border:1px solid #f1f5f9; margin-top:4px;">
+                    <span style="display:block; font-weight:800; color:#0ea5e9; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Current Location</span>
+                    ${loc.address || '주소 정보 확인 중...'}
+                </div>
+                ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
+            </div>
+        `;
+
         tripsWithLocation.forEach(trip => {
             const loc = trip.lastLocation;
             const pos = new naver.maps.LatLng(loc.lat, loc.lng);
@@ -201,29 +232,29 @@ export default function VehicleTrackingPage() {
                 },
             });
 
-            const infoHtml = `
-                <div style="padding:16px; min-width:240px; font-family:'Pretendard',sans-serif;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                        <div>
-                            <div style="font-size:16px; font-weight:800; color:#1e293b; margin-bottom:2px;">${trip.driver_name}</div>
-                            <div style="font-size:11px; font-weight:600; color:#64748b;">🚛 ${trip.vehicle_number}</div>
-                        </div>
-                        <span style="font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; background:${markerColor}15; color:${markerColor}; border:1px solid ${markerColor}40;">${TRIP_STATUS_LABELS[trip.status]}</span>
-                    </div>
-                    <div style="padding:10px; background:#f8fafc; border-radius:10px; font-size:13px; color:#334155; line-height:1.5; border:1px solid #f1f5f9; margin-top:4px;">
-                        <span style="display:block; font-weight:800; color:#0ea5e9; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Current Location</span>
-                        ${loc.address || '주소 정보 확인 중...'}
-                    </div>
-                    ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
-                </div>
-            `;
-            const infoWindow = new naver.maps.InfoWindow({ content: infoHtml, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' });
+            const infoWindow = new naver.maps.InfoWindow({ 
+                content: generateInfoWindowHtml(trip, loc, markerColor), 
+                borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' 
+            });
 
             naver.maps.Event.addListener(marker, 'click', () => {
                 if (infoWindowRef.current) infoWindowRef.current.close();
+
+                // [신규] 마커 클릭 시 주소가 없으면 바로 조회 시도
+                if (!loc.address && window.naver?.maps?.Service) {
+                    naver.maps.Service.reverseGeocode({
+                        coords: new naver.maps.LatLng(loc.lat, loc.lng),
+                        orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(',')
+                    }, (status, response) => {
+                        if (status === naver.maps.Service.Status.OK) {
+                            loc.address = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+                            infoWindow.setContent(generateInfoWindowHtml(trip, loc, markerColor));
+                        }
+                    });
+                }
+
                 infoWindow.open(map, marker);
                 infoWindowRef.current = infoWindow;
-                // 클릭 시 배율 줌 및 센터링
                 map.setZoom(16);
                 map.setCenter(pos);
             });
@@ -415,8 +446,8 @@ export default function VehicleTrackingPage() {
             {/* 공지사항 섹션 (카드 형식) */}
             <div className={styles.noticeSection}>
                 <div className={styles.noticeHeader}>
-                    <h3>📢 전사 공지사항</h3>
-                    <button className={styles.writeNoticeBtn}>📝 공지 작성</button>
+                    <h3>📢 공지사항</h3>
+                    <button className={styles.writeNoticeBtn} onClick={() => alert('공지사항 작성 기능은 현재 개발 중입니다.')}>📝 공지 작성</button>
                 </div>
                 <div className={styles.tableCard}>
                     <table className={styles.adminNoticeTable}>
