@@ -761,8 +761,13 @@ export default function VehicleTrackingPage() {
                                     {(!newNotice.attachments || newNotice.attachments.length === 0) && <div style={{color:'#94a3b8', fontSize:12}}>첨부된 파일이 없습니다.</div>}
                                 </div>
                             </div>
-                            <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>{newNotice.id ? '🛠️ 수정 완료' : '🚀 공지의뢰'}</button>
-                            {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{marginTop:10, height:40, flex:1}}>닫기</button>`r`n                                <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id)} style={{marginTop:10, height:40, width:'80px', flex:'none', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5'}}>🗑️ 삭제</button>`r`n                            </div>
+                            <div style={{display:'flex', gap:10, marginTop:10}}>
+                                <button className={styles.saveBtn} onClick={handleSaveNotice} style={{flex:1}}>{newNotice.id ? '🛠️ 수정 완료' : '🚀 공지의뢰'}</button>
+                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{height:40, padding:'0 20px'}}>닫기</button>
+                                {newNotice.id && (
+                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id)} style={{height:40, padding:'0 20px', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5', borderRadius:8, fontWeight:700}}>🗑️ 삭제</button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -975,6 +980,7 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
+
 
 
 
