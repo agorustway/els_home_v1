@@ -92,19 +92,29 @@ export default function VehicleTrackingPage() {
         if (!error && data) setNotices(data);
     }, []);
 
-    const handleSaveNotice = async () => {
+        const handleSaveNotice = async () => {
         if (!newNotice.title.trim()) { alert('공지 제목을 입력해주세요.'); return; }
         if (!newNotice.content.trim()) { alert('공지 내용을 입력해주세요.'); return; }
         setLoading(true);
         try {
-            const { error } = await supabase.from('notices').insert([{
+            const row = {
                 title: newNotice.title,
                 content: newNotice.content,
                 target: newNotice.target,
-                // attachments: newNotice.attachments || [],
                 status: '공지중'
-            }]);
+            };
+            
+            let query;
+            if (newNotice.id) {
+                query = supabase.from('notices').update(row).eq('id', newNotice.id);
+            } else {
+                query = supabase.from('notices').insert([row]);
+            }
+
+            const { error } = await query;
             if (error) throw error;
+
+            alert(newNotice.id ? '수정되었습니다.' : '등록되었습니다.');
             setShowWriteModal(false);
             setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
             fetchNotices();
@@ -127,7 +137,7 @@ export default function VehicleTrackingPage() {
         } catch (e) { alert('삭제 실패: ' + e.message); }
     };
 
-    const handleViewNotice = (n) => { setNewNotice({ ...n, isViewMode: true }); setShowWriteModal(true); };
+    const handleViewNotice = (n) => { setNewNotice({ ...n, isViewMode: false }); setShowWriteModal(true); };
 
     // [신규] 첨부파일 업로드 (NAS 연동 권장하지만 일단 Supabase Storage 또는 S3 Presigned 이용 가능하도록 틀만 구성)
     const handleFileChange = async (e) => {
@@ -751,7 +761,7 @@ export default function VehicleTrackingPage() {
                                     {(!newNotice.attachments || newNotice.attachments.length === 0) && <div style={{color:'#94a3b8', fontSize:12}}>첨부된 파일이 없습니다.</div>}
                                 </div>
                             </div>
-                            {!newNotice.isViewMode && <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>🚀 공지하기</button>}
+                            <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>{newNotice.id ? '🛠️ 수정 완료' : '🚀 공지의뢰'}</button>
                             {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{marginTop:10, height:40, flex:1}}>닫기</button>`r`n                                <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id)} style={{marginTop:10, height:40, width:'80px', flex:'none', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5'}}>🗑️ 삭제</button>`r`n                            </div>
                         </div>
                     </div>
@@ -965,6 +975,8 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
+
+
 
 
 
