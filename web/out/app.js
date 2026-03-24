@@ -14,7 +14,9 @@
         requestPermission: () => new Promise(r => { const c='r'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','requestPermission',{},c); }),
         showOverlay: (o) => { Cap.toNative('Overlay','showOverlay',o||{},'s'+Date.now()); },
         hideOverlay: () => { Cap.toNative('Overlay','hideOverlay',{},'h'+Date.now()); },
-        updateOverlay: (o) => { Cap.toNative('Overlay','updateOverlay',o||{},'u'+Date.now()); }
+        updateOverlay: (o) => { Cap.toNative('Overlay','updateOverlay',o||{},'u'+Date.now()); },
+        checkBatteryOptimization: () => new Promise(r => { const c='cb'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','checkBatteryOptimization',{},c); }),
+        requestBatteryOptimization: () => new Promise(r => { const c='rb'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','requestBatteryOptimization',{},c); })
       };
     }
     return null;
@@ -96,39 +98,47 @@
   const APP_VERSION = '3.8.2';
 
   async function checkBatteryOptimizationStatus(){
-    const Plugins = getDynamicPlugins();
-    if(Plugins.Overlay && typeof Plugins.Overlay.checkBatteryOptimization === 'function'){
-      const r = await Plugins.Overlay.checkBatteryOptimization();
-      const banner = document.getElementById('battery-warning');
-      const btn = document.getElementById('btn-battery-settings');
-      if(banner) banner.style.display = r.isIgnoring ? 'none' : 'block';
-      if(btn && r.isIgnoring){
-        btn.textContent = '✅ 배터리 설정 완료';
-        btn.style.borderColor = '#3fb950';
-        btn.style.color = '#3fb950';
-      }
-      
-      // 온보딩 초기 화면용
-      const dot = document.getElementById('battery-dot-init');
-      if(dot){
-        dot.style.background = r.isIgnoring ? '#3fb950' : '#f85149';
-        dot.classList.remove('dot-red', 'dot-green');
-        dot.classList.add(r.isIgnoring ? 'dot-green' : 'dot-red');
-        const desc = document.getElementById('battery-desc-init');
-        if(desc) desc.textContent = r.isIgnoring ? '설정이 적용되었습니다' : '안정적인 주행 기록을 위해 필요';
-        const it = document.getElementById('btn-fix-battery-init');
-        if(it){
-          const a = it.querySelector('.perm-arrow');
-          if(a){ a.textContent = r.isIgnoring ? '✓' : '›'; a.style.color = r.isIgnoring ? '#3fb950' : '#7d8590'; }
+    const O = getOverlay();
+    if(O && typeof O.checkBatteryOptimization === 'function'){
+      try {
+        const r = await O.checkBatteryOptimization();
+        const banner = document.getElementById('battery-warning');
+        const btn = document.getElementById('btn-battery-settings');
+        if(banner) banner.style.display = r.isIgnoring ? 'none' : 'block';
+        if(btn && r.isIgnoring){
+          btn.textContent = '✅ 배터리 설정 완료';
+          btn.style.borderColor = '#3fb950';
+          btn.style.color = '#3fb950';
         }
+        
+        // 온보딩 초기 화면용
+        const dot = document.getElementById('battery-dot-init');
+        if(dot){
+          dot.style.background = r.isIgnoring ? '#3fb950' : '#f85149';
+          dot.classList.remove('dot-red', 'dot-green');
+          dot.classList.add(r.isIgnoring ? 'dot-green' : 'dot-red');
+          const desc = document.getElementById('battery-desc-init');
+          if(desc) desc.textContent = r.isIgnoring ? '설정이 적용되었습니다' : '안정적인 주행 기록을 위해 필요';
+          const it = document.getElementById('btn-fix-battery-init');
+          if(it){
+            const a = it.querySelector('.perm-arrow');
+            if(a){ a.textContent = r.isIgnoring ? '✓' : '›'; a.style.color = r.isIgnoring ? '#3fb950' : '#7d8590'; }
+          }
+        }
+      } catch (e) {
+        console.error('배터리 최적화 상태 확인 실패:', e);
       }
     }
   }
 
   async function requestBatteryOptimization(){
-    const Plugins = getDynamicPlugins();
-    if(Plugins.Overlay && typeof Plugins.Overlay.requestBatteryOptimization === 'function'){
-      await Plugins.Overlay.requestBatteryOptimization();
+    const O = getOverlay();
+    if(O && typeof O.requestBatteryOptimization === 'function'){
+      try {
+        await O.requestBatteryOptimization();
+      } catch (e) {
+        showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
+      }
       // 설정 후 상태 다시 체크 (약간의 딜레이 후)
       setTimeout(checkBatteryOptimizationStatus, 2000);
     } else {
@@ -184,6 +194,7 @@
     B('set-perm-location',requestLocationPerm);B('set-perm-camera',requestCameraPerm);
     B('set-perm-photo',requestPhotoPerm);B('set-perm-notify',requestNotifyPerm);B('set-perm-phone',requestPhonePerm);
     B('btn-reset-app',resetApp);B('btn-modal-close',closeModal);B('btn-exit-app',exitApp);
+    B('btn-check-update',()=>checkUpdates(true));
     B('btn-fix-battery', requestBatteryOptimization);
     B('btn-battery-settings', requestBatteryOptimization);
     B('btn-fix-battery-init', requestBatteryOptimization);
@@ -837,16 +848,18 @@
   }
 
   // ═══ 업데이트 정책 (v3.8.0 적용) ═══
-  async function checkUpdates(){
-    if(!isOnline) return;
+  async function checkUpdates(manual = false){
+    if(!isOnline) { if(manual) showModal('오프라인', '인터넷 연결이 필요합니다.'); return; }
     try {
-      const r = await fetch('https://www.nollae.com/apk/version.json', { cache: 'no-store' });
+      const r = await fetch('https://www.nollae.com/apk/version.json?t=' + Date.now(), { cache: 'no-store' });
       const d = await r.json();
       if(d.latestVersion && d.latestVersion !== APP_VERSION){
         // 업데이트 권장 모달
-        showModal('🚀 새로운 업데이트', `버전: v${d.latestVersion}<br><br><b>변경사항:</b><br>${d.changeLog}<br><br><a href="${d.downloadUrl}" target="_blank" style="display:inline-block; padding:10px 20px; background:var(--accent); color:#fff; border-radius:8px; text-decoration:none; font-weight:800; margin-top:10px;">지금 다운로드 및 업데이트</a>`);
+        showModal('🚀 새로운 업데이트', `버전: v${d.latestVersion}<br><br><b>변경사항:</b><br>${(d.changeLog||'').replace(/\\n/g,'<br>')}<br><br><a href="${d.downloadUrl}" target="_blank" style="display:inline-block; padding:10px 20px; background:var(--accent); color:#fff; border-radius:8px; text-decoration:none; font-weight:800; margin-top:10px;">지금 다운로드 및 업데이트</a>`);
+      } else if(manual) {
+        showModal('✅ 최신 버전입니다', `현재 사용 중인 버전(v${APP_VERSION})이 최신 버전입니다.`);
       }
-    } catch(e){ console.warn('업데이트 확인 실패'); }
+    } catch(e){ if(manual) showModal('오류', '업데이트 확인 중 오류가 발생했습니다.'); console.warn('업데이트 확인 실패'); }
   }
 
   // ═══ 공지사항 ═══

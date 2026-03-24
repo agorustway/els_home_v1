@@ -1,6 +1,5 @@
 {
   "latestVersion": "3.8.2",
-  "minVersion": "3.8.0",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk",
-  "changeLog": "배터리 최적화 안내 가이드 추가 및 즉시 위치(시작/종료) 수집 강화"
+  "changeLog": "- 배터리 최적화 확인 로직 개선\n- 통신 안정성 패치 및 UI 수정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

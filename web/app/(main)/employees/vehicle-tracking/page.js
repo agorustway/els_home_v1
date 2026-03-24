@@ -24,7 +24,7 @@ export default function VehicleTrackingPage() {
     const [liveTrips, setLiveTrips] = useState([]);
     const [notices, setNotices] = useState([]); // [신규] 실시간 공지사항 (동적 데이터)
     const [showWriteModal, setShowWriteModal] = useState(false);
-    const [newNotice, setNewNotice] = useState({ title: '', target: '전체' });
+    const [newNotice, setNewNotice] = useState({ title: '', content: '', target: '전체' });
     const [loading, setLoading] = useState(true);
     const [mapReady, setMapReady] = useState(false);
     const mapRef = useRef(null);
@@ -89,16 +89,18 @@ export default function VehicleTrackingPage() {
 
     const handleSaveNotice = async () => {
         if (!newNotice.title.trim()) { alert('공지 제목을 입력해주세요.'); return; }
+        if (!newNotice.content.trim()) { alert('공지 내용을 입력해주세요.'); return; }
         setLoading(true);
         try {
             const { error } = await supabase.from('notices').insert([{
                 title: newNotice.title,
+                content: newNotice.content,
                 target: newNotice.target,
                 status: '공지중'
             }]);
             if (error) throw error;
             setShowWriteModal(false);
-            setNewNotice({ title: '', target: '전체' });
+            setNewNotice({ title: '', content: '', target: '전체' });
             fetchNotices();
         } catch (e) {
             alert('공지 저장 실패: ' + e.message);
@@ -648,9 +650,19 @@ export default function VehicleTrackingPage() {
                                 <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 제목</label>
                                 <input 
                                     className={styles.modalInput} 
-                                    placeholder="기사님들께 알릴 내용을 입력하세요" 
+                                    placeholder="공지 제목을 입력하세요" 
                                     value={newNotice.title}
                                     onChange={e => setNewNotice({...newNotice, title: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 내용</label>
+                                <textarea 
+                                    className={styles.modalTextarea} 
+                                    placeholder="기사님들께 알릴 내용을 입력하세요" 
+                                    value={newNotice.content}
+                                    onChange={e => setNewNotice({...newNotice, content: e.target.value})}
+                                    rows={5}
                                 />
                             </div>
                             <div>

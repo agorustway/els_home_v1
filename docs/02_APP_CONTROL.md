@@ -50,3 +50,15 @@
 - [ ] **오프라인 데이터 큐잉 및 싱크 (진행 예정)**: 네트워크가 없는 상태에서 운송 시작/종료 시 로컬 스토리지에 Action을 큐잉(Queue).
 - [ ] **백그라운드 싱크**: 앱이 다시 `online` 이벤트를 받을 때 큐잉된 내역을 순차적으로 서버에 전송.
 
+---
+
+## 4. 📦 앱 빌드 및 수동 배포 (업데이트) 가이드
+StandAlone (APK) 앱은 구글 플레이스토어를 거치지 않고 직접 수동 배포(OTA 방식)를 수행합니다.
+
+- **APK 실제 서비스 경로**: `C:\Users\hoon\Desktop\els_home_v1\web\public\apk\els_driver.apk`
+  - 안드로이드 스튜디오 빌드(Build Bundle/APK) 결과물인 `app-release.apk`를 이 경로에 복사(덮어쓰기)합니다.
+- **버전 메타데이터 (업데이트 트리거) 경로**: `C:\Users\hoon\Desktop\els_home_v1\web\public\apk\version.json`
+  - 배포할 새 APK의 버전 정보(`latestVersion` 등)를 이 JSON 파일에 수정 반영합니다.
+- **실제 구동 원리**:
+  1. 기사님들이 앱을 실행하거나 **[설정 > 수동 업데이트 확인]** 버튼을 누를 때마다 `https://www.nollae.com/apk/version.json`을 검사합니다.
+  2. 현재 버전과 서버의 `latestVersion`이 다를 경우, 즉시 화면에 업데이트 알림창을 띄우고 `els_driver.apk` 다운로드 링크를 제공합니다.
