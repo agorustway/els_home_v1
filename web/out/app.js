@@ -111,9 +111,16 @@
       // 온보딩 초기 화면용
       const dot = document.getElementById('battery-dot-init');
       if(dot){
-        dot.className = r.isIgnoring ? 'perm-dot dot-green' : 'perm-dot dot-red';
+        dot.style.background = r.isIgnoring ? '#3fb950' : '#f85149';
+        dot.classList.remove('dot-red', 'dot-green');
+        dot.classList.add(r.isIgnoring ? 'dot-green' : 'dot-red');
         const desc = document.getElementById('battery-desc-init');
         if(desc) desc.textContent = r.isIgnoring ? '설정이 적용되었습니다' : '안정적인 주행 기록을 위해 필요';
+        const it = document.getElementById('btn-fix-battery-init');
+        if(it){
+          const a = it.querySelector('.perm-arrow');
+          if(a){ a.textContent = r.isIgnoring ? '✓' : '›'; a.style.color = r.isIgnoring ? '#3fb950' : '#7d8590'; }
+        }
       }
     }
   }
@@ -134,7 +141,7 @@
     console.log(`ELS v${APP_VERSION} Init`);
     await waitForBridge();
     checkUpdates(); // 업데이트 확인 로직 추가 (v3.8.0 정책)
-    checkBatteryOptimizationStatus(); // 배터리 최적화 상태 체크
+    refreshPermStatus(); // 모든 권한 상태 확인
     
     window.onPipModeChanged=function(isInPip){
       isPipMode=isInPip;
@@ -188,7 +195,7 @@
         if(!state.isActive && (tripStatus==='driving'||tripStatus==='paused')){
           // PIP는 MainActivity.onUserLeaveHint에서 자동 진입
         } else if(state.isActive){
-          // 앱 포그라운드 복귀
+          refreshPermStatus(); // 복귀 시 권한 상태 다시 확인
         }
       });
     }
@@ -273,26 +280,64 @@
   function updateOfflineBar(){const b=document.getElementById('offline-bar');if(b)b.style.display=isOnline?'none':'block';}
   function haptic(s){try{const Plugins=getDynamicPlugins();if(Plugins.Haptics)Plugins.Haptics.impact({style:s||'Medium'});}catch(e){}}
 
+  // [신규] 모든 권한 상태 확인 및 UI 업데이트
+  async function refreshPermStatus(){
+    // 위치 권한 확인 (브라우저 API)
+    if(navigator.permissions && navigator.permissions.query){
+      try {
+        const res = await navigator.permissions.query({ name: 'geolocation' });
+        if(res.state === 'granted') markPermGranted('perm-location');
+        res.onchange = () => { if(res.state === 'granted') markPermGranted('perm-location'); };
+      } catch(e){}
+    }
+    // 배터리 최적화 확인
+    checkBatteryOptimizationStatus();
+  }
+
   async function requestLocationPerm(){
     haptic();
     try{
       await new Promise((r,j)=>{
         navigator.geolocation.getCurrentPosition(
           ()=>r(true),
-          (e)=>{ if(e.code===1) j(e); else r(true); }, // code 1 is PERMISSION_DENIED. Other errors mean permitted but no signal
-          {enableHighAccuracy:true,timeout:10000}
+          (e)=>{ if(e.code===1) j(e); else r(true); }, // code 1 is PERMISSION_DENIED
+          {enableHighAccuracy:true,timeout:5000}
         );
       });
       markPermGranted('perm-location');
       document.getElementById('gps-indicator').className='gps-on';
     }catch(e){
-      alert('위치 권한을 허용해 주세요. (앱 설정에서 권한 허용)');
+      console.warn('위치 권한 획득 실패:', e);
+      // 거부되었거나 오류 시 앱 설정창으로 직접 보냄 (사용자 편의성)
+      const O = getOverlay();
+      if(O) O.openAppSettings();
+      else alert('위치 권한을 [항상 허용]으로 설정해 주세요.');
     }
   }
-  async function requestCameraPerm(){haptic();try{const s=await navigator.mediaDevices.getUserMedia({video:true});s.getTracks().forEach(t=>t.stop());markPermGranted('perm-camera');}catch(e){alert('카메라 권한 허용 필요');}}
-  async function requestPhotoPerm(){haptic();markPermGranted('perm-photo');showModal('알림','사진/동영상 권한은 앱 설치 시 자동 요청됩니다.');}
-  async function requestNotifyPerm(){haptic();try{if('Notification'in window){const r=await Notification.requestPermission();if(r==='granted')markPermGranted('perm-notify');else showModal('알림','알림 권한을 허용해 주세요.');}else markPermGranted('perm-notify');}catch(e){markPermGranted('perm-notify');}}
-  async function requestPhonePerm(){haptic();markPermGranted('perm-phone');showModal('알림','전화 권한은 앱 설치 시 자동 요청됩니다.');}
+  async function requestCameraPerm(){
+    haptic();
+    try{
+      const s=await navigator.mediaDevices.getUserMedia({video:true});
+      s.getTracks().forEach(t=>t.stop());
+      markPermGranted('perm-camera');
+    }catch(e){
+      const O = getOverlay();
+      if(O) O.openAppSettings();
+      else alert('카메라 권한 허용이 필요합니다.');
+    }
+  }
+  async function requestPhotoPerm(){haptic();markPermGranted('perm-photo');showModal('알림','사진 권한은 앱 설정에서 허용 상태를 확인해 주세요.'); const O=getOverlay(); if(O)O.openAppSettings();}
+  async function requestNotifyPerm(){
+    haptic();
+    try{
+      if('Notification'in window){
+        const r=await Notification.requestPermission();
+        if(r==='granted') markPermGranted('perm-notify');
+        else { const O=getOverlay(); if(O)O.openAppSettings(); }
+      }else markPermGranted('perm-notify');
+    }catch(e){markPermGranted('perm-notify');}
+  }
+  async function requestPhonePerm(){haptic();markPermGranted('perm-phone'); const O=getOverlay(); if(O)O.openAppSettings();}
 
   // 오버레이 권한 (미사용)
   async function checkOverlayPerm(){}
@@ -788,7 +833,7 @@
     });
     if(t === 'history') loadHistory();
     if(t === 'notice') loadNotices();
-    if(t === 'settings') loadSavedProfile();
+    if(t === 'settings') { loadSavedProfile(); refreshPermStatus(); }
   }
 
   // ═══ 업데이트 정책 (v3.8.0 적용) ═══

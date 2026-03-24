@@ -227,19 +227,30 @@ public class OverlayPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             getActivity().runOnUiThread(() -> {
                 try {
-                    // 1단계: 바로 제외 요청 다이얼로그 시도 (권한 필요: REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                    // 만약 거부되면 설정 목록 화면으로 이동
-                    Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                    // Try to open a more direct dialog first (if permission added to manifest)
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getActivity().getPackageName()));
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     
                     Toast.makeText(getContext(), 
-                        "🔋 목록에서 [ELS차량용] → [제한 없음]으로 변경해주세요", 
+                        "🔋 실시간 관제를 위해 [허용]을 선택해주세요", 
                         Toast.LENGTH_LONG).show();
                         
                     getContext().startActivity(intent);
                     call.resolve();
-                } catch (Exception e) {
-                    call.reject("배터리 설정 화면을 열 수 없습니다.");
+                } catch (Exception e1) {
+                    try {
+                        // Fallback to the settings list
+                        Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        Toast.makeText(getContext(), 
+                            "🔋 목록에서 [ELS차량용] → [제한 없음]으로 변경해주세요", 
+                            Toast.LENGTH_LONG).show();
+                        getContext().startActivity(intent);
+                        call.resolve();
+                    } catch (Exception e2) {
+                        call.reject("배터리 설정 화면을 열 수 없습니다.");
+                    }
                 }
             });
         } else {
