@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.1';
+  const APP_VERSION = '3.9.2';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -132,15 +132,18 @@
   }
 
   async function requestBatteryOptimization(){
+    haptic();
     const O = getOverlay();
-    if(O && typeof O.requestBatteryOptimization === 'function'){
-      try {
-        await O.requestBatteryOptimization();
-      } catch (e) {
-        showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
-      }
-      // 설정 후 상태 다시 체크 (약간의 딜레이 후)
-      setTimeout(checkBatteryOptimizationStatus, 2000);
+    if(O){
+      showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제한 없음]으로 선택</b><br><br>위 단계를 꼭 확인해 주세요.');
+      setTimeout(async () => {
+        try {
+          // 삼성 등 최신 기기에서 '제한된 설정'을 뚫기 위해 앱 상세 설정으로 유도
+          if(O.openAppSettings) O.openAppSettings();
+          else if(O.requestBatteryOptimization) await O.requestBatteryOptimization();
+        } catch (e) { console.error(e); }
+      }, 3000);
+      setTimeout(checkBatteryOptimizationStatus, 8000);
     } else {
       showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
     }
@@ -636,6 +639,11 @@
         haptic('Heavy');updateTripUI();startTimer();startGPSTracking();uploadPendingPhotos();
         showFloatingWidget(); // 🚀 백그라운드 GPS 안정을 위한 포그라운드 서비스 시작
         sendImmediateLocation('start'); // [신규] 즉시 위치 전송 (시작점 마킹)
+        
+        // 🚀 헤더 동기화: 연페 글자 제거하고 차량번호만 깔끔하게
+        const vNum = localStorage.getItem('els_vehicle');
+        const hVeh = document.getElementById('header-vh-no');
+        if(hVeh && vNum) hVeh.textContent = vNum;
       }else throw new Error(r.data?.error||'서버 오류('+r.status+')');
     }catch(e){showModal('오류','운송 시작 실패: '+e.message);}
     finally{isSubmitting=false;btn.disabled=false;btn.textContent='운송 시작 (START)';}
