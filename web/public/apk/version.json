@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.8.2",
-  "changeLog": "- 배터리 최적화 확인 로직 개선\n- 통신 안정성 패치 및 UI 수정",
+  "latestVersion": "3.8.3",
+  "changeLog": "- 배터리 최적화 예외상황 처리 (앱 정보 설정창 우회)\n- 위치 권한 타임아웃 오류 패치",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

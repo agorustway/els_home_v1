@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.8.2';
+  const APP_VERSION = '3.8.3';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
