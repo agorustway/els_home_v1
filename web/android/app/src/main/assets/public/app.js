@@ -265,7 +265,7 @@
   }
 
   function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.style.display='none');const el=document.getElementById(id);if(el)el.style.display='block';}
-  function showModal(t,m){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').textContent=m;document.getElementById('modal-alert').style.display='flex';}
+  function showModal(t,m){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=m;document.getElementById('modal-alert').style.display='flex';}
   function closeModal(){document.getElementById('modal-alert').style.display='none';}
 
   // 💎 시각적 가이드 제어 (제한된 설정) - [삭제] 오버레이 미사용으로 주석 처리
@@ -318,13 +318,18 @@
   }
 
   function markPermGranted(id){
-    // 온보딩 권한 아이템 업데이트
+    // 온보딩 권한 아이템 업데이트 (인라인 스타일 직접 변경)
     const it=document.getElementById(id);
-    if(it){const d=it.querySelector('.perm-dot');if(d){d.classList.remove('dot-red');d.classList.add('dot-green');}const a=it.querySelector('.perm-arrow');if(a)a.textContent='✓';}
-    // 설정 탭 권한 아이템도 동기화 (set-perm-location ↔ perm-location)
-    const setId = 'set-' + id; // e.g. set-perm-location
+    if(it){
+      const d=it.querySelector('.perm-dot');
+      if(d){ d.style.background='#3fb950'; d.classList.remove('dot-red'); d.classList.add('dot-green'); }
+      const a=it.querySelector('.perm-arrow');
+      if(a){ a.textContent='✓'; a.style.color='#3fb950'; }
+    }
+    // 설정 탭 권한 버튼도 동기화
+    const setId = 'set-' + id;
     const sit=document.getElementById(setId);
-    if(sit){const sd=sit.querySelector('.perm-dot');if(sd){sd.classList.remove('dot-red');sd.classList.add('dot-green');}const sa=sit.querySelector('.perm-arrow');if(sa)sa.textContent='✓';}
+    if(sit){ sit.style.borderColor='#3fb950'; sit.style.color='#3fb950'; sit.textContent = sit.textContent.replace(/^./, '✅'); }
   }
 
   function finishPermissions(){
@@ -804,21 +809,42 @@
     const list = document.getElementById('notice-list');
     if(!list) return;
     try {
-      // 실제 API 연동 전까지는 Mock 데이터 사용 (데이터베이스 연동 필요 시 알림 요망)
+      // Supabase에서 공지 불러오기
+      const r = await fetch('https://pzfnrnscwudifgcctzke.supabase.co/rest/v1/notices?select=*&order=created_at.desc&limit=20', {
+        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6Zm5ybnNjd3VkaWZnY2N0emtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Njk2NjcsImV4cCI6MjA4NzQ0NTY2N30.FYekx-aRdvlgfyR4MRlJ4mzVvDPmhODyXit8ITxyOCw' }
+      });
+      if(r.ok){
+        const notices = await r.json();
+        if(notices.length === 0){
+          list.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:var(--text-muted);">등록된 공지가 없습니다.</td></tr>';
+          return;
+        }
+        list.innerHTML = notices.map(n => {
+          const d = new Date(n.created_at);
+          const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+          const safeTitle = (n.title||"").replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          return `<tr style="cursor:pointer;" onclick="showModal('📢 공지사항','${safeTitle}')">
+            <td class="date-cell">${dateStr}</td>
+            <td style="font-weight:600;">${n.title}</td>
+          </tr>`;
+        }).join('');
+      } else {
+        throw new Error('API Error');
+      }
+    } catch(e) {
+      // API 실패 시 Mock 데이터 표시
       const mockNotices = [
-        { date: '03.24', title: 'v3.8.0 업데이트 안내 (오버레이 중단 및 GPS 최적화)' },
+        { date: '03.24', title: 'v3.8.2 업데이트 안내 (GPS 최적화 및 배터리 관리)' },
         { date: '03.23', title: '개인정보 처리방침 개정 안내' },
-        { date: '03.22', title: '안드로이드 16(갤럭시 S25) 호환성 패치 완료' },
-        { date: '03.20', title: '물류센터 상하차 사진 촬영 가이드' }
+        { date: '03.22', title: '안드로이드 16(갤럭시 S25) 호환성 패치 완료' }
       ];
-      list.innerHTML = mockNotices.map(n => `
-        <tr onclick="showModal('${n.date} 공지','${n.title}')">
+      list.innerHTML = mockNotices.map(n => {
+        const safeTitle = n.title.replace(/'/g, "\\'");
+        return `<tr style="cursor:pointer;" onclick="showModal('📢 공지사항','${safeTitle}')">
           <td class="date-cell">${n.date}</td>
           <td style="font-weight:600;">${n.title}</td>
-        </tr>
-      `).join('');
-    } catch(e) {
-      list.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px; color:var(--danger);">로드 실패</td></tr>';
+        </tr>`;
+      }).join('');
     }
   }
 

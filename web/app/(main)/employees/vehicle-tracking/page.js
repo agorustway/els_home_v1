@@ -33,6 +33,10 @@ export default function VehicleTrackingPage() {
     const polylineRef = useRef(null);
     const infoWindowRef = useRef(null);
     const intervalRef = useRef(null);
+    const realtimeIntervalRef = useRef(null);
+    const realtimeTimeoutRef = useRef(null);
+    const [realtimeTarget, setRealtimeTarget] = useState(null); // 실시간 추적 대상 trip ID
+    const [realtimeCountdown, setRealtimeCountdown] = useState(0); // 남은 초
 
     // 운행 기록 (검색/필터)
     const [records, setRecords] = useState([]);
@@ -139,13 +143,65 @@ export default function VehicleTrackingPage() {
         map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
     };
 
+    // [신규] 실시간 추적 모드 (3초 간격, 최대 2분)
+    const startRealtimeTracking = useCallback((tripId) => {
+        // 기존 실시간 추적 정리
+        if (realtimeIntervalRef.current) clearInterval(realtimeIntervalRef.current);
+        if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
+        
+        setRealtimeTarget(tripId);
+        setRealtimeCountdown(120); // 2분 = 120초
+        
+        // 카운트다운 타이머
+        const countdownTimer = setInterval(() => {
+            setRealtimeCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(countdownTimer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        
+        // 3초 간격 fetch
+        realtimeIntervalRef.current = setInterval(async () => {
+            try {
+                const res = await fetch('/api/vehicle-tracking/trips?mode=active');
+                const data = await res.json();
+                if (data.trips) setLiveTrips(data.trips);
+            } catch (e) { console.error('실시간 추적 오류:', e); }
+        }, 3000);
+        
+        // 2분 후 자동 종료
+        realtimeTimeoutRef.current = setTimeout(() => {
+            if (realtimeIntervalRef.current) clearInterval(realtimeIntervalRef.current);
+            clearInterval(countdownTimer);
+            realtimeIntervalRef.current = null;
+            setRealtimeTarget(null);
+            setRealtimeCountdown(0);
+        }, 120000); // 2분
+    }, []);
+    
+    const stopRealtimeTracking = useCallback(() => {
+        if (realtimeIntervalRef.current) clearInterval(realtimeIntervalRef.current);
+        if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
+        realtimeIntervalRef.current = null;
+        realtimeTimeoutRef.current = null;
+        setRealtimeTarget(null);
+        setRealtimeCountdown(0);
+    }, []);
+
     const handleSelectTrip = async (trip) => {
         setIsDetailLoading(true);
         setSelectedTripLocations([]);
         setTripLogs([]);
+        
+        // [신규] 운행중/일시정지 차량이면 실시간 추적 모드 ON
+        if (trip.status === 'driving' || trip.status === 'paused') {
+            startRealtimeTracking(trip.id);
+        }
 
         try {
-            // 상세 정보, 경로 데이터, 수정 로그를 동시에 가져옴
             const [tripRes, locRes, logRes] = await Promise.all([
                 fetch(`/api/vehicle-tracking/trips/${trip.id}`),
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`),
@@ -154,7 +210,7 @@ export default function VehicleTrackingPage() {
 
             const tripData = await tripRes.json();
             if (tripData) setSelectedTrip(tripData);
-            else setSelectedTrip(trip); // 실패시 기존 데이터 유지
+            else setSelectedTrip(trip);
 
             const locData = await locRes.json();
             if (locData.locations) {
@@ -162,16 +218,12 @@ export default function VehicleTrackingPage() {
                 setSelectedTripLocations(locations);
                 drawTripPath(locations);
                 
-                // [신규] 주요 모든 지점 주소 자동 로드 가시성 강화 (사용자 요청)
                 if (window.naver?.maps?.Service && locations.length > 0) {
-                    // 마지막 15개 지점은 무조건 자동 조회 (더 넓은 범위 확보)
                     const startIdx = Math.max(0, locations.length - 15);
                     for (let i = locations.length - 1; i >= startIdx; i--) {
                         fetchMissingAddress(locations[i], i);
                     }
-                    // 시작점도 조회
                     fetchMissingAddress(locations[0], 0);
-                    // 중간 지점 2개 추가 조회
                     if(locations.length > 30){
                         fetchMissingAddress(locations[Math.floor(locations.length/2)], Math.floor(locations.length/2));
                         fetchMissingAddress(locations[Math.floor(locations.length/3)], Math.floor(locations.length/3));
@@ -185,7 +237,7 @@ export default function VehicleTrackingPage() {
             }
         } catch (e) {
             console.error('상세 정보 조회 실패:', e);
-            setSelectedTrip(trip); // 오류 시 리스트 데이터라도 사용
+            setSelectedTrip(trip);
         } finally {
             setIsDetailLoading(false);
         }
@@ -339,7 +391,12 @@ export default function VehicleTrackingPage() {
             naver.maps.Event.addListener(marker, 'click', () => {
                 if (infoWindowRef.current) infoWindowRef.current.close();
 
-                // [신규] 마커 클릭 시 주소가 없으면 바로 조회 시도
+                // [신규] 마커 클릭 시 실시간 추적 모드 ON (운행중/일시정지만)
+                if (trip.status === 'driving' || trip.status === 'paused') {
+                    startRealtimeTracking(trip.id);
+                }
+
+                // 마커 클릭 시 주소가 없으면 바로 조회 시도
                 if (!loc.address && window.naver?.maps?.Service) {
                     naver.maps.Service.reverseGeocode({
                         coords: new naver.maps.LatLng(loc.lat, loc.lng),
@@ -627,18 +684,23 @@ export default function VehicleTrackingPage() {
                     {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
                 </div>
                 <div className={styles.tableSection}>
-                    <h3>📋 현재 운행 현황 ({liveTrips.length}건)</h3>
+                    <h3>📋 현재 운행 현황 ({liveTrips.length}건) {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',background:'#10b98115',padding:'2px 8px',borderRadius:10,fontWeight:800,marginLeft:8}}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
                     <table className={styles.tripTable}>
                         <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>현재위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {liveTrips.map(trip => (
-                                <tr key={trip.id}>
+                                <tr key={trip.id} style={realtimeTarget === trip.id ? {background:'#10b98110'} : {}}>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
                                     <td className={styles.narrowCol} title={trip.lastLocation?.address || '주소 정보 없음'}>{trip.lastLocation?.address || '-'}</td>
-                                    <td><button className={styles.filterSearchBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button></td>
+                                    <td style={{display:'flex',gap:4}}>
+                                        <button className={styles.filterSearchBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
+                                        {(trip.status === 'driving' || trip.status === 'paused') && (
+                                            <button style={{padding:'4px 8px',fontSize:'0.7rem',background: realtimeTarget === trip.id ? '#ef4444' : '#10b981',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); realtimeTarget === trip.id ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{realtimeTarget === trip.id ? '추적중지' : '실시간'}</button>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -715,7 +777,7 @@ export default function VehicleTrackingPage() {
 
             {selectedTrip && (
                 <div className={styles.detailOverlay}>
-                    <div className={styles.detailHeader}><h3>운행 상세 정보</h3><button className={styles.closeBtn} onClick={() => setSelectedTrip(null)}>✕</button></div>
+                    <div className={styles.detailHeader}><h3>운행 상세 정보 {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',fontWeight:800,marginLeft:8}}>🔴 LIVE {realtimeCountdown}초</span>}</h3><button className={styles.closeBtn} onClick={() => { setSelectedTrip(null); stopRealtimeTracking(); }}>✕</button></div>
                     <div className={styles.detailContent}>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>기본 정보</div>
