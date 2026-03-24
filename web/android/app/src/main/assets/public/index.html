@@ -223,7 +223,7 @@
   <div id="modal-alert" class="modal-overlay" style="display:none">
     <div class="modal-box" onclick="event.stopPropagation()">
       <div class="modal-title" id="modal-title">알림</div>
-      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-body" id="modal-body">로딩 중...</div>
       <button id="btn-modal-close" class="btn-secondary" onclick="closeModal()">확인</button>
     </div>
   </div>
@@ -251,10 +251,7 @@
           <label class="photo-add-btn" id="h-photo-add-label">+<input type="file" accept="image/*" multiple hidden onchange="handleHistoryPhotos(event)"></label>
         </div>
       </div>
-      <div class="modal-btn-group">
-        <button class="btn-save-edit" onclick="saveHistoryEdit()">수정 저장</button>
-        <button class="btn-close-edit" onclick="closeHistoryModal()">닫기</button>
-      </div>
+      <div class="modal-btn-group"><div style="display:flex; flex-direction:column; gap:8px;"><button class="btn-save-edit" onclick="saveHistoryEdit()">수정 저장</button><button class="btn-close-edit" onclick="closeHistoryModal()">닫기</button><button class="btn-delete-record" style="margin-top:10px; background:transparent; border:1px solid #f85149; color:#f85149; font-size:0.75rem; padding:8px; border-radius:6px; cursor:pointer;" onclick="deleteTripRecord()">🗑️ 기록 삭제</button></div></div>
       <button id="btn-force-stop" class="btn-force-stop-sm" style="display:none" onclick="forceStopTrip()">이 운행을 강제 종료 처리</button>
     </div>
   </div>
@@ -272,3 +269,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+
