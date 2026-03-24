@@ -1,4 +1,4 @@
-﻿/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
+/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
 (() => {
   const getDynamicCapacitor = () => window.Capacitor || {};
   const getDynamicPlugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.7';
+  const APP_VERSION = '3.9.8';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -136,12 +136,13 @@
     const O = getOverlay();
     if(O){
       // [삼성 100% 대응] 팝업 대신 앱 상세 설정으로 바로 유도
-      showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제한 없음]으로 선택</b><br><br>확인 버튼을 누르면 설정 화면으로 이동합니다.');
+      showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제항 없음]으로 선택</b><br><br>확인 버튼을 누르면 설정 화면으로 이동합니다.');
       
-      const btnClose = document.getElementById('btn-modal-close');
-      if(btnClose){
-        btnClose.onclick = function(){
-          closeModal();
+      const btnConfirm = document.querySelector('#modal-alert .btn-secondary');
+      if(btnConfirm){
+        const oldFn = btnConfirm.onclick;
+        btnConfirm.onclick = function(){
+          if(typeof oldFn === 'function') oldFn.call(this);
           setTimeout(() => {
             if(O.openAppSettings) O.openAppSettings();
             else if(O.openRestrictedSettings) O.openRestrictedSettings();
@@ -1063,6 +1064,23 @@
     else showModal('오류','종료 실패');}catch(e){showModal('오류','통신 실패');}
   }
 
+  async function deleteTripRecord(){
+    if(!selectedTripId || !confirm('이 앱에서 뿐만 아니라 서버에서도 기록을 완전히 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
+    try {
+      const r = await fetch(`${API_BASE}/trips/${selectedTripId}`, { method: 'DELETE' });
+      if(r.ok){
+        haptic('Heavy');
+        showModal('삭제 완료', '운행 기록이 안전하게 삭제되었습니다.');
+        closeHistoryModal();
+        loadHistory();
+      } else {
+        showModal('오류', '삭제에 실패했습니다. (관리자 문의)');
+      }
+    } catch(e){
+      showModal('오류', '통신 중 오류가 발생했습니다.');
+    }
+  }
+
   async function checkActiveTrip(){
     if(!isOnline)return;const ph=localStorage.getItem('els_phone')||'',ve=localStorage.getItem('els_vehicle')||'';if(!ph&&!ve)return;
     try{const params=new URLSearchParams({mode:'my'});if(ph)params.append('phone',ph);if(ve)params.append('vehicle_number',ve);
@@ -1077,7 +1095,7 @@
   window.startTrip=startTrip;window.pauseTrip=pauseTrip;window.resumeTrip=resumeTrip;window.stopTrip=stopTrip;
   window.handlePhotos=handlePhotos;window.handleHistoryPhotos=handleHistoryPhotos;
   window.switchTab=switchTab;window.loadHistory=loadHistory;window.showHistoryDetail=showHistoryDetail;
-  window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;window.exitApp=exitApp;
+  window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.deleteTripRecord=deleteTripRecord;window.closeModal=closeModal;window.exitApp=exitApp;
   window.resetTripData=resetTripData;window.showScreen=showScreen;
 
   // 업데이트 시작 전 청소 및 정보 백업 로직
