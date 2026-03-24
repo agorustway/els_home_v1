@@ -4,6 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
+import { createClient } from '@/utils/supabase/client';
+
+const supabase = createClient();
+const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
 
 export default function VehicleTrackingPage() {
     // 탭 상태
@@ -18,6 +22,9 @@ export default function VehicleTrackingPage() {
 
     // 실시간 관제 데이터
     const [liveTrips, setLiveTrips] = useState([]);
+    const [notices, setNotices] = useState([]); // [신규] 실시간 공지사항 (동적 데이터)
+    const [showWriteModal, setShowWriteModal] = useState(false);
+    const [newNotice, setNewNotice] = useState({ title: '', target: '전체' });
     const [loading, setLoading] = useState(true);
     const [mapReady, setMapReady] = useState(false);
     const mapRef = useRef(null);
@@ -65,6 +72,36 @@ export default function VehicleTrackingPage() {
             setLoading(false);
         }
     }, []);
+
+    // [신규] 공지사항 목록 실시간 연동
+    const fetchNotices = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('notices')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5);
+        if (!error && data) setNotices(data);
+    }, []);
+
+    const handleSaveNotice = async () => {
+        if (!newNotice.title.trim()) { alert('공지 제목을 입력해주세요.'); return; }
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('notices').insert([{
+                title: newNotice.title,
+                target: newNotice.target,
+                status: '공지중'
+            }]);
+            if (error) throw error;
+            setShowWriteModal(false);
+            setNewNotice({ title: '', target: '전체' });
+            fetchNotices();
+        } catch (e) {
+            alert('공지 저장 실패: ' + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // ─── 2. 상세 경로 조회 ───
     const drawTripPath = (locations) => {
@@ -125,16 +162,19 @@ export default function VehicleTrackingPage() {
                 setSelectedTripLocations(locations);
                 drawTripPath(locations);
                 
-                // [신규] 주요 지점 주소 자동 로드 (사용자 요청: 상세보기 시 즉시 노출)
+                // [신규] 주요 모든 지점 주소 자동 로드 가시성 강화 (사용자 요청)
                 if (window.naver?.maps?.Service && locations.length > 0) {
-                    // 마지막(최신) 지점
-                    fetchMissingAddress(locations[locations.length - 1], locations.length - 1);
-                    // 시작 지점
-                    if (locations.length > 1) fetchMissingAddress(locations[0], 0);
-                    // 중간 지점 (약 3개 정도 균등 배분)
-                    if (locations.length > 5) {
-                        const mid = Math.floor(locations.length / 2);
-                        fetchMissingAddress(locations[mid], mid);
+                    // 마지막 15개 지점은 무조건 자동 조회 (더 넓은 범위 확보)
+                    const startIdx = Math.max(0, locations.length - 15);
+                    for (let i = locations.length - 1; i >= startIdx; i--) {
+                        fetchMissingAddress(locations[i], i);
+                    }
+                    // 시작점도 조회
+                    fetchMissingAddress(locations[0], 0);
+                    // 중간 지점 2개 추가 조회
+                    if(locations.length > 30){
+                        fetchMissingAddress(locations[Math.floor(locations.length/2)], Math.floor(locations.length/2));
+                        fetchMissingAddress(locations[Math.floor(locations.length/3)], Math.floor(locations.length/3));
                     }
                 }
             }
@@ -180,9 +220,68 @@ export default function VehicleTrackingPage() {
     useEffect(() => {
         if (selectedTrip) return;
         fetchLiveTrips();
-        intervalRef.current = setInterval(fetchLiveTrips, 30000);
+        fetchNotices(); // 공지사항 초기 로드
+        intervalRef.current = setInterval(() => { fetchLiveTrips(); fetchNotices(); }, 30000);
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-    }, [fetchLiveTrips, selectedTrip]);
+    }, [fetchLiveTrips, fetchNotices]);
+
+    // [신규] 실시간 운행차량 주소 자동 전체 로드 (사용자 요청: 상세보기 전에도 보이게)
+    useEffect(() => {
+        if (!mapReady || !liveTrips || liveTrips.length === 0 || !window.naver?.maps?.Service) return;
+        
+        const fetchAllMissing = async () => {
+            const tripsWithLoc = liveTrips.filter(t => t.lastLocation && !t.lastLocation.address);
+            if (tripsWithLoc.length === 0) return;
+            
+            for (const trip of tripsWithLoc) {
+                const loc = trip.lastLocation;
+                // [신규] 캐시 확인 (중복 요청 방지)
+                const cacheKey = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
+                if (ADDRESS_CACHE.has(cacheKey)) {
+                    setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: ADDRESS_CACHE.get(cacheKey) } } : t));
+                    continue;
+                }
+
+                window.naver.maps.Service.reverseGeocode({
+                    coords: new window.naver.maps.LatLng(loc.lat, loc.lng),
+                    orders: [window.naver.maps.Service.OrderType.ADDR, window.naver.maps.Service.OrderType.ROAD_ADDR].join(',')
+                }, (status, response) => {
+                    if (status === window.naver.maps.Service.Status.OK) {
+                        const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+                        ADDRESS_CACHE.set(cacheKey, addr); // 캐시 저장
+                        setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: addr } } : t));
+                    }
+                });
+                await new Promise(r => setTimeout(r, 200)); // API 부하 방지
+            }
+        };
+        fetchAllMissing();
+    }, [liveTrips.length, mapReady]);
+
+    // [신규] 실시간 운행차량 주소 자동 전체 로드 (사용자 요청: 상세보기 전에도 보이게)
+    useEffect(() => {
+        if (!mapReady || !liveTrips || liveTrips.length === 0 || !window.naver?.maps?.Service) return;
+        
+        const fetchAllMissing = async () => {
+            const tripsWithLoc = liveTrips.filter(t => t.lastLocation && !t.lastLocation.address);
+            if (tripsWithLoc.length === 0) return;
+            
+            for (const trip of tripsWithLoc) {
+                const loc = trip.lastLocation;
+                window.naver.maps.Service.reverseGeocode({
+                    coords: new window.naver.maps.LatLng(loc.lat, loc.lng),
+                    orders: [window.naver.maps.Service.OrderType.ADDR, window.naver.maps.Service.OrderType.ROAD_ADDR].join(',')
+                }, (status, response) => {
+                    if (status === window.naver.maps.Service.Status.OK) {
+                        const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+                        setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: addr } } : t));
+                    }
+                });
+                await new Promise(r => setTimeout(r, 200)); // API 부하 방지
+            }
+        };
+        fetchAllMissing();
+    }, [liveTrips.length, mapReady]); // 개수 변화시에만 주로 동작하게 (중복 호출 방지)
 
     // 실시간 마커 업데이트
     useEffect(() => {
@@ -443,11 +542,11 @@ export default function VehicleTrackingPage() {
                 <div className={styles.statCard}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
             </div>
 
-            {/* 공지사항 섹션 (카드 형식) */}
+            {/* 공지사항 섹션 (동적 데이터 적용) */}
             <div className={styles.noticeSection}>
                 <div className={styles.noticeHeader}>
-                    <h3>📢 공지사항</h3>
-                    <button className={styles.writeNoticeBtn} onClick={() => alert('공지사항 작성 기능은 현재 개발 중입니다.')}>📝 공지 작성</button>
+                    <h3 style={{display:'flex', alignItems:'center', gap:8}}>📣 운송 관제 공지사항 <span style={{fontSize:'0.6rem', background:'#e2e8f0', padding:'2px 6px', borderRadius:4, color:'#475569'}}>Beta</span></h3>
+                    <button className={styles.writeNoticeBtn} onClick={() => setShowWriteModal(true)}>📝 공지 작성</button>
                 </div>
                 <div className={styles.tableCard}>
                     <table className={styles.adminNoticeTable}>
@@ -455,33 +554,66 @@ export default function VehicleTrackingPage() {
                             <tr>
                                 <th style={{width:'80px'}}>날짜</th>
                                 <th>제목</th>
-                                <th style={{width:'100px'}}>대상</th>
+                                <th style={{width:'80px'}}>대상</th>
                                 <th style={{width:'80px'}}>상태</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>03.24</td>
-                                <td><strong>v3.8.0 드라이버 앱 업데이트 안내 (오버레이 중단 및 GPS 최적화)</strong></td>
-                                <td>전체 기사</td>
-                                <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>공지중</span></td>
-                            </tr>
-                            <tr>
-                                <td>03.23</td>
-                                <td>개인정보 처리방침 개정 및 앱 화면 적용 안내</td>
-                                <td>전체</td>
-                                <td><span className={styles.statusCompleted} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>완료</span></td>
-                            </tr>
-                            <tr>
-                                <td>03.22</td>
-                                <td>안드로이드 16(갤럭시 S25) 호환성 패치 관련 공지</td>
-                                <td>안드로이드</td>
-                                <td><span className={styles.statusCompleted} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>완료</span></td>
-                            </tr>
+                            {notices.length === 0 ? (
+                                <tr>
+                                    <td colSpan="4" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>게시된 공지사항이 없습니다.</td>
+                                </tr>
+                            ) : (
+                                notices.map(n => (
+                                    <tr key={n.id}>
+                                        <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
+                                        <td style={{fontWeight:600}}>{n.title}</td>
+                                        <td>{n.target}</td>
+                                        <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>{n.status}</span></td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* 공지 작성 모달 */}
+            {showWriteModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox} style={{maxWidth:'400px'}}>
+                        <div className={styles.modalHeader}>
+                            <h3>📝 새 공지사항 작성</h3>
+                            <button onClick={() => setShowWriteModal(false)}>✕</button>
+                        </div>
+                        <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12}}>
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 제목</label>
+                                <input 
+                                    className={styles.modalInput} 
+                                    placeholder="기사님들께 알릴 내용을 입력하세요" 
+                                    value={newNotice.title}
+                                    onChange={e => setNewNotice({...newNotice, title: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
+                                <select 
+                                    className={styles.modalSelect} 
+                                    value={newNotice.target}
+                                    onChange={e => setNewNotice({...newNotice, target: e.target.value})}
+                                >
+                                    <option value="전체">전체</option>
+                                    <option value="전체 기사">전체 기사</option>
+                                    <option value="수도권">수도권 기사</option>
+                                    <option value="경상권">경상권 기사</option>
+                                </select>
+                            </div>
+                            <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>🚀 공지하기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className={styles.tabNav}>
                 <button className={`${styles.tab} ${activeTab === 'live' ? styles.tabActive : ''}`} onClick={() => setActiveTab('live')}>📡 실시간 관제</button>
