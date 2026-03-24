@@ -1,7 +1,12 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
+
+// [신규] 에디터 동적 로딩 (SSR 방지)
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+import 'react-quill/dist/quill.snow.css';
 import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
 import { createClient } from '@/utils/supabase/client';
@@ -96,11 +101,12 @@ export default function VehicleTrackingPage() {
                 title: newNotice.title,
                 content: newNotice.content,
                 target: newNotice.target,
+                attachments: newNotice.attachments || [],
                 status: '공지중'
             }]);
             if (error) throw error;
             setShowWriteModal(false);
-            setNewNotice({ title: '', content: '', target: '전체' });
+            setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
             fetchNotices();
         } catch (e) {
             alert('공지 저장 실패: ' + e.message);
@@ -108,7 +114,43 @@ export default function VehicleTrackingPage() {
             setLoading(false);
         }
     };
+
+    const handleDeleteNotice = async (id) => {
+        if (!confirm('이 공지사항을 삭제하시겠습니까?')) return;
+        try {
+            const { error } = await supabase.from('notices').delete().eq('id', id);
+            if (error) throw error;
+            setShowWriteModal(false);
+            setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
+            fetchNotices();
+        } catch (e) { alert('삭제 실패: ' + e.message); }
+    };
+
     const handleViewNotice = (n) => { setNewNotice({ ...n, isViewMode: true }); setShowWriteModal(true); };
+
+    // [신규] 첨부파일 업로드 (NAS 연동 권장하지만 일단 Supabase Storage 또는 S3 Presigned 이용 가능하도록 틀만 구성)
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', '/공지사항_첨부');
+            
+            const res = await fetch('/api/nas/files', { method: 'POST', body: formData });
+            const d = await res.json();
+            if(!res.ok) throw new Error(d.error || '업로드 실패');
+            
+            setNewNotice(prev => ({
+                ...prev,
+                attachments: [...(prev.attachments || []), { name: file.name, url: `/api/nas/files?download=true&path=${encodeURIComponent(d.path)}&name=${encodeURIComponent(file.name)}` }]
+            }));
+            alert('파일이 업로드되었습니다.');
+        } catch(e){ alert('파일 업로드 실패: ' + e.message); }
+        finally { setLoading(false); }
+    };
 
     // ─── 2. 상세 경로 조회 ───
     const drawTripPath = (locations) => {
@@ -627,7 +669,10 @@ export default function VehicleTrackingPage() {
                                 notices.map(n => (
                                     <tr key={n.id} onClick={() => handleViewNotice(n)} style={{cursor:'pointer'}}>
                                         <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
-                                        <td style={{fontWeight:600}}>{n.title}</td>
+                                        <td style={{fontWeight:600}}>
+                                            {n.title}
+                                            {n.attachments?.length > 0 && <span style={{marginLeft:8, fontSize:10, color:'#2563eb'}}>📎 {n.attachments.length}</span>}
+                                        </td>
                                         <td>{n.target}</td>
                                         <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>{n.status}</span></td>
                                     </tr>
@@ -641,12 +686,15 @@ export default function VehicleTrackingPage() {
             {/* 공지 작성 모달 */}
             {showWriteModal && (
                 <div className={styles.modalOverlay}>
-                    <div className={styles.modalBox} style={{maxWidth:'400px'}}>
+                    <div className={styles.modalBox} style={{maxWidth:'700px', width:'95%'}}>
                         <div className={styles.modalHeader}>
                             <h3>{newNotice.isViewMode ? '📢 공지사항 상세보기' : '📝 새 공지사항 작성'}</h3>
-                            <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체' }); }}>✕</button>
+                            <div style={{display:'flex', gap:8}}>
+                                {newNotice.isViewMode && <button onClick={() => handleDeleteNotice(newNotice.id)} style={{fontSize:12, background:'#fee2e2', color:'#ef4444', padding:'4px 8px', borderRadius:6, border:'1px solid #fecaca'}}>삭제</button>}
+                                <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }}>✕</button>
+                            </div>
                         </div>
-                        <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12}}>
+                        <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12, maxHeight:'80vh', overflowY:'auto'}}>
                             <div>
                                 <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 제목</label>
                                 <input 
@@ -658,17 +706,6 @@ export default function VehicleTrackingPage() {
                                 />
                             </div>
                             <div>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 내용</label>
-                                <textarea 
-                                    className={styles.modalTextarea} 
-                                    placeholder="기사님들께 알릴 내용을 입력하세요" 
-                                    value={newNotice.content}
-                                    onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, content: e.target.value})}
-                                    rows={newNotice.isViewMode ? 10 : 5}
-                                    readOnly={newNotice.isViewMode}
-                                />
-                            </div>
-                            <div>
                                 <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
                                 <select 
                                     className={styles.modalSelect} 
@@ -676,14 +713,45 @@ export default function VehicleTrackingPage() {
                                     onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, target: e.target.value})}
                                     disabled={newNotice.isViewMode}
                                 >
-                                    <option value="전체">전체</option>
-                                    <option value="전체 기사">전체 기사</option>
-                                    <option value="수도권">수도권 기사</option>
-                                    <option value="경상권">경상권 기사</option>
+                                    <option value="전체">전체 (모든 기사)</option>
+                                    <option value="계약차량">계약차량 (소속 운전원)</option>
+                                    <option value="미계약차량">미계약차량 (외부 기사)</option>
                                 </select>
                             </div>
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 내용</label>
+                                {newNotice.isViewMode ? (
+                                    <div 
+                                        className={styles.modalInput} 
+                                        style={{minHeight:200, background:'#f8fafc', overflowY:'auto'}} 
+                                        dangerouslySetInnerHTML={{__html: newNotice.content}} 
+                                    />
+                                ) : (
+                                    <ReactQuill 
+                                        theme="snow" 
+                                        value={newNotice.content} 
+                                        onChange={val => setNewNotice({...newNotice, content: val})}
+                                        style={{height:250, marginBottom:40}}
+                                    />
+                                )}
+                            </div>
+                            <div style={{marginTop: newNotice.isViewMode ? 0 : 20}}>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>첨부파일</label>
+                                <div style={{background:'#f1f5f9', padding:10, borderRadius:8, fontSize:13}}>
+                                    {newNotice.attachments?.map((at, idx) => (
+                                        <div key={idx} style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
+                                            <a href={at.url} target="_blank" rel="noreferrer" style={{color:'#2563eb', fontWeight:600}}>{at.name}</a>
+                                            {!newNotice.isViewMode && <button onClick={() => setNewNotice(prev => ({...prev, attachments: prev.attachments.filter((_, i) => i !== idx)}))}>삭제</button>}
+                                        </div>
+                                    ))}
+                                    {!newNotice.isViewMode && (
+                                        <input type="file" onChange={handleFileChange} style={{fontSize:11, marginTop:8}} />
+                                    )}
+                                    {(!newNotice.attachments || newNotice.attachments.length === 0) && <div style={{color:'#94a3b8', fontSize:12}}>첨부된 파일이 없습니다.</div>}
+                                </div>
+                            </div>
                             {!newNotice.isViewMode && <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>🚀 공지하기</button>}
-                            {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체' }); }} style={{marginTop:10, height:40}}>닫기</button>}
+                            {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{marginTop:10, height:40}}>닫기</button>}
                         </div>
                     </div>
                 </div>
