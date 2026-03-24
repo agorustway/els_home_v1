@@ -1,4 +1,4 @@
-/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
+﻿/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
 (() => {
   const getDynamicCapacitor = () => window.Capacitor || {};
   const getDynamicPlugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.6';
+  const APP_VERSION = '3.9.7';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -156,10 +156,18 @@
 
   // ── 초기화 ──
   async function initApp(){
-    console.log(`ELS v${APP_VERSION} Init`);
     await waitForBridge();
-    checkUpdates(); // 업데이트 확인 로직 추가 (v3.8.0 정책)
-    refreshPermStatus(); // 모든 권한 상태 확인
+    
+    // 🚀 버전 체크 후 강제 초기화 (업데이트 시 권한 화면부터 다시 시작하게)
+    const lastVer = localStorage.getItem('els_app_version');
+    if(lastVer && lastVer !== APP_VERSION) {
+       console.log('Update detected:', lastVer, '->', APP_VERSION);
+       localStorage.removeItem('els_setup_done'); 
+    }
+    localStorage.setItem('els_app_version', APP_VERSION);
+
+    checkUpdates(); 
+    refreshPermStatus(); 
     
     window.onPipModeChanged=function(isInPip){
       isPipMode=isInPip;
@@ -237,49 +245,7 @@
   }
 
   // 🚀 [신규] 전화번호 기반 자동 로그인 시도
-  async function tryAutoLoginByPhone(){
-    let ph = localStorage.getItem('els_phone');
-    
-    // 로컬에 없으면 클립보드 확인 (브라우저 정책상 포커스 시점 등에만 가능하므로 보조적 사용)
-    if(!ph && navigator.clipboard && navigator.clipboard.readText){
-       try { ph = await navigator.clipboard.readText(); } catch(e){}
-    }
-    
-    // 전화번호 형식(10~11자리 숫자)이면 자동 조회 시도
-    if(ph && ph.replace(/[^0-9]/g, '').length >= 10){
-       ph = ph.replace(/[^0-9]/g, '');
-       console.log('자동 로그인 시도:', ph);
-       try {
-         const r = await fetch(`https://www.nollae.com/api/driver-contacts/search?phone=${ph}`);
-         const d = await r.json();
-         if(r.ok && d && d.item){
-           const it = d.item;
-           const vNum = it.business_number || it.vehicle_number || '';
-           const vId = it.driver_id || it.vehicle_id || it.id || '';
-           
-           if(it.name && vNum && vId){
-             localStorage.setItem('els_name', it.name);
-             localStorage.setItem('els_phone', ph);
-             localStorage.setItem('els_vehicle', vNum);
-             localStorage.setItem('els_id', vId);
-             localStorage.setItem('els_setup_done', 'true');
-             
-             console.log('자동 로그인 성공:', vNum);
-             // 헤더 업데이트 및 메인 진입
-             const hVeh = document.getElementById('header-vh-no');
-             if(hVeh) hVeh.textContent = vNum;
-             
-             setTimeout(() => {
-               showScreen('screen-main');
-               startGPS();
-               loadSavedProfile();
-             }, 1000);
-           }
-         }
-       } catch(e){ console.warn('자동 로그인 실패:', e); }
-    }
-  }
-
+  function tryAutoLoginByPhone(){ setTimeout(async () => { let ph = localStorage.getItem("els_phone"); if(!ph && navigator.clipboard && navigator.clipboard.readText){ try { ph = await navigator.clipboard.readText(); } catch(e){} } if(ph && ph.replace(/[^0-9]/g, "").length >= 10){ const inpPhone = document.getElementById("inp-phone"); if(inpPhone) { inpPhone.value = ph.replace(/[^0-9]/g, ""); haptic(); } } }, 1200); }
   // ── 자이로/가속도 센서 (백그라운드 수명 연장용) ──
   function startSensors(){
     console.log('Sensors logic applied (v3.7.1)');
@@ -1119,15 +1085,12 @@
     haptic('Heavy');
     const O = getOverlay();
     
-    // 🚀 [중요] 업데이트 전 전화번호 클립보드에 백업 (실패해도 무시)
-    try {
-      const ph = localStorage.getItem('els_phone');
-      if(ph && navigator.clipboard && navigator.clipboard.writeText) {
-         await navigator.clipboard.writeText(ph);
-      }
-    } catch(e){ console.error('Clip backup fail'); }
+    // 🚀 [중요] 비동기 대기 없이 클립보드 처리 (다운로드 지연 방지)
+    const ph = localStorage.getItem('els_phone');
+    if(ph && navigator.clipboard && navigator.clipboard.writeText) {
+       navigator.clipboard.writeText(ph).catch(e => console.error('Clip backup skip'));
+    }
 
-    // 버튼 텍스트 변경으로 진행 상태 표시
     const btn = event.target;
     if(btn && btn.tagName === 'BUTTON') {
       btn.disabled = true;

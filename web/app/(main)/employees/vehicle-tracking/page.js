@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
@@ -108,6 +108,7 @@ export default function VehicleTrackingPage() {
             setLoading(false);
         }
     };
+    const handleViewNotice = (n) => { setNewNotice({ ...n, isViewMode: true }); setShowWriteModal(true); };
 
     // ─── 2. 상세 경로 조회 ───
     const drawTripPath = (locations) => {
@@ -624,7 +625,7 @@ export default function VehicleTrackingPage() {
                                 </tr>
                             ) : (
                                 notices.map(n => (
-                                    <tr key={n.id}>
+                                    <tr key={n.id} onClick={() => handleViewNotice(n)} style={{cursor:'pointer'}}>
                                         <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
                                         <td style={{fontWeight:600}}>{n.title}</td>
                                         <td>{n.target}</td>
@@ -642,8 +643,8 @@ export default function VehicleTrackingPage() {
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalBox} style={{maxWidth:'400px'}}>
                         <div className={styles.modalHeader}>
-                            <h3>📝 새 공지사항 작성</h3>
-                            <button onClick={() => setShowWriteModal(false)}>✕</button>
+                            <h3>{newNotice.isViewMode ? '📢 공지사항 상세보기' : '📝 새 공지사항 작성'}</h3>
+                            <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체' }); }}>✕</button>
                         </div>
                         <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12}}>
                             <div>
@@ -652,7 +653,8 @@ export default function VehicleTrackingPage() {
                                     className={styles.modalInput} 
                                     placeholder="공지 제목을 입력하세요" 
                                     value={newNotice.title}
-                                    onChange={e => setNewNotice({...newNotice, title: e.target.value})}
+                                    onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, title: e.target.value})}
+                                    readOnly={newNotice.isViewMode}
                                 />
                             </div>
                             <div>
@@ -661,8 +663,9 @@ export default function VehicleTrackingPage() {
                                     className={styles.modalTextarea} 
                                     placeholder="기사님들께 알릴 내용을 입력하세요" 
                                     value={newNotice.content}
-                                    onChange={e => setNewNotice({...newNotice, content: e.target.value})}
-                                    rows={5}
+                                    onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, content: e.target.value})}
+                                    rows={newNotice.isViewMode ? 10 : 5}
+                                    readOnly={newNotice.isViewMode}
                                 />
                             </div>
                             <div>
@@ -670,7 +673,8 @@ export default function VehicleTrackingPage() {
                                 <select 
                                     className={styles.modalSelect} 
                                     value={newNotice.target}
-                                    onChange={e => setNewNotice({...newNotice, target: e.target.value})}
+                                    onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, target: e.target.value})}
+                                    disabled={newNotice.isViewMode}
                                 >
                                     <option value="전체">전체</option>
                                     <option value="전체 기사">전체 기사</option>
@@ -678,7 +682,8 @@ export default function VehicleTrackingPage() {
                                     <option value="경상권">경상권 기사</option>
                                 </select>
                             </div>
-                            <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>🚀 공지하기</button>
+                            {!newNotice.isViewMode && <button className={styles.saveBtn} onClick={handleSaveNotice} style={{marginTop:10}}>🚀 공지하기</button>}
+                            {newNotice.isViewMode && <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체' }); }} style={{marginTop:10, height:40}}>닫기</button>}
                         </div>
                     </div>
                 </div>
@@ -891,3 +896,4 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
+

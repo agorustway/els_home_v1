@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.9.6",
-  "changeLog": "- 설정 탭 진입 시 모든 권한 상태(위치,카메라 등) 자동 동기화\n- 공지사항 본문 보기 및 날짜 표시 형식 개선\n- 하단 네비게이션 및 아이콘 UI 보정",
+  "latestVersion": "3.9.7",
+  "changeLog": "- 업데이트 후 권한 설정 단계부터 다시 확인하도록 개선\n- 앱 무결성 확인 및 전화번호 자동 복구 기능 보강\n- 업데이트 시 클립보드 지연 현상 완전 해결",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }
