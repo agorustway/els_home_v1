@@ -15,20 +15,20 @@
   </div>
 
   <!-- 온보딩 권한 -->
-  <div id="screen-permissions" class="screen" style="display:none">
-    <div class="onboard-wrap" style="padding-top: max(80px, env(safe-area-inset-top)); justify-content: flex-start;">
-      <h1>앱 권한 설정</h1>
-      <p class="sub">원활한 운행 관리를 위해 아래 권한이 필요합니다.</p>
-      <div class="perm-list">
-        <div class="perm-item" id="perm-location"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">위치 (항상 사용)</div><div class="perm-desc">GPS 실시간 위치 관제</div></div><div class="perm-arrow">›</div></div>
-        <div class="perm-item" id="perm-camera"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">카메라</div><div class="perm-desc">컨테이너 사진 촬영</div></div><div class="perm-arrow">›</div></div>
-        <div class="perm-item" id="perm-photo"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">사진 / 동영상</div><div class="perm-desc">갤러리 접근 및 업로드</div></div><div class="perm-arrow">›</div></div>
-        <div class="perm-item" id="perm-notify"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">알림</div><div class="perm-desc">운행 상태 알림</div></div><div class="perm-arrow">›</div></div>
-        <div class="perm-item" id="perm-phone"><div class="perm-dot dot-red"></div><div class="perm-info"><div class="perm-name">전화</div><div class="perm-desc">기사 연락처 확인</div></div><div class="perm-arrow">›</div></div>
-        <div class="perm-item" id="btn-fix-battery-init"><div class="perm-dot dot-red" id="battery-dot-init"></div><div class="perm-info"><div class="perm-name">배터리 최적화 해제 [권장]</div><div class="perm-desc" id="battery-desc-init">안정적인 주행 기록을 위해 필요</div></div><div class="perm-arrow">›</div></div>
+  <div id="screen-permissions" class="screen" style="display:none; position:fixed; inset:0; z-index:200; background:#0d1117; overflow-y:auto;">
+    <div style="min-height:100vh; display:flex; flex-direction:column; padding:80px 24px 40px; box-sizing:border-box;">
+      <h1 style="font-size:1.4rem; font-weight:800; color:#e6edf3; margin:0 0 4px;">앱 권한 설정</h1>
+      <p style="color:#7d8590; font-size:0.85rem; margin:0 0 20px; line-height:1.4;">원활한 운행 관리를 위해 아래 권한이 필요합니다.</p>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px;">
+        <div class="perm-item" id="perm-location" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">위치 (항상 사용)</div><div style="font-size:0.75rem;color:#7d8590;">GPS 실시간 위치 관제</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
+        <div class="perm-item" id="perm-camera" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">카메라</div><div style="font-size:0.75rem;color:#7d8590;">컨테이너 사진 촬영</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
+        <div class="perm-item" id="perm-photo" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">사진 / 동영상</div><div style="font-size:0.75rem;color:#7d8590;">갤러리 접근 및 업로드</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
+        <div class="perm-item" id="perm-notify" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">알림</div><div style="font-size:0.75rem;color:#7d8590;">운행 상태 알림</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
+        <div class="perm-item" id="perm-phone" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">전화</div><div style="font-size:0.75rem;color:#7d8590;">기사 연락처 확인</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
+        <div class="perm-item" id="btn-fix-battery-init" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" id="battery-dot-init" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">배터리 최적화 해제 [권장]</div><div style="font-size:0.75rem;color:#7d8590;" id="battery-desc-init">안정적인 주행 기록을 위해 필요</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
       </div>
       <div style="flex:1;"></div>
-      <button id="btn-finish-perms" class="btn-primary" style="margin-bottom: max(24px, env(safe-area-inset-bottom));">동의 및 시작하기</button>
+      <button id="btn-finish-perms" style="width:100%;height:56px;background:#58a6ff;color:#fff;border:none;border-radius:12px;font-size:1.05rem;font-weight:800;cursor:pointer;margin-bottom:24px;">동의 및 시작하기</button>
     </div>
   </div>
 
@@ -87,7 +87,7 @@
         </div>
       </div>
 
-      <!-- ② 운행 시작/종료 버튼 (한손 조작 위치) -->
+      <!-- ② 운행 시작/종료 버튼 -->
       <div id="action-area" style="margin-bottom:10px;">
         <button id="btn-start" class="btn-action btn-start" onclick="startTrip()">운송 시작 (START)</button>
         <div id="trip-controls" style="display:none">
@@ -101,7 +101,7 @@
         </div>
       </div>
 
-      <!-- ③ 사진 (운행 전/중/일시정지 모두 가능) -->
+      <!-- ③ 사진 -->
       <div class="card" id="card-photos" style="padding:12px 14px;margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);">사진 첨부</label>
@@ -139,14 +139,8 @@
         <div class="card-title">전체 공지사항</div>
         <div class="table-container">
           <table class="notice-table">
-            <thead>
-              <tr>
-                <th style="width:70px;">날짜</th>
-                <th>제목</th>
-              </tr>
-            </thead>
+            <thead><tr><th style="width:70px;">날짜</th><th>제목</th></tr></thead>
             <tbody id="notice-list">
-              <!-- 공지사항 목록 로드 예정 -->
               <tr><td colspan="2" style="text-align:center; padding:40px; color:var(--text-muted);">불러오는 중...</td></tr>
             </tbody>
           </table>
@@ -184,7 +178,7 @@
       </div>
       <div class="card">
         <div class="card-title">앱 정보</div>
-        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem;">v3.8.0 (Standalone Native Optimized)</div>
+        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem;">v3.8.2 (Standalone Native Optimized)</div>
         <div style="text-align:center; margin-top:10px;"><a href="privacy.html" target="_blank" style="color:var(--accent); font-size:0.8rem; text-decoration:none;">📄 개인정보 처리방침</a></div>
         <button id="btn-reset-app" class="btn-outline btn-danger" style="margin-top:8px">초기화 (재설정)</button>
         <button id="btn-exit-app" class="btn-outline" style="margin-top:8px">앱 종료</button>

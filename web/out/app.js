@@ -490,6 +490,24 @@
     },()=>{},{enableHighAccuracy:true,timeout:5000});
   }
 
+  // [신규] 즉시 위치 전송 (시작/종료 시점 정확한 마커용)
+  function sendImmediateLocation(eventType){
+    if(!tripId||!isOnline||!navigator.geolocation)return;
+    navigator.geolocation.getCurrentPosition(async(pos)=>{
+      try{
+        await smartPost(`${API_BASE}/location`,{
+          trip_id:tripId,
+          lat:pos.coords.latitude,
+          lng:pos.coords.longitude,
+          accuracy:Math.round(pos.coords.accuracy),
+          speed:Math.round((pos.coords.speed||0)*3.6),
+          method:eventType==='start'?'START_IMMEDIATE':'STOP_IMMEDIATE'
+        });
+        console.log(`[GPS] ${eventType} 즉시 위치 전송 완료`);
+      }catch(e){console.error('[GPS] 즉시 위치 전송 실패:',e);}
+    },()=>{console.warn('[GPS] 즉시 위치 획득 실패');},{enableHighAccuracy:true,timeout:8000});
+  }
+
   // ═══ 컨테이너 번호 ISO 6346 검증 (MOD 11) ═══
   function validateContainerNumber(num){
     if(!num || num.length !== 11) return false;
