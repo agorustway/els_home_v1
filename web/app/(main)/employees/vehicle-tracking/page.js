@@ -101,7 +101,7 @@ export default function VehicleTrackingPage() {
                 title: newNotice.title,
                 content: newNotice.content,
                 target: newNotice.target,
-                attachments: newNotice.attachments || [],
+                // attachments: newNotice.attachments || [],
                 status: '공지중'
             }]);
             if (error) throw error;
@@ -965,6 +965,7 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
+
 
 
 
