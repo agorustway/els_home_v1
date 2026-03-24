@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.3';
+  const APP_VERSION = '3.9.4';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -361,6 +361,15 @@
     }
     // 배터리 최적화 확인
     checkBatteryOptimizationStatus();
+
+    // 🚀 기타 네이티브 권한 상태들 동기화 (설정창용)
+    if(O){
+      // 위치 권한
+      try {
+        const lp = await O.checkPermission(); 
+        if(lp && lp.granted) markPermGranted('perm-location');
+      } catch(e){}
+    }
   }
 
   async function requestLocationPerm(){
@@ -971,8 +980,12 @@
         list.innerHTML = notices.map(n => {
           const d = new Date(n.created_at);
           const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-          const safeTitle = (n.title||"").replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          return `<tr style="cursor:pointer;" onclick="showModal('📢 공지사항','${safeTitle}')">
+          
+          // 🚀 [수정] 따옴표 및 개행 처리 - 공지사항 클릭 시 상세 내용이 잘 뜨도록
+          const safeTitle = (n.title||'').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          const safeContent = (n.content || n.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+          
+          return `<tr style="cursor:pointer;" onclick="showModal('📢 공지사항','${safeContent}')">
             <td class="date-cell">${dateStr}</td>
             <td style="font-weight:600;">${n.title}</td>
           </tr>`;
@@ -983,7 +996,7 @@
     } catch(e) {
       // API 실패 시 Mock 데이터 표시
       const mockNotices = [
-        { date: '03.24', title: 'v3.8.2 업데이트 안내 (GPS 최적화 및 배터리 관리)' },
+        { date: '03.24', title: 'v3.9.4 업데이트 안내 (시인성 및 권한 동기화 개선)' },
         { date: '03.23', title: '개인정보 처리방침 개정 안내' },
         { date: '03.22', title: '안드로이드 16(갤럭시 S25) 호환성 패치 완료' }
       ];

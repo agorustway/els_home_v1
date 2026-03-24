@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.9.3",
-  "changeLog": "- 배터리 최적화 설정 직통 경로 추가 (삼성 기기 대응)\n- 업데이트 후 전화번호 기반 자동 로그인 기능 적용\n- 차량번호 헤더 표시 우선순위 상향",
+  "latestVersion": "3.9.4",
+  "changeLog": "- 설정 탭 권한 상태 실시간 동기화 개선\n- 공지사항 내용 보기 오류 수정 및 시인성 보강\n- 사진 삭제 버튼 등 조작부 가독성 향상",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }
