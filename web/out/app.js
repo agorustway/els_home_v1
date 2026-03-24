@@ -118,6 +118,17 @@
     }
   }
 
+  async function requestBatteryOptimization(){
+    const Plugins = getDynamicPlugins();
+    if(Plugins.Overlay && typeof Plugins.Overlay.requestBatteryOptimization === 'function'){
+      await Plugins.Overlay.requestBatteryOptimization();
+      // 설정 후 상태 다시 체크 (약간의 딜레이 후)
+      setTimeout(checkBatteryOptimizationStatus, 2000);
+    } else {
+      showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
+    }
+  }
+
   // ── 초기화 ──
   async function initApp(){
     console.log(`ELS v${APP_VERSION} Init`);

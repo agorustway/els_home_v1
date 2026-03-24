@@ -95,6 +95,40 @@
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
   const APP_VERSION = '3.8.2';
 
+  async function checkBatteryOptimizationStatus(){
+    const Plugins = getDynamicPlugins();
+    if(Plugins.Overlay && typeof Plugins.Overlay.checkBatteryOptimization === 'function'){
+      const r = await Plugins.Overlay.checkBatteryOptimization();
+      const banner = document.getElementById('battery-warning');
+      const btn = document.getElementById('btn-battery-settings');
+      if(banner) banner.style.display = r.isIgnoring ? 'none' : 'block';
+      if(btn && r.isIgnoring){
+        btn.textContent = '✅ 배터리 설정 완료';
+        btn.style.borderColor = '#3fb950';
+        btn.style.color = '#3fb950';
+      }
+      
+      // 온보딩 초기 화면용
+      const dot = document.getElementById('battery-dot-init');
+      if(dot){
+        dot.className = r.isIgnoring ? 'perm-dot dot-green' : 'perm-dot dot-red';
+        const desc = document.getElementById('battery-desc-init');
+        if(desc) desc.textContent = r.isIgnoring ? '설정이 적용되었습니다' : '안정적인 주행 기록을 위해 필요';
+      }
+    }
+  }
+
+  async function requestBatteryOptimization(){
+    const Plugins = getDynamicPlugins();
+    if(Plugins.Overlay && typeof Plugins.Overlay.requestBatteryOptimization === 'function'){
+      await Plugins.Overlay.requestBatteryOptimization();
+      // 설정 후 상태 다시 체크 (약간의 딜레이 후)
+      setTimeout(checkBatteryOptimizationStatus, 2000);
+    } else {
+      showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
+    }
+  }
+
   // ── 초기화 ──
   async function initApp(){
     console.log(`ELS v${APP_VERSION} Init`);
@@ -145,6 +179,7 @@
     B('btn-reset-app',resetApp);B('btn-modal-close',closeModal);B('btn-exit-app',exitApp);
     B('btn-fix-battery', requestBatteryOptimization);
     B('btn-battery-settings', requestBatteryOptimization);
+    B('btn-fix-battery-init', requestBatteryOptimization);
 
     const Plugins = getDynamicPlugins();
     // 홈 버튼(앱 최소화) 감지 — Capacitor App 플러그인
