@@ -5,158 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ELS 운송관리</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    :root {
-      --bg: #f2f5f8;
-      --card-bg: #ffffff;
-      --text-main: #1a1a1a;
-      --text-muted: #5f6368;
-      --accent: #0056b3;
-      --accent-soft: #eaf1fb;
-      --border: #e0e0e0;
-      --safe-red: #d93025;
-      --safe-green: #1e8e3e;
-      --safe-orange: #f29900;
-    }
-    
-    body {
-      background: var(--bg);
-      color: var(--text-main);
-      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-      margin: 0;
-      /* 안드로이드 상태바 겹침 방지: 확실한 40px 여백 */
-      padding-top: calc(env(safe-area-inset-top) + 40px);
-      padding-bottom: env(safe-area-inset-bottom);
-      overflow-x: hidden;
-      line-height: 1.4;
-    }
-
-    /* 세련된 화이트 카드 스타일 */
-    .card {
-      background: var(--card-bg) !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 12px !important;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04) !important;
-      padding: 16px !important;
-      margin-bottom: 12px;
-    }
-
-    .card-title {
-      font-weight: 800;
-      color: var(--text-main);
-      font-size: 0.95rem;
-      border-left: 5px solid var(--accent);
-      padding-left: 10px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-    }
-
-    input, select, button {
-      font-family: inherit;
-    }
-
-    label {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-      display: block;
-    }
-
-    input[type="text"], input[type="tel"], select {
-      background: #f8f9fa !important;
-      border: 1px solid #ced4da !important;
-      border-radius: 8px !important;
-      color: var(--text-main) !important;
-      padding: 12px;
-      font-size: 1rem;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* 댄디 & 비비드 버튼 */
-    .btn-action, .btn-primary {
-      background: var(--accent) !important;
-      color: #fff !important;
-      border: none !important;
-      border-radius: 10px !important;
-      font-weight: 800 !important;
-      height: 54px;
-      font-size: 1.05rem;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,86,179,0.2);
-    }
-
-    .btn-secondary {
-      background: var(--accent-soft) !important;
-      color: var(--accent) !important;
-      border: 1px solid var(--accent) !important;
-      border-radius: 10px !important;
-      font-weight: 700 !important;
-    }
-
-    .btn-start { background: var(--safe-green) !important; box-shadow: 0 4px 10px rgba(30,142,62,0.2); }
-    .btn-stop { background: var(--safe-red) !important; box-shadow: 0 4px 10px rgba(217,48,37,0.2); }
-
-    /* 메인 헤더: 상단 고조 및 남는 공간 활용 */
-    #main-header {
-      background: #fff;
-      border-bottom: 1px solid var(--border);
-      height: 64px;
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    #header-vinfo {
-      flex: 1;
-      text-align: center;
-      color: var(--accent);
-      font-weight: 900;
-      font-size: 1.25rem;
-      letter-spacing: -0.5px;
-    }
-
-    #main-content { padding: 90px 16px 20px; }
-
-    #bottom-nav {
-      background: #fff !important;
-      border-top: 1px solid var(--border) !important;
-      height: 70px;
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    #bottom-nav .nav-btn {
-      color: var(--text-muted);
-      font-weight: 800;
-      font-size: 0.9rem;
-      flex-direction: column;
-      gap: 4px;
-    }
-    #bottom-nav .nav-btn.active {
-      color: var(--accent) !important;
-    }
-    #bottom-nav .nav-btn.active::after {
-      content: '';
-      width: 4px;
-      height: 4px;
-      background: var(--accent);
-      border-radius: 50%;
-      margin-top: 2px;
-    }
-
-    .modal-box {
-      border-radius: 20px !important;
-      padding: 24px !important;
-    }
-  </style>
-</head>
 </head>
 <body>
 
@@ -167,20 +15,20 @@
   </div>
 
   <!-- 온보딩 권한 -->
-  <div id="screen-permissions" class="screen" style="display:none; position:fixed; inset:0; z-index:200; background:#0d1117; overflow-y:auto;">
+  <div id="screen-permissions" class="screen" style="display:none; position:fixed; inset:0; z-index:200; background:var(--bg); overflow-y:auto;">
     <div style="min-height:100vh; display:flex; flex-direction:column; padding:80px 24px 40px; box-sizing:border-box;">
-      <h1 style="font-size:1.4rem; font-weight:800; color:#e6edf3; margin:0 0 4px;">앱 권한 설정</h1>
-      <p style="color:#7d8590; font-size:0.85rem; margin:0 0 20px; line-height:1.4;">원활한 운행 관리를 위해 아래 권한이 필요합니다.</p>
+      <h1 style="font-size:1.4rem; font-weight:800; color:var(--text); margin:0 0 4px;">앱 권한 설정</h1>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 20px; line-height:1.4;">원활한 운행 관리를 위해 아래 권한이 필요합니다.</p>
       <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px;">
-        <div class="perm-item" id="perm-location" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">위치 (항상 사용)</div><div style="font-size:0.75rem;color:#7d8590;">GPS 실시간 위치 관제</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
-        <div class="perm-item" id="perm-camera" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">카메라</div><div style="font-size:0.75rem;color:#7d8590;">컨테이너 사진 촬영</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
-        <div class="perm-item" id="perm-photo" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">사진 / 동영상</div><div style="font-size:0.75rem;color:#7d8590;">갤러리 접근 및 업로드</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
-        <div class="perm-item" id="perm-notify" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">알림</div><div style="font-size:0.75rem;color:#7d8590;">운행 상태 알림</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
-        <div class="perm-item" id="perm-phone" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">전화</div><div style="font-size:0.75rem;color:#7d8590;">기사 연락처 확인</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
-        <div class="perm-item" id="btn-fix-battery-init" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#161b22; border:1px solid #30363d; border-radius:12px;"><div class="perm-dot dot-red" id="battery-dot-init" style="width:10px;height:10px;border-radius:50%;background:#f85149;flex-shrink:0;"></div><div style="flex:1;"><div style="font-weight:700;font-size:0.95rem;color:#e6edf3;">배터리 최적화 해제 [권장]</div><div style="font-size:0.75rem;color:#7d8590;" id="battery-desc-init">안정적인 주행 기록을 위해 필요</div></div><div class="perm-arrow" style="color:#7d8590;font-size:1.2rem;">›</div></div>
+        <div class="perm-item" id="perm-location"><div class="perm-dot dot-red"></div><div style="flex:1;"><div class="perm-name">위치 (항상 사용)</div><div class="perm-desc">GPS 실시간 위치 관제</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-camera"><div class="perm-dot dot-red"></div><div style="flex:1;"><div class="perm-name">카메라</div><div class="perm-desc">컨테이너 사진 촬영</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-photo"><div class="perm-dot dot-red"></div><div style="flex:1;"><div class="perm-name">사진 / 동영상</div><div class="perm-desc">갤러리 접근 및 업로드</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-notify"><div class="perm-dot dot-red"></div><div style="flex:1;"><div class="perm-name">알림</div><div class="perm-desc">운행 상태 알림</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="perm-phone"><div class="perm-dot dot-red"></div><div style="flex:1;"><div class="perm-name">전화</div><div class="perm-desc">기사 연락처 확인</div></div><div class="perm-arrow">›</div></div>
+        <div class="perm-item" id="btn-fix-battery-init"><div class="perm-dot dot-red" id="battery-dot-init"></div><div style="flex:1;"><div class="perm-name">배터리 최적화 해제 [권장]</div><div class="perm-desc" id="battery-desc-init">안정적인 주행 기록을 위해 필요</div></div><div class="perm-arrow">›</div></div>
       </div>
       <div style="flex:1;"></div>
-      <button id="btn-finish-perms" style="width:100%;height:56px;background:#58a6ff;color:#fff;border:none;border-radius:12px;font-size:1.05rem;font-weight:800;cursor:pointer;margin-bottom:24px;">동의 및 시작하기</button>
+      <button id="btn-finish-perms" class="btn-primary" style="margin-bottom:24px;">동의 및 시작하기</button>
     </div>
   </div>
 
@@ -362,11 +210,11 @@
       </div>
       <div class="card">
         <div class="card-title">앱 정보</div>
-        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem;">v3.8.3 (Standalone Native)</div>
-        <button onclick="window.open('privacy.html','_blank')" style="width:100%; height:44px; margin-top:16px; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px; font-weight:700;">📄 개인정보 처리방침</button>
-        <button id="btn-check-update" style="width:100%; height:44px; margin-top:8px; background:#238636; border:none; color:#fff; border-radius:8px; font-weight:800; cursor:pointer;">🔄 수동 업데이트 확인</button>
-        <button id="btn-reset-app" style="width:100%; height:44px; margin-top:8px; background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.5); color:#f85149; border-radius:8px; font-weight:700;">초기화 (재설정)</button>
-        <button id="btn-exit-app" style="width:100%; height:44px; margin-top:8px; background:#0d1117; border:1px solid #30363d; color:#7d8590; border-radius:8px; font-weight:700;">앱 종료</button>
+        <div class="card-footer" style="text-align:center; opacity:0.3; font-size:0.7rem; margin-bottom:12px;">v3.9.1 (Standalone Native)</div>
+        <button onclick="window.open('privacy.html','_blank')" class="btn-secondary" style="width:100%; margin-bottom:8px;">📄 개인정보 처리방침</button>
+        <button id="btn-check-update" class="btn-primary" style="width:100%; margin-bottom:8px;">🔄 수동 업데이트 확인</button>
+        <button id="btn-reset-app" class="btn-secondary" style="width:100%; color:var(--danger); border-color:var(--danger); margin-bottom:8px;">초기화 (재설정)</button>
+        <button id="btn-exit-app" class="btn-secondary" style="width:100%;">앱 종료</button>
       </div>
     </div>
   </div>

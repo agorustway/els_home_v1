@@ -1,30 +1,30 @@
 /* ===================================
    ELS 운송관리 - 네이티브 앱 스타일시트
-   v3.1.0 - 2026-03-22 전체 UI 개편
+   v4.0.0 - 화이트 클린 테마
    =================================== */
 
 :root {
-  --bg: #0d1117;
-  --bg-card: #161b22;
-  --bg-input: #1c2128;
-  --border: #30363d;
-  --text: #e6edf3;
-  --text-muted: #7d8590;
-  --accent: #58a6ff;
-  --accent-dark: #1f6feb;
-  --danger: #f85149;
-  --success: #3fb950;
-  --warning: #d29922;
-  --radius: 12px;
+  --bg: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-input: #f0f1f3;
+  --border: #dfe1e5;
+  --text: #1f2023;
+  --text-muted: #70737c;
+  --accent: #3182f6;
+  --accent-dark: #1b64da;
+  --danger: #eb4d3d;
+  --success: #00b386;
+  --warning: #ff9500;
+  --radius: 10px;
   --safe-top: max(env(safe-area-inset-top), 35px);
   --safe-bottom: max(env(safe-area-inset-bottom), 16px);
-  --header-height: calc(56px + var(--safe-top));
+  --header-height: calc(52px + var(--safe-top));
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
-  font-family: -apple-system, 'Pretendard', sans-serif;
+  font-family: 'Malgun Gothic', -apple-system, 'Apple SD Gothic Neo', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -50,6 +50,7 @@ body {
   font-size: 1.4rem;
   font-weight: 800;
   margin-bottom: 4px;
+  color: var(--text);
 }
 
 .onboard-wrap .sub {
@@ -90,7 +91,7 @@ body {
 }
 
 .perm-info { flex: 1; }
-.perm-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+.perm-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; color: var(--text); }
 .perm-desc { font-size: 0.75rem; color: var(--text-muted); }
 .perm-arrow { color: var(--text-muted); font-size: 1.2rem; }
 
@@ -110,7 +111,7 @@ body {
   box-sizing: border-box;
   height: 48px;
   background: var(--bg-input);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0 14px;
   color: var(--text);
@@ -126,22 +127,22 @@ body {
 }
 
 .form-stack input:focus, .form-stack select:focus, .form-stack textarea:focus { border-color: var(--accent); }
-.form-stack input::placeholder { color: #484f58; }
+.form-stack input::placeholder { color: #9ea3ab; }
 
 .btn-primary {
   width: 100%;
-  height: 56px;
+  height: 52px;
   background: var(--accent);
   color: #fff;
   border: none;
   border-radius: var(--radius);
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
   cursor: pointer;
   transition: filter 0.2s;
 }
 
-.btn-primary:active { filter: brightness(0.85); }
+.btn-primary:active { filter: brightness(0.9); }
 
 .btn-secondary {
   width: 100%;
@@ -169,12 +170,13 @@ body {
 
 .btn-danger { color: var(--danger); border-color: var(--danger); }
 
+/* ═══ 헤더 ═══ */
 #main-header {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--header-height);
   padding-top: var(--safe-top);
-  background: var(--bg);
+  background: #ffffff;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -189,12 +191,12 @@ body {
   font-size: 0.9rem;
   font-weight: 900;
   color: var(--accent);
-  background: rgba(88,166,255,0.1);
+  background: rgba(49,130,246,0.08);
   padding: 4px 10px;
   border-radius: 6px;
   letter-spacing: 1px;
 }
-.header-title { font-size: 1rem; font-weight: 700; }
+.header-title { font-size: 1rem; font-weight: 700; color: var(--text); }
 
 #gps-indicator {
   font-size: 0.7rem;
@@ -204,14 +206,14 @@ body {
   letter-spacing: 0.5px;
 }
 
-.gps-on { background: rgba(63,185,80,0.15); color: var(--success); }
-.gps-off { background: rgba(248,81,73,0.15); color: var(--danger); }
+.gps-on { background: rgba(0,179,134,0.1); color: var(--success); }
+.gps-off { background: rgba(235,77,61,0.1); color: var(--danger); }
 
-/* 상단 배너 - 상태만 표시 (타이머 제거, 컴팩트화) */
+/* ═══ 상단 배너 ═══ */
 #active-banner {
   position: fixed;
   top: var(--header-height); left: 0; right: 0;
-  background: linear-gradient(135deg, rgba(31,111,235,0.9), rgba(31,111,235,0.7));
+  background: var(--accent);
   color: #fff;
   text-align: center;
   padding: 6px 0;
@@ -239,6 +241,7 @@ body {
 #main-content { padding: calc(16px + var(--header-height)) 16px calc(24px + var(--safe-bottom) + 72px); }
 #screen-main.trip-active #main-content { padding-top: calc(48px + var(--header-height)); }
 
+/* ═══ 카드 ═══ */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -247,20 +250,20 @@ body {
   margin-bottom: 12px;
 }
 
-.card-title { font-size: 0.95rem; font-weight: 800; margin-bottom: 16px; color: var(--text); }
+.card-title { font-size: 0.9rem; font-weight: 800; margin-bottom: 14px; color: var(--text); }
 
 .card-row {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(48,54,61,0.5);
+  border-bottom: 1px solid var(--border);
 }
 .card-row:last-child { border-bottom: none; }
 .card-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
-.card-value { font-size: 0.9rem; font-weight: 700; }
+.card-value { font-size: 0.9rem; font-weight: 700; color: var(--text); }
 
+/* ═══ 사진 ═══ */
 .photo-area { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; margin-top: 8px; align-items: center; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-
 #photo-grid { display: flex; flex-direction: row; gap: 8px; flex-shrink: 0; }
 
 .photo-wrapper {
@@ -319,11 +322,12 @@ body {
   font-weight: 800;
 }
 
+/* ═══ 운행 버튼 ═══ */
 .btn-action {
   width: 100%;
   border: none;
-  border-radius: 16px;
-  font-size: 1.15rem;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
   font-weight: 900;
   cursor: pointer;
   transition: transform 0.15s, filter 0.15s;
@@ -331,8 +335,8 @@ body {
 
 .btn-action:active { transform: scale(0.97); }
 
-.btn-start { height: 64px; background: var(--accent); color: #fff; }
-.btn-pause { height: 48px; background: var(--warning); color: #000; }
+.btn-start { height: 60px; background: var(--accent); color: #fff; }
+.btn-pause { height: 48px; background: var(--warning); color: #fff; }
 .btn-resume { height: 48px; background: var(--accent); color: #fff; }
 .btn-stop { height: 48px; background: var(--danger); color: #fff; }
 
@@ -340,18 +344,20 @@ body {
   text-align: center;
   font-size: 2.5rem;
   font-weight: 900;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Malgun Gothic', -apple-system, sans-serif;
+  color: var(--text);
   margin: 12px 0;
   letter-spacing: 2px;
 }
 
 .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+/* ═══ 하단 네비 ═══ */
 #bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: calc(64px + var(--safe-bottom));
-  background: var(--bg);
+  height: calc(56px + var(--safe-bottom));
+  background: #ffffff;
   border-top: 1px solid var(--border);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -363,7 +369,7 @@ body {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
   transition: color 0.2s;
@@ -376,6 +382,7 @@ body {
 
 .tab-panel { padding: calc(16px + var(--header-height)) 16px calc(24px + var(--safe-bottom) + 72px); }
 
+/* ═══ 기록 ═══ */
 #history-month {
   width: 100%;
   height: 44px;
@@ -390,7 +397,7 @@ body {
 
 .history-item {
   padding: 14px;
-  background: var(--bg-input);
+  background: var(--bg-card);
   border-radius: var(--radius);
   margin-bottom: 8px;
   border: 1px solid var(--border);
@@ -398,11 +405,11 @@ body {
   transition: border-color 0.2s;
 }
 
-.history-item:active { border-color: var(--accent); background: rgba(88,166,255,0.05); }
+.history-item:active { border-color: var(--accent); background: rgba(49,130,246,0.03); }
 
 .hist-header { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; }
 .hist-date { font-size: 0.75rem; color: var(--text-muted); }
-.hist-title { font-weight: 700; font-size: 0.95rem; }
+.hist-title { font-weight: 700; font-size: 0.95rem; color: var(--text); }
 .hist-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 
 .badge {
@@ -411,17 +418,18 @@ body {
   padding: 3px 8px;
   border-radius: 4px;
 }
-.badge-driving { background: rgba(63,185,80,0.2); color: var(--success); }
-.badge-paused { background: rgba(210,153,34,0.2); color: var(--warning); }
-.badge-finished { background: rgba(125,133,144,0.2); color: var(--text-muted); }
+.badge-driving { background: rgba(0,179,134,0.1); color: var(--success); }
+.badge-paused { background: rgba(255,149,0,0.1); color: var(--warning); }
+.badge-finished { background: rgba(112,115,124,0.1); color: var(--text-muted); }
 
 .text-muted { color: var(--text-muted); font-size: 0.8rem; }
 .text-red { color: var(--danger); }
 .text-empty { text-align: center; padding: 40px 0; color: var(--text-muted); }
 
+/* ═══ 모달 ═══ */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -430,7 +438,7 @@ body {
 }
 
 .modal-box {
-  background: var(--bg-card);
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px 20px;
@@ -454,7 +462,7 @@ body {
   margin-bottom: 16px;
 }
 
-/* 기록 수정 모달 스타일 */
+/* 기록 수정 모달 */
 .edit-form-group {
   margin-bottom: 10px;
 }
@@ -554,10 +562,7 @@ body {
   margin-top: 8px;
 }
 
-/* ═══════════════════════════════
-   PIP Mode Styles
-   ═══════════════════════════════ */
-
+/* ═══ PIP Mode ═══ */
 #pip-overlay {
   display: none;
   position: fixed;
@@ -574,15 +579,14 @@ body {
 #pip-status {
   font-size: 16px;
   font-weight: 800;
-  color: #3fb950;
+  color: var(--success);
   margin-bottom: 4px;
 }
 
 #pip-timer {
   font-size: 28px;
   font-weight: 900;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #58a6ff;
+  color: var(--accent);
   letter-spacing: 2px;
 }
 
@@ -599,7 +603,6 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* PIP 모드 활성 시 기본 UI 숨기기 */
 body.pip-active #screen-main,
 body.pip-active #main-header,
 body.pip-active #bottom-nav,
@@ -612,7 +615,8 @@ body.pip-active {
   background: #000 !important;
   overflow: hidden;
 }
-/* 공지사항 테이블 */
+
+/* ═══ 공지사항 테이블 ═══ */
 .table-container { 
   overflow-x: auto; 
   margin-top: 12px;
@@ -639,4 +643,4 @@ body.pip-active {
 }
 .notice-table tr:last-child td { border-bottom: none; }
 .notice-table .date-cell { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
-.notice-table tr:active { background: rgba(88,166,255,0.05); }
+.notice-table tr:active { background: rgba(49,130,246,0.03); }

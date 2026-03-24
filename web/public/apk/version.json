@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.8.3",
-  "changeLog": "- 배터리 최적화 예외상황 처리 (앱 정보 설정창 우회)\n- 위치 권한 타임아웃 오류 패치",
+  "latestVersion": "3.9.1",
+  "changeLog": "- ★ 화이트 클린 테마(White Clean) 전면 적용\n- 시인성 개선 및 다크 모드 시각 오류 해결\n- 전체 UI 레이아웃 최적화",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

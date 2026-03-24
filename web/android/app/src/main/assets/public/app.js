@@ -95,7 +95,7 @@
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.8.3';
+  const APP_VERSION = '3.9.1';
 
   async function checkBatteryOptimizationStatus(){
     const O = getOverlay();
@@ -858,7 +858,7 @@
     if(t === 'settings') { loadSavedProfile(); refreshPermStatus(); }
   }
 
-  // ═══ 업데이트 정책 (v3.8.0 적용) ═══
+  // ═══ 업데이트 정책 (v3.9.1 적용) ═══
   async function checkUpdates(manual = false){
     if(!isOnline) { if(manual) showModal('오프라인', '인터넷 연결이 필요합니다.'); return; }
     try {
@@ -866,7 +866,7 @@
       const d = await r.json();
       if(d.latestVersion && d.latestVersion !== APP_VERSION){
         // 업데이트 권장 모달
-        showModal('🚀 새로운 업데이트', `버전: v${d.latestVersion}<br><br><b>변경사항:</b><br>${(d.changeLog||'').replace(/\\n/g,'<br>')}<br><br><a href="${d.downloadUrl}" target="_blank" style="display:inline-block; padding:10px 20px; background:var(--accent); color:#fff; border-radius:8px; text-decoration:none; font-weight:800; margin-top:10px;">지금 다운로드 및 업데이트</a>`);
+        showModal('🚀 새로운 업데이트', `버전: v${d.latestVersion}<br><br><b>변경사항:</b><br>${(d.changeLog||'').replace(/\\n/g,'<br>')}<br><br><button onclick="window.startUpdate('${d.downloadUrl}')" class="btn-primary" style="display:inline-block; width:auto; padding:12px 24px; margin-top:10px;">지금 다운로드 및 업데이트</button>`);
       } else if(manual) {
         showModal('✅ 최신 버전입니다', `현재 사용 중인 버전(v${APP_VERSION})이 최신 버전입니다.`);
       }
@@ -1021,6 +1021,49 @@
   window.switchTab=switchTab;window.loadHistory=loadHistory;window.showHistoryDetail=showHistoryDetail;
   window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.closeModal=closeModal;window.exitApp=exitApp;
   window.resetTripData=resetTripData;window.showScreen=showScreen;
+
+  // ═══ 업데이트 시작 전 청소 로직 ═══
+  window.startUpdate = async function(url){
+    haptic('Heavy');
+    const O = getOverlay();
+    
+    // 버튼 텍스트 변경으로 진행 상태 표시
+    const btn = event.target;
+    if(btn && btn.tagName === 'BUTTON') {
+      btn.disabled = true;
+      btn.textContent = '🧹 청소 및 다운로드 중...';
+      btn.style.opacity = '0.7';
+    }
+
+    // 1. 구버전 파일 삭제 시도
+    if(O && O.deleteFilesByPattern){
+        try {
+            await O.deleteFilesByPattern({ pattern: 'els_driver' });
+        } catch(e){ console.error('청소 실패:', e); }
+    }
+    
+    // 2. 잠시 후 브라우저 열기
+    setTimeout(() => {
+        if(O && O.openBrowser) {
+            O.openBrowser({ url: url });
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.click();
+        }
+        
+        // 1.5초 뒤에 모달 닫기
+        setTimeout(() => {
+            closeModal();
+            if(btn) {
+                btn.disabled = false;
+                btn.textContent = '지금 다운로드 및 업데이트';
+                btn.style.opacity = '1';
+            }
+        }, 1500);
+    }, 600);
+  };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
 })();
