@@ -1,4 +1,4 @@
-/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
+﻿/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
 (() => {
   const getDynamicCapacitor = () => window.Capacitor || {};
   const getDynamicPlugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
@@ -939,7 +939,7 @@
         headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6Zm5ybnNjd3VkaWZnY2N0emtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Njk2NjcsImV4cCI6MjA4NzQ0NTY2N30.FYekx-aRdvlgfyR4MRlJ4mzVvDPmhODyXit8ITxyOCw' }
       });
       if(r.ok){
-        const notices = await r.json();
+        const notices = await r.json(); window.noticeData = notices;
         if(notices.length === 0){
           list.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:var(--text-muted);">등록된 공지가 없습니다.</td></tr>';
           return;
@@ -952,7 +952,7 @@
           const title = (n.title || '공지사항').replace(/'/g, "\\'").replace(/"/g, '&quot;');
           const content = (n.content || n.description || n.title || '내용 없음').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '<br>');
           
-          return `<tr style="cursor:pointer;" onclick="showModal('📢 ${title}','${content}')">
+          return `<tr style="cursor:pointer;" onclick="showNoticeDetail('${n.id}')">
             <td class="date-cell">${dateStr}</td>
             <td style="font-weight:600;">${n.title}</td>
           </tr>`;
@@ -1148,3 +1148,4 @@
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
 })();
+
