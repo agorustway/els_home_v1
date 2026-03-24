@@ -929,6 +929,15 @@
     } catch(e){ if(manual) showModal('오류', '업데이트 확인 중 오류가 발생했습니다.'); console.warn('업데이트 확인 실패'); }
   }
 
+
+  window.noticeData = [];
+  window.showNoticeDetail = function(id){
+    const n = (window.noticeData || []).find(x => x.id === id);
+    if(!n) return;
+    const title = '📢 ' + (n.title || '공지사항');
+    const content = (n.content || n.description || n.title || '내용 없음').replace(/\r/g, '').replace(/\n/g, '<br>');
+    showModal(title, content);
+  };
   // ═══ 공지사항 ═══
   async function loadNotices(){
     const list = document.getElementById('notice-list');
@@ -1148,4 +1157,5 @@
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
 })();
+
 
