@@ -67,7 +67,7 @@
     await new Promise(r=>setTimeout(r,300));
     return waitForBridge(attempts+1);
   }
-  const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
+
 
   // ── 상태 ──
   let tripId=null, lastTripId=null, tripStatus=null;
@@ -92,11 +92,14 @@
   async function safeJson(r){try{return typeof r.json==='function'?await r.json():r.data||r;}catch(e){return r;}}
   async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
   async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
+  const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
+  const APP_VERSION = '3.8.0';
 
   // ── 초기화 ──
   async function initApp(){
-    console.log('ELS v3.6.1 Init');
+    console.log(`ELS v${APP_VERSION} Init`);
     await waitForBridge();
+    checkUpdates(); // 업데이트 확인 로직 추가 (v3.8.0 정책)
     
     window.onPipModeChanged=function(isInPip){
       isPipMode=isInPip;
@@ -709,7 +712,57 @@
   async function deleteHistoryPhoto(idx){const p=historyPhotos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}historyPhotos.splice(idx,1);renderHistoryPhotos();}
 
   // ═══ 탭 ═══
-  function switchTab(t){haptic('Light');document.getElementById('main-content').style.display=t==='home'?'block':'none';document.getElementById('tab-history').style.display=t==='history'?'block':'none';document.getElementById('tab-settings').style.display=t==='settings'?'block':'none';document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['home','history','settings'][i]===t));if(t==='history')loadHistory();if(t==='settings')loadSavedProfile();}
+  function switchTab(t){
+    haptic('Light');
+    const panels = ['main-content', 'tab-history', 'tab-notice', 'tab-settings'];
+    const names = ['home', 'history', 'notice', 'settings'];
+    panels.forEach((p, i) => {
+      const el = document.getElementById(p);
+      if(el) el.style.display = names[i] === t ? 'block' : 'none';
+    });
+    document.querySelectorAll('#bottom-nav .nav-btn').forEach((b, i) => {
+      if(i < 4) b.classList.toggle('active', names[i] === t);
+    });
+    if(t === 'history') loadHistory();
+    if(t === 'notice') loadNotices();
+    if(t === 'settings') loadSavedProfile();
+  }
+
+  // ═══ 업데이트 정책 (v3.8.0 적용) ═══
+  async function checkUpdates(){
+    if(!isOnline) return;
+    try {
+      const r = await fetch('https://www.nollae.com/apk/version.json', { cache: 'no-store' });
+      const d = await r.json();
+      if(d.latestVersion && d.latestVersion !== APP_VERSION){
+        // 업데이트 권장 모달
+        showModal('🚀 새로운 업데이트', `버전: v${d.latestVersion}<br><br><b>변경사항:</b><br>${d.changeLog}<br><br><a href="${d.downloadUrl}" target="_blank" style="display:inline-block; padding:10px 20px; background:var(--accent); color:#fff; border-radius:8px; text-decoration:none; font-weight:800; margin-top:10px;">지금 다운로드 및 업데이트</a>`);
+      }
+    } catch(e){ console.warn('업데이트 확인 실패'); }
+  }
+
+  // ═══ 공지사항 ═══
+  async function loadNotices(){
+    const list = document.getElementById('notice-list');
+    if(!list) return;
+    try {
+      // 실제 API 연동 전까지는 Mock 데이터 사용 (데이터베이스 연동 필요 시 알림 요망)
+      const mockNotices = [
+        { date: '03.24', title: 'v3.8.0 업데이트 안내 (오버레이 중단 및 GPS 최적화)' },
+        { date: '03.23', title: '개인정보 처리방침 개정 안내' },
+        { date: '03.22', title: '안드로이드 16(갤럭시 S25) 호환성 패치 완료' },
+        { date: '03.20', title: '물류센터 상하차 사진 촬영 가이드' }
+      ];
+      list.innerHTML = mockNotices.map(n => `
+        <tr onclick="showModal('${n.date} 공지','${n.title}')">
+          <td class="date-cell">${n.date}</td>
+          <td style="font-weight:600;">${n.title}</td>
+        </tr>
+      `).join('');
+    } catch(e) {
+      list.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px; color:var(--danger);">로드 실패</td></tr>';
+    }
+  }
 
   // ═══ 기록 ═══
   async function loadHistory(){

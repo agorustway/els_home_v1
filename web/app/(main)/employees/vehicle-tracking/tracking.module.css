@@ -64,6 +64,74 @@
     background: #1d4ed8;
 }
 
+/* ═══ 공지사항 섹션 ═══ */
+.noticeSection {
+    margin-bottom: 24px;
+}
+
+.noticeHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.noticeHeader h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+}
+
+.writeNoticeBtn {
+    padding: 6px 14px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+}
+
+.tableCard {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.adminNoticeTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.adminNoticeTable th {
+    background: #f8fafc;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.adminNoticeTable td {
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.adminNoticeTable tr:last-child td {
+    border-bottom: none;
+}
+
+.adminNoticeTable tr:hover {
+    background: #f8fafc;
+}
+
 /* ═══ 통합 대시보드 ═══ */
 .missionDashboard {
     display: grid;

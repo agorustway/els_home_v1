@@ -412,6 +412,46 @@ export default function VehicleTrackingPage() {
                 <div className={styles.statCard}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
             </div>
 
+            {/* 공지사항 섹션 (카드 형식) */}
+            <div className={styles.noticeSection}>
+                <div className={styles.noticeHeader}>
+                    <h3>📢 전사 공지사항</h3>
+                    <button className={styles.writeNoticeBtn}>📝 공지 작성</button>
+                </div>
+                <div className={styles.tableCard}>
+                    <table className={styles.adminNoticeTable}>
+                        <thead>
+                            <tr>
+                                <th style={{width:'80px'}}>날짜</th>
+                                <th>제목</th>
+                                <th style={{width:'100px'}}>대상</th>
+                                <th style={{width:'80px'}}>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>03.24</td>
+                                <td><strong>v3.8.0 드라이버 앱 업데이트 안내 (오버레이 중단 및 GPS 최적화)</strong></td>
+                                <td>전체 기사</td>
+                                <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>공지중</span></td>
+                            </tr>
+                            <tr>
+                                <td>03.23</td>
+                                <td>개인정보 처리방침 개정 및 앱 화면 적용 안내</td>
+                                <td>전체</td>
+                                <td><span className={styles.statusCompleted} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>완료</span></td>
+                            </tr>
+                            <tr>
+                                <td>03.22</td>
+                                <td>안드로이드 16(갤럭시 S25) 호환성 패치 관련 공지</td>
+                                <td>안드로이드</td>
+                                <td><span className={styles.statusCompleted} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>완료</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div className={styles.tabNav}>
                 <button className={`${styles.tab} ${activeTab === 'live' ? styles.tabActive : ''}`} onClick={() => setActiveTab('live')}>📡 실시간 관제</button>
                 <button className={`${styles.tab} ${activeTab === 'records' ? styles.tabActive : ''}`} onClick={() => setActiveTab('records')}>📋 운행 기록 관리</button>
