@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.9.7",
-  "changeLog": "- 업데이트 후 권한 설정 단계부터 다시 확인하도록 개선\n- 앱 무결성 확인 및 전화번호 자동 복구 기능 보강\n- 업데이트 시 클립보드 지연 현상 완전 해결",
+  "latestVersion": "3.9.8",
+  "changeLog": "- 삼성 기기 배터리 설정 화면 바로가기 패치 (v3.9.8)\n- 공지사항 본문(HTML) 읽기 및 디자인 개선\n- 운행 기록 상세에서 직접 삭제 기능 추가",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }
