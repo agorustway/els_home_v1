@@ -240,13 +240,14 @@ public class OverlayPlugin extends Plugin {
                     call.resolve();
                 } catch (Exception e1) {
                     try {
-                        // Fallback to the settings list
-                        Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        // Fallback to Application Details (Guaranteed to open on all devices)
+                        Intent intentList = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:" + getActivity().getPackageName()));
+                        intentList.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         Toast.makeText(getContext(), 
-                            "🔋 목록에서 [ELS차량용] → [제한 없음]으로 변경해주세요", 
+                            "🔋 [배터리] 항목을 찾아 → [제한 없음]으로 1번만 꼭 변경해주세요!", 
                             Toast.LENGTH_LONG).show();
-                        getContext().startActivity(intent);
+                        getContext().startActivity(intentList);
                         call.resolve();
                     } catch (Exception e2) {
                         call.reject("배터리 설정 화면을 열 수 없습니다.");

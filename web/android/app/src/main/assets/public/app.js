@@ -307,22 +307,33 @@
 
   async function requestLocationPerm(){
     haptic();
-    try{
-      await new Promise((r,j)=>{
+    const O = getOverlay();
+    
+    // 위치 권한 요청 모달 (먼저 사용자에게 안내 후 네이티브 권한 또는 설정창 유도)
+    try {
+      await new Promise((r, j) => {
         navigator.geolocation.getCurrentPosition(
-          ()=>r(true),
-          (e)=>{ if(e.code===1) j(e); else r(true); }, // code 1 is PERMISSION_DENIED
-          {enableHighAccuracy:true,timeout:5000}
+          () => r(true),
+          (e) => {
+            if(e.code === 1) j(e); // 1 = PERMISSION_DENIED
+            else r(true); // timeout(3) or unavailable(2)
+          },
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
         );
       });
       markPermGranted('perm-location');
-      document.getElementById('gps-indicator').className='gps-on';
-    }catch(e){
-      console.warn('위치 권한 획득 실패:', e);
-      // 거부되었거나 오류 시 앱 설정창으로 직접 보냄 (사용자 편의성)
-      const O = getOverlay();
-      if(O) O.openAppSettings();
-      else alert('위치 권한을 [항상 허용]으로 설정해 주세요.');
+      const gi = document.getElementById('gps-indicator');
+      if(gi) { gi.className = 'gps-on'; gi.textContent = 'GPS정상'; }
+      haptic('Success');
+    } catch(e) {
+      console.warn('위치 권한 거부됨:', e);
+      // 이미 거부 상태인 경우 설정창으로 강제 안내
+      if(O && O.openAppSettings) {
+        showModal('권한 거부됨', '정상적인 GPS 추적을 위해 앱 설정에서 위치 권한을 <b>항상 허용</b>으로 변경해 주세요.<br><br>곧 설정 화면으로 이동합니다...');
+        setTimeout(() => { O.openAppSettings(); }, 2500);
+      } else {
+        alert('위치 권한을 [항상 허용]으로 설정해 주세요.');
+      }
     }
   }
   async function requestCameraPerm(){
