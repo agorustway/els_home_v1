@@ -1164,37 +1164,16 @@ export default function DriverAppPage() {
         </motion.div>
     );
 
-    const renderHistory = () => (
-        <motion.div className={styles.tabContent} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <div className={styles.formSection}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <div className={styles.historyTitle}>📅 운송 기록</div>
-                    <input type="month" value={historyMonth} onChange={(e) => setHistoryMonth(e.target.value)} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                </div>
-                <div className={styles.historyList}>
-                    {history.length > 0 ? history.map((h, i) => (
-                        <div key={i} className={`${styles.historyCard} ${selectedHistoryId === h.id ? styles.historyCardActive : ''}`} onClick={() => { triggerHaptic('LIGHT'); handleSelectHistory(h); setActiveTab('home'); }}>
-                            <div className={styles.historyHeader}>
-                                <div className={styles.historyDate}>{new Date(h.started_at).toLocaleString()}</div>
-                                <div className={`${styles.statusBadge} ${styles['status' + h.status]}`}>{h.status === 'driving' ? '운행중' : '종료'}</div>
-                            </div>
-                            <div className={styles.historyContainer}>📦 {h.container_number || '미입력'} ({h.container_type})</div>
-                            <div className={styles.historyMeta}>{h.vehicle_number} | {h.driver_name}</div>
-                        </div>
-                    )) : <div className={styles.historyEmpty}>기록이 없습니다.</div>}
-                </div>
-            </div>
-        </motion.div>
-    );
+
 
     const renderNoticeTab = () => (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={styles.tabContent}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>📢 공지사항</h2>
+            <div className={styles.sectionHeader} style={{ padding: '20px 0', borderBottom: '1px solid #f1f5f9', marginBottom: 20 }}>
+                <h2 className={styles.sectionTitle} style={{ margin: 0, paddingLeft: 15 }}>📢 공지사항</h2>
             </div>
             <div className={styles.noticeListContainer}>
                 {notices.length === 0 ? (
-                    <div className={styles.emptyState}>공지사항이 없습니다.</div>
+                    <div className={styles.historyEmpty}>공지사항이 없습니다.</div>
                 ) : (
                     notices.map((n, idx) => (
                         <div key={idx} className={styles.noticeItem} onClick={() => { triggerHaptic('LIGHT'); setSelectedNotice(n); }}>
@@ -1287,7 +1266,7 @@ export default function DriverAppPage() {
                     <span className={styles.navIcon}>⚙️</span>
                     <span>설정</span>
                 </button>
-                <button className={styles.navItem} onClick={() => { if(confirm('앱을 종료하시겠습니까?')) Capacitor.App.exitApp(); }}>
+                <button className={styles.navItem} onClick={() => { if(confirm('앱을 종료하시겠습니까?')) { if(App) App.exitApp(); else window.close(); } }}>
                     <span className={styles.navIcon}>🛑</span>
                     <span>종료</span>
                 </button>
