@@ -107,7 +107,11 @@ export default function DriverAppPage() {
     const [selectedHistoryId, setSelectedHistoryId] = useState(null); // 이력 수정 대상
     const [selectedTripLocations, setSelectedTripLocations] = useState([]); // 상세보기용 위치 데이터
     const [isDetailLoading, setIsDetailLoading] = useState(false);
-    
+
+    // [신규] 공지사항 상태
+    const [notices, setNotices] = useState([]);
+    const [selectedNotice, setSelectedNotice] = useState(null);
+
     // --- Native App UI States ---
     const [onboardingStep, setOnboardingStep] = useState(0); // 0: Hide, 1: Step1, 2: Step2, 3: Step3(Profile)
     const [activeTab, setActiveTab] = useState('home'); // home, history, settings
@@ -121,9 +125,33 @@ export default function DriverAppPage() {
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
 
+    // [신규] 공지사항 데이터 호출
+    const fetchNotices = useCallback(async () => {
+        try {
+            const { createClient } = require('@/utils/supabase/client');
+            const supabase = createClient();
+            const { data, error } = await supabase
+                .from('notices')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(5);
+            if (!error && data) setNotices(data);
+        } catch (e) { console.error('Notices Fetch Error:', e); }
+    }, []);
+
     const isActive = tripStatus === 'driving' || tripStatus === 'paused';
     const isDriving = tripStatus === 'driving';
 
+    // ─── 초기화 ───
+    useEffect(() => {
+        fetchHistory();
+        fetchNotices(); // 공지사항 로드
+        checkActiveTrip();
+
+        // 주기적 갱신 (3분마다 공지사항 업데이트)
+        const noticeInterval = setInterval(fetchNotices, 180000);
+        return () => clearInterval(noticeInterval);
+    }, [fetchHistory, fetchNotices]);
     // ─── Refs ───
     const gpsIntervalRef = useRef(null);
     const lastPosRef = useRef(null);
@@ -972,6 +1000,28 @@ export default function DriverAppPage() {
                     {isActive ? (isDriving ? `수신중(${speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})` : 'GPS정지') : '대기중'}
                 </span>
             </div>
+
+            {/* [신규] 공지사항 섹션 */}
+            {notices.length > 0 && (
+                <div className={styles.noticeSection} style={{ marginBottom: 15 }}>
+                    <div className={styles.noticeHeader} style={{ padding: '10px 15px', background: '#fff', borderRadius: '12px 12px 0 0', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>📣 최신 공지사항</h3>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{notices.length}건</span>
+                    </div>
+                    <div style={{ background: '#fff', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                        {notices.map((n, idx) => (
+                            <div 
+                                key={idx} 
+                                onClick={() => { triggerHaptic('LIGHT'); setSelectedNotice(n); }}
+                                style={{ padding: '12px 15px', borderBottom: idx === notices.length - 1 ? 'none' : '1px solid #f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                            >
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</span>
+                                <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {isActive ? (
                 /* 운행 활성화 상태: 대시보드 집중 모드 */

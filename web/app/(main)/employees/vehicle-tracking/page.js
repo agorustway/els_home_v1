@@ -127,17 +127,27 @@ export default function VehicleTrackingPage() {
 
     const handleDeleteNotice = async (id) => {
         if (!confirm('이 공지사항을 삭제하시겠습니까?')) return;
+        setLoading(true);
         try {
             const { error } = await supabase.from('notices').delete().eq('id', id);
             if (error) throw error;
-            setNotices(prev => prev.filter(n => n.id !== id));
+            
+            alert('삭제되었습니다.');
             setShowWriteModal(false);
             setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
             fetchNotices();
-        } catch (e) { alert('삭제 실패: ' + e.message); }
+        } catch (e) { 
+            console.error('삭제 오류:', e);
+            alert('삭제 실패: ' + e.message); 
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleViewNotice = (n) => { setNewNotice({ ...n, isViewMode: false }); setShowWriteModal(true); };
+    const handleViewNotice = (n) => { 
+        setNewNotice({ ...n, isViewMode: true }); 
+        setShowWriteModal(true); 
+    };
 
     // [신규] 첨부파일 업로드 (NAS 연동 권장하지만 일단 Supabase Storage 또는 S3 Presigned 이용 가능하도록 틀만 구성)
     const handleFileChange = async (e) => {
