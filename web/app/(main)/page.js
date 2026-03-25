@@ -1,5 +1,7 @@
 'use client';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { useRouter } from 'next/navigation';
 import Hero from '@/components/Hero';
 import Intro from '@/components/Intro';
 import History from '@/components/History';
@@ -12,7 +14,15 @@ import Network from '@/components/Network';
 import Business from '@/components/Business';
 
 export default function Home() {
+  const router = useRouter();
+
   useEffect(() => {
+    // 📱 모바일 앱(네이티브) 환경에서는 운전원 앱으로 즉시 리다이렉트
+    if (Capacitor.isNativePlatform()) {
+      router.replace('/driver-app');
+      return;
+    }
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
