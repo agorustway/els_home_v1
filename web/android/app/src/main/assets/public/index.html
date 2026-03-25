@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.0.3">
+<link rel="stylesheet" href="style.css?v=4.0.4">
 </head>
 <body>
 <div id="app">
@@ -220,8 +220,9 @@
       <button class="back-btn" id="settings-back-btn" onclick="App.showScreen('main'); App.switchTab('trip');">&#8249; 뒤로</button>
       <span class="logo">차량 정보 / 설정</span>
     </header>
-    <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
-      <div class="settings-row">
+    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:12px;">
+      
+      <div class="trip-row">
         <div class="field" style="flex:0.8;">
           <label>이름</label>
           <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
@@ -230,38 +231,34 @@
           <label>전화번호</label>
           <div style="display:flex;gap:4px;">
             <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;">
-            <button class="btn btn-sm" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 8px;">조회</button>
+            <button class="btn btn-sm btn-primary" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 12px;">조회</button>
           </div>
         </div>
       </div>
-      <div class="settings-row">
+      
+      <div class="trip-row">
+        <div class="field" style="flex:1;">
+          <label>기사 ID</label>
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase">
+        </div>
         <div class="field" style="flex:1;">
           <label>차량번호</label>
           <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
         </div>
-        <div class="field" style="flex:1.5;">
-          <label>기사 ID</label>
-          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase">
-        </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장 (운행 가능)</button>
+      
+      <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장</button>
 
-      <hr class="divider" style="margin:10px 0;">
+      <hr class="divider" style="margin:16px 0 8px 0;">
 
-      <div class="settings-section-title" style="font-weight:700;margin-bottom:4px;">앱 및 권한 설정</div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('overlay')">오버레이 (다른 앱 위에 표시) 권한 설정 <span>›</span></button>
-        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('battery')">배터리 최적화 제외 권한 설정 <span>›</span></button>
-        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('location')">위치 권한 (GPS) 다시 묻기 <span>›</span></button>
-        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('notification')">알림 권한 다시 묻기 <span>›</span></button>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn btn-sm btn-warn" style="flex:1;" onclick="App.checkUpdate()">업데이트 확인</button>
-          <button class="btn btn-sm btn-danger" style="flex:1;" onclick="App.resetApp()">앱 초기화</button>
-        </div>
-        <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:10px;">
-          현재 앱 버전: <span id="app-version-display"></span>
-        </div>
+      <div class="field">
+        <label>시스템</label>
+        <button class="btn" style="justify-content:space-between;height:48px;" onclick="App.checkUpdate()">
+          앱 업데이트 확인 <span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.0.0</span>
+        </button>
       </div>
+      
+      <button class="btn btn-danger btn-full" style="margin-top:16px;" onclick="App.resetApp()">앱 초기화 (모든 데이터 삭제)</button>
     </div>
   </div>
 
@@ -290,6 +287,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.0.3"></script>
+<script src="app.js?v=4.0.4"></script>
 </body>
 </html>

@@ -24,7 +24,7 @@
         const res = await http.request({
           url, method: options.method || 'GET',
           headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-          data: options.body || undefined,
+          data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
         });
         return { ok: res.status < 400, status: res.status, json: async () => res.data };
       } catch (e) {
@@ -561,8 +561,14 @@
       const [res1, res2] = await Promise.all([p1, p2]);
       
       let norm = [], emerg = [];
-      if (res1 && res1.ok) { const d1 = await res1.json(); norm = d1.notices || d1 || []; }
-      if (res2 && res2.ok) { const d2 = await res2.json(); emerg = d2.items || []; }
+      if (res1 && res1.ok) { 
+        const d1 = await res1.json().catch(()=>({})); 
+        norm = Array.isArray(d1?.notices) ? d1.notices : (Array.isArray(d1) ? d1 : []); 
+      }
+      if (res2 && res2.ok) { 
+        const d2 = await res2.json().catch(()=>({})); 
+        emerg = Array.isArray(d2?.items) ? d2.items : (Array.isArray(d2) ? d2 : []); 
+      }
 
       emerg.forEach(e => { e.isEmergency = true; e.title = '[긴급] ' + (e.title||'긴급알림'); });
       
