@@ -52,8 +52,8 @@ input, textarea, select, button { font-family: inherit; }
 }
 
 /* ─── 화면 전환 ─── */
-.screen { display: none; flex: 1; overflow-y: auto; }
-.screen.active { display: flex; flex-direction: column; }
+.screen { display: none !important; flex: 1; overflow-y: auto; }
+.screen.active { display: flex !important; flex-direction: column; }
 
 /* ─── 탭 바 ─── */
 .tab-bar {

@@ -50,7 +50,7 @@ public class OverlayPlugin extends Plugin {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             Toast.makeText(getContext(),
                 "[ELS차량용]을 찾아 '허용'으로 설정해 주세요", Toast.LENGTH_LONG).show();
-            getActivity().startActivityForResult(intent, REQ_OVERLAY);
+            getContext().startActivity(intent);
             call.resolve(new JSObject().put("opened", true));
         } catch (Exception e) {
             // Step 2: 앱 정보 화면 (제한된 설정 없을 때)
