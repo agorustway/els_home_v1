@@ -1,12 +1,24 @@
+const isStaticExport = process.env.STATIC_EXPORT === 'true';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: isStaticExport ? 'export' : undefined,
+  images: {
+    unoptimized: isStaticExport ? true : false,
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '**' },
+      { protocol: 'https', hostname: 'elssolution.synology.me', pathname: '**' },
+    ],
+  },
   async redirects() {
+    if (isStaticExport) return [];
     return [
       { source: '/employees/webzine', destination: '/webzine', permanent: true },
       { source: '/employees/webzine/:path*', destination: '/webzine/:path*', permanent: true },
     ];
   },
   async headers() {
+    if (isStaticExport) return [];
     return [
       {
         source: "/api/:path*",
@@ -18,20 +30,6 @@ const nextConfig = {
         ]
       }
     ];
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        pathname: '**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'elssolution.synology.me',
-        pathname: '**',
-      },
-    ],
   },
 };
 

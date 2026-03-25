@@ -143,15 +143,6 @@ export default function DriverAppPage() {
     const isDriving = tripStatus === 'driving';
 
     // ─── 초기화 ───
-    useEffect(() => {
-        fetchHistory();
-        fetchNotices(); // 공지사항 로드
-        checkActiveTrip();
-
-        // 주기적 갱신 (3분마다 공지사항 업데이트)
-        const noticeInterval = setInterval(fetchNotices, 180000);
-        return () => clearInterval(noticeInterval);
-    }, [fetchHistory, fetchNotices]);
     // ─── Refs ───
     const gpsIntervalRef = useRef(null);
     const lastPosRef = useRef(null);
@@ -345,6 +336,17 @@ export default function DriverAppPage() {
             setIsRefreshing(false);
         }
     }, [driverPhone, vehicleNumber, formatPhone, startGPS, playSilence, fetchHistory, cleanPhone]);
+
+    // ─── 초기화 ───
+    useEffect(() => {
+        fetchHistory();
+        fetchNotices(); // 공지사항 로드
+        checkActiveTrip();
+
+        // 주기적 갱신 (3분마다 공지사항 업데이트)
+        const noticeInterval = setInterval(fetchNotices, 180000);
+        return () => clearInterval(noticeInterval);
+    }, [fetchHistory, fetchNotices, checkActiveTrip]);
 
 
 
