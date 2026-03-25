@@ -1,5 +1,5 @@
 {
-  "latestVersion": "3.9.9.2",
-  "changeLog": "- 안드로이드 16(Baklava) 보안 정책 대응 (제한된 설정 가이드 추가)\n- 네이티브 오버레이 위젯 도입 (화면 꺼짐 시 시간 멈춤 해결)\n- 삼성 S24 등 최신 폰 백그라운드 GPS 유지력 강화\n- 실시간 타이머 UI 독립 연동 (네이티브 100% 정확도)",
+  "latestVersion": "3.9.9.3",
+  "changeLog": "- 공지사항 본문 보기 기능 추가 (앱 내 상세 모달)\n- 관리자 공지사항 수정 및 삭제 오류 해결\n- 앱 정보 버전 표기 업데이트 (v3.9.9.3)",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }
