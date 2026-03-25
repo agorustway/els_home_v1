@@ -216,8 +216,6 @@
     if (ok) {
       permStatuses[type] = true;
       Store.set('permStatuses', permStatuses);
-    } else if (permStatuses[type]) {
-      return; // 한 번 true가 되면 false로 변경 안 함
     }
     
     const el = document.getElementById('perm-' + type + '-status');
@@ -248,8 +246,9 @@
       if (stream) { stream.getTracks().forEach(t=>t.stop()); setPermStatus('camera', true); }
     } catch(e) {}
     
-    if ('Notification' in window && Notification.permission === 'granted') {
-      setPermStatus('notif', true);
+    if ('Notification' in window) {
+      const isGranted = Notification.permission === 'granted';
+      setPermStatus('notif', isGranted);
     }
   }
 
@@ -618,8 +617,8 @@
         if (res1 && res1.ok) { 
           const json1 = await res1.json().catch(()=>({})); 
           const d1 = typeof json1 === 'string' ? JSON.parse(json1) : json1;
-          // board API는 posts 배열에 담겨옴
-          norm = d1.posts || d1.notices || (Array.isArray(d1) ? d1 : []);
+          // board API는 posts, vehicle-tracking API는 notices/items로 올 수 있음
+          norm = d1.posts || d1.notices || d1.items || (Array.isArray(d1) ? d1 : []);
           console.log('Norm notices loaded:', norm.length);
         }
       } catch(e) { console.error('Norm load error:', e); }
