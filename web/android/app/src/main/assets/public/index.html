@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.0.5">
+<link rel="stylesheet" href="style.css?v=4.0.6">
 </head>
 <body>
 <div id="app">
@@ -216,11 +216,9 @@
        설정 페이지 (별도 스크린)
   ════════════════════════════════════════════════ -->
   <div id="screen-settings" class="screen">
-    <header class="app-header">
-      <button class="back-btn" id="settings-back-btn" onclick="App.showScreen('main'); App.switchTab('trip');">&#8249; 뒤로</button>
-      <span class="logo">차량 정보 / 설정</span>
-    </header>
-    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:12px;">
+    <div style="padding:16px 14px;display:flex;flex-direction:column;gap:12px;">
+      
+      <button class="btn btn-sm" id="settings-back-btn" onclick="App.showScreen('main'); App.switchTab('trip');" style="align-self:flex-start;margin-bottom:4px;">← 운행 화면으로 돌아가기</button>
       
       <div class="trip-row">
         <div class="field" style="flex:0.8;">
@@ -272,6 +270,7 @@
     <button onclick="App.prevPhoto()">&#8249;</button>
     <span id="photo-viewer-index" style="color:#fff;font-size:13px;align-self:center;"></span>
     <button onclick="App.nextPhoto()">&#8250;</button>
+    <button onclick="App.deleteCurrentPhoto()" style="background:var(--danger);color:#fff;font-size:13px;font-weight:700;margin-left:20px;">삭제</button>
   </div>
 </div>
 
@@ -287,6 +286,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.0.5"></script>
+<script src="app.js?v=4.0.6"></script>
 </body>
 </html>

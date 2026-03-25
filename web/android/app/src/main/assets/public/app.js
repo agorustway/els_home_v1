@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.0.2';
+  const APP_VERSION = 'v4.0.6';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -702,6 +702,18 @@
   function closePhotoViewer() { document.getElementById('photo-viewer').classList.remove('active'); }
   function prevPhoto() { if (State.currentPhotoIdx > 0) { State.currentPhotoIdx--; showPhotoViewerImage(); } }
   function nextPhoto() { if (State.currentPhotoIdx < State.photos.length - 1) { State.currentPhotoIdx++; showPhotoViewerImage(); } }
+  function deleteCurrentPhoto() {
+    if (!confirm('현재 보고 있는 사진을 삭제하시겠습니까?')) return;
+    State.photos.splice(State.currentPhotoIdx, 1);
+    const scroll = document.getElementById('photo-scroll');
+    if (State.photos.length === 0) {
+      closePhotoViewer();
+    } else {
+      if (State.currentPhotoIdx >= State.photos.length) { State.currentPhotoIdx = State.photos.length - 1; }
+      showPhotoViewerImage();
+    }
+    renderPhotoThumbs();
+  }
 
   // ─── 일지 ─────────────────────────────────────────────────────
   let _currentLogData = null;
@@ -898,7 +910,7 @@
     // 공지
     openNotice, closeNoticeDetail,
     // 사진
-    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto,
+    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
     // 일지
     loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail,
     // 긴급
