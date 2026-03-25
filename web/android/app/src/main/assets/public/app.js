@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.0.9';
+  const APP_VERSION = 'v4.1.0';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -391,12 +391,18 @@
           }),
         });
         let data = await res.json().catch(() => ({}));
+        console.log('startTrip raw response:', data);
         if (!res.ok) {
           throw new Error(data.error || `서버 오류 (${res.status})`);
         }
-        if (!data.id) throw new Error('ID 누락 (운송 기록 생성 실패)');
+        // data.id가 없을 때 data.trip.id 등 하위 필드까지 전수 조사
+        const finalId = data.id || data.trip?.id;
+        if (!finalId) {
+           console.error('startTrip ID Missing. Data:', data);
+           throw new Error('ID 누락 (서버가 응답했으나 기록 생성 실패)');
+        }
 
-        State.trip.id = data.id;
+        State.trip.id = finalId;
       State.trip.status = 'driving';
       State.trip.startTime = Date.now();
       Store.set('activeTrip', { id: data.id, startTime: State.trip.startTime });
@@ -617,9 +623,9 @@
         if (res1 && res1.ok) { 
           const json1 = await res1.json().catch(()=>({})); 
           const d1 = typeof json1 === 'string' ? JSON.parse(json1) : json1;
-          // board API는 posts, vehicle-tracking API는 notices/items로 올 수 있음
-          norm = d1.posts || d1.notices || d1.items || (Array.isArray(d1) ? d1 : []);
-          console.log('Norm notices loaded:', norm.length);
+          const rawList = d1.posts || d1.notices || d1.items || (Array.isArray(d1) ? d1 : []);
+          norm = Array.isArray(rawList) ? rawList : [];
+          console.log('Norm notices count:', norm.length);
         }
       } catch(e) { console.error('Norm load error:', e); }
 
@@ -643,12 +649,16 @@
 
   function renderNoticeList() {
     const read = Store.get('readNotices') || [];
-    const html = _notices.map(n => `
-      <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice(${n.id})">
-        <div class="notice-item-title">${escHtml(n.title)}</div>
-        <div class="notice-item-meta">${formatDate(new Date(n.created_at || n.date))}</div>
-      </div>
-    `).join('') || '<div class="loading">공지사항이 없습니다.</div>';
+    const html = _notices.map(n => {
+      const dateVal = n.created_at || n.date || n.started_at;
+      const dateStr = dateVal ? formatDate(new Date(dateVal)) : '—';
+      return `
+        <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice(${n.id})">
+          <div class="notice-item-title">${escHtml(n.title || n.message || '제목 없음')}</div>
+          <div class="notice-item-meta">${dateStr}</div>
+        </div>
+      `;
+    }).join('') || '<div class="loading">공지사항이 없습니다.</div>';
     document.getElementById('notice-list').innerHTML = html;
   }
 
