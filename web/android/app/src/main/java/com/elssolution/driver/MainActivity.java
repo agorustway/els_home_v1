@@ -54,12 +54,17 @@ public class MainActivity extends BridgeActivity {
     // ─── 뒤로가기 처리 ────────────────────────────────────────────
     @Override
     public void onBackPressed() {
-        // 운행 중 여부를 JS에서 쿼리
+        // JS에 뒤로가기 처리를 먼저 위임
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().evaluateJavascript(
-                "(window.isTripActive && window.isTripActive()) ? 'true' : 'false'",
+                "(window.handleBackButton && window.handleBackButton()) ? 'CONSUMED' : ((window.isTripActive && window.isTripActive()) ? 'ACTIVE' : 'IDLE')",
                 value -> {
-                    boolean isTripActive = "\"true\"".equals(value) || "true".equals(value);
+                    if (value != null) value = value.replaceAll("^\"|\"$", "");
+                    if ("CONSUMED".equals(value)) {
+                        // JS에서 뒤로가기 처리를 완료했으므로 다이얼로그를 띄우지 않음
+                        return;
+                    }
+                    boolean isTripActive = "ACTIVE".equals(value);
                     runOnUiThread(() -> showExitDialog(isTripActive));
                 }
             );

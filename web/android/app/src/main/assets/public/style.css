@@ -74,7 +74,7 @@ input, textarea, select, button { font-family: inherit; }
 .tab-exit { color: var(--danger); }
 
 #screen-permission, #screen-settings {
-  flex-direction: column; padding: 20px 16px; gap: 16px;
+  flex-direction: column; padding: 10px 14px; gap: 12px;
   background: var(--surface);
 }
 .perm-title { font-size: 18px; font-weight: 900; border-left: 4px solid var(--accent); padding-left: 10px; }

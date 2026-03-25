@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.0.6';
+  const APP_VERSION = 'v4.0.7';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -205,66 +205,71 @@
   }
 
   // ─── 권한 설정 ────────────────────────────────────────────────
+  const permStatuses = Store.get('permStatuses') || { loc: false, camera: false, notif: false, overlay: false, battery: false };
+  function setPermStatus(type, ok) {
+    if (ok) {
+      permStatuses[type] = true;
+      Store.set('permStatuses', permStatuses);
+    } else if (permStatuses[type]) {
+      return; // 한 번 true가 되면 false로 변경 안 함
+    }
+    
+    const el = document.getElementById('perm-' + type + '-status');
+    if (!el) return;
+    el.textContent = permStatuses[type] ? '설정됨' : '미설정';
+    el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
+  }
+
   async function updatePermStatuses() {
     const overlay = Overlay();
     if (overlay) {
       const r = await overlay.checkPermission().catch(() => ({ granted: false }));
-      setPermStatus('overlay', r.granted);
+      if (r.granted) setPermStatus('overlay', true);
       if (overlay.checkBatteryOptimization) {
         const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
-        setPermStatus('battery', b.granted);
+        if (b.granted) setPermStatus('battery', true);
       }
     }
-    // Web API 권한 체크
     try {
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'geolocation' }).then(p => setPermStatus('loc', p.state === 'granted')).catch(()=>{});
-        navigator.permissions.query({ name: 'camera' }).then(p => setPermStatus('camera', p.state === 'granted')).catch(()=>{});
-      }
+      let locGranted = false;
+      await new Promise(r => {
+        const id = setTimeout(r, 1000);
+        navigator.geolocation.getCurrentPosition(() => { clearTimeout(id); locGranted = true; r(); }, () => { clearTimeout(id); r(); }, { timeout: 1000 });
+      });
+      if (locGranted) setPermStatus('loc', true);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => null);
+      if (stream) { stream.getTracks().forEach(t=>t.stop()); setPermStatus('camera', true); }
     } catch(e) {}
     
-    if ('Notification' in window) {
-      setPermStatus('notif', Notification.permission === 'granted');
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setPermStatus('notif', true);
     }
-  }
-
-  function setPermStatus(type, ok) {
-    const el = document.getElementById('perm-' + type + '-status');
-    if (!el) return;
-    el.textContent = ok ? '허용' : '미설정';
-    el.className = 'perm-status ' + (ok ? 'perm-ok' : 'perm-ng');
   }
 
   async function requestPerm(type) {
     const overlay = Overlay();
     switch (type) {
       case 'location':
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            () => setPermStatus('loc', true),
-            () => showToast('위치 권한을 설정에서 허용해 주세요.')
-          );
-        }
+        try { navigator.geolocation.getCurrentPosition(() => setPermStatus('loc', true), () => showToast('위치 권한을 설정에서 허용해 주세요.'), { timeout: 10000 }); } catch(e){}
         break;
       case 'overlay':
-        if (overlay) {
-          const r = await overlay.requestPermission().catch(e => ({ opened: false, error: e.message }));
-          if (!r.opened) showToast('오버레이 설정 화면 진입 실패');
-        }
+        if (overlay) { 
+          try { await overlay.requestPermission(); } catch(e) { showToast('설정 오류: ' + e.message); } 
+        } else { showToast('기기에서 오버레이 기능 접속 불가'); }
         break;
       case 'battery':
-        if (overlay) { await overlay.requestBatteryOptimization().catch(() => {}); }
+        if (overlay && overlay.requestBatteryOptimization) { 
+          try { await overlay.requestBatteryOptimization(); } catch(e) { showToast('설정 오류: ' + e.message); } 
+        } else { showToast('기기에서 배터리 예외 설정 진입 불가'); }
         break;
       case 'camera':
-        try {
-          await navigator.mediaDevices.getUserMedia({ video: true });
-          setPermStatus('camera', true);
-        } catch {}
+        try { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t=>t.stop()); setPermStatus('camera', true); } catch(e){}
         break;
       case 'notification':
         if ('Notification' in window) {
           const r = await Notification.requestPermission();
-          setPermStatus('notif', r === 'granted');
+          if (r === 'granted') setPermStatus('notif', true);
         }
         break;
     }
@@ -377,7 +382,8 @@
           special_notes:    memo,
         }),
       });
-      const data = await res.json();
+      let data = await res.json();
+      if (typeof data === 'string') data = JSON.parse(data);
       if (!data.id) throw new Error(data.error || '운행 시작 실패');
 
       State.trip.id = data.id;
@@ -451,6 +457,24 @@
 
   // JS에서 운행 상태 확인 (네이티브 뒤로가기 처리용)
   window.isTripActive = () => State.trip.status === 'driving' || State.trip.status === 'paused';
+
+  // 뒤로가기 소비 (Consumed) 여부 반환
+  window.handleBackButton = () => {
+    if (document.getElementById('photo-viewer').classList.contains('active')) { App.closePhotoViewer(); return true; }
+    if (document.getElementById('emergency-popup').classList.contains('active')) { App.closeEmergency(); return true; }
+    if (document.getElementById('notice-detail').classList.contains('active')) { App.closeNoticeDetail(); return true; }
+    if (document.getElementById('log-detail').classList.contains('active')) { App.closeLogDetail(); return true; }
+    if (document.getElementById('screen-settings').classList.contains('active')) {
+      if (!State.profile.name || !State.profile.phone || !State.profile.vehicleNo || !State.profile.driverId) return false;
+      showScreen('main'); switchTab('trip'); return true;
+    }
+    if (document.getElementById('screen-main').classList.contains('active')) {
+      if (!document.getElementById('tab-trip').classList.contains('active')) {
+        switchTab('trip'); return true;
+      }
+    }
+    return false;
+  };
 
   function saveMemo() {
     if (!State.trip.id) return;
@@ -573,20 +597,27 @@
   async function loadNotices() {
     document.getElementById('notice-list').innerHTML = '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
     try {
-      const p1 = smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`).catch(() => null);
-      const p2 = smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=false`).catch(() => null);
-      
-      const [res1, res2] = await Promise.all([p1, p2]);
+      const [res1, res2] = await Promise.all([
+        smartFetch(`${BASE_URL}/api/board?type=notice`).catch(() => null),
+        smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=false`).catch(() => null)
+      ]);
       
       let norm = [], emerg = [];
-      if (res1 && res1.ok) { 
-        const d1 = await res1.json().catch(()=>({})); 
-        norm = Array.isArray(d1?.notices) ? d1.notices : (Array.isArray(d1) ? d1 : []); 
-      }
-      if (res2 && res2.ok) { 
-        const d2 = await res2.json().catch(()=>({})); 
-        emerg = Array.isArray(d2?.items) ? d2.items : (Array.isArray(d2) ? d2 : []); 
-      }
+      try {
+        if (res1 && res1.ok) { 
+          const json1 = await res1.json().catch(()=>({})); 
+          const d1 = typeof json1 === 'string' ? JSON.parse(json1) : json1;
+          norm = Array.isArray(d1?.posts) ? d1.posts : (Array.isArray(d1?.notices) ? d1.notices : (Array.isArray(d1) ? d1 : [])); 
+        }
+      } catch(e) { console.error(e); }
+
+      try {
+        if (res2 && res2.ok) { 
+          const json2 = await res2.json().catch(()=>({})); 
+          const d2 = typeof json2 === 'string' ? JSON.parse(json2) : json2;
+          emerg = Array.isArray(d2?.items) ? d2.items : (Array.isArray(d2) ? d2 : []); 
+        }
+      } catch(e) { console.error(e); }
 
       emerg.forEach(e => { e.isEmergency = true; e.title = '[긴급] ' + (e.title||'긴급알림'); });
       

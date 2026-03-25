@@ -1,4 +1,22 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-26 - UI/UX 버그 픽스 및 기능 안정화 v4.0.7
+### 주제: 권한 설정 및 데이터 바인딩 오류 전면 수정
+
+#### 핵심 원인 분석 빛 해결
+1. **설정 화면 UI 겹침 (조회 버튼 등)**: Flex 대신 display를 일관되게 적용하고 padding을 14px로 통일하여 여백 공간이 너무 많던 문제를 해결 (일지 여백 기준)
+2. **앱업데이트 텍스트 및 시작 위치 불일치**: `justify-content`와 `position`을 수정해 앱 관리 목록의 버튼들(업데이트, 초기화) 글자 시작 위치와 폰트 크기 통일.
+3. **운행시작 버튼 먹통**: CapacitorHttp 응답이 문자열로 떨어질 경우 JSON.parse()를 우회하지 못해 `data.id`가 undefined 처리되고 오류를 뱉던 부분 수정.
+4. **공지사항 조회 불가**: API 엔드포인트가 `/api/vehicle-tracking/notices`에서 `/api/board?type=notice`로 변경된 것을 앱에 반영하지 못해 발생하던 문제 해결. DTO 속성(posts vs notices) 파싱 수정.
+5. **권한 미설정으로 돌아가는 현상**: `permStatuses` 상태를 앱 새로고침 시 초기화해버리던 치명적 버그 수정. `localStorage('permStatuses')`로 저장하여 한 번 승인된 권한은 계속 유지되도록 보정.
+6. **오버레이/배터리 수동설정 무반응**: `OverlayPlugin`을 호출하는 `app.js` 브릿지에서 try-catch 처리 후 에러 시 Toast 노출되도록 안정화.
+
+#### 주요 변경 파일
+- `web/out/index.html` (설정 폼 레이아웃 및 텍스트 정렬 수정)
+- `web/out/style.css` (모든 스크린 내부 padding 여백 통일)
+- `web/out/app.js` (JSON string 파싱 방어, 로컬스토리지 권한 보존 루틴, 공지사항 API 연동)
+
+---
+
 ## 📅 2026-03-25 - 드라이버 앱 완전 재구축 v4.0.0
 ### 주제: Git 롤백 불가 문제 해결 및 앱 처음부터 재설계
 
