@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.0.7';
+  const APP_VERSION = 'v4.0.8';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -73,7 +73,9 @@
       window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(()=>{});
     }
 
-    document.getElementById('app-version-display').textContent = APP_VERSION;
+    if (document.getElementById('app-version-display')) {
+      document.getElementById('app-version-display').textContent = APP_VERSION;
+    }
 
     // 프로필 로드
     const profile = Store.get('profile');
@@ -370,26 +372,26 @@
     const cKind       = document.getElementById('container-kind').value;
     const memo        = document.getElementById('trip-memo').value;
 
-    try {
-      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
-        method: 'POST',
-        body: JSON.stringify({
-          driver_name:      State.profile.name,
-          driver_phone:     State.profile.phone,
-          vehicle_number:   State.profile.vehicleNo,
-          vehicle_id:       State.profile.driverId,
-          container_number: containerNo,
-          seal_number:      sealNo,
-          container_type:   cType,
-          container_kind:   cKind,
-          special_notes:    memo,
-        }),
-      });
-      let data = await res.json();
-      if (typeof data === 'string') data = JSON.parse(data);
-      if (!data.id) throw new Error(data.error || '운행 시작 실패');
+      try {
+        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
+          method: 'POST',
+          body: JSON.stringify({
+            driver_name:      State.profile.name,
+            driver_phone:     State.profile.phone,
+            vehicle_number:   State.profile.vehicleNo,
+            vehicle_id:       State.profile.driverId,
+            container_number: containerNo,
+            seal_number:      sealNo,
+            container_type:   cType,
+            container_kind:   cKind,
+            special_notes:    memo,
+          }),
+        });
+        let data = await res.json();
+        if (typeof data === 'string') data = JSON.parse(data);
+        if (!data.id) throw new Error(data.error || '연결 오류 (ID 없음)');
 
-      State.trip.id = data.id;
+        State.trip.id = data.id;
       State.trip.status = 'driving';
       State.trip.startTime = Date.now();
       Store.set('activeTrip', { id: data.id, startTime: State.trip.startTime });
