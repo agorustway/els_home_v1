@@ -26,7 +26,11 @@
           headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
           data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
         });
-        return { ok: res.status < 400, status: res.status, json: async () => res.data };
+        return { 
+          ok: res.status < 400, 
+          status: res.status, 
+          json: async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data) 
+        };
       } catch (e) {
         console.error('smartFetch CapHttp error', e);
       }
@@ -387,9 +391,11 @@
             special_notes:    memo,
           }),
         });
-        let data = await res.json();
-        if (typeof data === 'string') data = JSON.parse(data);
-        if (!data.id) throw new Error(data.error || '연결 오류 (ID 없음)');
+        let data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || `서버 오류 (${res.status})`);
+        }
+        if (!data.id) throw new Error('ID 누락 (운송 기록 생성 실패)');
 
         State.trip.id = data.id;
       State.trip.status = 'driving';
