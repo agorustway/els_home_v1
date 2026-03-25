@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.0.8';
+  const APP_VERSION = 'v4.0.9';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -901,7 +901,9 @@
           window.open(BASE_URL + '/apk/els_driver.apk', '_blank');
         }
       } else {
-        showToast('최신 버전입니다: ' + APP_VERSION);
+        if (confirm(`현재 버전(${APP_VERSION})은 최신입니다. 다시 다운로드하시겠습니까?`)) {
+          window.open(BASE_URL + '/apk/els_driver.apk', '_blank');
+        }
       }
     } catch (e) { showToast('업데이트 확인 실패'); }
   }

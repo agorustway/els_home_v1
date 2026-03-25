@@ -1,5 +1,5 @@
 {
-  "latestVersion": "v4.0.8",
+  "latestVersion": "v4.0.9",
   "versionCode": 51,
   "changeLog": "v4.0.2 기능 추가 및 버그 수정\n- 긴급 공지 함께 표시\n- 차량 정보/설정 별도 화면 분리 (설정 톱니바퀴 아이콘)\n- 권한 설정 팝업 안정성 강화\n- 컨테이너 번호 ISO 6346 무결성 검증 추가\n- 컨테이너, 씰, 기사ID 자동 대문자 변환\n- 차량 정보 미입력 운행 가능\n- 앱 종료 시 확인창 추가\n- 사진 뷰어 줌인 기능 최적화, Android 네비게이션 바 침범 픽스\n- 상태바 색상(시계 영역) 시인성 픽스",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
