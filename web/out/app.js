@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.0';
+  const APP_VERSION = 'v4.1.1';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -391,15 +391,19 @@
           }),
         });
         let data = await res.json().catch(() => ({}));
-        console.log('startTrip raw response:', data);
+        console.log('startTrip server raw response:', JSON.stringify(data));
+        
         if (!res.ok) {
           throw new Error(data.error || `서버 오류 (${res.status})`);
         }
-        // data.id가 없을 때 data.trip.id 등 하위 필드까지 전수 조사
-        const finalId = data.id || data.trip?.id;
+        
+        // 서버 응답 구조가 여러 형태일 수 있으므로 전수 조사
+        // 1. {id: 123} 2. {trip: {id: 123}} 3. 단일 객체가 아닌 배열일 경우 등
+        const finalId = data.id || (data.trip && data.trip.id) || (Array.isArray(data) && data[0]?.id);
+        
         if (!finalId) {
-           console.error('startTrip ID Missing. Data:', data);
-           throw new Error('ID 누락 (서버가 응답했으나 기록 생성 실패)');
+           console.error('startTrip ID fail. data:', data);
+           throw new Error('ID 누락 (서버에서 기록 아이디를 받지 못함)');
         }
 
         State.trip.id = finalId;
@@ -620,9 +624,10 @@
       
       let norm = [], emerg = [];
       try {
-        if (res1 && res1.ok) { 
+        if (res1) { 
           const json1 = await res1.json().catch(()=>({})); 
           const d1 = typeof json1 === 'string' ? JSON.parse(json1) : json1;
+          console.log('Notice API raw:', d1);
           const rawList = d1.posts || d1.notices || d1.items || (Array.isArray(d1) ? d1 : []);
           norm = Array.isArray(rawList) ? rawList : [];
           console.log('Norm notices count:', norm.length);
