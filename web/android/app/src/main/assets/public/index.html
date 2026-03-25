@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.0.2">
+<link rel="stylesheet" href="style.css?v=4.0.3">
 </head>
 <body>
 <div id="app">
@@ -118,7 +118,7 @@
               <span id="trip-addr-display" class="trip-addr hidden" style="color:var(--text);"></span>
             </div>
             <div class="spacer"></div>
-            <button class="btn btn-sm" onclick="App.showScreen('settings')" style="font-size:16px;padding:0 8px;">⚙️</button>
+            <button class="btn btn-sm" onclick="App.openSettings()" style="font-size:16px;padding:0 8px;">⚙️</button>
           </div>
           <!-- Row 2 컨테이너 번호 -->
           <div class="field">
@@ -137,7 +137,6 @@
               <select id="container-type">
                 <option value="20FT">20FT</option>
                 <option value="40FT" selected>40FT</option>
-                <option value="40FT_HQ">40FT HQ</option>
               </select>
             </div>
             <div class="field">
@@ -218,34 +217,34 @@
   ════════════════════════════════════════════════ -->
   <div id="screen-settings" class="screen">
     <header class="app-header">
-      <button class="back-btn" onclick="App.showScreen('main'); App.switchTab('trip');">&#8249; 뒤로</button>
+      <button class="back-btn" id="settings-back-btn" onclick="App.showScreen('main'); App.switchTab('trip');">&#8249; 뒤로</button>
       <span class="logo">차량 정보 / 설정</span>
     </header>
     <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
       <div class="settings-row">
-        <div class="field">
+        <div class="field" style="flex:0.8;">
           <label>이름</label>
           <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
         </div>
-        <div class="field" style="flex:2;">
+        <div class="field" style="flex:2.2;">
           <label>전화번호</label>
           <div style="display:flex;gap:4px;">
-            <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;">
-            <button class="btn btn-sm" onclick="App.lookupDriver()">조회</button>
+            <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;">
+            <button class="btn btn-sm" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 8px;">조회</button>
           </div>
         </div>
       </div>
       <div class="settings-row">
-        <div class="field">
+        <div class="field" style="flex:1;">
           <label>차량번호</label>
           <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
         </div>
-        <div class="field">
+        <div class="field" style="flex:1.5;">
           <label>기사 ID</label>
-          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20">
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase">
         </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장</button>
+      <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장 (운행 가능)</button>
 
       <hr class="divider" style="margin:10px 0;">
 
@@ -291,6 +290,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.0.2"></script>
+<script src="app.js?v=4.0.3"></script>
 </body>
 </html>

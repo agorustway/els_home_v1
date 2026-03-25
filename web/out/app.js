@@ -85,16 +85,33 @@
       showScreen('permission');
       updatePermStatuses();
     } else {
-      showScreen('main');
-      switchTab('trip');
-      loadCurrentTrip();
-      loadNotices();
-      startEmergencyPoll();
+      if (!State.profile.name || !State.profile.phone || !State.profile.vehicleNo || !State.profile.driverId) {
+        openSettings(); // 프로필 입력 강제
+      } else {
+        showMain();
+      }
     }
 
     // goto_tab 딥링크 (서비스에서 복귀)
     const gotoTab = new URLSearchParams(window.location.search).get('goto_tab');
     if (gotoTab) switchTab(gotoTab);
+  }
+
+  function showMain() {
+    showScreen('main');
+    switchTab('trip');
+    loadCurrentTrip();
+    loadNotices();
+    startEmergencyPoll();
+  }
+
+  function openSettings() {
+    showScreen('settings');
+    const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+    const backBtn = document.getElementById('settings-back-btn');
+    if (backBtn) {
+      backBtn.style.display = hasProfile ? '' : 'none'; // 프로필 부족시 뒤로가기 숨김
+    }
   }
 
   // ─── 화면 전환 ────────────────────────────────────────────────
@@ -134,13 +151,21 @@
     const name = document.getElementById('s-name').value.trim();
     const phone = document.getElementById('s-phone').value.replace(/\D/g, '');
     const vehicleNo = document.getElementById('s-vehicle').value.trim();
-    const driverId  = document.getElementById('s-id').value.trim();
-    if (!name || !phone || !vehicleNo) { showToast('이름, 전화번호, 차량번호는 필수입니다.'); return; }
+    const driverId  = document.getElementById('s-id').value.trim().toUpperCase();
+
+    if (!name || !phone || !vehicleNo || !driverId) { 
+      showToast('이름, 전화번호, 차량번호, 기사 ID를 모두 입력해 주세요.'); 
+      return; 
+    }
+
     State.profile = { name, phone, vehicleNo, driverId };
     Store.set('profile', State.profile);
     applyProfileToUI();
     upsertDriverContact();
     showToast('정보가 저장되었습니다.');
+    
+    // 저장 성공 시 메인으로 강제 이동
+    showMain();
   }
 
   async function upsertDriverContact() {
@@ -230,10 +255,7 @@
 
   function finishPermSetup() {
     Store.set('permSetupDone', true);
-    showScreen('main');
-    switchTab('trip');
-    loadNotices();
-    startEmergencyPoll();
+    openSettings();
   }
 
   function resetApp() {
@@ -311,7 +333,11 @@
   }
 
   async function startTrip() {
-    // 차량 정보 없어도 운행 시작 가능 (경고 제거)
+    if (!State.profile.name || !State.profile.phone || !State.profile.vehicleNo || !State.profile.driverId) {
+      showToast('차량 정보를 먼저 모두 입력해 주세요.');
+      openSettings();
+      return;
+    }
     const containerNo = document.getElementById('container-no').value.trim();
     const sealNo      = document.getElementById('seal-no').value.trim();
     const cType       = document.getElementById('container-type').value;
@@ -844,7 +870,7 @@
     // 운행
     onTripFieldChange, startTrip, togglePause, endTrip, saveMemo,
     // 네비
-    switchTab, headerBack,
+    switchTab, headerBack, showScreen, openSettings,
     // 공지
     openNotice, closeNoticeDetail,
     // 사진

@@ -31,8 +31,8 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-keyboard:writeDebugAarMetadata UP-TO-DATE
 > Task :capacitor-network:preBuild UP-TO-DATE
 > Task :capacitor-network:preDebugBuild UP-TO-DATE
-> Task :capacitor-network:writeDebugAarMetadata UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:writeDebugAarMetadata
+> Task :capacitor-network:writeDebugAarMetadata UP-TO-DATE
 > Task :capacitor-status-bar:preBuild UP-TO-DATE
 > Task :capacitor-status-bar:preDebugBuild UP-TO-DATE
 > Task :capacitor-status-bar:writeDebugAarMetadata UP-TO-DATE
@@ -107,13 +107,13 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-cordova-android-plugins:compileDebugLibraryResources
 > Task :capacitor-haptics:compileDebugLibraryResources UP-TO-DATE
 > Task :capacitor-haptics:parseDebugLocalResources UP-TO-DATE
-> Task :capacitor-haptics:generateDebugRFile UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:parseDebugLocalResources
+> Task :capacitor-haptics:generateDebugRFile UP-TO-DATE
 > Task :capacitor-keyboard:compileDebugLibraryResources UP-TO-DATE
 > Task :capacitor-keyboard:parseDebugLocalResources UP-TO-DATE
 > Task :capacitor-keyboard:generateDebugRFile UP-TO-DATE
-> Task :capacitor-network:compileDebugLibraryResources UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:generateDebugRFile
+> Task :capacitor-network:compileDebugLibraryResources UP-TO-DATE
 > Task :capacitor-network:parseDebugLocalResources UP-TO-DATE
 > Task :capacitor-network:generateDebugRFile UP-TO-DATE
 > Task :capacitor-status-bar:compileDebugLibraryResources UP-TO-DATE
@@ -173,6 +173,7 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-haptics:compileDebugShaders NO-SOURCE
 > Task :capacitor-haptics:generateDebugAssets UP-TO-DATE
 > Task :capacitor-haptics:packageDebugAssets UP-TO-DATE
+> Task :app:processDebugManifestForPackage
 > Task :capacitor-keyboard:mergeDebugShaders UP-TO-DATE
 > Task :capacitor-keyboard:compileDebugShaders NO-SOURCE
 > Task :capacitor-keyboard:generateDebugAssets UP-TO-DATE
@@ -193,8 +194,8 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-keyboard:bundleLibRuntimeToJarDebug UP-TO-DATE
 > Task :capacitor-network:bundleLibRuntimeToJarDebug UP-TO-DATE
 > Task :capacitor-status-bar:bundleLibRuntimeToJarDebug UP-TO-DATE
-> Task :app:compressDebugAssets
 > Task :capacitor-android:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarDebug
 > Task :app:processDebugJavaRes NO-SOURCE
@@ -214,14 +215,13 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-app:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :capacitor-browser:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :capacitor-haptics:bundleLibRuntimeToDirDebug UP-TO-DATE
-> Task :app:processDebugManifestForPackage
 > Task :capacitor-keyboard:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :capacitor-network:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :capacitor-status-bar:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :capacitor-android:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :app:mergeDebugJniLibFolders UP-TO-DATE
-> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirDebug
 > Task :capacitor-android:mergeDebugJniLibFolders UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirDebug
 > Task :capacitor-android:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-android:copyDebugJniLibsProjectOnly UP-TO-DATE
 > Task :capacitor-app:mergeDebugJniLibFolders UP-TO-DATE
@@ -233,8 +233,8 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-community-background-geolocation:mergeDebugJniLibFolders UP-TO-DATE
 > Task :capacitor-community-background-geolocation:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-community-background-geolocation:copyDebugJniLibsProjectOnly UP-TO-DATE
-> Task :app:mergeLibDexDebug UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectOnly
 > Task :capacitor-haptics:mergeDebugJniLibFolders UP-TO-DATE
@@ -363,23 +363,10 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-status-bar:bundleDebugAar UP-TO-DATE
 > Task :capacitor-status-bar:assembleDebug UP-TO-DATE
 > Task :app:processDebugResources
-
-> Task :app:compileDebugJavaWithJavac
-.\gradlew.bat : Note: Some input files use or override a d
-eprecated API.
-위치 줄:1 문자:1
-+ .\gradlew.bat assembleDebug 2>&1 | Out-File -FilePath bu
-ild_out.txt - ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (Note: Some i 
-   npu...deprecated API.:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :app:dexBuilderDebug
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
 > Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
-> Task :app:mergeProjectDexDebug
+> Task :app:mergeProjectDexDebug UP-TO-DATE
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
@@ -392,6 +379,6 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 3s
-283 actionable tasks: 34 executed, 249 up-to-date
+BUILD SUCCESSFUL in 2s
+283 actionable tasks: 31 executed, 252 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.3.1/userguide/configuration_cache_enabling.html
