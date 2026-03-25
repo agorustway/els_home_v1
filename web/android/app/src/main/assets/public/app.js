@@ -58,6 +58,9 @@
   async function init() {
     // Capacitor 브릿지 대기
     if (window.Capacitor) {
+      window.Capacitor.Plugins.App?.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) updatePermStatuses();
+      });
       await new Promise(r => {
         if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
         window.addEventListener('load', r, { once: true });
@@ -207,6 +210,21 @@
     if (overlay) {
       const r = await overlay.checkPermission().catch(() => ({ granted: false }));
       setPermStatus('overlay', r.granted);
+      if (overlay.checkBatteryOptimization) {
+        const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
+        setPermStatus('battery', b.granted);
+      }
+    }
+    // Web API 권한 체크
+    try {
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'geolocation' }).then(p => setPermStatus('loc', p.state === 'granted')).catch(()=>{});
+        navigator.permissions.query({ name: 'camera' }).then(p => setPermStatus('camera', p.state === 'granted')).catch(()=>{});
+      }
+    } catch(e) {}
+    
+    if ('Notification' in window) {
+      setPermStatus('notif', Notification.permission === 'granted');
     }
   }
 

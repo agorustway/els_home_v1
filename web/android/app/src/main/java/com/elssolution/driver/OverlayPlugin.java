@@ -43,30 +43,18 @@ public class OverlayPlugin extends Plugin {
             return;
         }
 
-        // Step 1: 직접 오버레이 설정 화면
+        // 무조건 앱 정보 화면으로 이동 (제한된 설정 허용 및 권한 통합 관리 유도)
         try {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 Uri.parse("package:" + getContext().getPackageName()));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "[ELS차량용]을 찾아 '허용'으로 설정해 주세요", Toast.LENGTH_LONG).show());
+                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "[다른 앱 위에 표시] 및 [배터리] 설정 확인", Toast.LENGTH_LONG).show());
             }
-            getContext().startActivity(intent);
-            call.resolve(new JSObject().put("opened", true));
-        } catch (Exception e) {
-            // Step 2: 앱 정보 화면 (제한된 설정 없을 때)
-            try {
-                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + getContext().getPackageName()));
-                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "우측 상단 ⋮ 메뉴 > '제한된 설정 허용' 후 지정해 주세요", Toast.LENGTH_LONG).show());
-                }
-                getContext().startActivity(fallback);
-                call.resolve(new JSObject().put("opened", true).put("restrictedSettings", true));
-            } catch (Exception e2) {
-                call.reject("권한 설정 화면을 열 수 없습니다: " + e2.getMessage());
-            }
+            getContext().startActivity(fallback);
+            call.resolve(new JSObject().put("opened", true).put("restrictedSettings", true));
+        } catch (Exception e2) {
+            call.reject("권한 설정 화면을 열 수 없습니다: " + e2.getMessage());
         }
     }
 
@@ -120,7 +108,30 @@ public class OverlayPlugin extends Plugin {
     public void requestBatteryOptimization(PluginCall call) {
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).requestBatteryOptimizationExclusion();
+        } else {
+            // MainActivity가 아닐 경우에도 앱 정보창 띄우기 (만약을 위해)
+            try {
+                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getContext().getPackageName()));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "모바일 데이터 밑에 [배터리] > 제한 없음 설정", Toast.LENGTH_LONG).show());
+                }
+                getContext().startActivity(fallback);
+            } catch (Exception e) {}
         }
         call.resolve(new JSObject().put("requested", true));
+    }
+
+    // JS → 배터리 최적화 여부 확인
+    @PluginMethod
+    public void checkBatteryOptimization(PluginCall call) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            android.os.PowerManager pm = (android.os.PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
+            boolean isIgnoring = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+            call.resolve(new JSObject().put("granted", isIgnoring));
+        } else {
+            call.resolve(new JSObject().put("granted", true));
+        }
     }
 }

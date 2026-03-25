@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.0.4">
+<link rel="stylesheet" href="style.css?v=4.0.5">
 </head>
 <body>
 <div id="app">
@@ -31,28 +31,6 @@
 
     <div class="perm-item">
       <div class="perm-item-info">
-        <span class="perm-item-title">다른 앱 위에 표시</span>
-        <span class="perm-item-desc">운행 중 플로팅 위젯 표시</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="perm-overlay-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('overlay')">설정</button>
-      </div>
-    </div>
-
-    <div class="perm-item">
-      <div class="perm-item-info">
-        <span class="perm-item-title">배터리 최적화 제외</span>
-        <span class="perm-item-desc">백그라운드 GPS 유지 (필수)</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="perm-battery-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('battery')">설정</button>
-      </div>
-    </div>
-
-    <div class="perm-item">
-      <div class="perm-item-info">
         <span class="perm-item-title">카메라 / 사진</span>
         <span class="perm-item-desc">운행 사진 촬영 및 업로드</span>
       </div>
@@ -70,6 +48,28 @@
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-notif-status" class="perm-status perm-ng">미설정</span>
         <button class="btn-perm" onclick="App.requestPerm('notification')">설정</button>
+      </div>
+    </div>
+
+    <div class="perm-item">
+      <div class="perm-item-info">
+        <span class="perm-item-title">다른 앱 위에 표시</span>
+        <span class="perm-item-desc">운행 중 플로팅 위젯 표시 (제한된 설정 허용 필요)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="perm-overlay-status" class="perm-status perm-ng">미설정</span>
+        <button class="btn-perm" onclick="App.requestPerm('overlay')">수동 설정</button>
+      </div>
+    </div>
+
+    <div class="perm-item">
+      <div class="perm-item-info">
+        <span class="perm-item-title">배터리 최적화 제외</span>
+        <span class="perm-item-desc">백그라운드 GPS 유지 (앱 정보 → 배터리 → 제한 없음)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="perm-battery-status" class="perm-status perm-ng">미설정</span>
+        <button class="btn-perm" onclick="App.requestPerm('battery')">수동 설정</button>
       </div>
     </div>
 
@@ -287,6 +287,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.0.4"></script>
+<script src="app.js?v=4.0.5"></script>
 </body>
 </html>
