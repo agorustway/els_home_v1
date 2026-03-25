@@ -101,7 +101,7 @@ public class MainActivity extends BridgeActivity {
                     startActivity(fallback);
                 }
             } else {
-                Toast.makeText(this, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show();
+                runOnUiThread(() -> Toast.makeText(this, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show());
             }
         }
     }

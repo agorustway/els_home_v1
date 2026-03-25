@@ -48,8 +48,9 @@ public class OverlayPlugin extends Plugin {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getContext().getPackageName()));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            Toast.makeText(getContext(),
-                "[ELS차량용]을 찾아 '허용'으로 설정해 주세요", Toast.LENGTH_LONG).show();
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "[ELS차량용]을 찾아 '허용'으로 설정해 주세요", Toast.LENGTH_LONG).show());
+            }
             getContext().startActivity(intent);
             call.resolve(new JSObject().put("opened", true));
         } catch (Exception e) {
@@ -58,9 +59,9 @@ public class OverlayPlugin extends Plugin {
                 Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getContext().getPackageName()));
                 fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                Toast.makeText(getContext(),
-                    "우측 상단 ⋮ 메뉴 > '제한된 설정 허용' 후 오버레이를 허용해 주세요",
-                    Toast.LENGTH_LONG).show();
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "우측 상단 ⋮ 메뉴 > '제한된 설정 허용' 후 지정해 주세요", Toast.LENGTH_LONG).show());
+                }
                 getContext().startActivity(fallback);
                 call.resolve(new JSObject().put("opened", true).put("restrictedSettings", true));
             } catch (Exception e2) {

@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.0.0';
+  const APP_VERSION = 'v4.0.2';
   const BASE_URL = 'https://nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -63,6 +63,11 @@
         window.addEventListener('load', r, { once: true });
         setTimeout(r, 800);
       });
+    }
+
+    if (window.Capacitor?.Plugins?.StatusBar) {
+      window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(()=>{});
+      window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(()=>{});
     }
 
     document.getElementById('app-version-display').textContent = APP_VERSION;
@@ -241,8 +246,44 @@
 
   // ─── 운행 관리 ────────────────────────────────────────────────
   function onTripFieldChange() {
-    State.trip.containerNo = document.getElementById('container-no').value;
-    State.trip.sealNo      = document.getElementById('seal-no').value;
+    const cEl = document.getElementById('container-no');
+    const sEl = document.getElementById('seal-no');
+    
+    // 대문자 변환 & 공백 제거
+    cEl.value = cEl.value.trim().toUpperCase();
+    sEl.value = sEl.value.trim().toUpperCase();
+
+    State.trip.containerNo = cEl.value;
+    State.trip.sealNo      = sEl.value;
+
+    // ISO 6346 체크 (11자리일 때) - 알파벳 4 + 숫자 7
+    const errEl = document.getElementById('container-check-msg');
+    if (errEl) errEl.textContent = '';
+    
+    if (cEl.value.length === 11) {
+      const match = cEl.value.match(/^([A-Z]{4})(\d{6})(\d)$/);
+      if (match) {
+        if (!validateISO6346(cEl.value)) {
+          if (errEl) errEl.textContent = '체크디짓이 맞지 않습니다. (입력확인)';
+        }
+      } else {
+        if (errEl) errEl.textContent = '영문 4자리 + 숫자 7자리 형식이 아닙니다.';
+      }
+    }
+  }
+
+  function validateISO6346(str) {
+    const charMap = {
+      'A':10,'B':12,'C':13,'D':14,'E':15,'F':16,'G':17,'H':18,'I':19,'J':20,'K':21,'L':23,'M':24,
+      'N':25,'O':26,'P':27,'Q':28,'R':29,'S':30,'T':31,'U':32,'V':34,'W':35,'X':36,'Y':37,'Z':38
+    };
+    let sum = 0;
+    for (let i = 0; i < 10; i++) {
+      let val = charMap[str[i]] || parseInt(str[i], 10);
+      sum += val * Math.pow(2, i);
+    }
+    const checkDigit = (sum % 11) % 10;
+    return checkDigit === parseInt(str[10], 10);
   }
 
   async function loadCurrentTrip() {
@@ -270,10 +311,7 @@
   }
 
   async function startTrip() {
-    if (!State.profile.name || !State.profile.vehicleNo) {
-      showToast('차량 정보(이름/차량번호)를 먼저 설정 탭에서 입력해 주세요.');
-      return;
-    }
+    // 차량 정보 없어도 운행 시작 가능 (경고 제거)
     const containerNo = document.getElementById('container-no').value.trim();
     const sealNo      = document.getElementById('seal-no').value.trim();
     const cType       = document.getElementById('container-type').value;
@@ -491,9 +529,19 @@
   async function loadNotices() {
     document.getElementById('notice-list').innerHTML = '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
     try {
-      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`);
-      const data = await res.json();
-      _notices = data.notices || data || [];
+      const p1 = smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`).catch(() => null);
+      const p2 = smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=false`).catch(() => null);
+      
+      const [res1, res2] = await Promise.all([p1, p2]);
+      
+      let norm = [], emerg = [];
+      if (res1 && res1.ok) { const d1 = await res1.json(); norm = d1.notices || d1 || []; }
+      if (res2 && res2.ok) { const d2 = await res2.json(); emerg = d2.items || []; }
+
+      emerg.forEach(e => { e.isEmergency = true; e.title = '[긴급] ' + (e.title||'긴급알림'); });
+      
+      const merged = [...emerg, ...norm].sort((a,b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
+      _notices = merged;
       renderNoticeList();
     } catch (e) {
       document.getElementById('notice-list').innerHTML = '<div class="loading">불러오기 실패</div>';
@@ -759,6 +807,8 @@
       showToast('운행 중에는 종료할 수 없습니다. 운행 종료 후 앱 종료가 가능합니다.');
       return;
     }
+    if (!confirm('앱을 종료하시겠습니까?')) return;
+    
     if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.exitApp();
     } else {

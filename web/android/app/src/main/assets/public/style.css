@@ -73,8 +73,7 @@ input, textarea, select, button { font-family: inherit; }
 .tab-btn:active { background: var(--bg); }
 .tab-exit { color: var(--danger); }
 
-/* ─── 권한 설정 화면 ─── */
-#screen-permission {
+#screen-permission, #screen-settings {
   flex-direction: column; padding: 20px 16px; gap: 16px;
   background: var(--surface);
 }
@@ -204,6 +203,7 @@ input, textarea, select, button { font-family: inherit; }
 /* ─── 사진 전체화면 뷰어 ─── */
 #photo-viewer {
   display: none; position: fixed; inset: 0; background: #000;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
   z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
 }
 #photo-viewer.active { display: flex; }

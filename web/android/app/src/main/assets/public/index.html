@@ -2,10 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.0.1">
+<link rel="stylesheet" href="style.css?v=4.0.2">
 </head>
 <body>
 <div id="app">
@@ -112,11 +113,12 @@
         <!-- Row 1 -->
         <div id="tab-trip-inner" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
           <div class="trip-row">
-            <div style="font-size:11px;color:var(--text-muted);">
+            <div style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
               <span id="trip-date-display">—</span>
+              <span id="trip-addr-display" class="trip-addr hidden" style="color:var(--text);"></span>
             </div>
             <div class="spacer"></div>
-            <div id="trip-addr-display" class="trip-addr hidden"></div>
+            <button class="btn btn-sm" onclick="App.showScreen('settings')" style="font-size:16px;padding:0 8px;">⚙️</button>
           </div>
           <!-- Row 2 컨테이너 번호 -->
           <div class="field">
@@ -172,44 +174,6 @@
             <label>메모</label>
             <textarea id="trip-memo" placeholder="특이사항, 현장 메모..." rows="3" onchange="App.saveMemo()"></textarea>
           </div>
-
-          <!-- 설정 인라인 섹션 -->
-          <div class="settings-inline">
-            <div class="settings-section-title">차량 정보 / 설정</div>
-            <div class="settings-row">
-              <div class="field">
-                <label>이름</label>
-                <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
-              </div>
-              <div class="field" style="flex:2;">
-                <label>전화번호</label>
-                <div style="display:flex;gap:4px;">
-                  <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;">
-                  <button class="btn btn-sm" onclick="App.lookupDriver()">조회</button>
-                </div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div class="field">
-                <label>차량번호</label>
-                <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
-              </div>
-              <div class="field">
-                <label>기사 ID</label>
-                <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20">
-              </div>
-            </div>
-            <button class="btn btn-primary" style="align-self:flex-end;" onclick="App.saveProfile()">정보 저장</button>
-            <hr class="divider">
-            <div class="settings-section-title">권한 및 앱</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-sm" onclick="App.requestPerm('overlay')">오버레이 설정</button>
-              <button class="btn btn-sm" onclick="App.requestPerm('battery')">배터리 최적화</button>
-              <button class="btn btn-sm" onclick="App.resetApp()">초기화</button>
-              <button class="btn btn-sm" onclick="App.checkUpdate()">업데이트 확인</button>
-            </div>
-            <div style="font-size:11px;color:var(--text-muted);">앱 버전: <span id="app-version-display">v4.0.0</span></div>
-          </div>
         </div>
       </div>
 
@@ -249,6 +213,59 @@
 
   </div><!-- /screen-main -->
 
+  <!-- ════════════════════════════════════════════════
+       설정 페이지 (별도 스크린)
+  ════════════════════════════════════════════════ -->
+  <div id="screen-settings" class="screen">
+    <header class="app-header">
+      <button class="back-btn" onclick="App.showScreen('main'); App.switchTab('trip');">&#8249; 뒤로</button>
+      <span class="logo">차량 정보 / 설정</span>
+    </header>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+      <div class="settings-row">
+        <div class="field">
+          <label>이름</label>
+          <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
+        </div>
+        <div class="field" style="flex:2;">
+          <label>전화번호</label>
+          <div style="display:flex;gap:4px;">
+            <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;">
+            <button class="btn btn-sm" onclick="App.lookupDriver()">조회</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="field">
+          <label>차량번호</label>
+          <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
+        </div>
+        <div class="field">
+          <label>기사 ID</label>
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장</button>
+
+      <hr class="divider" style="margin:10px 0;">
+
+      <div class="settings-section-title" style="font-weight:700;margin-bottom:4px;">앱 및 권한 설정</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('overlay')">오버레이 (다른 앱 위에 표시) 권한 설정 <span>›</span></button>
+        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('battery')">배터리 최적화 제외 권한 설정 <span>›</span></button>
+        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('location')">위치 권한 (GPS) 다시 묻기 <span>›</span></button>
+        <button class="btn" style="justify-content:space-between;" onclick="App.requestPerm('notification')">알림 권한 다시 묻기 <span>›</span></button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-sm btn-warn" style="flex:1;" onclick="App.checkUpdate()">업데이트 확인</button>
+          <button class="btn btn-sm btn-danger" style="flex:1;" onclick="App.resetApp()">앱 초기화</button>
+        </div>
+        <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:10px;">
+          현재 앱 버전: <span id="app-version-display"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /app -->
 
 <!-- ──── 사진 전체화면 뷰어 ──── -->
@@ -274,6 +291,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.0.1"></script>
+<script src="app.js?v=4.0.2"></script>
 </body>
 </html>
