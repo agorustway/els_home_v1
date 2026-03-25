@@ -33,7 +33,7 @@ input, textarea, select, button { font-family: inherit; }
 .app-header {
   display: flex; align-items: center; gap: 8px;
   height: var(--header-h); padding: 0 12px;
-  background: var(--text); color: #fff;
+  background: #111; color: #fff;
   border-bottom: 2px solid #000;
   flex-shrink: 0;
 }
@@ -58,8 +58,10 @@ input, textarea, select, button { font-family: inherit; }
 /* ─── 탭 바 ─── */
 .tab-bar {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  height: var(--tab-h); border-top: 2px solid #000;
-  background: var(--surface); flex-shrink: 0;
+  height: var(--tab-h); border-top: 1px solid var(--border);
+  background: #fff; flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(var(--tab-h) + env(safe-area-inset-bottom));
 }
 .tab-btn {
   display: flex; align-items: center; justify-content: center;
@@ -257,4 +259,5 @@ input, textarea, select, button { font-family: inherit; }
 .hidden      { display: none !important; }
 
 /* 세이프에리어 (노치/갤럭시) */
-body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+body { padding-top: env(safe-area-inset-top); background: #111; }
+#app { padding-bottom: 0; }

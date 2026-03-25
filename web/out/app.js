@@ -285,6 +285,9 @@
     if (!confirm('앱을 초기화하면 저장된 정보가 모두 삭제됩니다. 계속하시겠습니까?')) return;
     localStorage.clear();
     State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
+    State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
+    Store.rm('permStatuses');
+    Store.rm('permSetupDone');
     showScreen('permission');
     updatePermStatuses();
   }
@@ -607,9 +610,11 @@
         if (res1 && res1.ok) { 
           const json1 = await res1.json().catch(()=>({})); 
           const d1 = typeof json1 === 'string' ? JSON.parse(json1) : json1;
-          norm = Array.isArray(d1?.posts) ? d1.posts : (Array.isArray(d1?.notices) ? d1.notices : (Array.isArray(d1) ? d1 : [])); 
+          // board API는 posts 배열에 담겨옴
+          norm = d1.posts || d1.notices || (Array.isArray(d1) ? d1 : []);
+          console.log('Norm notices loaded:', norm.length);
         }
-      } catch(e) { console.error(e); }
+      } catch(e) { console.error('Norm load error:', e); }
 
       try {
         if (res2 && res2.ok) { 
@@ -937,7 +942,7 @@
     // 운행
     onTripFieldChange, startTrip, togglePause, endTrip, saveMemo,
     // 네비
-    switchTab, headerBack, showScreen, openSettings,
+    switchTab, headerBack, showScreen, openSettings, handleBackButton: () => window.handleBackButton(),
     // 공지
     openNotice, closeNoticeDetail,
     // 사진
