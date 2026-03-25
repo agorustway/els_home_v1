@@ -1159,7 +1159,7 @@ export default function DriverAppPage() {
             <div className={styles.formSection}>
                 <div className={styles.formTitle}>ℹ️ 앱 정보</div>
                 <div style={{ color: '#64748b', fontSize: '0.85rem' }}>
-                    <p>버전: v2.0.0 (Native Optimized)</p>
+                    <p>버전: v3.9.9.2 (Native Optimized)</p>
                     <p>플랫폼: {Capacitor.getPlatform()} Native</p>
                     {!Capacitor.isNativePlatform() && (
                         <button onClick={handleInstallClick} className={styles.outlineBtn} style={{ width: '100%', marginTop: 10 }}>앱 설치 가이드 보기</button>
