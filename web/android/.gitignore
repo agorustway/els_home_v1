@@ -92,7 +92,7 @@ lint/tmp/
 capacitor-cordova-android-plugins
 
 # Copied web assets
-app/src/main/assets/public
+# app/src/main/assets/public - Git 롤백 가능하도록 추적 대상 포함 (2026-03-25)
 
 # Generated Config files
 app/src/main/assets/capacitor.config.json

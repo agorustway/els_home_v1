@@ -1,1162 +1,817 @@
-﻿/* ELS 운송관리 v3.8.0 - GPS 관제 + PIP 집중형 */
-(() => {
-  const getDynamicCapacitor = () => window.Capacitor || {};
-  const getDynamicPlugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
+/**
+ * ELS Driver App v4.0
+ * 단일 IIFE 번들 — Capacitor 플러그인 브릿지 사용
+ */
+(function () {
+  'use strict';
 
-  const getOverlay = () => {
-    const Cap = getDynamicCapacitor();
-    const Plugins = getDynamicPlugins();
-    if (Cap.registerPlugin) return Cap.registerPlugin('Overlay');
-    if (Plugins.Overlay) return Plugins.Overlay;
-    if (Cap.toNative) {
-      return {
-        checkPermission: () => new Promise(r => { const c='c'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','checkPermission',{},c); }),
-        requestPermission: () => new Promise(r => { const c='r'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','requestPermission',{},c); }),
-        showOverlay: (o) => { Cap.toNative('Overlay','showOverlay',o||{},'s'+Date.now()); },
-        hideOverlay: () => { Cap.toNative('Overlay','hideOverlay',{},'h'+Date.now()); },
-        updateOverlay: (o) => { Cap.toNative('Overlay','updateOverlay',o||{},'u'+Date.now()); },
-        checkBatteryOptimization: () => new Promise(r => { const c='cb'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','checkBatteryOptimization',{},c); }),
-        requestBatteryOptimization: () => new Promise(r => { const c='rb'+Date.now(); Cap.Callbacks=Cap.Callbacks||{}; Cap.Callbacks[c]=d=>r(d); Cap.toNative('Overlay','requestBatteryOptimization',{},c); })
-      };
+  const APP_VERSION = 'v4.0.0';
+  const BASE_URL = 'https://nollae.com';
+  const VERSION_URL = BASE_URL + '/apk/version.json';
+
+  // ─── Capacitor 플러그인 헬퍼 ──────────────────────────────────
+  function getPlugin(name) {
+    try { return window.Capacitor?.Plugins?.[name] || null; } catch { return null; }
+  }
+  const Overlay = () => getPlugin('Overlay');
+  const Emergency = () => getPlugin('Emergency');
+  const CapHttp = () => getPlugin('CapacitorHttp');
+
+  async function smartFetch(url, options = {}) {
+    const http = CapHttp();
+    if (http && window.Capacitor?.isNativePlatform()) {
+      try {
+        const res = await http.request({
+          url, method: options.method || 'GET',
+          headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+          data: options.body || undefined,
+        });
+        return { ok: res.status < 400, status: res.status, json: async () => res.data };
+      } catch (e) {
+        console.error('smartFetch CapHttp error', e);
+      }
     }
-    return null;
+    return fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+  }
+
+  // ─── localStorage 헬퍼 ────────────────────────────────────────
+  const Store = {
+    get: (k, def = null) => { try { const v = localStorage.getItem('els_' + k); return v ? JSON.parse(v) : def; } catch { return def; } },
+    set: (k, v) => { try { localStorage.setItem('els_' + k, JSON.stringify(v)); } catch {} },
+    rm:  (k) => { try { localStorage.removeItem('els_' + k); } catch {} },
   };
 
-  // ── 안드로이드 하드웨어 뒤로가기 버튼 처리 ──
-  async function initBackButton(){
-    const Cap = getDynamicCapacitor();
-    const Plugins = getDynamicPlugins();
-    
-    // Capacitor App 플러그인 확인 및 리스너 등록
-    const App = Plugins.App;
-    if(App && App.addListener){
-      App.addListener('backButton', ({canGoBack}) => {
-        const modalPhoto = document.getElementById('modal-photo');
-        const modalHistory = document.getElementById('modal-history');
-        const modalAlert = document.getElementById('modal-alert');
+  // ─── 상태 ─────────────────────────────────────────────────────
+  const State = {
+    profile: { name: '', phone: '', vehicleNo: '', driverId: '' },
+    trip: { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' },
+    photos: [], // { dataUrl, uploaded, serverUrl }
+    notices: [],
+    logs: [],
+    currentNoticeId: null,
+    currentLogId: null,
+    currentPhotoIdx: 0,
+    emergencyIds: new Set(),
+  };
 
-        if(modalPhoto && modalPhoto.style.display === 'flex'){
-          modalPhoto.style.display = 'none';
-          haptic();
-        } else if(modalHistory && modalHistory.style.display === 'flex'){
-          closeHistoryModal();
-          haptic();
-        } else if(modalAlert && modalAlert.style.display === 'flex'){
-          closeModal();
-          haptic();
-        } else {
-          // 홈 탭이 아니면 홈으로, 홈이면 앱 종료 확인
-          const activeTabBtn = document.querySelector('.nav-btn.active');
-          const isHome = activeTabBtn && (activeTabBtn.textContent.includes('운행') || activeTabBtn.getAttribute('onclick')?.includes('home'));
-          
-          if(isHome){
-            if(confirm('앱을 종료하시겠습니까?')) exitApp();
-          } else {
-            switchTab('home');
-            haptic();
-          }
-        }
-      });
-      console.log('뒤로가기 버튼 리스너 등록 완료');
-    } else {
-      console.warn('App 플러그인을 찾을 수 없어 뒤로가기 버튼이 작동하지 않을 수 있습니다.');
-    }
-  }
-
-  async function waitForBridge(attempts=0){
-    if(window.Capacitor && window.Capacitor.Plugins) return true;
-    if(attempts > 5) return false;
-    await new Promise(r=>setTimeout(r,300));
-    return waitForBridge(attempts+1);
-  }
-
-
-  // ── 상태 ──
-  let tripId=null, lastTripId=null, tripStatus=null;
-  let timerInterval=null, elapsedSeconds=0, gpsWatchId=null;
-  let photos=[], isOnline=true, isSubmitting=false;
-  let historyData=[], selectedTripId=null, isPipMode=false;
-  let historyPhotos=[];
-  let hasOverlayPerm=false; // 오버레이 권한 여부
-  let overlayTimerInterval=null; // 오버레이 타이머 업데이트
-
-  // ── GPS 수집 ──
-  let gpsTrackingId=null; // watchPosition ID for tracking
-  let lastSendTime=0; // 마지막 서버 전송 시각
-  let lastSpeed=0; // 마지막 측정 속도 (m/s)
-  let stoppedSince=0; // 정차 시작 시각
-  const GPS_FAST_INTERVAL = 30000; // ≥10km/h → 30초
-  const GPS_SLOW_INTERVAL = 60000; // <10km/h → 60초
-  const GPS_STOP_INTERVAL = 120000; // 정차 3분+ → 2분
-  const GPS_STOPPED_THRESHOLD = 180000; // 3분
-
-  // ── 네트워크 ──
-  async function safeJson(r){try{return typeof r.json==='function'?await r.json():r.data||r;}catch(e){return r;}}
-  async function smartPost(u,p){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
-  async function smartPatch(u,p){const r=await fetch(u,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});return{ok:r.status>=200&&r.status<300,status:r.status,data:await safeJson(r)};}
-  const API_BASE = 'https://www.nollae.com/api/vehicle-tracking';
-  const APP_VERSION = '3.9.9.2';
-
-  async function checkBatteryOptimizationStatus(){
-    const O = getOverlay();
-    if(O && typeof O.checkBatteryOptimization === 'function'){
-      try {
-        const r = await O.checkBatteryOptimization();
-        const banner = document.getElementById('battery-warning');
-        const btn = document.getElementById('btn-battery-settings');
-        if(banner) banner.style.display = r.isIgnoring ? 'none' : 'block';
-        if(btn && r.isIgnoring){
-          btn.textContent = '✅ 배터리 설정 완료';
-          btn.style.borderColor = '#3fb950';
-          btn.style.color = '#3fb950';
-        }
-        
-        // 온보딩 초기 화면용
-        const dot = document.getElementById('battery-dot-init');
-        if(dot){
-          dot.style.background = r.isIgnoring ? '#3fb950' : '#f85149';
-          dot.classList.remove('dot-red', 'dot-green');
-          dot.classList.add(r.isIgnoring ? 'dot-green' : 'dot-red');
-          const desc = document.getElementById('battery-desc-init');
-          if(desc) desc.textContent = r.isIgnoring ? '설정이 적용되었습니다' : '안정적인 주행 기록을 위해 필요';
-          const it = document.getElementById('btn-fix-battery-init');
-          if(it){
-            const a = it.querySelector('.perm-arrow');
-            if(a){ a.textContent = r.isIgnoring ? '✓' : '›'; a.style.color = r.isIgnoring ? '#3fb950' : '#7d8590'; }
-          }
-        }
-      } catch (e) {
-        console.error('배터리 최적화 상태 확인 실패:', e);
-      }
-    }
-  }
-
-  async function requestBatteryOptimization(){
-    haptic();
-    const O = getOverlay();
-    if(O){
-      // [삼성 100% 대응] 팝업 대신 앱 상세 설정으로 바로 유도
-      showModal('배터리 설정 안내', '실시간 위치 수집을 위해 [배터리 최적화]를 해제해야 합니다.<br><br><b>1. [배터리] 메뉴 터치</b><br><b>2. [제항 없음]으로 선택</b><br><br>확인 버튼을 누르면 설정 화면으로 이동합니다.');
-      
-      const btnConfirm = document.querySelector('#modal-alert .btn-secondary');
-      if(btnConfirm){
-        const oldFn = btnConfirm.onclick;
-        btnConfirm.onclick = function(){
-          if(typeof oldFn === 'function') oldFn.call(this);
-          setTimeout(() => {
-            if(O.openAppSettings) O.openAppSettings();
-            else if(O.openRestrictedSettings) O.openRestrictedSettings();
-          }, 300);
-        };
-      }
-      setTimeout(checkBatteryOptimizationStatus, 8000);
-    } else {
-      showModal('알림', '시스템 설정에서 직접 배터리 최적화를 해제해 주세요.');
-    }
-  }
-
-  // ── 초기화 ──
-  async function initApp(){
-    await waitForBridge();
-    
-    // 🚀 버전 체크 후 강제 초기화 (업데이트 시 권한 화면부터 다시 시작하게)
-    const lastVer = localStorage.getItem('els_app_version');
-    if(lastVer && lastVer !== APP_VERSION) {
-       console.log('Update detected:', lastVer, '->', APP_VERSION);
-       localStorage.removeItem('els_setup_done'); 
-    }
-    localStorage.setItem('els_app_version', APP_VERSION);
-
-    checkUpdates(); 
-    refreshPermStatus(); 
-    
-    window.onPipModeChanged=function(isInPip){
-      isPipMode=isInPip;
-      const overlay=document.getElementById('pip-overlay');
-      if(overlay)overlay.style.display=isInPip?'flex':'none';
-      if(isInPip) updatePipDisplay(); // [수정] PIP 진입 시 즉시 데이터 동기화
-      else updateTripUI();
-    };
-
-    // 컨테이너 입력창 실시간 포맷팅 및 검증 연결
-    const inpContainer = document.getElementById('inp-container');
-    if(inpContainer){
-      inpContainer.oninput = function(){
-        this.value = this.value.toUpperCase().replace(/\s/g, ''); // 대문자 + 공백제거
-        const isValid = validateContainerNumber(this.value);
-        this.style.borderColor = (this.value.length >= 11 && !isValid) ? '#f85149' : '';
-        // 간단한 팁 메시지 표시용
-        let tip = document.getElementById('cont-tip');
-        if(!tip){
-          tip = document.createElement('div'); tip.id='cont-tip'; tip.style.fontSize='0.7rem'; tip.style.marginTop='2px';
-          this.parentNode.appendChild(tip);
-        }
-        if(this.value.length >= 11){
-          tip.textContent = isValid ? '✅ 유효한 컨테이너 번호' : '❌ 유효하지 않은 번호 (규칙 미달)';
-          tip.style.color = isValid ? '#3fb950' : '#f85149';
-        } else {
-          tip.textContent = '';
-        }
-      };
-    }
-    window.addEventListener('online',()=>{isOnline=true;updateOfflineBar();});
-    window.addEventListener('offline',()=>{isOnline=false;updateOfflineBar();});
-
-    const B=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',fn);};
-    B('perm-location',requestLocationPerm);B('perm-camera',requestCameraPerm);
-    B('perm-photo',requestPhotoPerm);B('perm-notify',requestNotifyPerm);B('perm-phone',requestPhonePerm);
-    B('btn-finish-perms',finishPermissions);B('btn-check-phone',checkPhone);B('btn-save-profile',saveProfile);
-    B('btn-start',startTrip);B('btn-pause',pauseTrip);B('btn-resume',resumeTrip);B('btn-stop',stopTrip);
-    B('btn-update-profile',updateProfile);
-    B('set-perm-location',requestLocationPerm);B('set-perm-camera',requestCameraPerm);
-    B('set-perm-photo',requestPhotoPerm);B('set-perm-notify',requestNotifyPerm);B('set-perm-phone',requestPhonePerm);
-    B('btn-reset-app',resetApp);B('btn-modal-close',closeModal);B('btn-exit-app',exitApp);
-    B('btn-check-update',()=>checkUpdates(true));
-    B('btn-fix-battery', requestBatteryOptimization);
-    B('btn-battery-settings', requestBatteryOptimization);
-    B('btn-fix-battery-init', requestBatteryOptimization);
-
-    const Plugins = getDynamicPlugins();
-    // 홈 버튼(앱 최소화) 감지 — Capacitor App 플러그인
-    if(Plugins.App){
-      Plugins.App.addListener('appStateChange',function(state){
-        if(!state.isActive && (tripStatus==='driving'||tripStatus==='paused')){
-          // PIP는 MainActivity.onUserLeaveHint에서 자동 진입
-        } else if(state.isActive){
-          refreshPermStatus(); // 복귀 시 권한 상태 다시 확인
-        }
+  // ─── 앱 초기화 ────────────────────────────────────────────────
+  async function init() {
+    // Capacitor 브릿지 대기
+    if (window.Capacitor) {
+      await new Promise(r => {
+        if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
+        window.addEventListener('load', r, { once: true });
+        setTimeout(r, 800);
       });
     }
 
-    const mO=document.getElementById('modal-alert');if(mO)mO.addEventListener('click',closeModal);
-    const mB=document.querySelector('#modal-alert .modal-box');if(mB)mB.addEventListener('click',e=>e.stopPropagation());
+    document.getElementById('app-version-display').textContent = APP_VERSION;
 
-    if(localStorage.getItem('els_setup_done') === 'true'){
-      showScreen('screen-main');
+    // 프로필 로드
+    const profile = Store.get('profile');
+    if (profile) {
+      Object.assign(State.profile, profile);
+      applyProfileToUI();
+    }
+
+    // 최초 실행 여부 체크
+    const firstRun = !Store.get('permSetupDone');
+    if (firstRun) {
+      showScreen('permission');
+      updatePermStatuses();
+    } else {
+      showScreen('main');
+      switchTab('trip');
+      loadCurrentTrip();
+      loadNotices();
+      startEmergencyPoll();
+    }
+
+    // goto_tab 딥링크 (서비스에서 복귀)
+    const gotoTab = new URLSearchParams(window.location.search).get('goto_tab');
+    if (gotoTab) switchTab(gotoTab);
+  }
+
+  // ─── 화면 전환 ────────────────────────────────────────────────
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name)?.classList.add('active');
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.remove('active'));
+    const tabEl = document.getElementById('tab-' + tab);
+    const btnEl = document.getElementById('tab-btn-' + tab);
+    if (tabEl) tabEl.classList.add('active');
+    if (btnEl) btnEl.classList.add('active');
+    document.getElementById('header-back').classList.add('hidden');
+
+    if (tab === 'notice') loadNotices();
+    if (tab === 'log')    loadLogs();
+  }
+
+  function headerBack() {
+    closeNoticeDetail();
+    closeLogDetail();
+  }
+
+  // ─── 프로필 UI ───────────────────────────────────────────────
+  function applyProfileToUI() {
+    document.getElementById('s-name').value    = State.profile.name;
+    document.getElementById('s-phone').value   = State.profile.phone;
+    document.getElementById('s-vehicle').value = State.profile.vehicleNo;
+    document.getElementById('s-id').value      = State.profile.driverId;
+    document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
+  }
+
+  function saveProfile() {
+    const name = document.getElementById('s-name').value.trim();
+    const phone = document.getElementById('s-phone').value.replace(/\D/g, '');
+    const vehicleNo = document.getElementById('s-vehicle').value.trim();
+    const driverId  = document.getElementById('s-id').value.trim();
+    if (!name || !phone || !vehicleNo) { showToast('이름, 전화번호, 차량번호는 필수입니다.'); return; }
+    State.profile = { name, phone, vehicleNo, driverId };
+    Store.set('profile', State.profile);
+    applyProfileToUI();
+    upsertDriverContact();
+    showToast('정보가 저장되었습니다.');
+  }
+
+  async function upsertDriverContact() {
+    try {
+      await smartFetch(BASE_URL + '/api/vehicle-tracking/drivers', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone: State.profile.phone,
+          name: State.profile.name,
+          vehicle_number: State.profile.vehicleNo,
+          vehicle_id: State.profile.driverId,
+        }),
+      });
+    } catch (e) { console.warn('upsertDriverContact', e); }
+  }
+
+  async function lookupDriver() {
+    const phone = document.getElementById('s-phone').value.replace(/\D/g, '');
+    if (phone.length < 10) { showToast('전화번호를 먼저 입력해 주세요.'); return; }
+    showToast('조회 중...');
+    try {
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/drivers?phone=${phone}`);
+      const data = await res.json();
+      if (data && data.driver) {
+        const d = data.driver;
+        document.getElementById('s-name').value    = d.name || '';
+        document.getElementById('s-vehicle').value = d.vehicle_number || d.business_number || '';
+        document.getElementById('s-id').value      = d.vehicle_id || d.driver_id || '';
+        showToast('기사 정보를 불러왔습니다.');
+      } else {
+        showToast('해당 전화번호로 등록된 기사 정보가 없습니다.');
+      }
+    } catch (e) { showToast('조회 실패: ' + e.message); }
+  }
+
+  // ─── 권한 설정 ────────────────────────────────────────────────
+  async function updatePermStatuses() {
+    const overlay = Overlay();
+    if (overlay) {
+      const r = await overlay.checkPermission().catch(() => ({ granted: false }));
+      setPermStatus('overlay', r.granted);
+    }
+  }
+
+  function setPermStatus(type, ok) {
+    const el = document.getElementById('perm-' + type + '-status');
+    if (!el) return;
+    el.textContent = ok ? '허용' : '미설정';
+    el.className = 'perm-status ' + (ok ? 'perm-ok' : 'perm-ng');
+  }
+
+  async function requestPerm(type) {
+    const overlay = Overlay();
+    switch (type) {
+      case 'location':
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            () => setPermStatus('loc', true),
+            () => showToast('위치 권한을 설정에서 허용해 주세요.')
+          );
+        }
+        break;
+      case 'overlay':
+        if (overlay) {
+          const r = await overlay.requestPermission().catch(e => ({ opened: false, error: e.message }));
+          if (!r.opened) showToast('오버레이 설정 화면 진입 실패');
+        }
+        break;
+      case 'battery':
+        if (overlay) { await overlay.requestBatteryOptimization().catch(() => {}); }
+        break;
+      case 'camera':
+        try {
+          await navigator.mediaDevices.getUserMedia({ video: true });
+          setPermStatus('camera', true);
+        } catch {}
+        break;
+      case 'notification':
+        if ('Notification' in window) {
+          const r = await Notification.requestPermission();
+          setPermStatus('notif', r === 'granted');
+        }
+        break;
+    }
+    setTimeout(updatePermStatuses, 1500);
+  }
+
+  function finishPermSetup() {
+    Store.set('permSetupDone', true);
+    showScreen('main');
+    switchTab('trip');
+    loadNotices();
+    startEmergencyPoll();
+  }
+
+  function resetApp() {
+    if (!confirm('앱을 초기화하면 저장된 정보가 모두 삭제됩니다. 계속하시겠습니까?')) return;
+    localStorage.clear();
+    State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
+    showScreen('permission');
+    updatePermStatuses();
+  }
+
+  // ─── 운행 관리 ────────────────────────────────────────────────
+  function onTripFieldChange() {
+    State.trip.containerNo = document.getElementById('container-no').value;
+    State.trip.sealNo      = document.getElementById('seal-no').value;
+  }
+
+  async function loadCurrentTrip() {
+    const saved = Store.get('activeTrip');
+    if (!saved) return;
+    const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${saved.id}`).catch(() => null);
+    if (!res) return;
+    const data = await res.json().catch(() => null);
+    if (data && (data.status === 'driving' || data.status === 'paused')) {
+      State.trip.id = saved.id;
+      State.trip.status = data.status;
+      State.trip.startTime = new Date(data.started_at).getTime();
+      State.trip.containerNo = data.container_number || '';
+      State.trip.sealNo = data.seal_number || '';
+      document.getElementById('container-no').value = State.trip.containerNo;
+      document.getElementById('seal-no').value      = State.trip.sealNo;
+      document.getElementById('container-type').value = data.container_type || '40FT';
+      document.getElementById('container-kind').value = data.container_kind || 'DRY';
+      document.getElementById('trip-memo').value = data.special_notes || '';
+      setTripStatus(data.status);
+      updateTripUI();
+    } else {
+      Store.rm('activeTrip');
+    }
+  }
+
+  async function startTrip() {
+    if (!State.profile.name || !State.profile.vehicleNo) {
+      showToast('차량 정보(이름/차량번호)를 먼저 설정 탭에서 입력해 주세요.');
+      return;
+    }
+    const containerNo = document.getElementById('container-no').value.trim();
+    const sealNo      = document.getElementById('seal-no').value.trim();
+    const cType       = document.getElementById('container-type').value;
+    const cKind       = document.getElementById('container-kind').value;
+    const memo        = document.getElementById('trip-memo').value;
+
+    try {
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
+        method: 'POST',
+        body: JSON.stringify({
+          driver_name:      State.profile.name,
+          driver_phone:     State.profile.phone,
+          vehicle_number:   State.profile.vehicleNo,
+          vehicle_id:       State.profile.driverId,
+          container_number: containerNo,
+          seal_number:      sealNo,
+          container_type:   cType,
+          container_kind:   cKind,
+          special_notes:    memo,
+        }),
+      });
+      const data = await res.json();
+      if (!data.id) throw new Error(data.error || '운행 시작 실패');
+
+      State.trip.id = data.id;
+      State.trip.status = 'driving';
+      State.trip.startTime = Date.now();
+      Store.set('activeTrip', { id: data.id, startTime: State.trip.startTime });
+
+      document.getElementById('trip-date-display').textContent = formatDate(new Date());
+      setTripStatus('driving');
+      updateTripUI();
+      startOverlayService();
       startGPS();
-      startSensors(); // 센서 활성화 (백그라운드 유지용)
-      loadSavedProfile();
-      checkActiveTrip();
-    } else {
-      // 🚀 업데이트 후 자동 로그인 시도 (클립보드 또는 이전 세션 백업 확인)
-      tryAutoLoginByPhone();
-      showScreen('screen-permissions');
-    }
-    initBackButton();
+      showToast('운행이 시작되었습니다.');
+    } catch (e) { showToast('오류: ' + e.message); }
   }
 
-  // 🚀 [신규] 전화번호 기반 자동 로그인 시도
-  function tryAutoLoginByPhone(){ setTimeout(async () => { let ph = localStorage.getItem("els_phone"); if(!ph && navigator.clipboard && navigator.clipboard.readText){ try { ph = await navigator.clipboard.readText(); } catch(e){} } if(ph && ph.replace(/[^0-9]/g, "").length >= 10){ const inpPhone = document.getElementById("inp-phone"); if(inpPhone) { inpPhone.value = ph.replace(/[^0-9]/g, ""); haptic(); } } }, 1200); }
-  // ── 자이로/가속도 센서 (백그라운드 수명 연장용) ──
-  function startSensors(){
-    console.log('Sensors logic applied (v3.7.1)');
+  async function togglePause() {
+    if (!State.trip.id) return;
+    const action = State.trip.status === 'driving' ? 'pause' : 'resume';
     try {
-      window.addEventListener('devicemotion', (e) => {
-        // 가속도 센서 데이터가 발생하면 OS가 앱을 '활성' 상태로 인지할 확률이 높아짐
-      }, { passive: true });
-      window.addEventListener('deviceorientation', (e) => {
-        // 자이로스코프 데이터
-      }, { passive: true });
-    } catch(e) {
-      console.warn('Sensors not supported');
-    }
+      await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action }),
+      });
+      State.trip.status = action === 'pause' ? 'paused' : 'driving';
+      setTripStatus(State.trip.status);
+      updateTripUI();
+      updateOverlayStatus();
+    } catch (e) { showToast('상태 변경 실패'); }
   }
 
-  // ── 순차적 권한 설정 흐름 (Onboarding) ──
-  async function checkPermissionsFlow(){
-    const p = ['perm-location','perm-camera','perm-photo','perm-notify','perm-phone'];
-    for(const id of p){
-       console.log('Permission Check:', id);
-    }
-  }
-
-  function updatePipDisplay(){
-    const ps=document.getElementById('pip-status'),pt=document.getElementById('pip-timer'),pg=document.getElementById('pip-gps');
-    
-    if(ps){
-      if(tripStatus === 'driving'){
-        ps.textContent = '● 운행중';
-        ps.style.color = '#3fb950';
-      } else if(tripStatus === 'paused'){
-        ps.textContent = '■ 일시정지';
-        ps.style.color = '#d29922';
-      } else {
-        // 운송 기록이 있었는데 null이 되었다면 '운행종료', 아예 시작 전이면 '대기중'
-        ps.textContent = lastTripId ? '○ 운행종료' : '○ 대기중';
-        ps.style.color = '#7d8590';
-      }
-    }
-    
-    if(pt) pt.textContent=formatTime(elapsedSeconds);
-    
-    if(pg){
-      const gi=document.getElementById('gps-indicator');
-      if(gi && gi.textContent !== 'GPS' && gi.textContent !== 'GPS오류'){
-        pg.textContent = gi.textContent;
-        // GPS 상태 색상: 정상(on)이면 초록, 정지(paused)면 노랑
-        const isNormal = gi.className.includes('on') || tripStatus === 'driving';
-        pg.style.color = isNormal ? '#3fb950' : (gi.className.includes('paused') ? '#d29922' : '#f85149');
-      } else {
-        pg.textContent = lastTripId ? '전송완료' : '연결 대기중';
-        pg.style.color = '#7d8590';
-      }
-    }
-  }
-
-  function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.style.display='none');const el=document.getElementById(id);if(el)el.style.display='block';}
-  function showModal(t,m){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=m;document.getElementById('modal-alert').style.display='flex';}
-  function closeModal(){document.getElementById('modal-alert').style.display='none';}
-
-  // 💎 시각적 가이드 제어 (제한된 설정) - [삭제] 오버레이 미사용으로 주석 처리
-
-  function updateOfflineBar(){const b=document.getElementById('offline-bar');if(b)b.style.display=isOnline?'none':'block';}
-  function haptic(s){try{const Plugins=getDynamicPlugins();if(Plugins.Haptics)Plugins.Haptics.impact({style:s||'Medium'});}catch(e){}}
-
-  // [신규] 모든 권한 상태 확인 및 UI 업데이트
-  async function refreshPermStatus(){
-    // 위치 권한 확인 (브라우저 API)
-    if(navigator.permissions && navigator.permissions.query){
-      try {
-        const res = await navigator.permissions.query({ name: 'geolocation' });
-        if(res.state === 'granted') markPermGranted('perm-location');
-        res.onchange = () => { if(res.state === 'granted') markPermGranted('perm-location'); };
-      } catch(e){}
-    }
-    // 배터리 최적화 확인
-    checkBatteryOptimizationStatus();
-
-    // 🚀 모든 네이티브 권한 상태 실시간 동기화
-    if(O){
-       // 1. 위치 권한
-       try { const p = await O.checkPermission(); if(p && p.granted) markPermGranted('perm-location'); } catch(e){}
-       // 2. 카메라 권한 (브라우저 API 시도)
-       try { const res = await navigator.permissions.query({ name: 'camera' }); if(res.state === 'granted') markPermGranted('perm-camera'); } catch(e){}
-       // 3. 사진/미디어 권한 (네이티브는 보통 허용됨으로 간주하거나 앱설정 유도)
-       // 4. 알림 권한
-       if('Notification' in window && Notification.permission === 'granted') markPermGranted('perm-notify');
-       // 5. 전화 권한
-       // 배터리는 checkBatteryOptimizationStatus에서 처리됨
-    }
-  }
-
-  async function requestLocationPerm(){
-    haptic();
-    const O = getOverlay();
-    
-    // 위치 권한 요청 모달 (먼저 사용자에게 안내 후 네이티브 권한 또는 설정창 유도)
+  async function endTrip() {
+    if (!State.trip.id) return;
+    if (!confirm('운행을 종료하시겠습니까?')) return;
     try {
-      await new Promise((r, j) => {
-        navigator.geolocation.getCurrentPosition(
-          () => r(true),
-          (e) => {
-            if(e.code === 1) j(e); // 1 = PERMISSION_DENIED
-            else r(true); // timeout(3) or unavailable(2)
-          },
-          { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-        );
+      await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'finish' }),
       });
-      markPermGranted('perm-location');
-      const gi = document.getElementById('gps-indicator');
-      if(gi) { gi.className = 'gps-on'; gi.textContent = 'GPS정상'; }
-      haptic('Success');
-    } catch(e) {
-      console.warn('위치 권한 거부됨:', e);
-      // 이미 거부 상태인 경우 설정창으로 강제 안내
-      if(O && O.openAppSettings) {
-        showModal('권한 거부됨', '정상적인 GPS 추적을 위해 앱 설정에서 위치 권한을 <b>항상 허용</b>으로 변경해 주세요.<br><br>곧 설정 화면으로 이동합니다...');
-        setTimeout(() => { O.openAppSettings(); }, 2500);
-      } else {
-        alert('위치 권한을 [항상 허용]으로 설정해 주세요.');
-      }
-    }
-  }
-  async function requestCameraPerm(){
-    haptic();
-    try{
-      const s=await navigator.mediaDevices.getUserMedia({video:true});
-      s.getTracks().forEach(t=>t.stop());
-      markPermGranted('perm-camera');
-    }catch(e){
-      const O = getOverlay();
-      if(O) O.openAppSettings();
-      else alert('카메라 권한 허용이 필요합니다.');
-    }
-  }
-  async function requestPhotoPerm(){haptic();markPermGranted('perm-photo');showModal('알림','사진 권한은 앱 설정에서 허용 상태를 확인해 주세요.'); const O=getOverlay(); if(O)O.openAppSettings();}
-  async function requestNotifyPerm(){
-    haptic();
-    try{
-      if('Notification'in window){
-        const r=await Notification.requestPermission();
-        if(r==='granted') markPermGranted('perm-notify');
-        else { const O=getOverlay(); if(O)O.openAppSettings(); }
-      }else markPermGranted('perm-notify');
-    }catch(e){markPermGranted('perm-notify');}
-  }
-  async function requestPhonePerm(){haptic();markPermGranted('perm-phone'); const O=getOverlay(); if(O)O.openAppSettings();}
-
-  // 오버레이 권한 (미사용)
-  async function checkOverlayPerm(){}
-  async function requestOverlayPerm(){}
-
-  // 백그라운드 서비스 제어 (GPS 안정성 확보용)
-  function showFloatingWidget(){
-    const O = getOverlay();
-    if(!O)return;
-    try{
-      O.showOverlay({
-        timer:formatTime(elapsedSeconds),
-        container:document.getElementById('inp-container')?.value||'-',
-        status:tripStatus||'driving',
-        tripId:tripId||''
-      });
-    }catch(e){console.error('백그라운드 서비스 시작 오류:',e);}
-  }
-  function hideFloatingWidget(){
-    const O = getOverlay();
-    if(!O)return;
-    try{O.hideOverlay();}catch(e){}
+      stopOverlayService();
+      stopGPS();
+      Store.rm('activeTrip');
+      State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
+      setTripStatus('idle');
+      updateTripUI();
+      showToast('운행이 종료되었습니다.');
+    } catch (e) { showToast('종료 실패: ' + e.message); }
   }
 
-  function markPermGranted(id){
-    // 온보딩 권한 아이템 업데이트 (인라인 스타일 직접 변경)
-    const it=document.getElementById(id);
-    if(it){
-      const d=it.querySelector('.perm-dot');
-      if(d){ d.style.background='#3fb950'; d.classList.remove('dot-red'); d.classList.add('dot-green'); }
-      const a=it.querySelector('.perm-arrow');
-      if(a){ a.textContent='✓'; a.style.color='#3fb950'; }
-    }
-    // 설정 탭 권한 버튼도 동기화
-    const setId = 'set-' + id;
-    const sit=document.getElementById(setId);
-    if(sit){ sit.style.borderColor='#3fb950'; sit.style.color='#3fb950'; sit.textContent = sit.textContent.replace(/^./, '✅'); }
+  function setTripStatus(status) {
+    State.trip.status = status;
+    const badge = document.getElementById('header-status');
+    const labels = { idle: '대기중', driving: '운송중', paused: '일시정지', completed: '운송종료' };
+    const classes = { idle: 'status-idle', driving: 'status-driving', paused: 'status-paused', completed: 'status-done' };
+    badge.textContent = labels[status] || '대기중';
+    badge.className = 'status-badge ' + (classes[status] || 'status-idle');
   }
 
-  function finishPermissions(){
-    haptic('Heavy');
-    if(localStorage.getItem('els_setup_done') === 'true'){
-      showScreen('screen-main');
-    } else {
-      showScreen('screen-profile');
+  function updateTripUI() {
+    const isActive = State.trip.status === 'driving' || State.trip.status === 'paused';
+    document.getElementById('trip-start-row').classList.toggle('hidden', isActive);
+    document.getElementById('trip-control-row').classList.toggle('hidden', !isActive);
+    const pauseBtn = document.getElementById('btn-trip-pause');
+    if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '재개' : '일시정지';
+
+    // 운행 날짜
+    if (State.trip.startTime) {
+      document.getElementById('trip-date-display').textContent = formatDate(new Date(State.trip.startTime));
     }
   }
 
-  // ═══ 프로필 ═══
-  async function checkPhone(){
-    if(!isOnline){showModal('알림','인터넷 필요');return;}
-    const ph=document.getElementById('inp-phone').value.trim();if(ph.length<10){showModal('오류','올바른 전화번호');return;}
-    try{const r=await fetch(`https://www.nollae.com/api/driver-contacts/search?phone=${encodeURIComponent(ph)}`);const d=await safeJson(r);
-    if(r.ok&&d&&d.item){
-      const it = d.item;
-      if(it.name) document.getElementById('inp-name').value=it.name;
-      // 매칭 우선순위: business_number -> vehicle_number
-      const vNum = it.business_number || it.vehicle_number || '';
-      if(vNum) document.getElementById('inp-vehicle').value=vNum;
-      // 매칭 우선순위: driver_id -> vehicle_id -> id
-      const vId = it.driver_id || it.vehicle_id || it.id || '';
-      if(vId) document.getElementById('inp-id').value=vId;
-      haptic('Heavy'); showModal('조회 성공',`${it.name} 기사님 정보 로드`);
-    } else showModal('결과','등록 정보 없음');}catch(e){showModal('통신 오류',e.message+'\n'+JSON.stringify(e));}
-  }
-  async function saveProfile(){
-    const n=document.getElementById('inp-name').value.trim(),p=document.getElementById('inp-phone').value.trim(),v=document.getElementById('inp-vehicle').value.trim(),i=document.getElementById('inp-id').value.trim().toUpperCase();
-    if(!n||!p||!v||!i){showModal('입력 필요','모든 항목 입력');return;}
-    if(isOnline){try{await smartPost(`${API_BASE}/drivers`,{name:n,phone:p,vehicle_number:v,vehicle_id:i});}catch(e){}}
-    localStorage.setItem('els_name',n);localStorage.setItem('els_phone',p);localStorage.setItem('els_vehicle',v);localStorage.setItem('els_id',i);localStorage.setItem('els_setup_done','true');
-    haptic('Heavy');loadSavedProfile();showScreen('screen-main');startGPS();
-  }
-  function loadSavedProfile(){
-    const n = localStorage.getItem('els_name') || '';
-    const p = localStorage.getItem('els_phone') || '';
-    const v = localStorage.getItem('els_vehicle') || '';
-    const i = localStorage.getItem('els_id') || '';
-    
-    const dn = document.getElementById('disp-name'); if(dn) dn.textContent = n;
-    const dv = document.getElementById('disp-vehicle'); if(dv) dv.textContent = v;
-    const di = document.getElementById('disp-id'); if(di) di.textContent = i;
-    
-    // 🚀 헤더 차량번호 최우선 동기화
-    const hVeh = document.getElementById('header-vh-no');
-    if(hVeh) hVeh.textContent = v || '로그인 필요';
+  // JS에서 운행 상태 확인 (네이티브 뒤로가기 처리용)
+  window.isTripActive = () => State.trip.status === 'driving' || State.trip.status === 'paused';
 
-    const sn = document.getElementById('set-name');
-    if(sn){
-      sn.value = n;
-      document.getElementById('set-phone').value = p;
-      document.getElementById('set-vehicle').value = v;
-      document.getElementById('set-id').value = i;
+  function saveMemo() {
+    if (!State.trip.id) return;
+    const memo = document.getElementById('trip-memo').value;
+    smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ special_notes: memo }),
+    }).catch(() => {});
+  }
+
+  // ─── 오버레이 서비스 ──────────────────────────────────────────
+  function startOverlayService() {
+    const overlay = Overlay();
+    if (!overlay) return;
+    overlay.startService({
+      tripId: State.trip.id,
+      container: State.trip.containerNo || '미입력',
+      status: 'driving',
+      startTimeMillis: State.trip.startTime,
+    }).catch(() => {});
+  }
+
+  function updateOverlayStatus() {
+    const overlay = Overlay();
+    if (!overlay) return;
+    overlay.updateStatus({
+      status: State.trip.status,
+      container: State.trip.containerNo || '미입력',
+    }).catch(() => {});
+  }
+
+  function stopOverlayService() {
+    const overlay = Overlay();
+    if (!overlay) return;
+    overlay.stopService().catch(() => {});
+  }
+
+  // ─── GPS (포그라운드 웹뷰 레이어) ────────────────────────────
+  let gpsWatchId = null;
+  let lastGpsSend = 0;
+  let currentGpsInterval = 60_000;
+  const gyroData = { magnitude: 0 };
+
+  function startGPS() {
+    if (!navigator.geolocation) return;
+    if (gpsWatchId) return;
+
+    // 자이로스코프 리스닝
+    if (window.DeviceMotionEvent) {
+      window.addEventListener('deviceorientation', handleGyro, { passive: true });
     }
-  }
-  async function updateProfile(){
-    const n=document.getElementById('set-name').value.trim(),p=document.getElementById('set-phone').value.trim(),v=document.getElementById('set-vehicle').value.trim(),i=document.getElementById('set-id').value.trim().toUpperCase();
-    if(!n||!p||!v||!i){showModal('입력 필요','모든 항목 필요');return;}
-    if(isOnline){try{await smartPost(`${API_BASE}/drivers`,{name:n,phone:p,vehicle_number:v,vehicle_id:i});}catch(e){}}
-    localStorage.setItem('els_name',n);localStorage.setItem('els_phone',p);localStorage.setItem('els_vehicle',v);localStorage.setItem('els_id',i);
-    loadSavedProfile();haptic();showModal('완료','프로필 저장');
-  }
-  function resetApp(){if(confirm('설정 정보(기사 정보 등)를 모두 초기화하고\n앱을 다시 시작하시겠습니까?')){localStorage.clear();location.reload();}}
-  function exitApp(){
-    if(tripStatus==='driving'||tripStatus==='paused'){showModal('경고','운행 중 종료 불가. 먼저 운행을 종료해 주세요.');return;}
-    if(!confirm('앱을 종료합니까?'))return;
-    try{const Plugins=getDynamicPlugins();if(Plugins.App&&Plugins.App.exitApp)Plugins.App.exitApp();else window.close();}catch(e){window.close();}
-  }
 
-  // ═══ GPS ═══
-  function startGPS(){
-    if(!navigator.geolocation)return;
-    gpsWatchId=navigator.geolocation.watchPosition(
-      ()=>{
-        const gi=document.getElementById('gps-indicator');
-        if(gi){ 
-          gi.className='gps-on'; 
-          if(!tripStatus) gi.textContent='GPS정상'; 
-          else if(tripStatus === 'driving' && gi.textContent === 'GPS정상') gi.textContent = 'GPS수신중';
-        }
-      },
-      ()=>{const gi=document.getElementById('gps-indicator');if(gi){gi.className='gps-off';gi.textContent='GPS오류';}},
-      {enableHighAccuracy:true,maximumAge:5000}
+    gpsWatchId = navigator.geolocation.watchPosition(
+      pos => onGpsUpdate(pos),
+      err => console.warn('GPS error', err),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
     );
   }
 
-
-  // ═══ GPS 관제 수집 ═══
-  function startGPSTracking(){
-    stopGPSTracking();
-    lastSendTime=0;stoppedSince=0;
-    gpsTrackingId=navigator.geolocation.watchPosition(onGPSPosition,onGPSError,{enableHighAccuracy:true,maximumAge:3000,timeout:10000});
-    console.log('GPS 관제 수집 시작');
+  function stopGPS() {
+    if (gpsWatchId) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+    window.removeEventListener('deviceorientation', handleGyro);
   }
 
-  function stopGPSTracking(){
-    if(gpsTrackingId!==null){navigator.geolocation.clearWatch(gpsTrackingId);gpsTrackingId=null;}
-    console.log('GPS 관제 수집 종료');
+  function handleGyro(e) {
+    gyroData.magnitude = Math.abs(e.alpha || 0) + Math.abs(e.beta || 0) + Math.abs(e.gamma || 0);
   }
 
-  function onGPSPosition(pos){
-    if(tripStatus!=='driving')return; // 일시정지 중에는 수집 안함
+  async function onGpsUpdate(pos) {
+    if (State.trip.status !== 'driving') return;
+    const { latitude: lat, longitude: lng, speed } = pos.coords;
+    const speedKph = (speed || 0) * 3.6;
 
-    const speedMs=pos.coords.speed||0;
-    const speedKmh=speedMs*3.6;
-    lastSpeed=speedKmh;
-    const now=Date.now();
+    let interval;
+    if (speedKph >= 60) interval = 30_000;
+    else if (speedKph >= 20) interval = 60_000;
+    else if (speedKph >= 5)  interval = 120_000;
+    else                      interval = 300_000;
 
-    // 정차 감지
-    if(speedKmh<1){
-      if(!stoppedSince)stoppedSince=now;
-    }else{
-      stoppedSince=0;
+    // 급회전 감지 즉시 전송
+    const isSharpTurn = gyroData.magnitude > 30;
+    const now = Date.now();
+    if (now - lastGpsSend < (isSharpTurn ? 10_000 : interval)) return;
+
+    lastGpsSend = now;
+    currentGpsInterval = interval;
+
+    // 주소 역지오코딩 (현위치 헤더 표시)
+    reverseGeocode(lat, lng).then(addr => {
+      const el = document.getElementById('trip-addr-display');
+      if (addr && el) { el.textContent = addr; el.classList.remove('hidden'); }
+    });
+
+    // 서버 전송
+    try {
+      await smartFetch(BASE_URL + '/api/vehicle-tracking/location', {
+        method: 'POST',
+        body: JSON.stringify({ trip_id: State.trip.id, lat, lng, speed: speedKph, source: 'webview' }),
+      });
+    } catch (e) { console.warn('GPS 전송 실패', e); }
+  }
+
+  async function reverseGeocode(lat, lng) {
+    try {
+      const key = Store.get('naverMapKey');
+      const url = `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${lng},${lat}&output=json&orders=legalcode,admcode`;
+      // 네이버 지도 API 키가 있을 때만 (없으면 생략)
+      if (!key) return null;
+      const res = await fetch(url, { headers: { 'X-NCP-APIGW-API-KEY-ID': key } });
+      const d = await res.json();
+      const area = d?.results?.[0]?.region;
+      if (!area) return null;
+      return [area.area1?.name, area.area2?.name, area.area3?.name].filter(Boolean).join(' ');
+    } catch { return null; }
+  }
+
+  // ─── 공지 ─────────────────────────────────────────────────────
+  let _notices = [];
+
+  async function loadNotices() {
+    document.getElementById('notice-list').innerHTML = '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
+    try {
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`);
+      const data = await res.json();
+      _notices = data.notices || data || [];
+      renderNoticeList();
+    } catch (e) {
+      document.getElementById('notice-list').innerHTML = '<div class="loading">불러오기 실패</div>';
     }
-
-    // 수집 간격 결정
-    let interval=GPS_FAST_INTERVAL; // 기본 30초
-    if(speedKmh<10)interval=GPS_SLOW_INTERVAL; // <10km/h → 60초
-    if(stoppedSince&&(now-stoppedSince)>=GPS_STOPPED_THRESHOLD)interval=GPS_STOP_INTERVAL; // 정차 3분+ → 120초
-
-    // 간격 체크
-    if(now-lastSendTime<interval)return;
-    lastSendTime=now;
-
-    // 서버로 위치 전송
-    sendLocation(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,speedKmh);
-    
-    // GPS 상태 텍스트 업데이트
-    updateGPSStatusText(speedKmh, interval);
   }
 
-  function updateGPSStatusText(speed, interval){
-    const gi = document.getElementById('gps-indicator');
-    const bs = document.getElementById('banner-status');
-    if(!gi) return;
-    
-    let mode = interval >= 120000 ? '2분(정차)' : (interval >= 60000 ? '1분(서행)' : '30초(주행)');
-    
-    // 사용 요청: 운행 중일 때는 상단에서 주기 제거, 하단 등에 상세히 표시
-    gi.textContent = `GPS수신중(${mode})`;
-    gi.className = 'gps-on';
-    
-    if(bs && tripStatus === 'driving'){
-       bs.textContent = `● 운행중`; // 상단 배너에서는 '운행중'만 깔끔하게
+  function renderNoticeList() {
+    const read = Store.get('readNotices') || [];
+    const html = _notices.map(n => `
+      <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice(${n.id})">
+        <div class="notice-item-title">${escHtml(n.title)}</div>
+        <div class="notice-item-meta">${formatDate(new Date(n.created_at || n.date))}</div>
+      </div>
+    `).join('') || '<div class="loading">공지사항이 없습니다.</div>';
+    document.getElementById('notice-list').innerHTML = html;
+  }
+
+  function openNotice(id) {
+    const n = _notices.find(x => x.id === id);
+    if (!n) return;
+    document.getElementById('notice-detail-title').textContent = n.title;
+    document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
+    document.getElementById('notice-detail-body').textContent  = n.content || n.body || '';
+    document.getElementById('notice-list').style.display   = 'none';
+    document.getElementById('notice-detail').classList.add('active');
+    document.getElementById('header-back').classList.remove('hidden');
+
+    // 읽음 처리
+    const read = Store.get('readNotices') || [];
+    if (!read.includes(id)) { read.push(id); Store.set('readNotices', read); }
+  }
+
+  function closeNoticeDetail() {
+    document.getElementById('notice-detail').classList.remove('active');
+    document.getElementById('notice-list').style.display = '';
+    document.getElementById('header-back').classList.add('hidden');
+  }
+
+  // ─── 사진 업로드 ──────────────────────────────────────────────
+  function addPhoto() {
+    if (State.photos.length >= 10) { showToast('최대 10장까지 첨부 가능합니다.'); return; }
+    document.getElementById('file-input-hidden').click();
+  }
+
+  async function onFileSelected(e) {
+    const files = Array.from(e.target.files);
+    for (const file of files) {
+      if (State.photos.length >= 10) break;
+      const dataUrl = await readFileAsDataURL(file);
+      State.photos.push({ dataUrl, uploaded: false, serverUrl: null, file });
     }
-    
-    // 운행 대시보드 내 상세 GPS 텍스트 업데이트
-    const dashGps = document.getElementById('dash-gps-info');
-    if(dashGps) dashGps.textContent = `GPS수신중(${mode})`;
-
-    if(isPipMode) updatePipDisplay();
+    e.target.value = '';
+    renderPhotoThumbs();
+    uploadPendingPhotos();
   }
 
-  function onGPSError(err){
-    console.warn('GPS 오류:',err.message);
+  function readFileAsDataURL(file) {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
   }
 
-  async function sendLocation(lat,lng,accuracy,speed){
-    if(!tripId||!isOnline)return;
-    try{
-      await smartPost(`${API_BASE}/location`,{trip_id:tripId,lat,lng,accuracy:Math.round(accuracy),speed:Math.round(speed)});
-    }catch(e){console.error('위치 전송 실패:',e);}
+  function renderPhotoThumbs() {
+    const scroll = document.getElementById('photo-scroll');
+    const addBtn = '<button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>';
+    const thumbs = State.photos.map((p, i) =>
+      `<img class="photo-thumb" src="${p.serverUrl || p.dataUrl}" onclick="App.openPhotoViewer(${i})" alt="사진${i+1}">`
+    ).join('');
+    scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
+    document.getElementById('photo-count-display').textContent = `(${State.photos.length}/10)`;
   }
 
-  // 일시정지 시: 마지막 위치 마킹 후 수집 정지
-  async function sendPauseLocation(){
-    if(!tripId||!isOnline||!navigator.geolocation)return;
-    navigator.geolocation.getCurrentPosition(async(pos)=>{
-      await smartPost(`${API_BASE}/location`,{trip_id:tripId,lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),speed:0,method:'PAUSE_MARK'});
-    },()=>{},{enableHighAccuracy:true,timeout:5000});
-  }
-
-  // 종료 시: 마지막 위치 마킹 후 수집 종료
-  async function sendStopLocation(tid){
-    if(!tid||!isOnline||!navigator.geolocation)return;
-    navigator.geolocation.getCurrentPosition(async(pos)=>{
-      await smartPost(`${API_BASE}/location`,{trip_id:tid,lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),speed:0,method:'STOP_MARK'});
-    },()=>{},{enableHighAccuracy:true,timeout:5000});
-  }
-
-  // [신규] 즉시 위치 전송 (시작/종료 시점 정확한 마커용)
-  function sendImmediateLocation(eventType){
-    if(!tripId||!isOnline||!navigator.geolocation)return;
-    navigator.geolocation.getCurrentPosition(async(pos)=>{
-      try{
-        await smartPost(`${API_BASE}/location`,{
-          trip_id:tripId,
-          lat:pos.coords.latitude,
-          lng:pos.coords.longitude,
-          accuracy:Math.round(pos.coords.accuracy),
-          speed:Math.round((pos.coords.speed||0)*3.6),
-          method:eventType==='start'?'START_IMMEDIATE':'STOP_IMMEDIATE'
+  async function uploadPendingPhotos() {
+    if (!State.trip.id) return;
+    for (let i = 0; i < State.photos.length; i++) {
+      const p = State.photos[i];
+      if (p.uploaded) continue;
+      try {
+        const base64 = p.dataUrl.split(',')[1];
+        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+          method: 'POST',
+          body: JSON.stringify({
+            trip_id:   State.trip.id,
+            image_data: base64,
+            mime_type:  p.dataUrl.split(';')[0].split(':')[1],
+          }),
         });
-        console.log(`[GPS] ${eventType} 즉시 위치 전송 완료`);
-      }catch(e){console.error('[GPS] 즉시 위치 전송 실패:',e);}
-    },()=>{console.warn('[GPS] 즉시 위치 획득 실패');},{enableHighAccuracy:true,timeout:8000});
-  }
-
-  // ═══ 컨테이너 번호 ISO 6346 검증 (MOD 11) ═══
-  function validateContainerNumber(num){
-    if(!num || num.length !== 11) return false;
-    const charCode = (c) => {
-      const v = "0123456789A?BCDEFGHIJK?LMNOPQRSTU?VWXYZ".indexOf(c);
-      return v === -1 ? 0 : v;
-    };
-    let sum = 0;
-    for(let i=0; i<10; i++){
-      let val = charCode(num[i]);
-      sum += val * Math.pow(2, i);
+        const data = await res.json();
+        if (data.url) { State.photos[i].serverUrl = data.url; State.photos[i].uploaded = true; }
+      } catch (e) { console.warn('사진 업로드 실패', e); }
     }
-    const checkDigit = (sum % 11) % 10;
-    return checkDigit === parseInt(num[10]);
   }
 
-  // ═══ 운송 ═══
-  async function startTrip(){
-    if(!isOnline){showModal('오프라인','인터넷 필요');return;}if(isSubmitting)return;
-    
-    // [변경] 컨테이너 번호 추출 (없을 수도 있음)
-    const c=document.getElementById('inp-container').value.replace(/\s/g, '').toUpperCase();
-    const vNum = localStorage.getItem('els_vehicle') || '';
-    let cSize = (document.getElementById('inp-cont-size')||{}).value||'40FT';
-    let cKind = (document.getElementById('inp-cont-type')||{}).value||'DRY';
-    let memo = (document.getElementById('inp-memo')||{}).value||'';
+  // 사진 뷰어
+  function openPhotoViewer(idx) {
+    State.currentPhotoIdx = idx;
+    document.getElementById('photo-viewer').classList.add('active');
+    showPhotoViewerImage();
+  }
+  function showPhotoViewerImage() {
+    const p = State.photos[State.currentPhotoIdx];
+    if (!p) return;
+    document.getElementById('photo-viewer-img').src = p.serverUrl || p.dataUrl;
+    document.getElementById('photo-viewer-index').textContent = `${State.currentPhotoIdx + 1} / ${State.photos.length}`;
+  }
+  function closePhotoViewer() { document.getElementById('photo-viewer').classList.remove('active'); }
+  function prevPhoto() { if (State.currentPhotoIdx > 0) { State.currentPhotoIdx--; showPhotoViewerImage(); } }
+  function nextPhoto() { if (State.currentPhotoIdx < State.photos.length - 1) { State.currentPhotoIdx++; showPhotoViewerImage(); } }
 
-    // 차량 정보가 없으면 컨테이너 번호라도 필수
-    if(!vNum && !c){
-      showModal('입력 필요','차량 정보가 없으므로 컨테이너 번호를 입력해야 합니다.');
+  // ─── 일지 ─────────────────────────────────────────────────────
+  let _currentLogData = null;
+
+  async function loadLogs() {
+    document.getElementById('log-list').innerHTML = '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
+    const date  = document.getElementById('log-date-filter').value;
+    const month = document.getElementById('log-month-filter').value;
+    const phone = State.profile.phone;
+    const vNum  = State.profile.vehicleNo;
+
+    let url = `${BASE_URL}/api/vehicle-tracking/trips?mode=my`;
+    if (date)  url += `&date=${date}`;
+    else if (month) url += `&month=${month}`;
+    if (phone) url += `&phone=${phone}`;
+    if (vNum)  url += `&vehicle_number=${encodeURIComponent(vNum)}`;
+
+    try {
+      const res  = await smartFetch(url);
+      const data = await res.json();
+      const trips = data.trips || [];
+      if (!trips.length) { document.getElementById('log-list').innerHTML = '<div class="loading">조회 결과가 없습니다.</div>'; return; }
+      const statusLabel = { driving: '운송중', paused: '일시정지', completed: '완료' };
+      const statusColor = { driving: 'var(--success)', paused: 'var(--warn)', completed: 'var(--text-muted)' };
+      document.getElementById('log-list').innerHTML = trips.map(t => `
+        <div class="log-item" onclick="App.openLog('${t.id}')">
+          <div class="log-item-header">
+            <span class="log-item-container">${escHtml(t.container_number || '컨테이너 미입력')}</span>
+            <span class="log-item-status" style="color:${statusColor[t.status]||'var(--text-muted)'};border-color:${statusColor[t.status]||'var(--text-muted)'};">${statusLabel[t.status]||t.status}</span>
+          </div>
+          <div class="log-item-meta">${formatDate(new Date(t.started_at))} · ${escHtml(t.vehicle_number||'')} · 씰 ${escHtml(t.seal_number||'—')}</div>
+        </div>
+      `).join('');
+    } catch (e) {
+      document.getElementById('log-list').innerHTML = '<div class="loading">불러오기 실패</div>';
+    }
+  }
+
+  async function openLog(id) {
+    try {
+      const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${id}`);
+      const data = await res.json();
+      _currentLogData = data;
+      State.currentLogId = id;
+
+      document.getElementById('log-edit-container').value = data.container_number || '';
+      document.getElementById('log-edit-seal').value      = data.seal_number || '';
+      document.getElementById('log-edit-memo').value      = data.special_notes || '';
+      document.getElementById('log-detail-content').innerHTML = `
+        <div style="font-size:13px;color:var(--text-2);line-height:1.8;">
+          <b>차량번호:</b> ${escHtml(data.vehicle_number||'—')}<br>
+          <b>운행일:</b> ${formatDate(new Date(data.started_at))}<br>
+          <b>상태:</b> ${data.status||'—'}<br>
+          <b>타입:</b> ${data.container_type||'—'} / ${data.container_kind||'—'}
+        </div>
+      `;
+      document.getElementById('log-list').style.display = 'none';
+      document.getElementById('log-detail').classList.add('active');
+      document.getElementById('header-back').classList.remove('hidden');
+    } catch (e) { showToast('불러오기 실패'); }
+  }
+
+  async function saveLogEdit() {
+    if (!State.currentLogId) return;
+    try {
+      await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          container_number: document.getElementById('log-edit-container').value,
+          seal_number:      document.getElementById('log-edit-seal').value,
+          special_notes:    document.getElementById('log-edit-memo').value,
+        }),
+      });
+      showToast('저장되었습니다.');
+      closeLogDetail();
+      loadLogs();
+    } catch (e) { showToast('저장 실패'); }
+  }
+
+  async function deleteLog() {
+    if (!State.currentLogId || !confirm('이 운행 기록을 삭제하시겠습니까?')) return;
+    try {
+      await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, { method: 'DELETE' });
+      showToast('삭제되었습니다.');
+      closeLogDetail();
+      loadLogs();
+    } catch (e) { showToast('삭제 실패'); }
+  }
+
+  function closeLogDetail() {
+    document.getElementById('log-detail').classList.remove('active');
+    document.getElementById('log-list').style.display = '';
+    document.getElementById('header-back').classList.add('hidden');
+    State.currentLogId = null;
+  }
+
+  // ─── 긴급알림 ─────────────────────────────────────────────────
+  let emergencyPollTimer = null;
+
+  function startEmergencyPoll() {
+    if (emergencyPollTimer) return;
+    pollEmergency();
+    emergencyPollTimer = setInterval(pollEmergency, 30_000);
+  }
+
+  async function pollEmergency() {
+    try {
+      const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=true`);
+      const data = await res.json();
+      const items = data.items || [];
+      for (const item of items) {
+        if (State.emergencyIds.has(item.id)) continue;
+        State.emergencyIds.add(item.id);
+        showEmergencyPopup(item);
+        sendNativeEmergencyNotif(item);
+      }
+    } catch (e) { /* 조용히 실패 */ }
+  }
+
+  function showEmergencyPopup(item) {
+    document.getElementById('emergency-body').textContent = item.message || item.content || '';
+    document.getElementById('emergency-popup').classList.add('active');
+  }
+
+  function closeEmergency() { document.getElementById('emergency-popup').classList.remove('active'); }
+
+  function sendNativeEmergencyNotif(item) {
+    const em = Emergency();
+    if (em) {
+      em.showEmergencyAlert({ title: '⚠️ ELS 긴급알림', message: item.message || '', id: item.id }).catch(() => {});
+    }
+  }
+
+  // ─── 업데이트 확인 ────────────────────────────────────────────
+  async function checkUpdate() {
+    try {
+      const res  = await smartFetch(VERSION_URL);
+      const data = await res.json();
+      const latest = data.latestVersion;
+      if (latest && latest !== APP_VERSION) {
+        if (confirm(`새 버전(${latest})이 있습니다. 지금 업데이트하시겠습니까?`)) {
+          window.open(BASE_URL + '/apk/els_driver.apk', '_blank');
+        }
+      } else {
+        showToast('최신 버전입니다: ' + APP_VERSION);
+      }
+    } catch (e) { showToast('업데이트 확인 실패'); }
+  }
+
+  // ─── 앱 종료 ──────────────────────────────────────────────────
+  function exitApp() {
+    if (window.isTripActive()) {
+      showToast('운행 중에는 종료할 수 없습니다. 운행 종료 후 앱 종료가 가능합니다.');
       return;
     }
-
-    // 컨테이너 번호가 있지만 유효하지 않은 경우만 경고 (강제 시작 가능)
-    if(c && !validateContainerNumber(c)){
-      if(!confirm('유효하지 않은 컨테이너 번호 형식입니다.\n나중에 수정하시겠습니까?')) return;
-    }
-    isSubmitting=true;const btn=document.getElementById('btn-start');btn.disabled=true;btn.textContent='처리 중...';
-    try{
-      const memo=(document.getElementById('inp-memo')||{}).value||'';
-      const r=await smartPost(`${API_BASE}/trips`,{
-        vehicle_number:localStorage.getItem('els_vehicle')||'',
-        vehicle_id:localStorage.getItem('els_id')||'',
-        driver_name:localStorage.getItem('els_name')||'',
-        driver_phone:localStorage.getItem('els_phone')||'',
-        container_number:c,
-        seal_number:document.getElementById('inp-seal').value.trim().toUpperCase(),
-        container_type:(document.getElementById('inp-cont-size')||{}).value||'40FT',
-        container_kind:(document.getElementById('inp-cont-type')||{}).value||'DRY',
-        special_notes:memo.trim()
-      });
-      if(r.ok){
-        tripId=r.data.id||r.data.trip_id;lastTripId=tripId;tripStatus=r.data.status||'driving';elapsedSeconds=0;
-        haptic('Heavy');updateTripUI();startTimer();startGPSTracking();uploadPendingPhotos();
-        showFloatingWidget(); // 🚀 백그라운드 GPS 안정을 위한 포그라운드 서비스 시작
-        sendImmediateLocation('start'); // [신규] 즉시 위치 전송 (시작점 마킹)
-        
-        // 🚀 헤더 동기화: 연페 글자 제거하고 차량번호만 깔끔하게
-        const vNum = localStorage.getItem('els_vehicle');
-        const hVeh = document.getElementById('header-vh-no');
-        if(hVeh && vNum) hVeh.textContent = vNum;
-      }else throw new Error(r.data?.error||'서버 오류('+r.status+')');
-    }catch(e){showModal('오류','운송 시작 실패: '+e.message);}
-    finally{isSubmitting=false;btn.disabled=false;btn.textContent='운송 시작 (START)';}
-  }
-
-  async function pauseTrip(){
-    haptic();tripStatus='paused';updateTripUI();
-    // GPS: 마지막 위치 마킹 후 수집 정지 (관제 웹: 노란색 아이콘)
-    await sendPauseLocation();
-    stopGPSTracking();
-    if(isOnline&&tripId){try{await smartPatch(`${API_BASE}/trips/${tripId}`,{action:'pause'});}catch(e){}}
-  }
-
-  async function resumeTrip(){
-    haptic();tripStatus='driving';updateTripUI();
-    // GPS: 수집 재개 (관제 웹: 초록색 아이콘)
-    startGPSTracking();
-    if(isOnline&&tripId){try{await smartPatch(`${API_BASE}/trips/${tripId}`,{action:'resume'});}catch(e){}}
-  }
-
-  async function stopTrip(){
-    if(!tripId||isSubmitting){return;}
-    if(!confirm('운송을 종료하시겠습니까?'))return;
-    isSubmitting=true;
-    try{
-      haptic('Heavy');const cid=tripId;
-      await sendStopLocation(cid);
-      sendImmediateLocation('stop'); // [신규] 즉시 위치 전송 (종합점 마킹)
-      stopGPSTracking();
-      hideFloatingWidget(); // 🚀 백그라운드 서비스 종료
-      if(isOnline){try{const r=await smartPatch(`${API_BASE}/trips/${cid}`,{action:'complete'});if(!r.ok)showModal('경고','서버 종료 처리 실패');}catch(e){showModal('경고','통신 실패');}}
-      lastTripId=cid;tripId=null;tripStatus=null;clearInterval(timerInterval);timerInterval=null;elapsedSeconds=0;
-      photos=[]; renderPhotos();
-      document.getElementById('inp-container').value='';
-      document.getElementById('inp-seal').value='';
-      document.getElementById('inp-memo').value='';
-      updateTripUI();
-      showModal('완료','운송이 종료되었습니다. 수고하셨습니다.');
-    }finally{isSubmitting=false;}
-  }
-
-  // 강제 데이터 초기화 (버튼용)
-  function resetTripData(){
-    if(!confirm('진행 중인 모든 입력을 초기화할까요?\n(운행 상태는 변하지 않습니다)'))return;
-    photos=[]; renderPhotos();
-    document.getElementById('inp-container').value='';
-    document.getElementById('inp-seal').value='';
-    document.getElementById('inp-memo').value='';
-    showModal('초기화','사진 및 입력 정보가 초기화되었습니다.');
-  }
-
-  function updateTripUI(){
-    const a=tripStatus==='driving'||tripStatus==='paused',d=tripStatus==='driving';
-    const bn=document.getElementById('active-banner');bn.style.display=a?'block':'none';
-    const bs=document.getElementById('banner-status');
-    const gi=document.getElementById('gps-indicator');
-
-    if(d){
-      bs.textContent='● 운행중';
-      bs.style.color='#3fb950';
-      if(gi && gi.textContent === 'GPS정상') gi.textContent = 'GPS수신중';
-    } else if(tripStatus === 'paused'){
-      bs.textContent='■ 일시정지 (휴식상태)';
-      bs.style.color='#d29922';
-      if(gi) { gi.textContent = 'GPS정지'; gi.className = 'gps-paused'; }
+    if (window.Capacitor?.Plugins?.App) {
+      window.Capacitor.Plugins.App.exitApp();
     } else {
-      bs.textContent='○ 대기중';
-      bs.style.color='#7d8590';
-      if(gi) { gi.textContent = 'GPS정상'; gi.className = 'gps-on'; }
-    }
-
-    document.getElementById('screen-main').classList.toggle('trip-active',a);
-    document.getElementById('btn-start').style.display=a?'none':'block';
-    document.getElementById('trip-controls').style.display=a?'block':'none';
-    document.getElementById('btn-pause').style.display=d?'block':'none';
-    document.getElementById('btn-resume').style.display=(!d&&a)?'block':'none';
-    const ic=document.getElementById('card-input');
-    // [변경] 운행 중에도 수정 가능하도록 pointerEvents 차단 해제, 대신 opacity로만 상태 표시
-    if(ic){ic.style.opacity='1';ic.style.pointerEvents='auto';}
-    if(isPipMode)updatePipDisplay();
-  }
-
-  function startTimer(){clearInterval(timerInterval);timerInterval=setInterval(()=>{if(tripStatus==='driving')elapsedSeconds++;const s=formatTime(elapsedSeconds);const td=document.getElementById('trip-timer-display');if(td)td.textContent=s;if(isPipMode){const pt=document.getElementById('pip-timer');if(pt)pt.textContent=s;}},1000);}
-  function formatTime(s){return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
-
-  // ═══ 사진 ═══
-  async function handlePhotos(event){
-    const files=event.target.files;if(!files.length)return;
-    for(const file of files){if(photos.length>=10)break;
-      try{const resized=await resizeImage(file,1200,0.7);const prev=URL.createObjectURL(resized);
-        photos.push({file:resized,previewUrl:prev,uploaded:false,key:null});renderPhotos();
-        const uid=tripId||lastTripId;if(uid&&isOnline)await uploadSinglePhoto(photos.length-1,uid);
-      }catch(e){showModal('사진 처리 제한','이미지를 불러올수 없습니다.\n'+e.message);}}
-    event.target.value='';
-  }
-  async function uploadSinglePhoto(idx,uid){
-    try{
-      const p=photos[idx];if(!p||!p.file||p.uploaded)return;
-      const formData = new FormData();
-      formData.append('trip_id', uid);
-      formData.append('photos', p.file);
-      
-      console.log(`[DEBUG] 업로드 시작: trip_id=${uid}, file=${p.file.name}`);
-      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:formData});
-      const d=await safeJson(res);
-      
-      console.log(`[DEBUG] 서버 응답 상태: ${res.status}`);
-      if(res.ok){
-        photos[idx].uploaded=true;
-        if(d.photos&&d.photos.length>0) photos[idx].key=d.photos[d.photos.length-1].key;
-        renderPhotos();
-      }else{
-        const errDetail = d?.error || JSON.stringify(d) || '상세내용 없음';
-        showModal('업로드 실패', `상태: ${res.status}\n오류: ${errDetail}`);
-      }
-    }catch(e){
-      console.error('[DEBUG] 업로드 예외:', e);
-      showModal('통신/JS 오류', `${e.name}: ${e.message}\n${e.stack?.split('\n')[0]}`);
-    }
-  }
-  async function uploadPendingPhotos(){const uid=tripId||lastTripId;if(!uid||!isOnline)return;for(let i=0;i<photos.length;i++){if(!photos[i].uploaded)await uploadSinglePhoto(i,uid);}}
-  function resizeImage(f,mx,q){return new Promise((r,j)=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>mx||h>mx){if(w>h){h=Math.round(h*mx/w);w=mx;}else{w=Math.round(w*mx/h);h=mx;}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);c.toBlob(b=>r(new File([b],f.name||'photo.jpg',{type:'image/jpeg'})),'image/jpeg',q);};img.onerror=()=>j(new Error('지원하지 않는 형식이거나 권한 오류입니다.'));img.src=URL.createObjectURL(f);});}
-  function encodeFileToBase64(f){return new Promise((r,j)=>{const rd=new FileReader();rd.readAsDataURL(f);rd.onload=()=>r(rd.result.split(',')[1]);rd.onerror=e=>j(e);});}
-  function renderPhotos(){
-    const g=document.getElementById('photo-grid');g.innerHTML='';
-    photos.forEach((p,i)=>{const w=document.createElement('div');w.className='photo-wrapper';const img=document.createElement('img');
-      const src=p.key?`${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}`:p.previewUrl;
-      img.src=src; img.onclick=()=>zoomImage(src); w.appendChild(img);
-      if(p.uploaded){const b=document.createElement('div');b.className='photo-badge';b.textContent='✓';w.appendChild(b);}
-      const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deletePhoto(i);w.appendChild(d);g.appendChild(w);});
-    document.getElementById('photo-add-label').style.display=photos.length>=10?'none':'flex';
-  }
-  let zoomScale=1, zoomStartX=0, zoomStartY=0, zoomBaseDistance=0, zoomBaseScale=1, zoomCurX=0, zoomCurY=0;
-  function zoomImage(src){
-    const m=document.getElementById('modal-photo'),img=document.getElementById('zoom-img'),box=document.getElementById('zoom-container');
-    if(!m||!img)return;
-    img.src=src; zoomScale=1; zoomCurX=0; zoomCurY=0; updateZoomTransform();
-    m.style.display='flex';
-    
-    // 터치/마우스 핸들러
-    const start=(e)=>{
-      const t=e.touches;
-      if(t && t.length===2){
-        zoomBaseDistance=Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-        zoomBaseScale=zoomScale;
-      } else {
-        const point=t?t[0]:e;
-        zoomStartX=point.clientX-zoomCurX; zoomStartY=point.clientY-zoomCurY;
-      }
-    };
-    const move=(e)=>{
-      e.preventDefault();
-      const t=e.touches;
-      if(t && t.length===2){
-        const dist=Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-        zoomScale=Math.max(1, zoomBaseScale * (dist/zoomBaseDistance));
-      } else {
-        const point=t?t[0]:e;
-        zoomCurX=point.clientX-zoomStartX; zoomCurY=point.clientY-zoomStartY;
-      }
-      updateZoomTransform();
-    };
-    box.onmousedown=start; box.ontouchstart=start;
-    window.onmousemove=e=>{if(box.onmousedown)move(e)}; window.ontouchmove=move;
-    window.onmouseup=()=>{box.onmousedown=null;};
-  }
-  function updateZoomTransform(){ const i=document.getElementById('zoom-img'); if(i)i.style.transform=`translate(${zoomCurX}px, ${zoomCurY}px) scale(${zoomScale})`; }
-  async function deletePhoto(idx){const p=photos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}photos.splice(idx,1);renderPhotos();}
-
-  // ═══ 기록 사진 ═══
-  async function handleHistoryPhotos(event){
-    if(!selectedTripId){showModal('오류','기록 선택 필요');return;}if(!isOnline){showModal('오프라인','인터넷 필요');return;}
-    const files=event.target.files;if(!files.length)return;
-    for(const file of files){try{const resized=await resizeImage(file,1200,0.7);
-      const formData = new FormData();
-      formData.append('trip_id', selectedTripId);
-      formData.append('photos', resized);
-      
-      const res=await fetch(`${API_BASE}/photos`,{method:'POST',body:formData});
-      const d=await safeJson(res);
-      if(res.ok&&d.photos&&d.photos.length>0){historyPhotos.push({key:d.photos[d.photos.length-1].key,url:d.photos[d.photos.length-1].url});renderHistoryPhotos();}
-      else showModal('업로드 실패',(d?.error||res.status)+'');
-    }catch(e){showModal('업로드 오류',e.message);}}event.target.value='';
-  }
-  function renderHistoryPhotos(){
-    const g=document.getElementById('h-photo-grid');g.innerHTML='';const cnt=document.getElementById('h-photo-count');if(cnt)cnt.textContent=historyPhotos.length;
-    historyPhotos.forEach((p,i)=>{
-      const w=document.createElement('div');w.className='photo-wrapper';
-      const img=document.createElement('img');
-      // [중요] 기록 탭에서도 무조건 Proxy API (?key=) 주소로 보여줌
-      const src=p.key ? `${API_BASE}/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
-      console.log(`[DEBUG-HIST] 렌더링 사진(${i}): key=${p.key}, final_src=${src}`);
-      img.src=src; 
-      img.onclick=()=>zoomImage(src);
-      img.onerror=function(){
-        console.error(`[DEBUG-HIST] 사진 로드 에러: ${src}`);
-        this.style.background='#1c2128';
-      };
-      w.appendChild(img);
-      const d=document.createElement('button');d.className='photo-del';d.textContent='✕';d.onclick=()=>deleteHistoryPhoto(i);
-      w.appendChild(d);g.appendChild(w);
-    });
-  }
-  async function deleteHistoryPhoto(idx){const p=historyPhotos[idx];if(p.key){try{await fetch(`${API_BASE}/photos/delete?key=${encodeURIComponent(p.key)}`,{method:'DELETE'});}catch(e){}}historyPhotos.splice(idx,1);renderHistoryPhotos();}
-
-  // ═══ 탭 ═══
-  function switchTab(t){
-    haptic('Light');
-    const panels = ['main-content', 'tab-history', 'tab-notice', 'tab-settings'];
-    const names = ['home', 'history', 'notice', 'settings'];
-    panels.forEach((p, i) => {
-      const el = document.getElementById(p);
-      if(el) el.style.display = names[i] === t ? 'block' : 'none';
-    });
-    document.querySelectorAll('#bottom-nav .nav-btn').forEach((b, i) => {
-      if(i < 4) b.classList.toggle('active', names[i] === t);
-    });
-    if(t === 'history') loadHistory();
-    if(t === 'notice') loadNotices();
-    if(t === 'settings') { loadSavedProfile(); refreshPermStatus(); }
-  }
-
-  // ═══ 업데이트 정책 (v3.9.1 적용) ═══
-  async function checkUpdates(manual = false){
-    if(!isOnline) { if(manual) showModal('오프라인', '인터넷 연결이 필요합니다.'); return; }
-    try {
-      const r = await fetch('https://www.nollae.com/apk/version.json?t=' + Date.now(), { cache: 'no-store' });
-      const d = await r.json();
-      if(d.latestVersion && d.latestVersion !== APP_VERSION){
-        // 업데이트 권장 모달
-        showModal('🚀 새로운 업데이트', `버전: v${d.latestVersion}<br><br><b>변경사항:</b><br>${(d.changeLog||'').replace(/\\n/g,'<br>')}<br><br><button onclick="window.startUpdate('${d.downloadUrl}')" class="btn-primary" style="display:inline-block; width:auto; padding:12px 24px; margin-top:10px;">지금 다운로드 및 업데이트</button>`);
-      } else if(manual) {
-        showModal('✅ 최신 버전입니다', `현재 사용 중인 버전(v${APP_VERSION})이 최신 버전입니다.`);
-      }
-    } catch(e){ if(manual) showModal('오류', '업데이트 확인 중 오류가 발생했습니다.'); console.warn('업데이트 확인 실패'); }
-  }
-
-
-  window.noticeData = [];
-  window.showNoticeDetail = function(id){
-    const n = (window.noticeData || []).find(x => x.id === id);
-    if(!n) return;
-    const title = '📢 ' + (n.title || '공지사항');
-    const content = (n.content || n.description || n.title || '내용 없음').replace(/\r/g, '').replace(/\n/g, '<br>');
-    showModal(title, content);
-  };
-  // ═══ 공지사항 ═══
-  async function loadNotices(){
-    const list = document.getElementById('notice-list');
-    if(!list) return;
-    try {
-      // Supabase에서 공지 불러오기
-      const r = await fetch('https://pzfnrnscwudifgcctzke.supabase.co/rest/v1/notices?select=*&order=created_at.desc&limit=20', {
-        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6Zm5ybnNjd3VkaWZnY2N0emtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Njk2NjcsImV4cCI6MjA4NzQ0NTY2N30.FYekx-aRdvlgfyR4MRlJ4mzVvDPmhODyXit8ITxyOCw' }
-      });
-      if(r.ok){
-        const notices = await r.json(); window.noticeData = notices;
-        if(notices.length === 0){
-          list.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px; color:var(--text-muted);">등록된 공지가 없습니다.</td></tr>';
-          return;
-        }
-        list.innerHTML = notices.map(n => {
-          const d = new Date(n.created_at);
-          const dateStr = `${String(d.getYear()-100).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-          
-          // 🚀 [수정] 본문(content)이 있으면 본문 표시, 없으면 제목 표시
-          const title = (n.title || '공지사항').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          const content = (n.content || n.description || n.title || '내용 없음').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '<br>');
-          
-          return `<tr style="cursor:pointer;" onclick="showNoticeDetail('${n.id}')">
-            <td class="date-cell">${dateStr}</td>
-            <td style="font-weight:600;">${n.title}</td>
-          </tr>`;
-        }).join('');
-      } else {
-        throw new Error('API Error');
-      }
-    } catch(e) {
-      // API 실패 시 Mock 데이터 표시
-      const mockNotices = [
-        { date: '26.03.24', title: 'v3.9.6 업데이트 안내 (권한 자동 동기화 및 공지 개선)' },
-        { date: '26.03.24', title: '배터리 최적화 해제 가이드 안내' }
-      ];
-      list.innerHTML = mockNotices.map(n => {
-        const safeTitle = n.title.replace(/'/g, "\\'");
-        return `<tr style="cursor:pointer;" onclick="showModal('📢 공지사항','${safeTitle}')">
-          <td class="date-cell">${n.date}</td>
-          <td style="font-weight:600;">${n.title}</td>
-        </tr>`;
-      }).join('');
+      showToast('앱을 직접 닫아주세요.');
     }
   }
 
-  // ═══ 기록 ═══
-  async function loadHistory(){
-    const mi=document.getElementById('history-month');if(!mi.value){const n=new Date();mi.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
-    const ph=localStorage.getItem('els_phone')||'',ve=localStorage.getItem('els_vehicle')||'';
-    const list=document.getElementById('history-list');list.innerHTML='<div style="text-align:center;padding:20px;color:#7d8590;">불러오는 중...</div>';
-    if(!isOnline){list.innerHTML='<div style="text-align:center;padding:20px;color:#7d8590;">인터넷 필요</div>';return;}
-    try{const params=new URLSearchParams({mode:'my',date:mi.value});if(ph)params.append('phone',ph);if(ve)params.append('vehicle_number',ve);
-      const r=await fetch(`${API_BASE}/trips?${params}`);if(r.ok){const d=await safeJson(r);const trips=d.trips||d;historyData=trips;list.innerHTML='';
-        if(!trips.length){list.innerHTML='<div style="text-align:center;padding:20px;color:#7d8590;">기록 없음</div>';return;}
-        trips.forEach(t=>{const date=new Date(t.started_at).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-          const sl=t.status==='driving'?'운행중':(t.status==='paused'?'일시정지':'종료');
-          const bc=t.status==='driving'?'badge-driving':(t.status==='paused'?'badge-paused':'badge-finished');
-          const it=document.createElement('div');it.className='history-item';it.onclick=()=>showHistoryDetail(t.id);
-          it.innerHTML=`<div class="hist-header"><span class="hist-date">${date}</span><span class="badge ${bc}">${sl}</span></div><div class="hist-title">${t.container_number||'미입력'} (${t.container_type||'-'})</div><div class="hist-sub">${t.vehicle_number} | ${t.driver_name}</div>`;
-          list.appendChild(it);});}
-      else list.innerHTML='<div style="color:#f85149;">불러오기 실패</div>';
-    }catch(e){list.innerHTML='<div style="color:#f85149;">통신 오류</div>';}
+  // ─── 유틸 ─────────────────────────────────────────────────────
+  function formatDate(d) {
+    if (!(d instanceof Date) || isNaN(d)) return '—';
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  function showHistoryDetail(id){
-    const trip=historyData.find(t=>t.id===id);if(!trip)return;selectedTripId=id;
-    document.getElementById('edit-container').value=trip.container_number||'';document.getElementById('edit-seal').value=trip.seal_number||'';
-    document.getElementById('edit-cont-size').value=trip.container_type||'40FT';document.getElementById('edit-cont-type').value=trip.container_kind||'DRY';
-    document.getElementById('edit-notes').value=trip.special_notes||'';
-    const se=document.getElementById('h-status');
-    if(trip.status==='driving'){se.textContent='● 운행중';se.style.color='#3fb950';}
-    else if(trip.status==='paused'){se.textContent='■ 일시정지';se.style.color='#d29922';}
-    else{se.textContent='○ 종료';se.style.color='#7d8590';}
-    document.getElementById('h-time-info').textContent='시작: '+new Date(trip.started_at).toLocaleString('ko-KR')+' | 종료: '+(trip.completed_at?new Date(trip.completed_at).toLocaleString('ko-KR'):'-');
-    document.getElementById('btn-force-stop').style.display=trip.status!=='completed'?'block':'none';
-    
-    // 종료 주소 표시 로직
-    const addrInfo = document.getElementById('h-address-info');
-    const addrVal = document.getElementById('h-address-val');
-    if(trip.status === 'completed' && addrInfo && addrVal){
-      addrInfo.style.display = 'block';
-      addrVal.textContent = '불러오는 중...';
-      // 서버에서 주소 정보를 명시적으로 요청하거나, trip 객체에 있는 경우 바로 표시
-      if(trip.end_address){
-        addrVal.textContent = trip.end_address;
-      } else {
-        // 주소가 없으면 위치 데이터의 마지막 항목에서 주소를 확인 시도
-        fetch(`${API_BASE}/trips/${id}/locations?limit=1`).then(r=>r.json()).then(data=>{
-          const loc = data.locations ? data.locations[0] : (data[0] || null);
-          if(loc && loc.address) addrVal.textContent = loc.address;
-          else if(loc) addrVal.textContent = `좌표수집됨 (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`;
-          else addrVal.textContent = '주소 정보 없음';
-        }).catch(()=> { addrVal.textContent='주소 로드 실패'; });
-      }
-    } else if(addrInfo) {
-      addrInfo.style.display = 'none';
-    }
-
-    historyPhotos=(trip.photos||[]).map(p=>({key:p.key||'',url:p.url||''}));renderHistoryPhotos();
-    document.getElementById('modal-history').style.display='flex';
-  }
-  function closeHistoryModal(){document.getElementById('modal-history').style.display='none';}
-  async function saveHistoryEdit(){
-    if(!selectedTripId)return;
-    try{
-      // [변경] 45FT 직접 지원 (DB 잠금 해제 완료)
-      const r=await smartPatch(`${API_BASE}/trips/${selectedTripId}`,{
-        container_number:document.getElementById('edit-container').value.trim().toUpperCase(),
-        seal_number:document.getElementById('edit-seal').value.trim().toUpperCase(),
-        container_type: document.getElementById('edit-cont-size').value,
-        container_kind:document.getElementById('edit-cont-type').value,
-        special_notes: document.getElementById('edit-notes').value.trim(),
-        photos: historyPhotos
-      });
-      if(r.ok){
-        haptic('Heavy');
-        showModal('저장','기록 수정 완료');
-        closeHistoryModal();
-        loadHistory();
-      }else{
-        showModal('오류','수정 실패: '+(r.data?.error||r.status));
-      }
-    }catch(e){
-      showModal('오류',e.message);
-    }
-  }
-  async function forceStopTrip(){
-    if(!selectedTripId||!confirm('강제 종료?'))return;
-    try{const r=await smartPatch(`${API_BASE}/trips/${selectedTripId}`,{action:'complete'});
-    if(r.ok){showModal('성공','종료 처리 완료');closeHistoryModal();loadHistory();if(selectedTripId===tripId){tripId=null;tripStatus=null;clearInterval(timerInterval);stopGPSTracking();updateTripUI();}}
-    else showModal('오류','종료 실패');}catch(e){showModal('오류','통신 실패');}
+  function escHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
-  async function deleteTripRecord(){
-    if(!selectedTripId || !confirm('이 앱에서 뿐만 아니라 서버에서도 기록을 완전히 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
-    try {
-      const r = await fetch(`${API_BASE}/trips/${selectedTripId}`, { method: 'DELETE' });
-      if(r.ok){
-        haptic('Heavy');
-        showModal('삭제 완료', '운행 기록이 안전하게 삭제되었습니다.');
-        closeHistoryModal();
-        loadHistory();
-      } else {
-        showModal('오류', '삭제에 실패했습니다. (관리자 문의)');
-      }
-    } catch(e){
-      showModal('오류', '통신 중 오류가 발생했습니다.');
-    }
+  let toastTimer = null;
+  function showToast(msg, ms = 2500) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
 
-  async function checkActiveTrip(){
-    if(!isOnline)return;const ph=localStorage.getItem('els_phone')||'',ve=localStorage.getItem('els_vehicle')||'';if(!ph&&!ve)return;
-    try{const params=new URLSearchParams({mode:'my'});if(ph)params.append('phone',ph);if(ve)params.append('vehicle_number',ve);
-    const r=await fetch(`${API_BASE}/trips?${params}`);if(r.ok){const d=await safeJson(r);const trips=d.trips||d;
-    const ac=trips.find(t=>t.status==='driving'||t.status==='paused');
-    if(ac&&ac.id){tripId=ac.id;lastTripId=ac.id;tripStatus=ac.status||'driving';elapsedSeconds=Math.floor((Date.now()-new Date(ac.started_at).getTime())/1000);updateTripUI();startTimer();
-    if(tripStatus==='driving')startGPSTracking();
-    const ic=document.getElementById('inp-container');if(ic)ic.value=ac.container_number||'';const is2=document.getElementById('inp-seal');if(is2)is2.value=ac.seal_number||'';}}}catch(e){}
-  }
-
-  // 전역
-  window.startTrip=startTrip;window.pauseTrip=pauseTrip;window.resumeTrip=resumeTrip;window.stopTrip=stopTrip;
-  window.handlePhotos=handlePhotos;window.handleHistoryPhotos=handleHistoryPhotos;
-  window.switchTab=switchTab;window.loadHistory=loadHistory;window.showHistoryDetail=showHistoryDetail;
-  window.closeHistoryModal=closeHistoryModal;window.saveHistoryEdit=saveHistoryEdit;window.forceStopTrip=forceStopTrip;window.deleteTripRecord=deleteTripRecord;window.closeModal=closeModal;window.exitApp=exitApp;
-  window.resetTripData=resetTripData;window.showScreen=showScreen;
-
-  // 업데이트 시작 전 청소 및 정보 백업 로직
-  window.startUpdate = async function(url){
-    haptic('Heavy');
-    const O = getOverlay();
-    
-    // 🚀 [중요] 비동기 대기 없이 클립보드 처리 (다운로드 지연 방지)
-    const ph = localStorage.getItem('els_phone');
-    if(ph && navigator.clipboard && navigator.clipboard.writeText) {
-       navigator.clipboard.writeText(ph).catch(e => console.error('Clip backup skip'));
-    }
-
-    const btn = event.target;
-    if(btn && btn.tagName === 'BUTTON') {
-      btn.disabled = true;
-      btn.textContent = '🧹 청소 및 다운로드 중...';
-      btn.style.opacity = '0.7';
-    }
-
-    // 1. 구버전 파일 삭제 시도
-    if(O && O.deleteFilesByPattern){
-        try {
-            await O.deleteFilesByPattern({ pattern: 'els_driver' });
-        } catch(e){ console.error('청소 실패:', e); }
-    }
-    
-    // 2. 잠시 후 브라우저 열기
-    setTimeout(() => {
-        if(O && O.openBrowser) {
-            O.openBrowser({ url: url });
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.click();
-        }
-        
-        // 1.5초 뒤에 모달 닫기
-        setTimeout(() => {
-            closeModal();
-            if(btn) {
-                btn.disabled = false;
-                btn.textContent = '지금 다운로드 및 업데이트';
-                btn.style.opacity = '1';
-            }
-        }, 1500);
-    }, 600);
+  // ─── 공개 API ─────────────────────────────────────────────────
+  window.App = {
+    // 권한
+    requestPerm, finishPermSetup, updatePermStatuses, resetApp,
+    // 프로필
+    saveProfile, lookupDriver,
+    // 운행
+    onTripFieldChange, startTrip, togglePause, endTrip, saveMemo,
+    // 네비
+    switchTab, headerBack,
+    // 공지
+    openNotice, closeNoticeDetail,
+    // 사진
+    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto,
+    // 일지
+    loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail,
+    // 긴급
+    closeEmergency,
+    // 업데이트/종료
+    checkUpdate, exitApp,
   };
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else initApp();
+  // 시작
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
 })();
-
-
-

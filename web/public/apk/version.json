@@ -1,5 +1,6 @@
 {
-  "latestVersion": "3.9.9.3",
-  "changeLog": "- 공지사항 본문 보기 기능 추가 (앱 내 상세 모달)\n- 관리자 공지사항 수정 및 삭제 오류 해결\n- 앱 정보 버전 표기 업데이트 (v3.9.9.3)",
+  "latestVersion": "v4.0.0",
+  "versionCode": 44,
+  "changeLog": "v4.0.0 완전 재구축\n- PIP 제거 → 화면 꺼짐 시 GPS/타이머 유지\n- 오버레이 위젯 재설계 (표시+복귀 전용)\n- GPS 속도+자이로 기반 유동적 수신\n- 긴급알림 시스템 추가\n- UI 완전 재설계 (화이트/각진/여백최소화)\n- Git 롤백 정책 수립",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

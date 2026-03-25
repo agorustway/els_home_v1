@@ -1,5 +1,34 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
-## 📅 2026-03-23 - 오버레이 제거 및 APK 최적화 v3.8.0
+## 📅 2026-03-25 - 드라이버 앱 완전 재구축 v4.0.0
+### 주제: Git 롤백 불가 문제 해결 및 앱 처음부터 재설계
+
+#### 핵심 원인 분석
+- `web/.gitignore`의 `/out/` 제외로 앱 에셋이 Git 미추적 → 롤백 시 앱 내부 코드 복원 불가
+- `web/android/.gitignore`의 `assets/public` 제외로 안드로이드 에셋 동일 문제
+- **해결**: 양쪽 gitignore에서 해당 라인 제거하여 이후 모든 앱 에셋 Git 추적
+
+#### 주요 변경 사항
+1. **PIP 완전 제거**: 화면 꺼짐 시 GPS/타이머 초기화의 근본 원인. `MainActivity.java`에서 PIP 관련 코드 전면 제거
+2. **오버레이 위젯 재설계**: 3줄 표시(운송상태/운행시간/GPS수신간격) + 클릭시 앱 복귀. 버튼 없음. 동적 레이아웃으로 `layout_floating_widget.xml` 의존 제거
+3. **GPS 유동적 수신**: 속도 기반(≥60km/h→30초, 20~60→60초, 5~20→120초, <5→300초) + 자이로스코프 급회전(0.8rad/s) 즉시 전송. 웹뷰+네이티브 서비스 이중 수집
+4. **긴급알림 시스템 신규**: `EmergencyPlugin.java`, `/api/vehicle-tracking/emergency/route.js`, `emergency_notices` 테이블
+5. **UI 완전 재설계**: 화이트 톤, 각진(radius 4px), 댄디 버튼, 아이콘 없음. 4탭(공지/운행/일지/종료), 설정 인라인(운행탭 하단)
+6. **뒤로가기 종료 처리**: 운행 중이면 종료 차단 메시지, 아니면 "앱을 종료하시겠습니까?"
+
+#### 변경 파일
+- `web/.gitignore`, `web/android/.gitignore` (롤백 정책)
+- `web/out/index.html`, `web/out/app.js`, `web/out/style.css` (완전 재작성)
+- `web/android/app/src/main/java/com/elssolution/driver/MainActivity.java`
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java`
+- `web/android/app/src/main/java/com/elssolution/driver/EmergencyPlugin.java` (신규)
+- `web/android/app/src/main/AndroidManifest.xml`
+- `web/app/api/vehicle-tracking/emergency/route.js` (신규)
+- `web/supabase_sql/emergency_notices.sql` (신규)
+- `docs/01_MISSION_CONTROL.md`, `docs/02_APP_CONTROL.md`
+
+---
+
 ### 주제: APK 배포 환경에서의 사용자 경험 개선 및 백그라운드 GPS 안정성 확보
 #### 주요 변경 사항
 1. **오버레이(다른 앱 위에 표시) 기능 완전 제거**:

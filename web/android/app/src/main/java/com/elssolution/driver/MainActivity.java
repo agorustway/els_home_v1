@@ -1,31 +1,43 @@
 package com.elssolution.driver;
 
 import android.Manifest;
-import android.app.PictureInPictureParams;
+import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Rational;
+import android.os.PowerManager;
+import android.provider.Settings;
+import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.annotation.CapacitorPlugin;
 
 public class MainActivity extends BridgeActivity {
+
+    private static final int REQ_PERMISSION_CODE = 101;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         registerPlugin(OverlayPlugin.class);
+        registerPlugin(EmergencyPlugin.class);
+        requestRuntimePermissions();
+    }
 
-        // 안드로이드 13 이상에서 알림, 미디어, 전화 권한 요청
+    // ─── 권한 요청 ───────────────────────────────────────────────
+    private void requestRuntimePermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             String[] permissions = {
                 Manifest.permission.POST_NOTIFICATIONS,
                 Manifest.permission.READ_MEDIA_IMAGES,
                 Manifest.permission.READ_MEDIA_VIDEO,
-                Manifest.permission.READ_PHONE_STATE
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.CAMERA
             };
-            
             boolean needRequest = false;
             for (String perm : permissions) {
                 if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
@@ -33,37 +45,57 @@ public class MainActivity extends BridgeActivity {
                     break;
                 }
             }
-            
             if (needRequest) {
-                ActivityCompat.requestPermissions(this, permissions, 101);
+                ActivityCompat.requestPermissions(this, permissions, REQ_PERMISSION_CODE);
             }
         }
     }
 
+    // ─── 뒤로가기 처리 ────────────────────────────────────────────
     @Override
-    protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        // 운행 중일 때만 PIP 모드 진입 시도 (JS에서 상태 체크 후 호출하는게 베스트지만, 우선 무조건 시도)
-        enterPipMode();
-    }
-
-    private void enterPipMode() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // PIP 창 가로세로 비율 (1:1 정사각형 추천)
-            Rational aspectRatio = new Rational(1, 1);
-            PictureInPictureParams params = new PictureInPictureParams.Builder()
-                    .setAspectRatio(aspectRatio)
-                    .build();
-            enterPictureInPictureMode(params);
+    public void onBackPressed() {
+        // 운행 중 여부를 JS에서 쿼리
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().evaluateJavascript(
+                "(window.isTripActive && window.isTripActive()) ? 'true' : 'false'",
+                value -> {
+                    boolean isTripActive = "\"true\"".equals(value) || "true".equals(value);
+                    runOnUiThread(() -> showExitDialog(isTripActive));
+                }
+            );
+        } else {
+            showExitDialog(false);
         }
     }
 
-    @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
-        // PIP 모드 상태 변화를 웹뷰(JS)로 전달
-        if (getBridge() != null && getBridge().getWebView() != null) {
-            getBridge().getWebView().evaluateJavascript("if(window.onPipModeChanged) window.onPipModeChanged(" + isInPictureInPictureMode + ")", null);
+    private void showExitDialog(boolean isTripActive) {
+        String message = isTripActive
+            ? "운행 중에는 앱을 종료할 수 없습니다.\n운행 종료 후 앱 종료가 가능합니다."
+            : "앱을 종료하시겠습니까?";
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("ELS 차량관리");
+        builder.setMessage(message);
+
+        if (!isTripActive) {
+            builder.setPositiveButton("종료", (d, w) -> finishAndRemoveTask());
+        }
+        builder.setNegativeButton("취소", (d, w) -> d.dismiss());
+        builder.show();
+    }
+
+    // ─── 배터리 최적화 제외 요청 (JS에서 호출) ────────────────────
+    public void requestBatteryOptimizationExclusion() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            String packageName = getPackageName();
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + packageName));
+                startActivity(intent);
+            } else {
+                Toast.makeText(this, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }
