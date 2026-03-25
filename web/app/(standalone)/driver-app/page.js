@@ -1276,6 +1276,53 @@ export default function DriverAppPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* [신규] 공지사항 상세보기 모달 */}
+            <AnimatePresence>
+                {selectedNotice && (
+                    <div className={styles.onboardingOverlay} style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 9999 }} onClick={() => setSelectedNotice(null)}>
+                        <motion.div 
+                            className={styles.onboardingStep} 
+                            style={{ maxWidth: '90%', width: '400px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0, background: '#fff' }}
+                            initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} 
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', position: 'relative' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800, marginBottom: 4 }}>NOTICE</div>
+                                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', margin: 0, lineHeight: 1.4 }}>{selectedNotice.title}</h2>
+                                <button 
+                                    onClick={() => setSelectedNotice(null)} 
+                                    style={{ position: 'absolute', top: 15, right: 15, background: '#f1f5f9', border: 'none', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 18, color: '#64748b' }}
+                                >✕</button>
+                            </div>
+                            
+                            <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                                <div 
+                                    style={{ fontSize: '0.95rem', color: '#334155', lineHeight: 1.6 }}
+                                    dangerouslySetInnerHTML={{ __html: selectedNotice.content }} 
+                                />
+                                
+                                {selectedNotice.attachments?.length > 0 && (
+                                    <div style={{ marginTop: 25, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginBottom: 10 }}>첨부파일 ({selectedNotice.attachments.length})</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {selectedNotice.attachments.map((at, ai) => (
+                                                <a key={ai} href={at.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#2563eb', fontSize: '0.85rem', fontWeight: 600 }}>
+                                                    <span>📎</span> {at.name}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div style={{ padding: '15px 20px', background: '#f8fafc' }}>
+                                <button className={styles.onboardingBtn} onClick={() => setSelectedNotice(null)} style={{ margin: 0 }}>닫기</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
