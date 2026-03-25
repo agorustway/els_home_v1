@@ -47,7 +47,7 @@ public class OverlayPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
             getActivity().runOnUiThread(() -> {
                 try {
-                    // 1단계: 패키지 지정 시도
+                    // 1단계: 패키지 지정 시도 (가장 정확)
                     Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + getActivity().getPackageName()));
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -55,13 +55,14 @@ public class OverlayPlugin extends Plugin {
                     startActivityForResult(call, intent, "overlayPermResult");
                 } catch (Exception e) {
                     try {
-                        // 2단계: 일반 목록 시도
+                        // 2단계: 일반 목록 시도 (URI 오류 시)
                         Intent intentList = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
                         intentList.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         Toast.makeText(getContext(), "📌 목록에서 [ELS차량용]을 찾아 허용해 주세요!", Toast.LENGTH_LONG).show();
-                        startActivityForResult(call, intentList, "overlayPermResult");
+                        getContext().startActivity(intentList);
+                        call.resolve(); // Result를 못 받으므로 일단 성공 처리 (사용자 수동 확인 유도)
                     } catch (Exception e2) {
-                        // 3단계: 앱 상세 페이지 (제한된 설정용)
+                        // 3단계: 앱 상세 페이지 (최후의 수단, 제한된 설정 해제 가능)
                         openRestrictedSettings(call);
                     }
                 }
