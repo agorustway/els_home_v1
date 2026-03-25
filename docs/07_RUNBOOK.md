@@ -145,14 +145,16 @@ sudo docker logs -f els-backend
 
 ### 3-4. 안드로이드 네이티브 앱 빌드 및 배포
 독립형 운전원 앱(Capacitor) 배포 과정:
-1. `c:\Users\hoon\Desktop\els_home_v1\web\out` 폴더 내 `app.js`, `style.css`, `index.html` 로직 완성.
-2. Android 에셋 동기화 실행 (Vercel 프론트엔드 빌드 무관):
+1. `web/android/app/build.gradle`에서 `versionCode` 및 `versionName` 상향 조정.
+2. `web/public/apk/version.json` 파일의 `latestVersion` 및 `changeLog` 업데이트 (필수!).
+3. Android 에셋 동기화 및 빌드:
    ```powershell
-   cd web
-   npx cap sync android
+   cd web; npx cap sync android
+   cd android; ./gradlew.bat assembleRelease
    ```
-3. Android Studio(또는 실기기)에서 프로젝트 열고 `Run` (재빌드) 실행.
-4. 테스트: 인터넷을 끈 상태에서 앱이 정상 렌더링(Offline Bar 노출)되는지 확인.
+4. 생성된 APK(`app-release-unsigned.apk` 등)를 `web/public/apk/els_driver.apk`로 복사.
+5. `docs/01_MISSION_CONTROL.md` 최상단에 배포 정보 갱신.
+6. 테스트: 앱 내 [설정 > 업데이트 확인]을 통해 정상 작동 확인.
 
 ---
 

@@ -47,32 +47,22 @@ public class OverlayPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
             getActivity().runOnUiThread(() -> {
                 try {
-                    Intent intent = new Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getActivity().getPackageName())
-                    );
+                    // 1단계: 패키지 지정 시도
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getActivity().getPackageName()));
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    
-                    // 🔑 Toast 안내: 사용자가 설정 화면에서 앱을 찾을 수 있도록 가이드
-                    Toast.makeText(getContext(), 
-                        "📌 [ELS차량용]을 찾아 허용해주세요", 
-                        Toast.LENGTH_LONG).show();
-                    
+                    Toast.makeText(getContext(), "📌 [ELS차량용]을 찾아 허용해 주세요!", Toast.LENGTH_LONG).show();
                     startActivityForResult(call, intent, "overlayPermResult");
-                    Log.d(TAG, "오버레이 권한 설정 화면 열기 시도 (패키지 지정 + Toast 안내)");
                 } catch (Exception e) {
-                    Log.w(TAG, "패키지 지정 설정 창 열기 실패, 일반 목록 시도: " + e.getMessage());
                     try {
+                        // 2단계: 일반 목록 시도
                         Intent intentList = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
                         intentList.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        
-                        Toast.makeText(getContext(), 
-                            "📌 목록에서 [ELS차량용]을 찾아 허용해주세요", 
-                            Toast.LENGTH_LONG).show();
-                        
+                        Toast.makeText(getContext(), "📌 목록에서 [ELS차량용]을 찾아 허용해 주세요!", Toast.LENGTH_LONG).show();
                         startActivityForResult(call, intentList, "overlayPermResult");
                     } catch (Exception e2) {
-                        call.reject("설정 화면을 열 수 없습니다.");
+                        // 3단계: 앱 상세 페이지 (제한된 설정용)
+                        openRestrictedSettings(call);
                     }
                 }
             });
@@ -147,14 +137,16 @@ public class OverlayPlugin extends Plugin {
         String container = call.getString("container", "-");
         String status = call.getString("status", "driving");
         String tripId = call.getString("tripId");
+        long startTimeMillis = call.getLong("startTimeMillis", System.currentTimeMillis());
 
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
         intent.putExtra("timer", timer);
         intent.putExtra("container", container);
         intent.putExtra("status", status);
         intent.putExtra("tripId", tripId);
+        intent.putExtra("startTimeMillis", startTimeMillis);
         getContext().startService(intent);
-        Log.d(TAG, "플로팅 위젯 시작");
+        Log.d(TAG, "플로팅 위젯 시작 (startTime: " + startTimeMillis + ")");
         call.resolve();
     }
 
@@ -168,6 +160,7 @@ public class OverlayPlugin extends Plugin {
         intent.putExtra("container", call.getString("container"));
         intent.putExtra("status", call.getString("status"));
         intent.putExtra("tripId", call.getString("tripId"));
+        intent.putExtra("startTimeMillis", call.getLong("startTimeMillis", System.currentTimeMillis()));
         getContext().startService(intent);
         call.resolve();
     }
@@ -227,30 +220,24 @@ public class OverlayPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             getActivity().runOnUiThread(() -> {
                 try {
-                    // Try to open a more direct dialog first (if permission added to manifest)
+                    // 1단계: 다이렉트 팝업 시도
                     Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
                     intent.setData(Uri.parse("package:" + getActivity().getPackageName()));
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    
-                    Toast.makeText(getContext(), 
-                        "🔋 실시간 관제를 위해 [허용]을 선택해주세요", 
-                        Toast.LENGTH_LONG).show();
-                        
+                    Toast.makeText(getContext(), "🔋 실시간 관제를 위해 [허용]을 선택해 주세요!", Toast.LENGTH_LONG).show();
                     getContext().startActivity(intent);
                     call.resolve();
                 } catch (Exception e1) {
                     try {
-                        // Fallback to Application Details (Guaranteed to open on all devices)
-                        Intent intentList = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                Uri.parse("package:" + getActivity().getPackageName()));
+                        // 2단계: 최적화 목록 페이지 시도
+                        Intent intentList = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                         intentList.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        Toast.makeText(getContext(), 
-                            "🔋 [배터리] 항목을 찾아 → [제한 없음]으로 1번만 꼭 변경해주세요!", 
-                            Toast.LENGTH_LONG).show();
+                        Toast.makeText(getContext(), "🔋 [전체] -> [ELS차량용] -> [제한 없음]으로 변경해 주세요!", Toast.LENGTH_LONG).show();
                         getContext().startActivity(intentList);
                         call.resolve();
                     } catch (Exception e2) {
-                        call.reject("배터리 설정 화면을 열 수 없습니다.");
+                        // 3단계: 앱 상세 정보 페이지 (제한된 설정 해제용)
+                        openAppSettings(call);
                     }
                 }
             });

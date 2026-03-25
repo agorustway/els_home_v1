@@ -300,7 +300,8 @@ export default function DriverAppPage() {
                             Overlay.showOverlay({ 
                                 timer: formatTime(elapsedSeconds), 
                                 container: `📦 ${active.container_number || '미입력'}`,
-                                tripId: active.id
+                                tripId: active.id,
+                                startTimeMillis: new Date(active.started_at).getTime()
                             });
                         }
                     }
@@ -435,7 +436,8 @@ export default function DriverAppPage() {
                         Overlay.showOverlay({ 
                             timer: "00:00:00", 
                             container: `📦 ${containerNumber}`,
-                            tripId: data.trip.id
+                            tripId: data.trip.id,
+                            startTimeMillis: Date.now()
                         });
                     });
                 }
@@ -557,6 +559,12 @@ export default function DriverAppPage() {
         if (!onboardingDone) setOnboardingStep(1);
 
         checkOverlayPermission();
+        checkBatteryOptimization().then(isIgnoring => {
+            if (!isIgnoring && onboardingDone) {
+                setAlertMessage('🔋 [애플리케이션 정보] -> [배터리] -> [제한 없음]으로 꼭 변경해 주세요! (안 보이면 ⋮ 메뉴에서 [제한된 설정 허용] 클릭)');
+                handleBatteryOptimizationRequest();
+            }
+        });
 
         setIsPwa(window.matchMedia('(display-mode: standalone)').matches);
         const storedPhone = localStorage.getItem('els_driver_phone');
@@ -793,6 +801,26 @@ export default function DriverAppPage() {
         return true;
     };
 
+    const checkBatteryOptimization = async () => {
+        if (Overlay) {
+            try {
+                const { isIgnoring } = await Overlay.checkBatteryOptimization();
+                return isIgnoring;
+            } catch { return true; }
+        }
+        return true;
+    };
+
+    const handleBatteryOptimizationRequest = async () => {
+        if (Overlay) {
+            triggerHaptic();
+            await Overlay.requestBatteryOptimization();
+            window.addEventListener('focus', () => {
+                checkBatteryOptimization();
+            }, { once: true });
+        }
+    };
+
     const handleOverlayRequest = async () => {
         if (Overlay) {
             triggerHaptic();
@@ -807,7 +835,7 @@ export default function DriverAppPage() {
     const finishOnboarding = async () => {
         const isGranted = await checkOverlayPermission();
         if (!isGranted) {
-            setAlertMessage('운행 중 타이머 표시를 위해 "다른 앱 위에 표시" 권한이 반드시 필요합니다. 설정창에서 ELS 앱을 찾아 허용해 주세요!');
+            setAlertMessage('🚀 실시간 타이머 표시를 위해 [다른 앱 위에 표시] 권한이 꼭 필요합니다! (안 보이면 ⋮ 메뉴 -> 제한된 설정 허용 클릭)');
             handleOverlayRequest();
             return;
         }
