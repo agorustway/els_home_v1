@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.6';
+  const APP_VERSION = 'v4.1.7';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -290,12 +290,20 @@
         }
         break;
     }
-    setTimeout(updatePermStatuses, 1500);
+    // 권한 상태를 즉시 갱신해 UI에 반영
+    setTimeout(updatePermStatuses, 500);
   }
 
   function finishPermSetup() {
     Store.set('permSetupDone', true);
     openSettings();
+  }
+
+  // 설정 화면에서 권한 설정 화면으로 이동 (새 버튼용)
+  function openPermissionSetup() {
+    // 권한 화면으로 전환하고 현재 상태를 다시 확인
+    showScreen('permission');
+    updatePermStatuses();
   }
 
   function resetApp() {
@@ -708,6 +716,26 @@
     document.getElementById('header-back').classList.add('hidden');
   }
 
+  //  // 운행 데이터 및 사진 초기화 (설정 버튼 옆 초기화 버튼 및 수시 호출용)
+  function clearTripData() {
+    // 현재 진행 중인 트립이 있으면 중단
+    if (State.trip.id) {
+      // 서버에 종료 요청 없이 로컬만 정리
+      stopOverlayService();
+      stopGPS();
+      Store.rm('activeTrip');
+    }
+    State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
+    State.photos = [];
+    // UI 초기화
+    document.getElementById('container-no').value = '';
+    document.getElementById('seal-no').value = '';
+    document.getElementById('photo-scroll').innerHTML = '';
+    document.getElementById('photo-count-display').textContent = '(0/10)';
+    setTripStatus('idle');
+    updateTripUI();
+    showToast('운행 데이터가 초기화되었습니다.');
+  }
   // ─── 사진 업로드 ──────────────────────────────────────────────
   function addPhoto() {
     if (State.photos.length >= 10) { showToast('최대 10장까지 첨부 가능합니다.'); return; }
