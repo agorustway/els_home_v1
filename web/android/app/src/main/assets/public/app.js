@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.4';
+  const APP_VERSION = 'v4.1.5';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -630,7 +630,7 @@
     document.getElementById('notice-list').innerHTML = '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
     try {
       const [res1, res2] = await Promise.all([
-        smartFetch(`${BASE_URL}/api/board?type=notice`).catch(() => null),
+        smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`).catch(() => null),
         smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=false`).catch(() => null)
       ]);
       
