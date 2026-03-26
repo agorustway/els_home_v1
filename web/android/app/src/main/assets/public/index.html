@@ -193,6 +193,11 @@
             <button class="btn btn-sm btn-danger" onclick="App.deleteLog()">삭제</button>
           </div>
           <div id="log-detail-content"></div>
+          <!-- 사진 섹션 (사진 있을 때만 표시) -->
+          <div id="log-photo-section" class="photo-section" style="display:none;">
+            <div class="photo-label">운행 사진</div>
+            <div id="log-photo-scroll" class="photo-scroll"></div>
+          </div>
           <div class="field"><label>컨테이너 번호</label><input type="text" id="log-edit-container"></div>
           <div class="field"><label>씰 번호</label><input type="text" id="log-edit-seal"></div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>

@@ -138,11 +138,11 @@ input, textarea, select, button { font-family: inherit; }
 .notice-item-unread .notice-item-title::before {
   content: '● '; color: var(--danger); font-size: 8px; vertical-align: middle;
 }
-.notice-detail { flex-direction: column; display: none; padding: 14px; gap: 10px; }
+.notice-detail { flex-direction: column; display: none; padding: 14px; gap: 10px; overflow-y: auto; flex: 1; }
 .notice-detail.active { display: flex; }
 .notice-detail-title { font-size: 16px; font-weight: 900; }
 .notice-detail-meta  { font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-.notice-detail-body  { font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.notice-detail-body  { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 
 /* ─── 운행 탭 ─── */
 #tab-trip { padding: 10px 12px; gap: 8px; display: flex; flex-direction: column; }

@@ -687,9 +687,12 @@
   function openNotice(id) {
     const n = _notices.find(x => x.id === id);
     if (!n) return;
-    document.getElementById('notice-detail-title').textContent = n.title;
+    console.log('openNotice data:', JSON.stringify(n));
+    document.getElementById('notice-detail-title').textContent = n.title || '제목 없음';
     document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
-    document.getElementById('notice-detail-body').textContent  = n.content || n.body || '';
+    // 본문: content 또는 body, 줄바꿈 보존
+    const bodyText = n.content || n.body || n.message || '';
+    document.getElementById('notice-detail-body').innerHTML = escHtml(bodyText).replace(/\n/g, '<br>');
     document.getElementById('notice-list').style.display   = 'none';
     document.getElementById('notice-detail').classList.add('active');
     document.getElementById('header-back').classList.remove('hidden');
@@ -859,6 +862,8 @@
       document.getElementById('log-edit-container').value = data.container_number || '';
       document.getElementById('log-edit-seal').value      = data.seal_number || '';
       document.getElementById('log-edit-memo').value      = data.special_notes || '';
+
+      // 기본 정보
       document.getElementById('log-detail-content').innerHTML = `
         <div style="font-size:13px;color:var(--text-2);line-height:1.8;">
           <b>차량번호:</b> ${escHtml(data.vehicle_number||'—')}<br>
@@ -867,6 +872,23 @@
           <b>타입:</b> ${data.container_type||'—'} / ${data.container_kind||'—'}
         </div>
       `;
+
+      // 사진 목록 렌더링
+      const photos = Array.isArray(data.photos) ? data.photos : [];
+      const photoSection = document.getElementById('log-photo-section');
+      const photoScroll  = document.getElementById('log-photo-scroll');
+      if (photoSection && photoScroll) {
+        if (photos.length === 0) {
+          photoSection.style.display = 'none';
+        } else {
+          photoSection.style.display = '';
+          photoScroll.innerHTML = photos.map((p, i) => {
+            const url = p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || '');
+            return url ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i+1}">` : '';
+          }).join('');
+        }
+      }
+
       document.getElementById('log-list').style.display = 'none';
       document.getElementById('log-detail').classList.add('active');
       document.getElementById('header-back').classList.remove('hidden');
@@ -996,6 +1018,54 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
 
+  // ─── 일지 사진 뷰어 (읽기 전용) ──────────────────────────────
+  let _logPhotos = [];
+  let _logPhotoIdx = 0;
+
+  function openLogPhoto(url, idx, total) {
+    // 뷰어를 열고, 현재 log의 photos 배열을 활용
+    const data = _currentLogData;
+    const photos = Array.isArray(data?.photos) ? data.photos : [];
+    if (photos.length === 0) {
+      // fallback: url 직접 표시
+      _logPhotos = [{ serverUrl: url }];
+      _logPhotoIdx = 0;
+    } else {
+      _logPhotos = photos.map(p => ({
+        serverUrl: p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || ''),
+      }));
+      _logPhotoIdx = idx;
+    }
+    // 기존 photo-viewer를 읽기 전용 모드로 재활용
+    document.getElementById('photo-viewer').dataset.mode = 'log';
+    document.getElementById('photo-viewer').classList.add('active');
+    showLogPhotoViewerImage();
+  }
+
+  function showLogPhotoViewerImage() {
+    const p = _logPhotos[_logPhotoIdx];
+    if (!p) return;
+    document.getElementById('photo-viewer-img').src = p.serverUrl || '';
+    document.getElementById('photo-viewer-index').textContent = `${_logPhotoIdx + 1} / ${_logPhotos.length}`;
+  }
+
+  function prevLogPhoto() { if (_logPhotoIdx > 0) { _logPhotoIdx--; showLogPhotoViewerImage(); } }
+  function nextLogPhoto() { if (_logPhotoIdx < _logPhotos.length - 1) { _logPhotoIdx++; showLogPhotoViewerImage(); } }
+
+  // photo-viewer의 prev/next를 모드에 따라 분기
+  function prevPhotoAny() {
+    if (document.getElementById('photo-viewer').dataset.mode === 'log') prevLogPhoto();
+    else prevPhoto();
+  }
+  function nextPhotoAny() {
+    if (document.getElementById('photo-viewer').dataset.mode === 'log') nextLogPhoto();
+    else nextPhoto();
+  }
+  function closePhotoViewerAny() {
+    document.getElementById('photo-viewer').dataset.mode = '';
+    closePhotoViewer();
+  }
+
   // ─── 공개 API ─────────────────────────────────────────────────
   window.App = {
     // 권한
@@ -1009,9 +1079,9 @@
     // 공지
     openNotice, closeNoticeDetail,
     // 사진
-    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
+    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer: closePhotoViewerAny, prevPhoto: prevPhotoAny, nextPhoto: nextPhotoAny, deleteCurrentPhoto,
     // 일지
-    loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail,
+    loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail, openLogPhoto,
     // 긴급
     closeEmergency,
     // 업데이트/종료
