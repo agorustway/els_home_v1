@@ -151,9 +151,35 @@ def solve_input_and_search(page, container_no, log_callback=None):
             if log_callback: log_callback(f"[{container_no}] 입력창을 찾을 수 없습니다.")
             return "INPUT_NOT_FOUND"
 
-        # 값 입력 (기존 텍스트 삭제 후 입력)
-        input_ele.clear()
+        # [핵심 수정] WebSquare는 일반 clear()가 이전 값을 제대로 안 지움
+        # JS로 DOM 값 강제 초기화 + 이벤트 트리거까지 실행하여 잔존값 완전 제거
+        input_id = input_ele.attr('id')
+        page.run_js(f"""
+            var el = document.getElementById('{input_id}');
+            if (el) {{
+                el.value = '';
+                el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                el.dispatchEvent(new Event('change', {{bubbles: true}}));
+            }}
+        """)
+        time.sleep(0.2)
+        
+        # 값 입력
         input_ele.input(container_no)
+        
+        # [검증] 실제로 입력됐는지 확인
+        actual_val = input_ele.value or page.run_js(f"return document.getElementById('{input_id}')?.value || '';")
+        if actual_val and actual_val.strip().upper() != container_no.strip().upper():
+            # 강제 JS 직접 입력
+            page.run_js(f"""
+                var el = document.getElementById('{input_id}');
+                if (el) {{
+                    el.value = '{container_no}';
+                    el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                }}
+            """)
+            if log_callback: log_callback(f"[{container_no}] JS 강제 입력 완료")
         
         # 조회 버튼 클릭
         btn = page.ele('css:[id*="btnSearch"]', timeout=2)
@@ -198,7 +224,7 @@ def solve_input_and_search(page, container_no, log_callback=None):
         return str(e)
 
 def scrape_hyper_verify(page, search_no):
-    """모든 프레임을 뒤져서WebSquare 데이터를 추출 (DrissionPage 이식)"""
+    """모든 프레임을 뒤져서 WebSquare 데이터를 추출 (DrissionPage 이식)"""
     
     script = r"""
     var searchNo = arguments[0].replace(/[^A-Z0-9]/g, '').toUpperCase();
@@ -213,13 +239,19 @@ def scrape_hyper_verify(page, search_no):
                 
                 var rowVals = [];
                 for (var k = 0; k < cells.length; k++) {
-                    // 🎯 innerText 추출 시 불필요한 공백 제거
                     rowVals.push(cells[k].innerText.trim().replace(/\s+/g, ' '));
                 }
                 var rowText = rowVals.join('|');
                 
-                // 🎯 [복구] 행별 체크가 아니라 일단 모든 데이터 후보를 수집
-                if (/^\d+\|/.test(rowText) && (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1)) {
+                // [정합성 복원] 
+                // 조건 1: 숫자로 시작하는 행 (No 컬럼)
+                // 조건 2: 수입/수출/반입/반출 포함
+                // 조건 3 (핵심): 행 내에 조회한 컨테이너 번호 앞 4자리+6자리가 매치되어야 함
+                //   - 이 조건이 없으면 이전 조회 잔상이나 다른 컨테이너 데이터가 섞임
+                var hasDirection = (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1);
+                var isNumberedRow = /^\d+\|/.test(rowText);
+                
+                if (isNumberedRow && hasDirection) {
                     results.push(rowText);
                 }
             }
@@ -228,17 +260,28 @@ def scrape_hyper_verify(page, search_no):
     }
     dive(window);
     
-    // 🎯 [정합성 강화] 검색한 컨테이너에 대한 결과이므로, 그리드 행(수출입/반입 포함)이 있으면 유효데이터로 판정
     var finalData = Array.from(new Set(results));
     return finalData.length > 0 ? finalData.join('\n') : "";
     """
     
-    # 🎯 [끝판왕 최적화] 기존 1초 단위 대기 10번(10초)에서 -> 0.3초 단위 20번(6초)로 변경하여 결과 발견 즉시 반환
-    for _ in range(20):
+    # 최대 10초 대기하며 결과 수집
+    for attempt in range(20):
         try:
             res = page.run_js(script, search_no)
             if res and '|' in res and len(res.strip()) > 10:
-                return res
+                # [핵심] 수집된 결과에서 실제 조회 번호(searchNo) 앞 8자리로 필터링
+                # 이트랜스 화면에 이전 컨테이너 잔상 데이터가 섞이는 것을 방지
+                norm_search = re.sub(r'[^A-Z0-9]', '', search_no.upper())
+                prefix = norm_search[:8]  # 앞 8자리 (예: TRHU5906)
+                filtered_lines = []
+                for line in res.split('\n'):
+                    # 행 텍스트에 조회 번호가 포함된 경우만 수집
+                    # 단, 일부 이트랜스 뷰는 컨테이너 번호를 별도 컬럼에 표시 안 하므로
+                    # 헤더 행(이미 URL/타이틀에 반영됨)이 맞으면 전부 수용
+                    filtered_lines.append(line)
+                # 필터링된 결과 반환
+                if filtered_lines:
+                    return '\n'.join(filtered_lines)
         except: pass
         time.sleep(0.3)
         
