@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.12';
+  const APP_VERSION = 'v4.1.13';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -469,9 +469,9 @@
       stopOverlayService();
       stopGPS();
       Store.rm('activeTrip');
-      State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
-      setTripStatus('idle');
-      updateTripUI();
+      
+      // 완전 초기화
+      clearTripData();
       showToast('운행이 종료되었습니다.');
     } catch (e) { showToast('종료 실패: ' + e.message); }
   }
@@ -741,8 +741,8 @@
     document.getElementById('container-no').value = '';
     document.getElementById('seal-no').value = '';
     document.getElementById('trip-memo').value = '';
-    document.getElementById('photo-scroll').innerHTML = '';
-    document.getElementById('photo-count-display').textContent = '(0/10)';
+    
+    renderPhotoThumbs();
     setTripStatus('idle');
     updateTripUI();
     showToast('운행 데이터가 초기화되었습니다.');
@@ -826,9 +826,10 @@
     }
   }
 
-  // 사진 뷰어
   function openPhotoViewer(idx) {
     State.currentPhotoIdx = idx;
+    State.viewerType = 'trip';
+    resetZoom();
     const delBtn = document.getElementById('photo-viewer-delete-btn');
     if (delBtn) delBtn.style.display = 'inline-block';
     document.getElementById('photo-viewer').classList.add('active');
@@ -844,25 +845,81 @@
   
   // 일지 전용 사진 뷰어 열기 (삭제 불가 모드)
   function openLogPhoto(url, idx, total) {
-    // 임시 상태로 사진 목록을 사진 뷰어용 형식으로 주입
-    // 원본 State.photos를 건드리지 않기 위해 UI만 업데이트
     const viewer = document.getElementById('photo-viewer');
     const viewerImg = document.getElementById('photo-viewer-img');
     const viewerIdx = document.getElementById('photo-viewer-index');
     const deleteBtn = document.getElementById('photo-viewer-delete-btn');
     
     if (viewerImg && viewerIdx) {
+      State.currentPhotoIdx = idx;
+      State.viewerType = 'log'; // 모드 설정
+      resetZoom();
       viewerImg.src = url;
       viewerIdx.textContent = `${idx + 1} / ${total}`;
-      if (deleteBtn) deleteBtn.style.display = 'none'; // 일지에선 삭제 버튼 숨김
+      if (deleteBtn) deleteBtn.style.display = 'inline-block'; // 삭제 가능하게 변경
       viewer.classList.add('active');
     }
   }
 
-  function prevPhoto() { if (State.currentPhotoIdx > 0) { State.currentPhotoIdx--; showPhotoViewerImage(); } }
-  function nextPhoto() { if (State.currentPhotoIdx < State.photos.length - 1) { State.currentPhotoIdx++; showPhotoViewerImage(); } }
-  function deleteCurrentPhoto() {
+  let currentZoom = 1;
+  function zoomPhoto(amount) {
+    currentZoom += amount;
+    if(currentZoom < 1) currentZoom = 1;
+    if(currentZoom > 5) currentZoom = 5;
+    document.getElementById('photo-viewer-img').style.transform = `scale(${currentZoom})`;
+  }
+
+  function resetZoom() {
+    currentZoom = 1;
+    const img = document.getElementById('photo-viewer-img');
+    if (img) img.style.transform = 'scale(1)';
+  }
+
+  function prevPhoto() { 
+    if (State.viewerType === 'log') {
+      if (State.currentPhotoIdx > 0) {
+        State.currentPhotoIdx--;
+        const p = State.logPhotos[State.currentPhotoIdx];
+        const url = p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || '');
+        openLogPhoto(url, State.currentPhotoIdx, State.logPhotos.length);
+      }
+      return;
+    }
+    if (State.currentPhotoIdx > 0) { State.currentPhotoIdx--; showPhotoViewerImage(); }
+  }
+  function nextPhoto() {
+    if (State.viewerType === 'log') {
+      if (State.currentPhotoIdx < State.logPhotos.length - 1) {
+        State.currentPhotoIdx++;
+        const p = State.logPhotos[State.currentPhotoIdx];
+        const url = p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || '');
+        openLogPhoto(url, State.currentPhotoIdx, State.logPhotos.length);
+      }
+      return;
+    }
+    if (State.currentPhotoIdx < State.photos.length - 1) { State.currentPhotoIdx++; showPhotoViewerImage(); }
+  }
+  async function deleteCurrentPhoto() {
     if (!confirm('현재 보고 있는 사진을 삭제하시겠습니까?')) return;
+    
+    if (State.viewerType === 'log') {
+      const p = State.logPhotos[State.currentPhotoIdx];
+      State.logPhotos.splice(State.currentPhotoIdx, 1);
+      
+      try {
+        await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ photos: State.logPhotos }),
+        });
+        showToast('사진이 삭제되었습니다.');
+      } catch (e) {
+        showToast('사진 삭제(서버 반영) 실패');
+      }
+      closePhotoViewer();
+      openLog(State.currentLogId); // UI 갱신
+      return;
+    }
+
     State.photos.splice(State.currentPhotoIdx, 1);
     const scroll = document.getElementById('photo-scroll');
     if (State.photos.length === 0) {
@@ -934,18 +991,19 @@
 
       // 사진 목록 렌더링
       const photos = Array.isArray(data.photos) ? data.photos : [];
+      State.logPhotos = photos;
       const photoSection = document.getElementById('log-photo-section');
       const photoScroll  = document.getElementById('log-photo-scroll');
       if (photoSection && photoScroll) {
-        if (photos.length === 0) {
-          photoSection.style.display = 'none';
-        } else {
-          photoSection.style.display = '';
-          photoScroll.innerHTML = photos.map((p, i) => {
-            const url = p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || '');
-            return url ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i+1}">` : '';
-          }).join('');
-        }
+        const cnt = document.getElementById('log-photo-count-display');
+        if (cnt) cnt.textContent = `(${photos.length}/10)`;
+
+        let html = '<button class="photo-add-btn" onclick="App.addLogPhoto()">+</button>';
+        html += photos.map((p, i) => {
+          const url = p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || '');
+          return url ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i+1}">` : '';
+        }).join('');
+        photoScroll.innerHTML = html;
       }
 
       document.getElementById('log-list').style.display = 'none';
@@ -987,6 +1045,53 @@
     document.getElementById('log-list').style.display = '';
     document.getElementById('header-back').classList.add('hidden');
     State.currentLogId = null;
+  }
+
+  function addLogPhoto() {
+    if ((State.logPhotos || []).length >= 10) { showToast('최대 10장까지 첨부 가능합니다.'); return; }
+    document.getElementById('log-file-input-hidden').click();
+  }
+
+  async function onLogFileSelected(e) {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    
+    if (!State.currentLogId) return;
+    
+    const photos = State.logPhotos || [];
+    if (photos.length >= 10) return;
+    
+    showToast('사진을 업로드 중입니다...');
+    
+    try {
+      const photosPayload = await Promise.all(files.slice(0, 10 - photos.length).map(async (file, idx) => {
+        const dataUrl = await readFileAsDataURL(file);
+        const base64 = dataUrl.split(',')[1];
+        const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const ext = mime.split('/')[1] || 'jpg';
+        return { name: `photo_${Date.now()}_${idx}.${ext}`, base64, type: mime };
+      }));
+      
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+        method: 'POST',
+        body: JSON.stringify({
+          trip_id: State.currentLogId,
+          photos: photosPayload,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.photos && Array.isArray(data.photos)) {
+        State.logPhotos = data.photos;
+        
+        // 다시 openLog 호출하여 UI 갱신 (이미 currentLogId 세팅되어있으므로 openLog 호출이 간단함)
+        openLog(State.currentLogId);
+        showToast('사진 업로드 완료');
+      } else if (data.error) {
+        showToast('업로드 실패: ' + data.error);
+      }
+    } catch (err) {
+      showToast('사진 업로드 실패: ' + err.message);
+    }
   }
 
   // ─── 긴급알림 ─────────────────────────────────────────────────

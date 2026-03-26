@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.12",
-  "versionCode": 58,
-  "changeLog": "중요 버그 수정 (v4.1.12)\n- 안드로이드 하단 메뉴바 배경색 검정으로 처리\n- 내용지움 버튼 클릭시 메모 필드 정상 초기화\n- 일지삭제(DELETE API) 권한 오류 수정\n- 운행 시작전 첨부한 사진 누락/미업로드 현상 수정",
+  "latestVersion": "v4.1.13",
+  "versionCode": 59,
+  "changeLog": "중요 기능 업데이트 (v4.1.13)\n- 네이티브(Java) 단독 처리를 통한 하단 안드로이드 메뉴바 강제 검정색 처리\n- 일지(종료된 운행) 페이지에 사진 추가/삭제 가능하도록 교체 저장 기능 추가\n- 사진 확대/축소 가능하도록 하단 사진 뷰어 내 줌인/아웃 버튼 추가",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

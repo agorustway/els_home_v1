@@ -199,10 +199,11 @@
             <button class="btn btn-sm btn-danger" onclick="App.deleteLog()">삭제</button>
           </div>
           <div id="log-detail-content"></div>
-          <!-- 사진 섹션 (사진 있을 때만 표시) -->
-          <div id="log-photo-section" class="photo-section" style="display:none;">
-            <div class="photo-label">운행 사진</div>
+          <!-- 사진 섹션 (항상 표시) -->
+          <div id="log-photo-section" class="photo-section">
+            <div class="photo-label">운행 사진 <span id="log-photo-count-display">(0/10)</span></div>
             <div id="log-photo-scroll" class="photo-scroll"></div>
+            <input type="file" id="log-file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onLogFileSelected(event)">
           </div>
           <div class="field"><label>컨테이너 번호</label><input type="text" id="log-edit-container"></div>
           <div class="field"><label>씰 번호</label><input type="text" id="log-edit-seal"></div>
@@ -276,7 +277,13 @@
 <!-- ──── 사진 전체화면 뷰어 ──── -->
 <div id="photo-viewer">
   <button id="photo-viewer-close" onclick="App.closePhotoViewer()">&#215;</button>
-  <img id="photo-viewer-img" src="" alt="사진">
+  <div style="position:absolute; top:80px; right:16px; display:flex; flex-direction:column; gap:8px; z-index:10000;">
+    <button onclick="App.zoomPhoto(0.5)" style="background:rgba(255,255,255,0.2); border:none; color:#fff; font-size:24px; width:44px; height:44px; border-radius:6px;">+</button>
+    <button onclick="App.zoomPhoto(-0.5)" style="background:rgba(255,255,255,0.2); border:none; color:#fff; font-size:24px; width:44px; height:44px; border-radius:6px;">-</button>
+  </div>
+  <div id="photo-viewer-wrap" style="flex:1; width:100%; overflow:auto; display:flex; align-items:center; justify-content:center;">
+    <img id="photo-viewer-img" src="" alt="사진" style="transition: transform 0.2s; transform-origin:center; max-width:100%; max-height:90vh; object-fit:contain;">
+  </div>
   <div id="photo-viewer-nav">
     <button onclick="App.prevPhoto()">&#8249;</button>
     <span id="photo-viewer-index" style="color:#fff;font-size:13px;align-self:center;"></span>
