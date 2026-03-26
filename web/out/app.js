@@ -693,26 +693,33 @@
   }
 
   function openNotice(id) {
-    const n = _notices.find(x => x.id === id);
+    // id가 숫자형으로 들어올 수 있으므로 문자열로 찾아보기
+    const n = _notices.find(x => String(x.id) === String(id));
     if (!n) return;
-    console.log('openNotice data:', JSON.stringify(n));
+    
     document.getElementById('notice-detail-title').textContent = n.title || '제목 없음';
     document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
-    // 본문: content 또는 body, 줄바꿈 보존
     const bodyText = n.content || n.body || n.message || '';
     document.getElementById('notice-detail-body').innerHTML = escHtml(bodyText).replace(/\n/g, '<br>');
-    document.getElementById('notice-list').style.display   = 'none';
-    document.getElementById('notice-detail').classList.add('active');
+    
+    // UI 전환
+    document.getElementById('notice-list').style.display = 'none';
+    const detail = document.getElementById('notice-detail');
+    detail.classList.add('active');
+    detail.style.display = 'flex'; // 명시적으로 flex 가동
     document.getElementById('header-back').classList.remove('hidden');
 
     // 읽음 처리
     const read = Store.get('readNotices') || [];
     if (!read.includes(id)) { read.push(id); Store.set('readNotices', read); }
+    detail.scrollTop = 0; // 최상단으로 스크롤 고정
   }
 
   function closeNoticeDetail() {
-    document.getElementById('notice-detail').classList.remove('active');
-    document.getElementById('notice-list').style.display = '';
+    const detail = document.getElementById('notice-detail');
+    detail.classList.remove('active');
+    detail.style.display = 'none';
+    document.getElementById('notice-list').style.display = 'block';
     document.getElementById('header-back').classList.add('hidden');
   }
 
@@ -818,6 +825,8 @@
   // 사진 뷰어
   function openPhotoViewer(idx) {
     State.currentPhotoIdx = idx;
+    const delBtn = document.getElementById('photo-viewer-delete-btn');
+    if (delBtn) delBtn.style.display = 'inline-block';
     document.getElementById('photo-viewer').classList.add('active');
     showPhotoViewerImage();
   }
@@ -828,6 +837,24 @@
     document.getElementById('photo-viewer-index').textContent = `${State.currentPhotoIdx + 1} / ${State.photos.length}`;
   }
   function closePhotoViewer() { document.getElementById('photo-viewer').classList.remove('active'); }
+  
+  // 일지 전용 사진 뷰어 열기 (삭제 불가 모드)
+  function openLogPhoto(url, idx, total) {
+    // 임시 상태로 사진 목록을 사진 뷰어용 형식으로 주입
+    // 원본 State.photos를 건드리지 않기 위해 UI만 업데이트
+    const viewer = document.getElementById('photo-viewer');
+    const viewerImg = document.getElementById('photo-viewer-img');
+    const viewerIdx = document.getElementById('photo-viewer-index');
+    const deleteBtn = document.getElementById('photo-viewer-delete-btn');
+    
+    if (viewerImg && viewerIdx) {
+      viewerImg.src = url;
+      viewerIdx.textContent = `${idx + 1} / ${total}`;
+      if (deleteBtn) deleteBtn.style.display = 'none'; // 일지에선 삭제 버튼 숨김
+      viewer.classList.add('active');
+    }
+  }
+
   function prevPhoto() { if (State.currentPhotoIdx > 0) { State.currentPhotoIdx--; showPhotoViewerImage(); } }
   function nextPhoto() { if (State.currentPhotoIdx < State.photos.length - 1) { State.currentPhotoIdx++; showPhotoViewerImage(); } }
   function deleteCurrentPhoto() {

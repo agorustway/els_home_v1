@@ -118,7 +118,10 @@
               <span id="trip-addr-display" class="trip-addr hidden" style="color:var(--text);"></span>
             </div>
             <div class="spacer"></div>
-            <button class="btn btn-sm" onclick="App.clearTripData()" style="font-size:16px;padding:0 8px;">🗑️ 초기화</button>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="btn btn-sm" onclick="App.openSettings()" style="font-size:20px;padding:0 8px;background:none;border:none;">⚙️</button>
+              <button class="btn btn-sm" onclick="App.clearTripData()" style="font-size:11px;padding:2px 6px;height:24px;background:#f5f5f5;color:var(--text-muted);border:1px solid #ddd;min-width:auto;">🗑️ 초기화</button>
+            </div>
           </div>
           <!-- Row 2 컨테이너 번호 -->
           <div class="field">
@@ -275,7 +278,7 @@
     <button onclick="App.prevPhoto()">&#8249;</button>
     <span id="photo-viewer-index" style="color:#fff;font-size:13px;align-self:center;"></span>
     <button onclick="App.nextPhoto()">&#8250;</button>
-    <button onclick="App.deleteCurrentPhoto()" style="background:var(--danger);color:#fff;font-size:13px;font-weight:700;margin-left:20px;">삭제</button>
+    <button id="photo-viewer-delete-btn" onclick="App.deleteCurrentPhoto()" style="background:var(--danger);color:#fff;font-size:13px;font-weight:700;margin-left:20px;">삭제</button>
   </div>
 </div>
 
