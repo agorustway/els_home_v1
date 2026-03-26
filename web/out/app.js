@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.3';
+  const APP_VERSION = 'v4.1.4';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -260,8 +260,20 @@
         break;
       case 'overlay':
         if (overlay) { 
-          try { await overlay.requestPermission(); } catch(e) { showToast('설정 오류: ' + e.message); } 
-        } else { showToast('기기에서 오버레이 기능 접속 불가'); }
+          try { 
+            await overlay.requestPermission();
+            setTimeout(updatePermStatuses, 1500);
+          } catch(e) { 
+            showToast('설정화면 열기 실패: ' + e.message);
+          }
+        } else {
+          // 네이티브 플러그인 없으면 안드로이드 언어 설정 화면 열기 시도
+          try {
+            const CapApp = window.Capacitor?.Plugins?.App;
+            if (CapApp) await CapApp.openUrl({ url: 'package:' + 'com.elssolution.driver' });
+            else showToast('기기에서 오버레이 기능 접속 불가');
+          } catch(e2) { showToast('기기에서 오버레이 기능 접속 불가'); }
+        }
         break;
       case 'battery':
         if (overlay && overlay.requestBatteryOptimization) { 
@@ -647,6 +659,11 @@
       const merged = [...emerg, ...norm].sort((a,b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
       _notices = merged;
       renderNoticeList();
+      
+      if (merged.length === 0) {
+        console.log('No notices found. norm:', norm.length, 'emerg:', emerg.length);
+        document.getElementById('notice-list').innerHTML = '<div class="loading">등록된 공지사항이 없습니다.</div>';
+      }
     } catch (e) {
       document.getElementById('notice-list').innerHTML = '<div class="loading">불러오기 실패</div>';
     }
@@ -725,23 +742,45 @@
   }
 
   async function uploadPendingPhotos() {
-    if (!State.trip.id) return;
-    for (let i = 0; i < State.photos.length; i++) {
-      const p = State.photos[i];
-      if (p.uploaded) continue;
-      try {
+    if (!State.trip.id) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
+    const pending = State.photos.filter(p => !p.uploaded);
+    if (pending.length === 0) return;
+    
+    try {
+      // 서버는 { photos: [{name, base64, type}] } 배열 형식을 기대
+      const photosPayload = await Promise.all(pending.map(async (p, idx) => {
         const base64 = p.dataUrl.split(',')[1];
-        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
-          method: 'POST',
-          body: JSON.stringify({
-            trip_id:   State.trip.id,
-            image_data: base64,
-            mime_type:  p.dataUrl.split(';')[0].split(':')[1],
-          }),
+        const mime = p.dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const ext = mime.split('/')[1] || 'jpg';
+        return { name: `photo_${Date.now()}_${idx}.${ext}`, base64, type: mime };
+      }));
+      
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+        method: 'POST',
+        body: JSON.stringify({
+          trip_id: State.trip.id,
+          photos: photosPayload,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      console.log('uploadPendingPhotos response:', data);
+      if (data.photos && Array.isArray(data.photos)) {
+        // 알림때 DB에 저장된 사진목록 전체를 State에 동기화
+        data.photos.forEach((serverPhoto, si) => {
+          const pendingIdx = State.photos.findIndex(p => !p.uploaded);
+          if (pendingIdx !== -1 && serverPhoto.url) {
+            State.photos[pendingIdx].serverUrl = BASE_URL + serverPhoto.url;
+            State.photos[pendingIdx].uploaded = true;
+          }
         });
-        const data = await res.json();
-        if (data.url) { State.photos[i].serverUrl = data.url; State.photos[i].uploaded = true; }
-      } catch (e) { console.warn('사진 업로드 실패', e); }
+        renderPhotoThumbs();
+        showToast(`사진 ${data.uploaded}장 업로드 완료`);
+      } else if (data.error) {
+        showToast('업로드 실패: ' + data.error);
+      }
+    } catch (e) { 
+      console.warn('사진 업로드 실패', e); 
+      showToast('사진 업로드 실패: ' + e.message);
     }
   }
 

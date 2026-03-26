@@ -50,7 +50,7 @@ public class FloatingWidgetService extends Service {
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
-    private static final String BASE_URL = "https://nollae.com";
+    private static final String BASE_URL = "https://www.nollae.com";
 
     // 오버레이 위젯
     private WindowManager mWindowManager;
