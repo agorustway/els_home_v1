@@ -185,12 +185,7 @@ export async function PATCH(request, { params }) {
  * 운행 기록 삭제 (본인 것만)
  */
 export async function DELETE(request, { params }) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const supabase = await createAdminClient();
     const { id } = await params;
 
     try {

@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.11';
+  const APP_VERSION = 'v4.1.12';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -436,6 +436,9 @@
       updateTripUI();
       startOverlayService();
       startGPS();
+      if (State.photos.some(p => !p.uploaded)) {
+        uploadPendingPhotos();
+      }
       showToast('운행이 시작되었습니다.');
     } catch (e) { showToast('오류: ' + e.message); }
   }
@@ -461,7 +464,7 @@
     try {
       await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ action: 'finish' }),
+        body: JSON.stringify({ action: 'complete' }),
       });
       stopOverlayService();
       stopGPS();
@@ -737,6 +740,7 @@
     // UI 초기화
     document.getElementById('container-no').value = '';
     document.getElementById('seal-no').value = '';
+    document.getElementById('trip-memo').value = '';
     document.getElementById('photo-scroll').innerHTML = '';
     document.getElementById('photo-count-display').textContent = '(0/10)';
     setTripStatus('idle');
@@ -970,7 +974,8 @@
   async function deleteLog() {
     if (!State.currentLogId || !confirm('이 운행 기록을 삭제하시겠습니까?')) return;
     try {
-      await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, { method: 'DELETE' });
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, { method: 'DELETE' });
+      if (res && res.ok === false) throw new Error('서버 권한/응답 오류');
       showToast('삭제되었습니다.');
       closeLogDetail();
       loadLogs();
