@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.10",
-  "versionCode": 56,
-  "changeLog": "버그 수정 (v4.1.10)\n- 공지사항 본문 안 열리는 버그 수정 (터치 이벤트 파라미터 규격화)",
+  "latestVersion": "v4.1.11",
+  "versionCode": 57,
+  "changeLog": "UI 개선 (v4.1.11)\n- 운행 데이터 초기화 위치 이동 및 '내용지움' 버튼명 변경\n- 하단 탭 바 색상 구분(회색조 및 그림자) 추가로 안드로이드 시스템 메뉴바 시인성 확보",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }
