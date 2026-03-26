@@ -145,16 +145,20 @@ sudo docker logs -f els-backend
 
 ### 3-4. 안드로이드 네이티브 앱 빌드 및 배포
 독립형 운전원 앱(Capacitor) 배포 과정:
-1. `web/android/app/build.gradle`에서 `versionCode` 및 `versionName` 상향 조정.
-2. `web/public/apk/version.json` 파일의 `latestVersion` 및 `changeLog` 업데이트 (필수!).
-3. Android 에셋 동기화 및 빌드:
-   ```powershell
-   cd web; npx cap sync android
-   cd android; ./gradlew.bat assembleRelease
-   ```
-4. 생성된 APK(`app-release-unsigned.apk` 등)를 `web/public/apk/els_driver.apk`로 복사.
-5. `docs/01_MISSION_CONTROL.md` 최상단에 배포 정보 갱신.
-6. 테스트: 앱 내 [설정 > 업데이트 확인]을 통해 정상 작동 확인.
+1. **AI 자동 배포 (권장)**:
+   - 채팅창에 `/deploy` 입력 또는 "배포해줘"라고 요청.
+   - AI가 자동으로 버전 증분, `npx cap sync`, `gradlew` 빌드, APK 복사, 문서 갱신, 커밋 및 푸시를 일괄 수행함.
+2. **수동 배포 절차**:
+   - `web/android/app/build.gradle`에서 `versionCode` 및 `versionName` 상향 조정.
+   - `web/public/apk/version.json` 파일의 `latestVersion` 및 `changeLog` 업데이트 (필수!).
+   - Android 에셋 동기화 및 빌드:
+     ```powershell
+     cd web; npx cap sync android
+     cd web/android; ./gradlew.bat assembleDebug
+     ```
+   - 생성된 APK(`app-debug.apk`)를 `web/public/apk/els_driver.apk`로 복사.
+   - `docs/01_MISSION_CONTROL.md` 최상단에 배포 정보 갱신.
+   - 테스트: 앱 내 [설정 > 업데이트 확인]을 통해 정상 작동 확인.
 
 ---
 
