@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.13';
+  const APP_VERSION = 'v4.1.14';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -990,7 +990,12 @@
       `;
 
       // 사진 목록 렌더링
-      const photos = Array.isArray(data.photos) ? data.photos : [];
+      let photos = [];
+      if (Array.isArray(data.photos)) {
+        photos = data.photos;
+      } else if (typeof data.photos === 'string' && data.photos.trim() !== '') {
+        try { photos = JSON.parse(data.photos); } catch(e) {}
+      }
       State.logPhotos = photos;
       const photoSection = document.getElementById('log-photo-section');
       const photoScroll  = document.getElementById('log-photo-scroll');
@@ -1238,26 +1243,54 @@
     // 프로필
     saveProfile, lookupDriver,
     // 운행
-    onTripFieldChange, startTrip, togglePause, endTrip, saveMemo,
+    onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
     // 네비
     switchTab, headerBack, showScreen, openSettings, handleBackButton: () => window.handleBackButton(),
     // 공지
     openNotice, closeNoticeDetail,
     // 사진
-    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer: closePhotoViewerAny, prevPhoto: prevPhotoAny, nextPhoto: nextPhotoAny, deleteCurrentPhoto,
+    addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
     // 일지
-    loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail, openLogPhoto,
+    loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail, openLogPhoto, addLogPhoto, onLogFileSelected,
     // 긴급
     closeEmergency,
     // 업데이트/종료
     checkUpdate, exitApp,
   };
 
+  // ─── 핀치 줌 (사진 두 손가락 확대) ──────────────────────────────────────────
+  function initPinchZoom() {
+    const wrap = document.getElementById('photo-viewer-wrap');
+    if (!wrap) return;
+    let initialDist = 0;
+    let baseScale = 1;
+    let lastCenter = {x: 0, y: 0};
+    
+    wrap.addEventListener('touchstart', e => {
+      if(e.touches.length === 2) {
+        e.preventDefault();
+        initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        baseScale = currentZoom;
+      }
+    }, {passive: false});
+
+    wrap.addEventListener('touchmove', e => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        currentZoom = baseScale * (dist / initialDist);
+        if(currentZoom < 1) currentZoom = 1;
+        if(currentZoom > 5) currentZoom = 5;
+        document.getElementById('photo-viewer-img').style.transform = `scale(${currentZoom})`;
+      }
+    }, {passive: false});
+  }
+
   // 시작
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => { init(); initPinchZoom(); });
   } else {
-    init();
+    init(); initPinchZoom();
   }
 
 })();
