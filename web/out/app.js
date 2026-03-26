@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.9';
+  const APP_VERSION = 'v4.1.10';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -683,7 +683,7 @@
       const dateVal = n.created_at || n.date || n.started_at;
       const dateStr = dateVal ? formatDate(new Date(dateVal)) : '—';
       return `
-        <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice(${n.id})">
+        <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice('${n.id}')">
           <div class="notice-item-title">${escHtml(n.title || n.message || '제목 없음')}</div>
           <div class="notice-item-meta">${dateStr}</div>
         </div>
