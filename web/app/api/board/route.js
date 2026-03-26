@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 export async function GET(request) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'free';
     const branch = searchParams.get('branch');
@@ -85,7 +85,9 @@ export async function GET(request) {
         };
     });
 
-    return NextResponse.json({ posts: mergedPosts });
+    return NextResponse.json({ posts: mergedPosts }, {
+        headers: { 'Access-Control-Allow-Origin': '*' }
+    });
 }
 
 export async function POST(request) {

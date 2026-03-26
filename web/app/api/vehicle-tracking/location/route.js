@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 
 /**
  * POST /api/vehicle-tracking/location
  * GPS 위치 전송 (운전원 스마트폰에서 주기적으로 호출)
  */
 export async function POST(request) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createAdminClient();
 
     try {
         const body = await request.json();
@@ -62,7 +61,9 @@ export async function POST(request) {
             .single();
 
         if (error) throw error;
-        return NextResponse.json({ location: data });
+        return NextResponse.json({ location: data }, {
+            headers: { 'Access-Control-Allow-Origin': '*' }
+        });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
