@@ -5,8 +5,8 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.2';
-  const BASE_URL = 'https://nollae.com';
+  const APP_VERSION = 'v4.1.3';
+  const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
   // ─── Capacitor 플러그인 헬퍼 ──────────────────────────────────
