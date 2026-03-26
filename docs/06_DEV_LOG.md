@@ -1,4 +1,22 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-26 (밤) - 시스템 전반 안정화 v4.1.5
+### 주제: 통신 리다이렉트 해결 및 데이터 정합성(Bot/DB) 확보
+
+#### 핵심 원인 분석 및 해결
+1. **CapacitorHttp 307 Redirect 이슈**: `nollae.com` 호출 시 Vercel이 `www`로 307 리다이렉트를 쏘는데, 앱 플러그인이 이를 따라가지 못하고 빈 응답을 반환함. `BASE_URL`을 `www.nollae.com`으로 고정하여 **"ID 누락" 및 "운송 시작 실패"** 근본 해결.
+2. **공지사항 테이블 불일치**: 관리자 웹은 `notices` 테이블에 쓰는데, 앱은 `posts` 테이블을 읽고 있었음. 전용 API(`/api/vehicle-tracking/notices`) 신설 및 앱 연동 완료.
+3. **사진 업로드 페이로드 규격**: 앱이 단일 객체로 보내던 형식을 서버가 기대하는 `{photos: [...]}` 배열 형식으로 맞춤 제작하여 **"일지 사진 누락"** 해결.
+4. **컨테이너 이력조회 데이터 오염**: WebSquare의 잔상이 남은 상태에서 스크래핑되어 타 컨테이너 정보가 섞이던 문제. **조회 전 JS 강제 초기화 + 결과 행(Row) 컨테이너 번호 필터링** 로직으로 데이터 무결성 확보.
+5. **오버레이 서비스 URL 누락**: `FloatingWidgetService.java` 내부의 하드코딩된 서버 주소를 `www`로 업데이트하여 백그라운드 위치 전송 정상화.
+
+#### 주요 변경 파일
+- `web/out/app.js` (BASE_URL 수정, 공지 API 변경, 사진 페이로드 수정, 권한 폴백)
+- `web/app/api/vehicle-tracking/notices/route.js` (신규 전용 API)
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java` (BASE_URL 수정)
+- `elsbot/els_bot.py` (조회 필터링 및 입력 초기화 로직 강화)
+- `web/public/apk/version.json` (v4.1.5 업데이트)
+
+---
 ## 📅 2026-03-26 - UI/UX 버그 픽스 및 기능 안정화 v4.0.9
 ### 주제: 설정 화면 레이아웃 개편 및 실시간 권한 동기화
 
