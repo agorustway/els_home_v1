@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 /**
@@ -239,12 +239,21 @@ export async function POST(request) {
 
         if (existing && existing.length > 0) {
             // 이미 존재하면 새 데이터를 만들지 않고 기존 ID를 즉시 반환
+            // [Fix] 앱에서 State.trip.id를 정상 세팅할 수 있도록 trip 객체 형태로 반환
+            const { data: fullTrip } = await supabase
+                .from('vehicle_trips')
+                .select('*')
+                .eq('id', existing[0].id)
+                .single();
+
             return NextResponse.json({ 
                 id: existing[0].id, 
+                trip: fullTrip,
                 status: existing[0].status,
                 message: '진행 중인 기존 운행 기록으로 연결되었습니다.' 
             });
         }
+
 
         const { data: trip, error } = await supabase
             .from('vehicle_trips')

@@ -1,4 +1,18 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-27 (오전) - 운송 시작 시 사진 유실 차단 및 기존 기록 연결 대가 v4.1.20
+### 주제: startTrip 응답 무결성 확보 및 사진 업로드 동기화 가동
+
+#### 핵심 원인 분석 및 해결
+1. **운송 시작 응답 값 불일치**: `startTrip` 시 기존 운행 기록이 남아있으면 서버가 `{ id, message }` 형식으로만 응답하여, 앱이 `data.trip.id`를 찾지 못해 사진 전송을 생략하던 문제 발견. 백엔드에서 기존 기록 리턴 시에도 `trip` 전체 객체를 주도록 수정하고, 앱에서도 `data.id || data.trip.id`로 유연하게 수용하게끔 보강.
+2. **사진 전송 타이밍 Race Condition**: `startTrip` 직후 비동기로 실행되던 `uploadPendingPhotos`를 `await` 처리하여, 운행 시작 절차가 마무리되기 전 사진 전송이 성공적으로 끝나는 것을 보장.
+3. **v4.1.20 긴급 배포**: Build 66 패치 완료.
+
+#### 주요 변경 파일
+- `web/app/api/vehicle-tracking/trips/route.js` (기존 기록 반환 시 trip 객체 추가)
+- `web/out/app.js` (트립 ID 획득 경로 다각화 및 await 전송)
+- `web/android/app/build.gradle` (v4.1.20 업데이트)
+
+---
 ## 📅 2026-03-27 (아침) - 사진 저장 데이터 타입 버그 수정 및 헤더 UI 조정 v4.1.19
 ### 주제: readFileAsDataURL 예외 처리 및 헤더 뒤로가기 아이콘 제거
 
