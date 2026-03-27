@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.16';
+  const APP_VERSION = 'v4.1.17';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -362,26 +362,47 @@
   async function loadCurrentTrip() {
     const saved = Store.get('activeTrip');
     if (!saved) return;
-    const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${saved.id}`).catch(() => null);
-    if (!res) return;
-    const data = await res.json().catch(() => null);
-    if (data && (data.status === 'driving' || data.status === 'paused')) {
-      State.trip.id = saved.id;
-      State.trip.status = data.status;
-      State.trip.startTime = new Date(data.started_at).getTime();
-      State.trip.containerNo = data.container_number || '';
-      State.trip.sealNo = data.seal_number || '';
-      document.getElementById('container-no').value = State.trip.containerNo;
-      document.getElementById('seal-no').value      = State.trip.sealNo;
-      document.getElementById('container-type').value = data.container_type || '40FT';
-      document.getElementById('container-kind').value = data.container_kind || 'DRY';
-      document.getElementById('trip-memo').value = data.special_notes || '';
-      setTripStatus(data.status);
-      updateTripUI();
-    } else {
-      Store.rm('activeTrip');
+    try {
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${saved.id}`).catch(() => null);
+      if (!res) return;
+      const data = await res.json().catch(() => null);
+      if (data && (data.status === 'driving' || data.status === 'paused')) {
+        State.trip.id = saved.id;
+        State.trip.status = data.status;
+        State.trip.startTime = new Date(data.started_at).getTime();
+        State.trip.containerNo = data.container_number || '';
+        State.trip.sealNo = data.seal_number || '';
+        
+        document.getElementById('container-no').value = State.trip.containerNo;
+        document.getElementById('seal-no').value      = State.trip.sealNo;
+        document.getElementById('container-type').value = data.container_type || '40FT';
+        document.getElementById('container-kind').value = data.container_kind || 'DRY';
+        document.getElementById('trip-memo').value = data.special_notes || '';
+        
+        // 사진 데이터 복구 (서버 -> 로컬 State)
+        let photos = [];
+        try {
+          if (Array.isArray(data.photos)) photos = data.photos;
+          else if (typeof data.photos === 'string' && data.photos.trim()) photos = JSON.parse(data.photos);
+        } catch(e) { console.error('loadCurrentTrip photos parse err', e); }
+        
+        State.photos = photos.map(p => ({
+          ...p,
+          uploaded: true,
+          serverUrl: p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + (p.url.startsWith('/') ? '' : '/') + p.url) : (p.serverUrl || p.dataUrl || '')
+        }));
+        
+        setTripStatus(data.status);
+        updateTripUI();
+        renderPhotoThumbs();
+      } else {
+        Store.rm('activeTrip');
+      }
+    } catch (e) {
+      console.warn('loadCurrentTrip error', e);
     }
   }
+
 
   async function startTrip() {
     if (!State.profile.name || !State.profile.phone || !State.profile.vehicleNo || !State.profile.driverId) {
@@ -460,7 +481,15 @@
 
   async function endTrip() {
     if (!State.trip.id) return;
-    if (!confirm('운행을 종료하시겠습니까?')) return;
+    
+    // 업로드 중인 사진이 있는지 체크
+    const isUploading = State.photos.some(p => !p.uploaded);
+    if (isUploading) {
+      if (!confirm('아직 서버에 전송 중인 사진이 있습니다. 그래도 운행을 종료하시겠습니까? (미전송 사진은 유실될 수 있습니다)')) return;
+    } else {
+      if (!confirm('운행을 종료하시겠습니까?')) return;
+    }
+    
     try {
       await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
         method: 'PATCH',
@@ -475,6 +504,7 @@
       showToast('운행이 종료되었습니다.');
     } catch (e) { showToast('종료 실패: ' + e.message); }
   }
+
 
   function setTripStatus(status) {
     State.trip.status = status;
@@ -784,15 +814,17 @@
   }
 
   async function uploadPendingPhotos() {
-    if (!State.trip.id) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
+    const currentTripId = State.trip.id;
+    if (!currentTripId) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
+    
     const pending = State.photos.filter(p => !p.uploaded);
     if (pending.length === 0) return;
     
     try {
-      // 서버는 { photos: [{name, base64, type}] } 배열 형식을 기대
       const photosPayload = await Promise.all(pending.map(async (p, idx) => {
-        const base64 = p.dataUrl.split(',')[1];
-        const mime = p.dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const dataUrl = await readFileAsDataURL(p.file || p.dataUrl); // dataUrl도 핸들링
+        const base64 = dataUrl.split(',')[1];
+        const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         const ext = mime.split('/')[1] || 'jpg';
         return { name: `photo_${Date.now()}_${idx}.${ext}`, base64, type: mime };
       }));
@@ -800,21 +832,25 @@
       const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
         method: 'POST',
         body: JSON.stringify({
-          trip_id: State.trip.id,
+          trip_id: currentTripId,
           photos: photosPayload,
         }),
       });
       const data = await res.json().catch(() => ({}));
-      console.log('uploadPendingPhotos response:', data);
+      
+      // 응답 시점에 여전히 같은 트립인지 확인 (운행 종료 가드)
+      if (State.trip.id !== currentTripId) {
+        console.warn('Upload finished but trip already ended.');
+        return;
+      }
+
       if (data.photos && Array.isArray(data.photos)) {
-        // 알림때 DB에 저장된 사진목록 전체를 State에 동기화
-        data.photos.forEach((serverPhoto, si) => {
-          const pendingIdx = State.photos.findIndex(p => !p.uploaded);
-          if (pendingIdx !== -1 && serverPhoto.url) {
-            State.photos[pendingIdx].serverUrl = BASE_URL + serverPhoto.url;
-            State.photos[pendingIdx].uploaded = true;
-          }
-        });
+        // 서버에서 온 전체 목록으로 로컬 상태 동기화 (최종 진실은 서버)
+        State.photos = data.photos.map(p => ({
+          ...p,
+          uploaded: true,
+          serverUrl: p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + (p.url.startsWith('/') ? '' : '/') + p.url) : (p.serverUrl || p.dataUrl || '')
+        }));
         renderPhotoThumbs();
         showToast(`사진 ${data.uploaded}장 업로드 완료`);
       } else if (data.error) {
@@ -825,6 +861,7 @@
       showToast('사진 업로드 실패: ' + e.message);
     }
   }
+
 
   function openPhotoViewer(idx, type = 'trip') {
     State.currentPhotoIdx = idx;
@@ -959,15 +996,27 @@
       if (!trips.length) { document.getElementById('log-list').innerHTML = '<div class="loading">조회 결과가 없습니다.</div>'; return; }
       const statusLabel = { driving: '운송중', paused: '일시정지', completed: '완료' };
       const statusColor = { driving: 'var(--success)', paused: 'var(--warn)', completed: 'var(--text-muted)' };
-      document.getElementById('log-list').innerHTML = trips.map(t => `
-        <div class="log-item" onclick="App.openLog('${t.id}')">
-          <div class="log-item-header">
-            <span class="log-item-container">${escHtml(t.container_number || '컨테이너 미입력')}</span>
-            <span class="log-item-status" style="color:${statusColor[t.status]||'var(--text-muted)'};border-color:${statusColor[t.status]||'var(--text-muted)'};">${statusLabel[t.status]||t.status}</span>
+      document.getElementById('log-list').innerHTML = trips.map(t => {
+        let pCount = 0;
+        try {
+          if (Array.isArray(t.photos)) pCount = t.photos.length;
+          else if (typeof t.photos === 'string' && t.photos.trim()) pCount = JSON.parse(t.photos).length;
+        } catch(e) {}
+        
+        return `
+          <div class="log-item" onclick="App.openLog('${t.id}')">
+            <div class="log-item-header">
+              <span class="log-item-container">${escHtml(t.container_number || '컨테이너 미입력')}</span>
+              <span class="log-item-status" style="color:${statusColor[t.status]||'var(--text-muted)'};border-color:${statusColor[t.status]||'var(--text-muted)'};">${statusLabel[t.status]||t.status}</span>
+            </div>
+            <div class="log-item-meta" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>${formatDate(new Date(t.started_at))} · ${escHtml(t.vehicle_number||'')}</span>
+              ${pCount > 0 ? `<span style="font-size:10px; color:var(--accent); font-weight:700;">📸 ${pCount}장</span>` : ''}
+            </div>
           </div>
-          <div class="log-item-meta">${formatDate(new Date(t.started_at))} · ${escHtml(t.vehicle_number||'')} · 씰 ${escHtml(t.seal_number||'—')}</div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
     } catch (e) {
       document.getElementById('log-list').innerHTML = '<div class="loading">불러오기 실패</div>';
     }
