@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.24';
+  const APP_VERSION = 'v4.1.25';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -235,26 +235,38 @@
       const r = await overlay.checkPermission().catch(() => ({ granted: false }));
       setPermStatus('overlay', !!r.granted);
       
-      if (overlay.checkBatteryOptimization) {
-        const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
-        setPermStatus('battery', !!b.granted);
-      }
+      const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
+      setPermStatus('battery', !!b.granted);
     }
 
-    // 2. 위치 & 카메라 (표준 플러그인)
+    // 2. 위치 (플러그인 -> 브라우저 API 순)
     const Geo = window.Capacitor?.Plugins?.Geolocation;
-    const Cam = window.Capacitor?.Plugins?.Camera;
-    
     if (Geo) {
         const p = await Geo.checkPermissions().catch(() => ({}));
         setPermStatus('loc', p.location === 'granted');
-    }
-    if (Cam) {
-        const p = await Cam.checkPermissions().catch(() => ({}));
-        setPermStatus('camera', p.camera === 'granted');
+    } else {
+        // 브라우저 API 폴백
+        try {
+            const result = await new Promise(r => {
+                navigator.geolocation.getCurrentPosition(() => r(true), () => r(false), { timeout: 2000 });
+            });
+            if (result) setPermStatus('loc', true);
+        } catch(e) {}
     }
 
-    // 3. 알림
+    // 3. 카메라 (플러그인 -> 브라우저 API 순)
+    const Cam = window.Capacitor?.Plugins?.Camera;
+    if (Cam) {
+        const p = await Cam.checkPermissions().catch(() => ({}));
+        setPermStatus('camera', p.camera === 'granted' || p.camera === 'limited');
+    } else {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => null);
+            if (stream) { stream.getTracks().forEach(t=>t.stop()); setPermStatus('camera', true); }
+        } catch(e) {}
+    }
+
+    // 4. 알림
     const Push = window.Capacitor?.Plugins?.PushNotifications;
     if (Push) {
         const p = await Push.checkPermissions().catch(() => ({ receive: 'denied' }));
@@ -263,34 +275,39 @@
       setPermStatus('notif', Notification.permission === 'granted');
     }
     
-    // UI 강제 리셋 (미설정 시 ng 클래스 등 보강)
+    // UI 동기화 강제 (전수)
     ['overlay', 'battery', 'loc', 'camera', 'notif'].forEach(type => {
       const el = document.getElementById('perm-' + type + '-status');
       if (el) {
-        el.textContent = permStatuses[type] ? '허용됨' : '미허용';
-        el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
+        const isOk = permStatuses[type];
+        el.textContent = isOk ? '허용됨' : '미허용';
+        el.className = 'perm-status ' + (isOk ? 'perm-ok' : 'perm-ng');
       }
     });
   }
 
-  async function requestPerm(type) {
+  async function requestPerm(type, event) {
     const overlay = Overlay();
-    const btn = event?.currentTarget;
-    if (btn) btn.classList.add('btn-active'); // 시각적 피드백
+    const btn = event?.currentTarget || (event && event.target);
+    if (btn) btn.classList.add('btn-active'); 
     
     switch (type) {
       case 'location':
-        if (window.Capacitor.Plugins.Geolocation) {
+        if (window.Capacitor?.Plugins?.Geolocation) {
             await window.Capacitor.Plugins.Geolocation.requestPermissions();
+        } else {
+            navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {timeout:1000});
         }
         break;
       case 'camera':
-        if (window.Capacitor.Plugins.Camera) {
+        if (window.Capacitor?.Plugins?.Camera) {
             await window.Capacitor.Plugins.Camera.requestPermissions();
+        } else {
+            try { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t=>t.stop()); } catch(e){}
         }
         break;
       case 'notification':
-        if (window.Capacitor.Plugins.PushNotifications) {
+        if (window.Capacitor?.Plugins?.PushNotifications) {
             await window.Capacitor.Plugins.PushNotifications.requestPermissions();
         } else if ('Notification' in window) {
           await Notification.requestPermission();
@@ -304,12 +321,12 @@
         break;
     }
     
-    // 버튼 애니메이션 후 상태 갱신
+    // 1.5초 후 상태 갱신 (네이티브 화면 복귀 대기)
     setTimeout(async () => {
         await updatePermStatuses();
         if (btn) btn.classList.remove('btn-active');
-        showToast('권한 상태를 업데이트했습니다.');
-    }, 1000);
+        showToast('권한 설정을 확인했습니다.');
+    }, 1500);
   }
 
   function finishPermSetup() {
@@ -1286,7 +1303,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 70; // 현재 빌드 번호 (v4.1.24)
+      const currentCode = 71; // Build 71 (v4.1.25)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {

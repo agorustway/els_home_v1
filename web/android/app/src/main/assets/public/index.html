@@ -25,7 +25,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-loc-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('location')">설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('location', event)">설정</button>
       </div>
     </div>
 
@@ -36,7 +36,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-camera-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('camera')">설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('camera', event)">설정</button>
       </div>
     </div>
 
@@ -47,7 +47,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-notif-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('notification')">설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('notification', event)">설정</button>
       </div>
     </div>
 
@@ -58,7 +58,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-overlay-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('overlay')">수동 설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('overlay', event)">설정</button>
       </div>
     </div>
 
@@ -69,7 +69,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-battery-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('battery')">수동 설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('battery', event)">설정</button>
       </div>
     </div>
 
@@ -303,6 +303,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.0.7"></script>
+<script src="app.js?v=4.1.25"></script>
 </body>
 </html>
