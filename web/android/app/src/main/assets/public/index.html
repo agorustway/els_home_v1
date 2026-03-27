@@ -87,7 +87,7 @@
     <!-- 헤더 -->
     <header class="app-header">
       <button class="back-btn hidden" id="header-back" onclick="App.headerBack()"></button>
-      <span class="logo"><img src="images/els_logo_full.gif" alt="ELS SOLUTION"></span>
+      <div class="logo"><img src="./els_driver_logo.png" alt="ELS"></div>
       <span class="vehicle-no" id="header-vehicle">—</span>
       <span class="status-badge status-idle" id="header-status">대기중</span>
     </header>
@@ -268,9 +268,8 @@
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
           <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.0.0</span>
         </button>
-        <button class="btn btn-sm" onclick="App.openPermissionSetup()" style="justify-content:flex-start;text-align:left;padding: 0 14px;margin-bottom:8px;">⚙️ 권한 설정</button>
         <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;padding: 0 14px;" onclick="App.resetApp()">
-          <span>앱 초기화 (모든 데이터 삭제)</span>
+          <span>앱 초기화 (설정 초기화)</span>
         </button>
       </div>
     </div>

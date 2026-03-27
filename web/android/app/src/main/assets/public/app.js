@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.23';
+  const APP_VERSION = 'v4.1.24';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -88,22 +88,24 @@
       applyProfileToUI();
     }
 
-    // 최초 실행 여부 체크
+    // 최초 실행 여부 및 권한 상태 체크
     const firstRun = !Store.get('permSetupDone');
-    if (firstRun) {
+    const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+    
+    // 권한 상태에 따른 화면 결정
+    const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
+    
+    if (firstRun || !criticalPerms) {
       showScreen('permission');
       updatePermStatuses();
+    } else if (!hasProfile) {
+      openSettings();
     } else {
-      // 정보가 부족하면 설정창으로, 아니면 메인으로
-      const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-      if (!hasProfile) {
-        openSettings();
-      } else {
-        showMain();
-      }
-      // 업데이트 확인은 메인 진입 시에만 수행
-      checkUpdate(true);
+      showMain();
     }
+    
+    // 업데이트 확인은 메인 진입 시에만 수행
+    checkUpdate(true);
 
     // goto_tab 딥링크 (서비스에서 복귀)
     const gotoTab = new URLSearchParams(window.location.search).get('goto_tab');
@@ -227,40 +229,48 @@
   }
 
   async function updatePermStatuses() {
-    if (!window.Capacitor?.isNativePlatform()) return;
-    
     // 1. 오버레이 & 배터리 (커스텀 플러그인)
     const overlay = Overlay();
     if (overlay) {
       const r = await overlay.checkPermission().catch(() => ({ granted: false }));
-      setPermStatus('overlay', r.granted);
+      setPermStatus('overlay', !!r.granted);
       
       if (overlay.checkBatteryOptimization) {
         const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
-        setPermStatus('battery', b.granted);
+        setPermStatus('battery', !!b.granted);
       }
     }
 
     // 2. 위치 & 카메라 (표준 플러그인)
-    const Geo = window.Capacitor.Plugins.Geolocation;
-    const Cam = window.Capacitor.Plugins.Camera;
+    const Geo = window.Capacitor?.Plugins?.Geolocation;
+    const Cam = window.Capacitor?.Plugins?.Camera;
     
     if (Geo) {
-        const p = await Geo.checkPermissions().catch(() => ({ location: 'denied' }));
+        const p = await Geo.checkPermissions().catch(() => ({}));
         setPermStatus('loc', p.location === 'granted');
     }
     if (Cam) {
-        const p = await Cam.checkPermissions().catch(() => ({ camera: 'denied' }));
+        const p = await Cam.checkPermissions().catch(() => ({}));
         setPermStatus('camera', p.camera === 'granted');
     }
 
     // 3. 알림
-    if (window.Capacitor.Plugins.PushNotifications) {
-        const p = await window.Capacitor.Plugins.PushNotifications.checkPermissions().catch(() => ({ receive: 'denied' }));
+    const Push = window.Capacitor?.Plugins?.PushNotifications;
+    if (Push) {
+        const p = await Push.checkPermissions().catch(() => ({ receive: 'denied' }));
         setPermStatus('notif', p.receive === 'granted');
     } else if ('Notification' in window) {
       setPermStatus('notif', Notification.permission === 'granted');
     }
+    
+    // UI 강제 리셋 (미설정 시 ng 클래스 등 보강)
+    ['overlay', 'battery', 'loc', 'camera', 'notif'].forEach(type => {
+      const el = document.getElementById('perm-' + type + '-status');
+      if (el) {
+        el.textContent = permStatuses[type] ? '허용됨' : '미허용';
+        el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
+      }
+    });
   }
 
   async function requestPerm(type) {
@@ -315,7 +325,7 @@
   }
 
   function resetApp() {
-    if (!confirm('앱을 초기화하면 저장된 정보가 모두 삭제됩니다. 계속하시겠습니까?')) return;
+    if (!confirm('앱을 초기화하면 모든 설정과 배차 기록이 삭제됩니다. 계속하시겠습니까?')) return;
     localStorage.clear();
     State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
     State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
@@ -1276,7 +1286,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 69; // 현재 빌드 번호 (v4.1.23)
+      const currentCode = 70; // 현재 빌드 번호 (v4.1.24)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {
