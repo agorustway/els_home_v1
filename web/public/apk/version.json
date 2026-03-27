@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.18",
-  "versionCode": 64,
-  "changeLog": "헤더 디자인 및 브랜드 아이덴티티 강화 (v4.1.18)\n- 헤더 로고: 텍스트 대신 ELS SOLUTION 공식 로고(Full GIF) 적용\n- 테마 전환: 헤더 배경을 화이트(#FFFFFF)로 변경하고 텍스트 컬러 최적화\n- 가독성 개선: 상단 뒤로가기 버튼 및 차량정보 폰트 시인성 확보",
+  "latestVersion": "v4.1.19",
+  "versionCode": 65,
+  "changeLog": "사진 업로드 로직 안정화 및 헤더 UI 미세 조정 (v4.1.19)\n- 사진 저장: 사진 업로드 시 데이터 타입 체크 로직 강화하여 업로드 누락 방지\n- 헤더 UI: 로고 좌측의 불필요한 '<' 아이콘 제거 및 가독성 확보\n- 예외 처리: 앱 재실행 시 기존 사진 데이터의 Base64 처리 호환성 확보",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

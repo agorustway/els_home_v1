@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.18';
+  const APP_VERSION = 'v4.1.19';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -796,12 +796,15 @@
   }
 
   function readFileAsDataURL(file) {
+    if (typeof file === 'string') return Promise.resolve(file);
+    if (!file) return Promise.resolve('');
     return new Promise(resolve => {
       const reader = new FileReader();
       reader.onload = e => resolve(e.target.result);
       reader.readAsDataURL(file);
     });
   }
+
 
   function renderPhotoThumbs() {
     const scroll = document.getElementById('photo-scroll');
