@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.26';
+  const APP_VERSION = 'v4.1.27';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -296,7 +296,7 @@
     const btn = event?.currentTarget || (event && event.target);
     if (btn) btn.classList.add('btn-active'); 
     
-    console.log('requestPerm:', type);
+    console.log('requestPerm:', type, !!overlay);
     try {
         switch (type) {
           case 'location':
@@ -322,10 +322,18 @@
             }
             break;
           case 'overlay':
-            if (overlay) await overlay.requestPermission();
+            if (overlay) {
+                await overlay.requestPermission();
+            } else {
+                showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
+            }
             break;
           case 'battery':
-            if (overlay && overlay.requestBatteryOptimization) await overlay.requestBatteryOptimization();
+            if (overlay) {
+                await overlay.requestBatteryOptimization();
+            } else {
+                showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
+            }
             break;
         }
     } catch(err) {
@@ -1315,7 +1323,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 72; // Build 72 (v4.1.26)
+      const currentCode = 73; // Build 73 (v4.1.27)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {
@@ -1372,7 +1380,7 @@
   // ─── 공개 API ─────────────────────────────────────────────────
   window.App = {
     // 권한
-    requestPerm, finishPermSetup, updatePermStatuses, resetApp,
+    requestPerm, finishPermSetup, updatePermStatuses, manualRefreshPerms, resetApp,
     // 프로필
     saveProfile, lookupDriver,
     // 운행

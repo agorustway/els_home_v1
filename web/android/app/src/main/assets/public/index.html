@@ -15,7 +15,10 @@
        권한 설정 화면 (최초 실행 / 초기화)
   ════════════════════════════════════════════════ -->
   <div id="screen-permission" class="screen active">
-    <h2 class="perm-title">앱 초기 설정</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 class="perm-title">앱 초기 설정</h2>
+      <button class="btn btn-sm btn-primary" onclick="App.manualRefreshPerms()">새로고침</button>
+    </div>
     <p class="perm-sub">ELS 차량관리 앱이 정상 작동하려면 아래 권한이 필요합니다. 각 항목의 설정 버튼을 눌러 허용해 주세요.</p>
 
     <div class="perm-item">
@@ -58,7 +61,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-overlay-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('overlay', event)">설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('overlay', event)">설정(이동)</button>
       </div>
     </div>
 
@@ -69,7 +72,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-battery-status" class="perm-status perm-ng">미설정</span>
-        <button class="btn-perm" onclick="App.requestPerm('battery', event)">설정</button>
+        <button class="btn-perm" onclick="App.requestPerm('battery', event)">설정(이동)</button>
       </div>
     </div>
 
@@ -303,6 +306,6 @@
 <!-- ──── 토스트 ──── -->
 <div id="toast"></div>
 
-<script src="app.js?v=4.1.25"></script>
+<script src="app.js?v=4.1.27"></script>
 </body>
 </html>
