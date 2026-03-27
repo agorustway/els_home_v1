@@ -4,8 +4,9 @@
  */
 (function () {
   'use strict';
+  console.log('ELS Driver App Loading... v4.1.29');
 
-  const APP_VERSION = 'v4.1.28';
+  const APP_VERSION = 'v4.1.29';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1323,7 +1324,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 74; // Build 74 (v4.1.28)
+      const currentCode = 75; // Build 75 (v4.1.29)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {
@@ -1375,6 +1376,12 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
 
+
+  async function manualRefreshPerms() {
+    showToast('권한 상태를 확인 중입니다...');
+    await updatePermStatuses();
+    showToast('권한 상태가 새로고침되었습니다.');
+  }
 
 
   // ─── 공개 API ─────────────────────────────────────────────────
