@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.22';
+  const APP_VERSION = 'v4.1.23';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -94,11 +94,15 @@
       showScreen('permission');
       updatePermStatuses();
     } else {
-      if (!State.profile.name || !State.profile.phone || !State.profile.vehicleNo || !State.profile.driverId) {
-        openSettings(); // 프로필 입력 강제
+      // 정보가 부족하면 설정창으로, 아니면 메인으로
+      const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+      if (!hasProfile) {
+        openSettings();
       } else {
         showMain();
       }
+      // 업데이트 확인은 메인 진입 시에만 수행
+      checkUpdate(true);
     }
 
     // goto_tab 딥링크 (서비스에서 복귀)
@@ -213,85 +217,89 @@
   // ─── 권한 설정 ────────────────────────────────────────────────
   const permStatuses = Store.get('permStatuses') || { loc: false, camera: false, notif: false, overlay: false, battery: false };
   function setPermStatus(type, ok) {
-    if (ok) {
-      permStatuses[type] = true;
-      Store.set('permStatuses', permStatuses);
-    }
+    permStatuses[type] = !!ok;
+    Store.set('permStatuses', permStatuses);
     
     const el = document.getElementById('perm-' + type + '-status');
     if (!el) return;
-    el.textContent = permStatuses[type] ? '설정됨' : '미설정';
+    el.textContent = permStatuses[type] ? '허용됨' : '미설정';
     el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
   }
 
   async function updatePermStatuses() {
+    if (!window.Capacitor?.isNativePlatform()) return;
+    
+    // 1. 오버레이 & 배터리 (커스텀 플러그인)
     const overlay = Overlay();
     if (overlay) {
       const r = await overlay.checkPermission().catch(() => ({ granted: false }));
-      if (r.granted) setPermStatus('overlay', true);
+      setPermStatus('overlay', r.granted);
+      
       if (overlay.checkBatteryOptimization) {
         const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
-        if (b.granted) setPermStatus('battery', true);
+        setPermStatus('battery', b.granted);
       }
     }
-    try {
-      let locGranted = false;
-      await new Promise(r => {
-        const id = setTimeout(r, 1000);
-        navigator.geolocation.getCurrentPosition(() => { clearTimeout(id); locGranted = true; r(); }, () => { clearTimeout(id); r(); }, { timeout: 1000 });
-      });
-      if (locGranted) setPermStatus('loc', true);
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => null);
-      if (stream) { stream.getTracks().forEach(t=>t.stop()); setPermStatus('camera', true); }
-    } catch(e) {}
+
+    // 2. 위치 & 카메라 (표준 플러그인)
+    const Geo = window.Capacitor.Plugins.Geolocation;
+    const Cam = window.Capacitor.Plugins.Camera;
     
-    if ('Notification' in window) {
-      const isGranted = Notification.permission === 'granted';
-      setPermStatus('notif', isGranted);
+    if (Geo) {
+        const p = await Geo.checkPermissions().catch(() => ({ location: 'denied' }));
+        setPermStatus('loc', p.location === 'granted');
+    }
+    if (Cam) {
+        const p = await Cam.checkPermissions().catch(() => ({ camera: 'denied' }));
+        setPermStatus('camera', p.camera === 'granted');
+    }
+
+    // 3. 알림
+    if (window.Capacitor.Plugins.PushNotifications) {
+        const p = await window.Capacitor.Plugins.PushNotifications.checkPermissions().catch(() => ({ receive: 'denied' }));
+        setPermStatus('notif', p.receive === 'granted');
+    } else if ('Notification' in window) {
+      setPermStatus('notif', Notification.permission === 'granted');
     }
   }
 
   async function requestPerm(type) {
     const overlay = Overlay();
+    const btn = event?.currentTarget;
+    if (btn) btn.classList.add('btn-active'); // 시각적 피드백
+    
     switch (type) {
       case 'location':
-        try { navigator.geolocation.getCurrentPosition(() => setPermStatus('loc', true), () => showToast('위치 권한을 설정에서 허용해 주세요.'), { timeout: 10000 }); } catch(e){}
-        break;
-      case 'overlay':
-        if (overlay) { 
-          try { 
-            await overlay.requestPermission();
-            setTimeout(updatePermStatuses, 1500);
-          } catch(e) { 
-            showToast('설정화면 열기 실패: ' + e.message);
-          }
-        } else {
-          // 네이티브 플러그인 없으면 안드로이드 언어 설정 화면 열기 시도
-          try {
-            const CapApp = window.Capacitor?.Plugins?.App;
-            if (CapApp) await CapApp.openUrl({ url: 'package:' + 'com.elssolution.driver' });
-            else showToast('기기에서 오버레이 기능 접속 불가');
-          } catch(e2) { showToast('기기에서 오버레이 기능 접속 불가'); }
+        if (window.Capacitor.Plugins.Geolocation) {
+            await window.Capacitor.Plugins.Geolocation.requestPermissions();
         }
-        break;
-      case 'battery':
-        if (overlay && overlay.requestBatteryOptimization) { 
-          try { await overlay.requestBatteryOptimization(); } catch(e) { showToast('설정 오류: ' + e.message); } 
-        } else { showToast('기기에서 배터리 예외 설정 진입 불가'); }
         break;
       case 'camera':
-        try { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t=>t.stop()); setPermStatus('camera', true); } catch(e){}
-        break;
-      case 'notification':
-        if ('Notification' in window) {
-          const r = await Notification.requestPermission();
-          if (r === 'granted') setPermStatus('notif', true);
+        if (window.Capacitor.Plugins.Camera) {
+            await window.Capacitor.Plugins.Camera.requestPermissions();
         }
         break;
+      case 'notification':
+        if (window.Capacitor.Plugins.PushNotifications) {
+            await window.Capacitor.Plugins.PushNotifications.requestPermissions();
+        } else if ('Notification' in window) {
+          await Notification.requestPermission();
+        }
+        break;
+      case 'overlay':
+        if (overlay) await overlay.requestPermission();
+        break;
+      case 'battery':
+        if (overlay && overlay.requestBatteryOptimization) await overlay.requestBatteryOptimization();
+        break;
     }
-    // 권한 상태를 즉시 갱신해 UI에 반영
-    setTimeout(updatePermStatuses, 500);
+    
+    // 버튼 애니메이션 후 상태 갱신
+    setTimeout(async () => {
+        await updatePermStatuses();
+        if (btn) btn.classList.remove('btn-active');
+        showToast('권한 상태를 업데이트했습니다.');
+    }, 1000);
   }
 
   function finishPermSetup() {
@@ -1262,21 +1270,28 @@
   }
 
   // ─── 업데이트 확인 ────────────────────────────────────────────
-  async function checkUpdate() {
+  async function checkUpdate(auto = false) {
     try {
-      const res  = await smartFetch(VERSION_URL);
-      const data = await res.json();
-      const latest = data.latestVersion;
-      if (latest && latest !== APP_VERSION) {
-        if (confirm(`새 버전(${latest})이 있습니다. 지금 업데이트하시겠습니까?`)) {
-          window.open(BASE_URL + '/apk/els_driver.apk', '_blank');
+      const res = await smartFetch(VERSION_URL + '?t=' + Date.now()).catch(() => null);
+      if (!res) return;
+      const data = await res.json().catch(() => ({}));
+      
+      const currentCode = 69; // 현재 빌드 번호 (v4.1.23)
+      if (data.versionCode > currentCode) {
+        const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
+        if (confirm(msg)) {
+          if (window.Capacitor?.Plugins?.Browser) {
+            window.Capacitor.Plugins.Browser.open({ url: data.downloadUrl });
+          } else {
+            window.open(data.downloadUrl, '_blank');
+          }
         }
-      } else {
-        if (confirm(`현재 버전(${APP_VERSION})은 최신입니다. 다시 다운로드하시겠습니까?`)) {
-          window.open(BASE_URL + '/apk/els_driver.apk', '_blank');
-        }
+      } else if (!auto) {
+        showToast('이미 최신 버전입니다 (v' + APP_VERSION + ')');
       }
-    } catch (e) { showToast('업데이트 확인 실패'); }
+    } catch (e) {
+      if (!auto) console.error('업데이트 확인 실패', e);
+    }
   }
 
   // ─── 앱 종료 ──────────────────────────────────────────────────

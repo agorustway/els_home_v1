@@ -116,6 +116,7 @@ input, textarea, select, button { font-family: inherit; }
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   transition: background 0.1s; white-space: nowrap;
 }
+.btn-active { background: var(--accent) !important; color: #fff !important; pointer-events: none; opacity: 0.8; }
 .btn:active { background: var(--border); }
 .btn-primary { background: var(--text); color: #fff; border-color: #000; }
 .btn-primary:active { background: #333; }
