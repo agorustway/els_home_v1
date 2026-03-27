@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.19';
+  const APP_VERSION = 'v4.1.21';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -416,7 +416,7 @@
     const cKind       = document.getElementById('container-kind').value;
     const memo        = document.getElementById('trip-memo').value;
 
-      try {
+    try {
         const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
           method: 'POST',
           body: JSON.stringify({
@@ -448,19 +448,21 @@
         }
 
         State.trip.id = finalId;
-      State.trip.status = 'driving';
-      State.trip.startTime = Date.now();
-      Store.set('activeTrip', { id: data.id, startTime: State.trip.startTime });
+        State.trip.status = 'driving';
+        State.trip.startTime = Date.now();
+        Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
 
-      document.getElementById('trip-date-display').textContent = formatDate(new Date());
-      setTripStatus('driving');
-      updateTripUI();
-      startOverlayService();
-      startGPS();
-      if (State.photos.some(p => !p.uploaded)) {
-        uploadPendingPhotos();
-      }
-      showToast('운행이 시작되었습니다.');
+        document.getElementById('trip-date-display').textContent = formatDate(new Date());
+        setTripStatus('driving');
+        updateTripUI();
+        startOverlayService();
+        startGPS();
+
+        if (State.photos.some(p => !p.uploaded)) {
+          await uploadPendingPhotos();
+        }
+        showToast(data.message || '운행이 시작되었습니다.');
+
     } catch (e) { showToast('오류: ' + e.message); }
   }
 
@@ -795,6 +797,33 @@
     uploadPendingPhotos();
   }
 
+  async function resizePhoto(file, maxWidth = 1600, maxHeight = 1600) {
+    if (typeof file === 'string') return file;
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+          } else {
+            if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8)); // 80% 품질 압축
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   function readFileAsDataURL(file) {
     if (typeof file === 'string') return Promise.resolve(file);
     if (!file) return Promise.resolve('');
@@ -823,45 +852,46 @@
     const pending = State.photos.filter(p => !p.uploaded);
     if (pending.length === 0) return;
     
-    try {
-      const photosPayload = await Promise.all(pending.map(async (p, idx) => {
-        const dataUrl = await readFileAsDataURL(p.file || p.dataUrl); // dataUrl도 핸들링
-        const base64 = dataUrl.split(',')[1];
-        const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-        const ext = mime.split('/')[1] || 'jpg';
-        return { name: `photo_${Date.now()}_${idx}.${ext}`, base64, type: mime };
-      }));
-      
-      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
-        method: 'POST',
-        body: JSON.stringify({
-          trip_id: currentTripId,
-          photos: photosPayload,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      
-      // 응답 시점에 여전히 같은 트립인지 확인 (운행 종료 가드)
-      if (State.trip.id !== currentTripId) {
-        console.warn('Upload finished but trip already ended.');
-        return;
-      }
+    let uploadedCount = 0;
+    for (let i = 0; i < State.photos.length; i++) {
+        const p = State.photos[i];
+        if (p.uploaded) continue;
 
-      if (data.photos && Array.isArray(data.photos)) {
-        // 서버에서 온 전체 목록으로 로컬 상태 동기화 (최종 진실은 서버)
-        State.photos = data.photos.map(p => ({
-          ...p,
-          uploaded: true,
-          serverUrl: p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + (p.url.startsWith('/') ? '' : '/') + p.url) : (p.serverUrl || p.dataUrl || '')
-        }));
-        renderPhotoThumbs();
-        showToast(`사진 ${data.uploaded}장 업로드 완료`);
-      } else if (data.error) {
-        showToast('업로드 실패: ' + data.error);
-      }
-    } catch (e) { 
-      console.warn('사진 업로드 실패', e); 
-      showToast('사진 업로드 실패: ' + e.message);
+        try {
+            const dataUrl = await resizePhoto(p.file || p.dataUrl);
+            const base64 = dataUrl.split(',')[1];
+            const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+            const ext = mime.split('/')[1] || 'jpg';
+            const payload = { 
+                trip_id: currentTripId, 
+                photos: [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }] 
+            };
+            
+            const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (data.photos && Array.isArray(data.photos)) {
+                // 서버에서 온 전체 목록으로 로컬 상태 동기화
+                State.photos = data.photos.map(sp => ({
+                    ...sp,
+                    uploaded: true,
+                    serverUrl: sp.url ? (sp.url.startsWith('http') ? sp.url : BASE_URL + (sp.url.startsWith('/') ? '' : '/') + sp.url) : (sp.serverUrl || sp.dataUrl || '')
+                }));
+                renderPhotoThumbs();
+                uploadedCount++;
+            } else if (data.error) {
+                console.error('Photo upload error:', data.error);
+            }
+        } catch (e) {
+            console.error('Photo upload catch:', e);
+        }
+    }
+
+    if (uploadedCount > 0) {
+        showToast(`사진 ${uploadedCount}장 업로드 완료`);
     }
   }
 
@@ -1140,32 +1170,41 @@
     showToast(`사진 ${uploadCount}장을 업로드 중입니다...`, 5000);
     
     try {
-      const photosPayload = await Promise.all(files.slice(0, uploadCount).map(async (file, idx) => {
-        const dataUrl = await readFileAsDataURL(file);
+      showToast(`사진 ${uploadCount}장을 압축/업로드 중...`, 5000);
+      let successCount = 0;
+      
+      for (let i = 0; i < uploadCount; i++) {
+        const file = files[i];
+        const dataUrl = await resizePhoto(file);
         const base64 = dataUrl.split(',')[1];
         const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         const ext = mime.split('/')[1] || 'jpg';
-        return { name: `photo_${Date.now()}_${idx}.${ext}`, base64, type: mime };
-      }));
-      
-      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
-        method: 'POST',
-        body: JSON.stringify({
-          trip_id: State.currentLogId,
-          photos: photosPayload,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data.photos && Array.isArray(data.photos)) {
-        State.logPhotos = data.photos;
-        await openLog(State.currentLogId); // UI 갱신 대기
-        showToast('사진 업로드 완료');
-      } else if (data.error) {
-        showToast('업로드 실패: ' + data.error);
+        
+        const payload = { 
+            trip_id: State.currentLogId, 
+            photos: [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }] 
+        };
+        
+        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        
+        if (data.photos && Array.isArray(data.photos)) {
+          State.logPhotos = data.photos;
+          successCount++;
+          renderPhotoThumbs(); // 썸네일 즉시 갱신
+        }
+      }
+
+      if (successCount > 0) {
+        await openLog(State.currentLogId); // UI 최종 갱신
+        showToast(`사진 ${successCount}장 업로드 성공`);
       }
     } catch (err) {
       console.error('onLogFileSelected error', err);
-      showToast('사진 업로드 실패: ' + err.message);
+      showToast('업로드 중 오류 발생');
     }
   }
 
