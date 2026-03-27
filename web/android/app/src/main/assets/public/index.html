@@ -124,7 +124,10 @@
           </div>
           <!-- Row 2 컨테이너 번호 -->
           <div class="field">
-            <label>컨테이너 번호</label>
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+              <span>컨테이너 번호</span>
+              <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
+            </label>
             <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()">
           </div>
           <!-- Row 3 씰 번호 -->

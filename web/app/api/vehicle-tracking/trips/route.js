@@ -238,19 +238,30 @@ export async function POST(request) {
             .limit(1);
 
         if (existing && existing.length > 0) {
-            // 이미 존재하면 새 데이터를 만들지 않고 기존 ID를 즉시 반환
-            // [Fix] 앱에서 State.trip.id를 정상 세팅할 수 있도록 trip 객체 형태로 반환
-            const { data: fullTrip } = await supabase
+            // [Fix] 이미 존재하면 새 데이터를 만들지 않고 기존 데이터를 요청 정보로 업데이트하여 반환
+            // 기사님이 운행 중에 정보를 추가/변경하고 다시 '운행 시작'을 눌렀을 때를 대비
+            const updatePayload = {
+                container_number: container_number || undefined,
+                seal_number:      seal_number || undefined,
+                container_type:   container_type || undefined,
+                container_kind:   container_kind || undefined,
+                special_notes:    special_notes || undefined,
+                vehicle_id:       vehicle_id || undefined,
+                updated_at:       new Date().toISOString()
+            };
+
+            const { data: updatedTrip, error: updateError } = await supabase
                 .from('vehicle_trips')
-                .select('*')
+                .update(updatePayload)
                 .eq('id', existing[0].id)
+                .select()
                 .single();
 
             return NextResponse.json({ 
                 id: existing[0].id, 
-                trip: fullTrip,
+                trip: updatedTrip || existing[0],
                 status: existing[0].status,
-                message: '진행 중인 기존 운행 기록으로 연결되었습니다.' 
+                message: '진행 중인 기존 운행 기록이 업데이트되었습니다.' 
             });
         }
 

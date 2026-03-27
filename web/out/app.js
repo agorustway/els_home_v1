@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = 'v4.1.21';
+  const APP_VERSION = 'v4.1.22';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -333,14 +333,20 @@
     const errEl = document.getElementById('container-check-msg');
     if (errEl) errEl.textContent = '';
     
-    if (cEl.value.length === 11) {
-      const match = cEl.value.match(/^([A-Z]{4})(\d{6})(\d)$/);
+    if (cEl.value.length >= 4) {
+      const match = cEl.value.match(/^([A-Z]{4})(\d{0,7})$/);
       if (match) {
-        if (!validateISO6346(cEl.value)) {
-          if (errEl) errEl.textContent = '체크디짓이 맞지 않습니다. (입력확인)';
+        if (cEl.value.length === 11) {
+          if (validateISO6346(cEl.value)) {
+            if (errEl) { errEl.textContent = '유효한 번호입니다'; errEl.style.color = 'var(--primary)'; }
+          } else {
+            if (errEl) { errEl.textContent = '체크디짓 미일치'; errEl.style.color = 'var(--danger)'; }
+          }
+        } else {
+          if (errEl) { errEl.textContent = '입력 중...'; errEl.style.color = 'var(--text-muted)'; }
         }
       } else {
-        if (errEl) errEl.textContent = '영문 4자리 + 숫자 7자리 형식이 아닙니다.';
+        if (errEl) { errEl.textContent = '영문 4자 + 숫자 7자'; errEl.style.color = 'var(--danger)'; }
       }
     }
   }
@@ -493,9 +499,18 @@
     }
     
     try {
+      const cNo = document.getElementById('container-no')?.value.trim();
+      const sNo = document.getElementById('seal-no')?.value.trim();
+      const mNo = document.getElementById('trip-memo')?.value.trim();
+      
       await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ action: 'complete' }),
+        body: JSON.stringify({ 
+            action: 'complete',
+            container_number: cNo || undefined,
+            seal_number: sNo || undefined,
+            special_notes: mNo || undefined
+        }),
       });
       stopOverlayService();
       stopGPS();
