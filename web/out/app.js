@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.4');
+  console.log('ELS Driver App Loading... v4.2.5');
  
-  const APP_VERSION = 'v4.2.4';
-  const BUILD_CODE = 148; // Build 148 (v4.2.4)
+  const APP_VERSION = 'v4.2.5';
+  const BUILD_CODE = 149; // Build 149 (v4.2.5)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1195,7 +1195,11 @@
   }
 
   //  // 운행 데이터 및 사진 초기화 (설정 버튼 옆 초기화 버튼 및 수시 호출용)
-  function clearTripData() {
+  function clearTripData(bypassAuth = false) {
+    if (!bypassAuth && State.trip.status !== 'idle') {
+      showToast('운행 중에는 내용 지움을 사용할 수 없습니다.');
+      return;
+    }
     // 현재 진행 중인 트립이 있으면 중단
     if (State.trip.id) {
       // 서버에 종료 요청 없이 로컬만 정리
@@ -1508,7 +1512,7 @@
           <div class="log-detail-info-row"><span class="log-detail-info-label">번호</span><span>${escHtml(data.vehicle_number||'—')}</span></div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">운행 시작</span><span style="font-weight:700;color:var(--accent);">${formatDate(new Date(data.started_at))}</span></div>
           ${endedAt ? `<div class="log-detail-info-row"><span class="log-detail-info-label">운행 종료</span><span style="font-weight:700;color:var(--danger);">${formatDate(new Date(endedAt))}</span></div>` : ''}
-          <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span>${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span style="display:flex;align-items:center;gap:8px;">${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}${data.status !== 'completed' ? `<button onclick="App.forceCompleteLog('${data.id}')" class="btn btn-sm btn-warn" style="font-size:10px;padding:2px 6px;height:auto;">운행종료 처리</button>` : ''}</span></div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type||'—'} / ${data.container_kind||'—'}</span></div>
         </div>
       `;
@@ -1621,6 +1625,29 @@
       closeLogDetail();
       loadLogs();
     } catch (e) { showToast('삭제 실패'); }
+  }
+  async function forceCompleteLog(id) {
+    if (!confirm('이 운행을 강제로 운행종료 처리하시겠습니까?')) return;
+    try {
+      const endedAtIso = new Date().toISOString();
+      await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'completed', ended_at: endedAtIso })
+      });
+      showToast('운행종료 되었습니다.');
+      
+      // 현재 진행중인 운행이었다면 즉시 idle 상태로 초기화시켜서 꼬임 방지
+      if (String(State.trip.id) === String(id)) {
+        clearTripData(true); // bypassAuth=true
+        updateTripStatusLine();
+      }
+      
+      closeLogDetail();
+      loadLogs();
+      // openLog(id); 도 가능하지만 목록 업데이트를 위해 closeLogDetail하는게 깔끔함
+    } catch (e) {
+      showToast('운행종료 처리 실패');
+    }
   }
 
   function closeLogDetail() {
@@ -1823,7 +1850,7 @@
     // 사진
     addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
     // 일지
-    loadLogs, openLog, saveLogEdit, onLogFieldChange, deleteLog, closeLogDetail, openLogPhoto, addLogPhoto, onLogFileSelected,
+    loadLogs, openLog, saveLogEdit, onLogFieldChange, deleteLog, closeLogDetail, openLogPhoto, addLogPhoto, onLogFileSelected, forceCompleteLog,
     // 긴급
     closeEmergency,
     // 업데이트/종료

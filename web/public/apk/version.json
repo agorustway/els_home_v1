@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.4",
-  "versionCode": 148,
-  "changeLog": "v4.2.4 (Build 148) - 핫픽스\n- [UI] 일지탭 날짜/월별 검색칸 placeholder 미표시 문제 수정 (type 텍스트 우회 적용)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=148"
+  "latestVersion": "v4.2.5",
+  "versionCode": 149,
+  "changeLog": "v4.2.5 (Build 149) - 운행 안정성 강화\n- [기능] 운행 중 '내용지움' 버튼 클릭 방지 처리 (실수 방지)\n- [기능] 일지 상세 내역에서 비정상 운송건 '운행종료 처리' 기능 추가",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=149"
 }
