@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.52",
-  "versionCode": 98,
-  "changeLog": "v4.1.52 권한 로직 보완 및 팝업 루프 해결 (Build 98)\n- 무한 업데이트 팝업 버그 수정 (내부 버전 코드 정규화)\n- 권한 버튼 색상 불일치 해결 (항상 파란색/빨간색 중 택일)\n- 필수 권한 거부 시 Alert 창으로 더 강력하게 안내 및 전송 차단\n- 카메라 권한 안내 텍스트 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=98"
+  "latestVersion": "v4.1.53",
+  "versionCode": 99,
+  "changeLog": "v4.1.53 권한 탭 UI 일관성 및 새로고침 로직 최종 픽스 (Build 99)\n- 무한 업데이트 팝업 버그 완전 해결\n- 권한 상태 체크 시 실시간 UI 동기화 강제 로직 추가 (색상 불일치 해결)\n- 배터리 최적화 등 설정 변경 후 복귀 시 '허용됨' 즉시 반영 개선\n- 카메라 권한 안내 텍스트 가시성 보완",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=99"
 }

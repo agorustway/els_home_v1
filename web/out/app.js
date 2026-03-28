@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.52');
+  console.log('ELS Driver App Loading... v4.1.53');
 
-  const APP_VERSION = 'v4.1.52';
+  const APP_VERSION = 'v4.1.53';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -301,6 +301,8 @@
 
   async function updatePermStatuses() {
     console.log('--- updatePermStatuses start ---');
+    // 초기화 (UI 동기화 보장용)
+    for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
     // 1. 오버레이 & 배터리 (커스텀 플러그인)
     const overlay = Overlay();
     if (overlay) {
@@ -348,7 +350,8 @@
       setPermStatus('notif', Notification.permission === 'granted');
     }
     
-    // UI 동기화 강제 루프 (제거됨 - setPermStatus가 대신 처리)
+    // 최종 강제 동기화
+    for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 
@@ -1503,7 +1506,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 98; // Build 98 (v4.1.52)
+      const currentCode = 99; // Build 99 (v4.1.53)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
