@@ -689,6 +689,11 @@
         if (State.photos.some(p => !p.uploaded)) {
           await uploadPendingPhotos();
         }
+        // [TDD] 시작즉시 현재 위치 한 번 확인 (주소 깜빡임 방지)
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos).catch(()=>{}), null, { enableHighAccuracy:true });
+        }
+
         showToast(data.message || '운행이 시작되었습니다.');
 
     } catch (e) { showToast('오류: ' + e.message); }
@@ -925,27 +930,22 @@
 
     const addrShort = abbreviateAddr(lastKnownAddr);
     
-    // [TDD] Header Row: 시작시간 | GPS 상태
+    // [TDD] Header Row: 시작시간(Full) | GPS 상태
     if (dateDisplay && State.trip.startTime) {
-      const startStr = formatDate(new Date(State.trip.startTime)).split(' ')[1] || ''; 
+      const startFullStr = formatDate(new Date(State.trip.startTime)); 
       dateDisplay.innerHTML = `
-        <span style="font-size:13px; color:#666; font-weight:400;">운송시작: ${startStr}</span>
+        <span style="font-size:12px; color:#666; font-weight:400;">${startFullStr}</span>
         <span style="color:#ddd; margin:0 8px;">|</span>
         <span id="trip-gps-status" style="color:${gpsColor}; font-weight:700;">GPS ${gpsText}</span>
       `;
     }
-    // 별도 엘리먼트가 존재할 경우에도 동기화
-    if (gpsDisplay) {
-      gpsDisplay.innerHTML = `GPS <span style="color:${gpsColor}; font-weight:700;">${gpsText}</span>`;
-    }
-
-    // [TDD] Address Row: 📍 축약 주소
-    if (addrDisplay) {
-      addrDisplay.classList.remove('hidden');
-      addrDisplay.style.display = 'flex';
-      addrDisplay.style.alignItems = 'center';
-      addrDisplay.innerHTML = `
-        <span style="margin-right:4px; font-size:12px; opacity:0.8;">📍</span>
+    
+    // 이모지 제거 및 한 줄 요약 주소 (No Emoji)
+    if (container) {
+      container.classList.remove('hidden');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.innerHTML = `
         <span style="color:#444; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${addrShort}</span>
       `;
     }
