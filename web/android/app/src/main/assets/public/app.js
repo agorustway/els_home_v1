@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.42');
+  console.log('ELS Driver App Loading... v4.1.44');
 
-  const APP_VERSION = 'v4.1.42';
+  const APP_VERSION = 'v4.1.44';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -105,8 +105,20 @@
     
     const el = document.getElementById('perm-' + type + '-status');
     if (!el) return;
-    el.textContent = permStatuses[type] ? '허용됨' : '미허용';
+    
+    el.textContent = permStatuses[type] ? '허용됨' : '미설정';
     el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
+
+    const btn = el.nextElementSibling;
+    if (btn && btn.tagName === 'BUTTON') {
+      if (!permStatuses[type] && ['loc', 'overlay', 'battery'].includes(type)) {
+         btn.classList.add('btn-pulse');
+         btn.textContent = '설정(필수)';
+      } else {
+         btn.classList.remove('btn-pulse');
+         btn.textContent = permStatuses[type] ? '허용완료' : '설정';
+      }
+    }
   }
 
   // ─── 앱 초기화 ────────────────────────────────────────────────
@@ -118,12 +130,9 @@
         CapApp.addListener('appStateChange', ({ isActive }) => {
           console.log('App State Change - isActive:', isActive);
           if (isActive) {
-            // 사용자가 설정 화면에서 돌아온 후 OS가 상태를 갱신할 시간을 넉넉히 줌 (0.5s)
-            setTimeout(() => {
-              updatePermStatuses().then(() => {
-                console.log('Permission statuses auto-refreshed on app resume.');
-              });
-            }, 500);
+            // 다중 체크 (권한 설정이 느리게 반영될 수 있음)
+            setTimeout(() => { updatePermStatuses(); }, 300);
+            setTimeout(() => { updatePermStatuses(); }, 1200);
           }
         });
       }
@@ -438,8 +447,29 @@
   }
 
   function finishPermSetup() {
-    Store.set('permSetupDone', true);
-    openSettings();
+    updatePermStatuses().then(() => {
+      if (!permStatuses.loc || !permStatuses.overlay || !permStatuses.battery) {
+        showToast('⚠️ 위치, 다른 앱 위에 표시, 배터리 권한을 모두 허용해야만 앱 구동이 가능합니다.');
+        return;
+      }
+      Store.set('permSetupDone', true);
+      openSettings();
+    });
+  }
+
+  function settingsBack() {
+    if (!Store.get('permSetupDone')) {
+      showScreen('permission');
+      updatePermStatuses();
+    } else {
+      showScreen('main'); switchTab('trip');
+    }
+  }
+
+  function clearCache() {
+    if (confirm('캐시를 지우고 새로고침 하시겠습니까? (세션이 다시 시작됩니다)')) {
+      window.location.reload(true);
+    }
   }
 
   // 설정 화면에서 권한 설정 화면으로 이동 (새 버튼용)
@@ -606,7 +636,7 @@
         State.trip.startTime = Date.now();
         Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
 
-        document.getElementById('trip-date-display').textContent = formatDate(new Date());
+        document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date())} ${new Date().toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}`;
         setTripStatus('driving');
         updateTripUI();
         startOverlayService();
@@ -667,6 +697,12 @@
       
       // 완전 초기화
       clearTripData();
+      
+      // 초기화 후, 화면 상단에 종료 일시 표시
+      const endTime = new Date();
+      const disp = `운송종료: ${formatDate(endTime)} ${endTime.toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}`;
+      document.getElementById('trip-date-display').textContent = disp;
+      
       showToast('운행이 종료되었습니다.');
     } catch (e) { showToast('종료 실패: ' + e.message); }
   }
@@ -688,9 +724,8 @@
     const pauseBtn = document.getElementById('btn-trip-pause');
     if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '재개' : '일시정지';
 
-    // 운행 날짜
     if (State.trip.startTime) {
-      document.getElementById('trip-date-display').textContent = formatDate(new Date(State.trip.startTime));
+      document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))} ${new Date(State.trip.startTime).toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}`;
     }
   }
 
@@ -1262,8 +1297,9 @@
       document.getElementById('log-detail-content').innerHTML = `
         <div style="font-size:13px;color:var(--text-2);line-height:1.8;">
           <b>차량번호:</b> ${escHtml(data.vehicle_number||'—')}<br>
-          <b>운행일:</b> ${formatDate(new Date(data.started_at))}<br>
-          <b>상태:</b> ${data.status||'—'}<br>
+          <b>운행 일시:</b> ${formatDate(new Date(data.started_at))} ${new Date(data.started_at).toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}<br>
+          ${data.ended_at ? `<b>종료 일시:</b> ${formatDate(new Date(data.ended_at))} ${new Date(data.ended_at).toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}<br>` : ''}
+          <b>상태:</b> ${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}<br>
           <b>타입:</b> ${data.container_type||'—'} / ${data.container_kind||'—'}
         </div>
       `;
@@ -1445,18 +1481,20 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 88; // Build 88 (v4.1.42)
+      const currentCode = 90; // Build 90 (v4.1.44)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
       if (data.versionCode > currentCode || (remoteVersion !== localVersion && remoteVersion !== '')) {
-        const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
+        const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까? (미설치 시 일부 기능이 제한될 수 있습니다.)`;
         if (confirm(msg)) {
           if (window.Capacitor?.Plugins?.Browser) {
             window.Capacitor.Plugins.Browser.open({ url: data.downloadUrl });
           } else {
             window.open(data.downloadUrl, '_blank');
           }
+        } else if (auto) {
+          showToast('원활한 환경을 위해 최신 버전으로 업데이트 해 주세요.', 5000);
         }
       } else if (!auto) {
         showToast('이미 최신 버전입니다 (v' + APP_VERSION + ')');
@@ -1511,7 +1549,7 @@
   // ─── 공개 API ─────────────────────────────────────────────────
   window.App = {
     // 권한
-    requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup,
+    requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup, clearCache, settingsBack,
     showTerms, closeTerms,
     // 프로필
     saveProfile, lookupDriver,

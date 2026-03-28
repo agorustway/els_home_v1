@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.1.38">
+<link rel="stylesheet" href="style.css?v=4.1.44">
 </head>
 <body>
 <div id="app">
@@ -235,7 +235,7 @@
   ════════════════════════════════════════════════ -->
   <div id="screen-settings" class="screen">
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px;">
-      <button class="btn btn-sm" id="settings-back-btn" onclick="App.showScreen('main'); App.switchTab('trip');" style="align-self:flex-start;">← 운행 탭으로 돌아가기</button>
+      <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로 돌아가기</button>
       <div class="field">
         <label>이름</label>
         <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
@@ -248,7 +248,7 @@
         </div>
       </div>
       <div class="field">
-        <label>기사 ID</label>
+        <label>차량 ID (Vehicle ID)</label>
         <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase">
       </div>
       <div class="field">
@@ -263,10 +263,13 @@
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.1.38</span>
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.1.44</span>
         </button>
-        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;padding: 0 14px;" onclick="App.resetApp()">
-          <span>앱 초기화 (설정 초기화)</span>
+        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.resetApp()">
+          <span>앱 초기화 (재설정)</span>
+        </button>
+        <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;padding: 0 14px;" onclick="App.clearCache()">
+          <span>캐시 지우기 (새로고침)</span>
         </button>
       </div>
     </div>
