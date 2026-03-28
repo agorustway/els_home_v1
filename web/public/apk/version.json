@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.32",
-  "versionCode": 78,
-  "changeLog": "Android 16(Baklava) 배터리 정책 전면 개편 (v4.1.32)\n- 네이티브 브릿지 강화: 설정창 이동 실패 시 3단계 폴백 및 ELS_DEBUG 로그캣 지원.\n- 배터리 직접 요청: ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS를 우선으로 하되, 실패 시 사용자 수동 설정 유도.\n- JS 디버깅 강화: 플러그인 인식 문제 발생 시 가용한 플러그인 리스트를 콘솔에 출력하도록 진단 로직 추가.",
+  "latestVersion": "v4.1.33",
+  "versionCode": 79,
+  "changeLog": "Android 16(Baklava) 정밀 최적화 패치 (v4.1.33)\n- 인텐트 규격 고도화: Uri.fromParts 기반의 표준 인텐트 구조를 적용하여 안드로이드 16 호환성을 극대화했습니다.\n- 사용자 가이드 강화: 배터리 설정 시 '제한 없음' 선택의 중요성을 안내하는 토스트 메시지를 추가했습니다.\n- 동기화 안정성: 앱 복귀 시 권한 상태 감지 여유 시간을 500ms로 상향하여 설정 반영 실패를 최소화했습니다.\n- 디버깅 보강: 네이티브 및 JS 양단에 상세 실행 로그를 추가하여 문제 발생 시 추적이 용이하도록 개선했습니다.",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

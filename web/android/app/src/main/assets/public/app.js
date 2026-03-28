@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.32');
+  console.log('ELS Driver App Loading... v4.1.33');
 
-  const APP_VERSION = 'v4.1.32';
+  const APP_VERSION = 'v4.1.33';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -95,12 +95,12 @@
         CapApp.addListener('appStateChange', ({ isActive }) => {
           console.log('App State Change - isActive:', isActive);
           if (isActive) {
-            // 사용자가 설정 화면에서 돌아온 후 OS가 상태를 갱신할 시간을 줌 (0.3s)
+            // 사용자가 설정 화면에서 돌아온 후 OS가 상태를 갱신할 시간을 넉넉히 줌 (0.5s)
             setTimeout(() => {
               updatePermStatuses().then(() => {
                 console.log('Permission statuses auto-refreshed on app resume.');
               });
-            }, 300);
+            }, 500);
           }
         });
       }
@@ -359,7 +359,14 @@
             break;
           case 'battery':
             if (overlay) {
-                await overlay.requestBatteryOptimization();
+                showToast("설정창에서 '제한 없음'을 선택해야 위치 관제가 끊기지 않습니다", 4000);
+                console.log('--- Native requestBatteryOptimization call start ---');
+                try {
+                  const res = await overlay.requestBatteryOptimization();
+                  console.log('--- Native Response:', JSON.stringify(res));
+                } catch(e) {
+                  console.error('--- Native Error:', e);
+                }
             } else {
                 showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
             }
@@ -1353,7 +1360,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 78; // Build 78 (v4.1.32)
+      const currentCode = 79; // Build 79 (v4.1.33)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {

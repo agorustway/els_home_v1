@@ -1,8 +1,8 @@
-# ELS MISSION CONTROL v4.1.32
-> 마지막 업데이트: 2026-03-28 14:26
+# ELS MISSION CONTROL v4.1.33
+> 마지막 업데이트: 2026-03-28 14:30
 
 ## 📦 최신 배포 정보 (Release)
-- **최신 버전**: `v4.1.32` (Build 78 — 안드로이드 16 Baklava 대응 및 네이티브 로그 강화)
+- **최신 버전**: `v4.1.33` (Build 79 — 안드로이드 16 인텐트 정밀 보정 및 동기화 지연 상향)
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.1.27 동기화 완료)
 

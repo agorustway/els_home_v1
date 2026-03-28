@@ -117,10 +117,10 @@ public class OverlayPlugin extends Plugin {
         call.resolve(new JSObject().put("stopped", true));
     }
 
-    // JS → 배터리 최적화 제외 요청 (Android 16 대응)
+    // JS → 배터리 최적화 제외 요청 (Android 16 정밀 대응)
     @PluginMethod
     public void requestBatteryOptimization(PluginCall call) {
-        Log.d("ELS_DEBUG", "requestBatteryOptimization started");
+        Log.d("ELS_DEBUG", "Battery optimization request started");
         
         try {
             Context context = getContext();
@@ -128,34 +128,34 @@ public class OverlayPlugin extends Plugin {
             String packageName = context.getPackageName();
             
             if (pm != null && pm.isIgnoringBatteryOptimizations(packageName)) {
-                Log.d("ELS_DEBUG", "Already ignoring battery optimizations");
+                Log.d("ELS_DEBUG", "Battery optimization already ignored");
                 getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show());
                 call.resolve(new JSObject().put("granted", true));
                 return;
             }
 
-            Log.d("ELS_DEBUG", "Attempting ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+            Log.d("ELS_DEBUG", "Attempting ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS with Uri.fromParts");
             try {
-                // 1순위: 직접 요청 (명확한 의도 전달)
+                // 1순위: 직접 요청 (안드로이드 16 최적화 규격)
                 Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                intent.setData(Uri.parse("package:" + packageName));
+                intent.setData(Uri.fromParts("package", packageName, null));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
-                Log.d("ELS_DEBUG", "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS sent");
+                Log.d("ELS_DEBUG", "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS success");
             } catch (ActivityNotFoundException | SecurityException e) {
-                Log.w("ELS_DEBUG", "Direct request failed, falling back to settings page: " + e.getMessage());
-                // 2순위: 사용자 직접 선택 페이지 유도
+                Log.e("ELS_DEBUG", "Direct request failed, falling back to general list", e);
+                // 2순위: 사용자 직접 리스트 선택 (폴백)
                 Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
                 
                 getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 -> [제한 없음]으로 설정해주세요.", Toast.LENGTH_LONG).show());
-                Log.d("ELS_DEBUG", "ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS sent");
+                Log.d("ELS_DEBUG", "ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS fallback sent");
             }
             call.resolve(new JSObject().put("requested", true));
             
         } catch (Exception e) {
-            Log.e("ELS_DEBUG", "requestBatteryOptimization crash", e);
+            Log.e("ELS_DEBUG", "Critical error in requestBatteryOptimization", e);
             e.printStackTrace();
             call.reject("배터리 설정 시도 중 오류: " + e.getMessage());
         }
