@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.50');
+  console.log('ELS Driver App Loading... v4.1.52');
 
-  const APP_VERSION = 'v4.1.50';
+  const APP_VERSION = 'v4.1.52';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -114,7 +114,7 @@
     const btn = el.nextElementSibling;
     if (btn && (btn.tagName === 'BUTTON' || btn.classList.contains('btn-perm'))) {
       if (!permStatuses[type]) {
-         btn.classList.remove('btn-ok');
+         btn.classList.remove('btn-ok', 'btn-primary'); // primary 완전 제거
          if (['loc', 'overlay', 'battery'].includes(type)) {
             btn.classList.add('btn-pulse', 'btn-ng');
             btn.textContent = '설정(필수)';
@@ -123,7 +123,7 @@
             btn.textContent = '설정';
          }
       } else {
-         btn.classList.remove('btn-pulse', 'btn-ng');
+         btn.classList.remove('btn-pulse', 'btn-ng', 'btn-primary'); // primary 완전 제거
          btn.classList.add('btn-ok');
          btn.textContent = '허용완료';
       }
@@ -453,12 +453,21 @@
 
   function finishPermSetup() {
     updatePermStatuses().then(() => {
-      if (!permStatuses.loc || !permStatuses.overlay || !permStatuses.battery) {
-        showToast('⚠️ 위치, 다른 앱 위에 표시, 배터리 권한을 모두 허용해야만 앱 구동이 가능합니다.');
+      // 필수 권한 체크 (위치, 오버레이, 배터리)
+      const missing = [];
+      if (!permStatuses.loc) missing.push('위치(항상 허용)');
+      if (!permStatuses.overlay) missing.push('다른 앱 위에 표시');
+      if (!permStatuses.battery) missing.push('배터리 최적화 제외');
+
+      if (missing.length > 0) {
+        alert('아래 필수 권한이 설정되지 않았습니다:\n\n' + missing.join('\n') + '\n\n모든 필수 권한을 허용해야 앱을 시작할 수 있습니다.');
         return;
       }
+      
       Store.set('permSetupDone', true);
-      openSettings();
+      showScreen('main');
+      switchTab('trip');
+      showToast('반갑습니다! 안전 운전 하세요.');
     });
   }
 
@@ -1494,11 +1503,11 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 96; // Build 96 (v4.1.50)
+      const currentCode = 98; // Build 98 (v4.1.52)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
-      if (data.versionCode > currentCode || (remoteVersion !== localVersion && remoteVersion !== '')) {
+      if (data.versionCode > currentCode || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion))) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까? (미설치 시 일부 기능이 제한될 수 있습니다.)`;
         if (confirm(msg)) {
           if (window.Capacitor?.Plugins?.Browser) {
