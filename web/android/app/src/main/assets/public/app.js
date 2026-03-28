@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.2');
+  console.log('ELS Driver App Loading... v4.2.3');
  
-  const APP_VERSION = 'v4.2.2';
-  const BUILD_CODE = 146; // Build 146 (v4.2.2)
+  const APP_VERSION = 'v4.2.3';
+  const BUILD_CODE = 147; // Build 147 (v4.2.3)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -949,12 +949,18 @@
   }
 
   function updateTripStatusLine() {
-    const addrDisplay = document.getElementById('trip-addr-display');
     const dateDisplay = document.getElementById('trip-date-display');
+    const sep1 = document.getElementById('trip-status-sep1');
+    const gpsChip = document.getElementById('trip-gps-chip');
+    const sep2 = document.getElementById('trip-status-sep2');
+    const addrDisplay = document.getElementById('trip-addr-display');
 
-    if (!addrDisplay || State.trip.status === 'idle') {
-      if (addrDisplay) { addrDisplay.classList.add('hidden'); addrDisplay.style.display = 'none'; }
-      if (dateDisplay) { dateDisplay.textContent = '운송시작 대기중'; dateDisplay.style.color = 'var(--primary)'; dateDisplay.style.fontWeight = '700'; }
+    if (State.trip.status === 'idle') {
+      if (dateDisplay) { dateDisplay.textContent = '운송시작 대기중'; dateDisplay.style.color = 'var(--primary)'; dateDisplay.style.fontWeight = '700'; dateDisplay.innerHTML = '운송시작 대기중'; }
+      if (sep1) sep1.style.display = 'none';
+      if (gpsChip) gpsChip.style.display = 'none';
+      if (sep2) sep2.style.display = 'none';
+      if (addrDisplay) addrDisplay.style.display = 'none';
       return;
     }
     
@@ -974,28 +980,31 @@
 
     const addrShort = abbreviateAddr(lastKnownAddr);
     
-    // Header Row: 시작시간 | GPS 상태 (inline으로 갱신)
     if (dateDisplay && State.trip.startTime) {
-      const startFullStr = formatDate(new Date(State.trip.startTime)); 
-      dateDisplay.innerHTML = [
-        `<span style="font-size:12px; color:#666; font-weight:400;">${startFullStr}</span>`,
-        `<span style="color:#ddd; margin:0 8px;">|</span>`,
-        `<span id="trip-gps-status" style="color:${gpsColor}; font-weight:700; font-size:12px;">GPS ${gpsText}</span>`
-      ].join('');
+      const d = new Date(State.trip.startTime);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const HH = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      
+      dateDisplay.textContent = `${mm}/${dd} ${HH}:${min}`;
+      dateDisplay.style.color = '#64748b'; // slate-500
+      dateDisplay.style.fontWeight = '400';
     }
+
+    if (sep1) sep1.style.display = 'inline-block';
     
-    // 주소 표시줄 (Bug Fix: container -> addrDisplay)
+    if (gpsChip) {
+      gpsChip.style.display = 'inline-block';
+      gpsChip.style.color = gpsColor;
+      gpsChip.textContent = `GPS ${gpsText}`;
+    }
+
+    if (sep2) sep2.style.display = 'inline-block';
+
     if (addrDisplay) {
-      addrDisplay.classList.remove('hidden');
-      addrDisplay.style.display = 'flex';
-      addrDisplay.style.alignItems = 'center';
-      // 기존 trip-addr-text span 업데이트
-      const addrText = addrDisplay.querySelector('#trip-addr-text') || addrDisplay.querySelector('span');
-      if (addrText) {
-        addrText.textContent = addrShort || '위치 확인 중...';
-      } else {
-        addrDisplay.innerHTML = `<span style="color:#444; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${addrShort || '위치 확인 중...'}</span>`;
-      }
+      addrDisplay.style.display = 'inline-block';
+      addrDisplay.textContent = addrShort || '위치 확인 중...';
     }
 
     // 오버레이 위젯에 GPS 상태 전송 (1초 단위 타이머에서 호출되므로 throttle 적용)

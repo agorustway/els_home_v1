@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.2",
-  "versionCode": 146,
-  "changeLog": "v4.2.2 (Build 146) - 카카오 역지오코딩 통합 및 GPS 표시강화\n- [카카오] Naver Map → 카카오 Coord2Address API 전환 (카카오 키 서버 보관)\n- [GPS] 위치전송 후 응답에서 주소 받아 표시 (카카오 API 추가호출 제거)\n- [GPS] 주소 축약도 서버 통일 (서울특별시 표현 제거)\n- [GPS] 수신상태 실시간 표시 (하드코딩 아님 확인)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=146"
+  "latestVersion": "v4.2.3",
+  "versionCode": 147,
+  "changeLog": "v4.2.3 (Build 147) - 운행/일지 화면 UI 개선\n- [UI] 운행탭 1줄 요약 적용 (시작시간 | GPS상태 | 주소)\n- [UI] 일지탭 날짜/월별 검색칸에 예시(placeholder) 노출",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=147"
 }
