@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.46",
-  "versionCode": 92,
-  "changeLog": "v4.1.46 피드백 반영 (Build 92)\n- 설정 버튼을 메인 화면 상단 헤더로 이동\n- 운송 상태바(시간, 위치) 디자인 및 시인성 개선\n- 컨테이너 번호 오류 메시지 직관적으로 변경\n- 앱 내 권한 허용 시 버튼 색상(파란색) 정상 연동\n- 운행 시작 시 앱이 켜져있으면 오버레이를 팝업하지 않게 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
+  "latestVersion": "v4.1.48",
+  "versionCode": 94,
+  "changeLog": "v4.1.48 스크립트 빌드 오류 핫픽스 (Build 94)\n- 설정 버튼을 메인 화면 상단 헤더로 이동 반영\n- 운송 상태바(시간, 위치) 디자인 및 시인성 개선\n- 컨테이너 번호 오류 메시지 직관적으로 변경\n- 앱 내 권한 허용 시 버튼 색상(파란색) 정상 연동\n- 권한 설정페이지에서 앱초기화 시 초기화 안되는 오류 해결\n- 운행 시작 시 앱이 켜져있으면 오버레이를 팝업하지 않게 개선",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=94"
 }
