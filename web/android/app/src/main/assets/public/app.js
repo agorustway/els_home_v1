@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.44');
+  console.log('ELS Driver App Loading... v4.1.46');
 
-  const APP_VERSION = 'v4.1.44';
+  const APP_VERSION = 'v4.1.46';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -100,6 +100,8 @@
   const permStatuses = Store.get('permStatuses') || { loc: false, camera: false, notif: false, overlay: false, battery: false };
   
   function setPermStatus(type, ok) {
+    // 권한 객체가 없으면 초기화
+    if (!permStatuses) return; 
     permStatuses[type] = !!ok;
     Store.set('permStatuses', permStatuses);
     
@@ -110,13 +112,20 @@
     el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
 
     const btn = el.nextElementSibling;
-    if (btn && btn.tagName === 'BUTTON') {
+    if (btn && (btn.tagName === 'BUTTON' || btn.classList.contains('btn-perm'))) {
       if (!permStatuses[type] && ['loc', 'overlay', 'battery'].includes(type)) {
          btn.classList.add('btn-pulse');
+         btn.classList.remove('btn-primary');
          btn.textContent = '설정(필수)';
       } else {
          btn.classList.remove('btn-pulse');
-         btn.textContent = permStatuses[type] ? '허용완료' : '설정';
+         if (permStatuses[type]) {
+             btn.classList.add('btn-primary');
+             btn.textContent = '허용완료';
+         } else {
+             btn.classList.remove('btn-primary');
+             btn.textContent = '설정';
+         }
       }
     }
   }
@@ -339,15 +348,7 @@
       setPermStatus('notif', Notification.permission === 'granted');
     }
     
-    // UI 동기화 강제 (DOM 전수 업데이트)
-    ['overlay', 'battery', 'loc', 'camera', 'notif'].forEach(type => {
-      const el = document.getElementById('perm-' + type + '-status');
-      if (el) {
-        const isOk = permStatuses[type];
-        el.textContent = isOk ? '허용됨' : '미허용';
-        el.className = 'perm-status ' + (isOk ? 'perm-ok' : 'perm-ng');
-      }
-    });
+    // UI 동기화 강제 루프 (제거됨 - setPermStatus가 대신 처리)
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 
@@ -481,13 +482,17 @@
 
   function resetApp() {
     if (!confirm('앱을 초기화하면 모든 설정과 배차 기록이 삭제됩니다. 계속하시겠습니까?')) return;
-    localStorage.clear();
+    localStorage.clear(); // 전체 초기화
+    
+    // 메모리 내 상태도 명시적으로 초기화
     State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
     State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
-    Store.rm('permStatuses');
-    Store.rm('permSetupDone');
+    for (const key in permStatuses) permStatuses[key] = false;
+    
     showScreen('permission');
-    updatePermStatuses();
+    updatePermStatuses().then(() => {
+        showToast('앱이 초기화되었습니다. 권한을 다시 설정해주세요.');
+    });
   }
 
   // ─── 운행 관리 ────────────────────────────────────────────────
@@ -513,7 +518,7 @@
           if (validateISO6346(cEl.value)) {
             if (errEl) { errEl.textContent = '유효한 번호입니다'; errEl.style.color = 'var(--primary)'; }
           } else {
-            if (errEl) { errEl.textContent = '체크디짓 미일치'; errEl.style.color = 'var(--danger)'; }
+            if (errEl) { errEl.textContent = '컨테이너번호 오기입 넘버를 확인해주세요'; errEl.style.color = 'var(--danger)'; }
           }
         } else {
           if (errEl) { errEl.textContent = '입력 중...'; errEl.style.color = 'var(--text-muted)'; }
@@ -834,14 +839,18 @@
 
   let lastKnownAddr = '위치 확인 중';
   function updateTripStatusLine() {
-    const el = document.getElementById('trip-addr-display');
-    if (!el || State.trip.status === 'idle') return;
+    const el = document.getElementById('trip-addr-text');
+    const container = document.getElementById('trip-addr-display');
+    if (!el || State.trip.status === 'idle') {
+      if (container) container.classList.add('hidden');
+      return;
+    }
     
     const timeStr = formatDuration(Date.now() - State.trip.startTime);
     const gpsStr = `GPS ${Math.round(currentGpsInterval/1000)}s`;
     
     el.textContent = `${timeStr} | ${gpsStr} | ${lastKnownAddr}`;
-    el.classList.remove('hidden');
+    if (container) container.classList.remove('hidden');
   }
 
   async function onGpsUpdate(pos) {
@@ -1481,7 +1490,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 90; // Build 90 (v4.1.44)
+      const currentCode = 92; // Build 92 (v4.1.46)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 

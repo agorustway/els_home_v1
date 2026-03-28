@@ -241,6 +241,7 @@ public class FloatingWidgetService extends Service {
             }
         });
 
+        mFloatingWidget.setVisibility(View.GONE);
         mWindowManager.addView(mFloatingWidget, mParams);
         updateWidgetDisplay();
     }
