@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.59",
-  "versionCode": 105,
-  "changeLog": "v4.1.59 오버레이/배터리 설정창 강제 호출 로직 적용 (Build 105)\n- 거부 이력이 있거나 이미 권합이 있다고 판단되어도 버튼 클릭 시 무조건 설정창 오픈\n- 안드로이드 시스템 캐시로 인해 버튼이 안 눌리는 엣지케이스 완전 차단\n- 배터리 최적화 설정창 직접 호출 로직 강화",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=105"
+  "latestVersion": "v4.1.61",
+  "versionCode": 107,
+  "changeLog": "v4.1.61 버튼 멈춤(주황색) 현상 해결 및 상태 체크 로직 강화 (Build 107)\n- 권한 요청 중 버튼이 주황색으로 멈춰있는 현상(btn-active) 강제 해제 로직 적용\n- 설정창 복귀 시 데이터 동기화 딜레이 1000ms로 최적화\n- 앱 재실행 시 권한 상태를 다시 확실히 체크하여 '허용됨' 상태 유지하도록 보완",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=107"
 }

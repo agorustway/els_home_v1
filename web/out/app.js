@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.59');
+  console.log('ELS Driver App Loading... v4.1.61');
 
-  const APP_VERSION = 'v4.1.59';
+  const APP_VERSION = 'v4.1.61';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -434,13 +434,16 @@
         } else {
             showToast('권한 요청 실패: ' + err.message);
         }
+    } finally {
+        // [TDD] 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 1000ms)
+        setTimeout(async () => {
+            await updatePermStatuses();
+            showToast('권한 상태를 확인했습니다.');
+            // 버튼 상태 초기화
+            const activeBtns = document.querySelectorAll('.btn-active');
+            activeBtns.forEach(b => b.classList.remove('btn-active'));
+        }, 1000);
     }
-    
-    // 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 800ms)
-    setTimeout(async () => {
-        await updatePermStatuses();
-        showToast('권한 상태를 확인했습니다.');
-    }, 800);
   }
 
   async function requestPerm(type, event) {
@@ -452,8 +455,11 @@
         return;
     }
     
-    await executeRealRequest(type);
-    if (event && event.target) event.target.classList.remove('btn-active');
+    try {
+        await executeRealRequest(type);
+    } catch(e) {
+        if (event && event.target) event.target.classList.remove('btn-active');
+    }
   }
 
   function showTerms() {
@@ -1518,7 +1524,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 105; // Build 105 (v4.1.59)
+      const currentCode = 107; // Build 107 (v4.1.61)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
