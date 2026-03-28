@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.75');
+  console.log('ELS Driver App Loading... v4.1.82');
  
-  const APP_VERSION = 'v4.1.75';
-  const BUILD_CODE = 120; // Build 120 (v4.1.75)
+  const APP_VERSION = 'v4.1.82';
+  const BUILD_CODE = 126; // Build 126 (v4.1.82)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -106,6 +106,7 @@
     currentLogId: null,
     currentPhotoIdx: 0,
     emergencyIds: new Set(),
+    pendingUpdate: false, // 운행 중 업데이트 유예 플래그
   };
 
   // ─── 권한 상태 ────────────────────────────────────────────────
@@ -746,6 +747,12 @@
       document.getElementById('trip-date-display').textContent = disp;
       
       showToast('운행이 종료되었습니다.');
+      
+      // 유예된 업데이트가 있다면 종료 후 팝업
+      if (State.pendingUpdate) {
+        State.pendingUpdate = false;
+        setTimeout(() => checkUpdate(true), 1500);
+      }
     } catch (e) { showToast('종료 실패: ' + e.message); }
   }
 
@@ -1428,14 +1435,49 @@
     } catch (e) { showToast('불러오기 실패'); }
   }
 
+  // 일지 상세 컨테이너/씰 필드 변경 핸들러 (대문자, trim, ISO6346 검증)
+  function onLogFieldChange() {
+    const cEl = document.getElementById('log-edit-container');
+    const sEl = document.getElementById('log-edit-seal');
+    if (!cEl || !sEl) return;
+
+    cEl.value = cEl.value.trim().toUpperCase();
+    sEl.value = sEl.value.trim().toUpperCase();
+
+    const errEl = document.getElementById('log-container-check-msg');
+    if (errEl) errEl.textContent = '';
+
+    const val = cEl.value;
+    if (val.length >= 4 && errEl) {
+      const match = val.match(/^([A-Z]{4})(\d{0,7})$/);
+      if (match) {
+        if (val.length === 11) {
+          if (validateISO6346(val)) {
+            errEl.textContent = '유효한 번호입니다'; errEl.style.color = 'var(--primary)';
+          } else {
+            errEl.textContent = '컨테이너번호 오기입 넘버를 확인해주세요'; errEl.style.color = 'var(--danger)';
+          }
+        } else {
+          errEl.textContent = '입력 중...'; errEl.style.color = 'var(--text-muted)';
+        }
+      } else {
+        errEl.textContent = '영문 4자 + 숫자 7자'; errEl.style.color = 'var(--danger)';
+      }
+    }
+  }
+
   async function saveLogEdit() {
     if (!State.currentLogId) return;
+    const cEl = document.getElementById('log-edit-container');
+    const sEl = document.getElementById('log-edit-seal');
+    if (cEl) cEl.value = cEl.value.trim().toUpperCase();
+    if (sEl) sEl.value = sEl.value.trim().toUpperCase();
     try {
       await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          container_number: document.getElementById('log-edit-container').value,
-          seal_number:      document.getElementById('log-edit-seal').value,
+          container_number: cEl ? cEl.value : '',
+          seal_number:      sEl ? sEl.value : '',
           special_notes:    document.getElementById('log-edit-memo').value,
         }),
       });
@@ -1572,23 +1614,33 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      // const currentCode = 110; // Build 110 (v4.1.64) -> [TDD: 하드코딩 제거, 상단 BUILD_CODE 사용]
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
-      if (data.versionCode > BUILD_CODE || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion))) {
-        const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까? (미설치 시 일부 기능이 제한될 수 있습니다.)`;
-        if (confirm(msg)) {
-          if (window.Capacitor?.Plugins?.Browser) {
-            window.Capacitor.Plugins.Browser.open({ url: data.downloadUrl });
-          } else {
-            window.open(data.downloadUrl, '_blank');
-          }
-        } else if (auto) {
-          showToast('원활한 환경을 위해 최신 버전으로 업데이트 해 주세요.', 5000);
+      const hasUpdate = data.versionCode > BUILD_CODE || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion));
+      
+      if (!hasUpdate) {
+        if (!auto) showToast('이미 최신 버전입니다 (' + APP_VERSION + ')');
+        return;
+      }
+
+      // [안전 우선] 운행 중이면 팝업을 띄우지 않고 유예 처리
+      const isActive = State.trip.status === 'driving' || State.trip.status === 'paused';
+      if (auto && isActive) {
+        State.pendingUpdate = true;
+        console.log('업데이트 유예: 운행 중 팝업 차단. 운행 종료 후 알림 예정.');
+        return;
+      }
+
+      const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까? (미설치 시 일부 기능이 제한될 수 있습니다.)`;
+      if (confirm(msg)) {
+        if (window.Capacitor?.Plugins?.Browser) {
+          window.Capacitor.Plugins.Browser.open({ url: data.downloadUrl });
+        } else {
+          window.open(data.downloadUrl, '_blank');
         }
-      } else if (!auto) {
-        showToast('이미 최신 버전입니다 (v' + APP_VERSION + ')');
+      } else if (auto) {
+        showToast('원활한 환경을 위해 최신 버전으로 업데이트 해 주세요.', 5000);
       }
     } catch (e) {
       if (!auto) console.error('업데이트 확인 실패', e);
@@ -1653,7 +1705,7 @@
     // 사진
     addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
     // 일지
-    loadLogs, openLog, saveLogEdit, deleteLog, closeLogDetail, openLogPhoto, addLogPhoto, onLogFileSelected,
+    loadLogs, openLog, saveLogEdit, onLogFieldChange, deleteLog, closeLogDetail, openLogPhoto, addLogPhoto, onLogFileSelected,
     // 긴급
     closeEmergency,
     // 업데이트/종료

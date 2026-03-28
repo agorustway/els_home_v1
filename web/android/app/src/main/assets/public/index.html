@@ -130,18 +130,19 @@
                 <span style="display:inline-block; margin-right:4px;">📍</span> <span id="trip-addr-text" style="flex:1;">위치 정보 없음</span>
              </div>
           </div>
-          <!-- Row 2 컨테이너 번호 -->
-          <div class="field">
-            <label style="display:flex; justify-content:space-between; align-items:center;">
-              <span>컨테이너 번호</span>
-              <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
-            </label>
-            <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()">
-          </div>
-          <!-- Row 3 씰 번호 -->
-          <div class="field">
-            <label>씰 번호</label>
-            <input type="text" id="seal-no" placeholder="씰번호 입력" maxlength="30" oninput="App.onTripFieldChange()">
+          <!-- Row 2 컨테이너 번호 + 씰 번호 (6:4) -->
+          <div style="display:grid; grid-template-columns:6fr 4fr; gap:8px; align-items:start;">
+            <div class="field" style="margin-bottom:0;">
+              <label style="display:flex; justify-content:space-between; align-items:center;">
+                <span>컨테이너 번호</span>
+                <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
+              </label>
+              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label>씰 번호</label>
+              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()">
+            </div>
           </div>
           <!-- Row 4 타입 + 종류 -->
           <div class="trip-row">
@@ -214,9 +215,15 @@
             <div id="log-photo-scroll" class="photo-scroll"></div>
             <input type="file" id="log-file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onLogFileSelected(event)">
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-            <div class="field" style="margin-bottom:0;"><label>컨테이너 번호</label><input type="text" id="log-edit-container"></div>
-            <div class="field" style="margin-bottom:0;"><label>씰 번호</label><input type="text" id="log-edit-seal"></div>
+          <div style="display:grid;grid-template-columns:6fr 4fr;gap:8px;margin-bottom:12px;">
+            <div class="field" style="margin-bottom:0;">
+              <label style="display:flex; justify-content:space-between; align-items:center;">
+                <span>컨테이너 번호</span>
+                <span id="log-container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
+              </label>
+              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()">
+            </div>
+            <div class="field" style="margin-bottom:0;"><label>씰 번호</label><input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()"></div>
           </div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3" style="min-height:80px;"></textarea></div>
           <button class="btn btn-primary btn-full" style="height:44px;font-size:15px;" onclick="App.saveLogEdit()">기록 저장</button>

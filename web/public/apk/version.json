@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.75",
-  "versionCode": 120,
-  "changeLog": "v4.1.75 헤더 및 UX 최종 최적화 (Build 120)\n- 페이지 구조: 헤더 뒤로가기 버튼을 제거하여 로고가 한자리에 고정되도록 개선\n- 상세 페이지: 공지 상세 목록 버튼 너비를 일지 상세와 동일하게 조정 (align-self: flex-start)\n- 레이아웃: 좁은 화면에서도 헤더 텍스트가 두 줄로 밀리지 않도록 최적화",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=120"
+  "latestVersion": "v4.1.82",
+  "versionCode": 126,
+  "changeLog": "v4.1.82 안전 업데이트 및 UX 개선 (Build 126)\n- [안전] 운행 중 업데이트 팝업 차단 → 운행 종료 후 자동 알림\n- [운행탭] 컨테이너/씰 번호 6:4 비율 1줄 배치\n- [일지상세] 컨테이너 번호 대문자 강제, trim 처리, ISO6346 체크디짓 검증 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=126"
 }
