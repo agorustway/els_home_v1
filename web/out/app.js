@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.63');
+  console.log('ELS Driver App Loading... v4.1.64');
 
-  const APP_VERSION = 'v4.1.63';
+  const APP_VERSION = 'v4.1.64';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -486,9 +486,16 @@
       }
       
       Store.set('permSetupDone', true);
-      showScreen('main');
-      switchTab('trip');
-      showToast('반갑습니다! 안전 운전 하세요.');
+      
+      // [TDD] 권한 완료 후 차량 정보(프로필)가 없으면 설정 페이지로 강제 이동
+      const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+      if (!hasProfile) {
+        openSettings();
+        showToast('권한 설정 완료! 차량 정보를 먼저 입력해 주세요.');
+      } else {
+        showMain();
+        showToast('반갑습니다! 안전 운전 하세요.');
+      }
     });
   }
 
@@ -1337,12 +1344,12 @@
       document.getElementById('log-edit-seal').value      = data.seal_number || '';
       document.getElementById('log-edit-memo').value      = data.special_notes || '';
 
-      // 기본 정보
+      // 기본 정보 (시작/종료 일시 강조)
       document.getElementById('log-detail-content').innerHTML = `
         <div class="log-detail-info-box">
           <div class="log-detail-info-row"><span class="log-detail-info-label">번호</span><span>${escHtml(data.vehicle_number||'—')}</span></div>
-          <div class="log-detail-info-row"><span class="log-detail-info-label">시작</span><span>${formatDate(new Date(data.started_at))}</span></div>
-          ${data.ended_at ? `<div class="log-detail-info-row"><span class="log-detail-info-label">종료</span><span>${formatDate(new Date(data.ended_at))}</span></div>` : ''}
+          <div class="log-detail-info-row"><span class="log-detail-info-label">시작</span><span style="font-weight:700;color:var(--accent);">${formatDate(new Date(data.started_at))}</span></div>
+          ${data.ended_at ? `<div class="log-detail-info-row"><span class="log-detail-info-label">종료</span><span style="font-weight:700;color:var(--danger);">${formatDate(new Date(data.ended_at))}</span></div>` : ''}
           <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span>${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}</span></div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type||'—'} / ${data.container_kind||'—'}</span></div>
         </div>
@@ -1532,7 +1539,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 109; // Build 109 (v4.1.63)
+      const currentCode = 110; // Build 110 (v4.1.64)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
