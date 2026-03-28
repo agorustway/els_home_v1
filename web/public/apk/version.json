@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.3",
-  "versionCode": 147,
-  "changeLog": "v4.2.3 (Build 147) - 운행/일지 화면 UI 개선\n- [UI] 운행탭 1줄 요약 적용 (시작시간 | GPS상태 | 주소)\n- [UI] 일지탭 날짜/월별 검색칸에 예시(placeholder) 노출",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=147"
+  "latestVersion": "v4.2.4",
+  "versionCode": 148,
+  "changeLog": "v4.2.4 (Build 148) - 핫픽스\n- [UI] 일지탭 날짜/월별 검색칸 placeholder 미표시 문제 수정 (type 텍스트 우회 적용)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=148"
 }

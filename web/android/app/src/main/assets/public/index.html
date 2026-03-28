@@ -194,8 +194,8 @@
       <!-- ── 일지 탭 ── -->
       <div id="tab-log" class="screen">
         <div class="log-filter">
-          <input type="date" id="log-date-filter" placeholder="날짜조회: 2026-03-29" onchange="App.loadLogs()" style="flex:1;">
-          <input type="month" id="log-month-filter" placeholder="월별조회: 2026-03" onchange="App.loadLogs()" style="flex:1;">
+          <input type="text" id="log-date-filter" placeholder="날짜조회 (예: 2026-03-29)" onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
+          <input type="text" id="log-month-filter" placeholder="월별조회 (예: 2026-03)" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
           <button class="btn btn-sm" onclick="App.loadLogs()">조회</button>
         </div>
         <div id="log-list" class="log-list">
