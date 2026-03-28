@@ -313,19 +313,9 @@ public class FloatingWidgetService extends Service {
             public void onLocationChanged(Location location) {
                 if (!"driving".equals(mStatus)) return;
                 // 속도 기반 전송 주기 계산
-                // [TDD] 속도 기반 간격 설정 (JS와 동기화: 최소 60s)
-                float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
-                long intervalMs;
-                if (speedKph >= 60) { intervalMs = 30_000; mGpsIntervalSec = 30; }
-                else if (speedKph >= 20) { intervalMs = 45_000; mGpsIntervalSec = 45; }
-                else { intervalMs = 60_000; mGpsIntervalSec = 60; }
-                
-                mCurrentIntervalMs = intervalMs;
-                
-                // [TDD] 네이티브에서 직접 텍스트/색상을 덮어씌이지 않음 (JS 데이터 최우선)
-                // 만약 JS에서 업데이트가 오랫동안 없으면 여기서 기본 정보만 갱신
-                if (mGpsText.isEmpty() || mGpsText.contains("300")) {
-                     mGpsText = mGpsIntervalSec + "s";
+                // [TDD] 네이티브 자체 UI 갱신 로직 최소화 (JS가 1초마다 보냄)
+                if (mGpsText.isEmpty()) {
+                    mGpsText = "대기중";
                 }
                 updateWidgetDisplay();
 

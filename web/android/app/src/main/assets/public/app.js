@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.98');
+  console.log('ELS Driver App Loading... v4.1.99');
  
-  const APP_VERSION = 'v4.1.98';
-  const BUILD_CODE = 142; // Build 142 (v4.1.98)
+  const APP_VERSION = 'v4.1.99';
+  const BUILD_CODE = 143; // Build 143 (v4.1.99)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -987,10 +987,18 @@
     lastGpsTimestamp = now;
     currentGpsInterval = interval;
 
-    // 주소 역지오코딩 & 캐싱
-    const addr = await reverseGeocode(lat, lng);
-    lastKnownAddr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`; // 주소 실패 시 좌표 표시
-    updateTripStatusLine();
+    // 주소 역지오코딩 & 캐싱 (실패 시 좌표라도 표시)
+    lastGpsTimestamp = Date.now();
+    try {
+        const addr = await reverseGeocode(lat, lng);
+        lastKnownAddr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        updateTripStatusLine();
+        remoteLog(`GPS Update: ${lastKnownAddr}`, 'GPS_SUCCESS');
+    } catch (e) {
+        lastKnownAddr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        updateTripStatusLine();
+        remoteLog(`Geocode Error: ${e.message}`, 'GPS_ERR');
+    }
 
     // 서버 전송
     try {

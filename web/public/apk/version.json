@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.98",
-  "versionCode": 142,
-  "changeLog": "v4.1.98 (Build 142) - 수송 텔레메트리 연동 최종 동기화 (네이티브/JS 통합)\n- [FIX] 네이티브 오버레이 주소/색상 동기화 (Hardcoded Blue 제거)\n- [GPS] 네이티브-JS 수신 주기 동기화 (최소 60s)\n- [GPS] 서버 전송 작동 방식 최종 점검 (중복 전송 최적화)\n- [UI] 주소 축약 로직 강제 적용 및 TDD 검증 완료",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=142"
+  "latestVersion": "v4.1.99",
+  "versionCode": 143,
+  "changeLog": "v4.1.99 (Build 143) - 실시간 텔레메트리 연동 장애 복구 및 원격 진단 강화\n- [FIX] 위치 전송 및 주소 확인 실패 시 위경도 좌표(Lat/Lng) 자동 표시\n- [FIX] 오버레이 브릿지 연결 안정화 및 컬러 동기화 강제 적용\n- [DEBUG] JS 오류 발생 시 서버 원격 로그(api/debug/log) 즉시 전송\n- [UI] 영문 대문자/숫자 입력 제한 및 트림 처리 최종 배포",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=143"
 }
