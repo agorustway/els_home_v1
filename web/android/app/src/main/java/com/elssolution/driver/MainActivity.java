@@ -99,11 +99,30 @@ public class MainActivity extends BridgeActivity {
             String packageName = getPackageName();
             if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
                 try {
-                    Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName));
-                    fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    runOnUiThread(() -> Toast.makeText(this, "앱 정보창이 열리면 [배터리] > '제한 없음'을 선택해주세요.", Toast.LENGTH_LONG).show());
-                    startActivity(fallback);
-                } catch (Exception e) {}
+                    // 1순위: 직접 배터리 최적화 제외 요청 (Manifest 권한 필요)
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.fromParts("package", packageName, null));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    // 2순위: 앱 상세 정보창으로 유도 (사용자가 수동으로 '제한 없음' 선택)
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        intent.setData(Uri.fromParts("package", packageName, null));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        runOnUiThread(() -> Toast.makeText(this, "앱 정보 → [배터리] → '제한 없음'을 선택해주세요.", Toast.LENGTH_LONG).show());
+                        startActivity(intent);
+                    } catch (Exception e2) {
+                        // 3순위: 전체 배터리 최적화 설정 화면
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                        } catch (Exception e3) {
+                            runOnUiThread(() -> Toast.makeText(this, "배터리 설정 화면을 열 수 없습니다.", Toast.LENGTH_SHORT).show());
+                        }
+                    }
+                }
             } else {
                 runOnUiThread(() -> Toast.makeText(this, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show());
             }

@@ -1,4 +1,16 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-28 (오후) - 안드로이드 16 배터리 최적화 및 플러그인 로드 수정 v4.1.31
+### 주제: Android 16 Intent 규격 준수 및 '플러그인 미로드' 결함 해결
+#### 핵심 원인 분석 및 해결
+1. **플러그인 로딩 가시성 확보**: JS에서 네이티브 플러그인(`Overlay`)을 탐색할 때 대소문자 및 접미사(`Plugin`) 정책 차이로 인해 발생할 수 있는 탐색 실패를 방지하도록 `getPlugin` 헬퍼 개선.
+2. **배터리 최적화 직접 요청**: Android 16에서 권장하는 `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` 인텐트와 `Uri.fromParts`를 적용하여 사용자의 명확한 의도를 시스템에 전달.
+3. **3단계 인텐트 폴백 도입**: 
+    - 1순위: 직접 최적화 제외 요청 창 출력.
+    - 2순위: 실패 시 앱 상세 정보(`ACTION_APPLICATION_DETAILS_SETTINGS`) 화면 유도.
+    - 3순위: 그마저 실패 시 전체 배터리 최적화 설정 메인 페이지(`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`)로 안내.
+4. **v4.1.31 배포**: Build 77 안드로이드 APK 재빌드 및 배포 완료.
+
+---
 ## 📅 2026-03-28 (오후) - 런타임 에러 해결 및 권한 연동 강화 v4.1.30
 ### 주제: 앱 시작 ReferenceError 해결 및 시스템 설정 동기화 보강
 #### 핵심 원인 분석 및 해결

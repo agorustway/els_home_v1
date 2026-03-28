@@ -45,16 +45,26 @@ public class OverlayPlugin extends Plugin {
 
         // 무조건 앱 정보 화면으로 이동 (제한된 설정 허용 및 권한 통합 관리 유도)
         try {
-            Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:" + getContext().getPackageName()));
-            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            String packageName = getContext().getPackageName();
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.fromParts("package", packageName, null));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            
             if (getActivity() != null) {
                 getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "[다른 앱 위에 표시] 및 [배터리] 설정 확인", Toast.LENGTH_LONG).show());
             }
-            getContext().startActivity(fallback);
+            getContext().startActivity(intent);
             call.resolve(new JSObject().put("opened", true).put("restrictedSettings", true));
         } catch (Exception e2) {
-            call.reject("권한 설정 화면을 열 수 없습니다: " + e2.getMessage());
+            // 2차 폴백: 일반 설정창
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(fallback);
+                call.resolve(new JSObject().put("opened", true).put("fallback", true));
+            } catch (Exception e3) {
+                call.reject("권한 설정 화면을 열 수 없습니다.");
+            }
         }
     }
 

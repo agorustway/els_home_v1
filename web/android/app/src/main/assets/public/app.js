@@ -4,15 +4,20 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.30');
+  console.log('ELS Driver App Loading... v4.1.31');
 
-  const APP_VERSION = 'v4.1.30';
+  const APP_VERSION = 'v4.1.31';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
   // ─── Capacitor 플러그인 헬퍼 ──────────────────────────────────
   function getPlugin(name) {
-    try { return window.Capacitor?.Plugins?.[name] || null; } catch { return null; }
+    try { 
+      const plugins = window.Capacitor?.Plugins;
+      if (!plugins) return null;
+      // 대소문자 구분 없이 찾기 (Overlay, overlay, OverlayPlugin 등)
+      return plugins[name] || plugins[name.toLowerCase()] || plugins[name + 'Plugin'] || null; 
+    } catch { return null; }
   }
   const Overlay = () => getPlugin('Overlay');
   const Emergency = () => getPlugin('Emergency');
@@ -1339,7 +1344,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 76; // Build 76 (v4.1.30)
+      const currentCode = 77; // Build 77 (v4.1.31)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {
