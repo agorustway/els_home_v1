@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.82",
-  "versionCode": 126,
-  "changeLog": "v4.1.82 안전 업데이트 및 UX 개선 (Build 126)\n- [안전] 운행 중 업데이트 팝업 차단 → 운행 종료 후 자동 알림\n- [운행탭] 컨테이너/씰 번호 6:4 비율 1줄 배치\n- [일지상세] 컨테이너 번호 대문자 강제, trim 처리, ISO6346 체크디짓 검증 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=126_final"
+  "latestVersion": "v4.1.84",
+  "versionCode": 128,
+  "changeLog": "v4.1.84 UI 최적화 및 문구 수정 (Build 128)\n- [UI] 운행/일지 상세 컨테이너-씰 입력칸 삐져나옴 해결 (전체 폭 맞춤)\n- [문구] 컨테이너 검명 오류 메시지 '컨넘버 오류'로 간소화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=128"
 }
