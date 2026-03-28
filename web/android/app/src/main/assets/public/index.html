@@ -137,11 +137,11 @@
                 <span>컨테이너 번호</span>
                 <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
-              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()">
+              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
             </div>
-            <div class="field" style="margin-bottom:0;">
+            <div class="field" style="margin-bottom:0; min-width:0;">
               <label>씰 번호</label>
-              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()">
+              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
             </div>
           </div>
           <!-- Row 4 타입 + 종류 -->
@@ -221,9 +221,9 @@
                 <span>컨테이너 번호</span>
                 <span id="log-container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
-              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()">
+              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
             </div>
-            <div class="field" style="margin-bottom:0;"><label>씰 번호</label><input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()"></div>
+            <div class="field" style="margin-bottom:0; min-width:0;"><label>씰 번호</label><input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()" style="width:100% !important; height:40px; border-radius:4px;"></div>
           </div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3" style="min-height:80px;"></textarea></div>
           <button class="btn btn-primary btn-full" style="height:44px;font-size:15px;" onclick="App.saveLogEdit()">기록 저장</button>

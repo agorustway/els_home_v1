@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.86",
-  "versionCode": 130,
-  "changeLog": "v4.1.86 긴급 패치 및 UX 개선 (Build 130)\n- [시스템] 하단 내비게이션 바 검정색(#111111) 고정 (설정 페이지 시인성 확보)\n- [공지상세] 본문 HTML 렌더링 지원 (<p> 등 웹 에디터 태그 반영)\n- [버전] 업데이트 고착 이슈 해결을 위한 버전 넘버링 점프",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=130"
+  "latestVersion": "v4.1.88",
+  "versionCode": 132,
+  "changeLog": "v4.1.88 최종 안정화 패치 (Build 132)\n- [UI] 전 페이지 입력필드 가로폭 삐져나옴 원천 차단 (!important 적용)\n- [공지] HTML 본문 서식(P태그 등) 완벽 지원\n- [문구] 컨테이너 검증 메시지 '컨테이너번호 오기입'으로 최종 수정\n- [배포] 빌드 캐시 클린 및 정합성 완전 확보",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=132"
 }
