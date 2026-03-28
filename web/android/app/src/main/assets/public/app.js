@@ -1539,11 +1539,11 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 110; // Build 110 (v4.1.64)
+      // const currentCode = 110; // Build 110 (v4.1.64) -> [TDD: 하드코딩 제거, 상단 BUILD_CODE 사용]
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
-      if (data.versionCode > currentCode || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion))) {
+      if (data.versionCode > BUILD_CODE || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion))) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까? (미설치 시 일부 기능이 제한될 수 있습니다.)`;
         if (confirm(msg)) {
           if (window.Capacitor?.Plugins?.Browser) {
