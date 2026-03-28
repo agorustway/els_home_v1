@@ -235,7 +235,6 @@
     const btnEl = document.getElementById('tab-btn-' + tab);
     if (tabEl) tabEl.classList.add('active');
     if (btnEl) btnEl.classList.add('active');
-    document.getElementById('header-back').classList.add('hidden');
 
     if (tab === 'notice') loadNotices();
     if (tab === 'log')    loadLogs();
