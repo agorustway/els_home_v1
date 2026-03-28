@@ -98,7 +98,7 @@
   // ─── 상태 ─────────────────────────────────────────────────────
   const State = {
     profile: { name: '', phone: '', vehicleNo: '', driverId: '' },
-    trip: { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' },
+    trip: { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '', isRealtime: false },
     photos: [], // { dataUrl, uploaded, serverUrl }
     notices: [],
     logs: [],
@@ -886,10 +886,12 @@
 
   function abbreviateAddr(full) {
     if (!full || full.includes('확인 중')) return full;
-    // 서울특별시 -> 서울, 경기도 -> 경기, 강남구 -> 강남, 역삼동 -> 역삼 등
-    return full.replace(/특별시|광역시|특별자치시|특별자치도/g, '')
-               .replace(/([가-힣]+)(도|구|동|읍|면|리)$/, '$1')
-               .replace(/\s+/g, ' ').trim();
+    // [TDD] 서울특별시 강남구 역삼동 -> 서울 강남 역삼 (축약 강화)
+    return full.split(' ')
+               .map(s => s.replace(/특별시|광역시|특별자치시|특별자치도/g, '')
+                          .replace(/(도|시|구|동|읍|면|리)$/g, ''))
+               .filter(s => s.length > 0)
+               .join(' ');
   }
 
   function updateTripStatusLine() {
