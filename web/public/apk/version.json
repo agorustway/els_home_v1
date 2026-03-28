@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.38",
-  "versionCode": 84,
-  "changeLog": "v4.1.38 최종 안정화 버전\n- 운행 일지 및 기사 정보 조회 100% 원본 기능 복구\n- 안드로이드 16 '제한된 설정 허용' 가이드 로직 적용\n- 개인정보 처리방침 버튼 및 약관 모달 추가\n- 업데이트 반복 알림 수정 완료",
+  "latestVersion": "v4.1.39",
+  "versionCode": 85,
+  "changeLog": "v4.1.39 안드로이드 16/S25 초정거 대응\n- 플러그인 로드 방식을 Capacitor 4+ 최신 브릿지 방식으로 변경\n- 네이티브 플러그인 강제 등록 순서 조정 (super.onCreate 전)\n- [제한된 설정 허용] 유도 로직 및 가이드 보완\n- 업데이트 반복 체크 해결",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

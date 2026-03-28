@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.38');
+  console.log('ELS Driver App Loading... v4.1.39');
 
-  const APP_VERSION = 'v4.1.38';
+  const APP_VERSION = 'v4.1.39';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -19,7 +19,17 @@
         return null;
       }
       
-      const found = plugins[name] || plugins[name.toLowerCase()] || plugins[name.toUpperCase()] || plugins[name + 'Plugin'];
+      // 1. 이미 등록된 플러그인 확인
+      let found = plugins[name] || plugins[name.toLowerCase()] || plugins[name.toUpperCase()] || plugins[name + 'Plugin'];
+      
+      // 2. [중요] Capacitor 4+ 방식: 명시적 등록 시도 (네이티브 브릿지 강제 연결)
+      if (!found && window.Capacitor?.registerPlugin) {
+        try {
+          found = window.Capacitor.registerPlugin(name);
+          console.log(`Plugin ${name} registered manually via registerPlugin()`);
+        } catch(e) { console.warn(`Manual registration for ${name} failed`, e); }
+      }
+
       if (!found) {
         console.group('Plugin Search Failed: ' + name);
         console.log('Available Plugins:', Object.keys(plugins).join(', '));
@@ -1401,7 +1411,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 84; // Build 84 (v4.1.38)
+      const currentCode = 85; // Build 85 (v4.1.39)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 

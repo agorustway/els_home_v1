@@ -21,12 +21,12 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(OverlayPlugin.class);
+        registerPlugin(EmergencyPlugin.class);
         super.onCreate(savedInstanceState);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setNavigationBarColor(android.graphics.Color.BLACK);
         }
-        registerPlugin(OverlayPlugin.class);
-        registerPlugin(EmergencyPlugin.class);
         requestRuntimePermissions();
     }
 
