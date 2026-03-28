@@ -537,9 +537,9 @@
     const cEl = document.getElementById('container-no');
     const sEl = document.getElementById('seal-no');
     
-    // 대문자 변환 & 공백 제거
-    cEl.value = cEl.value.trim().toUpperCase();
-    sEl.value = sEl.value.trim().toUpperCase();
+    // [TDD] 무조건 영문 대문자와 숫자만 허용 (공백/특수문자 원천 차단)
+    cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+    sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
 
     State.trip.containerNo = cEl.value;
     State.trip.sealNo      = sEl.value;
@@ -774,7 +774,11 @@
     if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '재개' : '일시정지';
 
     if (State.trip.startTime) {
-      document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))}`;
+      // 텍스트만 업데이트하도록 변경하여 innerHTML 간섭 최소화
+      const dateEl = document.getElementById('trip-date-display');
+      if (dateEl && !dateEl.innerHTML.includes('|')) {
+         dateEl.textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))}`;
+      }
     }
   }
 
@@ -1451,8 +1455,9 @@
     const sEl = document.getElementById('log-edit-seal');
     if (!cEl || !sEl) return;
 
-    cEl.value = cEl.value.trim().toUpperCase();
-    sEl.value = sEl.value.trim().toUpperCase();
+    // [TDD] 대문자 및 숫자만 허용
+    cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+    sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
 
     const errEl = document.getElementById('log-container-check-msg');
     if (errEl) errEl.textContent = '';
