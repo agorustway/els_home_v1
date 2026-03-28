@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.72');
+  console.log('ELS Driver App Loading... v4.1.75');
  
-  const APP_VERSION = 'v4.1.72';
-  const BUILD_CODE = 118; // Build 118 (v4.1.72)
+  const APP_VERSION = 'v4.1.75';
+  const BUILD_CODE = 120; // Build 120 (v4.1.75)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -239,11 +239,6 @@
 
     if (tab === 'notice') loadNotices();
     if (tab === 'log')    loadLogs();
-  }
-
-  function headerBack() {
-    closeNoticeDetail();
-    closeLogDetail();
   }
 
   // ─── 프로필 UI ───────────────────────────────────────────────
@@ -1020,7 +1015,6 @@
     document.getElementById('notice-list').style.display = 'none';
     const detail = document.getElementById('notice-detail');
     detail.classList.add('active');
-    document.getElementById('header-back').classList.remove('hidden');
 
     // 읽음 처리
     const read = Store.get('readNotices') || [];
@@ -1032,7 +1026,6 @@
     const detail = document.getElementById('notice-detail');
     detail.classList.remove('active');
     document.getElementById('notice-list').style.display = '';
-    document.getElementById('header-back').classList.add('hidden');
   }
 
   //  // 운행 데이터 및 사진 초기화 (설정 버튼 옆 초기화 버튼 및 수시 호출용)
@@ -1390,7 +1383,6 @@
 
       document.getElementById('log-list').style.display = 'none';
       document.getElementById('log-detail').classList.add('active');
-      document.getElementById('header-back').classList.remove('hidden');
     } catch (e) { showToast('불러오기 실패'); }
   }
 
@@ -1432,7 +1424,6 @@
   function closeLogDetail() {
     document.getElementById('log-detail').classList.remove('active');
     document.getElementById('log-list').style.display = '';
-    document.getElementById('header-back').classList.add('hidden');
     State.currentLogId = null;
   }
 
@@ -1614,7 +1605,7 @@
     // 운행
     onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
     // 네비
-    switchTab, headerBack, showScreen, openSettings, handleBackButton: () => window.handleBackButton(),
+    switchTab, showScreen, openSettings, handleBackButton: () => window.handleBackButton(),
     // 공지
     openNotice, closeNoticeDetail,
     // 사진
