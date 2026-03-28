@@ -75,9 +75,12 @@ input, textarea, select, button { font-family: inherit; }
 .tab-btn:active { background: var(--bg); }
 .tab-exit { color: var(--danger); }
 
-#screen-permission, #screen-settings {
+#screen-permission {
   flex-direction: column; padding: 10px 14px; gap: 12px;
   background: var(--surface);
+}
+#screen-settings {
+  flex-direction: column; background: var(--surface);
 }
 .perm-title { font-size: 18px; font-weight: 900; border-left: 4px solid var(--accent); padding-left: 10px; }
 .perm-sub { font-size: 13px; color: var(--text-2); line-height: 1.6; }
@@ -148,7 +151,26 @@ input, textarea, select, button { font-family: inherit; }
 .notice-item-unread .notice-item-title::before {
   content: '● '; color: var(--danger); font-size: 8px; vertical-align: middle;
 }
-.notice-detail-body  { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+/* 공지 상세 */
+.notice-detail {
+  display: none; flex-direction: column; gap: 10px;
+  padding: 14px; overflow-y: auto; flex: 1;
+  background: var(--surface);
+}
+.notice-detail.active { display: flex; }
+.notice-detail-title {
+  font-size: 16px; font-weight: 900; color: var(--text); line-height: 1.4;
+  border-left: 4px solid var(--accent); padding-left: 10px;
+}
+.notice-detail-meta {
+  font-size: 11px; color: var(--text-muted);
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.notice-detail-body {
+  font-size: 14px; line-height: 1.8;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+}
 
 /* ─── 일지 상세 ─── */
 .log-detail { display: none; padding: 14px; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; background: var(--surface); }
