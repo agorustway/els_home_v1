@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.48');
+  console.log('ELS Driver App Loading... v4.1.50');
 
-  const APP_VERSION = 'v4.1.48';
+  const APP_VERSION = 'v4.1.50';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -414,7 +414,11 @@
         }
     } catch(err) {
         console.error('executeRealRequest error', type, err);
-        showToast('권한 요청 실패: ' + err.message);
+        if (err.message && (err.message.includes('Permission') || err.message.includes('denied'))) {
+            showToast('권한이 거부되었습니다. 안드로이드 [설정 > 애플리케이션 > 권한] 에서 직접 허용해주세요.', 4000);
+        } else {
+            showToast('권한 요청 실패: ' + err.message);
+        }
     }
     
     // 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 800ms)
@@ -1490,7 +1494,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 94; // Build 94 (v4.1.48)
+      const currentCode = 96; // Build 96 (v4.1.50)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
@@ -1558,7 +1562,7 @@
   // ─── 공개 API ─────────────────────────────────────────────────
   window.App = {
     // 권한
-    requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup, clearCache, settingsBack,
+    requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
     showTerms, closeTerms,
     // 프로필
     saveProfile, lookupDriver,

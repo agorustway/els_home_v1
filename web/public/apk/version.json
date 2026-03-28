@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.48",
-  "versionCode": 94,
-  "changeLog": "v4.1.48 스크립트 빌드 오류 핫픽스 (Build 94)\n- 설정 버튼을 메인 화면 상단 헤더로 이동 반영\n- 운송 상태바(시간, 위치) 디자인 및 시인성 개선\n- 컨테이너 번호 오류 메시지 직관적으로 변경\n- 앱 내 권한 허용 시 버튼 색상(파란색) 정상 연동\n- 권한 설정페이지에서 앱초기화 시 초기화 안되는 오류 해결\n- 운행 시작 시 앱이 켜져있으면 오버레이를 팝업하지 않게 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=94"
+  "latestVersion": "v4.1.50",
+  "versionCode": 96,
+  "changeLog": "v4.1.50 권한 버튼 색상 및 초기화 버튼 오류 최종 픽스 (Build 96)\n- 드디어 권한 설정 허용 시 파란색 버튼이 제대로 표시되도록 CSS 및 로직 완전 수정\n- 앱 초기화 버튼 눌렀을 때 아무 동작 안 하던 문제 코어 함수 익스포트 연동 처리로 완벽 해결\n- 카메라 권한 요청 거부 시 영문(Permission denied) 대신 친절한 한글 안내 텍스트로 변경",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=96"
 }
