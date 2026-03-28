@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.29');
+  console.log('ELS Driver App Loading... v4.1.30');
 
-  const APP_VERSION = 'v4.1.29';
+  const APP_VERSION = 'v4.1.30';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -59,13 +59,38 @@
     emergencyIds: new Set(),
   };
 
+  // ─── 권한 상태 ────────────────────────────────────────────────
+  const permStatuses = Store.get('permStatuses') || { loc: false, camera: false, notif: false, overlay: false, battery: false };
+  
+  function setPermStatus(type, ok) {
+    permStatuses[type] = !!ok;
+    Store.set('permStatuses', permStatuses);
+    
+    const el = document.getElementById('perm-' + type + '-status');
+    if (!el) return;
+    el.textContent = permStatuses[type] ? '허용됨' : '미허용';
+    el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
+  }
+
   // ─── 앱 초기화 ────────────────────────────────────────────────
   async function init() {
     // Capacitor 브릿지 대기
     if (window.Capacitor) {
-      window.Capacitor.Plugins.App?.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) updatePermStatuses();
-      });
+      const CapApp = window.Capacitor.Plugins.App;
+      if (CapApp) {
+        CapApp.addListener('appStateChange', ({ isActive }) => {
+          console.log('App State Change - isActive:', isActive);
+          if (isActive) {
+            // 사용자가 설정 화면에서 돌아온 후 OS가 상태를 갱신할 시간을 줌 (0.3s)
+            setTimeout(() => {
+              updatePermStatuses().then(() => {
+                console.log('Permission statuses auto-refreshed on app resume.');
+              });
+            }, 300);
+          }
+        });
+      }
+      
       await new Promise(r => {
         if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
         window.addEventListener('load', r, { once: true });
@@ -93,12 +118,12 @@
     const firstRun = !Store.get('permSetupDone');
     const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
     
-    // 권한 상태에 따른 화면 결정
+    // 권한 상태 먼저 확인 후 화면 결정
+    await updatePermStatuses();
     const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
     
     if (firstRun || !criticalPerms) {
       showScreen('permission');
-      updatePermStatuses();
     } else if (!hasProfile) {
       openSettings();
     } else {
@@ -218,16 +243,6 @@
   }
 
   // ─── 권한 설정 ────────────────────────────────────────────────
-  const permStatuses = Store.get('permStatuses') || { loc: false, camera: false, notif: false, overlay: false, battery: false };
-  function setPermStatus(type, ok) {
-    permStatuses[type] = !!ok;
-    Store.set('permStatuses', permStatuses);
-    
-    const el = document.getElementById('perm-' + type + '-status');
-    if (!el) return;
-    el.textContent = permStatuses[type] ? '허용됨' : '미설정';
-    el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
-  }
 
   async function updatePermStatuses() {
     console.log('--- updatePermStatuses start ---');
@@ -250,13 +265,12 @@
             const p = await Geo.checkPermissions().catch(() => ({}));
             setPermStatus('loc', p.location === 'granted');
         } catch(e) { console.warn('Geo check fail', e); }
-    } else {
+    } else if ('geolocation' in navigator) {
         // Fallback: browser API check
-        if ('geolocation' in navigator) {
-            navigator.permissions?.query({ name: 'geolocation' }).then(p => {
-                setPermStatus('loc', p.state === 'granted');
-            }).catch(() => {});
-        }
+        try {
+            const p = await navigator.permissions?.query({ name: 'geolocation' }).catch(() => null);
+            if (p) setPermStatus('loc', p.state === 'granted');
+        } catch(e) {}
     }
 
     // 3. 카메라 / 미디어
@@ -344,9 +358,10 @@
     
     // 2초 후 상태 갱신 (네이티브 세팅 페이지에서 돌아오는 시간 고려)
     setTimeout(async () => {
+        console.log('RequestPerm Timeout Refresh triggered for:', type);
         await updatePermStatuses();
         if (btn) btn.classList.remove('btn-active');
-        showToast('권한 상태를 새로고침했습니다.');
+        showToast('권한 상태를 확인했습니다.');
     }, 2000);
   }
 
@@ -1324,7 +1339,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 75; // Build 75 (v4.1.29)
+      const currentCode = 76; // Build 76 (v4.1.30)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {
