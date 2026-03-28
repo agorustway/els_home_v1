@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.54');
+  console.log('ELS Driver App Loading... v4.1.58');
 
-  const APP_VERSION = 'v4.1.54';
+  const APP_VERSION = 'v4.1.58';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -43,7 +43,18 @@
   async function remoteLog(msg, tag = 'JS') {
     if (!msg) return;
     try {
-        const payload = { msg, device: 'Mobile', tag };
+        // [TDD] 로컬 로그 캡핑 (브라우저 메모리 폭주 방지)
+        const logHistory = Store.get('logHistory') || [];
+        if (logHistory.length > 50) logHistory.shift(); 
+        
+        // KST 시간 포맷 (ISO 8601 + 9시간)
+        const now = new Date();
+        const kst = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().replace('Z', '+09:00');
+        
+        logHistory.push(`[${kst}] [${tag}] ${msg}`);
+        Store.set('logHistory', logHistory);
+
+        const payload = { msg: `[KST ${kst}] ${msg}`, device: 'Mobile', tag };
         fetch(BASE_URL + '/api/debug/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1507,7 +1518,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 100; // Build 100 (v4.1.54)
+      const currentCode = 104; // Build 104 (v4.1.58)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
