@@ -130,7 +130,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // 앱으로 돌아오면 오버레이 숨김
         Intent intent = new Intent(this, FloatingWidgetService.class);
@@ -140,7 +140,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         super.onPause();
         // 앱이 백그라운드로 가면 오버레이 표시
         Intent intent = new Intent(this, FloatingWidgetService.class);
