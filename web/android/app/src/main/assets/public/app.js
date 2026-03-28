@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.88');
+  console.log('ELS Driver App Loading... v4.1.90');
  
-  const APP_VERSION = 'v4.1.88';
-  const BUILD_CODE = 132; // Build 132 (v4.1.88)
+  const APP_VERSION = 'v4.1.90';
+  const BUILD_CODE = 134; // Build 134 (v4.1.90)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1051,24 +1051,24 @@
   }
 
   function openNotice(id) {
-    // id가 숫자형으로 들어올 수 있으므로 문자열로 찾아보기
     const n = _notices.find(x => String(x.id) === String(id));
     if (!n) return;
     
     document.getElementById('notice-detail-title').textContent = n.title || '제목 없음';
     document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
-    const bodyText = n.content || n.body || n.message || '';
-    document.getElementById('notice-detail-body').innerHTML = escHtml(bodyText).replace(/\n/g, '<br>');
+    const bodyEl = document.getElementById('notice-detail-body');
+    if (bodyEl) {
+      const raw = n.content || n.body || n.message || '';
+      bodyEl.innerHTML = raw.replace(/<\/p>/gi, '\n').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>');
+    }
     
-    // UI 전환 (코어 CSS 클래스 일관성 유지)
     document.getElementById('notice-list').style.display = 'none';
     const detail = document.getElementById('notice-detail');
     detail.classList.add('active');
 
-    // 읽음 처리
     const read = Store.get('readNotices') || [];
     if (!read.includes(id)) { read.push(id); Store.set('readNotices', read); }
-    detail.scrollTop = 0; // 최상단으로 스크롤 고정
+    detail.scrollTop = 0;
   }
 
   function closeNoticeDetail() {

@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.88",
-  "versionCode": 132,
-  "changeLog": "v4.1.88 최종 안정화 패치 (Build 132)\n- [UI] 전 페이지 입력필드 가로폭 삐져나옴 원천 차단 (!important 적용)\n- [공지] HTML 본문 서식(P태그 등) 완벽 지원\n- [문구] 컨테이너 검증 메시지 '컨테이너번호 오기입'으로 최종 수정\n- [배포] 빌드 캐시 클린 및 정합성 완전 확보",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=132"
+  "latestVersion": "v4.1.90",
+  "versionCode": 134,
+  "changeLog": "v4.1.90 최종 정합성 및 레이아웃 패치 (Build 134)\n- [공지] 본문 내 <p> 태그 노출 버그 정규식으로 완전 제거\n- [UI] 컨테이너-씰 입력칸 비율 5.5:4.5로 가로 밸런스 최적화\n- [문구] 모든 페이지 '컨테이너번호 오기입'으로 문구 통일\n- [배포] Gradle Clean 빌드로 바이너리 정합성 100% 확보",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=134"
 }
