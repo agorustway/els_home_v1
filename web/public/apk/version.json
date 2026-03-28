@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.64",
-  "versionCode": 110,
-  "changeLog": "v4.1.64 서비스 품질 및 온보딩 플로우 개선 (Build 110)\n- 일지 상세: 시작 및 종료 일시를 명확하게 별도 표시하여 가독성 강화\n- 신규 사용자 플로우: 권한 설정 완료 후 차량 정보가 없을 경우 설정 페이지로 자동 안내\n- 버전 정보 일치: 인트라넷 및 앱 설정 내 버전 표시 v4.1.64로 동기화\n- 버그 수정: 설정 화면 내 버전 정보 및 스크립트 캐시 갱신",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=110"
+  "latestVersion": "v4.1.72",
+  "versionCode": 118,
+  "changeLog": "v4.1.72 헤더 로고 복원 및 상세페이지 여백/가독성 개선 (Build 118)\n- 헤더 로고: 이미지 경로 오류 수정 및 GIF 로고 정상화\n- 공지 상세: 본문 줄바꿈 처리 및 톤앤매너(폰트/여백) 통일\n- 일지 상세: 운행 종료 건에 대한 종료 일시 표시 로직 보완 (completed_at fallback)\n- 레이아웃: 설정 페이지 및 상세 페이지 헤더 여백을 메인과 동일하게 조정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=118"
 }
