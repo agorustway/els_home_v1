@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.94",
-  "versionCode": 138,
-  "changeLog": "v4.1.94 (Build 138) - UI 레이아웃 및 공지사항 렌더링 최적화\n- [UI] 운행 및 일지 상세 페이지 입력칸 비율 5:5(1fr 1fr)로 균형 조정\n- [UI] 일지 상세 페이지 여백 최소화 및 메모 박스 높이 조정 (한 화면 가독성 확보)\n- [MSG] 운행 페이지 유효성 검사 문구 '컨테이너번호 오기입'으로 확정\n- [FIX] 공지사항 HTML 태그 제거 로직 보강 (이중 인코딩된 태그 완벽 처리)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=138"
+  "latestVersion": "v4.1.95",
+  "versionCode": 139,
+  "changeLog": "v4.1.95 (Build 139) - GPS 텔레메트리 복구 및 색상 최적화 (TDD)\n- [GPS] GPS 수신상태(초록/빨강/노랑) 가독성 강화\n- [UI] 운행 탭 상단 첫 줄 레이아웃 최적화 (시작시간 | GPS 상태)\n- [UI] 주소 축약 로직 강화 (서울 강남 역삼 형식)\n- [FIX] 오버레이 위젯과 메인 앱 텔레메트리 형식 동기화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=139"
 }
