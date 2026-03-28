@@ -2,5 +2,5 @@
   "latestVersion": "v4.1.82",
   "versionCode": 126,
   "changeLog": "v4.1.82 안전 업데이트 및 UX 개선 (Build 126)\n- [안전] 운행 중 업데이트 팝업 차단 → 운행 종료 후 자동 알림\n- [운행탭] 컨테이너/씰 번호 6:4 비율 1줄 배치\n- [일지상세] 컨테이너 번호 대문자 강제, trim 처리, ISO6346 체크디짓 검증 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=126"
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=126_final"
 }
