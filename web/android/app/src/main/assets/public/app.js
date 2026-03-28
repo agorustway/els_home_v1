@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.92');
+  console.log('ELS Driver App Loading... v4.1.94');
  
-  const APP_VERSION = 'v4.1.92';
-  const BUILD_CODE = 136; // Build 136 (v4.1.92)
+  const APP_VERSION = 'v4.1.94';
+  const BUILD_CODE = 138; // Build 138 (v4.1.94)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1058,8 +1058,16 @@
     document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
     const bodyEl = document.getElementById('notice-detail-body');
     if (bodyEl) {
-      const raw = n.content || n.body || n.message || '';
-      bodyEl.innerHTML = raw.replace(/<\/p>/gi, '\n').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>');
+      let raw = n.content || n.body || n.message || '';
+      // [TDD] 일반 태그 및 이중 인코딩된 태그(&lt;p&gt;, &lt;br&gt;) 모두 완벽 제거
+      raw = raw.replace(/&lt;br\s*\/?&gt;/gi, '\n')
+               .replace(/&lt;\/p&gt;/gi, '\n')
+               .replace(/&lt;p&gt;/gi, '')
+               .replace(/&lt;[^&]*&gt;/g, '')
+               .replace(/<\/p>/gi, '\n')
+               .replace(/<br\s*\/?>/gi, '\n')
+               .replace(/<[^>]*>/g, '');
+      bodyEl.innerHTML = raw.trim().replace(/\n\s*\n/g, '\n').replace(/\n/g, '<br>');
     }
     
     document.getElementById('notice-list').style.display = 'none';

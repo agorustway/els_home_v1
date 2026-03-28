@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.1.75">
+<link rel="stylesheet" href="style.css?v=4.1.94">
 </head>
 <body>
 <div id="app">
@@ -130,8 +130,8 @@
                 <span style="display:inline-block; margin-right:4px;">📍</span> <span id="trip-addr-text" style="flex:1;">위치 정보 없음</span>
              </div>
           </div>
-          <!-- Row 2 컨테이너 번호 + 씰 번호 (5.3:4.7) -->
-          <div style="display:grid; grid-template-columns:5.3fr 4.7fr; gap:8px; width:100%; overflow:hidden;">
+          <!-- Row 2 컨테이너 번호 + 씰 번호 (5:5) -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; overflow:hidden;">
             <div class="field" style="margin-bottom:0;">
               <label style="display:flex; justify-content:space-between; align-items:center;">
                 <span>컨테이너 번호</span>
@@ -202,7 +202,7 @@
         <div id="log-list" class="log-list">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
         </div>
-        <div id="log-detail" class="log-detail">
+        <div id="log-detail" class="log-detail" style="padding:10px; gap:6px;">
           <div style="display:flex;gap:8px;align-items:center;">
             <button class="btn btn-sm" onclick="App.closeLogDetail()">← 목록</button>
             <div class="spacer"></div>
@@ -215,7 +215,7 @@
             <div id="log-photo-scroll" class="photo-scroll"></div>
             <input type="file" id="log-file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onLogFileSelected(event)">
           </div>
-          <div style="display:grid; grid-template-columns:5.3fr 4.7fr; gap:8px; margin-bottom:4px; width:100%; overflow:hidden;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:4px; width:100%; overflow:hidden;">
             <div class="field" style="margin-bottom:0;">
               <label style="display:flex; justify-content:space-between; align-items:center;">
                 <span>컨테이너 번호</span>
@@ -225,7 +225,7 @@
             </div>
             <div class="field" style="margin-bottom:0; min-width:0;"><label>씰 번호</label><input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()" style="width:100% !important; height:40px; border-radius:4px;"></div>
           </div>
-          <div class="field" style="margin-bottom:4px;"><label>메모</label><textarea id="log-edit-memo" rows="2" style="min-height:60px;"></textarea></div>
+          <div class="field" style="margin-bottom:4px;"><label>메모</label><textarea id="log-edit-memo" rows="2" style="min-height:50px;"></textarea></div>
           <button class="btn btn-primary btn-full" style="height:44px;font-size:15px; margin-top:4px;" onclick="App.saveLogEdit()">기록 저장</button>
         </div>
       </div>
@@ -277,7 +277,7 @@
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.1.75</span>
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.1.94</span>
         </button>
         <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.clearCache()">
           <span>캐시 지우기 (새로고침)</span>
@@ -342,6 +342,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.1.75"></script>
+<script src="app.js?v=4.1.94"></script>
 </body>
 </html>
