@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.53",
-  "versionCode": 99,
-  "changeLog": "v4.1.53 권한 탭 UI 일관성 및 새로고침 로직 최종 픽스 (Build 99)\n- 무한 업데이트 팝업 버그 완전 해결\n- 권한 상태 체크 시 실시간 UI 동기화 강제 로직 추가 (색상 불일치 해결)\n- 배터리 최적화 등 설정 변경 후 복귀 시 '허용됨' 즉시 반영 개선\n- 카메라 권한 안내 텍스트 가시성 보완",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=99"
+  "latestVersion": "v4.1.54",
+  "versionCode": 100,
+  "changeLog": "v4.1.54 권한/설정 레이아웃 통일 및 재요청 로직 최종 해결 (Build 100)\n- 권한 설정 및 설정 페이지 상단에 ELS 로고 추가 및 여백 일관성 확보\n- 오버레이/배터리 권한 거부 후 재요청 시 간헐적 멈춤 현상 픽스 (300ms 딜레이 적용)\n- 하단 필수 권한 안내 문구 최신화 (위치/오버레이/배터리 강조)\n- 무한 업데이트 확인 로직 최종 보정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=100"
 }

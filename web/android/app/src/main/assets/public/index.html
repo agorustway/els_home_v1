@@ -15,11 +15,14 @@
        권한 설정 화면 (최초 실행 / 초기화)
   ════════════════════════════════════════════════ -->
   <div id="screen-permission" class="screen active">
+    <header class="app-header" style="padding:0; margin-bottom:12px; border:none;">
+      <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
+    </header>
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <h2 class="perm-title">앱 초기 설정</h2>
+      <h2 class="perm-title" style="font-size:16px;">앱 초기 설정</h2>
       <button class="btn btn-sm btn-primary" onclick="App.manualRefreshPerms()">새로고침</button>
     </div>
-    <p class="perm-sub">ELS 차량관리 앱이 정상 작동하려면 아래 권한이 필요합니다. 각 항목의 설정 버튼을 눌러 허용해 주세요.</p>
+    <p class="perm-sub" style="margin-bottom:4px;">시스템 권한을 모두 허용해야 앱 이용이 가능합니다.</p>
 
     <div class="perm-item">
       <div class="perm-item-info">
@@ -82,7 +85,7 @@
     <div style="margin-top:16px; text-align:center;">
        <a href="javascript:void(0)" onclick="App.showTerms()" style="font-size:12px; color:var(--text-muted); text-decoration:underline;">개인정보 처리방침 및 이용약관</a>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">위치 권한은 필수입니다. 나머지 권한은 이후 설정 탭에서도 변경할 수 있습니다.</p>
+    <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;line-height:1.4;">위치(항상 허용), 오버레이, 배터리 권한은 필수입니다.<br>미허용 시 앱 구동 및 관제가 불가능합니다.</p>
   </div>
 
   <!-- ════════════════════════════════════════════════
@@ -234,7 +237,10 @@
        설정 페이지
   ════════════════════════════════════════════════ -->
   <div id="screen-settings" class="screen">
-    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px;">
+    <header class="app-header" style="padding:0 14px; margin-bottom:8px;">
+      <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
+    </header>
+    <div style="padding:0 14px;display:flex;flex-direction:column;gap:12px;">
       <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로 돌아가기</button>
       <div class="field">
         <label>이름</label>
@@ -328,6 +334,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.1.38"></script>
+<script src="app.js?v=4.1.54"></script>
 </body>
 </html>

@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.53');
+  console.log('ELS Driver App Loading... v4.1.54');
 
-  const APP_VERSION = 'v4.1.53';
+  const APP_VERSION = 'v4.1.54';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -362,10 +362,11 @@
     if (!guide || !confirmBtn) return;
     
     guide.classList.add('active');
-    confirmBtn.onclick = () => {
+    confirmBtn.onclick = (ev) => {
+      ev.preventDefault();
       guide.classList.remove('active');
-      // 실제 권한 요청 실행
-      executeRealRequest(type);
+      // 300ms 텀을 주어 모달이 닫힌 후 요청이 원활하게 전달되도록 함
+      setTimeout(() => { executeRealRequest(type); }, 300);
     };
   }
 
@@ -1506,7 +1507,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 99; // Build 99 (v4.1.53)
+      const currentCode = 100; // Build 100 (v4.1.54)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
