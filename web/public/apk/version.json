@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.92",
-  "versionCode": 136,
-  "changeLog": "v4.1.92 UI 최적화 및 문구 중첩 패치 (Build 136)\n- [UI] 일지 상세 페이지 여백 조정으로 메모칸 잘림 해결 (버전 높이 유지)\n- [MSG] 운행 페이지 누락된 '컨테이너번호 오기입' 문구 최종 수정\n- [UI] 컨테이너-씰 입력칸 비율 5.3:4.7로 세밀 조정\n- [배포] Gradle Clean 빌드로 바이너리 정합성 100% 확보",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=136"
+  "latestVersion": "v4.1.94",
+  "versionCode": 138,
+  "changeLog": "v4.1.94 (Build 138) - UI 레이아웃 및 공지사항 렌더링 최적화\n- [UI] 운행 및 일지 상세 페이지 입력칸 비율 5:5(1fr 1fr)로 균형 조정\n- [UI] 일지 상세 페이지 여백 최소화 및 메모 박스 높이 조정 (한 화면 가독성 확보)\n- [MSG] 운행 페이지 유효성 검사 문구 '컨테이너번호 오기입'으로 확정\n- [FIX] 공지사항 HTML 태그 제거 로직 보강 (이중 인코딩된 태그 완벽 처리)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=138"
 }
