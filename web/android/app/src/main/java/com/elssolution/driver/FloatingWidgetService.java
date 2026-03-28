@@ -78,10 +78,13 @@ public class FloatingWidgetService extends Service {
     private long mStartTimeMillis = 0;
     private String mStatus = "driving"; // driving | paused | completed
     private String mContainerNo = "";
-    private int mGpsIntervalSec = 60;
+    private int mGpsIntervalSec = 300;
+    private String mGpsText = "300초 간격";
+    private String mGpsColor = "#7d8590";
+    private String mAddress = "위치 확인 중...";
 
     // 위젯 뷰 참조
-    private TextView tvStatus, tvTimer, tvGps;
+    private TextView tvStatus, tvTimer, tvGps, tvAddr;
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -106,6 +109,9 @@ public class FloatingWidgetService extends Service {
             if ("UPDATE_STATUS".equals(action)) {
                 if (intent.hasExtra("status")) mStatus = intent.getStringExtra("status");
                 if (intent.hasExtra("container")) mContainerNo = intent.getStringExtra("container");
+                if (intent.hasExtra("gpsText")) mGpsText = intent.getStringExtra("gpsText");
+                if (intent.hasExtra("gpsColor")) mGpsColor = intent.getStringExtra("gpsColor");
+                if (intent.hasExtra("address")) mAddress = intent.getStringExtra("address");
                 updateWidgetDisplay();
                 return START_STICKY;
             }
@@ -185,9 +191,17 @@ public class FloatingWidgetService extends Service {
         tvGps.setTextSize(14f); // 10f -> 14f
         tvGps.setGravity(Gravity.CENTER);
 
+        tvAddr = new TextView(this);
+        tvAddr.setTextColor(Color.parseColor("#dddddd"));
+        tvAddr.setTextSize(12f);
+        tvAddr.setGravity(Gravity.CENTER);
+        tvAddr.setSingleLine(true);
+        tvAddr.setEllipsize(android.text.TextUtils.TruncateAt.END);
+
         root.addView(tvStatus);
         root.addView(tvTimer);
         root.addView(tvGps);
+        root.addView(tvAddr);
 
         mFloatingWidget = root;
 
@@ -250,7 +264,11 @@ public class FloatingWidgetService extends Service {
         if (tvStatus == null) return;
         String statusLabel = getStatusLabel();
         tvStatus.setText(statusLabel);
-        tvGps.setText("GPS " + mGpsIntervalSec + "초 간격");
+        
+        tvGps.setText("GPS " + mGpsText);
+        try { tvGps.setTextColor(Color.parseColor(mGpsColor)); } catch(Exception e) { tvGps.setTextColor(Color.WHITE); }
+        
+        if (tvAddr != null) tvAddr.setText(mAddress);
     }
 
     private String getStatusLabel() {
@@ -302,6 +320,8 @@ public class FloatingWidgetService extends Service {
                 else if (speedKph >= 5) { intervalMs = 120_000; mGpsIntervalSec = 120; }
                 else { intervalMs = 300_000; mGpsIntervalSec = 300; }
                 mCurrentIntervalMs = intervalMs;
+                mGpsText = mGpsIntervalSec + "s";
+                mGpsColor = "#3b82f6"; // Blue when working
                 updateWidgetDisplay();
 
                 long now = System.currentTimeMillis();

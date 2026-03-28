@@ -101,11 +101,18 @@ public class OverlayPlugin extends Plugin {
     public void updateStatus(PluginCall call) {
         String status = call.getString("status", "driving");
         String container = call.getString("container", "");
+        String gpsText = call.getString("gpsText", "");
+        String gpsColor = call.getString("gpsColor", "");
+        String address = call.getString("address", "");
 
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
         intent.setAction("UPDATE_STATUS");
         intent.putExtra("status", status);
         intent.putExtra("container", container);
+        if (!gpsText.isEmpty()) intent.putExtra("gpsText", gpsText);
+        if (!gpsColor.isEmpty()) intent.putExtra("gpsColor", gpsColor);
+        if (!address.isEmpty()) intent.putExtra("address", address);
+        
         getContext().startService(intent);
         call.resolve(new JSObject().put("updated", true));
     }

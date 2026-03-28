@@ -874,7 +874,17 @@
     return [h, m, ss].map(v => String(v).padStart(2, '0')).join(':');
   }
 
-  let lastKnownAddr = '위치 확인 중';
+  let lastGpsTimestamp = 0;
+  let lastKnownAddr = '위치 확인 중...';
+
+  function abbreviateAddr(full) {
+    if (!full || full.includes('확인 중')) return full;
+    // 서울특별시 -> 서울, 경기도 -> 경기, 강남구 -> 강남, 역삼동 -> 역삼 등
+    return full.replace(/특별시|광역시|특별자치시|특별자치도/g, '')
+               .replace(/([가-힣]+)(도|구|동|읍|면|리)$/, '$1')
+               .replace(/\s+/g, ' ').trim();
+  }
+
   function updateTripStatusLine() {
     const el = document.getElementById('trip-addr-text');
     const container = document.getElementById('trip-addr-display');
@@ -884,10 +894,42 @@
     }
     
     const timeStr = formatDuration(Date.now() - State.trip.startTime);
-    const gpsStr = `GPS ${Math.round(currentGpsInterval/1000)}s`;
     
-    el.textContent = `${timeStr} | ${gpsStr} | ${lastKnownAddr}`;
-    if (container) container.classList.remove('hidden');
+    // GPS 상태 체크 (최근 1.5배 주기 내 업데이트 없으면 수신안됨)
+    const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > (currentGpsInterval * 1.5));
+    const gpsColor = isDown ? '#f87171' : '#3b82f6';
+    let gpsText = isDown ? '수신안됨' : `${Math.round(currentGpsInterval/1000)}s`;
+    
+    // 서버에서 실시간 요청 등의 flag가 있다면 '실시간' 표시 가능 (현재는 placeholder)
+    if (State.trip.isRealtime) gpsText = '실시간';
+
+    const addrShort = abbreviateAddr(lastKnownAddr);
+    
+    // 부모 컨테이너(trip-addr-display) 통째로 갱신하여 📍 이모지 등 기존 정적 요소 제거
+    if (container) {
+      container.innerHTML = `
+        <span style="font-family:monospace; color:#333; flex-shrink:0;">${timeStr}</span>
+        <span style="color:#ddd; margin:0 4px;">|</span>
+        <span style="color:${gpsColor}; font-weight:700; white-space:nowrap; flex-shrink:0;">GPS ${gpsText}</span>
+        <span style="color:#ddd; margin:0 4px;">|</span>
+        <span style="color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${addrShort}</span>
+      `;
+      container.classList.remove('hidden');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.width = '100%';
+    }
+
+    // 오버레이 동기화
+    const overlay = Overlay();
+    if (overlay && State.trip.status === 'driving') {
+      overlay.updateStatus({
+        status: State.trip.status,
+        gpsText: isDown ? '수신안됨' : `${Math.round(currentGpsInterval/1000)}s`,
+        gpsColor: gpsColor,
+        address: addrShort
+      }).catch(() => {});
+    }
   }
 
   async function onGpsUpdate(pos) {
@@ -906,6 +948,7 @@
     if (now - lastGpsSend < (isSharpTurn ? 10_000 : interval)) return;
 
     lastGpsSend = now;
+    lastGpsTimestamp = now;
     currentGpsInterval = interval;
 
     // 주소 역지오코딩 & 캐싱
