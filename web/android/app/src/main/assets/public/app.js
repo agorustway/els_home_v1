@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.58');
+  console.log('ELS Driver App Loading... v4.1.59');
 
-  const APP_VERSION = 'v4.1.58';
+  const APP_VERSION = 'v4.1.59';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1518,7 +1518,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 104; // Build 104 (v4.1.58)
+      const currentCode = 105; // Build 105 (v4.1.59)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 

@@ -25,8 +25,8 @@ import java.nio.charset.StandardCharsets;
  * Android 16 (API 36) Sideloaded APK 대응
  * 3단계 권한 유도 전략:
  *   1) canDrawOverlays() 체크
- *   2) ACTION_MANAGE_OVERLAY_PERMISSION 직접 오픈
- *   3) 실패 시 ACTION_APPLICATION_DETAILS_SETTINGS → Toast 안내
+ *   1) 무조건 ACTION_APPLICATION_DETAILS_SETTINGS 오픈
+ *   2) 실패 시 ACTION_SETTINGS → Toast 안내
  */
 @CapacitorPlugin(name = "Overlay")
 public class OverlayPlugin extends Plugin {
@@ -45,14 +45,11 @@ public class OverlayPlugin extends Plugin {
     // JS → 오버레이 권한 설정 화면 열기 (Android 16 3단계)
     @PluginMethod
     public void requestPermission(PluginCall call) {
-        if (Settings.canDrawOverlays(getContext())) {
-            JSObject ret = new JSObject();
-            ret.put("granted", true);
-            call.resolve(ret);
-            return;
-        }
+        /* 
+         * [거부 회피 전략] 
+         * 권한 상태와 무관하게 사용자가 버튼을 눌렀을 때 무조건 앱 정보 화면으로 이동.
+         */
 
-        // 무조건 앱 정보 화면으로 이동 (제한된 설정 허용 및 권한 통합 관리 유도)
         try {
             String packageName = getContext().getPackageName();
             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
@@ -134,12 +131,10 @@ public class OverlayPlugin extends Plugin {
             PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             String packageName = context.getPackageName();
             
-            if (pm != null && pm.isIgnoringBatteryOptimizations(packageName)) {
-                sendRemoteLog("Battery optimization already ignored", "BATTERY");
-                getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show());
-                call.resolve(new JSObject().put("granted", true));
-                return;
-            }
+            /* 
+             * [거부 회피 전략]
+             * 배터리 최적화 확인 로직을 스킵하고 무조건 요청 액티비티를 트리거함.
+             */
 
             sendRemoteLog("Attempting ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS with Uri.fromParts", "BATTERY");
             try {

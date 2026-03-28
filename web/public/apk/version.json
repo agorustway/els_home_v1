@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.58",
-  "versionCode": 104,
-  "changeLog": "v4.1.58 로그 최적화 및 구문 오류 최종 수정 (Build 104)\n- 원격 로그에 KST(한국 표준시) 적용\n- 로그 무한 저장 방지 로직 도입 (최신 50개 유지)\n- app.js 내부에 잘못 삽입된 CSS 구문 제거 및 안정화\n- 권한 설정 상태 실시간 반영 로직 TDD 검증 완료 및 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=104"
+  "latestVersion": "v4.1.59",
+  "versionCode": 105,
+  "changeLog": "v4.1.59 오버레이/배터리 설정창 강제 호출 로직 적용 (Build 105)\n- 거부 이력이 있거나 이미 권합이 있다고 판단되어도 버튼 클릭 시 무조건 설정창 오픈\n- 안드로이드 시스템 캐시로 인해 버튼이 안 눌리는 엣지케이스 완전 차단\n- 배터리 최적화 설정창 직접 호출 로직 강화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=105"
 }
