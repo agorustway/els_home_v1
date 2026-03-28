@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.0",
-  "versionCode": 144,
-  "changeLog": "v4.2.0 (Build 144) - 메이저 레이아웃 및 텔레메트리 최종 동기화\n- [FIX] 앱 버전 표시 불일치(v4.1.x) 해결 및 v4.2.0 통합\n- [FIX] 오버레이 브릿지/색상 레이아웃 전면 안정화 (TDD)\n- [FIX] 위치 전송 및 주소 확인 실패 시 Lat/Lng 좌표 즉시 표시\n- [GPS] 수신 주기 최적화 및 정지 시 수신 빈도 상향 (60s)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=144"
+  "latestVersion": "v4.2.1",
+  "versionCode": 145,
+  "changeLog": "v4.2.1 (Build 145) - GPS 전면 수신/표시 로직 전면 정상화\n- [FIX] 주소 영역 레이아웃 미표시 치명적 버그 수정 (container 오타)\n- [GPS] watchPosition 콜백 즉시 타임스탬프 갱신으로 '수신안됨' 오류 해결\n- [GPS] 운행 시작 즉시 현재 위치 강제 1회 수신으로 초기 공백 제거\n- [GPS] 역지오코딩 서버 프록시 신규 구축 (CORS/키노출 방지)\n- [FWS] FloatingWidgetService speedKph 컴파일 버그 수정\n- [NEW] 자이로/가속도 센서 양쪽 대응 및 실시간 GPS 가시성 대폭 보강",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=145"
 }
