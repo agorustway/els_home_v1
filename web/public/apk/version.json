@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.97",
-  "versionCode": 141,
-  "changeLog": "v4.1.97 (Build 141) - 텔레메트리 연동 강화 및 버전 최적화\n- [UI] 운송 시작 일시 전체 노출 (시계열 데이터)\n- [GPS] 정지 시 수신 간격 60s로 단축하여 실시간성 확보 (속도별 가변 주기)\n- [GPS] 주소 확인 실패 시 위경도 좌표 자동 표시 (Fallback)\n- [UI] 이모지 제거 및 한 줄 요약 주소 디자인 최종 확정",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=141"
+  "latestVersion": "v4.1.98",
+  "versionCode": 142,
+  "changeLog": "v4.1.98 (Build 142) - 수송 텔레메트리 연동 최종 동기화 (네이티브/JS 통합)\n- [FIX] 네이티브 오버레이 주소/색상 동기화 (Hardcoded Blue 제거)\n- [GPS] 네이티브-JS 수신 주기 동기화 (최소 60s)\n- [GPS] 서버 전송 작동 방식 최종 점검 (중복 전송 최적화)\n- [UI] 주소 축약 로직 강제 적용 및 TDD 검증 완료",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=142"
 }
