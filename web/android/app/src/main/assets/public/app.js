@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.96');
+  console.log('ELS Driver App Loading... v4.1.97');
  
-  const APP_VERSION = 'v4.1.96';
-  const BUILD_CODE = 140; // Build 140 (v4.1.96)
+  const APP_VERSION = 'v4.1.97';
+  const BUILD_CODE = 141; // Build 141 (v4.1.97)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -967,11 +967,17 @@
     const { latitude: lat, longitude: lng, speed } = pos.coords;
     const speedKph = (speed || 0) * 3.6;
 
-    let interval;
-    if (speedKph >= 60) interval = 30_000;
-    else if (speedKph >= 20) interval = 60_000;
-    else if (speedKph >= 5)  interval = 120_000;
-    else                      interval = 300_000;
+    // [TDD] 속도에 따른 가변 주기 설정 (하드코딩 아님)
+    let interval = 60_000;
+    if (speedKph >= 60) interval = 30_000; // 고속: 30초
+    else if (speedKph >= 20) interval = 45_000; // 중속: 45초
+    else if (speedKph >= 5)  interval = 60_000; // 저속: 60초
+    else                      interval = 60_000; // 정지: 60초 (기존 300s에서 단축)
+    
+    if (interval !== currentGpsInterval) {
+      currentGpsInterval = interval;
+      updateTripStatusLine();
+    }
 
     const isSharpTurn = gyroData.magnitude > 30;
     const now = Date.now();
@@ -982,12 +988,9 @@
     currentGpsInterval = interval;
 
     // 주소 역지오코딩 & 캐싱
-    reverseGeocode(lat, lng).then(addr => {
-      if (addr) { 
-        lastKnownAddr = addr;
-        updateTripStatusLine();
-      }
-    });
+    const addr = await reverseGeocode(lat, lng);
+    lastKnownAddr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`; // 주소 실패 시 좌표 표시
+    updateTripStatusLine();
 
     // 서버 전송
     try {

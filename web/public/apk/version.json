@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.96",
-  "versionCode": 140,
-  "changeLog": "v4.1.96 (Build 140) - 설정/권한 페이지 하단 블랙바 적용 및 텔레메트리 레이아웃 최종 안정화\n- [UI] 모든 화면 하단 안드로이드 내비게이션 영역 블랙 배경(#000) 강제 적용\n- [UI] 운행 탭 상단 [시작시간 | GPS 상태] 단일 행 통합 렌더링 (깜빡임 방지)\n- [FIX] GPS 수신 시 색상(초록/빨강/노랑) 및 텍스트 자동 동기화 보정\n- [FIX] 입력 유효성 검사 강화 (영문 대문자/숫자만 허용)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=140"
+  "latestVersion": "v4.1.97",
+  "versionCode": 141,
+  "changeLog": "v4.1.97 (Build 141) - 텔레메트리 연동 강화 및 버전 최적화\n- [UI] 운송 시작 일시 전체 노출 (시계열 데이터)\n- [GPS] 정지 시 수신 간격 60s로 단축하여 실시간성 확보 (속도별 가변 주기)\n- [GPS] 주소 확인 실패 시 위경도 좌표 자동 표시 (Fallback)\n- [UI] 이모지 제거 및 한 줄 요약 주소 디자인 최종 확정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=141"
 }
