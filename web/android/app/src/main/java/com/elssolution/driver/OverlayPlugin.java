@@ -15,6 +15,11 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.JSObject;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
 /**
  * OverlayPlugin v3.0
  * Android 16 (API 36) Sideloaded APK 대응
@@ -120,7 +125,9 @@ public class OverlayPlugin extends Plugin {
     // JS → 배터리 최적화 제외 요청 (Android 16 정밀 대응)
     @PluginMethod
     public void requestBatteryOptimization(PluginCall call) {
-        Log.d("ELS_DEBUG", "Battery optimization request started");
+        String logMsg = "Battery optimization request started";
+        Log.d("ELS_DEBUG", logMsg);
+        sendRemoteLog(logMsg, "BATTERY");
         
         try {
             Context context = getContext();
@@ -128,37 +135,60 @@ public class OverlayPlugin extends Plugin {
             String packageName = context.getPackageName();
             
             if (pm != null && pm.isIgnoringBatteryOptimizations(packageName)) {
-                Log.d("ELS_DEBUG", "Battery optimization already ignored");
+                sendRemoteLog("Battery optimization already ignored", "BATTERY");
                 getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show());
                 call.resolve(new JSObject().put("granted", true));
                 return;
             }
 
-            Log.d("ELS_DEBUG", "Attempting ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS with Uri.fromParts");
+            sendRemoteLog("Attempting ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS with Uri.fromParts", "BATTERY");
             try {
-                // 1순위: 직접 요청 (안드로이드 16 최적화 규격)
                 Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
                 intent.setData(Uri.fromParts("package", packageName, null));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
-                Log.d("ELS_DEBUG", "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS success");
+                sendRemoteLog("ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS success", "BATTERY");
             } catch (ActivityNotFoundException | SecurityException e) {
-                Log.e("ELS_DEBUG", "Direct request failed, falling back to general list", e);
-                // 2순위: 사용자 직접 리스트 선택 (폴백)
+                sendRemoteLog("Direct request failed: " + e.getMessage(), "BATTERY_ERROR");
                 Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
                 
                 getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 -> [제한 없음]으로 설정해주세요.", Toast.LENGTH_LONG).show());
-                Log.d("ELS_DEBUG", "ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS fallback sent");
+                sendRemoteLog("ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS fallback sent", "BATTERY");
             }
             call.resolve(new JSObject().put("requested", true));
             
         } catch (Exception e) {
-            Log.e("ELS_DEBUG", "Critical error in requestBatteryOptimization", e);
+            sendRemoteLog("Critical error: " + e.getMessage(), "BATTERY_CRASH");
             e.printStackTrace();
             call.reject("배터리 설정 시도 중 오류: " + e.getMessage());
         }
+    }
+
+    private void sendRemoteLog(String msg, String tag) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("https://www.nollae.com/api/debug/log");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                
+                JSObject json = new JSObject();
+                json.put("msg", msg);
+                json.put("tag", "NATIVE_" + tag);
+                json.put("device", android.os.Build.MODEL);
+                
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(json.toString().getBytes(StandardCharsets.UTF_8));
+                }
+                conn.getResponseCode(); 
+                conn.disconnect();
+            } catch (Exception e) {
+                Log.e("ELS_DEBUG_REMOTE", "Log send fail", e);
+            }
+        }).start();
     }
 
     // JS → 배터리 최적화 여부 확인

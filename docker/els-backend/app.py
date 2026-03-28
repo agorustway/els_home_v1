@@ -57,6 +57,31 @@ def handle_global_exception(e):
     }
     return jsonify(response), 500
 
+@app.route("/api/debug/log", methods=["POST"])
+def debug_log():
+    """앱/네이티브로부터 디버그 로그를 받아 파일에 저장합니다."""
+    data = request.get_json(silent=True) or {}
+    msg = data.get("msg", "")
+    device = data.get("device", "unknown")
+    tag = data.get("tag", "APP")
+    
+    log_file = Path("debug_app.log")
+    try:
+        with open(log_file, "a", encoding="utf-8") as f:
+            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"[{ts}] [{device}] [{tag}] {msg}\n")
+    except:
+        pass
+    
+    return jsonify({"ok": True})
+
+@app.route("/api/debug/view", methods=["GET"])
+def view_debug_log():
+    """파일에 저장된 디버그 로그를 보여줍니다."""
+    log_file = Path("debug_app.log")
+    if not log_file.exists(): return "공개된 로그가 아직 없습니다."
+    return send_file(log_file, mimetype="text/plain")
+
 def _daemon_available():
     try:
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=2)
