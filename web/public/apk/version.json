@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.95",
-  "versionCode": 139,
-  "changeLog": "v4.1.95 (Build 139) - GPS 텔레메트리 복구 및 색상 최적화 (TDD)\n- [GPS] GPS 수신상태(초록/빨강/노랑) 가독성 강화\n- [UI] 운행 탭 상단 첫 줄 레이아웃 최적화 (시작시간 | GPS 상태)\n- [UI] 주소 축약 로직 강화 (서울 강남 역삼 형식)\n- [FIX] 오버레이 위젯과 메인 앱 텔레메트리 형식 동기화",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=139"
+  "latestVersion": "v4.1.96",
+  "versionCode": 140,
+  "changeLog": "v4.1.96 (Build 140) - 설정/권한 페이지 하단 블랙바 적용 및 텔레메트리 레이아웃 최종 안정화\n- [UI] 모든 화면 하단 안드로이드 내비게이션 영역 블랙 배경(#000) 강제 적용\n- [UI] 운행 탭 상단 [시작시간 | GPS 상태] 단일 행 통합 렌더링 (깜빡임 방지)\n- [FIX] GPS 수신 시 색상(초록/빨강/노랑) 및 텍스트 자동 동기화 보정\n- [FIX] 입력 유효성 검사 강화 (영문 대문자/숫자만 허용)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=140"
 }

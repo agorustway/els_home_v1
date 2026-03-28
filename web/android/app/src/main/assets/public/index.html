@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.1.95">
+<link rel="stylesheet" href="style.css?v=4.1.96">
 </head>
 <body>
 <div id="app">
@@ -125,7 +125,6 @@
           <div style="background:#f4f7fb; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-bottom:4px; display:flex; flex-direction:column; gap:6px;">
              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
                 <div id="trip-date-display" style="font-size:13px; font-weight:700; color:var(--primary); display:flex; align-items:center;">운송시작 대기중</div>
-                <div id="trip-gps-status" style="font-size:11px; color:#666;">GPS: --</div>
              </div>
              <div id="trip-addr-display" class="trip-addr hidden" style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; line-height:1.4;">
                 <span id="trip-addr-text" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">위치 정보 없음</span>
@@ -278,7 +277,7 @@
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.1.95</span>
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.1.96</span>
         </button>
         <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.clearCache()">
           <span>캐시 지우기 (새로고침)</span>
@@ -288,6 +287,7 @@
         </button>
       </div>
     </div>
+    <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0; margin-top: auto;"></div>
   </div><!-- /screen-settings -->
 
 </div><!-- /app -->
@@ -343,6 +343,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.1.95"></script>
+<script src="app.js?v=4.1.96"></script>
 </body>
 </html>

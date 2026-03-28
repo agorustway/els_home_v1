@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.95');
+  console.log('ELS Driver App Loading... v4.1.96');
  
-  const APP_VERSION = 'v4.1.95';
-  const BUILD_CODE = 139; // Build 139 (v4.1.95)
+  const APP_VERSION = 'v4.1.96';
+  const BUILD_CODE = 140; // Build 140 (v4.1.96)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -899,46 +899,63 @@
   }
 
   function updateTripStatusLine() {
-    const el = document.getElementById('trip-addr-text');
-    const container = document.getElementById('trip-addr-display');
-    if (!el || State.trip.status === 'idle') {
-      if (container) container.classList.add('hidden');
+    const addrDisplay = document.getElementById('trip-addr-display');
+    const dateDisplay = document.getElementById('trip-date-display');
+    const gpsDisplay  = document.getElementById('trip-gps-status');
+
+    if (!addrDisplay || State.trip.status === 'idle') {
+      if (addrDisplay) { addrDisplay.classList.add('hidden'); addrDisplay.style.display = 'none'; }
+      if (dateDisplay) { dateDisplay.textContent = '운송시작 대기중'; dateDisplay.style.color = 'var(--primary)'; dateDisplay.style.fontWeight = '700'; }
+      if (gpsDisplay)  gpsDisplay.textContent = 'GPS --';
       return;
     }
     
-    const timeStr = formatDuration(Date.now() - State.trip.startTime);
-    
-    // GPS 상태 체크 (최근 1.5배 주기 내 업데이트 없으면 수신안됨)
+    // [TDD] GPS 상태 판별 및 색상 지정 (Green: Active, Red: Down, Yellow: Real-time)
     const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > (currentGpsInterval * 1.5));
-    const gpsColor = isDown ? '#f87171' : '#3b82f6';
-    let gpsText = isDown ? '수신안됨' : `${Math.round(currentGpsInterval/1000)}s`;
+    let gpsColor = '#10b981'; // 초록 (Active)
+    let gpsText = `${Math.round(currentGpsInterval/1000)}s`;
     
-    // 서버에서 실시간 요청 등의 flag가 있다면 '실시간' 표시 가능 (현재는 placeholder)
-    if (State.trip.isRealtime) gpsText = '실시간';
+    if (isDown) {
+        gpsColor = '#ef4444'; // 빨강 (Inactive)
+        gpsText = '수신안됨';
+    } else if (State.trip.isRealtime) {
+        gpsColor = '#f59e0b'; // 노랑 (Web Query)
+        gpsText = '실시간';
+    }
 
     const addrShort = abbreviateAddr(lastKnownAddr);
     
-    // 부모 컨테이너(trip-addr-display) 통째로 갱신하여 📍 이모지 등 기존 정적 요소 제거
-    if (container) {
-      container.innerHTML = `
-        <span style="font-family:monospace; color:#333; flex-shrink:0;">${timeStr}</span>
-        <span style="color:#ddd; margin:0 4px;">|</span>
-        <span style="color:${gpsColor}; font-weight:700; white-space:nowrap; flex-shrink:0;">GPS ${gpsText}</span>
-        <span style="color:#ddd; margin:0 4px;">|</span>
-        <span style="color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${addrShort}</span>
+    // [TDD] Header Row: 시작시간 | GPS 상태
+    if (dateDisplay && State.trip.startTime) {
+      const startStr = formatDate(new Date(State.trip.startTime)).split(' ')[1] || ''; 
+      dateDisplay.innerHTML = `
+        <span style="font-size:13px; color:#666; font-weight:400;">운송시작: ${startStr}</span>
+        <span style="color:#ddd; margin:0 8px;">|</span>
+        <span id="trip-gps-status" style="color:${gpsColor}; font-weight:700;">GPS ${gpsText}</span>
       `;
-      container.classList.remove('hidden');
-      container.style.display = 'flex';
-      container.style.alignItems = 'center';
-      container.style.width = '100%';
+    }
+    // 별도 엘리먼트가 존재할 경우에도 동기화
+    if (gpsDisplay) {
+      gpsDisplay.innerHTML = `GPS <span style="color:${gpsColor}; font-weight:700;">${gpsText}</span>`;
     }
 
-    // 오버레이 동기화
+    // [TDD] Address Row: 📍 축약 주소
+    if (addrDisplay) {
+      addrDisplay.classList.remove('hidden');
+      addrDisplay.style.display = 'flex';
+      addrDisplay.style.alignItems = 'center';
+      addrDisplay.innerHTML = `
+        <span style="margin-right:4px; font-size:12px; opacity:0.8;">📍</span>
+        <span style="color:#444; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${addrShort}</span>
+      `;
+    }
+
+    // [TDD] 오버레이 위젯에 디자인 전송
     const overlay = Overlay();
     if (overlay && State.trip.status === 'driving') {
       overlay.updateStatus({
         status: State.trip.status,
-        gpsText: isDown ? '수신안됨' : `${Math.round(currentGpsInterval/1000)}s`,
+        gpsText: gpsText,
         gpsColor: gpsColor,
         address: addrShort
       }).catch(() => {});
