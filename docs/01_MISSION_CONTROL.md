@@ -1,13 +1,20 @@
 # ELS MISSION CONTROL v4.1.34
-> 마지막 업데이트: 2026-03-28 14:36
+> 마지막 업데이트: 2026-03-28 14:48
 
 ## 📦 최신 배포 정보 (Release)
 - **최신 버전**: `v4.1.34` (Build 80 — 원격 디버깅 로그 시스템 도입)
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.1.27 동기화 완료)
+- **설정 파일**: `web/public/apk/version.json` (v4.1.34 동기화 완료)
 
 ## 🎯 현재 목표
-권한 설정 연동의 무결성 확보 및 앱 안정성 강화
+원격 디버깅을 통한 실기기 권한 이슈 해결 및 앱 안정성 확보
+
+## 📋 최근 변경 (v4.1.34 — 2026-03-28)
+- **원격 디버깅 로그 시스템(Log Relay) 구축**: 
+  - Next.js `/api/debug/[...slug]` 프록시 설정을 통해 Vercel → NAS Flask 서버로 로그 전송 성공.
+  - 웹 관제 페이지 상단에 **[실시간 로그]** 버튼 추가하여 즉시 모니터링 가능.
+- **Native/JS 로그 삽입**: `OverlayPlugin.java` 및 `app.js`에서 주요 인텐트 동작 시 서버로 실시간 로그 전송 로직 완비.
+- **Vercel 자동 배포**: 프록시 설정이 포함된 최신 코드를 Git Push 완료하여 외부 접속 차단 해소.
 
 ## 📋 최근 변경 (v4.1.30 — 2026-03-28)
 - **런타임 에러(`ReferenceError`) 해결**: 앱 실행 시 `permStatuses` 변수 참조 순서 오류로 인해 멈추는 치명적 결함을 수정.
