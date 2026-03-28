@@ -113,19 +113,19 @@
 
     const btn = el.nextElementSibling;
     if (btn && (btn.tagName === 'BUTTON' || btn.classList.contains('btn-perm'))) {
-      if (!permStatuses[type] && ['loc', 'overlay', 'battery'].includes(type)) {
-         btn.classList.add('btn-pulse');
-         btn.classList.remove('btn-primary');
-         btn.textContent = '설정(필수)';
-      } else {
-         btn.classList.remove('btn-pulse');
-         if (permStatuses[type]) {
-             btn.classList.add('btn-primary');
-             btn.textContent = '허용완료';
+      if (!permStatuses[type]) {
+         btn.classList.remove('btn-ok');
+         if (['loc', 'overlay', 'battery'].includes(type)) {
+            btn.classList.add('btn-pulse', 'btn-ng');
+            btn.textContent = '설정(필수)';
          } else {
-             btn.classList.remove('btn-primary');
-             btn.textContent = '설정';
+            btn.classList.add('btn-ng');
+            btn.textContent = '설정';
          }
+      } else {
+         btn.classList.remove('btn-pulse', 'btn-ng');
+         btn.classList.add('btn-ok');
+         btn.textContent = '허용완료';
       }
     }
   }
@@ -1308,12 +1308,12 @@
 
       // 기본 정보
       document.getElementById('log-detail-content').innerHTML = `
-        <div style="font-size:13px;color:var(--text-2);line-height:1.8;">
-          <b>차량번호:</b> ${escHtml(data.vehicle_number||'—')}<br>
-          <b>운행 일시:</b> ${formatDate(new Date(data.started_at))} ${new Date(data.started_at).toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}<br>
-          ${data.ended_at ? `<b>종료 일시:</b> ${formatDate(new Date(data.ended_at))} ${new Date(data.ended_at).toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}<br>` : ''}
-          <b>상태:</b> ${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}<br>
-          <b>타입:</b> ${data.container_type||'—'} / ${data.container_kind||'—'}
+        <div class="log-detail-info-box">
+          <div class="log-detail-info-row"><span class="log-detail-info-label">번호</span><span>${escHtml(data.vehicle_number||'—')}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">시작</span><span>${formatDate(new Date(data.started_at))}</span></div>
+          ${data.ended_at ? `<div class="log-detail-info-row"><span class="log-detail-info-label">종료</span><span>${formatDate(new Date(data.ended_at))}</span></div>` : ''}
+          <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span>${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type||'—'} / ${data.container_kind||'—'}</span></div>
         </div>
       `;
 

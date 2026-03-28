@@ -125,8 +125,10 @@ input, textarea, select, button { font-family: inherit; }
 }
 .btn-active { background: var(--accent) !important; color: #fff !important; pointer-events: none; opacity: 0.8; }
 .btn:active { background: var(--border); }
-.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-primary:active { background: #113a96; }
+.btn-primary { background: var(--text); color: #fff; border-color: #000; }
+.btn-primary:active { background: #333; }
+.btn-ok { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+.btn-ng { background: var(--danger) !important; color: #fff !important; border-color: var(--danger) !important; }
 .btn-danger { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
 .btn-warn   { background: var(--warn-light); color: var(--warn); border-color: var(--warn); }
 .btn-success{ background: var(--success-light); color: var(--success); border-color: var(--success); }
@@ -146,11 +148,18 @@ input, textarea, select, button { font-family: inherit; }
 .notice-item-unread .notice-item-title::before {
   content: '● '; color: var(--danger); font-size: 8px; vertical-align: middle;
 }
-.notice-detail { flex-direction: column; display: none; padding: 14px; gap: 10px; overflow-y: auto; flex: 1; }
-.notice-detail.active { display: flex; }
-.notice-detail-title { font-size: 16px; font-weight: 900; }
-.notice-detail-meta  { font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 .notice-detail-body  { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+
+/* ─── 일지 상세 ─── */
+.log-detail { display: none; padding: 14px; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; background: var(--surface); }
+.log-detail.active { display: flex; }
+.log-detail .field { margin-bottom: 2px; }
+.log-detail .field label { font-size: 10px; margin-bottom: 1px; }
+.log-detail .field input, .log-detail .field textarea { padding: 6px 10px; font-size: 13px; }
+.log-detail-info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 4px; line-height: 1.5; font-size: 12px; color: #334155; }
+.log-detail-info-row { display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding: 3px 0; }
+.log-detail-info-row:last-child { border-bottom: none; }
+.log-detail-info-label { font-weight: 700; color: #64748b; }
 
 /* ─── 운행 탭 ─── */
 #tab-trip { padding: 10px 12px; gap: 8px; display: flex; flex-direction: column; }

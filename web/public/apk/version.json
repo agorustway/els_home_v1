@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.50",
-  "versionCode": 96,
-  "changeLog": "v4.1.50 권한 버튼 색상 및 초기화 버튼 오류 최종 픽스 (Build 96)\n- 드디어 권한 설정 허용 시 파란색 버튼이 제대로 표시되도록 CSS 및 로직 완전 수정\n- 앱 초기화 버튼 눌렀을 때 아무 동작 안 하던 문제 코어 함수 익스포트 연동 처리로 완벽 해결\n- 카메라 권한 요청 거부 시 영문(Permission denied) 대신 친절한 한글 안내 텍스트로 변경",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=96"
+  "latestVersion": "v4.1.51",
+  "versionCode": 97,
+  "changeLog": "v4.1.51 UI/UX 감도 및 레이아웃 최종 조정 (Build 97)\n- 권한 설정: 미허용 시 붉은색(NG), 허용 시 파란색(OK)으로 컬러 정책 명확화\n- 일반 버튼(운행시작 등): 다시 신뢰감 있는 블랙 테마로 롤백\n- 일지 상세: 종료 일시 정보 추가 및 깔끔한 박스형 정보 레이아웃 적용\n- 화면 최적화: 내용 간격 조정을 통해 저장 버튼 시인성 확보 및 한 페이지 가독성 개선\n- 오버레이: 드래그 이동 방향 반전 이슈(거울 모드) 해결",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=97"
 }

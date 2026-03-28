@@ -220,7 +220,7 @@ public class FloatingWidgetService extends Service {
                         touchDownTime = System.currentTimeMillis();
                         return true;
                     case MotionEvent.ACTION_MOVE:
-                        mParams.x = initialX + (int)(event.getRawX() - initialTouchX);
+                        mParams.x = initialX - (int)(event.getRawX() - initialTouchX);
                         mParams.y = initialY + (int)(event.getRawY() - initialTouchY);
                         mWindowManager.updateViewLayout(mFloatingWidget, mParams);
                         return true;
