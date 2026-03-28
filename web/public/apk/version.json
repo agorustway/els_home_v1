@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.39",
-  "versionCode": 85,
-  "changeLog": "v4.1.39 안드로이드 16/S25 초정거 대응\n- 플러그인 로드 방식을 Capacitor 4+ 최신 브릿지 방식으로 변경\n- 네이티브 플러그인 강제 등록 순서 조정 (super.onCreate 전)\n- [제한된 설정 허용] 유도 로직 및 가이드 보완\n- 업데이트 반복 체크 해결",
+  "latestVersion": "v4.1.42",
+  "versionCode": 88,
+  "changeLog": "v4.1.42 오버레이 및 상태바 고도화\n- 오버레이 위젯 1.5배 확대 및 우측 상단 배치\n- 앱 상시 노출 상태바 (시간 | GPS | 주소) 구현\n- 앱 최소화 시에만 오버레이 표시 로직 적용\n- 운행 시작 시 타이머 자동 시작",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

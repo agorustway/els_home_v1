@@ -128,4 +128,24 @@ public class MainActivity extends BridgeActivity {
             }
         }
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 앱으로 돌아오면 오버레이 숨김
+        Intent intent = new Intent(this, FloatingWidgetService.class);
+        intent.setAction("SET_VISIBILITY");
+        intent.putExtra("visible", false);
+        try { startService(intent); } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 앱이 백그라운드로 가면 오버레이 표시
+        Intent intent = new Intent(this, FloatingWidgetService.class);
+        intent.setAction("SET_VISIBILITY");
+        intent.putExtra("visible", true);
+        try { startService(intent); } catch (Exception ignored) {}
+    }
 }

@@ -109,6 +109,13 @@ public class FloatingWidgetService extends Service {
                 updateWidgetDisplay();
                 return START_STICKY;
             }
+            if ("SET_VISIBILITY".equals(action)) {
+                boolean visible = intent.getBooleanExtra("visible", true);
+                if (mFloatingWidget != null) {
+                    mFloatingWidget.setVisibility(visible ? View.VISIBLE : View.GONE);
+                }
+                return START_STICKY;
+            }
 
             if (intent.hasExtra("tripId")) mTripId = intent.getStringExtra("tripId");
             if (intent.hasExtra("startTimeMillis")) {
@@ -156,26 +163,26 @@ public class FloatingWidgetService extends Service {
 
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
-        // 위젯 레이아웃 동적 생성
+        // 위젯 레이아웃 동적 생성 (1.5배 확대 및 디자인 개선)
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.parseColor("#E8111111"));
-        root.setPadding(20, 12, 20, 12);
+        root.setPadding(40, 24, 40, 24); // 패딩 증가
 
         tvStatus = new TextView(this);
         tvStatus.setTextColor(Color.parseColor("#58a6ff"));
-        tvStatus.setTextSize(11f);
+        tvStatus.setTextSize(16f); // 11f -> 16f
         tvStatus.setGravity(Gravity.CENTER);
 
         tvTimer = new TextView(this);
         tvTimer.setTextColor(Color.WHITE);
-        tvTimer.setTextSize(20f);
+        tvTimer.setTextSize(30f); // 20f -> 30f
         tvTimer.setTypeface(null, android.graphics.Typeface.BOLD);
         tvTimer.setGravity(Gravity.CENTER);
 
         tvGps = new TextView(this);
         tvGps.setTextColor(Color.parseColor("#7d8590"));
-        tvGps.setTextSize(10f);
+        tvGps.setTextSize(14f); // 10f -> 14f
         tvGps.setGravity(Gravity.CENTER);
 
         root.addView(tvStatus);
@@ -195,9 +202,9 @@ public class FloatingWidgetService extends Service {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         );
-        mParams.gravity = Gravity.TOP | Gravity.START;
-        mParams.x = 60;
-        mParams.y = 180;
+        mParams.gravity = Gravity.TOP | Gravity.END; // 우측 상단으로 변경
+        mParams.x = 40; // 우측 여백
+        mParams.y = 150; // 상단 여백 (상태바/네비게이션바 고려)
 
         // 드래그 이동 + 클릭 앱 복귀
         mFloatingWidget.setOnTouchListener(new View.OnTouchListener() {

@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.39');
+  console.log('ELS Driver App Loading... v4.1.42');
 
-  const APP_VERSION = 'v4.1.39';
+  const APP_VERSION = 'v4.1.42';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -544,6 +544,11 @@
         setTripStatus(data.status);
         updateTripUI();
         renderPhotoThumbs();
+        if (data.status === 'driving') {
+           startGPS();
+           startOverlayService();
+           startTripStatusTimer();
+        }
       } else {
         Store.rm('activeTrip');
       }
@@ -606,6 +611,7 @@
         updateTripUI();
         startOverlayService();
         startGPS();
+        startTripStatusTimer();
 
         if (State.photos.some(p => !p.uploaded)) {
           await uploadPendingPhotos();
@@ -776,6 +782,33 @@
     gyroData.magnitude = Math.abs(e.alpha || 0) + Math.abs(e.beta || 0) + Math.abs(e.gamma || 0);
   }
 
+  let tripStatusTimer = null;
+  function startTripStatusTimer() {
+    if (tripStatusTimer) clearInterval(tripStatusTimer);
+    tripStatusTimer = setInterval(updateTripStatusLine, 1000);
+  }
+
+  function formatDuration(ms) {
+    if (!ms || ms < 0) return '00:00:00';
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const ss = s % 60;
+    return [h, m, ss].map(v => String(v).padStart(2, '0')).join(':');
+  }
+
+  let lastKnownAddr = '위치 확인 중';
+  function updateTripStatusLine() {
+    const el = document.getElementById('trip-addr-display');
+    if (!el || State.trip.status === 'idle') return;
+    
+    const timeStr = formatDuration(Date.now() - State.trip.startTime);
+    const gpsStr = `GPS ${Math.round(currentGpsInterval/1000)}s`;
+    
+    el.textContent = `${timeStr} | ${gpsStr} | ${lastKnownAddr}`;
+    el.classList.remove('hidden');
+  }
+
   async function onGpsUpdate(pos) {
     if (State.trip.status !== 'driving') return;
     const { latitude: lat, longitude: lng, speed } = pos.coords;
@@ -787,7 +820,6 @@
     else if (speedKph >= 5)  interval = 120_000;
     else                      interval = 300_000;
 
-    // 급회전 감지 즉시 전송
     const isSharpTurn = gyroData.magnitude > 30;
     const now = Date.now();
     if (now - lastGpsSend < (isSharpTurn ? 10_000 : interval)) return;
@@ -795,10 +827,12 @@
     lastGpsSend = now;
     currentGpsInterval = interval;
 
-    // 주소 역지오코딩 (현위치 헤더 표시)
+    // 주소 역지오코딩 & 캐싱
     reverseGeocode(lat, lng).then(addr => {
-      const el = document.getElementById('trip-addr-display');
-      if (addr && el) { el.textContent = addr; el.classList.remove('hidden'); }
+      if (addr) { 
+        lastKnownAddr = addr;
+        updateTripStatusLine();
+      }
     });
 
     // 서버 전송
@@ -1411,7 +1445,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 85; // Build 85 (v4.1.39)
+      const currentCode = 88; // Build 88 (v4.1.42)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
