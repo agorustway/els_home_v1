@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.90');
+  console.log('ELS Driver App Loading... v4.1.92');
  
-  const APP_VERSION = 'v4.1.90';
-  const BUILD_CODE = 134; // Build 134 (v4.1.90)
+  const APP_VERSION = 'v4.1.92';
+  const BUILD_CODE = 136; // Build 136 (v4.1.92)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -555,7 +555,7 @@
           if (validateISO6346(cEl.value)) {
             if (errEl) { errEl.textContent = '유효한 번호입니다'; errEl.style.color = 'var(--primary)'; }
           } else {
-            if (errEl) { errEl.textContent = '컨테이너번호 오기입 넘버를 확인해주세요'; errEl.style.color = 'var(--danger)'; }
+            if (errEl) { errEl.textContent = '컨테이너번호 오기입'; errEl.style.color = 'var(--danger)'; }
           }
         } else {
           if (errEl) { errEl.textContent = '입력 중...'; errEl.style.color = 'var(--text-muted)'; }
