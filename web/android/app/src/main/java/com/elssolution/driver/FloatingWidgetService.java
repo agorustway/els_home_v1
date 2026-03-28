@@ -85,6 +85,7 @@ public class FloatingWidgetService extends Service {
 
     // 위젯 뷰 참조
     private TextView tvStatus, tvTimer, tvGps, tvAddr;
+    private long mLastGpsReceiveTime = 0; // GPS 마지막 수신 시각
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -312,10 +313,20 @@ public class FloatingWidgetService extends Service {
             @Override
             public void onLocationChanged(Location location) {
                 if (!"driving".equals(mStatus)) return;
-                // 속도 기반 전송 주기 계산
-                // [TDD] 네이티브 자체 UI 갱신 로직 최소화 (JS가 1초마다 보냄)
-                if (mGpsText.isEmpty()) {
-                    mGpsText = "대기중";
+                
+                // 속도 계산 (m/s -> kph)
+                float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
+                
+                // GPS 수신 타임스탬프 갱신
+                mLastGpsReceiveTime = System.currentTimeMillis();
+                
+                // JS가 1초마다 updateStatus를 보내지만, 네이티브 자체도 GPS 수신 직후 표시 갱신
+                // (앱이 포그라운드로 복귀하거나 JS브릿지가 늦는 경우 대비)
+                if (mGpsText.isEmpty() || mGpsText.equals("대기중")) {
+                    // 속도 기반으로 간이 interval 표시
+                    int intervalSec = speedKph >= 60 ? 30 : (speedKph >= 20 ? 45 : 60);
+                    mGpsText = intervalSec + "s";
+                    mGpsColor = "#10b981"; // 초록 (수신중)
                 }
                 updateWidgetDisplay();
 

@@ -1,4 +1,25 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-29 (새벽) - GPS 수신 전면 정상화 v4.2.1 (Build 145)
+### 주제: GPS 하드코딩 의심 해소 및 운행 페이지 상태 표시 버그 완전 수정
+#### 핵심 원인 분석 및 해결
+1. **[치명적 버그] 주소 영역 미표시 근본 원인 수정**: `updateTripStatusLine()` 내부에서 `addrDisplay` 변수로 선언해 놓고 `container`라는 존재하지 않는 변수명으로 참조하던 오타. 이로 인해 운행 중 주소 표시줄이 **영구적으로 숨겨진 채** 유지되었음. `container → addrDisplay`로 교정 완료.
+2. **[GPS 상태 즉시 반영] watchPosition 콜백 시점 타임스탬프 갱신**: 기존 코드는 서버 전송 성공 후에만 `lastGpsTimestamp`를 갱신하여, GPS 신호는 수신됐어도 서버 전송 전까지 `'수신안됨'`(빨강)으로 오표시되던 문제 수정. watchPosition 콜백 진입 시즉시 갱신하도록 변경.
+3. **[초기 공백 제거] 운행 시작 시 GPS getCurrentPosition 강제 1회 즉시 수신**: startGPS() 호출 시 watchPosition 등록과 동시에 `getCurrentPosition`으로 즉각 1회 수신. 운행 시작 직후 수십 초간 주소가 빈 상태로 남는 UX 문제 해소.
+4. **[정확도 필터] GPS 정확도 200m 이하만 전송**: accuracy > 200m의 실내/통신망 기반 부정확 좌표는 서버 전송을 스킵. 단, 강제 수신(isForced)은 예외 적용.
+5. **[역지오코딩 서버 프록시 신규 구축]**: 앱이 Naver API를 직접 호출하던 방식(CORS 위험 + 키 노출 위험)을 폐기하고, `GET /api/vehicle-tracking/geocode?lat=&lng=` 서버 프록시 라우트 신규 생성. API 키 서버 보관, 대한민국 좌표 범위 검증, 3초 타임아웃 설정.
+6. **[자이로/모션 양쪽 대응]**: `deviceorientation`(자이로 없는 기기)과 `devicemotion`(가속도센서) 이벤트를 모두 수신하여 급회전/급가속 감지 범위 확대. 임계값을 30→25로 하향하여 민감도 향상.
+7. **[FloatingWidgetService 컴파일 버그 수정]**: `sendLocationToServer(location, speedKph)` 호출 시 `speedKph` 변수가 정의되지 않아 컴파일/런타임 오류 발생하던 버그 수정. `location.hasSpeed() ? location.getSpeed() * 3.6f : 0f`로 계산.
+8. **[오버레이 GPS 색상 초기 회색 문제]**: 서비스 시작 시 `mGpsColor`가 `#7d8590`(회색)에서 시작. GPS 수신 콜백에서 속도 기반으로 mGpsText/mGpsColor를 즉시 갱신하는 로직 추가.
+9. **[out/ 소스 동기화]**: `web/out/app.js`가 `web/android/app/src/main/assets/public/app.js`의 구버전이던 것을 PowerShell 복사로 동기화 완료.
+**v4.2.1 배포 전 상태** — Java 코드 변경 포함으로 APK 클린빌드 필수.
+
+#### 주요 변경 파일
+- `web/out/app.js` (GPS 전면 정상화)
+- `web/android/app/src/main/assets/public/app.js` (동일)
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java` (speedKph 버그 수정)
+- `web/app/api/vehicle-tracking/geocode/route.js` (신규 — 역지오코딩 프록시)
+
+---
 ## 📅 2026-03-29 (새벽) - 일지 상세 레이아웃 비율 및 가독성 최적화 v4.1.94
 ### 주제: 5:5 비율 조정, 여백 최소화 및 공지사항 태그 제거 강화
 #### 핵심 원인 분석 및 해결
