@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.34');
+  console.log('ELS Driver App Loading... v4.1.35');
 
-  const APP_VERSION = 'v4.1.34';
+  const APP_VERSION = 'v4.1.35';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -332,20 +332,27 @@
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 
-  async function requestPerm(type, event) {
-    if (event) event.stopPropagation();
-    const overlay = Overlay();
-    const btn = event?.currentTarget || (event && event.target);
-    if (btn) btn.classList.add('btn-active'); 
+  // ─── 안드로이드 16 전용 가이드 ──────────────────────────────
+  function showAndroid16Guide(type) {
+    const guide = document.getElementById('modal-guide-android16');
+    const confirmBtn = document.getElementById('btn-guide-confirm');
+    if (!guide || !confirmBtn) return;
     
-    console.log('requestPerm:', type, !!overlay);
+    guide.classList.add('active');
+    confirmBtn.onclick = () => {
+      guide.classList.remove('active');
+      // 실제 권한 요청 실행
+      executeRealRequest(type);
+    };
+  }
+
+  async function executeRealRequest(type) {
+    const overlay = Overlay();
     try {
-        switch (type) {
+        switch(type) {
           case 'location':
             if (window.Capacitor?.Plugins?.Geolocation) {
                 await window.Capacitor.Plugins.Geolocation.requestPermissions();
-            } else {
-                navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {timeout:1000});
             }
             break;
           case 'camera':
@@ -374,7 +381,6 @@
             if (overlay) {
                 showToast("설정창에서 '제한 없음'을 선택해야 위치 관제가 끊기지 않습니다", 4000);
                 remoteLog('User clicked Battery Optimization button', 'UI_ACTION');
-                console.log('--- Native requestBatteryOptimization call start ---');
                 try {
                   const res = await overlay.requestBatteryOptimization();
                   remoteLog('Native requestBatteryOptimization response: ' + JSON.stringify(res), 'NATIVE_RES');
@@ -383,22 +389,42 @@
                 }
             } else {
                 showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
-                remoteLog('Battery button click failed: Plugin not loaded', 'UI_ERR');
             }
             break;
         }
     } catch(err) {
-        console.error('requestPerm error', type, err);
+        console.error('executeRealRequest error', type, err);
         showToast('권한 요청 실패: ' + err.message);
     }
     
-    // 2초 후 상태 갱신 (네이티브 세팅 페이지에서 돌아오는 시간 고려)
+    // 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 800ms)
     setTimeout(async () => {
-        console.log('RequestPerm Timeout Refresh triggered for:', type);
         await updatePermStatuses();
-        if (btn) btn.classList.remove('btn-active');
         showToast('권한 상태를 확인했습니다.');
-    }, 2000);
+    }, 800);
+  }
+
+  async function requestPerm(type, event) {
+    if (event && event.target) event.target.classList.add('btn-active');
+    
+    // 안드로이드 16 이상이거나 오버레이/배터리 권한인 경우 가이드 먼저 노출 후 이동
+    if (type === 'overlay' || type === 'battery') {
+        showAndroid16Guide(type);
+        return;
+    }
+    
+    await executeRealRequest(type);
+    if (event && event.target) event.target.classList.remove('btn-active');
+  }
+
+  function showTerms() {
+    const el = document.getElementById('modal-terms');
+    if (el) el.classList.add('active');
+  }
+
+  function closeTerms() {
+    const el = document.getElementById('modal-terms');
+    if (el) el.classList.remove('active');
   }
 
   function finishPermSetup() {
@@ -1438,7 +1464,8 @@
   // ─── 공개 API ─────────────────────────────────────────────────
   window.App = {
     // 권한
-    requestPerm, finishPermSetup, updatePermStatuses, manualRefreshPerms, resetApp,
+    requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup,
+    showTerms, closeTerms,
     // 프로필
     saveProfile, lookupDriver,
     // 운행

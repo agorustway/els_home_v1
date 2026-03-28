@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.33');
+  console.log('ELS Driver App Loading... v4.1.35');
 
-  const APP_VERSION = 'v4.1.33';
+  const APP_VERSION = 'v4.1.35';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -24,9 +24,22 @@
         console.group('Plugin Search Failed: ' + name);
         console.log('Available Plugins:', Object.keys(plugins).join(', '));
         console.groupEnd();
+        remoteLog(`Plugin Search Failed: ${name} (Available: ${Object.keys(plugins).join(', ')})`, 'JS_BRIDGE_ERR');
       }
       return found || null;
     } catch { return null; }
+  }
+
+  async function remoteLog(msg, tag = 'JS') {
+    if (!msg) return;
+    try {
+        const payload = { msg, device: 'Mobile', tag };
+        fetch(BASE_URL + '/api/debug/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).catch(() => {});
+    } catch(e) {}
   }
   const Overlay = () => getPlugin('Overlay');
   const Emergency = () => getPlugin('Emergency');
@@ -319,20 +332,27 @@
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 
-  async function requestPerm(type, event) {
-    if (event) event.stopPropagation();
-    const overlay = Overlay();
-    const btn = event?.currentTarget || (event && event.target);
-    if (btn) btn.classList.add('btn-active'); 
+  // ─── 안드로이드 16 전용 가이드 ──────────────────────────────
+  function showAndroid16Guide(type) {
+    const guide = document.getElementById('modal-guide-android16');
+    const confirmBtn = document.getElementById('btn-guide-confirm');
+    if (!guide || !confirmBtn) return;
     
-    console.log('requestPerm:', type, !!overlay);
+    guide.classList.add('active');
+    confirmBtn.onclick = () => {
+      guide.classList.remove('active');
+      // 실제 권한 요청 실행
+      executeRealRequest(type);
+    };
+  }
+
+  async function executeRealRequest(type) {
+    const overlay = Overlay();
     try {
-        switch (type) {
+        switch(type) {
           case 'location':
             if (window.Capacitor?.Plugins?.Geolocation) {
                 await window.Capacitor.Plugins.Geolocation.requestPermissions();
-            } else {
-                navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {timeout:1000});
             }
             break;
           case 'camera':
@@ -360,12 +380,12 @@
           case 'battery':
             if (overlay) {
                 showToast("설정창에서 '제한 없음'을 선택해야 위치 관제가 끊기지 않습니다", 4000);
-                console.log('--- Native requestBatteryOptimization call start ---');
+                remoteLog('User clicked Battery Optimization button', 'UI_ACTION');
                 try {
                   const res = await overlay.requestBatteryOptimization();
-                  console.log('--- Native Response:', JSON.stringify(res));
+                  remoteLog('Native requestBatteryOptimization response: ' + JSON.stringify(res), 'NATIVE_RES');
                 } catch(e) {
-                  console.error('--- Native Error:', e);
+                  remoteLog('Native requestBatteryOptimization error: ' + e.message, 'NATIVE_ERR');
                 }
             } else {
                 showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
@@ -373,17 +393,38 @@
             break;
         }
     } catch(err) {
-        console.error('requestPerm error', type, err);
+        console.error('executeRealRequest error', type, err);
         showToast('권한 요청 실패: ' + err.message);
     }
     
-    // 2초 후 상태 갱신 (네이티브 세팅 페이지에서 돌아오는 시간 고려)
+    // 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 800ms)
     setTimeout(async () => {
-        console.log('RequestPerm Timeout Refresh triggered for:', type);
         await updatePermStatuses();
-        if (btn) btn.classList.remove('btn-active');
         showToast('권한 상태를 확인했습니다.');
-    }, 2000);
+    }, 800);
+  }
+
+  async function requestPerm(type, event) {
+    if (event && event.target) event.target.classList.add('btn-active');
+    
+    // 안드로이드 16 이상이거나 오버레이/배터리 권한인 경우 가이드 먼저 노출 후 이동
+    if (type === 'overlay' || type === 'battery') {
+        showAndroid16Guide(type);
+        return;
+    }
+    
+    await executeRealRequest(type);
+    if (event && event.target) event.target.classList.remove('btn-active');
+  }
+
+  function showTerms() {
+    const el = document.getElementById('modal-terms');
+    if (el) el.classList.add('active');
+  }
+
+  function closeTerms() {
+    const el = document.getElementById('modal-terms');
+    if (el) el.classList.remove('active');
   }
 
   function finishPermSetup() {
@@ -1360,7 +1401,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 79; // Build 79 (v4.1.33)
+      const currentCode = 80; // Build 80 (v4.1.34)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {
@@ -1423,7 +1464,8 @@
   // ─── 공개 API ─────────────────────────────────────────────────
   window.App = {
     // 권한
-    requestPerm, finishPermSetup, updatePermStatuses, manualRefreshPerms, resetApp,
+    requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup,
+    showTerms, closeTerms,
     // 프로필
     saveProfile, lookupDriver,
     // 운행

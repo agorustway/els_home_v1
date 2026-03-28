@@ -271,6 +271,9 @@
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
           <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.0.0</span>
         </button>
+        <button class="btn" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.showTerms()">
+          <span>개인정보 처리방침 및 이용약관</span>
+        </button>
         <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;padding: 0 14px;" onclick="App.resetApp()">
           <span>앱 초기화 (설정 초기화)</span>
         </button>
@@ -279,6 +282,53 @@
   </div>
 
 </div><!-- /app -->
+
+<!-- ──── 약관 모달 ──── -->
+<div id="modal-terms" class="modal-overlay">
+  <div class="modal-box" style="max-height:80vh; overflow-y:auto;">
+    <div class="modal-header">
+      <h3 style="font-size:16px;">개인정보 처리방침 및 이용약관</h3>
+      <button onclick="App.closeTerms()">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px; line-height:1.6; color:#444; text-align:left;">
+      <p><b>1. 개인정보 수집 및 이용</b><br>
+      - 위치정보: 실시간 차량 관제 및 운행 기록 관리<br>
+      - 사진/카메라: 운행 증빙 사진 촬영 및 전송<br>
+      - 기사정보: 기사 식별 및 서비스 이용 통계<br>
+      - 수집항목: 실시간 GPS 좌표, 기사 성함/연락처, 차량번호</p>
+      
+      <p><b>2. 위치정보 수집 기간</b><br>
+      - 위치정보는 '운행 시작' 버튼을 누른 시점부터 '운행 종료' 시점까지만 수집됩니다. 앱이 백그라운드에 있어도 관제를 위해 수집될 수 있습니다.</p>
+
+      <p><b>3. 데이터 보관 및 제공</b><br>
+      - 수집된 데이터는 화물 운송 관리 및 정산 목적으로 사용되며, 법령에 정한 경우를 제외하고 제3자에게 제공하지 않습니다.</p>
+      
+      <p style="margin-top:20px; font-weight:700;">본 앱을 이용하시려면 위 약관에 동의하신 것으로 간주됩니다.</p>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="App.closeTerms()" style="margin-top:10px;">닫기</button>
+  </div>
+</div>
+
+<!-- ──── 안드로이드 16 권한 가이드 ──── -->
+<div id="modal-guide-android16" class="modal-overlay">
+  <div class="modal-box" style="border: 2px solid var(--danger);">
+    <div class="modal-header">
+      <h3 style="color:var(--danger); font-size:17px; font-weight:800;">⚠️ 안드로이드 16 필독</h3>
+      <button onclick="document.getElementById('modal-guide-android16').classList.remove('active')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center; padding:10px 0;">
+      <p style="font-size:14px; margin-bottom:15px; line-height:1.5;">잠시 후 설정창이 뜨면 우측 상단의<br><b>점 3개(⋮)</b>를 클릭하여<br><span style="color:var(--primary); font-weight:800; text-decoration:underline;">[제한된 설정 허용]</span>을<br>반드시 먼저 눌러주세요!</p>
+      
+      <div style="background:#f8f9fa; border-radius:12px; padding:12px; font-size:12px; text-align:left; color:#666;">
+        1. 설정창 우측 상단 <b>⋮</b> 클릭<br>
+        2. <b>[제한된 설정 허용]</b> 선택<br>
+        3. 앱 돌아와서 다시 [설정] 클릭<br>
+        4. 이제 스위치를 켤 수 있습니다.
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="btn-guide-confirm" style="margin-top:15px;">확인 (설정으로 이동)</button>
+  </div>
+</div>
 
 <!-- ──── 사진 전체화면 뷰어 ──── -->
 <div id="photo-viewer">
