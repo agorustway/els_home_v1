@@ -32,7 +32,7 @@ input, textarea, select, button { font-family: inherit; }
 /* ─── 헤더 ─── */
 .app-header {
   display: flex; align-items: center; gap: 8px;
-  height: var(--header-h); padding: 0 12px;
+  height: var(--header-h); padding: 0 14px;
   background: #ffffff; color: #111;
   border-bottom: 1px solid #eee;
   flex-shrink: 0;

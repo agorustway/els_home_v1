@@ -80,7 +80,7 @@
     </div>
 
     <button id="btn-finish-setup" class="btn btn-primary btn-full" onclick="App.finishPermSetup()" style="margin-top:12px;">
-      설정 완료 — 앱 시작
+      설정 완료(앱 시작하기)
     </button>
     <div style="margin-top:16px; text-align:center;">
        <a href="javascript:void(0)" onclick="App.showTerms()" style="font-size:12px; color:var(--text-muted); text-decoration:underline;">개인정보 처리방침 및 이용약관</a>
@@ -215,10 +215,12 @@
             <div id="log-photo-scroll" class="photo-scroll"></div>
             <input type="file" id="log-file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onLogFileSelected(event)">
           </div>
-          <div class="field"><label>컨테이너 번호</label><input type="text" id="log-edit-container"></div>
-          <div class="field"><label>씰 번호</label><input type="text" id="log-edit-seal"></div>
-          <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>
-          <button class="btn btn-primary" onclick="App.saveLogEdit()">저장</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div class="field" style="margin-bottom:0;"><label>컨테이너 번호</label><input type="text" id="log-edit-container"></div>
+            <div class="field" style="margin-bottom:0;"><label>씰 번호</label><input type="text" id="log-edit-seal"></div>
+          </div>
+          <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3" style="min-height:80px;"></textarea></div>
+          <button class="btn btn-primary btn-full" style="height:44px;font-size:15px;" onclick="App.saveLogEdit()">기록 저장</button>
         </div>
       </div>
     </div><!-- /탭 콘텐츠 -->
@@ -250,7 +252,7 @@
         <label>전화번호</label>
         <div style="display:flex;gap:4px;">
            <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;">
-           <button class="btn btn-sm btn-primary" onclick="App.lookupDriver()" style="height:38px;padding:0 12px;white-space:nowrap;">조회</button>
+           <button class="btn btn-sm btn-primary" onclick="App.lookupDriver()" style="height: var(--header-h); padding: 0 14px; white-space:nowrap;">조회</button>
         </div>
       </div>
       <div class="field">

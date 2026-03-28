@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.61');
+  console.log('ELS Driver App Loading... v4.1.63');
 
-  const APP_VERSION = 'v4.1.61';
+  const APP_VERSION = 'v4.1.63';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -675,7 +675,8 @@
         State.trip.startTime = Date.now();
         Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
 
-        document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date())} ${new Date().toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}`;
+        const startD = new Date();
+        document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(startD)}`;
         setTripStatus('driving');
         updateTripUI();
         startOverlayService();
@@ -739,7 +740,7 @@
       
       // 초기화 후, 화면 상단에 종료 일시 표시
       const endTime = new Date();
-      const disp = `운송종료: ${formatDate(endTime)} ${endTime.toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}`;
+      const disp = `운송종료: ${formatDate(endTime)}`;
       document.getElementById('trip-date-display').textContent = disp;
       
       showToast('운행이 종료되었습니다.');
@@ -764,7 +765,7 @@
     if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '재개' : '일시정지';
 
     if (State.trip.startTime) {
-      document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))} ${new Date(State.trip.startTime).toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit'})}`;
+      document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))}`;
     }
   }
 
@@ -1408,6 +1409,13 @@
     try {
       const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, { method: 'DELETE' });
       if (res && res.ok === false) throw new Error('서버 권한/응답 오류');
+      
+      // [TDD] 현재 운행 중인 트립을 삭제한 경우, 운행 화면도 초기화 (동기화 이슈 해결)
+      if (String(State.currentLogId) === String(State.trip.id)) {
+        console.log('Active trip deleted from log. Resetting current trip state.');
+        clearTripData(); 
+      }
+
       showToast('삭제되었습니다.');
       closeLogDetail();
       loadLogs();
@@ -1524,7 +1532,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 107; // Build 107 (v4.1.61)
+      const currentCode = 109; // Build 109 (v4.1.63)
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
