@@ -10,33 +10,38 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { trip_id, lat, lng, accuracy, speed, method = 'GPS' } = body;
+        const { trip_id, lat, lng, accuracy, speed, method = 'GPS', source } = body;
 
         if (!trip_id || lat === undefined || lng === undefined) {
             return NextResponse.json({ error: 'trip_id, lat, lng는 필수입니다.' }, { status: 400 });
         }
 
-        // 역지오코딩 (Naver API)
+        // 역지오코딩 (카카오 Coord2Address API)
         let address = null;
-        let place_name = null;
 
         try {
-            const naverRes = await fetch(
-                `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${lng},${lat}&output=json&orders=admcode,roadaddr`,
-                {
-                    headers: {
-                        'X-NCP-APIGW-API-KEY-ID': process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID,
-                        'X-NCP-APIGW-API-KEY': process.env.NAVER_MAP_CLIENT_SECRET,
+            const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
+            if (kakaoKey) {
+                const kakaoRes = await fetch(
+                    `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}&input_coord=WGS84`,
+                    {
+                        headers: { 'Authorization': `KakaoAK ${kakaoKey}` },
+                        signal: AbortSignal.timeout(3000),
                     }
+                );
+                const kakaoData = await kakaoRes.json();
+                const doc = kakaoData?.documents?.[0];
+                if (doc?.address) {
+                    const a = doc.address;
+                    const full = `${a.region_1depth_name} ${a.region_2depth_name} ${a.region_3depth_name}`;
+                    address = abbreviateAddr(full);
+                } else if (doc?.road_address) {
+                    const r = doc.road_address;
+                    const full = `${r.region_1depth_name} ${r.region_2depth_name} ${r.road_name}`;
+                    address = abbreviateAddr(full);
                 }
-            );
-            const naverData = await naverRes.json();
-            if (naverData.status?.code === 0 && naverData.results?.length > 0) {
-                const reg = naverData.results[0].region;
-                address = [reg.area1.name, reg.area2.name, reg.area3.name, reg.area4.name]
-                    .map(a => a.name).filter(Boolean).join(' ');
             }
-        } catch (e) { console.error('Geocode err:', e); }
+        } catch (e) { console.error('[location] 카카오 geocode 오류:', e.message); }
 
         // 운행 상태 확인 (이미 종료된 경우 기록 안함)
         const { data: trip } = await supabase.from('vehicle_trips').select('status').eq('id', trip_id).single();
@@ -52,19 +57,32 @@ export async function POST(request) {
                 lng,
                 accuracy: accuracy || null,
                 speed: speed || null,
-                method,
+                method: source || method,
                 address,
-                place_name,
                 recorded_at: new Date().toISOString(),
             }])
             .select()
             .single();
 
         if (error) throw error;
-        return NextResponse.json({ location: data }, {
+        return NextResponse.json({ location: data, address }, {
             headers: { 'Access-Control-Allow-Origin': '*' }
         });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
+}
+
+/** 주소 축약 (서울특별시 강남구 역삼동 → 서울 강남 역삼) */
+function abbreviateAddr(full) {
+    if (!full) return '';
+    return full
+        .split(' ')
+        .map(s => s
+            .replace(/특별시|광역시|특별자치시|특별자치도/g, '')
+            .replace(/(도|시|구|동|읍|면|리)$/g, '')
+        )
+        .filter(s => s.trim().length > 0)
+        .join(' ')
+        .trim();
 }

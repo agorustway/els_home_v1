@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.1",
-  "versionCode": 145,
-  "changeLog": "v4.2.1 (Build 145) - GPS 전면 수신/표시 로직 전면 정상화\n- [FIX] 주소 영역 레이아웃 미표시 치명적 버그 수정 (container 오타)\n- [GPS] watchPosition 콜백 즉시 타임스탬프 갱신으로 '수신안됨' 오류 해결\n- [GPS] 운행 시작 즉시 현재 위치 강제 1회 수신으로 초기 공백 제거\n- [GPS] 역지오코딩 서버 프록시 신규 구축 (CORS/키노출 방지)\n- [FWS] FloatingWidgetService speedKph 컴파일 버그 수정\n- [NEW] 자이로/가속도 센서 양쪽 대응 및 실시간 GPS 가시성 대폭 보강",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=145"
+  "latestVersion": "v4.2.2",
+  "versionCode": 146,
+  "changeLog": "v4.2.2 (Build 146) - 카카오 역지오코딩 통합 및 GPS 표시강화\n- [카카오] Naver Map → 카카오 Coord2Address API 전환 (카카오 키 서버 보관)\n- [GPS] 위치전송 후 응답에서 주소 받아 표시 (카카오 API 추가호출 제거)\n- [GPS] 주소 축약도 서버 통일 (서울특별시 표현 제거)\n- [GPS] 수신상태 실시간 표시 (하드코딩 아님 확인)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=146"
 }

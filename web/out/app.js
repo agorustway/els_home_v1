@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.1');
+  console.log('ELS Driver App Loading... v4.2.2');
  
-  const APP_VERSION = 'v4.2.1';
-  const BUILD_CODE = 145; // Build 145 (v4.2.1)
+  const APP_VERSION = 'v4.2.2';
+  const BUILD_CODE = 146; // Build 146 (v4.2.2)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1045,21 +1045,10 @@
 
     lastGpsSend = now;
 
-    // 주소 역지오코딩 (서버 프록시 사용 → Naver Key 불필요)
+    // 서버 전송 + 카카오 역지오코딩 통합 (API 호출 1회로 절감)
+    // location API 서버에서 카카오로 이미 주소를 축약해 반환 → 별도 geocode 호출 불필요
     try {
-        const addr = await reverseGeocode(lat, lng);
-        lastKnownAddr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        updateTripStatusLine();
-        remoteLog(`GPS전송: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)} force=${isForced}`, 'GPS_OK');
-    } catch (e) {
-        lastKnownAddr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        updateTripStatusLine();
-        remoteLog(`역지오코딩 실패: ${e.message} → 좌표표시`, 'GPS_GEO_ERR');
-    }
-
-    // 서버 전송
-    try {
-      await smartFetch(BASE_URL + '/api/vehicle-tracking/location', {
+      const gpsRes = await smartFetch(BASE_URL + '/api/vehicle-tracking/location', {
         method: 'POST',
         body: JSON.stringify({
           trip_id: State.trip.id,
@@ -1069,22 +1058,31 @@
           source: isForced ? 'webview_forced' : (isSharpTurn ? 'webview_gyro' : 'webview')
         }),
       });
+      // 서버 응답에서 카카오 역지오코딩 주소 반영 (이미 '서울 강남 역삼' 형태로 축약)
+      if (gpsRes.ok) {
+        const gpsData = await gpsRes.json().catch(() => ({}));
+        lastKnownAddr = gpsData.address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      } else {
+        lastKnownAddr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      }
+      updateTripStatusLine();
+      remoteLog(`GPS전송: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)} force=${isForced}`, 'GPS_OK');
     } catch (e) {
+      lastKnownAddr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      updateTripStatusLine();
       remoteLog(`GPS 서버전송 실패: ${e.message}`, 'GPS_SEND_ERR');
       console.warn('GPS 전송 실패', e);
     }
   }
 
-  // 역지오코딩: 서버 프록시 경유 (CORS 안전, Naver Key 서버보관)
+  // 역지오코딩 (standalone 조회용 — 주소 표시 목적의 단독 호출 시 사용)
+  // 운행 중 GPS 전송은 location API 응답에서 address를 직접 받아 사용하므로 이 함수는 미사용
   async function reverseGeocode(lat, lng) {
     try {
-      // 서버 프록시 엔드포인트 사용 (/api/geocode?lat=&lng=)
       const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/geocode?lat=${lat}&lng=${lng}`);
       if (!res.ok) throw new Error(`geocode HTTP ${res.status}`);
       const d = await res.json();
-      if (d && d.address) return d.address;
-      // 서버 프록시 실패 시 좌표 그대로 반환
-      return null;
+      return (d && d.address) ? d.address : null;
     } catch (e) {
       console.warn('reverseGeocode failed', e);
       return null;
