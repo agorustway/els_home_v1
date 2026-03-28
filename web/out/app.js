@@ -4,9 +4,9 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.1.31');
+  console.log('ELS Driver App Loading... v4.1.32');
 
-  const APP_VERSION = 'v4.1.31';
+  const APP_VERSION = 'v4.1.32';
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -14,9 +14,18 @@
   function getPlugin(name) {
     try { 
       const plugins = window.Capacitor?.Plugins;
-      if (!plugins) return null;
-      // 대소문자 구분 없이 찾기 (Overlay, overlay, OverlayPlugin 등)
-      return plugins[name] || plugins[name.toLowerCase()] || plugins[name + 'Plugin'] || null; 
+      if (!plugins) {
+        console.warn('Capacitor.Plugins not available yet.');
+        return null;
+      }
+      
+      const found = plugins[name] || plugins[name.toLowerCase()] || plugins[name + 'Plugin'];
+      if (!found) {
+        console.group('Plugin Search Failed: ' + name);
+        console.log('Available Plugins:', Object.keys(plugins).join(', '));
+        console.groupEnd();
+      }
+      return found || null;
     } catch { return null; }
   }
   const Overlay = () => getPlugin('Overlay');
@@ -1344,7 +1353,7 @@
       if (!res) return;
       const data = await res.json().catch(() => ({}));
       
-      const currentCode = 77; // Build 77 (v4.1.31)
+      const currentCode = 78; // Build 78 (v4.1.32)
       if (data.versionCode > currentCode) {
         const msg = `새로운 버전(${data.latestVersion})이 출시되었습니다.\n\n[변경내용]\n${data.changeLog}\n\n지금 설치하시겠습니까?`;
         if (confirm(msg)) {

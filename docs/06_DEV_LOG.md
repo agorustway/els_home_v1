@@ -1,4 +1,13 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+## 📅 2026-03-28 (오후) - 안드로이드 16(Baklava) 배터리 정책 강화 및 디버깅 로그 v4.1.32
+### 주제: Android 16 배터리 인텐트 세분화 및 JS 브릿지 진단
+#### 핵심 원인 분석 및 해결
+1. **네이티브 배터리 정책 정교화**: `OverlayPlugin.java` 내부에서 `PowerManager.isIgnoringBatteryOptimizations`를 직접 체크하고, `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`와 `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`를 명확히 분리하여 실패 시 자동 전환되도록 구현.
+2. **ELS_DEBUG 로그캣 삽입**: 네이티브 플러그인 내부에 `Log.d("ELS_DEBUG", ...)`를 삽입하여 안드로이드 스튜디오 앱 로그를 통한 문제 해결 기반 마련.
+3. **JS 진단 로직 강화**: `app.js`에서 플러그인 로드 실패 시 가용한 전체 플러그인을 콘솔에 출력하도록 하여, 브릿지 연결 상태를 명확히 파악할 수 있도록 수정.
+4. **v4.1.32 배포**: Build 78 안드로이드 APK 재빌드 및 배포 완료.
+
+---
 ## 📅 2026-03-28 (오후) - 안드로이드 16 배터리 최적화 및 플러그인 로드 수정 v4.1.31
 ### 주제: Android 16 Intent 규격 준수 및 '플러그인 미로드' 결함 해결
 #### 핵심 원인 분석 및 해결

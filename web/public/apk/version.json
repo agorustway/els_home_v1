@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.1.31",
-  "versionCode": 77,
-  "changeLog": "안드로이드 16 설정 연동 최적화 (v4.1.31)\n- 설정창 먹통 해결: 플러그인 로드 안정성을 강화하여 '설정창을 열 수 없습니다' 오류를 수정했습니다.\n- 배터리 정책 대응: 안드로이드 16의 강화된 배터리 최적화 정책에 맞춰 직접 요청 인텐트(Intent)를 보강했습니다.\n- 폴백 시나리오: 직접 요청 실패 시 앱 정보창 또는 전체 설정창으로 이어지는 3단계 폴백 로직을 도입했습니다.",
+  "latestVersion": "v4.1.32",
+  "versionCode": 78,
+  "changeLog": "Android 16(Baklava) 배터리 정책 전면 개편 (v4.1.32)\n- 네이티브 브릿지 강화: 설정창 이동 실패 시 3단계 폴백 및 ELS_DEBUG 로그캣 지원.\n- 배터리 직접 요청: ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS를 우선으로 하되, 실패 시 사용자 수동 설정 유도.\n- JS 디버깅 강화: 플러그인 인식 문제 발생 시 가용한 플러그인 리스트를 콘솔에 출력하도록 진단 로직 추가.",
   "downloadUrl": "https://www.nollae.com/apk/els_driver.apk"
 }

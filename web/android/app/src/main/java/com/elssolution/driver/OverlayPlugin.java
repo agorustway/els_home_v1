@@ -1,9 +1,13 @@
 package com.elssolution.driver;
 
+import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Log;
 import android.widget.Toast;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -113,35 +117,62 @@ public class OverlayPlugin extends Plugin {
         call.resolve(new JSObject().put("stopped", true));
     }
 
-    // JS → 배터리 최적화 제외 요청
+    // JS → 배터리 최적화 제외 요청 (Android 16 대응)
     @PluginMethod
     public void requestBatteryOptimization(PluginCall call) {
-        if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).requestBatteryOptimizationExclusion();
-        } else {
-            // MainActivity가 아닐 경우에도 앱 정보창 띄우기 (만약을 위해)
+        Log.d("ELS_DEBUG", "requestBatteryOptimization started");
+        
+        try {
+            Context context = getContext();
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            String packageName = context.getPackageName();
+            
+            if (pm != null && pm.isIgnoringBatteryOptimizations(packageName)) {
+                Log.d("ELS_DEBUG", "Already ignoring battery optimizations");
+                getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 최적화 제외가 이미 설정되어 있습니다.", Toast.LENGTH_SHORT).show());
+                call.resolve(new JSObject().put("granted", true));
+                return;
+            }
+
+            Log.d("ELS_DEBUG", "Attempting ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
             try {
-                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + getContext().getPackageName()));
-                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "모바일 데이터 밑에 [배터리] > 제한 없음 설정", Toast.LENGTH_LONG).show());
-                }
-                getContext().startActivity(fallback);
-            } catch (Exception e) {}
+                // 1순위: 직접 요청 (명확한 의도 전달)
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + packageName));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                Log.d("ELS_DEBUG", "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS sent");
+            } catch (ActivityNotFoundException | SecurityException e) {
+                Log.w("ELS_DEBUG", "Direct request failed, falling back to settings page: " + e.getMessage());
+                // 2순위: 사용자 직접 선택 페이지 유도
+                Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                
+                getActivity().runOnUiThread(() -> Toast.makeText(context, "배터리 -> [제한 없음]으로 설정해주세요.", Toast.LENGTH_LONG).show());
+                Log.d("ELS_DEBUG", "ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS sent");
+            }
+            call.resolve(new JSObject().put("requested", true));
+            
+        } catch (Exception e) {
+            Log.e("ELS_DEBUG", "requestBatteryOptimization crash", e);
+            e.printStackTrace();
+            call.reject("배터리 설정 시도 중 오류: " + e.getMessage());
         }
-        call.resolve(new JSObject().put("requested", true));
     }
 
     // JS → 배터리 최적화 여부 확인
     @PluginMethod
     public void checkBatteryOptimization(PluginCall call) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            android.os.PowerManager pm = (android.os.PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
+        Log.d("ELS_DEBUG", "checkBatteryOptimization call");
+        try {
+            PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
             boolean isIgnoring = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+            Log.d("ELS_DEBUG", "isIgnoringBatteryOptimizations: " + isIgnoring);
             call.resolve(new JSObject().put("granted", isIgnoring));
-        } else {
-            call.resolve(new JSObject().put("granted", true));
+        } catch (Exception e) {
+            Log.e("ELS_DEBUG", "checkBatteryOptimization error", e);
+            call.resolve(new JSObject().put("granted", false));
         }
     }
 }
