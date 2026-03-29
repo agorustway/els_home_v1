@@ -841,8 +841,8 @@ export default function VehicleTrackingPage() {
                     <div className={styles.filterGroup}>
                         <input className={styles.filterInput} placeholder="이름/차량/컨테이너" value={filterKeyword} onChange={e => setFilterKeyword(e.target.value)} />
                     </div>
-                    <button className={styles.filterSearchBtn} onClick={handleSearch}>🔍 검색</button>
-                    <button className={styles.filterResetBtn} onClick={handleReset}>초기화</button>
+                    <button className={styles.filterSearchBtn} style={{ height: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSearch}>🔍 검색</button>
+                    <button className={styles.filterResetBtn} style={{ height: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleReset}>초기화</button>
 
                     {selectedIds.length > 0 && (
                         <button className={styles.bulkDeleteBtn} onClick={handleBulkDelete}>
