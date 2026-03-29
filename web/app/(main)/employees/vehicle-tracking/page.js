@@ -109,17 +109,20 @@ export default function VehicleTrackingPage() {
         if (!newNotice.content.trim()) { showModalAlert('내용을 입력해주세요.'); return; }
         setLoading(true);
         try {
-            if (newNotice.isEmergency) {
-                const row = { title: newNotice.title, message: newNotice.content };
-                let query = newNotice.id ? supabase.from('emergency_notices').update(row).eq('id', newNotice.id) : supabase.from('emergency_notices').insert([row]);
-                const { error } = await query;
-                if (error) throw error;
-            } else {
-                const row = { title: newNotice.title, content: newNotice.content, target: newNotice.target, status: '공지중' };
-                let query = newNotice.id ? supabase.from('notices').update(row).eq('id', newNotice.id) : supabase.from('notices').insert([row]);
-                const { error } = await query;
-                if (error) throw error;
-            }
+            const endpoint = newNotice.isEmergency ? '/api/vehicle-tracking/emergency' : '/api/vehicle-tracking/notices';
+            const method = newNotice.id ? 'PUT' : 'POST';
+            const bodyData = newNotice.isEmergency 
+                ? { id: newNotice.id, title: newNotice.title, message: newNotice.content }
+                : { id: newNotice.id, title: newNotice.title, content: newNotice.content, target: newNotice.target, status: '공지중' };
+
+            const res = await fetch(endpoint, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData)
+            });
+            
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || '저장 중 오류가 발생했습니다.');
 
             showModalAlert(newNotice.id ? '수정되었습니다.' : '등록되었습니다.');
             setTimeout(() => {
@@ -138,9 +141,10 @@ export default function VehicleTrackingPage() {
         if (!confirm('삭제하시겠습니까?')) return;
         setLoading(true);
         try {
-            const table = isEmergency ? 'emergency_notices' : 'notices';
-            const { error } = await supabase.from(table).delete().eq('id', id);
-            if (error) throw error;
+            const endpoint = isEmergency ? '/api/vehicle-tracking/emergency' : '/api/vehicle-tracking/notices';
+            const res = await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || '삭제 중 오류가 발생했습니다.');
             
             showModalAlert('삭제되었습니다.');
             setTimeout(() => {
@@ -727,8 +731,8 @@ export default function VehicleTrackingPage() {
                                     <button className={styles.writeNoticeBtn} style={{background:'#ef4444', borderColor:'#ef4444', padding:'4px 10px', color:'#fff'}} onClick={() => { setNewNotice({ title: '', content: '', isEmergency: true }); setShowWriteModal(true); }}>글쓰기</button>
                                 </div>
                             </div>
-                            <div className={styles.tableCard} style={{flex: 1, display:'flex', flexDirection:'column'}}>
-                                <table className={styles.adminNoticeTable} style={{flex:1}}>
+                            <div className={styles.tableCard} style={{flex: '0 0 auto', display:'flex', flexDirection:'column', maxHeight: '200px', overflowY: 'auto'}}>
+                                <table className={styles.adminNoticeTable} style={{margin:0}}>
                                     <thead><tr><th style={{width:'100px'}}>발생일시</th><th>긴급 내용</th></tr></thead>
                                     <tbody>
                                         {paginatedEmergencies.length === 0 ? (
@@ -749,7 +753,7 @@ export default function VehicleTrackingPage() {
                         {/* 공지사항 섹션 */}
                         <div className={styles.noticeSection} style={{ flex: 1, display:'flex', flexDirection:'column', marginBottom:0 }}>
                             <div className={styles.noticeHeader} style={{marginBottom:'10px'}}>
-                                <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem'}}>📣 운송 관제 공지사항</h3>
+                                <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem'}}>📣 공지사항</h3>
                                 <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                                     <div style={{fontSize:'0.8rem', color:'#64748b', fontWeight:700}}>{noticePage} / {totalNoticePages}</div>
                                     <button onClick={() => setNoticePage(p => Math.max(1, p-1))} style={{border:'none', background:'none', cursor:'pointer'}}>◀</button>
@@ -757,8 +761,8 @@ export default function VehicleTrackingPage() {
                                     <button className={styles.writeNoticeBtn} style={{padding:'4px 10px'}} onClick={() => { setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); setShowWriteModal(true); }}>글쓰기</button>
                                 </div>
                             </div>
-                            <div className={styles.tableCard} style={{flex: 1, display:'flex', flexDirection:'column'}}>
-                                <table className={styles.adminNoticeTable} style={{flex:1}}>
+                            <div className={styles.tableCard} style={{flex: '0 0 auto', display:'flex', flexDirection:'column', maxHeight: '200px', overflowY: 'auto'}}>
+                                <table className={styles.adminNoticeTable} style={{margin:0}}>
                                     <thead><tr><th style={{width:'70px'}}>날짜</th><th>제목</th><th style={{width:'80px'}}>상태</th></tr></thead>
                                     <tbody>
                                         {paginatedNotices.length === 0 ? (

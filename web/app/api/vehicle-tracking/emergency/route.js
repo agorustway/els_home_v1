@@ -75,3 +75,25 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+
+export async function PUT(request) {
+  const supabase = await createAdminClient();
+  try {
+    const body = await request.json();
+    const { id, title, message } = body;
+    const { data, error } = await supabase.from('emergency_notices').update({ title, message }).eq('id', id).select().single();
+    if (error) throw error;
+    return NextResponse.json({ notice: data });
+  } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
+}
+
+export async function DELETE(request) {
+  const supabase = await createAdminClient();
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const { error } = await supabase.from('emergency_notices').delete().eq('id', id);
+    if (error) throw error;
+    return NextResponse.json({ deleted: true });
+  } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
+}
