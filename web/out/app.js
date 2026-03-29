@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.32');
+  console.log('ELS Driver App Loading... v4.2.33');
 
-  const APP_VERSION = 'v4.2.32';
-  const BUILD_CODE = 176; // Build 176 (v4.2.32)
+  const APP_VERSION = 'v4.2.33';
+  const BUILD_CODE = 177; // Build 177 (v4.2.33)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1770,6 +1770,7 @@
       document.getElementById('log-edit-container').value = data.container_number || '';
       document.getElementById('log-edit-seal').value = data.seal_number || '';
       document.getElementById('log-edit-memo').value = data.special_notes || '';
+      onLogFieldChange(); // 로드 시 즉시 유효성 검사 실행
 
       // 운행 전 점검 항목(5개) 확인 로직
       const isAllChecked = !!(data.chk_brake && data.chk_tire && data.chk_lamp && data.chk_cargo && data.chk_driver);
@@ -1778,12 +1779,18 @@
       const endedAt = data.ended_at || data.completed_at || null;
       document.getElementById('log-detail-content').innerHTML = `
         <div class="log-detail-info-box">
-          <div class="log-detail-info-row"><span class="log-detail-info-label">번호</span><span>${escHtml(data.vehicle_number || '—')}</span></div>
+          <div class="log-detail-info-row">
+            <span class="log-detail-info-label">번호 / 상태</span>
+            <span style="display:flex;align-items:center;gap:6px;">
+              <span>${escHtml(data.vehicle_number || '—')}</span>
+              <span style="color:#cbd5e1;">|</span>
+              <span style="font-weight:700;">${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}</span>
+              ${data.status !== 'completed' ? `<button onclick="App.forceCompleteLog('${data.id}')" class="btn btn-sm btn-warn" style="font-size:10px;padding:2px 6px;height:auto;margin-left:4px;">종료처리</button>` : ''}
+            </span>
+          </div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">운행 시작</span><span style="font-weight:700;color:var(--accent);">${formatDate(new Date(data.started_at))}</span></div>
           ${endedAt ? `<div class="log-detail-info-row"><span class="log-detail-info-label">운행 종료</span><span style="font-weight:700;color:var(--danger);">${formatDate(new Date(endedAt))}</span></div>` : ''}
-          <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span style="display:flex;align-items:center;gap:8px;">${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}${data.status !== 'completed' ? `<button onclick="App.forceCompleteLog('${data.id}')" class="btn btn-sm btn-warn" style="font-size:10px;padding:2px 6px;height:auto;">운행종료 처리</button>` : ''}</span></div>
-          <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type || '—'} / ${data.container_kind || '—'}</span></div>
-          <div class="log-detail-info-row"><span class="log-detail-info-label">운행전 점검</span><span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검 완료 (5항목)' : '미점검/누락'}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">제원 / 점검</span><span>${data.container_type || '—'} / ${data.container_kind || '—'} <span style="color:#cbd5e1;margin:0 4px;">|</span> <span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검완료' : '미점검'}</span></span></div>
         </div>
       `;
 

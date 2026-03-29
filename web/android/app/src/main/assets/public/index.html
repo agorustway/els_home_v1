@@ -226,12 +226,15 @@
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">
             <div class="field">
-              <label>컨테이너 번호</label>
-              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()">
+              <label style="display:flex; justify-content:space-between; align-items:center;">
+                <span>컨테이너 번호</span>
+                <span id="log-container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
+              </label>
+              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()" style="width:100% !important;">
             </div>
             <div class="field">
               <label>씰 번호</label>
-              <input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()">
+              <input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()" style="width:100% !important;">
             </div>
           </div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>
