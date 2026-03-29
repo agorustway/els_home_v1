@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
  
-  const APP_VERSION = 'v4.2.23';
-  const BUILD_CODE = 167; // Build 167 (v4.2.23)
+  const APP_VERSION = 'v4.2.24';
+  const BUILD_CODE = 168; // Build 168 (v4.2.24)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -415,6 +415,26 @@
       showToast('사진이 선택되었습니다. 정보 저장 시 업로드됩니다.');
     } catch (e) {
       console.warn('pickProfilePhoto skip', e);
+    }
+  }
+
+  function handleProfilePhotoClick(type) {
+    if (State.profile[`photo_${type}`]) {
+      const types = ['driver', 'vehicle', 'chassis'];
+      State.profilePhotos = [];
+      let idxToOpen = 0;
+      for (const t of types) {
+        if (State.profile[`photo_${t}`]) {
+          if (t === type) idxToOpen = State.profilePhotos.length;
+          State.profilePhotos.push({
+            type: t,
+            dataUrl: State.profile[`photo_${t}`]
+          });
+        }
+      }
+      openPhotoViewer(idxToOpen, 'profile');
+    } else {
+      pickProfilePhoto(type);
     }
   }
 
@@ -1540,13 +1560,19 @@
 
   function updatePhotoViewerUI() {
     const isLog = State.viewerType === 'log';
-    const photos = isLog ? (State.logPhotos || []) : (State.photos || []);
+    const isProfile = State.viewerType === 'profile';
+    const photos = isLog ? (State.logPhotos || []) : (isProfile ? (State.profilePhotos || []) : (State.photos || []));
     const p = photos[State.currentPhotoIdx];
     if (!p) { closePhotoViewer(); return; }
 
-    const url = isLog 
-      ? (p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || ''))
-      : (p.serverUrl || p.dataUrl);
+    let url = '';
+    if (isProfile) {
+      url = p.dataUrl.startsWith('http') || p.dataUrl.startsWith('data:') ? p.dataUrl : BASE_URL + (p.dataUrl.startsWith('/') ? '' : '/') + p.dataUrl;
+    } else {
+      url = isLog 
+        ? (p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || ''))
+        : (p.serverUrl || p.dataUrl);
+    }
 
     const img = document.getElementById('photo-viewer-img');
     img.src = url;
@@ -1572,7 +1598,8 @@
   }
 
   function prevPhoto() { 
-    const photos = State.viewerType === 'log' ? State.logPhotos : State.photos;
+    const isProfile = State.viewerType === 'profile';
+    const photos = State.viewerType === 'log' ? State.logPhotos : (isProfile ? State.profilePhotos : State.photos);
     if (State.currentPhotoIdx > 0) { 
       State.currentPhotoIdx--; 
       resetZoom();
@@ -1581,7 +1608,8 @@
   }
 
   function nextPhoto() {
-    const photos = State.viewerType === 'log' ? State.logPhotos : State.photos;
+    const isProfile = State.viewerType === 'profile';
+    const photos = State.viewerType === 'log' ? State.logPhotos : (isProfile ? State.profilePhotos : State.photos);
     if (State.currentPhotoIdx < photos.length - 1) { 
       State.currentPhotoIdx++; 
       resetZoom();
@@ -1592,6 +1620,28 @@
   async function deleteCurrentPhoto() {
     if (!confirm('현재 보고 있는 사진을 삭제하시겠습니까?')) return;
     
+    if (State.viewerType === 'profile') {
+      const p = State.profilePhotos[State.currentPhotoIdx];
+      State.profile[`photo_${p.type}`] = '';
+      
+      let fallbackText = '';
+      if (p.type === 'driver') fallbackText = '운';
+      if (p.type === 'vehicle') fallbackText = '차';
+      if (p.type === 'chassis') fallbackText = '샤';
+      updateProfilePhoto(`p-photo-${p.type}`, '', fallbackText);
+      
+      showToast('삭제되었습니다. 정보 저장을 눌러야 완전히 반영됩니다.');
+      State.profilePhotos.splice(State.currentPhotoIdx, 1);
+      
+      if (State.profilePhotos.length === 0) {
+        closePhotoViewer();
+      } else {
+        if (State.currentPhotoIdx >= State.profilePhotos.length) State.currentPhotoIdx = State.profilePhotos.length - 1;
+        updatePhotoViewerUI();
+      }
+      return;
+    }
+
     if (State.viewerType === 'log') {
       const photos = [...State.logPhotos];
       photos.splice(State.currentPhotoIdx, 1);
@@ -2028,7 +2078,7 @@
     requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
     showTerms, closeTerms,
     // 프로필
-    saveProfile, lookupDriver, pickProfilePhoto,
+    saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
     // 운행
     onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
     // 네비

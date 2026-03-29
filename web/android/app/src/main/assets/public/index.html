@@ -258,19 +258,19 @@
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
     </header>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;">
-      <button class="btn" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로 돌아가기</button>
+      <button class="btn" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start; flex-shrink:0; min-height:44px;">← 이전 페이지로 돌아가기</button>
       
       <!-- ── 프로필 사진 (운전원/차량/샤시) ── -->
       <div id="settings-profile-photos" style="display:none; gap:18px; margin:4px 0 12px; justify-content:center; align-items:center; background:#f8fafc; padding:16px; border-radius:var(--radius); border:1px solid #e2e8f0;">
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('driver')">
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.handleProfilePhotoClick('driver')">
           <div id="p-photo-driver" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">운</div>
           <span style="font-size:11px; color:#64748b; font-weight:700;">운전원+</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('vehicle')">
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.handleProfilePhotoClick('vehicle')">
           <div id="p-photo-vehicle" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">차량</div>
           <span style="font-size:11px; color:#64748b; font-weight:700;">차량+</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('chassis')">
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.handleProfilePhotoClick('chassis')">
           <div id="p-photo-chassis" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">샤시</div>
           <span style="font-size:11px; color:#64748b; font-weight:700;">샤시+</span>
         </div>
@@ -287,15 +287,17 @@
         <label>성함</label>
         <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
       </div>
-      <div class="field">
-        <label>기사 ID (Driver ID)</label>
-        <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; flex-shrink:0;">
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>차량 ID</label>
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase">
+        </div>
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>차량번호</label>
+          <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
+        </div>
       </div>
-      <div class="field">
-        <label>차량번호</label>
-        <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
-      </div>
-      <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장</button>
+      <button class="btn btn-primary btn-full" onclick="App.saveProfile()" style="flex-shrink:0; min-height:44px;">정보 저장</button>
       <hr class="divider" style="margin:8px 0;">
       <div class="field">
         <label>앱 관리</label>
