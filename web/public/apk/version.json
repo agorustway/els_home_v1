@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.31",
-  "versionCode": 175,
-  "changeLog": "v4.2.31 (Build 175)\n- [일지] 일지 탭 진입 시 현재 월(YYYY-MM) 기준으로 리스트를 자동 필터링 (데이터 정렬/최적화)\n- [레이아웃] 소형 버튼 레이아웃 안정성 강화 및 찌그러짐 현상(flex-shrink) 수정 내역 유지",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=175"
+  "latestVersion": "v4.2.32",
+  "versionCode": 176,
+  "changeLog": "v4.2.32 (Build 176)\n- [GPS] 일시정지, 운행 재개, 종료 시점의 강제 위치 수집 로직 정상화 (비동기 ID 보존 로직 추가)\n- [UI] 내부 로딩 버전 정합성 보정 (v4.2.32)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=176"
 }

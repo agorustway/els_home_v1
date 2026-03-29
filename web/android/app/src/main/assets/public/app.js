@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.21');
+  console.log('ELS Driver App Loading... v4.2.32');
 
-  const APP_VERSION = 'v4.2.31';
-  const BUILD_CODE = 175; // Build 175 (v4.2.31)
+  const APP_VERSION = 'v4.2.32';
+  const BUILD_CODE = 176; // Build 176 (v4.2.32)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -841,9 +841,9 @@
       if (State.photos.some(p => !p.uploaded)) {
         await uploadPendingPhotos();
       }
-      // [TDD] 시작즉시 현재 위치 한 번 확인 (주소 깜빡임 방지)
+      // [TDD] 시작 즉시 현재 위치 한 번 보정 (운행 시작 시점의 위치 기록)
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos).catch(() => { }), null, { enableHighAccuracy: true });
+        navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos, true, State.trip.id).catch(() => { }), null, { enableHighAccuracy: true });
       }
 
       showToast(data.message || '운행이 시작되었습니다.');
@@ -861,6 +861,11 @@
       });
       State.trip.status = action === 'pause' ? 'paused' : 'driving';
       setTripStatus(State.trip.status);
+
+      // [TDD] 일시정지/재개 시 즉시 현재 위치 한 번 더 수집 (전환 시점의 위치 기록)
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos, true, State.trip.id).catch(() => { }), null, { enableHighAccuracy: true });
+      }
 
       if (State.trip.status === 'paused') {
         stopGPS();
@@ -883,6 +888,13 @@
       if (!confirm('아직 서버에 전송 중인 사진이 있습니다. 그래도 운행을 종료하시겠습니까? (미전송 사진은 유실될 수 있습니다)')) return;
     } else {
       if (!confirm('운행을 종료하시겠습니까?')) return;
+    }
+
+    // [TDD] 종료 즉시 현재 위치 한 번 더 수집 (운행 종료 시점의 위치 기록)
+    if (navigator.geolocation) {
+      // [TDD] 종료 시 데이터 초기화 전 현재 ID 캡처하여 비동기 전송 보장
+      const closingTripId = State.trip.id;
+      navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos, true, closingTripId).catch(() => { }), null, { enableHighAccuracy: true });
     }
 
     try {
@@ -1031,7 +1043,7 @@
       pos => {
         lastGpsTimestamp = Date.now();
         remoteLog(`GPS 초기수신 성공: ${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)} acc:${pos.coords.accuracy?.toFixed(0)}m`, 'GPS_INIT');
-        onGpsUpdate(pos, true);
+        onGpsUpdate(pos, true, State.trip.id);
       },
       err => remoteLog(`GPS 초기수신 실패: ${err.code} ${err.message}`, 'GPS_INIT_ERR'),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -1180,8 +1192,12 @@
     }
   }
 
-  async function onGpsUpdate(pos, isForced = false) {
-    if (State.trip.status !== 'driving') return;
+  async function onGpsUpdate(pos, isForced = false, forcedTripId = null) {
+    const targetId = forcedTripId || State.trip.id;
+    if (!targetId) return;
+
+    // [TDD] 강제 수집(isForced)인 경우, 일시정지나 종료 중이어도 위치를 전송해야 함 (중환 전환점)
+    if (State.trip.status !== 'driving' && !isForced) return;
     const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
     const speedKph = (speed || 0) * 3.6;
 
@@ -1221,7 +1237,7 @@
       const gpsRes = await smartFetch(BASE_URL + '/api/vehicle-tracking/location', {
         method: 'POST',
         body: JSON.stringify({
-          trip_id: State.trip.id,
+          trip_id: targetId,
           lat, lng,
           speed: speedKph,
           accuracy: accuracy || 0,
