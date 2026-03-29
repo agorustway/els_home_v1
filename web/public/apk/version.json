@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.34",
-  "versionCode": 178,
-  "changeLog": "v4.2.34 (Build 178)\n- [HOTFIX] 안전운임 엑셀 다운로드 오류 수정 (구간조회 ReferenceError 해결)\n- [NEW] 웹/모바일 동시 배포를 위한 클린 빌드 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=178"
+  "latestVersion": "v4.2.35",
+  "versionCode": 179,
+  "changeLog": "v4.2.35 (Build 179)\n- [HOTFIX] 안전운임 엑셀 다운로드 오류 수정 (구간조회 ReferenceError 해결)\n- [FIX] 버전 정합성 불일치 문제 해결 및 클린 빌드 재시행",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=179"
 }
