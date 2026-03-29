@@ -41,10 +41,18 @@ export async function GET(request) {
         // 위치 역지오코딩 가져오기
         const tripIds = trips.map(t => t.id);
         if (tripIds.length > 0) {
-            const { data: locData } = await supabase.rpc('get_latest_vehicle_locations', { trip_ids: tripIds });
+            // RPC 대신 일반 쿼리로 최신 데이터 가져오기
+            const { data: locData } = await supabase
+                .from('vehicle_locations')
+                .select('trip_id, address, recorded_at')
+                .in('trip_id', tripIds)
+                .order('recorded_at', { ascending: false });
+            
             if (locData) {
                 const locMap = {};
-                locData.forEach(l => { locMap[l.trip_id] = l.address; });
+                locData.forEach(l => {
+                    if (!locMap[l.trip_id]) locMap[l.trip_id] = l.address;
+                });
                 trips.forEach(t => { t.last_location_address = locMap[t.id] || '-'; });
             }
         }

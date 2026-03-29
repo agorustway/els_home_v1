@@ -894,8 +894,8 @@ export default function VehicleTrackingPage() {
                             <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '32px', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>📊 엑셀 다운로드</button>
-                            <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '32px', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => {
+                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>📊 엑셀 다운로드</button>
+                            <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => {
                                 if(selectedIds.length === 0) alert('다운로드할 기록을 선택해주세요.');
                                 else window.location.href = `/api/vehicle-tracking/export/zip?ids=${selectedIds.join(',')}`;
                             }}>📦 선택건 사진 다운로드</button>
@@ -909,10 +909,10 @@ export default function VehicleTrackingPage() {
                                 <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
                                 <th>차량/컨테이너</th>
                                 <th>점검여부(브/타/램/적/기)</th>
-                                <th>사진</th>
-                                <th onClick={() => handleSort('started_at')} className={styles.sortable}>시작/종료 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th style={{width:'180px'}}>최종위치</th>
-                                <th>관리</th>
+                                <th style={{width:'60px'}}>사진</th>
+                                <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{width:'150px'}}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th style={{width:'220px'}}>최종위치</th>
+                                <th style={{width:'100px'}}>관리</th>
                             </tr>
                         </thead>
                         <tbody>

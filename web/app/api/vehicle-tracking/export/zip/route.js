@@ -4,6 +4,9 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import archiver from 'archiver';
 import { PassThrough } from 'stream';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Vercel timeout 대비 (필요시)
+
 const s3 = new S3Client({
     region: process.env.NAS_REGION || 'us-east-1',
     endpoint: process.env.NAS_ENDPOINT,
@@ -34,7 +37,8 @@ export async function GET(request) {
         .in('id', ids);
 
     if (error || !trips || trips.length === 0) {
-        return new Response('Error loading trips or no trips found.', { status: 404 });
+        console.error('[ZIP-EXPORT] Trips not found or error:', error, ids);
+        return new NextResponse(`선택한 운행 기록(${ids.length}건)을 찾을 수 없거나 데이터베이스 오류가 발생했습니다.`, { status: 404 });
     }
 
     const passThrough = new PassThrough();
@@ -96,10 +100,11 @@ export async function GET(request) {
         }
     })();
 
-    return new Response(passThrough, {
+    return new NextResponse(passThrough, {
         headers: {
             'Content-Type': 'application/zip',
-            'Content-Disposition': `attachment; filename="photos_export_${new Date().toISOString().slice(0, 10)}.zip"`
+            'Content-Disposition': `attachment; filename="photos_export_${new Date().toISOString().slice(0, 10)}.zip"`,
+            'Cache-Control': 'no-store, max-age=0',
         }
     });
 }
