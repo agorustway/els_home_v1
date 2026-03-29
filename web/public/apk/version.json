@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.6",
-  "versionCode": 150,
-  "changeLog": "v4.2.6 (Build 150) - 핫픽스 및 안정화\n- [기능] 운행종료 시 화면(버튼/내용) 초기화가 정상 작동하게 수정\n- [설정] 전화번호에 하이픈(-) 등 특수문자 입력 후 저장해도 자동 제거(숫자만 남음)되게 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=150"
+  "latestVersion": "v4.2.7",
+  "versionCode": 151,
+  "changeLog": "v4.2.7 (Build 151) - 공지사항 및 긴급알림 기능 고도화\n- [기능] 공지사항 탭 상단에 카테고리(긴급알림, 일반공지, 작업안내, 안전교육) 필터 그룹 뷰어 추가\n- [설정] 앱 재시작 시 동일 긴급알림이 중복 뜨는 문제(알림 이력 저장 누락) 해결\n- [UI] 일지 검색(날짜/월별) 기본 안내문구 간소화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=151"
 }

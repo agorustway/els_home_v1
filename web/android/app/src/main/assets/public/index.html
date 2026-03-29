@@ -106,7 +106,14 @@
 
       <!-- ── 공지 탭 ── -->
       <div id="tab-notice" class="screen">
-        <div id="notice-list" class="notice-list">
+        <div class="notice-filter-tabs" style="display:flex; overflow-x:auto; gap:6px; padding:10px 14px; background:#fff; border-bottom:1px solid #e2e8f0; scrollbar-width:none;">
+          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#1e293b; color:#fff;" onclick="App.filterNotice('', this)">전체</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('긴급알림', this)">🚨 긴급알림</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('일반공지', this)">일반공지</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('작업안내', this)">작업안내</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('안전교육', this)">안전교육</button>
+        </div>
+        <div id="notice-list" class="notice-list" style="height:calc(100% - 49px); overflow-y:auto; padding-top:0;">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
         </div>
         <div id="notice-detail" class="notice-detail">
@@ -194,8 +201,8 @@
       <!-- ── 일지 탭 ── -->
       <div id="tab-log" class="screen">
         <div class="log-filter">
-          <input type="text" id="log-date-filter" placeholder="날짜조회 (예: 2026-03-29)" onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
-          <input type="text" id="log-month-filter" placeholder="월별조회 (예: 2026-03)" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
+          <input type="text" id="log-date-filter" placeholder="날짜조회" onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
+          <input type="text" id="log-month-filter" placeholder="월별조회" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
           <button class="btn btn-sm" onclick="App.loadLogs()">조회</button>
         </div>
         <div id="log-list" class="log-list">

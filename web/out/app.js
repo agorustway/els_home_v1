@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.6');
+  console.log('ELS Driver App Loading... v4.2.7');
  
-  const APP_VERSION = 'v4.2.6';
-  const BUILD_CODE = 150; // Build 150 (v4.2.6)
+  const APP_VERSION = 'v4.2.7';
+  const BUILD_CODE = 151; // Build 151 (v4.2.7)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -105,7 +105,7 @@
     currentNoticeId: null,
     currentLogId: null,
     currentPhotoIdx: 0,
-    emergencyIds: new Set(),
+    emergencyIds: new Set(Store.get('emergencyIds') || []),
     pendingUpdate: false, // 운행 중 업데이트 유예 플래그
   };
 
@@ -1131,7 +1131,7 @@
         }
       } catch(e) { console.error(e); }
 
-      emerg.forEach(e => { e.isEmergency = true; e.title = '[긴급] ' + (e.title||'긴급알림'); });
+      emerg.forEach(e => { e.isEmergency = true; e.category = '긴급알림'; });
       
       const merged = [...emerg, ...norm].sort((a,b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
       _notices = merged;
@@ -1146,18 +1146,59 @@
     }
   }
 
+  let _currentNoticeFilter = '';
+
+  function filterNotice(category, btnElement) {
+    _currentNoticeFilter = category;
+    
+    // 탭 UI 스타일 변경
+    const tabs = document.querySelectorAll('.notice-filter-tabs button');
+    tabs.forEach(btn => {
+      btn.style.background = '#f1f5f9';
+      btn.style.color = '#64748b';
+      btn.style.border = '1px solid #cbd5e1';
+    });
+    if (btnElement) {
+      btnElement.style.background = '#1e293b';
+      btnElement.style.color = '#ffffff';
+      btnElement.style.border = 'none';
+    }
+
+    renderNoticeList();
+  }
+
   function renderNoticeList() {
     const read = Store.get('readNotices') || [];
-    const html = _notices.map(n => {
+    
+    const filtered = _notices.filter(n => {
+      if (!_currentNoticeFilter) return true;
+      const cat = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
+      return cat === _currentNoticeFilter;
+    });
+
+    const html = filtered.map(n => {
       const dateVal = n.created_at || n.date || n.started_at;
       const dateStr = dateVal ? formatDate(new Date(dateVal)) : '—';
+      const cat = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
+      
+      let prefix = '';
+      if (cat === '긴급알림') prefix = '<span style="color:#ef4444; font-weight:700; margin-right:4px;">🚨[긴급]</span>';
+      else if (cat !== '일반공지') prefix = `<span style="color:#0ea5e9; font-weight:700; margin-right:4px;">[${escHtml(cat)}]</span>`;
+
+      let title = escHtml(n.title || n.message || '제목 없음');
+      if (title.startsWith('[긴급] ')) title = title.replace('[긴급] ', '');
+      
       return `
         <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice('${n.id}')">
-          <div class="notice-item-title">${escHtml(n.title || n.message || '제목 없음')}</div>
-          <div class="notice-item-meta">${dateStr}</div>
+          <div class="notice-item-title" style="display:flex; align-items:flex-start;">
+             <span style="flex-shrink:0;">${prefix}</span>
+             <span style="flex:1; line-height:1.4;">${title}</span>
+          </div>
+          <div class="notice-item-meta" style="margin-top:4px;">${dateStr}</div>
         </div>
       `;
-    }).join('') || '<div class="loading">공지사항이 없습니다.</div>';
+    }).join('') || '<div class="loading" style="margin-top:20px;">공지사항이 없습니다.</div>';
+    
     document.getElementById('notice-list').innerHTML = html;
   }
 
@@ -1734,6 +1775,7 @@
       for (const item of items) {
         if (State.emergencyIds.has(item.id)) continue;
         State.emergencyIds.add(item.id);
+        Store.set('emergencyIds', Array.from(State.emergencyIds));
         showEmergencyPopup(item);
         sendNativeEmergencyNotif(item);
       }
@@ -1848,7 +1890,7 @@
     // 네비
     switchTab, showScreen, openSettings, handleBackButton: () => window.handleBackButton(),
     // 공지
-    openNotice, closeNoticeDetail,
+    openNotice, closeNoticeDetail, filterNotice,
     // 사진
     addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
     // 일지
