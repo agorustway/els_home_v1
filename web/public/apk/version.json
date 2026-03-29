@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.30",
-  "versionCode": 174,
-  "changeLog": "v4.2.30 (Build 174)\n- [레이아웃] '기록 수정 저장' 버튼이 다른 요소에 눌려 찌그러지는 현상 수정 (flex-shrink:0 및 min-height 적용)\n- [레이아웃] 버튼 높이를 목록/삭제와 동일한 32px로 유지하며 시각적 일관성 확보",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=174"
+  "latestVersion": "v4.2.31",
+  "versionCode": 175,
+  "changeLog": "v4.2.31 (Build 175)\n- [일지] 일지 탭 진입 시 현재 월(YYYY-MM) 기준으로 리스트를 자동 필터링 (데이터 정렬/최적화)\n- [레이아웃] 소형 버튼 레이아웃 안정성 강화 및 찌그러짐 현상(flex-shrink) 수정 내역 유지",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=175"
 }

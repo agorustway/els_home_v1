@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
 
-  const APP_VERSION = 'v4.2.30';
-  const BUILD_CODE = 174; // Build 174 (v4.2.30)
+  const APP_VERSION = 'v4.2.31';
+  const BUILD_CODE = 175; // Build 175 (v4.2.31)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -229,6 +229,12 @@
     } else {
       showMain();
     }
+
+    // 일지 기본 필터를 현재 월(YYYY-MM)로 설정
+    const now = new Date();
+    const monthStr = now.toISOString().slice(0, 7); // YYYY-MM
+    const monFilter = document.getElementById('log-month-filter');
+    if (monFilter && !monFilter.value) monFilter.value = monthStr;
 
     // 업데이트 확인은 메인 진입 시에만 수행
     checkUpdate(true);
