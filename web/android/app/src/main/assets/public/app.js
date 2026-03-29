@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
  
-  const APP_VERSION = 'v4.2.26';
-  const BUILD_CODE = 170; // Build 170 (v4.2.26)
+  const APP_VERSION = 'v4.2.27';
+  const BUILD_CODE = 171; // Build 171 (v4.2.27)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -917,7 +917,7 @@
   function setTripStatus(status) {
     State.trip.status = status;
     const badge = document.getElementById('header-status');
-    const labels = { idle: '대기중', driving: '운송중', paused: '일시정지', completed: '운송종료' };
+    const labels = { idle: '대기중', driving: '운행중', paused: '일시정지', completed: '운행종료' };
     const classes = { idle: 'status-idle', driving: 'status-driving', paused: 'status-paused', completed: 'status-done' };
     badge.textContent = labels[status] || '대기중';
     badge.className = 'status-badge ' + (classes[status] || 'status-idle');

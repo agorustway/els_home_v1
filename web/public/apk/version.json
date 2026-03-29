@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.26",
-  "versionCode": 170,
-  "changeLog": "v4.2.26 (Build 170)\n- [오버레이] 일시정지 중에도 타이머가 멈춘 상태로 표시되도록 네이티브 타이머 로직 고도화\n- [상태] 운행 재개 즉시 위치 상태 동기화 및 오버레이 GPS 싱크 오류 해결\n- [UI] 오버레이 일시정지 시 타이머에 '일시정지' 텍스트 대신 시간(Frozen) 노출",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=170"
+  "latestVersion": "v4.2.27",
+  "versionCode": 171,
+  "changeLog": "v4.2.27 (Build 171)\n- [용어] 앱 내 '운송중' 표기를 모두 '운행중'으로 통일 (오버레이 및 앱 공통)\n- [GPS] 위치 수집 주기 하드코딩 여부 전수 조사 및 유동적 수집 로직(속도/방향 기반) 재검증",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=171"
 }

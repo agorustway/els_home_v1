@@ -293,9 +293,9 @@ public class FloatingWidgetService extends Service {
 
     private String getStatusLabel() {
         switch (mStatus) {
-            case "driving": return "운송중";
+            case "driving": return "운행중";
             case "paused": return "일시정지";
-            case "completed": return "운송종료";
+            case "completed": return "운행종료";
             default: return "대기중";
         }
     }
@@ -314,7 +314,7 @@ public class FloatingWidgetService extends Service {
                 if ("driving".equals(mStatus)) {
                     elapsed = now - mStartTimeMillis - mTotalPausedMs;
                     tvTimer.setText(formatTime(elapsed));
-                    updateNotification("운송중 " + formatTime(elapsed) + (mContainerNo.isEmpty() ? "" : " | " + mContainerNo));
+                    updateNotification("운행중 " + formatTime(elapsed) + (mContainerNo.isEmpty() ? "" : " | " + mContainerNo));
                 } else if ("paused".equals(mStatus)) {
                     // 일시정지 시에는 멈춘 시점의 시간 표시
                     long currentPausedMs = (mPausedAt > 0) ? (now - mPausedAt) : 0;
