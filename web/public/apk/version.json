@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.8",
-  "versionCode": 152,
-  "changeLog": "v4.2.8 (Build 152) - UI 및 편의성 개선\n- [기능] 앱 가로모드 전환 방지 (항상 세로모드 고정)\n- [UI] 공지사항 탭의 '전체' 버튼 제거 (아무것도 안 누르면 전체가 보이도록 토글식 변경)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=152"
+  "latestVersion": "v4.2.9",
+  "versionCode": 153,
+  "changeLog": "v4.2.9 (Build 153) - 안전운행 필수 기능 추가\n- [기능] 운행 시작 전 법적 의무사항인 '운행전점검' 체크리스트 팝업 추가\n- [연동] 점검 완료 데이터 DB에 저장되도록 연동 완료",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=153"
 }

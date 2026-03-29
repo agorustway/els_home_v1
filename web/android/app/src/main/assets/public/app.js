@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.8');
+  console.log('ELS Driver App Loading... v4.2.9');
  
-  const APP_VERSION = 'v4.2.8';
-  const BUILD_CODE = 152; // Build 152 (v4.2.8)
+  const APP_VERSION = 'v4.2.9';
+  const BUILD_CODE = 153; // Build 153 (v4.2.9)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -95,6 +95,32 @@
     rm:  (k) => { try { localStorage.removeItem('els_' + k); } catch {} },
   };
 
+  // ─── 점검체크리스트 ──────────────────────────────────────────
+  function openChecklist() {
+    document.getElementById('checklist-popup').classList.add('active');
+  }
+  function closeChecklist() {
+    document.getElementById('checklist-popup').classList.remove('active');
+  }
+  function saveChecklist() {
+    const checks = ['chk_brake', 'chk_tire', 'chk_lamp', 'chk_cargo', 'chk_driver'];
+    for (const id of checks) {
+      if (!document.getElementById(id).checked) {
+        showToast('모든 법정 필수 점검 항목에 체크해야 합니다.');
+        return;
+      }
+    }
+    State.preTripDone = {
+      chk_brake: true,
+      chk_tire: true,
+      chk_lamp: true,
+      chk_cargo: true,
+      chk_driver: true
+    };
+    closeChecklist();
+    showToast('운행 전 점검 완료! 이제 운행 시작이 가능합니다.');
+  }
+
   // ─── 상태 ─────────────────────────────────────────────────────
   const State = {
     profile: { name: '', phone: '', vehicleNo: '', driverId: '' },
@@ -107,6 +133,7 @@
     currentPhotoIdx: 0,
     emergencyIds: new Set(Store.get('emergencyIds') || []),
     pendingUpdate: false, // 운행 중 업데이트 유예 플래그
+    preTripDone: null, // 운행 전 점검 항목
   };
 
   // ─── 권한 상태 ────────────────────────────────────────────────
@@ -640,6 +667,13 @@
       openSettings();
       return;
     }
+
+    if (!State.preTripDone) {
+      openChecklist();
+      showToast('안전 운행을 위해 [운행전점검] 필수 항목을 모두 체크해주세요.');
+      return;
+    }
+
     const containerNo = document.getElementById('container-no').value.trim();
     const sealNo      = document.getElementById('seal-no').value.trim();
     const cType       = document.getElementById('container-type').value;
@@ -659,6 +693,11 @@
             container_type:   cType,
             container_kind:   cKind,
             special_notes:    memo,
+            chk_brake:        State.preTripDone.chk_brake || false,
+            chk_tire:         State.preTripDone.chk_tire || false,
+            chk_lamp:         State.preTripDone.chk_lamp || false,
+            chk_cargo:        State.preTripDone.chk_cargo || false,
+            chk_driver:       State.preTripDone.chk_driver || false,
           }),
         });
         let data = await res.json().catch(() => ({}));
@@ -1257,10 +1296,16 @@
     }
     State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
     State.photos = [];
+    State.preTripDone = null; // 체크리스트 초기화
+    
     // UI 초기화
     document.getElementById('container-no').value = '';
     document.getElementById('seal-no').value = '';
     document.getElementById('trip-memo').value = '';
+    ['chk_brake','chk_tire','chk_lamp','chk_cargo','chk_driver'].forEach(id => {
+       const el = document.getElementById(id);
+       if (el) el.checked = false;
+    });
     
     renderPhotoThumbs();
     setTripStatus('idle');
@@ -1896,6 +1941,8 @@
     switchTab, showScreen, openSettings, handleBackButton: () => window.handleBackButton(),
     // 공지
     openNotice, closeNoticeDetail, filterNotice,
+    // 점검 팝업
+    openChecklist, closeChecklist, saveChecklist,
     // 사진
     addPhoto, onFileSelected, openPhotoViewer, closePhotoViewer, prevPhoto, nextPhoto, deleteCurrentPhoto,
     // 일지

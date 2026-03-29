@@ -250,6 +250,13 @@ export async function POST(request) {
                 updated_at:       new Date().toISOString()
             };
 
+            // 만약 새로 점검 결과가 넘어왔다면 업데이트
+            if (body.chk_brake !== undefined) updatePayload.chk_brake = body.chk_brake;
+            if (body.chk_tire !== undefined) updatePayload.chk_tire = body.chk_tire;
+            if (body.chk_lamp !== undefined) updatePayload.chk_lamp = body.chk_lamp;
+            if (body.chk_cargo !== undefined) updatePayload.chk_cargo = body.chk_cargo;
+            if (body.chk_driver !== undefined) updatePayload.chk_driver = body.chk_driver;
+
             const { data: updatedTrip, error: updateError } = await supabase
                 .from('vehicle_trips')
                 .update(updatePayload)
@@ -279,6 +286,11 @@ export async function POST(request) {
                 container_type,
                 container_kind,
                 special_notes,
+                chk_brake: body.chk_brake || false,
+                chk_tire: body.chk_tire || false,
+                chk_lamp: body.chk_lamp || false,
+                chk_cargo: body.chk_cargo || false,
+                chk_driver: body.chk_driver || false,
                 status: 'driving',
                 started_at: new Date().toISOString(),
             }])
