@@ -204,9 +204,9 @@
       <!-- ── 일지 탭 ── -->
       <div id="tab-log" class="screen">
         <div class="log-filter">
-          <input type="text" id="log-date-filter" placeholder="날짜조회" onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
-          <input type="text" id="log-month-filter" placeholder="월별조회" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
-          <button class="btn btn-sm" onclick="App.loadLogs()">조회</button>
+          <input type="text" id="log-date-filter" placeholder="날짜조회" onfocus="(this.type='date')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()">
+          <input type="text" id="log-month-filter" placeholder="월별조회" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()">
+          <button class="btn btn-primary" onclick="App.loadLogs()">조회</button>
         </div>
         <div id="log-list" class="log-list">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
@@ -258,33 +258,34 @@
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
     </header>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;">
-      <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로 돌아가기</button>
+      <button class="btn" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로 돌아가기</button>
       
       <!-- ── 프로필 사진 (운전원/차량/샤시) ── -->
       <div id="settings-profile-photos" style="display:none; gap:18px; margin:4px 0 12px; justify-content:center; align-items:center; background:#f8fafc; padding:16px; border-radius:var(--radius); border:1px solid #e2e8f0;">
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-          <div id="p-photo-driver" class="profile-photo-box" style="background-image:none;">운</div>
-          <span style="font-size:11px; color:#64748b; font-weight:700;">운전원</span>
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('driver')">
+          <div id="p-photo-driver" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">운</div>
+          <span style="font-size:11px; color:#64748b; font-weight:700;">운전원+</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-          <div id="p-photo-vehicle" class="profile-photo-box" style="background-image:none;">차량</div>
-          <span style="font-size:11px; color:#64748b; font-weight:700;">차량</span>
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('vehicle')">
+          <div id="p-photo-vehicle" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">차량</div>
+          <span style="font-size:11px; color:#64748b; font-weight:700;">차량+</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-          <div id="p-photo-chassis" class="profile-photo-box" style="background-image:none;">샤시</div>
-          <span style="font-size:11px; color:#64748b; font-weight:700;">샤시</span>
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('chassis')">
+          <div id="p-photo-chassis" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">샤시</div>
+          <span style="font-size:11px; color:#64748b; font-weight:700;">샤시+</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>전화번호</label>
+        <div style="display:flex;gap:4px;">
+           <input type="tel" id="s-phone" placeholder="01012345678 (기존사용자 입력후 조회 클릭)" maxlength="11" style="flex:1;min-width:0;">
+           <button class="btn btn-primary" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 12px;height:44px;">기사조회</button>
         </div>
       </div>
       <div class="field">
         <label>이름</label>
         <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
-      </div>
-      <div class="field">
-        <label>전화번호</label>
-        <div style="display:flex;gap:4px;">
-           <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;">
-           <button class="btn btn-sm btn-primary" onclick="App.lookupDriver()" style="height: var(--header-h); padding: 0 14px; white-space:nowrap;">조회</button>
-        </div>
       </div>
       <div class="field">
         <label>차량 ID (Vehicle ID)</label>

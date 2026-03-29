@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.2.12
-> 마지막 업데이트: 2026-03-29 11:40
+# ELS MISSION CONTROL v4.2.14
+> 마지막 업데이트: 2026-03-29 11:58
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.12` (Build 156)
+- **현재 버전**: `v4.2.14` (Build 158)
 - **최근 업데이트**: 2026-03-29
-- **상태**: 🟢 실시간 속도(Speed) 수집 및 상세 경로 내 속도 표시 연동 완료
+- **상태**: 🟢 설정 페이지 프로필 사진 업로드 연동 및 일지 필터 레이아웃 안정화 완료
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.2.10 업데이트 완료)
 

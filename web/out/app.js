@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.12');
+  console.log('ELS Driver App Loading... v4.2.14');
  
-  const APP_VERSION = 'v4.2.12';
-  const BUILD_CODE = 156; // Build 156 (v4.2.12)
+  const APP_VERSION = 'v4.2.14';
+  const BUILD_CODE = 158; // Build 158 (v4.2.14)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -318,10 +318,13 @@
       await smartFetch(BASE_URL + '/api/vehicle-tracking/drivers', {
         method: 'POST',
         body: JSON.stringify({
-          phone: State.profile.phone,
-          name: State.profile.name,
+          phone:          State.profile.phone,
+          name:           State.profile.name,
           vehicle_number: State.profile.vehicleNo,
-          vehicle_id: State.profile.driverId,
+          vehicle_id:     State.profile.driverId,
+          photo_driver:   State.profile.photo_driver,
+          photo_vehicle:  State.profile.photo_vehicle,
+          photo_chassis:  State.profile.photo_chassis,
         }),
       });
     } catch (e) { console.warn('upsertDriverContact', e); }
@@ -347,6 +350,11 @@
           updateProfilePhoto('p-photo-driver', d.photo_driver, '운');
           updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차');
           updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤');
+          
+          // State에도 저장 (저장 버튼 클릭 시 함께 전송되도록)
+          State.profile.photo_driver  = d.photo_driver;
+          State.profile.photo_vehicle = d.photo_vehicle;
+          State.profile.photo_chassis = d.photo_chassis;
         }
 
         showToast('기사 정보를 불러왔습니다.');
@@ -368,6 +376,37 @@
       el.style.backgroundImage = 'none';
       el.textContent = fallback;
       el.style.borderStyle = 'dashed';
+    }
+  }
+
+  async function pickProfilePhoto(type) {
+    try {
+      const Camera = window.Capacitor?.Plugins?.Camera;
+      if (!Camera) {
+          showToast('카메라 기능을 사용할 수 없습니다.');
+          return;
+      }
+      
+      const image = await Camera.getPhoto({
+        quality: 70,
+        width: 1000,
+        height: 1000,
+        allowEditing: false,
+        resultType: 'base64',
+        source: 'PROMPT', // 카메라/갤러리 선택 팝업
+        saveToGallery: false
+      });
+      
+      const dataUrl = `data:image/jpeg;base64,${image.base64String}`;
+      
+      if (type === 'driver')  State.profile.photo_driver = dataUrl;
+      if (type === 'vehicle') State.profile.photo_vehicle = dataUrl;
+      if (type === 'chassis') State.profile.photo_chassis = dataUrl;
+      
+      updateProfilePhoto('p-photo-' + type, dataUrl, '');
+      showToast('사진이 선택되었습니다. 정보 저장 시 업로드됩니다.');
+    } catch (e) {
+      console.warn('pickProfilePhoto skip', e);
     }
   }
 
@@ -1981,7 +2020,7 @@
     requestPerm, updatePermStatuses, manualRefreshPerms, finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
     showTerms, closeTerms,
     // 프로필
-    saveProfile, lookupDriver,
+    saveProfile, lookupDriver, pickProfilePhoto,
     // 운행
     onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
     // 네비

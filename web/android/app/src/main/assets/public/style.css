@@ -251,6 +251,21 @@ input, textarea, select, button { font-family: inherit; }
 .log-item-status { font-size: 11px; font-weight: 700; padding: 1px 6px; border: 1px solid; border-radius: 2px; }
 .log-item-meta { font-size: 11px; color: var(--text-muted); }
 
+/* 일지 필터 */
+.log-filter {
+  display: flex !important; gap: 8px; padding: 10px 14px;
+  background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0;
+  align-items: center;
+}
+.log-filter input {
+  flex: 1; min-width: 0; height: 44px;
+  padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 13px; font-weight: 500;
+}
+.log-filter button {
+  width: 70px !important; height: 44px !important; flex-shrink: 0; font-size: 13px; padding: 0;
+}
+
 /* 일지 상세 */
 .log-detail { display: none; flex-direction: column; gap: 10px; padding: 14px; overflow-y: auto; }
 .log-detail.active { display: flex; }
