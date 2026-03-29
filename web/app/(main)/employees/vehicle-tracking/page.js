@@ -43,6 +43,13 @@ export default function VehicleTrackingPage() {
     const realtimeTimeoutRef = useRef(null);
     const [realtimeTarget, setRealtimeTarget] = useState(null); // 실시간 추적 대상 trip ID
     const [realtimeCountdown, setRealtimeCountdown] = useState(0); // 남은 초
+    const [liveSearchKeyword, setLiveSearchKeyword] = useState(''); // [신규] 실시간 관제 검색어
+
+    // [신규] 공지사항/긴급 페이징 상태
+    const [noticePage, setNoticePage] = useState(1);
+    const [emergencyPage, setEmergencyPage] = useState(1);
+    const NOTICE_LIMIT = 3;
+    const EM_LIMIT = 3;
 
     // 운행 기록 (검색/필터)
     const [records, setRecords] = useState([]);
@@ -108,7 +115,7 @@ export default function VehicleTrackingPage() {
                 const { error } = await query;
                 if (error) throw error;
             } else {
-                const row = { title: newNotice.title, content: newNotice.content, target: newNotice.target, status: '공지중', attachments: newNotice.attachments || null };
+                const row = { title: newNotice.title, content: newNotice.content, target: newNotice.target, status: '공지중' };
                 let query = newNotice.id ? supabase.from('notices').update(row).eq('id', newNotice.id) : supabase.from('notices').insert([row]);
                 const { error } = await query;
                 if (error) throw error;
@@ -117,11 +124,11 @@ export default function VehicleTrackingPage() {
             showModalAlert(newNotice.id ? '수정되었습니다.' : '등록되었습니다.');
             setTimeout(() => {
                 setShowWriteModal(false);
-                setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false });
+                setNewNotice({ title: '', content: '', target: '전체', isEmergency: false });
                 fetchNotices();
             }, 800);
         } catch (e) {
-            showModalAlert('저장 실패: ' + e.message);
+            alert('저장 실패: ' + e.message);
         } finally {
             setLoading(false);
         }
@@ -138,11 +145,11 @@ export default function VehicleTrackingPage() {
             showModalAlert('삭제되었습니다.');
             setTimeout(() => {
                 setShowWriteModal(false);
-                setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false });
+                setNewNotice({ title: '', content: '', target: '전체', isEmergency: false });
                 fetchNotices();
             }, 800);
         } catch (e) { 
-            showModalAlert('삭제 실패: ' + e.message); 
+            alert('삭제 실패: ' + e.message); 
         } finally {
             setLoading(false);
         }
@@ -662,6 +669,29 @@ export default function VehicleTrackingPage() {
         return '⚪';
     };
 
+    // [신규] 실시간 관제 리스트 줌 이동
+    const handleZoomToLiveTrip = (trip) => {
+        if (!mapInstanceRef.current || !trip.lastLocation) return;
+        const loc = trip.lastLocation;
+        const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
+        mapInstanceRef.current.setCenter(pos);
+        mapInstanceRef.current.setZoom(16);
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // 상단 지도로 스크롤
+    };
+
+    const filteredLiveTrips = liveTrips.filter(t => 
+        (t.vehicle_number || '').includes(liveSearchKeyword) || 
+        (t.driver_name || '').includes(liveSearchKeyword) || 
+        (t.container_number || '').includes(liveSearchKeyword)
+    );
+
+    // [신규] 페이징 슬라이스 연산
+    const totalNoticePages = Math.max(1, Math.ceil(notices.length / NOTICE_LIMIT));
+    const paginatedNotices = notices.slice((noticePage - 1) * NOTICE_LIMIT, noticePage * NOTICE_LIMIT);
+
+    const totalEmPages = Math.max(1, Math.ceil(emergencies.length / EM_LIMIT));
+    const paginatedEmergencies = emergencies.slice((emergencyPage - 1) * EM_LIMIT, emergencyPage * EM_LIMIT);
+
     return (
         <div className={styles.trackingPage}>
             <div className={styles.titleBar}>
@@ -672,184 +702,103 @@ export default function VehicleTrackingPage() {
                 </div>
             </div>
 
-            <div className={styles.missionDashboard}>
-                <div className={styles.statCard}><div className={styles.statLabel}>📡 실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
-                <div className={styles.statCard}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b' }}>{liveTrips.filter(t => t.status === 'paused').length} <span className={styles.statUnit}>대</span></div></div>
-                <div className={styles.statCard}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
-            </div>
-
-            {/* 긴급 알람 섹션 */}
-            <div className={styles.noticeSection} style={{ marginBottom: 20 }}>
-                <div className={styles.noticeHeader}>
-                    <h3 style={{display:'flex', alignItems:'center', gap:8, color:'#ef4444'}}>🚨 긴급 알람 계기판</h3>
-                    <button className={styles.writeNoticeBtn} style={{background:'#ef4444', borderColor:'#ef4444'}} onClick={() => { setNewNotice({ title: '', content: '', isEmergency: true }); setShowWriteModal(true); }}>🚨 긴급알람 발송</button>
-                </div>
-                <div className={styles.tableCard}>
-                    <table className={styles.adminNoticeTable}>
-                        <thead>
-                            <tr>
-                                <th style={{width:'120px'}}>발생일시</th>
-                                <th>긴급 내용 구분</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {emergencies.length === 0 ? (
-                                <tr>
-                                    <td colSpan="2" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>발송된 긴급알람이 없습니다.</td>
-                                </tr>
-                            ) : (
-                                emergencies.map(em => (
-                                    <tr key={em.id} onClick={() => handleEditNotice(em, true)} style={{cursor:'pointer', background:'#fef2f2'}}>
-                                        <td style={{color:'#dc2626'}}>{formatDateTime(em.created_at)}</td>
-                                        <td style={{fontWeight:600, color:'#991b1b'}}>
-                                            {em.title}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* 공지사항 섹션 */}
-            <div className={styles.noticeSection}>
-                <div className={styles.noticeHeader}>
-                    <h3 style={{display:'flex', alignItems:'center', gap:8}}>📣 운송 관제 공지사항</h3>
-                    <button className={styles.writeNoticeBtn} onClick={() => { setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); setShowWriteModal(true); }}>📝 공지 작성</button>
-                </div>
-                <div className={styles.tableCard}>
-                    <table className={styles.adminNoticeTable}>
-                        <thead>
-                            <tr>
-                                <th style={{width:'80px'}}>날짜</th>
-                                <th>제목</th>
-                                <th style={{width:'80px'}}>대상</th>
-                                <th style={{width:'80px'}}>상태</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {notices.length === 0 ? (
-                                <tr>
-                                    <td colSpan="4" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>게시된 공지사항이 없습니다.</td>
-                                </tr>
-                            ) : (
-                                notices.map(n => (
-                                    <tr key={n.id} onClick={() => handleEditNotice(n, false)} style={{cursor:'pointer'}}>
-                                        <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
-                                        <td style={{fontWeight:600}}>
-                                            {n.title}
-                                            {n.attachments?.length > 0 && <span style={{marginLeft:8, fontSize:10, color:'#2563eb'}}>📎 {n.attachments.length}</span>}
-                                        </td>
-                                        <td>{n.target}</td>
-                                        <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>{n.status}</span></td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* 공지 작성/긴급알람 모달 */}
-            {showWriteModal && (
-                <div className={styles.modalOverlay}>
-                    <div className={styles.modalBox} style={{maxWidth:'700px', width:'95%', position:'relative'}}>
-                        {alertMsg && (
-                            <div style={{position:'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', background: '#1e293b', color: '#fff', padding: '10px 20px', borderRadius: '8px', zIndex: 99999, fontWeight: '700', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}>
-                                {alertMsg}
-                            </div>
-                        )}
-                        <div className={styles.modalHeader}>
-                            <h3>{newNotice.isEmergency ? (newNotice.id ? '🚨 긴급알람 수정' : '🚨 긴급알람 발송') : (newNotice.id ? '📝 공지사항 수정' : '📝 새 공지사항 작성')}</h3>
-                            <div style={{display:'flex', gap:8}}>
-                                <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false }); }}>✕</button>
-                            </div>
-                        </div>
-                        <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12, maxHeight:'80vh', overflowY:'auto'}}>
-                            <div>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>{newNotice.isEmergency ? '긴급알람 제목' : '공지 제목'}</label>
-                                <input 
-                                    className={styles.modalInput} 
-                                    placeholder="제목을 입력하세요" 
-                                    value={newNotice.title}
-                                    onChange={e => setNewNotice({...newNotice, title: e.target.value})}
-                                />
-                            </div>
-                            
-                            {!newNotice.isEmergency && (
-                                <div>
-                                    <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
-                                    <select 
-                                        className={styles.modalSelect} 
-                                        value={newNotice.target}
-                                        onChange={e => setNewNotice({...newNotice, target: e.target.value})}
-                                    >
-                                        <option value="전체">전체 (모든 기사)</option>
-                                        <option value="계약차량">계약차량 (소속 운전원)</option>
-                                        <option value="미계약차량">미계약차량 (외부 기사)</option>
-                                    </select>
-                                </div>
-                            )}
-
-                            <div>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>{newNotice.isEmergency ? '긴급 메시지' : '공지 내용'}</label>
-                                <ReactQuill 
-                                    theme="snow" 
-                                    value={newNotice.content} 
-                                    onChange={val => setNewNotice({...newNotice, content: val})}
-                                    style={{height:250, marginBottom:40}}
-                                />
-                            </div>
-
-                            {!newNotice.isEmergency && (
-                                <div style={{marginTop: 20}}>
-                                    <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>첨부파일</label>
-                                    <div style={{background:'#f1f5f9', padding:10, borderRadius:8, fontSize:13}}>
-                                        {newNotice.attachments?.map((at, idx) => (
-                                            <div key={idx} style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
-                                                <a href={at.url} target="_blank" rel="noreferrer" style={{color:'#2563eb', fontWeight:600}}>{at.name}</a>
-                                                <button onClick={() => setNewNotice(prev => ({...prev, attachments: prev.attachments.filter((_, i) => i !== idx)}))}>삭제</button>
-                                            </div>
-                                        ))}
-                                        <input type="file" onChange={handleFileChange} style={{fontSize:11, marginTop:8}} />
-                                        {(!newNotice.attachments || newNotice.attachments.length === 0) && <div style={{color:'#94a3b8', fontSize:12}}>첨부된 파일이 없습니다.</div>}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div style={{display:'flex', gap:10, marginTop:10}}>
-                                <button className={styles.saveBtn} onClick={handleSaveNotice} style={{flex:1, background: newNotice.isEmergency ? '#ef4444' : '#2563eb'}}>
-                                    {newNotice.isEmergency ? (newNotice.id ? '수정 완료' : '긴급알람 발송') : (newNotice.id ? '수정 완료' : '공지작성')}
-                                </button>
-                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false }); }} style={{height:40, padding:'0 20px'}}>닫기</button>
-                                {newNotice.id && (
-                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id, newNotice.isEmergency)} style={{height:40, padding:'0 20px', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5', borderRadius:8, fontWeight:700}}>🗑️ 삭제</button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <div className={styles.tabNav}>
                 <button className={`${styles.tab} ${activeTab === 'live' ? styles.tabActive : ''}`} onClick={() => setActiveTab('live')}>📡 실시간 관제</button>
                 <button className={`${styles.tab} ${activeTab === 'records' ? styles.tabActive : ''}`} onClick={() => setActiveTab('records')}>📋 운행 기록 관리</button>
             </div>
 
             <div style={{ display: activeTab === 'live' ? 'block' : 'none' }}>
-                <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`}>
-                    <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '↩️ 전체화면 해제' : '⛶ 지도 전체화면'}</button>
-                    <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
-                    {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
+                <div className={styles.missionDashboard} style={{gap:'10px', marginBottom:'15px'}}>
+                    <div className={styles.statCard} style={{padding:'1rem'}}><div className={styles.statLabel}>📡 실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981', fontSize:'2rem' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
+                    <div className={styles.statCard} style={{padding:'1rem'}}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b', fontSize:'2rem' }}>{liveTrips.filter(t => t.status === 'paused').length} <span className={styles.statUnit}>대</span></div></div>
+                    <div className={styles.statCard} style={{padding:'1rem'}}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue} style={{fontSize:'2rem'}}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
                 </div>
+
+                <div className={styles.liveGrid}>
+                    <div className={styles.liveGridLeft}>
+                        {/* 긴급 알림 섹션 */}
+                        <div className={styles.noticeSection} style={{ flex: 1, display:'flex', flexDirection:'column', marginBottom:0 }}>
+                            <div className={styles.noticeHeader} style={{marginBottom:'10px'}}>
+                                <h3 style={{display:'flex', alignItems:'center', gap:8, color:'#ef4444', fontSize:'1rem'}}>🚨 긴급 알림</h3>
+                                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                    <div style={{fontSize:'0.8rem', color:'#64748b', fontWeight:700}}>{emergencyPage} / {totalEmPages}</div>
+                                    <button onClick={() => setEmergencyPage(p => Math.max(1, p-1))} style={{border:'none', background:'none', cursor:'pointer'}}>◀</button>
+                                    <button onClick={() => setEmergencyPage(p => Math.min(totalEmPages, p+1))} style={{border:'none', background:'none', cursor:'pointer'}}>▶</button>
+                                    <button className={styles.writeNoticeBtn} style={{background:'#ef4444', borderColor:'#ef4444', padding:'4px 10px', color:'#fff'}} onClick={() => { setNewNotice({ title: '', content: '', isEmergency: true }); setShowWriteModal(true); }}>글쓰기</button>
+                                </div>
+                            </div>
+                            <div className={styles.tableCard} style={{flex: 1, display:'flex', flexDirection:'column'}}>
+                                <table className={styles.adminNoticeTable} style={{flex:1}}>
+                                    <thead><tr><th style={{width:'100px'}}>발생일시</th><th>긴급 내용</th></tr></thead>
+                                    <tbody>
+                                        {paginatedEmergencies.length === 0 ? (
+                                            <tr><td colSpan="2" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>발송된 알림이 없습니다.</td></tr>
+                                        ) : (
+                                            paginatedEmergencies.map(em => (
+                                                <tr key={em.id} onClick={() => handleEditNotice(em, true)} style={{cursor:'pointer', background:'#fef2f2'}}>
+                                                    <td style={{color:'#dc2626'}}>{formatDateTime(em.created_at)}</td>
+                                                    <td style={{fontWeight:600, color:'#991b1b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'150px'}}>{em.title}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 공지사항 섹션 */}
+                        <div className={styles.noticeSection} style={{ flex: 1, display:'flex', flexDirection:'column', marginBottom:0 }}>
+                            <div className={styles.noticeHeader} style={{marginBottom:'10px'}}>
+                                <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem'}}>📣 운송 관제 공지사항</h3>
+                                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                    <div style={{fontSize:'0.8rem', color:'#64748b', fontWeight:700}}>{noticePage} / {totalNoticePages}</div>
+                                    <button onClick={() => setNoticePage(p => Math.max(1, p-1))} style={{border:'none', background:'none', cursor:'pointer'}}>◀</button>
+                                    <button onClick={() => setNoticePage(p => Math.min(totalNoticePages, p+1))} style={{border:'none', background:'none', cursor:'pointer'}}>▶</button>
+                                    <button className={styles.writeNoticeBtn} style={{padding:'4px 10px'}} onClick={() => { setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); setShowWriteModal(true); }}>글쓰기</button>
+                                </div>
+                            </div>
+                            <div className={styles.tableCard} style={{flex: 1, display:'flex', flexDirection:'column'}}>
+                                <table className={styles.adminNoticeTable} style={{flex:1}}>
+                                    <thead><tr><th style={{width:'70px'}}>날짜</th><th>제목</th><th style={{width:'80px'}}>상태</th></tr></thead>
+                                    <tbody>
+                                        {paginatedNotices.length === 0 ? (
+                                            <tr><td colSpan="3" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>게시된 공지사항이 없습니다.</td></tr>
+                                        ) : (
+                                            paginatedNotices.map(n => (
+                                                <tr key={n.id} onClick={() => handleEditNotice(n, false)} style={{cursor:'pointer'}}>
+                                                    <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
+                                                    <td style={{fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'180px'}}>{n.title}</td>
+                                                    <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>{n.status}</span></td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.liveGridRight}>
+                        <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{height:'100%', margin:0, borderRadius: '12px'}}>
+                            <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '↩️ 전체화면 해제' : '⛶ 지도 전체화면'}</button>
+                            <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
+                            {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className={styles.filterBar} style={{marginBottom: 10, marginTop: 15}}>
+                    <input className={styles.filterInput} placeholder="현재 운행 기사명/차량/컨테이너 검색" value={liveSearchKeyword} onChange={e => setLiveSearchKeyword(e.target.value)} style={{flex: 1}} />
+                    <button className={styles.filterResetBtn} onClick={() => setLiveSearchKeyword('')}>초기화</button>
+                </div>
+                
                 <div className={styles.tableSection}>
-                    <h3>📋 현재 운행 현황 ({liveTrips.length}건) {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',background:'#10b98115',padding:'2px 8px',borderRadius:10,fontWeight:800,marginLeft:8}}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
+                    <h3>📋 현재 운행 현황 ({filteredLiveTrips.length}건) {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',background:'#10b98115',padding:'2px 8px',borderRadius:10,fontWeight:800,marginLeft:8}}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
                     <table className={styles.tripTable}>
                         <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
                         <tbody>
-                            {liveTrips.map(trip => (
-                                <tr key={trip.id} style={realtimeTarget === trip.id ? {background:'#10b98110'} : {}}>
+                            {filteredLiveTrips.map(trip => (
+                                <tr key={trip.id} onClick={() => handleZoomToLiveTrip(trip)} style={{ ...(realtimeTarget === trip.id ? {background:'#10b98110'} : {}), cursor: 'pointer' }}>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
@@ -859,7 +808,7 @@ export default function VehicleTrackingPage() {
                                         <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>{formatDateTime(trip.lastLocation?.timestamp || trip.lastLocation?.recorded_at)}</div>
                                     </td>
                                     <td style={{display:'flex',gap:4}}>
-                                        <button className={styles.filterSearchBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
+                                        <button className={styles.filterSearchBtn} onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }}>상세보기</button>
                                         {(trip.status === 'driving' || trip.status === 'paused') && (
                                             <button style={{padding:'4px 8px',fontSize:'0.7rem',background: realtimeTarget === trip.id ? '#ef4444' : '#10b981',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); realtimeTarget === trip.id ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{realtimeTarget === trip.id ? '추적중지' : '실시간'}</button>
                                         )}
@@ -1041,6 +990,68 @@ export default function VehicleTrackingPage() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* 공지 작성 모달 팝업 위치 변경 (하단으로 옮김) */}
+            {showWriteModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox} style={{maxWidth:'700px', width:'95%', position:'relative'}}>
+                        {alertMsg && (
+                            <div style={{position:'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', background: '#1e293b', color: '#fff', padding: '10px 20px', borderRadius: '8px', zIndex: 99999, fontWeight: '700', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}>
+                                {alertMsg}
+                            </div>
+                        )}
+                        <div className={styles.modalHeader}>
+                            <h3>{newNotice.isEmergency ? (newNotice.id ? '🚨 긴급알림 수정' : '🚨 긴급알림 발송') : (newNotice.id ? '📝 공지사항 수정' : '📝 새 공지사항 작성')}</h3>
+                            <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); }} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>✕</button>
+                        </div>
+                        <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12, maxHeight:'80vh', overflowY:'auto'}}>
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>{newNotice.isEmergency ? '긴급알림 제목' : '공지 제목'}</label>
+                                <input 
+                                    className={styles.modalInput} 
+                                    placeholder="제목을 입력하세요" 
+                                    value={newNotice.title}
+                                    onChange={e => setNewNotice({...newNotice, title: e.target.value})}
+                                />
+                            </div>
+                            
+                            {!newNotice.isEmergency && (
+                                <div>
+                                    <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
+                                    <select 
+                                        className={styles.modalSelect} 
+                                        value={newNotice.target}
+                                        onChange={e => setNewNotice({...newNotice, target: e.target.value})}
+                                    >
+                                        <option value="전체">전체 (모든 기사)</option>
+                                        <option value="계약차량">계약차량 (소속 운전원)</option>
+                                        <option value="미계약차량">미계약차량 (외부 기사)</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>{newNotice.isEmergency ? '긴급 메시지' : '공지 내용'}</label>
+                                <ReactQuill 
+                                    theme="snow" 
+                                    value={newNotice.content} 
+                                    onChange={val => setNewNotice({...newNotice, content: val})}
+                                    style={{height:250, marginBottom:40}}
+                                />
+                            </div>
+
+                            <div style={{display:'flex', gap:10, marginTop:10}}>
+                                <button className={styles.saveBtn} onClick={handleSaveNotice} style={{flex:1, background: newNotice.isEmergency ? '#ef4444' : '#2563eb', height: 44}}>
+                                    {newNotice.id ? '수정 완료' : (newNotice.isEmergency ? '긴급알림 발송' : '공지작성')}
+                                </button>
+                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); }} style={{height: 44, padding:'0 20px', borderRadius:8}}>닫기</button>
+                                {newNotice.id && (
+                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id, newNotice.isEmergency)} style={{height: 44, padding:'0 20px', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5', borderRadius:8, fontWeight:700}}>🗑️ 삭제</button>
+                                )}
                             </div>
                         </div>
                     </div>
