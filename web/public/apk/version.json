@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.36",
-  "versionCode": 180,
-  "changeLog": "v4.2.36 (Build 180)\n- [FIX] 긴급알림 3종 버그 수정 (복귀 시 폴링, HTML 태그 노출, 1시간 경과 알림 차단)\n- [FIX] 차량위치관제 상세보기/실시간 버튼 에러 수정",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=180"
+  "latestVersion": "v4.2.37",
+  "versionCode": 181,
+  "changeLog": "v4.2.37 (Build 181)\n- [FIX] 관제 대시보드 검색/초기화 버튼 높이 통일 (32px)\n- [FIX] 관제 테이블('마지막 수신위치') 상세 주소 전체 노출로 변경",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=181"
 }

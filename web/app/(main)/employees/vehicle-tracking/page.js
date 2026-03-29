@@ -785,8 +785,8 @@ export default function VehicleTrackingPage() {
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
-                                    <td className={styles.narrowCol} title={trip.lastLocation?.address || '주소 정보 없음'}>
-                                        <div style={{fontWeight: 600, color: '#1e293b', whiteSpace: 'normal', wordBreak: 'keep-all'}}>{trip.lastLocation?.address || '-'}</div>
+                                    <td title={trip.lastLocation?.address || '주소 정보 없음'} style={{whiteSpace:'normal', wordBreak:'keep-all', maxWidth:'220px'}}>
+                                        <div style={{fontWeight: 600, color: '#1e293b', fontSize:'0.8rem', lineHeight:'1.3'}}>{trip.lastLocation?.address || '-'}</div>
                                         <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>{formatDateTime(trip.lastLocation?.timestamp || trip.lastLocation?.recorded_at)}</div>
                                     </td>
                                     <td style={{display:'flex',gap:4}}>
@@ -819,8 +819,8 @@ export default function VehicleTrackingPage() {
                     <div className={styles.filterGroup}>
                         <input className={styles.filterInput} placeholder="이름/차량/컨테이너" value={filterKeyword} onChange={e => setFilterKeyword(e.target.value)} />
                     </div>
-                    <button className={styles.filterSearchBtn} style={{ height: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSearch}>🔍 검색</button>
-                    <button className={styles.filterResetBtn} style={{ height: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleReset}>초기화</button>
+                    <button className={styles.filterSearchBtn} onClick={handleSearch}>🔍 검색</button>
+                    <button className={styles.filterResetBtn} onClick={handleReset}>초기화</button>
 
                     {selectedIds.length > 0 && (
                         <button className={styles.bulkDeleteBtn} onClick={handleBulkDelete}>
@@ -878,7 +878,7 @@ export default function VehicleTrackingPage() {
                                         <div style={{color:'#1e293b'}}>{formatDateTime(trip.started_at)}</div>
                                         <div style={{color:'#64748b'}}>{formatDateTime(trip.completed_at)}</div>
                                     </td>
-                                    <td className={styles.narrowCol} title={trip.last_location_address || '주소 정보 없음'} style={{whiteSpace:'normal', wordBreak:'keep-all', fontSize:'0.8rem', lineHeight:'1.2'}}>
+                                    <td title={trip.last_location_address || '주소 정보 없음'} style={{whiteSpace:'normal', wordBreak:'keep-all', fontSize:'0.8rem', lineHeight:'1.3', color:'#374151', maxWidth:'220px'}}>
                                         {trip.last_location_address || '-'}
                                     </td>
                                     <td className={styles.actionCol}>
