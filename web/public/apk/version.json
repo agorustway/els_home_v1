@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.39",
-  "versionCode": 183,
-  "changeLog": "v4.2.39 (Build 183)\n- [HOTFIX] 앱 신규 설치 시 1시간 지난 긴급알림 안뜨도록 수정\n- [HOTFIX] 긴급알림 팝업 내 불필요한 HTML 태그 노출 방지 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=183"
+  "latestVersion": "v4.2.40",
+  "versionCode": 184,
+  "changeLog": "v4.2.40 (Build 184)\n- [HOTFIX] 업데이트 무한루프(버전 미동기화) 문제 해결 및 클린 빌드\n- [HOTFIX] 긴급알림 1시간 제한 및 HTML 제거 정상 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=184"
 }
