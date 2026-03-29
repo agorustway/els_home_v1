@@ -15,7 +15,7 @@ export default function DriverContactsEditPage() {
 
     const [formData, setFormData] = useState({
         branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
-        contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '',
+        contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '', photo_driver: '',
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -39,12 +39,13 @@ export default function DriverContactsEditPage() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.item) {
-                        const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, vehicle_number, vehicle_id } = data.item;
+                        const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, vehicle_number, vehicle_id, photo_driver } = data.item;
                         setFormData({ 
                             branch: branch || '', name, phone: formatPhone(phone), vehicle_type, chassis_type, photo_url, 
                             contract_type: contract_type || 'uncontracted', 
                             vehicle_number: vehicle_number || '', 
-                            vehicle_id: vehicle_id || '' 
+                            vehicle_id: vehicle_id || '',
+                            photo_driver: photo_driver || ''
                         });
                         setAttachments(additional_docs || []);
                     }
@@ -113,14 +114,17 @@ export default function DriverContactsEditPage() {
                 <form onSubmit={handleSubmit}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 30 }}>
                         <div style={{ position: 'relative', width: 100, height: 100, borderRadius: '50%', background: '#f8fafc', overflow: 'hidden', border: '2px solid #e1e7ef', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {formData.photo_url ? (
-                                <img src={formData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {formData.photo_driver || formData.photo_url ? (
+                                <img src={formData.photo_driver || formData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                                 <span style={{ fontSize: '2.5rem' }}>👤</span>
                             )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <label className={styles.label} style={{ marginBottom: 0 }}>프로필 사진</label>
+                            {formData.photo_driver && (
+                                <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, marginBottom: '4px' }}>📡 앱 업로드 사진 사용 중</div>
+                            )}
                             <input type="file" onChange={handlePhotoUpload} accept="image/*" style={{ fontSize: '0.85rem' }} />
                         </div>
                     </div>

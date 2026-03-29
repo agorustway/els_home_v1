@@ -68,8 +68,8 @@ export default function DriverContactsPage() {
                         {list.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/driver-contacts/' + item.id)}>
                                 <td style={{ textAlign: 'center' }}>
-                                    {item.photo_url ? (
-                                        <img src={item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '50%', border: '2px solid #f1f5f9' }} />
+                                    {item.photo_driver || item.photo_url ? (
+                                        <img src={item.photo_driver || item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '50%', border: '2px solid #f1f5f9' }} />
                                     ) : (
                                         <div style={{ width: 44, height: 44, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.2rem' }}>👤</div>
                                     )}
