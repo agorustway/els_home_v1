@@ -1,4 +1,13 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+
+## 📅 2026-03-29 (오후) - UI 전면 통일 + 기사 사진 S3 영구 저장 v4.2.22 (Build 166)
+### 주제: style.css 재작성, 입력창/버튼 높이 표준화, 프로필 사진 영구 저장
+#### 핵심 원인 분석 및 해결
+1. **[치명적 UI 불일치] 높이값 혼재 제거**: `log-filter input`(48px), `.field input`(44px), `.btn-perm`(미정의), 인라인 height(32px, 40px) 등 페이지마다 다른 높이값이 혼재. `style.css`를 전면 재작성하여 `--btn-h: 44px`, `--btn-sm-h: 32px` CSS 변수로 **전 페이지 단일 기준** 확립. 중복 선언(`log-filter` 2개) 및 인라인 스타일 완전 제거.
+2. **[기사 사진 미저장 버그] base64 → S3 URL 저장 전환**: 기존에 사진을 base64로 `State.profile`에 담아뒀다가 "정보 저장" 시 함께 전송하던 방식. 수MB 용량의 base64가 localStorage에 저장되지 않아 앱 재시작 시 사진이 사라지던 근본 원인. `pickProfilePhoto()` 개선으로 촬영 즉시 `/api/vehicle-tracking/driver-photos`(신규)를 통해 NAS MinIO에 업로드하고, 반환된 **URL만 localStorage에 저장**하는 방식으로 전환.
+3. **[신규 API] `/api/vehicle-tracking/driver-photos`**: base64 이미지를 S3에 업로드하고 프록시 URL 반환. 업로드 성공 시 `driver_contacts` 테이블의 `photo_driver/vehicle/chassis` 컬럼도 즉시 갱신 → **웹 운전원 정보 페이지와 사진 DB 공유** 완성.
+4. **v4.2.22 (Build 166) 배포**: APK 빌드 완료 및 배포.
+
 ## 📅 2026-03-29 (오후) - 실시간 속도 수집 및 관제 웹 UI 연동 v4.2.12
 ### 주제: GPS 데이터 고도화 (속도 정보 추가)
 #### 핵심 원인 분석 및 해결
