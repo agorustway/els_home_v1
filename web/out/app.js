@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.5');
+  console.log('ELS Driver App Loading... v4.2.6');
  
-  const APP_VERSION = 'v4.2.5';
-  const BUILD_CODE = 149; // Build 149 (v4.2.5)
+  const APP_VERSION = 'v4.2.6';
+  const BUILD_CODE = 150; // Build 150 (v4.2.6)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -252,9 +252,13 @@
 
   function saveProfile() {
     const name = document.getElementById('s-name').value.trim();
-    const phone = document.getElementById('s-phone').value.replace(/\D/g, '');
+    // [보완] -나 공백 및 글자 등 숫자 외의 모든 특수문자 완전히 제거 후 저장
+    const phone = document.getElementById('s-phone').value.replace(/[^0-9]/g, '');
     const vehicleNo = document.getElementById('s-vehicle').value.trim();
     const driverId  = document.getElementById('s-id').value.trim().toUpperCase();
+
+    // 화면 필드에 먼저 정상(숫자만) 형태 반영
+    document.getElementById('s-phone').value = phone;
 
     if (!name || !phone || !vehicleNo || !driverId) { 
       showToast('이름, 전화번호, 차량번호, 기사 ID를 모두 입력해 주세요.'); 
@@ -743,15 +747,13 @@
       stopGPS();
       Store.rm('activeTrip');
       
-      // 완전 초기화
-      clearTripData();
+      // 완전 초기화 (강제우회 true 필요)
+      clearTripData(true);
       
-      // 초기화 후, 화면 상단에 종료 일시 표시
-      const endTime = new Date();
-      const disp = `운송종료: ${formatDate(endTime)}`;
-      document.getElementById('trip-date-display').textContent = disp;
+      // 상태바(운송대기 등) 초기화
+      updateTripStatusLine();
       
-      showToast('운행이 종료되었습니다.');
+      showToast('운행이 안전하게 종료되었습니다.');
       
       // 유예된 업데이트가 있다면 종료 후 팝업
       if (State.pendingUpdate) {
