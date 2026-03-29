@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.35');
+  console.log('ELS Driver App Loading... v4.2.40');
 
-  const APP_VERSION = 'v4.2.35';
-  const BUILD_CODE = 179; // Build 179 (v4.2.35)
+  const APP_VERSION = 'v4.2.40';
+  const BUILD_CODE = 184; // Build 184 (v4.2.40)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2006,18 +2006,36 @@
       const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=true`);
       const data = await res.json();
       const items = data.items || [];
+      const now = Date.now();
       for (const item of items) {
         if (State.emergencyIds.has(item.id)) continue;
         State.emergencyIds.add(item.id);
         Store.set('emergencyIds', Array.from(State.emergencyIds));
+
+        // 1시간(3600000ms) 이전 알림은 팝업 안 띄움
+        const createdMs = new Date(item.created_at || now).getTime();
+        if (now - createdMs > 60 * 60 * 1000) {
+          continue; // 이미 읽음 처리만 하고 팝업은 패스
+        }
+
         showEmergencyPopup(item);
         sendNativeEmergencyNotif(item);
       }
     } catch (e) { /* 조용히 실패 */ }
   }
 
+  function stripHtml(html) {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*[\/]?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+  }
+
   function showEmergencyPopup(item) {
-    document.getElementById('emergency-body').textContent = item.message || item.content || '';
+    const rawVal = item.message || item.content || '';
+    document.getElementById('emergency-body').textContent = stripHtml(rawVal);
     document.getElementById('emergency-popup').classList.add('active');
   }
 
@@ -2026,7 +2044,8 @@
   function sendNativeEmergencyNotif(item) {
     const em = Emergency();
     if (em) {
-      em.showEmergencyAlert({ title: '⚠️ ELS 긴급알림', message: item.message || '', id: item.id }).catch(() => { });
+      const rawVal = item.message || item.content || '';
+      em.showEmergencyAlert({ title: '⚠️ ELS 긴급알림', message: stripHtml(rawVal), id: item.id }).catch(() => { });
     }
   }
 
