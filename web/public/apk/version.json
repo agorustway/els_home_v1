@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.14",
-  "versionCode": 158,
-  "changeLog": "v4.2.14 (Build 158)\n- [일지] 날짜/월별 조회 섹션 레이아웃 고정\n- [설정] 프로필 사진(운전자/차량/샤시) 상시 촬영 및 업로드 기능\n- [UI] 전체적인 버튼 및 입력창 높이 표준화 (44px)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=158"
+  "latestVersion": "v4.2.16",
+  "versionCode": 160,
+  "changeLog": "v4.2.16 (Build 160)\n- [설정] 카메라/갤러리 선택 메뉴 한글화 (사진 촬영 / 갤러리 선택)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=160"
 }
