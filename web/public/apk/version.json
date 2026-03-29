@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.24",
-  "versionCode": 168,
-  "changeLog": "v4.2.24 (Build 168)\n- [설정] 프로필 사진 확대/이동/삭제 가능한 전체화면 뷰어 기능 추가\n- [UI] 설정 메뉴 버튼 높이 44px 찌그러짐 수정 및 '기사 ID -> 차량 ID' 라벨 변경 (5:5 레이아웃)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=168"
+  "latestVersion": "v4.2.25",
+  "versionCode": 169,
+  "changeLog": "v4.2.25 (Build 169)\n- [일지] 일지 탭 상단 필터(날짜/월별) 높이 축소로 화면 쾌적화\n- [운행] 일시정지 버튼 텍스트 '운행 재개'로 변경, 일시정지 시 배터리 및 프라이버시 보호를 위해 GPS 수집 즉각 중지\n- [상태] 일시정지 시 운행 탭 및 위젯에 'GPS 수신중지'를 붉은색 텍스트로 표시",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=169"
 }

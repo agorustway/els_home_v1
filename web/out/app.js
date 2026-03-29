@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
  
-  const APP_VERSION = 'v4.2.24';
-  const BUILD_CODE = 168; // Build 168 (v4.2.24)
+  const APP_VERSION = 'v4.2.25';
+  const BUILD_CODE = 169; // Build 169 (v4.2.25)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -855,7 +855,15 @@
       });
       State.trip.status = action === 'pause' ? 'paused' : 'driving';
       setTripStatus(State.trip.status);
+      
+      if (State.trip.status === 'paused') {
+        stopGPS();
+      } else {
+        startGPS();
+      }
+      
       updateTripUI();
+      updateTripStatusLine(); // 즉시 UI 반영
       updateOverlayStatus();
     } catch (e) { showToast('상태 변경 실패'); }
   }
@@ -920,7 +928,7 @@
     document.getElementById('trip-start-row').classList.toggle('hidden', isActive);
     document.getElementById('trip-control-row').classList.toggle('hidden', !isActive);
     const pauseBtn = document.getElementById('btn-trip-pause');
-    if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '재개' : '일시정지';
+    if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '운행 재개' : '일시정지';
 
     if (State.trip.startTime) {
       // 텍스트만 업데이트하도록 변경하여 innerHTML 간섭 최소화
@@ -1114,7 +1122,10 @@
     let gpsColor = '#10b981'; // 초록 (수신중)
     let gpsText = `${Math.round(currentGpsInterval/1000)}s`;
     
-    if (isDown) {
+    if (State.trip.status === 'paused') {
+        gpsColor = '#ef4444'; // 빨강 (수신중지)
+        gpsText = '수신중지';
+    } else if (isDown) {
         gpsColor = '#ef4444'; // 빨강 (수신안됨)
         gpsText = '수신안됨';
     } else if (State.trip.isRealtime) {

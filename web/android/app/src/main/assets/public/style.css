@@ -238,10 +238,7 @@ input, textarea, select, button { font-family: inherit; }
 
 /* ─── 일지 탭 ─── */
 #tab-log { display: flex; flex-direction: column; }
-.log-filter {
-  display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-.log-filter input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+
 .log-list { flex: 1; overflow-y: auto; }
 .log-item {
   padding: 10px 14px; border-bottom: 1px solid var(--border);
@@ -255,17 +252,17 @@ input, textarea, select, button { font-family: inherit; }
 
 /* 일지 필터 */
 .log-filter {
-  display: flex !important; gap: 8px; padding: 10px 14px;
+  display: flex !important; gap: 6px; padding: 8px 12px;
   background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0;
   align-items: center;
 }
 .log-filter input {
-  flex: 1; min-width: 0; height: 48px;
-  padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  flex: 1; min-width: 0; height: 36px;
+  padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius);
   font-size: 13px; font-weight: 500;
 }
 .log-filter button {
-  width: 70px !important; height: 48px !important; flex-shrink: 0; font-size: 13px; padding: 0;
+  width: 60px !important; height: 36px !important; flex-shrink: 0; font-size: 13px; padding: 0;
 }
 
 /* 일지 상세 */
