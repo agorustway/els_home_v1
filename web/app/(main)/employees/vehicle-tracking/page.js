@@ -40,6 +40,7 @@ export default function VehicleTrackingPage() {
     const polylineRef = useRef(null);
     const infoWindowRef = useRef(null);
     const intervalRef = useRef(null);
+    const realtimeIntervalRef = useRef(null);
     const realtimeTimeoutRef = useRef(null);
     const [realtimeTarget, setRealtimeTarget] = useState(null); // 실시간 추적 대상 trip ID
     const [realtimeCountdown, setRealtimeCountdown] = useState(0); // 남은 초
@@ -245,6 +246,15 @@ export default function VehicleTrackingPage() {
             });
         });
     }, []);
+
+    // 단건 주소 수동 조회 (상세보기 위치 목록의 "주소 확인" 버튼용)
+    const fetchMissingAddress = useCallback(async (loc, index) => {
+        if (!window.naver?.maps?.Service) return;
+        const addr = await fetchAddressForLocation(loc.lat, loc.lng);
+        if (addr) {
+            setSelectedTripLocations(prev => prev.map((l, idx) => idx === index ? { ...l, address: addr } : l));
+        }
+    }, [fetchAddressForLocation]);
 
     // [중복 제거] 실시간/기록 탭 통합 주소 배치 로더
     const backfillAddresses = useCallback(async (targetList, setter) => {

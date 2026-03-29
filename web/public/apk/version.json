@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.35",
-  "versionCode": 179,
-  "changeLog": "v4.2.35 (Build 179)\n- [HOTFIX] 안전운임 엑셀 다운로드 오류 수정 (구간조회 ReferenceError 해결)\n- [FIX] 버전 정합성 불일치 문제 해결 및 클린 빌드 재시행",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=179"
+  "latestVersion": "v4.2.36",
+  "versionCode": 180,
+  "changeLog": "v4.2.36 (Build 180)\n- [FIX] 긴급알림 3종 버그 수정 (복귀 시 폴링, HTML 태그 노출, 1시간 경과 알림 차단)\n- [FIX] 차량위치관제 상세보기/실시간 버튼 에러 수정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=180"
 }

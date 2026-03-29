@@ -1,19 +1,21 @@
-# ELS MISSION CONTROL v4.2.35
-> 마지막 업데이트: 2026-03-29 17:37
+# ELS MISSION CONTROL v4.2.36
+> 마지막 업데이트: 2026-03-29 18:22
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.35` (Build 179)
+- **현재 버전**: `v4.2.36` (Build 180) — ⚠️ APK 빌드 필요
 - **최근 업데이트**: 2026-03-29
-- **상태**: 🟢 버전 정합성 문제 완벽 재점검 및 엑셀 다운로드 핫픽스 포함 클린 빌드 배포
+- **상태**: 🟡 app.js 수정 완료, Android Studio 클린빌드 후 APK 배포 필요
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.35 배포 완료)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.36으로 갱신 필요)
 
 ### 🎯 주요 마일스톤
+- [ ] **v4.2.36**: [FIX] 긴급알림 3종 버그 수정 + 차량위치관제 상세보기 먹통 해결
+  - [FIX] 오버레이→앱 복귀 시 긴급알림 미수신 해결 (appStateChange에서 pollEmergency 즉시 호출)
+  - [FIX] 긴급알림 팝업에 HTML 태그 노출 해결 (stripHtml 함수 추가)
+  - [FIX] 앱 설치 직후 1시간 이상 지난 긴급공지 팝업 방지 (created_at 기준)
+  - [FIX] `realtimeIntervalRef` useRef 미선언 → 런타임 에러 수정 (웹)
+  - [FIX] `fetchMissingAddress` 미정의 → React 렌더 크래시 수정 (웹)
 - [x] **v4.2.35**: [CORE] 드라이버 앱 v4.2.35 (Build 179) 클린 빌드 및 배포 완료 (한글 깨짐 복구)
-- [FIX] 관제 페이지 "상세보기" 로딩 UI 추가 및 주소 조회 로직 최적화 (중복 제거)
-- [FIX] 드라이버 앱 권한 엔진(Android 16 Fallback) 및 긴급 알린 HTML 스트립 로직 복구
-- [FIX] 안전운임 엑셀 다운로드 (dieselPrice 참조 오류) 완벽 수정
-- [TODO] 운원원 정보 사진 확대/다운로드 UI 및 404 에러 최종 점검
 - [x] **v4.2.34**: 안전운임 엑셀 다운로드(dieselPrice 참조 오류) 수정 및 클린 빌드 적용
 - [x] **v4.2.33**: 일지 상세 페이지 내 '번호/상태', '제원/점검' 항목 통합 및 입력창 너비 수정, 컨테이너 번호 유효성 검사(ISO 6346) UI 누락 수정
 - [x] **v4.2.32**: GPS 일시정지(`paused`) 및 종료 시 비동기 전송 시 발생하는 필터링 버그 수정 및 ID 보존 로직 강화
