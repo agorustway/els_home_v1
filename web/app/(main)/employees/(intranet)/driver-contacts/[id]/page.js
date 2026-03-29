@@ -79,24 +79,30 @@ export default function DriverContactsDetailPage() {
             <div className={styles.card}>
                 <div style={{ display: 'flex', gap: '40px', marginBottom: '30px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div style={{ width: 140, height: 140, borderRadius: '20px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 140, height: 140, borderRadius: '20px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }} title="클릭하여 원본 사진 보기 및 다운로드">
                             {item.photo_driver || item.photo_url ? (
-                                <img src={getSafeUrl(item.photo_driver || item.photo_url)} alt="운전원" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <a href={getSafeUrl(item.photo_driver || item.photo_url)} target="_blank" rel="noopener noreferrer" style={{width: '100%', height: '100%', display: 'block'}}>
+                                    <img src={getSafeUrl(item.photo_driver || item.photo_url)} alt="운전원" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
+                                </a>
                             ) : (
                                 <span style={{ fontSize: '3rem' }}>👤</span>
                             )}
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="클릭하여 원본 사진 보기">
                                 {item.photo_vehicle ? (
-                                    <img src={getSafeUrl(item.photo_vehicle)} alt="차량" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <a href={getSafeUrl(item.photo_vehicle)} target="_blank" rel="noopener noreferrer" style={{width: '100%', height: '100%', display: 'block'}}>
+                                        <img src={getSafeUrl(item.photo_vehicle)} alt="차량" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
+                                    </a>
                                 ) : (
                                     <span style={{ fontSize: '1.2rem', color: '#cbd5e1' }}>🚛</span>
                                 )}
                             </div>
-                            <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="클릭하여 원본 사진 보기">
                                 {item.photo_chassis ? (
-                                    <img src={getSafeUrl(item.photo_chassis)} alt="샤시" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <a href={getSafeUrl(item.photo_chassis)} target="_blank" rel="noopener noreferrer" style={{width: '100%', height: '100%', display: 'block'}}>
+                                        <img src={getSafeUrl(item.photo_chassis)} alt="샤시" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
+                                    </a>
                                 ) : (
                                     <span style={{ fontSize: '1.2rem', color: '#cbd5e1' }}>🚚</span>
                                 )}

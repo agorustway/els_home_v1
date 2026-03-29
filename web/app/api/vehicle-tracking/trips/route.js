@@ -124,12 +124,19 @@ export async function GET(request) {
             // 각 트립의 마지막 위치 주소 가져오기
             const tripIds = data.map(t => t.id);
             if (tripIds.length > 0) {
+                // RPC 대신 일반 쿼리로 최신 데이터 가져오기 (메모리에서 최신값 추출)
                 const { data: locData, error: locError } = await supabase
-                    .rpc('get_latest_vehicle_locations', { trip_ids: tripIds });
+                    .from('vehicle_locations')
+                    .select('trip_id, lat, lng, address, recorded_at')
+                    .in('trip_id', tripIds)
+                    .order('recorded_at', { ascending: false });
                 
                 if (!locError && locData) {
                     const locMap = {};
-                    locData.forEach(l => { locMap[l.trip_id] = l; });
+                    // 내림차순 정렬이므로 가장 먼저 만나는 것이 최신
+                    locData.forEach(l => {
+                        if (!locMap[l.trip_id]) locMap[l.trip_id] = l;
+                    });
                     data.forEach(t => {
                         t.lastLocation = locMap[t.id] || null;
                         t.last_location_address = locMap[t.id]?.address || null;
