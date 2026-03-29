@@ -789,10 +789,10 @@ export default function VehicleTrackingPage() {
                                         <div style={{fontWeight: 600, color: '#1e293b', fontSize:'0.8rem', lineHeight:'1.3'}}>{trip.lastLocation?.address || '-'}</div>
                                         <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>{formatDateTime(trip.lastLocation?.timestamp || trip.lastLocation?.recorded_at)}</div>
                                     </td>
-                                    <td style={{display:'flex',gap:4}}>
-                                        <button className={styles.filterSearchBtn} onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }}>상세보기</button>
+                                    <td className={styles.actionCol}>
+                                        <button className={styles.viewIconBtn} onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }}>상세보기</button>
                                         {(trip.status === 'driving' || trip.status === 'paused') && (
-                                            <button style={{padding:'4px 8px',fontSize:'0.7rem',background: String(realtimeTarget) === String(trip.id) ? '#ef4444' : '#10b981',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); String(realtimeTarget) === String(trip.id) ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{String(realtimeTarget) === String(trip.id) ? '추적중지' : '실시간'}</button>
+                                            <button className={`${styles.trackingBtn} ${String(realtimeTarget) === String(trip.id) ? styles.trackingStop : ''}`} onClick={(e) => { e.stopPropagation(); String(realtimeTarget) === String(trip.id) ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{String(realtimeTarget) === String(trip.id) ? '추적중지' : '실시간'}</button>
                                         )}
                                     </td>
                                 </tr>

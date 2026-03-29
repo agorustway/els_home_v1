@@ -354,160 +354,409 @@
     font-size: 0.78rem;
 }
 
-/* 모바일 반응형 최적화 (Galaxy S24 기준) */
+/* ═══ 모바일 최적화 (Galaxy S25 기준 390px) ═══ */
 @media (max-width: 768px) {
+    /* ── 기본 페이지 ── */
     .trackingPage {
-        padding: 8px;
+        padding: 6px;
         background: #f8fafc;
         min-height: 100vh;
+        overflow-x: hidden;
     }
 
+    /* ── 타이틀 바 ── */
+    .titleBar {
+        margin-bottom: 8px;
+        padding: 4px 2px;
+        gap: 6px;
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+
+    .titleBar h2 {
+        font-size: 1rem;
+        gap: 5px;
+        flex-shrink: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .titleBar h2 span { font-size: 1rem; }
+
+    .titleBtns { gap: 5px; flex-shrink: 0; }
+
+    .refreshBtn,
+    .driverLinkBtn {
+        height: 32px;
+        padding: 0 8px;
+        font-size: 0.72rem;
+        gap: 3px;
+    }
+
+    /* ── 탭 ── */
+    .tabNav { margin-bottom: 8px; }
+
+    .tab {
+        padding: 10px 14px;
+        font-size: 0.8rem;
+        flex: 1;
+        text-align: center;
+    }
+
+    /* ── 통계 카드 (3열 유지, 압축) ── */
+    .missionDashboard {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .statCard {
+        padding: 10px 8px;
+        border-radius: 10px;
+    }
+
+    .statLabel {
+        font-size: 0.65rem;
+        gap: 3px;
+        margin-bottom: 3px;
+    }
+
+    .statValue { font-size: 1.5rem; }
+    .statUnit { font-size: 0.78rem; }
+
+    /* ── 지도/공지 그리드 ── */
     .liveGrid {
         display: flex;
-        flex-direction: column-reverse; /* 모바일: 지도가 위, 공지가 아래 */
+        flex-direction: column;
         height: auto;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .liveGridRight {
+        height: 220px;
+        order: 1;
     }
 
     .liveGridLeft {
         height: auto;
-    }
-
-    .liveGridRight {
-        height: 300px;
+        order: 2;
     }
 
     .mapContainer {
         height: 100%;
-        margin: 0 -8px;
-        width: calc(100% + 16px);
+        margin: 0 -6px;
+        width: calc(100% + 12px);
         border-radius: 0;
         border-left: none;
         border-right: none;
     }
 
-    .titleBar h2 {
-        font-size: 1.25rem;
+    .fullscreenBtn {
+        padding: 5px 9px;
+        font-size: 0.72rem;
     }
 
-    .missionDashboard {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-    
-    .missionDashboard .statCard:last-child {
-        grid-column: span 2;
+    /* 공지/긴급 섹션 */
+    .noticeSection { margin-bottom: 8px; }
+    .noticeHeader { margin-bottom: 6px; }
+    .noticeHeader h3 { font-size: 0.88rem; }
+
+    .adminNoticeTable th,
+    .adminNoticeTable td {
+        padding: 7px 10px;
+        font-size: 0.78rem;
     }
 
-    .statCard {
-        padding: 1.2rem;
-        border-radius: 1rem;
+    /* ── 실시간 검색 바 ── */
+    .filterBar {
+        gap: 6px;
+        padding: 8px 10px;
     }
 
-    .statValue {
-        font-size: 1.8rem;
+    /* ── 기록탭 필터 그룹 ── */
+    .filterGroup {
+        width: 100%;
+        height: auto;
+        min-height: 36px;
+        padding: 4px 10px;
+        flex-wrap: wrap;
     }
 
-    /* 모바일 테이블 -> 카드 뷰 전환 전략 */
-    .tripTable thead {
-        display: none; /* 헤더 숨김 */
+    .filterGroup select,
+    .filterGroup input[type="date"] {
+        flex: 1;
+        min-width: 90px;
+        height: 28px;
+        font-size: 0.8rem;
     }
 
-    .tripTable, .tripTable tbody, .tripTable tr, .tripTable td {
+    .filterInput {
+        width: 100%;
+        height: 36px;
+        font-size: 0.85rem;
+    }
+
+    .filterSearchBtn {
+        width: 100%;
+        height: 40px;
+        font-size: 0.87rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .filterResetBtn {
+        width: 100%;
+        height: 40px;
+        font-size: 0.87rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bulkDeleteBtn { height: 36px; font-size: 0.78rem; }
+
+    /* 테이블 헤더 영역 */
+    .tableHeaderInfo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .tableHeaderInfo > div:last-child {
+        width: 100%;
+        flex-direction: column;
+        gap: 6px;
+        display: flex;
+    }
+
+    .tableHeaderInfo > div:last-child button {
+        width: 100% !important;
+        height: 40px !important;
+        font-size: 0.8rem !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ── 운행 목록 테이블 → 카드 뷰 ── */
+    .tripTable thead { display: none; }
+
+    .tripTable,
+    .tripTable tbody,
+    .tripTable tr,
+    .tripTable td {
         display: block;
         width: 100%;
     }
 
-    .tripTable { margin-top: 10px; }
-    
+    .tripTable { margin-top: 6px; }
+
     .tripTable tr {
         background: #fff;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         border-radius: 12px;
-        padding: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        border: 1px solid #f1f5f9;
+        padding: 12px 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+        border: 1px solid #e8edf2;
         position: relative;
     }
 
     .tripTable td {
-        padding: 4px 0;
+        padding: 3px 0;
         border: none;
         white-space: normal;
-        font-size: 0.85rem;
+        font-size: 0.83rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 26px;
+    }
+
+    /* 체크박스 — 우측 상단 고정 */
+    .tripTable td:first-child {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        width: auto;
+        min-height: auto;
+        padding: 0;
+    }
+
+    /* 상태 뱃지 */
+    .tripTable td:nth-child(2) {
+        margin-bottom: 5px;
+        padding-right: 28px;
+    }
+
+    /* 기사명 */
+    .tripTable td:nth-child(3) {
+        font-size: 1rem;
+        color: #1e293b;
+        font-weight: 800;
+    }
+
+    /* 차량/컨테이너 */
+    .tripTable td:nth-child(4) {
+        font-size: 0.8rem;
+        color: #475569;
+    }
+
+    /* 점검여부 */
+    .tripTable td:nth-child(5) { font-size: 0.88rem; letter-spacing: 1px; }
+
+    /* 사진 */
+    .tripTable td:nth-child(6) { font-size: 0.83rem; }
+
+    /* 날짜 */
+    .tripTable td:nth-child(7) {
+        font-size: 0.78rem;
+        color: #64748b;
+        padding-top: 8px;
+        margin-top: 6px;
+        border-top: 1px dashed #e2e8f0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    /* 최종위치 */
+    .tripTable td:nth-child(8) {
+        font-size: 0.8rem !important;
+        color: #374151 !important;
+        max-width: 100% !important;
+    }
+
+    /* 관리 버튼 */
+    .tripTable td:last-child {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        gap: 8px;
+    }
+
+    .viewIconBtn,
+    .deleteIconBtn,
+    .trackingBtn {
+        flex: 1;
+        height: 38px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .trackingBtn { padding: 0; }
+    .trackingStop { background: #ef4444 !important; }
+
+    /* ── 상세 패널: 하단 슬라이드업 풀스크린 ── */
+    .detailOverlay {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 90dvh;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.20);
+        animation: slideUpPanel 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .detailHeader {
+        padding: 12px 16px 14px;
+        border-radius: 20px 20px 0 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .detailHeader::before {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.35);
+        border-radius: 2px;
+        margin: 0 auto;
+        flex-shrink: 0;
+    }
+
+    .detailHeader > div,
+    .detailHeader > * {
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    /* 특정 컬럼 스타일강화 */
-    .tripTable td:first-child { margin-bottom: 8px; } /* 상태 뱃지 */
-    
-    .tripTable td:nth-child(2) { /* 기사명 */
-        font-size: 1.05rem;
-        color: #1e293b;
-        font-weight: 800;
-    }
-    
-    .tripTable td:nth-child(2)::before { content: "👤 "; opacity: 0.6; }
+    .detailHeader h3 { font-size: 0.9rem; margin: 0; }
+    .closeBtn { width: 34px; height: 34px; }
 
-    .tripTable td:nth-child(3)::before { content: "🚛 "; opacity: 0.6; } /* 차량번호 */
-
-    .tripTable td:nth-child(4)::before { content: "📦 "; opacity: 0.6; } /* 컨테이너 */
-    
-    .tripTable td:nth-child(5) { /* 마지막 수신위치 */
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px dashed #e2e8f0;
-        color: #64748b;
-        font-size: 0.8rem;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-        line-height: 1.4;
+    .detailContent {
+        padding: 14px;
+        gap: 12px;
     }
 
-    .tripTable td:nth-child(5)::before { content: "📍 마지막 위치:"; font-size: 0.75rem; font-weight: 800; color: #94a3b8; }
-    
-    .tripTable td:last-child { /* 관리 버튼 */
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid #f1f5f9;
-        display: flex;
+    .detailSection {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .sectionTitle { font-size: 0.76rem; margin-bottom: 8px; }
+
+    .detailInfoGrid {
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
-    
-    .tripTable td:last-child button {
-        flex: 1;
-        height: 40px;
-        font-size: 0.85rem;
+
+    .infoLabel { font-size: 0.68rem; }
+    .infoValue { font-size: 0.84rem; }
+
+    .photoGallery {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
     }
 
-    /* 필터 바 모바일 */
-    .filterBar {
-        gap: 10px;
-    }
-    
-    .filterGroup {
-        width: 100%;
-    }
-    
-    .filterGroup select, .filterGroup input {
-        flex: 1;
-    }
-    
-    .filterSearchBtn {
-        width: 100%;
-        height: 44px;
-        font-size: 0.9rem;
+    .locationList { max-height: 240px; }
+    .locationItem { padding: 8px 10px; }
+    .locTime { font-size: 0.67rem; }
+    .locAddress { font-size: 0.8rem; }
+
+    /* ── 모달 ── */
+    .modalBox {
+        width: 96%;
+        max-width: none;
     }
 
-    /* 상세 패널 모바일 */
-    .detailOverlay {
-        width: 100%;
+    .modalBody { padding: 14px; }
+
+    /* ── 기타 ── */
+    .narrowCol {
+        max-width: 100% !important;
+        white-space: normal !important;
     }
+
 }
+
+.trackingBtn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    background: #10b981;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.trackingBtn:hover { background: #059669; }
+.trackingStop { background: #ef4444; }
+.trackingStop:hover { background: #dc2626; }
 
 /* 탭 네비게이션 */
 .tabNav {

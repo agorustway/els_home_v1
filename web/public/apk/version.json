@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.37",
-  "versionCode": 181,
-  "changeLog": "v4.2.37 (Build 181)\n- [FIX] 관제 대시보드 검색/초기화 버튼 높이 통일 (32px)\n- [FIX] 관제 테이블('마지막 수신위치') 상세 주소 전체 노출로 변경",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=181"
+  "latestVersion": "v4.2.38",
+  "versionCode": 182,
+  "changeLog": "v4.2.38 (Build 182)\n- [UI] 차량위치관제 갤럭시 S25 모바일 최적화 (카드 UI, 하단 슬라이드업)\n- [FIX] 누락된 '실시간' 추적 버튼 복구 및 레이아웃 조정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=182"
 }
