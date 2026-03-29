@@ -224,6 +224,47 @@ export default function VehicleTrackingPage() {
         map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
     };
 
+    // [공통] 주소 역지오코딩 헬퍼 (캐시 적용)
+    const fetchAddressForLocation = useCallback(async (lat, lng) => {
+        if (!window.naver?.maps?.Service) return null;
+        const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        if (ADDRESS_CACHE.has(cacheKey)) return ADDRESS_CACHE.get(cacheKey);
+
+        return new Promise((resolve) => {
+            naver.maps.Service.reverseGeocode({
+                coords: new naver.maps.LatLng(lat, lng),
+                orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(',')
+            }, (status, response) => {
+                if (status === naver.maps.Service.Status.OK) {
+                    const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+                    ADDRESS_CACHE.set(cacheKey, addr);
+                    resolve(addr);
+                } else {
+                    resolve(null);
+                }
+            });
+        });
+    }, []);
+
+    // [중복 제거] 실시간/기록 탭 통합 주소 배치 로더
+    const backfillAddresses = useCallback(async (targetList, setter) => {
+        if (!mapReady || !targetList?.length || !window.naver?.maps?.Service) return;
+        
+        const missing = targetList.filter(t => t.lastLocation && !t.lastLocation.address && !t.last_location_address);
+        if (missing.length === 0) return;
+
+        for (const trip of missing) {
+            const loc = trip.lastLocation;
+            if (!loc) continue;
+            
+            const addr = await fetchAddressForLocation(loc.lat, loc.lng);
+            if (addr) {
+                setter(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: addr }, last_location_address: addr } : t));
+            }
+            await new Promise(r => setTimeout(r, 200)); // API Throttle 방지
+        }
+    }, [mapReady, fetchAddressForLocation]);
+
     // [신규] 실시간 추적 모드 (3초 간격, 최대 2분)
     const startRealtimeTracking = useCallback((tripId) => {
         // 기존 실시간 추적 정리
@@ -361,38 +402,15 @@ export default function VehicleTrackingPage() {
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [fetchLiveTrips, fetchNotices]);
 
-    // [Fix] 실시간 운행차량 주소 자동 전체 로드 통합 및 성능 최적화
+    // [최적화] 실시간 운행차량 주소 자동 전체 로드
     useEffect(() => {
-        if (!mapReady || !liveTrips || liveTrips.length === 0 || !window.naver?.maps?.Service) return;
-        
-        const fetchAllMissing = async () => {
-            const tripsWithLoc = liveTrips.filter(t => t.lastLocation && !t.lastLocation.address);
-            if (tripsWithLoc.length === 0) return;
-            
-            for (const trip of tripsWithLoc) {
-                const loc = trip.lastLocation;
-                const cacheKey = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
-                
-                if (ADDRESS_CACHE.has(cacheKey)) {
-                    setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: ADDRESS_CACHE.get(cacheKey) } } : t));
-                    continue;
-                }
+        if (activeTab === 'live') backfillAddresses(liveTrips, setLiveTrips);
+    }, [liveTrips.length, activeTab, backfillAddresses]);
 
-                window.naver.maps.Service.reverseGeocode({
-                    coords: new window.naver.maps.LatLng(loc.lat, loc.lng),
-                    orders: [window.naver.maps.Service.OrderType.ADDR, window.naver.maps.Service.OrderType.ROAD_ADDR].join(',')
-                }, (status, response) => {
-                    if (status === window.naver.maps.Service.Status.OK) {
-                        const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-                        ADDRESS_CACHE.set(cacheKey, addr);
-                        setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: addr } } : t));
-                    }
-                });
-                await new Promise(r => setTimeout(r, 200)); 
-            }
-        };
-        fetchAllMissing();
-    }, [liveTrips.length, mapReady]);
+    // [최적화] 운행기록 탭 주소 자동 로드
+    useEffect(() => {
+        if (activeTab === 'records') backfillAddresses(records, setRecords);
+    }, [records.length, activeTab, backfillAddresses]);
 
     // 실시간 마커 업데이트
     useEffect(() => {
@@ -829,7 +847,7 @@ export default function VehicleTrackingPage() {
                                     <td style={{display:'flex',gap:4}}>
                                         <button className={styles.filterSearchBtn} onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }}>상세보기</button>
                                         {(trip.status === 'driving' || trip.status === 'paused') && (
-                                            <button style={{padding:'4px 8px',fontSize:'0.7rem',background: realtimeTarget === trip.id ? '#ef4444' : '#10b981',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); realtimeTarget === trip.id ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{realtimeTarget === trip.id ? '추적중지' : '실시간'}</button>
+                                            <button style={{padding:'4px 8px',fontSize:'0.7rem',background: String(realtimeTarget) === String(trip.id) ? '#ef4444' : '#10b981',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); String(realtimeTarget) === String(trip.id) ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{String(realtimeTarget) === String(trip.id) ? '추적중지' : '실시간'}</button>
                                         )}
                                     </td>
                                 </tr>
@@ -919,7 +937,7 @@ export default function VehicleTrackingPage() {
                                         {trip.last_location_address || '-'}
                                     </td>
                                     <td className={styles.actionCol}>
-                                        <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>보기</button>
+                                        <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
                                         <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>🗑️</button>
                                     </td>
                                 </tr>
@@ -1097,6 +1115,12 @@ export default function VehicleTrackingPage() {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+            {isDetailLoading && (
+                <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(255,255,255,0.7)', zIndex:9999, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+                    <div className={styles.loading}><div className={styles.spinner}></div></div>
+                    <div style={{marginTop:10, fontWeight:700, color:'#1e293b'}}>데이터를 불러오는 중입니다...</div>
                 </div>
             )}
         </div>
