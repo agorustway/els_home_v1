@@ -13,7 +13,7 @@ const navLinks = [
         label: '회사소개',
         href: '/intro',
         children: [
-            { href: '/intro', label: '회사 개요' },
+            { href: '/intro', label: '회사개요' },
             { href: '/vision', label: '비전' },
             { href: '/esg', label: 'ESG' },
             { href: '/team', label: '조직도' },
@@ -43,9 +43,9 @@ const navLinks = [
             { href: '/employees/weather', label: '인트라넷 홈' },
             { type: 'divider' },
             { label: '자동화시스템', type: 'label' },
-            { href: '/employees/vehicle-tracking', label: '차량위치관제' },
             { href: '/employees/safe-freight', label: '안전운임 조회' },
             { href: '/employees/container-history', label: '컨테이너 이력조회' },
+            { href: '/employees/vehicle-tracking', label: '차량위치관제' },
             { href: '/employees/archive', label: '자료실 (NAS)' },
             { type: 'divider' },
             {

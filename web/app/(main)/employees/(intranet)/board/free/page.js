@@ -82,14 +82,14 @@ export default function FreeBoardPage() {
 
                     <div className={styles.card}>
                         <h2 className={styles.sectionTitle}>명예의 전당</h2>
-                        <div className={styles.honorList}>
+                        <div className={styles.honorList} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {topContributors.length > 0 ? topContributors.map(([name, count], i) => (
-                                <div key={i} className={styles.honorItem}>
-                                    <span className={styles.honorRank}>{i + 1}</span>
-                                    <span>{name}</span>
-                                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8' }}>{count}개</span>
+                                <div key={i} className={styles.honorItem} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem' }}>
+                                    <span className={styles.honorRank} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#e2e8f0', color: i <= 2 ? '#fff' : '#64748b', borderRadius: '50%', fontSize: '0.75rem', fontWeight: 800 }}>{i + 1}</span>
+                                    <span style={{ fontWeight: 700, color: '#1e293b' }}>{name}</span>
+                                    <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#475569', fontWeight: 600, background: '#f1f5f9', padding: '2px 8px', borderRadius: '12px' }}>{count}개</span>
                                 </div>
-                            )) : <div className={styles.emptyHistory}>활동 내역 없음</div>}
+                            )) : <div className={styles.emptyHistory} style={{fontSize:'0.85rem', color:'#94a3b8', textAlign:'center', padding:'10px'}}>활동 내역 없음</div>}
                         </div>
                     </div>
                 </aside>

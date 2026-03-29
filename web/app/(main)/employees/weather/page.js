@@ -176,13 +176,13 @@ export default function WeatherPage() {
         let color = '#3b82f6'; // Blue
 
         if (type === 'pm10') {
-            if (value > 150) { status = '매우 나쁨'; color = '#ef4444'; }
-            else if (value > 80) { status = '나쁨'; color = '#f59e0b'; }
-            else if (value > 30) { status = '보통'; color = '#10b981'; }
+            if (value > 150) { status = '매우 나쁨'; color = '#b91c1c'; }
+            else if (value > 80) { status = '나쁨'; color = '#ef4444'; }
+            else if (value > 30) { status = '보통'; color = '#eab308'; }
         } else {
-            if (value > 75) { status = '매우 나쁨'; color = '#ef4444'; }
-            else if (value > 35) { status = '나쁨'; color = '#f59e0b'; }
-            else if (value > 15) { status = '보통'; color = '#10b981'; }
+            if (value > 75) { status = '매우 나쁨'; color = '#b91c1c'; }
+            else if (value > 35) { status = '나쁨'; color = '#ef4444'; }
+            else if (value > 15) { status = '보통'; color = '#eab308'; }
         }
         return { label: status, color };
     };
@@ -473,9 +473,9 @@ export default function WeatherPage() {
                                 // API 체감온도가 있으면 사용, 없으면 기존대로 계산(폴백)
                                 const feelsLike = w.apparent_temperature != null ? w.apparent_temperature : (Number(w.temp) - 1.5).toFixed(1);
                                 const dustOptions = [
-                                    { label: '좋음', color: '#10b981', val: '25' },
-                                    { label: '보통', color: '#f59e0b', val: '45' },
-                                    { label: '좋음', color: '#10b981', val: '18' },
+                                    { label: '좋음', color: '#3b82f6', val: '25' },
+                                    { label: '보통', color: '#eab308', val: '45' },
+                                    { label: '좋음', color: '#3b82f6', val: '18' },
                                     { label: '나쁨', color: '#ef4444', val: '85' }
                                 ];
                                 const dust = dustOptions[Math.floor(Math.random() * dustOptions.length)];
