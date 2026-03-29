@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.10');
+  console.log('ELS Driver App Loading... v4.2.12');
  
-  const APP_VERSION = 'v4.2.10';
-  const BUILD_CODE = 154; // Build 154 (v4.2.10)
+  const APP_VERSION = 'v4.2.12';
+  const BUILD_CODE = 156; // Build 156 (v4.2.12)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -280,6 +280,12 @@
     document.getElementById('s-vehicle').value = State.profile.vehicleNo;
     document.getElementById('s-id').value      = State.profile.driverId;
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
+
+    // 프로필 사진 표시 (데이터가 있을 때만)
+    const pSection = document.getElementById('settings-profile-photos');
+    if (pSection && (State.profile.name || State.profile.phone)) {
+        pSection.style.display = 'flex';
+    }
   }
 
   function saveProfile() {
@@ -333,11 +339,36 @@
         document.getElementById('s-name').value    = d.name || '';
         document.getElementById('s-vehicle').value = d.vehicle_number || d.business_number || '';
         document.getElementById('s-id').value      = d.vehicle_id || d.driver_id || '';
+        
+        // 프로필 사진 업데이트
+        const pSection = document.getElementById('settings-profile-photos');
+        if (pSection) {
+          pSection.style.display = 'flex';
+          updateProfilePhoto('p-photo-driver', d.photo_driver, '운');
+          updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차');
+          updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤');
+        }
+
         showToast('기사 정보를 불러왔습니다.');
       } else {
         showToast('해당 전화번호로 등록된 기사 정보가 없습니다.');
       }
     } catch (e) { showToast('조회 실패: ' + e.message); }
+  }
+
+  function updateProfilePhoto(id, url, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (url) {
+      const fullUrl = url.startsWith('http') || url.startsWith('data:') ? url : BASE_URL + (url.startsWith('/') ? '' : '/') + url;
+      el.style.backgroundImage = `url('${fullUrl}')`;
+      el.textContent = '';
+      el.style.borderStyle = 'solid';
+    } else {
+      el.style.backgroundImage = 'none';
+      el.textContent = fallback;
+      el.style.borderStyle = 'dashed';
+    }
   }
 
   // ─── 권한 설정 ────────────────────────────────────────────────
@@ -1610,6 +1641,9 @@
       document.getElementById('log-edit-seal').value      = data.seal_number || '';
       document.getElementById('log-edit-memo').value      = data.special_notes || '';
 
+      // 운행 전 점검 항목(5개) 확인 로직
+      const isAllChecked = !!(data.chk_brake && data.chk_tire && data.chk_lamp && data.chk_cargo && data.chk_driver);
+
       // 기본 정보 (시작/종료 일시 강조) [TDD: ended_at || completed_at fallback]
       const endedAt = data.ended_at || data.completed_at || null;
       document.getElementById('log-detail-content').innerHTML = `
@@ -1619,6 +1653,7 @@
           ${endedAt ? `<div class="log-detail-info-row"><span class="log-detail-info-label">운행 종료</span><span style="font-weight:700;color:var(--danger);">${formatDate(new Date(endedAt))}</span></div>` : ''}
           <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span style="display:flex;align-items:center;gap:8px;">${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}${data.status !== 'completed' ? `<button onclick="App.forceCompleteLog('${data.id}')" class="btn btn-sm btn-warn" style="font-size:10px;padding:2px 6px;height:auto;">운행종료 처리</button>` : ''}</span></div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type||'—'} / ${data.container_kind||'—'}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">운행전 점검</span><span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검 완료 (5항목)' : '미점검/누락'}</span></div>
         </div>
       `;
 

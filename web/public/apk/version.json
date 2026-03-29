@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.10",
-  "versionCode": 154,
-  "changeLog": "v4.2.10 (Build 154) - 인터페이스 다듬기\n- [수정] 팝업 배경 하얀색으로 투명도 방지 및 불필요한 이모지 제거\n- [수정] 운행전점검 모달이 일지화면에서만 뜨던 버그 고침\n- [디자인] 점검 상태에 따른 버튼 색상 변환 (점검 전: 빨강 -> 점검 후: 파랑)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=154"
+  "latestVersion": "v4.2.12",
+  "versionCode": 156,
+  "changeLog": "v4.2.12 (Build 156)\n- [관제] 운행 속도(Speed) 수집 및 상세 경로 표시 기능 추가\n- [최적화] GPS 수신 패킷에 현재 속도 정보 포함\n- [웹] 관리자 관제 지도에서 실시간 이동 속도 확인 가능",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=156"
 }

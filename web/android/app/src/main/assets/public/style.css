@@ -129,8 +129,8 @@ input, textarea, select, button { font-family: inherit; }
 }
 .btn-active { background: var(--accent) !important; color: #fff !important; pointer-events: none; opacity: 0.8; }
 .btn:active { background: var(--border); }
-.btn-primary { background: var(--text); color: #fff; border-color: #000; }
-.btn-primary:active { background: #333; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:active { background: #1a4dbd; }
 .btn-ok { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; box-shadow: none !important; animation: none !important; }
 .btn-ng { background: var(--danger) !important; color: #fff !important; border-color: var(--danger) !important; }
 .btn-danger { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
@@ -320,13 +320,26 @@ input, textarea, select, button { font-family: inherit; }
 }
 .modal-overlay.active { display: flex; }
 .modal-box {
-  background: var(--surface); border-radius: 12px;
+  background: var(--surface); border-radius: var(--radius);
   max-width: 360px; width: 100%; display: flex; flex-direction: column;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: modal-up 0.3s ease-out;
 }
 @keyframes modal-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+.modal { border-radius: var(--radius); overflow: hidden; }
+.profile-photo-box {
+  width: 76px; height: 76px;
+  border-radius: var(--radius); background: #f1f5f9;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 900; color: #cbd5e1;
+  background-size: cover; background-position: center;
+  transition: all 0.2s;
+}
+.profile-photo-box:not([style*="background-image:none"]):not([style*="background-image: none"]) {
+  border-color: var(--accent);
 }
 .modal-header {
   padding: 16px; border-bottom: 1px solid var(--border);

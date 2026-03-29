@@ -425,7 +425,14 @@ export default function VehicleTrackingPage() {
                 </div>
                 <div style="padding:10px; background:#f8fafc; border-radius:10px; font-size:13px; color:#334155; line-height:1.5; border:1px solid #f1f5f9; margin-top:4px;">
                     <span style="display:block; font-weight:800; color:#0ea5e9; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Current Location</span>
-                    ${loc.address || '주소 정보 확인 중...'}
+                    <div style="font-weight:700; color:#0f172a; margin-bottom:2px;">
+                        ${loc.address || '주소 정보 확인 중...'}
+                    </div>
+                    ${loc.speed !== null && loc.speed !== undefined ? `
+                        <div style="font-weight:700; color:#3b82f6; font-size:11px;">
+                            💨 현재 속도: ${Math.round(loc.speed)} km/h
+                        </div>
+                    ` : ''}
                 </div>
                 ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
             </div>
@@ -924,8 +931,15 @@ export default function VehicleTrackingPage() {
                                     const hasAddr = loc.address && loc.address !== '주소 정보 없음';
                                     return (
                                         <div key={i} className={styles.locationItem} onClick={() => { mapInstanceRef.current?.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mapInstanceRef.current?.setZoom(16); }}>
-                                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:2}}>
-                                                <div className={styles.locTime}>{new Date(loc.timestamp || loc.recorded_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
+                                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2}}>
+                                                <div style={{display:'flex', gap: 6, alignItems:'center'}}>
+                                                    <div className={styles.locTime}>{new Date(loc.timestamp || loc.recorded_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
+                                                    {loc.speed !== undefined && loc.speed !== null && (
+                                                        <div style={{fontSize: '0.75rem', color: '#3b82f6', fontWeight: 800, background: '#3b82f615', padding: '1px 5px', borderRadius: 4}}>
+                                                            💨 {Math.round(loc.speed)} km/h
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div style={{fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 500}}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</div>
                                             </div>
                                             <div className={styles.locContent} style={{display:'flex', alignItems:'center', gap:8}}>
