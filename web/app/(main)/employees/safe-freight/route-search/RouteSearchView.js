@@ -1358,7 +1358,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     fareRows.push([], ['[운행비용 상세 (편도기준)]']);
                     fareRows.push(['소요시간', msToTime(sel.durationOneWay)]);
                     fareRows.push(['통행료', `${sel.tollOneWay.toLocaleString()}원`]);
-                    fareRows.push(['경유단가 (Opinet)', `${dieselPrice.toLocaleString()}원/L (${fuelPriceData?.date || '최근'})`]);
+                    fareRows.push(['경유단가 (Opinet)', `${currentFuelPrice.toLocaleString()}원/L (${fuelPriceData?.date || '최근'})`]);
                     fareRows.push(['연비 설정', `${currentMileage}km/L`]);
                     fareRows.push(['예상 연료량', `${sel.litersOneWay}L`]);
                     fareRows.push(['유류비 합계', `${sel.fuelCostOneWay.toLocaleString()}원`]);

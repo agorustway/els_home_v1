@@ -313,12 +313,15 @@ export default function VehicleTrackingPage() {
             }
 
             const logData = await logRes.json();
-            if (logData.logs) {
+            if (logData && logData.logs) {
                 setTripLogs(logData.logs);
+            } else {
+                setTripLogs([]);
             }
         } catch (e) {
             console.error('상세 정보 조회 실패:', e);
             setSelectedTrip(trip);
+            setTripLogs([]);
         } finally {
             setIsDetailLoading(false);
         }
@@ -358,7 +361,7 @@ export default function VehicleTrackingPage() {
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [fetchLiveTrips, fetchNotices]);
 
-    // [신규] 실시간 운행차량 주소 자동 전체 로드 (사용자 요청: 상세보기 전에도 보이게)
+    // [Fix] 실시간 운행차량 주소 자동 전체 로드 통합 및 성능 최적화
     useEffect(() => {
         if (!mapReady || !liveTrips || liveTrips.length === 0 || !window.naver?.maps?.Service) return;
         
@@ -368,8 +371,8 @@ export default function VehicleTrackingPage() {
             
             for (const trip of tripsWithLoc) {
                 const loc = trip.lastLocation;
-                // [신규] 캐시 확인 (중복 요청 방지)
                 const cacheKey = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
+                
                 if (ADDRESS_CACHE.has(cacheKey)) {
                     setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: ADDRESS_CACHE.get(cacheKey) } } : t));
                     continue;
@@ -381,40 +384,15 @@ export default function VehicleTrackingPage() {
                 }, (status, response) => {
                     if (status === window.naver.maps.Service.Status.OK) {
                         const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-                        ADDRESS_CACHE.set(cacheKey, addr); // 캐시 저장
+                        ADDRESS_CACHE.set(cacheKey, addr);
                         setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: addr } } : t));
                     }
                 });
-                await new Promise(r => setTimeout(r, 200)); // API 부하 방지
+                await new Promise(r => setTimeout(r, 200)); 
             }
         };
         fetchAllMissing();
     }, [liveTrips.length, mapReady]);
-
-    // [신규] 실시간 운행차량 주소 자동 전체 로드 (사용자 요청: 상세보기 전에도 보이게)
-    useEffect(() => {
-        if (!mapReady || !liveTrips || liveTrips.length === 0 || !window.naver?.maps?.Service) return;
-        
-        const fetchAllMissing = async () => {
-            const tripsWithLoc = liveTrips.filter(t => t.lastLocation && !t.lastLocation.address);
-            if (tripsWithLoc.length === 0) return;
-            
-            for (const trip of tripsWithLoc) {
-                const loc = trip.lastLocation;
-                window.naver.maps.Service.reverseGeocode({
-                    coords: new window.naver.maps.LatLng(loc.lat, loc.lng),
-                    orders: [window.naver.maps.Service.OrderType.ADDR, window.naver.maps.Service.OrderType.ROAD_ADDR].join(',')
-                }, (status, response) => {
-                    if (status === window.naver.maps.Service.Status.OK) {
-                        const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-                        setLiveTrips(prev => prev.map(t => t.id === trip.id ? { ...t, lastLocation: { ...t.lastLocation, address: addr } } : t));
-                    }
-                });
-                await new Promise(r => setTimeout(r, 200)); // API 부하 방지
-            }
-        };
-        fetchAllMissing();
-    }, [liveTrips.length, mapReady]); // 개수 변화시에만 주로 동작하게 (중복 호출 방지)
 
     // 실시간 마커 업데이트
     useEffect(() => {
@@ -1025,8 +1003,8 @@ export default function VehicleTrackingPage() {
                                 </h3>
 
                                 <div className={styles.logList}>
-                                    {tripLogs.length > 0 ? (
-                                        tripLogs.map((log, li) => (
+                                    {(tripLogs || []).length > 0 ? (
+                                        (tripLogs || []).map((log, li) => (
                                             <div key={li} className={styles.logItem}>
                                                 <div className={styles.logHeader}>
                                                     <span className={styles.logField}>{

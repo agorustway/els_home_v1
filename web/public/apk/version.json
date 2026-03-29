@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.33",
-  "versionCode": 177,
-  "changeLog": "v4.2.33 (Build 177)\n- [UI] 일지 상세 페이지 레이아웃 최적화 (항목 통합 및 높이 축소)\n- [BUG] 일지 상세 씰 번호 입력창 너비 삐져나옴 수정\n- [NEW] 일지 상세 컨테이너 번호 유효성 검증(ISO 6346) UI 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=177"
+  "latestVersion": "v4.2.34",
+  "versionCode": 178,
+  "changeLog": "v4.2.34 (Build 178)\n- [HOTFIX] 안전운임 엑셀 다운로드 오류 수정 (구간조회 ReferenceError 해결)\n- [NEW] 웹/모바일 동시 배포를 위한 클린 빌드 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=178"
 }
