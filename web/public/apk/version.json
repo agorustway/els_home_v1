@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.40",
-  "versionCode": 184,
-  "changeLog": "v4.2.40 (Build 184)\n- [HOTFIX] 업데이트 무한루프(버전 미동기화) 문제 해결 및 클린 빌드\n- [HOTFIX] 긴급알림 1시간 제한 및 HTML 제거 정상 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=184"
+  "latestVersion": "v4.2.41",
+  "versionCode": 185,
+  "changeLog": "v4.2.41 (Build 185)\n- [HOTFIX] 운행중 컨테이너 및 씰 정보 실시간 단독 저장 기능 추가\n- [HOTFIX] 터널(음영지역) 진입 시 GPS 응답 속도 및 재연결 5초 폴링 개선",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=185"
 }

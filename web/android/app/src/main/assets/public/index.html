@@ -153,14 +153,14 @@
           <div class="trip-row">
             <div class="field">
               <label>타입</label>
-              <select id="container-type">
+              <select id="container-type" onchange="App.onTripFieldChange()">
                 <option value="20FT">20FT</option>
                 <option value="40FT" selected>40FT</option>
               </select>
             </div>
             <div class="field">
               <label>종류</label>
-              <select id="container-kind">
+              <select id="container-kind" onchange="App.onTripFieldChange()">
                 <option value="DRY" selected>DRY</option>
                 <option value="REEFER">REEFER</option>
                 <option value="TANK">TANK</option>

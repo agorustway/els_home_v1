@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.40');
+  console.log('ELS Driver App Loading... v4.2.41');
 
-  const APP_VERSION = 'v4.2.40';
-  const BUILD_CODE = 184; // Build 184 (v4.2.40)
+  const APP_VERSION = 'v4.2.41';
+  const BUILD_CODE = 185; // Build 185 (v4.2.41)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -673,6 +673,7 @@
   }
 
   // ─── 운행 관리 ────────────────────────────────────────────────
+  let _tripFieldSaveTimer = null;
   function onTripFieldChange() {
     const cEl = document.getElementById('container-no');
     const sEl = document.getElementById('seal-no');
@@ -703,6 +704,27 @@
       } else {
         if (errEl) { errEl.textContent = '영문 4자 + 숫자 7자'; errEl.style.color = 'var(--danger)'; }
       }
+    }
+
+    // 운행 중 실시간 정보 수정 시 서버에 전송 (1초 디바운스)
+    if (State.trip.id && (State.trip.status === 'driving' || State.trip.status === 'paused')) {
+      const cType = document.getElementById('container-type') ? document.getElementById('container-type').value : undefined;
+      const cKind = document.getElementById('container-kind') ? document.getElementById('container-kind').value : undefined;
+
+      clearTimeout(_tripFieldSaveTimer);
+      _tripFieldSaveTimer = setTimeout(() => {
+        smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            container_number: cEl.value || '',
+            seal_number: sEl.value || '',
+            container_type: cType,
+            container_kind: cKind
+          }),
+        }).catch(() => {
+          // 조용히 실패 (수시 저장이므로 불필요한 알람 억제)
+        });
+      }, 1000);
     }
   }
 
@@ -1134,8 +1156,8 @@
       return;
     }
 
-    // GPS 상태 판별 (수신 후 interval * 2 이내가 아니면 down)
-    const deadTimeout = Math.max(currentGpsInterval * 2, 90_000); // 최소 90초는 허용
+    // 터널/음영지역 즉각 판별을 위해 타임아웃 단축 (현재 주기 + 10초, 최소 30초)
+    const deadTimeout = Math.max(currentGpsInterval + 10_000, 30_000); 
     const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > deadTimeout);
     let gpsColor = '#10b981'; // 초록 (수신중)
     let gpsText = `${Math.round(currentGpsInterval / 1000)}s`;
@@ -1143,9 +1165,25 @@
     if (State.trip.status === 'paused') {
       gpsColor = '#ef4444'; // 빨강 (수신중지)
       gpsText = '수신중지';
-    } else if (isDown) {
+    } else if (isDown && State.trip.status === 'driving') {
       gpsColor = '#ef4444'; // 빨강 (수신안됨)
-      gpsText = '수신안됨';
+      gpsText = '연결안됨'; // UI에 "GPS 연결안됨" 표시
+
+      // GPS 연결 안될 시 5초마다 강제 재수신 시도
+      const now = Date.now();
+      if (!window._lastGpsRetry || (now - window._lastGpsRetry > 5000)) {
+        window._lastGpsRetry = now;
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              lastGpsTimestamp = Date.now();
+              onGpsUpdate(pos, true, State.trip.id);
+            },
+            () => { /* 음영지역이므로 조용히 실패 무시 */ },
+            { enableHighAccuracy: true, timeout: 4500, maximumAge: 0 }
+          );
+        }
+      }
     } else if (State.trip.isRealtime) {
       gpsColor = '#f59e0b'; // 주황 (실시간/웹조회)
       gpsText = '실시간';
@@ -1199,6 +1237,14 @@
     // [TDD] 강제 수집(isForced)인 경우, 일시정지나 종료 중이어도 위치를 전송해야 함 (중환 전환점)
     if (State.trip.status !== 'driving' && !isForced) return;
     const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
+
+    // [TDD] 무조건 GPS 기반: 속도(Speed) 값이 없는(null) 데이터는 기지국/Wi-Fi 추정치이므로 원천 차단 (정차 시의 0은 허용)
+    if (speed === null || speed === undefined) {
+      remoteLog(`기지국/네트워크 위치 스킵 (속도 불명): acc=${accuracy?.toFixed(0)}m`, 'GPS_SKIP_NETWORK');
+      // 타임스탬프를 갱신하지 않으면 '수신안됨' 상태가 되어 5초 폴링(Wake)이 작동함
+      return; 
+    }
+
     const speedKph = (speed || 0) * 3.6;
 
     // watchPosition 콜백 시점에 타임스탬프 갱신 (startGPS에서도 하지만 이중 보장)
