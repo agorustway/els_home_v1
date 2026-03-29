@@ -697,6 +697,14 @@ export default function VehicleTrackingPage() {
                 </div>
 
                 <div className={styles.liveGrid}>
+                    <div className={styles.liveGridRight}>
+                        <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{height:'100%', margin:0, borderRadius: '12px'}}>
+                            <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '↩️ 전체화면 해제' : '⛶ 지도 전체화면'}</button>
+                            <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
+                            {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
+                        </div>
+                    </div>
+
                     <div className={styles.liveGridLeft}>
                         {/* 긴급 알림 섹션 */}
                         <div className={styles.noticeSection} style={{ flex: 1, display:'flex', flexDirection:'column', marginBottom:0 }}>
@@ -757,14 +765,6 @@ export default function VehicleTrackingPage() {
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
-
-                    <div className={styles.liveGridRight}>
-                        <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{height:'100%', margin:0, borderRadius: '12px'}}>
-                            <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '↩️ 전체화면 해제' : '⛶ 지도 전체화면'}</button>
-                            <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
-                            {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
                         </div>
                     </div>
                 </div>

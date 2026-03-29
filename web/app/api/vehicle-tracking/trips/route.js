@@ -35,17 +35,16 @@ export async function GET(request) {
     const to = searchParams.get('to');
 
     try {
-        // ─── mode=active: 관제맵용 (운행 중/일시정지 + '오늘' 완료 건 포함) ───
+        // ─── mode=active: 관제맵용 (조회 기준 24시간 이내의 모든 driving/paused/completed 건) ───
         if (mode === 'active') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const KST_OFFSET = 9 * 60 * 60 * 1000;
-            const todayKstStr = new Date(today.getTime() + KST_OFFSET).toISOString().split('T')[0];
+            // 사용자 요청: 조회시간 기준 정확히 24시간 이내의 데이터만 필터링 (유령/방치 데이터 방지)
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
             let query = supabase
                 .from('vehicle_trips')
                 .select('*')
-                .or(`status.in.(driving,paused),and(status.eq.completed,started_at.gte.${todayKstStr}T00:00:00+09:00)`)
+                .gte('started_at', twentyFourHoursAgo)
+                .in('status', ['driving', 'paused', 'completed'])
                 .order('started_at', { ascending: false });
 
             const { data, error } = await query;

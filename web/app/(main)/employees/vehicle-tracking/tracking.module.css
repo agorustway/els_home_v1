@@ -198,7 +198,7 @@
 /* 지도 및 공지 2단 그리드 레이아웃 */
 .liveGrid {
     display: grid;
-    grid-template-columns: 0.9fr 1.1fr;
+    grid-template-columns: 1.1fr 0.9fr;
     gap: 15px;
     height: 520px;
     margin-bottom: 20px;
