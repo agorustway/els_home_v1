@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.27",
-  "versionCode": 171,
-  "changeLog": "v4.2.27 (Build 171)\n- [용어] 앱 내 '운송중' 표기를 모두 '운행중'으로 통일 (오버레이 및 앱 공통)\n- [GPS] 위치 수집 주기 하드코딩 여부 전수 조사 및 유동적 수집 로직(속도/방향 기반) 재검증",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=171"
+  "latestVersion": "v4.2.28",
+  "versionCode": 172,
+  "changeLog": "v4.2.28 (Build 172)\n- [레이아웃] 일지 상세 정보 수정 저장 버튼 높이를 목록/삭제 버튼에 맞춰 32px로 축소\n- [레이아웃] 설정 페이지 '이전 페이지로 돌아가기' 버튼 높이를 32px로 축소하여 공간 효율 개선",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=172"
 }
