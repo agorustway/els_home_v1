@@ -76,6 +76,8 @@ public class FloatingWidgetService extends Service {
     // 상태
     private String mTripId;
     private long mStartTimeMillis = 0;
+    private long mPausedAt = 0; // 일시정지 시작 시각
+    private long mTotalPausedMs = 0; // 누적 일시정지 시간
     private String mStatus = "driving"; // driving | paused | completed
     private String mContainerNo = "";
     private int mGpsIntervalSec = 300;
@@ -108,7 +110,18 @@ public class FloatingWidgetService extends Service {
                 return START_NOT_STICKY;
             }
             if ("UPDATE_STATUS".equals(action)) {
-                if (intent.hasExtra("status")) mStatus = intent.getStringExtra("status");
+                String newStatus = intent.getStringExtra("status");
+                // 일시정지 상태 변화 감지 및 시간 계산
+                if ("paused".equals(newStatus) && !"paused".equals(mStatus)) {
+                    mPausedAt = System.currentTimeMillis();
+                } else if ("driving".equals(newStatus) && "paused".equals(mStatus)) {
+                    if (mPausedAt > 0) {
+                        mTotalPausedMs += (System.currentTimeMillis() - mPausedAt);
+                        mPausedAt = 0;
+                    }
+                }
+
+                if (intent.hasExtra("status")) mStatus = newStatus;
                 if (intent.hasExtra("container")) mContainerNo = intent.getStringExtra("container");
                 if (intent.hasExtra("gpsText")) mGpsText = intent.getStringExtra("gpsText");
                 if (intent.hasExtra("gpsColor")) mGpsColor = intent.getStringExtra("gpsColor");
@@ -127,12 +140,18 @@ public class FloatingWidgetService extends Service {
             if (intent.hasExtra("tripId")) mTripId = intent.getStringExtra("tripId");
             if (intent.hasExtra("startTimeMillis")) {
                 mStartTimeMillis = intent.getLongExtra("startTimeMillis", System.currentTimeMillis());
+                mTotalPausedMs = 0; // 새로 시작 시 초기화
+                mPausedAt = 0;
             } else if (mStartTimeMillis == 0) {
                 SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                 mStartTimeMillis = prefs.getLong(KEY_START_TIME, System.currentTimeMillis());
             }
             if (intent.hasExtra("container")) mContainerNo = intent.getStringExtra("container");
-            if (intent.hasExtra("status")) mStatus = intent.getStringExtra("status");
+            if (intent.hasExtra("status")) {
+                String newStatus = intent.getStringExtra("status");
+                if ("paused".equals(newStatus)) mPausedAt = System.currentTimeMillis();
+                mStatus = newStatus;
+            }
 
             SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit();
             if (mTripId != null) editor.putString(KEY_TRIP_ID, mTripId);
@@ -288,12 +307,22 @@ public class FloatingWidgetService extends Service {
             @Override
             public void run() {
                 if (tvTimer == null) { mTimerHandler.postDelayed(this, 1000); return; }
+                
+                long now = System.currentTimeMillis();
+                long elapsed;
+                
                 if ("driving".equals(mStatus)) {
-                    long elapsed = System.currentTimeMillis() - mStartTimeMillis;
+                    elapsed = now - mStartTimeMillis - mTotalPausedMs;
                     tvTimer.setText(formatTime(elapsed));
-                    updateNotification("운행중 " + formatTime(elapsed) + (mContainerNo.isEmpty() ? "" : " | " + mContainerNo));
+                    updateNotification("운송중 " + formatTime(elapsed) + (mContainerNo.isEmpty() ? "" : " | " + mContainerNo));
+                } else if ("paused".equals(mStatus)) {
+                    // 일시정지 시에는 멈춘 시점의 시간 표시
+                    long currentPausedMs = (mPausedAt > 0) ? (now - mPausedAt) : 0;
+                    elapsed = now - mStartTimeMillis - mTotalPausedMs - currentPausedMs;
+                    tvTimer.setText(formatTime(elapsed));
+                    updateNotification("일시정지 " + formatTime(elapsed));
                 } else {
-                    tvTimer.setText("일시정지");
+                    tvTimer.setText("대기중");
                 }
                 mTimerHandler.postDelayed(this, 1000);
             }

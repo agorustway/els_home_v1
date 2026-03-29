@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
  
-  const APP_VERSION = 'v4.2.25';
-  const BUILD_CODE = 169; // Build 169 (v4.2.25)
+  const APP_VERSION = 'v4.2.26';
+  const BUILD_CODE = 170; // Build 170 (v4.2.26)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -859,12 +859,12 @@
       if (State.trip.status === 'paused') {
         stopGPS();
       } else {
+        lastGpsTimestamp = Date.now(); // 재개 시 즉각 수신안됨 오표기 방지
         startGPS();
       }
       
       updateTripUI();
-      updateTripStatusLine(); // 즉시 UI 반영
-      updateOverlayStatus();
+      updateTripStatusLine(); // 즉시 UI 및 오버레이 반영
     } catch (e) { showToast('상태 변경 실패'); }
   }
 
