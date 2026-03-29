@@ -340,15 +340,15 @@ export default function VehicleTrackingPage() {
                 setSelectedTripLocations(locations);
                 drawTripPath(locations);
                 
-                if (window.naver?.maps?.Service && locations.length > 0) {
-                    const startIdx = Math.max(0, locations.length - 15);
-                    for (let i = locations.length - 1; i >= startIdx; i--) {
-                        fetchMissingAddress(locations[i], i);
-                    }
-                    fetchMissingAddress(locations[0], 0);
-                    if(locations.length > 30){
-                        fetchMissingAddress(locations[Math.floor(locations.length/2)], Math.floor(locations.length/2));
-                        fetchMissingAddress(locations[Math.floor(locations.length/3)], Math.floor(locations.length/3));
+                if (locations.length > 0) {
+                    // 시작/종료 주소만 즉시 조회 (상세보기용)
+                    fetchAddressForLocation(locations[0].lat, locations[0].lng).then(addr => {
+                        if (addr) setSelectedTripLocations(prev => prev.map((l, idx) => idx === 0 ? { ...l, address: addr } : l));
+                    });
+                    if (locations.length > 1) {
+                        fetchAddressForLocation(locations[locations.length-1].lat, locations[locations.length-1].lng).then(addr => {
+                            if (addr) setSelectedTripLocations(prev => prev.map((l, idx) => idx === locations.length - 1 ? { ...l, address: addr } : l));
+                        });
                     }
                 }
             }
@@ -527,37 +527,6 @@ export default function VehicleTrackingPage() {
 
     useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
-    // [신규] 운행기록 탭 주소 자동 로드
-    useEffect(() => {
-        if (!mapReady || !records || records.length === 0 || !window.naver?.maps?.Service) return;
-        
-        const fetchAllMissing = async () => {
-            const tripsWithLoc = records.filter(t => t.lastLocation && !t.last_location_address);
-            if (tripsWithLoc.length === 0) return;
-            
-            for (const trip of tripsWithLoc) {
-                const loc = trip.lastLocation;
-                const cacheKey = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
-                if (ADDRESS_CACHE.has(cacheKey)) {
-                    setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, last_location_address: ADDRESS_CACHE.get(cacheKey) } : t));
-                    continue;
-                }
-
-                window.naver.maps.Service.reverseGeocode({
-                    coords: new window.naver.maps.LatLng(loc.lat, loc.lng),
-                    orders: [window.naver.maps.Service.OrderType.ADDR, window.naver.maps.Service.OrderType.ROAD_ADDR].join(',')
-                }, (status, response) => {
-                    if (status === window.naver.maps.Service.Status.OK) {
-                        const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-                        ADDRESS_CACHE.set(cacheKey, addr);
-                        setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, last_location_address: addr } : t));
-                    }
-                });
-                await new Promise(r => setTimeout(r, 200)); 
-            }
-        };
-        fetchAllMissing();
-    }, [records.length, mapReady]);
 
     const handleSearch = () => fetchRecords();
     const handleReset = () => { setFilterStatus('all'); setFilterKeyword(''); setFilterFrom(''); setFilterTo(''); };
@@ -617,40 +586,6 @@ export default function VehicleTrackingPage() {
         );
     };
 
-    // 주소 역지오코딩 함수
-    const fetchMissingAddress = (location, index) => {
-        if (!window.naver?.maps?.Service) return;
-
-        naver.maps.Service.reverseGeocode({
-            coords: new naver.maps.LatLng(location.lat, location.lng),
-            orders: [
-                naver.maps.Service.OrderType.ADDR,
-                naver.maps.Service.OrderType.ROAD_ADDR
-            ].join(',')
-        }, (status, response) => {
-            if (status !== naver.maps.Service.Status.OK) return;
-
-            const items = response.v2.results;
-            if (!items || items.length === 0) return;
-
-            // 상세 주소 및 상호명(빌딩명 등) 추출 시도
-            let address = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-
-            // 근처 상호/건물명 정보가 있을 경우 추가 (naver maps v3 api에선 직접적인 POI 상호명을 주진 않지만 건물명 검색 가능)
-            const roadAddr = items.find(it => it.name === 'roadaddr');
-            const land = roadAddr?.land;
-            if (land && land.name) {
-                address += ` (${land.name})`;
-            }
-
-            // 상태 업데이트
-            setSelectedTripLocations(prev => {
-                const newList = [...prev];
-                newList[index] = { ...newList[index], address };
-                return newList;
-            });
-        });
-    };
 
     const handleOpenNaverMap = (locations) => {
         if (!locations.length) return;
