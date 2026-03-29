@@ -65,10 +65,16 @@ def debug_log():
     device = data.get("device", "unknown")
     tag = data.get("tag", "APP")
     
+    # 구버전 안드로이드 앱에서 올라오는 '[KST 2026-03...] ' 머리말 강제 제거
+    import re
+    msg = re.sub(r'^\[KST\s+[^\]]+\]\s*', '', msg)
+    
     log_file = Path("debug_app.log")
     try:
         with open(log_file, "a", encoding="utf-8") as f:
-            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            from datetime import timezone, timedelta
+            KST = timezone(timedelta(hours=9))
+            ts = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
             f.write(f"[{ts}] [{device}] [{tag}] {msg}\n")
     except:
         pass

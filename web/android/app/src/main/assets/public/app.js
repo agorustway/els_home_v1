@@ -55,7 +55,7 @@
       logHistory.push(`[${kst}] [${tag}] ${msg}`);
       Store.set('logHistory', logHistory);
 
-      const payload = { msg: `[KST ${kst}] ${msg}`, device: 'Mobile', tag };
+      const payload = { msg, device: 'Mobile', tag };
       fetch(BASE_URL + '/api/debug/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
