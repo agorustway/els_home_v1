@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
  
-  const APP_VERSION = 'v4.2.21';
-  const BUILD_CODE = 165; // Build 165 (v4.2.21)
+  const APP_VERSION = 'v4.2.23';
+  const BUILD_CODE = 167; // Build 167 (v4.2.23)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -281,10 +281,13 @@
     document.getElementById('s-id').value      = State.profile.driverId;
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
-    // 프로필 사진 표시 (데이터가 있을 때만)
+    // 프로필 사진 섹션 표시 및 저장된 사진 렌더링
     const pSection = document.getElementById('settings-profile-photos');
     if (pSection && (State.profile.name || State.profile.phone)) {
         pSection.style.display = 'flex';
+        updateProfilePhoto('p-photo-driver',  State.profile.photo_driver,  '운');
+        updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
+        updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
     }
   }
 
@@ -303,7 +306,8 @@
       return; 
     }
 
-    State.profile = { name, phone, vehicleNo, driverId };
+    // 기존 프로필 데이터(사진 등)는 보존하고 입력 필드만 덮어씀
+    State.profile = { ...State.profile, name, phone, vehicleNo, driverId };
     Store.set('profile', State.profile);
     applyProfileToUI();
     upsertDriverContact();
@@ -394,7 +398,11 @@
         allowEditing: false,
         resultType: 'base64',
         source: 'PROMPT', // 카메라/갤러리 선택 팝업
-        saveToGallery: false
+        saveToGallery: false,
+        promptLabelHeader: '사진 선택',
+        promptLabelCancel: '취소',
+        promptLabelPhoto: '앨범에서 선택',
+        promptLabelPicture: '사진 촬영'
       });
       
       const dataUrl = `data:image/jpeg;base64,${image.base64String}`;

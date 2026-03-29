@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.22",
-  "versionCode": 166,
-  "changeLog": "v4.2.22 (Build 166)\n- [UI] 전 페이지 버튼/입력창 높이 44px 완전 통일 (style.css 전면 재정리)\n- [UI] 인라인 스타일 혼재 제거, 여백 최소화 기준값 통일\n- [사진] 기사 프로필 사진 즉시 S3 업로드 → URL 저장 (앱 껐다 켜도 유지)\n- [사진] 운전원정보 DB와 사진 URL 공유 (웹 운전원 페이지 연동)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=166"
+  "latestVersion": "v4.2.23",
+  "versionCode": 167,
+  "changeLog": "v4.2.23 (Build 167)\n- [사진] 카메라 다이얼로그 영문 텍스트 한글화 (앨범에서 선택, 사진 촬영 등)\n- [빌드] 버전 꼬임 문제 해결 및 클린 빌드 수행",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=167"
 }
