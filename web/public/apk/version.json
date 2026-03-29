@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.21",
-  "versionCode": 165,
-  "changeLog": "v4.2.21 (Build 165)\n- [복구] 모든 페이지 입력창 및 버튼 높이 원래대로 복구 (44px)\n- [레이아웃] 설정 페이지 카드형 UI 제거 및 초기 리스트 형태로 복원",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=165"
+  "latestVersion": "v4.2.22",
+  "versionCode": 166,
+  "changeLog": "v4.2.22 (Build 166)\n- [UI] 전 페이지 버튼/입력창 높이 44px 완전 통일 (style.css 전면 재정리)\n- [UI] 인라인 스타일 혼재 제거, 여백 최소화 기준값 통일\n- [사진] 기사 프로필 사진 즉시 S3 업로드 → URL 저장 (앱 껐다 켜도 유지)\n- [사진] 운전원정보 DB와 사진 URL 공유 (웹 운전원 페이지 연동)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=166"
 }

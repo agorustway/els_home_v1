@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.21');
+  console.log('ELS Driver App Loading... v4.2.22');
  
-  const APP_VERSION = 'v4.2.21';
-  const BUILD_CODE = 165; // Build 165 (v4.2.21)
+  const APP_VERSION = 'v4.2.22';
+  const BUILD_CODE = 166; // Build 166 (v4.2.22)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -281,21 +281,23 @@
     document.getElementById('s-id').value      = State.profile.driverId;
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
-    // 프로필 사진 표시 (데이터가 있을 때만)
+    // 프로필 사진 표시
     const pSection = document.getElementById('settings-profile-photos');
     if (pSection && (State.profile.name || State.profile.phone)) {
         pSection.style.display = 'flex';
+        // 저장된 URL로 사진 복원
+        updateProfilePhoto('p-photo-driver',  State.profile.photo_driver,  '운');
+        updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차량');
+        updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤시');
     }
   }
 
   function saveProfile() {
     const name = document.getElementById('s-name').value.trim();
-    // [보완] -나 공백 및 글자 등 숫자 외의 모든 특수문자 완전히 제거 후 저장
     const phone = document.getElementById('s-phone').value.replace(/[^0-9]/g, '');
     const vehicleNo = document.getElementById('s-vehicle').value.trim();
     const driverId  = document.getElementById('s-id').value.trim().toUpperCase();
 
-    // 화면 필드에 먼저 정상(숫자만) 형태 반영
     document.getElementById('s-phone').value = phone;
 
     if (!name || !phone || !vehicleNo || !driverId) { 
@@ -303,13 +305,17 @@
       return; 
     }
 
-    State.profile = { name, phone, vehicleNo, driverId };
+    // 사진 URL은 기존 State에서 유지 (pickProfilePhoto 에서 이미 저장됨)
+    State.profile = {
+      name, phone, vehicleNo, driverId,
+      photo_driver:  State.profile.photo_driver  || null,
+      photo_vehicle: State.profile.photo_vehicle || null,
+      photo_chassis: State.profile.photo_chassis || null,
+    };
     Store.set('profile', State.profile);
     applyProfileToUI();
-    upsertDriverContact();
+    upsertDriverContact(); // URL을 DB에도 반영
     showToast('정보가 저장되었습니다.');
-    
-    // 저장 성공 시 메인으로 강제 이동
     showMain();
   }
 
@@ -370,12 +376,14 @@
     if (url) {
       const fullUrl = url.startsWith('http') || url.startsWith('data:') ? url : BASE_URL + (url.startsWith('/') ? '' : '/') + url;
       el.style.backgroundImage = `url('${fullUrl}')`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
       el.textContent = '';
-      el.style.borderStyle = 'solid';
+      el.classList.add('has-photo');
     } else {
       el.style.backgroundImage = 'none';
       el.textContent = fallback;
-      el.style.borderStyle = 'dashed';
+      el.classList.remove('has-photo');
     }
   }
 
@@ -386,27 +394,63 @@
           showToast('카메라 기능을 사용할 수 없습니다.');
           return;
       }
+
+      const phone = State.profile.phone;
+      if (!phone) {
+          showToast('전화번호를 먼저 입력/저장해 주세요.');
+          return;
+      }
       
       const image = await Camera.getPhoto({
         quality: 70,
-        width: 1000,
-        height: 1000,
+        width: 1200,
+        height: 1200,
         allowEditing: false,
         resultType: 'base64',
-        source: 'PROMPT', // 카메라/갤러리 선택 팝업
+        source: 'PROMPT',
         saveToGallery: false
       });
-      
-      const dataUrl = `data:image/jpeg;base64,${image.base64String}`;
-      
-      if (type === 'driver')  State.profile.photo_driver = dataUrl;
-      if (type === 'vehicle') State.profile.photo_vehicle = dataUrl;
-      if (type === 'chassis') State.profile.photo_chassis = dataUrl;
-      
-      updateProfilePhoto('p-photo-' + type, dataUrl, '');
-      showToast('사진이 선택되었습니다. 정보 저장 시 업로드됩니다.');
+
+      if (!image?.base64String) return;
+
+      // 즉시 미리보기 (로컬 dataUrl)
+      const previewUrl = `data:image/jpeg;base64,${image.base64String}`;
+      updateProfilePhoto('p-photo-' + type, previewUrl, '');
+      showToast('사진 업로드 중...');
+
+      // S3 업로드 → URL 반환
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/driver-photos', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone,
+          type,
+          base64: image.base64String,
+          mimeType: 'image/jpeg',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast('업로드 실패: ' + (err.error || res.status));
+        return;
+      }
+
+      const result = await res.json();
+      const savedUrl = result.url; // 프록시 경로 e.g. /api/vehicle-tracking/photos/view?key=...
+
+      // State + localStorage에 URL로 저장
+      if (type === 'driver')  State.profile.photo_driver  = savedUrl;
+      if (type === 'vehicle') State.profile.photo_vehicle = savedUrl;
+      if (type === 'chassis') State.profile.photo_chassis = savedUrl;
+      Store.set('profile', State.profile);
+
+      // UI 업데이트 (URL로 교체)
+      updateProfilePhoto('p-photo-' + type, savedUrl, '');
+      showToast('사진이 저장되었습니다.');
     } catch (e) {
-      console.warn('pickProfilePhoto skip', e);
+      if (e?.message?.includes('cancelled') || e?.message?.includes('cancel')) return; // 취소는 무시
+      console.warn('pickProfilePhoto error', e);
+      showToast('사진 처리 오류: ' + (e?.message || ''));
     }
   }
 

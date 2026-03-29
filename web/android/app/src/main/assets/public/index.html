@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.2.2">
+<link rel="stylesheet" href="style.css?v=4.2.22">
 </head>
 <body>
 <div id="app">
@@ -15,14 +15,14 @@
        권한 설정 화면 (최초 실행 / 초기화)
   ════════════════════════════════════════════════ -->
   <div id="screen-permission" class="screen active">
-    <header class="app-header" style="padding:0; margin-bottom:12px; border:none;">
+    <header class="app-header" style="border:none;">
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
     </header>
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <h2 class="perm-title" style="font-size:16px;">앱 초기 설정</h2>
+      <h2 class="perm-title">앱 초기 설정</h2>
       <button class="btn btn-sm btn-primary" onclick="App.manualRefreshPerms()">새로고침</button>
     </div>
-    <p class="perm-sub" style="margin-bottom:4px;">시스템 권한을 모두 허용해야 앱 이용이 가능합니다.</p>
+    <p class="perm-sub">시스템 권한을 모두 허용해야 앱 이용이 가능합니다.</p>
 
     <div class="perm-item">
       <div class="perm-item-info">
@@ -60,7 +60,7 @@
     <div class="perm-item">
       <div class="perm-item-info">
         <span class="perm-item-title">다른 앱 위에 표시</span>
-        <span class="perm-item-desc">운행 중 플로팅 위젯 표시 (제한된 설정 허용 필요)</span>
+        <span class="perm-item-desc">운행 중 플로팅 위젯 (제한된 설정 허용 필요)</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="perm-overlay-status" class="perm-status perm-ng">미설정</span>
@@ -79,13 +79,13 @@
       </div>
     </div>
 
-    <button id="btn-finish-setup" class="btn btn-primary btn-full" onclick="App.finishPermSetup()" style="margin-top:12px;">
-      설정 완료(앱 시작하기)
+    <button id="btn-finish-setup" class="btn btn-primary btn-full" onclick="App.finishPermSetup()">
+      설정 완료 (앱 시작하기)
     </button>
-    <div style="margin-top:16px; text-align:center;">
-       <a href="javascript:void(0)" onclick="App.showTerms()" style="font-size:12px; color:var(--text-muted); text-decoration:underline;">개인정보 처리방침 및 이용약관</a>
+    <div style="text-align:center;">
+       <a href="javascript:void(0)" onclick="App.showTerms()" style="font-size:12px;color:var(--text-muted);text-decoration:underline;">개인정보 처리방침 및 이용약관</a>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;line-height:1.4;">위치(항상 허용), 오버레이, 배터리 권한은 필수입니다.<br>미허용 시 앱 구동 및 관제가 불가능합니다.</p>
+    <p style="font-size:11px;color:var(--text-muted);text-align:center;line-height:1.4;">위치(항상 허용), 오버레이, 배터리 권한은 필수입니다.<br>미허용 시 앱 구동 및 관제가 불가능합니다.</p>
   </div>
 
   <!-- ════════════════════════════════════════════════
@@ -106,13 +106,13 @@
 
       <!-- ── 공지 탭 ── -->
       <div id="tab-notice" class="screen">
-        <div class="notice-filter-tabs" style="display:flex; overflow-x:auto; gap:6px; padding:10px 14px; background:#fff; border-bottom:1px solid #e2e8f0; scrollbar-width:none;">
-          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('긴급알림', this)">🚨 긴급알림</button>
-          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('일반공지', this)">일반공지</button>
-          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('작업안내', this)">작업안내</button>
-          <button class="btn btn-sm" style="flex:0 0 auto; height:28px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('안전교육', this)">안전교육</button>
+        <div class="notice-filter-tabs">
+          <button class="btn btn-sm" style="flex:0 0 auto;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;" onclick="App.filterNotice('긴급알림', this)">🚨 긴급알림</button>
+          <button class="btn btn-sm" style="flex:0 0 auto;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;" onclick="App.filterNotice('일반공지', this)">일반공지</button>
+          <button class="btn btn-sm" style="flex:0 0 auto;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;" onclick="App.filterNotice('작업안내', this)">작업안내</button>
+          <button class="btn btn-sm" style="flex:0 0 auto;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;" onclick="App.filterNotice('안전교육', this)">안전교육</button>
         </div>
-        <div id="notice-list" class="notice-list" style="height:calc(100% - 49px); overflow-y:auto; padding-top:0;">
+        <div id="notice-list" class="notice-list" style="height:calc(100% - 49px);overflow-y:auto;">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
         </div>
         <div id="notice-detail" class="notice-detail">
@@ -124,80 +124,82 @@
       </div>
 
       <!-- ── 운행 탭 ── -->
-      <div id="tab-trip" class="screen" style="overflow-y:auto;padding:10px 14px;">
-        <!-- Row 1 -->
-        <div id="tab-trip-inner" style="display:flex;flex-direction:column;gap:12px;">
-          <!-- 상단 상태 1줄: 시작시간 | GPS상태 | 주소 -->
-          <div id="trip-status-bar" style="background:#f4f7fb; border:1px solid #e2e8f0; border-radius:8px; padding:9px 12px; margin-bottom:4px; display:flex; align-items:center; gap:0; min-height:36px; overflow:hidden;">
-            <span id="trip-date-display" style="font-size:12px; font-weight:700; color:var(--primary); white-space:nowrap; flex-shrink:0;">운송시작 대기중</span>
-            <span id="trip-status-sep1" style="color:#cbd5e1; margin:0 7px; flex-shrink:0; display:none;">|</span>
-            <span id="trip-gps-chip" style="font-size:11px; font-weight:700; white-space:nowrap; flex-shrink:0; display:none;">GPS --</span>
-            <span id="trip-status-sep2" style="color:#cbd5e1; margin:0 7px; flex-shrink:0; display:none;">|</span>
-            <span id="trip-addr-display" style="font-size:12px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; display:none;">위치 확인 중...</span>
-          </div>
-          <!-- Row 2 컨테이너 번호 + 씰 번호 (5:5) -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; overflow:hidden;">
-            <div class="field" style="margin-bottom:0;">
-              <label style="display:flex; justify-content:space-between; align-items:center;">
-                <span>컨테이너 번호</span>
-                <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
-              </label>
-              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
-            </div>
-            <div class="field" style="margin-bottom:0; min-width:0;">
-              <label>씰 번호</label>
-              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
-            </div>
-          </div>
-          <!-- Row 4 타입 + 종류 -->
-          <div class="trip-row">
-            <div class="field">
-              <label>타입</label>
-              <select id="container-type">
-                <option value="20FT">20FT</option>
-                <option value="40FT" selected>40FT</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>종류</label>
-              <select id="container-kind">
-                <option value="DRY" selected>DRY</option>
-                <option value="REEFER">REEFER</option>
-                <option value="TANK">TANK</option>
-                <option value="OPEN_TOP">OPEN TOP</option>
-                <option value="FLAT">FLAT RACK</option>
-              </select>
-            </div>
-          </div>
-          <!-- Row 5 운행 버튼 -->
-          <div id="trip-actions">
-            <!-- 상태 제어: 시작 전 -->
-          <div id="trip-start-row">
-            <div style="display:flex; gap:8px;">
-              <button class="btn" id="btn-trip-checklist" style="flex:0.4; font-size:15px; padding:0; background:#ef4444; color:#fff; border:none;" onclick="App.openChecklist()">운행전점검</button>
-              <button class="btn btn-primary" id="btn-trip-start" style="flex:0.6;font-size:15px;" onclick="App.startTrip()">운행 시작</button>
-            </div>
-          </div>
-            <div id="trip-control-row" class="trip-action-row hidden">
-              <button class="btn btn-warn" id="btn-trip-pause" onclick="App.togglePause()">일시정지</button>
-              <button class="btn btn-danger" id="btn-trip-end" onclick="App.endTrip()">운행 종료</button>
-            </div>
-          </div>
-          <!-- Row 6 사진 -->
-          <div class="photo-section">
-            <div class="photo-label">운행 사진 <span id="photo-count-display" class="photo-count">(0/10)</span></div>
-            <div id="photo-scroll" class="photo-scroll">
-              <button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>
-            </div>
-          </div>
-          <!-- Row 7 메모 -->
+      <div id="tab-trip" class="screen" style="overflow-y:auto;padding:10px 12px;gap:8px;display:flex;flex-direction:column;">
+
+        <!-- 상단 상태바 -->
+        <div id="trip-status-bar" style="background:#f4f7fb;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:0;min-height:36px;overflow:hidden;">
+          <span id="trip-date-display" style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;flex-shrink:0;">운송시작 대기중</span>
+          <span id="trip-status-sep1" style="color:#cbd5e1;margin:0 7px;flex-shrink:0;display:none;">|</span>
+          <span id="trip-gps-chip" style="font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;display:none;">GPS --</span>
+          <span id="trip-status-sep2" style="color:#cbd5e1;margin:0 7px;flex-shrink:0;display:none;">|</span>
+          <span id="trip-addr-display" style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;display:none;">위치 확인 중...</span>
+        </div>
+
+        <!-- 컨테이너 번호 + 씰 번호 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div class="field">
-            <label>메모</label>
-            <textarea id="trip-memo" placeholder="특이사항, 현장 메모..." rows="3" onchange="App.saveMemo()"></textarea>
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+              <span>컨테이너 번호</span>
+              <span id="container-check-msg" style="font-size:10px;color:var(--accent);font-weight:700;"></span>
+            </label>
+            <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()">
           </div>
-          <div style="display:flex; justify-content:flex-end;">
-            <button class="btn btn-sm" onclick="App.clearTripData()" style="font-size:12px;padding:4px 10px;height:28px;background:#f5f5f5;color:var(--text-muted);border:1px solid #ddd;min-width:auto;">🗑️ 내용지움</button>
+          <div class="field">
+            <label>씰 번호</label>
+            <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()">
           </div>
+        </div>
+
+        <!-- 타입 + 종류 -->
+        <div class="trip-row">
+          <div class="field">
+            <label>타입</label>
+            <select id="container-type">
+              <option value="20FT">20FT</option>
+              <option value="40FT" selected>40FT</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>종류</label>
+            <select id="container-kind">
+              <option value="DRY" selected>DRY</option>
+              <option value="REEFER">REEFER</option>
+              <option value="TANK">TANK</option>
+              <option value="OPEN_TOP">OPEN TOP</option>
+              <option value="FLAT">FLAT RACK</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 운행 버튼 -->
+        <div id="trip-actions">
+          <div id="trip-start-row">
+            <div style="display:flex;gap:8px;">
+              <button class="btn" id="btn-trip-checklist" style="flex:0.4;font-size:13px;background:#ef4444;color:#fff;border:none;" onclick="App.openChecklist()">운행전점검</button>
+              <button class="btn btn-primary" id="btn-trip-start" style="flex:0.6;font-size:14px;" onclick="App.startTrip()">운행 시작</button>
+            </div>
+          </div>
+          <div id="trip-control-row" class="trip-action-row hidden">
+            <button class="btn btn-warn" id="btn-trip-pause" onclick="App.togglePause()">일시정지</button>
+            <button class="btn btn-danger" id="btn-trip-end" onclick="App.endTrip()">운행 종료</button>
+          </div>
+        </div>
+
+        <!-- 사진 -->
+        <div class="photo-section">
+          <div class="photo-label">운행 사진 <span id="photo-count-display" class="photo-count">(0/10)</span></div>
+          <div id="photo-scroll" class="photo-scroll">
+            <button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>
+          </div>
+        </div>
+
+        <!-- 메모 -->
+        <div class="field">
+          <label>메모</label>
+          <textarea id="trip-memo" placeholder="특이사항, 현장 메모..." rows="3" onchange="App.saveMemo()"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-sm" onclick="App.clearTripData()" style="background:#f5f5f5;color:var(--text-muted);border:1px solid #ddd;">내용 지움</button>
         </div>
       </div>
 
@@ -211,20 +213,20 @@
         <div id="log-list" class="log-list">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
         </div>
-        <div id="log-detail" class="log-detail" style="padding:14px; gap:10px;">
+        <div id="log-detail" class="log-detail" style="padding:12px;gap:8px;">
           <div style="display:flex;gap:8px;align-items:center;">
             <button class="btn btn-sm" onclick="App.closeLogDetail()">← 목록</button>
             <div class="spacer"></div>
             <button class="btn btn-sm btn-danger" onclick="App.deleteLog()">삭제</button>
           </div>
           <div id="log-detail-content"></div>
-          <!-- 사진 섹션 (항상 표시) -->
-          <div id="log-photo-section" class="photo-section" style="margin-top:10px;">
+          <!-- 사진 섹션 -->
+          <div id="log-photo-section" class="photo-section" style="margin-top:6px;">
             <div class="photo-label">운행 사진 <span id="log-photo-count-display">(0/10)</span></div>
             <div id="log-photo-scroll" class="photo-scroll"></div>
             <input type="file" id="log-file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onLogFileSelected(event)">
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
             <div class="field">
               <label>컨테이너 번호</label>
               <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()">
@@ -235,7 +237,7 @@
             </div>
           </div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>
-          <button class="btn btn-primary btn-full" onclick="App.saveLogEdit()" style="margin-top:10px;">기록 수정 저장</button>
+          <button class="btn btn-primary btn-full" onclick="App.saveLogEdit()" style="margin-top:6px;">기록 수정 저장</button>
         </div>
       </div>
     </div><!-- /탭 콘텐츠 -->
@@ -247,7 +249,7 @@
       <button class="tab-btn" id="tab-btn-log" onclick="App.switchTab('log')">일지</button>
       <button class="tab-btn tab-exit" onclick="App.exitApp()">종료</button>
     </nav>
-    <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0;"></div>
+    <div style="height:env(safe-area-inset-bottom);background:#000;width:100%;flex-shrink:0;"></div>
   </div><!-- /screen-main -->
 
   <!-- ════════════════════════════════════════════════
@@ -257,30 +259,30 @@
     <header class="app-header">
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
     </header>
-    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;">
-      <button class="btn" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로 돌아가기</button>
-      
+    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;">
+      <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start;">← 이전 페이지로</button>
+
       <!-- ── 프로필 사진 (운전원/차량/샤시) ── -->
-      <div id="settings-profile-photos" style="display:none; gap:18px; margin:4px 0 12px; justify-content:center; align-items:center; background:#f8fafc; padding:16px; border-radius:var(--radius); border:1px solid #e2e8f0;">
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('driver')">
-          <div id="p-photo-driver" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">운</div>
-          <span style="font-size:11px; color:#64748b; font-weight:700;">운전원+</span>
+      <div id="settings-profile-photos" style="display:none;gap:16px;justify-content:center;align-items:center;background:#f8fafc;padding:14px 12px;border-radius:var(--radius);border:1px solid #e2e8f0;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" onclick="App.pickProfilePhoto('driver')">
+          <div id="p-photo-driver" class="profile-photo-box">운</div>
+          <span style="font-size:11px;color:#64748b;font-weight:700;">운전원+</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('vehicle')">
-          <div id="p-photo-vehicle" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">차량</div>
-          <span style="font-size:11px; color:#64748b; font-weight:700;">차량+</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" onclick="App.pickProfilePhoto('vehicle')">
+          <div id="p-photo-vehicle" class="profile-photo-box">차량</div>
+          <span style="font-size:11px;color:#64748b;font-weight:700;">차량+</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.pickProfilePhoto('chassis')">
-          <div id="p-photo-chassis" class="profile-photo-box" style="background-image:none; background-size:cover; background-position:center; object-fit:cover;">샤시</div>
-          <span style="font-size:11px; color:#64748b; font-weight:700;">샤시+</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" onclick="App.pickProfilePhoto('chassis')">
+          <div id="p-photo-chassis" class="profile-photo-box">샤시</div>
+          <span style="font-size:11px;color:#64748b;font-weight:700;">샤시+</span>
         </div>
       </div>
 
       <div class="field">
         <label>전화번호</label>
-        <div style="display:flex;gap:4px;">
-           <input type="tel" id="s-phone" placeholder="01012345678 기존사용자 조회 클릭" maxlength="11" style="flex:1;min-width:0;">
-           <button class="btn btn-primary" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 12px;">번호조회</button>
+        <div style="display:flex;gap:6px;">
+          <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;">
+          <button class="btn btn-primary" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 12px;">번호조회</button>
         </div>
       </div>
       <div class="field">
@@ -296,96 +298,101 @@
         <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
       </div>
       <button class="btn btn-primary btn-full" onclick="App.saveProfile()">정보 저장</button>
-      <hr class="divider" style="margin:8px 0;">
+      <hr class="divider" style="margin:4px 0;">
       <div class="field">
         <label>앱 관리</label>
-        <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.showTerms()">
+        <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:6px;padding:0 14px;" onclick="App.showTerms()">
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
-        <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.2.21</span>
+        <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:6px;padding:0 14px;" onclick="App.checkUpdate()">
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.2.22</span>
         </button>
-        <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.clearCache()">
+        <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;margin-bottom:6px;padding:0 14px;" onclick="App.clearCache()">
           <span>캐시 지우기 (새로고침)</span>
         </button>
-        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;padding: 0 14px;" onclick="App.resetApp()">
+        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;padding:0 14px;" onclick="App.resetApp()">
           <span>앱 초기화 (재설정)</span>
         </button>
       </div>
     </div>
-    <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0; margin-top: auto;"></div>
+    <div style="height:env(safe-area-inset-bottom);background:#000;width:100%;flex-shrink:0;margin-top:auto;"></div>
   </div><!-- /screen-settings -->
 
 </div><!-- /app -->
 
 <!-- ──── 모달들 ──── -->
+
+<!-- 업데이트 알림 -->
 <div id="notice-overlay" class="modal-overlay">
-  <div class="modal" style="background:#fff;">
+  <div class="modal-box">
     <div class="modal-header">
       <div class="modal-title">앱 업데이트 알림</div>
     </div>
     <div class="modal-body" id="notice-msg"></div>
-    <div class="modal-footer" style="display:flex;gap:8px;">
-      <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('notice-overlay').classList.remove('active')">다음에</button>
-      <button class="btn btn-primary" style="flex:1" onclick="window.open(App._dlUrl, '_blank')">업데이트</button>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('notice-overlay').classList.remove('active')">다음에</button>
+      <button class="btn btn-primary" onclick="window.open(App._dlUrl, '_blank')">업데이트</button>
     </div>
   </div>
 </div>
 
+<!-- 운행전 점검 체크리스트 -->
 <div id="checklist-popup" class="modal-overlay">
-  <div class="modal" style="background:#fff; max-height:90vh; overflow-y:auto;">
-    <div class="modal-header" style="background:#fef2f2; border-bottom:1px solid #fecaca; padding:12px 14px;">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-header" style="background:#fef2f2;border-bottom:1px solid #fecaca;">
       <div class="modal-title" style="color:#b91c1c;">운행 전 필수점검 (안전법규)</div>
     </div>
-    <div class="modal-body" style="background:#fff; font-size:14px; color:#334155; display:flex; flex-direction:column; gap:12px; padding:16px 14px;">
-      <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_brake" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-         <span style="line-height:1.4;"><b>제동장치(브레이크)</b> 상태 정상 확인 (응답성/파손 여부)</span>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <label style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="chk_brake" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;">
+        <span style="line-height:1.4;"><b>제동장치(브레이크)</b> 상태 정상 확인 (응답성/파손 여부)</span>
       </label>
-      <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_tire" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-         <span style="line-height:1.4;"><b>바퀴/타이어</b> 공기압/마모(1.6mm 이상), 너트 체결 확인</span>
+      <label style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="chk_tire" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;">
+        <span style="line-height:1.4;"><b>바퀴/타이어</b> 공기압/마모(1.6mm 이상), 너트 체결 확인</span>
       </label>
-      <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_lamp" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-         <span style="line-height:1.4;"><b>등화장치</b> (전조등, 후미등, 방향지시등) 점등 확인</span>
+      <label style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="chk_lamp" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;">
+        <span style="line-height:1.4;"><b>등화장치</b> (전조등, 후미등, 방향지시등) 점등 확인</span>
       </label>
-      <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_cargo" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-         <span style="line-height:1.4;"><b>적재함 고정상태</b> (결박/덮개/지지대 등 화물 이탈 방지)</span>
+      <label style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="chk_cargo" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;">
+        <span style="line-height:1.4;"><b>적재함 고정상태</b> (결박/덮개/지지대 등 화물 이탈 방지)</span>
       </label>
-      <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_driver" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-         <span style="line-height:1.4;"><b>운전자 건강/음주여부</b> 확인 (정상 운행 가능 상태)</span>
+      <label style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="chk_driver" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;">
+        <span style="line-height:1.4;"><b>운전자 건강/음주여부</b> 확인 (정상 운행 가능 상태)</span>
       </label>
-      <div style="font-size:11px; color:#ef4444; margin-top:8px; line-height:1.4;">
+      <div style="font-size:11px;color:#ef4444;line-height:1.4;">
         * 운수사업법 시행규칙 [별지 제14호의5서식] 운수종사자 일상점검표에 의한 법정 필수 확인.
       </div>
     </div>
-    <div class="modal-footer" style="background:#fff; display:flex; gap:8px;">
-      <button class="btn btn-outline" style="flex:1;" onclick="App.closeChecklist()">취소</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="App.saveChecklist()">모두 점검완료</button>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="App.closeChecklist()">취소</button>
+      <button class="btn btn-primary" onclick="App.saveChecklist()">모두 점검완료</button>
     </div>
   </div>
 </div>
 
+<!-- 약관 -->
 <div id="modal-terms" class="modal-overlay">
   <div class="modal-box" style="padding:20px;">
     <h3>개인정보 처리방침 및 이용약관</h3>
-    <div style="font-size:12px; margin:16px 0; max-height:300px; overflow-y:auto; line-height:1.6;">
+    <div style="font-size:12px;margin:14px 0;max-height:280px;overflow-y:auto;line-height:1.6;">
        <p><b>1. 개인정보 수집 및 이용</b><br>- 위치정보: 실시간 차량 관제<br>- 사진/카메라: 운행 증빙 사진<br>- 성함/연락처/차량번호: 기사 식별</p>
-       <p><b>2. 위치정보 수집 기간</b><br>- '운행 시작' 시점부터 '운행 종료' 시점까지만 수집됩니다. 앱이 백그라운드에 있어도 관제를 위해 수집될 수 있습니다.</p>
-       <p><b>3. 데이터 보관 및 제공</b><br>- 수집된 데이터는 화물 운송 관리 및 정산 목적으로 사용되며, 법령에 정한 경우를 제외하고 제3자에게 제공하지 않습니다.</p>
-       <p style="margin-top:20px; font-weight:700;">본 앱을 이용하시려면 위 약관에 동의하신 것으로 간주됩니다.</p>
+       <p><b>2. 위치정보 수집 기간</b><br>- '운행 시작' 시점부터 '운행 종료' 시점까지만 수집됩니다.</p>
+       <p><b>3. 데이터 보관 및 제공</b><br>- 수집된 데이터는 화물 운송 관리 및 정산 목적으로 사용됩니다.</p>
+       <p style="margin-top:16px;font-weight:700;">본 앱을 이용하시려면 위 약관에 동의하신 것으로 간주됩니다.</p>
     </div>
     <button class="btn btn-primary btn-full" onclick="App.closeTerms()">닫기</button>
   </div>
 </div>
 
+<!-- 안드로이드 16 가이드 -->
 <div id="modal-guide-android16" class="modal-overlay">
-  <div class="modal-box" style="padding:24px; border:2px solid #ef4444;">
-    <h3 style="color:#ef4444; margin-bottom:12px;">⚠️ 안드로이드 16 설정 안내</h3>
-    <div style="font-size:14px; line-height:1.6; margin-bottom:16px;">
+  <div class="modal-box" style="padding:20px;border:2px solid #ef4444;">
+    <h3 style="color:#ef4444;margin-bottom:12px;">안드로이드 16 설정 안내</h3>
+    <div style="font-size:14px;line-height:1.6;margin-bottom:16px;">
       설정창이 열리면 우측 상단 <b>점 3개(⋮)</b>를 클릭하여<br>
       <b style="color:#2563eb;">[제한된 설정 허용]</b>을 반드시 먼저 눌러주세요!<br><br>
       그다음 뒤로 오셔서 다시 버튼을 누르면 스위치를 켤 수 있습니다.
@@ -397,8 +404,8 @@
 <!-- ──── 사진 전체화면 뷰어 ──── -->
 <div id="photo-viewer">
   <button id="photo-viewer-close" onclick="App.closePhotoViewer()">&#215;</button>
-  <div id="photo-viewer-wrap" style="flex:1; width:100%; overflow:hidden; display:flex; align-items:center; justify-content:center;">
-    <img id="photo-viewer-img" src="" alt="사진" style="transition: transform 0.1s; transform-origin:center; max-width:100%; max-height:90vh; object-fit:contain; touch-action:none;">
+  <div id="photo-viewer-wrap" style="flex:1;width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+    <img id="photo-viewer-img" src="" alt="사진" style="transition:transform 0.1s;transform-origin:center;max-width:100%;max-height:90vh;object-fit:contain;touch-action:none;">
   </div>
   <div id="photo-viewer-nav">
     <button onclick="App.prevPhoto()">&#8249;</button>
@@ -419,6 +426,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.2.12"></script>
+<script src="app.js?v=4.2.22"></script>
 </body>
 </html>
