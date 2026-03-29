@@ -205,9 +205,6 @@ const LocationBlock = ({
                         onFocus={() => setActiveField(fieldKey)}
                         onKeyDown={e => handleInputKeyDown(e, fieldKey)}
                     />
-                    {locState.lng && locState.lat && (
-                        <span className={styles.coordBadge} title={`${locState.lat}, ${locState.lng}`}>📍</span>
-                    )}
                     {/* 카카오 장소검색 드롭다운 */}
                     {showDropdown && searchResults.length > 0 && (
                         <div className={styles.placeDropdown}>

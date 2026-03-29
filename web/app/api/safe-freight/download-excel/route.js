@@ -15,14 +15,14 @@ export async function POST(request) {
     const workbook = new ExcelJS.Workbook();
 
     const headerStyle = {
-      font: { bold: true, size: 10 },
-      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, // Slate-100
+      font: { bold: true, size: 10, color: { argb: 'FFFFFFFF' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } },
       alignment: { vertical: 'middle', horizontal: 'center' },
       border: {
-        top: { style: 'thin', color: { argb: 'FF94A3B8' } },
-        left: { style: 'thin', color: { argb: 'FF94A3B8' } },
-        bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
-        right: { style: 'thin', color: { argb: 'FF94A3B8' } }
+        top: { style: 'thin', color: { argb: 'FFBFDBFE' } },
+        left: { style: 'thin', color: { argb: 'FFBFDBFE' } },
+        bottom: { style: 'thin', color: { argb: 'FFBFDBFE' } },
+        right: { style: 'thin', color: { argb: 'FFBFDBFE' } }
       }
     };
 
