@@ -114,14 +114,14 @@ input, textarea, select, button { font-family: inherit; }
 .field input, .field select, .field textarea {
   padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--surface); color: var(--text); font-size: 14px; outline: none;
-  transition: border 0.15s;
+  height: 44px; transition: border 0.15s;
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
 .field textarea { resize: none; min-height: 72px; }
 
 /* ─── 버튼 ─── */
 .btn {
-  padding: 0 16px; height: 40px; font-size: 13px; font-weight: 700;
+  padding: 0 16px; height: 44px; font-size: 13px; font-weight: 700;
   border: 1px solid var(--border-strong); border-radius: var(--radius);
   background: var(--bg); color: var(--text); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;

@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.16",
-  "versionCode": 160,
-  "changeLog": "v4.2.16 (Build 160)\n- [설정] 카메라/갤러리 선택 메뉴 한글화 (사진 촬영 / 갤러리 선택)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=160"
+  "latestVersion": "v4.2.17",
+  "versionCode": 161,
+  "changeLog": "v4.2.17 (Build 161)\n- [클린빌드] 업데이트 설치 오류 방지용 전체 클린 빌드 적용\n- [최신화] 모든 버전 정보 재동기화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=161"
 }
