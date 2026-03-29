@@ -32,13 +32,9 @@ export async function POST(request) {
                 const kakaoData = await kakaoRes.json();
                 const doc = kakaoData?.documents?.[0];
                 if (doc?.address) {
-                    const a = doc.address;
-                    const full = `${a.region_1depth_name} ${a.region_2depth_name} ${a.region_3depth_name}`;
-                    address = abbreviateAddr(full);
+                    address = doc.address.address_name;
                 } else if (doc?.road_address) {
-                    const r = doc.road_address;
-                    const full = `${r.region_1depth_name} ${r.region_2depth_name} ${r.road_name}`;
-                    address = abbreviateAddr(full);
+                    address = doc.road_address.address_name;
                 }
             }
         } catch (e) { console.error('[location] 카카오 geocode 오류:', e.message); }
