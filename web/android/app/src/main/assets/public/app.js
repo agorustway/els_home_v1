@@ -5,30 +5,30 @@
 (function () {
   'use strict';
   console.log('ELS Driver App Loading... v4.2.21');
- 
-  const APP_VERSION = 'v4.2.28';
-  const BUILD_CODE = 172; // Build 172 (v4.2.28)
+
+  const APP_VERSION = 'v4.2.30';
+  const BUILD_CODE = 174; // Build 174 (v4.2.30)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
   // ─── Capacitor 플러그인 헬퍼 ──────────────────────────────────
   function getPlugin(name) {
-    try { 
+    try {
       const plugins = window.Capacitor?.Plugins;
       if (!plugins) {
         console.warn('Capacitor.Plugins not available yet.');
         return null;
       }
-      
+
       // 1. 이미 등록된 플러그인 확인
       let found = plugins[name] || plugins[name.toLowerCase()] || plugins[name.toUpperCase()] || plugins[name + 'Plugin'];
-      
+
       // 2. [중요] Capacitor 4+ 방식: 명시적 등록 시도 (네이티브 브릿지 강제 연결)
       if (!found && window.Capacitor?.registerPlugin) {
         try {
           found = window.Capacitor.registerPlugin(name);
           console.log(`Plugin ${name} registered manually via registerPlugin()`);
-        } catch(e) { console.warn(`Manual registration for ${name} failed`, e); }
+        } catch (e) { console.warn(`Manual registration for ${name} failed`, e); }
       }
 
       if (!found) {
@@ -44,24 +44,24 @@
   async function remoteLog(msg, tag = 'JS') {
     if (!msg) return;
     try {
-        // [TDD] 로컬 로그 캡핑 (브라우저 메모리 폭주 방지)
-        const logHistory = Store.get('logHistory') || [];
-        if (logHistory.length > 50) logHistory.shift(); 
-        
-        // KST 시간 포맷 (ISO 8601 + 9시간)
-        const now = new Date();
-        const kst = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().replace('Z', '+09:00');
-        
-        logHistory.push(`[${kst}] [${tag}] ${msg}`);
-        Store.set('logHistory', logHistory);
+      // [TDD] 로컬 로그 캡핑 (브라우저 메모리 폭주 방지)
+      const logHistory = Store.get('logHistory') || [];
+      if (logHistory.length > 50) logHistory.shift();
 
-        const payload = { msg: `[KST ${kst}] ${msg}`, device: 'Mobile', tag };
-        fetch(BASE_URL + '/api/debug/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).catch(() => {});
-    } catch(e) {}
+      // KST 시간 포맷 (ISO 8601 + 9시간)
+      const now = new Date();
+      const kst = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().replace('Z', '+09:00');
+
+      logHistory.push(`[${kst}] [${tag}] ${msg}`);
+      Store.set('logHistory', logHistory);
+
+      const payload = { msg: `[KST ${kst}] ${msg}`, device: 'Mobile', tag };
+      fetch(BASE_URL + '/api/debug/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => { });
+    } catch (e) { }
   }
   const Overlay = () => getPlugin('Overlay');
   const Emergency = () => getPlugin('Emergency');
@@ -76,10 +76,10 @@
           headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
           data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
         });
-        return { 
-          ok: res.status < 400, 
-          status: res.status, 
-          json: async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data) 
+        return {
+          ok: res.status < 400,
+          status: res.status,
+          json: async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data)
         };
       } catch (e) {
         console.error('smartFetch CapHttp error', e);
@@ -91,8 +91,8 @@
   // ─── localStorage 헬퍼 ────────────────────────────────────────
   const Store = {
     get: (k, def = null) => { try { const v = localStorage.getItem('els_' + k); return v ? JSON.parse(v) : def; } catch { return def; } },
-    set: (k, v) => { try { localStorage.setItem('els_' + k, JSON.stringify(v)); } catch {} },
-    rm:  (k) => { try { localStorage.removeItem('els_' + k); } catch {} },
+    set: (k, v) => { try { localStorage.setItem('els_' + k, JSON.stringify(v)); } catch { } },
+    rm: (k) => { try { localStorage.removeItem('els_' + k); } catch { } },
   };
 
   // ─── 점검체크리스트 ──────────────────────────────────────────
@@ -143,34 +143,34 @@
 
   // ─── 권한 상태 ────────────────────────────────────────────────
   const permStatuses = Store.get('permStatuses') || { loc: false, camera: false, notif: false, overlay: false, battery: false };
-  
+
   function setPermStatus(type, ok) {
     // 권한 객체가 없으면 초기화
-    if (!permStatuses) return; 
+    if (!permStatuses) return;
     permStatuses[type] = !!ok;
     Store.set('permStatuses', permStatuses);
-    
+
     const el = document.getElementById('perm-' + type + '-status');
     if (!el) return;
-    
+
     el.textContent = permStatuses[type] ? '허용됨' : '미설정';
     el.className = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
 
     const btn = el.nextElementSibling;
     if (btn && (btn.tagName === 'BUTTON' || btn.classList.contains('btn-perm'))) {
       if (!permStatuses[type]) {
-         btn.classList.remove('btn-ok', 'btn-primary'); // primary 완전 제거
-         if (['loc', 'overlay', 'battery'].includes(type)) {
-            btn.classList.add('btn-pulse', 'btn-ng');
-            btn.textContent = '설정(필수)';
-         } else {
-            btn.classList.add('btn-ng');
-            btn.textContent = '설정';
-         }
+        btn.classList.remove('btn-ok', 'btn-primary'); // primary 완전 제거
+        if (['loc', 'overlay', 'battery'].includes(type)) {
+          btn.classList.add('btn-pulse', 'btn-ng');
+          btn.textContent = '설정(필수)';
+        } else {
+          btn.classList.add('btn-ng');
+          btn.textContent = '설정';
+        }
       } else {
-         btn.classList.remove('btn-pulse', 'btn-ng', 'btn-primary'); // primary 완전 제거
-         btn.classList.add('btn-ok');
-         btn.textContent = '허용완료';
+        btn.classList.remove('btn-pulse', 'btn-ng', 'btn-primary'); // primary 완전 제거
+        btn.classList.add('btn-ok');
+        btn.textContent = '허용완료';
       }
     }
   }
@@ -190,7 +190,7 @@
           }
         });
       }
-      
+
       await new Promise(r => {
         if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
         window.addEventListener('load', r, { once: true });
@@ -199,8 +199,8 @@
     }
 
     if (window.Capacitor?.Plugins?.StatusBar) {
-      window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(()=>{});
-      window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(()=>{});
+      window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(() => { });
+      window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(() => { });
     }
 
     if (document.getElementById('app-version-display')) {
@@ -217,11 +217,11 @@
     // 최초 실행 여부 및 권한 상태 체크
     const firstRun = !Store.get('permSetupDone');
     const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-    
+
     // 권한 상태 먼저 확인 후 화면 결정
     await updatePermStatuses();
     const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
-    
+
     if (firstRun || !criticalPerms) {
       showScreen('permission');
     } else if (!hasProfile) {
@@ -229,7 +229,7 @@
     } else {
       showMain();
     }
-    
+
     // 업데이트 확인은 메인 진입 시에만 수행
     checkUpdate(true);
 
@@ -270,24 +270,24 @@
     if (btnEl) btnEl.classList.add('active');
 
     if (tab === 'notice') loadNotices();
-    if (tab === 'log')    loadLogs();
+    if (tab === 'log') loadLogs();
   }
 
   // ─── 프로필 UI ───────────────────────────────────────────────
   function applyProfileToUI() {
-    document.getElementById('s-name').value    = State.profile.name;
-    document.getElementById('s-phone').value   = State.profile.phone;
+    document.getElementById('s-name').value = State.profile.name;
+    document.getElementById('s-phone').value = State.profile.phone;
     document.getElementById('s-vehicle').value = State.profile.vehicleNo;
-    document.getElementById('s-id').value      = State.profile.driverId;
+    document.getElementById('s-id').value = State.profile.driverId;
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
     // 프로필 사진 섹션 표시 및 저장된 사진 렌더링
     const pSection = document.getElementById('settings-profile-photos');
     if (pSection && (State.profile.name || State.profile.phone)) {
-        pSection.style.display = 'flex';
-        updateProfilePhoto('p-photo-driver',  State.profile.photo_driver,  '운');
-        updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
-        updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
+      pSection.style.display = 'flex';
+      updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운');
+      updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
+      updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
     }
   }
 
@@ -296,14 +296,14 @@
     // [보완] -나 공백 및 글자 등 숫자 외의 모든 특수문자 완전히 제거 후 저장
     const phone = document.getElementById('s-phone').value.replace(/[^0-9]/g, '');
     const vehicleNo = document.getElementById('s-vehicle').value.trim();
-    const driverId  = document.getElementById('s-id').value.trim().toUpperCase();
+    const driverId = document.getElementById('s-id').value.trim().toUpperCase();
 
     // 화면 필드에 먼저 정상(숫자만) 형태 반영
     document.getElementById('s-phone').value = phone;
 
-    if (!name || !phone || !vehicleNo || !driverId) { 
-      showToast('이름, 전화번호, 차량번호, 기사 ID를 모두 입력해 주세요.'); 
-      return; 
+    if (!name || !phone || !vehicleNo || !driverId) {
+      showToast('이름, 전화번호, 차량번호, 기사 ID를 모두 입력해 주세요.');
+      return;
     }
 
     // 기존 프로필 데이터(사진 등)는 보존하고 입력 필드만 덮어씀
@@ -312,7 +312,7 @@
     applyProfileToUI();
     upsertDriverContact();
     showToast('정보가 저장되었습니다.');
-    
+
     // 저장 성공 시 메인으로 강제 이동
     showMain();
   }
@@ -322,13 +322,13 @@
       await smartFetch(BASE_URL + '/api/vehicle-tracking/drivers', {
         method: 'POST',
         body: JSON.stringify({
-          phone:          State.profile.phone,
-          name:           State.profile.name,
+          phone: State.profile.phone,
+          name: State.profile.name,
           vehicle_number: State.profile.vehicleNo,
-          vehicle_id:     State.profile.driverId,
-          photo_driver:   State.profile.photo_driver,
-          photo_vehicle:  State.profile.photo_vehicle,
-          photo_chassis:  State.profile.photo_chassis,
+          vehicle_id: State.profile.driverId,
+          photo_driver: State.profile.photo_driver,
+          photo_vehicle: State.profile.photo_vehicle,
+          photo_chassis: State.profile.photo_chassis,
         }),
       });
     } catch (e) { console.warn('upsertDriverContact', e); }
@@ -343,10 +343,10 @@
       const data = await res.json();
       if (data && data.driver) {
         const d = data.driver;
-        document.getElementById('s-name').value    = d.name || '';
+        document.getElementById('s-name').value = d.name || '';
         document.getElementById('s-vehicle').value = d.vehicle_number || d.business_number || '';
-        document.getElementById('s-id').value      = d.vehicle_id || d.driver_id || '';
-        
+        document.getElementById('s-id').value = d.vehicle_id || d.driver_id || '';
+
         // 프로필 사진 업데이트
         const pSection = document.getElementById('settings-profile-photos');
         if (pSection) {
@@ -354,9 +354,9 @@
           updateProfilePhoto('p-photo-driver', d.photo_driver, '운');
           updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차');
           updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤');
-          
+
           // State에도 저장 (저장 버튼 클릭 시 함께 전송되도록)
-          State.profile.photo_driver  = d.photo_driver;
+          State.profile.photo_driver = d.photo_driver;
           State.profile.photo_vehicle = d.photo_vehicle;
           State.profile.photo_chassis = d.photo_chassis;
         }
@@ -387,10 +387,10 @@
     try {
       const Camera = window.Capacitor?.Plugins?.Camera;
       if (!Camera) {
-          showToast('카메라 기능을 사용할 수 없습니다.');
-          return;
+        showToast('카메라 기능을 사용할 수 없습니다.');
+        return;
       }
-      
+
       const image = await Camera.getPhoto({
         quality: 70,
         width: 1000,
@@ -404,13 +404,13 @@
         promptLabelPhoto: '앨범에서 선택',
         promptLabelPicture: '사진 촬영'
       });
-      
+
       const dataUrl = `data:image/jpeg;base64,${image.base64String}`;
-      
-      if (type === 'driver')  State.profile.photo_driver = dataUrl;
+
+      if (type === 'driver') State.profile.photo_driver = dataUrl;
       if (type === 'vehicle') State.profile.photo_vehicle = dataUrl;
       if (type === 'chassis') State.profile.photo_chassis = dataUrl;
-      
+
       updateProfilePhoto('p-photo-' + type, dataUrl, '');
       showToast('사진이 선택되었습니다. 정보 저장 시 업로드됩니다.');
     } catch (e) {
@@ -450,47 +450,47 @@
       try {
         const r = await overlay.checkPermission().catch(() => ({ granted: false }));
         setPermStatus('overlay', !!r.granted);
-        
+
         const b = await overlay.checkBatteryOptimization().catch(() => ({ granted: false }));
         setPermStatus('battery', !!b.granted);
-      } catch(e) { console.warn('Overlay check fail', e); }
+      } catch (e) { console.warn('Overlay check fail', e); }
     }
 
     // 2. 위치
     const Geo = window.Capacitor?.Plugins?.Geolocation;
     if (Geo) {
-        try {
-            const p = await Geo.checkPermissions().catch(() => ({}));
-            setPermStatus('loc', p.location === 'granted');
-        } catch(e) { console.warn('Geo check fail', e); }
+      try {
+        const p = await Geo.checkPermissions().catch(() => ({}));
+        setPermStatus('loc', p.location === 'granted');
+      } catch (e) { console.warn('Geo check fail', e); }
     } else if ('geolocation' in navigator) {
-        // Fallback: browser API check
-        try {
-            const p = await navigator.permissions?.query({ name: 'geolocation' }).catch(() => null);
-            if (p) setPermStatus('loc', p.state === 'granted');
-        } catch(e) {}
+      // Fallback: browser API check
+      try {
+        const p = await navigator.permissions?.query({ name: 'geolocation' }).catch(() => null);
+        if (p) setPermStatus('loc', p.state === 'granted');
+      } catch (e) { }
     }
 
     // 3. 카메라 / 미디어
     const Cam = window.Capacitor?.Plugins?.Camera;
     if (Cam) {
-        try {
-            const p = await Cam.checkPermissions().catch(() => ({}));
-            setPermStatus('camera', p.camera === 'granted' || p.camera === 'limited');
-        } catch(e) { console.warn('Cam check fail', e); }
+      try {
+        const p = await Cam.checkPermissions().catch(() => ({}));
+        setPermStatus('camera', p.camera === 'granted' || p.camera === 'limited');
+      } catch (e) { console.warn('Cam check fail', e); }
     }
 
     // 4. 알림
     const Notif = window.Capacitor?.Plugins?.LocalNotifications || window.Capacitor?.Plugins?.PushNotifications;
     if (Notif) {
-        try {
-            const p = await Notif.checkPermissions().catch(() => ({ display: 'denied', receive: 'denied' }));
-            setPermStatus('notif', p.display === 'granted' || p.receive === 'granted' || p.notif === 'granted');
-        } catch(e) { console.warn('Notif check fail', e); }
+      try {
+        const p = await Notif.checkPermissions().catch(() => ({ display: 'denied', receive: 'denied' }));
+        setPermStatus('notif', p.display === 'granted' || p.receive === 'granted' || p.notif === 'granted');
+      } catch (e) { console.warn('Notif check fail', e); }
     } else if ('Notification' in window) {
       setPermStatus('notif', Notification.permission === 'granted');
     }
-    
+
     // 최종 강제 동기화
     for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
@@ -501,7 +501,7 @@
     const guide = document.getElementById('modal-guide-android16');
     const confirmBtn = document.getElementById('btn-guide-confirm');
     if (!guide || !confirmBtn) return;
-    
+
     guide.classList.add('active');
     confirmBtn.onclick = (ev) => {
       ev.preventDefault();
@@ -514,81 +514,81 @@
   async function executeRealRequest(type) {
     const overlay = Overlay();
     try {
-        switch(type) {
-          case 'location':
-            if (window.Capacitor?.Plugins?.Geolocation) {
-                await window.Capacitor.Plugins.Geolocation.requestPermissions();
+      switch (type) {
+        case 'location':
+          if (window.Capacitor?.Plugins?.Geolocation) {
+            await window.Capacitor.Plugins.Geolocation.requestPermissions();
+          }
+          break;
+        case 'camera':
+          if (window.Capacitor?.Plugins?.Camera) {
+            await window.Capacitor.Plugins.Camera.requestPermissions();
+          } else {
+            try { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t => t.stop()); } catch (e) { }
+          }
+          break;
+        case 'notification':
+          const Notif = window.Capacitor?.Plugins?.LocalNotifications || window.Capacitor?.Plugins?.PushNotifications;
+          if (Notif) {
+            await Notif.requestPermissions();
+          } else if ('Notification' in window) {
+            await Notification.requestPermission();
+          }
+          break;
+        case 'overlay':
+          if (overlay) {
+            await overlay.requestPermission();
+          } else {
+            showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
+          }
+          break;
+        case 'battery':
+          if (overlay) {
+            showToast("설정창에서 '제한 없음'을 선택해야 위치 관제가 끊기지 않습니다", 4000);
+            remoteLog('User clicked Battery Optimization button', 'UI_ACTION');
+            try {
+              const res = await overlay.requestBatteryOptimization();
+              remoteLog('Native requestBatteryOptimization response: ' + JSON.stringify(res), 'NATIVE_RES');
+            } catch (e) {
+              remoteLog('Native requestBatteryOptimization error: ' + e.message, 'NATIVE_ERR');
             }
-            break;
-          case 'camera':
-            if (window.Capacitor?.Plugins?.Camera) {
-                await window.Capacitor.Plugins.Camera.requestPermissions();
-            } else {
-                try { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t=>t.stop()); } catch(e){}
-            }
-            break;
-          case 'notification':
-            const Notif = window.Capacitor?.Plugins?.LocalNotifications || window.Capacitor?.Plugins?.PushNotifications;
-            if (Notif) {
-                await Notif.requestPermissions();
-            } else if ('Notification' in window) {
-              await Notification.requestPermission();
-            }
-            break;
-          case 'overlay':
-            if (overlay) {
-                await overlay.requestPermission();
-            } else {
-                showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
-            }
-            break;
-          case 'battery':
-            if (overlay) {
-                showToast("설정창에서 '제한 없음'을 선택해야 위치 관제가 끊기지 않습니다", 4000);
-                remoteLog('User clicked Battery Optimization button', 'UI_ACTION');
-                try {
-                  const res = await overlay.requestBatteryOptimization();
-                  remoteLog('Native requestBatteryOptimization response: ' + JSON.stringify(res), 'NATIVE_RES');
-                } catch(e) {
-                  remoteLog('Native requestBatteryOptimization error: ' + e.message, 'NATIVE_ERR');
-                }
-            } else {
-                showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
-            }
-            break;
-        }
-    } catch(err) {
-        console.error('executeRealRequest error', type, err);
-        if (err.message && (err.message.includes('Permission') || err.message.includes('denied'))) {
-            showToast('권한이 거부되었습니다. 안드로이드 [설정 > 애플리케이션 > 권한] 에서 직접 허용해주세요.', 4000);
-        } else {
-            showToast('권한 요청 실패: ' + err.message);
-        }
+          } else {
+            showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
+          }
+          break;
+      }
+    } catch (err) {
+      console.error('executeRealRequest error', type, err);
+      if (err.message && (err.message.includes('Permission') || err.message.includes('denied'))) {
+        showToast('권한이 거부되었습니다. 안드로이드 [설정 > 애플리케이션 > 권한] 에서 직접 허용해주세요.', 4000);
+      } else {
+        showToast('권한 요청 실패: ' + err.message);
+      }
     } finally {
-        // [TDD] 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 1000ms)
-        setTimeout(async () => {
-            await updatePermStatuses();
-            showToast('권한 상태를 확인했습니다.');
-            // 버튼 상태 초기화
-            const activeBtns = document.querySelectorAll('.btn-active');
-            activeBtns.forEach(b => b.classList.remove('btn-active'));
-        }, 1000);
+      // [TDD] 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 1000ms)
+      setTimeout(async () => {
+        await updatePermStatuses();
+        showToast('권한 상태를 확인했습니다.');
+        // 버튼 상태 초기화
+        const activeBtns = document.querySelectorAll('.btn-active');
+        activeBtns.forEach(b => b.classList.remove('btn-active'));
+      }, 1000);
     }
   }
 
   async function requestPerm(type, event) {
     if (event && event.target) event.target.classList.add('btn-active');
-    
+
     // 안드로이드 16 이상이거나 오버레이/배터리 권한인 경우 가이드 먼저 노출 후 이동
     if (type === 'overlay' || type === 'battery') {
-        showAndroid16Guide(type);
-        return;
+      showAndroid16Guide(type);
+      return;
     }
-    
+
     try {
-        await executeRealRequest(type);
-    } catch(e) {
-        if (event && event.target) event.target.classList.remove('btn-active');
+      await executeRealRequest(type);
+    } catch (e) {
+      if (event && event.target) event.target.classList.remove('btn-active');
     }
   }
 
@@ -614,9 +614,9 @@
         alert('아래 필수 권한이 설정되지 않았습니다:\n\n' + missing.join('\n') + '\n\n모든 필수 권한을 허용해야 앱을 시작할 수 있습니다.');
         return;
       }
-      
+
       Store.set('permSetupDone', true);
-      
+
       // [TDD] 권한 완료 후 차량 정보(프로필)가 없으면 설정 페이지로 강제 이동
       const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
       if (!hasProfile) {
@@ -654,15 +654,15 @@
   function resetApp() {
     if (!confirm('앱을 초기화하면 모든 설정과 배차 기록이 삭제됩니다. 계속하시겠습니까?')) return;
     localStorage.clear(); // 전체 초기화
-    
+
     // 메모리 내 상태도 명시적으로 초기화
     State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
     State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
     for (const key in permStatuses) permStatuses[key] = false;
-    
+
     showScreen('permission');
     updatePermStatuses().then(() => {
-        showToast('앱이 초기화되었습니다. 권한을 다시 설정해주세요.');
+      showToast('앱이 초기화되었습니다. 권한을 다시 설정해주세요.');
     });
   }
 
@@ -670,18 +670,18 @@
   function onTripFieldChange() {
     const cEl = document.getElementById('container-no');
     const sEl = document.getElementById('seal-no');
-    
+
     // [TDD] 무조건 영문 대문자와 숫자만 허용 (공백/특수문자 원천 차단)
     cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
     sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
 
     State.trip.containerNo = cEl.value;
-    State.trip.sealNo      = sEl.value;
+    State.trip.sealNo = sEl.value;
 
     // ISO 6346 체크 (11자리일 때) - 알파벳 4 + 숫자 7
     const errEl = document.getElementById('container-check-msg');
     if (errEl) errEl.textContent = '';
-    
+
     if (cEl.value.length >= 4) {
       const match = cEl.value.match(/^([A-Z]{4})(\d{0,7})$/);
       if (match) {
@@ -702,8 +702,8 @@
 
   function validateISO6346(str) {
     const charMap = {
-      'A':10,'B':12,'C':13,'D':14,'E':15,'F':16,'G':17,'H':18,'I':19,'J':20,'K':21,'L':23,'M':24,
-      'N':25,'O':26,'P':27,'Q':28,'R':29,'S':30,'T':31,'U':32,'V':34,'W':35,'X':36,'Y':37,'Z':38
+      'A': 10, 'B': 12, 'C': 13, 'D': 14, 'E': 15, 'F': 16, 'G': 17, 'H': 18, 'I': 19, 'J': 20, 'K': 21, 'L': 23, 'M': 24,
+      'N': 25, 'O': 26, 'P': 27, 'Q': 28, 'R': 29, 'S': 30, 'T': 31, 'U': 32, 'V': 34, 'W': 35, 'X': 36, 'Y': 37, 'Z': 38
     };
     let sum = 0;
     for (let i = 0; i < 10; i++) {
@@ -727,33 +727,33 @@
         State.trip.startTime = new Date(data.started_at).getTime();
         State.trip.containerNo = data.container_number || '';
         State.trip.sealNo = data.seal_number || '';
-        
+
         document.getElementById('container-no').value = State.trip.containerNo;
-        document.getElementById('seal-no').value      = State.trip.sealNo;
+        document.getElementById('seal-no').value = State.trip.sealNo;
         document.getElementById('container-type').value = data.container_type || '40FT';
         document.getElementById('container-kind').value = data.container_kind || 'DRY';
         document.getElementById('trip-memo').value = data.special_notes || '';
-        
+
         // 사진 데이터 복구 (서버 -> 로컬 State)
         let photos = [];
         try {
           if (Array.isArray(data.photos)) photos = data.photos;
           else if (typeof data.photos === 'string' && data.photos.trim()) photos = JSON.parse(data.photos);
-        } catch(e) { console.error('loadCurrentTrip photos parse err', e); }
-        
+        } catch (e) { console.error('loadCurrentTrip photos parse err', e); }
+
         State.photos = photos.map(p => ({
           ...p,
           uploaded: true,
           serverUrl: p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + (p.url.startsWith('/') ? '' : '/') + p.url) : (p.serverUrl || p.dataUrl || '')
         }));
-        
+
         setTripStatus(data.status);
         updateTripUI();
         renderPhotoThumbs();
         if (data.status === 'driving') {
-           startGPS();
-           startOverlayService();
-           startTripStatusTimer();
+          startGPS();
+          startOverlayService();
+          startTripStatusTimer();
         }
       } else {
         Store.rm('activeTrip');
@@ -778,69 +778,69 @@
     }
 
     const containerNo = document.getElementById('container-no').value.trim();
-    const sealNo      = document.getElementById('seal-no').value.trim();
-    const cType       = document.getElementById('container-type').value;
-    const cKind       = document.getElementById('container-kind').value;
-    const memo        = document.getElementById('trip-memo').value;
+    const sealNo = document.getElementById('seal-no').value.trim();
+    const cType = document.getElementById('container-type').value;
+    const cKind = document.getElementById('container-kind').value;
+    const memo = document.getElementById('trip-memo').value;
 
     try {
-        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
-          method: 'POST',
-          body: JSON.stringify({
-            driver_name:      State.profile.name,
-            driver_phone:     State.profile.phone,
-            vehicle_number:   State.profile.vehicleNo,
-            vehicle_id:       State.profile.driverId,
-            container_number: containerNo,
-            seal_number:      sealNo,
-            container_type:   cType,
-            container_kind:   cKind,
-            special_notes:    memo,
-            chk_brake:        State.preTripDone.chk_brake || false,
-            chk_tire:         State.preTripDone.chk_tire || false,
-            chk_lamp:         State.preTripDone.chk_lamp || false,
-            chk_cargo:        State.preTripDone.chk_cargo || false,
-            chk_driver:       State.preTripDone.chk_driver || false,
-          }),
-        });
-        let data = await res.json().catch(() => ({}));
-        console.log('startTrip server raw response:', JSON.stringify(data));
-        
-        if (!res.ok) {
-          throw new Error(data.error || `서버 오류 (${res.status})`);
-        }
-        
-        // 서버 응답 구조가 여러 형태일 수 있으므로 전수 조사
-        // 1. {id: 123} 2. {trip: {id: 123}} 3. 단일 객체가 아닌 배열일 경우 등
-        const finalId = data.id || (data.trip && data.trip.id) || (Array.isArray(data) && data[0]?.id);
-        
-        if (!finalId) {
-           console.error('startTrip ID fail. data:', data);
-           throw new Error('ID 누락 (서버에서 기록 아이디를 받지 못함)');
-        }
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
+        method: 'POST',
+        body: JSON.stringify({
+          driver_name: State.profile.name,
+          driver_phone: State.profile.phone,
+          vehicle_number: State.profile.vehicleNo,
+          vehicle_id: State.profile.driverId,
+          container_number: containerNo,
+          seal_number: sealNo,
+          container_type: cType,
+          container_kind: cKind,
+          special_notes: memo,
+          chk_brake: State.preTripDone.chk_brake || false,
+          chk_tire: State.preTripDone.chk_tire || false,
+          chk_lamp: State.preTripDone.chk_lamp || false,
+          chk_cargo: State.preTripDone.chk_cargo || false,
+          chk_driver: State.preTripDone.chk_driver || false,
+        }),
+      });
+      let data = await res.json().catch(() => ({}));
+      console.log('startTrip server raw response:', JSON.stringify(data));
 
-        State.trip.id = finalId;
-        State.trip.status = 'driving';
-        State.trip.startTime = Date.now();
-        Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
+      if (!res.ok) {
+        throw new Error(data.error || `서버 오류 (${res.status})`);
+      }
 
-    const startD = new Date();
-    document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(startD)}`;
-        setTripStatus('driving');
-        updateTripUI();
-        startOverlayService();
-        startGPS();
-        startTripStatusTimer();
+      // 서버 응답 구조가 여러 형태일 수 있으므로 전수 조사
+      // 1. {id: 123} 2. {trip: {id: 123}} 3. 단일 객체가 아닌 배열일 경우 등
+      const finalId = data.id || (data.trip && data.trip.id) || (Array.isArray(data) && data[0]?.id);
 
-        if (State.photos.some(p => !p.uploaded)) {
-          await uploadPendingPhotos();
-        }
-        // [TDD] 시작즉시 현재 위치 한 번 확인 (주소 깜빡임 방지)
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos).catch(()=>{}), null, { enableHighAccuracy:true });
-        }
+      if (!finalId) {
+        console.error('startTrip ID fail. data:', data);
+        throw new Error('ID 누락 (서버에서 기록 아이디를 받지 못함)');
+      }
 
-        showToast(data.message || '운행이 시작되었습니다.');
+      State.trip.id = finalId;
+      State.trip.status = 'driving';
+      State.trip.startTime = Date.now();
+      Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
+
+      const startD = new Date();
+      document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(startD)}`;
+      setTripStatus('driving');
+      updateTripUI();
+      startOverlayService();
+      startGPS();
+      startTripStatusTimer();
+
+      if (State.photos.some(p => !p.uploaded)) {
+        await uploadPendingPhotos();
+      }
+      // [TDD] 시작즉시 현재 위치 한 번 확인 (주소 깜빡임 방지)
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos).catch(() => { }), null, { enableHighAccuracy: true });
+      }
+
+      showToast(data.message || '운행이 시작되었습니다.');
 
     } catch (e) { showToast('오류: ' + e.message); }
   }
@@ -855,14 +855,14 @@
       });
       State.trip.status = action === 'pause' ? 'paused' : 'driving';
       setTripStatus(State.trip.status);
-      
+
       if (State.trip.status === 'paused') {
         stopGPS();
       } else {
         lastGpsTimestamp = Date.now(); // 재개 시 즉각 수신안됨 오표기 방지
         startGPS();
       }
-      
+
       updateTripUI();
       updateTripStatusLine(); // 즉시 UI 및 오버레이 반영
     } catch (e) { showToast('상태 변경 실패'); }
@@ -870,7 +870,7 @@
 
   async function endTrip() {
     if (!State.trip.id) return;
-    
+
     // 업로드 중인 사진이 있는지 체크
     const isUploading = State.photos.some(p => !p.uploaded);
     if (isUploading) {
@@ -878,33 +878,33 @@
     } else {
       if (!confirm('운행을 종료하시겠습니까?')) return;
     }
-    
+
     try {
       const cNo = document.getElementById('container-no')?.value.trim();
       const sNo = document.getElementById('seal-no')?.value.trim();
       const mNo = document.getElementById('trip-memo')?.value.trim();
-      
+
       await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ 
-            action: 'complete',
-            container_number: cNo || undefined,
-            seal_number: sNo || undefined,
-            special_notes: mNo || undefined
+        body: JSON.stringify({
+          action: 'complete',
+          container_number: cNo || undefined,
+          seal_number: sNo || undefined,
+          special_notes: mNo || undefined
         }),
       });
       stopOverlayService();
       stopGPS();
       Store.rm('activeTrip');
-      
+
       // 완전 초기화 (강제우회 true 필요)
       clearTripData(true);
-      
+
       // 상태바(운송대기 등) 초기화
       updateTripStatusLine();
-      
+
       showToast('운행이 안전하게 종료되었습니다.');
-      
+
       // 유예된 업데이트가 있다면 종료 후 팝업
       if (State.pendingUpdate) {
         State.pendingUpdate = false;
@@ -934,7 +934,7 @@
       // 텍스트만 업데이트하도록 변경하여 innerHTML 간섭 최소화
       const dateEl = document.getElementById('trip-date-display');
       if (dateEl && !dateEl.innerHTML.includes('|')) {
-         dateEl.textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))}`;
+        dateEl.textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))}`;
       }
     }
   }
@@ -966,7 +966,7 @@
     smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ special_notes: memo }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   // ─── 오버레이 서비스 ──────────────────────────────────────────
@@ -978,7 +978,7 @@
       container: State.trip.containerNo || '미입력',
       status: 'driving',
       startTimeMillis: State.trip.startTime,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   function updateOverlayStatus() {
@@ -987,13 +987,13 @@
     overlay.updateStatus({
       status: State.trip.status,
       container: State.trip.containerNo || '미입력',
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   function stopOverlayService() {
     const overlay = Overlay();
     if (!overlay) return;
-    overlay.stopService().catch(() => {});
+    overlay.stopService().catch(() => { });
   }
 
   // ─── GPS (포그라운드 웹뷰 레이어) ────────────────────────────
@@ -1066,7 +1066,7 @@
     // 가속도센서 fallback: 급가속/감속 감지
     const acc = e.acceleration;
     if (acc) {
-      const mag = Math.sqrt((acc.x||0)**2 + (acc.y||0)**2 + (acc.z||0)**2);
+      const mag = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
       // 가속도 기반으로 자이로 값 보정 (자이로 없는 기기)
       if (gyroData.magnitude < 10) gyroData.magnitude = Math.max(gyroData.magnitude, mag * 3);
     }
@@ -1094,10 +1094,10 @@
     if (!full || full.includes('확인 중')) return full;
     // [TDD] 서울특별시 강남구 역삼동 -> 서울 강남 역삼 (축약 강화)
     return full.split(' ')
-               .map(s => s.replace(/특별시|광역시|특별자치시|특별자치도/g, '')
-                          .replace(/(도|시|구|동|읍|면|리)$/g, ''))
-               .filter(s => s.length > 0)
-               .join(' ');
+      .map(s => s.replace(/특별시|광역시|특별자치시|특별자치도/g, '')
+        .replace(/(도|시|구|동|읍|면|리)$/g, ''))
+      .filter(s => s.length > 0)
+      .join(' ');
   }
 
   function updateTripStatusLine() {
@@ -1115,40 +1115,40 @@
       if (addrDisplay) addrDisplay.style.display = 'none';
       return;
     }
-    
+
     // GPS 상태 판별 (수신 후 interval * 2 이내가 아니면 down)
     const deadTimeout = Math.max(currentGpsInterval * 2, 90_000); // 최소 90초는 허용
     const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > deadTimeout);
     let gpsColor = '#10b981'; // 초록 (수신중)
-    let gpsText = `${Math.round(currentGpsInterval/1000)}s`;
-    
+    let gpsText = `${Math.round(currentGpsInterval / 1000)}s`;
+
     if (State.trip.status === 'paused') {
-        gpsColor = '#ef4444'; // 빨강 (수신중지)
-        gpsText = '수신중지';
+      gpsColor = '#ef4444'; // 빨강 (수신중지)
+      gpsText = '수신중지';
     } else if (isDown) {
-        gpsColor = '#ef4444'; // 빨강 (수신안됨)
-        gpsText = '수신안됨';
+      gpsColor = '#ef4444'; // 빨강 (수신안됨)
+      gpsText = '수신안됨';
     } else if (State.trip.isRealtime) {
-        gpsColor = '#f59e0b'; // 주황 (실시간/웹조회)
-        gpsText = '실시간';
+      gpsColor = '#f59e0b'; // 주황 (실시간/웹조회)
+      gpsText = '실시간';
     }
 
     const addrShort = abbreviateAddr(lastKnownAddr);
-    
+
     if (dateDisplay && State.trip.startTime) {
       const d = new Date(State.trip.startTime);
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
       const HH = String(d.getHours()).padStart(2, '0');
       const min = String(d.getMinutes()).padStart(2, '0');
-      
+
       dateDisplay.textContent = `${mm}/${dd} ${HH}:${min}`;
       dateDisplay.style.color = '#64748b'; // slate-500
       dateDisplay.style.fontWeight = '400';
     }
 
     if (sep1) sep1.style.display = 'inline-block';
-    
+
     if (gpsChip) {
       gpsChip.style.display = 'inline-block';
       gpsChip.style.color = gpsColor;
@@ -1170,7 +1170,7 @@
         gpsText: gpsText,
         gpsColor: gpsColor,
         address: addrShort
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }
 
@@ -1181,7 +1181,7 @@
 
     // watchPosition 콜백 시점에 타임스탬프 갱신 (startGPS에서도 하지만 이중 보장)
     lastGpsTimestamp = Date.now();
-    
+
     // 정확도가 너무 낮으면(>200m) 필터링 (단, 강제수신은 예외)
     if (!isForced && accuracy && accuracy > 200) {
       remoteLog(`GPS 정확도 낮음: ${accuracy.toFixed(0)}m - 전송 스킵`, 'GPS_ACCURACY');
@@ -1194,11 +1194,11 @@
     if (speedKph >= 60) interval = 30_000; // 고속: 30초
     else if (speedKph >= 20) interval = 45_000; // 중속: 45초
     else interval = 60_000; // 저속/정지: 60초
-    
+
     if (interval !== currentGpsInterval) {
       currentGpsInterval = interval;
     }
-    
+
     // 상태 표시줄 즉시 갱신 (전송 여부과 무관하게 UI는 항상 최신)
     updateTripStatusLine();
 
@@ -1263,33 +1263,33 @@
         smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`).catch(() => null),
         smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=false`).catch(() => null)
       ]);
-      
+
       let norm = [], emerg = [];
       try {
-        if (res1) { 
-          const json1 = await res1.json().catch(()=>({})); 
+        if (res1) {
+          const json1 = await res1.json().catch(() => ({}));
           const d1 = typeof json1 === 'string' ? JSON.parse(json1) : json1;
           console.log('Notice API raw:', d1);
           const rawList = d1.posts || d1.notices || d1.items || (Array.isArray(d1) ? d1 : []);
           norm = Array.isArray(rawList) ? rawList : [];
           console.log('Norm notices count:', norm.length);
         }
-      } catch(e) { console.error('Norm load error:', e); }
+      } catch (e) { console.error('Norm load error:', e); }
 
       try {
-        if (res2 && res2.ok) { 
-          const json2 = await res2.json().catch(()=>({})); 
+        if (res2 && res2.ok) {
+          const json2 = await res2.json().catch(() => ({}));
           const d2 = typeof json2 === 'string' ? JSON.parse(json2) : json2;
-          emerg = Array.isArray(d2?.items) ? d2.items : (Array.isArray(d2) ? d2 : []); 
+          emerg = Array.isArray(d2?.items) ? d2.items : (Array.isArray(d2) ? d2 : []);
         }
-      } catch(e) { console.error(e); }
+      } catch (e) { console.error(e); }
 
       emerg.forEach(e => { e.isEmergency = true; e.category = '긴급알림'; });
-      
-      const merged = [...emerg, ...norm].sort((a,b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
+
+      const merged = [...emerg, ...norm].sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
       _notices = merged;
       renderNoticeList();
-      
+
       if (merged.length === 0) {
         console.log('No notices found. norm:', norm.length, 'emerg:', emerg.length);
         document.getElementById('notice-list').innerHTML = '<div class="loading">등록된 공지사항이 없습니다.</div>';
@@ -1308,7 +1308,7 @@
     } else {
       _currentNoticeFilter = category;
     }
-    
+
     // 탭 UI 스타일 변경
     const tabs = document.querySelectorAll('.notice-filter-tabs button');
     tabs.forEach(btn => {
@@ -1327,7 +1327,7 @@
 
   function renderNoticeList() {
     const read = Store.get('readNotices') || [];
-    
+
     const filtered = _notices.filter(n => {
       if (!_currentNoticeFilter) return true;
       const cat = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
@@ -1338,14 +1338,14 @@
       const dateVal = n.created_at || n.date || n.started_at;
       const dateStr = dateVal ? formatDate(new Date(dateVal)) : '—';
       const cat = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
-      
+
       let prefix = '';
       if (cat === '긴급알림') prefix = '<span style="color:#ef4444; font-weight:700; margin-right:4px;">🚨[긴급]</span>';
       else if (cat !== '일반공지') prefix = `<span style="color:#0ea5e9; font-weight:700; margin-right:4px;">[${escHtml(cat)}]</span>`;
 
       let title = escHtml(n.title || n.message || '제목 없음');
       if (title.startsWith('[긴급] ')) title = title.replace('[긴급] ', '');
-      
+
       return `
         <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice('${n.id}')">
           <div class="notice-item-title" style="display:flex; align-items:flex-start;">
@@ -1356,30 +1356,30 @@
         </div>
       `;
     }).join('') || '<div class="loading" style="margin-top:20px;">공지사항이 없습니다.</div>';
-    
+
     document.getElementById('notice-list').innerHTML = html;
   }
 
   function openNotice(id) {
     const n = _notices.find(x => String(x.id) === String(id));
     if (!n) return;
-    
+
     document.getElementById('notice-detail-title').textContent = n.title || '제목 없음';
-    document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
+    document.getElementById('notice-detail-meta').textContent = formatDate(new Date(n.created_at || n.date));
     const bodyEl = document.getElementById('notice-detail-body');
     if (bodyEl) {
       let raw = n.content || n.body || n.message || '';
       // [TDD] 일반 태그 및 이중 인코딩된 태그(&lt;p&gt;, &lt;br&gt;) 모두 완벽 제거
       raw = raw.replace(/&lt;br\s*\/?&gt;/gi, '\n')
-               .replace(/&lt;\/p&gt;/gi, '\n')
-               .replace(/&lt;p&gt;/gi, '')
-               .replace(/&lt;[^&]*&gt;/g, '')
-               .replace(/<\/p>/gi, '\n')
-               .replace(/<br\s*\/?>/gi, '\n')
-               .replace(/<[^>]*>/g, '');
+        .replace(/&lt;\/p&gt;/gi, '\n')
+        .replace(/&lt;p&gt;/gi, '')
+        .replace(/&lt;[^&]*&gt;/g, '')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]*>/g, '');
       bodyEl.innerHTML = raw.trim().replace(/\n\s*\n/g, '\n').replace(/\n/g, '<br>');
     }
-    
+
     document.getElementById('notice-list').style.display = 'none';
     const detail = document.getElementById('notice-detail');
     detail.classList.add('active');
@@ -1411,7 +1411,7 @@
     State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
     State.photos = [];
     State.preTripDone = null; // 체크리스트 초기화
-    
+
     // 점검 버튼 초기화
     const btnCheck = document.getElementById('btn-trip-checklist');
     if (btnCheck) {
@@ -1423,11 +1423,11 @@
     document.getElementById('container-no').value = '';
     document.getElementById('seal-no').value = '';
     document.getElementById('trip-memo').value = '';
-    ['chk_brake','chk_tire','chk_lamp','chk_cargo','chk_driver'].forEach(id => {
-       const el = document.getElementById(id);
-       if (el) el.checked = false;
+    ['chk_brake', 'chk_tire', 'chk_lamp', 'chk_cargo', 'chk_driver'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
     });
-    
+
     renderPhotoThumbs();
     setTripStatus('idle');
     updateTripUI();
@@ -1493,7 +1493,7 @@
     const scroll = document.getElementById('photo-scroll');
     const addBtn = '<button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>';
     const thumbs = State.photos.map((p, i) =>
-      `<img class="photo-thumb" src="${p.serverUrl || p.dataUrl}" onclick="App.openPhotoViewer(${i})" alt="사진${i+1}">`
+      `<img class="photo-thumb" src="${p.serverUrl || p.dataUrl}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`
     ).join('');
     scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
     document.getElementById('photo-count-display').textContent = `(${State.photos.length}/10)`;
@@ -1502,50 +1502,50 @@
   async function uploadPendingPhotos() {
     const currentTripId = State.trip.id;
     if (!currentTripId) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
-    
+
     const pending = State.photos.filter(p => !p.uploaded);
     if (pending.length === 0) return;
-    
+
     let uploadedCount = 0;
     for (let i = 0; i < State.photos.length; i++) {
-        const p = State.photos[i];
-        if (p.uploaded) continue;
+      const p = State.photos[i];
+      if (p.uploaded) continue;
 
-        try {
-            const dataUrl = await resizePhoto(p.file || p.dataUrl);
-            const base64 = dataUrl.split(',')[1];
-            const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-            const ext = mime.split('/')[1] || 'jpg';
-            const payload = { 
-                trip_id: currentTripId, 
-                photos: [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }] 
-            };
-            
-            const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-            });
-            const data = await res.json().catch(() => ({}));
+      try {
+        const dataUrl = await resizePhoto(p.file || p.dataUrl);
+        const base64 = dataUrl.split(',')[1];
+        const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const ext = mime.split('/')[1] || 'jpg';
+        const payload = {
+          trip_id: currentTripId,
+          photos: [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }]
+        };
 
-            if (data.photos && Array.isArray(data.photos)) {
-                // 서버에서 온 전체 목록으로 로컬 상태 동기화
-                State.photos = data.photos.map(sp => ({
-                    ...sp,
-                    uploaded: true,
-                    serverUrl: sp.url ? (sp.url.startsWith('http') ? sp.url : BASE_URL + (sp.url.startsWith('/') ? '' : '/') + sp.url) : (sp.serverUrl || sp.dataUrl || '')
-                }));
-                renderPhotoThumbs();
-                uploadedCount++;
-            } else if (data.error) {
-                console.error('Photo upload error:', data.error);
-            }
-        } catch (e) {
-            console.error('Photo upload catch:', e);
+        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (data.photos && Array.isArray(data.photos)) {
+          // 서버에서 온 전체 목록으로 로컬 상태 동기화
+          State.photos = data.photos.map(sp => ({
+            ...sp,
+            uploaded: true,
+            serverUrl: sp.url ? (sp.url.startsWith('http') ? sp.url : BASE_URL + (sp.url.startsWith('/') ? '' : '/') + sp.url) : (sp.serverUrl || sp.dataUrl || '')
+          }));
+          renderPhotoThumbs();
+          uploadedCount++;
+        } else if (data.error) {
+          console.error('Photo upload error:', data.error);
         }
+      } catch (e) {
+        console.error('Photo upload catch:', e);
+      }
     }
 
     if (uploadedCount > 0) {
-        showToast(`사진 ${uploadedCount}장 업로드 완료`);
+      showToast(`사진 ${uploadedCount}장 업로드 완료`);
     }
   }
 
@@ -1554,11 +1554,11 @@
     State.currentPhotoIdx = idx;
     State.viewerType = type;
     resetZoom();
-    
+
     const delBtn = document.getElementById('photo-viewer-delete-btn');
     // 일지 탭에서도 사진 삭제가 가능하도록 요청하셨으므로 항상 표시하거나 조건부 표시
     if (delBtn) delBtn.style.display = 'inline-block';
-    
+
     document.getElementById('photo-viewer').classList.add('active');
     updatePhotoViewerUI();
   }
@@ -1580,7 +1580,7 @@
     if (isProfile) {
       url = p.dataUrl.startsWith('http') || p.dataUrl.startsWith('data:') ? p.dataUrl : BASE_URL + (p.dataUrl.startsWith('/') ? '' : '/') + p.dataUrl;
     } else {
-      url = isLog 
+      url = isLog
         ? (p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || ''))
         : (p.serverUrl || p.dataUrl);
     }
@@ -1590,8 +1590,8 @@
     document.getElementById('photo-viewer-index').textContent = `${State.currentPhotoIdx + 1} / ${photos.length}`;
   }
 
-  function closePhotoViewer() { 
-    document.getElementById('photo-viewer').classList.remove('active'); 
+  function closePhotoViewer() {
+    document.getElementById('photo-viewer').classList.remove('active');
     resetZoom();
   }
 
@@ -1608,42 +1608,42 @@
     }
   }
 
-  function prevPhoto() { 
+  function prevPhoto() {
     const isProfile = State.viewerType === 'profile';
     const photos = State.viewerType === 'log' ? State.logPhotos : (isProfile ? State.profilePhotos : State.photos);
-    if (State.currentPhotoIdx > 0) { 
-      State.currentPhotoIdx--; 
+    if (State.currentPhotoIdx > 0) {
+      State.currentPhotoIdx--;
       resetZoom();
-      updatePhotoViewerUI(); 
+      updatePhotoViewerUI();
     }
   }
 
   function nextPhoto() {
     const isProfile = State.viewerType === 'profile';
     const photos = State.viewerType === 'log' ? State.logPhotos : (isProfile ? State.profilePhotos : State.photos);
-    if (State.currentPhotoIdx < photos.length - 1) { 
-      State.currentPhotoIdx++; 
+    if (State.currentPhotoIdx < photos.length - 1) {
+      State.currentPhotoIdx++;
       resetZoom();
-      updatePhotoViewerUI(); 
+      updatePhotoViewerUI();
     }
   }
 
   async function deleteCurrentPhoto() {
     if (!confirm('현재 보고 있는 사진을 삭제하시겠습니까?')) return;
-    
+
     if (State.viewerType === 'profile') {
       const p = State.profilePhotos[State.currentPhotoIdx];
       State.profile[`photo_${p.type}`] = '';
-      
+
       let fallbackText = '';
       if (p.type === 'driver') fallbackText = '운';
       if (p.type === 'vehicle') fallbackText = '차';
       if (p.type === 'chassis') fallbackText = '샤';
       updateProfilePhoto(`p-photo-${p.type}`, '', fallbackText);
-      
+
       showToast('삭제되었습니다. 정보 저장을 눌러야 완전히 반영됩니다.');
       State.profilePhotos.splice(State.currentPhotoIdx, 1);
-      
+
       if (State.profilePhotos.length === 0) {
         closePhotoViewer();
       } else {
@@ -1656,7 +1656,7 @@
     if (State.viewerType === 'log') {
       const photos = [...State.logPhotos];
       photos.splice(State.currentPhotoIdx, 1);
-      
+
       try {
         const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, {
           method: 'PATCH',
@@ -1665,7 +1665,7 @@
         if (!res.ok) throw new Error('서버 통신 실패');
         State.logPhotos = photos;
         showToast('사진이 삭제되었습니다.');
-        
+
         if (State.logPhotos.length === 0) {
           closePhotoViewer();
         } else {
@@ -1694,19 +1694,19 @@
 
   async function loadLogs() {
     document.getElementById('log-list').innerHTML = '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
-    const date  = document.getElementById('log-date-filter').value;
+    const date = document.getElementById('log-date-filter').value;
     const month = document.getElementById('log-month-filter').value;
     const phone = State.profile.phone;
-    const vNum  = State.profile.vehicleNo;
+    const vNum = State.profile.vehicleNo;
 
     let url = `${BASE_URL}/api/vehicle-tracking/trips?mode=my`;
-    if (date)  url += `&date=${date}`;
+    if (date) url += `&date=${date}`;
     else if (month) url += `&month=${month}`;
     if (phone) url += `&phone=${phone}`;
-    if (vNum)  url += `&vehicle_number=${encodeURIComponent(vNum)}`;
+    if (vNum) url += `&vehicle_number=${encodeURIComponent(vNum)}`;
 
     try {
-      const res  = await smartFetch(url);
+      const res = await smartFetch(url);
       const data = await res.json();
       const trips = data.trips || [];
       if (!trips.length) { document.getElementById('log-list').innerHTML = '<div class="loading">조회 결과가 없습니다.</div>'; return; }
@@ -1717,16 +1717,16 @@
         try {
           if (Array.isArray(t.photos)) pCount = t.photos.length;
           else if (typeof t.photos === 'string' && t.photos.trim()) pCount = JSON.parse(t.photos).length;
-        } catch(e) {}
-        
+        } catch (e) { }
+
         return `
           <div class="log-item" onclick="App.openLog('${t.id}')">
             <div class="log-item-header">
               <span class="log-item-container">${escHtml(t.container_number || '컨테이너 미입력')}</span>
-              <span class="log-item-status" style="color:${statusColor[t.status]||'var(--text-muted)'};border-color:${statusColor[t.status]||'var(--text-muted)'};">${statusLabel[t.status]||t.status}</span>
+              <span class="log-item-status" style="color:${statusColor[t.status] || 'var(--text-muted)'};border-color:${statusColor[t.status] || 'var(--text-muted)'};">${statusLabel[t.status] || t.status}</span>
             </div>
             <div class="log-item-meta" style="display:flex; justify-content:space-between; align-items:center;">
-              <span>${formatDate(new Date(t.started_at))} · ${escHtml(t.vehicle_number||'')}</span>
+              <span>${formatDate(new Date(t.started_at))} · ${escHtml(t.vehicle_number || '')}</span>
               ${pCount > 0 ? `<span style="font-size:10px; color:var(--accent); font-weight:700;">📸 ${pCount}장</span>` : ''}
             </div>
           </div>
@@ -1740,14 +1740,14 @@
 
   async function openLog(id) {
     try {
-      const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${id}`);
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${id}`);
       const data = await res.json();
       _currentLogData = data;
       State.currentLogId = id;
 
       document.getElementById('log-edit-container').value = data.container_number || '';
-      document.getElementById('log-edit-seal').value      = data.seal_number || '';
-      document.getElementById('log-edit-memo').value      = data.special_notes || '';
+      document.getElementById('log-edit-seal').value = data.seal_number || '';
+      document.getElementById('log-edit-memo').value = data.special_notes || '';
 
       // 운행 전 점검 항목(5개) 확인 로직
       const isAllChecked = !!(data.chk_brake && data.chk_tire && data.chk_lamp && data.chk_cargo && data.chk_driver);
@@ -1756,11 +1756,11 @@
       const endedAt = data.ended_at || data.completed_at || null;
       document.getElementById('log-detail-content').innerHTML = `
         <div class="log-detail-info-box">
-          <div class="log-detail-info-row"><span class="log-detail-info-label">번호</span><span>${escHtml(data.vehicle_number||'—')}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">번호</span><span>${escHtml(data.vehicle_number || '—')}</span></div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">운행 시작</span><span style="font-weight:700;color:var(--accent);">${formatDate(new Date(data.started_at))}</span></div>
           ${endedAt ? `<div class="log-detail-info-row"><span class="log-detail-info-label">운행 종료</span><span style="font-weight:700;color:var(--danger);">${formatDate(new Date(endedAt))}</span></div>` : ''}
           <div class="log-detail-info-row"><span class="log-detail-info-label">상태</span><span style="display:flex;align-items:center;gap:8px;">${data.status === 'completed' ? '완료' : (data.status === 'driving' ? '운송중' : (data.status === 'paused' ? '일시정지' : data.status))}${data.status !== 'completed' ? `<button onclick="App.forceCompleteLog('${data.id}')" class="btn btn-sm btn-warn" style="font-size:10px;padding:2px 6px;height:auto;">운행종료 처리</button>` : ''}</span></div>
-          <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type||'—'} / ${data.container_kind||'—'}</span></div>
+          <div class="log-detail-info-row"><span class="log-detail-info-label">제원</span><span>${data.container_type || '—'} / ${data.container_kind || '—'}</span></div>
           <div class="log-detail-info-row"><span class="log-detail-info-label">운행전 점검</span><span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검 완료 (5항목)' : '미점검/누락'}</span></div>
         </div>
       `;
@@ -1778,7 +1778,7 @@
       if (!Array.isArray(photos)) photos = [];
       State.logPhotos = photos;
       const photoSection = document.getElementById('log-photo-section');
-      const photoScroll  = document.getElementById('log-photo-scroll');
+      const photoScroll = document.getElementById('log-photo-scroll');
       if (photoSection && photoScroll) {
         const cnt = document.getElementById('log-photo-count-display');
         if (cnt) cnt.textContent = `(${photos.length}/10)`;
@@ -1794,7 +1794,7 @@
           if (url && !url.startsWith('http') && !url.startsWith('data:')) {
             url = BASE_URL + (url.startsWith('/') ? '' : '/') + url;
           }
-          return url ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i+1}">` : '';
+          return url ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i + 1}">` : '';
         }).join('');
         photoScroll.innerHTML = html;
       }
@@ -1847,8 +1847,8 @@
         method: 'PATCH',
         body: JSON.stringify({
           container_number: cEl ? cEl.value : '',
-          seal_number:      sEl ? sEl.value : '',
-          special_notes:    document.getElementById('log-edit-memo').value,
+          seal_number: sEl ? sEl.value : '',
+          special_notes: document.getElementById('log-edit-memo').value,
         }),
       });
       showToast('저장되었습니다.');
@@ -1862,11 +1862,11 @@
     try {
       const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, { method: 'DELETE' });
       if (res && res.ok === false) throw new Error('서버 권한/응답 오류');
-      
+
       // [TDD] 현재 운행 중인 트립을 삭제한 경우, 운행 화면도 초기화 (동기화 이슈 해결)
       if (String(State.currentLogId) === String(State.trip.id)) {
         console.log('Active trip deleted from log. Resetting current trip state.');
-        clearTripData(); 
+        clearTripData();
       }
 
       showToast('삭제되었습니다.');
@@ -1883,13 +1883,13 @@
         body: JSON.stringify({ status: 'completed', ended_at: endedAtIso })
       });
       showToast('운행종료 되었습니다.');
-      
+
       // 현재 진행중인 운행이었다면 즉시 idle 상태로 초기화시켜서 꼬임 방지
       if (String(State.trip.id) === String(id)) {
         clearTripData(true); // bypassAuth=true
         updateTripStatusLine();
       }
-      
+
       closeLogDetail();
       loadLogs();
       // openLog(id); 도 가능하지만 목록 업데이트를 위해 closeLogDetail하는게 깔끔함
@@ -1912,39 +1912,39 @@
   async function onLogFileSelected(e) {
     const files = Array.from(e.target.files);
     e.target.value = '';
-    
+
     if (!State.currentLogId) return;
-    
+
     const photos = State.logPhotos || [];
     if (photos.length >= 10) { showToast('최대 10장까지만 가능합니다.'); return; }
-    
+
     const uploadCount = Math.min(files.length, 10 - photos.length);
     if (uploadCount <= 0) return;
 
     showToast(`사진 ${uploadCount}장을 업로드 중입니다...`, 5000);
-    
+
     try {
       showToast(`사진 ${uploadCount}장을 압축/업로드 중...`, 5000);
       let successCount = 0;
-      
+
       for (let i = 0; i < uploadCount; i++) {
         const file = files[i];
         const dataUrl = await resizePhoto(file);
         const base64 = dataUrl.split(',')[1];
         const mime = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         const ext = mime.split('/')[1] || 'jpg';
-        
-        const payload = { 
-            trip_id: State.currentLogId, 
-            photos: [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }] 
+
+        const payload = {
+          trip_id: State.currentLogId,
+          photos: [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }]
         };
-        
+
         const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
-            method: 'POST',
-            body: JSON.stringify(payload),
+          method: 'POST',
+          body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        
+
         if (data.photos && Array.isArray(data.photos)) {
           State.logPhotos = data.photos;
           successCount++;
@@ -1974,7 +1974,7 @@
 
   async function pollEmergency() {
     try {
-      const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=true`);
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=true`);
       const data = await res.json();
       const items = data.items || [];
       for (const item of items) {
@@ -1997,7 +1997,7 @@
   function sendNativeEmergencyNotif(item) {
     const em = Emergency();
     if (em) {
-      em.showEmergencyAlert({ title: '⚠️ ELS 긴급알림', message: item.message || '', id: item.id }).catch(() => {});
+      em.showEmergencyAlert({ title: '⚠️ ELS 긴급알림', message: item.message || '', id: item.id }).catch(() => { });
     }
   }
 
@@ -2007,12 +2007,12 @@
       const res = await smartFetch(VERSION_URL + '?t=' + Date.now()).catch(() => null);
       if (!res) return;
       const data = await res.json().catch(() => ({}));
-      
+
       const remoteVersion = (data.latestVersion || '').trim();
       const localVersion = APP_VERSION.trim();
 
       const hasUpdate = data.versionCode > BUILD_CODE || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion));
-      
+
       if (!hasUpdate) {
         if (!auto) showToast('이미 최신 버전입니다 (' + APP_VERSION + ')');
         return;
@@ -2048,7 +2048,7 @@
       return;
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
-    
+
     if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.exitApp();
     } else {
@@ -2060,11 +2060,11 @@
   function formatDate(d) {
     if (!(d instanceof Date) || isNaN(d)) return '—';
     const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   function escHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   let toastTimer = null;
@@ -2153,22 +2153,22 @@
         e.preventDefault();
         const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
         currentZoom = Math.min(Math.max(baseScale * (dist / initialDist), 1), 6);
-        
+
         // 축소가 1이 되면 중심 초기화
         if (currentZoom <= 1.01) { currentTransX = 0; currentTransY = 0; }
-        
+
         img.style.transform = `translate(${currentTransX}px, ${currentTransY}px) scale(${currentZoom})`;
       } else if (e.touches.length === 1 && isDragging && currentZoom > 1) {
         e.preventDefault();
         currentTransX = e.touches[0].pageX - startX;
         currentTransY = e.touches[0].pageY - startY;
-        
+
         // 경계 제한 (대략적인 보정)
         const limitX = (currentZoom - 1) * (window.innerWidth / 2);
         const limitY = (currentZoom - 1) * (window.innerHeight / 2);
         currentTransX = Math.min(Math.max(currentTransX, -limitX), limitX);
         currentTransY = Math.min(Math.max(currentTransY, -limitY), limitY);
-        
+
         img.style.transform = `translate(${currentTransX}px, ${currentTransY}px) scale(${currentZoom})`;
       }
     }, { passive: false });
