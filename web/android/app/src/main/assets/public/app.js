@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.38');
+  console.log('ELS Driver App Loading... v4.2.35');
 
-  const APP_VERSION = 'v4.2.38';
-  const BUILD_CODE = 182; // Build 182 (v4.2.38)
+  const APP_VERSION = 'v4.2.35';
+  const BUILD_CODE = 179; // Build 179 (v4.2.35)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
