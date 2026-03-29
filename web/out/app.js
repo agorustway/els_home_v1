@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.7');
+  console.log('ELS Driver App Loading... v4.2.8');
  
-  const APP_VERSION = 'v4.2.7';
-  const BUILD_CODE = 151; // Build 151 (v4.2.7)
+  const APP_VERSION = 'v4.2.8';
+  const BUILD_CODE = 152; // Build 152 (v4.2.8)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1149,7 +1149,12 @@
   let _currentNoticeFilter = '';
 
   function filterNotice(category, btnElement) {
-    _currentNoticeFilter = category;
+    if (_currentNoticeFilter === category) {
+      _currentNoticeFilter = '';
+      btnElement = null;
+    } else {
+      _currentNoticeFilter = category;
+    }
     
     // 탭 UI 스타일 변경
     const tabs = document.querySelectorAll('.notice-filter-tabs button');
