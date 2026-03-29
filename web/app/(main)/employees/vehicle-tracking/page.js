@@ -531,6 +531,38 @@ export default function VehicleTrackingPage() {
 
     useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
+    // [신규] 운행기록 탭 주소 자동 로드
+    useEffect(() => {
+        if (!mapReady || !records || records.length === 0 || !window.naver?.maps?.Service) return;
+        
+        const fetchAllMissing = async () => {
+            const tripsWithLoc = records.filter(t => t.lastLocation && !t.last_location_address);
+            if (tripsWithLoc.length === 0) return;
+            
+            for (const trip of tripsWithLoc) {
+                const loc = trip.lastLocation;
+                const cacheKey = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
+                if (ADDRESS_CACHE.has(cacheKey)) {
+                    setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, last_location_address: ADDRESS_CACHE.get(cacheKey) } : t));
+                    continue;
+                }
+
+                window.naver.maps.Service.reverseGeocode({
+                    coords: new window.naver.maps.LatLng(loc.lat, loc.lng),
+                    orders: [window.naver.maps.Service.OrderType.ADDR, window.naver.maps.Service.OrderType.ROAD_ADDR].join(',')
+                }, (status, response) => {
+                    if (status === window.naver.maps.Service.Status.OK) {
+                        const addr = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+                        ADDRESS_CACHE.set(cacheKey, addr);
+                        setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, last_location_address: addr } : t));
+                    }
+                });
+                await new Promise(r => setTimeout(r, 200)); 
+            }
+        };
+        fetchAllMissing();
+    }, [records.length, mapReady]);
+
     const handleSearch = () => fetchRecords();
     const handleReset = () => { setFilterStatus('all'); setFilterKeyword(''); setFilterFrom(''); setFilterTo(''); };
 

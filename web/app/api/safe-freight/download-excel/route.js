@@ -31,7 +31,15 @@ export async function POST(request) {
       const hRow = sheet.addRow(headers);
       hRow.height = 25;
       hRow.eachCell(cell => {
-        Object.assign(cell, headerStyle);
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFBFDBFE' } },
+          left: { style: 'thin', color: { argb: 'FFBFDBFE' } },
+          bottom: { style: 'thin', color: { argb: 'FFBFDBFE' } },
+          right: { style: 'thin', color: { argb: 'FFBFDBFE' } }
+        };
       });
 
       rows.forEach(rowData => {

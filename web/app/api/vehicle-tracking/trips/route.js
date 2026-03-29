@@ -129,9 +129,10 @@ export async function GET(request) {
                 
                 if (!locError && locData) {
                     const locMap = {};
-                    locData.forEach(l => { locMap[l.trip_id] = l.address; });
+                    locData.forEach(l => { locMap[l.trip_id] = l; });
                     data.forEach(t => {
-                        t.last_location_address = locMap[t.id] || null;
+                        t.lastLocation = locMap[t.id] || null;
+                        t.last_location_address = locMap[t.id]?.address || null;
                     });
                 }
             }
