@@ -66,6 +66,18 @@ public class EmergencyPlugin extends Plugin {
         call.resolve(new JSObject().put("shown", true));
     }
 
+    @PluginMethod
+    public void bringToForeground(PluginCall call) {
+        try {
+            Intent launchIntent = new Intent(getContext(), MainActivity.class);
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            getContext().startActivity(launchIntent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
     private void createEmergencyChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(

@@ -1993,12 +1993,60 @@
 
 
   // ─── 긴급알림 ─────────────────────────────────────────────────
-  let emergencyPollTimer = null;
+  let emergencySirenInterval = null;
+  let sirenAudioCtx = null;
+  let sirenOsc = null;
 
   function startEmergencyPoll() {
     if (emergencyPollTimer) return;
     pollEmergency();
     emergencyPollTimer = setInterval(pollEmergency, 30_000);
+  }
+
+  function playEmergencySiren() {
+    try {
+      if (sirenAudioCtx) return;
+      sirenAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      sirenOsc = sirenAudioCtx.createOscillator();
+      const gainNode = sirenAudioCtx.createGain();
+
+      sirenOsc.type = 'triangle';
+      sirenOsc.frequency.setValueAtTime(600, sirenAudioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.5, sirenAudioCtx.currentTime);
+
+      sirenOsc.connect(gainNode);
+      gainNode.connect(sirenAudioCtx.destination);
+      sirenOsc.start();
+
+      let toggle = false;
+      emergencySirenInterval = setInterval(() => {
+        if (sirenOsc) {
+          const freq = toggle ? 600 : 1000;
+          sirenOsc.frequency.exponentialRampToValueAtTime(freq, sirenAudioCtx.currentTime + 0.4);
+          toggle = !toggle;
+        }
+      }, 500);
+
+      // 30초 후 자동 정지
+      setTimeout(stopEmergencySiren, 30_000);
+    } catch (e) {
+      console.error('Siren play failed', e);
+    }
+  }
+
+  function stopEmergencySiren() {
+    if (emergencySirenInterval) {
+      clearInterval(emergencySirenInterval);
+      emergencySirenInterval = null;
+    }
+    if (sirenOsc) {
+      try { sirenOsc.stop(); } catch (e) { }
+      sirenOsc = null;
+    }
+    if (sirenAudioCtx) {
+      try { sirenAudioCtx.close(); } catch (e) { }
+      sirenAudioCtx = null;
+    }
   }
 
   async function pollEmergency() {
@@ -2010,6 +2058,13 @@
         if (State.emergencyIds.has(item.id)) continue;
         State.emergencyIds.add(item.id);
         Store.set('emergencyIds', Array.from(State.emergencyIds));
+        
+        // [TDD] 긴급 알림 시 앱을 포그라운드로 강제 호출
+        const em = Emergency();
+        if (em && em.bringToForeground) {
+          em.bringToForeground().catch(() => {});
+        }
+
         showEmergencyPopup(item);
         sendNativeEmergencyNotif(item);
       }
@@ -2017,11 +2072,17 @@
   }
 
   function showEmergencyPopup(item) {
-    document.getElementById('emergency-body').textContent = item.message || item.content || '';
+    const rawMsg = item.message || item.content || '';
+    // [TDD] HTML 태그 제거 및 사이렌 재생
+    document.getElementById('emergency-body').textContent = stripHtml(rawMsg);
     document.getElementById('emergency-popup').classList.add('active');
+    playEmergencySiren();
   }
 
-  function closeEmergency() { document.getElementById('emergency-popup').classList.remove('active'); }
+  function closeEmergency() { 
+    document.getElementById('emergency-popup').classList.remove('active'); 
+    stopEmergencySiren();
+  }
 
   function sendNativeEmergencyNotif(item) {
     const em = Emergency();
@@ -2090,6 +2151,10 @@
     if (!(d instanceof Date) || isNaN(d)) return '—';
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function stripHtml(str) {
+    return String(str || '').replace(/<[^>]*>?/gm, '');
   }
 
   function escHtml(str) {
