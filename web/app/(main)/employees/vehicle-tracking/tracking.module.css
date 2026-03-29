@@ -338,15 +338,15 @@
 /* 모바일 반응형 최적화 (Galaxy S24 기준) */
 @media (max-width: 768px) {
     .trackingPage {
-        padding: 12px;
+        padding: 8px;
         background: #f8fafc;
         min-height: 100vh;
     }
 
     .mapContainer {
-        height: 320px;
-        margin: 0 -12px 16px -12px;
-        width: calc(100% + 24px);
+        height: 300px;
+        margin: 0 -8px 16px -8px;
+        width: calc(100% + 16px);
         border-radius: 0;
         border-left: none;
         border-right: none;
@@ -385,11 +385,13 @@
         width: 100%;
     }
 
+    .tripTable { margin-top: 10px; }
+    
     .tripTable tr {
         background: #fff;
         margin-bottom: 12px;
-        border-radius: 16px;
-        padding: 16px;
+        border-radius: 12px;
+        padding: 12px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         border: 1px solid #f1f5f9;
         position: relative;
@@ -409,26 +411,36 @@
     .tripTable td:first-child { margin-bottom: 8px; } /* 상태 뱃지 */
     
     .tripTable td:nth-child(2) { /* 기사명 */
-        font-size: 1rem;
+        font-size: 1.05rem;
         color: #1e293b;
         font-weight: 800;
     }
     
     .tripTable td:nth-child(2)::before { content: "👤 "; opacity: 0.6; }
 
-    .tripTable td:nth-child(3)::before { content: "🚗 "; opacity: 0.6; } /* 차량번호 */
+    .tripTable td:nth-child(3)::before { content: "🚛 "; opacity: 0.6; } /* 차량번호 */
+
+    .tripTable td:nth-child(4)::before { content: "📦 "; opacity: 0.6; } /* 컨테이너 */
     
-    .tripTable td:nth-child(5) { /* 현재위치 */
-        margin-top: 8px;
-        padding-top: 8px;
+    .tripTable td:nth-child(5) { /* 마지막 수신위치 */
+        margin-top: 10px;
+        padding-top: 10px;
         border-top: 1px dashed #e2e8f0;
         color: #64748b;
-        font-size: 0.75rem;
-        display: block;
+        font-size: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        line-height: 1.4;
     }
+
+    .tripTable td:nth-child(5)::before { content: "📍 마지막 위치:"; font-size: 0.75rem; font-weight: 800; color: #94a3b8; }
     
     .tripTable td:last-child { /* 관리 버튼 */
         margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #f1f5f9;
         display: flex;
         gap: 8px;
     }

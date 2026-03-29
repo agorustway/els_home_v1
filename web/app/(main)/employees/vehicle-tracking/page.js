@@ -27,9 +27,11 @@ export default function VehicleTrackingPage() {
 
     // 실시간 관제 데이터
     const [liveTrips, setLiveTrips] = useState([]);
-    const [notices, setNotices] = useState([]); // [신규] 실시간 공지사항 (동적 데이터)
+    const [notices, setNotices] = useState([]); // 실시간 공지사항 (동적 데이터)
+    const [emergencies, setEmergencies] = useState([]); // [신규] 긴급알림 데이터
     const [showWriteModal, setShowWriteModal] = useState(false);
-    const [newNotice, setNewNotice] = useState({ title: '', content: '', target: '전체' });
+    const [newNotice, setNewNotice] = useState({ title: '', content: '', target: '전체', isEmergency: false });
+    const [alertMsg, setAlertMsg] = useState(null); // 모달 내 메시지용
     const [loading, setLoading] = useState(true);
     const [mapReady, setMapReady] = useState(false);
     const mapRef = useRef(null);
@@ -38,7 +40,6 @@ export default function VehicleTrackingPage() {
     const polylineRef = useRef(null);
     const infoWindowRef = useRef(null);
     const intervalRef = useRef(null);
-    const realtimeIntervalRef = useRef(null);
     const realtimeTimeoutRef = useRef(null);
     const [realtimeTarget, setRealtimeTarget] = useState(null); // 실시간 추적 대상 trip ID
     const [realtimeCountdown, setRealtimeCountdown] = useState(0); // 남은 초
@@ -84,68 +85,71 @@ export default function VehicleTrackingPage() {
 
     // [신규] 공지사항 목록 실시간 연동
     const fetchNotices = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('notices')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
+        const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false }).limit(20);
         if (!error && data) setNotices(data);
+        
+        const { data: emData, error: emError } = await supabase.from('emergency_notices').select('*').order('created_at', { ascending: false }).limit(10);
+        if (!emError && emData) setEmergencies(emData);
     }, []);
 
-        const handleSaveNotice = async () => {
-        if (!newNotice.title.trim()) { alert('공지 제목을 입력해주세요.'); return; }
-        if (!newNotice.content.trim()) { alert('공지 내용을 입력해주세요.'); return; }
+    const showModalAlert = (msg) => {
+        setAlertMsg(msg);
+        setTimeout(() => setAlertMsg(null), 2500);
+    };
+
+    const handleSaveNotice = async () => {
+        if (!newNotice.title.trim()) { showModalAlert('제목을 입력해주세요.'); return; }
+        if (!newNotice.content.trim()) { showModalAlert('내용을 입력해주세요.'); return; }
         setLoading(true);
         try {
-            const row = {
-                title: newNotice.title,
-                content: newNotice.content,
-                target: newNotice.target,
-                status: '공지중'
-            };
-            
-            let query;
-            if (newNotice.id) {
-                query = supabase.from('notices').update(row).eq('id', newNotice.id);
+            if (newNotice.isEmergency) {
+                const row = { title: newNotice.title, message: newNotice.content };
+                let query = newNotice.id ? supabase.from('emergency_notices').update(row).eq('id', newNotice.id) : supabase.from('emergency_notices').insert([row]);
+                const { error } = await query;
+                if (error) throw error;
             } else {
-                query = supabase.from('notices').insert([row]);
+                const row = { title: newNotice.title, content: newNotice.content, target: newNotice.target, status: '공지중', attachments: newNotice.attachments || null };
+                let query = newNotice.id ? supabase.from('notices').update(row).eq('id', newNotice.id) : supabase.from('notices').insert([row]);
+                const { error } = await query;
+                if (error) throw error;
             }
 
-            const { error } = await query;
-            if (error) throw error;
-
-            alert(newNotice.id ? '수정되었습니다.' : '등록되었습니다.');
-            setShowWriteModal(false);
-            setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
-            fetchNotices();
+            showModalAlert(newNotice.id ? '수정되었습니다.' : '등록되었습니다.');
+            setTimeout(() => {
+                setShowWriteModal(false);
+                setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false });
+                fetchNotices();
+            }, 800);
         } catch (e) {
-            alert('공지 저장 실패: ' + e.message);
+            showModalAlert('저장 실패: ' + e.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDeleteNotice = async (id) => {
-        if (!confirm('이 공지사항을 삭제하시겠습니까?')) return;
+    const handleDeleteNotice = async (id, isEmergency = false) => {
+        if (!confirm('삭제하시겠습니까?')) return;
         setLoading(true);
         try {
-            const { error } = await supabase.from('notices').delete().eq('id', id);
+            const table = isEmergency ? 'emergency_notices' : 'notices';
+            const { error } = await supabase.from(table).delete().eq('id', id);
             if (error) throw error;
             
-            alert('삭제되었습니다.');
-            setShowWriteModal(false);
-            setNewNotice({ title: '', content: '', target: '전체', attachments: [] });
-            fetchNotices();
+            showModalAlert('삭제되었습니다.');
+            setTimeout(() => {
+                setShowWriteModal(false);
+                setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false });
+                fetchNotices();
+            }, 800);
         } catch (e) { 
-            console.error('삭제 오류:', e);
-            alert('삭제 실패: ' + e.message); 
+            showModalAlert('삭제 실패: ' + e.message); 
         } finally {
             setLoading(false);
         }
     };
 
-    const handleViewNotice = (n) => { 
-        setNewNotice({ ...n, isViewMode: true }); 
+    const handleEditNotice = (n, isEmergency = false) => { 
+        setNewNotice({ ...n, content: isEmergency ? n.message : n.content, isEmergency }); 
         setShowWriteModal(true); 
     };
 
@@ -447,9 +451,11 @@ export default function VehicleTrackingPage() {
             const markerColor = isDriving ? '#10b981' : (isPaused ? '#f59e0b' : '#6b7280');
             const vNum = trip.vehicle_number || '';
             const vLabel = vNum.length >= 4 ? vNum.slice(-4) : vNum;
+            const markerZIndex = isDriving ? 300 : (isPaused ? 200 : 100);
 
             const marker = new naver.maps.Marker({
                 position: pos, map,
+                zIndex: markerZIndex,
                 icon: {
                     content: `<div style="min-width:38px;height:24px;padding:0 6px;background:${markerColor};border:2px solid #fff;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;letter-spacing:0.5px;">${vLabel || '───'}</div>`,
                     anchor: new naver.maps.Point(22, 12),
@@ -672,11 +678,45 @@ export default function VehicleTrackingPage() {
                 <div className={styles.statCard}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
             </div>
 
-            {/* 공지사항 섹션 (동적 데이터 적용) */}
+            {/* 긴급 알람 섹션 */}
+            <div className={styles.noticeSection} style={{ marginBottom: 20 }}>
+                <div className={styles.noticeHeader}>
+                    <h3 style={{display:'flex', alignItems:'center', gap:8, color:'#ef4444'}}>🚨 긴급 알람 계기판</h3>
+                    <button className={styles.writeNoticeBtn} style={{background:'#ef4444', borderColor:'#ef4444'}} onClick={() => { setNewNotice({ title: '', content: '', isEmergency: true }); setShowWriteModal(true); }}>🚨 긴급알람 발송</button>
+                </div>
+                <div className={styles.tableCard}>
+                    <table className={styles.adminNoticeTable}>
+                        <thead>
+                            <tr>
+                                <th style={{width:'120px'}}>발생일시</th>
+                                <th>긴급 내용 구분</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {emergencies.length === 0 ? (
+                                <tr>
+                                    <td colSpan="2" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>발송된 긴급알람이 없습니다.</td>
+                                </tr>
+                            ) : (
+                                emergencies.map(em => (
+                                    <tr key={em.id} onClick={() => handleEditNotice(em, true)} style={{cursor:'pointer', background:'#fef2f2'}}>
+                                        <td style={{color:'#dc2626'}}>{formatDateTime(em.created_at)}</td>
+                                        <td style={{fontWeight:600, color:'#991b1b'}}>
+                                            {em.title}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* 공지사항 섹션 */}
             <div className={styles.noticeSection}>
                 <div className={styles.noticeHeader}>
-                    <h3 style={{display:'flex', alignItems:'center', gap:8}}>📣 운송 관제 공지사항 <span style={{fontSize:'0.6rem', background:'#e2e8f0', padding:'2px 6px', borderRadius:4, color:'#475569'}}>Beta</span></h3>
-                    <button className={styles.writeNoticeBtn} onClick={() => setShowWriteModal(true)}>📝 공지 작성</button>
+                    <h3 style={{display:'flex', alignItems:'center', gap:8}}>📣 운송 관제 공지사항</h3>
+                    <button className={styles.writeNoticeBtn} onClick={() => { setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); setShowWriteModal(true); }}>📝 공지 작성</button>
                 </div>
                 <div className={styles.tableCard}>
                     <table className={styles.adminNoticeTable}>
@@ -695,7 +735,7 @@ export default function VehicleTrackingPage() {
                                 </tr>
                             ) : (
                                 notices.map(n => (
-                                    <tr key={n.id} onClick={() => handleViewNotice(n)} style={{cursor:'pointer'}}>
+                                    <tr key={n.id} onClick={() => handleEditNotice(n, false)} style={{cursor:'pointer'}}>
                                         <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
                                         <td style={{fontWeight:600}}>
                                             {n.title}
@@ -711,78 +751,80 @@ export default function VehicleTrackingPage() {
                 </div>
             </div>
 
-            {/* 공지 작성 모달 */}
+            {/* 공지 작성/긴급알람 모달 */}
             {showWriteModal && (
                 <div className={styles.modalOverlay}>
-                    <div className={styles.modalBox} style={{maxWidth:'700px', width:'95%'}}>
+                    <div className={styles.modalBox} style={{maxWidth:'700px', width:'95%', position:'relative'}}>
+                        {alertMsg && (
+                            <div style={{position:'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', background: '#1e293b', color: '#fff', padding: '10px 20px', borderRadius: '8px', zIndex: 99999, fontWeight: '700', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}>
+                                {alertMsg}
+                            </div>
+                        )}
                         <div className={styles.modalHeader}>
-                            <h3>{newNotice.isViewMode ? '📢 공지사항 상세보기' : '📝 새 공지사항 작성'}</h3>
+                            <h3>{newNotice.isEmergency ? (newNotice.id ? '🚨 긴급알람 수정' : '🚨 긴급알람 발송') : (newNotice.id ? '📝 공지사항 수정' : '📝 새 공지사항 작성')}</h3>
                             <div style={{display:'flex', gap:8}}>
-                                {newNotice.isViewMode && <button onClick={() => handleDeleteNotice(newNotice.id)} style={{fontSize:12, background:'#fee2e2', color:'#ef4444', padding:'4px 8px', borderRadius:6, border:'1px solid #fecaca'}}>삭제</button>}
-                                <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }}>✕</button>
+                                <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false }); }}>✕</button>
                             </div>
                         </div>
                         <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12, maxHeight:'80vh', overflowY:'auto'}}>
                             <div>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 제목</label>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>{newNotice.isEmergency ? '긴급알람 제목' : '공지 제목'}</label>
                                 <input 
                                     className={styles.modalInput} 
-                                    placeholder="공지 제목을 입력하세요" 
+                                    placeholder="제목을 입력하세요" 
                                     value={newNotice.title}
-                                    onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, title: e.target.value})}
-                                    readOnly={newNotice.isViewMode}
+                                    onChange={e => setNewNotice({...newNotice, title: e.target.value})}
                                 />
                             </div>
-                            <div>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
-                                <select 
-                                    className={styles.modalSelect} 
-                                    value={newNotice.target}
-                                    onChange={e => !newNotice.isViewMode && setNewNotice({...newNotice, target: e.target.value})}
-                                    disabled={newNotice.isViewMode}
-                                >
-                                    <option value="전체">전체 (모든 기사)</option>
-                                    <option value="계약차량">계약차량 (소속 운전원)</option>
-                                    <option value="미계약차량">미계약차량 (외부 기사)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 내용</label>
-                                {newNotice.isViewMode ? (
-                                    <div 
-                                        className={styles.modalInput} 
-                                        style={{minHeight:200, background:'#f8fafc', overflowY:'auto'}} 
-                                        dangerouslySetInnerHTML={{__html: newNotice.content}} 
-                                    />
-                                ) : (
-                                    <ReactQuill 
-                                        theme="snow" 
-                                        value={newNotice.content} 
-                                        onChange={val => setNewNotice({...newNotice, content: val})}
-                                        style={{height:250, marginBottom:40}}
-                                    />
-                                )}
-                            </div>
-                            <div style={{marginTop: newNotice.isViewMode ? 0 : 20}}>
-                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>첨부파일</label>
-                                <div style={{background:'#f1f5f9', padding:10, borderRadius:8, fontSize:13}}>
-                                    {newNotice.attachments?.map((at, idx) => (
-                                        <div key={idx} style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
-                                            <a href={at.url} target="_blank" rel="noreferrer" style={{color:'#2563eb', fontWeight:600}}>{at.name}</a>
-                                            {!newNotice.isViewMode && <button onClick={() => setNewNotice(prev => ({...prev, attachments: prev.attachments.filter((_, i) => i !== idx)}))}>삭제</button>}
-                                        </div>
-                                    ))}
-                                    {!newNotice.isViewMode && (
-                                        <input type="file" onChange={handleFileChange} style={{fontSize:11, marginTop:8}} />
-                                    )}
-                                    {(!newNotice.attachments || newNotice.attachments.length === 0) && <div style={{color:'#94a3b8', fontSize:12}}>첨부된 파일이 없습니다.</div>}
+                            
+                            {!newNotice.isEmergency && (
+                                <div>
+                                    <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
+                                    <select 
+                                        className={styles.modalSelect} 
+                                        value={newNotice.target}
+                                        onChange={e => setNewNotice({...newNotice, target: e.target.value})}
+                                    >
+                                        <option value="전체">전체 (모든 기사)</option>
+                                        <option value="계약차량">계약차량 (소속 운전원)</option>
+                                        <option value="미계약차량">미계약차량 (외부 기사)</option>
+                                    </select>
                                 </div>
+                            )}
+
+                            <div>
+                                <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>{newNotice.isEmergency ? '긴급 메시지' : '공지 내용'}</label>
+                                <ReactQuill 
+                                    theme="snow" 
+                                    value={newNotice.content} 
+                                    onChange={val => setNewNotice({...newNotice, content: val})}
+                                    style={{height:250, marginBottom:40}}
+                                />
                             </div>
+
+                            {!newNotice.isEmergency && (
+                                <div style={{marginTop: 20}}>
+                                    <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>첨부파일</label>
+                                    <div style={{background:'#f1f5f9', padding:10, borderRadius:8, fontSize:13}}>
+                                        {newNotice.attachments?.map((at, idx) => (
+                                            <div key={idx} style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
+                                                <a href={at.url} target="_blank" rel="noreferrer" style={{color:'#2563eb', fontWeight:600}}>{at.name}</a>
+                                                <button onClick={() => setNewNotice(prev => ({...prev, attachments: prev.attachments.filter((_, i) => i !== idx)}))}>삭제</button>
+                                            </div>
+                                        ))}
+                                        <input type="file" onChange={handleFileChange} style={{fontSize:11, marginTop:8}} />
+                                        {(!newNotice.attachments || newNotice.attachments.length === 0) && <div style={{color:'#94a3b8', fontSize:12}}>첨부된 파일이 없습니다.</div>}
+                                    </div>
+                                </div>
+                            )}
+
                             <div style={{display:'flex', gap:10, marginTop:10}}>
-                                <button className={styles.saveBtn} onClick={handleSaveNotice} style={{flex:1}}>{newNotice.id ? '🛠️ 수정 완료' : '🚀 공지의뢰'}</button>
-                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [] }); }} style={{height:40, padding:'0 20px'}}>닫기</button>
+                                <button className={styles.saveBtn} onClick={handleSaveNotice} style={{flex:1, background: newNotice.isEmergency ? '#ef4444' : '#2563eb'}}>
+                                    {newNotice.isEmergency ? (newNotice.id ? '수정 완료' : '긴급알람 발송') : (newNotice.id ? '수정 완료' : '공지작성')}
+                                </button>
+                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', attachments: [], isEmergency: false }); }} style={{height:40, padding:'0 20px'}}>닫기</button>
                                 {newNotice.id && (
-                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id)} style={{height:40, padding:'0 20px', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5', borderRadius:8, fontWeight:700}}>🗑️ 삭제</button>
+                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id, newNotice.isEmergency)} style={{height:40, padding:'0 20px', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5', borderRadius:8, fontWeight:700}}>🗑️ 삭제</button>
                                 )}
                             </div>
                         </div>
@@ -804,7 +846,7 @@ export default function VehicleTrackingPage() {
                 <div className={styles.tableSection}>
                     <h3>📋 현재 운행 현황 ({liveTrips.length}건) {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',background:'#10b98115',padding:'2px 8px',borderRadius:10,fontWeight:800,marginLeft:8}}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>현재위치</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {liveTrips.map(trip => (
                                 <tr key={trip.id} style={realtimeTarget === trip.id ? {background:'#10b98110'} : {}}>
@@ -812,7 +854,10 @@ export default function VehicleTrackingPage() {
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
-                                    <td className={styles.narrowCol} title={trip.lastLocation?.address || '주소 정보 없음'}>{trip.lastLocation?.address || '-'}</td>
+                                    <td className={styles.narrowCol} title={trip.lastLocation?.address || '주소 정보 없음'}>
+                                        <div style={{fontWeight: 600, color: '#1e293b', whiteSpace: 'normal', wordBreak: 'keep-all'}}>{trip.lastLocation?.address || '-'}</div>
+                                        <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>{formatDateTime(trip.lastLocation?.timestamp || trip.lastLocation?.recorded_at)}</div>
+                                    </td>
                                     <td style={{display:'flex',gap:4}}>
                                         <button className={styles.filterSearchBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
                                         {(trip.status === 'driving' || trip.status === 'paused') && (
