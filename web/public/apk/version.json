@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.9",
-  "versionCode": 153,
-  "changeLog": "v4.2.9 (Build 153) - 안전운행 필수 기능 추가\n- [기능] 운행 시작 전 법적 의무사항인 '운행전점검' 체크리스트 팝업 추가\n- [연동] 점검 완료 데이터 DB에 저장되도록 연동 완료",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=153"
+  "latestVersion": "v4.2.10",
+  "versionCode": 154,
+  "changeLog": "v4.2.10 (Build 154) - 인터페이스 다듬기\n- [수정] 팝업 배경 하얀색으로 투명도 방지 및 불필요한 이모지 제거\n- [수정] 운행전점검 모달이 일지화면에서만 뜨던 버그 고침\n- [디자인] 점검 상태에 따른 버튼 색상 변환 (점검 전: 빨강 -> 점검 후: 파랑)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=154"
 }

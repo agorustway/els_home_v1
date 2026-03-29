@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.9');
+  console.log('ELS Driver App Loading... v4.2.10');
  
-  const APP_VERSION = 'v4.2.9';
-  const BUILD_CODE = 153; // Build 153 (v4.2.9)
+  const APP_VERSION = 'v4.2.10';
+  const BUILD_CODE = 154; // Build 154 (v4.2.10)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -118,6 +118,11 @@
       chk_driver: true
     };
     closeChecklist();
+    const btnCheck = document.getElementById('btn-trip-checklist');
+    if (btnCheck) {
+      btnCheck.style.background = '#2563eb'; // blue
+      btnCheck.style.color = '#ffffff';
+    }
     showToast('운행 전 점검 완료! 이제 운행 시작이 가능합니다.');
   }
 
@@ -721,8 +726,8 @@
         State.trip.startTime = Date.now();
         Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
 
-        const startD = new Date();
-        document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(startD)}`;
+    const startD = new Date();
+    document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(startD)}`;
         setTripStatus('driving');
         updateTripUI();
         startOverlayService();
@@ -1298,6 +1303,13 @@
     State.photos = [];
     State.preTripDone = null; // 체크리스트 초기화
     
+    // 점검 버튼 초기화
+    const btnCheck = document.getElementById('btn-trip-checklist');
+    if (btnCheck) {
+      btnCheck.style.background = '#ef4444'; // red
+      btnCheck.style.color = '#ffffff';
+    }
+
     // UI 초기화
     document.getElementById('container-no').value = '';
     document.getElementById('seal-no').value = '';

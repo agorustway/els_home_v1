@@ -174,8 +174,8 @@
             <!-- 상태 제어: 시작 전 -->
           <div id="trip-start-row">
             <div style="display:flex; gap:8px;">
-              <button class="btn btn-outline" style="flex:0.35; font-size:14px; padding:0; background:#f8fafc; color:#334155; border-color:#cbd5e1" onclick="App.openChecklist()">운행전점검</button>
-              <button class="btn" style="flex:0.65;font-size:16px;" onclick="App.startTrip()">🏁 운행 시작</button>
+              <button class="btn" id="btn-trip-checklist" style="flex:0.4; font-size:15px; padding:0; background:#ef4444; color:#fff; border:none;" onclick="App.openChecklist()">운행전점검</button>
+              <button class="btn btn-primary" id="btn-trip-start" style="flex:0.6;font-size:15px;" onclick="App.startTrip()">운행 시작</button>
             </div>
           </div>
             <div id="trip-control-row" class="trip-action-row hidden">
@@ -208,56 +208,6 @@
           <input type="text" id="log-month-filter" placeholder="월별조회" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" onchange="App.loadLogs()" style="flex:1;">
           <button class="btn btn-sm" onclick="App.loadLogs()">조회</button>
         </div>
-        <div id="notice-overlay" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-title">앱 업데이트 알림</div>
-      </div>
-      <div class="modal-body" id="notice-msg"></div>
-      <div class="modal-footer" style="display:flex;gap:8px;">
-        <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('notice-overlay').classList.remove('active')">다음에</button>
-        <button class="btn" style="flex:1" onclick="window.open(App._dlUrl, '_blank')">업데이트</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 운행전점검 팝업 -->
-  <div id="checklist-popup" class="modal-overlay">
-    <div class="modal" style="max-height:90vh; overflow-y:auto;">
-      <div class="modal-header" style="background:#fef2f2; border-bottom:1px solid #fecaca; padding:12px 14px;">
-        <div class="modal-title" style="color:#b91c1c;">📋 운행 전 필수점검 (안전법규)</div>
-      </div>
-      <div class="modal-body" style="font-size:14px; color:#334155; display:flex; flex-direction:column; gap:12px; padding:16px 14px;">
-        <label style="display:flex; align-items:flex-start; gap:8px;">
-           <input type="checkbox" id="chk_brake" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-           <span style="line-height:1.4;"><b>제동장치(브레이크)</b> 상태 정상 확인 (응답성 및 파손 여부)</span>
-        </label>
-        <label style="display:flex; align-items:flex-start; gap:8px;">
-           <input type="checkbox" id="chk_tire" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-           <span style="line-height:1.4;"><b>바퀴/타이어</b> 공기압 및 마모(1.6mm 이상), 너트 체결 확인</span>
-        </label>
-        <label style="display:flex; align-items:flex-start; gap:8px;">
-           <input type="checkbox" id="chk_lamp" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-           <span style="line-height:1.4;"><b>등화장치</b> (전조등, 방향지시등, 후미등, 차폭등) 점등 확인</span>
-        </label>
-        <label style="display:flex; align-items:flex-start; gap:8px;">
-           <input type="checkbox" id="chk_cargo" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-           <span style="line-height:1.4;"><b>적재물/적재함</b> 지지대 고정 상태, 덮개/결박 등 화물 이탈 방지 조치 확인</span>
-        </label>
-        <label style="display:flex; align-items:flex-start; gap:8px;">
-           <input type="checkbox" id="chk_driver" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
-           <span style="line-height:1.4;"><b>운전자 건강</b> 및 음주 여부 확인 (정상 운행 가능 상태)</span>
-        </label>
-        <div style="font-size:11px; color:#ef4444; margin-top:8px; line-height:1.4;">
-          * 화물자동차 운수사업법 시행규칙 [별지 제14호의5서식] 운수종사자 일상점검표에 의한 법적 필수 확인사항입니다.
-        </div>
-      </div>
-      <div class="modal-footer" style="display:flex; gap:8px;">
-        <button class="btn btn-outline" style="flex:1;" onclick="App.closeChecklist()">취소</button>
-        <button class="btn btn-primary" style="flex:1;" onclick="App.saveChecklist()">✔ 모두 점검완료</button>
-      </div>
-    </div>
-  </div>
         <div id="log-list" class="log-list">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
         </div>
@@ -352,6 +302,56 @@
 </div><!-- /app -->
 
 <!-- ──── 모달들 ──── -->
+<div id="notice-overlay" class="modal-overlay">
+  <div class="modal" style="background:#fff;">
+    <div class="modal-header">
+      <div class="modal-title">앱 업데이트 알림</div>
+    </div>
+    <div class="modal-body" id="notice-msg"></div>
+    <div class="modal-footer" style="display:flex;gap:8px;">
+      <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('notice-overlay').classList.remove('active')">다음에</button>
+      <button class="btn btn-primary" style="flex:1" onclick="window.open(App._dlUrl, '_blank')">업데이트</button>
+    </div>
+  </div>
+</div>
+
+<div id="checklist-popup" class="modal-overlay">
+  <div class="modal" style="background:#fff; max-height:90vh; overflow-y:auto;">
+    <div class="modal-header" style="background:#fef2f2; border-bottom:1px solid #fecaca; padding:12px 14px;">
+      <div class="modal-title" style="color:#b91c1c;">운행 전 필수점검 (안전법규)</div>
+    </div>
+    <div class="modal-body" style="background:#fff; font-size:14px; color:#334155; display:flex; flex-direction:column; gap:12px; padding:16px 14px;">
+      <label style="display:flex; align-items:flex-start; gap:8px;">
+         <input type="checkbox" id="chk_brake" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <span style="line-height:1.4;"><b>제동장치(브레이크)</b> 상태 정상 확인 (응답성/파손 여부)</span>
+      </label>
+      <label style="display:flex; align-items:flex-start; gap:8px;">
+         <input type="checkbox" id="chk_tire" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <span style="line-height:1.4;"><b>바퀴/타이어</b> 공기압/마모(1.6mm 이상), 너트 체결 확인</span>
+      </label>
+      <label style="display:flex; align-items:flex-start; gap:8px;">
+         <input type="checkbox" id="chk_lamp" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <span style="line-height:1.4;"><b>등화장치</b> (전조등, 후미등, 방향지시등) 점등 확인</span>
+      </label>
+      <label style="display:flex; align-items:flex-start; gap:8px;">
+         <input type="checkbox" id="chk_cargo" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <span style="line-height:1.4;"><b>적재함 고정상태</b> (결박/덮개/지지대 등 화물 이탈 방지)</span>
+      </label>
+      <label style="display:flex; align-items:flex-start; gap:8px;">
+         <input type="checkbox" id="chk_driver" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <span style="line-height:1.4;"><b>운전자 건강/음주여부</b> 확인 (정상 운행 가능 상태)</span>
+      </label>
+      <div style="font-size:11px; color:#ef4444; margin-top:8px; line-height:1.4;">
+        * 운수사업법 시행규칙 [별지 제14호의5서식] 운수종사자 일상점검표에 의한 법정 필수 확인.
+      </div>
+    </div>
+    <div class="modal-footer" style="background:#fff; display:flex; gap:8px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="App.closeChecklist()">취소</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="App.saveChecklist()">모두 점검완료</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-terms" class="modal-overlay">
   <div class="modal-box" style="padding:20px;">
     <h3>개인정보 처리방침 및 이용약관</h3>
