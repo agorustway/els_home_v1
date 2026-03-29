@@ -529,7 +529,7 @@ export default function VehicleTrackingPage() {
         finally { setRecordsLoading(false); }
     }, [filterStatus, filterKeyword, filterFrom, filterTo]);
 
-    useEffect(() => { if (activeTab === 'records') fetchRecords(); }, [activeTab, fetchRecords]);
+    useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
     const handleSearch = () => fetchRecords();
     const handleReset = () => { setFilterStatus('all'); setFilterKeyword(''); setFilterFrom(''); setFilterTo(''); };
@@ -655,7 +655,12 @@ export default function VehicleTrackingPage() {
     const formatDateTime = (dateStr) => {
         if (!dateStr) return '-';
         const d = new Date(dateStr);
-        return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
+    const formatDateShort = (dateStr) => {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     };
     const formatTime = (dateStr) => {
         if (!dateStr) return '-';
@@ -728,19 +733,19 @@ export default function VehicleTrackingPage() {
                                     <div style={{fontSize:'0.8rem', color:'#64748b', fontWeight:700}}>{emergencyPage} / {totalEmPages}</div>
                                     <button onClick={() => setEmergencyPage(p => Math.max(1, p-1))} style={{border:'none', background:'none', cursor:'pointer'}}>◀</button>
                                     <button onClick={() => setEmergencyPage(p => Math.min(totalEmPages, p+1))} style={{border:'none', background:'none', cursor:'pointer'}}>▶</button>
-                                    <button className={styles.writeNoticeBtn} style={{background:'#ef4444', borderColor:'#ef4444', padding:'4px 10px', color:'#fff'}} onClick={() => { setNewNotice({ title: '', content: '', isEmergency: true }); setShowWriteModal(true); }}>글쓰기</button>
+                                    <button className={styles.writeNoticeBtn} style={{height: '32px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background:'#ef4444', borderColor:'#ef4444', padding:'0 10px', color:'#fff'}} onClick={() => { setNewNotice({ title: '', content: '', isEmergency: true }); setShowWriteModal(true); }}>글쓰기</button>
                                 </div>
                             </div>
                             <div className={styles.tableCard} style={{flex: '0 0 auto', display:'flex', flexDirection:'column', maxHeight: '200px', overflowY: 'auto'}}>
                                 <table className={styles.adminNoticeTable} style={{margin:0}}>
-                                    <thead><tr><th style={{width:'100px'}}>발생일시</th><th>긴급 내용</th></tr></thead>
+                                    <thead><tr><th style={{width:'80px', textAlign:'center'}}>날짜</th><th>긴급 내용</th></tr></thead>
                                     <tbody>
                                         {paginatedEmergencies.length === 0 ? (
                                             <tr><td colSpan="2" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>발송된 알림이 없습니다.</td></tr>
                                         ) : (
                                             paginatedEmergencies.map(em => (
                                                 <tr key={em.id} onClick={() => handleEditNotice(em, true)} style={{cursor:'pointer', background:'#fef2f2'}}>
-                                                    <td style={{color:'#dc2626'}}>{formatDateTime(em.created_at)}</td>
+                                                    <td style={{color:'#dc2626', textAlign:'center', whiteSpace:'nowrap', fontSize:'0.85rem'}}>{formatDateShort(em.created_at)}<br/>{new Date(em.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}</td>
                                                     <td style={{fontWeight:600, color:'#991b1b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'150px'}}>{em.title}</td>
                                                 </tr>
                                             ))
@@ -758,21 +763,21 @@ export default function VehicleTrackingPage() {
                                     <div style={{fontSize:'0.8rem', color:'#64748b', fontWeight:700}}>{noticePage} / {totalNoticePages}</div>
                                     <button onClick={() => setNoticePage(p => Math.max(1, p-1))} style={{border:'none', background:'none', cursor:'pointer'}}>◀</button>
                                     <button onClick={() => setNoticePage(p => Math.min(totalNoticePages, p+1))} style={{border:'none', background:'none', cursor:'pointer'}}>▶</button>
-                                    <button className={styles.writeNoticeBtn} style={{padding:'4px 10px'}} onClick={() => { setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); setShowWriteModal(true); }}>글쓰기</button>
+                                    <button className={styles.writeNoticeBtn} style={{height:'32px', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 10px'}} onClick={() => { setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); setShowWriteModal(true); }}>글쓰기</button>
                                 </div>
                             </div>
                             <div className={styles.tableCard} style={{flex: '0 0 auto', display:'flex', flexDirection:'column', maxHeight: '200px', overflowY: 'auto'}}>
                                 <table className={styles.adminNoticeTable} style={{margin:0}}>
-                                    <thead><tr><th style={{width:'70px'}}>날짜</th><th>제목</th><th style={{width:'80px'}}>상태</th></tr></thead>
+                                    <thead><tr><th style={{width:'80px', textAlign:'center'}}>날짜</th><th>제목</th><th style={{width:'80px', textAlign:'center'}}>상태</th></tr></thead>
                                     <tbody>
                                         {paginatedNotices.length === 0 ? (
                                             <tr><td colSpan="3" style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>게시된 공지사항이 없습니다.</td></tr>
                                         ) : (
                                             paginatedNotices.map(n => (
                                                 <tr key={n.id} onClick={() => handleEditNotice(n, false)} style={{cursor:'pointer'}}>
-                                                    <td>{new Date(n.created_at).toLocaleDateString('ko-KR', {month:'2-digit', day:'2-digit'})}</td>
+                                                    <td style={{textAlign:'center', whiteSpace:'nowrap', fontSize:'0.85rem', color:'#475569'}}>{formatDateShort(n.created_at)}</td>
                                                     <td style={{fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'180px'}}>{n.title}</td>
-                                                    <td><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem'}}>{n.status}</span></td>
+                                                    <td style={{textAlign:'center'}}><span className={styles.statusDriving} style={{padding:'2px 8px', borderRadius:'10px', fontSize:'0.7rem', display:'inline-block'}}>{n.status}</span></td>
                                                 </tr>
                                             ))
                                         )}
@@ -851,9 +856,18 @@ export default function VehicleTrackingPage() {
                     )}
                 </div>
                 <div className={styles.tableSection}>
-                    <div className={styles.tableHeaderInfo}>
-                        <h3>📋 운행 기록 ({recordsTotal}건)</h3>
-                        <div className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</div>
+                    <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>📋 운행 기록 ({recordsTotal}건)</h3>
+                            <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '32px', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>📊 엑셀 다운로드</button>
+                            <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '32px', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => {
+                                if(selectedIds.length === 0) alert('다운로드할 기록을 선택해주세요.');
+                                else window.location.href = `/api/vehicle-tracking/export/zip?ids=${selectedIds.join(',')}`;
+                            }}>📦 선택건 사진 다운로드</button>
+                        </div>
                     </div>
                     <table className={styles.tripTable}>
                         <thead>
@@ -861,11 +875,11 @@ export default function VehicleTrackingPage() {
                                 <th><input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length} onChange={toggleSelectAll} /></th>
                                 <th>상태</th>
                                 <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th>차량번호</th>
-                                <th>컨테이너</th>
-                                <th onClick={() => handleSort('started_at')} className={styles.sortable}>시작 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th onClick={() => handleSort('completed_at')} className={styles.sortable}>종료 {sortConfig.key === 'completed_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th>최종위치</th>
+                                <th>차량/컨테이너</th>
+                                <th>점검여부(브/타/램/적/기)</th>
+                                <th>사진</th>
+                                <th onClick={() => handleSort('started_at')} className={styles.sortable}>시작/종료 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th style={{width:'180px'}}>최종위치</th>
                                 <th>관리</th>
                             </tr>
                         </thead>
@@ -875,11 +889,25 @@ export default function VehicleTrackingPage() {
                                     <td><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td><strong>{trip.driver_name}</strong></td>
-                                    <td>{trip.vehicle_number}</td>
-                                    <td>{trip.container_number || '-'}</td>
-                                    <td>{formatDateTime(trip.started_at)}</td>
-                                    <td>{formatDateTime(trip.completed_at)}</td>
-                                    <td className={styles.narrowCol} title={trip.last_location_address || '주소 정보 없음'}>{trip.last_location_address || '-'}</td>
+                                    <td>
+                                        <div>{trip.vehicle_number}</div>
+                                        <div style={{fontSize:'0.75rem', color:'#64748b'}}>{trip.container_number || '-'}</div>
+                                    </td>
+                                    <td style={{fontSize:'12px', letterSpacing:'-0.5px'}}>
+                                        <span title="브레이크" style={{marginRight:2}}>{trip.chk_brake ? '✅' : '❌'}</span>
+                                        <span title="타이어" style={{marginRight:2}}>{trip.chk_tire ? '✅' : '❌'}</span>
+                                        <span title="경광등/램프" style={{marginRight:2}}>{trip.chk_lamp ? '✅' : '❌'}</span>
+                                        <span title="적재물" style={{marginRight:2}}>{trip.chk_cargo ? '✅' : '❌'}</span>
+                                        <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
+                                    </td>
+                                    <td style={{textAlign:'center', fontWeight:700, color:'#3b82f6'}}>{trip.photos?.length || 0}장</td>
+                                    <td style={{fontSize:'0.85rem'}}>
+                                        <div style={{color:'#1e293b'}}>{formatDateTime(trip.started_at)}</div>
+                                        <div style={{color:'#64748b'}}>{formatDateTime(trip.completed_at)}</div>
+                                    </td>
+                                    <td className={styles.narrowCol} title={trip.last_location_address || '주소 정보 없음'} style={{whiteSpace:'normal', wordBreak:'keep-all', fontSize:'0.8rem', lineHeight:'1.2'}}>
+                                        {trip.last_location_address || '-'}
+                                    </td>
                                     <td className={styles.actionCol}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>보기</button>
                                         <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>🗑️</button>
