@@ -1293,130 +1293,108 @@ export default function RouteSearchView({ options, period, onBack }) {
         showToast('🗑️ 모든 내역이 삭제되었습니다.');
     };
 
-    /* ─── 엑셀 다운로드 ─── */
     const downloadExcel = () => {
-        if (!distFareResult && savedResults.length === 0) return;
-        const sel = parsedRoutes.find(r => r.key === selectedRouteKey);
-
-        const wb = XLSX.utils.book_new();
-
-        // 헤더용 스타일 핼퍼 함수 (xlsx-js-style 전용)
-        const baseStyle = { font: { size: 10, name: '맑은 고딕' }, alignment: { vertical: 'center' } };
-        const headerStyle = {
-            ...baseStyle,
-            fill: { fgColor: { rgb: "F1F5F9" } }, // Slate-100
-            font: { bold: true, size: 10, name: '맑은 고딕' },
-            alignment: { horizontal: "center", vertical: "center" },
-            border: {
-                top: { style: 'thin', color: { rgb: '94A3B8' } },
-                left: { style: 'thin', color: { rgb: '94A3B8' } },
-                bottom: { style: 'thin', color: { rgb: '94A3B8' } },
-                right: { style: 'thin', color: { rgb: '94A3B8' } }
+        try {
+            if (!distFareResult && savedResults.length === 0) return;
+            const XLSX = window.XLSX;
+            if (!XLSX) {
+                showToast('엑셀 모듈 준비 중입니다. 잠시 후 다시 클릭해주세요.');
+                return;
             }
-        };
-        const titleStyle = {
-            font: { bold: true, sz: 12, color: { rgb: "2563EB" }, name: '맑은 고딕' },
-        };
+            const sel = parsedRoutes.find(r => r.key === selectedRouteKey);
 
-        // Sheet 1: 현재 운임 조회 결과
-        if (distFareResult) {
-            const fareRows = [
-                ['안전운임 구간조회 결과'],
-                [],
-                ['항목', '값'],
-                ['출발지', origin.text || '-'],
-                ['도착지', destination.text || '-'],
-                ...(waypoints.filter(w => w.text).map((w, i) => [`경유지${i + 1}`, w.text])),
-                ['선택 경로', sel?.desc || selectedRouteKey],
-                ['구간거리', `${distFareResult.routeKm}km`],
-                ['적용거리 (고시 매칭)', `${distFareResult.matchedKm}km`],
-                ['적용기간', distFareResult.period],
-                ['왕복/편도', tripMode === 'round' ? '왕복' : '편도'],
-                [],
-                ['[거리별운임]', '위탁', '운수자', '안전운임'],
-                ['40FT', distFareResult.f40위탁, distFareResult.f40운수자, distFareResult.f40안전],
-                ['20FT', distFareResult.f20위탁, distFareResult.f20운수자, distFareResult.f20안전],
-            ];
-            sectionFareResults.forEach(fare => {
-                fareRows.push([], [`[구간별운임] ${fare.origin}`, '위탁', '운수자', '안전운임']);
-                fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
-                fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
-            });
+            const wb = XLSX.utils.book_new();
 
-            sectionFareOneWayResults.forEach(fare => {
-                fareRows.push([], [`[편도구간] ${fare.origin}`, '위탁', '운수자', '안전운임']);
-                fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
-                fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
-            });
-
-            if (sel) {
-                fareRows.push([], ['[운행비용 상세 (편도기준)]']);
-                fareRows.push(['소요시간', msToTime(sel.durationOneWay)]);
-                fareRows.push(['통행료', `${sel.tollOneWay.toLocaleString()}원`]);
-                fareRows.push(['경유단가 (Opinet)', `${dieselPrice.toLocaleString()}원/L (${fuelPriceData?.date || '최근'})`]);
-                fareRows.push(['연비 설정', `${currentMileage}km/L`]);
-                fareRows.push(['예상 연료량', `${sel.litersOneWay}L`]);
-                fareRows.push(['유류비 합계', `${sel.fuelCostOneWay.toLocaleString()}원`]);
-                fareRows.push(['운행비용 소계', `${sel.totalCostOneWay?.toLocaleString() || (sel.tollOneWay + sel.fuelCostOneWay).toLocaleString()}원`]);
-
-                if (tripMode === 'round') {
-                    fareRows.push([], ['[왕복 운행비용 합계 (x2)]']);
-                    fareRows.push(['총 소요시간', msToTime(sel.duration)]);
-                    fareRows.push(['총 통행료', `${sel.tollFare.toLocaleString()}원`]);
-                    fareRows.push(['총 유류비', `${sel.fuelCost.toLocaleString()}원`]);
-                    fareRows.push(['총 연료공급량', `${sel.liters}L`]);
-                    fareRows.push(['최종 운행비 합계', `${sel.totalCost.toLocaleString()}원`]);
+            // 헤더용 스타일 핼퍼 함수 (xlsx-js-style 전용)
+            const baseStyle = { font: { size: 10, name: '맑은 고딕' }, alignment: { vertical: 'center' } };
+            const headerStyle = {
+                ...baseStyle,
+                fill: { fgColor: { rgb: "1D4ED8" } }, // 파란색 테마
+                font: { bold: true, size: 10, color: { rgb: "FFFFFF" }, name: '맑은 고딕' },
+                alignment: { horizontal: "center", vertical: "center" },
+                border: {
+                    top: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                    left: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                    bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                    right: { style: 'thin', color: { rgb: 'BFDBFE' } }
                 }
-            }
+            };
+            const titleStyle = {
+                font: { bold: true, sz: 12, color: { rgb: "2563EB" }, name: '맑은 고딕' },
+            };
 
-            const ws1 = XLSX.utils.aoa_to_sheet(fareRows);
-            ws1['!cols'] = [{ wch: 25 }, { wch: 45 }, { wch: 15 }, { wch: 15 }];
+            // Sheet 1: 현재 운임 조회 결과
+            if (distFareResult) {
+                const fareRows = [
+                    ['안전운임 구간조회 결과'],
+                    [],
+                    ['항목', '값'],
+                    ['출발지', origin.text || '-'],
+                    ['도착지', destination.text || '-'],
+                    ...(waypoints.filter(w => w.text).map((w, i) => [`경유지${i + 1}`, w.text])),
+                    ['선택 경로', sel?.desc || selectedRouteKey],
+                    ['구간거리', `${distFareResult.routeKm}km`],
+                    ['적용거리 (고시 매칭)', `${distFareResult.matchedKm}km`],
+                    ['적용기간', distFareResult.period],
+                    ['왕복/편도', tripMode === 'round' ? '왕복' : '편도'],
+                    [],
+                    ['[거리별운임]', '위탁', '운수자', '안전운임'],
+                    ['40FT', distFareResult.f40위탁, distFareResult.f40운수자, distFareResult.f40안전],
+                    ['20FT', distFareResult.f20위탁, distFareResult.f20운수자, distFareResult.f20안전],
+                ];
+                sectionFareResults.forEach(fare => {
+                    fareRows.push([], [`[구간별운임] ${fare.origin}`, '위탁', '운수자', '안전운임']);
+                    fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
+                    fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
+                });
 
-            // 스타일 및 틀고정 적용
-            const r1 = XLSX.utils.decode_range(ws1['!ref']);
-            for (let r = 0; r <= r1.e.r; r++) {
-                for (let c = 0; c <= r1.e.c; c++) {
-                    const ref = XLSX.utils.encode_cell({ r, c });
-                    if (!ws1[ref]) ws1[ref] = { v: '', t: 's' };
-                    ws1[ref].s = { ...baseStyle };
-                    if (r === 0) ws1[ref].s = titleStyle;
-                    if (fareRows[r]?.[0]?.toString().startsWith('[') || fareRows[r]?.[0] === '항목') {
-                        ws1[ref].s = headerStyle;
+                sectionFareOneWayResults.forEach(fare => {
+                    fareRows.push([], [`[편도구간] ${fare.origin}`, '위탁', '운수자', '안전운임']);
+                    fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
+                    fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
+                });
+
+                if (sel) {
+                    fareRows.push([], ['[운행비용 상세 (편도기준)]']);
+                    fareRows.push(['소요시간', msToTime(sel.durationOneWay)]);
+                    fareRows.push(['통행료', `${sel.tollOneWay.toLocaleString()}원`]);
+                    fareRows.push(['경유단가 (Opinet)', `${dieselPrice.toLocaleString()}원/L (${fuelPriceData?.date || '최근'})`]);
+                    fareRows.push(['연비 설정', `${currentMileage}km/L`]);
+                    fareRows.push(['예상 연료량', `${sel.litersOneWay}L`]);
+                    fareRows.push(['유류비 합계', `${sel.fuelCostOneWay.toLocaleString()}원`]);
+                    fareRows.push(['운행비용 소계', `${sel.totalCostOneWay?.toLocaleString() || (sel.tollOneWay + sel.fuelCostOneWay).toLocaleString()}원`]);
+
+                    if (tripMode === 'round') {
+                        fareRows.push([], ['[왕복 운행비용 합계 (x2)]']);
+                        fareRows.push(['총 소요시간', msToTime(sel.duration)]);
+                        fareRows.push(['총 통행료', `${sel.tollFare.toLocaleString()}원`]);
+                        fareRows.push(['총 유류비', `${sel.fuelCost.toLocaleString()}원`]);
+                        fareRows.push(['총 연료공급량', `${sel.liters}L`]);
+                        fareRows.push(['최종 운행비 합계', `${sel.totalCost.toLocaleString()}원`]);
                     }
                 }
-            }
-            ws1['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
-            ws1['!autofilter'] = { ref: 'A3:D3' }; // 항목행 필터
 
-            XLSX.utils.book_append_sheet(wb, ws1, '현재조회결과');
+                const ws1 = XLSX.utils.aoa_to_sheet(fareRows);
+                ws1['!cols'] = [{ wch: 25 }, { wch: 45 }, { wch: 15 }, { wch: 15 }];
 
-            // Sheet 1-2: 전체 경로 비교
-            const routeRows = [
-                ['전체 경로 대안 비교'],
-                [],
-                ['경로', '거리(km)', '소요시간', '통행료(원)', '유류비(원)', '예상연료(L)', '운행비합계(원)'],
-                ...parsedRoutes.map(r => [
-                    r.desc, r.distKm, msToTime(r.duration),
-                    r.tollFare, r.fuelCost, r.liters, r.totalCost,
-                ]),
-            ];
-            const ws2 = XLSX.utils.aoa_to_sheet(routeRows);
-            ws2['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
-
-            const r2 = XLSX.utils.decode_range(ws2['!ref']);
-            for (let r = 0; r <= r2.e.r; r++) {
-                for (let c = 0; c <= r2.e.c; c++) {
-                    const ref = XLSX.utils.encode_cell({ r, c });
-                    if (!ws2[ref]) ws2[ref] = { v: '', t: 's' };
-                    ws2[ref].s = { ...baseStyle };
-                    if (r === 2) ws2[ref].s = headerStyle;
+                // 스타일 및 틀고정 적용
+                const r1 = XLSX.utils.decode_range(ws1['!ref']);
+                for (let r = 0; r <= r1.e.r; r++) {
+                    for (let c = 0; c <= r1.e.c; c++) {
+                        const ref = XLSX.utils.encode_cell({ r, c });
+                        if (!ws1[ref]) ws1[ref] = { v: '', t: 's' };
+                        ws1[ref].s = { ...baseStyle };
+                        if (r === 0) ws1[ref].s = titleStyle;
+                        if (fareRows[r]?.[0]?.toString().startsWith('[') || fareRows[r]?.[0] === '항목') {
+                            ws1[ref].s = headerStyle;
+                        }
+                    }
                 }
-            }
-            ws2['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 3, topLeftCell: 'A4', activePane: 'bottomLeft' }];
-            ws2['!autofilter'] = { ref: 'A3:G3' };
+                ws1['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
+                ws1['!autofilter'] = { ref: 'A3:D3' };
 
-            XLSX.utils.book_append_sheet(wb, ws2, '경로비교');
-        }
+                XLSX.utils.book_append_sheet(wb, ws1, '운임조회');
+            }
 
         // Sheet 2: 이전 조회 내역 (History)
         if (savedResults.length > 0) {
@@ -1451,20 +1429,21 @@ export default function RouteSearchView({ options, period, onBack }) {
             wsHistory['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 3, topLeftCell: 'A4', activePane: 'bottomLeft' }];
             wsHistory['!autofilter'] = { ref: 'A3:M3' };
 
-            XLSX.utils.book_append_sheet(wb, wsHistory, '이전조회내역');
+            XLSX.utils.book_append_sheet(wb, wsHistory, '저장운임');
         }
 
         const now = new Date();
         const yyyy = now.getFullYear();
         const MM = String(now.getMonth() + 1).padStart(2, '0');
         const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-
-        const dateStr = `${yyyy}${MM}${dd}${hh}${mm}${ss}`;
-        XLSX.writeFile(wb, `안전운임_구간조회_${dateStr}.xlsx`);
+        
+        const dateStr = `${yyyy}-${MM}-${dd}`;
+        XLSX.writeFile(wb, `안전운임_${dateStr}.xlsx`);
         showToast('📄 엑셀 파일이 다운로드되었습니다.');
+      } catch (err) {
+          console.error('Excel Export Error:', err);
+          showToast('엑셀 생성 중 오류가 발생했습니다: ' + err.message);
+      }
     };
 
     /* ═══════════════════════════════════════════════
