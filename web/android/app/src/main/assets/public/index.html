@@ -280,39 +280,42 @@
       <div class="field">
         <label>전화번호</label>
         <div style="display:flex;gap:4px;">
-           <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;height:36px;">
-           <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 14px;height:36px;">번호조회</button>
+           <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;height:38px;">
+           <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 14px;height:38px;">번호조회</button>
         </div>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:6px; width:100%; flex-shrink:0;">
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>이름</label>
-          <input type="text" id="s-name" placeholder="홍길동" maxlength="20" style="padding:0 8px; font-size:13px;height:36px;">
+          <input type="text" id="s-name" placeholder="홍길동" maxlength="20" style="padding:0 8px; font-size:13px;height:38px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>차량번호</label>
-          <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" style="padding:0 8px; font-size:13px;height:36px;">
+          <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" style="padding:0 8px; font-size:13px;height:38px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>차량 ID</label>
-          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:36px;">
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:38px;">
         </div>
       </div>
-      <button class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:36px; font-size:14px;">정보 저장</button>
+      <button class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:38px; font-size:14px; margin-top:4px;">정보 저장</button>
       <hr class="divider" style="margin:4px 0;">
-      <div style="display:flex; flex-direction:column; gap:6px; margin-top:2px;">
-        <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.showTerms()">
-          <span>개인정보 처리방침 및 이용약관</span>
-        </button>
-        <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.15</span>
-        </button>
-        <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.clearCache()">
-          <span>캐시 지우기 (새로고침)</span>
-        </button>
-        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.resetApp()">
-          <span>앱 초기화 (재설정)</span>
-        </button>
+      <div class="field" style="margin-top:2px;">
+        <label>설정</label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.showTerms()">
+            <span>개인정보 처리방침 및 이용약관</span>
+          </button>
+          <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.checkUpdate()">
+            <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.16</span>
+          </button>
+          <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.clearCache()">
+            <span>캐시 지우기 (새로고침)</span>
+          </button>
+          <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.resetApp()">
+            <span>앱 초기화 (재설정)</span>
+          </button>
+        </div>
       </div>
     </div>
     <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0; margin-top: auto;"></div>
@@ -421,6 +424,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.3.15"></script>
+<script src="app.js?v=4.3.16"></script>
 </body>
 </html>

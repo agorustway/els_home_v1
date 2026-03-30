@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.15",
-  "versionCode": 314,
-  "changeLog": "v4.3.15 (Build 314)\n- [UX] 설정 페이지 UI 밀도 최적화: 입력창 높이 36px, 버튼 높이 38px 축소 및 간격 조정\n- [UI] 공지 탭 필터 버튼 개선: 높이 36px 상향 및 폰트 시인성 보강",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=314"
+  "latestVersion": "v4.3.16",
+  "versionCode": 315,
+  "changeLog": "v4.3.15 (Build 315)\n- [UX] 설정 페이지 UI 세밀 조정: 주요 입력창/버튼 높이 38px 복구 및 간격 최적화\n- [UI] 설정 탭 하단 메뉴 전용 '설정' 라벨 추가",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=315"
 }
