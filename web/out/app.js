@@ -579,6 +579,21 @@
 
     // 최종 강제 동기화
     for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
+
+    const allOk = permStatuses.loc && permStatuses.camera && permStatuses.notif && permStatuses.overlay && permStatuses.battery;
+    const btnFinish = document.getElementById('btn-finish-setup');
+    if (btnFinish) {
+      if (allOk) {
+        btnFinish.style.setProperty('background', '#111827', 'important');
+        btnFinish.style.setProperty('opacity', '1', 'important');
+        btnFinish.style.setProperty('pointer-events', 'auto', 'important');
+      } else {
+        btnFinish.style.setProperty('background', '#ef4444', 'important');
+        btnFinish.style.setProperty('opacity', '0.7', 'important');
+        btnFinish.style.setProperty('pointer-events', 'none', 'important');
+      }
+    }
+
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 

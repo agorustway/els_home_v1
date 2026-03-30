@@ -27,32 +27,10 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setNavigationBarColor(android.graphics.Color.BLACK);
         }
-        requestRuntimePermissions();
+        // Capacitor 플러그인이 자체적으로 권한 요청을 처리하므로 네이티브 단의 강제 요청을 제거하여 충돌 방지
     }
 
-    // ─── 권한 요청 ───────────────────────────────────────────────
-    private void requestRuntimePermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            String[] permissions = {
-                Manifest.permission.POST_NOTIFICATIONS,
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.CAMERA
-            };
-            boolean needRequest = false;
-            for (String perm : permissions) {
-                if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-                    needRequest = true;
-                    break;
-                }
-            }
-            if (needRequest) {
-                ActivityCompat.requestPermissions(this, permissions, REQ_PERMISSION_CODE);
-            }
-        }
-    }
+    // requestRuntimePermissions 삭제됨 (JS/Capacitor 플러그인에 위임)
 
     // ─── 뒤로가기 처리 ────────────────────────────────────────────
     @Override
