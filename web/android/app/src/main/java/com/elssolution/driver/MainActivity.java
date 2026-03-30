@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import android.Manifest;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
@@ -110,20 +111,24 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        // 앱으로 돌아오면 오버레이 숨김
-        Intent intent = new Intent(this, FloatingWidgetService.class);
-        intent.setAction("SET_VISIBILITY");
-        intent.putExtra("visible", false);
-        try { startService(intent); } catch (Exception ignored) {}
+        // [v4.3.01] 방어 코드: 위치 권한이 없는 상태에서 서비스를 시작하면 안드로이드 14+에서 즉시 크래시 발생
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            Intent intent = new Intent(this, FloatingWidgetService.class);
+            intent.setAction("SET_VISIBILITY");
+            intent.putExtra("visible", false);
+            try { startService(intent); } catch (Exception ignored) {}
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        // 앱이 백그라운드로 가면 오버레이 표시
-        Intent intent = new Intent(this, FloatingWidgetService.class);
-        intent.setAction("SET_VISIBILITY");
-        intent.putExtra("visible", true);
-        try { startService(intent); } catch (Exception ignored) {}
+        // [v4.3.01] 방어 코드: 위치 권한이 있을 때만 백그라운드 오버레이 전환 시도
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            Intent intent = new Intent(this, FloatingWidgetService.class);
+            intent.setAction("SET_VISIBILITY");
+            intent.putExtra("visible", true);
+            try { startService(intent); } catch (Exception ignored) {}
+        }
     }
 }
