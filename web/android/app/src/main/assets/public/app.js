@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.59');
+  console.log('ELS Driver App Loading... v4.3.00');
 
-  const APP_VERSION = 'v4.2.59';
-  const BUILD_CODE = 203; // Build 203 (v4.2.59)
+  const APP_VERSION = 'v4.3.00';
+  const BUILD_CODE = 299; // Build 299 (v4.3.00)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -579,6 +579,21 @@
 
     // 최종 강제 동기화
     for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
+
+    const allOk = permStatuses.loc && permStatuses.camera && permStatuses.notif && permStatuses.overlay && permStatuses.battery;
+    const btnFinish = document.getElementById('btn-finish-setup');
+    if (btnFinish) {
+      if (allOk) {
+        btnFinish.style.setProperty('background', '#111827', 'important');
+        btnFinish.style.setProperty('opacity', '1', 'important');
+        btnFinish.style.setProperty('pointer-events', 'auto', 'important');
+      } else {
+        btnFinish.style.setProperty('background', '#ef4444', 'important');
+        btnFinish.style.setProperty('opacity', '0.7', 'important');
+        btnFinish.style.setProperty('pointer-events', 'none', 'important');
+      }
+    }
+
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 
