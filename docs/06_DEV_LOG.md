@@ -1,4 +1,21 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+ 
+ ## 📅 2026-03-31 (새벽) - [앱] 자이로 필드 제거 및 DB 스키마 충돌 해결 v4.2.59 (Build 203)
+ ### 주제: 서버 500 에러 (Could not find the 'gyro' column) 근원적 해결
+ #### 핵심 원인 분석 및 해결
+ 1. **[Android] gyro 필드 삭제**: CCTV 로그(NATIVE_POST_REJECT)를 통해 서버가 `gyro` 컬럼 부재로 500 에러를 뱉어내고 있음을 확인. 페이로드에서 `gyro` 필드를 완전히 삭제하여 서버와의 스펙 불일치 해결.
+ 2. **[Android] accuracy 필드 및 JSONObject(v4.2.58) 통합**: 안정적인 데이터 송신을 위한 JSONObject 방식과 정확도 필드(`accuracy`) 동시 적용 완료.
+ 3. **[Build] 클린빌드 배포**: `v4.2.59` (Build 203) 정식 빌드 및 배포 완료.
+
+ 
+ ## 📅 2026-03-31 (새벽) - [앱] 백엔드 POST 포맷 에러 해결 & JSONObject 도입 v4.2.58 (Build 202)
+ ### 주제: NAS 서버의 JSON 파싱 거절(400 Bad Request) 원천 차단
+ #### 핵심 원인 분석 및 해결
+ 1. **[Android] JSONObject 기반 페이로드 생성**: `String.format`을 이용한 수동 JSON 조립 시 발생하던 쌍따옴표/특수문자 이스케이프 문제를 `org.json.JSONObject` 도입으로 완벽 해결.
+ 2. **[Android] accuracy 필드 추가**: `app.js` 스펙과 동일하게 GPS 정확도(`accuracy`) 필드를 추가하여 서버 측 유효성 검사 통과 및 관제 정밀도 확보.
+ 3. **[Android] CCTV 로깅 안전성**: `sendNativeWebLog`에도 `JSONObject`를 적용하고, 에러 페이로드 로깅 시 쌍따옴표를 홑따옴표로 치환하여 로그 깨짐 현상 방지.
+ 4. **[Build] 클린빌드 배포**: `v4.2.58` (Build 202) 정식 빌드 및 배포 완료.
+
 
 ## 📅 2026-03-30 (심야) - [앱] 삼성 Intent Firewall 우회 & LocationCallback 전환 v4.2.53 (Build 197)
 ### 주제: 삼성 One UI의 백그라운드 서비스 호출 차단 완전 돌파

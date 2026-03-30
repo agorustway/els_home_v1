@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.58",
-  "versionCode": 202,
-  "changeLog": "v4.2.58 (Build 202)\n- [FIX] 백엔드 JSON 포맷 에러 해결: org.json.JSONObject 도입으로 안전한 페이로드 생성\n- [FEAT] accuracy 필드 추가: 네이티브 GPS 수신 시 정확도 데이터를 포함하여 관제 정밀도 향상\n- [FIX] CCTV 로그 쌍따옴표 충돌 방지 및 에러 핸들링 보강",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=202"
+  "latestVersion": "v4.2.59",
+  "versionCode": 203,
+  "changeLog": "v4.2.59 (Build 203)\n- [FIX] 자이로 필드 제거: DB 스키마(gyro 컬럼 없음) 충돌로 인한 500 에러 해결\n- [FIX] JSONObject 도입 및 accuracy 필드 추가 (v4.2.58 통합)로 백엔드 전송 안정성 확보",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=203"
 }

@@ -1,14 +1,16 @@
-# ELS MISSION CONTROL v4.2.57
-> 마지막 업데이트: 2026-03-30 23:22 (KST)
+# ELS MISSION CONTROL v4.2.59
+> 마지막 업데이트: 2026-03-31 00:25 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.57` (Build 201)
-- **최근 업데이트**: 2026-03-30
-- **상태**: 🔵 배포 완료 — 서버 POST 에러(4xx/5xx) 로깅 추가 및 파싱 안전성 확보
+- **현재 버전**: `v4.2.59` (Build 203)
+- **최근 업데이트**: 2026-03-31
+- **상태**: 🔵 배포 완료 — 자이로 필드 제거로 DB 스키마 충돌 해결 (500 에러 해결)
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.57)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.59)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.2.59**: [FIX] 자이로 필드 제거: DB 스키마(`gyro` 컬럼 없음) 충돌로 인한 500 에러 해결, `accuracy` 필드 추가 및 `JSONObject` 도입 (v4.2.58 통합)
+- [x] **v4.2.58**: [FIX] 백엔드 JSON 포맷 에러 해결: `org.json.JSONObject` 도입으로 페이로드 생성 안전성 확보
 - [x] **v4.2.57**: [FEAT/FIX] 네이티브 엔진 디버깅(NATIVE_POST_OK/REJECT) 추가: 서버 입구컷 확인을 위한 응답 스트림 파싱 및 Payload 로깅, `tripId` 파싱 안전성(Type-safe) 향상
 - [x] **v4.2.56**: [FEAT] 네이티브 엔진 디버깅(CCTV) 로그 전송 및 앱 종료/스와이프 시 알림 완전 제거 적용
 - [x] **v4.2.51**: [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 도입 및 PASSIVE_PROVIDER 활용

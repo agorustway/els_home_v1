@@ -609,7 +609,6 @@ public class FloatingWidgetService extends Service {
                 jsonBody.put("source", "android_bg");
                 if (speedKph >= 0) jsonBody.put("speed", speedKph);
                 if (markerType != null && !markerType.isEmpty()) jsonBody.put("marker_type", markerType);
-                jsonBody.put("gyro", mLastGyroMagnitude);
                 
                 float accuracy = location.hasAccuracy() ? location.getAccuracy() : 0f;
                 jsonBody.put("accuracy", accuracy);
