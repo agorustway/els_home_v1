@@ -30,7 +30,7 @@ export default function VehicleTrackingPage() {
     const [notices, setNotices] = useState([]); // 실시간 공지사항 (동적 데이터)
     const [emergencies, setEmergencies] = useState([]); // [신규] 긴급알림 데이터
     const [showWriteModal, setShowWriteModal] = useState(false);
-    const [newNotice, setNewNotice] = useState({ title: '', content: '', target: '전체', isEmergency: false });
+    const [newNotice, setNewNotice] = useState({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' });
     const [alertMsg, setAlertMsg] = useState(null); // 모달 내 메시지용
     const [loading, setLoading] = useState(true);
     const [mapReady, setMapReady] = useState(false);
@@ -114,7 +114,7 @@ export default function VehicleTrackingPage() {
             const method = newNotice.id ? 'PUT' : 'POST';
             const bodyData = newNotice.isEmergency 
                 ? { id: newNotice.id, title: newNotice.title, message: newNotice.content }
-                : { id: newNotice.id, title: newNotice.title, content: newNotice.content, target: newNotice.target, status: '공지중' };
+                : { id: newNotice.id, title: newNotice.title, content: newNotice.content, target: newNotice.target, category: newNotice.category, status: '공지중' };
 
             const res = await fetch(endpoint, {
                 method,
@@ -128,7 +128,7 @@ export default function VehicleTrackingPage() {
             showModalAlert(newNotice.id ? '수정되었습니다.' : '등록되었습니다.');
             setTimeout(() => {
                 setShowWriteModal(false);
-                setNewNotice({ title: '', content: '', target: '전체', isEmergency: false });
+                setNewNotice({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' });
                 fetchNotices();
             }, 800);
         } catch (e) {
@@ -150,7 +150,7 @@ export default function VehicleTrackingPage() {
             showModalAlert('삭제되었습니다.');
             setTimeout(() => {
                 setShowWriteModal(false);
-                setNewNotice({ title: '', content: '', target: '전체', isEmergency: false });
+                setNewNotice({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' });
                 fetchNotices();
             }, 800);
         } catch (e) { 
@@ -161,7 +161,7 @@ export default function VehicleTrackingPage() {
     };
 
     const handleEditNotice = (n, isEmergency = false) => { 
-        setNewNotice({ ...n, content: isEmergency ? n.message : n.content, isEmergency }); 
+        setNewNotice({ ...n, content: isEmergency ? n.message : n.content, isEmergency, category: n.category || '일반공지' }); 
         setShowWriteModal(true); 
     };
 
@@ -1023,7 +1023,7 @@ export default function VehicleTrackingPage() {
                         )}
                         <div className={styles.modalHeader}>
                             <h3>{newNotice.isEmergency ? (newNotice.id ? '🚨 긴급알림 수정' : '🚨 긴급알림 발송') : (newNotice.id ? '📝 공지사항 수정' : '📝 새 공지사항 작성')}</h3>
-                            <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); }} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>✕</button>
+                            <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' }); }} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>✕</button>
                         </div>
                         <div className={styles.modalBody} style={{display:'flex', flexDirection:'column', gap:12, maxHeight:'80vh', overflowY:'auto'}}>
                             <div>
@@ -1037,17 +1037,31 @@ export default function VehicleTrackingPage() {
                             </div>
                             
                             {!newNotice.isEmergency && (
-                                <div>
-                                    <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
-                                    <select 
-                                        className={styles.modalSelect} 
-                                        value={newNotice.target}
-                                        onChange={e => setNewNotice({...newNotice, target: e.target.value})}
-                                    >
-                                        <option value="전체">전체 (모든 기사)</option>
-                                        <option value="계약차량">계약차량 (소속 운전원)</option>
-                                        <option value="미계약차량">미계약차량 (외부 기사)</option>
-                                    </select>
+                                <div style={{display:'flex', gap: 12}}>
+                                    <div style={{flex: 1}}>
+                                        <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>분류 (카테고리)</label>
+                                        <select 
+                                            className={styles.modalSelect} 
+                                            value={newNotice.category || '일반공지'}
+                                            onChange={e => setNewNotice({...newNotice, category: e.target.value})}
+                                        >
+                                            <option value="일반공지">일반공지</option>
+                                            <option value="작업안내">작업안내</option>
+                                            <option value="안전교육">안전교육</option>
+                                        </select>
+                                    </div>
+                                    <div style={{flex: 1}}>
+                                        <label style={{fontSize:12, fontWeight:700, color:'#64748b', display:'block', marginBottom:4}}>공지 대상</label>
+                                        <select 
+                                            className={styles.modalSelect} 
+                                            value={newNotice.target}
+                                            onChange={e => setNewNotice({...newNotice, target: e.target.value})}
+                                        >
+                                            <option value="전체">전체 (모든 기사)</option>
+                                            <option value="계약차량">계약차량 (소속 운전원)</option>
+                                            <option value="미계약차량">미계약차량 (외부 기사)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 
@@ -1065,7 +1079,7 @@ export default function VehicleTrackingPage() {
                                 <button className={styles.saveBtn} onClick={handleSaveNotice} style={{flex:1, background: newNotice.isEmergency ? '#ef4444' : '#2563eb', height: 44}}>
                                     {newNotice.id ? '수정 완료' : (newNotice.isEmergency ? '긴급알림 발송' : '공지작성')}
                                 </button>
-                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false }); }} style={{height: 44, padding:'0 20px', borderRadius:8}}>닫기</button>
+                                <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' }); }} style={{height: 44, padding:'0 20px', borderRadius:8}}>닫기</button>
                                 {newNotice.id && (
                                     <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id, newNotice.isEmergency)} style={{height: 44, padding:'0 20px', background:'#fee2e2', color:'#ef4444', border:'1px solid #fca5a5', borderRadius:8, fontWeight:700}}>🗑️ 삭제</button>
                                 )}

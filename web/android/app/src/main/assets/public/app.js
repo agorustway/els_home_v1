@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.43');
+  console.log('ELS Driver App Loading... v4.2.44');
 
-  const APP_VERSION = 'v4.2.43';
-  const BUILD_CODE = 187; // Build 187 (v4.2.43)
+  const APP_VERSION = 'v4.2.44';
+  const BUILD_CODE = 188; // Build 188 (v4.2.44)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1457,6 +1457,9 @@
       const dateStr = dateVal ? formatDate(new Date(dateVal)) : '—';
       const cat = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
 
+      const isOld = dateVal && (Date.now() - new Date(dateVal).getTime() > 14 * 24 * 60 * 60 * 1000); // 14일 지난 공지는 자동 읽음 처리
+      const isRead = read.includes(n.id) || isOld;
+
       let prefix = '';
       if (cat === '긴급알림') prefix = '<span style="color:#ef4444; font-weight:700; margin-right:4px;">🚨[긴급]</span>';
       else if (cat !== '일반공지') prefix = `<span style="color:#0ea5e9; font-weight:700; margin-right:4px;">[${escHtml(cat)}]</span>`;
@@ -1465,7 +1468,7 @@
       if (title.startsWith('[긴급] ')) title = title.replace('[긴급] ', '');
 
       return `
-        <div class="notice-item ${read.includes(n.id) ? '' : 'notice-item-unread'}" onclick="App.openNotice('${n.id}')">
+        <div id="notice-item-${n.id}" class="notice-item ${isRead ? '' : 'notice-item-unread'}" onclick="App.openNotice('${n.id}')">
           <div class="notice-item-title" style="display:flex; align-items:flex-start;">
              <span style="flex-shrink:0;">${prefix}</span>
              <span style="flex:1; line-height:1.4;">${title}</span>
@@ -1503,7 +1506,13 @@
     detail.classList.add('active');
 
     const read = Store.get('readNotices') || [];
-    if (!read.includes(id)) { read.push(id); Store.set('readNotices', read); }
+    if (!read.includes(id)) { 
+      read.push(id); 
+      Store.set('readNotices', read); 
+      // 읽음 처리 즉각 반영 (느림 현상 해결)
+      const itemEl = document.getElementById('notice-item-' + id);
+      if (itemEl) itemEl.classList.remove('notice-item-unread');
+    }
     detail.scrollTop = 0;
   }
 

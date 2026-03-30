@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.43",
-  "versionCode": 187,
-  "changeLog": "v4.2.43 (Build 187)\n- [HOTFIX] 화면 꺼짐/백그라운드 전환 후 GPS 수신 끊김 현상 해결 (포그라운드 복귀 시 자동 재기동)\n- [HOTFIX] 실시간 관제 버튼 명령 수신 딜레이 30초 → 0초 (포그라운드 복귀 즉시 폴링)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=187"
+  "latestVersion": "v4.2.44",
+  "versionCode": 188,
+  "changeLog": "v4.2.44 (Build 188)\n- [UPDATE] 공지사항 읽음 처리 지연 및 새로 설치 시 14일 경과 공지 자동 읽음 적용\n- [UPDATE] 관제 레이더 공지 작성 시 카테고리 지정 기능 연동",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=188"
 }
