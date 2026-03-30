@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.59",
-  "versionCode": 203,
-  "changeLog": "v4.2.59 (Build 203)\n- [FIX] 자이로 필드 제거: DB 스키마(gyro 컬럼 없음) 충돌로 인한 500 에러 해결\n- [FIX] JSONObject 도입 및 accuracy 필드 추가 (v4.2.58 통합)로 백엔드 전송 안정성 확보",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=203"
+  "latestVersion": "v4.2.60",
+  "versionCode": 204,
+  "changeLog": "v4.2.60 (Build 204)\n- [NEW] 긴급알림 수신 시 화면 강제 깨우기 및 포그라운드 자동 복귀\n- [FIX] 앱 최초 실행 시 안드로이드 네이티브 권한 요청 충돌 해결 (클린 부팅)\n- [UI] 권한 설정 페이지 버튼 색상 동적 제어 개선",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=204"
 }
