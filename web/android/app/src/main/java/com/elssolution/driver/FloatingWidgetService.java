@@ -156,6 +156,45 @@ public class FloatingWidgetService extends Service {
         // [v4.2.51] Doze 관통 Keepalive 알람 시작
         // setExactAndAllowWhileIdle 사용 — Doze 모드에서도 90초마다 피드백 보장
         ServiceKeepaliveReceiver.scheduleNextPing(this);
+
+        // [v4.3.04] 화면 켬(Screen ON) 리시버 등록 — 화면 켤 때 즉시 GPS 갱신 시도
+        android.content.IntentFilter filter = new android.content.IntentFilter();
+        filter.addAction(android.content.Intent.ACTION_SCREEN_ON);
+        registerReceiver(mScreenBroadcastReceiver, filter);
+    }
+
+    private final android.content.BroadcastReceiver mScreenBroadcastReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                Log.d(TAG, "[v4.3.04] Screen ON detected -> Forcing GPS update");
+                // 화면 켜질 때 '연결안됨' 대신 '수신 대기 중' 상태로 일시 변경 (시각적 답답함 해소)
+                if ("연결안됨".equals(mGpsText)) {
+                    mGpsText = "최근 위치 확인 중...";
+                    mGpsColor = "#facc15"; // 노란색
+                    updateWidgetDisplay();
+                }
+                // 위치 즉시 요청 트리거
+                forceRequestLastLocation();
+            }
+        }
+    };
+
+    private void forceRequestLastLocation() {
+        if (mFusedLocationClient == null) return;
+        try {
+            mFusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+                if (location != null) {
+                    Log.d(TAG, "[v4.3.04] Last location found on screen ON");
+                    handleLocation(location);
+                } else {
+                    // 마지막 위치가 없으면 새 업데이트 요청 가속
+                    restartLocationTracking();
+                }
+            });
+        } catch (SecurityException e) {
+            Log.e(TAG, "GPS permission error in forceRequestLastLocation");
+        }
     }
 
     @Override
@@ -870,6 +909,7 @@ public class FloatingWidgetService extends Service {
         stopForeground(true);
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancelAll();
+        try { unregisterReceiver(mScreenBroadcastReceiver); } catch (Exception ignored) {}
         Log.d(TAG, "Service Destroyed");
     }
 
