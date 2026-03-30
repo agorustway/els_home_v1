@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.44');
 
-  const APP_VERSION = 'v4.2.45';
-  const BUILD_CODE = 189; // Build 189 (v4.2.45)
+  const APP_VERSION = 'v4.2.46';
+  const BUILD_CODE = 190; // Build 190 (v4.2.46)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -95,19 +95,12 @@
     rm: (k) => { try { localStorage.removeItem('els_' + k); } catch { } },
   };
 
-  let realtimeTimer = null;
+  let realtimeExpireAt = 0;
   function startRealtimeMode() {
-    if (realtimeTimer) clearTimeout(realtimeTimer);
     State.trip.isRealtime = true;
+    realtimeExpireAt = Date.now() + 60000; // 1분 절대 시간
     updateTripStatusLine();
     remoteLog("실시간 고정밀 관제 모드 시작 (1분)", "SYSTEM");
-    
-    realtimeTimer = setTimeout(() => {
-      State.trip.isRealtime = false;
-      realtimeTimer = null;
-      updateTripStatusLine();
-      remoteLog("실시간 고정밀 관제 모드 종료", "SYSTEM");
-    }, 60000); // 1분
   }
 
   // ─── 점검체크리스트 ──────────────────────────────────────────
@@ -1190,6 +1183,12 @@
   }
 
   function updateTripStatusLine() {
+    // [신규] 백그라운드 환경에서는 setTimeout이 지연/무시되므로 절대 시간으로 실시간 모드 만료 체크
+    if (State.trip.isRealtime && Date.now() > realtimeExpireAt) {
+      State.trip.isRealtime = false;
+      remoteLog("실시간 고정밀 관제 모드 종료", "SYSTEM");
+    }
+
     const dateDisplay = document.getElementById('trip-date-display');
     const sep1 = document.getElementById('trip-status-sep1');
     const gpsChip = document.getElementById('trip-gps-chip');
@@ -1279,9 +1278,17 @@
     }
   }
 
+  let lastEmergencyPollMs = 0;
   async function onGpsUpdate(pos, isForced = false, forcedTripId = null) {
     const targetId = forcedTripId || State.trip.id;
     if (!targetId) return;
+
+    // 백그라운드에서 깨어날 때마다 긴급명령(실시간명령 등) 폴링 (30초 쿨타임)
+    const _now = Date.now();
+    if (_now - lastEmergencyPollMs > 30000 && State.trip.status === 'driving') {
+      lastEmergencyPollMs = _now;
+      pollEmergency().catch(() => {});
+    }
 
     // [TDD] 강제 수집(isForced)인 경우, 일시정지나 종료 중이어도 위치를 전송해야 함 (중환 전환점)
     if (State.trip.status !== 'driving' && !isForced) return;
