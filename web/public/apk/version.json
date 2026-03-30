@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.05",
-  "versionCode": 304,
-  "changeLog": "v4.3.05 (Build 304)\n- [FIX] 백그라운드 실시간 모드(3초) 전환 로직 버그 수정\n- [NATIVE] 웹 실시간 요청 시 즉각적인 GPS 주기 변경 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=304"
+  "latestVersion": "v4.3.06",
+  "versionCode": 305,
+  "changeLog": "v4.3.06 (Build 305)\n- [DEPLOY] 클린 빌드 안정화 버전\n- [FIX] 설치 후 업데이트 반복 알림 현상 해결\n- [FIX] 실시간 모드(3초) 주기 전환 로직 완벽 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=305"
 }
