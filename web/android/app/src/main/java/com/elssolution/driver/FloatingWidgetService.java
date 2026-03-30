@@ -41,6 +41,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Locale;
+import org.json.JSONObject;
 
 /**
  * ELS FloatingWidgetService v4.0
@@ -601,15 +602,19 @@ public class FloatingWidgetService extends Service {
                 conn.setConnectTimeout(8000);
                 conn.setReadTimeout(8000);
 
-                String speedStr = speedKph >= 0 ? String.format(Locale.US, ",\"speed\":%.1f", speedKph) : "";
-                String markerStr = (markerType != null && !markerType.isEmpty())
-                    ? String.format(",\"marker_type\":\"%s\"", markerType) : "";
-                String gyroStr = String.format(Locale.US, ",\"gyro\":%.2f", mLastGyroMagnitude);
-                // [v4.2.48] 정확한 GPS 위도/경도 전송 (소수점 8자리 — 약 1mm 정밀도)
-                String body = String.format(Locale.US,
-                    "{\"trip_id\":\"%s\",\"lat\":%.8f,\"lng\":%.8f,\"source\":\"android_bg\"%s%s%s}",
-                    mTripId, location.getLatitude(), location.getLongitude(), speedStr, markerStr, gyroStr
-                );
+                JSONObject jsonBody = new JSONObject();
+                jsonBody.put("trip_id", mTripId != null ? mTripId : "");
+                jsonBody.put("lat", location.getLatitude());
+                jsonBody.put("lng", location.getLongitude());
+                jsonBody.put("source", "android_bg");
+                if (speedKph >= 0) jsonBody.put("speed", speedKph);
+                if (markerType != null && !markerType.isEmpty()) jsonBody.put("marker_type", markerType);
+                jsonBody.put("gyro", mLastGyroMagnitude);
+                
+                float accuracy = location.hasAccuracy() ? location.getAccuracy() : 0f;
+                jsonBody.put("accuracy", accuracy);
+
+                String body = jsonBody.toString();
 
                 OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
                 writer.write(body); writer.flush(); writer.close();
@@ -629,7 +634,8 @@ public class FloatingWidgetService extends Service {
                         responseBody = sb.toString();
                         es.close();
                     }
-                    sendNativeWebLog("NATIVE_POST_REJECT", "서버거절(" + respCode + "): " + responseBody + " | Payload: " + body.replace("\"", "\\\""));
+                    String safeBody = body.replace("\"", "'");
+                    sendNativeWebLog("NATIVE_POST_REJECT", "서버거절(" + respCode + "): " + responseBody + " | Payload: " + safeBody);
                 }
                 conn.disconnect();
                 
@@ -783,7 +789,12 @@ public class FloatingWidgetService extends Service {
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(3000);
                 
-                String body = String.format(Locale.US, "{\"msg\":\"%s\",\"device\":\"Android_Native\",\"tag\":\"%s\"}", msg.replace("\"", "\\\""), tag);
+                JSONObject jsonBody = new JSONObject();
+                jsonBody.put("msg", msg);
+                jsonBody.put("device", "Android_Native");
+                jsonBody.put("tag", tag);
+                
+                String body = jsonBody.toString();
                 OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
                 writer.write(body); writer.flush(); writer.close();
                 
