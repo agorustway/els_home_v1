@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.08",
-  "versionCode": 307,
-  "changeLog": "v4.3.08 (Build 307)\n- [UI] 설정 페이지 버전 표시 동기화 (v4.3.07)\n- [UI] 설정 페이지 번호조회/정보저장 버튼 색상 변경 (블랙)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=307"
+  "latestVersion": "v4.3.09",
+  "versionCode": 308,
+  "changeLog": "v4.3.09 (Build 308)\n- [UX] 운행 시작 전/후 버튼 크기 및 톤앤매너 완벽 일치 (44px)\n- [NATIVE] 백그라운드 오버레이 실시간(3초) 모드 전환 통신 지연 오류 완전 해결",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=308"
 }
