@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.2.2">
+<link rel="stylesheet" href="style.css?v=4.3.15">
 </head>
 <body>
 <div id="app">
@@ -106,11 +106,11 @@
 
       <!-- ── 공지 탭 ── -->
       <div id="tab-notice" class="screen">
-        <div class="notice-filter-tabs" style="display:flex; justify-content:center; gap:6px; padding:8px 10px; background:#fff; border-bottom:1px solid #e2e8f0;">
-          <button class="btn btn-sm" style="flex:0 0 auto; height:34px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('긴급알림', this)">🚨 긴급알림</button>
-          <button class="btn btn-sm" style="flex:0 0 auto; height:34px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('일반공지', this)">일반공지</button>
-          <button class="btn btn-sm" style="flex:0 0 auto; height:34px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('작업안내', this)">작업안내</button>
-          <button class="btn btn-sm" style="flex:0 0 auto; height:34px; padding:0 12px; font-size:12px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('안전교육', this)">안전교육</button>
+        <div class="notice-filter-tabs" style="display:flex; justify-content:center; gap:6px; padding:6px 10px; background:#fff; border-bottom:1px solid #e2e8f0;">
+          <button class="btn btn-sm" style="flex:0 0 auto; height:36px; padding:0 12px; font-size:13px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('긴급알림', this)">🚨 긴급알림</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:36px; padding:0 12px; font-size:13px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('일반공지', this)">일반공지</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:36px; padding:0 12px; font-size:13px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('작업안내', this)">작업안내</button>
+          <button class="btn btn-sm" style="flex:0 0 auto; height:36px; padding:0 12px; font-size:13px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;" onclick="App.filterNotice('안전교육', this)">안전교육</button>
         </div>
         <div id="notice-list" class="notice-list" style="height:calc(100% - 49px); overflow-y:auto; padding-top:0;">
           <div class="loading"><div class="spinner"></div>불러오는 중...</div>
@@ -258,21 +258,21 @@
     <header class="app-header">
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
     </header>
-    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;">
-      <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start; flex-shrink:0;">← 이전 페이지로 돌아가기</button>
+    <div style="padding:8px 14px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1;">
+      <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start; flex-shrink:0; height:34px;">← 이전 페이지로 돌아가기</button>
       
       <!-- ── 프로필 사진 (운전원/차량/샤시) ── -->
-      <div id="settings-profile-photos" style="display:flex; gap:18px; margin:0 0 8px; justify-content:center; align-items:center; background:#f8fafc; padding:12px; border-radius:var(--radius); border:1px solid #e2e8f0;">
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.handleProfilePhotoClick('driver')">
-          <div id="p-photo-driver" class="profile-photo-box" style="width:70px; height:70px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">기사</div>
+      <div id="settings-profile-photos" style="display:flex; gap:18px; margin:0 0 4px; justify-content:center; align-items:center; background:#f8fafc; padding:8px; border-radius:var(--radius); border:1px solid #e2e8f0;">
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;" onclick="App.handleProfilePhotoClick('driver')">
+          <div id="p-photo-driver" class="profile-photo-box" style="width:68px; height:68px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">기사</div>
           <span style="font-size:11px; color:#64748b; font-weight:700;">운전원사진</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.handleProfilePhotoClick('vehicle')">
-          <div id="p-photo-vehicle" class="profile-photo-box" style="width:70px; height:70px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">차량</div>
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;" onclick="App.handleProfilePhotoClick('vehicle')">
+          <div id="p-photo-vehicle" class="profile-photo-box" style="width:68px; height:68px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">차량</div>
           <span style="font-size:11px; color:#64748b; font-weight:700;">차량사진</span>
         </div>
-        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;" onclick="App.handleProfilePhotoClick('chassis')">
-          <div id="p-photo-chassis" class="profile-photo-box" style="width:70px; height:70px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">샤시</div>
+        <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;" onclick="App.handleProfilePhotoClick('chassis')">
+          <div id="p-photo-chassis" class="profile-photo-box" style="width:68px; height:68px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">샤시</div>
           <span style="font-size:11px; color:#64748b; font-weight:700;">샤시사진</span>
         </div>
       </div>
@@ -280,37 +280,37 @@
       <div class="field">
         <label>전화번호</label>
         <div style="display:flex;gap:4px;">
-           <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;height:38px;">
-           <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 14px;height:38px;">번호조회</button>
+           <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;height:36px;">
+           <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 14px;height:36px;">번호조회</button>
         </div>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:6px; width:100%; flex-shrink:0;">
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>이름</label>
-          <input type="text" id="s-name" placeholder="홍길동" maxlength="20" style="padding:0 8px; font-size:13px;height:38px;">
+          <input type="text" id="s-name" placeholder="홍길동" maxlength="20" style="padding:0 8px; font-size:13px;height:36px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>차량번호</label>
-          <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" style="padding:0 8px; font-size:13px;height:38px;">
+          <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" style="padding:0 8px; font-size:13px;height:36px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>차량 ID</label>
-          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:38px;">
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:36px;">
         </div>
       </div>
-      <button class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:38px; font-size:14px;">정보 저장</button>
-      <hr class="divider" style="margin:8px 0;">
-      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
-        <button class="btn" style="justify-content:space-between;text-align:left;height:42px;padding: 0 16px; font-size:14px;" onclick="App.showTerms()">
+      <button class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:36px; font-size:14px;">정보 저장</button>
+      <hr class="divider" style="margin:4px 0;">
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:2px;">
+        <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.showTerms()">
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
-        <button class="btn" style="justify-content:space-between;text-align:left;height:42px;padding: 0 16px; font-size:14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.14</span>
+        <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.checkUpdate()">
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.15</span>
         </button>
-        <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;height:42px;padding: 0 16px; font-size:14px;" onclick="App.clearCache()">
+        <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.clearCache()">
           <span>캐시 지우기 (새로고침)</span>
         </button>
-        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;height:42px;padding: 0 16px; font-size:14px;" onclick="App.resetApp()">
+        <button class="btn btn-danger" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.resetApp()">
           <span>앱 초기화 (재설정)</span>
         </button>
       </div>
@@ -421,6 +421,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.2.12"></script>
+<script src="app.js?v=4.3.15"></script>
 </body>
 </html>
