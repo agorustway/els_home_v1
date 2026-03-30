@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.06",
-  "versionCode": 305,
-  "changeLog": "v4.3.06 (Build 305)\n- [DEPLOY] 클린 빌드 안정화 버전\n- [FIX] 설치 후 업데이트 반복 알림 현상 해결\n- [FIX] 실시간 모드(3초) 주기 전환 로직 완벽 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=305"
+  "latestVersion": "v4.3.07",
+  "versionCode": 306,
+  "changeLog": "v4.3.07 (Build 306)\n- [FIX] 시스템 설정 창에서 앱으로 복귀 시 권한 허용 상태가 즉시 파란색으로 갱신되지 않는 버그 해결\n- [UX] 권한 설정 단계의 체감 속도 향상",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=306"
 }

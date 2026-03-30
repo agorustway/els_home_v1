@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL v4.3.06
-> 마지막 업데이트: 2026-03-31 04:15 (KST)
+# ELS MISSION CONTROL v4.3.07
+> 마지막 업데이트: 2026-03-31 04:26 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.06` (Build 305)
+- **현재 버전**: `v4.3.07` (Build 306)
 - **최근 업데이트**: 2026-03-31
-- **상태**: 🟢 클린 배포 완료 — 최종 실시간 모드 및 UI 안정화 버전
+- **상태**: 🟢 배포 완료 — 설정 화면 복귀 시 권한 즉시 갱신 (앱 생명주기 리스너 이전) 
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.3.06)
+- **설정 파일**: `web/public/apk/version.json` (v4.3.07)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.3.07**: [UI/FIX] 권한 설정 화면(앱 외부)에서 복귀 시 버튼 즉각 갱신 로직 수정
 - [x] **v4.3.06**: [DEPLOY] 클린 빌드 배포 - 실시간 모드 및 중복 설치 알림 해결
 - [x] **v4.3.05**: [NATIVE] 실시간 모드(3초) 폴링 로직 수정 (restartLocationTracking 연동)
 - [x] **v4.3.04**: [NATIVE] 화면 켬(WakeUp) 감지 및 GPS 즉시 강제 갱신 로직 (시각적 지연 해소)
