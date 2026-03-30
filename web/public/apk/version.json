@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.10",
-  "versionCode": 309,
-  "changeLog": "v4.3.10 (Build 309)\n- [UI/UX] 모든 페이지 입력창/버튼 높이 48px 통일 (글로벌 톤앤매너)\n- [UI/UX] 운행 화면 상단 헤더 및 첫째줄 정보칸 크기 확대 (시인성 강화)\n- [UX] 설정 화면 '성함' 표기 변경 및 인터페이스 병합 배치 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=309"
+  "latestVersion": "v4.3.12",
+  "versionCode": 311,
+  "changeLog": "v4.3.12 (Build 311)\n- [UX] 설정 화면 하단 버튼 시인성 보강 (38px -> 42px)\n- [UX] 스크롤 없이 한 화면에 정보 배치 최적화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=311"
 }
