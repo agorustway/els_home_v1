@@ -30,6 +30,17 @@
             android:stopWithTask="false"
         />
 
+        <!-- [v4.2.51] Doze 관통 Keepalive BroadcastReceiver -->
+        <receiver
+            android:name=".ServiceKeepaliveReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.elssolution.driver.KEEPALIVE_PING" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -67,6 +78,14 @@
 
     <!-- 배터리 최적화 예외 -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- [v4.2.51] Doze Keepalive 알람용 -->
+    <!-- Android 12+: setExactAndAllowWhileIdle 사용 시 필요 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Android 13+: EXACT_ALARM의 상위 버전 (시스템 앱 수준, OTA 배포라 가능) -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- 기기 재부팅 후 Keepalive 자동 재시작 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- 전화번호 조회 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />

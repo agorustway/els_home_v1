@@ -1,5 +1,6 @@
 package com.elssolution.driver;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -137,6 +138,10 @@ public class FloatingWidgetService extends Service {
         }
 
         Log.d(TAG, "Service Created — Foreground 즉시 선언 완료");
+
+        // [v4.2.51] Doze 관통 Keepalive 알람 시작
+        // setExactAndAllowWhileIdle 사용 — Doze 모드에서도 90초마다 피드백 보장
+        ServiceKeepaliveReceiver.scheduleNextPing(this);
     }
 
     @Override
@@ -363,9 +368,14 @@ public class FloatingWidgetService extends Service {
             @Override
             public void run() {
                 if (tvTimer == null) { mTimerHandler.postDelayed(this, 1000); return; }
-                
+
                 long now = System.currentTimeMillis();
                 long elapsed;
+
+                // [v4.2.51] Heartbeat 갱신 — ServiceKeepaliveReceiver가 생존 판단에 사용
+                // 매 1초 타이머마다 갱신: 30초 이상 없으면 Receiver가 서비스 재시작
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit().putLong("SERVICE_HEARTBEAT", now).apply();
                 
                 if ("driving".equals(mStatus)) {
                     elapsed = now - mStartTimeMillis - mTotalPausedMs;
@@ -477,11 +487,19 @@ public class FloatingWidgetService extends Service {
         if (mLocationManager == null || mLocationListener == null) return;
         try {
             mLocationManager.removeUpdates(mLocationListener);
-            // GPS 수집은 항상 3초 (빠른 감지) — 전송 주기는 mCurrentIntervalMs로 별도 조절
+            // [v4.2.51] Doze 듌는 LocationManager 전략
+            // minTime=0: 시스템이 제한하더라도 "내가 가장 빠른 업데이트를 원한다"는 시그널, 실제 주기는 OS가 조절
+            // GPS_PROVIDER + NETWORK_PROVIDER 이중 등록: 하나가 Doze로 죽어도 나머지 하나가 살아있음
             long gpsMinTimeMs = Math.min(mCurrentIntervalMs, 3_000L);
-            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsMinTimeMs, 1, mLocationListener);
-            mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10_000L, 5, mLocationListener);
-            Log.d(TAG, "[GPS] 수신 주기 적용: " + gpsMinTimeMs + "ms / 전송 주기: " + mCurrentIntervalMs + "ms");
+            mLocationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER, gpsMinTimeMs, 0f, mLocationListener);
+            mLocationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER, 10_000L, 0f, mLocationListener);
+            // [v4.2.51] PASSIVE_PROVIDER 추가: 다른 앱이 GPS를 켜나다닐 때 무임승차 수신
+            // Doze 중에도 시스템이 GPS를 켜준 시점에 콜백 지속적 수신
+            mLocationManager.requestLocationUpdates(
+                LocationManager.PASSIVE_PROVIDER, 0L, 0f, mLocationListener);
+            Log.d(TAG, "[GPS] 세 프로바이더 등록 완료 (GPS+NETWORK+PASSIVE), 전송간격: " + mCurrentIntervalMs + "ms");
         } catch (SecurityException e) {
             Log.e(TAG, "GPS 권한 없음");
         }
@@ -745,8 +763,17 @@ public class FloatingWidgetService extends Service {
             mWakeLock.release();
         }
         if (mTimerRunnable != null) mTimerHandler.removeCallbacks(mTimerRunnable);
-        // [v4.2.50] HandlerThread 안전 종료
+        // [v4.2.51] HandlerThread 안전 종료
         if (mNetworkThread != null) mNetworkThread.quitSafely();
+        // [v4.2.51] Keepalive 알람 취소
+        // 운행 종료 시에만 취소 — 시스템이 서비스를 죽이면 취소 안 함 (재시작 필요)
+        // STOP_SERVICE action으로 명시적으로 종료할 때만 취소
+        if (mStatus == null || "completed".equals(mStatus)) {
+            ServiceKeepaliveReceiver.cancelPing(this);
+        }
+        // Heartbeat 샬 제거 (Receiver가 짤 서비스임을 인지하도록)
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit().remove("SERVICE_HEARTBEAT").apply();
         Log.d(TAG, "Service Destroyed");
     }
 }
