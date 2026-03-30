@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.61",
-  "versionCode": 205,
-  "changeLog": "v4.2.61 (Build 205)\n- [HOTFIX] 업데이트 엔진 복구 및 앱 로딩 화이트스크린 현상 해결",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=205"
+  "latestVersion": "v4.2.62",
+  "versionCode": 206,
+  "changeLog": "v4.2.62 (Build 206)\n- [HOTFIX] 앱 실행 크래시 해결: 안정 버전 네이티브 코드 복원",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=206"
 }
