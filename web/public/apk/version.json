@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.55",
-  "versionCode": 199,
-  "changeLog": "v4.2.55 (Build 199)\n- [FIX] GPS 배칭(Batching) 전략 완전 폐기 — OS 지연 없이 무지성 즉각 수신 강제\n- [FIX] 백그라운드 스레드에서 UI 업데이트 시 발생하는 크래시(CalledFromWrongThreadException) 해결 및 MainLooper 래핑 적용",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=199"
+  "latestVersion": "v4.2.56",
+  "versionCode": 200,
+  "changeLog": "v4.2.56 (Build 200)\n- [FEAT] 네이티브 엔진 디버깅 데이터(CCTV) 로깅 추가 (화면 꺼짐 시 CPU/GPS/통신 추적)\n- [FIX] 위치 권한 [항상 허용] 유도 안내 강화\n- [FIX] 앱 최근 목록(스와이프) 종료 및 인앱 종료 시 알림바 뱃지가 완벽하게 사라지도록 리소스 해제 로직 보강",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=200"
 }

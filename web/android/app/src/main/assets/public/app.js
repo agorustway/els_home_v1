@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.55');
+  console.log('ELS Driver App Loading... v4.2.56');
 
-  const APP_VERSION = 'v4.2.55';
-  const BUILD_CODE = 199; // Build 199 (v4.2.55)
+  const APP_VERSION = 'v4.2.56';
+  const BUILD_CODE = 200; // Build 200 (v4.2.56)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -588,6 +588,7 @@
     try {
       switch (type) {
         case 'location':
+          alert('화면이 꺼졌을 때도 위치 상태를 추적하려면 설정에서 반드시 [항상 허용]을 선택해야 합니다.');
           if (window.Capacitor?.Plugins?.Geolocation) {
             await window.Capacitor.Plugins.Geolocation.requestPermissions();
           }
@@ -1544,7 +1545,7 @@
     const bodyEl = document.getElementById('notice-detail-body');
     if (bodyEl) {
       let raw = n.content || n.body || n.message || '';
-      // [TDD] 일반 태그 및 이중 인코딩된 태그(&lt;p&gt;, &lt;br&gt;) 모두 완벽 제거
+      // [TDD] 일반 태그 및 이중 인코딩된 태그(&lt;p&gt;, &lt;br&gt;) 모두 완벽 제거 
       raw = raw.replace(/&lt;br\s*\/?&gt;/gi, '\n')
         .replace(/&lt;\/p&gt;/gi, '\n')
         .replace(/&lt;p&gt;/gi, '')
@@ -2270,6 +2271,10 @@
       return;
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
+
+    // [v4.2.56] 포그라운드 알림 및 GPS 명시적 종료
+    stopOverlayService();
+    stopGPS();
 
     if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.exitApp();

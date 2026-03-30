@@ -109,6 +109,7 @@ public class FloatingWidgetService extends Service {
     private TextView tvStatus, tvTimer, tvGps, tvAddr;
     private long mLastGpsReceiveTime = 0;
     private long mLastCommandPollTime = 0;
+    private long mLastNativeLogTime = 0; // CCTV 주기 로깅 쿨타임
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -382,6 +383,12 @@ public class FloatingWidgetService extends Service {
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     .edit().putLong("SERVICE_HEARTBEAT", now).apply();
                 
+                // [v4.2.56] CPU 생존 체크 CCTV (60초 주기 틱)
+                if (now - mLastNativeLogTime >= 60000) {
+                    mLastNativeLogTime = now;
+                    sendNativeWebLog("NATIVE_CPU", "네이티브 60초 틱 생존!");
+                }
+                
                 if ("driving".equals(mStatus)) {
                     elapsed = now - mStartTimeMillis - mTotalPausedMs;
                     tvTimer.setText(formatTime(elapsed));
@@ -451,6 +458,9 @@ public class FloatingWidgetService extends Service {
         
         float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
         mLastGpsReceiveTime = System.currentTimeMillis();
+        
+        // [v4.2.56] GPS 수신 완료 CCTV 전송
+        sendNativeWebLog("NATIVE_GPS", "백그라운드 GPS 수신: " + location.getLatitude() + "," + location.getLongitude());
         
         if (mIsRealtimeMode) {
             mGpsText = "실시간 수집중";
@@ -614,6 +624,8 @@ public class FloatingWidgetService extends Service {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "GPS 전송 실패 (Network Block?): " + e.getMessage());
+                // [v4.2.56] 네트워크 에러 발생 시 CCTV 전송
+                sendNativeWebLog("NATIVE_ERR", "전송 실패: " + e.getMessage());
             }
         };
         // mNetworkHandler에서 이미 호출된 경우엔 직접 실행, 아니면 post
@@ -745,6 +757,32 @@ public class FloatingWidgetService extends Service {
         }).start();
     }
 
+    // ─── 네이티브 로그 CCTV ───────────────────────────────────────
+    private void sendNativeWebLog(String tag, String msg) {
+        if (mNetworkHandler == null) return;
+        mNetworkHandler.post(() -> {
+            try {
+                URL url = new URL(BASE_URL + "/api/debug/log");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(3000);
+                
+                String body = String.format(Locale.US, "{\"msg\":\"%s\",\"device\":\"Android_Native\",\"tag\":\"%s\"}", msg.replace("\"", "\\\""), tag);
+                OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
+                writer.write(body); writer.flush(); writer.close();
+                
+                int respCode = conn.getResponseCode();
+                if (respCode >= 200 && respCode < 300) conn.getInputStream().close();
+                else conn.getErrorStream().close();
+                conn.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "Native CCTV Failed: " + e.getMessage());
+            }
+        });
+    }
+
     // ─── 운행 종료 마지막 위치 전송 (JS에서 호출) ─────────────────
     public void sendFinalLocation() {
         if (mLastLocation != null) {
@@ -782,6 +820,17 @@ public class FloatingWidgetService extends Service {
         // Heartbeat 샬 제거 (Receiver가 짤 서비스임을 인지하도록)
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .edit().remove("SERVICE_HEARTBEAT").apply();
+            
+        // [v4.2.56] 서비스 종료 시 포그라운드 알림을 즉각 제거하여 알림바에서 소멸 느낌
+        stopForeground(true);
         Log.d(TAG, "Service Destroyed");
+    }
+
+    // [v4.2.56] 앱 최근 목록(스와이프) 종료 시 포그라운드 서비스 및 알림 즉시 동반 종료
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        Log.d(TAG, "Task removed (App Swiped) -> Stopping Foreground Service");
+        stopSelf();
     }
 }
