@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL v4.2.50
-> 마지막 업데이트: 2026-03-30 19:44 (KST)
+# ELS MISSION CONTROL v4.2.51
+> 마지막 업데이트: 2026-03-30 20:07 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.50` (Build 194)
+- **현재 버전**: `v4.2.51` (Build 195)
 - **최근 업데이트**: 2026-03-30
 - **상태**: 🟡 소스 수정 완료 — Android Studio 빌드 & APK 배포 대기
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.50)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.51)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.2.51**: [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 도입 및 PASSIVE_PROVIDER 활용
 - [x] **v4.2.50**: [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread/네이티브 역지오코딩/IMPORTANCE_DEFAULT/startForeground 즉시 선언
 - [x] **v4.2.49**: [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정
 - [x] **v4.2.48**: [FIX] 앱↔오버레이 실시간 동기화 엇박자 해결 — GPS 수신 즉시 네이티브 gpsText/Color 자체 갱신 (JS throttle 우회)
@@ -20,14 +21,16 @@
 - [x] **v4.2.47**: [HOTFIX] 오버레이 자립 모드 도입 - 네이티브 서비스에서 자체적으로 GPS 끊짐(30초) 판단
 - [x] **v4.2.47**: [HOTFIX] 실시간 추적 중지(REALTIME_OFF) 명령 체계 구축
 
-## 📋 최근 변경 (v4.2.50 — 2026-03-30)
-- **화면 꺼짐 GPS 완전 독립 아키텍처**: JS(WebView) 완전 우회. 화면 꺼져도 GPS POST + 오버레이 주소 갱신 보장
-  - `HandlerThread(ELS_NetworkWorker)`: GPS 콜백마다 new Thread() 생성 → 단일 Worker Thread로 교체
-  - `IMPORTANCE_DEFAULT` 알림채널: Samsung One UI 절전 정책 우회 (IMPORTANCE_LOW → 격상)
-  - `startForeground()` onCreate 즉시 호출: 5초 초과 ANR 방지
-  - `FOREGROUND_SERVICE_TYPE_LOCATION|DATA_SYNC`: 화면 꺼진 상태 네트워크 I/O Foreground 인정
-  - `geocodeAndUpdateOverlay()`: 30초마다 nollae.com 프록시→Kakao API 역지오코딩 → MainLooper로 tvAddr 즉시 갱신
-  - WakeLock `ON_AFTER_RELEASE` + 12시간 timeout leak 방지
+## 📋 최근 변경 (v4.2.51 — 2026-03-30)
+- **Doze 모드 관통 아키텍처**: (v4.2.51)
+  - `ServiceKeepaliveReceiver` 추가: `AlarmManager.setExactAndAllowWhileIdle()`을 이용해 90초마다 서비스 생존 확인 및 부활.
+  - `LocationManager`에 `PASSIVE_PROVIDER` 추가 및 `minTime=0`으로 시스템 최우선 업데이트 요청.
+- **화면 꺼짐 GPS 완전 독립 아키텍처**: JS(WebView) 완전 우회 보장. (v4.2.50)
+  - `HandlerThread(ELS_NetworkWorker)`: 단일 Worker Thread 도입.
+  - `IMPORTANCE_DEFAULT` 알림채널: One UI 절전 우회.
+  - `startForeground()` onCreate 즉시 호출 및 `FOREGROUND_SERVICE_TYPE_LOCATION|DATA_SYNC` 선언.
+  - `geocodeAndUpdateOverlay()`: 30초 주기 역지오코딩.
+  - WakeLock 개선.
 - 긴급알림 SYSTEM_COMMAND 필터링 (v4.2.49)
 
 ## ⏳ 다음 할 일
