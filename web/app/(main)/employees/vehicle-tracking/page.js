@@ -91,13 +91,16 @@ export default function VehicleTrackingPage() {
         }
     }, []);
 
-    // [신규] 공지사항 목록 실시간 연동
+    // [신규] 공지사항 목록 실 시 간 연동
     const fetchNotices = useCallback(async () => {
         const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false }).limit(20);
         if (!error && data) setNotices(data);
         
-        const { data: emData, error: emError } = await supabase.from('emergency_notices').select('*').order('created_at', { ascending: false }).limit(10);
-        if (!emError && emData) setEmergencies(emData);
+        // [수정] SYSTEM_COMMAND 는 UI에 노출하지 않도록 필터링
+        const { data: emData, error: emError } = await supabase.from('emergency_notices').select('*').order('created_at', { ascending: false }).limit(40);
+        if (!emError && emData) {
+            setEmergencies(emData.filter(em => em.title !== 'SYSTEM_COMMAND').slice(0, 10));
+        }
     }, []);
 
     const showModalAlert = (msg) => {
@@ -207,10 +210,25 @@ export default function VehicleTrackingPage() {
         const bounds = new naver.maps.LatLngBounds();
         path.forEach(p => bounds.extend(p));
 
+        // 조그만 회색 점 (마킹 포인트) 추가 - 선형(Z-index: 1)보다 위 레벨(Z-index: 10) 적용
+        locations.forEach(l => {
+            const pointMarker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(l.lat, l.lng),
+                map: map,
+                icon: {
+                    content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>',
+                    anchor: new naver.maps.Point(4, 4)
+                },
+                zIndex: 10
+            });
+            markersRef.current.push(pointMarker);
+        });
+
         const start = locations[0];
         const end = locations[locations.length - 1];
         const startMarker = new naver.maps.Marker({
             position: new naver.maps.LatLng(start.lat, start.lng), map,
+            zIndex: 100, // 가장 위
             icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new naver.maps.Point(12, 12) }
         });
         markersRef.current.push(startMarker);
@@ -218,6 +236,7 @@ export default function VehicleTrackingPage() {
         if (end) {
             const endMarker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(end.lat, end.lng), map,
+                zIndex: 100, // 가장 위
                 icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new naver.maps.Point(12, 12) }
             });
             markersRef.current.push(endMarker);
