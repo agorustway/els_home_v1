@@ -87,6 +87,7 @@ public class FloatingWidgetService extends Service {
 
     // 상태
     private String mTripId;
+    private String mDriverId;
     private long mStartTimeMillis = 0;
     private long mPausedAt = 0; // 일시정지 시작 시각
     private long mTotalPausedMs = 0; // 누적 일시정지 시간
@@ -264,6 +265,13 @@ public class FloatingWidgetService extends Service {
             if (intent.hasExtra("tripId")) {
                 Object obj = intent.getExtras().get("tripId");
                 mTripId = String.valueOf(obj);
+            }
+            if (intent.hasExtra("driverId")) {
+                mDriverId = intent.getStringExtra("driverId");
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit().putString("LAST_DRIVER_ID", mDriverId).apply();
+            } else if (mDriverId == null) {
+                mDriverId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString("LAST_DRIVER_ID", "");
             }
             if (intent.hasExtra("startTimeMillis")) {
                 mStartTimeMillis = intent.getLongExtra("startTimeMillis", System.currentTimeMillis());
@@ -796,10 +804,10 @@ public class FloatingWidgetService extends Service {
 
     // ─── 네이티브 명령 폴링 (백그라운드 생존 보강) ────────────────
     private void pollSystemCommand() {
-        if (mTripId == null || mTripId.isEmpty()) return;
+        if (mTripId == null || mTripId.isEmpty() || mDriverId == null || mDriverId.isEmpty()) return;
         new Thread(() -> {
             try {
-                URL url = new URL(BASE_URL + "/api/vehicle-tracking/emergency?unread=true");
+                URL url = new URL(BASE_URL + "/api/vehicle-tracking/emergency?unread=true&driver_id=" + mDriverId);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(5000);

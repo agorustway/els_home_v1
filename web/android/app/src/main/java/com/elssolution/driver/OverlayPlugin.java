@@ -80,12 +80,14 @@ public class OverlayPlugin extends Plugin {
         String tripId = call.getString("tripId", "");
         String container = call.getString("container", "");
         String status = call.getString("status", "driving");
+        String driverId = call.getString("driverId", "");
         long startTime = call.getLong("startTimeMillis", System.currentTimeMillis());
 
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
         intent.putExtra("tripId", tripId);
         intent.putExtra("container", container);
         intent.putExtra("status", status);
+        intent.putExtra("driverId", driverId);
         intent.putExtra("startTimeMillis", startTime);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -112,6 +114,11 @@ public class OverlayPlugin extends Plugin {
         if (!gpsText.isEmpty()) intent.putExtra("gpsText", gpsText);
         if (!gpsColor.isEmpty()) intent.putExtra("gpsColor", gpsColor);
         if (!address.isEmpty()) intent.putExtra("address", address);
+        
+        Boolean isRealtime = call.getBoolean("isRealtime");
+        if (isRealtime != null) {
+            intent.putExtra("isRealtime", isRealtime);
+        }
         
         getContext().startService(intent);
         call.resolve(new JSObject().put("updated", true));
