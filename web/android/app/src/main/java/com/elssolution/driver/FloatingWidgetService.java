@@ -492,19 +492,15 @@ public class FloatingWidgetService extends Service {
         try {
             mFusedLocationClient.removeLocationUpdates(mLocationCallback);
             
-            // Doze 돌파를 위한 LocationRequest 설정
-            long minWaitMs = Math.min(mCurrentIntervalMs, 5_000L); // 최소 지연
-            long maxWaitMs = mCurrentIntervalMs * 2; // 화면 꺼짐 시 일괄 수신(Batching)으로 OS 저항 최소화
-            
+            // [v4.2.55] 배칭(Batching) 완전 제거 - 배터리 소모 무시하고 무지성 즉각 수신 강제
             LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, mCurrentIntervalMs)
-                    .setMinUpdateIntervalMillis(minWaitMs)
-                    .setMaxUpdateDelayMillis(maxWaitMs)
-                    .setWaitForAccurateLocation(false) // 부정확하더라도 일단 받아서 전송 시도
+                    .setMinUpdateIntervalMillis(mCurrentIntervalMs) // 지연 절대 금지, 동일 간격 강제
+                    .setWaitForAccurateLocation(false)
                     .build();
                     
-            // [v4.2.53] Intent Firewall 우회를 위해 PendingIntent 대신 Callback + Looper 직접 바인딩 사용
+            // Intent Firewall 우회를 위해 Callback + Looper 직접 바인딩 사용
             mFusedLocationClient.requestLocationUpdates(request, mLocationCallback, mNetworkThread.getLooper());
-            Log.d(TAG, "[GPS] FusedLocationProviderClient (LocationCallback) 등록 완료, Interval: " + mCurrentIntervalMs);
+            Log.d(TAG, "[GPS] FusedLocationProviderClient (우선순위 강제 수신) 등록 완료, Interval: " + mCurrentIntervalMs);
         } catch (SecurityException e) {
             Log.e(TAG, "GPS 권한 없음");
         }

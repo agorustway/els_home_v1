@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.54",
-  "versionCode": 198,
-  "changeLog": "v4.2.54 (Build 198)\n- [FIX] 백그라운드 스레드에서 UI 업데이트 시 발생하는 크래시(CalledFromWrongThreadException) 해결\n- [v4.2.53 핵심 내역]\n  - 삼성 One UI 인텐트 방화벽 우회 완료 (LocationCallback + 워커 스레드 직접 바인딩)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=198"
+  "latestVersion": "v4.2.55",
+  "versionCode": 199,
+  "changeLog": "v4.2.55 (Build 199)\n- [FIX] GPS 배칭(Batching) 전략 완전 폐기 — OS 지연 없이 무지성 즉각 수신 강제\n- [FIX] 백그라운드 스레드에서 UI 업데이트 시 발생하는 크래시(CalledFromWrongThreadException) 해결 및 MainLooper 래핑 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=199"
 }
