@@ -2250,6 +2250,9 @@
     if (em) {
       const rawVal = item.message || item.content || '';
       em.showEmergencyAlert({ title: '⚠️ ELS 긴급알림', message: stripHtml(rawVal), id: item.id }).catch(() => { });
+      if (em.bringToForeground) {
+        em.bringToForeground().catch(() => {});
+      }
     }
   }
 

@@ -63,6 +63,12 @@ export default function VehicleTrackingPage() {
     const [selectedIds, setSelectedIds] = useState([]); // 일괄 삭제용
     const [sortConfig, setSortConfig] = useState({ key: 'started_at', direction: 'desc' }); // 정렬 상태
 
+    // ─── [신규] 사진 뷰어 상태 ───
+    const [viewingPhotoUrl, setViewingPhotoUrl] = useState(null);
+    const [zoomInfo, setZoomInfo] = useState({ scale: 1, x: 0, y: 0 });
+    const isDraggingRef = useRef(false);
+    const dragStartRef = useRef({ x: 0, y: 0 });
+
     // ─── 0. 지도 리사이즈 및 탭 전환 대응 ───
     useEffect(() => {
         if (mapInstanceRef.current && mapReady) {
@@ -1008,7 +1014,10 @@ export default function VehicleTrackingPage() {
                             <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => {
                                 const finalUrl = p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
                                 return (
-                                    <div key={i} className={styles.photoWrapper} onClick={() => window.open(finalUrl, '_blank')}>
+                                    <div key={i} className={styles.photoWrapper} onClick={() => {
+                                        setViewingPhotoUrl(finalUrl);
+                                        setZoomInfo({ scale: 1, x: 0, y: 0 });
+                                    }}>
                                         <img src={finalUrl} alt="photo" />
                                     </div>
                                 );
@@ -1139,6 +1148,53 @@ export default function VehicleTrackingPage() {
                 <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(255,255,255,0.7)', zIndex:9999, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
                     <div className={styles.loading}><div className={styles.spinner}></div></div>
                     <div style={{marginTop:10, fontWeight:700, color:'#1e293b'}}>데이터를 불러오는 중입니다...</div>
+                </div>
+            )}
+
+            {/* 신규 사진 원본 뷰어 팝업 */}
+            {viewingPhotoUrl && (
+                <div 
+                    style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+                        backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 99999,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden'
+                    }}
+                    onWheel={(e) => {
+                        const dir = Math.sign(e.deltaY) * -1;
+                        setZoomInfo(prev => ({ ...prev, scale: Math.min(Math.max(1, prev.scale + dir * 0.1), 5) }));
+                    }}
+                    onMouseDown={(e) => {
+                        isDraggingRef.current = true;
+                        dragStartRef.current = { x: e.clientX - zoomInfo.x, y: e.clientY - zoomInfo.y };
+                    }}
+                    onMouseMove={(e) => {
+                        if (!isDraggingRef.current) return;
+                        setZoomInfo(prev => ({ ...prev, x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y }));
+                    }}
+                    onMouseUp={() => { isDraggingRef.current = false; }}
+                    onMouseLeave={() => { isDraggingRef.current = false; }}
+                >
+                    <button 
+                        style={{ position: 'absolute', top: 20, right: 30, fontSize: '2.5rem', color: '#fff', background: 'transparent', border: 'none', cursor: 'pointer', zIndex: 100000 }}
+                        onClick={() => { setViewingPhotoUrl(null); setZoomInfo({ scale: 1, x: 0, y: 0 }); }}
+                    >×</button>
+                    <button 
+                        style={{ position: 'absolute', top: 30, right: 90, fontSize: '0.9rem', fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,0.2)', padding: '6px 14px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.4)', cursor: 'pointer', zIndex: 100000 }}
+                        onClick={() => { setZoomInfo({ scale: 1, x: 0, y: 0 }); }}
+                    >초기화</button>
+                    <img 
+                        src={viewingPhotoUrl} 
+                        style={{ 
+                            transform: `translate(${zoomInfo.x}px, ${zoomInfo.y}px) scale(${zoomInfo.scale})`, 
+                            transition: isDraggingRef.current ? 'none' : 'transform 0.1s ease-out',
+                            maxHeight: '90vh', maxWidth: '90vw',
+                            objectFit: 'contain', cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+                            pointerEvents: 'none', userSelect: 'none'
+                        }} 
+                        alt="Zoomed" 
+                        draggable={false}
+                    />
                 </div>
             )}
         </div>

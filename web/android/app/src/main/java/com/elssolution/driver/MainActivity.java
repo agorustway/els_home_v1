@@ -12,6 +12,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.ContextCompat;
+import android.view.WindowManager;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
@@ -27,7 +29,26 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setNavigationBarColor(android.graphics.Color.BLACK);
         }
+        wakeUpScreen();
         // Capacitor 플러그인이 자체적으로 권한 요청을 처리하므로 네이티브 단의 강제 요청을 제거하여 충돌 방지
+    }
+
+    private void wakeUpScreen() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        } else {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD |
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        wakeUpScreen();
     }
 
     // requestRuntimePermissions 삭제됨 (JS/Capacitor 플러그인에 위임)
