@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.62",
-  "versionCode": 206,
-  "changeLog": "v4.2.62 (Build 206)\n- [HOTFIX] 앱 실행 크래시 해결: 안정 버전 네이티브 코드 복원",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=206"
+  "latestVersion": "v4.2.63",
+  "versionCode": 207,
+  "changeLog": "v4.2.63 (Build 207)\n- [HOTFIX] 인코딩 손상 컴플리트 해결: 안정 커밋 기준 앱 파일 전체 완전 복원",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=207"
 }
