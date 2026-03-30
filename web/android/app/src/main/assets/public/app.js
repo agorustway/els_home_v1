@@ -215,23 +215,9 @@
         });
       }
 
-      // 2. 권한 상태 강제 사전 확인 (크래시 방지 핵심)
-      await updatePermStatuses();
-      const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
-      const firstRun = !Store.get('permSetupDone');
-
-      if (firstRun || !criticalPerms) {
-        // 권한이 없으면 여기서 강제로 차단하고 리턴
-        showScreen('permission');
-        return;
-      }
-
-      // 이미 초기화된 경우 이후 로직 생략
-      if (isAppInitialized) return;
-      isAppInitialized = true;
-
-      // 3. 권한이 확보된 이후에만 네이티브 플러그인 등 주요 로직 실행
-      if (window.Capacitor) {
+      // [v4.3.07] 앱 생명주기 리스너 조기 등록 (설정 화면에서 복귀 시 권한 갱신 목적)
+      if (window.Capacitor && !window._appStateRegistered) {
+        window._appStateRegistered = true;
         const CapApp = window.Capacitor.Plugins.App;
         if (CapApp) {
           CapApp.addListener('appStateChange', ({ isActive }) => {
@@ -285,6 +271,25 @@
             }
           });
         }
+      }
+
+      // 2. 권한 상태 강제 사전 확인 (크래시 방지 핵심)
+      await updatePermStatuses();
+      const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
+      const firstRun = !Store.get('permSetupDone');
+
+      if (firstRun || !criticalPerms) {
+        // 권한이 없으면 여기서 강제로 차단하고 리턴
+        showScreen('permission');
+        return;
+      }
+
+      // 이미 초기화된 경우 이후 로직 생략
+      if (isAppInitialized) return;
+      isAppInitialized = true;
+
+      // 3. 권한이 확보된 이후에만 네이티브 플러그인 등 주요 로직 실행
+      if (window.Capacitor) {
 
         if (window.Capacitor?.Plugins?.StatusBar) {
           window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(() => { });
@@ -662,11 +667,9 @@
         showToast('권한 요청 실패: ' + err.message);
       }
     } finally {
-      // [TDD] 설정 화면에서 돌아오는 시간 고려 (S25/Android 16 대응 1000ms)
-      setTimeout(async () => {
-        await updatePermStatuses();
-        showToast('권한 상태를 확인했습니다.');
-        // 버튼 상태 초기화
+      // [v4.3.07] 타임아웃 갱신 대신 앱 복귀(appStateChange) 리스너에 위임
+      setTimeout(() => {
+        // 활성화된 버튼 상태만 초기화
         const activeBtns = document.querySelectorAll('.btn-active');
         activeBtns.forEach(b => b.classList.remove('btn-active'));
       }, 1000);
