@@ -817,15 +817,25 @@ public class FloatingWidgetService extends Service {
                     // JSON 파싱 (간단히 문자열 매칭으로 속도 향상)
                     if (data.contains("SYSTEM_COMMAND")) {
                         if (data.contains("REALTIME_ON:" + mTripId)) {
-                            mCurrentIntervalMs = 3000;
-                            mGpsText = "실시간 수집중";
-                            mGpsColor = "#f59e0b";
-                            new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                            if (!mIsRealtimeMode) {
+                                mIsRealtimeMode = true;
+                                mCurrentIntervalMs = 3000;
+                                mGpsText = "실시간 수집중";
+                                mGpsColor = "#f59e0b"; // 노란색
+                                restartLocationTracking(); // GPS 수신 주기 즉시 변경
+                                new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                                Log.d(TAG, "[NATIVE_POLL] REALTIME_ON -> 3000ms");
+                            }
                         } else if (data.contains("REALTIME_OFF:" + mTripId)) {
-                            mCurrentIntervalMs = 60000;
-                            mGpsText = "60s";
-                            mGpsColor = "#10b981";
-                            new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                            if (mIsRealtimeMode) {
+                                mIsRealtimeMode = false;
+                                mCurrentIntervalMs = 60000;
+                                mGpsText = "60s";
+                                mGpsColor = "#10b981"; // 초록색
+                                restartLocationTracking(); // GPS 수신 주기 즉시 변경
+                                new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                                Log.d(TAG, "[NATIVE_POLL] REALTIME_OFF -> 60000ms");
+                            }
                         }
                     }
                 }
