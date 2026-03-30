@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.48",
-  "versionCode": 192,
-  "changeLog": "v4.2.48 (Build 192)\n- [FIX] 앱↔오버레이 실시간 동기화 엇박자 해결: GPS 수신 즉시 네이티브 자체 gpsText/Color 갱신\n- [FIX] 화면 복귀 시 GPS 미수신 빨간색 오탐 제거: lastGpsTimestamp 미리 세팅 방지\n- [NEW] GPS 5초 watchdog: 엘리베이터/터널 진입 시 5초 이내 빨간색 즉각 표시\n- [NEW] 실시간 모드 전환 시 네이티브 GPS 수신 주기 3초로 즉시 동기화\n- [NEW] 이벤트 마킹: 시작/종료/일시정지/재개 포인트를 지도에 별도 마킹\n- [NEW] 자이로/가속도계 없는 기기 대응 (가속도계 fallback)\n- [FIX] GPS 좌표 소수점 8자리 정밀도 전송 (약 1mm 정확도)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=192"
+  "latestVersion": "v4.2.49",
+  "versionCode": 193,
+  "changeLog": "v4.2.49 (Build 193)\n- [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정\n- v4.2.48 상세\n  - 앱↔오버레이 실시간 동기화 엇박자 해결\n  - 화면 복귀 시 GPS 미수신 빨간색 오탐 제거\n  - GPS 5초 watchdog 도입 (빠른 감지)\n  - 이벤트 마킹 (TRIP_START / END / PAUSE / RESUME)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=193"
 }

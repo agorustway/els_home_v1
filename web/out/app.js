@@ -1450,7 +1450,15 @@
 
       emerg.forEach(e => { e.isEmergency = true; e.category = '긴급알림'; });
 
-      const merged = [...emerg, ...norm].sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
+      // [v4.2.48] SYSTEM_COMMAND 필터링 — 웹 실시간 제어 명령은 공지 목록에 표시하지 않음
+      const isSystemMsg = (item) => {
+        const t = (item.title || item.message || '').trim();
+        return t === 'SYSTEM_COMMAND' || t.startsWith('SYSTEM_') || item.type === 'SYSTEM_COMMAND';
+      };
+      const filteredEmerg = emerg.filter(e => !isSystemMsg(e));
+      const filteredNorm  = norm.filter(n => !isSystemMsg(n));
+
+      const merged = [...filteredEmerg, ...filteredNorm].sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
       _notices = merged;
       renderNoticeList();
 
