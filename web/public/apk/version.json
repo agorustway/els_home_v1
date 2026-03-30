@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.00",
-  "versionCode": 299,
-  "changeLog": "v4.3.00 (Build 299)\n- [FIX] 앱 최초 실행 시 안드로이드 권한 요청 충돌 해결 (클린 부팅 안정화)\n- [HOTFIX] 안정 시점(ccfab603) 원천 바이너리 기반 기능 완전 복원\n- [UI] 긴급알림 및 사진 뷰어 관제용 기능 보강 통합 (안정 버전)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=299"
+  "latestVersion": "v4.3.01",
+  "versionCode": 300,
+  "changeLog": "v4.3.01 (Build 300)\n- [FIX] 첫 설치 시 권한 검사 전 네이티브 호출로 인한 앱 크래시(튕김) 현상 해결\n- [SAFE] init() 함수 try-catch 및 사전 권한 체크 로직 강화\n- [NATIVE] FloatingWidgetService 권한 부족 시 자가 종료 안전장치 추가",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=300"
 }

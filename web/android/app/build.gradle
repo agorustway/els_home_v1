@@ -1,4 +1,4 @@
-﻿apply plugin: 'com.android.application'
+apply plugin: 'com.android.application'
 
 android {
     namespace = "com.elssolution.driver"
@@ -41,7 +41,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
-    // [v4.2.52] Doze ?뺣㈃?뚰뙆: FusedLocationProviderClient ?꾩엯 (PendingIntent 諛⑹떇 ?쒖슜 湲곕컲)
+    // [v4.2.52] Doze ??????: FusedLocationProviderClient ??? (PendingIntent ??? ??? ???)
     implementation 'com.google.android.gms:play-services-location:21.2.0'
 }
 

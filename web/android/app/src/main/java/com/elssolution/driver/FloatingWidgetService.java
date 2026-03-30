@@ -119,6 +119,13 @@ public class FloatingWidgetService extends Service {
     public void onCreate() {
         super.onCreate();
 
+        // [안전장치] 위치 권한 체크 (권한 없이 서비스가 찔러지는 경우 크래시 방어)
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.e(TAG, "위치 권한 없음! FloatingWidgetService 강제 종료");
+            stopSelf();
+            return;
+        }
+
         // [v4.2.50] WakeLock 먼저 — ON_AFTER_RELEASE로 마지막 POST 완충
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(
@@ -153,6 +160,12 @@ public class FloatingWidgetService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // [안전장치] 권한 체크 재확인
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         if (intent != null) {
             String action = intent.getAction();
             if ("STOP_SERVICE".equals(action)) {

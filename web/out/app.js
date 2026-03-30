@@ -201,127 +201,131 @@
     }
   }
 
+  let isAppInitialized = false;
+
   // ─── 앱 초기화 ────────────────────────────────────────────────
   async function init() {
-    // Capacitor 브릿지 대기
-    if (window.Capacitor) {
-      const CapApp = window.Capacitor.Plugins.App;
-      if (CapApp) {
-        CapApp.addListener('appStateChange', ({ isActive }) => {
-          console.log('App State Change - isActive:', isActive);
-          if (isActive) {
-            // 1. 권한 상태 갱신 (느리게 반영될 수 있어 다중 체크)
-            setTimeout(() => { updatePermStatuses(); }, 300);
-            setTimeout(() => { updatePermStatuses(); }, 1200);
-
-            // 2. [v4.2.43] 실시간 명령 즉시 수신 (30초 딜레이 제거)
-            //    화면 꺼짐->켜짐 직후 대기 없이 폴링하여 웹 실시간 버튼 반응성 향상
-            pollEmergency().catch(() => { });
-
-            // 3. [v4.2.48] 백그라운드 GPS 복구 (오탐 방지 강화)
-            //    핵심 변경: lastGpsTimestamp를 미리 세팅하지 않음
-            //    → getCurrentPosition 성공 콜백에서만 갱신하여 복귀 직후 빨간색 오탐 제거
-            //    단, watchPosition 자체는 백그라운드에서도 작동하므로 timestamp는 살아있을 가능성 높음
-            if (State.trip.status === 'driving') {
-              const resumeDelay = 500; // 앱 포커스 안정화 대기 (800→500ms 단축)
-              
-              const Prefs = window.Capacitor?.Plugins?.Preferences;
-              if (Prefs) {
-                Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
-                  if (res && res.value) {
-                    const nativeTime = parseInt(res.value, 10);
-                    if (nativeTime && nativeTime > (lastGpsTimestamp || 0)) {
-                      lastGpsTimestamp = nativeTime;
-                      remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
-                    }
-                  }
-                }).catch(() => {});
-              }
-
-              setTimeout(() => {
-                const now = Date.now();
-                const elapsed = now - (lastGpsTimestamp || 0);
-                // [v4.2.48] 90초 이상 GPS 공백 시에만 재기동 (과도한 재기동 방지)
-                const isGpsDead = !lastGpsTimestamp || elapsed > 90_000;
-
-                if (isGpsDead || !gpsWatchId) {
-                  remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
-                  stopGPS();
-                  startGPS();
-                  return; // startGPS() 내부에서 getCurrentPosition 호출하므로 중복 제거
-                }
-
-                // [v4.2.48] GPS가 살아있는 경우 강제 1회 수신만 수행 (lastGpsTimestamp는 미리 세팅 안 함)
-                // 성공 시에만 타임스탬프 갱신 → 빨간색 오탐 방지
-                navigator.geolocation.getCurrentPosition(
-                  pos => {
-                    lastGpsTimestamp = Date.now(); // 성공 후에만 갱신 (핵심)
-                    onGpsUpdate(pos, true, State.trip.id);
-                    remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
-                  },
-                  err => {
-                    // [v4.2.48] 실패해도 기존 timestamp 유지 (음영지역으로 판단, 네이티브 watchdog이 처리)
-                    remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code} (네이티브 watchdog 처리 중)`, 'GPS_RESUME_ERR');
-                  },
-                  { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 } // maximumAge 3초 허용 (과도한 타임아웃 방지)
-                );
-              }, resumeDelay);
-            }
-          }
+    try {
+      // 1. Capacitor 브릿지 대기 (단 1회)
+      if (window.Capacitor && !isAppInitialized) {
+        await new Promise(r => {
+          if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
+          window.addEventListener('load', r, { once: true });
+          setTimeout(r, 800);
         });
       }
 
-      await new Promise(r => {
-        if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
-        window.addEventListener('load', r, { once: true });
-        setTimeout(r, 800);
-      });
-    }
+      // 2. 권한 상태 강제 사전 확인 (크래시 방지 핵심)
+      await updatePermStatuses();
+      const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
+      const firstRun = !Store.get('permSetupDone');
 
-    if (window.Capacitor?.Plugins?.StatusBar) {
-      window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(() => { });
-      window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(() => { });
-    }
+      if (firstRun || !criticalPerms) {
+        // 권한이 없으면 여기서 강제로 차단하고 리턴
+        showScreen('permission');
+        return;
+      }
 
-    if (document.getElementById('app-version-display')) {
-      document.getElementById('app-version-display').textContent = APP_VERSION;
-    }
+      // 이미 초기화된 경우 이후 로직 생략
+      if (isAppInitialized) return;
+      isAppInitialized = true;
 
-    // 프로필 로드
-    const profile = Store.get('profile');
-    if (profile) {
-      Object.assign(State.profile, profile);
-      applyProfileToUI();
-    }
+      // 3. 권한이 확보된 이후에만 네이티브 플러그인 등 주요 로직 실행
+      if (window.Capacitor) {
+        const CapApp = window.Capacitor.Plugins.App;
+        if (CapApp) {
+          CapApp.addListener('appStateChange', ({ isActive }) => {
+            console.log('App State Change - isActive:', isActive);
+            if (isActive) {
+              setTimeout(() => { updatePermStatuses(); }, 300);
+              setTimeout(() => { updatePermStatuses(); }, 1200);
+              pollEmergency().catch(() => { });
 
-    // 최초 실행 여부 및 권한 상태 체크
-    const firstRun = !Store.get('permSetupDone');
-    const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+              if (State.trip.status === 'driving') {
+                const resumeDelay = 500;
+                
+                const Prefs = window.Capacitor?.Plugins?.Preferences;
+                if (Prefs) {
+                  Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
+                    if (res && res.value) {
+                      const nativeTime = parseInt(res.value, 10);
+                      if (nativeTime && nativeTime > (lastGpsTimestamp || 0)) {
+                        lastGpsTimestamp = nativeTime;
+                        remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
+                      }
+                    }
+                  }).catch(() => {});
+                }
 
-    // 권한 상태 먼저 확인 후 화면 결정
-    await updatePermStatuses();
-    const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
+                setTimeout(() => {
+                  const now = Date.now();
+                  const elapsed = now - (lastGpsTimestamp || 0);
+                  const isGpsDead = !lastGpsTimestamp || elapsed > 90_000;
 
-    if (firstRun || !criticalPerms) {
+                  if (isGpsDead || !gpsWatchId) {
+                    remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
+                    stopGPS();
+                    startGPS();
+                    return; 
+                  }
+
+                  navigator.geolocation.getCurrentPosition(
+                    pos => {
+                      lastGpsTimestamp = Date.now(); 
+                      onGpsUpdate(pos, true, State.trip.id);
+                      remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
+                    },
+                    err => {
+                      remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code} (네이티브 watchdog 처리 중)`, 'GPS_RESUME_ERR');
+                    },
+                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 } 
+                  );
+                }, resumeDelay);
+              }
+            }
+          });
+        }
+
+        if (window.Capacitor?.Plugins?.StatusBar) {
+          window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(() => { });
+          window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(() => { });
+        }
+      }
+
+      if (document.getElementById('app-version-display')) {
+        document.getElementById('app-version-display').textContent = APP_VERSION;
+      }
+
+      // 프로필 로드
+      const profile = Store.get('profile');
+      if (profile) {
+        Object.assign(State.profile, profile);
+        applyProfileToUI();
+      }
+
+      const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+
+      if (!hasProfile) {
+        openSettings();
+      } else {
+        showMain();
+      }
+
+      // 일지 요약 등 뷰 로직
+      const now = new Date();
+      const monthStr = now.toISOString().slice(0, 7);
+      const monFilter = document.getElementById('log-month-filter');
+      if (monFilter && !monFilter.value) monFilter.value = monthStr;
+
+      checkUpdate(true);
+
+      const gotoTab = new URLSearchParams(window.location.search).get('goto_tab');
+      if (gotoTab) switchTab(gotoTab);
+
+    } catch (e) {
+      console.error('init 크래시 방어:', e);
       showScreen('permission');
-    } else if (!hasProfile) {
-      openSettings();
-    } else {
-      showMain();
     }
-
-    // 일지 기본 필터를 현재 월(YYYY-MM)로 설정
-    const now = new Date();
-    const monthStr = now.toISOString().slice(0, 7); // YYYY-MM
-    const monFilter = document.getElementById('log-month-filter');
-    if (monFilter && !monFilter.value) monFilter.value = monthStr;
-
-    // 업데이트 확인은 메인 진입 시에만 수행
-    checkUpdate(true);
-
-    // goto_tab 딥링크 (서비스에서 복귀)
-    const gotoTab = new URLSearchParams(window.location.search).get('goto_tab');
-    if (gotoTab) switchTab(gotoTab);
   }
 
   function showMain() {
@@ -704,15 +708,15 @@
 
       Store.set('permSetupDone', true);
 
-      // [TDD] 권한 완료 후 차량 정보(프로필)가 없으면 설정 페이지로 강제 이동
-      const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-      if (!hasProfile) {
-        openSettings();
-        showToast('권한 설정 완료! 차량 정보를 먼저 입력해 주세요.');
-      } else {
-        showMain();
-        showToast('반갑습니다! 안전 운전 하세요.');
-      }
+      // 권한 완료 후 초기화 플로우를 다시 수행하여 앱 기능 시작
+      init().then(() => {
+        const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+        if (!hasProfile) {
+          showToast('권한 설정 완료! 차량 정보를 먼저 입력해 주세요.');
+        } else {
+          showToast('반갑습니다! 안전 운전 하세요.');
+        }
+      });
     });
   }
 
