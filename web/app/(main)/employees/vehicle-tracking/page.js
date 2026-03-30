@@ -313,6 +313,16 @@ export default function VehicleTrackingPage() {
                 const res = await fetch('/api/vehicle-tracking/trips?mode=active');
                 const data = await res.json();
                 if (data.trips) setLiveTrips(data.trips);
+
+                // [추가] 상세보기와 동기화 (LIVE 동안 상세 지도의 경로와 위치 리스트 최신화)
+                if (tripId && window.location.pathname.includes('/vehicle-tracking')) {
+                    const locRes = await fetch(`/api/vehicle-tracking/trips/${tripId}/locations`);
+                    const locData = await locRes.json();
+                    if (locData.locations && locData.locations.length > 0) {
+                        setSelectedTripLocations(locData.locations);
+                        drawTripPath(locData.locations);
+                    }
+                }
             } catch (e) { console.error('실시간 추적 오류:', e); }
         }, 3000);
         
@@ -461,11 +471,9 @@ export default function VehicleTrackingPage() {
                     <div style="font-weight:700; color:#0f172a; margin-bottom:2px;">
                         ${loc.address || '주소 정보 확인 중...'}
                     </div>
-                    ${loc.speed !== null && loc.speed !== undefined ? `
-                        <div style="font-weight:700; color:#3b82f6; font-size:11px;">
-                            💨 현재 속도: ${Math.round(loc.speed)} km/h
-                        </div>
-                    ` : ''}
+                    <div style="font-weight:700; color:#3b82f6; font-size:11px;">
+                        💨 현재 속도: ${Math.round(loc.speed || 0)} km/h
+                    </div>
                 </div>
                 ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
             </div>
@@ -945,11 +953,9 @@ export default function VehicleTrackingPage() {
                                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2}}>
                                                 <div style={{display:'flex', gap: 6, alignItems:'center'}}>
                                                     <div className={styles.locTime}>{new Date(loc.timestamp || loc.recorded_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
-                                                    {loc.speed !== undefined && loc.speed !== null && (
-                                                        <div style={{fontSize: '0.75rem', color: '#3b82f6', fontWeight: 800, background: '#3b82f615', padding: '1px 5px', borderRadius: 4}}>
-                                                            💨 {Math.round(loc.speed)} km/h
-                                                        </div>
-                                                    )}
+                                                    <div style={{fontSize: '0.75rem', color: '#3b82f6', fontWeight: 800, background: '#3b82f615', padding: '1px 5px', borderRadius: 4}}>
+                                                        💨 {Math.round(loc.speed || 0)} km/h
+                                                    </div>
                                                 </div>
                                                 <div style={{fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 500}}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</div>
                                             </div>
