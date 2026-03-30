@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.44');
+  console.log('ELS Driver App Loading... v4.2.48');
 
-  const APP_VERSION = 'v4.2.47';
-  const BUILD_CODE = 191; // Build 191 (v4.2.47)
+  const APP_VERSION = 'v4.2.48';
+  const BUILD_CODE = 192; // Build 192 (v4.2.48)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -100,13 +100,25 @@
     State.trip.isRealtime = true;
     realtimeExpireAt = Date.now() + 60000; // 1분 절대 시간
     updateTripStatusLine();
+    // [v4.2.48] 네이티브 오버레이에 실시간 모드 즉시 동기화 → GPS 주기 3초로 전환
+    _syncRealtimeModeToNative(true);
     remoteLog("실시간 고정밀 관제 모드 시작 (1분)", "SYSTEM");
   }
   function stopRealtimeMode() {
     State.trip.isRealtime = false;
     realtimeExpireAt = 0;
     updateTripStatusLine();
+    // [v4.2.48] 네이티브 오버레이에 실시간 모드 종료 동기화 → GPS 주기 60초로 복원
+    _syncRealtimeModeToNative(false);
     remoteLog("실시간 고정밀 관제 모드 수동 종료", "SYSTEM");
+  }
+  function _syncRealtimeModeToNative(isRealtime) {
+    const overlay = Overlay();
+    if (!overlay) return;
+    overlay.updateStatus({
+      status: State.trip.status,
+      isRealtime: isRealtime,
+    }).catch(() => {});
   }
 
   // ─── 점검체크리스트 ──────────────────────────────────────────
@@ -206,32 +218,38 @@
             //    화면 꺼짐->켜짐 직후 대기 없이 폴링하여 웹 실시간 버튼 반응성 향상
             pollEmergency().catch(() => { });
 
-            // 3. [v4.2.43] 백그라운드 GPS 복구
-            //    Android WebView는 화면 꺼짐 중 JS를 throttle하여 watchPosition 콜백이 끊길 수 있음.
-            //    포그라운드 복귀 시 watchId 상태 확인 후 GPS 재기동 + 즉시 강제수신으로 공백 메움.
+            // 3. [v4.2.48] 백그라운드 GPS 복구 (오탐 방지 강화)
+            //    핵심 변경: lastGpsTimestamp를 미리 세팅하지 않음
+            //    → getCurrentPosition 성공 콜백에서만 갱신하여 복귀 직후 빨간색 오탐 제거
+            //    단, watchPosition 자체는 백그라운드에서도 작동하므로 timestamp는 살아있을 가능성 높음
             if (State.trip.status === 'driving') {
-              const resumeDelay = 800; // 앱 포커스 안정화 대기
+              const resumeDelay = 500; // 앱 포커스 안정화 대기 (800→500ms 단축)
               setTimeout(() => {
                 const now = Date.now();
                 const elapsed = now - (lastGpsTimestamp || 0);
-                const isGpsDead = !lastGpsTimestamp || elapsed > 90_000; // 90초 이상 수신 없으면 재기동
+                // [v4.2.48] 90초 이상 GPS 공백 시에만 재기동 (과도한 재기동 방지)
+                const isGpsDead = !lastGpsTimestamp || elapsed > 90_000;
 
                 if (isGpsDead || !gpsWatchId) {
                   remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
                   stopGPS();
                   startGPS();
+                  return; // startGPS() 내부에서 getCurrentPosition 호출하므로 중복 제거
                 }
 
-                // 복귀 즉시 강제 1회 수신 (화면 꺼짐 중 공백 보완)
-                lastGpsTimestamp = now; // 수신안됨 오표시 방지
+                // [v4.2.48] GPS가 살아있는 경우 강제 1회 수신만 수행 (lastGpsTimestamp는 미리 세팅 안 함)
+                // 성공 시에만 타임스탬프 갱신 → 빨간색 오탐 방지
                 navigator.geolocation.getCurrentPosition(
                   pos => {
-                    lastGpsTimestamp = Date.now();
+                    lastGpsTimestamp = Date.now(); // 성공 후에만 갱신 (핵심)
                     onGpsUpdate(pos, true, State.trip.id);
-                    remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공`, 'GPS_RESUME_OK');
+                    remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
                   },
-                  err => remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code}`, 'GPS_RESUME_ERR'),
-                  { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                  err => {
+                    // [v4.2.48] 실패해도 기존 timestamp 유지 (음영지역으로 판단, 네이티브 watchdog이 처리)
+                    remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code} (네이티브 watchdog 처리 중)`, 'GPS_RESUME_ERR');
+                  },
+                  { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 } // maximumAge 3초 허용 (과도한 타임아웃 방지)
                 );
               }, resumeDelay);
             }
@@ -911,9 +929,13 @@
       if (State.photos.some(p => !p.uploaded)) {
         await uploadPendingPhotos();
       }
-      // [TDD] 시작 즉시 현재 위치 한 번 보정 (운행 시작 시점의 위치 기록)
+      // [v4.2.48] 시작 즉시 현재 위치 + TRIP_START 이벤트 마킹
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos, true, State.trip.id).catch(() => { }), null, { enableHighAccuracy: true });
+        navigator.geolocation.getCurrentPosition(
+          pos => onGpsUpdate(pos, true, State.trip.id, 'TRIP_START').catch(() => {}),
+          null,
+          { enableHighAccuracy: true }
+        );
       }
 
       showToast(data.message || '운행이 시작되었습니다.');
@@ -932,9 +954,14 @@
       State.trip.status = action === 'pause' ? 'paused' : 'driving';
       setTripStatus(State.trip.status);
 
-      // [TDD] 일시정지/재개 시 즉시 현재 위치 한 번 더 수집 (전환 시점의 위치 기록)
+      // [v4.2.48] 일시정지/재개 이벤트 마킹 (TRIP_PAUSE or TRIP_RESUME)
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos, true, State.trip.id).catch(() => { }), null, { enableHighAccuracy: true });
+        const marker = action === 'pause' ? 'TRIP_PAUSE' : 'TRIP_RESUME';
+        navigator.geolocation.getCurrentPosition(
+          pos => onGpsUpdate(pos, true, State.trip.id, marker).catch(() => {}),
+          null,
+          { enableHighAccuracy: true }
+        );
       }
 
       if (State.trip.status === 'paused') {
@@ -960,11 +987,14 @@
       if (!confirm('운행을 종료하시겠습니까?')) return;
     }
 
-    // [TDD] 종료 즉시 현재 위치 한 번 더 수집 (운행 종료 시점의 위치 기록)
+    // [v4.2.48] 종료 즉시 현재 위치 + TRIP_END 이벤트 마킹
     if (navigator.geolocation) {
-      // [TDD] 종료 시 데이터 초기화 전 현재 ID 캡처하여 비동기 전송 보장
       const closingTripId = State.trip.id;
-      navigator.geolocation.getCurrentPosition(pos => onGpsUpdate(pos, true, closingTripId).catch(() => { }), null, { enableHighAccuracy: true });
+      navigator.geolocation.getCurrentPosition(
+        pos => onGpsUpdate(pos, true, closingTripId, 'TRIP_END').catch(() => {}),
+        null,
+        { enableHighAccuracy: true }
+      );
     }
 
     try {
@@ -1273,19 +1303,21 @@
     }
 
     // 오버레이 위젯에 GPS 상태 전송 (1초 단위 타이머에서 호출되므로 throttle 적용)
+    // [v4.2.48] isRealtime 플래그 추가 → 네이티브가 실시간 모드 때 GPS 주기를 3초로 즉시 바꾸도록 동기화
     const overlay = Overlay();
     if (overlay && (State.trip.status === 'driving' || State.trip.status === 'paused')) {
       overlay.updateStatus({
         status: State.trip.status,
         gpsText: gpsText,
         gpsColor: gpsColor,
-        address: addrShort
+        address: addrShort,
+        isRealtime: State.trip.isRealtime, // [v4.2.48] 네이티브 GPS 주기 동기화
       }).catch(() => { });
     }
   }
 
   let lastEmergencyPollMs = 0;
-  async function onGpsUpdate(pos, isForced = false, forcedTripId = null) {
+  async function onGpsUpdate(pos, isForced = false, forcedTripId = null, markerType = null) {
     const targetId = forcedTripId || State.trip.id;
     if (!targetId) return;
 
@@ -1336,8 +1368,8 @@
 
     const isSharpTurn = gyroData.magnitude > 25;
     const curTime = Date.now();
-    const minInterval = isForced ? 0 : (isSharpTurn ? Math.min(10_000, interval) : interval);
-    if (!isForced && curTime - lastGpsSend < minInterval) return;
+    const minInterval = (isForced || markerType) ? 0 : (isSharpTurn ? Math.min(10_000, interval) : interval);
+    if (!isForced && !markerType && curTime - lastGpsSend < minInterval) return;
 
     lastGpsSend = curTime;
 
@@ -1351,20 +1383,20 @@
           lat, lng,
           speed: speedKph,
           accuracy: accuracy || 0,
-          source: isForced ? 'webview_forced' : (isSharpTurn ? 'webview_gyro' : 'webview')
+          marker_type: markerType || null, // [v4.2.48] 이벤트 마커
+          source: isForced ? (markerType || 'webview_forced') : (isSharpTurn ? 'webview_gyro' : 'webview')
         }),
       });
-      // 서버 응답에서 카카오 역지오코딩 주소 반영 (이미 '서울 강남 역삼' 형태로 축약)
       if (gpsRes.ok) {
         const gpsData = await gpsRes.json().catch(() => ({}));
-        lastKnownAddr = gpsData.address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        lastKnownAddr = gpsData.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       } else {
-        lastKnownAddr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       }
       updateTripStatusLine();
-      remoteLog(`GPS전송: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)} force=${isForced}`, 'GPS_OK');
+      remoteLog(`GPS전송[${markerType || 'normal'}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)}`, 'GPS_OK');
     } catch (e) {
-      lastKnownAddr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       updateTripStatusLine();
       remoteLog(`GPS 서버전송 실패: ${e.message}`, 'GPS_SEND_ERR');
       console.warn('GPS 전송 실패', e);

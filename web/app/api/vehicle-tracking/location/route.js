@@ -10,13 +10,13 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { trip_id, lat, lng, accuracy, speed, method = 'GPS', source } = body;
+        const { trip_id, lat, lng, accuracy, speed, method = 'GPS', source, marker_type, gyro } = body;
 
         if (!trip_id || lat === undefined || lng === undefined) {
             return NextResponse.json({ error: 'trip_id, lat, lng는 필수입니다.' }, { status: 400 });
         }
 
-        // 역지오코딩 (카카오 Coord2Address API)
+        // 역지오코딩 (카카오 Coord2Address API) — 주소는 보조용, 지도 표시는 lat/lng 사용
         let address = null;
 
         try {
@@ -55,6 +55,9 @@ export async function POST(request) {
                 speed: speed || null,
                 method: source || method,
                 address,
+                // [v4.2.48] 이벤트 마커 & 자이로 데이터 저장 (DB 컬럼이 없으면 무시됨)
+                ...(marker_type ? { marker_type } : {}),
+                ...(gyro !== undefined ? { gyro } : {}),
                 recorded_at: new Date().toISOString(),
             }])
             .select()

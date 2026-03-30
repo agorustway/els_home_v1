@@ -67,6 +67,7 @@ public class FloatingWidgetService extends Service {
     // 자이로스코프
     private SensorManager mSensorManager;
     private SensorEventListener mGyroListener;
+    private float mLastGyroMagnitude = 0f;
 
     // 타이머
     private Handler mTimerHandler = new Handler(Looper.getMainLooper());
@@ -80,10 +81,16 @@ public class FloatingWidgetService extends Service {
     private long mTotalPausedMs = 0; // 누적 일시정지 시간
     private String mStatus = "driving"; // driving | paused | completed
     private String mContainerNo = "";
-    private int mGpsIntervalSec = 300;
-    private String mGpsText = "300초 간격";
+    private String mGpsText = "대기중";
     private String mGpsColor = "#7d8590";
     private String mAddress = "위치 확인 중...";
+    private boolean mIsRealtimeMode = false; // 실시간 3초 모드
+
+    // [v4.2.48] GPS 상태 5초 watchdog (JS 의존 없이 네이티브 자체 판단)
+    // 5초마다 마지막 GPS 수신 시각을 체크하여 미수신 시 즉시 빨간색 표시
+    private static final long GPS_DEAD_THRESHOLD_MS = 30_000; // 30초 기준 (실시간모드: 15초)
+    private static final long GPS_CHECK_INTERVAL_MS = 5_000;  // 5초마다 체크
+    private long mLastGpsCheckTime = 0;
 
     // 위젯 뷰 참조
     private TextView tvStatus, tvTimer, tvGps, tvAddr;
@@ -124,9 +131,31 @@ public class FloatingWidgetService extends Service {
 
                 if (intent.hasExtra("status")) mStatus = newStatus;
                 if (intent.hasExtra("container")) mContainerNo = intent.getStringExtra("container");
-                if (intent.hasExtra("gpsText")) mGpsText = intent.getStringExtra("gpsText");
+                // [v4.2.48] JS에서 gpsText/Color가 올 때만 덮어씀 (네이티브 자체 판단 보호)
+                // JS 포그라운드 실행 중 = 최신 상태 유지, 백그라운드 시 = 네이티브 자체 판단
+                if (intent.hasExtra("gpsText")) {
+                    String newGpsText = intent.getStringExtra("gpsText");
+                    // JS에서 "연결안됨"을 보낸 경우는 네이티브 자체 판단과 일치하므로 허용
+                    // JS에서 정상 상태를 보내는 경우 lastGpsReceiveTime도 갱신 (오탐 방지)
+                    if (newGpsText != null && !newGpsText.equals("연결안됨")) {
+                        mLastGpsReceiveTime = System.currentTimeMillis(); // JS가 살아있으면 GPS 수신 중으로 간주
+                    }
+                    mGpsText = newGpsText;
+                }
                 if (intent.hasExtra("gpsColor")) mGpsColor = intent.getStringExtra("gpsColor");
                 if (intent.hasExtra("address")) mAddress = intent.getStringExtra("address");
+
+                // [v4.2.48] 실시간 모드 동기화: JS가 실시간 상태 알려주면 GPS 주기도 맞춤
+                if (intent.hasExtra("isRealtime")) {
+                    boolean newRealtime = intent.getBooleanExtra("isRealtime", false);
+                    if (newRealtime != mIsRealtimeMode) {
+                        mIsRealtimeMode = newRealtime;
+                        mCurrentIntervalMs = mIsRealtimeMode ? 3_000L : 60_000L;
+                        // GPS 수신 주기 재설정
+                        restartLocationTracking();
+                        Log.d(TAG, "[SYNC] Realtime mode: " + mIsRealtimeMode + " -> interval: " + mCurrentIntervalMs + "ms");
+                    }
+                }
                 updateWidgetDisplay();
                 return START_STICKY;
             }
@@ -317,17 +346,22 @@ public class FloatingWidgetService extends Service {
                     tvTimer.setText(formatTime(elapsed));
                     updateNotification("운행중 " + formatTime(elapsed) + (mContainerNo.isEmpty() ? "" : " | " + mContainerNo));
 
-                    // [추 가] 네이티브 자체 GPS 끊김 체크 (엘리베이터/음영지역)
-                    // 마지막 수신 후 (현재 주기 + 10초) 경과 시 빨간색 표시
-                    long deadThreshold = Math.max(mCurrentIntervalMs + 10000, 30000);
-                    if (mLastGpsReceiveTime > 0 && now - mLastGpsReceiveTime > deadThreshold) {
-                        mGpsText = "연결안됨";
-                        mGpsColor = "#ef4444";
-                        updateWidgetDisplay();
+                    // [v4.2.48] 5초마다 GPS 상태 체크 (엘리베이터/터널/음영지역 즉각 감지)
+                    if (now - mLastGpsCheckTime >= GPS_CHECK_INTERVAL_MS) {
+                        mLastGpsCheckTime = now;
+                        // 실시간 모드에서는 15초, 일반 모드에서는 30초를 dead 기준으로 사용
+                        long deadThreshold = mIsRealtimeMode ? 15_000L : GPS_DEAD_THRESHOLD_MS;
+                        if (mLastGpsReceiveTime > 0 && now - mLastGpsReceiveTime > deadThreshold) {
+                            // GPS 미수신: 즉시 빨간색 표시
+                            mGpsText = "연결안됨";
+                            mGpsColor = "#ef4444";
+                            updateWidgetDisplay();
+                            Log.d(TAG, "[GPS_DEAD] 미수신 " + ((now - mLastGpsReceiveTime) / 1000) + "s → 빨간색");
+                        }
                     }
 
-                    // [추가] 네이티브 자체 명령 폴링 (JS가 백그라운드에서 죽어있을 때 대비)
-                    if (now - mLastCommandPollTime > 30000) {
+                    // [v4.2.48] 네이티브 자체 명령 폴링 (JS가 백그라운드에서 죽어있을 때 대비)
+                    if (now - mLastCommandPollTime > 30_000) {
                         mLastCommandPollTime = now;
                         pollSystemCommand();
                     }
@@ -362,15 +396,24 @@ public class FloatingWidgetService extends Service {
                 // 속도 계산 (m/s -> kph)
                 float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
                 
-                // GPS 수신 타임스탬프 갱신
+                // [v4.2.48] GPS 수신 타임스탬프 갱신
                 mLastGpsReceiveTime = System.currentTimeMillis();
                 
-                // JS가 1초마다 updateStatus를 보내지만, 네이티브 자체도 GPS 수신 직후 표시 갱신
-                // (앱이 포그라운드로 복귀하거나 JS브릿지가 늦는 경우 대비)
-                if (mGpsText.isEmpty() || mGpsText.equals("대기중")) {
-                    // 속도 기반으로 간이 interval 표시
-                    int intervalSec = speedKph >= 60 ? 30 : (speedKph >= 20 ? 45 : 60);
-                    mGpsText = intervalSec + "s";
+                // [v4.2.48] GPS 수신 즉시 네이티브 자체 gpsText/Color 갱신
+                // JS 업데이트(1초 단위)를 기다리지 않고 수신 즉시 오버레이에 반영
+                // 이를 통해 JS 백그라운드 throttle과 무관하게 오버레이 동기화 보장
+                if (mIsRealtimeMode) {
+                    mGpsText = "실시간 수집중";
+                    mGpsColor = "#f59e0b"; // 주황 (실시간)
+                } else {
+                    // 속도 기반 간격 텍스트 (기사님에게 직관적으로)
+                    if (speedKph >= 60) {
+                        mGpsText = "30s 고속";
+                    } else if (speedKph >= 20) {
+                        mGpsText = "45s 주행";
+                    } else {
+                        mGpsText = "60s 저속";
+                    }
                     mGpsColor = "#10b981"; // 초록 (수신중)
                 }
                 updateWidgetDisplay();
@@ -384,33 +427,82 @@ public class FloatingWidgetService extends Service {
             }
             @Override public void onStatusChanged(String p, int s, Bundle b) {}
             @Override public void onProviderEnabled(String p) {}
-            @Override public void onProviderDisabled(String p) {}
+            @Override public void onProviderDisabled(String p) {
+                // GPS 프로바이더 비활성화 = 음영지역 진입 신호
+                Log.d(TAG, "GPS provider disabled: " + p);
+            }
         };
+        applyLocationTracking();
+    }
+
+    /**
+     * [v4.2.48] LocationManager 요청 주기를 현재 mCurrentIntervalMs에 맞춰 재설정
+     * 실시간 모드 전환 시 GPS 수신 주기를 3초로 즉시 변경하기 위해 분리
+     */
+    private void applyLocationTracking() {
+        if (mLocationManager == null || mLocationListener == null) return;
         try {
-            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 3, mLocationListener);
-            mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10000, 5, mLocationListener);
+            mLocationManager.removeUpdates(mLocationListener);
+            // GPS 수집은 항상 3초 (빠른 감지) — 전송 주기는 mCurrentIntervalMs로 별도 조절
+            long gpsMinTimeMs = Math.min(mCurrentIntervalMs, 3_000L);
+            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsMinTimeMs, 1, mLocationListener);
+            mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10_000L, 5, mLocationListener);
+            Log.d(TAG, "[GPS] 수신 주기 적용: " + gpsMinTimeMs + "ms / 전송 주기: " + mCurrentIntervalMs + "ms");
         } catch (SecurityException e) {
             Log.e(TAG, "GPS 권한 없음");
         }
+    }
+
+    /**
+     * [v4.2.48] 실시간 모드 전환 시 LocationTracking 재시작
+     */
+    private void restartLocationTracking() {
+        new Handler(Looper.getMainLooper()).post(this::applyLocationTracking);
     }
 
     // ─── 자이로스코프 — 급커브 감지 시 즉시 전송 ─────────────────
     private void startGyroListener() {
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         Sensor gyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        if (gyro == null) return;
+        if (gyro == null) {
+            Log.w(TAG, "자이로스코프 센서 없음 - 가속도계로 대체");
+            // 자이로 없으면 가속도계(TYPE_ACCELEROMETER)로 대체
+            Sensor accel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            if (accel == null) return;
+            mGyroListener = new SensorEventListener() {
+                @Override
+                public void onSensorChanged(SensorEvent event) {
+                    // 중력 제거 후 순수 가속도 크기 계산
+                    float ax = event.values[0], ay = event.values[1], az = event.values[2];
+                    float magnitude = (float) Math.sqrt(ax*ax + ay*ay + az*az);
+                    mLastGyroMagnitude = Math.max(magnitude - 9.8f, 0); // 중력(9.8) 제거
+                    // 급가속/감속(3 m/s² 이상) 감지 → 즉시 위치 전송
+                    if (mLastGyroMagnitude > 3.0f && mLastLocation != null && "driving".equals(mStatus)) {
+                        long now = System.currentTimeMillis();
+                        if (now - mLastSendTime > 10_000) {
+                            mLastSendTime = now;
+                            sendLocationToServer(mLastLocation, -1);
+                        }
+                    }
+                }
+                @Override public void onAccuracyChanged(Sensor s, int a) {}
+            };
+            mSensorManager.registerListener(mGyroListener, accel, SensorManager.SENSOR_DELAY_NORMAL);
+            return;
+        }
         mGyroListener = new SensorEventListener() {
             @Override
             public void onSensorChanged(SensorEvent event) {
-                float magnitude = (float) Math.sqrt(
+                // 3축 각속도 크기 (rad/s)
+                mLastGyroMagnitude = (float) Math.sqrt(
                     event.values[0] * event.values[0] +
                     event.values[1] * event.values[1] +
                     event.values[2] * event.values[2]
                 );
-                // 급회전(0.8 rad/s 이상) 감지 → 즉시 위치 전송
-                if (magnitude > 0.8f && mLastLocation != null && "driving".equals(mStatus)) {
+                // [v4.2.48] 급회전(1.0 rad/s 이상) 감지 → 즉시 이벤트 마킹 전송
+                if (mLastGyroMagnitude > 1.0f && mLastLocation != null && "driving".equals(mStatus)) {
                     long now = System.currentTimeMillis();
-                    if (now - mLastSendTime > 10_000) { // 급회전도 10초 쿨다운
+                    if (now - mLastSendTime > 10_000) { // 10초 쿨다운
                         mLastSendTime = now;
                         sendLocationToServer(mLastLocation, -1);
                     }
@@ -423,6 +515,14 @@ public class FloatingWidgetService extends Service {
 
     // ─── 위치 서버 전송 ───────────────────────────────────────────
     private void sendLocationToServer(final Location location, final float speedKph) {
+        sendLocationToServerWithMarker(location, speedKph, null);
+    }
+
+    /**
+     * [v4.2.48] 이벤트 마커 포함 전송
+     * @param markerType null=일반, TRIP_START, TRIP_END, TRIP_PAUSE, TRIP_RESUME, GPS_TURN
+     */
+    private void sendLocationToServerWithMarker(final Location location, final float speedKph, final String markerType) {
         new Thread(() -> {
             try {
                 URL url = new URL(BASE_URL + "/api/vehicle-tracking/location");
@@ -434,15 +534,22 @@ public class FloatingWidgetService extends Service {
                 conn.setReadTimeout(8000);
 
                 String speedStr = speedKph >= 0 ? String.format(Locale.US, ",\"speed\":%.1f", speedKph) : "";
+                String markerStr = (markerType != null && !markerType.isEmpty())
+                    ? String.format(",\"marker_type\":\"%s\"", markerType) : "";
+                String gyroStr = String.format(Locale.US, ",\"gyro\":%.2f", mLastGyroMagnitude);
+                // [v4.2.48] 정확한 GPS 위도/경도 전송 (소수점 8자리 — 약 1mm 정밀도)
                 String body = String.format(Locale.US,
-                    "{\"trip_id\":\"%s\",\"lat\":%f,\"lng\":%f,\"source\":\"android_bg\"%s}",
-                    mTripId, location.getLatitude(), location.getLongitude(), speedStr
+                    "{\"trip_id\":\"%s\",\"lat\":%.8f,\"lng\":%.8f,\"source\":\"android_bg\"%s%s%s}",
+                    mTripId, location.getLatitude(), location.getLongitude(), speedStr, markerStr, gyroStr
                 );
 
                 OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
                 writer.write(body); writer.flush(); writer.close();
-                conn.getResponseCode();
+                int respCode = conn.getResponseCode();
                 conn.disconnect();
+                if (markerType != null) {
+                    Log.d(TAG, "[MARKER] " + markerType + " 전송 완료 " + respCode);
+                }
             } catch (Exception e) {
                 Log.e(TAG, "GPS 전송 실패: " + e.getMessage());
             }
@@ -521,13 +628,17 @@ public class FloatingWidgetService extends Service {
     // ─── 운행 종료 마지막 위치 전송 (JS에서 호출) ─────────────────
     public void sendFinalLocation() {
         if (mLastLocation != null) {
-            sendLocationToServer(mLastLocation, 0);
+            sendLocationToServerWithMarker(mLastLocation, 0, "TRIP_END");
         }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        // 서비스 종료 시 마지막 위치 TRIP_END 마킹
+        if (mLastLocation != null && mTripId != null) {
+            sendLocationToServerWithMarker(mLastLocation, 0, "TRIP_END");
+        }
         if (mWindowManager != null && mFloatingWidget != null) {
             try { mWindowManager.removeView(mFloatingWidget); } catch (Exception ignored) {}
         }
