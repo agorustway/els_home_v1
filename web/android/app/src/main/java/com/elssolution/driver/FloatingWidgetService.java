@@ -74,6 +74,10 @@ public class FloatingWidgetService extends Service {
     private Runnable mTimerRunnable;
     private PowerManager.WakeLock mWakeLock;
 
+    // [v4.2.50] 네트워크 전용 HandlerThread (화면 꺼짐 시 new Thread() 대신 안정적 Worker)
+    private android.os.HandlerThread mNetworkThread;
+    private Handler mNetworkHandler;
+
     // 상태
     private String mTripId;
     private long mStartTimeMillis = 0;
@@ -87,15 +91,18 @@ public class FloatingWidgetService extends Service {
     private boolean mIsRealtimeMode = false; // 실시간 3초 모드
 
     // [v4.2.48] GPS 상태 5초 watchdog (JS 의존 없이 네이티브 자체 판단)
-    // 5초마다 마지막 GPS 수신 시각을 체크하여 미수신 시 즉시 빨간색 표시
-    private static final long GPS_DEAD_THRESHOLD_MS = 30_000; // 30초 기준 (실시간모드: 15초)
-    private static final long GPS_CHECK_INTERVAL_MS = 5_000;  // 5초마다 체크
+    private static final long GPS_DEAD_THRESHOLD_MS = 30_000;
+    private static final long GPS_CHECK_INTERVAL_MS = 5_000;
     private long mLastGpsCheckTime = 0;
+
+    // [v4.2.50] 네이티브 역지오코딩 주기 (30초마다 한 번)
+    private static final long GEOCODE_INTERVAL_MS = 30_000;
+    private long mLastGeocodeTime = 0;
 
     // 위젯 뷰 참조
     private TextView tvStatus, tvTimer, tvGps, tvAddr;
-    private long mLastGpsReceiveTime = 0; // GPS 마지막 수신 시각
-    private long mLastCommandPollTime = 0; // 마지막 명령 확인 시각 (30초 정규 폴링)
+    private long mLastGpsReceiveTime = 0;
+    private long mLastCommandPollTime = 0;
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -103,10 +110,33 @@ public class FloatingWidgetService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // [v4.2.50] WakeLock 먼저 — ON_AFTER_RELEASE로 마지막 POST 완충
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ELS:GPS_WakeLock");
-        if (!mWakeLock.isHeld()) mWakeLock.acquire();
-        Log.d(TAG, "Service Created");
+        mWakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE,
+            "ELS:GPS_WakeLock"
+        );
+        if (!mWakeLock.isHeld()) mWakeLock.acquire(12 * 60 * 60 * 1000L); // 12시간 timeout
+
+        // [v4.2.50] HandlerThread 초기화 — 화면 꺼짐 시 네트워크 안정적 유지
+        mNetworkThread = new android.os.HandlerThread("ELS_NetworkWorker");
+        mNetworkThread.start();
+        mNetworkHandler = new Handler(mNetworkThread.getLooper());
+
+        // [v4.2.50] onCreate에서 즉시 startForeground — Samsung은 5초 초과 시 ANR 처리
+        createNotificationChannel();
+        Notification notification = buildNotification("ELS 운송관리 실행 중");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+            startForeground(1, notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION |
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            );
+        } else {
+            startForeground(1, notification);
+        }
+
+        Log.d(TAG, "Service Created — Foreground 즉시 선언 완료");
     }
 
     @Override
@@ -189,13 +219,9 @@ public class FloatingWidgetService extends Service {
             editor.apply();
         }
 
-        createNotificationChannel();
-        Notification notification = buildNotification("ELS 운송관리 실행 중");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-        } else {
-            startForeground(1, notification);
-        }
+        // [v4.2.50] startForeground는 onCreate()에서 이미 호출됨 — 여기서 중복 호출 불필요
+        // 알림 텍스트만 갱신
+        updateNotification("ELS 운송관리 실행 중");
 
         if (mTripId != null) {
             setupFloatingWidget();
@@ -424,6 +450,14 @@ public class FloatingWidgetService extends Service {
                     mLastSendTime = now;
                     sendLocationToServer(location, speedKph);
                 }
+
+                // [v4.2.50] 30초마다 네이티브 역지오코딩 — JS 없이 오버레이 주소 갱신
+                if (now - mLastGeocodeTime >= GEOCODE_INTERVAL_MS) {
+                    mLastGeocodeTime = now;
+                    final double lat = location.getLatitude();
+                    final double lng = location.getLongitude();
+                    mNetworkHandler.post(() -> geocodeAndUpdateOverlay(lat, lng));
+                }
             }
             @Override public void onStatusChanged(String p, int s, Bundle b) {}
             @Override public void onProviderEnabled(String p) {}
@@ -515,7 +549,8 @@ public class FloatingWidgetService extends Service {
 
     // ─── 위치 서버 전송 ───────────────────────────────────────────
     private void sendLocationToServer(final Location location, final float speedKph) {
-        sendLocationToServerWithMarker(location, speedKph, null);
+        // [v4.2.50] HandlerThread 사용 — GPS 콜백마다 new Thread() 생성 제거
+        mNetworkHandler.post(() -> sendLocationToServerWithMarker(location, speedKph, null));
     }
 
     /**
@@ -523,7 +558,8 @@ public class FloatingWidgetService extends Service {
      * @param markerType null=일반, TRIP_START, TRIP_END, TRIP_PAUSE, TRIP_RESUME, GPS_TURN
      */
     private void sendLocationToServerWithMarker(final Location location, final float speedKph, final String markerType) {
-        new Thread(() -> {
+        // HandlerThread(mNetworkHandler)에서 호출되므로 new Thread 불필요 — 직접 실행
+        Runnable task = () -> {
             try {
                 URL url = new URL(BASE_URL + "/api/vehicle-tracking/location");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -553,13 +589,71 @@ public class FloatingWidgetService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "GPS 전송 실패: " + e.getMessage());
             }
-        }).start();
+        };
+        // mNetworkHandler에서 이미 호출된 경우엔 직접 실행, 아니면 post
+        if (android.os.Looper.myLooper() == mNetworkThread.getLooper()) {
+            task.run();
+        } else {
+            mNetworkHandler.post(task);
+        }
+    }
+
+    // ─── [v4.2.50] 네이티브 역지오코딩 (JS 완전 독립) ───────────────
+    // nollae.com 서버 프록시 경유 → Kakao REST API 키 앱에 미노출
+    private void geocodeAndUpdateOverlay(double lat, double lng) {
+        try {
+            String urlStr = String.format(Locale.US,
+                BASE_URL + "/api/vehicle-tracking/geocode?lat=%.7f&lng=%.7f", lat, lng);
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                java.io.BufferedReader br = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                conn.disconnect();
+                // JSON에서 address 값 추출 (간단 파싱)
+                String json = sb.toString();
+                int idx = json.indexOf("\"address\":\"");
+                if (idx >= 0) {
+                    int start = idx + 11;
+                    int end = json.indexOf("\"", start);
+                    if (end > start) {
+                        String addr = json.substring(start, end);
+                        if (!addr.isEmpty()) {
+                            mAddress = addr;
+                            // MainLooper로 오버레이 TextView 즉시 갱신
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                if (tvAddr != null) tvAddr.setText(mAddress);
+                            });
+                            Log.d(TAG, "[GEOCODE] " + mAddress);
+                        }
+                    }
+                }
+            } else {
+                conn.disconnect();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "[GEOCODE] 실패: " + e.getMessage());
+        }
     }
 
     // ─── 알림 ─────────────────────────────────────────────────────
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL_ID, "ELS 운행상태", NotificationManager.IMPORTANCE_LOW);
+            // [v4.2.50] IMPORTANCE_LOW → IMPORTANCE_DEFAULT
+            // Samsung One UI: LOW는 앱을 절전 대상으로 분류 → DEFAULT 이상이어야 프로세스 생존
+            NotificationChannel ch = new NotificationChannel(
+                CHANNEL_ID, "ELS 운행상태", NotificationManager.IMPORTANCE_DEFAULT);
+            ch.setDescription("운송 중 GPS 위치 추적");
+            ch.setShowBadge(false);
+            ch.enableVibration(false); // 진동 끔 (운전 중 방해 방지)
+            ch.setSound(null, null);   // 소리 끔
             getSystemService(NotificationManager.class).createNotificationChannel(ch);
         }
     }
@@ -635,7 +729,6 @@ public class FloatingWidgetService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // 서비스 종료 시 마지막 위치 TRIP_END 마킹
         if (mLastLocation != null && mTripId != null) {
             sendLocationToServerWithMarker(mLastLocation, 0, "TRIP_END");
         }
@@ -652,6 +745,8 @@ public class FloatingWidgetService extends Service {
             mWakeLock.release();
         }
         if (mTimerRunnable != null) mTimerHandler.removeCallbacks(mTimerRunnable);
+        // [v4.2.50] HandlerThread 안전 종료
+        if (mNetworkThread != null) mNetworkThread.quitSafely();
         Log.d(TAG, "Service Destroyed");
     }
 }

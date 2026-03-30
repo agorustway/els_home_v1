@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL v4.2.49
-> 마지막 업데이트: 2026-03-30 14:06 (KST)
+# ELS MISSION CONTROL v4.2.50
+> 마지막 업데이트: 2026-03-30 19:44 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.49` (Build 193)
+- **현재 버전**: `v4.2.50` (Build 194)
 - **최근 업데이트**: 2026-03-30
 - **상태**: 🟡 소스 수정 완료 — Android Studio 빌드 & APK 배포 대기
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.49)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.50)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.2.50**: [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread/네이티브 역지오코딩/IMPORTANCE_DEFAULT/startForeground 즉시 선언
 - [x] **v4.2.49**: [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정
 - [x] **v4.2.48**: [FIX] 앱↔오버레이 실시간 동기화 엇박자 해결 — GPS 수신 즉시 네이티브 gpsText/Color 자체 갱신 (JS throttle 우회)
 - [x] **v4.2.48**: [FIX] 화면 복귀 시 GPS 미수신 빨간색 오탐 완전 제거 (lastGpsTimestamp 사전 세팅 제거)
@@ -19,11 +20,15 @@
 - [x] **v4.2.47**: [HOTFIX] 오버레이 자립 모드 도입 - 네이티브 서비스에서 자체적으로 GPS 끊짐(30초) 판단
 - [x] **v4.2.47**: [HOTFIX] 실시간 추적 중지(REALTIME_OFF) 명령 체계 구축
 
-## 📋 최근 변경 (v4.2.49 — 2026-03-30)
-- **긴급알림 목록 버그 수정**: `SYSTEM_COMMAND` 같은 백그라운드 구동용 시스템 알림이 기사님 앱 공지 화면에 표시되는 버그를 고쳤어. `isSystemMsg()` 필터를 통해 원천 차단.
-- 앱↔오버레이 동기화 엇박자 해소 (v4.2.48)
-- 포그라운드 복귀 오탐 제거 (v4.2.48)
-- GPS 5초 watchdog 및 이벤트 마킹 (v4.2.48)
+## 📋 최근 변경 (v4.2.50 — 2026-03-30)
+- **화면 꺼짐 GPS 완전 독립 아키텍처**: JS(WebView) 완전 우회. 화면 꺼져도 GPS POST + 오버레이 주소 갱신 보장
+  - `HandlerThread(ELS_NetworkWorker)`: GPS 콜백마다 new Thread() 생성 → 단일 Worker Thread로 교체
+  - `IMPORTANCE_DEFAULT` 알림채널: Samsung One UI 절전 정책 우회 (IMPORTANCE_LOW → 격상)
+  - `startForeground()` onCreate 즉시 호출: 5초 초과 ANR 방지
+  - `FOREGROUND_SERVICE_TYPE_LOCATION|DATA_SYNC`: 화면 꺼진 상태 네트워크 I/O Foreground 인정
+  - `geocodeAndUpdateOverlay()`: 30초마다 nollae.com 프록시→Kakao API 역지오코딩 → MainLooper로 tvAddr 즉시 갱신
+  - WakeLock `ON_AFTER_RELEASE` + 12시간 timeout leak 방지
+- 긴급알림 SYSTEM_COMMAND 필터링 (v4.2.49)
 
 ## ⏳ 다음 할 일
 1. 실기기(갤럭시 S25) 필드 테스트 (장거리 주행 및 음영지역 재수신 딜레이 측정)
