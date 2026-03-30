@@ -52,7 +52,7 @@ export default function DriverContactsPage() {
                     <thead>
                         <tr>
                             <th style={{ width: '80px', textAlign: 'center' }}>사진</th>
-                            <th style={{ width: '70px', textAlign: 'center' }}>계약</th>
+                            <th style={{ width: '80px', textAlign: 'center' }}>계약</th>
                             <th className={styles.colTitle}>이름</th>
                             <th style={{ width: '150px' }}>전화번호</th>
                             <th style={{ width: '120px' }}>차량번호</th>
@@ -79,6 +79,7 @@ export default function DriverContactsPage() {
                                         display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: 600,
                                         background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
                                         color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
+                                        whiteSpace: 'nowrap'
                                     }}>
                                         {item.contract_type === 'contracted' ? '계약' : '미계약'}
                                     </span>

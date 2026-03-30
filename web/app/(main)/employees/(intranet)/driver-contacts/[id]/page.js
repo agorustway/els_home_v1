@@ -12,6 +12,7 @@ export default function DriverContactsDetailPage() {
     const params = useParams();
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [selectedImage, setSelectedImage] = useState(null);
 
     const getSafeUrl = (url, name) => {
         if (!url) return '';
@@ -81,9 +82,9 @@ export default function DriverContactsDetailPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div style={{ width: 140, height: 140, borderRadius: '20px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }} title="클릭하여 원본 사진 보기 및 다운로드">
                             {item.photo_driver || item.photo_url ? (
-                                <a href={getSafeUrl(item.photo_driver || item.photo_url)} target="_blank" rel="noopener noreferrer" style={{width: '100%', height: '100%', display: 'block'}}>
-                                    <img src={getSafeUrl(item.photo_driver || item.photo_url)} alt="운전원" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
-                                </a>
+                                <div onClick={() => setSelectedImage(getSafeUrl(item.photo_driver || item.photo_url))} style={{width: '100%', height: '100%', display: 'block', cursor: 'pointer'}}>
+                                    <img src={getSafeUrl(item.photo_driver || item.photo_url)} alt="운전원" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
                             ) : (
                                 <span style={{ fontSize: '3rem' }}>👤</span>
                             )}
@@ -91,18 +92,18 @@ export default function DriverContactsDetailPage() {
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="클릭하여 원본 사진 보기">
                                 {item.photo_vehicle ? (
-                                    <a href={getSafeUrl(item.photo_vehicle)} target="_blank" rel="noopener noreferrer" style={{width: '100%', height: '100%', display: 'block'}}>
-                                        <img src={getSafeUrl(item.photo_vehicle)} alt="차량" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
-                                    </a>
+                                    <div onClick={() => setSelectedImage(getSafeUrl(item.photo_vehicle))} style={{width: '100%', height: '100%', display: 'block', cursor: 'pointer'}}>
+                                        <img src={getSafeUrl(item.photo_vehicle)} alt="차량" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
                                 ) : (
                                     <span style={{ fontSize: '1.2rem', color: '#cbd5e1' }}>🚛</span>
                                 )}
                             </div>
                             <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="클릭하여 원본 사진 보기">
                                 {item.photo_chassis ? (
-                                    <a href={getSafeUrl(item.photo_chassis)} target="_blank" rel="noopener noreferrer" style={{width: '100%', height: '100%', display: 'block'}}>
-                                        <img src={getSafeUrl(item.photo_chassis)} alt="샤시" style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
-                                    </a>
+                                    <div onClick={() => setSelectedImage(getSafeUrl(item.photo_chassis))} style={{width: '100%', height: '100%', display: 'block', cursor: 'pointer'}}>
+                                        <img src={getSafeUrl(item.photo_chassis)} alt="샤시" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
                                 ) : (
                                     <span style={{ fontSize: '1.2rem', color: '#cbd5e1' }}>🚚</span>
                                 )}
@@ -197,6 +198,13 @@ export default function DriverContactsDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {selectedImage && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, cursor: 'pointer' }} onClick={() => setSelectedImage(null)}>
+                    <img src={selectedImage} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', cursor: 'default' }} onClick={(e) => e.stopPropagation()} />
+                    <button onClick={() => setSelectedImage(null)} style={{ position: 'absolute', top: '20px', right: '30px', background: 'none', border: 'none', color: 'white', fontSize: '3rem', cursor: 'pointer', padding: '10px' }}>&times;</button>
+                </div>
+            )}
         </div>
     );
 }
