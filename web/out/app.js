@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.16';
-  const BUILD_CODE = 315; // Build 315 (v4.3.16)
+  const APP_VERSION = 'v4.3.17';
+  const BUILD_CODE = 316; // Build 316 (v4.3.17)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2296,15 +2296,15 @@
   }
 
   // ─── 앱 종료 ──────────────────────────────────────────────────
-  function exitApp() {
+  async function exitApp() {
     if (window.isTripActive()) {
       showToast('운행 중에는 종료할 수 없습니다. 운행 종료 후 앱 종료가 가능합니다.');
       return;
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
 
-    // [v4.2.56] 포그라운드 알림 및 GPS 명시적 종료
-    stopOverlayService();
+    // [v4.3.17] 종료 전 오버레이 및 GPS 명시적 중구 (완동기화)
+    await stopOverlayService();
     stopGPS();
 
     if (window.Capacitor?.Plugins?.App) {

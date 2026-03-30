@@ -913,12 +913,8 @@ public class FloatingWidgetService extends Service {
         if (mTimerRunnable != null) mTimerHandler.removeCallbacks(mTimerRunnable);
         // [v4.2.51] HandlerThread 안전 종료
         if (mNetworkThread != null) mNetworkThread.quitSafely();
-        // [v4.2.51] Keepalive 알람 취소
-        // 운행 종료 시에만 취소 — 시스템이 서비스를 죽이면 취소 안 함 (재시작 필요)
-        // STOP_SERVICE action으로 명시적으로 종료할 때만 취소
-        if (mStatus == null || "completed".equals(mStatus)) {
-            ServiceKeepaliveReceiver.cancelPing(this);
-        }
+        // [v4.3.17] 모든 종료 케이스에서 Keepalive 알람 명시적 취소
+        ServiceKeepaliveReceiver.cancelPing(this);
         // Heartbeat 샬 제거 (Receiver가 짤 서비스임을 인지하도록)
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .edit().remove("SERVICE_HEARTBEAT").apply();

@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.16",
-  "versionCode": 315,
-  "changeLog": "v4.3.15 (Build 315)\n- [UX] 설정 페이지 UI 세밀 조정: 주요 입력창/버튼 높이 38px 복구 및 간격 최적화\n- [UI] 설정 탭 하단 메뉴 전용 '설정' 라벨 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=315"
+  "latestVersion": "v4.3.17",
+  "versionCode": 316,
+  "changeLog": "v4.3.17 (Build 316)\n- [FIX] 앱 종료 시 알림바에 '실행 중' 메시지가 남는 현상 해결 (Keepalive 알람 즉시 취소 및 동기 종료)\n- [UI] 설정 화면 '뒤로가기' 버튼과 프로필 사진 영역 사이 여백(12px) 추가",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=316"
 }
