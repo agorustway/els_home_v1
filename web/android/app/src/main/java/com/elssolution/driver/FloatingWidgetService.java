@@ -97,9 +97,9 @@ public class FloatingWidgetService extends Service {
     private String mAddress = "위치 확인 중...";
     private boolean mIsRealtimeMode = false; // 실시간 3초 모드
 
-    // [v4.2.48] GPS 상태 5초 watchdog (JS 의존 없이 네이티브 자체 판단)
-    private static final long GPS_DEAD_THRESHOLD_MS = 30_000;
-    private static final long GPS_CHECK_INTERVAL_MS = 5_000;
+    // [v4.2.48] GPS 상태 watchdog (JS 의존 없이 네이티브 자체 판단)
+    private static final long GPS_DEAD_THRESHOLD_MS = 15_000;
+    private static final long GPS_CHECK_INTERVAL_MS = 2_000;
     private long mLastGpsCheckTime = 0;
 
     // [v4.2.50] 네이티브 역지오코딩 주기 (30초마다 한 번)
@@ -637,10 +637,18 @@ public class FloatingWidgetService extends Service {
                     sendNativeWebLog("NATIVE_POST_REJECT", "서버거절(" + respCode + "): " + responseBody + " | Payload: " + safeBody);
                 }
                 conn.disconnect();
-                
                 if (markerType != null) {
                     Log.d(TAG, "[MARKER] " + markerType + " 전송 완료 " + respCode);
                 }
+
+                // [v4.2.60] 네이티브-웹 데이터 동기화
+                // 성공/실패 무관하게 GPS 수신 시도는 했으므로 타임스탬프 저장
+                long now = System.currentTimeMillis();
+                try {
+                    SharedPreferences prefs = getApplicationContext().getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+                    prefs.edit().putString("LAST_NATIVE_GPS_TIME", String.valueOf(now)).apply();
+                } catch (Exception ignored) {}
+
             } catch (Exception e) {
                 Log.e(TAG, "GPS 전송 실패 (Network Block?): " + e.getMessage());
                 // [v4.2.56] 네트워크 에러 발생 시 CCTV 전송
@@ -847,6 +855,8 @@ public class FloatingWidgetService extends Service {
             
         // [v4.2.56] 서비스 종료 시 포그라운드 알림을 즉각 제거하여 알림바에서 소멸 느낌
         stopForeground(true);
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancelAll();
         Log.d(TAG, "Service Destroyed");
     }
 

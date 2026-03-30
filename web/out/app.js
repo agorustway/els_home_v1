@@ -224,6 +224,20 @@
             //    단, watchPosition 자체는 백그라운드에서도 작동하므로 timestamp는 살아있을 가능성 높음
             if (State.trip.status === 'driving') {
               const resumeDelay = 500; // 앱 포커스 안정화 대기 (800→500ms 단축)
+              
+              const Prefs = window.Capacitor?.Plugins?.Preferences;
+              if (Prefs) {
+                Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
+                  if (res && res.value) {
+                    const nativeTime = parseInt(res.value, 10);
+                    if (nativeTime && nativeTime > (lastGpsTimestamp || 0)) {
+                      lastGpsTimestamp = nativeTime;
+                      remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
+                    }
+                  }
+                }).catch(() => {});
+              }
+
               setTimeout(() => {
                 const now = Date.now();
                 const elapsed = now - (lastGpsTimestamp || 0);
@@ -1254,9 +1268,9 @@
       gpsColor = '#ef4444'; // 빨강 (수신안됨)
       gpsText = '연결안됨'; // UI에 "GPS 연결안됨" 표시
 
-      // GPS 연결 안될 시 5초마다 강제 재수신 시도
+      // GPS 연결 안될 시 3초마다 강제 재수신 시도
       const now = Date.now();
-      if (!window._lastGpsRetry || (now - window._lastGpsRetry > 5000)) {
+      if (!window._lastGpsRetry || (now - window._lastGpsRetry > 3000)) {
         window._lastGpsRetry = now;
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -1265,7 +1279,7 @@
               onGpsUpdate(pos, true, State.trip.id);
             },
             () => { /* 음영지역이므로 조용히 실패 무시 */ },
-            { enableHighAccuracy: true, timeout: 4500, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 2500, maximumAge: 0 }
           );
         }
       }

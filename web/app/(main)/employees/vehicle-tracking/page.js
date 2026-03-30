@@ -463,7 +463,6 @@ export default function VehicleTrackingPage() {
 
     // 실시간 fetch
     useEffect(() => {
-        if (selectedTrip) return;
         fetchLiveTrips();
         fetchNotices(); // 공지사항 초기 로드
         intervalRef.current = setInterval(() => { fetchLiveTrips(); fetchNotices(); }, 30000);
@@ -653,17 +652,7 @@ export default function VehicleTrackingPage() {
     };
 
 
-    const handleOpenNaverMap = (locations) => {
-        if (!locations.length) return;
-        // 네이버 지도에서 경로 보기 (웹 링크)
-        // 여러 좌표를 찍는 것은 복잡하므로 시작/끝 위주로 구성하거나 전체 URL 생성
-        const start = locations[0];
-        const end = locations[locations.length - 1];
-        const url = `https://map.naver.com/v5/directions/-/` +
-            `${start.lng},${start.lat},출발,,/-/` +
-            `${end.lng},${end.lat},도착,,/car`;
-        window.open(url, '_blank');
-    };
+    // handleOpenNaverMap removed
 
     const handleDownloadZip = async (trip) => {
         if (!trip) return;
@@ -678,6 +667,32 @@ export default function VehicleTrackingPage() {
             if (disposition && disposition.indexOf('filename=') !== -1) { filename = decodeURIComponent(disposition.split('filename=')[1].replace(/"/g, '')); }
             a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
         } catch (e) { alert('오류: ' + e.message); }
+    };
+
+    const handleDownloadLocationsCsv = () => {
+        if (!selectedTripLocations.length) return;
+        let csvContent = '\uFEFF'; 
+        csvContent += '시간,속도(km/h),주소,위도,경도,이벤트\n';
+        
+        selectedTripLocations.forEach(loc => {
+            const timeStr = new Date(loc.timestamp || loc.recorded_at).toLocaleString('ko-KR');
+            const speed = Math.round(loc.speed || 0);
+            const address = `"${(loc.address || '').replace(/"/g, '""')}"`;
+            const lat = (loc.lat || 0).toFixed(6);
+            const lng = (loc.lng || 0).toFixed(6);
+            const event = `"${((loc.source||'').includes('gyro') ? '강한 흔들림 (자이로)' : (loc.marker_type || ''))}"`;
+            csvContent += `${timeStr},${speed},${address},${lat},${lng},${event}\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `차량이동경로_${selectedTrip?.driver_name || '이동경로'}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     const activeCount = liveTrips.filter(t => t.status === 'driving').length;
@@ -900,12 +915,14 @@ export default function VehicleTrackingPage() {
                             <tr>
                                 <th><input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length} onChange={toggleSelectAll} /></th>
                                 <th>상태</th>
-                                <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th>차량/컨테이너</th>
+                                <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명/차량 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th style={{minWidth:'130px'}}>컨테이너/씰넘버</th>
+                                <th>규격/종류</th>
                                 <th>점검여부(브/타/램/적/기)</th>
+                                <th style={{maxWidth:'120px'}}>메모</th>
                                 <th style={{width:'60px'}}>사진</th>
-                                <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{width:'150px'}}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th style={{width:'220px'}}>최종위치</th>
+                                <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{width:'130px'}}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
+                                <th style={{width:'220px'}}>최종위치(최고속도)</th>
                                 <th style={{width:'100px'}}>관리</th>
                             </tr>
                         </thead>
@@ -914,10 +931,17 @@ export default function VehicleTrackingPage() {
                                 <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''}>
                                     <td><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
-                                    <td><strong>{trip.driver_name}</strong></td>
                                     <td>
-                                        <div>{trip.vehicle_number}</div>
-                                        <div style={{fontSize:'0.75rem', color:'#64748b'}}>{trip.container_number || '-'}</div>
+                                        <div><strong>{trip.driver_name}</strong></div>
+                                        <div style={{fontSize:'0.75rem', color:'#64748b'}}>{trip.vehicle_number}</div>
+                                    </td>
+                                    <td>
+                                        <div style={{fontWeight:600}}>{trip.container_number || '-'}</div>
+                                        <div style={{fontSize:'0.7rem', color:'#64748b'}}>씰: {trip.seal_number || '-'}</div>
+                                    </td>
+                                    <td style={{fontSize:'0.85rem'}}>
+                                        <div>{trip.container_type || '-'}</div>
+                                        <div style={{fontSize:'0.75rem', color:'#64748b'}}>{trip.container_kind || '-'}</div>
                                     </td>
                                     <td style={{fontSize:'12px', letterSpacing:'-0.5px'}}>
                                         <span title="브레이크" style={{marginRight:2}}>{trip.chk_brake ? '✅' : '❌'}</span>
@@ -926,13 +950,17 @@ export default function VehicleTrackingPage() {
                                         <span title="적재물" style={{marginRight:2}}>{trip.chk_cargo ? '✅' : '❌'}</span>
                                         <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
                                     </td>
+                                    <td style={{fontSize:'0.75rem', color:'#475569', maxWidth:'120px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}} title={trip.special_notes || '-'}>
+                                        {trip.special_notes || '-'}
+                                    </td>
                                     <td style={{textAlign:'center', fontWeight:700, color:'#3b82f6'}}>{trip.photos?.length || 0}장</td>
-                                    <td style={{fontSize:'0.85rem'}}>
+                                    <td style={{fontSize:'0.8rem'}}>
                                         <div style={{color:'#1e293b'}}>{formatDateTime(trip.started_at)}</div>
                                         <div style={{color:'#64748b'}}>{formatDateTime(trip.completed_at)}</div>
                                     </td>
                                     <td title={trip.last_location_address || '주소 정보 없음'} style={{whiteSpace:'normal', wordBreak:'keep-all', fontSize:'0.8rem', lineHeight:'1.3', color:'#374151', maxWidth:'220px'}}>
-                                        {trip.last_location_address || '-'}
+                                        <div>{trip.last_location_address || '-'}</div>
+                                        {trip.max_speed > 0 && <div style={{fontSize:'0.7rem', color:'#ef4444', fontWeight:700, marginTop:2}}>최고속도: {trip.max_speed} km/h</div>}
                                     </td>
                                     <td className={styles.actionCol}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
@@ -990,11 +1018,11 @@ export default function VehicleTrackingPage() {
                             <div className={styles.sectionTitle}>
                                 <span>이동 경로 ({selectedTripLocations.length})</span>
                                 <div style={{ display: 'flex', gap: 8 }}>
+                                    <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', padding: '0 10px', fontSize: '0.75rem', height: '26px', borderRadius: '6px' }} onClick={handleDownloadLocationsCsv}>📊 엑셀 다운로드</button>
                                     <button className={styles.resetZoomBtn} onClick={() => drawTripPath(selectedTripLocations)}>🎯 전체보기</button>
-                                    <button className={styles.naverMapBtn} onClick={() => handleOpenNaverMap(selectedTripLocations)}>🗺️ 네이버 지도</button>
                                 </div>
                             </div>
-                            <div className={styles.locationList}>
+                            <div className={styles.locationList} style={{ maxHeight: '350px', overflowY: 'auto' }}>
                                 {selectedTripLocations.slice().reverse().map((loc, i) => {
                                     const realIndex = selectedTripLocations.length - 1 - i;
                                     const hasAddr = loc.address && loc.address !== '주소 정보 없음';
@@ -1026,43 +1054,6 @@ export default function VehicleTrackingPage() {
                                         </div>
                                     );
                                 })}
-                            </div>
-                            {/* 수정 이력 로그 섹션 추가 */}
-                            <div className={styles.detailSection} style={{ marginTop: 24, borderTop: '1px solid #eee', paddingTop: 20 }}>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    📋 운송 기록 수정 이력 (Logs)
-                                </h3>
-
-                                <div className={styles.logList}>
-                                    {(tripLogs || []).length > 0 ? (
-                                        (tripLogs || []).map((log, li) => (
-                                            <div key={li} className={styles.logItem}>
-                                                <div className={styles.logHeader}>
-                                                    <span className={styles.logField}>{
-                                                        {
-                                                            'container_number': '📦 컨테이너 번호',
-                                                            'seal_number': '🔒 씰 넘버',
-                                                            'container_type': '📏 타입',
-                                                            'container_kind': '🚚 종류',
-                                                            'special_notes': '📝 특이사항'
-                                                        }[log.field_name] || log.field_name
-                                                    }</span>
-                                                    <span className={styles.logTime}>{new Date(log.created_at).toLocaleString()}</span>
-                                                </div>
-                                                <div className={styles.logChange}>
-                                                    <span className={styles.logOld}>{log.old_value}</span>
-                                                    <span className={styles.logArrow}>→</span>
-                                                    <span className={styles.logNew}>{log.new_value}</span>
-                                                </div>
-                                                <div className={styles.logUser}>수정자: {log.modified_by}</div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8', fontSize: '0.9rem' }}>
-                                            수정 이력이 없습니다.
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                         </div>
                     </div>

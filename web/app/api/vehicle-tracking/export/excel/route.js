@@ -3,8 +3,8 @@ import ExcelJS from 'exceljs';
 import { createClient } from '@/utils/supabase/server';
 
 const headers = [
-    '상태', '기사명', '차량번호', '컨테이너', '시작일시', '종료일시',
-    '최종위치', '브레이크', '타이어', '램프', '적재물', '기사숙지', '특이사항'
+    '상태', '기사명', '차량번호', '컨테이너', '씰넘버', '타입', '종류', '시작일시', '종료일시',
+    '최고속도', '최종위치', '브레이크', '타이어', '램프', '적재물', '기사숙지', '메모'
 ];
 
 const TRIP_STATUS_LABELS = {
@@ -38,22 +38,29 @@ export async function GET(request) {
         const { data: trips, error } = await query;
         if (error) throw error;
 
-        // 위치 역지오코딩 가져오기
+        // 위치 역지오코딩 가져오기 및 최고속도 계산
         const tripIds = trips.map(t => t.id);
         if (tripIds.length > 0) {
-            // RPC 대신 일반 쿼리로 최신 데이터 가져오기
             const { data: locData } = await supabase
                 .from('vehicle_locations')
-                .select('trip_id, address, recorded_at')
+                .select('trip_id, address, recorded_at, speed')
                 .in('trip_id', tripIds)
                 .order('recorded_at', { ascending: false });
             
             if (locData) {
                 const locMap = {};
+                const maxSpeedMap = {};
                 locData.forEach(l => {
-                    if (!locMap[l.trip_id]) locMap[l.trip_id] = l.address;
+                    // address 컬럼이 null/빈값이 아닌 가장 최근 값을 찾음 (order가 내림차순이므로 첫 값이 최신)
+                    if (!locMap[l.trip_id] && l.address) locMap[l.trip_id] = l.address;
+                    if (!maxSpeedMap[l.trip_id] || l.speed > maxSpeedMap[l.trip_id]) {
+                        maxSpeedMap[l.trip_id] = l.speed;
+                    }
                 });
-                trips.forEach(t => { t.last_location_address = locMap[t.id] || '-'; });
+                trips.forEach(t => { 
+                    t.last_location_address = locMap[t.id] || '-'; 
+                    t.max_speed = maxSpeedMap[t.id] ? Math.round(maxSpeedMap[t.id]) : 0;
+                });
             }
         }
 
@@ -83,8 +90,12 @@ export async function GET(request) {
                 t.driver_name,
                 t.vehicle_number,
                 t.container_number || '-',
+                t.seal_number || '-',
+                t.container_type || '-',
+                t.container_kind || '-',
                 formatDateTime(t.started_at),
                 formatDateTime(t.completed_at),
+                t.max_speed ? `${t.max_speed} km/h` : '-',
                 t.last_location_address || '-',
                 t.chk_brake ? 'O' : 'X',
                 t.chk_tire ? 'O' : 'X',
@@ -110,7 +121,7 @@ export async function GET(request) {
         sheet.autoFilter = { from: 'A1', to: { row: 1, column: headers.length } };
 
         // 열 너비 조절
-        const colWidths = [10, 15, 15, 15, 18, 18, 40, 10, 10, 10, 10, 10, 30];
+        const colWidths = [10, 15, 15, 18, 15, 12, 12, 18, 18, 15, 40, 10, 10, 10, 10, 10, 30];
         sheet.columns.forEach((col, i) => {
             col.width = colWidths[i];
         });

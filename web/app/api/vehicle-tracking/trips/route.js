@@ -126,19 +126,24 @@ export async function GET(request) {
                 // RPC 대신 일반 쿼리로 최신 데이터 가져오기 (메모리에서 최신값 추출)
                 const { data: locData, error: locError } = await supabase
                     .from('vehicle_locations')
-                    .select('trip_id, lat, lng, address, recorded_at')
+                    .select('trip_id, lat, lng, address, recorded_at, speed')
                     .in('trip_id', tripIds)
                     .order('recorded_at', { ascending: false });
                 
                 if (!locError && locData) {
                     const locMap = {};
+                    const maxSpeedMap = {};
                     // 내림차순 정렬이므로 가장 먼저 만나는 것이 최신
                     locData.forEach(l => {
                         if (!locMap[l.trip_id]) locMap[l.trip_id] = l;
+                        if (!maxSpeedMap[l.trip_id] || l.speed > maxSpeedMap[l.trip_id]) {
+                            maxSpeedMap[l.trip_id] = l.speed;
+                        }
                     });
                     data.forEach(t => {
                         t.lastLocation = locMap[t.id] || null;
                         t.last_location_address = locMap[t.id]?.address || null;
+                        t.max_speed = maxSpeedMap[t.id] ? Math.round(maxSpeedMap[t.id]) : 0;
                     });
                 }
             }
