@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.02",
-  "versionCode": 301,
-  "changeLog": "v4.3.02 (Build 301)\n- [UI] 앱 초기 설정 버튼 색상 테마 적용 (검정/빨강)\n- [FIX] 권한 완료 후 차량 정보 유무에 따른 화면 전환(설정/운행) 로직 수정\n- [FIX] 배터리 설정 후 권한 상태 동기화 누락 수정\n- [FIX] 앱 초기화 후 진행 차단 버그 해결",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=301"
+  "latestVersion": "v4.3.03",
+  "versionCode": 302,
+  "changeLog": "v4.3.03 (Build 302)\n- [UX] 신규 기사 가입 시 프로필 사진 등록 칸 상시 노출\n- [UX] 권한 설정 순서 최적화 (배터리 우선 배치로 동기화 개선)\n- [UI] 설정 화면 하단 레이아웃 보정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=302"
 }

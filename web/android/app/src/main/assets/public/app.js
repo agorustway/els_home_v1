@@ -371,14 +371,10 @@
     document.getElementById('s-id').value = State.profile.driverId;
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
-    // 프로필 사진 섹션 표시 및 저장된 사진 렌더링
-    const pSection = document.getElementById('settings-profile-photos');
-    if (pSection && (State.profile.name || State.profile.phone)) {
-      pSection.style.display = 'flex';
-      updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운');
-      updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
-      updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
-    }
+    // 프로필 사진 섹션 상시 표시 및 저장된 사진 렌더링
+    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운');
+    updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
+    updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
   }
 
   function saveProfile() {
@@ -438,18 +434,14 @@
         document.getElementById('s-id').value = d.vehicle_id || d.driver_id || '';
 
         // 프로필 사진 업데이트
-        const pSection = document.getElementById('settings-profile-photos');
-        if (pSection) {
-          pSection.style.display = 'flex';
-          updateProfilePhoto('p-photo-driver', d.photo_driver, '운');
-          updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차');
-          updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤');
+        updateProfilePhoto('p-photo-driver', d.photo_driver, '운');
+        updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차');
+        updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤');
 
-          // State에도 저장 (저장 버튼 클릭 시 함께 전송되도록)
-          State.profile.photo_driver = d.photo_driver;
-          State.profile.photo_vehicle = d.photo_vehicle;
-          State.profile.photo_chassis = d.photo_chassis;
-        }
+        // State에도 저장 (저장 버튼 클릭 시 함께 전송되도록)
+        State.profile.photo_driver = d.photo_driver;
+        State.profile.photo_vehicle = d.photo_vehicle;
+        State.profile.photo_chassis = d.photo_chassis;
 
         showToast('기사 정보를 불러왔습니다.');
       } else {
