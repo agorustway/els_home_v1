@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.44');
 
-  const APP_VERSION = 'v4.2.44';
-  const BUILD_CODE = 188; // Build 188 (v4.2.44)
+  const APP_VERSION = 'v4.2.45';
+  const BUILD_CODE = 189; // Build 189 (v4.2.45)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -1287,8 +1287,9 @@
     if (State.trip.status !== 'driving' && !isForced) return;
     const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
 
-    // [TDD] 무조건 GPS 기반: 속도(Speed) 값이 없는(null) 데이터는 기지국/Wi-Fi 추정치이므로 원천 차단 (정차 시의 0은 허용)
-    if (speed === null || speed === undefined) {
+    // [TDD] 무조건 GPS 기반: 속도(Speed) 값이 없는(null) 데이터는 기지국/Wi-Fi 추정치이므로 원천 차단
+    // 단, 실시간 추적 모드(isRealtime) 일 때는 걷거나 정차중이어도 무조건 위치 수집 (필드테스트 대응)
+    if (!State.trip.isRealtime && (speed === null || speed === undefined)) {
       remoteLog(`기지국/네트워크 위치 스킵 (속도 불명): acc=${accuracy?.toFixed(0)}m`, 'GPS_SKIP_NETWORK');
       // 타임스탬프를 갱신하지 않으면 '수신안됨' 상태가 되어 5초 폴링(Wake)이 작동함
       return; 
@@ -1299,8 +1300,8 @@
     // watchPosition 콜백 시점에 타임스탬프 갱신 (startGPS에서도 하지만 이중 보장)
     lastGpsTimestamp = Date.now();
 
-    // 정확도가 너무 낮으면(>200m) 필터링 (단, 강제수신은 예외)
-    if (!isForced && accuracy && accuracy > 200) {
+    // 정확도가 너무 낮으면(>200m) 필터링 (단, 강제수신이나 실시간 추적시는 예외)
+    if (!State.trip.isRealtime && !isForced && accuracy && accuracy > 200) {
       remoteLog(`GPS 정확도 낮음: ${accuracy.toFixed(0)}m - 전송 스킵`, 'GPS_ACCURACY');
       updateTripStatusLine(); // 상태표시는 갱신
       return;

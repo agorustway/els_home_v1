@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.44",
-  "versionCode": 188,
-  "changeLog": "v4.2.44 (Build 188)\n- [UPDATE] 공지사항 읽음 처리 지연 및 새로 설치 시 14일 경과 공지 자동 읽음 적용\n- [UPDATE] 관제 레이더 공지 작성 시 카테고리 지정 기능 연동",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=188"
+  "latestVersion": "v4.2.45",
+  "versionCode": 189,
+  "changeLog": "v4.2.45 (Build 189)\n- [FIX] 긴급알림 목록 내 SYSTEM_COMMAND 노출 필터링\n- [UPDATE] 실시간 추적 시 정차/걷기 중 속도 필터 예외 처리 적용\n- [UPDATE] 관제 상세 지도 내 개별 좌표 포인트(회색 점) 마킹 추가",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=189"
 }
