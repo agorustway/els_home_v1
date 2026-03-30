@@ -20,7 +20,7 @@
     </header>
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <h2 class="perm-title" style="font-size:16px;">앱 초기 설정</h2>
-      <button class="btn btn-sm btn-primary" onclick="App.manualRefreshPerms()">새로고침</button>
+      <button class="btn btn-sm" onclick="App.manualRefreshPerms()" style="background:#111827; color:#fff;">새로고침</button>
     </div>
     <p class="perm-sub" style="margin-bottom:4px;">시스템 권한을 모두 허용해야 앱 이용이 가능합니다.</p>
 
@@ -300,7 +300,7 @@
           <input type="text" id="s-vehicle" placeholder="12부3456" maxlength="10">
         </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="App.saveProfile()" style="flex-shrink:0; min-height:44px;">정보 저장</button>
+      <button class="btn btn-full" onclick="App.saveProfile()" style="flex-shrink:0; min-height:44px; background:#111827; color:#fff;">정보 저장</button>
       <hr class="divider" style="margin:8px 0;">
       <div class="field">
         <label>앱 관리</label>
@@ -308,7 +308,7 @@
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.2.21</span>
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.00</span>
         </button>
         <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.clearCache()">
           <span>캐시 지우기 (새로고침)</span>
