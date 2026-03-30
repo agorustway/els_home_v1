@@ -369,10 +369,12 @@ export default function VehicleTrackingPage() {
         setSelectedTripLocations([]);
         setTripLogs([]);
         
-        // [신규] 운행중/일시정지 차량이면 실시간 추적 모드 ON
+        // [제거] 상세보기 시 자동 실시간 추적 시작 로직은 사용자의 명시적 요청을 위해 제거합니다.
+        /*
         if (trip.status === 'driving' || trip.status === 'paused') {
             startRealtimeTracking(trip.id);
         }
+        */
 
         try {
             const [tripRes, locRes, logRes] = await Promise.all([
@@ -830,9 +832,6 @@ export default function VehicleTrackingPage() {
                                     </td>
                                     <td className={styles.actionCol}>
                                         <button className={styles.viewIconBtn} onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }}>상세보기</button>
-                                        {(trip.status === 'driving' || trip.status === 'paused') && (
-                                            <button className={`${styles.trackingBtn} ${String(realtimeTarget) === String(trip.id) ? styles.trackingStop : ''}`} onClick={(e) => { e.stopPropagation(); String(realtimeTarget) === String(trip.id) ? stopRealtimeTracking() : startRealtimeTracking(trip.id); }}>{String(realtimeTarget) === String(trip.id) ? '추적중지' : '실시간'}</button>
-                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -933,7 +932,24 @@ export default function VehicleTrackingPage() {
 
             {selectedTrip && (
                 <div className={styles.detailOverlay}>
-                    <div className={styles.detailHeader}><h3>운행 상세 정보 {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',fontWeight:800,marginLeft:8}}>🔴 LIVE {realtimeCountdown}초</span>}</h3><button className={styles.closeBtn} onClick={() => { setSelectedTrip(null); stopRealtimeTracking(); }}>✕</button></div>
+                    <div className={styles.detailHeader}>
+                        <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                            <h3>운행 상세 정보</h3>
+                            {(selectedTrip.status === 'driving' || selectedTrip.status === 'paused') && (
+                                <button 
+                                    className={`${styles.trackingBtn} ${String(realtimeTarget) === String(selectedTrip.id) ? styles.trackingStop : ''}`} 
+                                    style={{padding: '4px 12px', fontSize: '0.75rem', height: '28px'}}
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        String(realtimeTarget) === String(selectedTrip.id) ? stopRealtimeTracking() : startRealtimeTracking(selectedTrip.id); 
+                                    }}
+                                >
+                                    {String(realtimeTarget) === String(selectedTrip.id) ? `추적중지 (${realtimeCountdown}s)` : '🚀 실시간 추적 시작'}
+                                </button>
+                            )}
+                        </div>
+                        <button className={styles.closeBtn} onClick={() => { setSelectedTrip(null); stopRealtimeTracking(); }}>✕</button>
+                    </div>
                     <div className={styles.detailContent}>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>기본 정보</div>
