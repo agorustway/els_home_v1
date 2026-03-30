@@ -30,11 +30,6 @@ public class MainActivity extends BridgeActivity {
         // Capacitor 플러그인이 자체적으로 권한 요청을 처리하므로 네이티브 단의 강제 요청을 제거하여 충돌 방지
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-    }
-
     // requestRuntimePermissions 삭제됨 (JS/Capacitor 플러그인에 위임)
 
     // ─── 뒤로가기 처리 ────────────────────────────────────────────
