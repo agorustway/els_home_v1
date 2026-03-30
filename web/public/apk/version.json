@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.60",
-  "versionCode": 204,
-  "changeLog": "v4.2.60 (Build 204)\n- [NEW] 긴급알림 수신 시 화면 강제 깨우기 및 포그라운드 자동 복귀\n- [FIX] 앱 최초 실행 시 안드로이드 네이티브 권한 요청 충돌 해결 (클린 부팅)\n- [UI] 권한 설정 페이지 버튼 색상 동적 제어 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=204"
+  "latestVersion": "v4.2.61",
+  "versionCode": 205,
+  "changeLog": "v4.2.61 (Build 205)\n- [HOTFIX] 업데이트 엔진 복구 및 앱 로딩 화이트스크린 현상 해결",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=205"
 }
