@@ -81,15 +81,31 @@ export default function Intro() {
                             <div className={styles.appDownloadTitle}>
                                 📱 ELS 차량용 앱 (안드로이드)
                             </div>
-                            <a href="/apk/els_driver.apk" className={styles.appButton} download>
-                                <div className={styles.appBtnIcon}>
-                                    <img src="/favicon.png" alt="" className={styles.appIconImg} />
-                                </div>
-                                <div className={styles.appBtnText}>
-                                    <div className={styles.appBtnLabel}>차량용 앱 다운로드 (.APK)</div>
-                                    <div className={styles.appBtnDesc}>안드로이드 전용 설치 파일</div>
-                                </div>
-                            </a>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <a href="/apk/els_driver.apk" className={styles.appButton} style={{ flex: 1 }} download>
+                                    <div className={styles.appBtnIcon}>
+                                        <img src="/favicon.png" alt="" className={styles.appIconImg} />
+                                    </div>
+                                    <div className={styles.appBtnText}>
+                                        <div className={styles.appBtnLabel}>차량용 앱 다운로드 (.APK)</div>
+                                        <div className={styles.appBtnDesc}>안드로이드 전용 설치 파일</div>
+                                    </div>
+                                </a>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const url = window.location.origin + '/apk/els_driver.apk';
+                                        navigator.clipboard.writeText(url).then(() => {
+                                            alert('앱 다운로드 링크가 복사되었습니다.\\n메신저에 붙여넣기 하세요!');
+                                        });
+                                    }}
+                                    className={styles.copyButton}
+                                    title="주소 복사"
+                                >
+                                    <span style={{ fontSize: '1.2rem', marginBottom: '2px' }}>🔗</span>
+                                    <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>주소 복사</span>
+                                </button>
+                            </div>
                             <div className={styles.appInstallGuide}>
                                 <h4>✅ 안드로이드 설치 방법 (APK)</h4>
                                 <ul>
