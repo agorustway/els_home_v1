@@ -128,12 +128,12 @@
         <!-- Row 1 -->
         <div id="tab-trip-inner" style="display:flex;flex-direction:column;gap:12px;">
           <!-- 상단 상태 1줄: 시작시간 | GPS상태 | 주소 -->
-          <div id="trip-status-bar" style="background:#f4f7fb; border:1px solid #e2e8f0; border-radius:8px; padding:9px 12px; margin-bottom:4px; display:flex; align-items:center; gap:0; min-height:36px; overflow:hidden;">
-            <span id="trip-date-display" style="font-size:12px; font-weight:700; color:var(--primary); white-space:nowrap; flex-shrink:0;">운송시작 대기중</span>
-            <span id="trip-status-sep1" style="color:#cbd5e1; margin:0 7px; flex-shrink:0; display:none;">|</span>
-            <span id="trip-gps-chip" style="font-size:11px; font-weight:700; white-space:nowrap; flex-shrink:0; display:none;">GPS --</span>
-            <span id="trip-status-sep2" style="color:#cbd5e1; margin:0 7px; flex-shrink:0; display:none;">|</span>
-            <span id="trip-addr-display" style="font-size:12px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; display:none;">위치 확인 중...</span>
+          <div id="trip-status-bar" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px 16px; margin-bottom:8px; display:flex; align-items:center; gap:0; min-height:52px; overflow:hidden;">
+            <span id="trip-date-display" style="font-size:13px; font-weight:800; color:var(--primary); white-space:nowrap; flex-shrink:0;">운송시작 대기중</span>
+            <span id="trip-status-sep1" style="color:#cbd5e1; margin:0 8px; flex-shrink:0; display:none;">|</span>
+            <span id="trip-gps-chip" style="font-size:12px; font-weight:700; white-space:nowrap; flex-shrink:0; display:none;">GPS --</span>
+            <span id="trip-status-sep2" style="color:#cbd5e1; margin:0 8px; flex-shrink:0; display:none;">|</span>
+            <span id="trip-addr-display" style="font-size:13px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; display:none;">위치 확인 중...</span>
           </div>
           <!-- Row 2 컨테이너 번호 + 씰 번호 (5:5) -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; overflow:hidden;">
@@ -142,11 +142,11 @@
                 <span>컨테이너 번호</span>
                 <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
-              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
+              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important;">
             </div>
             <div class="field" style="margin-bottom:0; min-width:0;">
               <label>씰 번호</label>
-              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important; height:40px; border-radius:4px;">
+              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important;">
             </div>
           </div>
           <!-- Row 4 타입 + 종류 -->
@@ -277,16 +277,18 @@
         </div>
       </div>
 
-      <div class="field">
-        <label>전화번호</label>
-        <div style="display:flex;gap:4px;">
-           <input type="tel" id="s-phone" placeholder="01012345678 기존사용자 조회 클릭" maxlength="11" style="flex:1;min-width:0;">
-           <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 12px; height:40px;">번호조회</button>
+      <div style="display:grid; grid-template-columns:1fr 1.6fr; gap:8px; width:100%; flex-shrink:0;">
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>이름</label>
+          <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
         </div>
-      </div>
-      <div class="field">
-        <label>성함</label>
-        <input type="text" id="s-name" placeholder="홍길동" maxlength="20">
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>전화번호</label>
+          <div style="display:flex;gap:4px;">
+             <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;">
+             <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 8px;">조회</button>
+          </div>
+        </div>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; flex-shrink:0;">
         <div class="field" style="margin-bottom:0; min-width:0;">
@@ -306,7 +308,7 @@
           <span>개인정보 처리방침 및 이용약관</span>
         </button>
         <button class="btn" style="justify-content:space-between;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.checkUpdate()">
-          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.07</span>
+          <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.10</span>
         </button>
         <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;margin-bottom:8px;padding: 0 14px;" onclick="App.clearCache()">
           <span>캐시 지우기 (새로고침)</span>
