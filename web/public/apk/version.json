@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.07",
-  "versionCode": 306,
-  "changeLog": "v4.3.07 (Build 306)\n- [FIX] 시스템 설정 창에서 앱으로 복귀 시 권한 허용 상태가 즉시 파란색으로 갱신되지 않는 버그 해결\n- [UX] 권한 설정 단계의 체감 속도 향상",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=306"
+  "latestVersion": "v4.3.08",
+  "versionCode": 307,
+  "changeLog": "v4.3.08 (Build 307)\n- [UI] 설정 페이지 버전 표시 동기화 (v4.3.07)\n- [UI] 설정 페이지 번호조회/정보저장 버튼 색상 변경 (블랙)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=307"
 }
