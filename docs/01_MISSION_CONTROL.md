@@ -1,16 +1,16 @@
-# ELS MISSION CONTROL v4.2.56
-> 마지막 업데이트: 2026-03-30 22:51 (KST)
+# ELS MISSION CONTROL v4.2.57
+> 마지막 업데이트: 2026-03-30 23:22 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.56` (Build 200)
+- **현재 버전**: `v4.2.57` (Build 201)
 - **최근 업데이트**: 2026-03-30
-- **상태**: 🔵 배포 완료 — 네이티브 디버깅(CCTV) 로그 및 서비스 종료 처리 보강
+- **상태**: 🔵 배포 완료 — 서버 POST 에러(4xx/5xx) 로깅 추가 및 파싱 안전성 확보
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.56)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.57)
 
 ### 🎯 주요 마일스톤
-- [x] **v4.2.56**: [FEAT/FIX] 네이티브 엔진 디버깅(NATIVE_CPU/GPS/ERR Web Log) 추가, 앱 스와이프 종료 시 `onTaskRemoved`+`stopForeground` 연계하여 좀비 알림 제거 구상, 위치 권한 강제 모달 안내 강화
-- [x] **v4.2.55**: [FIX] GPS 배칭(Batching) 완전 제거: `setMaxUpdateDelayMillis` 폐기 및 `minUpdateInterval`을 타겟 간격과 일치시켜 즉시 수립 강제
+- [x] **v4.2.57**: [FEAT/FIX] 네이티브 엔진 디버깅(NATIVE_POST_OK/REJECT) 추가: 서버 입구컷 확인을 위한 응답 스트림 파싱 및 Payload 로깅, `tripId` 파싱 안전성(Type-safe) 향상
+- [x] **v4.2.56**: [FEAT] 네이티브 엔진 디버깅(CCTV) 로그 전송 및 앱 종료/스와이프 시 알림 완전 제거 적용
 - [x] **v4.2.51**: [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 도입 및 PASSIVE_PROVIDER 활용
 - [x] **v4.2.50**: [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread/네이티브 역지오코딩/IMPORTANCE_DEFAULT/startForeground 즉시 선언
 - [x] **v4.2.49**: [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정

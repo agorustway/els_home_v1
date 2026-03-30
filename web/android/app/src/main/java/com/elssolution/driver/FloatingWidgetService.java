@@ -208,7 +208,10 @@ public class FloatingWidgetService extends Service {
                 return START_STICKY;
             }
 
-            if (intent.hasExtra("tripId")) mTripId = intent.getStringExtra("tripId");
+            if (intent.hasExtra("tripId")) {
+                Object obj = intent.getExtras().get("tripId");
+                mTripId = String.valueOf(obj);
+            }
             if (intent.hasExtra("startTimeMillis")) {
                 mStartTimeMillis = intent.getLongExtra("startTimeMillis", System.currentTimeMillis());
                 mTotalPausedMs = 0; // 새로 시작 시 초기화
@@ -611,11 +614,22 @@ public class FloatingWidgetService extends Service {
                 OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
                 writer.write(body); writer.flush(); writer.close();
                 int respCode = conn.getResponseCode();
-                // [v4.2.52] 네트워크 응답 본문 소비 (Connection Pool 관리를 위해 필수, 차단 방어)
+                // [v4.2.57] 네트워크 HTTP 처리 및 CCTV 전송 보강
                 if (respCode >= 200 && respCode < 300) {
                     conn.getInputStream().close();
+                    sendNativeWebLog("NATIVE_POST_OK", "전송성공:" + respCode);
                 } else {
-                    conn.getErrorStream().close();
+                    java.io.InputStream es = conn.getErrorStream();
+                    String responseBody = "";
+                    if (es != null) {
+                        java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(es));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) sb.append(line);
+                        responseBody = sb.toString();
+                        es.close();
+                    }
+                    sendNativeWebLog("NATIVE_POST_REJECT", "서버거절(" + respCode + "): " + responseBody + " | Payload: " + body.replace("\"", "\\\""));
                 }
                 conn.disconnect();
                 
