@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.44');
 
-  const APP_VERSION = 'v4.2.46';
-  const BUILD_CODE = 190; // Build 190 (v4.2.46)
+  const APP_VERSION = 'v4.2.47';
+  const BUILD_CODE = 191; // Build 191 (v4.2.47)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -101,6 +101,12 @@
     realtimeExpireAt = Date.now() + 60000; // 1분 절대 시간
     updateTripStatusLine();
     remoteLog("실시간 고정밀 관제 모드 시작 (1분)", "SYSTEM");
+  }
+  function stopRealtimeMode() {
+    State.trip.isRealtime = false;
+    realtimeExpireAt = 0;
+    updateTripStatusLine();
+    remoteLog("실시간 고정밀 관제 모드 수동 종료", "SYSTEM");
   }
 
   // ─── 점검체크리스트 ──────────────────────────────────────────
@@ -1329,11 +1335,11 @@
     updateTripStatusLine();
 
     const isSharpTurn = gyroData.magnitude > 25;
-    const now = Date.now();
-    const minInterval = isForced ? 0 : (isSharpTurn ? 10_000 : interval);
-    if (!isForced && now - lastGpsSend < minInterval) return;
+    const curTime = Date.now();
+    const minInterval = isForced ? 0 : (isSharpTurn ? Math.min(10_000, interval) : interval);
+    if (!isForced && curTime - lastGpsSend < minInterval) return;
 
-    lastGpsSend = now;
+    lastGpsSend = curTime;
 
     // 서버 전송 + 카카오 역지오코딩 통합 (API 호출 1회로 절감)
     // location API 서버에서 카카오로 이미 주소를 축약해 반환 → 별도 geocode 호출 불필요
@@ -2136,6 +2142,11 @@
             const targetId = item.message.split(':')[1];
             if (String(targetId) === String(State.trip.id)) {
               startRealtimeMode();
+            }
+          } else if (item.message && item.message.startsWith('REALTIME_OFF:')) {
+            const targetId = item.message.split(':')[1];
+            if (String(targetId) === String(State.trip.id)) {
+              stopRealtimeMode();
             }
           }
           continue; // 시스템 명령은 팝업 띄우지 않음

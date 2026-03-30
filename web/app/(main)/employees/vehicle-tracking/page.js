@@ -355,14 +355,29 @@ export default function VehicleTrackingPage() {
         }, 60000); // 1분
     }, []);
     
-    const stopRealtimeTracking = useCallback(() => {
+    const stopRealtimeTracking = useCallback((manualTripId = null) => {
         if (realtimeIntervalRef.current) clearInterval(realtimeIntervalRef.current);
         if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
         realtimeIntervalRef.current = null;
         realtimeTimeoutRef.current = null;
+        
+        const tripToStop = manualTripId || realtimeTarget;
         setRealtimeTarget(null);
         setRealtimeCountdown(0);
-    }, []);
+
+        if (tripToStop) {
+            try {
+                fetch('/api/vehicle-tracking/emergency', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: 'SYSTEM_COMMAND',
+                        message: `REALTIME_OFF:${tripToStop}`
+                    })
+                });
+            } catch (e) { }
+        }
+    }, [realtimeTarget]);
 
     const handleSelectTrip = async (trip) => {
         setIsDetailLoading(true);
@@ -941,14 +956,14 @@ export default function VehicleTrackingPage() {
                                     style={{padding: '4px 12px', fontSize: '0.75rem', height: '28px'}}
                                     onClick={(e) => { 
                                         e.stopPropagation(); 
-                                        String(realtimeTarget) === String(selectedTrip.id) ? stopRealtimeTracking() : startRealtimeTracking(selectedTrip.id); 
+                                        String(realtimeTarget) === String(selectedTrip.id) ? stopRealtimeTracking(selectedTrip.id) : startRealtimeTracking(selectedTrip.id); 
                                     }}
                                 >
                                     {String(realtimeTarget) === String(selectedTrip.id) ? `추적중지 (${realtimeCountdown}s)` : '🚀 실시간 추적 시작'}
                                 </button>
                             )}
                         </div>
-                        <button className={styles.closeBtn} onClick={() => { setSelectedTrip(null); stopRealtimeTracking(); }}>✕</button>
+                        <button className={styles.closeBtn} onClick={() => { setSelectedTrip(null); stopRealtimeTracking(selectedTrip.id); }}>✕</button>
                     </div>
                     <div className={styles.detailContent}>
                         <div className={styles.detailSection}>

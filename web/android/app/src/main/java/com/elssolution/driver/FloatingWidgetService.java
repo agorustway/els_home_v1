@@ -88,6 +88,7 @@ public class FloatingWidgetService extends Service {
     // 위젯 뷰 참조
     private TextView tvStatus, tvTimer, tvGps, tvAddr;
     private long mLastGpsReceiveTime = 0; // GPS 마지막 수신 시각
+    private long mLastCommandPollTime = 0; // 마지막 명령 확인 시각 (30초 정규 폴링)
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -315,6 +316,21 @@ public class FloatingWidgetService extends Service {
                     elapsed = now - mStartTimeMillis - mTotalPausedMs;
                     tvTimer.setText(formatTime(elapsed));
                     updateNotification("운행중 " + formatTime(elapsed) + (mContainerNo.isEmpty() ? "" : " | " + mContainerNo));
+
+                    // [추 가] 네이티브 자체 GPS 끊김 체크 (엘리베이터/음영지역)
+                    // 마지막 수신 후 (현재 주기 + 10초) 경과 시 빨간색 표시
+                    long deadThreshold = Math.max(mCurrentIntervalMs + 10000, 30000);
+                    if (mLastGpsReceiveTime > 0 && now - mLastGpsReceiveTime > deadThreshold) {
+                        mGpsText = "연결안됨";
+                        mGpsColor = "#ef4444";
+                        updateWidgetDisplay();
+                    }
+
+                    // [추가] 네이티브 자체 명령 폴링 (JS가 백그라운드에서 죽어있을 때 대비)
+                    if (now - mLastCommandPollTime > 30000) {
+                        mLastCommandPollTime = now;
+                        pollSystemCommand();
+                    }
                 } else if ("paused".equals(mStatus)) {
                     // 일시정지 시에는 멈춘 시점의 시간 표시
                     long currentPausedMs = (mPausedAt > 0) ? (now - mPausedAt) : 0;
@@ -458,6 +474,48 @@ public class FloatingWidgetService extends Service {
     private void updateNotification(String text) {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         nm.notify(1, buildNotification(text));
+    }
+
+    // ─── 네이티브 명령 폴링 (백그라운드 생존 보강) ────────────────
+    private void pollSystemCommand() {
+        if (mTripId == null || mTripId.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                URL url = new URL(BASE_URL + "/api/vehicle-tracking/emergency?unread=true");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                
+                int code = conn.getResponseCode();
+                if (code == 200) {
+                    java.io.InputStream is = conn.getInputStream();
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(is));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    String data = sb.toString();
+                    
+                    // JSON 파싱 (간단히 문자열 매칭으로 속도 향상)
+                    if (data.contains("SYSTEM_COMMAND")) {
+                        if (data.contains("REALTIME_ON:" + mTripId)) {
+                            mCurrentIntervalMs = 3000;
+                            mGpsText = "실시간 수집중";
+                            mGpsColor = "#f59e0b";
+                            new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                        } else if (data.contains("REALTIME_OFF:" + mTripId)) {
+                            mCurrentIntervalMs = 60000;
+                            mGpsText = "60s";
+                            mGpsColor = "#10b981";
+                            new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                        }
+                    }
+                }
+                conn.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "Native Poll Error: " + e.getMessage());
+            }
+        }).start();
     }
 
     // ─── 운행 종료 마지막 위치 전송 (JS에서 호출) ─────────────────

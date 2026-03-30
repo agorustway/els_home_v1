@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.46",
-  "versionCode": 190,
-  "changeLog": "v4.2.46 (Build 190)\n- [HOTFIX] 백그라운드 환경에서 실시간 명령(SYSTEM_COMMAND) 즉시 수신 불가 현상 수정\n- [HOTFIX] 백그라운드 상태에서 실시간 추적(1분) 만료 적용되지 않는 오류 해결",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=190"
+  "latestVersion": "v4.2.47",
+  "versionCode": 191,
+  "changeLog": "v4.2.47 (Build 191)\n- [HOTFIX] 백그라운드/화면 꺼짐 시 오버레이의 GPS 상태(연결안됨/실시간) 동기화 불일치 해결\n- [HOTFIX] 실시간 추적 수동 중지(OFF) 명령 처리 및 네이티브 백그라운드 독자 폴링 도입",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=191"
 }
