@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.41",
-  "versionCode": 185,
-  "changeLog": "v4.2.41 (Build 185)\n- [HOTFIX] 운행중 컨테이너 및 씰 정보 실시간 단독 저장 기능 추가\n- [HOTFIX] 터널(음영지역) 진입 시 GPS 응답 속도 및 재연결 5초 폴링 개선",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=185"
+  "latestVersion": "v4.2.43",
+  "versionCode": 187,
+  "changeLog": "v4.2.43 (Build 187)\n- [HOTFIX] 화면 꺼짐/백그라운드 전환 후 GPS 수신 끊김 현상 해결 (포그라운드 복귀 시 자동 재기동)\n- [HOTFIX] 실시간 관제 버튼 명령 수신 딜레이 30초 → 0초 (포그라운드 복귀 즉시 폴링)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=187"
 }

@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.41');
+  console.log('ELS Driver App Loading... v4.2.43');
 
-  const APP_VERSION = 'v4.2.41';
-  const BUILD_CODE = 185; // Build 185 (v4.2.41)
+  const APP_VERSION = 'v4.2.43';
+  const BUILD_CODE = 187; // Build 187 (v4.2.43)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -94,6 +94,21 @@
     set: (k, v) => { try { localStorage.setItem('els_' + k, JSON.stringify(v)); } catch { } },
     rm: (k) => { try { localStorage.removeItem('els_' + k); } catch { } },
   };
+
+  let realtimeTimer = null;
+  function startRealtimeMode() {
+    if (realtimeTimer) clearTimeout(realtimeTimer);
+    State.trip.isRealtime = true;
+    updateTripStatusLine();
+    remoteLog("실시간 고정밀 관제 모드 시작 (1분)", "SYSTEM");
+    
+    realtimeTimer = setTimeout(() => {
+      State.trip.isRealtime = false;
+      realtimeTimer = null;
+      updateTripStatusLine();
+      remoteLog("실시간 고정밀 관제 모드 종료", "SYSTEM");
+    }, 60000); // 1분
+  }
 
   // ─── 점검체크리스트 ──────────────────────────────────────────
   function openChecklist() {
@@ -184,9 +199,43 @@
         CapApp.addListener('appStateChange', ({ isActive }) => {
           console.log('App State Change - isActive:', isActive);
           if (isActive) {
-            // 다중 체크 (권한 설정이 느리게 반영될 수 있음)
+            // 1. 권한 상태 갱신 (느리게 반영될 수 있어 다중 체크)
             setTimeout(() => { updatePermStatuses(); }, 300);
             setTimeout(() => { updatePermStatuses(); }, 1200);
+
+            // 2. [v4.2.43] 실시간 명령 즉시 수신 (30초 딜레이 제거)
+            //    화면 꺼짐->켜짐 직후 대기 없이 폴링하여 웹 실시간 버튼 반응성 향상
+            pollEmergency().catch(() => { });
+
+            // 3. [v4.2.43] 백그라운드 GPS 복구
+            //    Android WebView는 화면 꺼짐 중 JS를 throttle하여 watchPosition 콜백이 끊길 수 있음.
+            //    포그라운드 복귀 시 watchId 상태 확인 후 GPS 재기동 + 즉시 강제수신으로 공백 메움.
+            if (State.trip.status === 'driving') {
+              const resumeDelay = 800; // 앱 포커스 안정화 대기
+              setTimeout(() => {
+                const now = Date.now();
+                const elapsed = now - (lastGpsTimestamp || 0);
+                const isGpsDead = !lastGpsTimestamp || elapsed > 90_000; // 90초 이상 수신 없으면 재기동
+
+                if (isGpsDead || !gpsWatchId) {
+                  remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
+                  stopGPS();
+                  startGPS();
+                }
+
+                // 복귀 즉시 강제 1회 수신 (화면 꺼짐 중 공백 보완)
+                lastGpsTimestamp = now; // 수신안됨 오표시 방지
+                navigator.geolocation.getCurrentPosition(
+                  pos => {
+                    lastGpsTimestamp = Date.now();
+                    onGpsUpdate(pos, true, State.trip.id);
+                    remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공`, 'GPS_RESUME_OK');
+                  },
+                  err => remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code}`, 'GPS_RESUME_ERR'),
+                  { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+              }, resumeDelay);
+            }
           }
         });
       }
@@ -1186,7 +1235,7 @@
       }
     } else if (State.trip.isRealtime) {
       gpsColor = '#f59e0b'; // 주황 (실시간/웹조회)
-      gpsText = '실시간';
+      gpsText = '실시간 수집중';
     }
 
     const addrShort = abbreviateAddr(lastKnownAddr);
@@ -1259,7 +1308,8 @@
 
     // 속도에 따른 가변 주기 설정
     let interval = 60_000;
-    if (speedKph >= 60) interval = 30_000; // 고속: 30초
+    if (State.trip.isRealtime) interval = 3000; // [v4.2.42] 실시간 추적 강제 3초
+    else if (speedKph >= 60) interval = 30_000; // 고속: 30초
     else if (speedKph >= 20) interval = 45_000; // 중속: 45초
     else interval = 60_000; // 저속/정지: 60초
 
@@ -2062,6 +2112,16 @@
         const createdMs = new Date(item.created_at || now).getTime();
         if (now - createdMs > 60 * 60 * 1000) {
           continue; // 이미 읽음 처리만 하고 팝업은 패스
+        }
+
+        if (item.title === 'SYSTEM_COMMAND') {
+          if (item.message && item.message.startsWith('REALTIME_ON:')) {
+            const targetId = item.message.split(':')[1];
+            if (String(targetId) === String(State.trip.id)) {
+              startRealtimeMode();
+            }
+          }
+          continue; // 시스템 명령은 팝업 띄우지 않음
         }
 
         showEmergencyPopup(item);

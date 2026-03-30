@@ -276,13 +276,25 @@ export default function VehicleTrackingPage() {
     }, [mapReady, fetchAddressForLocation]);
 
     // [신규] 실시간 추적 모드 (3초 간격, 최대 2분)
-    const startRealtimeTracking = useCallback((tripId) => {
+    const startRealtimeTracking = useCallback(async (tripId) => {
         // 기존 실시간 추적 정리
         if (realtimeIntervalRef.current) clearInterval(realtimeIntervalRef.current);
         if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
         
         setRealtimeTarget(tripId);
-        setRealtimeCountdown(120); // 2분 = 120초
+        setRealtimeCountdown(60); // 1분 = 60초
+        
+        // [추가] 앱에 신호 보내기 (긴급공지 활용)
+        try {
+            await fetch('/api/vehicle-tracking/emergency', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: 'SYSTEM_COMMAND',
+                    message: `REALTIME_ON:${tripId}`
+                })
+            });
+        } catch (e) { console.error('앱 실시간 명령 전송 실패:', e); }
         
         // 카운트다운 타이머
         const countdownTimer = setInterval(() => {
@@ -304,14 +316,14 @@ export default function VehicleTrackingPage() {
             } catch (e) { console.error('실시간 추적 오류:', e); }
         }, 3000);
         
-        // 2분 후 자동 종료
+        // 1분 후 자동 종료
         realtimeTimeoutRef.current = setTimeout(() => {
             if (realtimeIntervalRef.current) clearInterval(realtimeIntervalRef.current);
             clearInterval(countdownTimer);
             realtimeIntervalRef.current = null;
             setRealtimeTarget(null);
             setRealtimeCountdown(0);
-        }, 120000); // 2분
+        }, 60000); // 1분
     }, []);
     
     const stopRealtimeTracking = useCallback(() => {
