@@ -24,6 +24,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
@@ -64,7 +65,7 @@ public class FloatingWidgetService extends Service {
 
     // GPS
     private FusedLocationProviderClient mFusedLocationClient;
-    private PendingIntent mLocationPendingIntent;
+    private LocationCallback mLocationCallback;
     private Location mLastLocation;
     private long mLastSendTime = 0;
     private long mCurrentIntervalMs = 60_000; // 기본 60초
@@ -226,19 +227,6 @@ public class FloatingWidgetService extends Service {
             if (mTripId != null) editor.putString(KEY_TRIP_ID, mTripId);
             editor.putLong(KEY_START_TIME, mStartTimeMillis);
             editor.apply();
-            
-            // [v4.2.52] PendingIntent 콜백 (FusedLocation에서 보낸 위치)
-            if ("LOCATION_UPDATE".equals(action)) {
-                if (LocationResult.hasResult(intent)) {
-                    LocationResult result = LocationResult.extractResult(intent);
-                    if (result != null) {
-                        for (Location loc : result.getLocations()) {
-                            handleLocation(loc);
-                        }
-                    }
-                }
-                return START_STICKY;
-            }
         }
 
         // [v4.2.50] startForeground는 onCreate()에서 이미 호출됨 — 여기서 중복 호출 불필요
@@ -438,15 +426,21 @@ public class FloatingWidgetService extends Service {
         return String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s % 60);
     }
 
-    // ─── 유동적 GPS 수신 (FusedLocation + PendingIntent) ────────────────
+    // ─── 유동적 GPS 수신 (FusedLocation + LocationCallback) ──────────────
     private void startLocationTracking() {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         
-        Intent intent = new Intent(this, FloatingWidgetService.class);
-        intent.setAction("LOCATION_UPDATE");
-        // Android 12 이상에서 백그라운드 호출을 위탁하려면 FLAG_MUTABLE 선언
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0);
-        mLocationPendingIntent = PendingIntent.getService(this, 0, intent, flags);
+        if (mLocationCallback == null) {
+            mLocationCallback = new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    if (locationResult == null) return;
+                    for (Location loc : locationResult.getLocations()) {
+                        handleLocation(loc);
+                    }
+                }
+            };
+        }
         
         applyLocationTracking();
     }
@@ -492,9 +486,9 @@ public class FloatingWidgetService extends Service {
      * [v4.2.52] LocationRequest 최적화 (Doze/네트워크 뚫기)
      */
     private void applyLocationTracking() {
-        if (mFusedLocationClient == null || mLocationPendingIntent == null) return;
+        if (mFusedLocationClient == null || mLocationCallback == null) return;
         try {
-            mFusedLocationClient.removeLocationUpdates(mLocationPendingIntent);
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
             
             // Doze 돌파를 위한 LocationRequest 설정
             long minWaitMs = Math.min(mCurrentIntervalMs, 5_000L); // 최소 지연
@@ -506,8 +500,9 @@ public class FloatingWidgetService extends Service {
                     .setWaitForAccurateLocation(false) // 부정확하더라도 일단 받아서 전송 시도
                     .build();
                     
-            mFusedLocationClient.requestLocationUpdates(request, mLocationPendingIntent);
-            Log.d(TAG, "[GPS] FusedLocationProviderClient (PendingIntent) 등록 완료, Interval: " + mCurrentIntervalMs);
+            // [v4.2.53] Intent Firewall 우회를 위해 PendingIntent 대신 Callback + Looper 직접 바인딩 사용
+            mFusedLocationClient.requestLocationUpdates(request, mLocationCallback, mNetworkThread.getLooper());
+            Log.d(TAG, "[GPS] FusedLocationProviderClient (LocationCallback) 등록 완료, Interval: " + mCurrentIntervalMs);
         } catch (SecurityException e) {
             Log.e(TAG, "GPS 권한 없음");
         }
@@ -768,9 +763,8 @@ public class FloatingWidgetService extends Service {
         if (mWindowManager != null && mFloatingWidget != null) {
             try { mWindowManager.removeView(mFloatingWidget); } catch (Exception ignored) {}
         }
-        if (mFusedLocationClient != null && mLocationPendingIntent != null) {
-            mFusedLocationClient.removeLocationUpdates(mLocationPendingIntent);
-            mLocationPendingIntent.cancel();
+        if (mFusedLocationClient != null && mLocationCallback != null) {
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
         }
         if (mSensorManager != null && mGyroListener != null) {
             mSensorManager.unregisterListener(mGyroListener);

@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.52",
-  "versionCode": 196,
-  "changeLog": "v4.2.52 (Build 196)\n- [ARCH] Doze 정면돌파: FusedLocationProviderClient + PendingIntent 도입\n- [ARCH] 백그라운드 위치 수신용 Manifest 인텐트 필터 설정\n- [FIX] 화면 꺼짐 시 네트워크 응답 본문 소비(Flush)로 연결 차단 방어",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=196"
+  "latestVersion": "v4.2.53",
+  "versionCode": 197,
+  "changeLog": "v4.2.53 (Build 197)\n- [ARCH] 삼성 One UI 인텐트 방화벽 우회 — PendingIntent 제거 및 LocationCallback + Looper 바인딩 전환\n- [ARCH] 백그라운드 GPS 콜백을 전용 네이티브 워커 스레드에 직접 할당\n- [CLEAN] 불필요해진 Manifest LOCATION_UPDATE 인텐트 필터 제거",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=197"
 }

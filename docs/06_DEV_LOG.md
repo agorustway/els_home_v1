@@ -1,5 +1,14 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-03-30 (심야) - [앱] 삼성 Intent Firewall 우회 & LocationCallback 전환 v4.2.53 (Build 197)
+### 주제: 삼성 One UI의 백그라운드 서비스 호출 차단 완전 돌파
+#### 핵심 원인 분석 및 해결
+1. **[Android] 삼성 인텐트 방화벽(Intent Firewall) 확인**: `PendingIntent.getService()`를 통한 백그라운드 서비스 시작 시 시스템이 인텐트를 강제로 드랍(Drop)하는 것으로 판단.
+2. **[Android] Direct Binder 연동 (`LocationCallback`)**: Intent 방식을 완전히 폐기하고, GMS와 앱 프로세스 간 직접적인 바인더 통신 채널인 `LocationCallback` 방식으로 회귀.
+3. **[Android] 백그라운드 Looper(Worker Thread) 바인딩**: UI 스레드 간섭을 원천 차단하기 위해, 네이티브 전용 워크 스레드(`mNetworkThread`)의 `Looper`를 콜백 등록 시 직접 전달. OS가 화면을 꺼도 워커 스레드 상에서 위치 처리가 중단 없이 수행됨 확인.
+4. **[Manifest] 최적화**: 더 이상 사용되지 않는 `LOCATION_UPDATE` 인텐트 필터를 제거하여 시스템 리소스 및 보안성 확보.
+
+
 ## 📅 2026-03-30 (완전 늦은 저녁) - [앱] Android Doze 정면돌파 & FusedLocation 전환 v4.2.52 (Build 196)
 ### 주제: 화면 꺼짐 시 센서/네트워크 차단(Gagged) 완벽 해제
 #### 핵심 원인 분석 및 해결

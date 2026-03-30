@@ -79,11 +79,8 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location|dataSync"
-            android:stopWithTask="false">
-            <intent-filter>
-                <action android:name="LOCATION_UPDATE" />
-            </intent-filter>
-        </service>
+            android:stopWithTask="false"
+        />
 
         <!-- [v4.2.51] Doze 관통 Keepalive BroadcastReceiver -->
         <!-- exported 속성을 true로 변경하여 시스템의 BOOT_COMPLETED 브로드캐스트 수신 가능하도록 함 -->
