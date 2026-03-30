@@ -1,5 +1,21 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-03-30 (저녁) - [앱] Doze 모드 관통 및 백그라운드 GPS 완전 자립화 v4.2.51 (Build 195)
+### 주제: 화면이 꺼져도 멈추지 않는 철벽 GPS 관제 시스템 구축
+#### 핵심 원인 분석 및 해결
+1. **[Android] Doze 모드 정면 돌파 (Keepalive)**: 삼성 One UI의 강력한 Doze 모드로 인해 포그라운드 서비스조차 멈추는 현상 해결. `AlarmManager.setExactAndAllowWhileIdle()` 기반의 90초 주기 심장박동(`ServiceKeepaliveReceiver`)을 도입하여, 서비스 중단 감지 시 즉시 자가 부활하도록 설계.
+2. **[Android] GPS 무임승차 (PASSIVE_PROVIDER)**: 시스템 절전 시 GPS 칩셋 비활성화를 방지하기 위해 `PASSIVE_PROVIDER`를 추가 등록. 타 앱(티맵 등)이 GPS를 사용할 때 좌표를 가로채 수신하며, `minTime=0` 설정을 통해 OS에 최우선 수집 시그널 전송.
+3. **[Android] 부팅 후 자동 복구**: `RECEIVE_BOOT_COMPLETED` 및 리시버 `exported="true"` 설정을 통해 기기 재부팅 후에도 별도 앱 실행 없이 운행 추적이 즉시 재개되도록 보강.
+
+## 📅 2026-03-30 (오후) - [앱] 화면 꺼짐 시 WebView 프리징 원천 차단 v4.2.50 (Build 194)
+### 주제: JS(WebView) 의존성 제로화 및 네이티브 자립 수집 체계
+#### 핵심 원인 분석 및 해결
+1. **[Android] 네이티브 역지오코딩 (JS 독립)**: 화면이 꺼지면 WebView JS가 잠들어 오버레이 주소가 멈추던 고질적 문제 해결. 네이티브 서비스에서 직접 서버 프록시를 경유해 카카오 주소를 받아온 후, `MainLooper`를 통해 오버레이 UI를 직접 갱신하도록 개편 (JS 관여 0%).
+2. **[Android] Worker Thread 안정화 (HandlerThread)**: GPS 콜백마다 쓰레드를 생성하던 불안정한 구조를 단일 `HandlerThread` 전용 워커로 교체하여 메모리 누수 및 백그라운드 GC에 의한 중단 방지.
+3. **[Android] 프로세스 우선순위 격상**: 알림 채널 중요도를 `IMPORTANCE_DEFAULT`로 상향하고 `dataSync` 서비스 타입을 추가하여, 삼성 One UI가 우리 앱을 '제한됨' 버킷으로 분류하여 죽이는 것을 원천 차단.
+4. **[Android] ANR 방전 방어**: Samsung 정책에 대응하여 `onCreate()` 진입 즉시 5초 이내에 `startForeground()`를 선언하도록 구조 개선.
+
+
 ## 📅 2026-03-30 (오전) - [앱/웹] 백그라운드 실시간 관제 및 오버레이 상태 동기화 v4.2.47 (Build 191)
 ### 주제: 앱이 잠들어도 죽지 않는 실시간 관제 시스템 완성
 #### 핵심 원인 분석 및 해결

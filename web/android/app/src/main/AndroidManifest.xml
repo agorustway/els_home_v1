@@ -1,54 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme.NoActionBar">
-        <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
-            android:name=".MainActivity"
-            android:label="@string/title_activity_main"
-            android:theme="@style/AppTheme.NoActionBarLaunch"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
 
-        <!-- GPS + 오버레이 위젯 포그라운드 서비스 -->
-        <service
-            android:name=".FloatingWidgetService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location|dataSync"
-            android:stopWithTask="false"
-        />
-
-        <!-- [v4.2.51] Doze 관통 Keepalive BroadcastReceiver -->
-        <receiver
-            android:name=".ServiceKeepaliveReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.elssolution.driver.KEEPALIVE_PING" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
-        </provider>
-    </application>
+    <!-- ============================================== -->
+    <!-- 권한 및 기능 선언 (Application 위쪽으로 이동)  -->
+    <!-- ============================================== -->
 
     <!-- 네트워크 -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -64,8 +19,6 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- 센서 (자이로스코프 — 별도 권한 없음, uses-feature 선언) -->
 
     <!-- 카메라 / 사진 -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -90,6 +43,65 @@
     <!-- 전화번호 조회 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
+    <!-- 센서 (자이로스코프 — 별도 권한 없음, uses-feature 선언) -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+
+    <!-- ============================================== -->
+    <!-- 애플리케이션 컴포넌트 선언                     -->
+    <!-- ============================================== -->
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme.NoActionBar">
+        
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- GPS + 오버레이 위젯 포그라운드 서비스 -->
+        <service
+            android:name=".FloatingWidgetService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location|dataSync"
+            android:stopWithTask="false"
+        />
+
+        <!-- [v4.2.51] Doze 관통 Keepalive BroadcastReceiver -->
+        <!-- exported 속성을 true로 변경하여 시스템의 BOOT_COMPLETED 브로드캐스트 수신 가능하도록 함 -->
+        <receiver
+            android:name=".ServiceKeepaliveReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.elssolution.driver.KEEPALIVE_PING" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
 </manifest>

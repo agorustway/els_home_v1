@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.49",
-  "versionCode": 193,
-  "changeLog": "v4.2.49 (Build 193)\n- [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정\n- v4.2.48 상세\n  - 앱↔오버레이 실시간 동기화 엇박자 해결\n  - 화면 복귀 시 GPS 미수신 빨간색 오탐 제거\n  - GPS 5초 watchdog 도입 (빠른 감지)\n  - 이벤트 마킹 (TRIP_START / END / PAUSE / RESUME)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=193"
+  "latestVersion": "v4.2.51",
+  "versionCode": 195,
+  "changeLog": "v4.2.51 (Build 195)\n- [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 및 PASSIVE_PROVIDER 도입\n- [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread 및 네이티브 역지오코딩 반영\n- [v4.2.49 상세]\n  - 긴급알림 목록 SYSTEM_COMMAND 필터링 버그 수정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=195"
 }
