@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.12",
-  "versionCode": 311,
-  "changeLog": "v4.3.12 (Build 311)\n- [UX] 설정 화면 하단 버튼 시인성 보강 (38px -> 42px)\n- [UX] 스크롤 없이 한 화면에 정보 배치 최적화",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=311"
+  "latestVersion": "v4.3.14",
+  "versionCode": 313,
+  "changeLog": "v4.3.14 (Build 313)\n- [UX] 설정 프로필 입력창 높이 최적화 (42px -> 38px)\n- [UI] 공지 탭 필터 버튼 높이 상향 (28px -> 34px) 및 중앙 정렬",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=313"
 }
