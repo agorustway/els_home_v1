@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.17",
-  "versionCode": 316,
-  "changeLog": "v4.3.17 (Build 316)\n- [FIX] 앱 종료 시 알림바에 '실행 중' 메시지가 남는 현상 해결 (Keepalive 알람 즉시 취소 및 동기 종료)\n- [UI] 설정 화면 '뒤로가기' 버튼과 프로필 사진 영역 사이 여백(12px) 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=316"
+  "latestVersion": "v4.3.18",
+  "versionCode": 317,
+  "changeLog": "v4.3.18 (Build 317)\n- [HOTFIX] 앱 종료 시 서비스가 꺼져있음에도 알림바가 새로 뜨는 현상 해결 (stopService 메서드 직결)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=317"
 }

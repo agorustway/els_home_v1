@@ -128,8 +128,7 @@ public class OverlayPlugin extends Plugin {
     @PluginMethod
     public void stopService(PluginCall call) {
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
-        intent.setAction("STOP_SERVICE");
-        getContext().startService(intent);
+        getContext().stopService(intent);
         call.resolve(new JSObject().put("stopped", true));
     }
 
