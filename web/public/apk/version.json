@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.03",
-  "versionCode": 302,
-  "changeLog": "v4.3.03 (Build 302)\n- [UX] 신규 기사 가입 시 프로필 사진 등록 칸 상시 노출\n- [UX] 권한 설정 순서 최적화 (배터리 우선 배치로 동기화 개선)\n- [UI] 설정 화면 하단 레이아웃 보정",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=302"
+  "latestVersion": "v4.3.04",
+  "versionCode": 303,
+  "changeLog": "v4.3.04 (Build 303)\n- [NATIVE] 화면 켬(WakeUp) 시 GPS 즉시 요청 로직 추가\n- [UX] 화면 복구 시 GPS 시각적 지연 현상 개선\n- [UX] GPS 미수신 알림 시 임시 대기 상태(노란색) 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=303"
 }
