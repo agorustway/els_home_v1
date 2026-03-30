@@ -1,16 +1,16 @@
-# ELS MISSION CONTROL v4.2.53
-> 마지막 업데이트: 2026-03-30 21:17 (KST)
+# ELS MISSION CONTROL v4.2.54
+> 마지막 업데이트: 2026-03-30 21:26 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.53` (Build 197)
+- **현재 버전**: `v4.2.54` (Build 198)
 - **최근 업데이트**: 2026-03-30
-- **상태**: 🔵 배포 완료 — 삼성 One UI 인텐트 방화벽 우회 (LocationCallback)
+- **상태**: 🔵 배포 완료 — 백그라운드 UI 업데이트 크래시 방어 픽스
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.53)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.54)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.2.54**: [FIX] 백그라운드 LocationCallback에서 발생하는 UI 조작 예외(CalledFromWrongThreadException) 해결 — `MainLooper` 래핑
 - [x] **v4.2.53**: [ARCH] 삼성 Intent Firewall 우회: PendingIntent 폐기 및 LocationCallback + 백그라운드 Looper 다이렉트 바인딩 전환
-- [x] **v4.2.52**: [ARCH] Doze 정면돌파: FusedLocationProviderClient 도입 및 Manifest 인텐트 필터 설정 (v4.2.53에서 Callback으로 고도화)
 - [x] **v4.2.51**: [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 도입 및 PASSIVE_PROVIDER 활용
 - [x] **v4.2.50**: [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread/네이티브 역지오코딩/IMPORTANCE_DEFAULT/startForeground 즉시 선언
 - [x] **v4.2.49**: [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정

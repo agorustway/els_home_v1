@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.53');
+  console.log('ELS Driver App Loading... v4.2.54');
 
-  const APP_VERSION = 'v4.2.53';
-  const BUILD_CODE = 197; // Build 197 (v4.2.53)
+  const APP_VERSION = 'v4.2.54';
+  const BUILD_CODE = 198; // Build 198 (v4.2.54)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -118,7 +118,7 @@
     overlay.updateStatus({
       status: State.trip.status,
       isRealtime: isRealtime,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   // ─── 점검체크리스트 ──────────────────────────────────────────
@@ -932,7 +932,7 @@
       // [v4.2.48] 시작 즉시 현재 위치 + TRIP_START 이벤트 마킹
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          pos => onGpsUpdate(pos, true, State.trip.id, 'TRIP_START').catch(() => {}),
+          pos => onGpsUpdate(pos, true, State.trip.id, 'TRIP_START').catch(() => { }),
           null,
           { enableHighAccuracy: true }
         );
@@ -958,7 +958,7 @@
       if (navigator.geolocation) {
         const marker = action === 'pause' ? 'TRIP_PAUSE' : 'TRIP_RESUME';
         navigator.geolocation.getCurrentPosition(
-          pos => onGpsUpdate(pos, true, State.trip.id, marker).catch(() => {}),
+          pos => onGpsUpdate(pos, true, State.trip.id, marker).catch(() => { }),
           null,
           { enableHighAccuracy: true }
         );
@@ -991,7 +991,7 @@
     if (navigator.geolocation) {
       const closingTripId = State.trip.id;
       navigator.geolocation.getCurrentPosition(
-        pos => onGpsUpdate(pos, true, closingTripId, 'TRIP_END').catch(() => {}),
+        pos => onGpsUpdate(pos, true, closingTripId, 'TRIP_END').catch(() => { }),
         null,
         { enableHighAccuracy: true }
       );
@@ -1241,7 +1241,7 @@
     }
 
     // 터널/음영지역 즉각 판별을 위해 타임아웃 단축 (현재 주기 + 10초, 최소 30초)
-    const deadTimeout = Math.max(currentGpsInterval + 10_000, 30_000); 
+    const deadTimeout = Math.max(currentGpsInterval + 10_000, 30_000);
     const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > deadTimeout);
     let gpsColor = '#10b981'; // 초록 (수신중)
     let gpsText = `${Math.round(currentGpsInterval / 1000)}s`;
@@ -1325,7 +1325,7 @@
     const _now = Date.now();
     if (_now - lastEmergencyPollMs > 30000 && State.trip.status === 'driving') {
       lastEmergencyPollMs = _now;
-      pollEmergency().catch(() => {});
+      pollEmergency().catch(() => { });
     }
 
     // [TDD] 강제 수집(isForced)인 경우, 일시정지나 종료 중이어도 위치를 전송해야 함 (중환 전환점)
@@ -1337,7 +1337,7 @@
     if (!State.trip.isRealtime && (speed === null || speed === undefined)) {
       remoteLog(`기지국/네트워크 위치 스킵 (속도 불명): acc=${accuracy?.toFixed(0)}m`, 'GPS_SKIP_NETWORK');
       // 타임스탬프를 갱신하지 않으면 '수신안됨' 상태가 되어 5초 폴링(Wake)이 작동함
-      return; 
+      return;
     }
 
     const speedKph = (speed || 0) * 3.6;
@@ -1456,7 +1456,7 @@
         return t === 'SYSTEM_COMMAND' || t.startsWith('SYSTEM_') || item.type === 'SYSTEM_COMMAND';
       };
       const filteredEmerg = emerg.filter(e => !isSystemMsg(e));
-      const filteredNorm  = norm.filter(n => !isSystemMsg(n));
+      const filteredNorm = norm.filter(n => !isSystemMsg(n));
 
       const merged = [...filteredEmerg, ...filteredNorm].sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
       _notices = merged;
@@ -1560,9 +1560,9 @@
     detail.classList.add('active');
 
     const read = Store.get('readNotices') || [];
-    if (!read.includes(id)) { 
-      read.push(id); 
-      Store.set('readNotices', read); 
+    if (!read.includes(id)) {
+      read.push(id);
+      Store.set('readNotices', read);
       // 읽음 처리 즉각 반영 (느림 현상 해결)
       const itemEl = document.getElementById('notice-item-' + id);
       if (itemEl) itemEl.classList.remove('notice-item-unread');

@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.53",
-  "versionCode": 197,
-  "changeLog": "v4.2.53 (Build 197)\n- [ARCH] 삼성 One UI 인텐트 방화벽 우회 — PendingIntent 제거 및 LocationCallback + Looper 바인딩 전환\n- [ARCH] 백그라운드 GPS 콜백을 전용 네이티브 워커 스레드에 직접 할당\n- [CLEAN] 불필요해진 Manifest LOCATION_UPDATE 인텐트 필터 제거",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=197"
+  "latestVersion": "v4.2.54",
+  "versionCode": 198,
+  "changeLog": "v4.2.54 (Build 198)\n- [FIX] 백그라운드 스레드에서 UI 업데이트 시 발생하는 크래시(CalledFromWrongThreadException) 해결\n- [v4.2.53 핵심 내역]\n  - 삼성 One UI 인텐트 방화벽 우회 완료 (LocationCallback + 워커 스레드 직접 바인딩)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=198"
 }

@@ -461,7 +461,9 @@ public class FloatingWidgetService extends Service {
             else mGpsText = "60s 저속";
             mGpsColor = "#10b981";
         }
-        updateWidgetDisplay();
+        
+        // [v4.2.54] 백그라운드 워커 스레드(mNetworkThread)에서 UI 스레드 안전 호출
+        new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
 
         long now = System.currentTimeMillis();
         if (now - mLastSendTime >= mCurrentIntervalMs) {
