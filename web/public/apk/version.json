@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.2.51",
-  "versionCode": 195,
-  "changeLog": "v4.2.51 (Build 195)\n- [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 및 PASSIVE_PROVIDER 도입\n- [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread 및 네이티브 역지오코딩 반영\n- [v4.2.49 상세]\n  - 긴급알림 목록 SYSTEM_COMMAND 필터링 버그 수정",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=195"
+  "latestVersion": "v4.2.52",
+  "versionCode": 196,
+  "changeLog": "v4.2.52 (Build 196)\n- [ARCH] Doze 정면돌파: FusedLocationProviderClient + PendingIntent 도입\n- [ARCH] 백그라운드 위치 수신용 Manifest 인텐트 필터 설정\n- [FIX] 화면 꺼짐 시 네트워크 응답 본문 소비(Flush)로 연결 차단 방어",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=196"
 }

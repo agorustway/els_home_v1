@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL v4.2.51
-> 마지막 업데이트: 2026-03-30 20:07 (KST)
+# ELS MISSION CONTROL v4.2.52
+> 마지막 업데이트: 2026-03-30 20:46 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.2.51` (Build 195)
+- **현재 버전**: `v4.2.52` (Build 196)
 - **최근 업데이트**: 2026-03-30
-- **상태**: 🟡 소스 수정 완료 — Android Studio 빌드 & APK 배포 대기
+- **상태**: 🔵 배포 완료 — FusedLocationProviderClient + PendingIntent 반영
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.2.51)
+- **설정 파일**: `web/public/apk/version.json` (v4.2.52)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.2.52**: [ARCH] Doze 정면돌파: FusedLocationProviderClient + PendingIntent 도입 및 Manifest 인텐트 필터 설정
 - [x] **v4.2.51**: [ARCH] Doze 모드 관통 아키텍처 — AlarmManager Keepalive 도입 및 PASSIVE_PROVIDER 활용
 - [x] **v4.2.50**: [ARCH] 화면 꺼짐 GPS 완전 독립 — HandlerThread/네이티브 역지오코딩/IMPORTANCE_DEFAULT/startForeground 즉시 선언
 - [x] **v4.2.49**: [FIX] 긴급알림 목록에 웹 관제용 시스템 명령(SYSTEM_COMMAND)이 함께 표시되는 버그 수정

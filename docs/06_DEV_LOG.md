@@ -1,5 +1,14 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-03-30 (완전 늦은 저녁) - [앱] Android Doze 정면돌파 & FusedLocation 전환 v4.2.52 (Build 196)
+### 주제: 화면 꺼짐 시 센서/네트워크 차단(Gagged) 완벽 해제
+#### 핵심 원인 분석 및 해결
+1. **[Android] 구글 위치 서비스 강제 위탁 (`PendingIntent`)**: `LocationManager`의 백그라운드 콜백 차단을 뚫기 위해 `FusedLocationProviderClient`로 전면 전환. OS가 잠들어도 `PendingIntent`를 통해 시스템 레벨에서 우리 서비스를 강제로 깨워 위치 정보를 밀어넣도록 구조 개편.
+2. **[Android] 위치 수신 인텐트 필터 확보**: `AndroidManifest.xml`에 `LOCATION_UPDATE` 인텐트 필터를 선언하여, 백그라운드에서도 외부(GMS) 요청을 수신할 수 있도록 통로 개설.
+3. **[Android] 네트워크 응답 본문 강제 소비 (Flush)**: 화면 꺼짐 시 HTTP 응답 대기 지연으로 포트가 잠기는 현상 방지. 응답 코드 수신 즉시 Input/Error 스트림을 강제로 닫아(Connection Flush) 다음 패킷 전송이 막히지 않도록 조치.
+4. **[Android] Batching 설정 최적화**: `setMaxUpdateDelayMillis`를 설정하여 OS 주기에 맞춘 효율적 데이터 수신(배칭) 유도, 배터리 제한 정책을 우회하며 실데이터 수집 성공.
+
+
 ## 📅 2026-03-30 (저녁) - [앱] Doze 모드 관통 및 백그라운드 GPS 완전 자립화 v4.2.51 (Build 195)
 ### 주제: 화면이 꺼져도 멈추지 않는 철벽 GPS 관제 시스템 구축
 #### 핵심 원인 분석 및 해결

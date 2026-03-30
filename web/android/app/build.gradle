@@ -7,8 +7,8 @@ android {
         applicationId "com.elssolution.driver"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 195
-        versionName "4.2.51"
+        versionCode 196
+        versionName "4.2.52"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -41,6 +41,8 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // [v4.2.52] Doze 정면돌파: FusedLocationProviderClient 도입 (PendingIntent 방식 활용 기반)
+    implementation 'com.google.android.gms:play-services-location:21.2.0'
 }
 
 configurations.all {

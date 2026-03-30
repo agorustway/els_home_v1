@@ -16,14 +16,18 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -59,8 +63,8 @@ public class FloatingWidgetService extends Service {
     private WindowManager.LayoutParams mParams;
 
     // GPS
-    private LocationManager mLocationManager;
-    private LocationListener mLocationListener;
+    private FusedLocationProviderClient mFusedLocationClient;
+    private PendingIntent mLocationPendingIntent;
     private Location mLastLocation;
     private long mLastSendTime = 0;
     private long mCurrentIntervalMs = 60_000; // 기본 60초
@@ -222,6 +226,19 @@ public class FloatingWidgetService extends Service {
             if (mTripId != null) editor.putString(KEY_TRIP_ID, mTripId);
             editor.putLong(KEY_START_TIME, mStartTimeMillis);
             editor.apply();
+            
+            // [v4.2.52] PendingIntent 콜백 (FusedLocation에서 보낸 위치)
+            if ("LOCATION_UPDATE".equals(action)) {
+                if (LocationResult.hasResult(intent)) {
+                    LocationResult result = LocationResult.extractResult(intent);
+                    if (result != null) {
+                        for (Location loc : result.getLocations()) {
+                            handleLocation(loc);
+                        }
+                    }
+                }
+                return START_STICKY;
+            }
         }
 
         // [v4.2.50] startForeground는 onCreate()에서 이미 호출됨 — 여기서 중복 호출 불필요
@@ -421,85 +438,76 @@ public class FloatingWidgetService extends Service {
         return String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s % 60);
     }
 
-    // ─── 유동적 GPS 수신 ──────────────────────────────────────────
+    // ─── 유동적 GPS 수신 (FusedLocation + PendingIntent) ────────────────
     private void startLocationTracking() {
-        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        mLocationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                if (!"driving".equals(mStatus)) return;
-                
-                // 속도 계산 (m/s -> kph)
-                float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
-                
-                // [v4.2.48] GPS 수신 타임스탬프 갱신
-                mLastGpsReceiveTime = System.currentTimeMillis();
-                
-                // [v4.2.48] GPS 수신 즉시 네이티브 자체 gpsText/Color 갱신
-                // JS 업데이트(1초 단위)를 기다리지 않고 수신 즉시 오버레이에 반영
-                // 이를 통해 JS 백그라운드 throttle과 무관하게 오버레이 동기화 보장
-                if (mIsRealtimeMode) {
-                    mGpsText = "실시간 수집중";
-                    mGpsColor = "#f59e0b"; // 주황 (실시간)
-                } else {
-                    // 속도 기반 간격 텍스트 (기사님에게 직관적으로)
-                    if (speedKph >= 60) {
-                        mGpsText = "30s 고속";
-                    } else if (speedKph >= 20) {
-                        mGpsText = "45s 주행";
-                    } else {
-                        mGpsText = "60s 저속";
-                    }
-                    mGpsColor = "#10b981"; // 초록 (수신중)
-                }
-                updateWidgetDisplay();
-
-                long now = System.currentTimeMillis();
-                if (now - mLastSendTime >= mCurrentIntervalMs) {
-                    mLastLocation = location;
-                    mLastSendTime = now;
-                    sendLocationToServer(location, speedKph);
-                }
-
-                // [v4.2.50] 30초마다 네이티브 역지오코딩 — JS 없이 오버레이 주소 갱신
-                if (now - mLastGeocodeTime >= GEOCODE_INTERVAL_MS) {
-                    mLastGeocodeTime = now;
-                    final double lat = location.getLatitude();
-                    final double lng = location.getLongitude();
-                    mNetworkHandler.post(() -> geocodeAndUpdateOverlay(lat, lng));
-                }
-            }
-            @Override public void onStatusChanged(String p, int s, Bundle b) {}
-            @Override public void onProviderEnabled(String p) {}
-            @Override public void onProviderDisabled(String p) {
-                // GPS 프로바이더 비활성화 = 음영지역 진입 신호
-                Log.d(TAG, "GPS provider disabled: " + p);
-            }
-        };
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        
+        Intent intent = new Intent(this, FloatingWidgetService.class);
+        intent.setAction("LOCATION_UPDATE");
+        // Android 12 이상에서 백그라운드 호출을 위탁하려면 FLAG_MUTABLE 선언
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0);
+        mLocationPendingIntent = PendingIntent.getService(this, 0, intent, flags);
+        
         applyLocationTracking();
+    }
+    
+    // onLocationChanged 대체: FusedLocation 결과 처리부
+    private void handleLocation(Location location) {
+        if (!"driving".equals(mStatus)) return;
+        
+        float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
+        mLastGpsReceiveTime = System.currentTimeMillis();
+        
+        if (mIsRealtimeMode) {
+            mGpsText = "실시간 수집중";
+            mGpsColor = "#f59e0b";
+        } else {
+            if (speedKph >= 60) mGpsText = "30s 고속";
+            else if (speedKph >= 20) mGpsText = "45s 주행";
+            else mGpsText = "60s 저속";
+            mGpsColor = "#10b981";
+        }
+        updateWidgetDisplay();
+
+        long now = System.currentTimeMillis();
+        if (now - mLastSendTime >= mCurrentIntervalMs) {
+            mLastLocation = location;
+            mLastSendTime = now;
+            sendLocationToServer(location, speedKph);
+        }
+
+        if (now - mLastGeocodeTime >= GEOCODE_INTERVAL_MS) {
+            mLastGeocodeTime = now;
+            final double lat = location.getLatitude();
+            final double lng = location.getLongitude();
+            mNetworkHandler.post(() -> geocodeAndUpdateOverlay(lat, lng));
+        }
     }
 
     /**
      * [v4.2.48] LocationManager 요청 주기를 현재 mCurrentIntervalMs에 맞춰 재설정
      * 실시간 모드 전환 시 GPS 수신 주기를 3초로 즉시 변경하기 위해 분리
      */
+    /**
+     * [v4.2.52] LocationRequest 최적화 (Doze/네트워크 뚫기)
+     */
     private void applyLocationTracking() {
-        if (mLocationManager == null || mLocationListener == null) return;
+        if (mFusedLocationClient == null || mLocationPendingIntent == null) return;
         try {
-            mLocationManager.removeUpdates(mLocationListener);
-            // [v4.2.51] Doze 듌는 LocationManager 전략
-            // minTime=0: 시스템이 제한하더라도 "내가 가장 빠른 업데이트를 원한다"는 시그널, 실제 주기는 OS가 조절
-            // GPS_PROVIDER + NETWORK_PROVIDER 이중 등록: 하나가 Doze로 죽어도 나머지 하나가 살아있음
-            long gpsMinTimeMs = Math.min(mCurrentIntervalMs, 3_000L);
-            mLocationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, gpsMinTimeMs, 0f, mLocationListener);
-            mLocationManager.requestLocationUpdates(
-                LocationManager.NETWORK_PROVIDER, 10_000L, 0f, mLocationListener);
-            // [v4.2.51] PASSIVE_PROVIDER 추가: 다른 앱이 GPS를 켜나다닐 때 무임승차 수신
-            // Doze 중에도 시스템이 GPS를 켜준 시점에 콜백 지속적 수신
-            mLocationManager.requestLocationUpdates(
-                LocationManager.PASSIVE_PROVIDER, 0L, 0f, mLocationListener);
-            Log.d(TAG, "[GPS] 세 프로바이더 등록 완료 (GPS+NETWORK+PASSIVE), 전송간격: " + mCurrentIntervalMs + "ms");
+            mFusedLocationClient.removeLocationUpdates(mLocationPendingIntent);
+            
+            // Doze 돌파를 위한 LocationRequest 설정
+            long minWaitMs = Math.min(mCurrentIntervalMs, 5_000L); // 최소 지연
+            long maxWaitMs = mCurrentIntervalMs * 2; // 화면 꺼짐 시 일괄 수신(Batching)으로 OS 저항 최소화
+            
+            LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, mCurrentIntervalMs)
+                    .setMinUpdateIntervalMillis(minWaitMs)
+                    .setMaxUpdateDelayMillis(maxWaitMs)
+                    .setWaitForAccurateLocation(false) // 부정확하더라도 일단 받아서 전송 시도
+                    .build();
+                    
+            mFusedLocationClient.requestLocationUpdates(request, mLocationPendingIntent);
+            Log.d(TAG, "[GPS] FusedLocationProviderClient (PendingIntent) 등록 완료, Interval: " + mCurrentIntervalMs);
         } catch (SecurityException e) {
             Log.e(TAG, "GPS 권한 없음");
         }
@@ -600,12 +608,19 @@ public class FloatingWidgetService extends Service {
                 OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
                 writer.write(body); writer.flush(); writer.close();
                 int respCode = conn.getResponseCode();
+                // [v4.2.52] 네트워크 응답 본문 소비 (Connection Pool 관리를 위해 필수, 차단 방어)
+                if (respCode >= 200 && respCode < 300) {
+                    conn.getInputStream().close();
+                } else {
+                    conn.getErrorStream().close();
+                }
                 conn.disconnect();
+                
                 if (markerType != null) {
                     Log.d(TAG, "[MARKER] " + markerType + " 전송 완료 " + respCode);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "GPS 전송 실패: " + e.getMessage());
+                Log.e(TAG, "GPS 전송 실패 (Network Block?): " + e.getMessage());
             }
         };
         // mNetworkHandler에서 이미 호출된 경우엔 직접 실행, 아니면 post
@@ -753,8 +768,9 @@ public class FloatingWidgetService extends Service {
         if (mWindowManager != null && mFloatingWidget != null) {
             try { mWindowManager.removeView(mFloatingWidget); } catch (Exception ignored) {}
         }
-        if (mLocationManager != null && mLocationListener != null) {
-            mLocationManager.removeUpdates(mLocationListener);
+        if (mFusedLocationClient != null && mLocationPendingIntent != null) {
+            mFusedLocationClient.removeLocationUpdates(mLocationPendingIntent);
+            mLocationPendingIntent.cancel();
         }
         if (mSensorManager != null && mGyroListener != null) {
             mSensorManager.unregisterListener(mGyroListener);
