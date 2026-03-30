@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.01",
-  "versionCode": 300,
-  "changeLog": "v4.3.01 (Build 300)\n- [FIX] 첫 설치 시 권한 검사 전 네이티브 호출로 인한 앱 크래시(튕김) 현상 해결\n- [SAFE] init() 함수 try-catch 및 사전 권한 체크 로직 강화\n- [NATIVE] FloatingWidgetService 권한 부족 시 자가 종료 안전장치 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=300"
+  "latestVersion": "v4.3.02",
+  "versionCode": 301,
+  "changeLog": "v4.3.02 (Build 301)\n- [UI] 앱 초기 설정 버튼 색상 테마 적용 (검정/빨강)\n- [FIX] 권한 완료 후 차량 정보 유무에 따른 화면 전환(설정/운행) 로직 수정\n- [FIX] 배터리 설정 후 권한 상태 동기화 누락 수정\n- [FIX] 앱 초기화 후 진행 차단 버그 해결",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=301"
 }

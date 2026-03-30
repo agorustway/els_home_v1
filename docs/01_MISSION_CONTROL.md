@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL v4.3.01
-> 마지막 업데이트: 2026-03-31 03:35 (KST)
+# ELS MISSION CONTROL v4.3.02
+> 마지막 업데이트: 2026-03-31 03:50 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.01` (Build 300)
+- **현재 버전**: `v4.3.02` (Build 301)
 - **최근 업데이트**: 2026-03-31
-- **상태**: 🟢 배포 완료 — 첫 설치 크래시 방어막 적용 (init 로직 개선)
+- **상태**: 🟢 배포 완료 — 앱 초기 설정 UI 개선 및 권한/화면전환 버그 수정
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
-- **설정 파일**: `web/public/apk/version.json` (v4.3.01)
+- **설정 파일**: `web/public/apk/version.json` (v4.3.02)
 
 ### 🎯 주요 마일스톤
+- [x] **v4.3.02**: [UI/FIX] 초기 설정 버튼 색상(검정/빨강) 및 권한 동기화/화면 전환 로직 버그 수정
 - [x] **v4.3.01**: [FIX] 첫 설치 크래시 방어: `init()` 사전 권한 체크 및 `FloatingWidgetService` 안전 시작 로직 적용
 - [x] **v4.2.59**: [FIX] 자이로 필드 제거: DB 스키마(`gyro` 컬럼 없음) 충돌로 인한 500 에러 해결, `accuracy` 필드 추가 및 `JSONObject` 도입 (v4.2.58 통합)
 - [x] **v4.2.58**: [FIX] 백엔드 JSON 포맷 에러 해결: `org.json.JSONObject` 도입으로 페이로드 생성 안전성 확보

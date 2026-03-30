@@ -141,6 +141,10 @@ input, textarea, select, button { font-family: inherit; }
 .btn-full   { width: 100%; height: 44px; font-size: 15px; border-radius: var(--radius); }
 .btn-sm     { height: 32px; padding: 0 10px; font-size: 12px; }
 
+/* 앱 초기 설정 전용 버튼 스타일 */
+.btn-black { background: #111111 !important; color: #ffffff !important; border-color: #111111 !important; }
+.btn-red { background: #ef4444 !important; color: #ffffff !important; border-color: #ef4444 !important; }
+
 /* ─── 공지 탭 ─── */
 #tab-notice { display: flex; flex-direction: column; }
 .notice-list { flex: 1; overflow-y: auto; }

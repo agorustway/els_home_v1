@@ -583,6 +583,20 @@
 
     // 최종 강제 동기화
     for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
+
+    // [v4.3.02] 설정 완료 버튼 색상 동적 업데이트
+    const btnFinish = document.getElementById('btn-finish-setup');
+    if (btnFinish) {
+      const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
+      if (criticalPerms) {
+        btnFinish.classList.remove('btn-red');
+        btnFinish.classList.add('btn-black');
+      } else {
+        btnFinish.classList.remove('btn-black');
+        btnFinish.classList.add('btn-red');
+      }
+    }
+
     console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
   }
 
@@ -708,15 +722,16 @@
 
       Store.set('permSetupDone', true);
 
-      // 권한 완료 후 초기화 플로우를 다시 수행하여 앱 기능 시작
-      init().then(() => {
-        const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-        if (!hasProfile) {
-          showToast('권한 설정 완료! 차량 정보를 먼저 입력해 주세요.');
-        } else {
-          showToast('반갑습니다! 안전 운전 하세요.');
-        }
-      });
+      // [v4.3.02] 권한 완료 후 차량 정보 유무에 따른 분기
+      const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
+      
+      if (!hasProfile) {
+        showToast('권한 설정 완료! 차량 정보를 먼저 등록해 주세요.');
+        openSettings(); // 차량 정보 설정 페이지로 이동
+      } else {
+        showToast('반갑습니다! 안전 운전 하세요.');
+        showMain(); // 운행 페이지로 이동
+      }
     });
   }
 
@@ -749,7 +764,10 @@
     // 메모리 내 상태도 명시적으로 초기화
     State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
     State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
-    for (const key in permStatuses) permStatuses[key] = false;
+    // [v4.3.02] permStatuses 객체 참조 유지하며 값 초기화
+    if (permStatuses) {
+      for (const key in permStatuses) permStatuses[key] = false;
+    }
 
     showScreen('permission');
     updatePermStatuses().then(() => {
