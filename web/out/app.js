@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.18';
-  const BUILD_CODE = 317; // Build 317 (v4.3.18)
+  const APP_VERSION = 'v4.3.19';
+  const BUILD_CODE = 318; // Build 318 (v4.3.19)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2303,9 +2303,18 @@
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
 
-    // [v4.3.17] 종료 전 오버레이 및 GPS 명시적 중구 (완동기화)
-    await stopOverlayService();
+    // [v4.3.19] 서비스 먼저 완전 중지 → 300ms 대기 → 앱 종료
+    // App.exitApp()이 프로세스를 즉시 kill하면 onDestroy/stopForeground가 실행 안 됨
     stopGPS();
+    try {
+      const overlay = window.Capacitor?.Plugins?.Overlay;
+      if (overlay) {
+        await overlay.stopService();
+      }
+    } catch (_) { /* noop */ }
+
+    // 서비스가 onDestroy → stopForeground를 실행할 시간 확보
+    await new Promise(r => setTimeout(r, 300));
 
     if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.exitApp();

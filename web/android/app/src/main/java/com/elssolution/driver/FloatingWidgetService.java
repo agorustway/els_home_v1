@@ -519,28 +519,39 @@ public class FloatingWidgetService extends Service {
     // onLocationChanged 대체: FusedLocation 결과 처리부
     private void handleLocation(Location location) {
         if (!"driving".equals(mStatus)) return;
-        
+
         float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
         mLastGpsReceiveTime = System.currentTimeMillis();
-        
+
         // [v4.2.56] GPS 수신 완료 CCTV 전송
         sendNativeWebLog("NATIVE_GPS", "백그라운드 GPS 수신: " + location.getLatitude() + "," + location.getLongitude());
-        
+
         if (mIsRealtimeMode) {
             mGpsText = "실시간 수집중";
             mGpsColor = "#f59e0b";
+            mCurrentIntervalMs = 3_000;
         } else {
-            if (speedKph >= 60) mGpsText = "30s 고속";
-            else if (speedKph >= 20) mGpsText = "45s 주행";
-            else mGpsText = "60s 저속";
+            // [BugFix #2] 속도 기반 mCurrentIntervalMs 실제 업데이트 (서버 전송 주기 디커플링)
+            if (speedKph >= 60) {
+                mGpsText = "30s 고속";
+                mCurrentIntervalMs = 30_000;
+            } else if (speedKph >= 20) {
+                mGpsText = "45s 주행";
+                mCurrentIntervalMs = 45_000;
+            } else {
+                mGpsText = "60s 저속";
+                mCurrentIntervalMs = 60_000;
+            }
             mGpsColor = "#10b981";
         }
-        
+
         // [v4.2.54] 백그라운드 워커 스레드(mNetworkThread)에서 UI 스레드 안전 호출
         new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
 
         long now = System.currentTimeMillis();
-        if (now - mLastSendTime >= mCurrentIntervalMs) {
+        // [BugFix #1] OS가 요청 주기보다 6초 빠르게 콜백을 줄 수 있으므로 6초 마진 허용
+        final long TIMING_MARGIN_MS = 6_000;
+        if (now - mLastSendTime >= (mCurrentIntervalMs - TIMING_MARGIN_MS)) {
             mLastLocation = location;
             mLastSendTime = now;
             sendLocationToServer(location, speedKph);
@@ -565,16 +576,18 @@ public class FloatingWidgetService extends Service {
         if (mFusedLocationClient == null || mLocationCallback == null) return;
         try {
             mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-            
-            // [v4.2.55] 배칭(Batching) 완전 제거 - 배터리 소모 무시하고 무지성 즉각 수신 강제
-            LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, mCurrentIntervalMs)
-                    .setMinUpdateIntervalMillis(mCurrentIntervalMs) // 지연 절대 금지, 동일 간격 강제
+
+            // [BugFix #2] GPS 수집 주기는 항상 15초 고정 (수집/전송 디커플링)
+            // 실시간 모드는 3초, 일반 모드도 15초마다 빠르게 수집하되 서버 전송은 handleLocation에서 속도별로 필터
+            final long collectIntervalMs = mIsRealtimeMode ? 3_000 : 15_000;
+            LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, collectIntervalMs)
+                    .setMinUpdateIntervalMillis(collectIntervalMs)
                     .setWaitForAccurateLocation(false)
                     .build();
-                    
+
             // Intent Firewall 우회를 위해 Callback + Looper 직접 바인딩 사용
             mFusedLocationClient.requestLocationUpdates(request, mLocationCallback, mNetworkThread.getLooper());
-            Log.d(TAG, "[GPS] FusedLocationProviderClient (우선순위 강제 수신) 등록 완료, Interval: " + mCurrentIntervalMs);
+            Log.d(TAG, "[GPS] 수집 주기 고정: " + collectIntervalMs + "ms | 전송 주기: " + mCurrentIntervalMs + "ms");
         } catch (SecurityException e) {
             Log.e(TAG, "GPS 권한 없음");
         }
@@ -626,8 +639,8 @@ public class FloatingWidgetService extends Service {
                     event.values[1] * event.values[1] +
                     event.values[2] * event.values[2]
                 );
-                // [v4.2.48] 급회전(1.0 rad/s 이상) 감지 → 즉시 이벤트 마킹 전송
-                if (mLastGyroMagnitude > 1.0f && mLastLocation != null && "driving".equals(mStatus)) {
+                // [BugFix #3] 자이로 민감도 현실화: 1.0f → 0.35f (유턴/우회전 감지)
+                if (mLastGyroMagnitude > 0.35f && mLastLocation != null && "driving".equals(mStatus)) {
                     long now = System.currentTimeMillis();
                     if (now - mLastSendTime > 10_000) { // 10초 쿨다운
                         mLastSendTime = now;
