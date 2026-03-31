@@ -233,7 +233,7 @@
 
               if (State.trip.status === 'driving') {
                 const resumeDelay = 500;
-                
+
                 const Prefs = window.Capacitor?.Plugins?.Preferences;
                 if (Prefs) {
                   Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
@@ -244,7 +244,7 @@
                         remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
                       }
                     }
-                  }).catch(() => {});
+                  }).catch(() => { });
                 }
 
                 setTimeout(() => {
@@ -256,19 +256,19 @@
                     remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
                     stopGPS();
                     startGPS();
-                    return; 
+                    return;
                   }
 
                   navigator.geolocation.getCurrentPosition(
                     pos => {
-                      lastGpsTimestamp = Date.now(); 
+                      lastGpsTimestamp = Date.now();
                       onGpsUpdate(pos, true, State.trip.id);
                       remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
                     },
                     err => {
                       remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code} (네이티브 watchdog 처리 중)`, 'GPS_RESUME_ERR');
                     },
-                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 } 
+                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 }
                   );
                 }, resumeDelay);
               }
@@ -381,9 +381,9 @@
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
     // 프로필 사진 섹션 상시 표시 및 저장된 사진 렌더링
-    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운');
-    updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
-    updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
+    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운전');
+    updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차량');
+    updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤시');
   }
 
   function saveProfile() {
@@ -443,9 +443,9 @@
         document.getElementById('s-id').value = d.vehicle_id || d.driver_id || '';
 
         // 프로필 사진 업데이트
-        updateProfilePhoto('p-photo-driver', d.photo_driver, '운');
-        updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차');
-        updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤');
+        updateProfilePhoto('p-photo-driver', d.photo_driver, '운전');
+        updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차량');
+        updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤시');
 
         // State에도 저장 (저장 버튼 클릭 시 함께 전송되도록)
         State.profile.photo_driver = d.photo_driver;
@@ -723,7 +723,7 @@
 
       // [v4.3.02] 권한 완료 후 차량 정보 유무에 따른 분기
       const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-      
+
       if (!hasProfile) {
         showToast('권한 설정 완료! 차량 정보를 먼저 등록해 주세요.');
         openSettings(); // 차량 정보 설정 페이지로 이동
@@ -1859,9 +1859,9 @@
       State.profile[`photo_${p.type}`] = '';
 
       let fallbackText = '';
-      if (p.type === 'driver') fallbackText = '운';
-      if (p.type === 'vehicle') fallbackText = '차';
-      if (p.type === 'chassis') fallbackText = '샤';
+      if (p.type === 'driver') fallbackText = '운전';
+      if (p.type === 'vehicle') fallbackText = '차량';
+      if (p.type === 'chassis') fallbackText = '샤시';
       updateProfilePhoto(`p-photo-${p.type}`, '', fallbackText);
 
       showToast('삭제되었습니다. 정보 저장을 눌러야 완전히 반영됩니다.');
@@ -2313,29 +2313,13 @@
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
 
-    stopGPS();
-
-    // [v4.3.22] EXPLICIT_EXIT 플래그: Android가 START_STICKY로 서비스를 재시작 시도할 때
-    // 서비스가 이 플래그를 보고 즉시 자멸 → 알림 생성 원천 차단
-    try {
-      const Prefs = window.Capacitor?.Plugins?.Preferences;
-      if (Prefs) await Prefs.set({ key: 'EXPLICIT_EXIT', value: 'true' });
-    } catch (_) { /* noop */ }
-
-    // 서비스가 구동 중이면 STOP_SERVICE 인텐트로 클린하게 종료
-    try {
-      const overlay = window.Capacitor?.Plugins?.Overlay;
-      if (overlay) await overlay.stopService();
-    } catch (_) { /* noop */ }
-
-    // [v4.3.25] 서비스가 onDestroy를 실행할 시간 확보 (300ms)
-    await new Promise(r => setTimeout(r, 300));
-
+    // 서비스 중단 대기 등 생명주기를 꼬이게 만드는 불필요한 로직 모두 제거
+    // 오직 네이티브의 < 뒤로가기 버튼과 완벽히 동일하게 즉시 핵폭탄(finishAndRemoveTask) 호출
     const overlayPlugin = window.Capacitor?.Plugins?.Overlay;
     if (overlayPlugin && overlayPlugin.exitAppForce) {
-      overlayPlugin.exitAppForce(); // 우리가 만든 핵폭탄(finishAndRemoveTask) 호출
+      overlayPlugin.exitAppForce(); 
     } else if (window.Capacitor?.Plugins?.App) {
-      window.Capacitor.Plugins.App.exitApp(); // 대체용
+      window.Capacitor.Plugins.App.exitApp();
     } else {
       showToast('앱을 직접 닫아주세요.');
     }

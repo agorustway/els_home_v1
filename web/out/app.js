@@ -2313,29 +2313,13 @@
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
 
-    stopGPS();
-
-    // [v4.3.22] EXPLICIT_EXIT 플래그: Android가 START_STICKY로 서비스를 재시작 시도할 때
-    // 서비스가 이 플래그를 보고 즉시 자멸 → 알림 생성 원천 차단
-    try {
-      const Prefs = window.Capacitor?.Plugins?.Preferences;
-      if (Prefs) await Prefs.set({ key: 'EXPLICIT_EXIT', value: 'true' });
-    } catch (_) { /* noop */ }
-
-    // 서비스가 구동 중이면 STOP_SERVICE 인텐트로 클린하게 종료
-    try {
-      const overlay = window.Capacitor?.Plugins?.Overlay;
-      if (overlay) await overlay.stopService();
-    } catch (_) { /* noop */ }
-
-    // [v4.3.25] 서비스가 onDestroy를 실행할 시간 확보 (300ms)
-    await new Promise(r => setTimeout(r, 300));
-
+    // 서비스 중단 대기 등 생명주기를 꼬이게 만드는 불필요한 로직 모두 제거
+    // 오직 네이티브의 < 뒤로가기 버튼과 완벽히 동일하게 즉시 핵폭탄(finishAndRemoveTask) 호출
     const overlayPlugin = window.Capacitor?.Plugins?.Overlay;
     if (overlayPlugin && overlayPlugin.exitAppForce) {
-      overlayPlugin.exitAppForce(); // 우리가 만든 핵폭탄(finishAndRemoveTask) 호출
+      overlayPlugin.exitAppForce(); 
     } else if (window.Capacitor?.Plugins?.App) {
-      window.Capacitor.Plugins.App.exitApp(); // 대체용
+      window.Capacitor.Plugins.App.exitApp();
     } else {
       showToast('앱을 직접 닫아주세요.');
     }
