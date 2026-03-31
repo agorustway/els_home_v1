@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.21",
-  "versionCode": 320,
-  "changeLog": "v4.3.21 (Build 320)\n- [HOTFIX] 자이로/가속도 센서 킬스위치 누락 보완: 가속도계 대체 리스너 + 메인 자이로 리스너 양쪽 onSensorChanged 최상단에 6km/h 미만 즉시 return 추가 → 도보/정차 시 비상 전송 오작동 완전 차단",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=320"
+  "latestVersion": "v4.3.22",
+  "versionCode": 321,
+  "changeLog": "v4.3.22 (Build 321)\n- [HOTFIX] 종료 버튼 누를 때 알림창 생기는 버그 완전 해결: EXPLICIT_EXIT 플래그 방식으로 Android START_STICKY 자동재시작 원천 차단",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=321"
 }

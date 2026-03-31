@@ -201,6 +201,17 @@ public class FloatingWidgetService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // [v4.3.22] EXPLICIT_EXIT 플래그 체크: exitApp() 호출 후 Android가 START_STICKY로
+        // 서비스를 재시작 시도할 때, 이 플래그가 있으면 즉시 자멸 → 알림 생성 원천 차단
+        SharedPreferences capPrefs = getSharedPreferences("CapacitorStorage", MODE_PRIVATE);
+        String explicitExit = capPrefs.getString("EXPLICIT_EXIT", null);
+        if ("true".equals(explicitExit)) {
+            capPrefs.edit().remove("EXPLICIT_EXIT").apply();
+            Log.d(TAG, "[v4.3.22] EXPLICIT_EXIT 감지 → 서비스 즉시 자멸, START_NOT_STICKY 반환");
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         // [안전장치] 권한 체크 재확인
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             stopSelf();

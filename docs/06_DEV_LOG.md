@@ -1,5 +1,12 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-03-31 (오후) - [HOTFIX] 종료 버튼 클릭 시 알림바 버그 완전 해결 v4.3.22 (Build 321)
+### 주제: Android START_STICKY에 의한 서비스 재시작 원천 차단
+#### 주요 내용
+1. **[FIX] EXPLICIT_EXIT 플래그 도입**: 앱 종료 버튼(`exitApp`) 클릭 전 Preferences에 `EXPLICIT_EXIT: true`를 기록함.
+2. **[NATIVE] 서비스 자멸 로직**: 안드로이드 OS가 `START_STICKY` 특성에 의해 종료된 서비스를 재시작할 때, 서비스 `onStartCommand`의 최상단에서 플래그를 확인하여 즉시 `stopSelf()`를 호출하고 `START_NOT_STICKY`를 반환하도록 수정.
+3. **[UX] 알림창 잔상 제거**: 이로써 종료 시 알림창이 다시 생성되는 현상을 완벽하게 방지함.
+
 ## 📅 2026-03-31 (새벽) - [HOTFIX] 앱 종료 시 고스트 알림 현상 해결 v4.3.18 (Build 317)
 ### 주제: 서비스 미구동 상태에서 종료 시 알림바 메시지 생성 방지
 #### 주요 내용

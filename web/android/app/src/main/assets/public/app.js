@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.21';
-  const BUILD_CODE = 320; // Build 320 (v4.3.21)
+  const APP_VERSION = 'v4.3.22';
+  const BUILD_CODE = 321; // Build 321 (v4.3.22)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2313,18 +2313,23 @@
     }
     if (!confirm('앱을 종료하시겠습니까?')) return;
 
-    // [v4.3.19] 서비스 먼저 완전 중지 → 300ms 대기 → 앱 종료
-    // App.exitApp()이 프로세스를 즉시 kill하면 onDestroy/stopForeground가 실행 안 됨
     stopGPS();
+
+    // [v4.3.22] EXPLICIT_EXIT 플래그: Android가 START_STICKY로 서비스를 재시작 시도할 때
+    // 서비스가 이 플래그를 보고 즉시 자멸 → 알림 생성 원천 차단
     try {
-      const overlay = window.Capacitor?.Plugins?.Overlay;
-      if (overlay) {
-        await overlay.stopService();
-      }
+      const Prefs = window.Capacitor?.Plugins?.Preferences;
+      if (Prefs) await Prefs.set({ key: 'EXPLICIT_EXIT', value: 'true' });
     } catch (_) { /* noop */ }
 
-    // 서비스가 onDestroy → stopForeground를 실행할 시간 확보
-    await new Promise(r => setTimeout(r, 300));
+    // 서비스가 구동 중이면 STOP_SERVICE 인텐트로 클린하게 종료
+    try {
+      const overlay = window.Capacitor?.Plugins?.Overlay;
+      if (overlay) await overlay.stopService();
+    } catch (_) { /* noop */ }
+
+    // onDestroy → stopForeground 실행 시간 확보 후 프로세스 종료
+    await new Promise(r => setTimeout(r, 400));
 
     if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.exitApp();
