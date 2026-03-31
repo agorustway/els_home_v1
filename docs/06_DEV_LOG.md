@@ -1,4 +1,13 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+2: 
+3: ## 📅 2026-03-31 (오후) - [HOTFIX] 화면 종료 버튼 클릭 시 좀비 알림 완벽 해결 v4.3.25 (Build 324)
+4: ### 주제: JS exitApp()과 Native finishAndRemoveTask() 연동
+5: #### 주요 내용
+6: 1. **[NATIVE] exitAppForce() 신규 브릿지 추가**: `OverlayPlugin.java`에 `finishAndRemoveTask()`를 호출하는 메서드를 추가하여 하드웨어 뒤로가기와 동일한 강력한 종료 보장.
+7: 2. **[NATIVE] stopService() 안정성 강화**: `stopService(intent)` 대신 `intent.setAction("STOP_SERVICE")` 후 `startService(intent)` 호출 방식으로 변경하여 서비스 종료 시그널 전달 확률 극대화.
+8: 3. **[JS] exitApp() 로직 고도화**: 맨 마지막 종료 호출부를 `window.Capacitor.Plugins.App.minimizeApp()`에서 `Overlay.exitAppForce()`로 교체.
+9: 4. **[UX] 좀비 알림 근절**: 이로써 화면 버튼 종료 시에도 `onTaskRemoved`가 정상 트리거되어 알림바가 깔끔하게 사라짐을 확인.
+10: 
 
 ## 📅 2026-03-31 (오후) - [HOTFIX] 종료 버튼 클릭 시 알림바 버그 완전 해결 v4.3.22 (Build 321)
 ### 주제: Android START_STICKY에 의한 서비스 재시작 원천 차단

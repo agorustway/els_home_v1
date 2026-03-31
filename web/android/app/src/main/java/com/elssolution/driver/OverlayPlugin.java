@@ -128,8 +128,18 @@ public class OverlayPlugin extends Plugin {
     @PluginMethod
     public void stopService(PluginCall call) {
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
-        getContext().stopService(intent);
+        intent.setAction("STOP_SERVICE");
+        getContext().startService(intent);
         call.resolve(new JSObject().put("stopped", true));
+    }
+
+    // JS → 앱 강제 종료 (알림 잔상 방지용 강력한 종료)
+    @PluginMethod
+    public void exitAppForce(PluginCall call) {
+        if (getActivity() != null) {
+            getActivity().finishAndRemoveTask();
+        }
+        call.resolve();
     }
 
     // JS → 배터리 최적화 제외 요청 (Android 16 정밀 대응)

@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.24",
-  "versionCode": 323,
-  "changeLog": "v4.3.24 (Build 323)\n- [UX 원복] 종료 탭 버튼 복구\n- [FIX] 종료 버튼 클릭 시 minimizeApp() 호출로 하드웨어 뒤로가기와 동일하게 동작하도록 수정 (알림창 잔상 문제 해결)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=323"
+  "latestVersion": "v4.3.25",
+  "versionCode": 324,
+  "changeLog": "v4.3.25 (Build 324)\n- [FIX] 화면 [종료] 버튼 클릭 시 좀비 알림 잔상 버그 해결\n- [NATIVE] finishAndRemoveTask() 기반 강력한 종료(exitAppForce) 적용\n- [NATIVE] stopService 시그널 전달 안정성 강화 (STOP_SERVICE 액션 사용)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=324"
 }
