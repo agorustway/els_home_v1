@@ -134,12 +134,15 @@ public class OverlayPlugin extends Plugin {
     }
 
     // JS → 앱 강제 종료 (알림 잔상 방지용 강력한 종료)
+    // JS → 앱 완전 강제 종료 (좀비 알림 사살용)
     @PluginMethod
     public void exitAppForce(PluginCall call) {
         if (getActivity() != null) {
-            getActivity().finishAndRemoveTask();
+            getActivity().runOnUiThread(() -> {
+                getActivity().finishAndRemoveTask();
+            });
         }
-        call.resolve();
+        call.resolve(new JSObject().put("exited", true));
     }
 
     // JS → 배터리 최적화 제외 요청 (Android 16 정밀 대응)

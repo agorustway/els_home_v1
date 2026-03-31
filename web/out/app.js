@@ -233,7 +233,7 @@
 
               if (State.trip.status === 'driving') {
                 const resumeDelay = 500;
-                
+
                 const Prefs = window.Capacitor?.Plugins?.Preferences;
                 if (Prefs) {
                   Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
@@ -244,7 +244,7 @@
                         remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
                       }
                     }
-                  }).catch(() => {});
+                  }).catch(() => { });
                 }
 
                 setTimeout(() => {
@@ -256,19 +256,19 @@
                     remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
                     stopGPS();
                     startGPS();
-                    return; 
+                    return;
                   }
 
                   navigator.geolocation.getCurrentPosition(
                     pos => {
-                      lastGpsTimestamp = Date.now(); 
+                      lastGpsTimestamp = Date.now();
                       onGpsUpdate(pos, true, State.trip.id);
                       remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
                     },
                     err => {
                       remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code} (네이티브 watchdog 처리 중)`, 'GPS_RESUME_ERR');
                     },
-                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 } 
+                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 }
                   );
                 }, resumeDelay);
               }
@@ -381,9 +381,9 @@
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
     // 프로필 사진 섹션 상시 표시 및 저장된 사진 렌더링
-    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운');
-    updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차');
-    updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤');
+    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운전');
+    updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차량');
+    updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤시');
   }
 
   function saveProfile() {
@@ -723,7 +723,7 @@
 
       // [v4.3.02] 권한 완료 후 차량 정보 유무에 따른 분기
       const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-      
+
       if (!hasProfile) {
         showToast('권한 설정 완료! 차량 정보를 먼저 등록해 주세요.');
         openSettings(); // 차량 정보 설정 페이지로 이동
@@ -2328,17 +2328,14 @@
       if (overlay) await overlay.stopService();
     } catch (_) { /* noop */ }
 
-    // onDestroy → stopForeground 실행 시간 확보 후 프로세스 종료
-    await new Promise(r => setTimeout(r, 400));
+    // [v4.3.25] 서비스가 onDestroy를 실행할 시간 확보 (300ms)
+    await new Promise(r => setTimeout(r, 300));
 
-    // [v4.3.24] App.minimizeApp() 대신 Overlay.exitAppForce() 사용
-    // exitAppForce()는 finishAndRemoveTask()를 호출하여 프로세스를 완전히 날려버림으로써, 
-    // 안드로이드 OS의 알림바 잔상 및 START_STICKY에 의한 재시작 버그를 원천 차단함.
-    const overlay = Overlay();
-    if (overlay && overlay.exitAppForce) {
-      overlay.exitAppForce();
+    const overlayPlugin = window.Capacitor?.Plugins?.Overlay;
+    if (overlayPlugin && overlayPlugin.exitAppForce) {
+      overlayPlugin.exitAppForce(); // 우리가 만든 핵폭탄(finishAndRemoveTask) 호출
     } else if (window.Capacitor?.Plugins?.App) {
-      window.Capacitor.Plugins.App.minimizeApp();
+      window.Capacitor.Plugins.App.exitApp(); // 대체용
     } else {
       showToast('앱을 직접 닫아주세요.');
     }

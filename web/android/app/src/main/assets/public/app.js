@@ -2328,17 +2328,14 @@
       if (overlay) await overlay.stopService();
     } catch (_) { /* noop */ }
 
-    // onDestroy → stopForeground 실행 시간 확보 후 프로세스 종료
-    await new Promise(r => setTimeout(r, 400));
+    // [v4.3.25] 서비스가 onDestroy를 실행할 시간 확보 (300ms)
+    await new Promise(r => setTimeout(r, 300));
 
-    // [v4.3.24] App.minimizeApp() 대신 Overlay.exitAppForce() 사용
-    // exitAppForce()는 finishAndRemoveTask()를 호출하여 프로세스를 완전히 날려버림으로써, 
-    // 안드로이드 OS의 알림바 잔상 및 START_STICKY에 의한 재시작 버그를 원천 차단함.
-    const overlay = Overlay();
-    if (overlay && overlay.exitAppForce) {
-      overlay.exitAppForce();
+    const overlayPlugin = window.Capacitor?.Plugins?.Overlay;
+    if (overlayPlugin && overlayPlugin.exitAppForce) {
+      overlayPlugin.exitAppForce(); // 우리가 만든 핵폭탄(finishAndRemoveTask) 호출
     } else if (window.Capacitor?.Plugins?.App) {
-      window.Capacitor.Plugins.App.minimizeApp();
+      window.Capacitor.Plugins.App.exitApp(); // 대체용
     } else {
       showToast('앱을 직접 닫아주세요.');
     }
