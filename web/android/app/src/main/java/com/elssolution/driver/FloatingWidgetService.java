@@ -97,6 +97,7 @@ public class FloatingWidgetService extends Service {
     private String mGpsColor = "#7d8590";
     private String mAddress = "위치 확인 중...";
     private boolean mIsRealtimeMode = false; // 실시간 3초 모드
+    private float mLastSpeedKph = 0f; // [v4.3.20] 빠른 속도 저장 (자이로 라이더 필터용)
 
     // [v4.2.48] GPS 상태 watchdog (JS 의존 없이 네이티브 자체 판단)
     private static final long GPS_DEAD_THRESHOLD_MS = 15_000;
@@ -521,6 +522,7 @@ public class FloatingWidgetService extends Service {
         if (!"driving".equals(mStatus)) return;
 
         float speedKph = location.hasSpeed() ? location.getSpeed() * 3.6f : 0f;
+        mLastSpeedKph = speedKph; // [v4.3.20] 속도 저장 (자이로 필터 용)
         mLastGpsReceiveTime = System.currentTimeMillis();
 
         // [v4.2.56] GPS 수신 완료 CCTV 전송
@@ -531,16 +533,20 @@ public class FloatingWidgetService extends Service {
             mGpsColor = "#f59e0b";
             mCurrentIntervalMs = 3_000;
         } else {
-            // [BugFix #2] 속도 기반 mCurrentIntervalMs 실제 업데이트 (서버 전송 주기 디커플링)
+            // [BugFix #2 + v4.3.20] 4단계 속도기반 전송 주기 + mCurrentIntervalMs 실제 업데이트
             if (speedKph >= 60) {
                 mGpsText = "30s 고속";
                 mCurrentIntervalMs = 30_000;
             } else if (speedKph >= 20) {
                 mGpsText = "45s 주행";
                 mCurrentIntervalMs = 45_000;
-            } else {
+            } else if (speedKph >= 6) {
                 mGpsText = "60s 저속";
                 mCurrentIntervalMs = 60_000;
+            } else {
+                // [v4.3.20] 6km/h 미만: 도보/정차 상태 → 3분 대기
+                mGpsText = "3m 도보/정차";
+                mCurrentIntervalMs = 180_000;
             }
             mGpsColor = "#10b981";
         }

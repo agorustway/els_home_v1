@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.19",
-  "versionCode": 318,
-  "changeLog": "v4.3.19 (Build 318)\n- [BugFix #1] 108초 딜레이 버그: GPS 전송 조건에 6초 타이밍 마진 추가\n- [BugFix #2] 가변 주기 버그: 속도별 mCurrentIntervalMs 실제 업데이트 + GPS 수집 15초 고정/전송 디커플링\n- [BugFix #3] 자이로 민감도 현실화: 1.0f → 0.35f (유턴/우회전 즉각 감지)\n- [FIX] 종료 탭 버튼 알림창 잔상: stopService 직접 await + 300ms 딜레이 후 앱 종료",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=318"
+  "latestVersion": "v4.3.20",
+  "versionCode": 319,
+  "changeLog": "v4.3.20 (Build 319)\n- [최적화] 6km/h 미만 정차/도보 시 GPS 전송 주기 3분(180초) 대기 + 자이로 센서 스킵 (배터리 절약)\n- [FIX] 일시정지 중 위경도 좌표 대신 이전 역지오코딩 한글 주소 그대로 유지\n- [UX] 앱 복귀 직후 3초 Grace Period로 GPS 빨간 깜빡임 완전 방지",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=319"
 }

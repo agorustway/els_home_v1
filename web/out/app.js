@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.19';
-  const BUILD_CODE = 318; // Build 318 (v4.3.19)
+  const APP_VERSION = 'v4.3.20';
+  const BUILD_CODE = 319; // Build 319 (v4.3.20)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -223,6 +223,10 @@
           CapApp.addListener('appStateChange', ({ isActive }) => {
             console.log('App State Change - isActive:', isActive);
             if (isActive) {
+              // [v4.3.20] 앱 복귭c 시 3초 그레이스 피리어드: GPS 빨간색 깨지지 방지
+              window._resumeGracePeriod = true;
+              setTimeout(() => { window._resumeGracePeriod = false; }, 3000);
+
               setTimeout(() => { updatePermStatuses(); }, 300);
               setTimeout(() => { updatePermStatuses(); }, 1200);
               pollEmergency().catch(() => { });
@@ -1282,22 +1286,28 @@
       gpsColor = '#ef4444'; // 빨강 (수신중지)
       gpsText = '수신중지';
     } else if (isDown && State.trip.status === 'driving') {
-      gpsColor = '#ef4444'; // 빨강 (수신안됨)
-      gpsText = '연결안됨'; // UI에 "GPS 연결안됨" 표시
+      // [v4.3.20] 앱 복귀 직후 3초 그레이스 피리어드: 빨간색 깜빡임 방지
+      if (window._resumeGracePeriod) {
+        gpsColor = '#10b981'; // 초록 (눈속임 — 실제 상태 로딩 중)
+        gpsText = '수신중';
+      } else {
+        gpsColor = '#ef4444'; // 빨강 (수신안됨)
+        gpsText = '연결안됨';
 
-      // GPS 연결 안될 시 3초마다 강제 재수신 시도
-      const now = Date.now();
-      if (!window._lastGpsRetry || (now - window._lastGpsRetry > 3000)) {
-        window._lastGpsRetry = now;
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            pos => {
-              lastGpsTimestamp = Date.now();
-              onGpsUpdate(pos, true, State.trip.id);
-            },
-            () => { /* 음영지역이므로 조용히 실패 무시 */ },
-            { enableHighAccuracy: true, timeout: 2500, maximumAge: 0 }
-          );
+        // GPS 연결 안될 시 3초마다 강제 재수신 시도
+        const now = Date.now();
+        if (!window._lastGpsRetry || (now - window._lastGpsRetry > 3000)) {
+          window._lastGpsRetry = now;
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              pos => {
+                lastGpsTimestamp = Date.now();
+                onGpsUpdate(pos, true, State.trip.id);
+              },
+              () => { /* 음영지역이므로 조용히 실패 무시 */ },
+              { enableHighAccuracy: true, timeout: 2500, maximumAge: 0 }
+            );
+          }
         }
       }
     } else if (State.trip.isRealtime) {
