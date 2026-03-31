@@ -86,8 +86,8 @@ def is_session_valid(page):
             if "로그인" in title.text:
                 return False
         
-        # 4. 로그아웃 버튼이나 사용자 정보 확인
-        if page.ele('text:로그아웃', timeout=0.1) or page.ele('text:님 안녕하세요', timeout=0.1):
+        # 4. 로그아웃 버튼이나 사용자 정보 확인 (단, 손님(GUEST) 상태면 무효로 간주)
+        if page.ele('text:로그아웃', timeout=0.1) or (page.ele('text:님 안녕하세요', timeout=1) and "손님(GUEST)" not in page.html):
             return True
             
         # 5. [추가] 마지막 수단: 페이지가 살아있는지 빈 JS 실행으로 확인
@@ -368,33 +368,50 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         save_screenshot(page, "debug") # [추가] 초기 화면 캡처
         
         # [NAS 최적화] WebSquare 초기 렌더링 지연 고려하여 타임아웃 60초로 연장
-        uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=60)
-        if not uid_input:
-            _log(f"로그인 입력창 탐색 실패. 현재 URL: {page.url}")
-            _log(f"HTML 스니펫: {page.html[:300]}...")
+        # 로그인 박스 컨테이너 확보
+        login_box = page.ele('#mf_wfm_subContainer', timeout=60)
+        if not login_box:
+            _log("로그인 박스(#mf_wfm_subContainer)를 찾을 수 없습니다.")
             save_screenshot(page, "debug_error")
             page.quit()
-            return (None, "로그인 페이지 로드 실패 (ID 입력창 없음)")
+            return (None, "로그인 박스 탐색 실패")
 
+        uid_input = login_box.ele('css:input[id*="UserId"]') or \
+                    login_box.ele('css:input[placeholder*="아이디"]')
+        
+        if not uid_input:
+            _log("ID 입력창 탐색 실패")
+            save_screenshot(page, "debug_error")
+            page.quit()
+            return (None, "ID 입력창 없음")
+
+        _log(f"ID 입력창 탐지 성공: {uid_input.attr('id')}")
         uid_input.clear()
         uid_input.input(u_id.strip())
-        if uid_input.value != u_id.strip():
-            page.run_js(f"document.querySelector('#mf_wfm_subContainer_ibx_userId').value = '{u_id.strip()}';")
         
-        pw_input = page.ele('#mf_wfm_subContainer_sct_password')
-        pw_input.clear()
-        pw_input.input(u_pw)
-        if pw_input.value != u_pw:
-            page.run_js(f"document.querySelector('#mf_wfm_subContainer_sct_password').value = '{u_pw}';")
+        pw_input = login_box.ele('css:input[id*="password"]') or \
+                   login_box.ele('css:input[placeholder*="비밀번호"]')
+        
+        if not pw_input:
+            _log("비밀번호 입력창 탐색 실패")
+        else:
+            _log(f"PW 입력창 탐지 성공: {pw_input.attr('id')}")
+            pw_input.clear()
+            pw_input.input(u_pw)
         
         time.sleep(1) # 입력 후 잠시 대기
         
-        # 로그인 버튼 클릭 시도
-        login_btn = page.ele('#mf_wfm_subContainer_btn_login', timeout=5)
+        # 로그인 버튼 클릭 시도 (반드시 로그인 박스 내부의 것으로 클릭)
+        login_btn = login_box.ele('text:로그인') or \
+                    login_box.ele('css:[id*="btn_login"]')
+        
         if login_btn:
             _log(f"로그인 버튼 탐지 성공: (ID: {login_btn.attr('id')})")
             # 1. 엔터 입력 (대부분의 웹환경에서 가장 확실함)
-            pw_input.input('\n')
+            if pw_input:
+                pw_input.input('\n')
+            else:
+                uid_input.input('\n')
             time.sleep(1)
             # 2. 버튼 클릭 (혹시 엔터가 안 먹힐 경우 대비)
             try: login_btn.click()
@@ -402,28 +419,45 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         
         _log("로그인 처리 대기 중...")
         
+        # [추가] 로그인 실패 팝업 확인 로직
+        for _ in range(5):
+            # "아이디 또는 비밀번호를 다시 확인하세요" 팝업이 뜨면 실패로 간주
+            if "아이디 또는 비밀번호" in page.html:
+                 _log("❌ 로그인 정보 불일치 팝업 감지 (ID/PW 확인 필요)")
+                 save_screenshot(page, "debug_error")
+                 # 팝업 닫기 시도 (Indigo 확인 버튼 클릭)
+                 confirm_btn = page.ele('text:확인') or page.ele('css:.btn_confirm')
+                 if confirm_btn: confirm_btn.click()
+                 page.quit()
+                 return (None, "로그인 계정 정보 불일치")
+            time.sleep(1)
+        
         # [NAS 최적화] 로그인 후 페이지 전환 및 WebSquare 렌더링을 위해 최대 60초 대기
         login_verified = False
         for i in range(12): # 5초씩 12회 = 60초
             time.sleep(5)
             save_screenshot(page, "debug") # [추가] 로그인 대기 중 실시간 캡처
             close_modals(page)
-            # 성공 지표: '로그아웃' 버튼 또는 '님 안녕하세요' 텍스트
-            if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=1):
-                _log("✅ 로그인 성공 확인!")
+            
+            # 성공 지표: '로그아웃' 버튼 또는 '님 안녕하세요' 텍스트 (단, '손님(GUEST)'은 제외)
+            if (page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=1)) and "손님(GUEST)" not in page.html:
+                _log("✅ 로그인 성공 확인! (정상 세션 확보)")
                 save_screenshot(page, "debug") # [추가] 로그인 성공 직후 캡처
                 login_verified = True
                 break
             
-            # 페이지 내 '손님(GUEST)' 텍스트가 사라졌는지 확인
-            if "손님(GUEST)" not in page.html and not page.ele('text:로그인', timeout=1):
-                # GUEST도 아니고 로그인 버튼도 없으면 로딩 중일 가능성이 큼
-                _log(f"로그인 처리 중 (로딩)... { (i+1)*5 }s")
-                continue
+            # 알림창(비번 만료 등)이 뜨면 확인 후 닫기
+            alert_text = check_alert(page)
+            if alert_text:
+                _log(f"Alert 감지: {alert_text}")
+                
+            # 만약 로그인 페이지가 계속 보인다면, 실패 확률이 높음
+            if page.ele('#mf_wfm_subContainer_ibx_userId', timeout=1):
+                 _log(f"로그인 박스 상주 중... { (i+1)*5 }s")
+            else:
+                 _log("로그인 박스 사라짐 (이동 중 가능성)")
             
             _log(f"로그인 대기 중... { (i+1)*5 }s")
-            # 알림창(비번 만료 등)이 뜨면 확인 후 닫기
-            check_alert(page)
         
         if not login_verified:
              _log("로그인 성공 확인 불가 (GUEST 상태 지속 또는 타임아웃)")
