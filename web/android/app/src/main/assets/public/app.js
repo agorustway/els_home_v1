@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.22';
-  const BUILD_CODE = 321; // Build 321 (v4.3.22)
+  const APP_VERSION = 'v4.3.23';
+  const BUILD_CODE = 322; // Build 322 (v4.3.23)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2331,8 +2331,11 @@
     // onDestroy → stopForeground 실행 시간 확보 후 프로세스 종료
     await new Promise(r => setTimeout(r, 400));
 
+    // [v4.3.23] App.exitApp() 대신 App.minimizeApp() 사용
+    // exitApp()은 프로세스를 강제 종료하여 OS가 서비스 비정상 종료로 판단, 서비스를 재시작(알림창 발생)하게 함.
+    // minimizeApp()은 하드웨어 뒤로가기 버튼과 동일하게 앱을 백그라운드로 보내며, 이미 서비스는 중지된 상태이므로 알림창이 추가로 발생하지 않음.
     if (window.Capacitor?.Plugins?.App) {
-      window.Capacitor.Plugins.App.exitApp();
+      window.Capacitor.Plugins.App.minimizeApp();
     } else {
       showToast('앱을 직접 닫아주세요.');
     }

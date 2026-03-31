@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.22",
-  "versionCode": 321,
-  "changeLog": "v4.3.22 (Build 321)\n- [HOTFIX] 종료 버튼 누를 때 알림창 생기는 버그 완전 해결: EXPLICIT_EXIT 플래그 방식으로 Android START_STICKY 자동재시작 원천 차단",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=321"
+  "latestVersion": "v4.3.23",
+  "versionCode": 322,
+  "changeLog": "v4.3.23 (Build 322)\n- [UX 개선] 종료 시 알림바 버그 원천 해결 위해 '종료' 탭을 제거하고 상단 헤더에 '<' 버튼(뒤로가기) 추가\n- [UX 개선] 종료 액션을 App.minimizeApp()으로 대체하여 하드웨어 뒤로가기와 동일한 '부드러운 종료' 구현 (고스트 알림 현상 완전 해결)",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=322"
 }

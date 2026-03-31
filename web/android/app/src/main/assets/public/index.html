@@ -95,6 +95,7 @@
 
     <!-- 헤더 -->
     <header class="app-header">
+      <button class="back-btn" onclick="App.exitApp()" style="margin-right:2px; font-weight:900;">＜</button>
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
       <span class="vehicle-no" id="header-vehicle">—</span>
       <span class="status-badge status-idle" id="header-status">대기중</span>
@@ -246,7 +247,6 @@
       <button class="tab-btn" id="tab-btn-notice" onclick="App.switchTab('notice')">공지</button>
       <button class="tab-btn active" id="tab-btn-trip" onclick="App.switchTab('trip')">운행</button>
       <button class="tab-btn" id="tab-btn-log" onclick="App.switchTab('log')">일지</button>
-      <button class="tab-btn tab-exit" onclick="App.exitApp()">종료</button>
     </nav>
     <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0;"></div>
   </div><!-- /screen-main -->
@@ -424,6 +424,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.3.22"></script>
+<script src="app.js?v=4.3.23"></script>
 </body>
 </html>
