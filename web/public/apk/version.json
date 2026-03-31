@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.20",
-  "versionCode": 319,
-  "changeLog": "v4.3.20 (Build 319)\n- [최적화] 6km/h 미만 정차/도보 시 GPS 전송 주기 3분(180초) 대기 + 자이로 센서 스킵 (배터리 절약)\n- [FIX] 일시정지 중 위경도 좌표 대신 이전 역지오코딩 한글 주소 그대로 유지\n- [UX] 앱 복귀 직후 3초 Grace Period로 GPS 빨간 깜빡임 완전 방지",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=319"
+  "latestVersion": "v4.3.21",
+  "versionCode": 320,
+  "changeLog": "v4.3.21 (Build 320)\n- [HOTFIX] 자이로/가속도 센서 킬스위치 누락 보완: 가속도계 대체 리스너 + 메인 자이로 리스너 양쪽 onSensorChanged 최상단에 6km/h 미만 즉시 return 추가 → 도보/정차 시 비상 전송 오작동 완전 차단",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=320"
 }

@@ -618,6 +618,8 @@ public class FloatingWidgetService extends Service {
             mGyroListener = new SensorEventListener() {
                 @Override
                 public void onSensorChanged(SensorEvent event) {
+                    // [v4.3.20] 6km/h 미만 정차/도보 시 센서 연산 완전 스킵 (배터리 절약)
+                    if (mLastSpeedKph < 6f) return;
                     // 중력 제거 후 순수 가속도 크기 계산
                     float ax = event.values[0], ay = event.values[1], az = event.values[2];
                     float magnitude = (float) Math.sqrt(ax*ax + ay*ay + az*az);
@@ -639,6 +641,8 @@ public class FloatingWidgetService extends Service {
         mGyroListener = new SensorEventListener() {
             @Override
             public void onSensorChanged(SensorEvent event) {
+                // [v4.3.20] 6km/h 미만 정차/도보 시 자이로 연산 완전 스킵 (배터리 절약)
+                if (mLastSpeedKph < 6f) return;
                 // 3축 각속도 크기 (rad/s)
                 mLastGyroMagnitude = (float) Math.sqrt(
                     event.values[0] * event.values[0] +
