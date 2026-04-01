@@ -37,7 +37,8 @@ export default function AdminLogsPage() {
                 startDate: activeStartDate,
                 endDate: activeEndDate
             });
-            const res = await fetch(`/api/admin/logs?${params.toString()}`);
+            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+            const res = await fetch(`${baseUrl}/api/logs?${params.toString()}`);
             const data = await res.json();
 
             if (data.info === 'LOG_TABLE_MISSING') {
@@ -85,7 +86,8 @@ export default function AdminLogsPage() {
         }
 
         try {
-            const res = await fetch('/api/admin/logs', {
+            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+            const res = await fetch(`${baseUrl}/api/logs`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deleteType: type === 'ALL' ? 'ALL' : 'DATE', dateBefore }),

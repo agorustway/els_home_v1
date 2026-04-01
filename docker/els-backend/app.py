@@ -20,6 +20,12 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from openpyxl.styles import PatternFill
 from datetime import datetime
+from supabase import create_client, Client
+
+# --- Supabase 설정 ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 # --- 로깅 설정 ---
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] In %(module)s: %(message)s')
@@ -57,29 +63,156 @@ def handle_global_exception(e):
     }
     return jsonify(response), 500
 
-@app.route("/api/debug/log", methods=["POST"])
-def debug_log():
-    """앱/네이티브로부터 디버그 로그를 받아 파일에 저장합니다."""
-    data = request.get_json(silent=True) or {}
-    msg = data.get("msg", "")
-    device = data.get("device", "unknown")
-    tag = data.get("tag", "APP")
-    
-    # 구버전 안드로이드 앱에서 올라오는 '[KST 2026-03...] ' 머리말 강제 제거
-    import re
-    msg = re.sub(r'^\[KST\s+[^\]]+\]\s*', '', msg)
-    
-    log_file = Path("debug_app.log")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            from datetime import timezone, timedelta
-            KST = timezone(timedelta(hours=9))
-            ts = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
-            f.write(f"[{ts}] [{device}] [{tag}] {msg}\n")
-    except:
-        pass
-    
     return jsonify({"ok": True})
+
+# --- 활동 로그 (Activity Logs) ---
+@app.route("/api/logs", methods=["POST"])
+def post_log():
+    """Vercel의 /api/logs를 대체하는 로그 저장 API"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        data = request.get_json(silent=True) or {}
+        # Next.js의 로그 수집 형식 그대로 수용
+        log_entry = {
+            "user_email": data.get("user_email") or data.get("email", "anonymous"),
+            "action_type": data.get("action_type") or data.get("type", "PAGE_VIEW"),
+            "path": data.get("path", "/"),
+            "metadata": data.get("metadata", {})
+        }
+        res = supabase.from_("user_activity_logs").insert(log_entry).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        app.logger.error(f"로그 저장 실패: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/logs", methods=["GET"])
+def get_logs():
+    """활동 로그 조회 (날짜 범위 검색 포함)"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        email = request.args.get("email", "")
+        log_type = request.args.get("type", "")
+        start_date = request.args.get("startDate", "")
+        end_date = request.args.get("endDate", "")
+        page = int(request.args.get("page", 1))
+        limit = int(request.args.get("limit", 30))
+
+        query = supabase.from_("user_activity_logs").select("*", count="exact")
+        if email: query = query.ilike("user_email", f"%{email}%")
+        if log_type: query = query.eq("action_type", log_type)
+        if start_date: query = query.gte("created_at", f"{start_date} 00:00:00")
+        if end_date: query = query.lte("created_at", f"{end_date} 23:59:59")
+        
+        query = query.order("created_at", desc=True)
+        
+        # 페이징
+        start = (page - 1) * limit
+        end = start + limit - 1
+        query = query.range(start, end)
+        
+        res = query.execute()
+        
+        return jsonify({
+            "logs": res.data,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": res.count,
+                "totalPages": math.ceil((res.count or 0) / limit)
+            }
+        })
+    except Exception as e:
+        app.logger.error(f"로그 조회 실패: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/logs", methods=["DELETE"])
+def delete_logs():
+    """로그 삭제 (Vercel API와 동일 사양)"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        data = request.get_json(silent=True) or {}
+        delete_type = data.get("deleteType") # 'ALL' or 'DATE'
+        date_before = data.get("dateBefore")
+        
+        query = supabase.from_("user_activity_logs").delete()
+        
+        if delete_type == "ALL":
+            # 모든 데이터 삭제 (id가 null이 아닌 것)
+            query = query.neq("id", "00000000-0000-0000-0000-000000000000")
+        elif date_before:
+            query = query.lt("created_at", date_before)
+        else:
+            return jsonify({"error": "Invalid deletion criteria"}), 400
+            
+        res = query.execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        app.logger.error(f"로그 삭제 실패: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# --- 차량 관제 (Vehicle Tracking) ---
+@app.route("/api/vehicle-tracking", methods=["GET"])
+def get_vehicle_tracking():
+    """실시간 차량 위치 폴링용 API (Vercel 트래픽 전가 방지)"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        from datetime import timezone, timedelta
+        KST = timezone(timedelta(hours=9))
+        twenty_four_hours_ago = (datetime.now(KST) - timedelta(hours=24)).isoformat()
+
+        # 최근 24시간 내 운행 중이거나 종료된 차량 조회
+        res = supabase.from_("vehicle_trips") \
+                .select("*") \
+                .gte("started_at", twenty_four_hours_ago) \
+                .in_("status", ["driving", "paused", "completed"]) \
+                .order("started_at", desc=True) \
+                .execute()
+        
+        trips = res.data
+        trip_ids = [t["id"] for t in trips]
+        
+        if not trip_ids:
+            return jsonify({"data": [], "trips": []})
+
+        # 각 트립의 마지막 위치 조회 (RPC 대신 Python 루프로 처리 - 나스 리소스 활용)
+        loc_res = supabase.from_("vehicle_locations") \
+                .select("*") \
+                .in_("trip_id", trip_ids) \
+                .order("recorded_at", desc=True) \
+                .execute()
+        
+        loc_map = {}
+        for l in loc_res.data:
+            tid = l["trip_id"]
+            if tid not in loc_map:
+                loc_map[tid] = l
+        
+        merged = []
+        for t in trips:
+            t["lastLocation"] = loc_map.get(t["id"])
+            t["last_location_address"] = t["lastLocation"]["address"] if t["lastLocation"] else None
+            merged.append(t)
+
+        # 프론트엔드 하위 호환성을 위해 trips와 data 양쪽으로 반환
+        return jsonify({"data": merged, "trips": merged})
+    except Exception as e:
+        app.logger.error(f"관제 데이터 조회 실패: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/<trip_id>/locations", methods=["GET"])
+def get_trip_locations(trip_id):
+    """특정 트립의 전체 경로 조회 (나스에서 처리)"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        res = supabase.from_("vehicle_locations") \
+                .select("*") \
+                .eq("trip_id", trip_id) \
+                .order("recorded_at", asc=True) \
+                .execute()
+        return jsonify({"locations": res.data})
+    except Exception as e:
+        app.logger.error(f"경로 데이터 조회 실패: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/debug/view", methods=["GET"])
 def view_debug_log():

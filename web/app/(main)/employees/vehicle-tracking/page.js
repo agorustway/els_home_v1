@@ -87,9 +87,10 @@ export default function VehicleTrackingPage() {
     // ─── 1. 전역 관제 ───
     const fetchLiveTrips = useCallback(async () => {
         try {
-            const res = await fetch('/api/vehicle-tracking/trips?mode=active');
+            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+            const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
             const data = await res.json();
-            if (data.trips) setLiveTrips(data.trips);
+            if (data.data) setLiveTrips(data.data);
         } catch (e) {
             console.error('운행 데이터 조회 실패:', e);
         } finally {
@@ -335,13 +336,15 @@ export default function VehicleTrackingPage() {
         // 3초 간격 fetch
         realtimeIntervalRef.current = setInterval(async () => {
             try {
-                const res = await fetch('/api/vehicle-tracking/trips?mode=active');
+                const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+                const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
                 const data = await res.json();
-                if (data.trips) setLiveTrips(data.trips);
+                if (data.data) setLiveTrips(data.data);
 
                 // [추가] 상세보기와 동기화 (LIVE 동안 상세 지도의 경로와 위치 리스트 최신화)
                 if (tripId && window.location.pathname.includes('/vehicle-tracking')) {
-                    const locRes = await fetch(`/api/vehicle-tracking/trips/${tripId}/locations`);
+                    const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+                    const locRes = await fetch(`${baseUrl}/api/vehicle-tracking/${tripId}/locations`);
                     const locData = await locRes.json();
                     if (locData.locations && locData.locations.length > 0) {
                         setSelectedTripLocations(locData.locations);
