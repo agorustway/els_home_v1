@@ -242,15 +242,17 @@ def solve_login_modal(page, u_id, u_pw, log_callback=None):
 def is_session_valid(page):
     try:
         html = page.html
-        # 로그아웃 버튼이나 사용자 성함이 있으면 최우선으로 유효 세션 간주
-        # WebSquare ID나 텍스트가 HTML 상에 존재하는지 확인
+        # 1. 텍스트 지표 확인
         if "btn_logout" in html or "로그아웃" in html:
             if "ELS1106" in html or "님 안녕하세요" in html:
                 if "손님(GUEST)" not in html:
                     return True
-            
-        # 로그인 입력창(#mf_wfm_subContainer_ibx_userId)이 가시적이라면 로그아웃 상태일 확률 높음
-        # 단, 위에서 로그아웃 지표가 없었을 경우에만 체크
+        
+        # 2. 특정 요소 존재 여부로 판단 (로그아웃 버튼 ID)
+        if page.ele('#mf_wfm_gnb_btn_logout', timeout=0.1):
+            return True
+
+        # 3. 로그인 창이 대놓고 떠있으면 미인증
         if page.ele('#mf_wfm_subContainer_ibx_userId', timeout=0.1):
             return False
             
@@ -258,10 +260,14 @@ def is_session_valid(page):
         if any(u in url for u in ["login.do", "login.klnet"]):
             return False
             
-        # 세션 종료 메시지 확인
+        # 4. 세션 종료 메시지 확인
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return False
             
+        # 5. 그 외의 경우 (메인 페이지 등에서 로그아웃 버튼은 없지만 ELS1106 텍스트는 있는 경우)
+        if "ELS1106" in html and "손님" not in html:
+            return True
+
         return False
     except:
         return False
@@ -269,10 +275,14 @@ def is_session_valid(page):
 def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중...")
     
+    # [추가] Headless 환경 스크린샷/렌더링 안정화를 위해 초기 사이즈 고정
+    try: page.set.window_size(1920, 1080)
+    except: pass
+
     for attempt in range(5):
         close_modals(page)
         
-        # 1. 로그인 필요 여부 실시간 체크 (이동 중에 뜰 수 있음)
+        # 1. 로그인 필요 여부 실시간 체크
         if not is_session_valid(page):
             if log_callback: log_callback("세션 유효하지 않음, 로그인 시도...")
             solve_login_modal(page, u_id, u_pw, log_callback)
@@ -280,41 +290,36 @@ def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
             if not is_session_valid(page): continue
 
         # 2. 조회 페이지 도착 확인 (인풋 박스 유무)
-        el = page.ele('css:input[id*="containerNo"]', timeout=3)
-        if el:
+        if page.ele('css:input[id*="containerNo"]', timeout=3):
             if log_callback: log_callback("조회 페이지 도착 확인!")
             return True
 
-        # 3. 메뉴 탐색 (화물추적 -> 컨테이너이동현황)
-        # 가끔 메인으로 한 번 가줘야 할 때가 있음 (로그인 상태 확인용)
-        if "main.do" not in page.url.lower() and "index.do" not in page.url.lower():
-            page.get("https://etrans.klnet.co.kr/main.do")
-            time.sleep(2)
-
-        # 3. 메뉴 탐색 (화물추적 -> 컨테이너이동현황)
-        parent = page.ele('text:화물추적', timeout=5) or \
-                 page.ele('#mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label', timeout=1)
-        
-        if parent:
-            if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
-            parent.hover()
-            time.sleep(1)
-            target = page.ele('text:컨테이너이동현황(국내)', timeout=3)
-            
-            if not target:
-                # 텍스트 전역 검색 클릭 시도
-                page.run_js("""
-                    var el = Array.from(document.querySelectorAll('.w2label, .w2anchor_label, a, span'))
+        # [핵심] 메뉴 클릭 대신 JS로 직접 함수 호출하여 진입 시도 (가장 확실함)
+        if log_callback: log_callback("JS 메뉴 강제 진입 시도 (컨테이너이동현황)...")
+        page.run_js("""
+            try {
+                // WebSquare 공통 메뉴 오픈 함수 호출 (MNU0024: 컨테이너이동현황(국내))
+                if (window.scwin && window.scwin.selectMenu) {
+                    window.scwin.selectMenu("MNU0024");
+                } else if (window.top.scwin && window.top.scwin.selectMenu) {
+                    window.top.scwin.selectMenu("MNU0024");
+                } else {
+                    // 수동 클릭 시뮬레이션 (최후의 수단)
+                    var el = Array.from(document.querySelectorAll('.w2label, .w2anchor_label, a'))
                                   .find(e => e.innerText.indexOf('컨테이너이동현황(국내)') !== -1);
-                    if(el) { el.click(); return true; }
-                    return false;
-                """)
-            else:
-                target.click()
-            
-            time.sleep(5)
-            if page.ele('css:input[id*="containerNo"]', timeout=5):
-                return True
+                    if(el) el.click();
+                }
+            } catch(e) { console.error(e); }
+        """)
+        
+        time.sleep(5)
+        if page.ele('css:input[id*="containerNo"]', timeout=5):
+            return True
+
+        # 3. 메뉴 탐색 실패 시 메인으로 리프레시
+        if log_callback: log_callback("메뉴 진입 실패, 메인으로 리프레시...")
+        page.get("https://etrans.klnet.co.kr/main.do")
+        time.sleep(3)
             
     return False
 

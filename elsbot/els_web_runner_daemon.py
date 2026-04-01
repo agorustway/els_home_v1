@@ -393,26 +393,38 @@ def quit_driver():
 
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
-    # elsbot/debug_screenshot.png 파일 경로
-    path = os.path.join(os.path.dirname(__file__), "debug_screenshot.png")
+    # elsbot/dist/debug_screenshot.png 파일 경로 (dist 폴더 내부에 저장하여 권한 문제 방지)
+    dist_dir = os.path.join(os.path.dirname(__file__), "dist")
+    os.makedirs(dist_dir, exist_ok=True)
+    path = os.path.join(dist_dir, "debug_screenshot.png")
     
     # 가용한 드라이버가 있으면 즉시 스크린샷 촬영 시도
     driver_for_shot = None
     with pool.lock:
         if pool.drivers:
             driver_for_shot = pool.drivers[0]
+        else:
+            # 대기열에 있는 드라이버라도 하나 가져와서 찍어봄
+            if not pool.available_queue.empty():
+                try: 
+                    driver_for_shot = pool.available_queue.get_nowait()
+                    pool.available_queue.put(driver_for_shot) # 바로 다시 넣음
+                except: pass
     
     if driver_for_shot:
         try:
-            # DrissionPage의 get_screenshot 메서드 사용
+            # [추가] 촬영 전 화면 크기 한 번 더 고정
+            try: driver_for_shot.set.window_size(1280, 800)
+            except: pass
             driver_for_shot.get_screenshot(path=path)
         except Exception as e:
+            pool.add_log(f"📸 [스크린샷 실패] {e}")
             print(f"[SCREENSHOT_ERROR] {e}")
 
     if os.path.exists(path):
         with open(path, "rb") as f:
             return Response(f.read(), mimetype='image/png')
-    return jsonify({"ok": False, "error": "No screenshot"}), 404
+    return jsonify({"ok": False, "error": "아직 캡처된 화면이 없습니다. (봇이 구동을 시작하면 나타납니다)"}), 404
 
 @app.route('/logs', methods=['GET'])
 def get_logs():
