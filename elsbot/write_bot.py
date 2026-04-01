@@ -1,4 +1,4 @@
-import pandas as pd
+content = r'''import pandas as pd
 from DrissionPage import ChromiumPage, ChromiumOptions
 import time
 import json
@@ -41,27 +41,24 @@ def check_alert(page):
 def close_modals(page):
     try:
         # 공지사항/팝업 닫기
-        # '아이디를 입력하세요' 같은 알림창 닫기 우선
-        alerts = page.eles('css:.w2modal_popup')
-        for alert in alerts:
-            if any(msg in alert.text for msg in ["아이디를 입력", "비밀번호를 입력", "확인"]):
-                btn_ok = alert.ele('text:확인') or alert.ele('css:.btn_cm')
-                if btn_ok:
-                    btn_ok.click()
-                    time.sleep(0.5)
-
+        # 이트랜스 팝업/모달 종료
         page.run_js("""
             document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => e.click());
             document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => {
-                if (e.innerText.indexOf('로그인') === -1 && e.innerText.indexOf('아이디를') === -1) {
+                if (e.innerText.indexOf('로그인') === -1) {
                     e.style.display = 'none';
                 }
             });
         """)
-        # 세션 종료 확인
+        # 세션 종료 확인용
         html = page.html
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다"]):
             return "SESSION_EXPIRED"
+        
+        modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
+        for title in modal_titles:
+            if "로그인" in title.text:
+                return "LOGIN_REQUIRED"
     except: pass
     return "OK"
 
@@ -72,18 +69,12 @@ def is_session_valid(page):
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return False
             
-        # 로그인된 상태의 대표적인 징후들
-        logout_btn = page.ele('text:로그아웃', timeout=0.1) or \
+        logout_btn = page.ele('text:로그아웃', timeout=1) or \
                      page.ele('#mf_wfm_subContainer_btn_logout', timeout=0.1) or \
                      page.ele('css:[id*="btnLogout"]', timeout=0.1)
         
-        # '님 안녕하세요' 또는 사용자 ID가 화면 상단에 있는지 확인
-        if "님 안녕하세요" in html or "ELS1106" in html:
-            if "손님(GUEST)" not in html:
-                return True
-
-        if logout_btn and logout_btn.states.is_displayed:
-            if "손님(GUEST)" not in html:
+        if logout_btn and logout_btn.is_displayed():
+            if "손님(GUEST)" not in page.html:
                 return True
         return False
     except:
@@ -124,23 +115,6 @@ def open_els_menu(page, log_callback=None):
                      page.ele('text:컨테이너 이동현황', timeout=0.1) or \
                      page.ele('css:[id*="btn_2ndMenu"]', timeout=0.1)
             
-            if not target:
-                # JS로 전역 텍스트 매칭 시도 (WebSquare 대응)
-                if log_callback: log_callback("하위 메뉴 JS 클릭 시도...")
-                page.run_js("""
-                    var items = document.querySelectorAll('.w2label, .w2anchor_label, a, span');
-                    for (var i=0; i<items.length; i++) {
-                        if (items[i].innerText.indexOf('컨테이너이동현황(국내)') !== -1) {
-                            items[i].click();
-                            return true;
-                        }
-                    }
-                    return false;
-                """)
-                time.sleep(5)
-                if page.ele('css:input[id*="containerNo"]', timeout=3):
-                    return True
-
             if target:
                 if log_callback: log_callback(f"하위 메뉴 클릭: {target.text}")
                 target.click()
@@ -251,193 +225,108 @@ def scrape_hyper_verify(page, search_no):
         time.sleep(0.5)
     return None
 
-def solve_login_modal(page, u_id, u_pw, log_callback=None):
-    """로그인 모달이 뜨는 경우 즉시 해결"""
-    try:
-        # 1. 팝업(모달) 내 로그인 창 우선 확인
-        modal = page.ele('css:.w2modal_popup', timeout=1)
-        if modal and "로그인" in modal.text:
-            if log_callback: log_callback("모달 로그인 팝업 감지, 팝업 내 입력 시도...")
-            uid_input = modal.ele('css:input[id*="UserId"]') or modal.ele('css:input[placeholder*="아이디"]')
-            pw_input = modal.ele('css:input[id*="password"]') or modal.ele('css:input[placeholder*="비밀번호"]')
-        else:
-            # 2. 일반 페이지 내 로그인 창 확인
-            uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=2) or \
-                        page.ele('css:input[id*="UserId"]', timeout=1) or \
-                        page.ele('css:input[placeholder*="아이디"]', timeout=1)
-            
-            pw_input = page.ele('#mf_wfm_subContainer_sct_password', timeout=2) or \
-                       page.ele('css:input[id*="password"]', timeout=1) or \
-                       page.ele('css:input[placeholder*="비밀번호"]', timeout=1)
-        
-        for _ in range(20):
-            if uid_input and uid_input.states.is_displayed: break
-            time.sleep(0.5)
-            
-        if uid_input and pw_input:
-            if log_callback: log_callback(f"로그인 정보 입력 중... ({uid_input.attr('id')})")
-            
-            # 물리적 위치 기반 클릭 및 입력 (가장 확실한 방법)
-            try:
-                if not uid_input.states.is_displayed:
-                    raise Exception("Element not visible")
-                # 1. 아이디 입력
-                uid_input.click()
-                uid_input.input(u_id.strip(), clear=True)
-                time.sleep(0.2)
-                # 2. 비밀번호 입력
-                pw_input.click()
-                pw_input.input(u_pw.strip(), clear=True)
-                time.sleep(0.3)
-            except:
-                if log_callback: log_callback("물리 입력 실패, JS 강력 주입 시도...")
-                uid_id = uid_input.attr('id')
-                pw_id = pw_input.attr('id')
-                page.run_js(f"""
-                    var u = document.getElementById('{uid_id}');
-                    var p = document.getElementById('{pw_id}');
-                    if(u && p) {{
-                        u.value = '{u_id.strip()}';
-                        p.value = '{u_pw.strip()}';
-                        u.dispatchEvent(new Event('input', {{bubbles: true}}));
-                        u.dispatchEvent(new Event('change', {{bubbles: true}}));
-                        p.dispatchEvent(new Event('input', {{bubbles: true}}));
-                        p.dispatchEvent(new Event('change', {{bubbles: true}}));
-                        // WebSquare 전용 이벤트 트리거 시도
-                        if (u._instance) u._instance.setValue('{u_id.strip()}');
-                        if (p._instance) p._instance.setValue('{u_pw.strip()}');
-                    }}
-                """)
-            
-            login_btn = page.ele('#mf_wfm_subContainer_btn_login', timeout=2) or \
-                        page.ele('text:로그인', timeout=1) or \
-                        page.ele('css:[id*="btn_login"]', timeout=1)
-            
-            if login_btn:
-                btn_id = login_btn.attr('id')
-                if log_callback: log_callback(f"로그인 버튼 클릭 시도 ({btn_id})")
-                try:
-                    login_btn.click()
-                except:
-                    page.run_js(f"var el = document.getElementById('{btn_id}'); if(el) el.click();")
-                time.sleep(5)
-                # 혹시나 "비밀번호를 입력하세요" 팝업이 다시 뜨면 확인 클릭
-                close_modals(page)
-                return True
-        return False
-    except Exception as e:
-        if log_callback: log_callback(f"로그인 모달 처리 중 에러: {e}")
-        return False
-
-def is_session_valid(page):
-    try:
-        html = page.html
-        # 로그아웃 버튼이나 사용자 성함이 있으면 최우선으로 유효 세션 간주
-        # WebSquare ID나 텍스트가 HTML 상에 존재하는지 확인
-        if "btn_logout" in html or "로그아웃" in html:
-            if "ELS1106" in html or "님 안녕하세요" in html:
-                if "손님(GUEST)" not in html:
-                    return True
-            
-        # 로그인 입력창(#mf_wfm_subContainer_ibx_userId)이 가시적이라면 로그아웃 상태일 확률 높음
-        # 단, 위에서 로그아웃 지표가 없었을 경우에만 체크
-        if page.ele('#mf_wfm_subContainer_ibx_userId', timeout=0.1):
-            return False
-            
-        url = page.url.lower()
-        if any(u in url for u in ["login.do", "login.klnet"]):
-            return False
-            
-        # 세션 종료 메시지 확인
-        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
-            return False
-            
-        return False
-    except:
-        return False
-
-def open_els_menu(page, u_id, u_pw, log_callback=None):
-    if log_callback: log_callback("메뉴 진입 시도 중...")
-    
-    for attempt in range(5):
-        close_modals(page)
-        
-        # 1. 로그인 필요 여부 실시간 체크 (이동 중에 뜰 수 있음)
-        if not is_session_valid(page):
-            if log_callback: log_callback("세션 유효하지 않음, 로그인 시도...")
-            solve_login_modal(page, u_id, u_pw, log_callback)
-            time.sleep(2)
-            if not is_session_valid(page): continue
-
-        # 2. 조회 페이지 도착 확인 (인풋 박스 유무)
-        el = page.ele('css:input[id*="containerNo"]', timeout=3)
-        if el:
-            if log_callback: log_callback("조회 페이지 도착 확인!")
-            return True
-
-        # 3. 메뉴 탐색 (화물추적 -> 컨테이너이동현황)
-        # 가끔 메인으로 한 번 가줘야 할 때가 있음 (로그인 상태 확인용)
-        if "main.do" not in page.url.lower() and "index.do" not in page.url.lower():
-            page.get("https://etrans.klnet.co.kr/main.do")
-            time.sleep(2)
-
-        # 3. 메뉴 탐색 (화물추적 -> 컨테이너이동현황)
-        parent = page.ele('text:화물추적', timeout=5) or \
-                 page.ele('#mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label', timeout=1)
-        
-        if parent:
-            if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
-            parent.hover()
-            time.sleep(1)
-            target = page.ele('text:컨테이너이동현황(국내)', timeout=3)
-            
-            if not target:
-                # 텍스트 전역 검색 클릭 시도
-                page.run_js("""
-                    var el = Array.from(document.querySelectorAll('.w2label, .w2anchor_label, a, span'))
-                                  .find(e => e.innerText.indexOf('컨테이너이동현황(국내)') !== -1);
-                    if(el) { el.click(); return true; }
-                    return false;
-                """)
-            else:
-                target.click()
-            
-            time.sleep(5)
-            if page.ele('css:input[id*="containerNo"]', timeout=5):
-                return True
-            
-    return False
-
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=9222):
     start_time = time.time()
     def _log(msg):
         if log_callback: log_callback(f"[{time.time()-start_time:6.2f}s] {msg}")
 
-    _log("DrissionPage 브라우저 시작...")
+    _log("DrissionPage 브라우저 시작 중...")
     co = ChromiumOptions()
     co.set_local_port(port)
+    
     page = ChromiumPage(co)
     try:
+        _log("페이지 접속 중: https://etrans.klnet.co.kr/")
         page.get("https://etrans.klnet.co.kr/")
         time.sleep(2)
         
-        # 메뉴 오픈 로직 자체에 로그인 시퀀스를 포함시켜서 호출
-        if open_els_menu(page, u_id, u_pw, _log):
+        # 이미 로그인 된 경우 패스
+        if is_session_valid(page):
+            _log("이미 로그인된 유효한 세션입니다.")
+        else:
+            # 로그인 시도 (팝업/전체화면 통합 대응)
+            for attempt in range(5):
+                close_modals(page)
+                
+                # 로그인 입력창 찾기 (ID/PW)
+                uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=5) or \
+                            page.ele('css:input[id*="UserId"]', timeout=1) or \
+                            page.ele('css:input[placeholder*="아이디"]', timeout=1)
+                
+                pw_input = page.ele('#mf_wfm_subContainer_sct_password', timeout=5) or \
+                           page.ele('css:input[id*="password"]', timeout=1) or \
+                           page.ele('css:input[placeholder*="비밀번호"]', timeout=1)
+                
+                if uid_input and pw_input:
+                    _log(f"로그인 입력창 발견 ({uid_input.attr('id')})")
+                    try:
+                        # 물리적 입력 시도
+                        uid_input.input(u_id.strip())
+                        pw_input.input(u_pw.strip())
+                    except Exception as e:
+                        _log(f"물리 입력 실패 ({e}), JS 강제 입력 시도...")
+                        # JS로 직접 주입
+                        uid_id = uid_input.attr('id')
+                        pw_id = pw_input.attr('id')
+                        page.run_js(f"document.getElementById('{uid_id}').value = '{u_id.strip()}';")
+                        page.run_js(f"document.getElementById('{pw_id}').value = '{u_pw.strip()}';")
+                        page.run_js(f"document.getElementById('{uid_id}').dispatchEvent(new Event('input', {{bubbles: true}}));")
+                        page.run_js(f"document.getElementById('{pw_id}').dispatchEvent(new Event('input', {{bubbles: true}}));")
+                    
+                    login_btn = page.ele('#mf_wfm_subContainer_btn_login', timeout=2) or \
+                                page.ele('text:로그인', timeout=1) or \
+                                page.ele('css:[id*="btn_login"]', timeout=1)
+                    
+                    if login_btn:
+                        _log(f"로그인 버튼 클릭 시도 (ID: {login_btn.attr('id')})")
+                        try:
+                            login_btn.click()
+                        except:
+                            page.run_js(f"document.getElementById('{login_btn.attr('id')}').click();")
+                        time.sleep(3)
+                    else:
+                        _log("로그인 버튼을 찾지 못해 엔터키 입력")
+                        pw_input.input('\n')
+                        time.sleep(3)
+                else:
+                    _log("ID/PW 입력창이 보이지 않습니다. (모달 확인 중...)")
+                    time.sleep(2)
+
+                # 로그인 성공 확인
+                if is_session_valid(page):
+                    _log("로그인 성공 확인 완료!")
+                    break
+                
+                # 오류 메시지 확인
+                html = page.html
+                if "비밀번호" in html and ("오류" in html or "틀렸습니다" in html):
+                    _log("!!! 로그인 오류 메시지 감지 (비번 틀림 등) !!!")
+                
+                _log(f"로그인 대기 중... ({attempt+1}/5)")
+                time.sleep(2)
+                
+                if attempt == 4:
+                    save_screenshot(page, "login_fail_final")
+                    _log(f"최종 로그인 실패. URL: {page.url}")
+                    return (None, "로그인 실패 혹은 확인 불가")
+
+        # 메뉴 이동 시도
+        if open_els_menu(page, _log):
             _log("모든 준비 완료")
             return (page, None)
             
         page.quit()
-        return (None, "메뉴 진입 혹은 로그인 실패")
+        return (None, "메뉴 진입 실패")
     except Exception as e:
         if 'page' in locals() and page: page.quit()
         return (None, f"봇 실행 중 에러: {e}")
 
-def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False, port=9222):
+def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     start_time = time.time()
     def _log(msg):
         if log_callback: log_callback(f"[{time.time()-start_time:6.2f}s] {msg}")
 
-    res = login_and_prepare(u_id, u_pw, _log, show_browser=show_browser, port=port)
+    res = login_and_prepare(u_id, u_pw, _log, show_browser=show_browser)
     page = res[0]
     if not page: return {"ok": False, "error": res[1]}
 
@@ -509,3 +398,6 @@ if __name__ == "__main__":
         print(f"RESULT:{json.dumps(final_res, ensure_ascii=False)}", flush=True)
     else:
         cli_main()
+'''
+with open('els_bot.py', 'w', encoding='utf-8') as f:
+    f.write(content)

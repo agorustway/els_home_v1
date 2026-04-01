@@ -10,9 +10,9 @@ from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_veri
 
 def test_user_containers():
     u_id = "ELS1106"
-    u_pw = "elss1106@"
+    u_pw = "ELSS1106@"
     
-    test_cns = ["TRHU6420680", "EMCU1681436"]
+    test_cns = ["HAMU3026702", "TCNU5705508", "MRSU3243401"]
     
     print(f"[TEST] {u_id} 계정 정보로 로컬 테스트 시작...")
     
