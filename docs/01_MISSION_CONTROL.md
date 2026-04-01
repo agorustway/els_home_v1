@@ -1,15 +1,17 @@
-# ELS MISSION CONTROL v4.4.4
-> 마지막 업데이트: 2026-04-01 14:50 (KST)
+# ELS MISSION CONTROL v4.4.25
+> 마지막 업데이트: 2026-04-01 18:35 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.25` (Mobile) / `v4.4.4` (ELS Bot)
+- **현재 버전**: `v4.3.25` (Mobile) / `v4.4.25` (NAS Backend & Bot)
 - **최근 업데이트**: 2026-04-01
-- **상태**: ✅ 데스크톱 모드 고정 및 메뉴 진입 2중화 적용
+- **상태**: ✅ Vercel 트래픽 NAS 완전 이관 및 봇 엔진 안정화 완료
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.3.25)
 
 ### 🎯 주요 마일스톤
-- [x] **2026-04-01**: [BOT/FIX] 데스크톱 User-Agent 강제 및 메뉴 진입 실패 시 다이렉트 URL 이동 폴백(v4.4.4)
+- [x] **2026-04-01**: [INFRA/NAS] Vercel 트래픽 오프로딩(관제, 로그, 파일) 및 백엔드 대규모 이전(v4.4.25)
+- [x] **2026-04-01**: [BOT/FIX] 메뉴 진입 로직 '텍스트 클릭' 방식으로 롤백 및 나스 경로 최적화
+- [x] **2026-04-01**: [DOCS] 프로젝트 마스터 맵(09_PROJECT_MASTER_MAP.md) 및 환경 구축 가이드 작성
 - [x] **2026-04-01**: [BOT/FIX] DrissionPage 4.0 API 오기 수정 (`set_argument`, `headless`) 및 로컬(Windows) 헤드리스 검증 완료
 - [x] **2026-04-01**: [BOT/FIX] NAS 도커(Linux) 환경 DrissionPage 초기화 실패 및 안정화 v4.4.0 (Headless, Sandbox, 순차 초기화 적용)
 - [x] **v4.3.25**: [FIX] 화면의 [종료] 버튼 클릭 시 알림바가 남는 버그 최종 해결. 네이티브 `finishAndRemoveTask()` 기반의 `exitAppForce()` 호출로 전환.
