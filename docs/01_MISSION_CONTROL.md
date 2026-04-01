@@ -1,16 +1,16 @@
-# ELS MISSION CONTROL v4.4.1
-> 마지막 업데이트: 2026-04-01 13:25 (KST)
+# ELS MISSION CONTROL v4.4.2
+> 마지막 업데이트: 2026-04-01 13:40 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.25` (Build 324)
-- **최근 업데이트**: 2026-03-31
-- **상태**: ✅ 배포 완료 (Hotfix) - APK 빌드 및 동기화 완료
+- **현재 버전**: `v4.3.25` (Mobile) / `v4.4.2` (ELS Bot)
+- **최근 업데이트**: 2026-04-01
+- **상태**: ✅ 로컬 검증 완료, NAS 최종 빌드 대기 중
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.3.25)
 
 ### 🎯 주요 마일스톤
-- [x] **2026-04-01**: [BOT/FIX] NAS 도커(Linux) 환경 DrissionPage 초기화 실패 및 안정화 v4.4.0 (Headless, Sandbox, 포트별 데이터 격리 적용)
-- [x] **2026-04-01**: [BOT/FIX] 이트랜스 봇 로그인 및 메뉴 이동 로직 전면 개편 (WebSquare 모달 처리, JS 우회 주입, 세션 검증 강화)
+- [x] **2026-04-01**: [BOT/FIX] DrissionPage 4.0 API 오기 수정 (`set_argument`, `headless`) 및 로컬(Windows) 헤드리스 검증 완료
+- [x] **2026-04-01**: [BOT/FIX] NAS 도커(Linux) 환경 DrissionPage 초기화 실패 및 안정화 v4.4.0 (Headless, Sandbox, 순차 초기화 적용)
 - [x] **v4.3.25**: [FIX] 화면의 [종료] 버튼 클릭 시 알림바가 남는 버그 최종 해결. 네이티브 `finishAndRemoveTask()` 기반의 `exitAppForce()` 호출로 전환.
 - [x] **v4.3.24**: [UX] 종료 탭 복구 완료. 종료 버튼의 동작을 하드웨어 뒤로가기와 동일하게(minimizeApp) 수정하여 알림창 문제 해결 시도.
 - [x] **v4.3.23**: [UI/UX] 종료 탭 제거 및 상단 뒤로가기(<) 버튼 추가 (사용자 요청으로 원복됨)
