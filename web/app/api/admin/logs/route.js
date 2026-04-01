@@ -23,6 +23,8 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 30;
     const type = searchParams.get('type') || '';
     const email = searchParams.get('email') || '';
+    const startDate = searchParams.get('startDate') || '';
+    const endDate = searchParams.get('endDate') || '';
 
     // 테이블이 없어서 에러나는 부분 방어코드
     try {
@@ -33,6 +35,12 @@ export async function GET(request) {
         }
         if (email) {
             query = query.ilike('user_email', `%${email}%`);
+        }
+        if (startDate) {
+            query = query.gte('created_at', `${startDate} 00:00:00`);
+        }
+        if (endDate) {
+            query = query.lte('created_at', `${endDate} 23:59:59`);
         }
 
         query = query.order('created_at', { ascending: false });

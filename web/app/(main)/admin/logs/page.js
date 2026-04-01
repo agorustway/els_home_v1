@@ -9,16 +9,20 @@ export default function AdminLogsPage() {
     const [loading, setLoading] = useState(true);
     const [searchEmail, setSearchEmail] = useState('');
     const [searchType, setSearchType] = useState(''); // PAGE_VIEW, CLICK, LOGIN, DOWNLOAD, ERROR
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [error, setError] = useState(null);
     const [isTableMissing, setIsTableMissing] = useState(false);
 
     // Filter Trigger
     const [activeEmail, setActiveEmail] = useState('');
     const [activeType, setActiveType] = useState('');
+    const [activeStartDate, setActiveStartDate] = useState('');
+    const [activeEndDate, setActiveEndDate] = useState('');
 
     useEffect(() => {
         fetchLogs();
-    }, [pagination.page, activeEmail, activeType]);
+    }, [pagination.page, activeEmail, activeType, activeStartDate, activeEndDate]);
 
     async function fetchLogs() {
         setLoading(true);
@@ -29,7 +33,9 @@ export default function AdminLogsPage() {
                 page: pagination.page,
                 limit: 30,
                 email: activeEmail,
-                type: activeType
+                type: activeType,
+                startDate: activeStartDate,
+                endDate: activeEndDate
             });
             const res = await fetch(`/api/admin/logs?${params.toString()}`);
             const data = await res.json();
@@ -56,6 +62,8 @@ export default function AdminLogsPage() {
         setPagination({ ...pagination, page: 1 });
         setActiveEmail(searchEmail);
         setActiveType(searchType);
+        setActiveStartDate(startDate);
+        setActiveEndDate(endDate);
     };
 
     const handleClearLogs = async (type) => { // '1YEAR', 'ALL', '1MONTH'
@@ -147,19 +155,36 @@ export default function AdminLogsPage() {
                             placeholder="이메일 검색..."
                             value={searchEmail}
                             onChange={(e) => setSearchEmail(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', flex: 1, fontSize: '0.85rem' }}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', width: '130px', fontSize: '0.85rem' }}
                         />
                         <select
                             value={searchType}
                             onChange={(e) => setSearchType(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', width: '160px', fontSize: '0.85rem' }}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', width: '130px', fontSize: '0.85rem' }}
                         >
                             <option value="">-- 활동 유형 --</option>
-                            <option value="PAGE_VIEW">페이지 조회 (PAGE_VIEW)</option>
-                            <option value="CLICK">클릭 액션 (CLICK)</option>
-                            <option value="DOWNLOAD">다운로드 (DOWNLOAD)</option>
+                            <option value="PAGE_VIEW">조회 (PAGE_VIEW)</option>
+                            <option value="CLICK">클릭 (CLICK)</option>
+                            <option value="DOWNLOAD">다운 (DOWNLOAD)</option>
                             <option value="LOGIN">로그인 (LOGIN)</option>
                         </select>
+
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', backgroundColor: '#f8fafc', padding: '2px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem' }}
+                            />
+                            <span style={{ color: '#94a3b8' }}>~</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem' }}
+                            />
+                        </div>
+
                         <button type="submit" className={`${styles.btn} ${styles.btnPoint}`}>검색</button>
                     </form>
 
