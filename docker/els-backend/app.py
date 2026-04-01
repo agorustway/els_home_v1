@@ -464,10 +464,10 @@ def login():
                 
                 # 데몬으로부터 새로운 로그가 한동안 없을 때만 백엔드 심박 로그를 출력
                 retry_count += 1
-                if retry_count >= 10: 
+                if retry_count >= 30: 
                     yield f"LOG:[백엔드] 세션 초기화 대기 중... ({retry_count}s)\n"
-                    # 심박 로그 출력 후 타이머를 약간 늦게 돌려 도배 방지
-                    retry_count = 3 
+                    # 심박 로그 출력 후 0으로 리셋하여 간격 유지
+                    retry_count = 0 
                 
                 time.sleep(1)
             
