@@ -3,11 +3,12 @@ FROM python:3.11-slim
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# 1. 시스템 패키지 설치 (Chrome 의존성)
+# 1. 시스템 패키지 설치 (Chrome 의존성 + 프로세스 관리 도구)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     fonts-liberation \
+    psmisc procps \
     libnss3 libx11-6 libatk-bridge2.0-0 libatspi2.0-0 libgtk-3-0 \
     libxcomposite1 libxcursor1 libxdamage1 libxrandr2 libgbm1 \
     libasound2 libxss1 libnspr4 \

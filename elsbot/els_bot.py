@@ -65,97 +65,7 @@ def close_modals(page):
     except: pass
     return "OK"
 
-def is_session_valid(page):
-    try:
-        if not page or not page.url: return False
-        html = page.html
-        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
-            return False
-            
-        # 로그인된 상태의 대표적인 징후들
-        logout_btn = page.ele('text:로그아웃', timeout=0.1) or \
-                     page.ele('#mf_wfm_subContainer_btn_logout', timeout=0.1) or \
-                     page.ele('css:[id*="btnLogout"]', timeout=0.1)
-        
-        # '님 안녕하세요' 또는 사용자 ID가 화면 상단에 있는지 확인
-        if "님 안녕하세요" in html or "ELS1106" in html:
-            if "손님(GUEST)" not in html:
-                return True
 
-        if logout_btn and logout_btn.states.is_displayed:
-            if "손님(GUEST)" not in html:
-                return True
-        return False
-    except:
-        return False
-
-def open_els_menu(page, log_callback=None):
-    if log_callback: log_callback("메뉴 진입 시도 중 (DrissionPage)...")
-    
-    for attempt in range(3):
-        close_modals(page)
-        
-        # 조회 페이지 도착 확인 (인풋 박스 유무)
-        if page.ele('css:input[id*="containerNo"]', timeout=3):
-            if log_callback: log_callback("이미 조회 페이지에 있습니다.")
-            return True
-
-        # 메인 페이지 이동
-        if "main.do" not in page.url.lower():
-            if log_callback: log_callback("메인 화면으로 이동...")
-            page.get("https://etrans.klnet.co.kr/main.do")
-            time.sleep(3)
-            close_modals(page)
-
-        # 1단계: 상위 메뉴 '화물추적' 클릭
-        # ID: #mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label
-        parent = page.ele('text:화물추적', timeout=5) or \
-                 page.ele('#mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label', timeout=1)
-        
-        if parent:
-            if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
-            parent.hover()
-            time.sleep(1)
-            parent.click()
-            time.sleep(2)
-            
-            # 2단계: 하위 메뉴 '컨테이너이동현황(국내)' 클릭
-            target = page.ele('text:컨테이너이동현황(국내)', timeout=3) or \
-                     page.ele('text:컨테이너 이동현황', timeout=0.1) or \
-                     page.ele('css:[id*="btn_2ndMenu"]', timeout=0.1)
-            
-            if not target:
-                # JS로 전역 텍스트 매칭 시도 (WebSquare 대응)
-                if log_callback: log_callback("하위 메뉴 JS 클릭 시도...")
-                page.run_js("""
-                    var items = document.querySelectorAll('.w2label, .w2anchor_label, a, span');
-                    for (var i=0; i<items.length; i++) {
-                        if (items[i].innerText.indexOf('컨테이너이동현황(국내)') !== -1) {
-                            items[i].click();
-                            return true;
-                        }
-                    }
-                    return false;
-                """)
-                time.sleep(5)
-                if page.ele('css:input[id*="containerNo"]', timeout=3):
-                    return True
-
-            if target:
-                if log_callback: log_callback(f"하위 메뉴 클릭: {target.text}")
-                target.click()
-                time.sleep(5)
-                # 최종 확인
-                if page.ele('css:input[id*="containerNo"]', timeout=5):
-                    return True
-            else:
-                if log_callback: log_callback("하위 메뉴를 찾지 못했습니다.")
-                save_screenshot(page, "debug_nav_sub_error")
-        else:
-            if log_callback: log_callback("상위 메뉴(화물추적)를 찾지 못했습니다.")
-            save_screenshot(page, "debug_nav_top_error")
-            
-    return False
 
 def solve_input_and_search(page, container_no, log_callback=None):
     try:
@@ -356,7 +266,7 @@ def is_session_valid(page):
     except:
         return False
 
-def open_els_menu(page, u_id, u_pw, log_callback=None):
+def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중...")
     
     for attempt in range(5):
@@ -416,7 +326,31 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     _log("DrissionPage 브라우저 시작...")
     co = ChromiumOptions()
     co.set_local_port(port)
+    
+    # [수정] Docker/Linux/NAS 환경을 위한 최적화 및 안정화 설정
+    if not show_browser:
+        # 1. 크롬 실행 경로 명시 (도커 내 심볼릭 링크 위치)
+        if os.path.exists('/usr/bin/google-chrome'):
+            co.set_browser_path('/usr/bin/google-chrome')
+            
+        co.set_headless(True)
+        co.add_argument('--no-sandbox')
+        co.add_argument('--disable-setuid-sandbox') # 보안 모델 우회 (도커 필수)
+        co.add_argument('--disable-gpu')
+        co.add_argument('--disable-dev-shm-usage') # /dev/shm 공유 메모리 부족 방지
+        co.add_argument('--no-first-run')
+        co.add_argument('--no-zygote') # 좀비 프로세스 방지
+        co.add_argument('--no-default-browser-check')
+        co.add_argument('--disable-extensions')
+        
+        # [중요] 사용자 데이터 데렉토리를 포트별로 분리하여 다중 세션 충돌 방지
+        user_data_path = os.path.join(os.path.dirname(__file__), "dist", f"drission_data_{port}")
+        os.makedirs(user_data_path, exist_ok=True)
+        co.set_user_data_path(user_data_path)
+    
+    _log(f"ChromiumPage 인스턴스 생성 시도... (포트: {port})")
     page = ChromiumPage(co)
+    _log("ChromiumPage 인스턴스 생성 완료")
     try:
         page.get("https://etrans.klnet.co.kr/")
         time.sleep(2)
