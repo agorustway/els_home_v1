@@ -1,5 +1,5 @@
-# ELS MISSION CONTROL v4.4.0
-> 마지막 업데이트: 2026-04-01 12:35 (KST)
+# ELS MISSION CONTROL v4.4.1
+> 마지막 업데이트: 2026-04-01 13:25 (KST)
 
 ## 📦 최신 배포 정보 (Release)
 - **현재 버전**: `v4.3.25` (Build 324)

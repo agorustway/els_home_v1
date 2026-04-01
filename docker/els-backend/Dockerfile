@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     psmisc procps \
     libnss3 libx11-6 libatk-bridge2.0-0 libatspi2.0-0 libgtk-3-0 \
     libxcomposite1 libxcursor1 libxdamage1 libxrandr2 libgbm1 \
-    libasound2 libxss1 libnspr4 libxshmfence1 libgl1-mesa-glx \
+    libasound2 libxss1 libnspr4 libxshmfence1 libgl1 \
     libvulkan1 libdrm2 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
