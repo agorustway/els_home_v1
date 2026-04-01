@@ -335,22 +335,40 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
             
         co.set_headless(True)
         co.add_argument('--no-sandbox')
-        co.add_argument('--disable-setuid-sandbox') # 보안 모델 우회 (도커 필수)
+        co.add_argument('--disable-setuid-sandbox') 
         co.add_argument('--disable-gpu')
-        co.add_argument('--disable-dev-shm-usage') # /dev/shm 공유 메모리 부족 방지
+        co.add_argument('--disable-dev-shm-usage') 
         co.add_argument('--no-first-run')
-        co.add_argument('--no-zygote') # 좀비 프로세스 방지
+        co.add_argument('--no-zygote') 
         co.add_argument('--no-default-browser-check')
         co.add_argument('--disable-extensions')
+        co.add_argument('--disable-background-networking')
+        co.add_argument('--disable-background-timer-throttling')
+        co.add_argument('--disable-client-side-phishing-detection')
+        co.add_argument('--disable-default-apps')
+        co.add_argument('--disable-hang-monitor')
+        co.add_argument('--disable-popup-blocking')
+        co.add_argument('--disable-prompt-on-repost')
+        co.add_argument('--disable-sync')
+        co.add_argument('--metrics-recording-only')
+        co.add_argument('--safebrowsing-disable-auto-update')
+        co.add_argument('--password-store=basic')
+        co.add_argument('--use-mock-keychain')
+        co.add_argument('--remote-debugging-address=0.0.0.0') # CDP 통신 바인딩 주소 명시
         
         # [중요] 사용자 데이터 데렉토리를 포트별로 분리하여 다중 세션 충돌 방지
         user_data_path = os.path.join(os.path.dirname(__file__), "dist", f"drission_data_{port}")
         os.makedirs(user_data_path, exist_ok=True)
         co.set_user_data_path(user_data_path)
     
-    _log(f"ChromiumPage 인스턴스 생성 시도... (포트: {port})")
-    page = ChromiumPage(co)
-    _log("ChromiumPage 인스턴스 생성 완료")
+    _log(f"ChromiumPage 인스턴스 생성 시도... (포트: {port}, 경로: {co.browser_path})")
+    try:
+        # 인스턴스 생성 전 포트 점유 여부 한 번 더 체크하는 것이 안전할 수 있음
+        page = ChromiumPage(co)
+        _log(f"ChromiumPage 인스턴리 생성 완료 (연결 성공)")
+    except Exception as e:
+        _log(f"!!! 브라우저 인스턴스 초기화 실패 !!! : {e}")
+        return (None, f"인스턴스 생성 오류: {e}")
     try:
         page.get("https://etrans.klnet.co.kr/")
         time.sleep(2)

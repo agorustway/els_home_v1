@@ -1,4 +1,8 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
+
+## 📅 2026-04-01 (낮) - [FIX] NAS 도커 환경 DrissionPage 초기화 실패 및 안정화 v4.4.0
+### 주제: Headless 모드 및 도커 전용 샌드박스 설정 적용
+
 2: 
 3: ## 📅 2026-03-31 (오후) - [HOTFIX] 화면 종료 버튼 클릭 시 좀비 알림 완벽 해결 v4.3.25 (Build 324)
 4: ### 주제: JS exitApp()과 Native finishAndRemoveTask() 연동

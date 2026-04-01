@@ -159,8 +159,7 @@ def login():
                     pool.add_log(f"❌ [보안경고] 연속 로그인 실패 3회 누적! 계정 잠금을 방지하기 위해 드라이버 #{idx+1} 초기화를 취소합니다.")
                     return
 
-            # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
-            if idx > 0: time.sleep(idx * 60)
+            # [NAS 최적화] 순차 실행 로직에 의해 제어되므로 개별 지연은 제거함
             
             msg = f"브라우저 #{idx+1} 초기화 중..."
             pool.add_log(msg)
@@ -168,7 +167,7 @@ def login():
             def _inner_log(m):
                 pool.add_log(f"[B#{idx+1}] {m}")
 
-            target_port = 32000 + idx
+            target_port = 9222 + idx
             
             # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
             pool.cleanup_lingering_chrome(target_port)
@@ -190,11 +189,15 @@ def login():
                 if pool.active_init_threads == 0:
                     pool.is_logging_in = False
 
-    threads = []
-    for i in range(pool.max_drivers):
-        t = threading.Thread(target=_do_login, args=(i,), daemon=True)
-        t.start()
-        threads.append(t)
+    # [NAS 최적화] 병렬 스레드 대신 순차 실행으로 변경하여 CPU 피크 부하 방지
+    def _run_sequential_init():
+        for i in range(pool.max_drivers):
+            _do_login(i)
+            # 하나 띄우고 나서 NAS가 진정할 시간을 충분히 줌
+            time.sleep(10)
+    
+    t_main = threading.Thread(target=_run_sequential_init, daemon=True)
+    t_main.start()
     
     # [핵심] 첫 번째 드라이버가 준비될 때까지만 기다리고 즉시 응답 반환!
     start_wait = time.time()
