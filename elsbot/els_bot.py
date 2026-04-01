@@ -294,25 +294,27 @@ def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
             if log_callback: log_callback("조회 페이지 도착 확인!")
             return True
 
-        # [핵심] 메뉴 클릭 대신 JS로 직접 함수 호출하여 진입 시도 (가장 확실함)
-        if log_callback: log_callback("JS 메뉴 강제 진입 시도 (컨테이너이동현황)...")
+        # [핵심] 메뉴 클릭 대신 JS로 직접 함수 호출하여 진입 시도
+        if log_callback: log_callback("JS 메뉴 강제 진입 시도 (MNU0024)...")
         page.run_js("""
             try {
-                // WebSquare 공통 메뉴 오픈 함수 호출 (MNU0024: 컨테이너이동현황(국내))
                 if (window.scwin && window.scwin.selectMenu) {
                     window.scwin.selectMenu("MNU0024");
                 } else if (window.top.scwin && window.top.scwin.selectMenu) {
                     window.top.scwin.selectMenu("MNU0024");
-                } else {
-                    // 수동 클릭 시뮬레이션 (최후의 수단)
-                    var el = Array.from(document.querySelectorAll('.w2label, .w2anchor_label, a'))
-                                  .find(e => e.innerText.indexOf('컨테이너이동현황(국내)') !== -1);
-                    if(el) el.click();
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         """)
         
+        time.sleep(7) # NAS 속도를 고려해 더 충분히 대기
+        if page.ele('css:input[id*="containerNo"]', timeout=3):
+            return True
+
+        # [Fallback] JS로도 안 되면 다이렉트 URL 이동 시도 (WebSquare 특성상 안 될 수 있으나 시도는 해봄)
+        if log_callback: log_callback("메뉴 진입 2차 시도 (Direct Navigation)...")
+        page.get("https://etrans.klnet.co.kr/main.do?menuId=MNU0024")
         time.sleep(5)
+        
         if page.ele('css:input[id*="containerNo"]', timeout=5):
             return True
 
@@ -360,8 +362,10 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         co.set_argument('--password-store=basic')
         co.set_argument('--use-mock-keychain')
         co.set_argument('--remote-debugging-address=0.0.0.0') 
+        # [추가] 데스크톱 모드 강제 (모바일 뷰 방지)
+        co.set_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36')
         
-        # [중요] 사용자 데이터 데렉토리를 포트별로 분리하여 다중 세션 충돌 방지
+        # [중요] 사용자 데이터 데렉토리를 포트별로 분리
         user_data_path = os.path.join(os.path.dirname(__file__), "dist", f"drission_data_{port}")
         os.makedirs(user_data_path, exist_ok=True)
         co.set_user_data_path(user_data_path)

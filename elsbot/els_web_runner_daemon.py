@@ -393,10 +393,8 @@ def quit_driver():
 
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
-    # elsbot/dist/debug_screenshot.png 파일 경로 (dist 폴더 내부에 저장하여 권한 문제 방지)
-    dist_dir = os.path.join(os.path.dirname(__file__), "dist")
-    os.makedirs(dist_dir, exist_ok=True)
-    path = os.path.join(dist_dir, "debug_screenshot.png")
+    # 컨테이너 내 공용 임시 폴더인 /tmp/ 사용 (권한 문제 방지)
+    path = "/tmp/debug_els.png"
     
     # 가용한 드라이버가 있으면 즉시 스크린샷 촬영 시도
     driver_for_shot = None
