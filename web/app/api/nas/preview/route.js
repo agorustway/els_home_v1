@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getNasClient } from '@/lib/nas';
 import { createClient } from '@/utils/supabase/server';
-import { logActivityServer } from '@/utils/logger';
+import { logActivityServer } from '@/utils/logger.server';
 
 export async function GET(request) {
     const supabase = await createClient();
