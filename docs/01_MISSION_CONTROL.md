@@ -8,12 +8,18 @@
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.3.25)
 
+### 🚀 IN-PROGRESS (RESCUE BIN)
+- **현재 작업**: [✅ 모든 문서 및 AI 지침 동기화 완료 - 최종 세션 보고 중]
+- **에러 복구용 단서**: 만약 AI가 에러로 중단되면 이 줄의 내용을 보고 복구하십시오.
+
+---
+
 ### 🎯 주요 마일스톤
+- [x] **2026-04-01**: [DOCS/REFORM] 문서고(docs/) 전면 구조 개혁 및 AI 스캔 친화적 청사진 도입 (04번/05번 신설)
 - [x] **2026-04-01**: [INFRA/NAS] Vercel 트래픽 오프로딩(관제, 로그, 파일) 및 백엔드 대규모 이전(v4.4.25)
 - [x] **2026-04-01**: [BOT/FIX] 메뉴 진입 로직 '텍스트 클릭' 방식으로 롤백 및 나스 경로 최적화
-- [x] **2026-04-01**: [DOCS] 프로젝트 마스터 맵(09_PROJECT_MASTER_MAP.md) 및 환경 구축 가이드 작성
-- [x] **2026-04-01**: [BOT/FIX] DrissionPage 4.0 API 오기 수정 (`set_argument`, `headless`) 및 로컬(Windows) 헤드리스 검증 완료
-- [x] **2026-04-01**: [BOT/FIX] NAS 도커(Linux) 환경 DrissionPage 초기화 실패 및 안정화 v4.4.0 (Headless, Sandbox, 순차 초기화 적용)
+- [x] **2026-04-01**: [BOT/FIX] DrissionPage 4.0 API 오기 수정 및 로컬(Windows) 헤드리스 검증 완료
+- [x] **2026-04-01**: [BOT/FIX] NAS 도커(Linux) 환경 DrissionPage 초기화 실패 해결 (v4.4.0)
 - [x] **v4.3.25**: [FIX] 화면의 [종료] 버튼 클릭 시 알림바가 남는 버그 최종 해결. 네이티브 `finishAndRemoveTask()` 기반의 `exitAppForce()` 호출로 전환.
 - [x] **v4.3.24**: [UX] 종료 탭 복구 완료. 종료 버튼의 동작을 하드웨어 뒤로가기와 동일하게(minimizeApp) 수정하여 알림창 문제 해결 시도.
 - [x] **v4.3.23**: [UI/UX] 종료 탭 제거 및 상단 뒤로가기(<) 버튼 추가 (사용자 요청으로 원복됨)
@@ -64,3 +70,14 @@
 
 ## 🐛 남은 이슈
 - 없음 (알려진 모든 치명적 버그 해결됨)
+## 📚 상세 문서 바로가기 (Documentation Map)
+- **[01. MISSION CONTROL](./01_MISSION_CONTROL.md)** (현황판)
+- **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (통합 개발 로그)
+- **[03. RULES](./03_RULES.md)** (에이전트 행동 지침)
+- **[04. MASTER ARCHITECTURE](./04_MASTER_ARCHITECTURE.md)** (🚀 AI/IDE Blueprint)
+- **[05. NAS API SPEC](./05_NAS_API_SPEC.md)** (나스 통신 규약)
+- **[07. RUNBOOK](./07_RUNBOOK.md)** (운영 매뉴얼)
+- **[08. ENVIRONMENT SETUP](./08_ENVIRONMENT_SETUP.md)** (환경 구축 가이드)
+
+---
+*최종 갱신일: 2026-04-01 (by Antigravity AI)*

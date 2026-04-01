@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUploadUrl, uploadFileToS3, getFileBufferFromS3 } from '@/lib/s3';
 import { createClient } from '@/utils/supabase/server';
-import { logActivityServer } from '@/utils/loggerServer';
+import { logActivityServer } from '@/utils/logger';
 
 export async function POST(request) {
     const supabase = await createClient();
