@@ -162,34 +162,48 @@ def scrape_hyper_verify(page, search_no):
     return None
 
 def solve_login_modal(page, u_id, u_pw, log_callback=None):
-    """로그인 모달이 뜨는 경우 즉시 해결"""
+    """로그인 모달/메인 로그인 폼을 찾아 해결. 안전을 위해 3회 실패 시 중단"""
+    # [추가] 정적 변수로 실패 횟수 관리 (세션 계정 잠금 방지)
+    if not hasattr(solve_login_modal, 'fail_count'):
+        solve_login_modal.fail_count = 0
+        
+    if solve_login_modal.fail_count >= 3:
+        if log_callback: log_callback("🛑 [보안 중단] 로그인 3회 실패 누적으로 인해 자동 시도를 중지합니다.")
+        return False
+
     try:
-        # [긴급/추가] 형의 스크린샷에서 확인된 상단 비상 로그인 팝업 (Top Login Popup)
-        top_popup_uid = page.ele('#mf_wfm_top_loginPopup_wframe_ibx_userId', timeout=1)
-        top_popup_pw = page.ele('#mf_wfm_top_loginPopup_wframe_sct_password', timeout=1)
+        def find_ele_globally(selector):
+            """모든 페이지와 아이프레임에서 요소를 수색"""
+            res = page.ele(selector, timeout=0.5)
+            if res: return res
+            for iframe in page.eles('t:iframe'):
+                try:
+                    res = iframe.ele(selector, timeout=0.1)
+                    if res: return res
+                except: pass
+            return None
+        # [긴급/추가] 상단 비상 로그인 팝업 (Top Login Popup)
+        top_popup_uid = find_ele_globally('#mf_wfm_top_loginPopup_wframe_ibx_userId')
+        top_popup_pw = find_ele_globally('#mf_wfm_top_loginPopup_wframe_sct_password')
         
         if top_popup_uid and top_popup_uid.states.is_displayed:
-            if log_callback: log_callback("비상(Top) 로그인 팝업 감지, 처리 시작...")
+            if log_callback: log_callback("📢 [비상] 상단 로그인 팝업 발견! 처리 개시.")
             uid_input = top_popup_uid
             pw_input = top_popup_pw
             login_btn_selector = '#mf_wfm_top_loginPopup_wframe_btn_login'
         else:
-            # 1. 일반 팝업(모달) 내 로그인 창 확인
-            modal = page.ele('css:.w2modal_popup', timeout=1)
+            # 1. 일반 팝업(모달) 내 로그인 창 확인 (모든 프레임 수색)
+            modal = find_ele_globally('css:.w2modal_popup')
             if modal and "로그인" in modal.text:
-                if log_callback: log_callback("모달 로그인 팝업 감지, 팝업 내 입력 시도...")
+                if log_callback: log_callback("📢 모달 로그인 팝업 발견! 처리 개시.")
                 uid_input = modal.ele('css:input[id*="UserId"]') or modal.ele('css:input[placeholder*="아이디"]')
                 pw_input = modal.ele('css:input[id*="password"]') or modal.ele('css:input[placeholder*="비밀번호"]')
                 login_btn_selector = 'text:로그인'
             else:
                 # 2. 일반 페이지 내 로그인 창 확인
-                uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=2) or \
-                            page.ele('css:input[id*="UserId"]', timeout=1) or \
-                            page.ele('css:input[placeholder*="아이디"]', timeout=1)
-                
-                pw_input = page.ele('#mf_wfm_subContainer_sct_password', timeout=2) or \
-                           page.ele('css:input[id*="password"]', timeout=1) or \
-                           page.ele('css:input[placeholder*="비밀번호"]', timeout=1)
+                if log_callback: log_callback("📢 일반 로그인 양식 검색 중...")
+                uid_input = find_ele_globally('#mf_wfm_subContainer_ibx_userId')
+                pw_input = find_ele_globally('#mf_wfm_subContainer_sct_password')
                 login_btn_selector = '#mf_wfm_subContainer_btn_login'
         
         for _ in range(20):
@@ -203,14 +217,19 @@ def solve_login_modal(page, u_id, u_pw, log_callback=None):
             try:
                 if not uid_input.states.is_displayed:
                     raise Exception("Element not visible")
-                # 1. 아이디 입력
+                # 1. 아이디 입력 (사람처럼 클릭 후 약간 대기)
+                if log_callback: log_callback("아이디 칸 타격...")
                 uid_input.click()
+                time.sleep(0.5) # 포커스 안정화 대기
                 uid_input.input(u_id.strip(), clear=True)
-                time.sleep(0.2)
-                # 2. 비밀번호 입력
-                pw_input.click()
-                pw_input.input(u_pw.strip(), clear=True)
                 time.sleep(0.3)
+                
+                # 2. 비밀번호 입력 (사람처럼 클릭 후 약간 대기)
+                if log_callback: log_callback("비밀번호 칸 타격...")
+                pw_input.click()
+                time.sleep(0.5) # 포커스 안정화 대기
+                pw_input.input(u_pw.strip(), clear=True)
+                time.sleep(0.5)
             except:
                 if log_callback: log_callback("물리 입력 실패, JS 강력 주입 시도...")
                 uid_id = uid_input.attr('id')
@@ -231,9 +250,9 @@ def solve_login_modal(page, u_id, u_pw, log_callback=None):
                     }}
                 """)
             
-            login_btn = page.ele(login_btn_selector, timeout=2) or \
-                        page.ele('text:로그인', timeout=1) or \
-                        page.ele('css:[id*="btn_login"]', timeout=1)
+            login_btn = find_ele_globally(login_btn_selector) or \
+                        find_ele_globally('text:로그인') or \
+                        find_ele_globally('css:[id*="btn_login"]')
             
             if login_btn:
                 btn_id = login_btn.attr('id')
@@ -241,11 +260,22 @@ def solve_login_modal(page, u_id, u_pw, log_callback=None):
                 try:
                     login_btn.click()
                 except:
-                    page.run_js(f"var el = document.getElementById('{btn_id}'); if(el) el.click();")
+                    # 버튼이 속한 페이지/프레임에서 클릭
+                    login_btn.owner.run_js(f"var el = document.getElementById('{btn_id}'); if(el) el.click();")
+                
                 time.sleep(5)
-                # 혹시나 "비밀번호를 입력하세요" 팝업이 다시 뜨면 확인 클릭
+                # 로그인 성공 여부 확인 루프
+                for _ in range(5):
+                    if is_session_valid(page):
+                        solve_login_modal.fail_count = 0 # 성공 시 초기화
+                        return True
+                    time.sleep(1)
+                
+                # 실패 핸들링
+                solve_login_modal.fail_count += 1
+                if log_callback: log_callback(f"⚠️ 로그인 실패 누적: {solve_login_modal.fail_count}/3")
                 close_modals(page)
-                return True
+                return False
         return False
     except Exception as e:
         if log_callback: log_callback(f"로그인 모달 처리 중 에러: {e}")
@@ -253,11 +283,16 @@ def solve_login_modal(page, u_id, u_pw, log_callback=None):
 
 def is_session_valid(page):
     try:
-        # [긴급/추가] 만약 로그인 팝업이 떠있다면 세션은 무효한 것으로 간주
-        if page.ele('#mf_wfm_top_loginPopup_wframe_ibx_userId', timeout=0.1):
+        # [긴급/추가] 로그인 팝업 감지 시 세션 무효 처리
+        target = page.ele('#mf_wfm_top_loginPopup_wframe_ibx_userId', timeout=0.1)
+        if target:
             return False
             
         html = page.html
+        # [수색] GUEST 확인
+        if "손님(GUEST)" in html:
+            return False
+            
         # 1. 텍스트 지표 확인
         if "btn_logout" in html or "로그아웃" in html:
             if "ELS1106" in html or "님 안녕하세요" in html:
