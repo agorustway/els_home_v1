@@ -272,6 +272,20 @@ def is_session_valid(page):
     except:
         return False
 
+def extend_els_session(page, log_callback=None):
+    try:
+        ext_btn = page.ele('#mf_wfm_gnb_btn_sessionExtension', timeout=1) or \
+                  page.ele('text:연장', timeout=1)
+        if ext_btn:
+            if log_callback: log_callback("세션 연장 버튼 클릭")
+            ext_btn.click(by_js=True)
+            time.sleep(0.5)
+            close_modals(page)
+            return True
+        return False
+    except:
+        return False
+
 def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중...")
     
@@ -306,14 +320,40 @@ def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
 
         # 4. 정석 클릭 방식 (구버전 로직 복구)
         if log_callback: log_callback("상위 메뉴 클릭: 화물추적")
-        parent = page.ele('text:화물추적', timeout=5)
+        
+        # [ID 기반 클릭 우선] 형이 준 스캔 데이터 기준
+        parent = page.ele('#mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label', timeout=2) or \
+                 page.ele('text:화물추적', timeout=5)
+        
         if parent:
-            parent.click(by_js=True)
-            time.sleep(2)
+            try: parent.click(by_js=True)
+            except: pass
+            time.sleep(1)
             
-            if log_callback: log_callback("하위 메뉴 클릭: 컨테이너이동현황(국내)")
-            target = page.ele('text:컨테이너이동현황(국내)', timeout=5) or \
-                     page.ele('text:컨테이너 이동현황', timeout=2)
+            # [최우선] JS를 이용한 직접 메뉴 오픈 시도 (MNU0024: 컨테이너이동현황(국내))
+            if log_callback: log_callback("JS 메뉴 강제 진입 시도 (MNU0024)...")
+            # iframe 안에도 JS가 있을 수 있으므로 모든 프레임에 주입 시도
+            js_code = "if(window.scwin && scwin.openMenu) scwin.openMenu('MNU0024');"
+            page.run_js(js_code)
+            
+            # iframe 수색 (DrissionPage의 강력한 기능 활용)
+            for frame in page.frames():
+                try: frame.run_js(js_code)
+                except: pass
+            
+            time.sleep(3)
+            # 조회 페이지 특징인 인풋박스가 보이면 성공
+            if page.ele('css:input[id*="containerNo"]', timeout=3) or \
+               page.ele('@@text():조회년월', timeout=1):
+                 if log_callback: log_callback("메뉴 진입 성공!")
+                 return True
+
+            if log_callback: log_callback("하위 메뉴 클릭 시도: 컨테이너이동현황(국내)")
+            # ID 기반 및 유연한 텍스트 매칭
+            target = page.ele('#mf_wfm_gnb_gen_depth1Generator_6_gen_2ndMenu_1_btn_2ndMenu', timeout=2) or \
+                     page.ele('@@text():컨테이너이동현황(국내)', timeout=3) or \
+                     page.ele('@@text():컨테이너 이동현황', timeout=2)
+                     
             if target:
                 target.click(by_js=True)
                 time.sleep(5)
@@ -321,7 +361,7 @@ def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
                 if page.ele('css:input[id*="containerNo"]', timeout=5):
                     return True
             else:
-                if log_callback: log_callback("하위 메뉴를 찾을 수 없습니다.")
+                if log_callback: log_callback("모든 수단으로 하위 메뉴를 찾을 수 없습니다.")
         else:
             if log_callback: log_callback("상위 메뉴(화물추적)를 찾을 수 없습니다.")
             save_screenshot(page, "debug_menu_fail")

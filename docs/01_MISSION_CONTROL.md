@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.4.25
-> 마지막 업데이트: 2026-04-01 18:35 (KST)
+# ELS MISSION CONTROL v4.4.27
+> 마지막 업데이트: 2026-04-01 22:38 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.25` (Mobile) / `v4.4.25` (NAS Backend & Bot)
+- **현재 버전**: `v4.3.26` (Mobile) / `v4.4.27` (NAS Backend & Bot)
 - **최근 업데이트**: 2026-04-01
-- **상태**: ✅ Vercel 트래픽 NAS 완전 이관 및 봇 엔진 안정화 완료
+- **상태**: ✅ NAS 도커 환경 완전 복구 및 봇 엔진 v1.5.0 (세션 무한연장) 적용 완료
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.3.25)
 
@@ -14,12 +14,9 @@
 
 ---
 
-### 🎯 주요 마일스톤
+- [x] **2026-04-01**: [INFRA/FIX] NAS 도커 바인드 마운트 에러 해결 및 봇 엔진 v1.5.0 강화 배포 (v4.4.27)
+- [x] **2026-04-01**: [BOT/FEAT] 세션 무한 연장(#mf_wfm_gnb_btn_sessionExtension) 및 고유 ID 타격 로직 도입
 - [x] **2026-04-01**: [DOCS/REFORM] 문서고(docs/) 전면 구조 개혁 및 AI 스캔 친화적 청사진 도입 (04번/05번 신설)
-- [x] **2026-04-01**: [INFRA/NAS] Vercel 트래픽 오프로딩(관제, 로그, 파일) 및 백엔드 대규모 이전(v4.4.25)
-- [x] **2026-04-01**: [BOT/FIX] 메뉴 진입 로직 '텍스트 클릭' 방식으로 롤백 및 나스 경로 최적화
-- [x] **2026-04-01**: [BOT/FIX] DrissionPage 4.0 API 오기 수정 및 로컬(Windows) 헤드리스 검증 완료
-- [x] **2026-04-01**: [BOT/FIX] NAS 도커(Linux) 환경 DrissionPage 초기화 실패 해결 (v4.4.0)
 - [x] **v4.3.25**: [FIX] 화면의 [종료] 버튼 클릭 시 알림바가 남는 버그 최종 해결. 네이티브 `finishAndRemoveTask()` 기반의 `exitAppForce()` 호출로 전환.
 - [x] **v4.3.24**: [UX] 종료 탭 복구 완료. 종료 버튼의 동작을 하드웨어 뒤로가기와 동일하게(minimizeApp) 수정하여 알림창 문제 해결 시도.
 - [x] **v4.3.23**: [UI/UX] 종료 탭 제거 및 상단 뒤로가기(<) 버튼 추가 (사용자 요청으로 원복됨)

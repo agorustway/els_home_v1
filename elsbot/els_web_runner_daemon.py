@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 # 핵심 함수들 가져오기
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu, extend_els_session
 import re
 import pandas as pd
 
@@ -457,10 +457,14 @@ def session_keeper():
                     reason = "세션 만료 감지"
                 elif elapsed_active >= 1200: # 20분(1200초) 이상 활동이 없으면 세션 연장
                     try:
-                        driver.get("https://etrans.klnet.co.kr/main.do")
-                        close_modals(driver)
+                        # [수정] 단순 새로고침 대신 '연장' 버튼 활용
+                        if extend_els_session(driver):
+                            pool.add_log(f"--- [백그라운드] 세션 유지 '연장' 버튼을 클릭했습니다. (포트: {getattr(driver, 'used_port', 0)}) ---")
+                        else:
+                            driver.get("https://etrans.klnet.co.kr/main.do")
+                            close_modals(driver)
+                            pool.add_log(f"--- [백그라운드] 20분 무활동. 연장 버튼 부재로 페이지를 새로고침했습니다. ---")
                         driver.last_activity = time.time()
-                        pool.add_log(f"--- [백그라운드] 20분 무활동. 세션 유지를 위해 페이지를 갱신했습니다 (재로그인 X). ---")
                     except Exception as e:
                         needs_refresh = True
                         reason = "세션 연장(새로고침) 실패"
