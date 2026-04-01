@@ -24,29 +24,29 @@ export function logActivity(actionType, path, metadata = {}) {
         if (typeof window !== 'undefined') cachedSessionPromise = sessionPromise;
     }
 
-    sessionPromise.then(({ data: { session } }) => {
+    sessionPromise.then(async ({ data: { session } }) => {
         const user = session?.user;
-        if (!user) return;
-
-        supabaseClient.from('user_activity_logs').insert({
-            user_id: user.id,
-            user_email: user.email,
-            action_type: actionType,
-            path: path || (typeof window !== 'undefined' ? window.location.pathname : path),
-            metadata: {
-                ...metadata,
-                userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Server',
-            }
-        }).then(({ error }) => {
-            if (error) {
-                // Ignore table not found errors quietly, complain otherwise
-                if (error.code !== 'PGRST205' && error.code !== '42P01') {
-                    console.error('[ActivityLogger] Logging failed:', error.message);
-                }
-            }
-        }).catch((err) => {
-            // Error connecting to DB for logs, ignore quietly
-        });
+        const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+        
+        try {
+            await fetch(`${baseUrl}/api/logs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_email: user?.email || 'anonymous',
+                    action_type: actionType,
+                    path: path || (typeof window !== 'undefined' ? window.location.pathname : path),
+                    metadata: {
+                        ...metadata,
+                        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Server',
+                        user_id: user?.id
+                    }
+                })
+            });
+        } catch (err) {
+            // 로그 저장 실패는 조용히 무시 (사용자 환경 보호)
+            console.error('[ActivityLogger] Failed to send log to NAS:', err);
+        }
     }).catch((err) => {
         if (typeof window !== 'undefined') cachedSessionPromise = null;
     });

@@ -63,8 +63,6 @@ def handle_global_exception(e):
     }
     return jsonify(response), 500
 
-    return jsonify({"ok": True})
-
 # --- 활동 로그 (Activity Logs) ---
 @app.route("/api/logs", methods=["POST"])
 def post_log():
@@ -73,11 +71,13 @@ def post_log():
     try:
         data = request.get_json(silent=True) or {}
         # Next.js의 로그 수집 형식 그대로 수용
+        metadata = data.get("metadata", {})
         log_entry = {
+            "user_id": metadata.get("user_id"), # metadata에서 id 추출
             "user_email": data.get("user_email") or data.get("email", "anonymous"),
             "action_type": data.get("action_type") or data.get("type", "PAGE_VIEW"),
             "path": data.get("path", "/"),
-            "metadata": data.get("metadata", {})
+            "metadata": metadata
         }
         res = supabase.from_("user_activity_logs").insert(log_entry).execute()
         return jsonify({"ok": True})

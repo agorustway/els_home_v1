@@ -275,7 +275,7 @@ def is_session_valid(page):
 def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
     if log_callback: log_callback("메뉴 진입 시도 중...")
     
-    # [추가] Headless 환경 스크린샷/렌더링 안정화를 위해 초기 사이즈 고정
+    # [추가] 초기 사이즈 고정
     try: page.set.window_size(1920, 1080)
     except: pass
 
@@ -285,43 +285,47 @@ def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
         # 1. 로그인 필요 여부 실시간 체크
         if not is_session_valid(page):
             if log_callback: log_callback("세션 유효하지 않음, 로그인 시도...")
-            solve_login_modal(page, u_id, u_pw, log_callback)
-            time.sleep(2)
-            if not is_session_valid(page): continue
+            if u_id and u_pw:
+                solve_login_modal(page, u_id, u_pw, log_callback)
+                time.sleep(2)
+                if not is_session_valid(page): continue
+            else:
+                return False
 
         # 2. 조회 페이지 도착 확인 (인풋 박스 유무)
         if page.ele('css:input[id*="containerNo"]', timeout=3):
             if log_callback: log_callback("조회 페이지 도착 확인!")
             return True
 
-        # [핵심] 메뉴 클릭 대신 JS로 직접 함수 호출하여 진입 시도
-        if log_callback: log_callback("JS 메뉴 강제 진입 시도 (MNU0024)...")
-        page.run_js("""
-            try {
-                if (window.scwin && window.scwin.selectMenu) {
-                    window.scwin.selectMenu("MNU0024");
-                } else if (window.top.scwin && window.top.scwin.selectMenu) {
-                    window.top.scwin.selectMenu("MNU0024");
-                }
-            } catch(e) {}
-        """)
-        
-        time.sleep(7) # NAS 속도를 고려해 더 충분히 대기
-        if page.ele('css:input[id*="containerNo"]', timeout=3):
-            return True
+        # 3. 메인 화면으로 이동 (필요한 경우)
+        if "main" not in page.url.lower():
+            if log_callback: log_callback("메인 화면으로 이동 시도...")
+            page.get("https://etrans.klnet.co.kr/main.do")
+            time.sleep(5)
+            close_modals(page)
 
-        # [Fallback] JS로도 안 되면 다이렉트 URL 이동 시도 (WebSquare 특성상 안 될 수 있으나 시도는 해봄)
-        if log_callback: log_callback("메뉴 진입 2차 시도 (Direct Navigation)...")
-        page.get("https://etrans.klnet.co.kr/main.do?menuId=MNU0024")
-        time.sleep(5)
-        
-        if page.ele('css:input[id*="containerNo"]', timeout=5):
-            return True
-
-        # 3. 메뉴 탐색 실패 시 메인으로 리프레시
-        if log_callback: log_callback("메뉴 진입 실패, 메인으로 리프레시...")
-        page.get("https://etrans.klnet.co.kr/main.do")
-        time.sleep(3)
+        # 4. 정석 클릭 방식 (구버전 로직 복구)
+        if log_callback: log_callback("상위 메뉴 클릭: 화물추적")
+        parent = page.ele('text:화물추적', timeout=5)
+        if parent:
+            parent.click(by_js=True)
+            time.sleep(2)
+            
+            if log_callback: log_callback("하위 메뉴 클릭: 컨테이너이동현황(국내)")
+            target = page.ele('text:컨테이너이동현황(국내)', timeout=5) or \
+                     page.ele('text:컨테이너 이동현황', timeout=2)
+            if target:
+                target.click(by_js=True)
+                time.sleep(5)
+                # 최종 확인
+                if page.ele('css:input[id*="containerNo"]', timeout=5):
+                    return True
+            else:
+                if log_callback: log_callback("하위 메뉴를 찾을 수 없습니다.")
+        else:
+            if log_callback: log_callback("상위 메뉴(화물추적)를 찾을 수 없습니다.")
+            save_screenshot(page, "debug_menu_fail")
+            time.sleep(3)
             
     return False
 
@@ -335,11 +339,16 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     co.set_local_port(port)
     
     # [수정] Docker/Linux/NAS 환경을 위한 최적화 및 안정화 설정
+    # [수정] 환경 변수나 표준 경로에서 크롬/크로미움 검색
+    chrome_bin = os.environ.get('CHROME_BIN')
+    if chrome_bin and os.path.exists(chrome_bin):
+        co.set_browser_path(chrome_bin)
+    elif os.path.exists('/usr/bin/google-chrome'):
+        co.set_browser_path('/usr/bin/google-chrome')
+    elif os.path.exists('/usr/bin/chromium'):
+        co.set_browser_path('/usr/bin/chromium')
+        
     if not show_browser:
-        # 1. 크롬 실행 경로 명시 (도커 내 심볼릭 링크 위치)
-        if os.path.exists('/usr/bin/google-chrome'):
-            co.set_browser_path('/usr/bin/google-chrome')
-            
         co.headless(True)
         co.set_argument('--no-sandbox')
         co.set_argument('--disable-setuid-sandbox') 
@@ -362,8 +371,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         co.set_argument('--password-store=basic')
         co.set_argument('--use-mock-keychain')
         co.set_argument('--remote-debugging-address=0.0.0.0') 
-        # [추가] 데스크톱 모드 강제 (모바일 뷰 방지)
-        co.set_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36')
+        # [제거] 데스크톱 모드 강제 해제 (기본값 사용)
         
         # [중요] 사용자 데이터 데렉토리를 포트별로 분리
         user_data_path = os.path.join(os.path.dirname(__file__), "dist", f"drission_data_{port}")
