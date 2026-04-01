@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 # 핵심 함수들 가져오기
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu, extend_els_session
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu
 import re
 import pandas as pd
 
@@ -159,7 +159,8 @@ def login():
                     pool.add_log(f"❌ [보안경고] 연속 로그인 실패 3회 누적! 계정 잠금을 방지하기 위해 드라이버 #{idx+1} 초기화를 취소합니다.")
                     return
 
-            # [NAS 최적화] 순차 실행 로직에 의해 제어되므로 개별 지연은 제거함
+            # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
+            if idx > 0: time.sleep(idx * 60)
             
             msg = f"브라우저 #{idx+1} 초기화 중..."
             pool.add_log(msg)
@@ -167,7 +168,7 @@ def login():
             def _inner_log(m):
                 pool.add_log(f"[B#{idx+1}] {m}")
 
-            target_port = 9222 + idx
+            target_port = 32000 + idx
             
             # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
             pool.cleanup_lingering_chrome(target_port)
@@ -189,15 +190,11 @@ def login():
                 if pool.active_init_threads == 0:
                     pool.is_logging_in = False
 
-    # [NAS 최적화] 병렬 스레드 대신 순차 실행으로 변경하여 CPU 피크 부하 방지
-    def _run_sequential_init():
-        for i in range(pool.max_drivers):
-            _do_login(i)
-            # 하나 띄우고 나서 NAS가 진정할 시간을 충분히 줌
-            time.sleep(10)
-    
-    t_main = threading.Thread(target=_run_sequential_init, daemon=True)
-    t_main.start()
+    threads = []
+    for i in range(pool.max_drivers):
+        t = threading.Thread(target=_do_login, args=(i,), daemon=True)
+        t.start()
+        threads.append(t)
     
     # [핵심] 첫 번째 드라이버가 준비될 때까지만 기다리고 즉시 응답 반환!
     start_wait = time.time()
@@ -393,36 +390,26 @@ def quit_driver():
 
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
-    # 컨테이너 내 공용 임시 폴더인 /tmp/ 사용 (권한 문제 방지)
-    path = "/tmp/debug_els.png"
+    # elsbot/debug_screenshot.png 파일 경로
+    path = os.path.join(os.path.dirname(__file__), "debug_screenshot.png")
     
     # 가용한 드라이버가 있으면 즉시 스크린샷 촬영 시도
     driver_for_shot = None
     with pool.lock:
         if pool.drivers:
             driver_for_shot = pool.drivers[0]
-        else:
-            # 대기열에 있는 드라이버라도 하나 가져와서 찍어봄
-            if not pool.available_queue.empty():
-                try: 
-                    driver_for_shot = pool.available_queue.get_nowait()
-                    pool.available_queue.put(driver_for_shot) # 바로 다시 넣음
-                except: pass
     
     if driver_for_shot:
         try:
-            # [추가] 촬영 전 화면 크기 한 번 더 고정
-            try: driver_for_shot.set.window_size(1280, 800)
-            except: pass
+            # DrissionPage의 get_screenshot 메서드 사용
             driver_for_shot.get_screenshot(path=path)
         except Exception as e:
-            pool.add_log(f"📸 [스크린샷 실패] {e}")
             print(f"[SCREENSHOT_ERROR] {e}")
 
     if os.path.exists(path):
         with open(path, "rb") as f:
             return Response(f.read(), mimetype='image/png')
-    return jsonify({"ok": False, "error": "아직 캡처된 화면이 없습니다. (봇이 구동을 시작하면 나타납니다)"}), 404
+    return jsonify({"ok": False, "error": "No screenshot"}), 404
 
 @app.route('/logs', methods=['GET'])
 def get_logs():
@@ -457,14 +444,10 @@ def session_keeper():
                     reason = "세션 만료 감지"
                 elif elapsed_active >= 1200: # 20분(1200초) 이상 활동이 없으면 세션 연장
                     try:
-                        # [수정] 단순 새로고침 대신 '연장' 버튼 활용
-                        if extend_els_session(driver):
-                            pool.add_log(f"--- [백그라운드] 세션 유지 '연장' 버튼을 클릭했습니다. (포트: {getattr(driver, 'used_port', 0)}) ---")
-                        else:
-                            driver.get("https://etrans.klnet.co.kr/main.do")
-                            close_modals(driver)
-                            pool.add_log(f"--- [백그라운드] 20분 무활동. 연장 버튼 부재로 페이지를 새로고침했습니다. ---")
+                        driver.get("https://etrans.klnet.co.kr/main.do")
+                        close_modals(driver)
                         driver.last_activity = time.time()
+                        pool.add_log(f"--- [백그라운드] 20분 무활동. 세션 유지를 위해 페이지를 갱신했습니다 (재로그인 X). ---")
                     except Exception as e:
                         needs_refresh = True
                         reason = "세션 연장(새로고침) 실패"

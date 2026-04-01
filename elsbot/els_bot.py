@@ -25,6 +25,7 @@ def load_config():
         return {"user_id": "", "user_pw": ""}
 
 def save_screenshot(page, name="debug"):
+    """디버그용 스크린샷 저장 (elsbot/debug_screenshot.png)"""
     try:
         path = os.path.join(os.path.dirname(__file__), f"{name}_screenshot.png")
         page.get_screenshot(path=path)
@@ -32,6 +33,7 @@ def save_screenshot(page, name="debug"):
         print(f"[DEBUG] 스크린샷 저장 실패: {e}")
 
 def check_alert(page):
+    """DrissionPage는 알람을 자동으로 처리하거나 확인할 수 있음"""
     try:
         if page.handle_alert(accept=True):
             return "Alert accepted"
@@ -39,35 +41,109 @@ def check_alert(page):
     return None
 
 def close_modals(page):
+    """이트랜스 공지사항 등 모달 창 닫기 (DrissionPage 버전)"""
     try:
-        # 공지사항/팝업 닫기
-        # '아이디를 입력하세요' 같은 알림창 닫기 우선
-        alerts = page.eles('css:.w2modal_popup')
-        for alert in alerts:
-            if any(msg in alert.text for msg in ["아이디를 입력", "비밀번호를 입력", "확인"]):
-                btn_ok = alert.ele('text:확인') or alert.ele('css:.btn_cm')
-                if btn_ok:
-                    btn_ok.click()
-                    time.sleep(0.5)
+        # 세션 종료 텍스트 확인
+        html = page.html
+        if "Session이 종료" in html or "세션이 만료" in html or "로그아웃 되었습니다" in html:
+            return "SESSION_EXPIRED"
 
+        # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
+        # WebSquare 특유의 모달 타이틀 확인
+        modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
+        for title in modal_titles:
+            if "로그인" in title.text:
+                return "SESSION_EXPIRED"
+
+        # 일반적인 공지사항 등 닫기 시도
         page.run_js("""
-            document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => e.click());
             document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => {
-                if (e.innerText.indexOf('로그인') === -1 && e.innerText.indexOf('아이디를') === -1) {
+                // '로그인' 팝업은 자바스크립트로 닫지 말고 그냥 숨겨버리면 안 됨 (세션이 이미 없음)
+                if (e.innerText.indexOf('로그인') === -1) {
                     e.style.display = 'none';
                 }
             });
+            document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => e.click());
         """)
-        # 세션 종료 확인
-        html = page.html
-        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다"]):
-            return "SESSION_EXPIRED"
     except: pass
     return "OK"
 
+def is_session_valid(page):
+    """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 철저히 검사"""
+    try:
+        # 0. 브라우저 연결 상태 확인 (가장 기본)
+        if not page or not page.url:
+            return False
 
+        # 1. 세션 만료 알림 텍스트 확인
+        html = page.html
+        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
+            return False
+
+        # 3. 로그인 팝업 체크
+        modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
+        for title in modal_titles:
+            if "로그인" in title.text:
+                return False
+        
+        # 4. 로그아웃 버튼이나 사용자 정보 확인
+        if page.ele('text:로그아웃', timeout=0.1) or page.ele('text:님 안녕하세요', timeout=0.1):
+            return True
+            
+        # 5. [추가] 마지막 수단: 페이지가 살아있는지 빈 JS 실행으로 확인
+        try:
+            page.run_js("return 1", timeout=1)
+            # 만약 위 조건들에 안 걸렸는데 JS 실행이 된다면 일단 살려둠
+            return True
+        except:
+            return False
+    except:
+        return False
+
+def open_els_menu(page, log_callback=None):
+    if log_callback: log_callback("메뉴 진입 시도 중 (DrissionPage)...")
+    
+    for attempt in range(5):
+        close_modals(page)
+        
+        # 조회 페이지 도착 확인 (입력창 탐지)
+        if page.ele('css:input[id*="containerNo"]', timeout=3):
+            if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
+            return True
+
+        # 메인 페이지(main.do)가 아니면 이동
+        if "main" not in page.url.lower():
+            if log_callback: log_callback("메인 화면으로 이동 시도...")
+            page.get("https://etrans.klnet.co.kr/main.do")
+            time.sleep(5)
+            close_modals(page)
+
+        # 1단계: 상위 메뉴 '화물추적' 클릭
+        parent = page.ele('text:화물추적', timeout=2)
+        if parent:
+            if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
+            parent.click(by_js=True)
+            time.sleep(2)
+            
+            # 2단계: 하위 메뉴 '컨테이너이동현황(국내)' 클릭
+            target = page.ele('text:컨테이너이동현황(국내)', timeout=3) or \
+                     page.ele('text:컨테이너 이동현황', timeout=2)
+            if target:
+                if log_callback: log_callback(f"하위 메뉴 클릭: {target.text}")
+                target.click(by_js=True)
+                time.sleep(5) # 탭 열리고 렌더링될 때까지 대기
+                save_screenshot(page, "debug")
+            else:
+                if log_callback: log_callback("하위 메뉴를 찾을 수 없습니다.")
+        else:
+            if log_callback: log_callback("상위 메뉴(화물추적)를 찾을 수 없습니다.")
+            save_screenshot(page, "debug")
+            time.sleep(3)
+        
+    return False
 
 def solve_input_and_search(page, container_no, log_callback=None):
+    """[WebSquare 특화] DrissionPage로 값 설정 + 조회 버튼 클릭"""
     try:
         # 입력창 찾기
         input_ele = page.ele('css:input[id*="containerNo"]', timeout=5)
@@ -75,7 +151,8 @@ def solve_input_and_search(page, container_no, log_callback=None):
             if log_callback: log_callback(f"[{container_no}] 입력창을 찾을 수 없습니다.")
             return "INPUT_NOT_FOUND"
 
-        # 입력 전 초기화 (WebSquare 대응)
+        # [핵심 수정] WebSquare는 일반 clear()가 이전 값을 제대로 안 지움
+        # JS로 DOM 값 강제 초기화 + 이벤트 트리거까지 실행하여 잔존값 완전 제거
         input_id = input_ele.attr('id')
         page.run_js(f"""
             var el = document.getElementById('{input_id}');
@@ -90,36 +167,56 @@ def solve_input_and_search(page, container_no, log_callback=None):
         # 값 입력
         input_ele.input(container_no)
         
-        # 실제 입력 확인
-        actual_val = input_ele.value or ""
-        if actual_val.strip().upper() != container_no.strip().upper():
-             page.run_js(f"document.getElementById('{input_id}').value = '{container_no}';")
-             page.run_js(f"document.getElementById('{input_id}').dispatchEvent(new Event('change', {{bubbles: true}}));")
-
+        # [검증] 실제로 입력됐는지 확인
+        actual_val = input_ele.value or page.run_js(f"return document.getElementById('{input_id}')?.value || '';")
+        if actual_val and actual_val.strip().upper() != container_no.strip().upper():
+            # 강제 JS 직접 입력
+            page.run_js(f"""
+                var el = document.getElementById('{input_id}');
+                if (el) {{
+                    el.value = '{container_no}';
+                    el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                }}
+            """)
+            if log_callback: log_callback(f"[{container_no}] JS 강제 입력 완료")
+        
         # 조회 버튼 클릭
-        btn = page.ele('css:[id*="btnSearch"]', timeout=2) or page.ele('text:조회', timeout=1)
+        btn = page.ele('css:[id*="btnSearch"]', timeout=2)
+        if not btn:
+            # 텍스트로 찾기
+            btn = page.ele('text:조회', timeout=2)
+        
         if btn:
             btn.click()
         else:
-            input_ele.input('\n')
+            input_ele.input('\n') # 엔터키
 
         if log_callback: log_callback(f"[{container_no}] 조회 버튼 클릭 완료")
+        
+        # 🎯 [NAS 최적화] WebSquare 초기 로딩 지연 단축
         time.sleep(0.5) 
         
-        # 알림 메시지 확인
+        # 1. 알럿 메시지 확인 (내역 없음 등)
         try:
             alert_text = page.handle_alert(timeout=1)
             if alert_text:
-                if any(msg in alert_text for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]):
+                if any(msg in alert_text for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "입력하세요"]):
+                    if log_callback: log_callback(f"[{container_no}] 결과 메시지: {alert_text}")
                     return "내역없음확인"
         except: pass
 
-        # 로딩바 대기
+        # 2. 로딩바 사라질 때까지 대기 (최대 10초)
         for _ in range(20):
-            spinner = page.ele('css:[id*="_progress_"]', timeout=0.1)
+            # WebSquare 로딩바 (mf_progress 등) 존재 여부 및 가시성 체크
+            spinner = page.ele('css:[id*="_progress_"]', timeout=0.1) or \
+                      page.ele('css:.w2group_mf_progress', timeout=0.1)
+            # 요소가 없거나, 스타일이 none이거나, 투명도가 0이면 완료된 것으로 간주
             if not spinner: break
-            style = spinner.attrs.get('style', '')
-            if 'display: none' in style or 'visibility: hidden' in style: break
+            try:
+                style = spinner.attrs.get('style', '')
+                if 'display: none' in style or 'visibility: hidden' in style: break
+            except: break
             time.sleep(0.5)
 
         return True
@@ -127,21 +224,33 @@ def solve_input_and_search(page, container_no, log_callback=None):
         return str(e)
 
 def scrape_hyper_verify(page, search_no):
+    """모든 프레임을 뒤져서 WebSquare 데이터를 추출 (DrissionPage 이식)"""
+    
     script = r"""
+    var searchNo = arguments[0].replace(/[^A-Z0-9]/g, '').toUpperCase();
     var results = [];
+    
     function dive(win) {
         try {
             var rows = win.document.querySelectorAll('tr');
             for (var j = 0; j < rows.length; j++) {
                 var cells = rows[j].cells;
                 if (!cells || cells.length < 5) continue;
+                
                 var rowVals = [];
                 for (var k = 0; k < cells.length; k++) {
                     rowVals.push(cells[k].innerText.trim().replace(/\s+/g, ' '));
                 }
                 var rowText = rowVals.join('|');
-                var hasDirection = /수입|수출|반입|반출/.test(rowText);
+                
+                // [정합성 복원] 
+                // 조건 1: 숫자로 시작하는 행 (No 컬럼)
+                // 조건 2: 수입/수출/반입/반출 포함
+                // 조건 3 (핵심): 행 내에 조회한 컨테이너 번호 앞 4자리+6자리가 매치되어야 함
+                //   - 이 조건이 없으면 이전 조회 잔상이나 다른 컨테이너 데이터가 섞임
+                var hasDirection = (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1);
                 var isNumberedRow = /^\d+\|/.test(rowText);
+                
                 if (isNumberedRow && hasDirection) {
                     results.push(rowText);
                 }
@@ -150,382 +259,233 @@ def scrape_hyper_verify(page, search_no):
         } catch (e) {}
     }
     dive(window);
-    var finalData = Array.from(new Set(results));
-    return finalData.join('\n');
-    """
-    for attempt in range(15):
-        try:
-            res = page.run_js(script)
-            if res and '|' in res: return res
-        except: pass
-        time.sleep(0.5)
-    return None
-
-def solve_login_modal(page, u_id, u_pw, log_callback=None):
-    """로그인 모달/메인 로그인 폼을 찾아 해결. 안전을 위해 3회 실패 시 중단"""
-    # [추가] 정적 변수로 실패 횟수 관리 (세션 계정 잠금 방지)
-    if not hasattr(solve_login_modal, 'fail_count'):
-        solve_login_modal.fail_count = 0
-        
-    if solve_login_modal.fail_count >= 3:
-        if log_callback: log_callback("🛑 [보안 중단] 로그인 3회 실패 누적으로 인해 자동 시도를 중지합니다.")
-        return False
-
-    try:
-        def find_ele_globally(selector):
-            """모든 페이지와 아이프레임에서 요소를 수색"""
-            res = page.ele(selector, timeout=0.5)
-            if res: return res
-            for iframe in page.eles('t:iframe'):
-                try:
-                    res = iframe.ele(selector, timeout=0.1)
-                    if res: return res
-                except: pass
-            return None
-        # [긴급/추가] 상단 비상 로그인 팝업 (Top Login Popup)
-        top_popup_uid = find_ele_globally('#mf_wfm_top_loginPopup_wframe_ibx_userId')
-        top_popup_pw = find_ele_globally('#mf_wfm_top_loginPopup_wframe_sct_password')
-        
-        if top_popup_uid and top_popup_uid.states.is_displayed:
-            if log_callback: log_callback("📢 [비상] 상단 로그인 팝업 발견! 처리 개시.")
-            uid_input = top_popup_uid
-            pw_input = top_popup_pw
-            login_btn_selector = '#mf_wfm_top_loginPopup_wframe_btn_login'
-        else:
-            # 1. 일반 팝업(모달) 내 로그인 창 확인 (모든 프레임 수색)
-            modal = find_ele_globally('css:.w2modal_popup')
-            if modal and "로그인" in modal.text:
-                if log_callback: log_callback("📢 모달 로그인 팝업 발견! 처리 개시.")
-                uid_input = modal.ele('css:input[id*="UserId"]') or modal.ele('css:input[placeholder*="아이디"]')
-                pw_input = modal.ele('css:input[id*="password"]') or modal.ele('css:input[placeholder*="비밀번호"]')
-                login_btn_selector = 'text:로그인'
-            else:
-                # 2. 일반 페이지 내 로그인 창 확인
-                if log_callback: log_callback("📢 일반 로그인 양식 검색 중...")
-                uid_input = find_ele_globally('#mf_wfm_subContainer_ibx_userId')
-                pw_input = find_ele_globally('#mf_wfm_subContainer_sct_password')
-                login_btn_selector = '#mf_wfm_subContainer_btn_login'
-        
-        for _ in range(20):
-            if uid_input and uid_input.states.is_displayed: break
-            time.sleep(0.5)
-            
-        if uid_input and pw_input:
-            if log_callback: log_callback(f"로그인 정보 입력 중... ({uid_input.attr('id')})")
-            
-            # 물리적 위치 기반 클릭 및 입력 (가장 확실한 방법)
-            try:
-                if not uid_input.states.is_displayed:
-                    raise Exception("Element not visible")
-                # 1. 아이디 입력 (사람처럼 클릭 후 약간 대기)
-                if log_callback: log_callback("아이디 칸 타격...")
-                uid_input.click()
-                time.sleep(0.5) # 포커스 안정화 대기
-                uid_input.input(u_id.strip(), clear=True)
-                time.sleep(0.3)
-                
-                # 2. 비밀번호 입력 (사람처럼 클릭 후 약간 대기)
-                if log_callback: log_callback("비밀번호 칸 타격...")
-                pw_input.click()
-                time.sleep(0.5) # 포커스 안정화 대기
-                pw_input.input(u_pw.strip(), clear=True)
-                time.sleep(0.5)
-            except:
-                if log_callback: log_callback("물리 입력 실패, JS 강력 주입 시도...")
-                uid_id = uid_input.attr('id')
-                pw_id = pw_input.attr('id')
-                page.run_js(f"""
-                    var u = document.getElementById('{uid_id}');
-                    var p = document.getElementById('{pw_id}');
-                    if(u && p) {{
-                        u.value = '{u_id.strip()}';
-                        p.value = '{u_pw.strip()}';
-                        u.dispatchEvent(new Event('input', {{bubbles: true}}));
-                        u.dispatchEvent(new Event('change', {{bubbles: true}}));
-                        p.dispatchEvent(new Event('input', {{bubbles: true}}));
-                        p.dispatchEvent(new Event('change', {{bubbles: true}}));
-                        // WebSquare 전용 이벤트 트리거 시도
-                        if (u._instance) u._instance.setValue('{u_id.strip()}');
-                        if (p._instance) p._instance.setValue('{u_pw.strip()}');
-                    }}
-                """)
-            
-            login_btn = find_ele_globally(login_btn_selector) or \
-                        find_ele_globally('text:로그인') or \
-                        find_ele_globally('css:[id*="btn_login"]')
-            
-            if login_btn:
-                btn_id = login_btn.attr('id')
-                if log_callback: log_callback(f"로그인 버튼 클릭 시도 ({btn_id})")
-                try:
-                    login_btn.click()
-                except:
-                    # 버튼이 속한 페이지/프레임에서 클릭
-                    login_btn.owner.run_js(f"var el = document.getElementById('{btn_id}'); if(el) el.click();")
-                
-                time.sleep(5)
-                # 로그인 성공 여부 확인 루프
-                for _ in range(5):
-                    if is_session_valid(page):
-                        solve_login_modal.fail_count = 0 # 성공 시 초기화
-                        return True
-                    time.sleep(1)
-                
-                # 실패 핸들링
-                solve_login_modal.fail_count += 1
-                if log_callback: log_callback(f"⚠️ 로그인 실패 누적: {solve_login_modal.fail_count}/3")
-                close_modals(page)
-                return False
-        return False
-    except Exception as e:
-        if log_callback: log_callback(f"로그인 모달 처리 중 에러: {e}")
-        return False
-
-def is_session_valid(page):
-    try:
-        # [긴급/추가] 로그인 팝업 감지 시 세션 무효 처리
-        target = page.ele('#mf_wfm_top_loginPopup_wframe_ibx_userId', timeout=0.1)
-        if target:
-            return False
-            
-        html = page.html
-        # [수색] GUEST 확인
-        if "손님(GUEST)" in html:
-            return False
-            
-        # 1. 텍스트 지표 확인
-        if "btn_logout" in html or "로그아웃" in html:
-            if "ELS1106" in html or "님 안녕하세요" in html:
-                if "손님(GUEST)" not in html:
-                    return True
-        
-        # 2. 특정 요소 존재 여부로 판단 (로그아웃 버튼 ID)
-        if page.ele('#mf_wfm_gnb_btn_logout', timeout=0.1):
-            return True
-
-        # 3. 로그인 창이 대놓고 떠있으면 미인증
-        if page.ele('#mf_wfm_subContainer_ibx_userId', timeout=0.1):
-            return False
-            
-        url = page.url.lower()
-        if any(u in url for u in ["login.do", "login.klnet"]):
-            return False
-            
-        # 4. 세션 종료 메시지 확인
-        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
-            return False
-            
-        # 5. 그 외의 경우 (메인 페이지 등에서 로그아웃 버튼은 없지만 ELS1106 텍스트는 있는 경우)
-        if "ELS1106" in html and "손님" not in html:
-            return True
-
-        return False
-    except:
-        return False
-
-def extend_els_session(page, log_callback=None):
-    try:
-        ext_btn = page.ele('#mf_wfm_gnb_btn_sessionExtension', timeout=1) or \
-                  page.ele('text:연장', timeout=1)
-        if ext_btn:
-            if log_callback: log_callback("세션 연장 버튼 클릭")
-            ext_btn.click(by_js=True)
-            time.sleep(0.5)
-            close_modals(page)
-            return True
-        return False
-    except:
-        return False
-
-def open_els_menu(page, u_id=None, u_pw=None, log_callback=None):
-    if log_callback: log_callback("메뉴 진입 시도 중...")
     
-    # [추가] 초기 사이즈 고정
-    try: page.set.window_size(1920, 1080)
+    var finalData = Array.from(new Set(results));
+    return finalData.length > 0 ? finalData.join('\n') : "";
+    """
+    
+    # 최대 10초 대기하며 결과 수집
+    for attempt in range(20):
+        try:
+            res = page.run_js(script, search_no)
+            if res and '|' in res and len(res.strip()) > 10:
+                # [핵심] 수집된 결과에서 실제 조회 번호(searchNo) 앞 8자리로 필터링
+                # 이트랜스 화면에 이전 컨테이너 잔상 데이터가 섞이는 것을 방지
+                norm_search = re.sub(r'[^A-Z0-9]', '', search_no.upper())
+                prefix = norm_search[:8]  # 앞 8자리 (예: TRHU5906)
+                filtered_lines = []
+                for line in res.split('\n'):
+                    # 행 텍스트에 조회 번호가 포함된 경우만 수집
+                    # 단, 일부 이트랜스 뷰는 컨테이너 번호를 별도 컬럼에 표시 안 하므로
+                    # 헤더 행(이미 URL/타이틀에 반영됨)이 맞으면 전부 수용
+                    filtered_lines.append(line)
+                # 필터링된 결과 반환
+                if filtered_lines:
+                    return '\n'.join(filtered_lines)
+        except: pass
+        time.sleep(0.3)
+        
+    # 데이터 없음 2차 확인 (텍스트 기반)
+    try:
+        full_text = page.html
+        for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다", "결과가 없습니다"]:
+            if msg in full_text:
+                return "내역없음확인"
     except: pass
-
-    for attempt in range(5):
-        close_modals(page)
         
-        # 1. 로그인 필요 여부 실시간 체크
-        if not is_session_valid(page):
-            if log_callback: log_callback("세션 유효하지 않음, 로그인 시도...")
-            if u_id and u_pw:
-                solve_login_modal(page, u_id, u_pw, log_callback)
-                time.sleep(2)
-                if not is_session_valid(page): continue
-            else:
-                return False
-
-        # 2. 조회 페이지 도착 확인 (인풋 박스 유무)
-        if page.ele('css:input[id*="containerNo"]', timeout=3):
-            if log_callback: log_callback("조회 페이지 도착 확인!")
-            return True
-
-        # 3. 메인 화면으로 이동 (필요한 경우)
-        if "main" not in page.url.lower():
-            if log_callback: log_callback("메인 화면으로 이동 시도...")
-            page.get("https://etrans.klnet.co.kr/main.do")
-            time.sleep(5)
-            close_modals(page)
-
-        # 4. 정석 클릭 방식 (구버전 로직 복구)
-        if log_callback: log_callback("상위 메뉴 클릭: 화물추적")
-        
-        # [ID 기반 클릭 우선] 형이 준 스캔 데이터 기준
-        parent = page.ele('#mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label', timeout=2) or \
-                 page.ele('text:화물추적', timeout=5)
-        
-        if parent:
-            try: parent.click(by_js=True)
-            except: pass
-            time.sleep(1)
-            
-            # [최우선] JS를 이용한 직접 메뉴 오픈 시도 (MNU0024: 컨테이너이동현황(국내))
-            if log_callback: log_callback("JS 메뉴 강제 진입 시도 (MNU0024)...")
-            # iframe 안에도 JS가 있을 수 있으므로 모든 프레임에 주입 시도
-            js_code = "if(window.scwin && scwin.openMenu) scwin.openMenu('MNU0024');"
-            page.run_js(js_code)
-            
-            # iframe 수색 (DrissionPage의 강력한 기능 활용)
-            # [수정] page.frames 대신 page.eles('t:iframe') 로프 사용
-            for frame in page.eles('t:iframe'):
-                try: frame.run_js(js_code)
-                except: pass
-            
-            time.sleep(3)
-            # 조회 페이지 특징인 인풋박스가 보이면 성공
-            if page.ele('css:input[id*="containerNo"]', timeout=3) or \
-               page.ele('@@text():조회년월', timeout=1):
-                 if log_callback: log_callback("메뉴 진입 성공!")
-                 return True
-
-            if log_callback: log_callback("하위 메뉴 클릭 시도: 컨테이너이동현황(국내)")
-            # ID 기반 및 유연한 텍스트 매칭
-            target = page.ele('#mf_wfm_gnb_gen_depth1Generator_6_gen_2ndMenu_1_btn_2ndMenu', timeout=2) or \
-                     page.ele('@@text():컨테이너이동현황(국내)', timeout=3) or \
-                     page.ele('@@text():컨테이너 이동현황', timeout=2)
-                     
-            if target:
-                target.click(by_js=True)
-                time.sleep(5)
-                # 최종 확인
-                if page.ele('css:input[id*="containerNo"]', timeout=5):
-                    return True
-            else:
-                if log_callback: log_callback("모든 수단으로 하위 메뉴를 찾을 수 없습니다.")
-        else:
-            if log_callback: log_callback("상위 메뉴(화물추적)를 찾을 수 없습니다.")
-            save_screenshot(page, "debug_menu_fail")
-            time.sleep(3)
-            
-    return False
+    return None
 
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=9222):
     start_time = time.time()
     def _log(msg):
-        if log_callback: log_callback(f"[{time.time()-start_time:6.2f}s] {msg}")
+        elapsed = time.time() - start_time
+        if log_callback: log_callback(f"[{elapsed:6.2f}s] {msg}")
 
-    _log("DrissionPage 브라우저 시작...")
+    _log(f"DrissionPage 시작 (포트: {port}, 화면: {show_browser})")
+    
     co = ChromiumOptions()
-    co.set_local_port(port)
+    co.set_local_port(port) # 병렬 처리를 위해 포트 지정
     
-    # [수정] Docker/Linux/NAS 환경을 위한 최적화 및 안정화 설정
-    # [수정] 환경 변수나 표준 경로에서 크롬/크로미움 검색
-    chrome_bin = os.environ.get('CHROME_BIN')
-    if chrome_bin and os.path.exists(chrome_bin):
-        co.set_browser_path(chrome_bin)
-    elif os.path.exists('/usr/bin/google-chrome'):
-        co.set_browser_path('/usr/bin/google-chrome')
-    elif os.path.exists('/usr/bin/chromium'):
-        co.set_browser_path('/usr/bin/chromium')
-        
+    # 병렬 처리 시 프로필 충돌 방지를 위해 포트별 별도 데이터 디렉토리 사용
+    user_data_dir = f"/tmp/drission_port_{port}"
+    co.set_user_data_path(user_data_dir)
+    
+    # [추가] 실행 전 기존 사용자 데이터 디렉토리 정리 (불안정성 해소 핵심)
+    import shutil
+    try:
+        if os.path.exists(user_data_dir):
+            shutil.rmtree(user_data_dir, ignore_errors=True)
+        os.makedirs(user_data_dir, exist_ok=True)
+    except: pass
+    
+    co.set_argument('--no-sandbox')
+    co.set_argument('--disable-dev-shm-usage')
+    co.set_argument('--window-size=1920,1080')
+    co.set_argument('--disable-blink-features=AutomationControlled')
+    
+    # Docker/NAS 환경 고려: CHROME_BIN 환경 변수 우선 사용
+    chrome_path = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
+    if not os.path.exists(chrome_path):
+        # 만약 설정된 경로에 없으면 chromium도 시도
+        if os.path.exists("/usr/bin/google-chrome-stable"):
+            chrome_path = "/usr/bin/google-chrome-stable"
+        elif os.path.exists("/usr/bin/chromium"):
+            chrome_path = "/usr/bin/chromium"
+        elif os.path.exists("/usr/bin/chromium-browser"):
+            chrome_path = "/usr/bin/chromium-browser"
+    
+    if os.path.exists(chrome_path):
+        _log(f"브라우저 경로 설정: {chrome_path}")
+        co.set_browser_path(chrome_path)
+    else:
+        _log("경고: 명시된 브라우저 경로를 찾을 수 없습니다. 시스템 기본값을 시도합니다.")
+
     if not show_browser:
+        co.set_argument('--headless=new')
         co.headless(True)
-        co.set_argument('--no-sandbox')
-        co.set_argument('--disable-setuid-sandbox') 
-        co.set_argument('--disable-gpu')
-        co.set_argument('--disable-dev-shm-usage') 
-        co.set_argument('--no-first-run')
-        co.set_argument('--no-zygote') 
-        co.set_argument('--no-default-browser-check')
-        co.set_argument('--disable-extensions')
-        co.set_argument('--disable-background-networking')
-        co.set_argument('--disable-background-timer-throttling')
-        co.set_argument('--disable-client-side-phishing-detection')
-        co.set_argument('--disable-default-apps')
-        co.set_argument('--disable-hang-monitor')
-        co.set_argument('--disable-popup-blocking')
-        co.set_argument('--disable-prompt-on-repost')
-        co.set_argument('--disable-sync')
-        co.set_argument('--metrics-recording-only')
-        co.set_argument('--safebrowsing-disable-auto-update')
-        co.set_argument('--password-store=basic')
-        co.set_argument('--use-mock-keychain')
-        co.set_argument('--remote-debugging-address=0.0.0.0') 
-        # [제거] 데스크톱 모드 강제 해제 (기본값 사용)
-        
-        # [중요] 사용자 데이터 데렉토리를 포트별로 분리
-        user_data_path = os.path.join(os.path.dirname(__file__), "dist", f"drission_data_{port}")
-        os.makedirs(user_data_path, exist_ok=True)
-        co.set_user_data_path(user_data_path)
     
-    _log(f"ChromiumPage 인스턴스 생성 시도... (포트: {port}, 경로: {co.browser_path})")
+    retry_count = 3
+    for attempt in range(retry_count):
+        try:
+            _log(f"ChromiumPage 인스턴스 생성 중... (시도 {attempt+1}/{retry_count})")
+            page = ChromiumPage(co)
+            _log("ChromiumPage 생성 완료.")
+            break
+        except Exception as e:
+            if attempt < retry_count - 1:
+                _log(f"브라우저 생성 실패, 3초 후 재시도... ({e})")
+                time.sleep(3)
+                continue
+            import traceback
+            err_detail = traceback.format_exc()
+            _log(f"브라우저 실행 최종 실패: {str(e)}\n{err_detail}")
+            return (None, f"브라우저 실행 실패: {e}")
+
     try:
-        # 인스턴스 생성 전 포트 점유 여부 한 번 더 체크하는 것이 안전할 수 있음
-        page = ChromiumPage(co)
-        _log(f"ChromiumPage 인스턴리 생성 완료 (연결 성공)")
-    except Exception as e:
-        _log(f"!!! 브라우저 인스턴스 초기화 실패 !!! : {e}")
-        return (None, f"인스턴스 생성 오류: {e}")
-    try:
-        page.get("https://etrans.klnet.co.kr/")
-        time.sleep(2)
+        _log("이트랜스 접속 중 (etrans.klnet.co.kr)...")
+        page.get("https://etrans.klnet.co.kr/index.do")
+        _log("페이지 로드 완료. ID 입력창 탐색 중...")
+        save_screenshot(page, "debug") # [추가] 초기 화면 캡처
         
-        # 메뉴 오픈 로직 자체에 로그인 시퀀스를 포함시켜서 호출
-        if open_els_menu(page, u_id, u_pw, _log):
-            _log("모든 준비 완료")
-            return (page, None)
+        # [NAS 최적화] WebSquare 초기 렌더링 지연 고려하여 타임아웃 60초로 연장
+        uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=60)
+        if not uid_input:
+            _log(f"로그인 입력창 탐색 실패. 현재 URL: {page.url}")
+            _log(f"HTML 스니펫: {page.html[:300]}...")
+            save_screenshot(page, "debug_error")
+            page.quit()
+            return (None, "로그인 페이지 로드 실패 (ID 입력창 없음)")
+
+        uid_input.clear()
+        uid_input.input(u_id.strip())
+        if uid_input.value != u_id.strip():
+            page.run_js(f"document.querySelector('#mf_wfm_subContainer_ibx_userId').value = '{u_id.strip()}';")
+        
+        pw_input = page.ele('#mf_wfm_subContainer_sct_password')
+        pw_input.clear()
+        pw_input.input(u_pw)
+        if pw_input.value != u_pw:
+            page.run_js(f"document.querySelector('#mf_wfm_subContainer_sct_password').value = '{u_pw}';")
+        
+        time.sleep(1) # 입력 후 잠시 대기
+        
+        # 로그인 버튼 클릭 시도
+        login_btn = page.ele('#mf_wfm_subContainer_btn_login', timeout=5)
+        if login_btn:
+            _log(f"로그인 버튼 탐지 성공: (ID: {login_btn.attr('id')})")
+            # 1. 엔터 입력 (대부분의 웹환경에서 가장 확실함)
+            pw_input.input('\n')
+            time.sleep(1)
+            # 2. 버튼 클릭 (혹시 엔터가 안 먹힐 경우 대비)
+            try: login_btn.click()
+            except: pass
+        
+        _log("로그인 처리 대기 중...")
+        
+        # [NAS 최적화] 로그인 후 페이지 전환 및 WebSquare 렌더링을 위해 최대 60초 대기
+        login_verified = False
+        for i in range(12): # 5초씩 12회 = 60초
+            time.sleep(5)
+            save_screenshot(page, "debug") # [추가] 로그인 대기 중 실시간 캡처
+            close_modals(page)
+            # 성공 지표: '로그아웃' 버튼 또는 '님 안녕하세요' 텍스트
+            if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=1):
+                _log("✅ 로그인 성공 확인!")
+                save_screenshot(page, "debug") # [추가] 로그인 성공 직후 캡처
+                login_verified = True
+                break
             
+            # 페이지 내 '손님(GUEST)' 텍스트가 사라졌는지 확인
+            if "손님(GUEST)" not in page.html and not page.ele('text:로그인', timeout=1):
+                # GUEST도 아니고 로그인 버튼도 없으면 로딩 중일 가능성이 큼
+                _log(f"로그인 처리 중 (로딩)... { (i+1)*5 }s")
+                continue
+            
+            _log(f"로그인 대기 중... { (i+1)*5 }s")
+            # 알림창(비번 만료 등)이 뜨면 확인 후 닫기
+            check_alert(page)
+        
+        if not login_verified:
+             _log("로그인 성공 확인 불가 (GUEST 상태 지속 또는 타임아웃)")
+             # 실패해도 일단 메뉴 진입 시도는 해봄 (간혹 탐지가 안될 수 있음)
+             # 여기서 종료하지 않고 일단 메뉴 진입 시도 (URL 접근으로 해결될 수도 있음)
+
+        if open_els_menu(page, _log):
+            _log("✅ 메뉴 진입 성공")
+            page.login_time = time.time() # 세션 수명 계산을 위한 로그인 시간 기록
+            return (page, None)
+        
+        # 실패 시 스크린샷 저장 (데몬에서 확인 가능)
+        save_screenshot(page, "debug")
+        final_url = page.url
+        _log(f"메뉴 진입 최종 실패 (URL: {final_url}) - 스크린샷 저장됨")
         page.quit()
-        return (None, "메뉴 진입 혹은 로그인 실패")
+        return (None, f"메뉴 진입 실패 (마지막 URL: {final_url})")
     except Exception as e:
         if 'page' in locals() and page: page.quit()
-        return (None, f"봇 실행 중 에러: {e}")
+        return (None, f"에러: {e}")
 
-def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False, port=9222):
+def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     start_time = time.time()
     def _log(msg):
-        if log_callback: log_callback(f"[{time.time()-start_time:6.2f}s] {msg}")
+        elapsed = time.time() - start_time
+        if log_callback: log_callback(f"[{elapsed:6.2f}s] {msg}")
 
-    res = login_and_prepare(u_id, u_pw, _log, show_browser=show_browser, port=port)
+    res = login_and_prepare(u_id, u_pw, _log, show_browser=show_browser)
     page = res[0]
     if not page: return {"ok": False, "error": res[1]}
 
     final_rows = []
-    headers = ["조회번호", "No", "수출입", "구분", "상태", "MOVE TIME", "모선", "항차", "선사", "선공", "SIZE", "POD", "POL", "차량번호", "RFID"]
+    headers = ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
     
     for cn_raw in c_list:
+        item_start = time.time()
         cn = str(cn_raw).strip().upper()
-        item_log = lambda x: _log(f"{cn}: {x}")
         
-        item_log("조회 시작")
-        status = solve_input_and_search(page, cn, item_log)
+        def _item_log(msg):
+            item_elapsed = time.time() - item_start
+            if log_callback: log_callback(f"{cn}: {msg} ({item_elapsed:.1f}s)")
+
+        _item_log(f"분석 시작...")
+        status = solve_input_and_search(page, cn, _item_log)
         
         if status is True:
             grid_text = scrape_hyper_verify(page, cn)
             if grid_text:
                 found_any = False
-                for line in grid_text.split('\n'):
-                    row_data = line.strip().split('|')
-                    if row_data and row_data[0].isdigit():
+                lines = grid_text.split('\n')
+                for line in lines:
+                    stripped = line.strip()
+                    if not stripped: continue
+                    row_data = stripped.split('|')
+                    if row_data and str(row_data[0]).isdigit():
                         while len(row_data) < 15: row_data.append("")
                         final_rows.append([cn] + row_data[:14])
                         found_any = True
                 if not found_any:
                     final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
             else:
-                final_rows.append([cn, "NODATA", "추출 실패"] + [""]*12)
+                final_rows.append([cn, "NODATA", "데이터 추출 실패"] + [""]*12)
         else:
             final_rows.append([cn, "ERROR", str(status)] + [""]*12)
 
@@ -539,20 +499,19 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False, p
             "sheet2": df.to_dict('records'),
             "total_elapsed": total_elapsed
         }
-    return {"ok": False, "error": "데이터가 수집되지 않았습니다."}
+    return {"ok": False, "error": "결과 없음", "total_elapsed": total_elapsed}
 
 def cli_main():
     config = load_config()
     u_id = config.get('user_id', '')
     u_pw = config.get('user_pw', '')
     try:
-        xlsx_path = os.path.join(os.path.dirname(__file__), "container_list.xlsx")
-        df_in = pd.read_excel(xlsx_path)
+        df_in = pd.read_excel(os.path.join(os.path.dirname(__file__), "container_list.xlsx"))
         c_list = df_in.iloc[2:, 0].dropna().tolist()
         results = run_els_process(u_id, u_pw, c_list, log_callback=print)
-        print(f"[RESULT] 완료: {len(results.get('sheet2', []))}건 수집")
+        print(f"조회 완료: {len(results.get('sheet2', []))}건 기록됨")
     except Exception as e:
-        print(f"[ERROR] CLI 에러: {e}")
+        print(f"CLI 에러: {e}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "run":
@@ -562,7 +521,10 @@ if __name__ == "__main__":
         parser.add_argument("--user-pw", type=str)
         args = parser.parse_args(sys.argv[2:])
         
-        c_list = json.loads(args.containers) if args.containers else []
+        if args.containers:
+            try: c_list = json.loads(args.containers)
+            except: c_list = [x.strip() for x in args.containers.split(',') if x.strip()]
+        else: c_list = []
         u_id = args.user_id if args.user_id else load_config().get('user_id')
         u_pw = args.user_pw if args.user_pw else load_config().get('user_pw')
         
