@@ -199,6 +199,7 @@ def get_vehicle_tracking():
         app.logger.error(f"관제 데이터 조회 실패: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/vehicle-tracking/trips/<trip_id>/locations", methods=["GET"])
 @app.route("/api/vehicle-tracking/<trip_id>/locations", methods=["GET"])
 def get_trip_locations(trip_id):
     """특정 트립의 전체 경로 조회 (나스에서 처리)"""
@@ -213,6 +214,108 @@ def get_trip_locations(trip_id):
     except Exception as e:
         app.logger.error(f"경로 데이터 조회 실패: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>", methods=["GET"])
+def get_trip_detail(trip_id):
+    """트립 상세 정보 조회"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        res = supabase.from_("vehicle_trips").select("*").eq("id", trip_id).single().execute()
+        return jsonify(res.data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>/logs", methods=["GET"])
+def get_trip_logs(trip_id):
+    """트립 운행 로그 조회"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        res = supabase.from_("vehicle_trip_logs").select("*").eq("trip_id", trip_id).order("created_at", desc=True).execute()
+        return jsonify({"logs": res.data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>", methods=["DELETE"])
+def delete_trip(trip_id):
+    """트립 삭제"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        # 1. 위치 삭제
+        supabase.from_("vehicle_locations").delete().eq("trip_id", trip_id).execute()
+        # 2. 로그 삭제
+        supabase.from_("vehicle_trip_logs").delete().eq("trip_id", trip_id).execute()
+        # 3. 트립 삭제
+        supabase.from_("vehicle_trips").delete().eq("id", trip_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/photos/view", methods=["GET"])
+def view_photo():
+    """사진 보기 릴레이 (Supabase URL 프록시)"""
+    key = request.args.get("key")
+    if not key: return "Key missing", 400
+    try:
+        # Supabase 공용 URL 생성 (버킷 이름: vehicle-photos 가정)
+        photo_url = f"{SUPABASE_URL}/storage/v1/object/public/vehicle-photos/{key}"
+        return Response(urlopen(photo_url).read(), mimetype="image/jpeg")
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/api/vehicle-tracking/export/excel", methods=["GET"])
+def export_excel_all():
+    """전체 기록 엑셀 다운로드"""
+    if not supabase: return jsonify({"error": "Supabase not configured"}), 500
+    try:
+        # 필터 정보
+        from_dt = request.args.get("from", "")
+        to_dt = request.args.get("to", "")
+        keyword = request.args.get("keyword", "")
+        
+        query = supabase.from_("vehicle_trips").select("*")
+        if from_dt: query = query.gte("started_at", f"{from_dt} 00:00:00")
+        if to_dt: query = query.lte("started_at", f"{to_dt} 23:59:59")
+        
+        res = query.order("started_at", desc=True).execute()
+        df = pd.DataFrame(res.data)
+        
+        output = io.BytesIO()
+        df.to_excel(output, index=False)
+        output.seek(0)
+        
+        filename = f"vehicle_records_{datetime.now().strftime('%y%m%d')}.xlsx"
+        return Response(output.read(), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f"attachment; filename={filename}"})
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/api/vehicle-tracking/export/zip", methods=["GET"])
+def export_zip_photos():
+    """선택한 트립들의 사진 ZIP 압축 다운로드"""
+    import zipfile
+    ids_str = request.args.get("ids", "")
+    if not ids_str: return "IDs missing", 400
+    ids = ids_str.split(",")
+    
+    try:
+        res = supabase.from_("vehicle_trips").select("id, vehicle_number, started_at, photos").in_("id", ids).execute()
+        
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w") as zf:
+            for trip in res.data:
+                photos = trip.get("photos", [])
+                vnum = trip.get("vehicle_number", "unknown")
+                date = trip.get("started_at", "000000")[:10]
+                for i, p in enumerate(photos):
+                    key = p.get("key")
+                    if key:
+                        photo_url = f"{SUPABASE_URL}/storage/v1/object/public/vehicle-photos/{key}"
+                        img_data = urlopen(photo_url).read()
+                        zf.writestr(f"{date}_{vnum}_{i+1}.jpg", img_data)
+        
+        output.seek(0)
+        return Response(output.read(), mimetype="application/zip", headers={"Content-Disposition": f"attachment; filename=photos.zip"})
+    except Exception as e:
+        return str(e), 500
 
 @app.route("/api/debug/view", methods=["GET"])
 def view_debug_log():
@@ -643,6 +746,36 @@ def download(token):
     if not buf: return "Expired", 404
     name = request.args.get("filename") or "els_result.xlsx"
     return Response(buf, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{name}"})
+
+@app.route("/api/nas/files", methods=["POST"])
+def upload_nas_file():
+    """공지사항 등 첨부파일 업로드 (나스 저장)"""
+    if "file" not in request.files: return jsonify({"error": "No file"}), 400
+    f = request.files["file"]
+    rel_path = request.form.get("path", "/uploads")
+    
+    # 나스 내 저장 경로 설정
+    save_dir = Path("/app/data") / rel_path.strip("/")
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 파일명 클리닝 및 중복 방지
+    fname = secure_filename(f.filename)
+    save_path = save_dir / fname
+    
+    f.save(str(save_path))
+    return jsonify({"success": True, "path": str(rel_path.strip("/") + "/" + fname)})
+
+@app.route("/api/nas/files", methods=["GET"])
+def download_nas_file():
+    """나스에 저장된 첨부파일 다운로드"""
+    rel_path = request.args.get("path")
+    if not rel_path: return "Path missing", 400
+    
+    full_path = Path("/app/data") / rel_path.strip("/")
+    if not full_path.exists(): return "File not found", 404
+    
+    name = request.args.get("name") or full_path.name
+    return send_file(str(full_path), as_attachment=True, download_name=name)
 
 @app.route("/api/els/logout", methods=["POST"])
 def logout():

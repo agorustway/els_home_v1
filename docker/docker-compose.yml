@@ -9,11 +9,13 @@ services:
     environment:
       - PORT=2929
       - HEADLESS=1
-      - CHROME_BIN=/usr/bin/chromium
-      - CHROME_DRIVER_BIN=/usr/bin/chromedriver
+      - CHROME_BIN=/usr/bin/google-chrome
+      - CHROME_DRIVER_BIN=/usr/local/bin/chromedriver
       - SUPABASE_URL=https://pzfnrnscwudifgcctzke.supabase.co
       - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6Zm5ybnNjd3VkaWZnY2N0emtlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTg2OTY2NywiZXhwIjoyMDg3NDQ1NjY3fQ.fWmymaDUgS_f3f1KA-DQmorKJ3KBYT0OLxYrCqveLU0
     # 호스트 모드에서는 ports 설정이 필요 없으므로 삭제하거나 주석 처리함
     # ports:
     #   - "2929:2929"
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped
