@@ -381,7 +381,7 @@
     document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
     // 프로필 사진 섹션 상시 표시 및 저장된 사진 렌더링
-    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '운전');
+    updateProfilePhoto('p-photo-driver', State.profile.photo_driver, '기사');
     updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차량');
     updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤시');
   }
@@ -443,7 +443,7 @@
         document.getElementById('s-id').value = d.vehicle_id || d.driver_id || '';
 
         // 프로필 사진 업데이트
-        updateProfilePhoto('p-photo-driver', d.photo_driver, '운전');
+        updateProfilePhoto('p-photo-driver', d.photo_driver, '기사');
         updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차량');
         updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤시');
 
@@ -1859,7 +1859,7 @@
       State.profile[`photo_${p.type}`] = '';
 
       let fallbackText = '';
-      if (p.type === 'driver') fallbackText = '운전';
+      if (p.type === 'driver') fallbackText = '기사';
       if (p.type === 'vehicle') fallbackText = '차량';
       if (p.type === 'chassis') fallbackText = '샤시';
       updateProfilePhoto(`p-photo-${p.type}`, '', fallbackText);
@@ -2317,7 +2317,7 @@
     // 오직 네이티브의 < 뒤로가기 버튼과 완벽히 동일하게 즉시 핵폭탄(finishAndRemoveTask) 호출
     const overlayPlugin = window.Capacitor?.Plugins?.Overlay;
     if (overlayPlugin && overlayPlugin.exitAppForce) {
-      overlayPlugin.exitAppForce(); 
+      overlayPlugin.exitAppForce();
     } else if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.exitApp();
     } else {
