@@ -54,14 +54,46 @@ def close_modals(page):
             if "로그인" in title.text:
                 return "SESSION_EXPIRED"
 
-        # 일반적인 공지사항 등 닫기 시도
+        # [v4.4.41] 중복 로그인 또는 활동 확인 팝업 처리
+        popups = page.eles('css:.w2modal_popup, .w2modal_lay', timeout=0.1)
+        for p in popups:
+            txt = p.text
+            if "활동확인" in txt or "활동 확인" in txt:
+                confirm_btn = p.ele('text:확인') or p.ele('text:활동확인')
+                if confirm_btn:
+                    confirm_btn.click(by_js=True)
+                    time.sleep(1)
+                    return "OK"
+            
+            # [v4.4.46] '로그인 인증후 이용해주세요' 팝업 처리
+            if "로그인 인증후" in txt or "로그인 인증 후" in txt:
+                confirm_btn = p.ele('text:확인') or p.ele('css:.btn_confirm')
+                if confirm_btn: 
+                    confirm_btn.click(by_js=True)
+                    time.sleep(0.5)
+                return "SESSION_EXPIRED"
+            
+            # [v4.4.51] '아이디 또는 비밀번호를 다시 확인하세요' 팝업 처리
+            if "아이디 또는 비밀번호" in txt or "입력시 계정이 정지" in txt:
+                confirm_btn = p.ele('text:확인') or p.ele('css:button[class*="w2modal_btn"]')
+                if confirm_btn:
+                    confirm_btn.click(by_js=True)
+                    time.sleep(1)
+                return "LOGIN_FAILED_CREDENTIALS"
+
+        # 일반적인 공지사항 등 닫기 시도 (JS)
         page.run_js("""
             document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => {
-                if (e.innerText.indexOf('로그인') === -1) {
+                const txt = e.innerText || "";
+                // 로그인 실패 팝업은 닫지 않음 (로직에서 인지해야 함)
+                if (txt.indexOf('비밀번호') === -1 && txt.indexOf('아이디') === -1 && txt.indexOf('로그인') === -1 && txt.indexOf('활동확인') === -1) {
                     e.style.display = 'none';
                 }
             });
-            document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => e.click());
+            // 닫기 버튼들 시도
+            document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => {
+                try { e.click(); } catch(err) {}
+            });
         """)
     except: pass
     return "OK"
@@ -72,23 +104,26 @@ def is_session_valid(page):
         if not page or not page.url:
             return False
 
-        # 1. 세션 만료 알림 텍스트 확인
-        html = page.html
-        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
-            return False
-
-        # 2. 로그인 팝업 체크
-        modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
-        for title in modal_titles:
-            if "로그인" in title.text:
-                return False
+        # [v4.4.55] WebSquare의 보이지 않는 DOM 캐시 문제를 우회하는 궁극적 방법
+        # JS의 innerText는 화면에 '실제로 보이는 텍스트'만 반환합니다!
+        inner_text = page.run_js("return document.body.innerText || '';")
         
-        # 3. 로그아웃 버튼이나 사용자 정보 확인
-        if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=0.1):
+        # '로그아웃' 텍스트가 실제로 보이고, 'GUEST'는 보이지 않는다면 완벽한 로그인 성공
+        has_logout = ('로그아웃' in inner_text or 'LOGOUT' in inner_text.upper())
+        is_not_guest = ('GUEST' not in inner_text.upper())
+        has_nim = ('님' in inner_text)
+        
+        if (has_logout and is_not_guest) or (has_nim and is_not_guest):
             return True
-            
+
+        # [Fallback] 만약 로그인 입력창이 확실히 안 보인다면?
+        uid_input = page.ele('css:input[id*="ibx_userId"]', timeout=0.1)
+        if uid_input and not uid_input.is_displayed():
+            # 입력창이 있었는데 사라졌다면 로그온 상태일 확률이 높음
+            return True
+
         return False
-    except:
+    except Exception as e:
         return False
 
 def find_ele_globally(page, selector, timeout=0.5):
@@ -116,8 +151,9 @@ def open_els_menu(page, log_callback=None):
     # 0. 이미 해당 화면이 열려있는지 체크
     def is_target_found():
         try:
-            # 존재만 해도 성공으로 간주 (WebSquare 탭이 활성화되면 나타남)
-            target = page.ele('css:input[id*="containerNo"]', timeout=0.1)
+            # 존재만 해도 성공으로 간주 (서브에이전트 확인 결과 iframe 없음)
+            target = page.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=0.5) or \
+                     page.ele('css:input[id*="containerNo"]', timeout=0.1)
             if target: return True
         except: pass
         return False
@@ -129,31 +165,37 @@ def open_els_menu(page, log_callback=None):
     # 2. 메뉴 네비게이션 루프
     for attempt in range(10):
         try:
-            if is_target_found(): return True
+            if is_target_found(): 
+                if log_callback: log_callback("✅ 메뉴 진입 성공 확인!")
+                return True
             
             if log_callback: log_callback(f"  [{attempt+1}/10] 메뉴 탐색 중...")
             
-            # (A) 상단 메뉴 클릭
-            top_menu = page.ele('text=화물추적', timeout=1) 
-            if top_menu:
-                top_menu.click(by_js=True)
-                time.sleep(1)
-                
-                # (B) 서브메뉴 클릭
-                sub_menu = page.ele('text=컨테이너이동현황(국내)', timeout=1) or \
-                           page.ele('text=컨테이너이동현황', timeout=0.5)
-                if sub_menu:
-                    sub_menu.click(by_js=True)
-                    time.sleep(3) # 탭 생성 대기
-                    if is_target_found():
-                        if log_callback: log_callback("✅ 메뉴 진입 성공!")
-                        return True
-            
-            # (C) 최후 수단: JS 강제 호출
-            if log_callback: log_callback("  [워프] WebSquare 내부 함수(gcm.win._openMenu) 호출...")
-            page.run_js('try { gcm.win._openMenu("602"); } catch(e) {}')
-            time.sleep(3)
+            # [Warp] WebSquare 내부 함수 직접 호출 (가장 빠르고 정확함)
+            # subagent 검증 결과: 602가 컨테이너이동현황(국내)임
+            page.run_js('try { if(window.gcm && gcm.win && gcm.win._openMenu) { gcm.win._openMenu("602"); } } catch(e) {}')
+            time.sleep(2)
             if is_target_found(): return True
+
+            # (B) 메뉴 트리 단계별 클릭 (JS 강제 클릭 적용 -> 물리클릭으로 전환하여 안정성 도모)
+            # 1. 화물추적 (Main)
+            top_menu = page.ele('css:#mf_wfm_gnb_gen_depth1Generator_6_btn_depth1_Label', timeout=1) or \
+                       page.ele('text:화물추적', timeout=1)
+            if top_menu:
+                try: top_menu.click()
+                except: top_menu.click(by_js=True)
+                time.sleep(1.5)
+            
+            # 2. 하위 메뉴 클릭
+            sub_menu = page.ele('css:#mf_wfm_gnb_gen_depth1Generator_6_gen_2ndMenu_1_btn_2ndMenu', timeout=1) or \
+                       page.ele('text:컨테이너이동현황(국내)', timeout=1) or \
+                       page.ele('text:컨테이너이동현황', timeout=0.5)
+            
+            if sub_menu:
+                try: sub_menu.click()
+                except: sub_menu.click(by_js=True)
+                time.sleep(3)
+                if is_target_found(): return True
 
         except Exception as e:
             if log_callback: log_callback(f"  ⚠️ 시도 중 오류: {e}")
@@ -167,8 +209,9 @@ def open_els_menu(page, log_callback=None):
 def solve_input_and_search(page, container_no, log_callback=None):
     """[전천후] 아이프레임 상관없이 입력창 찾아서 조회"""
     try:
-        # 입력창 탐색 (아이프레임 관통 수색)
-        input_ele = find_ele_globally(page, 'css:input[id*="containerNo"]', timeout=5)
+        # 입력창 탐색 (서브에이전트 확인 결과 iframe 없음)
+        input_ele = page.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=5) or \
+                    find_ele_globally(page, 'css:input[id*="containerNo"]', timeout=1)
         if not input_ele:
             if log_callback: log_callback("❌ 입력창을 찾을 수 없습니다.")
             return "INPUT_NOT_FOUND"
@@ -177,17 +220,29 @@ def solve_input_and_search(page, container_no, log_callback=None):
         close_modals(page)
         
         # 값 입력 (JS와 물리 입력 병행)
-        input_ele.click()
+        try: input_ele.click(timeout=1)
+        except: input_ele.click(by_js=True)
+        
         input_ele.run_js(f"this.value = '{container_no}';")
         input_ele.input(container_no, clear=True)
         if log_callback: log_callback(f"[{container_no}] 입력 완료")
         
-        # 조회 버튼 찾기 (입력창과 동일 프레임 내 우선 수색)
-        search_btn = find_ele_globally(page, 'text:조회') or find_ele_globally(page, 'css:[id*="btn_search"]') or find_ele_globally(page, 'css:[id*="btnSearch"]')
+        # 조회 버튼 찾기 (형님이 주신 이미지의 정확한 ID 우선 수색)
+        search_btn = page.ele('css:#mf_tac_layout_contents_602_body_btnSearch', timeout=2) or \
+                     find_ele_globally(page, 'text:조회(F5)') or \
+                     find_ele_globally(page, 'css:[id*="btnSearch"]')
         
         if search_btn:
-            search_btn.click()
+            try:
+                # [v4.4.58] 실제 물리 클릭 시도
+                search_btn.click(timeout=1)
+            except:
+                # NoRectError 대비 JS 클릭 강행
+                search_btn.click(by_js=True)
+                
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
+            # [v4.4.58] 데이터가 로드될 때까지 충분히 대기 (WebSquare 그리드 렌더링)
+            time.sleep(3)
             return True
         
         if log_callback: log_callback("❌ 조회 버튼을 찾을 수 없습니다.")
@@ -277,7 +332,10 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     co.set_argument('--disable-dev-shm-usage')
     co.set_argument('--window-size=1920,1080')
     co.set_argument('--incognito') # 시크릿 모드 (게스트 모드와 유사)
-    co.set_argument('--disable-blink-features=AutomationControlled')
+    co.set_argument('--disable-blank-features=AutomationControlled')
+    co.set_argument('--disable-infobars') # 인포바 제거 (v4.4.43)
+    co.set_argument('--test-type') # 인포바 보강 (v4.4.43)
+    co.set_argument('--disable-extensions')
     
     # Docker/NAS 환경 고려
     chrome_path = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
@@ -310,42 +368,46 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
             
             uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=10) or \
                         page.ele('css:input[id*="ibx_userId"]')
-            pw_input = page.ele('#mf_wfm_subContainer_sct_password', timeout=10) or \
-                       page.ele('css:input[id*="password"]')
+            # ID 입력 (변수에 요소를 저장하지 않고 직접 셀렉터 타격 -> StaleElement 원천 차단)
+            page.actions.click('#mf_wfm_subContainer_ibx_userId').type(u_id.strip())
+            time.sleep(1.0)
             
-            if not uid_input or not pw_input:
-                save_screenshot(page, "login_error")
-                page.quit()
-                return (None, "로그인 입력창을 찾을 수 없습니다.")
-
-            uid_input.clear()
-            uid_input.input(u_id.strip())
-            pw_input.clear()
-            pw_input.input(u_pw)
-            time.sleep(0.5)
+            # 비밀번호 입력
+            page.actions.click('#mf_wfm_subContainer_sct_password').type(u_pw)
+            time.sleep(1.0)
             
-            login_btn = page.ele('#mf_wfm_subContainer_btn_login') or \
-                        page.ele('text:로그인')
+            # 로그인 버튼 클릭
+            try:
+                page.actions.click('#mf_wfm_subContainer_btn_login')
+            except:
+                page.run_js("try{document.querySelector('#mf_wfm_subContainer_btn_login').click();}catch(e){}")
             
-            if login_btn:
-                login_btn.click()
-            else:
-                pw_input.input('\n')
+            time.sleep(1.0)
+            
+            # 클릭 직후 상태 확인용 스크린샷 (로그인 버튼 누른 직후)
+            time.sleep(1)
+            save_screenshot(page, "after_login_click")
             
             _log("로그인 대기 중 (최대 15초)...")
             # 로그인 성공 여부 15초간 폴링
             success = False
+            fail_reason = "로그인 성공 확인 불가 (ID/PW 확인 필요)"
             for _ in range(15):
                 time.sleep(1)
-                close_modals(page)
+                modal_status = close_modals(page)
+                if modal_status == "LOGIN_FAILED_CREDENTIALS":
+                    fail_reason = "로그인 실패: 아이디 또는 비밀번호 오류"
+                    break
+                
                 if is_session_valid(page):
                     success = True
                     break
             
             if not success:
                 save_screenshot(page, "login_fail")
+                _log(f"🚨 {fail_reason}")
                 page.quit()
-                return (None, "로그인 성공 확인 불가 (ID/PW 확인 필요)")
+                return (None, fail_reason)
 
         # 3. 메뉴 진입
         if open_els_menu(page, _log):

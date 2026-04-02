@@ -18,8 +18,12 @@ def test_user_containers():
     
     print(f"[TEST] {u_id} 계정(게스트 모드 세션)으로 로컬 테스트 시작...")
     
+    # [v4.4.48] 포트 충돌 방지를 위해 무작위 포트 선택
+    import random
+    test_port = random.randint(30000, 45000)
+    
     # show_browser=True로 설정하여 형이 직접 눈으로 확인 가능하게 함
-    driver, error = login_and_prepare(u_id, u_pw, log_callback=print, show_browser=True, port=38008)
+    driver, error = login_and_prepare(u_id, u_pw, log_callback=print, show_browser=True, port=test_port)
     
     if error:
         print(f"[FAIL] 로그인 실패: {error}")

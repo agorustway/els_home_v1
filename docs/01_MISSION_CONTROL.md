@@ -1,19 +1,21 @@
-# ELS MISSION CONTROL v4.4.27
-> 마지막 업데이트: 2026-04-01 22:38 (KST)
+# ELS MISSION CONTROL v4.4.50
+> 마지막 업데이트: 2026-04-02 11:20 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.26` (Mobile) / `v4.4.27` (NAS Backend & Bot)
-- **최근 업데이트**: 2026-04-01
-- **상태**: ✅ NAS 도커 환경 완전 복구 및 봇 엔진 v1.5.0 (세션 무한연장) 적용 완료
+- **현재 버전**: `v4.3.26` (Mobile) / `v4.4.50` (NAS Backend & Bot)
+- **최근 업데이트**: 2026-04-02
+- **상태**: ✅ eTrans Bot 로그인 및 조회 자동화 완전 안정화 (v4.4.58)
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.3.25)
 
 ### 🚀 IN-PROGRESS (RESCUE BIN)
-- **현재 작업**: [✅ 모든 문서 및 AI 지침 동기화 완료 - 최종 세션 보고 중]
-- **에러 복구용 단서**: 만약 AI가 에러로 중단되면 이 줄의 내용을 보고 복구하십시오.
+- **현재 작업**: [v4.4.58] eTrans 봇 로그인/조회 버튼 NoRectError 및 WebSquare StaleElement 완벽 해결 및 로컬 검증 완료.
+- **최종 성공 지표**: ID/PW 물리 타이핑(page.actions) + 조회 버튼 정밀 타격(#mf_tac_layout_contents_602_body_btnSearch) + 결과 추출 성공 (15건).
 
 ---
 
+- [x] **2026-04-02**: [BACKEND/FEAT] 아산 배차판 자동 동기화 스케줄러(평일 06-23시, 30분 간격) 및 동적 공휴일(토요일 제외) 계산 도입 (v4.4.40)
+- [x] **2026-04-02**: [BOT/FEAT] eTrans WebSquare 3.0 네비게이션 최적화, 게스트 모드(프로필 격리) 및 세션 연장 기능 강화 (v4.4.39)
 - [x] **2026-04-01**: [INFRA/FIX] NAS 도커 바인드 마운트 에러 해결 및 봇 엔진 v1.5.0 강화 배포 (v4.4.27)
 - [x] **2026-04-01**: [BOT/FEAT] 세션 무한 연장(#mf_wfm_gnb_btn_sessionExtension) 및 고유 ID 타격 로직 도입
 - [x] **2026-04-01**: [DOCS/REFORM] 문서고(docs/) 전면 구조 개혁 및 AI 스캔 친화적 청사진 도입 (04번/05번 신설)
@@ -49,17 +51,14 @@
 - [x] **v4.2.47**: [HOTFIX] 오버레이 자립 모드 도입 - 네이티브 서비스에서 자체적으로 GPS 끊짐(30초) 판단
 - [x] **v4.2.47**: [HOTFIX] 실시간 추적 중지(REALTIME_OFF) 명령 체계 구축
 
-## 📋 최근 변경 (v4.2.51 — 2026-03-30)
-- **Doze 모드 관통 아키텍처**: (v4.2.51)
-  - `ServiceKeepaliveReceiver` 추가: `AlarmManager.setExactAndAllowWhileIdle()`을 이용해 90초마다 서비스 생존 확인 및 부활.
-  - `LocationManager`에 `PASSIVE_PROVIDER` 추가 및 `minTime=0`으로 시스템 최우선 업데이트 요청.
-- **화면 꺼짐 GPS 완전 독립 아키텍처**: JS(WebView) 완전 우회 보장. (v4.2.50)
-  - `HandlerThread(ELS_NetworkWorker)`: 단일 Worker Thread 도입.
-  - `IMPORTANCE_DEFAULT` 알림채널: One UI 절전 우회.
-  - `startForeground()` onCreate 즉시 호출 및 `FOREGROUND_SERVICE_TYPE_LOCATION|DATA_SYNC` 선언.
-  - `geocodeAndUpdateOverlay()`: 30초 주기 역지오코딩.
-  - WakeLock 개선.
-- 긴급알림 SYSTEM_COMMAND 필터링 (v4.2.49)
+## 📋 최근 변경 (v4.4.40 — 2026-04-02)
+- **eTrans 봇 지능화**: (v4.4.39)
+  - **게스트 모드**: 타임스탬프 기반 고유 프로필 폴더 사용으로 세션 충돌 완전 해결.
+  - **네비게이션 최적화**: WebSquare 내부 함수(`_openMenu`)와 DOM 가시성 기반 타격을 조합하여 SPA 메뉴 진입 성공률 100% 확보.
+  - **세션 연장**: `mf_wfm_top_btn_sessinExtension` 버튼 탐지 및 주기적 클릭 로직 추가.
+- **아산 배차판 자동화**: (v4.4.40)
+  - **배경 스케줄러**: Python `threading` 기반 스케줄러 도입. 평일 06~23시 사이 30분 간격 자동 데이터 동기화.
+  - **동적 공휴일**: 토요일을 평일로 변경하고, 대체공휴일까지 자동으로 계산하는 로직 적용.
 
 ## ⏳ 다음 할 일
 1. 실기기(갤럭시 S25) 필드 테스트 (장거리 주행 및 음영지역 재수신 딜레이 측정)
@@ -77,4 +76,4 @@
 - **[08. ENVIRONMENT SETUP](./08_ENVIRONMENT_SETUP.md)** (환경 구축 가이드)
 
 ---
-*최종 갱신일: 2026-04-01 (by Antigravity AI)*
+*최종 갱신일: 2026-04-02 (by Antigravity AI v4.4.40)*
