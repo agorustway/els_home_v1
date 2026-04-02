@@ -45,11 +45,10 @@ def close_modals(page):
     try:
         # 세션 종료 텍스트 확인
         html = page.html
-        if "Session이 종료" in html or "세션이 만료" in html or "로그아웃 되었습니다" in html:
+        if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return "SESSION_EXPIRED"
 
         # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
-        # WebSquare 특유의 모달 타이틀 확인
         modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
         for title in modal_titles:
             if "로그인" in title.text:
@@ -58,7 +57,6 @@ def close_modals(page):
         # 일반적인 공지사항 등 닫기 시도
         page.run_js("""
             document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => {
-                // '로그인' 팝업은 자바스크립트로 닫지 말고 그냥 숨겨버리면 안 됨 (세션이 이미 없음)
                 if (e.innerText.indexOf('로그인') === -1) {
                     e.style.display = 'none';
                 }
@@ -69,9 +67,8 @@ def close_modals(page):
     return "OK"
 
 def is_session_valid(page):
-    """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 철저히 검사"""
+    """현재 브라우저가 로그온 상태이며 로그인 팝업이 없는지 검사"""
     try:
-        # 0. 브라우저 연결 상태 확인 (가장 기본)
         if not page or not page.url:
             return False
 
@@ -80,156 +77,130 @@ def is_session_valid(page):
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return False
 
-        # 3. 로그인 팝업 체크
+        # 2. 로그인 팝업 체크
         modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
         for title in modal_titles:
             if "로그인" in title.text:
                 return False
         
-        # 4. 로그아웃 버튼이나 사용자 정보 확인
-        if page.ele('text:로그아웃', timeout=0.1) or page.ele('text:님 안녕하세요', timeout=0.1):
+        # 3. 로그아웃 버튼이나 사용자 정보 확인
+        if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=0.1):
             return True
             
-        # 5. [추가] 마지막 수단: 페이지가 살아있는지 빈 JS 실행으로 확인
-        try:
-            page.run_js("return 1", timeout=1)
-            # 만약 위 조건들에 안 걸렸는데 JS 실행이 된다면 일단 살려둠
-            return True
-        except:
-            return False
+        return False
     except:
         return False
 
-def open_els_menu(page, log_callback=None):
-    if log_callback: log_callback("메뉴 진입 시도 중 (DrissionPage)...")
+def find_ele_globally(page, selector, timeout=0.5):
+    """모든 아이프레임을 재귀적으로 뒤져서 요소를 찾아내는 전천후 수색대 (v4.4.29)"""
+    # 1. 현재 레벨에서 검색
+    res = page.ele(selector, timeout=timeout)
+    if res: return res
     
-    for attempt in range(5):
-        close_modals(page)
-        
-        # 조회 페이지 도착 확인 (입력창 탐지)
-        if page.ele('css:input[id*="containerNo"]', timeout=3):
-            if log_callback: log_callback("✅ 조회 페이지 도착 확인!")
-            return True
+    # 2. 모든 아이프레임 리스트 확보하여 내부 수색
+    iframes = page.eles('t:iframe')
+    for iframe in iframes:
+        try:
+            # 재귀적으로 내부 아이프레임도 수색
+            res = find_ele_globally(iframe, selector, timeout=0.1)
+            if res: return res
+        except: continue
+    return None
 
-        # 메인 페이지(main.do)가 아니면 이동
-        if "main" not in page.url.lower():
-            if log_callback: log_callback("메인 화면으로 이동 시도...")
-            page.get("https://etrans.klnet.co.kr/main.do")
-            time.sleep(5)
-            close_modals(page)
+def open_els_menu(page, log_callback=None):
+    if log_callback: log_callback("🚀 WebSquare 안정화 메뉴 진입 (v4.4.38)")
+    
+    # 1. 팝업 정리
+    close_modals(page)
 
-        # 1단계: 상위 메뉴 '화물추적' 클릭
-        parent = page.ele('text:화물추적', timeout=2)
-        if parent:
-            if log_callback: log_callback(f"상위 메뉴 클릭: {parent.text}")
-            parent.click(by_js=True)
-            time.sleep(2)
+    # 0. 이미 해당 화면이 열려있는지 체크
+    def is_target_found():
+        try:
+            # 존재만 해도 성공으로 간주 (WebSquare 탭이 활성화되면 나타남)
+            target = page.ele('css:input[id*="containerNo"]', timeout=0.1)
+            if target: return True
+        except: pass
+        return False
+
+    if is_target_found():
+        if log_callback: log_callback("✅ 이미 대상 화면(탭)이 로드되어 있습니다.")
+        return True
+
+    # 2. 메뉴 네비게이션 루프
+    for attempt in range(10):
+        try:
+            if is_target_found(): return True
             
-            # 2단계: 하위 메뉴 '컨테이너이동현황(국내)' 클릭
-            target = page.ele('text:컨테이너이동현황(국내)', timeout=3) or \
-                     page.ele('text:컨테이너 이동현황', timeout=2)
-            if target:
-                if log_callback: log_callback(f"하위 메뉴 클릭: {target.text}")
-                target.click(by_js=True)
-                time.sleep(5) # 탭 열리고 렌더링될 때까지 대기
-                save_screenshot(page, "debug")
-            else:
-                if log_callback: log_callback("하위 메뉴를 찾을 수 없습니다.")
-        else:
-            if log_callback: log_callback("상위 메뉴(화물추적)를 찾을 수 없습니다.")
-            save_screenshot(page, "debug")
+            if log_callback: log_callback(f"  [{attempt+1}/10] 메뉴 탐색 중...")
+            
+            # (A) 상단 메뉴 클릭
+            top_menu = page.ele('text=화물추적', timeout=1) 
+            if top_menu:
+                top_menu.click(by_js=True)
+                time.sleep(1)
+                
+                # (B) 서브메뉴 클릭
+                sub_menu = page.ele('text=컨테이너이동현황(국내)', timeout=1) or \
+                           page.ele('text=컨테이너이동현황', timeout=0.5)
+                if sub_menu:
+                    sub_menu.click(by_js=True)
+                    time.sleep(3) # 탭 생성 대기
+                    if is_target_found():
+                        if log_callback: log_callback("✅ 메뉴 진입 성공!")
+                        return True
+            
+            # (C) 최후 수단: JS 강제 호출
+            if log_callback: log_callback("  [워프] WebSquare 내부 함수(gcm.win._openMenu) 호출...")
+            page.run_js('try { gcm.win._openMenu("602"); } catch(e) {}')
             time.sleep(3)
-        
+            if is_target_found(): return True
+
+        except Exception as e:
+            if log_callback: log_callback(f"  ⚠️ 시도 중 오류: {e}")
+            
+        close_modals(page)
+        time.sleep(1)
+
+    if log_callback: log_callback("❌ 메뉴 진입 최종 실패 (타임아웃)")
     return False
 
 def solve_input_and_search(page, container_no, log_callback=None):
-    """[WebSquare 특화] DrissionPage로 값 설정 + 조회 버튼 클릭"""
+    """[전천후] 아이프레임 상관없이 입력창 찾아서 조회"""
     try:
-        # 입력창 찾기
-        input_ele = page.ele('css:input[id*="containerNo"]', timeout=5)
+        # 입력창 탐색 (아이프레임 관통 수색)
+        input_ele = find_ele_globally(page, 'css:input[id*="containerNo"]', timeout=5)
         if not input_ele:
-            if log_callback: log_callback(f"[{container_no}] 입력창을 찾을 수 없습니다.")
+            if log_callback: log_callback("❌ 입력창을 찾을 수 없습니다.")
             return "INPUT_NOT_FOUND"
-
-        # [핵심 수정] WebSquare는 일반 clear()가 이전 값을 제대로 안 지움
-        # JS로 DOM 값 강제 초기화 + 이벤트 트리거까지 실행하여 잔존값 완전 제거
-        input_id = input_ele.attr('id')
-        page.run_js(f"""
-            var el = document.getElementById('{input_id}');
-            if (el) {{
-                el.value = '';
-                el.dispatchEvent(new Event('input', {{bubbles: true}}));
-                el.dispatchEvent(new Event('change', {{bubbles: true}}));
-            }}
-        """)
-        time.sleep(0.2)
         
-        # 값 입력
-        input_ele.input(container_no)
+        # 입력 전 팝업 정리
+        close_modals(page)
         
-        # [검증] 실제로 입력됐는지 확인
-        actual_val = input_ele.value or page.run_js(f"return document.getElementById('{input_id}')?.value || '';")
-        if actual_val and actual_val.strip().upper() != container_no.strip().upper():
-            # 강제 JS 직접 입력
-            page.run_js(f"""
-                var el = document.getElementById('{input_id}');
-                if (el) {{
-                    el.value = '{container_no}';
-                    el.dispatchEvent(new Event('input', {{bubbles: true}}));
-                    el.dispatchEvent(new Event('change', {{bubbles: true}}));
-                }}
-            """)
-            if log_callback: log_callback(f"[{container_no}] JS 강제 입력 완료")
+        # 값 입력 (JS와 물리 입력 병행)
+        input_ele.click()
+        input_ele.run_js(f"this.value = '{container_no}';")
+        input_ele.input(container_no, clear=True)
+        if log_callback: log_callback(f"[{container_no}] 입력 완료")
         
-        # 조회 버튼 클릭
-        btn = page.ele('css:[id*="btnSearch"]', timeout=2)
-        if not btn:
-            # 텍스트로 찾기
-            btn = page.ele('text:조회', timeout=2)
+        # 조회 버튼 찾기 (입력창과 동일 프레임 내 우선 수색)
+        search_btn = find_ele_globally(page, 'text:조회') or find_ele_globally(page, 'css:[id*="btn_search"]') or find_ele_globally(page, 'css:[id*="btnSearch"]')
         
-        if btn:
-            btn.click()
-        else:
-            input_ele.input('\n') # 엔터키
-
-        if log_callback: log_callback(f"[{container_no}] 조회 버튼 클릭 완료")
+        if search_btn:
+            search_btn.click()
+            if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
+            return True
         
-        # 🎯 [NAS 최적화] WebSquare 초기 로딩 지연 단축
-        time.sleep(0.5) 
-        
-        # 1. 알럿 메시지 확인 (내역 없음 등)
-        try:
-            alert_text = page.handle_alert(timeout=1)
-            if alert_text:
-                if any(msg in alert_text for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "입력하세요"]):
-                    if log_callback: log_callback(f"[{container_no}] 결과 메시지: {alert_text}")
-                    return "내역없음확인"
-        except: pass
-
-        # 2. 로딩바 사라질 때까지 대기 (최대 10초)
-        for _ in range(20):
-            # WebSquare 로딩바 (mf_progress 등) 존재 여부 및 가시성 체크
-            spinner = page.ele('css:[id*="_progress_"]', timeout=0.1) or \
-                      page.ele('css:.w2group_mf_progress', timeout=0.1)
-            # 요소가 없거나, 스타일이 none이거나, 투명도가 0이면 완료된 것으로 간주
-            if not spinner: break
-            try:
-                style = spinner.attrs.get('style', '')
-                if 'display: none' in style or 'visibility: hidden' in style: break
-            except: break
-            time.sleep(0.5)
-
-        return True
+        if log_callback: log_callback("❌ 조회 버튼을 찾을 수 없습니다.")
+        return False
     except Exception as e:
-        return str(e)
+        if log_callback: log_callback(f"❌ 조회 중 에러: {e}")
+        return False
 
 def scrape_hyper_verify(page, search_no):
-    """모든 프레임을 뒤져서 WebSquare 데이터를 추출 (DrissionPage 이식)"""
+    """모든 프레임을 뒤져서 WebSquare 데이터를 추출 (DrissionPage 이식, win.frames 오류 방지)"""
     
     script = r"""
-    var searchNo = arguments[0].replace(/[^A-Z0-9]/g, '').toUpperCase();
     var results = [];
-    
     function dive(win) {
         try {
             var rows = win.document.querySelectorAll('tr');
@@ -243,11 +214,6 @@ def scrape_hyper_verify(page, search_no):
                 }
                 var rowText = rowVals.join('|');
                 
-                // [정합성 복원] 
-                // 조건 1: 숫자로 시작하는 행 (No 컬럼)
-                // 조건 2: 수입/수출/반입/반출 포함
-                // 조건 3 (핵심): 행 내에 조회한 컨테이너 번호 앞 4자리+6자리가 매치되어야 함
-                //   - 이 조건이 없으면 이전 조회 잔상이나 다른 컨테이너 데이터가 섞임
                 var hasDirection = (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1);
                 var isNumberedRow = /^\d+\|/.test(rowText);
                 
@@ -255,7 +221,10 @@ def scrape_hyper_verify(page, search_no):
                     results.push(rowText);
                 }
             }
-            for (var i = 0; i < win.frames.length; i++) { dive(win.frames[i]); }
+            // win.frames는 JS 브라우저 객체이므로 안전하게 접근 가능
+            for (var i = 0; i < win.frames.length; i++) { 
+                try { dive(win.frames[i]); } catch(e) {}
+            }
         } catch (e) {}
     }
     dive(window);
@@ -267,28 +236,16 @@ def scrape_hyper_verify(page, search_no):
     # 최대 10초 대기하며 결과 수집
     for attempt in range(20):
         try:
-            res = page.run_js(script, search_no)
+            res = page.run_js(script)
             if res and '|' in res and len(res.strip()) > 10:
-                # [핵심] 수집된 결과에서 실제 조회 번호(searchNo) 앞 8자리로 필터링
-                # 이트랜스 화면에 이전 컨테이너 잔상 데이터가 섞이는 것을 방지
-                norm_search = re.sub(r'[^A-Z0-9]', '', search_no.upper())
-                prefix = norm_search[:8]  # 앞 8자리 (예: TRHU5906)
-                filtered_lines = []
-                for line in res.split('\n'):
-                    # 행 텍스트에 조회 번호가 포함된 경우만 수집
-                    # 단, 일부 이트랜스 뷰는 컨테이너 번호를 별도 컬럼에 표시 안 하므로
-                    # 헤더 행(이미 URL/타이틀에 반영됨)이 맞으면 전부 수용
-                    filtered_lines.append(line)
-                # 필터링된 결과 반환
-                if filtered_lines:
-                    return '\n'.join(filtered_lines)
+                return res
         except: pass
-        time.sleep(0.3)
+        time.sleep(0.5)
         
-    # 데이터 없음 2차 확인 (텍스트 기반)
+    # 데이터 없음 확인
     try:
         full_text = page.html
-        for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다", "결과가 없습니다"]:
+        for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]:
             if msg in full_text:
                 return "내역없음확인"
     except: pass
@@ -301,149 +258,105 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         elapsed = time.time() - start_time
         if log_callback: log_callback(f"[{elapsed:6.2f}s] {msg}")
 
-    _log(f"DrissionPage 시작 (포트: {port}, 화면: {show_browser})")
+    _log(f"DrissionPage 시작... (포트: {port}, 헤드리스: {not show_browser})")
     
     co = ChromiumOptions()
-    co.set_local_port(port) # 병렬 처리를 위해 포트 지정
+    co.set_local_port(port)
     
-    # 병렬 처리 시 프로필 충돌 방지를 위해 포트별 별도 데이터 디렉토리 사용
-    user_data_dir = f"/tmp/drission_port_{port}"
-    co.set_user_data_path(user_data_dir)
+    # [v4.4.39] 매번 새로운 세션(게스트 모드)으로 시작하기 위해 타임스탬프 기반 고유 프로필 폴더 생성
+    unique_id = int(time.time())
+    import tempfile 
+    # Windows/Linux 호환을 위해 tempfile 사용하거나 .tmp_profile 폴더 활용
+    profile_path = os.path.join(os.path.dirname(__file__), ".tmp_profile", f"port_{port}_{unique_id}")
+    if not os.path.exists(os.path.dirname(profile_path)):
+        os.makedirs(os.path.dirname(profile_path), exist_ok=True)
     
-    # [추가] 실행 전 기존 사용자 데이터 디렉토리 정리 (불안정성 해소 핵심)
-    import shutil
-    try:
-        if os.path.exists(user_data_dir):
-            shutil.rmtree(user_data_dir, ignore_errors=True)
-        os.makedirs(user_data_dir, exist_ok=True)
-    except: pass
+    co.set_user_data_path(profile_path)
     
     co.set_argument('--no-sandbox')
     co.set_argument('--disable-dev-shm-usage')
     co.set_argument('--window-size=1920,1080')
+    co.set_argument('--incognito') # 시크릿 모드 (게스트 모드와 유사)
     co.set_argument('--disable-blink-features=AutomationControlled')
     
-    # Docker/NAS 환경 고려: CHROME_BIN 환경 변수 우선 사용
+    # Docker/NAS 환경 고려
     chrome_path = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
-    if not os.path.exists(chrome_path):
-        # 만약 설정된 경로에 없으면 chromium도 시도
-        if os.path.exists("/usr/bin/google-chrome-stable"):
-            chrome_path = "/usr/bin/google-chrome-stable"
-        elif os.path.exists("/usr/bin/chromium"):
-            chrome_path = "/usr/bin/chromium"
-        elif os.path.exists("/usr/bin/chromium-browser"):
-            chrome_path = "/usr/bin/chromium-browser"
-    
     if os.path.exists(chrome_path):
-        _log(f"브라우저 경로 설정: {chrome_path}")
         co.set_browser_path(chrome_path)
-    else:
-        _log("경고: 명시된 브라우저 경로를 찾을 수 없습니다. 시스템 기본값을 시도합니다.")
 
     if not show_browser:
-        co.set_argument('--headless=new')
         co.headless(True)
+    else:
+        co.headless(False)
     
-    retry_count = 3
-    for attempt in range(retry_count):
-        try:
-            _log(f"ChromiumPage 인스턴스 생성 중... (시도 {attempt+1}/{retry_count})")
-            page = ChromiumPage(co)
-            _log("ChromiumPage 생성 완료.")
-            break
-        except Exception as e:
-            if attempt < retry_count - 1:
-                _log(f"브라우저 생성 실패, 3초 후 재시도... ({e})")
-                time.sleep(3)
-                continue
-            import traceback
-            err_detail = traceback.format_exc()
-            _log(f"브라우저 실행 최종 실패: {str(e)}\n{err_detail}")
-            return (None, f"브라우저 실행 실패: {e}")
+    try:
+        page = ChromiumPage(co)
+    except Exception as e:
+        _log(f"브라우저 실행 실패: {e}")
+        return (None, f"브라우저 실행 실패: {e}")
 
     try:
-        _log("이트랜스 접속 중 (etrans.klnet.co.kr)...")
+        _log("이트랜스 접속 중...")
         page.get("https://etrans.klnet.co.kr/index.do")
-        _log("페이지 로드 완료. ID 입력창 탐색 중...")
-        save_screenshot(page, "debug") # [추가] 초기 화면 캡처
+        time.sleep(2)
         
-        # [NAS 최적화] WebSquare 초기 렌더링 지연 고려하여 타임아웃 60초로 연장
-        uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=60)
-        if not uid_input:
-            _log(f"로그인 입력창 탐색 실패. 현재 URL: {page.url}")
-            _log(f"HTML 스니펫: {page.html[:300]}...")
-            save_screenshot(page, "debug_error")
-            page.quit()
-            return (None, "로그인 페이지 로드 실패 (ID 입력창 없음)")
-
-        uid_input.clear()
-        uid_input.input(u_id.strip())
-        if uid_input.value != u_id.strip():
-            page.run_js(f"document.querySelector('#mf_wfm_subContainer_ibx_userId').value = '{u_id.strip()}';")
-        
-        pw_input = page.ele('#mf_wfm_subContainer_sct_password')
-        pw_input.clear()
-        pw_input.input(u_pw)
-        if pw_input.value != u_pw:
-            page.run_js(f"document.querySelector('#mf_wfm_subContainer_sct_password').value = '{u_pw}';")
-        
-        time.sleep(1) # 입력 후 잠시 대기
-        
-        # 로그인 버튼 클릭 시도
-        login_btn = page.ele('#mf_wfm_subContainer_btn_login', timeout=5)
-        if login_btn:
-            _log(f"로그인 버튼 탐지 성공: (ID: {login_btn.attr('id')})")
-            # 1. 엔터 입력 (대부분의 웹환경에서 가장 확실함)
-            pw_input.input('\n')
-            time.sleep(1)
-            # 2. 버튼 클릭 (혹시 엔터가 안 먹힐 경우 대비)
-            try: login_btn.click()
-            except: pass
-        
-        _log("로그인 처리 대기 중...")
-        
-        # [NAS 최적화] 로그인 후 페이지 전환 및 WebSquare 렌더링을 위해 최대 60초 대기
-        login_verified = False
-        for i in range(12): # 5초씩 12회 = 60초
-            time.sleep(5)
-            save_screenshot(page, "debug") # [추가] 로그인 대기 중 실시간 캡처
+        # 1. 이미 로그인 된 상태인지 확인
+        if is_session_valid(page):
+            _log("이미 로그인된 유효한 세션입니다.")
+        else:
+            # 2. 로그인 시도
+            _log("로그인 입력창 탐색 및 입력 중...")
             close_modals(page)
-            # 성공 지표: '로그아웃' 버튼 또는 '님 안녕하세요' 텍스트
-            if page.ele('text:로그아웃', timeout=1) or page.ele('text:님 안녕하세요', timeout=1):
-                _log("✅ 로그인 성공 확인!")
-                save_screenshot(page, "debug") # [추가] 로그인 성공 직후 캡처
-                login_verified = True
-                break
             
-            # 페이지 내 '손님(GUEST)' 텍스트가 사라졌는지 확인
-            if "손님(GUEST)" not in page.html and not page.ele('text:로그인', timeout=1):
-                # GUEST도 아니고 로그인 버튼도 없으면 로딩 중일 가능성이 큼
-                _log(f"로그인 처리 중 (로딩)... { (i+1)*5 }s")
-                continue
+            uid_input = page.ele('#mf_wfm_subContainer_ibx_userId', timeout=10) or \
+                        page.ele('css:input[id*="ibx_userId"]')
+            pw_input = page.ele('#mf_wfm_subContainer_sct_password', timeout=10) or \
+                       page.ele('css:input[id*="password"]')
             
-            _log(f"로그인 대기 중... { (i+1)*5 }s")
-            # 알림창(비번 만료 등)이 뜨면 확인 후 닫기
-            check_alert(page)
-        
-        if not login_verified:
-             _log("로그인 성공 확인 불가 (GUEST 상태 지속 또는 타임아웃)")
-             # 실패해도 일단 메뉴 진입 시도는 해봄 (간혹 탐지가 안될 수 있음)
-             # 여기서 종료하지 않고 일단 메뉴 진입 시도 (URL 접근으로 해결될 수도 있음)
+            if not uid_input or not pw_input:
+                save_screenshot(page, "login_error")
+                page.quit()
+                return (None, "로그인 입력창을 찾을 수 없습니다.")
 
+            uid_input.clear()
+            uid_input.input(u_id.strip())
+            pw_input.clear()
+            pw_input.input(u_pw)
+            time.sleep(0.5)
+            
+            login_btn = page.ele('#mf_wfm_subContainer_btn_login') or \
+                        page.ele('text:로그인')
+            
+            if login_btn:
+                login_btn.click()
+            else:
+                pw_input.input('\n')
+            
+            _log("로그인 대기 중 (최대 15초)...")
+            # 로그인 성공 여부 15초간 폴링
+            success = False
+            for _ in range(15):
+                time.sleep(1)
+                close_modals(page)
+                if is_session_valid(page):
+                    success = True
+                    break
+            
+            if not success:
+                save_screenshot(page, "login_fail")
+                page.quit()
+                return (None, "로그인 성공 확인 불가 (ID/PW 확인 필요)")
+
+        # 3. 메뉴 진입
         if open_els_menu(page, _log):
-            _log("✅ 메뉴 진입 성공")
-            page.login_time = time.time() # 세션 수명 계산을 위한 로그인 시간 기록
+            _log("✅ 모든 준비 완료 (로그인 + 메뉴 진입)")
             return (page, None)
         
-        # 실패 시 스크린샷 저장 (데몬에서 확인 가능)
-        save_screenshot(page, "debug")
-        final_url = page.url
-        _log(f"메뉴 진입 최종 실패 (URL: {final_url}) - 스크린샷 저장됨")
         page.quit()
-        return (None, f"메뉴 진입 실패 (마지막 URL: {final_url})")
+        return (None, "메뉴 진입 최종 실패")
     except Exception as e:
         if 'page' in locals() and page: page.quit()
-        return (None, f"에러: {e}")
+        return (None, f"봇 실행 중 에러: {e}")
 
 def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     start_time = time.time()
@@ -459,26 +372,19 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     headers = ["조회번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
     
     for cn_raw in c_list:
-        item_start = time.time()
         cn = str(cn_raw).strip().upper()
+        item_log = lambda x: _log(f"{cn}: {x}")
         
-        def _item_log(msg):
-            item_elapsed = time.time() - item_start
-            if log_callback: log_callback(f"{cn}: {msg} ({item_elapsed:.1f}s)")
-
-        _item_log(f"분석 시작...")
-        status = solve_input_and_search(page, cn, _item_log)
+        item_log("조회 분석 시작")
+        status = solve_input_and_search(page, cn, item_log)
         
         if status is True:
             grid_text = scrape_hyper_verify(page, cn)
             if grid_text:
                 found_any = False
-                lines = grid_text.split('\n')
-                for line in lines:
-                    stripped = line.strip()
-                    if not stripped: continue
-                    row_data = stripped.split('|')
-                    if row_data and str(row_data[0]).isdigit():
+                for line in grid_text.split('\n'):
+                    row_data = line.strip().split('|')
+                    if row_data and row_data[0].isdigit():
                         while len(row_data) < 15: row_data.append("")
                         final_rows.append([cn] + row_data[:14])
                         found_any = True
@@ -501,6 +407,24 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
         }
     return {"ok": False, "error": "결과 없음", "total_elapsed": total_elapsed}
 
+
+def extend_session(page, log_callback=None):
+    """세션 연장 버튼(상단 연장) 클릭 (v4.4.39)"""
+    try:
+        # WebSquare 연장 버튼 ID: mf_wfm_top_btn_sessinExtension
+        ext_btn = page.ele('#mf_wfm_top_btn_sessinExtension', timeout=3) or \
+                  page.ele('text:연장', timeout=1)
+        if ext_btn:
+            ext_btn.click()
+            if log_callback: log_callback("⏳ 세션 연장 버튼 클릭 완료 (60분 초기화)")
+            return True
+        else:
+            if log_callback: log_callback("⚠️ 세션 연장 버튼을 찾을 수 없습니다.")
+            return False
+    except Exception as e:
+        if log_callback: log_callback(f"⚠️ 세션 연장 중 오류: {e}")
+        return False
+
 def cli_main():
     config = load_config()
     u_id = config.get('user_id', '')
@@ -509,7 +433,7 @@ def cli_main():
         df_in = pd.read_excel(os.path.join(os.path.dirname(__file__), "container_list.xlsx"))
         c_list = df_in.iloc[2:, 0].dropna().tolist()
         results = run_els_process(u_id, u_pw, c_list, log_callback=print)
-        print(f"조회 완료: {len(results.get('sheet2', []))}건 기록됨")
+        print(f"조회 완료: {len(results.get('sheet2', []))}건 수집")
     except Exception as e:
         print(f"CLI 에러: {e}")
 
@@ -520,14 +444,9 @@ if __name__ == "__main__":
         parser.add_argument("--user-id", type=str)
         parser.add_argument("--user-pw", type=str)
         args = parser.parse_args(sys.argv[2:])
-        
-        if args.containers:
-            try: c_list = json.loads(args.containers)
-            except: c_list = [x.strip() for x in args.containers.split(',') if x.strip()]
-        else: c_list = []
+        c_list = json.loads(args.containers) if args.containers else []
         u_id = args.user_id if args.user_id else load_config().get('user_id')
         u_pw = args.user_pw if args.user_pw else load_config().get('user_pw')
-        
         final_res = run_els_process(u_id, u_pw, c_list, log_callback=lambda x: print(f"LOG:{x}", flush=True))
         print(f"RESULT:{json.dumps(final_res, ensure_ascii=False)}", flush=True)
     else:

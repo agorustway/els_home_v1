@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 import pandas as pd
+from werkzeug.exceptions import HTTPException
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS 
 from werkzeug.utils import secure_filename
@@ -55,6 +56,14 @@ LAST_RESULT_FILE = ELSBOT_DIR / "last_search_result.json"
 # --- 전역 에러 핸들러 ---
 @app.errorhandler(Exception)
 def handle_global_exception(e):
+    # [수정] 404 등 일반적인 HTTP 에러는 조용히 처리함 (로그 도배 방지)
+    if isinstance(e, HTTPException):
+        return jsonify({
+            "ok": False,
+            "error": str(e.description),
+            "code": e.code
+        }), e.code
+        
     app.logger.error("An unhandled exception occurred: %s", str(e), exc_info=True)
     response = {
         "ok": False,
@@ -83,6 +92,19 @@ def post_log():
         return jsonify({"ok": True})
     except Exception as e:
         app.logger.error(f"로그 저장 실패: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/debug/log", methods=["POST"])
+def post_debug_log():
+    """안드로이드 등 외부 앱 전용 디버그 로그 수신 (debug_app.log)"""
+    try:
+        data = request.get_json(silent=True) or {}
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open("debug_app.log", "a", encoding="utf-8") as f:
+            f.write(f"[{ts}] {json.dumps(data, ensure_ascii=False)}\n")
+        return jsonify({"ok": True})
+    except Exception as e:
+        app.logger.error(f"디버그 로그 저장 실패: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/logs", methods=["GET"])
