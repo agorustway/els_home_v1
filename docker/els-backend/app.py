@@ -20,8 +20,11 @@ from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS 
 from werkzeug.utils import secure_filename
 from openpyxl.styles import PatternFill
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
+
+# --- KST 설정 ---
+KST = timezone(timedelta(hours=9))
 
 # --- Supabase 설정 ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -99,13 +102,135 @@ def post_debug_log():
     """안드로이드 등 외부 앱 전용 디버그 로그 수신 (debug_app.log)"""
     try:
         data = request.get_json(silent=True) or {}
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ts = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
         with open("debug_app.log", "a", encoding="utf-8") as f:
             f.write(f"[{ts}] {json.dumps(data, ensure_ascii=False)}\n")
         return jsonify({"ok": True})
     except Exception as e:
         app.logger.error(f"디버그 로그 저장 실패: {e}")
         return jsonify({"error": str(e)}), 500
+
+# --- [v4.4.40] 아산지점 배차판 자동 동기화 로직 ---
+def sync_asan_dispatch_python():
+    """나스 엑셀 파일을 읽어 Supabase를 업데이트하는 Python 버전 로직"""
+    if not supabase: return
+    try:
+        app.logger.info("[자동동기화] 아산 배차판 동기화 시작...")
+        # 1. 설정 가져오기
+        res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
+        settings = res.data
+        if not settings:
+            app.logger.error("[자동동기화] 설정을 찾을 수 없습니다.")
+            return
+
+        for dtype in ['glovis', 'mobis']:
+            rel_path = settings.get(f"{dtype}_path")
+            if not rel_path: continue
+            
+            full_path = Path("/app/data") / rel_path.lstrip("/")
+            if not full_path.exists():
+                app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path}")
+                continue
+            
+            # 파일 수정 시간
+            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            
+            # 엑셀 읽기
+            xl = pd.ExcelFile(full_path)
+            sync_count = 0
+            
+            # 기존 데이터 삭제 (정합성 보장)
+            supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+
+            for sheet_name in xl.sheet_names:
+                # "3.3" 형식의 시트명 파싱
+                match = re.search(r'(\d+)\.(\d+)', sheet_name)
+                if not match: continue
+                
+                m, d = int(match.group(1)), int(match.group(2))
+                now = datetime.now(KST)
+                year = now.year
+                if m > now.month + 3: year -= 1 # 12월 시트인데 현재 3월이면 작년거
+                target_date = f"{year}-{m:02d}-{d:02d}"
+                
+                # 시트 파싱
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
+                # '구분'이 포함된 행 찾기 (헤더 행)
+                header_idx = -1
+                for i, row in df.head(10).iterrows():
+                    if row.astype(str).str.contains('구분').any():
+                        header_idx = i
+                        break
+                
+                if header_idx < 0: continue
+                
+                # 헤더 추출 및 정제
+                headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
+                # 빈 헤더 보정
+                headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
+                
+                # 데이터 추출
+                data_df = df.iloc[header_idx + 1:]
+                
+                # 필터링 로직 (Next.js와 동일하게 적용)
+                filter_col = 12 if dtype == 'glovis' else 15 # 0-indexed
+                rows = []
+                for _, row in data_df.iterrows():
+                    # '합계' 포함 시 종료
+                    if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
+                        break
+                    
+                    f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                    if not f_val or f_val == '0' or f_val == 'nan':
+                        continue
+                    
+                    rows.append(row.fillna('').astype(str).tolist())
+                
+                if not rows: continue
+                
+                # Supabase 저장
+                supabase.from_("branch_dispatch").insert({
+                    "branch_id": "asan",
+                    "type": dtype,
+                    "target_date": target_date,
+                    "headers": headers,
+                    "data": rows,
+                    "comments": {}, # 파이썬에선 메모 추출이 복잡하므로 일단 빈 객체 (향후 openpyxl 연동 가능)
+                    "file_modified_at": mtime,
+                    "updated_at": now.isoformat()
+                }).execute()
+                sync_count += 1
+            
+            app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+            
+    except Exception as e:
+        app.logger.error(f"[자동동기화] 치명적 오류: {e}")
+
+def asan_sync_scheduler():
+    """배경에서 시간을 체크하여 동기화를 수행하는 스레드"""
+    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (06:00-23:00, 30분 간격)")
+    last_run_min = -1
+    
+    while True:
+        try:
+            now = datetime.now(KST)
+            # 평일(월-금: 0-4) 체크
+            if now.weekday() < 5:
+                # 06:00 ~ 23:00 사이
+                if 6 <= now.hour <= 23:
+                    # 00분 또는 30분일 때 실행
+                    if now.minute in [0, 30] and now.minute != last_run_min:
+                        sync_asan_dispatch_python()
+                        last_run_min = now.minute
+            
+            # 매 30초마다 체크 (KST 기준)
+            time.sleep(30)
+        except Exception as e:
+            app.logger.error(f"[스케줄러] 루프 오류: {e}")
+            time.sleep(60)
+
+# 스케줄러 시작
+threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
 @app.route("/api/logs", methods=["GET"])
 def get_logs():

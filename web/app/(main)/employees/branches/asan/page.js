@@ -4,16 +4,66 @@ import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
 
 // ===== 상수 =====
-const HOLIDAYS = new Set([
-    '2025-01-01', '2025-01-28', '2025-01-29', '2025-01-30', '2025-03-01',
-    '2025-05-05', '2025-05-06', '2025-06-06', '2025-08-15',
-    '2025-09-05', '2025-09-06', '2025-09-07', '2025-09-08',
-    '2025-10-03', '2025-10-09', '2025-12-25',
-    '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19',
-    '2026-03-01', '2026-03-02', '2026-05-05', '2026-05-24', '2026-06-06',
-    '2026-08-15', '2026-08-17', '2026-09-24', '2026-09-25', '2026-09-26',
-    '2026-10-03', '2026-10-05', '2026-10-09', '2026-12-25',
-]);
+// ===== 공휴일 계산기 (v4.4.40) =====
+// 동적으로 공휴일/대체공휴일을 계산합니다. (하드코딩 지양)
+function getHolidays(year) {
+    const holidays = new Set();
+    
+    // 1. 고정 양력 공휴일
+    const staticDays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
+    staticDays.forEach(day => holidays.add(`${year}-${day}`));
+
+    // 2. 음력 공휴일 (2025-2030 수동 매핑 - 한국 공식 관공서 공휴일 기준)
+    const lunarMap = {
+        2025: ['2025-01-28', '2025-01-29', '2025-01-30', '2025-05-05', '2025-10-05', '2025-10-06', '2025-10-07'],
+        2026: ['2026-02-16', '2026-02-17', '2026-02-18', '2026-05-24', '2026-09-24', '2026-09-25', '2026-09-26'],
+        2027: ['2027-02-05', '2027-02-06', '2027-02-07', '2027-05-13', '2027-09-14', '2027-09-15', '2027-09-16'],
+        2028: ['2028-01-26', '2028-01-27', '2028-01-28', '2028-05-02', '2028-10-02', '2028-10-03', '2028-10-04'],
+        2029: ['2029-02-12', '2029-02-13', '2029-02-14', '2029-05-20', '2029-09-21', '2029-09-22', '2029-09-23'],
+        2030: ['2030-02-02', '2030-02-03', '2030-02-04', '2030-05-09', '2030-09-11', '2030-09-12', '2030-09-13']
+    };
+    (lunarMap[year] || []).forEach(d => holidays.add(d));
+
+    // 3. 대체공휴일 처리 logic
+    // 국경일(3.1, 8.15, 10.3, 10.9)이 토/일인 경우, 설/추석이 일요일인 경우, 어린이날/부처님오신날이 토/일인 경우 발생
+    const checkAlt = (dateStr) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        const day = d.getDay();
+        if (day === 0) return true; // 일요일
+        if (day === 6) {
+            // 토요일 대체공휴일은 어린이날, 부처님오신날, 국경일 4종에만 적용됨
+            const mmdd = dateStr.slice(5);
+            return ['05-05', '05-24', '03-01', '08-15', '10-03', '10-09'].includes(mmdd);
+        }
+        return false;
+    };
+
+    // 대체공휴일 계산 (단순화된 규칙: 공휴일이 주말과 겹치면 다음 첫 번째 평일을 공휴일로 지정)
+    const currentHolidays = Array.from(holidays);
+    currentHolidays.forEach(h => {
+        const d = new Date(h + 'T00:00:00');
+        if (d.getDay() === 0 || d.getDay() === 6) {
+            let next = new Date(d);
+            while (true) {
+                next.setDate(next.getDate() + 1);
+                const nextStr = next.toISOString().split('T')[0];
+                if (next.getDay() !== 0 && next.getDay() !== 6 && !holidays.has(nextStr)) {
+                    holidays.add(nextStr);
+                    break;
+                }
+            }
+        }
+    });
+
+    return holidays;
+}
+
+const GLOBAL_HOLIDAYS_CACHE = {};
+function isHoliday(dateStr) {
+    const year = dateStr.split('-')[0];
+    if (!GLOBAL_HOLIDAYS_CACHE[year]) GLOBAL_HOLIDAYS_CACHE[year] = getHolidays(year);
+    return GLOBAL_HOLIDAYS_CACHE[year].has(dateStr);
+}
 const CENTER_HEADERS = new Set(['오더', '배차', '검증', '계', '수량', '추가', 'T', 'TYPE', '오더(계)', '담당자']);
 const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡', '인천'];
 const PREFS_KEY = 'asan_dispatch_prefs';
@@ -24,18 +74,17 @@ function getTabType(dateStr) {
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const d = new Date(dateStr + 'T00:00:00');
     const day = d.getDay();
-    const isHoliday = HOLIDAYS.has(dateStr);
-    const isRed = day === 0 || isHoliday;
-    const isSaturday = day === 6 && !isHoliday;
+    const holidayCheck = isHoliday(dateStr);
+    
+    // [v4.4.40] 토요일은 더이상 공휴일(Red)이 아님. 사용자의 요청(평일로 변경)에 따라 일반 평일로 처리함.
+    const isRed = day === 0 || holidayCheck;
 
     if (dateStr === today) return 'today';
     if (dateStr < today) {
         if (isRed) return 'past_holiday';
-        if (isSaturday) return 'past_saturday';
         return 'past';
     }
     if (isRed) return 'holiday';
-    if (isSaturday) return 'saturday';
     return 'future';
 }
 function formatTabLabel(dateStr) {
@@ -270,7 +319,8 @@ export default function AsanDispatchPage() {
         const ds = activeItem.target_date;
         const d = new Date(ds + 'T00:00:00');
         const days = ['일', '월', '화', '수', '목', '금', '토'];
-        const isRed = d.getDay() === 0 || d.getDay() === 6 || HOLIDAYS.has(ds);
+        // [v4.4.40] 토요일(6)은 공휴일에서 제외
+        const isRed = d.getDay() === 0 || isHoliday(ds);
         return {
             label: `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`,
             type: isRed ? '공휴일' : '평일', isRed,
