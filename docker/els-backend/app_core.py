@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import threading
+import time
 import logging
 import pandas as pd
 import io
@@ -27,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [CORE] %(message)s
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
-# --- [v4.5.1] 아산지점 배차판 자동 동기화 로직 ---
+# --- [v4.5.3] 아산지점 배차판 자동 동기화 로직 ---
 def sync_asan_dispatch_python():
     if not supabase: return
     try:
@@ -100,7 +101,7 @@ def asan_sync_scheduler():
             now = datetime.now(KST)
             if now.weekday() < 5 and 6 <= now.hour <= 23:
                 if now.minute in [0, 30] and now.minute != last_run_min:
-                    app.logger.info(f"[스케줄러] 정기 동기화 시점 ({now.hour:02d}:{now.minute:02d})")
+                    app.logger.info(f"[스케줄러] 정기 동기화 시점 도달 ({now.hour:02d}:{now.minute:02d})")
                     sync_asan_dispatch_python()
                     last_run_min = now.minute
             time.sleep(60)
@@ -112,8 +113,9 @@ threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
 # --- API 엔드포인트 ---
 @app.route("/health", methods=["GET"])
-def health(): return jsonify({"status": "ok", "service": "els-core"})
+def health(): return jsonify({"status": "ok", "service": "els-core", "sb_ready": bool(supabase)})
 
+# 1. 활동 로그 (Activity Logs)
 @app.route("/api/logs", methods=["POST"])
 def post_log():
     if not supabase: return jsonify({"error": "No Supabase"}), 500
@@ -130,6 +132,20 @@ def post_log():
         return jsonify({"ok": True})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
+@app.route("/api/logs", methods=["GET"])
+def get_logs():
+    if not supabase: return jsonify({"error": "No Supabase"}), 500
+    try:
+        email = request.args.get("email", "")
+        page = int(request.args.get("page", 1))
+        limit = int(request.args.get("limit", 30))
+        query = supabase.from_("user_activity_logs").select("*", count="exact")
+        if email: query = query.ilike("user_email", f"%{email}%")
+        res = query.order("created_at", desc=True).range((page-1)*limit, page*limit-1).execute()
+        return jsonify({"ok": True, "data": res.data, "total": res.count})
+    except Exception as e: return jsonify({"error": str(e)}), 500
+
+# 2. 차량 관제 (Vehicle Tracking)
 @app.route("/api/vehicle-tracking/photos/view", methods=["GET"])
 def view_photo():
     key = request.args.get("key")
@@ -139,6 +155,7 @@ def view_photo():
         return Response(urlopen(photo_url).read(), mimetype="image/jpeg")
     except Exception as e: return str(e), 500
 
+# 3. 나스 파일 업/다운로드
 @app.route("/api/nas/files", methods=["POST"])
 def upload_nas_file():
     if "file" not in request.files: return jsonify({"error": "No file"}), 400
