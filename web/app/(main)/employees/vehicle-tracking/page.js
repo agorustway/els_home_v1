@@ -1110,40 +1110,55 @@ export default function VehicleTrackingPage() {
                                 </div>
                             </div>
 
-                            <div ref={miniMapRef} style={{ width: '100%', height: '240px', borderRadius: '8px', marginBottom: '12px', background: '#f1f5f9' }} />
+                            <div style={{position: 'relative', width: '100%', height: '240px', marginBottom: '12px'}}>
+                                <div ref={miniMapRef} style={{ width: '100%', height: '100%', borderRadius: '8px', background: '#f1f5f9' }} />
+                                {selectedTripLocations.length === 0 && (
+                                    <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.9rem', fontWeight: 600, background: 'rgba(241,245,249,0.7)', borderRadius: '8px', zIndex: 10}}>
+                                        해당 운행건의 위치 기록이 존재하지 않습니다.
+                                    </div>
+                                )}
+                            </div>
 
-                            <div className={styles.locationList} style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                                {selectedTripLocations.slice().reverse().map((loc, i) => {
-                                    const realIndex = selectedTripLocations.length - 1 - i;
-                                    const hasAddr = loc.address && loc.address !== '주소 정보 없음';
-                                    return (
-                                        <div key={i} className={styles.locationItem} onClick={() => { const mInstance = miniMapInstanceRef.current || mapInstanceRef.current; if (mInstance) { mInstance.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mInstance.setZoom(16); } }}>
-                                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2}}>
-                                                <div style={{display:'flex', gap: 6, alignItems:'center'}}>
-                                                    <div className={styles.locTime}>{new Date(loc.timestamp || loc.recorded_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
-                                                    <div style={{fontSize: '0.75rem', color: '#3b82f6', fontWeight: 800, background: '#3b82f615', padding: '1px 5px', borderRadius: 4}}>
-                                                        💨 {Math.round(loc.speed || 0)} km/h
-                                                    </div>
-                                                </div>
-                                                <div style={{fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 500}}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</div>
-                                            </div>
-                                            <div className={styles.locContent} style={{display:'flex', alignItems:'center', gap:8}}>
-                                                <div className={styles.locAddress} style={{flex: 1, color: hasAddr ? '#1e293b' : '#94a3b8', fontSize:'0.85rem', fontWeight: 600}}>
-                                                    {loc.address || '주소 확인 필요'}
-                                                </div>
-                                                {!hasAddr && (
-                                                    <button 
-                                                        className={styles.searchAddrBtn} 
-                                                        style={{padding: '3px 8px', fontSize: '0.7rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', whiteSpace:'nowrap'}}
-                                                        onClick={(e) => { e.stopPropagation(); fetchMissingAddress(loc, realIndex); }}
-                                                    >
-                                                        주소 확인
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                            <div className={styles.locationList} style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#fff' }}>
+                                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', textAlign: 'center' }}>
+                                    <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 1 }}>
+                                        <tr>
+                                            <th style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>기록시간</th>
+                                            <th style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>속도</th>
+                                            <th style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>주소</th>
+                                            <th style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>위경도</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedTripLocations.length === 0 ? (
+                                            <tr><td colSpan="4" style={{ padding: '20px', color: '#94a3b8' }}>위치 기록 데이터가 없습니다.</td></tr>
+                                        ) : (
+                                            selectedTripLocations.slice().reverse().map((loc, i) => {
+                                                const realIndex = selectedTripLocations.length - 1 - i;
+                                                const hasAddr = loc.address && loc.address !== '주소 정보 없음';
+                                                const d = new Date(loc.timestamp || loc.recorded_at);
+                                                const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}`;
+                                                return (
+                                                    <tr key={i} onClick={() => { const mInstance = miniMapInstanceRef.current || mapInstanceRef.current; if (mInstance) { mInstance.setCenter(new window.naver.maps.LatLng(loc.lat, loc.lng)); mInstance.setZoom(16); } }} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
+                                                        <td style={{ padding: '4px', color: '#475569', fontWeight: 500, letterSpacing: '-0.5px' }}>{dateStr}</td>
+                                                        <td style={{ padding: '4px', color: '#3b82f6', fontWeight: 700 }}>{Math.round(loc.speed || 0)}</td>
+                                                        <td style={{ padding: '4px', textAlign: 'left', color: hasAddr ? '#334155' : '#94a3b8', fontSize: '0.7rem' }}>
+                                                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                                                                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'150px'}} title={loc.address || '주소 확인 필요'}>{loc.address || '확인 필요'}</span>
+                                                                {!hasAddr && (
+                                                                    <button style={{padding: '2px 4px', fontSize: '0.65rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); fetchMissingAddress(loc, realIndex); }}>확인</button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '4px', color: '#cbd5e1', fontSize: '0.65rem', letterSpacing: '-0.5px' }}>
+                                                            {loc.lat.toFixed(4)}<br/>{loc.lng.toFixed(4)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
