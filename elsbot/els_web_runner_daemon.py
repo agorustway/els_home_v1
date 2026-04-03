@@ -250,6 +250,7 @@ def run():
         except: pass
 
         if not is_alive:
+            driver.page_ready = False  # 세션이 죽었으면 화면도 초기화
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
             
             with pool.lock:
@@ -311,9 +312,17 @@ def run():
         logs = []
         def _log_cb(msg): logs.append(msg)
         
-        # [수정] 백그라운드 갱신으로 인해 메인 페이지로 이동했을 수 있으므로 다시 메뉴 진입 확인
-        menu_opened = open_els_menu(driver, log_callback=_log_cb)
+        # [v4.5.7] driver.page_ready가 True이면 이미 컨테이너 조회 화면 → 메뉴 재진입 스킵
+        if getattr(driver, 'page_ready', False):
+            _log_cb("⚡ [고속모드] 이미 조회 화면 대기 중. 메뉴 재진입 스킵!")
+            menu_opened = True
+        else:
+            menu_opened = open_els_menu(driver, log_callback=_log_cb)
+            if menu_opened:
+                driver.page_ready = True
+
         if not menu_opened:
+            driver.page_ready = False
             status = "INPUT_NOT_FOUND (메뉴 진입 실패)"
         else:
             # 조회 로직
@@ -467,14 +476,12 @@ def session_keeper():
                         extended = extend_session(driver, log_callback=pool.add_log)
                         if extended:
                             pool.add_log(f"--- [백그라운드] 20분 무활동. 연장 버튼 클릭으로 세션 갱신 완료 (60분 초기화). ---")
+                            driver.last_activity = time.time()
                         else:
-                            # 버튼이 없으면 폴백: 페이지 이동으로 세션 유지
-                            driver.get("https://etrans.klnet.co.kr/main.do")
-                            u_id_n = pool.current_user["id"] if pool.current_user else None
-                            u_pw_n = pool.current_user["pw"]  if pool.current_user else None
-                            close_modals(driver, u_id=u_id_n, u_pw=u_pw_n)
-                            pool.add_log(f"--- [백그라운드] 연장 버튼 없음. 페이지 갱신으로 대체. ---")
-                        driver.last_activity = time.time()
+                            # [v4.5.7] 폴백 main.do 이동 제거 — 화면 보존 우선
+                            pool.add_log(f"--- [백그라운드] 연장 버튼 없음. 화면 보존 유지 (폴백 이동 스킵). ---")
+                            driver.page_ready = False  # 안전하게 재진입 하도록
+                            driver.last_activity = time.time()
                     except Exception as e:
                         needs_refresh = True
                         reason = f"세션 연장 실패: {e}"
