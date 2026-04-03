@@ -40,6 +40,10 @@ export default function VehicleTrackingPage() {
     const polylineRef = useRef(null);
     const infoWindowRef = useRef(null);
     const intervalRef = useRef(null);
+    const miniMapRef = useRef(null);
+    const miniMapInstanceRef = useRef(null);
+    const miniPolylineRef = useRef(null);
+    const miniMarkersRef = useRef([]);
     const realtimeIntervalRef = useRef(null);
     const realtimeTimeoutRef = useRef(null);
     const [realtimeTarget, setRealtimeTarget] = useState(null); // 실시간 추적 대상 trip ID
@@ -449,6 +453,64 @@ export default function VehicleTrackingPage() {
             setIsDetailLoading(false);
         }
     };
+
+    // [신규] 상세 모달용 미니맵 초기화 및 경로 그리기
+    useEffect(() => {
+        if (!selectedTrip || !miniMapRef.current || !window.naver?.maps) return;
+
+        if (!miniMapInstanceRef.current) {
+            miniMapInstanceRef.current = new window.naver.maps.Map(miniMapRef.current, {
+                center: new window.naver.maps.LatLng(36.5, 127.0),
+                zoom: 7, zoomControl: true, zoomControlOptions: { position: window.naver.maps.Position.TOP_RIGHT }
+            });
+        }
+
+        const map = miniMapInstanceRef.current;
+        if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
+        miniMarkersRef.current.forEach(m => m.setMap(null));
+        miniMarkersRef.current = [];
+
+        if (!selectedTripLocations || selectedTripLocations.length === 0) return;
+
+        const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+        if (validLocs.length === 0) return;
+
+        const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
+        const polyline = new window.naver.maps.Polyline({
+            map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
+            strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
+        });
+        miniPolylineRef.current = polyline;
+
+        const bounds = new window.naver.maps.LatLngBounds();
+        path.forEach(p => bounds.extend(p));
+
+        validLocs.forEach(l => {
+            const pointMarker = new window.naver.maps.Marker({
+                position: new window.naver.maps.LatLng(l.lat, l.lng), map,
+                icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
+                zIndex: 10
+            });
+            miniMarkersRef.current.push(pointMarker);
+        });
+
+        const startMarker = new window.naver.maps.Marker({
+            position: path[0], map, zIndex: 100,
+            icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
+        });
+        miniMarkersRef.current.push(startMarker);
+
+        const endMarker = new window.naver.maps.Marker({
+            position: path[path.length - 1], map, zIndex: 100,
+            icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
+        });
+        miniMarkersRef.current.push(endMarker);
+
+        setTimeout(() => {
+            window.naver.maps.Event.trigger(map, 'resize');
+            map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+        }, 100);
+    }, [selectedTrip, selectedTripLocations]);
 
     // 네이버맵 초기화
     useEffect(() => {
@@ -1040,15 +1102,22 @@ export default function VehicleTrackingPage() {
                                 <span>이동 경로 ({selectedTripLocations.length})</span>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', padding: '0 10px', fontSize: '0.75rem', height: '26px', borderRadius: '6px' }} onClick={handleDownloadLocationsCsv}>📊 엑셀 다운로드</button>
-                                    <button className={styles.resetZoomBtn} onClick={() => drawTripPath(selectedTripLocations)}>🎯 전체보기</button>
+                                    <button className={styles.resetZoomBtn} onClick={() => {
+                                        const bounds = new window.naver.maps.LatLngBounds();
+                                        selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132).forEach(l => bounds.extend(new window.naver.maps.LatLng(l.lat, l.lng)));
+                                        miniMapInstanceRef.current?.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+                                    }}>🎯 전체보기</button>
                                 </div>
                             </div>
-                            <div className={styles.locationList} style={{ maxHeight: '350px', overflowY: 'auto' }}>
+
+                            <div ref={miniMapRef} style={{ width: '100%', height: '240px', borderRadius: '8px', marginBottom: '12px', background: '#f1f5f9' }} />
+
+                            <div className={styles.locationList} style={{ maxHeight: '250px', overflowY: 'auto' }}>
                                 {selectedTripLocations.slice().reverse().map((loc, i) => {
                                     const realIndex = selectedTripLocations.length - 1 - i;
                                     const hasAddr = loc.address && loc.address !== '주소 정보 없음';
                                     return (
-                                        <div key={i} className={styles.locationItem} onClick={() => { mapInstanceRef.current?.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mapInstanceRef.current?.setZoom(16); }}>
+                                        <div key={i} className={styles.locationItem} onClick={() => { const mInstance = miniMapInstanceRef.current || mapInstanceRef.current; if (mInstance) { mInstance.setCenter(new naver.maps.LatLng(loc.lat, loc.lng)); mInstance.setZoom(16); } }}>
                                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2}}>
                                                 <div style={{display:'flex', gap: 6, alignItems:'center'}}>
                                                     <div className={styles.locTime}>{new Date(loc.timestamp || loc.recorded_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
