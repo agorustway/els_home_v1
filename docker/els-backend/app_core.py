@@ -7,6 +7,7 @@ import logging
 import pandas as pd
 import io
 import re
+import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, Response, send_file
@@ -28,26 +29,20 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [CORE] %(message)s
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
-# --- [v4.5.3] 아산지점 배차판 자동 동기화 로직 ---
+# --- [v4.5.4] 아산지점 배차판 자동 동기화 로직 ---
 def sync_asan_dispatch_python():
     if not supabase: return
     try:
         app.logger.info("[자동동기화] 아산 배차판 동기화 시작...")
         res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
         settings = res.data
-        if not settings:
-            app.logger.error("[자동동기화] 설정을 찾을 수 없습니다.")
-            return
+        if not settings: return
 
         for dtype in ['glovis', 'mobis']:
             rel_path = settings.get(f"{dtype}_path")
             if not rel_path: continue
-            
             full_path = Path("/app/data") / rel_path.lstrip("/")
-            app.logger.info(f"[자동동기화] 대상 파일 체크: {full_path}")
-            if not full_path.exists():
-                app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path}")
-                continue
+            if not full_path.exists(): continue
             
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
             xl = pd.ExcelFile(full_path)
@@ -59,15 +54,13 @@ def sync_asan_dispatch_python():
                 if not match: continue
                 m, d = int(match.group(1)), int(match.group(2))
                 now = datetime.now(KST)
-                year = now.year
-                target_date = f"{year}-{m:02d}-{d:02d}"
+                target_date = f"{now.year}-{m:02d}-{d:02d}"
                 
                 df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
                 header_idx = -1
                 for i, row in df.head(10).iterrows():
                     if row.astype(str).str.contains('구분').any():
-                        header_idx = i
-                        break
+                        header_idx = i; break
                 if header_idx < 0: continue
                 
                 headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
@@ -85,29 +78,23 @@ def sync_asan_dispatch_python():
                 if not rows: continue
                 supabase.from_("branch_dispatch").insert({
                     "branch_id": "asan", "type": dtype, "target_date": target_date,
-                    "headers": headers, "data": rows, "comments": {},
-                    "file_modified_at": mtime, "updated_at": now.isoformat()
+                    "headers": headers, "data": rows, "file_modified_at": mtime, "updated_at": now.isoformat()
                 }).execute()
                 sync_count += 1
             app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
-    except Exception as e:
-        app.logger.error(f"[자동동기화] 오류: {e}")
+    except Exception as e: app.logger.error(f"[자동동기화] 오류: {e}")
 
 def asan_sync_scheduler():
-    app.logger.info("[스케줄러] 아산 동기화 스케줄러 시작 (06-23시, 30분 간격)")
     last_run_min = -1
     while True:
         try:
             now = datetime.now(KST)
             if now.weekday() < 5 and 6 <= now.hour <= 23:
                 if now.minute in [0, 30] and now.minute != last_run_min:
-                    app.logger.info(f"[스케줄러] 정기 동기화 시점 도달 ({now.hour:02d}:{now.minute:02d})")
                     sync_asan_dispatch_python()
                     last_run_min = now.minute
             time.sleep(60)
-        except Exception as e:
-            app.logger.error(f"[스케줄러] 루프 오류: {e}")
-            time.sleep(60)
+        except: time.sleep(60)
 
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
@@ -115,66 +102,73 @@ threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 @app.route("/health", methods=["GET"])
 def health(): return jsonify({"status": "ok", "service": "els-core", "sb_ready": bool(supabase)})
 
-# 1. 활동 로그 (Activity Logs)
-@app.route("/api/logs", methods=["POST"])
-def post_log():
-    if not supabase: return jsonify({"error": "No Supabase"}), 500
-    try:
-        data = request.json or {}
-        meta = data.get("metadata", {})
-        supabase.from_("user_activity_logs").insert({
-            "user_id": meta.get("user_id"),
-            "user_email": data.get("user_email") or data.get("email", "anonymous"),
-            "action_type": data.get("action_type") or data.get("type", "PAGE_VIEW"),
-            "path": data.get("path", "/"),
-            "metadata": meta
-        }).execute()
-        return jsonify({"ok": True})
-    except Exception as e: return jsonify({"error": str(e)}), 500
-
+# 1. 로그 관리 (Logs)
 @app.route("/api/logs", methods=["GET"])
 def get_logs():
-    if not supabase: return jsonify({"error": "No Supabase"}), 500
-    try:
-        email = request.args.get("email", "")
-        page = int(request.args.get("page", 1))
-        limit = int(request.args.get("limit", 30))
-        query = supabase.from_("user_activity_logs").select("*", count="exact")
-        if email: query = query.ilike("user_email", f"%{email}%")
-        res = query.order("created_at", desc=True).range((page-1)*limit, page*limit-1).execute()
-        return jsonify({"ok": True, "data": res.data, "total": res.count})
-    except Exception as e: return jsonify({"error": str(e)}), 500
+    email = request.args.get("email", "")
+    page, limit = int(request.args.get("page", 1)), int(request.args.get("limit", 30))
+    res = supabase.from_("user_activity_logs").select("*", count="exact") \
+            .ilike("user_email", f"%{email}%").order("created_at", desc=True) \
+            .range((page-1)*limit, page*limit-1).execute()
+    return jsonify({"ok": True, "data": res.data, "total": res.count})
 
-# 2. 차량 관제 (Vehicle Tracking)
-@app.route("/api/vehicle-tracking/photos/view", methods=["GET"])
-def view_photo():
-    key = request.args.get("key")
-    if not key: return "Key missing", 400
-    try:
-        photo_url = f"{SUPABASE_URL}/storage/v1/object/public/vehicle-photos/{key}"
-        return Response(urlopen(photo_url).read(), mimetype="image/jpeg")
-    except Exception as e: return str(e), 500
+@app.route("/api/logs", methods=["POST"])
+def post_log():
+    data = request.json or {}
+    meta = data.get("metadata", {})
+    supabase.from_("user_activity_logs").insert({
+        "user_id": meta.get("user_id"), "user_email": data.get("user_email", "anonymous"),
+        "action_type": data.get("action_type", "PAGE_VIEW"), "path": data.get("path", "/"), "metadata": meta
+    }).execute()
+    return jsonify({"ok": True})
 
-# 3. 나스 파일 업/다운로드
-@app.route("/api/nas/files", methods=["POST"])
-def upload_nas_file():
-    if "file" not in request.files: return jsonify({"error": "No file"}), 400
-    f = request.files["file"]
-    rel_path = request.form.get("path", "/uploads")
-    save_dir = Path("/app/data") / rel_path.strip("/")
-    save_dir.mkdir(parents=True, exist_ok=True)
-    fname = secure_filename(f.filename)
-    save_path = save_dir / fname
-    f.save(str(save_path))
-    return jsonify({"success": True, "path": str(rel_path.strip("/") + "/" + fname)})
+@app.route("/api/logs", methods=["DELETE"])
+def delete_logs():
+    supabase.from_("user_activity_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+    return jsonify({"success": True})
 
-@app.route("/api/nas/files", methods=["GET"])
-def download_nas_file():
-    rel_path = request.args.get("path")
-    if not rel_path: return "Path missing", 400
-    full_path = Path("/app/data") / rel_path.strip("/")
-    if not full_path.exists(): return "Not found", 404
-    return send_file(str(full_path), as_attachment=True)
+# 2. 차량 관제 (Vehicle Tracking / Dispatch)
+@app.route("/api/vehicle-tracking", methods=["GET"])
+def get_vehicle_tracking():
+    twenty_four_hours_ago = (datetime.now(KST) - timedelta(hours=24)).isoformat()
+    trips = supabase.from_("vehicle_trips").select("*").gte("started_at", twenty_four_hours_ago) \
+            .in_("status", ["driving", "paused", "completed"]).order("started_at", desc=True).execute().data
+    trip_ids = [t["id"] for t in trips]
+    if not trip_ids: return jsonify({"data": [], "trips": []})
+    locs = supabase.from_("vehicle_locations").select("*").in_("trip_id", trip_ids).order("recorded_at", desc=True).execute().data
+    loc_map = {l["trip_id"]: l for l in locs if l["trip_id"] not in locals()} # Simple dedupe
+    for t in trips: t["lastLocation"] = loc_map.get(t["id"])
+    return jsonify({"data": trips, "trips": trips})
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>", methods=["DELETE"])
+def delete_trip(trip_id):
+    supabase.from_("vehicle_locations").delete().eq("trip_id", trip_id).execute()
+    supabase.from_("vehicle_trip_logs").delete().eq("trip_id", trip_id).execute()
+    supabase.from_("vehicle_trips").delete().eq("id", trip_id).execute()
+    return jsonify({"ok": True})
+
+# 3. 배차판 조회 (Branch Dispatch)
+@app.route("/api/branches/<branch_id>/dispatch", methods=["GET"])
+def get_branch_dispatch(branch_id):
+    dtype = request.args.get("type", "glovis")
+    res = supabase.from_("branch_dispatch").select("*").eq("branch_id", branch_id).eq("type", dtype).order("target_date", asc=True).execute()
+    return jsonify({"ok": True, "data": res.data})
+
+# 4. 공휴일/나스파일/스크린샷-릴레이
+@app.route("/api/off-days", methods=["GET"])
+def get_off_days():
+    res = supabase.from_("off_days").select("*").order("date", asc=True).execute()
+    return jsonify({"ok": True, "data": res.data})
+
+@app.route("/api/nas/files", methods=["GET", "POST"])
+def handle_nas_files():
+    if request.method == "POST":
+        f = request.files["file"]; rel = request.form.get("path", "/uploads")
+        path = Path("/app/data") / rel.strip("/"); path.mkdir(parents=True, exist_ok=True)
+        fname = secure_filename(f.filename); f.save(str(path / fname))
+        return jsonify({"success": True, "path": f"{rel.strip('/')}/{fname}"})
+    rel = request.args.get("path")
+    return send_file(str(Path("/app/data") / rel.strip("/")), as_attachment=True)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=2930, threaded=True)
