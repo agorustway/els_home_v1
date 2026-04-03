@@ -1,21 +1,45 @@
 version: '3.8'
 
 services:
-  els-backend:
-    image: els-backend:latest
-    container_name: els-backend
-    # [수정] 호스트 네트워크 모드 활성화 (포트 설정은 자동으로 무시됨)
+  # 1. Nginx Gateway (Port 2929 - Entry point)
+  els-gateway:
+    build:
+      context: ..
+      dockerfile: docker/els-gateway/Dockerfile.gateway
+    container_name: els-gateway
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - els-bot
+      - els-core
+
+  # 2. ELS Bot Backend (Port 2931 - Heavy)
+  els-bot:
+    build:
+      context: ..
+      dockerfile: docker/els-backend/Dockerfile.bot
+    container_name: els-bot
     network_mode: host
     environment:
-      - PORT=2929
-      - HEADLESS=1
-      - CHROME_BIN=/usr/bin/google-chrome
-      - CHROME_DRIVER_BIN=/usr/local/bin/chromedriver
+      - PORT=2931
+      - DAEMON_URL=http://127.0.0.1:31999
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-    # 호스트 모드에서는 ports 설정이 필요 없으므로 삭제하거나 주석 처리함
-    # ports:
-    #   - "2929:2929"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # 3. Light API Core (Port 2930 - Lightweight)
+  els-core:
+    build:
+      context: ..
+      dockerfile: docker/els-backend/Dockerfile.core
+    container_name: els-core
+    network_mode: host
+    environment:
+      - PORT=2930
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
