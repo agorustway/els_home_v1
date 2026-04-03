@@ -2,19 +2,15 @@
 > 마지막 업데이트: 2026-04-02 11:20 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.26` (Mobile) / `v4.4.50` (NAS Backend & Bot)
-- **최근 업데이트**: 2026-04-02
-- **상태**: ✅ eTrans Bot 로그인 및 조회 자동화 완전 안정화 (v4.4.58)
+- **현재 버전**: `v4.3.26` (Mobile) / `v4.5.2` (NAS Split Backend)
+- **최근 업데이트**: 2026-04-03
+- **상태**: 🚀 백엔드 이중화(Gateway/Bot/Core) 도입 완료. 빌드 중 무중단 서비스 확보.
 - **APK 다운로드**: [els_driver.apk](https://www.nollae.com/apk/els_driver.apk)
 - **설정 파일**: `web/public/apk/version.json` (v4.3.25)
 
-### 🚀 IN-PROGRESS (RESCUE BIN)
-- **현재 작업**: [v4.4.58] eTrans 봇 로그인/조회 버튼 NoRectError 및 WebSquare StaleElement 완벽 해결 및 로컬 검증 완료.
-- **최종 성공 지표**: ID/PW 물리 타이핑(page.actions) + 조회 버튼 정밀 타격(#mf_tac_layout_contents_602_body_btnSearch) + 결과 추출 성공 (15건).
-
----
-
-- [x] **2026-04-02**: [BACKEND/FEAT] 아산 배차판 자동 동기화 스케줄러(평일 06-23시, 30분 간격) 및 동적 공휴일(토요일 제외) 계산 도입 (v4.4.40)
+- [x] **2026-04-03**: [INFRA/ARCH] 백엔드 이중화 분리(Bifurcation) 구축: Nginx 게이트웨이(2929), Core API(2930), Selenium Bot(2931) 체계 도입 (v4.5.2)
+- [x] **2026-04-03**: [BOT/FEAT] 브라우저별 개별 재시도(3회) 로직 및 좀비 프로세스 자동 정리 도입 (v4.4.60)
+- [x] **2026-04-02**: [BACKEND/FEAT] 아산 배차판 자동 동기화 스케줄러(평일 06-23시, 30분 간격) 도입
 - [x] **2026-04-02**: [BOT/FEAT] eTrans WebSquare 3.0 네비게이션 최적화, 게스트 모드(프로필 격리) 및 세션 연장 기능 강화 (v4.4.39)
 - [x] **2026-04-01**: [INFRA/FIX] NAS 도커 바인드 마운트 에러 해결 및 봇 엔진 v1.5.0 강화 배포 (v4.4.27)
 - [x] **2026-04-01**: [BOT/FEAT] 세션 무한 연장(#mf_wfm_gnb_btn_sessionExtension) 및 고유 ID 타격 로직 도입

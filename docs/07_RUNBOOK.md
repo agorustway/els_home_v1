@@ -118,29 +118,40 @@ docker/els-backend/
 ❌ elsbot/app.py 도 중복 → 삭제
 ```
 
-### 3-2. 원클릭 배포 (nas-deploy.sh)
-NAS SSH 접속 후:
+### 3-2. 배포 스케줄 (전체 또는 개별)
+NAS SSH 접속 후 상황에 맞는 스크립트를 실행하세요:
+
+**A. 전체 통합 배포 (Gateway + Bot + Core)**
+- 모든 서비스를 처음부터 새로 올릴 때 사용합니다.
 ```bash
-cd /volume1/docker/els_home_v1
 sh scripts/nas-deploy.sh
 ```
 
-**스크립트 내용:**
+**B. Core API 전용 배포 (추천 - 1분 내 완료)**
+- 관제, 로그, 배차판 동기화 로직만 수정했을 때 사훠합니다. **봇(Selenium)은 죽지 않고 계속 유지됩니다.**
 ```bash
-#!/bin/bash
-# 1. 최신 코드 동기화
-/opt/bin/git fetch origin main && /opt/bin/git reset --hard origin/main
-
-# 2. 이미지 빌드 (-f 옵션 필수!)
-sudo docker build --no-cache -t els-backend:latest -f docker/els-backend/Dockerfile .
-
-# 3. 컨테이너 재가동
-sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate
+sh scripts/deploy-core.sh
 ```
 
-### 3-3. 배포 후 로그 확인
+**C. Bot 전용 배포 (약 40분 소요)**
+- 이트랜스 봇 로직이나 크롬 설정을 수정했을 때 사용합니다. **빌드 중에도 관제 서비스(Core)는 정상 작동합니다.**
 ```bash
-sudo docker logs -f els-backend
+sh scripts/deploy-bot.sh
+```
+
+### 3-3. 서비스 구조 및 포트
+| 서비스명 | 포트(Internal) | 역할 | 비고 |
+| :--- | :--- | :--- | :--- |
+| **els-gateway** | 2929 | 외부 요청 분배 (Gateway) | **입구 (NAS 프록시 타겟)** |
+| **els-core** | 2930 | 관제, 로그, 아산 동기화 | 경량 (빠른 빌드) |
+| **els-bot** | 2931 | 이트랜스 셀레늄 봇 | 중량 (Chrome 포함) |
+
+### 3-4. 로그 확인
+특정 서비스의 로그만 집중해서 볼 수 있습니다.
+```bash
+sudo docker logs -f els-core    # 관제/동기화 로그
+sudo docker logs -f els-bot     # 봇/셀레늄 로그
+sudo docker logs -f els-gateway # 접속 분배 로그
 ```
 
 ### 3-4. 안드로이드 네이티브 앱 빌드 및 배포

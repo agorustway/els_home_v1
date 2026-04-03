@@ -1,26 +1,19 @@
 #!/bin/bash
-# 스크립트가 위치한 폴더의 상위 폴더(루트)로 이동해!
+# [v4.5.2] ELS Unified (Bot + Core + Gateway) 전체 배포 스크립트
 cd "$(dirname "$0")/.."
-echo "현재 작업 디렉토리: $(pwd)"
+echo "--- 🚀 ELS 통합 백엔드 전체 재배포 시작 ---"
 
-echo "=== 1. GitHub에서 최신 코드 받기 ==="
+# 1. 소스코드 동기화
 /opt/bin/git fetch origin main
 /opt/bin/git reset --hard origin/main
 
-echo "=== 2. 기존 컨테이너 중지 ==="
-sudo docker-compose -f docker/docker-compose.yml down
+# 2. 전체 서비스 빌드 및 재실행
+echo ">>> 전 서비스 빌드 및 재가동..."
+# --build를 사용하여 Dockerfile 변경사항을 반영해!
+sudo docker-compose -f docker/docker-compose.yml up -d --build --force-recreate
 
-echo "=== 3. Docker 이미지 빌드 ==="
-# -f 옵션으로 하위 폴더의 Dockerfile을 지목하고, 현재 폴더(.)를 기준으로 빌드해!
-sudo docker build --no-cache -t els-backend:latest -f docker/els-backend/Dockerfile .
-
-echo "=== 4. 컨테이너 재가동 ==="
-sudo docker-compose -f docker/docker-compose.yml up -d --force-recreate
-
-echo "=== 5. Docker 찌꺼기 청소 (용량 관리) ==="
-# 이름 없는 옛날 이미지와 빌드 캐시를 삭제해! (-f는 자동 확인)
+# 3. 정리
 sudo docker system prune -f
 sudo docker builder prune -f
-
-echo "=== 배포 완료! 로그 확인 중... ==="
-sudo docker logs -f els-backend
+echo "✅ 통합 배포 완료! (기존 포트 2929 게이트웨이 생존 확인)"
+sudo docker ps

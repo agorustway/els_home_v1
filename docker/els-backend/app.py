@@ -128,9 +128,13 @@ def sync_asan_dispatch_python():
             if not rel_path: continue
             
             full_path = Path("/app/data") / rel_path.lstrip("/")
+            app.logger.info(f"[자동동기화] 대상 파일 체크: {full_path}")
+            
             if not full_path.exists():
-                app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path}")
+                app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path} (rel_path: {rel_path})")
                 continue
+            
+            app.logger.info(f"[자동동기화] 파일 존재 확인됨. 데이터 추출 시작... ({dtype})")
             
             # 파일 수정 시간
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
@@ -220,11 +224,12 @@ def asan_sync_scheduler():
                 if 6 <= now.hour <= 23:
                     # 00분 또는 30분일 때 실행
                     if now.minute in [0, 30] and now.minute != last_run_min:
+                        app.logger.info(f"[스케줄러] 정기 동기화 시점 도달 ({now.hour:02d}:{now.minute:02d})")
                         sync_asan_dispatch_python()
                         last_run_min = now.minute
             
-            # 매 30초마다 체크 (KST 기준)
-            time.sleep(30)
+            # 매 60초마다 체크 (KST 기준)
+            time.sleep(60)
         except Exception as e:
             app.logger.error(f"[스케줄러] 루프 오류: {e}")
             time.sleep(60)

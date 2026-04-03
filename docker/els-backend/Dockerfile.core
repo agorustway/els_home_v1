@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# 1. 최소 필용 패키지 (OpenPyXL, Pandas 용)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-nanum \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY docker/els-backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 2. 소스 코드 (Core 전용)
+COPY docker/els-backend/app_core.py /app/app.py
+
+EXPOSE 2930
+CMD ["python", "-u", "app.py"]
