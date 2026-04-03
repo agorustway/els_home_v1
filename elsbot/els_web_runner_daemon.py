@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 # 핵심 함수들 가져오기
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu
+from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu, extend_session
 import re
 import pandas as pd
 
@@ -319,9 +319,18 @@ def run():
             # 조회 로직
             status = solve_input_and_search(driver, cn, log_callback=_log_cb)
         
-        # [추가] 조회 시도 후에도 모달 박스(로그인 등)가 생겼는지 확인
-        modal_res = close_modals(driver)
-        if modal_res == "SESSION_EXPIRED":
+        # [v4.5.3] 조회 시도 후 모달 박스 확인 - 계정정보 전달하여 팝업 내 자동 로그인 지원
+        u_id_now = pool.current_user["id"] if pool.current_user else None
+        u_pw_now = pool.current_user["pw"]  if pool.current_user else None
+        modal_res = close_modals(driver, u_id=u_id_now, u_pw=u_pw_now)
+        if modal_res == "POPUP_LOGIN_DONE":
+            # 팝업 로그인 완료 → 메뉴 재진입 후 다시 조회
+            pool.add_log(f"[{cn}] 팝업 로그인 완료. 메뉴 재진입 후 재조회 시도...")
+            if open_els_menu(driver, log_callback=_log_cb):
+                status = solve_input_and_search(driver, cn, log_callback=_log_cb)
+            else:
+                status = "POPUP_LOGIN_메뉴재진입실패"
+        elif modal_res == "SESSION_EXPIRED":
             status = "세션 만료 (로그인 모달 감지)"
 
         result_rows = []
@@ -454,13 +463,21 @@ def session_keeper():
                     reason = "세션 만료 감지"
                 elif elapsed_active >= 1200: # 20분(1200초) 이상 활동이 없으면 세션 연장
                     try:
-                        driver.get("https://etrans.klnet.co.kr/main.do")
-                        close_modals(driver)
+                        # [v4.5.3] 페이지 이동 대신 연장 버튼 클릭 (스크린샷2 방식 - 60분 타이머 초기화)
+                        extended = extend_session(driver, log_callback=pool.add_log)
+                        if extended:
+                            pool.add_log(f"--- [백그라운드] 20분 무활동. 연장 버튼 클릭으로 세션 갱신 완료 (60분 초기화). ---")
+                        else:
+                            # 버튼이 없으면 폴백: 페이지 이동으로 세션 유지
+                            driver.get("https://etrans.klnet.co.kr/main.do")
+                            u_id_n = pool.current_user["id"] if pool.current_user else None
+                            u_pw_n = pool.current_user["pw"]  if pool.current_user else None
+                            close_modals(driver, u_id=u_id_n, u_pw=u_pw_n)
+                            pool.add_log(f"--- [백그라운드] 연장 버튼 없음. 페이지 갱신으로 대체. ---")
                         driver.last_activity = time.time()
-                        pool.add_log(f"--- [백그라운드] 20분 무활동. 세션 유지를 위해 페이지를 갱신했습니다 (재로그인 X). ---")
                     except Exception as e:
                         needs_refresh = True
-                        reason = "세션 연장(새로고침) 실패"
+                        reason = f"세션 연장 실패: {e}"
             except Exception as e:
                 needs_refresh = True
                 reason = "세션 유효성 검사 중 에러"

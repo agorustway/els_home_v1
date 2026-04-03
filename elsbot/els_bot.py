@@ -40,13 +40,46 @@ def check_alert(page):
     except: pass
     return None
 
-def close_modals(page):
+def close_modals(page, u_id=None, u_pw=None):
     """이트랜스 공지사항 등 모달 창 닫기 (DrissionPage 버전)"""
     try:
         # 세션 종료 텍스트 확인
         html = page.html
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return "SESSION_EXPIRED"
+
+        # [v4.5.3] 최상위 로그인 팝업(#mf_wfm_top_loginPopup) 처리
+        # 스크린샷1과 같이 팝업 내 아이디/비번 입력창이 뜨는 경우 직접 로그인 시도
+        login_popup = page.ele('css:#mf_wfm_top_loginPopup', timeout=0.2)
+        if login_popup:
+            try:
+                popup_visible = login_popup.run_js("return window.getComputedStyle(this).display !== 'none';")
+            except:
+                popup_visible = True
+            if popup_visible:
+                if u_id and u_pw:
+                    try:
+                        # 팝업 내 아이디/비번 입력 (iframe 내부)
+                        uid_input = login_popup.ele('css:input[id*="ibx_userId"]', timeout=1) or \
+                                    page.ele('css:#mf_wfm_top_loginPopup_vframe_ibx_userId', timeout=1)
+                        pw_input  = login_popup.ele('css:input[id*="sct_password"]', timeout=1) or \
+                                    page.ele('css:#mf_wfm_top_loginPopup_vframe_sct_password', timeout=1)
+                        if uid_input and pw_input:
+                            uid_input.run_js(f"this.value = '{u_id}';")
+                            uid_input.input(u_id, clear=True)
+                            time.sleep(0.3)
+                            pw_input.run_js(f"this.value = '{u_pw}';")
+                            pw_input.input(u_pw, clear=True)
+                            time.sleep(0.3)
+                            login_btn = login_popup.ele('css:a[id*="btn_login"]', timeout=1) or \
+                                        login_popup.ele('text:로그인', timeout=1)
+                            if login_btn:
+                                login_btn.click(by_js=True)
+                                time.sleep(2)
+                                return "POPUP_LOGIN_DONE"  # 로그인 시도 완료 → 메뉴 재진입 필요
+                    except Exception as _e:
+                        pass
+                return "SESSION_EXPIRED"  # 계정정보 없으면 만료로 처리
 
         # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
         modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
@@ -85,12 +118,10 @@ def close_modals(page):
         page.run_js("""
             document.querySelectorAll('.w2modal_popup, .w2modal_lay').forEach(e => {
                 const txt = e.innerText || "";
-                // 로그인 실패 팝업은 닫지 않음 (로직에서 인지해야 함)
                 if (txt.indexOf('비밀번호') === -1 && txt.indexOf('아이디') === -1 && txt.indexOf('로그인') === -1 && txt.indexOf('활동확인') === -1) {
                     e.style.display = 'none';
                 }
             });
-            // 닫기 버튼들 시도
             document.querySelectorAll('.close, .btn_close, .btn_cancel').forEach(e => {
                 try { e.click(); } catch(err) {}
             });
@@ -234,15 +265,13 @@ def solve_input_and_search(page, container_no, log_callback=None):
         
         if search_btn:
             try:
-                # [v4.4.58] 실제 물리 클릭 시도
                 search_btn.click(timeout=1)
             except:
-                # NoRectError 대비 JS 클릭 강행
                 search_btn.click(by_js=True)
                 
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
-            # [v4.4.58] 데이터가 로드될 때까지 충분히 대기 (WebSquare 그리드 렌더링)
-            time.sleep(3)
+            # [v4.5.3] 조회 후 대기 1.5s로 단축 (WebSquare 그리드 렌더링 충분)
+            time.sleep(1.5)
             return True
         
         if log_callback: log_callback("❌ 조회 버튼을 찾을 수 없습니다.")
@@ -288,8 +317,8 @@ def scrape_hyper_verify(page, search_no):
     return finalData.length > 0 ? finalData.join('\n') : "";
     """
     
-    # 최대 10초 대기하며 결과 수집
-    for attempt in range(20):
+    # [v4.5.3] 최대 6초(12회×0.5s) 대기 — NAS 부하 최소화 + 충분한 로딩 시간
+    for attempt in range(12):
         try:
             res = page.run_js(script)
             if res and '|' in res and len(res.strip()) > 10:
