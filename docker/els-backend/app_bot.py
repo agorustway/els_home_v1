@@ -138,25 +138,96 @@ def run():
                     yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
                     del futures[f]
 
-        # 엑셀 생성
+        # 엑셀 생성 (openpyxl - 2시트, 서식, 틀고정)
         if final_rows:
             token = str(uuid.uuid4())[:8]
-            df = pd.DataFrame(final_rows, columns=headers)
+            from collections import defaultdict
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+
+            grouped = defaultdict(list)
+            for row in final_rows:
+                grouped[str(row[0])].append(row)
+
+            no1_rows, all_sorted = [], []
+            for cn, rows_g in grouped.items():
+                sorted_r = sorted(rows_g, key=lambda r: int(r[1]) if str(r[1]).isdigit() else 999)
+                all_sorted.extend(sorted_r)
+                no1 = next((r for r in sorted_r if str(r[1]) == '1'), None)
+                if no1:
+                    no1_rows.append(no1)
+
+            wb = openpyxl.Workbook()
+            h_font   = Font(name='맑은 고딕', size=10, bold=True)
+            d_font   = Font(name='맑은 고딕', size=10)
+            imp_font = Font(name='맑은 고딕', size=10, color='B91C1C')
+            inb_font = Font(name='맑은 고딕', size=10, color='1D4ED8')
+            h_fill   = PatternFill('solid', fgColor='F2F2F2')
+            imp_fill = PatternFill('solid', fgColor='FEE2E2')
+            inb_fill = PatternFill('solid', fgColor='EFF6FF')
+            h_align  = Alignment(horizontal='center', vertical='center')
+            d_align  = Alignment(vertical='center')
+            th_side  = Side(style='thin', color='94A3B8')
+            td_side  = Side(style='thin', color='E2E8F0')
+            h_border = Border(top=th_side, left=th_side, bottom=th_side, right=th_side)
+            d_border = Border(top=td_side, left=td_side, bottom=td_side, right=td_side)
+
+            def write_ws(ws, data_rows):
+                ws.append(headers)
+                for r in data_rows:
+                    ws.append([str(v) if v is not None else '' for v in r])
+                for row_cells in ws.iter_rows():
+                    for cell in row_cells:
+                        if cell.row == 1:
+                            cell.font = h_font; cell.fill = h_fill
+                            cell.alignment = h_align; cell.border = h_border
+                        else:
+                            val = str(cell.value or '')
+                            cell.alignment = d_align; cell.border = d_border
+                            if '수입' in val:
+                                cell.fill = imp_fill; cell.font = imp_font
+                            elif '반입' in val:
+                                cell.fill = inb_fill; cell.font = inb_font
+                            else:
+                                cell.font = d_font
+                ws.freeze_panes = 'A2'
+                if ws.dimensions:
+                    ws.auto_filter.ref = ws.dimensions
+                for col_cells in ws.columns:
+                    max_len = 0
+                    for cell in col_cells:
+                        l = sum(2 if ord(c) > 127 else 1 for c in str(cell.value or ''))
+                        max_len = max(max_len, l)
+                    ws.column_dimensions[get_column_letter(col_cells[0].column)].width = min(max_len + 2, 50)
+                ws.row_dimensions[1].height = 18
+
+            ws1 = wb.active; ws1.title = '최신이력_No1'
+            write_ws(ws1, no1_rows)
+            ws2 = wb.create_sheet('전체이력')
+            write_ws(ws2, all_sorted)
+
             out = io.BytesIO()
-            df.to_excel(out, index=False)
-            out.seek(0)
-            file_store[token] = out.read()
-            yield "RESULT:" + json.dumps({"ok": True, "result": final_rows, "downloadToken": token}, ensure_ascii=False) + "\n"
-        
+            wb.save(out); out.seek(0)
+            now_kst = datetime.now(KST)
+            file_name = f"컨테이너이력조회_{now_kst.strftime('%Y%m%d%H%M%S')}.xlsx"
+            file_store[token] = {'data': out.read(), 'name': file_name}
+            yield "RESULT:" + json.dumps({"ok": True, "result": final_rows, "downloadToken": token, "fileName": file_name}, ensure_ascii=False) + "\n"
+
         global_progress["is_running"] = False
 
     return Response(generate(), mimetype="text/plain; charset=utf-8")
 
 @app.route("/api/els/download/<token>", methods=["GET"])
 def download(token):
-    buf = file_store.pop(token, None)
-    if not buf: return "Expired", 404
-    return Response(buf, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment; filename=els_result.xlsx"})
+    item = file_store.pop(token, None)
+    if not item: return "Expired", 404
+    buf  = item['data'] if isinstance(item, dict) else item
+    name = item.get('name', 'Container_History.xlsx') if isinstance(item, dict) else (request.args.get('filename') or 'Container_History.xlsx')
+    from urllib.parse import quote
+    safe = quote(name, safe='')
+    return Response(buf, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe}"})
 
 @app.route("/api/els/screenshot", methods=["GET"])
 def screenshot():

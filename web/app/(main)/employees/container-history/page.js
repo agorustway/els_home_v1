@@ -922,6 +922,16 @@ function ContainerHistoryInner() {
                                 <h2 className={styles.sectionTitle}>
                                     조회 데이터 결과
                                     {result && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500, marginLeft: '8px' }}>(총 {Object.keys(result).length}건)</span>}
+                                    {loading && result && (() => {
+                                        const total = Object.keys(result).length;
+                                        const pending = Object.values(result).filter(r => r[0][2] === '조회 대기중' || r[0][2] === '조회 진행중').length;
+                                        const done = total - pending;
+                                        return pending > 0 ? (
+                                            <span style={{ fontSize: '0.8rem', color: '#3b82f6', fontWeight: 700, marginLeft: '6px', background: '#eff6ff', padding: '2px 8px', borderRadius: '20px', border: '1px solid #bfdbfe' }}>
+                                                ✓ {done} / {total} 완료
+                                            </span>
+                                        ) : null;
+                                    })()}
                                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', marginRight: '10px' }}>
                                         {[...Array(maxDrivers)].map((_, i) => {
                                             const w = workers.find(work => work.id === i + 1);
@@ -1009,33 +1019,53 @@ function ContainerHistoryInner() {
                                                         const isExpanded = expandedRows.has(cn);
                                                         const hasHistory = rows.length > 1;
                                                         const rowClass = idx % 2 === 0 ? styles.rowOdd : styles.rowEven;
+                                                        const isPending = rows[0][2] === '조회 대기중';
+                                                        const isInProgress = rows[0][2] === '조회 진행중';
+                                                        const isWaiting = isPending || isInProgress;
 
                                                         return (
                                                             <React.Fragment key={cn}>
-                                                                <tr className={`${rowClass} ${isExpanded ? styles.expandedParentRow : ''}`}>
+                                                                <tr className={`${rowClass} ${isExpanded ? styles.expandedParentRow : ''}`}
+                                                                    style={isWaiting ? { opacity: 0.75 } : undefined}>
                                                                     <td className={styles.stickyColumn}>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                            {hasHistory ? (
+                                                                            {isWaiting ? (
+                                                                                <div className={styles.spinner} style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+                                                                            ) : hasHistory ? (
                                                                                 <button onClick={() => toggleRow(cn)} className={styles.toggleBtn}>
                                                                                     {isExpanded ? '▼' : '▶'}
                                                                                 </button>
                                                                             ) : (
                                                                                 <span style={{ width: '18px' }}></span>
                                                                             )}
-                                                                            <span style={{ fontWeight: 900 }}>{cn}</span>
+                                                                            <span style={{ fontWeight: 900, color: isWaiting ? '#94a3b8' : undefined }}>{cn}</span>
                                                                         </div>
                                                                     </td>
                                                                     <td className={styles.cellBorder}>
-                                                                        {rows[0][1] === 'ERROR' ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>ERROR</span> : rows[0][1]}
+                                                                        {isWaiting ? (
+                                                                            <span style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>-</span>
+                                                                        ) : rows[0][1] === 'ERROR' ? (
+                                                                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>ERROR</span>
+                                                                        ) : rows[0][1]}
                                                                     </td>
                                                                     <td className={styles.cellBorder}>
-                                                                        {rows[0][1] === 'ERROR' ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{rows[0][2]}</span> : <StatusBadge label={rows[0][2]} />}
+                                                                        {isWaiting ? (
+                                                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: isInProgress ? '#3b82f6' : '#94a3b8', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                                                {rows[0][2]}
+                                                                            </span>
+                                                                        ) : rows[0][1] === 'ERROR' ? (
+                                                                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{rows[0][2]}</span>
+                                                                        ) : <StatusBadge label={rows[0][2]} />}
                                                                     </td>
                                                                     <td className={styles.cellBorder}>
-                                                                        {rows[0][1] === 'ERROR' ? '-' : <StatusBadge label={rows[0][3]} />}
+                                                                        {isWaiting ? (
+                                                                            <span style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>-</span>
+                                                                        ) : rows[0][1] === 'ERROR' ? '-' : <StatusBadge label={rows[0][3]} />}
                                                                     </td>
                                                                     {rows[0].slice(4).map((v, i) => (
-                                                                        <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>{v || '-'}</td>
+                                                                        <td key={i} className={`${styles.cellBorder} ${i === 0 ? styles.cellLeft : ''}`}>
+                                                                            {isWaiting ? <span style={{ color: '#cbd5e1' }}>-</span> : (v || '-')}
+                                                                        </td>
                                                                     ))}
                                                                 </tr>
 

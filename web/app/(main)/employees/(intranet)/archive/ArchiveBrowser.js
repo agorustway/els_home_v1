@@ -478,7 +478,11 @@ export default function ArchiveBrowser() {
                     {selectionMode ? (
                         <div className={styles.selectionToolbar}>
                             <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
-                            <button onClick={handleZipDownload} className={`${styles.btn} ${styles.btnPoint}`}>📦 다운로드</button>
+                            {selectedPaths.size === 1 && files.find(f => f.path === Array.from(selectedPaths)[0])?.type !== 'directory' ? (
+                                <button onClick={() => handleDownloadFile(files.find(f => f.path === Array.from(selectedPaths)[0]))} className={`${styles.btn} ${styles.btnPoint}`}>💾 다운로드</button>
+                            ) : (
+                                <button onClick={handleZipDownload} className={`${styles.btn} ${styles.btnPoint}`}>📦 ZIP 압축다운로드</button>
+                            )}
                             <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btn}>취소</button>
                         </div>
                     ) : (

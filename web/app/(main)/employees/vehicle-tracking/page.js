@@ -56,6 +56,9 @@ export default function VehicleTrackingPage() {
     const NOTICE_LIMIT = 3;
     const EM_LIMIT = 3;
 
+    // 모바일 리스트 팝업 토글
+    const [isMobileListOpen, setIsMobileListOpen] = useState(false);
+
     // 운행 기록 (검색/필터)
     const [records, setRecords] = useState([]);
     const [recordsLoading, setRecordsLoading] = useState(false);
@@ -454,69 +457,70 @@ export default function VehicleTrackingPage() {
         }
     };
 
-    // [신규] 상세 모달용 미니맵 초기화 및 경로 그리기
+    // [신규] 상세 모달용 미니맵 초기화 및 경로 정렬 그리기
     useEffect(() => {
-        if (!selectedTrip) return;
-        // DOM 렌더링 완료 후 실행되도록 setTimeout 사용
-        const timerId = setTimeout(() => {
-            if (!miniMapRef.current || !window.naver?.maps) return;
+        if (!selectedTrip || !miniMapRef.current || !window.naver?.maps) return;
 
-            // 모달이 열릴 때마다 항상 새 Map 인스턴스 생성 (DOM이 새로 마운트되므로)
-            if (miniMapInstanceRef.current) {
-                miniMapInstanceRef.current.destroy?.();
-            }
-            miniMapInstanceRef.current = new window.naver.maps.Map(miniMapRef.current, {
+        let map = miniMapInstanceRef.current;
+        if (!map) {
+            map = new window.naver.maps.Map(miniMapRef.current, {
                 center: new window.naver.maps.LatLng(36.5, 127.0),
-                zoom: 7, zoomControl: true, zoomControlOptions: { position: window.naver.maps.Position.TOP_RIGHT }
+                zoom: 13, zoomControl: true, zoomControlOptions: { position: window.naver.maps.Position.TOP_RIGHT }
             });
+            miniMapInstanceRef.current = map;
+        }
 
-            const map = miniMapInstanceRef.current;
-            if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
-            miniMarkersRef.current.forEach(m => m.setMap(null));
-            miniMarkersRef.current = [];
+        if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
+        miniMarkersRef.current.forEach(m => m.setMap(null));
+        miniMarkersRef.current = [];
 
-            if (!selectedTripLocations || selectedTripLocations.length === 0) return;
+        if (!selectedTripLocations || selectedTripLocations.length === 0) return;
 
-            const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
-            if (validLocs.length === 0) return;
+        const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+        if (validLocs.length === 0) return;
 
-            const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
-            const polyline = new window.naver.maps.Polyline({
-                map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
-                strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
+        const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
+        const polyline = new window.naver.maps.Polyline({
+            map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
+            strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
+        });
+        miniPolylineRef.current = polyline;
+
+        const bounds = new window.naver.maps.LatLngBounds();
+        path.forEach(p => bounds.extend(p));
+
+        validLocs.forEach(l => {
+            const pointMarker = new window.naver.maps.Marker({
+                position: new window.naver.maps.LatLng(l.lat, l.lng), map,
+                icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
+                zIndex: 10
             });
-            miniPolylineRef.current = polyline;
+            miniMarkersRef.current.push(pointMarker);
+        });
 
-            const bounds = new window.naver.maps.LatLngBounds();
-            path.forEach(p => bounds.extend(p));
+        const startMarker = new window.naver.maps.Marker({
+            position: path[0], map, zIndex: 100,
+            icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
+        });
+        miniMarkersRef.current.push(startMarker);
 
-            validLocs.forEach(l => {
-                const pointMarker = new window.naver.maps.Marker({
-                    position: new window.naver.maps.LatLng(l.lat, l.lng), map,
-                    icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
-                    zIndex: 10
-                });
-                miniMarkersRef.current.push(pointMarker);
-            });
+        const endMarker = new window.naver.maps.Marker({
+            position: path[path.length - 1], map, zIndex: 100,
+            icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
+        });
+        miniMarkersRef.current.push(endMarker);
 
-            const startMarker = new window.naver.maps.Marker({
-                position: path[0], map, zIndex: 100,
-                icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
-            });
-            miniMarkersRef.current.push(startMarker);
-
-            const endMarker = new window.naver.maps.Marker({
-                position: path[path.length - 1], map, zIndex: 100,
-                icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
-            });
-            miniMarkersRef.current.push(endMarker);
-
-            window.naver.maps.Event.trigger(map, 'resize');
+        window.naver.maps.Event.trigger(map, 'resize');
+        
+        // 실시간 추적 중이면 마지막 마커로 패닝, 아니면 전체 Bounds Fit
+        if (realtimeTarget === selectedTrip.id) {
+            map.panTo(path[path.length - 1]);
+        } else if (!miniMapInstanceRef.current._hasFitBounds) {
             map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
-        }, 150);
+            miniMapInstanceRef.current._hasFitBounds = true;
+        }
 
-        return () => clearTimeout(timerId);
-    }, [selectedTrip, selectedTripLocations]);
+    }, [selectedTrip, selectedTripLocations, realtimeTarget]);
 
     // 네이버맵 초기화
     useEffect(() => {
@@ -931,13 +935,22 @@ export default function VehicleTrackingPage() {
                     <button className={styles.filterResetBtn} onClick={() => setLiveSearchKeyword('')}>초기화</button>
                 </div>
                 
-                <div className={styles.tableSection}>
-                    <h3>📋 현재 운행 현황 ({filteredLiveTrips.length}건) {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',background:'#10b98115',padding:'2px 8px',borderRadius:10,fontWeight:800,marginLeft:8}}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
+                <button className={styles.tableSectionMobileBtn} onClick={() => setIsMobileListOpen(true)}>
+                    📋 현재 운행 현황 목록 보기 ({filteredLiveTrips.length}건)
+                </button>
+
+                <div className={`${styles.mobilePopupOverlay} ${isMobileListOpen ? styles.showOnMobile : ''}`} onClick={() => setIsMobileListOpen(false)}></div>
+                
+                <div className={`${styles.tableSection} ${isMobileListOpen ? styles.showOnMobile : ''}`}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <h3 style={{ margin: 0 }}>📋 현재 운행 현황 ({filteredLiveTrips.length}건) {realtimeTarget && <span style={{fontSize:'0.7rem',color:'#10b981',background:'#10b98115',padding:'2px 8px',borderRadius:10,fontWeight:800,marginLeft:8}}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
+                        <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
+                    </div>
                     <table className={styles.tripTable}>
                         <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {filteredLiveTrips.map(trip => (
-                                <tr key={trip.id} onClick={() => handleZoomToLiveTrip(trip)} style={{ ...(realtimeTarget === trip.id ? {background:'#10b98110'} : {}), cursor: 'pointer' }}>
+                                <tr key={trip.id} onClick={(e) => { setIsMobileListOpen(false); handleZoomToLiveTrip(trip); }} style={{ ...(realtimeTarget === trip.id ? {background:'#10b98110'} : {}), cursor: 'pointer' }}>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
@@ -947,7 +960,7 @@ export default function VehicleTrackingPage() {
                                         <div style={{fontSize: '0.7rem', color: '#64748b', marginTop: '2px'}}>{formatDateTime(trip.lastLocation?.timestamp || trip.lastLocation?.recorded_at)}</div>
                                     </td>
                                     <td className={styles.actionCol}>
-                                        <button className={styles.viewIconBtn} onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }}>상세보기</button>
+                                        <button className={styles.viewIconBtn} onClick={(e) => { e.stopPropagation(); setIsMobileListOpen(false); handleSelectTrip(trip); }}>상세보기</button>
                                     </td>
                                 </tr>
                             ))}
