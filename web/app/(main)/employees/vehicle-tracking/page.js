@@ -456,60 +456,66 @@ export default function VehicleTrackingPage() {
 
     // [신규] 상세 모달용 미니맵 초기화 및 경로 그리기
     useEffect(() => {
-        if (!selectedTrip || !miniMapRef.current || !window.naver?.maps) return;
+        if (!selectedTrip) return;
+        // DOM 렌더링 완료 후 실행되도록 setTimeout 사용
+        const timerId = setTimeout(() => {
+            if (!miniMapRef.current || !window.naver?.maps) return;
 
-        if (!miniMapInstanceRef.current) {
+            // 모달이 열릴 때마다 항상 새 Map 인스턴스 생성 (DOM이 새로 마운트되므로)
+            if (miniMapInstanceRef.current) {
+                miniMapInstanceRef.current.destroy?.();
+            }
             miniMapInstanceRef.current = new window.naver.maps.Map(miniMapRef.current, {
                 center: new window.naver.maps.LatLng(36.5, 127.0),
                 zoom: 7, zoomControl: true, zoomControlOptions: { position: window.naver.maps.Position.TOP_RIGHT }
             });
-        }
 
-        const map = miniMapInstanceRef.current;
-        if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
-        miniMarkersRef.current.forEach(m => m.setMap(null));
-        miniMarkersRef.current = [];
+            const map = miniMapInstanceRef.current;
+            if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
+            miniMarkersRef.current.forEach(m => m.setMap(null));
+            miniMarkersRef.current = [];
 
-        if (!selectedTripLocations || selectedTripLocations.length === 0) return;
+            if (!selectedTripLocations || selectedTripLocations.length === 0) return;
 
-        const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
-        if (validLocs.length === 0) return;
+            const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+            if (validLocs.length === 0) return;
 
-        const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
-        const polyline = new window.naver.maps.Polyline({
-            map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
-            strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
-        });
-        miniPolylineRef.current = polyline;
-
-        const bounds = new window.naver.maps.LatLngBounds();
-        path.forEach(p => bounds.extend(p));
-
-        validLocs.forEach(l => {
-            const pointMarker = new window.naver.maps.Marker({
-                position: new window.naver.maps.LatLng(l.lat, l.lng), map,
-                icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
-                zIndex: 10
+            const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
+            const polyline = new window.naver.maps.Polyline({
+                map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
+                strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
             });
-            miniMarkersRef.current.push(pointMarker);
-        });
+            miniPolylineRef.current = polyline;
 
-        const startMarker = new window.naver.maps.Marker({
-            position: path[0], map, zIndex: 100,
-            icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
-        });
-        miniMarkersRef.current.push(startMarker);
+            const bounds = new window.naver.maps.LatLngBounds();
+            path.forEach(p => bounds.extend(p));
 
-        const endMarker = new window.naver.maps.Marker({
-            position: path[path.length - 1], map, zIndex: 100,
-            icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
-        });
-        miniMarkersRef.current.push(endMarker);
+            validLocs.forEach(l => {
+                const pointMarker = new window.naver.maps.Marker({
+                    position: new window.naver.maps.LatLng(l.lat, l.lng), map,
+                    icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
+                    zIndex: 10
+                });
+                miniMarkersRef.current.push(pointMarker);
+            });
 
-        setTimeout(() => {
+            const startMarker = new window.naver.maps.Marker({
+                position: path[0], map, zIndex: 100,
+                icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
+            });
+            miniMarkersRef.current.push(startMarker);
+
+            const endMarker = new window.naver.maps.Marker({
+                position: path[path.length - 1], map, zIndex: 100,
+                icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
+            });
+            miniMarkersRef.current.push(endMarker);
+
             window.naver.maps.Event.trigger(map, 'resize');
             map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
-        }, 100);
+        }, 150);
+
+        return () => clearTimeout(timerId);
     }, [selectedTrip, selectedTripLocations]);
 
     // 네이버맵 초기화
@@ -1071,7 +1077,7 @@ export default function VehicleTrackingPage() {
                                 </button>
                             )}
                         </div>
-                        <button className={styles.closeBtn} onClick={() => { setSelectedTrip(null); stopRealtimeTracking(selectedTrip.id); }}>✕</button>
+                        <button className={styles.closeBtn} onClick={() => { miniMapInstanceRef.current = null; setSelectedTrip(null); stopRealtimeTracking(selectedTrip.id); }}>✕</button>
                     </div>
                     <div className={styles.detailContent}>
                         <div className={styles.detailSection}>
