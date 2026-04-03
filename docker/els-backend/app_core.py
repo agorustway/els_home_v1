@@ -105,12 +105,33 @@ def health(): return jsonify({"status": "ok", "service": "els-core", "sb_ready":
 # 1. 로그 관리 (Logs)
 @app.route("/api/logs", methods=["GET"])
 def get_logs():
+    import math
     email = request.args.get("email", "")
+    log_type = request.args.get("type", "")
+    start_date = request.args.get("startDate", "")
+    end_date = request.args.get("endDate", "")
     page, limit = int(request.args.get("page", 1)), int(request.args.get("limit", 30))
-    res = supabase.from_("user_activity_logs").select("*", count="exact") \
-            .ilike("user_email", f"%{email}%").order("created_at", desc=True) \
-            .range((page-1)*limit, page*limit-1).execute()
-    return jsonify({"ok": True, "data": res.data, "total": res.count})
+    try:
+        query = supabase.from_("user_activity_logs").select("*", count="exact")
+        if email: query = query.ilike("user_email", f"%{email}%")
+        if log_type: query = query.eq("action_type", log_type)
+        if start_date: query = query.gte("created_at", f"{start_date} 00:00:00")
+        if end_date: query = query.lte("created_at", f"{end_date} 23:59:59")
+        query = query.order("created_at", desc=True)
+        start = (page - 1) * limit
+        res = query.range(start, start + limit - 1).execute()
+        return jsonify({
+            "logs": res.data,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": res.count,
+                "totalPages": math.ceil((res.count or 0) / limit)
+            }
+        })
+    except Exception as e:
+        app.logger.error(f"로그 조회 실패: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/logs", methods=["POST"])
 def post_log():
@@ -136,9 +157,43 @@ def get_vehicle_tracking():
     trip_ids = [t["id"] for t in trips]
     if not trip_ids: return jsonify({"data": [], "trips": []})
     locs = supabase.from_("vehicle_locations").select("*").in_("trip_id", trip_ids).order("recorded_at", desc=True).execute().data
-    loc_map = {l["trip_id"]: l for l in locs if l["trip_id"] not in locals()} # Simple dedupe
-    for t in trips: t["lastLocation"] = loc_map.get(t["id"])
+    loc_map = {}
+    for l in locs:
+        tid = l["trip_id"]
+        if tid not in loc_map:  # 가장 최근 위치만 유지 (ordered by recorded_at desc)
+            loc_map[tid] = l
+    for t in trips:
+        t["lastLocation"] = loc_map.get(t["id"])
+        t["last_location_address"] = t["lastLocation"]["address"] if t.get("lastLocation") else None
     return jsonify({"data": trips, "trips": trips})
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>", methods=["GET"])
+def get_trip_detail(trip_id):
+    """트립 상세 정보 조회"""
+    try:
+        res = supabase.from_("vehicle_trips").select("*").eq("id", trip_id).single().execute()
+        return jsonify(res.data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>/locations", methods=["GET"])
+@app.route("/api/vehicle-tracking/<trip_id>/locations", methods=["GET"])
+def get_trip_locations(trip_id):
+    """특정 트립의 전체 경로 조회"""
+    try:
+        res = supabase.from_("vehicle_locations").select("*").eq("trip_id", trip_id).order("recorded_at", asc=True).execute()
+        return jsonify({"locations": res.data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vehicle-tracking/trips/<trip_id>/logs", methods=["GET"])
+def get_trip_logs(trip_id):
+    """트립 운행 로그 조회"""
+    try:
+        res = supabase.from_("vehicle_trip_logs").select("*").eq("trip_id", trip_id).order("created_at", desc=True).execute()
+        return jsonify({"logs": res.data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/vehicle-tracking/trips/<trip_id>", methods=["DELETE"])
 def delete_trip(trip_id):
