@@ -207,7 +207,11 @@ export default function VehicleTrackingPage() {
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
-        const path = locations.map(l => new naver.maps.LatLng(l.lat, l.lng));
+        // [최적화] 대한민국 범위 밖의 좌표(ex: 0, 0)를 배제하여 직선이 수직으로 튀는 버그 해결
+        const validLocs = locations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+        if (validLocs.length === 0) return;
+
+        const path = validLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
         const polyline = new naver.maps.Polyline({
             map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
             strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
@@ -218,7 +222,7 @@ export default function VehicleTrackingPage() {
         path.forEach(p => bounds.extend(p));
 
         // 조그만 회색 점 (마킹 포인트) 추가 - 선형(Z-index: 1)보다 위 레벨(Z-index: 10) 적용
-        locations.forEach(l => {
+        validLocs.forEach(l => {
             const pointMarker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(l.lat, l.lng),
                 map: map,
@@ -231,8 +235,8 @@ export default function VehicleTrackingPage() {
             markersRef.current.push(pointMarker);
         });
 
-        const start = locations[0];
-        const end = locations[locations.length - 1];
+        const start = validLocs[0];
+        const end = validLocs[validLocs.length - 1];
         const startMarker = new naver.maps.Marker({
             position: new naver.maps.LatLng(start.lat, start.lng), map,
             zIndex: 100, // 가장 위
@@ -551,6 +555,9 @@ export default function VehicleTrackingPage() {
 
             naver.maps.Event.addListener(marker, 'click', () => {
                 if (infoWindowRef.current) infoWindowRef.current.close();
+
+                // [요청 반영] 마커 클릭 시 차량 경로 전체 표시 및 상세정보 모달 열기
+                handleSelectTrip(trip);
 
                 // [신규] 마커 클릭 시 실시간 추적 모드 ON (운행중/일시정지만)
                 if (trip.status === 'driving' || trip.status === 'paused') {
