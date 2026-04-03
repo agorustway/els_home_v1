@@ -154,36 +154,46 @@ def login():
     
     def _do_login(idx):
         try:
-            with pool.lock:
-                if pool.consecutive_login_failures >= 3:
-                    pool.add_log(f"❌ [보안경고] 연속 로그인 실패 3회 누적! 계정 잠금을 방지하기 위해 드라이버 #{idx+1} 초기화를 취소합니다.")
-                    return
+            # [v4.4.60] 개별 브라우저별로 최대 3회 재시도 (다른 브라우저에 영향 없음)
+            success = False
+            for retry in range(1, 4):
+                try:
+                    with pool.lock:
+                        if pool.consecutive_login_failures >= 5: # 누적 실패가 너무 많으면 중단 (보안)
+                            pool.add_log(f"❌ [보안경고] 누적 로그인 실패 과다! 드라이버 #{idx+1} 초기화를 영구 취소합니다.")
+                            return
 
-            # [NAS 최적화] CPU 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
-            if idx > 0: time.sleep(idx * 60)
-            
-            msg = f"브라우저 #{idx+1} 초기화 중..."
-            pool.add_log(msg)
-            
-            def _inner_log(m):
-                pool.add_log(f"[B#{idx+1}] {m}")
+                    # [NAS 최적화] CPU 부하 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
+                    if idx > 0 and retry == 1: time.sleep(idx * 60)
+                    elif retry > 1: time.sleep(10) # 재시도 간격 10초
+                    
+                    msg = f"브라우저 #{idx+1} 초기화 중... (시도 {retry}/3)"
+                    pool.add_log(msg)
+                    
+                    def _inner_log(m):
+                        pool.add_log(f"[B#{idx+1}] {m}")
 
-            target_port = 32000 + idx
-            
-            # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
-            pool.cleanup_lingering_chrome(target_port)
+                    target_port = 32000 + idx
+                    
+                    # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
+                    pool.cleanup_lingering_chrome(target_port)
 
-            res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
-            if res[0]:
-                res[0].used_port = target_port 
-                with pool.lock:
-                    pool.consecutive_login_failures = 0
-                    pool.add_driver(res[0])
-                pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
-            else:
-                with pool.lock:
-                    pool.consecutive_login_failures += 1
-                pool.add_log(f"❌ 브라우저 #{idx+1} 실패 ({pool.consecutive_login_failures}/3): {res[1]}")
+                    res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
+                    if res[0]:
+                        res[0].used_port = target_port 
+                        with pool.lock:
+                            pool.consecutive_login_failures = 0
+                            pool.add_driver(res[0])
+                        pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
+                        success = True
+                        break # 성공시 루프 탈출
+                    else:
+                        pool.add_log(f"⚠️ 브라우저 #{idx+1} 실패 ({retry}/3): {res[1]}")
+                except Exception as e:
+                    pool.add_log(f"🔥 브라우저 #{idx+1} 예외 발생 ({retry}/3): {e}")
+
+            if not success:
+                pool.add_log(f"❌ 브라우저 #{idx+1} 최종 실패. (3회 시도 모두 실패)")
         finally:
             with pool.lock:
                 pool.active_init_threads -= 1
