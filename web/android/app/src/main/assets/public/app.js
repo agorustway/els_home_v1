@@ -2619,6 +2619,9 @@
     }, { passive: true });
 
     el.addEventListener('touchmove', e => {
+      // 네이티브 스크롤/바운스 효과 방지 (이것이 없으면 드래그가 매우 뚝뚝 끊김)
+      if (e.cancelable) e.preventDefault();
+
       if (e.touches.length === 1 && smState.isDragging) {
         onDragMove(e.touches[0].clientX, e.touches[0].clientY);
       } else if (e.touches.length === 2) {
@@ -2634,7 +2637,7 @@
           renderStaticMap();
         }
       }
-    }, { passive: true });
+    }, { passive: false });
 
     el.addEventListener('touchend', e => {
       if (smState.isDragging && e.changedTouches.length > 0) {
@@ -2865,12 +2868,24 @@
     smState.selectedTrip = trip;
     smState.selectedTrip._path = filtered;
 
-    // 경로 중심으로 지도 이동
-    const avgLat = filtered.reduce((s, l) => s + l.lat, 0) / filtered.length;
-    const avgLng = filtered.reduce((s, l) => s + l.lng, 0) / filtered.length;
-    smState.lat = avgLat;
-    smState.lng = avgLng;
-    smState.zoom = 13;
+    // 경로 중심으로 지도 이동 및 줌 레벨 자동 조절
+    const minLat = Math.min(...filtered.map(l => l.lat));
+    const maxLat = Math.max(...filtered.map(l => l.lat));
+    const minLng = Math.min(...filtered.map(l => l.lng));
+    const maxLng = Math.max(...filtered.map(l => l.lng));
+
+    smState.lat = (minLat + maxLat) / 2;
+    smState.lng = (minLng + maxLng) / 2;
+
+    const { w, h } = getMapSize();
+    const dLng = Math.max(0.001, maxLng - minLng);
+    const dLat = Math.max(0.001, maxLat - minLat);
+    const maxZoomLng = Math.log2((w * 0.8 * 360) / (dLng * 256));
+    const maxZoomLat = Math.log2((h * 0.8 * 180) / (dLat * 256));
+    
+    // 경로의 넓이에 맞춰 줌 레벨을 계산하되, 최대 줌은 15로 제한하여 너무 타이트하지 않게 함
+    smState.zoom = Math.max(5, Math.min(15, Math.floor(Math.min(maxZoomLng, maxZoomLat))));
+    syncZoomSlider();
     renderStaticMap();
 
     // 패널 정보 표시
