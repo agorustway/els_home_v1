@@ -2424,7 +2424,13 @@
     const rh = Math.min(Math.floor(h), 512);
     const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
     // ★ 이미지 로드 완료 후 오버레이 렌더 — 이미지와 마커 기준점 동기화
-    smImg.onload = () => { renderMapOverlay(); };
+    smImg.onload = () => { 
+      // 로드 완료 시점에 드래그 이동(transform) 초기화
+      if (smImg) smImg.style.transform = 'none';
+      if (smCanvas) smCanvas.style.transform = 'none';
+      if (smOverlay) smOverlay.style.transform = 'none';
+      renderMapOverlay(); 
+    };
     smImg.onerror = () => {
       smImg.src = '';
       const ctx = smCanvas?.getContext('2d');
@@ -2589,6 +2595,25 @@
       });
     }
 
+    function pixelDeltaToLatLng(dx, dy, centerLat, centerLng, zoomLevel) {
+      const scale = Math.pow(2, zoomLevel) * 256;
+      function toMerc(la, lo) {
+        const x = (lo + 180) / 360;
+        const sinLat = Math.sin(la * Math.PI / 180);
+        const y = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2;
+        return { x: x * scale, y: y * scale };
+      }
+      const c = toMerc(centerLat, centerLng);
+      const nx = c.x - dx;
+      const ny = c.y - dy;
+      const newLng = (nx / scale) * 360 - 180;
+      const nYNorm = ny / scale;
+      const exp = Math.exp((1 - 2 * nYNorm) * 2 * Math.PI);
+      const sinLat = (exp - 1) / (exp + 1);
+      const newLat = Math.asin(sinLat) * 180 / Math.PI;
+      return { lat: newLat, lng: newLng };
+    }
+
     function onDragEnd(x, y) {
       if (!smState.isDragging) return;
       smState.isDragging = false;
@@ -2600,19 +2625,14 @@
         const dy = y - startY;
         if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
           const level = smZoomToLevel(smState.zoom);
-          const metersPerPx = 156543.03392 * Math.cos(startLat * Math.PI / 180) / Math.pow(2, level);
-          const DEG_PER_M_LNG = 1 / (111320 * Math.cos(startLat * Math.PI / 180));
-          const DEG_PER_M_LAT = 1 / 110540;
-          smState.lng = startLng - dx * metersPerPx * DEG_PER_M_LNG;
-          smState.lat = startLat + dy * metersPerPx * DEG_PER_M_LAT;
+          const newPos = pixelDeltaToLatLng(dx, dy, startLat, startLng, level);
+          smState.lat = newPos.lat;
+          smState.lng = newPos.lng;
         }
       }
 
-      // 초기화
-      if (smImg) smImg.style.transform = 'none';
-      if (smCanvas) smCanvas.style.transform = 'none';
-      if (smOverlay) smOverlay.style.transform = 'none';
-      
+      // ★ 주의: 여기서 통째로 transform: none을 주면 이미지가 로드되기 전에 원점으로 튕겨보이는 고무줄 현상 발생.
+      // 따라서 새 이미지가 완전히 로드(`onload`)된 뒤에 transform을 해제하고 렌더링해야 함.
       renderStaticMap();
     }
 
