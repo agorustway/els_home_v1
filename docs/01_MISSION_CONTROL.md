@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.36
-> 마지막 업데이트: 2026-04-05 23:25 (KST)
+# ELS MISSION CONTROL v4.5.37
+> 마지막 업데이트: 2026-04-05 23:35 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.3.36` (Mobile) / `v4.5.36` (Unified Web/Backend)  
+- **현재 버전**: `v4.3.37` (Mobile) / `v4.5.37` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 관제 지도 UI 전면 개선 및 마커 동기화 해결 완료
+- **상태**: 🟢 관제 지도 UX 고도화 (드래그 동기화, 줌 스냅, 종료차량 식별 로직) 완료
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,6 +17,7 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
+- [x] **2026-04-05**: [APP] v4.3.37 - 지도 UX 고도화 (드래그 시 배경-마커 Transform 동기화, 줌 슬라이더 스냅, 종료차량 회색 마커 및 레이어 분리)
 - [x] **2026-04-05**: [APP] v4.3.36 - 지도 UI/UX 전면 개선 (줌 슬라이더, 하단 상시 패널) 및 오버레이 마커 동기화(정수 줌 레벨) 해결
 - [x] **2026-04-05**: [APP] v4.3.35 - JS SDK 완전 제거, Static Maps raster-cors 이미지 방식으로 전환 — WebView Referer 인증 문제 근본 해결
 - [x] **2026-04-05**: [APP] v4.3.34 - Capacitor hostname `www.nollae.com`으로 변경하여 네이버 지도 네이티브 앱 인증 이슈 원천 해결
