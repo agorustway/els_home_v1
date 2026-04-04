@@ -220,8 +220,13 @@ export default function VehicleTrackingPage() {
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
-        // [최적화] 대한민국 범위 밖의 좌표(ex: 0, 0)를 배제하여 직선이 수직으로 튀는 버그 해결
-        const validLocs = locations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+        // [최적화 & 버그수정] 좌표 필터링 후 시간순 정렬 및 중복 좌표 제거 (직선 튀는 현상 방지)
+        let validLocs = locations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+        validLocs.sort((a, b) => new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at));
+        validLocs = validLocs.filter((loc, i, arr) => {
+            if (i === 0) return true;
+            return loc.lat !== arr[i - 1].lat || loc.lng !== arr[i - 1].lng;
+        });
         if (validLocs.length === 0) return;
 
         const path = validLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
@@ -490,7 +495,12 @@ export default function VehicleTrackingPage() {
 
             if (!selectedTripLocations || selectedTripLocations.length === 0) return;
 
-            const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+            let validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+            validLocs.sort((a, b) => new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at));
+            validLocs = validLocs.filter((loc, i, arr) => {
+                if (i === 0) return true;
+                return loc.lat !== arr[i - 1].lat || loc.lng !== arr[i - 1].lng;
+            });
             if (validLocs.length === 0) return;
 
             const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
@@ -535,6 +545,25 @@ export default function VehicleTrackingPage() {
         };
         tryDraw(); // [v4.5.12] retry 루프 진입
     }, [selectedTrip, selectedTripLocations, realtimeTarget]);
+
+    // [신규] 안드로이드 뒤로가기 버튼 연동 (모달 닫기)
+    useEffect(() => {
+        if (!selectedTrip) return;
+        
+        window.history.pushState({ modal: 'detail' }, '', '');
+        
+        const handlePopState = (e) => {
+            // 뒤로가기 발생 시
+            miniMapInstanceRef.current = null;
+            setSelectedTrip(null);
+            stopRealtimeTracking(selectedTrip.id);
+        };
+        
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [selectedTrip, stopRealtimeTracking]);
 
     // 네이버맵 초기화
     useEffect(() => {
@@ -1104,7 +1133,14 @@ export default function VehicleTrackingPage() {
                                 </button>
                             )}
                         </div>
-                        <button className={styles.closeBtn} onClick={() => { miniMapInstanceRef.current = null; setSelectedTrip(null); stopRealtimeTracking(selectedTrip.id); }}>✕</button>
+                        <button className={styles.closeBtn} onClick={() => { 
+                            miniMapInstanceRef.current = null; 
+                            setSelectedTrip(null); 
+                            stopRealtimeTracking(selectedTrip.id);
+                            if (window.history.state?.modal === 'detail') {
+                                window.history.back(); // history pop 호출 트리거
+                            }
+                        }}>✕</button>
                     </div>
                     <div className={styles.detailContent}>
                         <div className={styles.detailSection}>
@@ -1152,7 +1188,7 @@ export default function VehicleTrackingPage() {
                                 )}
                             </div>
 
-                            <div className={styles.locationList} style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#fff' }}>
+                            <div className={styles.locationList} style={{ maxHeight: '250px', overflowX: 'auto', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' }}>
                                 <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', textAlign: 'center' }}>
                                     <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 1 }}>
                                         <tr>
