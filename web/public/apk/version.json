@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.28",
-  "versionCode": 327,
-  "changeLog": "v4.3.28 (Build 327)\n- [FIX] 네이버 지도 OpenAPI 인증 실패(회색 화면) 문제 해결\n- [FIX] 백그라운드 푸시 알람 BigTextStyle 적용 및 스팸 방지 최적화\n- [FEATURE] 전체화면 관제 지도 탭 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=327"
+  "latestVersion": "v4.3.29",
+  "versionCode": 328,
+  "changeLog": "v4.3.29 (Build 328)\n- [네이버 지도] 인증 실패 및 화면 누락 문제 해결 디자인 업데이트\n- [UI] 관제 지도 하단 탭 메뉴 통합 및 뒤로가기 버튼 제거",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=328"
 }
