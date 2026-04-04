@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.33
-> 마지막 업데이트: 2026-04-05 23:13 (KST)
+# ELS MISSION CONTROL v4.5.34
+> 마지막 업데이트: 2026-04-05 23:21 (KST)
 
-## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.33` (Mobile) / `v4.5.33` (Unified Web/Backend)  
+## 📦 최신 배포 배포 정보 (Release)
+- **현재 버전**: `v4.3.34` (Mobile) / `v4.5.34` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 네이버 지도 인증 실패 이슈 최종 해결 - TDD 로그 체제 및 Origin 통일 확립
+- **상태**: 🟢 네이버 지도 인증 실패 이슈 최종 해결 - 메타태그 기반 WebView Referer 강제 송신 추가
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)

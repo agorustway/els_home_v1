@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.33",
-  "versionCode": 333,
+  "latestVersion": "v4.3.34",
+  "versionCode": 334,
   "forceUpdate": false,
-  "changeLog": "네이버 지도 내부 인증(권한) 실패 원인 수정. Capacitor 내부 hostname을 www.nollae.com으로 완전히 변경하여 NCP 콘솔 Origin 매칭 완료.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=333"
+  "changeLog": "네이버 지도 API 인증 최종 픽스 - WebView Referer 누락 방지 (unsafe-url) 메타태그 삽입 완료.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=334"
 }

@@ -1,5 +1,15 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+ ## 📅 2026-04-05 (심야) - [APP] 네이버 지도 네이티브 Origin (Referer) 메타태그 삽입 (v4.3.34)
+ 
+ ### 🚀 배포 요약
+ - **버전**: `v4.3.34` (Mobile APK)
+ - **주요 내용**: 네이버 지도 Open API 인증 실패 원인(Referer 누락) 해결.
+ 
+ ### 🛠 세부 변경 사항
+ 1. **[FIX] WebView Referer 정책 수정**: Android WebView 특성상 `Origin`이나 `Referer` 헤더가 NCP(네이버 클라우드 플랫폼)으로 전송되지 않아 "인증 실패"가 발생하는 이슈 감지.
+ 2. **[UPDATE] `<meta name="referrer" content="unsafe-url">` 삽입**: `index.html` 최상단에 Referer 전송 강제화 태그를 삽입하여, Capacitor 호스트네임(`https://www.nollae.com`)이 네이버 지도 인증 서버로 정상 전달되도록 조치.
+ 
  ## 📅 2026-04-05 (심야) - [APP] 네이버 지도 네이티브 Origin 완전 통합, 인증 불량 이슈 픽스 (v4.3.33)
  
  ### 🚀 배포 요약
