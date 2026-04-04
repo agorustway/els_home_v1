@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.19
-> 마지막 업데이트: 2026-04-04 20:06 (KST)
+# ELS MISSION CONTROL v4.5.20
+> 마지막 업데이트: 2026-04-04 20:18 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.26` (Mobile) / `v4.5.19` (Unified Web/Backend)  
+- **현재 버전**: `v4.3.26` (Mobile) / `v4.5.20` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-04
-- **상태**: 🚀 주 지도 경로 GPS 이상치 필터링 완결 (drawTripPath Haversine 통합)
+- **상태**: 🚀 GPS Spike 필터 도입 및 운영 현황 리스트 상세 연동 완결 (v4.5.20)
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,6 +17,8 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
+- [x] **2026-04-04**: [WEB/MAP] GPS Spike 필터(A-B-C 분석) 도입 및 속도 제한 하향 (v4.5.20)
+- [x] **2026-04-04**: [WEB/UX] 운영 현황 리스트 클릭 시 상세 모달 연동 및 운행 시간 표시 (v4.5.20)
 - [x] **2026-04-04**: [WEB/MAP] 주 지도 drawTripPath에 Haversine 이상치 필터링 통합 (v4.5.19)
 - [x] **2026-04-04**: [WEB/MAP] 차량관제 GPS 이상치 필터링 및 Android 뒤로가기 최적화 (v4.5.18)
 - [x] **2026-04-04**: [WEB/FIX] 컨테이너 이력조회 TDZ ReferenceError 완결 조치
