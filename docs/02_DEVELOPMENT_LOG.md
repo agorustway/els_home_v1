@@ -1,9 +1,12 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
- ## 📅 2026-04-04 (오후) - [WEB/FIX] 실시간 관제 미니맵 정합성 보정 및 안정화 (v4.5.12)
- - **미니맵 피팅 로직 개선**: `vehicle-tracking/page.js`에서 미니맵 최초 렌더링 시 `fitBounds`가 1회만 실행되도록 `_hasFitBounds` 플래그 관리 추가.
- - **맵 리사이즈 안정화**: 브라우저 리사이즈 시 지도가 깨지는 현상을 방지하기 위해 `tryDraw()` 루프 및 네이버 맵 `resize` 트리거 추가 연동.
- - **Mission Control 동기화**: 최신 버전 `v4.5.12` 상태 기록 및 커밋/푸시.
+ ## 📅 2026-04-04 (오후) - [CORE/BOT] 4-Worker 병렬 최적화 및 멀티 모니터링 UI 도입 (v4.5.12)
+ - **병렬 처리 최적화 (Bot Engine)**: `elsbot/els_bot.py` 및 `els_web_runner_daemon.py` 수정을 통해 4개의 워커가 독립적으로 컨테이너 조회를 수행하는 병렬 아키텍처 완성.
+ - **실시간 로그 스트리밍 (Backend)**: `docker/els-backend/app_bot.py`에서 `LOG:{line}` 형식을 통해 개별 워커의 작업 로그를 프론트엔드로 실시간 스트리밍하는 기능 구현.
+ - **멀티 모니터링 UI (Frontend)**: `container-history/page.js`에서 4개 워커의 스크린샷과 로그를 한눈에 볼 수 있는 대시보드 UI 도입 및 상태 관리 로직 개선.
+ - **관제 페이지 보정**: `vehicle-tracking/page.js` 미니맵 피팅 플래그(`_hasFitBounds`) 도입 및 리사이즈 리트라이 루프 추가로 지도 렌더링 안정성 확보.
+ - **Mission Control 동기화**: 프로젝트 최신 상태 기록 및 전체 변경 사항 커밋/푸시 완료.
+
 
 
  ## 📅 2026-04-03 (심야) - [BOT/PERF] eTrans 조회 고속화 및 지도 렌더링 수정 (v4.5.6 ~ v4.5.7)

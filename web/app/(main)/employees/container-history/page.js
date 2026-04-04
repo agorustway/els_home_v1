@@ -116,14 +116,14 @@ function ContainerHistoryInner() {
         if (savedResult) {
             try { 
                 const data = JSON.parse(savedResult);
-                // 새 방식(토큰 포함 전체 객체) 처리
-                if (data.downloadToken) {
+                if (data && data.downloadToken) {
                     setResult(data.result);
                     setDownloadToken(data.downloadToken);
                     setResultFileName(data.fileName);
-                } else {
-                    // 구버전(결과 리스트만 있는 경우)
+                } else if (data && typeof data === 'object' && !Array.isArray(data)) {
                     setResult(data);
+                } else {
+                    sessionStorage.removeItem('els_result');
                 }
             } catch (e) { console.error(e); }
         }
@@ -769,6 +769,7 @@ function ContainerHistoryInner() {
 
     const handleFileDrop = (e) => {
         e.preventDefault();
+        const file = e.dataTransfer?.files?.[0] || null;
         if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
             handleFileUpload({ target: { files: [file] } });
         }
@@ -934,8 +935,8 @@ function ContainerHistoryInner() {
                                         ) : null;
                                     })()}
                                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', marginRight: '10px' }}>
-                                        {[...Array(maxDrivers)].map((_, i) => {
-                                            const w = workers.find(work => work.id === i + 1);
+                                        {[...Array(maxDrivers || 4)].map((_, i) => {
+                                            const w = (workers || []).find(work => work.id === i + 1);
                                             const isActive = !!w;
                                             const isBusy = isActive && !w.is_available;
                                             return (
@@ -1151,11 +1152,11 @@ function ContainerHistoryInner() {
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                                             <input type="text" placeholder="결과 검색..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className={styles.inputSearchCompact} style={{ width: '120px' }} />
                                             {/* 이력 표시 패널 */}
-                                            {runHistory.length > 0 && (
+                                            {runHistory && runHistory.length > 0 && (
                                                 <div style={{ display: 'flex', gap: '6px', fontSize: '0.75rem', color: '#64748b', fontWeight: 600, borderLeft: '1px solid #e2e8f0', paddingLeft: '8px' }}>
                                                     {runHistory.map(h => (
                                                         <span key={h.id} style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                                                            {h.id}차: {h.total}건 ({h.time.toFixed(1)}초)
+                                                            {h.id}차: {h.total}건 ({h.time ? h.time.toFixed(1) : 0}초)
                                                         </span>
                                                     ))}
                                                 </div>
@@ -1221,7 +1222,7 @@ function ContainerHistoryInner() {
                                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링</h3>
                                 <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px', gap: '4px' }}>
                                     {[1, 2, 3, 4].map(idx => {
-                                        const workerInfo = workers.find(w => w.id === idx);
+                                        const workerInfo = (workers || []).find(w => w.id === idx);
                                         const isActive = !!workerInfo;
                                         const isBusy = isActive && !workerInfo.is_available;
                                         return (
