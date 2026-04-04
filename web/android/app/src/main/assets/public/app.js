@@ -2468,14 +2468,30 @@
     visibleTrips.forEach(function(trip) {
       const loc = trip.lastLocation;
       const isMe = isMyTrip(trip);
+      const isCompleted = trip.status === 'completed';
       const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
       // 화면 밖 마커는 렌더 스킵
       if (px.x < -60 || px.x > w + 60 || px.y < -40 || px.y > h + 40) return;
 
       const marker = document.createElement('div');
-      const color = isMe ? '#10b981' : '#2563eb';
-      const label = trip.vehicle_number || trip.driverId || '차량';
-      marker.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;transform:translate(-50%,-100%);pointer-events:auto;z-index:20;`;
+      
+      let color, label, zIndex;
+      if (isCompleted) {
+        // 운행 종료 차량
+        color = '#94a3b8'; // 회색
+        // 차량번호 뒤 4자리
+        const vNum = trip.vehicle_number || '';
+        label = vNum.length > 4 ? vNum.slice(-4) : vNum;
+        if (!label) label = '종료';
+        zIndex = 10; // 낮게 배치
+      } else {
+        // 운행 중/일시정지 차량
+        color = isMe ? '#10b981' : '#2563eb';
+        label = trip.vehicle_number || trip.driverId || '차량';
+        zIndex = 20; // 상단에 배치
+      }
+
+      marker.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;transform:translate(-50%,-100%);pointer-events:auto;z-index:${zIndex};`;
       marker.innerHTML = `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;">${label}</div>`;
       marker.addEventListener('click', function() { showTripRouteOnMap(trip); });
       smOverlay.appendChild(marker);
@@ -2540,41 +2556,60 @@
       startX = x; startY = y;
       startLat = smState.lat; startLng = smState.lng;
       el.style.cursor = 'grabbing';
+      if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transition = 'none';
+      if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transition = 'none';
+      if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transition = 'none';
     }
 
     function onDragMove(x, y) {
       if (!smState.isDragging) return;
-      const { w, h } = getMapSize();
       const dx = x - startX;
       const dy = y - startY;
-      // 픽셀 → 경도/위도 변환 (메르카토르 근사)
-      const level = smZoomToLevel(smState.zoom);
-      const metersPerPx = 156543.03392 * Math.cos(startLat * Math.PI / 180) / Math.pow(2, level);
-      const DEG_PER_M_LNG = 1 / (111320 * Math.cos(startLat * Math.PI / 180));
-      const DEG_PER_M_LAT = 1 / 110540;
-      smState.lng = startLng - dx * metersPerPx * DEG_PER_M_LNG;
-      smState.lat = startLat + dy * metersPerPx * DEG_PER_M_LAT;
+      // 드래그 중에는 변환 시각 효과만 적용
+      if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transform = `translate(${dx}px, ${dy}px)`;
+      if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transform = `translate(${dx}px, ${dy}px)`;
+      if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transform = `translate(${dx}px, ${dy}px)`;
     }
 
-    function onDragEnd() {
+    function onDragEnd(x, y) {
       if (!smState.isDragging) return;
       smState.isDragging = false;
       el.style.cursor = 'grab';
+
+      // 이동 거리 계산 후 중심좌표 확정
+      if (x != null && y != null && startX != null && startY != null) {
+        const dx = x - startX;
+        const dy = y - startY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+          const level = smZoomToLevel(smState.zoom);
+          const metersPerPx = 156543.03392 * Math.cos(startLat * Math.PI / 180) / Math.pow(2, level);
+          const DEG_PER_M_LNG = 1 / (111320 * Math.cos(startLat * Math.PI / 180));
+          const DEG_PER_M_LAT = 1 / 110540;
+          smState.lng = startLng - dx * metersPerPx * DEG_PER_M_LNG;
+          smState.lat = startLat + dy * metersPerPx * DEG_PER_M_LAT;
+        }
+      }
+
+      // 초기화
+      if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transform = 'none';
+      if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transform = 'none';
+      if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transform = 'none';
+      
       renderStaticMap();
     }
 
     // Mouse
     el.addEventListener('mousedown', e => { if (e.button === 0) onDragStart(e.clientX, e.clientY); });
-    el.addEventListener('mousemove', e => { if (smState.isDragging) { onDragMove(e.clientX, e.clientY); renderMapOverlay(); } });
-    el.addEventListener('mouseup', onDragEnd);
-    el.addEventListener('mouseleave', onDragEnd);
+    el.addEventListener('mousemove', e => { if (smState.isDragging) onDragMove(e.clientX, e.clientY); });
+    el.addEventListener('mouseup', e => onDragEnd(e.clientX, e.clientY));
+    el.addEventListener('mouseleave', e => onDragEnd(e.clientX, e.clientY));
 
     // Touch
     el.addEventListener('touchstart', e => {
       if (e.touches.length === 1) {
         onDragStart(e.touches[0].clientX, e.touches[0].clientY);
       } else if (e.touches.length === 2) {
-        smState.isDragging = false;
+        if (smState.isDragging) onDragEnd(e.touches[0].clientX, e.touches[0].clientY);
         pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -2586,15 +2621,14 @@
     el.addEventListener('touchmove', e => {
       if (e.touches.length === 1 && smState.isDragging) {
         onDragMove(e.touches[0].clientX, e.touches[0].clientY);
-        renderMapOverlay();
       } else if (e.touches.length === 2) {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
         const ratio = dist / pinchStartDist;
-        const newZoom = Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5));
-        if (Math.abs(newZoom - smState.zoom) > 0.3) {
+        const newZoom = Math.round(Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5)));
+        if (newZoom !== smState.zoom) {
           smState.zoom = newZoom;
           syncZoomSlider();
           renderStaticMap();
@@ -2603,8 +2637,12 @@
     }, { passive: true });
 
     el.addEventListener('touchend', e => {
-      if (e.touches.length === 0) onDragEnd();
-    }, { passive: true });
+      if (smState.isDragging && e.changedTouches.length > 0) {
+        onDragEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      } else if (smState.isDragging) {
+        onDragEnd();
+      }
+    });
 
     // 마우스 휠 줌
     el.addEventListener('wheel', e => {
@@ -2665,13 +2703,17 @@
 
   async function refreshMapData() {
     try {
-      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking?mode=active');
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips?mode=active');
       const data = await res.json();
-      smState.trips = data.data || [];
+      smState.trips = data.trips || data.data || [];
       renderMapOverlay();
       renderMapTripList(smState.trips);
     } catch (e) {
       console.warn('refreshMapData 오류', e);
+      const container = document.getElementById('map-trip-items');
+      if (container && container.innerHTML.indexOf('불러오는 중') !== -1) {
+         container.innerHTML = '<div class="map-state-empty"><span class="map-empty-icon">⚠️</span><span>데이터를 불러오지 못했습니다.</span></div>';
+      }
     }
   }
 
@@ -2707,6 +2749,7 @@
   function renderMapTripList(trips) {
     const contracted = isContractedVehicle();
     const visibleTrips = trips.filter(function(trip) {
+      if (trip.status === 'completed') return false; // 운행 중인 차량만 하단 패널에 표시
       return contracted ? true : isMyTrip(trip);
     });
 
