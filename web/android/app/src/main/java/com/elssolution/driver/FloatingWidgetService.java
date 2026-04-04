@@ -849,6 +849,7 @@ public class FloatingWidgetService extends Service {
         Notification noti = new NotificationCompat.Builder(this, "DriverAlertsChannel")
             .setContentTitle("🚨 " + title)
             .setContentText(text)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(R.mipmap.ic_launcher)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -936,7 +937,10 @@ public class FloatingWidgetService extends Service {
                             
                             if (!combinedId.equals(lastSeen)) {
                                 prefs.edit().putString("LAST_SEEN_NOTICE", combinedId).apply();
-                                showHeadsUpNotification("공지", title, combinedId.hashCode());
+                                // 최초 설치(앱 초기화) 직후 구형 공지로 인한 알림 스팸 방지
+                                if (!lastSeen.isEmpty()) {
+                                    showHeadsUpNotification("공지", title, combinedId.hashCode());
+                                }
                             }
                         }
                     }
