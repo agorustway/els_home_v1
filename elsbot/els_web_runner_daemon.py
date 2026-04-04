@@ -25,7 +25,7 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v4.5.11] 4마리 병렬 가속 기본값으로 상향
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0 
         self.log_buffer = deque(maxlen=300)
@@ -418,14 +418,28 @@ def quit_driver():
 
 @app.route('/screenshot', methods=['GET'])
 def get_screenshot():
-    # elsbot/debug_screenshot.png 파일 경로
-    path = os.path.join(os.path.dirname(__file__), "debug_screenshot.png")
+    # elsbot/debug_screenshot.png 파일 경로 (idx별로 생성하여 덮어씀)
+    idx_str = request.args.get('idx', '1')
+    try:
+        idx = int(idx_str)
+    except:
+        idx = 1
+        
+    path = os.path.join(os.path.dirname(__file__), f"debug_screenshot_{idx}.png")
     
-    # 가용한 드라이버가 있으면 즉시 스크린샷 촬영 시도
+    # [v4.5.11] 요청받은 인덱스(1~4)에 해당하는 드라이버 수색
     driver_for_shot = None
     with pool.lock:
         if pool.drivers:
-            driver_for_shot = pool.drivers[0]
+            if idx <= len(pool.drivers):
+                # 인덱스 순서대로 찾기 (정규화된 ID 순서)
+                sorted_drivers = sorted(pool.drivers, key=lambda d: getattr(d, 'used_port', 9999))
+                if idx - 1 < len(sorted_drivers):
+                    driver_for_shot = sorted_drivers[idx - 1]
+            
+            # 지정된 인덱스 드라이버를 못 찾으면 첫 번째 가용 드라이버 사용 (Fallback)
+            if not driver_for_shot:
+                driver_for_shot = pool.drivers[0]
     
     if driver_for_shot:
         try:

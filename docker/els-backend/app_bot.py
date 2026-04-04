@@ -40,7 +40,7 @@ def health(): return jsonify({"status": "ok", "service": "els-bot"})
 
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
-    daemon_status = {"available": False, "driver_active": False, "user_id": None, "workers": []}
+    daemon_status = {"available": False, "driver_active": False, "user_id": None, "workers": [], "max_drivers": 4}
     try:
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=3)
         if r.getcode() == 200:
@@ -49,6 +49,7 @@ def capabilities():
             daemon_status["driver_active"] = data.get("driver_active", False)
             daemon_status["user_id"] = data.get("user_id")
             daemon_status["workers"] = data.get("workers", [])
+            daemon_status["max_drivers"] = data.get("max_drivers", 4)
     except: pass
     
     return jsonify({
@@ -57,6 +58,7 @@ def capabilities():
         "user_id": daemon_status["user_id"],
         "progress": global_progress,
         "workers": daemon_status["workers"],
+        "max_drivers": daemon_status["max_drivers"],
         "parseAvailable": True
     })
 
@@ -88,6 +90,15 @@ def login():
             except: pass
             time.sleep(1)
         t.join()
+        
+        # [Fix] 최종 로그 스윕
+        try:
+            l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
+            l_data = json.loads(l_req.read().decode("utf-8"))
+            for line in l_data.get("log", []):
+                if line not in sent_logs:
+                    yield f"LOG:{line}\n"; sent_logs.add(line)
+        except: pass
         res = login_result.get('resp', {"ok": False, "error": login_result.get('error', 'Unknown')})
         yield "RESULT:" + json.dumps(res, ensure_ascii=False) + "\n"
 
@@ -118,18 +129,19 @@ def run():
             except Exception as e: return {"ok": False, "error": str(e)}, cn
 
         sent_logs = set()
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {executor.submit(fetch, cn): cn for cn in containers}
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            # [v4.5.12][Fix] Staggered Start 버그 수정
+            # - 이전 로직: i<4 전체에 sleep(2) → 4건 조회 시 무조건 8초 추가 손실!
+            # - 수정 로직: '2번째~4번째'만 1초 간격으로 출발. 1번째는 즉시. 5건~는 순서대로 즉시.
+            futures = {}
+            for i, cn in enumerate(containers):
+                if 0 < i < 4: # 2~4번째 워커만 1초 간격으로 시작 (CPU 분산)
+                    time.sleep(1)
+                futures[executor.submit(fetch, cn)] = cn
+
             while futures:
-                try:
-                    l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
-                    l_data = json.loads(l_req.read().decode("utf-8"))
-                    for line in l_data.get("log", []):
-                        if line not in sent_logs:
-                            yield f"LOG:{line}\n"; sent_logs.add(line)
-                except: pass
-                
-                done, _ = wait(futures.keys(), timeout=1, return_when=FIRST_COMPLETED)
+                # 1. 태스크 완료 확인 및 결과 배출
+                done, _ = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
                 for f in done:
                     res, cn = f.result()
                     rows = res.get("result", [[cn, "ERROR", res.get("error")] + [""]*12])
@@ -137,6 +149,27 @@ def run():
                     global_progress["completed"] += 1
                     yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
                     del futures[f]
+
+                # 2. 로그 실시간 스트리밍 (루프 도중)
+                try:
+                    l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
+                    l_data = json.loads(l_req.read().decode("utf-8"))
+                    for line in l_data.get("log", []):
+                        if line not in sent_logs:
+                            yield f"LOG:{line}\n"
+                            sent_logs.add(line)
+                except: pass
+
+            # 3. [Fix] 모든 작업 완료 후 남아있는 로그 최종 스윕 (릴레이 지연 고려)
+            time.sleep(1)
+            try:
+                l_req = urlopen(DAEMON_URL + "/logs", timeout=2)
+                l_data = json.loads(l_req.read().decode("utf-8"))
+                for line in l_data.get("log", []):
+                    if line not in sent_logs:
+                        yield f"LOG:{line}\n"
+                        sent_logs.add(line)
+            except: pass
 
         # 엑셀 생성 (openpyxl - 2시트, 서식, 틀고정)
         if final_rows:
@@ -231,8 +264,9 @@ def download(token):
 
 @app.route("/api/els/screenshot", methods=["GET"])
 def screenshot():
+    idx = request.args.get('idx', '1')
     try:
-        r = urlopen(DAEMON_URL + "/screenshot", timeout=5)
+        r = urlopen(DAEMON_URL + f"/screenshot?idx={idx}", timeout=5)
         return Response(r.read(), mimetype='image/png')
     except: return "Screenshot fail", 404
 

@@ -73,12 +73,24 @@ function ContainerHistoryInner() {
     const [downloadToken, setDownloadToken] = useState(null);
     const [resultFileName, setResultFileName] = useState('');
     const [isDebugOpen, setIsDebugOpen] = useState(false); // [추가] 디버그 모달 상태
+    const [selectedScreenshotIdx, setSelectedScreenshotIdx] = useState(1); // [추가] 모니터링할 워커 인덱스
     const [screenshotUrl, setScreenshotUrl] = useState(''); // [추가] 스크린샷 URL
     const [isLogCollapsed, setIsLogCollapsed] = useState(false); // [변경] 로그 접힘 상태 (기본값 펼침)
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false); // [추가] 왼쪽 패널 접힘 상태 (기본값 열림)
     const [runHistory, setRunHistory] = useState([]); // [추가] 조회 이력 차수 관리
     const [workers, setWorkers] = useState([]); // [추가] 데몬 워커(브라우저)별 상태 관리
-    const [maxDrivers, setMaxDrivers] = useState(3); // [추가] 최대 드라이버 수
+    const [maxDrivers, setMaxDrivers] = useState(4); // [v4.5.11] 기본값 4로 상향 
+    
+    // [추가] 디버그 모달 열려있을 때 3초마다 스크린샷 갱신
+    useEffect(() => {
+        let interval;
+        if (isDebugOpen) {
+            const updateUrl = () => setScreenshotUrl(`${BACKEND_BASE_URL}/api/els/screenshot?idx=${selectedScreenshotIdx}&t=${Date.now()}`);
+            updateUrl();
+            interval = setInterval(updateUrl, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [isDebugOpen, selectedScreenshotIdx, BACKEND_BASE_URL]);
 
     const terminalRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -181,17 +193,6 @@ function ContainerHistoryInner() {
             try { setRunHistory(JSON.parse(savedHistory)); } catch (e) { }
         }
     }, []);
-
-    // [추가] 디버그 모달 열려있을 때 3초마다 스크린샷 갱신
-    useEffect(() => {
-        let interval;
-        if (isDebugOpen) {
-            const updateUrl = () => setScreenshotUrl(`${BACKEND_BASE_URL}/api/els/screenshot?t=${Date.now()}`);
-            updateUrl();
-            interval = setInterval(updateUrl, 3000);
-        }
-        return () => clearInterval(interval);
-    }, [isDebugOpen, BACKEND_BASE_URL]);
 
     const handleSaveCreds = useCallback(async (id, pw) => {
         const targetId = (id || userId).trim();
@@ -1216,7 +1217,42 @@ function ContainerHistoryInner() {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }} onClick={() => setIsDebugOpen(false)}>
                     <div style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', maxWidth: '1200px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', position: 'relative' }} onClick={e => e.stopPropagation()}>
                         <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링 (3초마다 갱신)</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링</h3>
+                                <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+                                    {[1, 2, 3, 4].map(idx => {
+                                        const workerInfo = workers.find(w => w.id === idx);
+                                        const isActive = !!workerInfo;
+                                        const isBusy = isActive && !workerInfo.is_available;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => isActive && setSelectedScreenshotIdx(idx)}
+                                                title={isActive ? (isBusy ? `B#${idx} 조회 진행 중` : `B#${idx} 대기 중`) : `B#${idx} 미활성 (미로그인)`}
+                                                style={{
+                                                    padding: '4px 12px',
+                                                    borderRadius: '6px',
+                                                    border: 'none',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 700,
+                                                    cursor: isActive ? 'pointer' : 'not-allowed',
+                                                    backgroundColor: selectedScreenshotIdx === idx && isActive
+                                                        ? (isBusy ? '#f59e0b' : '#3b82f6')
+                                                        : 'transparent',
+                                                    color: selectedScreenshotIdx === idx && isActive
+                                                        ? 'white'
+                                                        : (isActive ? '#64748b' : '#cbd5e1'),
+                                                    transition: 'all 0.2s',
+                                                    opacity: isActive ? 1 : 0.45,
+                                                }}
+                                            >
+                                                #{idx}
+                                                {isBusy && <span style={{ marginLeft: '3px', fontSize: '0.65rem' }}>🔄</span>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                             <button onClick={() => setIsDebugOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
                         </div>
                         <div style={{ padding: '12px', background: '#0f172a', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>

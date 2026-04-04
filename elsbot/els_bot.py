@@ -359,6 +359,10 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     
     co.set_argument('--no-sandbox')
     co.set_argument('--disable-dev-shm-usage')
+    co.set_argument('--disable-gpu') # [v4.5.11] NAS 환경 GPU 부하 제거
+    co.set_argument('--disable-software-rasterizer')
+    co.set_argument('--proxy-server=direct://')
+    co.set_argument('--proxy-bypass-list=*')
     co.set_argument('--window-size=1920,1080')
     co.set_argument('--incognito') # 시크릿 모드 (게스트 모드와 유사)
     co.set_argument('--disable-blank-features=AutomationControlled')
