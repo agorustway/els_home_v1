@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.39';
-  const BUILD_CODE = 339; // Build 339 (v4.3.39)
+  const APP_VERSION = 'v4.3.40';
+  const BUILD_CODE = 340; // Build 340 (v4.3.40)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2568,9 +2568,9 @@
       startX = x; startY = y;
       startLat = smState.lat; startLng = smState.lng;
       el.style.cursor = 'grabbing';
-      if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transition = 'none';
-      if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transition = 'none';
-      if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transition = 'none';
+      if (smImg) smImg.style.transition = 'none';
+      if (smCanvas) smCanvas.style.transition = 'none';
+      if (smOverlay) smOverlay.style.transition = 'none';
       showZoomSlider();
     }
 
@@ -2583,12 +2583,9 @@
       // requestAnimationFrame을 활용해 UI 렌더링 최적화 및 버벅임 방지
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        const img = document.getElementById('sm-img');
-        const cvs = document.getElementById('sm-canvas');
-        const ovl = document.getElementById('sm-overlay');
-        if (img) img.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        if (cvs) cvs.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        if (ovl) ovl.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        if (smImg) smImg.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        if (smCanvas) smCanvas.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        if (smOverlay) smOverlay.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
       });
     }
 
@@ -2612,9 +2609,9 @@
       }
 
       // 초기화
-      if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transform = 'none';
-      if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transform = 'none';
-      if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transform = 'none';
+      if (smImg) smImg.style.transform = 'none';
+      if (smCanvas) smCanvas.style.transform = 'none';
+      if (smOverlay) smOverlay.style.transform = 'none';
       
       renderStaticMap();
     }
