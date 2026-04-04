@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https',
-    hostname: 'nollae.com',
+    hostname: 'www.nollae.com',
     cleartext: true
   },
   plugins: {

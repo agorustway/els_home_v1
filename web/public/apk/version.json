@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.32",
-  "versionCode": 332,
+  "latestVersion": "v4.3.33",
+  "versionCode": 333,
   "forceUpdate": false,
-  "changeLog": "버전 표시 모듈 단일화 및 네이버 지도 초기화 레이아웃 오차(화면 깜빡임 후 사라짐) 버그 수정",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=332"
+  "changeLog": "네이버 지도 내부 인증(권한) 실패 원인 수정. Capacitor 내부 hostname을 www.nollae.com으로 완전히 변경하여 NCP 콘솔 Origin 매칭 완료.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=333"
 }

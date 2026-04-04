@@ -1,5 +1,15 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+ ## 📅 2026-04-05 (심야) - [APP] 네이버 지도 네이티브 Origin 완전 통합, 인증 불량 이슈 픽스 (v4.3.33)
+ 
+ ### 🚀 배포 요약
+ - **버전**: `v4.3.33` (Mobile APK)
+ - **주요 내용**: 네이버 지도 Open API 인증 실패의 진짜 원인인 Capacitor `hostname` 설정 변경.
+ 
+ ### 🛠 세부 변경 사항
+ 1. **[FIX] Naver Map WebView 인증 충돌 해결**: `capacitor.config.json`의 `hostname`이 기존에 `nollae.com`으로 박혀 있어서, Naver 콘솔에 등록된 `www.nollae.com` 도메인(혹은 앱에서 쓰는 BASE_URL)과 Origin 매칭 실패 발생. 이로 인해 맵 스크립트는 다운받아졌지만 실제 지도 타일 렌더링 시 "인증 실패" 워터마크가 노출됨.
+ 2. **[DEPLOY] 안드로이드 앱 내부 자산 덮어쓰기**: `web/android/app/src/main/assets/capacitor.config.json` 파일을 직접 타격해 `www.nollae.com`으로 변경 완료. 더 이상 NCP 콘솔 추가 등록을 요구하지 않고 단일화된 WWW 도메인으로 WebView가 구동됨!
+
  ## 📅 2026-04-05 (새벽) - [APP] 공통 모듈 동기화 및 맵 렌더링 픽스 (v4.3.32)
   
   ### 🚀 배포 요약
@@ -11,6 +21,7 @@
   2. **[FIX] 지도 화면 렌더 프레임 보장 (깜빡임 문제)**: 
      - display: flex 전환 과정에서 DOM 레이아웃이 그려지기 전에 Map 인스턴스가 초기화되는 레이스 컨디션 발생.
      - `requestAnimationFrame` 2회 및 이벤트 트리거 이중 방출(`resize` 50ms 인터벌)을 결합하여 Naver Map 컨테이너 크기 오산 버그 완전 방어. 지도 래퍼의 불필요한 `height: 100%` 제거하여 컨테이너 충돌 방지.
+  3. **[TDD] 네이버 지도 원본 호출 데이터 추적**: `index.html` 내 Naver Map 로드 스크립트에 `remoteLog`를 심어 실제 `Origin` 및 `Href` 데이터를 서버로 전송하도록 함.
      
  ## 📅 2026-04-05 (새벽) - [APP] TDD 기반 원인 추적 강화 및 버전 업데이트 (v4.3.31)
  
