@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.26",
-  "versionCode": 325,
-  "changeLog": "v4.3.26 (Build 325)\n- [FEATURE] 전체화면 관제 지도 탭 추가 (계약/미계약 차량 지원)\n- [FEATURE] 정차 시 GPS 지그재그 보정 필터 완벽 적용\n- [NATIVE] 백그라운드 긴급알림/전체공지 푸시 연동 추가",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=325"
+  "latestVersion": "v4.3.27",
+  "versionCode": 326,
+  "changeLog": "v4.3.27 (Build 326)\n- [FIX] 백그라운드 푸시 알람 BigTextStyle 적용 및 최초 설치 시 스팸 알람 울림 방지 (안정화)\n- [FEATURE] 전체화면 관제 지도 탭 추가 (계약/미계약 차량 지원)\n- [FEATURE] 정차 시 GPS 지그재그 보정 필터 완벽 적용",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=326"
 }

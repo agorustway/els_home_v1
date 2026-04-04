@@ -259,4 +259,17 @@ git config --global core.quotepath false
 3. **콤팩트한 호출**: 도구 호출 시 인자가 너무 방대해져서 컨텍스트 윈도우가 꼬이지 않도록, 명확하고 간결한 호출을 지향합니다.
 
 ---
-*최종 갱신일: 2026-04-01 (by Antigravity AI)*
+
+## 📱 제17조. 모바일 앱 버전 관리 (App Versioning)
+
+> **"네이티브 코드를 수정했다면 4군데의 버전을 모두 갱신해야 한다."**
+
+앱의 배포 버전이 꼬이는 것을 방지하기 위해, 안드로이드/네이티브 관련 코드 변경 시 반드시 아래 **4곳**의 버전을 동시에 상향(Version Bump)해야 합니다.
+
+1. `web/android/app/build.gradle` (`versionCode`와 `versionName` 갱신)
+2. `web/public/apk/version.json` (자동 업데이트 알림용 JSON 갱신)
+3. `web/android/app/src/main/assets/public/app.js` (`APP_VERSION`, `BUILD_CODE` 상수)
+4. `web/android/app/src/main/assets/public/index.html` (설정 탭 내 하드코딩된 표시 버전 `<span id="app-version-display">`)
+
+---
+*최종 갱신일: 2026-04-04 (by Antigravity AI)*

@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.26';
-  const BUILD_CODE = 325; // Build 325 (v4.3.26)
+  const APP_VERSION = 'v4.3.27';
+  const BUILD_CODE = 326; // Build 326 (v4.3.27)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
