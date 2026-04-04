@@ -1,5 +1,19 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
  
+ ## 📅 2026-04-04 (심야) - [APP] 네이버 지도 인증 우회 및 펌웨어 버전 동기화 (v4.3.28)
+ 
+ ### 🚀 배포 요약
+ - **버전**: `v4.3.28` (Mobile APK)
+ - **주요 내용**: 앱 내부 하드코딩된 버전 불일치 수정 및 네이버 지도 API WebView `Referer` 인증 우회 조치.
+ 
+ ### 🛠 세부 변경 사항
+ 1. **[NATIVE/MAP] 네이버 지도 `인증이 실패했습니다` 오류 해결**:
+     - 원인: Capacitor 앱의 기본 Origin이 `https://localhost`이므로 네이버 클라우드의 Web 서비스 URL 인증에 실패.
+     - 조치: `capacitor.config.json`의 `server.hostname`을 `nollae.com`으로 덮어씌워 WebView의 Origin을 네이버 클라우드에 사전 등록된 도메인으로 Spoofing/우회 성공.
+     - 결과: 유저가 네이버 콘솔을 수정할 필요 없이 안드로이드 앱 내에서 즉시 지도 렌더링 정상화.
+ 2. **[APP/UI] 하드코딩 버전 UI 갱신**:
+     - `index.html` 내부에 하드코딩된 `<span>v4.3.25</span>`를 동적으로 `v4.3.28`로 일치시킴.
+ 
  ## 📅 2026-04-04 (심야) - [APP] 전체화면 지도 탭 도입 및 백그라운드 알림 연동 (v4.3.27, Hotfix)
  
  ### 🚀 배포 요약
