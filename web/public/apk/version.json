@@ -1,6 +1,7 @@
 {
-  "latestVersion": "v4.3.31",
-  "versionCode": 331,
-  "changeLog": "v4.3.31 (TDD 기반 네이버 지도 안정화 타겟)\n- [TDD] 네이버 지도 미출력 원인 로그 상세화 진입\n- [UPDATE] 4/4 16:53 타업체 안내 기록 반영\n- [UI] 버전 표시 동기화",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=331tdd"
+  "latestVersion": "v4.3.32",
+  "versionCode": 332,
+  "forceUpdate": false,
+  "changeLog": "버전 표시 모듈 단일화 및 네이버 지도 초기화 레이아웃 오차(화면 깜빡임 후 사라짐) 버그 수정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=332"
 }

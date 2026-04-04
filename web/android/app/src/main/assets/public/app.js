@@ -4,10 +4,10 @@
  */
 (function () {
   'use strict';
-  console.log('ELS Driver App Loading... v4.2.59');
+  // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.31';
-  const BUILD_CODE = 331; // Build 331 (v4.3.31)
+  const APP_VERSION = 'v4.3.32';
+  const BUILD_CODE = 332; // Build 332 (v4.3.32)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -206,6 +206,13 @@
   // ─── 앱 초기화 ────────────────────────────────────────────────
   async function init() {
     try {
+      // [v4.3.31] ★ 버전 단일 소스 자동 주입 — CSS 캐시버스터 + 앱 버전 표시
+      // 이 두 줄만 관리하면 앱 내 모든 버전이 자동 동기화됨
+      const cssLink = document.querySelector('link[href*="style.css"]');
+      if (cssLink) cssLink.href = `style.css?v=${BUILD_CODE}`;
+      const vDisplay = document.getElementById('app-version-display');
+      if (vDisplay) vDisplay.textContent = APP_VERSION;
+
       // 1. Capacitor 브릿지 대기 (단 1회)
       if (window.Capacitor && !isAppInitialized) {
         await new Promise(r => {
@@ -2347,6 +2354,11 @@
     const btn = document.getElementById('tab-btn-map');
     if (btn) btn.classList.add('active');
 
+    // [v4.3.31] 지도 깜빡임 근본 원인 수정:
+    // display:none → flex 전환 직후 Naver Map 초기화 시 컨테이너 크기가 0으로
+    // 계산되는 타이밍 문제. rAF 2회로 DOM 레이아웃 확정을 보장한 후 초기화.
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
     setTimeout(async () => {
       const loaded = await waitForNaverMap();
       if (!loaded) {
@@ -2366,7 +2378,7 @@
       }
       initDriverMap();
       await refreshMapData();
-    }, 500);
+    }, 150); // rAF 2회 이후라 150ms면 충분 (기존 500ms)
 
     if (mapPollTimer) clearInterval(mapPollTimer);
     mapPollTimer = setInterval(refreshMapData, 30000);
@@ -2385,7 +2397,10 @@
       return;
     }
     if (driverMapInstance) {
+      // [v4.3.31] 기존 인스턴스 재활용 시 resize 이중 발사 — 화면 전환 직후
+      // flex 레이아웃 재계산이 완료되도록 50ms 후 한 번 더 발사
       naver.maps.Event.trigger(driverMapInstance, 'resize');
+      setTimeout(() => naver.maps.Event.trigger(driverMapInstance, 'resize'), 250);
       return;
     }
     const defaultCenter = new naver.maps.LatLng(36.5, 127.5);
@@ -2395,6 +2410,10 @@
       zoomControl: true,
       zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
     });
+    // [v4.3.31] 신규 생성 직후에도 resize — flex 컨테이너 크기 안정화 보장
+    setTimeout(() => {
+      if (driverMapInstance) naver.maps.Event.trigger(driverMapInstance, 'resize');
+    }, 250);
     centerMyLocation();
   }
 
