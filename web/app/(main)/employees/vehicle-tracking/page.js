@@ -36,7 +36,8 @@ export default function VehicleTrackingPage() {
     const [mapReady, setMapReady] = useState(false);
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
-    const markersRef = useRef([]);
+    const markersRef = useRef([]); // 경로 상세용 마커
+    const liveMarkersRef = useRef([]); // 실시간 운영 차량 마커 (별도 관리)
     const polylineRef = useRef(null);
     const infoWindowRef = useRef(null);
     const intervalRef = useRef(null);
@@ -217,6 +218,7 @@ export default function VehicleTrackingPage() {
         }
         const map = mapInstanceRef.current;
         if (polylineRef.current) polylineRef.current.setMap(null);
+        // 경로 상세 마커만 초기화 (live 차량 마커 liveMarkersRef는 건드리지 않음)
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
@@ -693,13 +695,13 @@ export default function VehicleTrackingPage() {
         if (activeTab === 'records') backfillAddresses(records, setRecords);
     }, [records.length, activeTab, backfillAddresses]);
 
-    // 실시간 마커 업데이트
+    // 실시간 마커 업데이트 (selectedTrip 여부와 무관하게 항상 live 탭에서 렌더링)
     useEffect(() => {
-        if (!mapReady || !mapInstanceRef.current || selectedTrip || activeTab !== 'live') return;
+        if (!mapReady || !mapInstanceRef.current || activeTab !== 'live') return;
         const map = mapInstanceRef.current;
-        markersRef.current.forEach(m => m.setMap(null));
-        markersRef.current = [];
-        if (polylineRef.current) { polylineRef.current.setMap(null); polylineRef.current = null; }
+        // live 마커만 초기화 (경로 상세 마커 markersRef는 건드리지 않음)
+        liveMarkersRef.current.forEach(m => m.setMap(null));
+        liveMarkersRef.current = [];
         if (infoWindowRef.current) infoWindowRef.current.close();
 
         const tripsWithLocation = liveTrips.filter(t => t.lastLocation);
@@ -782,9 +784,9 @@ export default function VehicleTrackingPage() {
                 map.setZoom(16);
                 map.setCenter(pos);
             });
-            markersRef.current.push(marker);
+            liveMarkersRef.current.push(marker);
         });
-    }, [liveTrips, mapReady, selectedTrip, activeTab]);
+    }, [liveTrips, mapReady, activeTab]);
 
     // 운행 기록 검색
     const fetchRecords = useCallback(async () => {
