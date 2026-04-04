@@ -2722,6 +2722,8 @@
     checkUpdate,
     // 지도
     openMap, closeMap, refreshMapData, centerMyLocation, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
+    // [TDD] 로깅 퍼블릭 노출
+    remoteLog
   };
 
 
