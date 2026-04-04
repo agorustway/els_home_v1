@@ -207,8 +207,14 @@ export default function VehicleTrackingPage() {
     };
 
     // ─── 2. 상세 경로 조회 ───
-    const drawTripPath = (locations) => {
-        if (!mapInstanceRef.current || !locations.length) return;
+    const drawTripPath = (locations, retries = 5) => {
+        // [v4.5.12][Fix] naver 전역 + mapRef 동시 체크 — 미초기화 시 retry
+        if (!window.naver?.maps || !mapInstanceRef.current || !locations?.length) {
+            if (retries > 0 && locations?.length) {
+                setTimeout(() => drawTripPath(locations, retries - 1), 300);
+            }
+            return;
+        }
         const map = mapInstanceRef.current;
         if (polylineRef.current) polylineRef.current.setMap(null);
         markersRef.current.forEach(m => m.setMap(null));
@@ -412,11 +418,10 @@ export default function VehicleTrackingPage() {
         */
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
             const [tripRes, locRes, logRes] = await Promise.all([
-                fetch(`${baseUrl}/api/vehicle-tracking/trips/${trip.id}`),
-                fetch(`${baseUrl}/api/vehicle-tracking/trips/${trip.id}/locations`),
-                fetch(`${baseUrl}/api/vehicle-tracking/trips/${trip.id}/logs`)
+                fetch(`/api/vehicle-tracking/trips/${trip.id}`),
+                fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`),
+                fetch(`/api/vehicle-tracking/trips/${trip.id}/logs`)
             ]);
 
             const tripData = await tripRes.json();
@@ -458,68 +463,77 @@ export default function VehicleTrackingPage() {
     };
 
     // [신규] 상세 모달용 미니맵 초기화 및 경로 정렬 그리기
+    // [v4.5.12][Fix] selectedTripLocations 또는 miniMapRef 준비 시점 불일치 문제 해결:
+    // selectedTripLocations 상태 변화 + miniMapRef DOM 마운트 타이밍이 안 맞을 수 있으므로,
+    // 둘 다 준비될 때까지 300ms씩 최대 10회 재시도하는 retry 로직 내장.
     useEffect(() => {
-        if (!selectedTrip || !miniMapRef.current || !window.naver?.maps) return;
+        if (!selectedTrip) return;
+        let retries = 10;
+        const tryDraw = () => {
+            if (!miniMapRef.current || !window.naver?.maps) {
+                if (retries-- > 0) setTimeout(tryDraw, 300);
+                return;
+            }
 
-        let map = miniMapInstanceRef.current;
-        if (!map) {
-            map = new window.naver.maps.Map(miniMapRef.current, {
-                center: new window.naver.maps.LatLng(36.5, 127.0),
-                zoom: 13, zoomControl: true, zoomControlOptions: { position: window.naver.maps.Position.TOP_RIGHT }
+            let map = miniMapInstanceRef.current;
+            if (!map) {
+                map = new window.naver.maps.Map(miniMapRef.current, {
+                    center: new window.naver.maps.LatLng(36.5, 127.0),
+                    zoom: 13, zoomControl: true, zoomControlOptions: { position: window.naver.maps.Position.TOP_RIGHT }
+                });
+                miniMapInstanceRef.current = map;
+            }
+
+            if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
+            miniMarkersRef.current.forEach(m => m.setMap(null));
+            miniMarkersRef.current = [];
+
+            if (!selectedTripLocations || selectedTripLocations.length === 0) return;
+
+            const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
+            if (validLocs.length === 0) return;
+
+            const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
+            const polyline = new window.naver.maps.Polyline({
+                map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
+                strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
             });
-            miniMapInstanceRef.current = map;
-        }
+            miniPolylineRef.current = polyline;
 
-        if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
-        miniMarkersRef.current.forEach(m => m.setMap(null));
-        miniMarkersRef.current = [];
+            const bounds = new window.naver.maps.LatLngBounds();
+            path.forEach(p => bounds.extend(p));
 
-        if (!selectedTripLocations || selectedTripLocations.length === 0) return;
-
-        const validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
-        if (validLocs.length === 0) return;
-
-        const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
-        const polyline = new window.naver.maps.Polyline({
-            map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
-            strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
-        });
-        miniPolylineRef.current = polyline;
-
-        const bounds = new window.naver.maps.LatLngBounds();
-        path.forEach(p => bounds.extend(p));
-
-        validLocs.forEach(l => {
-            const pointMarker = new window.naver.maps.Marker({
-                position: new window.naver.maps.LatLng(l.lat, l.lng), map,
-                icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
-                zIndex: 10
+            validLocs.forEach(l => {
+                const pointMarker = new window.naver.maps.Marker({
+                    position: new window.naver.maps.LatLng(l.lat, l.lng), map,
+                    icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
+                    zIndex: 10
+                });
+                miniMarkersRef.current.push(pointMarker);
             });
-            miniMarkersRef.current.push(pointMarker);
-        });
 
-        const startMarker = new window.naver.maps.Marker({
-            position: path[0], map, zIndex: 100,
-            icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
-        });
-        miniMarkersRef.current.push(startMarker);
+            const startMarker = new window.naver.maps.Marker({
+                position: path[0], map, zIndex: 100,
+                icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
+            });
+            miniMarkersRef.current.push(startMarker);
 
-        const endMarker = new window.naver.maps.Marker({
-            position: path[path.length - 1], map, zIndex: 100,
-            icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
-        });
-        miniMarkersRef.current.push(endMarker);
+            const endMarker = new window.naver.maps.Marker({
+                position: path[path.length - 1], map, zIndex: 100,
+                icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
+            });
+            miniMarkersRef.current.push(endMarker);
 
-        window.naver.maps.Event.trigger(map, 'resize');
-        
-        // 실시간 추적 중이면 마지막 마커로 패닝, 아니면 전체 Bounds Fit
-        if (realtimeTarget === selectedTrip.id) {
-            map.panTo(path[path.length - 1]);
-        } else if (!miniMapInstanceRef.current._hasFitBounds) {
-            map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
-            miniMapInstanceRef.current._hasFitBounds = true;
-        }
-
+            window.naver.maps.Event.trigger(map, 'resize');
+            
+            if (realtimeTarget === selectedTrip.id) {
+                map.panTo(path[path.length - 1]);
+            } else if (!miniMapInstanceRef.current._hasFitBounds) {
+                map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+                miniMapInstanceRef.current._hasFitBounds = true;
+            }
+        };
+        tryDraw(); // [v4.5.12] retry 루프 진입
     }, [selectedTrip, selectedTripLocations, realtimeTarget]);
 
     // 네이버맵 초기화
