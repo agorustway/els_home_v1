@@ -132,7 +132,7 @@ function ContainerHistoryInner() {
         }
     }, []);
 
-    // 타이머 및 상태 모니터링 (10초 주기 폴링)
+    // 타이머 및 상태 모니터링 (3초 주기 폴링 - 백그라운드 봇 로그 실시간 추적)
     useEffect(() => {
         const interval = setInterval(async () => {
             if (loading || loginLoading) return; // 작업 중엔 인터럽트 방지
@@ -141,8 +141,15 @@ function ContainerHistoryInner() {
                 const data = await res.json();
                 if (data.workers) setWorkers(data.workers);
                 if (data.max_drivers) setMaxDrivers(data.max_drivers);
+
+                // 추가: 로그인 스트림이 끊긴 유휴 상태에서도 백그라운드 구동 로그 계속 받아오기
+                const logRes = await fetch(`${BACKEND_BASE_URL}/api/els/logs`);
+                const logData = await logRes.json();
+                if (logData.log && Array.isArray(logData.log)) {
+                    setLogLines(logData.log); // 데몬의 전체 버퍼(최대 300줄)로 안전하게 덮어쓰기
+                }
             } catch (e) { }
-        }, 10000);
+        }, 3000);
         return () => clearInterval(interval);
     }, [loading, loginLoading, BACKEND_BASE_URL]);
 

@@ -62,6 +62,15 @@ def capabilities():
         "parseAvailable": True
     })
 
+@app.route("/api/els/logs", methods=["GET"])
+def logs():
+    try:
+        r = urlopen(Request(DAEMON_URL + "/logs", method="GET"), timeout=3)
+        if r.getcode() == 200:
+            return Response(r.read(), mimetype="application/json")
+    except: pass
+    return jsonify({"ok": False, "log": []})
+
 @app.route("/api/els/login", methods=["POST"])
 def login():
     data = request.get_json(silent=True) or {}
