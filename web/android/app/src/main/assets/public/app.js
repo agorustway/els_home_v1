@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.34';
-  const BUILD_CODE = 334; // Build 334 (v4.3.34)
+  const APP_VERSION = 'v4.3.35';
+  const BUILD_CODE = 335; // Build 335 (v4.3.35)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2326,59 +2326,317 @@
     }
   }
 
-  // ─── 지도 화면 ────────────────────────────────────────────────────────────
-  let driverMapInstance = null;
-  let driverMapMarkers = [];
-  let driverRoutePolyline = null;
-  let driverRouteMarkers = [];
-  let myLocationMarker = null;
-  let mapPollTimer = null;
+  // ─── [v4.3.35] Static Maps 지도 엔진 ──────────────────────────────────────
+  // JS SDK 방식은 Capacitor WebView에서 Referer 인증 실패로 사용 불가.
+  // NCP Static Maps(raster-cors) 이미지 URL 방식으로 완전 전환.
+  // 터치 드래그, 핀치 줌, 마커 DOM 오버레이, Canvas 경로 렌더링을 직접 구현.
 
-  function waitForNaverMap() {
-    return new Promise((resolve) => {
-      if (window.naver && window.naver.maps) { resolve(true); return; }
-      if (window._naverMapLoadError) { resolve(false); return; }
-      let tries = 0;
-      const t = setInterval(() => {
-        tries++;
-        if (window.naver && window.naver.maps) { clearInterval(t); resolve(true); return; }
-        if (window._naverMapLoadError) { clearInterval(t); resolve(false); return; }
-        if (tries > 50) { clearInterval(t); resolve(false); } // 15초 대기
-      }, 300);
-    });
+  const STATIC_MAP_KEY = 'hxoj79osnj'; // NCP ncpClientId = API Gateway Key ID 동일
+  const STATIC_BASE = 'https://maps.apigw.ntruss.com/map-static/v2/raster-cors';
+
+  // 지도 상태
+  let smState = {
+    lat: 36.5, lng: 127.5, zoom: 7,
+    isDragging: false, dragStart: null, lastX: 0, lastY: 0,
+    pinchDist: 0,
+    trips: [],
+    selectedTrip: null,
+    myLat: null, myLng: null,
+    pollTimer: null,
+  };
+
+  // 줌 → Static Maps level 매핑 (0~20)
+  function smZoomToLevel(z) { return Math.max(1, Math.min(20, Math.round(z))); }
+
+  // 위경도 → Static Maps pixel 좌표 (메르카토르 기반 근사치)
+  function latLngToPixel(lat, lng, centerLat, centerLng, zoom, w, h) {
+    const scale = Math.pow(2, zoom) * 256;
+    function toMerc(la, lo) {
+      const x = (lo + 180) / 360;
+      const sinLat = Math.sin(la * Math.PI / 180);
+      const y = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2;
+      return { x: x * scale, y: y * scale };
+    }
+    const c = toMerc(centerLat, centerLng);
+    const p = toMerc(lat, lng);
+    return {
+      x: w / 2 + (p.x - c.x),
+      y: h / 2 + (p.y - c.y)
+    };
   }
 
-  async function openMap() {
+  function buildStaticMapUrl(lat, lng, zoom, w, h) {
+    const level = smZoomToLevel(zoom);
+    return `${STATIC_BASE}?w=${w}&h=${h}&center=${lng},${lat}&level=${level}&X-NCP-APIGW-API-KEY-ID=${STATIC_MAP_KEY}&scale=2`;
+  }
+
+  let smContainer = null;
+  let smImg = null;
+  let smCanvas = null;
+  let smOverlay = null;
+  let smMarkers = [];
+
+  function getMapSize() {
+    const el = document.getElementById('driver-map');
+    if (!el) return { w: 360, h: 600 };
+    return { w: el.clientWidth || 360, h: el.clientHeight || 600 };
+  }
+
+  function initStaticMap() {
+    const el = document.getElementById('driver-map');
+    if (!el) return;
+    el.innerHTML = '';
+    el.style.position = 'relative';
+    el.style.overflow = 'hidden';
+    el.style.background = '#e8eaed';
+    el.style.cursor = 'grab';
+
+    const { w, h } = getMapSize();
+
+    // 배경 지도 이미지
+    smImg = document.createElement('img');
+    smImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;user-select:none;pointer-events:none;';
+    smImg.draggable = false;
+    el.appendChild(smImg);
+
+    // 경로/마커용 Canvas
+    smCanvas = document.createElement('canvas');
+    smCanvas.width = w * 2;
+    smCanvas.height = h * 2;
+    smCanvas.style.cssText = `position:absolute;top:0;left:0;width:${w}px;height:${h}px;pointer-events:none;`;
+    el.appendChild(smCanvas);
+
+    // DOM 마커 오버레이 컨테이너
+    smOverlay = document.createElement('div');
+    smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+    el.appendChild(smOverlay);
+
+    // 줌 컨트롤
+    const zmCtrl = document.createElement('div');
+    zmCtrl.style.cssText = 'position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px;z-index:10;';
+    zmCtrl.innerHTML = `
+      <button onclick="App.smZoomIn()" style="width:36px;height:36px;border:none;background:#fff;border-radius:8px;font-size:20px;font-weight:900;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;">+</button>
+      <button onclick="App.smZoomOut()" style="width:36px;height:36px;border:none;background:#fff;border-radius:8px;font-size:20px;font-weight:900;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;">−</button>
+    `;
+    el.appendChild(zmCtrl);
+
+    smContainer = el;
+    bindMapTouch(el);
+    renderStaticMap();
+  }
+
+  function renderStaticMap() {
+    if (!smImg || !smContainer) return;
+    const { w, h } = getMapSize();
+    // Static Maps 픽셀 최대 1024, scale=2라 실제 요청은 w/2
+    const rw = Math.min(Math.floor(w), 512);
+    const rh = Math.min(Math.floor(h), 512);
+    const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
+    smImg.src = url;
+    smImg.onerror = () => {
+      smImg.src = '';
+      const ctx = smCanvas?.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillRect(0, 0, smCanvas.width, smCanvas.height);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('지도를 불러오는 중...', smCanvas.width / 2, smCanvas.height / 2);
+      }
+    };
+    renderMapOverlay();
+  }
+
+  function renderMapOverlay() {
+    if (!smCanvas || !smOverlay) return;
+    const { w, h } = getMapSize();
+    smCanvas.width = w * 2;
+    smCanvas.height = h * 2;
+    smCanvas.style.width = w + 'px';
+    smCanvas.style.height = h + 'px';
+    const ctx = smCanvas.getContext('2d');
+    ctx.clearRect(0, 0, smCanvas.width, smCanvas.height);
+    smOverlay.innerHTML = '';
+
+    // 경로 렌더링
+    if (smState.selectedTrip && smState.selectedTrip._path) {
+      drawPathOnCanvas(ctx, smState.selectedTrip._path, w, h);
+    }
+
+    // 마커 렌더링
+    const contracted = isContractedVehicle();
+    const visibleTrips = smState.trips.filter(function(trip) {
+      if (!trip.lastLocation) return false;
+      return contracted ? true : isMyTrip(trip);
+    });
+
+    visibleTrips.forEach(function(trip) {
+      const loc = trip.lastLocation;
+      const isMe = isMyTrip(trip);
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, smState.zoom, w, h);
+
+      const marker = document.createElement('div');
+      const color = isMe ? '#10b981' : '#2563eb';
+      const label = trip.vehicle_number || trip.driverId || '차량';
+      marker.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;transform:translate(-50%,-100%);pointer-events:auto;z-index:20;`;
+      marker.innerHTML = `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;">${label}</div>`;
+      marker.addEventListener('click', function() { showTripRouteOnMap(trip); });
+      smOverlay.appendChild(marker);
+    });
+
+    // 내 위치 마커
+    if (smState.myLat !== null && smState.myLng !== null) {
+      const px = latLngToPixel(smState.myLat, smState.myLng, smState.lat, smState.lng, smState.zoom, w, h);
+      const dot = document.createElement('div');
+      dot.style.cssText = `position:absolute;left:${px.x - 8}px;top:${px.y - 8}px;width:16px;height:16px;background:#2563eb;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.5);pointer-events:none;z-index:30;`;
+      smOverlay.appendChild(dot);
+    }
+  }
+
+  function drawPathOnCanvas(ctx, path, w, h) {
+    if (!path || path.length < 2) return;
+    ctx.save();
+    ctx.scale(2, 2); // HiDPI
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    path.forEach(function(loc, i) {
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, smState.zoom, w, h);
+      if (i === 0) ctx.moveTo(px.x, px.y);
+      else ctx.lineTo(px.x, px.y);
+    });
+    ctx.stroke();
+
+    // 시작/종료 마커
+    function drawDot(loc, color) {
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, smState.zoom, w, h);
+      ctx.beginPath();
+      ctx.arc(px.x, px.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 1;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    drawDot(path[0], '#10b981');
+    drawDot(path[path.length - 1], '#ef4444');
+    ctx.restore();
+  }
+
+  // ─── 터치/마우스 제어 ────────────────────────────────────────────
+  function bindMapTouch(el) {
+    let startLat, startLng, startX, startY;
+    let pinchStartDist = 0, pinchStartZoom = smState.zoom;
+
+    function onDragStart(x, y) {
+      smState.isDragging = true;
+      startX = x; startY = y;
+      startLat = smState.lat; startLng = smState.lng;
+      el.style.cursor = 'grabbing';
+    }
+
+    function onDragMove(x, y) {
+      if (!smState.isDragging) return;
+      const { w, h } = getMapSize();
+      const dx = x - startX;
+      const dy = y - startY;
+      // 픽셀 → 경도/위도 변환 (메르카토르 근사)
+      const level = smZoomToLevel(smState.zoom);
+      const metersPerPx = 156543.03392 * Math.cos(startLat * Math.PI / 180) / Math.pow(2, level);
+      const DEG_PER_M_LNG = 1 / (111320 * Math.cos(startLat * Math.PI / 180));
+      const DEG_PER_M_LAT = 1 / 110540;
+      smState.lng = startLng - dx * metersPerPx * DEG_PER_M_LNG;
+      smState.lat = startLat + dy * metersPerPx * DEG_PER_M_LAT;
+    }
+
+    function onDragEnd() {
+      if (!smState.isDragging) return;
+      smState.isDragging = false;
+      el.style.cursor = 'grab';
+      renderStaticMap();
+    }
+
+    // Mouse
+    el.addEventListener('mousedown', e => { if (e.button === 0) onDragStart(e.clientX, e.clientY); });
+    el.addEventListener('mousemove', e => { if (smState.isDragging) { onDragMove(e.clientX, e.clientY); renderMapOverlay(); } });
+    el.addEventListener('mouseup', onDragEnd);
+    el.addEventListener('mouseleave', onDragEnd);
+
+    // Touch
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+      } else if (e.touches.length === 2) {
+        smState.isDragging = false;
+        pinchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        pinchStartZoom = smState.zoom;
+      }
+    }, { passive: true });
+
+    el.addEventListener('touchmove', e => {
+      if (e.touches.length === 1 && smState.isDragging) {
+        onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+        renderMapOverlay();
+      } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const ratio = dist / pinchStartDist;
+        const newZoom = Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5));
+        if (Math.abs(newZoom - smState.zoom) > 0.3) {
+          smState.zoom = newZoom;
+          renderStaticMap();
+        }
+      }
+    }, { passive: true });
+
+    el.addEventListener('touchend', e => {
+      if (e.touches.length === 0) onDragEnd();
+    }, { passive: true });
+
+    // 마우스 휠 줌
+    el.addEventListener('wheel', e => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -1 : 1;
+      smState.zoom = Math.max(1, Math.min(20, smState.zoom + delta));
+      renderStaticMap();
+    }, { passive: false });
+  }
+
+  function smZoomIn() {
+    smState.zoom = Math.min(20, smState.zoom + 1);
+    renderStaticMap();
+  }
+  function smZoomOut() {
+    smState.zoom = Math.max(1, smState.zoom - 1);
+    renderStaticMap();
+  }
+
+  // ─── 지도 화면 공개 API ──────────────────────────────────────────
+  let mapPollTimer = null;
+
+  function openMap() {
     showScreen('map');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     const btn = document.getElementById('tab-btn-map');
     if (btn) btn.classList.add('active');
 
-    // [v4.3.31] 지도 깜빡임 근본 원인 수정:
-    // display:none → flex 전환 직후 Naver Map 초기화 시 컨테이너 크기가 0으로
-    // 계산되는 타이밍 문제. rAF 2회로 DOM 레이아웃 확정을 보장한 후 초기화.
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    remoteLog('[MAP] Static Maps 모드로 지도 열기', 'MAP_OPEN');
 
-    setTimeout(async () => {
-      const loaded = await waitForNaverMap();
-      if (!loaded) {
-        const el = document.getElementById('driver-map');
-        const origin = location.origin;
-        remoteLog(`[MAP_ERR] 네이버 지도 SDK 로드 실패. Origin: ${origin}`, 'MAP_INIT');
-        if (el) el.innerHTML = [
-          '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;">',
-          '<div style="font-size:36px;margin-bottom:12px;">🗺️</div>',
-          '<div style="font-size:15px;font-weight:900;color:#ef4444;margin-bottom:8px;">지도 로드 실패</div>',
-          '<div style="font-size:13px;color:#64748b;line-height:1.7;margin-bottom:16px;">NCP 콘솔 → Maps → 앱 선택 →<br><b>웹 서비스 URL</b>에 아래 주소를 등록하세요:</div>',
-          '<div style="background:#f1f5f9;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;color:#1e293b;word-break:break-all;margin-bottom:16px;">' + origin + '</div>',
-          '<button onclick="App.openMap()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;">🔄 다시 시도</button>',
-          '</div>'
-        ].join('');
-        return;
-      }
-      initDriverMap();
-      await refreshMapData();
-    }, 150); // rAF 2회 이후라 150ms면 충분 (기존 500ms)
+    // DOM 레이아웃 안정화 후 초기화
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      initStaticMap();
+      refreshMapData();
+    }));
 
     if (mapPollTimer) clearInterval(mapPollTimer);
     mapPollTimer = setInterval(refreshMapData, 30000);
@@ -2390,68 +2648,34 @@
     switchTab('trip');
   }
 
-  function initDriverMap() {
-    if (!window.naver || !window.naver.maps) {
-      const el = document.getElementById('driver-map');
-      if (el) el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:14px;">지도를 불러오는 중...</div>';
-      return;
-    }
-    if (driverMapInstance) {
-      // [v4.3.31] 기존 인스턴스 재활용 시 resize 이중 발사 — 화면 전환 직후
-      // flex 레이아웃 재계산이 완료되도록 50ms 후 한 번 더 발사
-      naver.maps.Event.trigger(driverMapInstance, 'resize');
-      setTimeout(() => naver.maps.Event.trigger(driverMapInstance, 'resize'), 250);
-      return;
-    }
-    const defaultCenter = new naver.maps.LatLng(36.5, 127.5);
-    driverMapInstance = new naver.maps.Map('driver-map', {
-      center: defaultCenter,
-      zoom: 7,
-      zoomControl: true,
-      zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
-    });
-    // [v4.3.31] 신규 생성 직후에도 resize — flex 컨테이너 크기 안정화 보장
-    setTimeout(() => {
-      if (driverMapInstance) naver.maps.Event.trigger(driverMapInstance, 'resize');
-    }, 250);
-    centerMyLocation();
-  }
-
-  function centerMyLocation() {
-    if (!driverMapInstance || !window.naver) return;
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        const loc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-        driverMapInstance.setCenter(loc);
-        driverMapInstance.setZoom(15);
-        if (myLocationMarker) myLocationMarker.setMap(null);
-        myLocationMarker = new naver.maps.Marker({
-          position: loc,
-          map: driverMapInstance,
-          zIndex: 200,
-          icon: {
-            content: '<div style="width:16px;height:16px;background:#2563eb;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,0.5);"></div>',
-            anchor: new naver.maps.Point(8, 8)
-          }
-        });
-      },
-      function() { showToast('현재 위치를 가져올 수 없습니다.'); }
-    );
-  }
-
   async function refreshMapData() {
     try {
       const res = await smartFetch(BASE_URL + '/api/vehicle-tracking?mode=active');
       const data = await res.json();
-      const trips = data.data || [];
-      renderMapMarkers(trips);
-      renderMapTripList(trips);
+      smState.trips = data.data || [];
+      renderMapOverlay();
+      renderMapTripList(smState.trips);
     } catch (e) {
       console.warn('refreshMapData 오류', e);
     }
   }
 
-  // 계약 차량 판별: driverId가 ELSS로 시작하면 계약 차량
+  function centerMyLocation() {
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        smState.myLat = pos.coords.latitude;
+        smState.myLng = pos.coords.longitude;
+        smState.lat = pos.coords.latitude;
+        smState.lng = pos.coords.longitude;
+        smState.zoom = 15;
+        renderStaticMap();
+        showToast('내 위치로 이동했습니다.');
+      },
+      function() { showToast('현재 위치를 가져올 수 없습니다.'); }
+    );
+  }
+
+  // 계약 차량 판별
   function isContractedVehicle() {
     const id = (State.profile.driverId || '').toUpperCase();
     return id.startsWith('ELSS');
@@ -2463,44 +2687,6 @@
     const tripVehicle = (trip.vehicle_number || trip.vehicleNo || '').replace(/\s/g, '').toUpperCase();
     const tripDriverId = (trip.vehicle_id || trip.driverId || '').toUpperCase();
     return tripVehicle === myVehicle || tripDriverId === myId;
-  }
-
-  function renderMapMarkers(trips) {
-    if (!driverMapInstance || !window.naver) return;
-    driverMapMarkers.forEach(function(m) { m.setMap(null); });
-    driverMapMarkers = [];
-
-    const contracted = isContractedVehicle();
-    const visibleTrips = trips.filter(function(trip) {
-      if (!trip.lastLocation) return false;
-      return contracted ? true : isMyTrip(trip);
-    });
-
-    visibleTrips.forEach(function(trip) {
-      const loc = trip.lastLocation;
-      const isMe = isMyTrip(trip);
-      const pos = new naver.maps.LatLng(loc.lat, loc.lng);
-      const color = isMe ? '#10b981' : '#2563eb';
-      const label = trip.vehicle_number || trip.driverId || '차량';
-
-      const marker = new naver.maps.Marker({
-        position: pos,
-        map: driverMapInstance,
-        zIndex: isMe ? 100 : 50,
-        icon: {
-          content: '<div style="background:' + color + ';color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 8px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);">' + label + '</div>',
-          anchor: new naver.maps.Point(30, 15)
-        }
-      });
-
-      (function(t) {
-        naver.maps.Event.addListener(marker, 'click', function() {
-          showTripRouteOnMap(t);
-        });
-      })(trip);
-
-      driverMapMarkers.push(marker);
-    });
   }
 
   function renderMapTripList(trips) {
@@ -2546,8 +2732,7 @@
   }
 
   async function showTripRouteOnMap(trip) {
-    if (!driverMapInstance || !window.naver) return;
-    document.getElementById('map-trip-list').classList.add('hidden');
+    document.getElementById('map-trip-list')?.classList.add('hidden');
     clearMapRoute();
 
     let locations = [];
@@ -2599,27 +2784,18 @@
     }
     if (filtered.length === 0) { showToast('표시할 경로가 없습니다.'); return; }
 
-    var path = filtered.map(function(l) { return new naver.maps.LatLng(l.lat, l.lng); });
-    driverRoutePolyline = new naver.maps.Polyline({
-      map: driverMapInstance, path: path,
-      strokeColor: '#2563eb', strokeWeight: 5, strokeOpacity: 0.85,
-      strokeLineCap: 'round', strokeLineJoin: 'round'
-    });
+    smState.selectedTrip = trip;
+    smState.selectedTrip._path = filtered;
 
-    function addRM(pos, label, color) {
-      var m = new naver.maps.Marker({
-        position: pos, map: driverMapInstance, zIndex: 300,
-        icon: { content: '<div style="width:24px;height:24px;background:' + color + ';color:#fff;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,0.3);">' + label + '</div>', anchor: new naver.maps.Point(12, 12) }
-      });
-      driverRouteMarkers.push(m);
-    }
-    addRM(path[0], 'S', '#10b981');
-    addRM(path[path.length - 1], 'E', '#ef4444');
+    // 경로 중심으로 지도 이동
+    const avgLat = filtered.reduce((s, l) => s + l.lat, 0) / filtered.length;
+    const avgLng = filtered.reduce((s, l) => s + l.lng, 0) / filtered.length;
+    smState.lat = avgLat;
+    smState.lng = avgLng;
+    smState.zoom = 13;
+    renderStaticMap();
 
-    var bounds = new naver.maps.LatLngBounds();
-    path.forEach(function(p) { bounds.extend(p); });
-    driverMapInstance.fitBounds(bounds, { top: 80, right: 60, bottom: 200, left: 60 });
-
+    // 패널 정보 표시
     var panel = document.getElementById('map-route-panel');
     var titleEl = document.getElementById('map-route-title');
     var bodyEl = document.getElementById('map-route-body');
@@ -2642,11 +2818,10 @@
   }
 
   function clearMapRoute() {
-    if (driverRoutePolyline) { driverRoutePolyline.setMap(null); driverRoutePolyline = null; }
-    driverRouteMarkers.forEach(function(m) { m.setMap(null); });
-    driverRouteMarkers = [];
+    smState.selectedTrip = null;
     var p = document.getElementById('map-route-panel');
     if (p) p.classList.add('hidden');
+    renderMapOverlay();
   }
 
   // ─── 앱 종료 ──────────────────────────────────────────────────
@@ -2722,6 +2897,7 @@
     checkUpdate,
     // 지도
     openMap, closeMap, refreshMapData, centerMyLocation, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
+    smZoomIn, smZoomOut,
     // [TDD] 로깅 퍼블릭 노출
     remoteLog
   };

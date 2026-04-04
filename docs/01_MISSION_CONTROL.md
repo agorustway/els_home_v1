@@ -2,9 +2,9 @@
 > 마지막 업데이트: 2026-04-05 23:21 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.3.34` (Mobile) / `v4.5.34` (Unified Web/Backend)  
+- **현재 버전**: `v4.3.35` (Mobile) / `v4.5.35` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 네이버 지도 인증 실패 이슈 최종 해결 - 메타태그 기반 WebView Referer 강제 송신 추가
+- **상태**: 🟢 네이버 지도 JS SDK → Static Maps(raster-cors) 완전 전환 — WebView Referer 인증 문제 근본 해결
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,7 +17,8 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
-- [x] **2026-04-05**: [APP] v4.3.33 - Capacitor hostname `www.nollae.com`으로 변경하여 네이버 지도 네이티브 앱 인증 이슈 원천 해결
+- [x] **2026-04-05**: [APP] v4.3.35 - JS SDK 완전 제거, Static Maps raster-cors 이미지 방식으로 전환 — WebView Referer 인증 문제 근본 해결
+- [x] **2026-04-05**: [APP] v4.3.34 - Capacitor hostname `www.nollae.com`으로 변경하여 네이버 지도 네이티브 앱 인증 이슈 원천 해결
 - [x] **2026-04-05**: [APP] v4.3.32 - 앱 버전 표시 단일화(Refactoring) 및 네이버 지도 렌더 타이밍 픽스 (깜빡임 문제 해결)
 - [x] **2026-04-05**: [APP] v4.3.31 - TDD 모니터링 로그 삽입 및 4/4 16:53 외부 안내 대응 기록 반영
 - [x] **2026-04-04**: [APP] v4.3.30 - UI 레이아웃 중첩 버그 긴급 해결 및 탭 하단 통합 안착 (지도 로딩은 미해결)
@@ -27,7 +28,11 @@
 - [x] **2026-04-04**: [WEB/UX] 운영 현황 리스트 클릭 시 상세 모달 연동 및 운행 시간 표시 (v4.5.20)
 - [x] **2026-04-04**: [WEB/MAP] 주 지도 drawTripPath에 Haversine 이상치 필터링 통합 (v4.5.19)
 
-## 📋 최근 변경 (v4.5.33 — 2026-04-05)
+## 📋 최근 변경 (v4.5.35 — 2026-04-05)
+- **네이버 지도 JS SDK 완전 제거 (v4.3.35)**:
+  - Capacitor WebView는 HTTP Referer를 `www.nollae.com`으로 전송하지 않아 NCP JS Map SDK 인증이 근본적으로 불가능하다는 원인 최종 규명.
+  - NCP **Static Maps API(raster-cors)** 엔드포인트로 전환: 이미지 URL 방식이라 Referer 제약 없음.
+  - 터치 드래그, 핀치 줌, Canvas 경로 렌더링, DOM 마커 오버레이를 자체 구현하여 JS SDK와 동등한 UX 제공.
 - **네이버 지도 인증 이슈 완전 해결 (v4.3.33)**:
   - WebView 컨테이너의 내부 호스트명(`nollae.com`)이 NCP 콘솔의 `www.nollae.com`과 불일치하여 발생한 **권한/인증 실패(Open API 인증 실패 워터마크)** 원인 규명.
   - 안드로이드 자산 내부의 `capacitor.config.json`을 단일 루트(WWW)로 강제 정렬 완료.
