@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.41",
-  "versionCode": 341,
+  "latestVersion": "v4.3.42",
+  "versionCode": 342,
   "forceUpdate": false,
-  "changeLog": "[핫픽스] 드래그 후 지도가 고무줄처럼 원위치로 튕기던 현상(Snap-back) 완벽 제거. 메르카토르 역산 공식 적용으로 장거리 스와이프 시 픽셀 좌표 오차 수정.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=341"
+  "changeLog": "[UI/UX 개선] 줌 화면 세로 슬라이더 완전 제거 (오직 손가락 핀치 줌인/아웃만 지원) 및 드래그 체감 성능 극대화.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=342"
 }

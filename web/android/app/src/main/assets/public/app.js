@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.41';
-  const BUILD_CODE = 341; // Build 341 (v4.3.41)
+  const APP_VERSION = 'v4.3.42';
+  const BUILD_CODE = 342; // Build 342 (v4.3.42)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2552,16 +2552,7 @@
     ctx.restore();
   }
 
-  let zoomHideTimer = null;
-  function showZoomSlider() {
-    const wrap = document.getElementById('map-zoom-slider-wrap');
-    if (!wrap) return;
-    wrap.classList.add('visible');
-    if (zoomHideTimer) clearTimeout(zoomHideTimer);
-    zoomHideTimer = setTimeout(() => {
-      wrap.classList.remove('visible');
-    }, 2500); // 2.5초 후 숨김
-  }
+
 
   // ─── 터치/마우스 제어 ────────────────────────────────────────────
   function bindMapTouch(el) {
@@ -2577,12 +2568,10 @@
       if (smImg) smImg.style.transition = 'none';
       if (smCanvas) smCanvas.style.transition = 'none';
       if (smOverlay) smOverlay.style.transition = 'none';
-      showZoomSlider();
     }
 
     function onDragMove(x, y) {
       if (!smState.isDragging) return;
-      showZoomSlider();
       const dx = x - startX;
       const dy = y - startY;
       
@@ -2669,10 +2658,8 @@
         );
         const ratio = dist / pinchStartDist;
         const newZoom = Math.round(Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5)));
-        showZoomSlider();
         if (newZoom !== smState.zoom) {
           smState.zoom = newZoom;
-          syncZoomSlider();
           renderStaticMap();
         }
       }
@@ -2689,33 +2676,13 @@
     // 마우스 휠 줌
     el.addEventListener('wheel', e => {
       e.preventDefault();
-      showZoomSlider();
       const delta = e.deltaY > 0 ? -1 : 1;
       smState.zoom = Math.max(1, Math.min(20, smState.zoom + delta));
       renderStaticMap();
     }, { passive: false });
   }
 
-  function smZoomIn() {
-    smState.zoom = Math.min(20, Math.round(smState.zoom) + 1);
-    syncZoomSlider();
-    renderStaticMap();
-  }
-  function smZoomOut() {
-    smState.zoom = Math.max(1, Math.round(smState.zoom) - 1);
-    syncZoomSlider();
-    renderStaticMap();
-  }
-  function onZoomSlider(val) {
-    smState.zoom = parseInt(val, 10);
-    showZoomSlider();
-    renderStaticMap();
-  }
-  // 핵치줌/휠 등으로 이 변경될 때 슬라이더 UI도 동기화
-  function syncZoomSlider() {
-    const sl = document.getElementById('map-zoom-slider');
-    if (sl) sl.value = Math.round(smState.zoom);
-  }
+
 
   // ─── 지도 화면 공개 API ──────────────────────────────────────────
   let mapPollTimer = null;
@@ -2731,7 +2698,6 @@
     // DOM 레이아웃 안정화 후 초기화
     requestAnimationFrame(() => requestAnimationFrame(() => {
       initStaticMap();
-      syncZoomSlider(); // 슬라이더 초기값도 동기화
       refreshMapData();
     }));
 
