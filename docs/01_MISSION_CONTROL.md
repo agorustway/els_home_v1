@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.34
-> 마지막 업데이트: 2026-04-05 23:21 (KST)
+# ELS MISSION CONTROL v4.5.36
+> 마지막 업데이트: 2026-04-05 23:25 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.3.35` (Mobile) / `v4.5.35` (Unified Web/Backend)  
+- **현재 버전**: `v4.3.36` (Mobile) / `v4.5.36` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 네이버 지도 JS SDK → Static Maps(raster-cors) 완전 전환 — WebView Referer 인증 문제 근본 해결
+- **상태**: 🟢 관제 지도 UI 전면 개선 및 마커 동기화 해결 완료
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,6 +17,7 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
+- [x] **2026-04-05**: [APP] v4.3.36 - 지도 UI/UX 전면 개선 (줌 슬라이더, 하단 상시 패널) 및 오버레이 마커 동기화(정수 줌 레벨) 해결
 - [x] **2026-04-05**: [APP] v4.3.35 - JS SDK 완전 제거, Static Maps raster-cors 이미지 방식으로 전환 — WebView Referer 인증 문제 근본 해결
 - [x] **2026-04-05**: [APP] v4.3.34 - Capacitor hostname `www.nollae.com`으로 변경하여 네이버 지도 네이티브 앱 인증 이슈 원천 해결
 - [x] **2026-04-05**: [APP] v4.3.32 - 앱 버전 표시 단일화(Refactoring) 및 네이버 지도 렌더 타이밍 픽스 (깜빡임 문제 해결)
@@ -28,7 +29,11 @@
 - [x] **2026-04-04**: [WEB/UX] 운영 현황 리스트 클릭 시 상세 모달 연동 및 운행 시간 표시 (v4.5.20)
 - [x] **2026-04-04**: [WEB/MAP] 주 지도 drawTripPath에 Haversine 이상치 필터링 통합 (v4.5.19)
 
-## 📋 최근 변경 (v4.5.35 — 2026-04-05)
+## 📋 최근 변경 (v4.5.36 — 2026-04-05)
+- **지도 UI 전면 개선 및 버그 수정 (v4.3.36)**:
+  - **줌 슬라이더 도입**: 기존 `+/-` 물리 버튼 대신, 손가락으로 자연스럽게 조절할 수 있는 세로형 줌 슬라이더 적용 및 핀치줌 완벽 동기화.
+  - **하단 상시 패널**: 답답하던 운행 목록 팝업을 제거하고, 상태 및 차량 수를 직관적으로 볼 수 있는 접기/펼치기형 하단 패널(Bottom Panel) 구축.
+  - **마커 동기화 근본 해결**: SDK와 달리 Static Map은 이미지 타일이 정수형 줌 레벨을 따름을 파악. 오버레이 마커 계산 시 줌 레벨을 `Math.round()`로 강제 동기화하여 '파란 점(내 위치)'이 엉뚱한 곳으로 이동하던 좌표 드리프트 현상 영구 격리.
 - **네이버 지도 JS SDK 완전 제거 (v4.3.35)**:
   - Capacitor WebView는 HTTP Referer를 `www.nollae.com`으로 전송하지 않아 NCP JS Map SDK 인증이 근본적으로 불가능하다는 원인 최종 규명.
   - NCP **Static Maps API(raster-cors)** 엔드포인트로 전환: 이미지 URL 방식이라 Referer 제약 없음.
