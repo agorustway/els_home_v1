@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.38';
-  const BUILD_CODE = 338; // Build 338 (v4.3.38)
+  const APP_VERSION = 'v4.3.39';
+  const BUILD_CODE = 339; // Build 339 (v4.3.39)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2546,10 +2546,22 @@
     ctx.restore();
   }
 
+  let zoomHideTimer = null;
+  function showZoomSlider() {
+    const wrap = document.getElementById('map-zoom-slider-wrap');
+    if (!wrap) return;
+    wrap.classList.add('visible');
+    if (zoomHideTimer) clearTimeout(zoomHideTimer);
+    zoomHideTimer = setTimeout(() => {
+      wrap.classList.remove('visible');
+    }, 2500); // 2.5초 후 숨김
+  }
+
   // ─── 터치/마우스 제어 ────────────────────────────────────────────
   function bindMapTouch(el) {
     let startLat, startLng, startX, startY;
     let pinchStartDist = 0, pinchStartZoom = smState.zoom;
+    let rafId = null;
 
     function onDragStart(x, y) {
       smState.isDragging = true;
@@ -2559,16 +2571,25 @@
       if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transition = 'none';
       if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transition = 'none';
       if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transition = 'none';
+      showZoomSlider();
     }
 
     function onDragMove(x, y) {
       if (!smState.isDragging) return;
+      showZoomSlider();
       const dx = x - startX;
       const dy = y - startY;
-      // 드래그 중에는 변환 시각 효과만 적용
-      if (document.getElementById('sm-img')) document.getElementById('sm-img').style.transform = `translate(${dx}px, ${dy}px)`;
-      if (document.getElementById('sm-canvas')) document.getElementById('sm-canvas').style.transform = `translate(${dx}px, ${dy}px)`;
-      if (document.getElementById('sm-overlay')) document.getElementById('sm-overlay').style.transform = `translate(${dx}px, ${dy}px)`;
+      
+      // requestAnimationFrame을 활용해 UI 렌더링 최적화 및 버벅임 방지
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const img = document.getElementById('sm-img');
+        const cvs = document.getElementById('sm-canvas');
+        const ovl = document.getElementById('sm-overlay');
+        if (img) img.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        if (cvs) cvs.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        if (ovl) ovl.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      });
     }
 
     function onDragEnd(x, y) {
@@ -2631,6 +2652,7 @@
         );
         const ratio = dist / pinchStartDist;
         const newZoom = Math.round(Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5)));
+        showZoomSlider();
         if (newZoom !== smState.zoom) {
           smState.zoom = newZoom;
           syncZoomSlider();
@@ -2650,6 +2672,7 @@
     // 마우스 휠 줌
     el.addEventListener('wheel', e => {
       e.preventDefault();
+      showZoomSlider();
       const delta = e.deltaY > 0 ? -1 : 1;
       smState.zoom = Math.max(1, Math.min(20, smState.zoom + delta));
       renderStaticMap();
@@ -2668,6 +2691,7 @@
   }
   function onZoomSlider(val) {
     smState.zoom = parseInt(val, 10);
+    showZoomSlider();
     renderStaticMap();
   }
   // 핵치줌/휠 등으로 이 변경될 때 슬라이더 UI도 동기화

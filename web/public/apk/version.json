@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.38",
-  "versionCode": 338,
+  "latestVersion": "v4.3.39",
+  "versionCode": 339,
   "forceUpdate": false,
-  "changeLog": "맵뷰 터치 시스냅 개선 (자연스러운 드래그) 및 차량경로 클릭 시 화면오토줌(Auto Bounds) 반영.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=338"
+  "changeLog": "지도 렌더링 최적화(requestAnimationFrame 반영), 줌 슬라이더 자동 숨김(Fade) 기능 추가, 내 위치 버튼 우측 상단 이동",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=339"
 }
