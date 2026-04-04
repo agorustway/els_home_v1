@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.40';
-  const BUILD_CODE = 340; // Build 340 (v4.3.40)
+  const APP_VERSION = 'v4.3.41';
+  const BUILD_CODE = 341; // Build 341 (v4.3.41)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 

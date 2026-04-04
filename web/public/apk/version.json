@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.40",
-  "versionCode": 340,
+  "latestVersion": "v4.3.41",
+  "versionCode": 341,
   "forceUpdate": false,
-  "changeLog": "[핫픽스] DOM ID 누락으로 인한 맵 드래그 멈춤/버벅임 영구 수정. 진짜 일반 지도처럼 극도로 부드럽게 스와이핑 작동 및 줌 컨트롤 UI 기능 향상.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=340"
+  "changeLog": "[핫픽스] 드래그 후 지도가 고무줄처럼 원위치로 튕기던 현상(Snap-back) 완벽 제거. 메르카토르 역산 공식 적용으로 장거리 스와이프 시 픽셀 좌표 오차 수정.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=341"
 }
