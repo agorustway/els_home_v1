@@ -1,5 +1,22 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
  
+ ## 📅 2026-04-04 (심야) - [WEB/FIX] 경로 렌더링 참조 오류 및 필터 로직 통합 (v4.5.26)
+ 
+ ### 🚀 배포 요약
+ - **버전**: `v4.5.26` (Vercel)
+ - **주요 내용**: 주 지도 경로 그리기(`drawTripPath`)의 참조 오류 해결 및 전역 필터링 로직 동기화.
+ 
+ ### 🛠 세부 변경 사항
+ 1. **[WEB/FIX] ReferenceError 해결 (drawTripPath)**:
+     - 내부 루프에서 `locations` 대신 존재하지 않는 `validLocs`를 참조하여 주 지도 경로가 그려지지 않던 치명적 버그 수정.
+ 2. **[MAP/STABLE] 필터 로직 전역 동기화**:
+     - 상세 모달용 `tryDraw`와 주 지도용 `drawTripPath`의 GPS 필터링 알고리즘을 최신 버전(Stationary Jitter Filter 포함)으로 동일하게 통일.
+     - 이제 주 지도와 모달 지도 어디서든 동일하게 정제된 경로 시각화 제공.
+ 3. **[MAP/SAFE] 데이터 예외 처리 보강**:
+     - `prev.speed` 값이 `null`이거나 `undefined`인 경우를 대비하여 Optional Chaining/Nullish Coalescing(`??`)을 적용, 정차 필터 작동의 안정성 확보.
+ 
+
+ 
  ## 📅 2026-04-04 (심야) - [WEB/MAP] 정차 중 GPS 잔떨림(Jitter) 방지 필터 도입 (v4.5.25)
  
  ### 🚀 배포 요약

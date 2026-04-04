@@ -234,8 +234,8 @@ export default function VehicleTrackingPage() {
         const filteredLocs = [];
         const SPEED_LIMIT_KMH = 120;
 
-        for (let i = 0; i < validLocs.length; i++) {
-            const curr = validLocs[i];
+        for (let i = 0; i < locations.length; i++) {
+            const curr = locations[i];
             if (filteredLocs.length === 0) { filteredLocs.push(curr); continue; }
 
             const prev = filteredLocs[filteredLocs.length - 1];
@@ -245,20 +245,28 @@ export default function VehicleTrackingPage() {
             const speed = timePrev > 0 ? (distPrev / (timePrev / 3600)) : 0;
             if (timePrev > 0 && speed > SPEED_LIMIT_KMH) continue;
 
-            if (i < validLocs.length - 1) {
-                const next = validLocs[i + 1];
+            if (i < locations.length - 1) {
+                const next = locations[i + 1];
                 const distNext = haversine(curr.lat, curr.lng, next.lat, next.lng);
                 const distPrevNext = haversine(prev.lat, prev.lng, next.lat, next.lng);
-                // Spike Filter: A-B-C 가시 모양의 튐 제거
-                if (distPrev > 0.5 && distNext > 0.5 && distPrevNext < 0.3) continue;
+                
+                // 정차 중(속도 5km/h 이하)일 때는 50m만 튀어도 Spike로 간주하여 지그재그 제거
+                const spikeThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.5;
+                if (distPrev > spikeThreshold && distNext > spikeThreshold && distPrevNext < (spikeThreshold * 0.8)) {
+                    continue; 
+                }
             }
 
-            if (distPrev < 0.03) continue; // 30m 이내 정체 제거
+            // 정체 구간 중복 제거 (정차 중 50m, 주행 중 30m)
+            const moveThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.03;
+            if (distPrev < moveThreshold) continue; 
+            
             filteredLocs.push(curr);
         }
 
-        if (validLocs.length > 0 && filteredLocs[filteredLocs.length - 1] !== validLocs[validLocs.length - 1]) {
-            filteredLocs.push(validLocs[validLocs.length - 1]);
+        // 마지막 지점 복원 (필터링 되어도 최종 위치 표시 보장)
+        if (locations.length > 0 && filteredLocs[filteredLocs.length - 1] !== locations[locations.length - 1]) {
+            filteredLocs.push(locations[locations.length - 1]);
         }
 
         if (filteredLocs.length === 0) return;
@@ -566,15 +574,15 @@ export default function VehicleTrackingPage() {
                     const distNext = distance(curr.lat, curr.lng, next.lat, next.lng);
                     const distPrevNext = distance(prev.lat, prev.lng, next.lat, next.lng);
                     
-                    // 정차 중(속도 저저속)일 때는 50m만 튀어도 Spike로 간주
-                    const spikeThreshold = (prev.speed < 5) ? 0.05 : 0.5;
+                    // 정차 중(속도 5km/h 이하)일 때는 50m만 튀어도 Spike로 간주
+                    const spikeThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.5;
                     if (distPrev > spikeThreshold && distNext > spikeThreshold && distPrevNext < (spikeThreshold * 0.8)) {
                         continue; 
                     }
                 }
 
                 // 3. 정체 구간 중복 제거 (정차 중엔 50m, 주행 중엔 30m 이내 무시)
-                const moveThreshold = (prev.speed < 5) ? 0.05 : 0.03;
+                const moveThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.03;
                 if (distPrev < moveThreshold) continue;
 
                 filteredLocs.push(curr);
