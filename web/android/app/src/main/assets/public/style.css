@@ -27,6 +27,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; overscroll-behavior: none; }
 input, textarea, select, button { font-family: inherit; }
+.hidden { display: none !important; }
 
 /* ─── 앱 컨테이너 ─── */
 #app { display: flex; flex-direction: column; height: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); }

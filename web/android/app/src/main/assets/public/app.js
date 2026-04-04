@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.43';
-  const BUILD_CODE = 343; // Build 343 (v4.3.43)
+  const APP_VERSION = 'v4.3.45';
+  const BUILD_CODE = 345; // Build 345 (v4.3.45)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2396,7 +2396,7 @@
 
     // 배경 지도 이미지
     smImg = document.createElement('img');
-    smImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;user-select:none;pointer-events:none;';
+    smImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;user-select:none;pointer-events:none;';
     smImg.draggable = false;
     el.appendChild(smImg);
 
@@ -2420,8 +2420,10 @@
   function renderStaticMap() {
     if (!smImg || !smContainer) return;
     const { w, h } = getMapSize();
-    const rw = Math.min(Math.floor(w), 512);
-    const rh = Math.min(Math.floor(h), 512);
+    // 네이버 Static Maps는 최대 1024x1024 지원. (모바일 기기는 가뿐히 커버)
+    // rw, rh를 강제 축소하면 object-fit 비율 왜곡이 발생해 마커가 이탈함. 원본 해상도 투입.
+    const rw = Math.min(Math.round(w), 1024);
+    const rh = Math.min(Math.round(h), 1024);
     const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
     // ★ 이미지 로드 완료 후 오버레이 렌더 — 이미지와 마커 기준점 동기화
     smImg.onload = () => { 
@@ -2892,7 +2894,6 @@
     
     // 경로의 넓이에 맞춰 줌 레벨을 계산하되, 최대 줌은 15로 제한하여 너무 타이트하지 않게 함
     smState.zoom = Math.max(5, Math.min(15, Math.floor(Math.min(maxZoomLng, maxZoomLat))));
-    syncZoomSlider();
     renderStaticMap();
 
     // 패널 정보 표시
