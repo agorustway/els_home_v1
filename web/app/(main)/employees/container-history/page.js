@@ -1222,7 +1222,8 @@ function ContainerHistoryInner() {
                                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링</h3>
                                 <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px', gap: '4px' }}>
                                     {[1, 2, 3, 4].map(idx => {
-                                        const workerInfo = (workers || []).find(w => w.id === idx);
+                                        const workerList = Array.isArray(workers) ? workers : [];
+                                        const workerInfo = workerList.find(w => w.id === idx);
                                         const isActive = !!workerInfo;
                                         const isBusy = isActive && !workerInfo.is_available;
                                         return (
@@ -1288,9 +1289,41 @@ function ContainerHistoryInner() {
     );
 }
 
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, errorStr: '' };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, errorStr: error.toString() };
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: '40px', background: '#fef2f2', border: '1px solid #fca5a5', margin: '20px', borderRadius: '12px' }}>
+                    <h2 style={{ color: '#991b1b', marginBottom: '10px' }}>⚠️ 클라이언트 오류가 발생했습니다.</h2>
+                    <p style={{ color: '#475569', marginBottom: '20px' }}>이전 버전의 데이터(캐시) 구조가 현재 시스템과 충돌하여 페이지를 열람할 수 없습니다.</p>
+                    <code style={{ display: 'block', padding: '10px', background: '#fff', color: '#ef4444', marginBottom: '20px', borderRadius: '6px' }}>{this.state.errorStr}</code>
+                    <button 
+                        onClick={() => { sessionStorage.clear(); localStorage.clear(); window.location.reload(); }}
+                        style={{ padding: '10px 20px', background: '#ef4444', color: '#fff', borderRadius: '8px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                    >
+                        모든 캐시 초기화 및 다시 로드 (권장)
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 export default function ContainerHistoryPage() {
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     if (!mounted) return <div style={{ background: '#f1f5f9', minHeight: '100vh' }} />;
-    return <ContainerHistoryInner />;
+    return (
+        <ErrorBoundary>
+            <ContainerHistoryInner />
+        </ErrorBoundary>
+    );
 }
