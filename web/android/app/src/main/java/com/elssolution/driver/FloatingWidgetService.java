@@ -41,6 +41,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Locale;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -805,15 +806,20 @@ public class FloatingWidgetService extends Service {
     // ─── 알림 ─────────────────────────────────────────────────────
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // [v4.2.50] IMPORTANCE_LOW → IMPORTANCE_DEFAULT
-            // Samsung One UI: LOW는 앱을 절전 대상으로 분류 → DEFAULT 이상이어야 프로세스 생존
             NotificationChannel ch = new NotificationChannel(
                 CHANNEL_ID, "ELS 운행상태", NotificationManager.IMPORTANCE_DEFAULT);
             ch.setDescription("운송 중 GPS 위치 추적");
             ch.setShowBadge(false);
-            ch.enableVibration(false); // 진동 끔 (운전 중 방해 방지)
-            ch.setSound(null, null);   // 소리 끔
+            ch.enableVibration(false);
+            ch.setSound(null, null);
             getSystemService(NotificationManager.class).createNotificationChannel(ch);
+
+            NotificationChannel alertCh = new NotificationChannel(
+                "DriverAlertsChannel", "ELS 긴급알림/공지", NotificationManager.IMPORTANCE_HIGH);
+            alertCh.setDescription("운송 기사님들을 위한 중요 공지 및 긴급 시스템 알림");
+            alertCh.setShowBadge(true);
+            alertCh.enableVibration(true);
+            getSystemService(NotificationManager.class).createNotificationChannel(alertCh);
         }
     }
 
@@ -836,52 +842,106 @@ public class FloatingWidgetService extends Service {
         nm.notify(1, buildNotification(text));
     }
 
+    private void showHeadsUpNotification(String title, String text, int notiId) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification noti = new NotificationCompat.Builder(this, "DriverAlertsChannel")
+            .setContentTitle("🚨 " + title)
+            .setContentText(text)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build();
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        nm.notify(notiId, noti);
+    }
+
     // ─── 네이티브 명령 폴링 (백그라운드 생존 보강) ────────────────
     private void pollSystemCommand() {
         if (mTripId == null || mTripId.isEmpty() || mDriverId == null || mDriverId.isEmpty()) return;
         new Thread(() -> {
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
             try {
-                URL url = new URL(BASE_URL + "/api/vehicle-tracking/emergency?unread=true&driver_id=" + mDriverId);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
-                
-                int code = conn.getResponseCode();
-                if (code == 200) {
-                    java.io.InputStream is = conn.getInputStream();
-                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(is));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
+                // 1. 긴급알림 폴링
+                URL urlEmer = new URL(BASE_URL + "/api/vehicle-tracking/emergency?unread=true&driver_id=" + mDriverId);
+                HttpURLConnection connEmer = (HttpURLConnection) urlEmer.openConnection();
+                connEmer.setConnectTimeout(5000); connEmer.setReadTimeout(5000);
+                if (connEmer.getResponseCode() == 200) {
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(connEmer.getInputStream()));
+                    StringBuilder sb = new StringBuilder(); String line;
                     while ((line = br.readLine()) != null) sb.append(line);
                     String data = sb.toString();
                     
-                    // JSON 파싱 (간단히 문자열 매칭으로 속도 향상)
-                    if (data.contains("SYSTEM_COMMAND")) {
-                        if (data.contains("REALTIME_ON:" + mTripId)) {
-                            if (!mIsRealtimeMode) {
-                                mIsRealtimeMode = true;
-                                mCurrentIntervalMs = 3000;
-                                mGpsText = "실시간 수집중";
-                                mGpsColor = "#f59e0b"; // 노란색
-                                restartLocationTracking(); // GPS 수신 주기 즉시 변경
-                                new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
-                                Log.d(TAG, "[NATIVE_POLL] REALTIME_ON -> 3000ms");
-                            }
-                        } else if (data.contains("REALTIME_OFF:" + mTripId)) {
-                            if (mIsRealtimeMode) {
-                                mIsRealtimeMode = false;
-                                mCurrentIntervalMs = 60000;
-                                mGpsText = "60s";
-                                mGpsColor = "#10b981"; // 초록색
-                                restartLocationTracking(); // GPS 수신 주기 즉시 변경
-                                new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
-                                Log.d(TAG, "[NATIVE_POLL] REALTIME_OFF -> 60000ms");
+                    JSONObject jo = new JSONObject(data);
+                    if (jo.has("items")) {
+                        JSONArray items = jo.getJSONArray("items");
+                        if (items.length() > 0) {
+                            JSONObject latest = items.getJSONObject(0);
+                            int id = latest.optInt("id", 0);
+                            String strId = latest.optString("id", "");
+                            String title = latest.optString("title", "긴급 알림");
+                            String message = latest.optString("message", "");
+                            String combinedId = "emer_" + (id != 0 ? id : strId);
+                            String lastSeen = prefs.getString("LAST_SEEN_EMERGENCY", "");
+                            
+                            if (!combinedId.equals(lastSeen) && !message.isEmpty()) {
+                                prefs.edit().putString("LAST_SEEN_EMERGENCY", combinedId).apply();
+                                if (message.contains("SYSTEM_COMMAND")) {
+                                    if (message.contains("REALTIME_ON:" + mTripId) && !mIsRealtimeMode) {
+                                        mIsRealtimeMode = true; mCurrentIntervalMs = 3000;
+                                        mGpsText = "실시간 수집중"; mGpsColor = "#f59e0b";
+                                        restartLocationTracking();
+                                        new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                                        Log.d(TAG, "[NATIVE_POLL] REALTIME_ON -> 3000ms");
+                                    } else if (message.contains("REALTIME_OFF:" + mTripId) && mIsRealtimeMode) {
+                                        mIsRealtimeMode = false; mCurrentIntervalMs = 60000;
+                                        mGpsText = "60s"; mGpsColor = "#10b981";
+                                        restartLocationTracking();
+                                        new Handler(Looper.getMainLooper()).post(this::updateWidgetDisplay);
+                                        Log.d(TAG, "[NATIVE_POLL] REALTIME_OFF -> 60000ms");
+                                    }
+                                } else {
+                                    showHeadsUpNotification(title, message, combinedId.hashCode());
+                                }
                             }
                         }
                     }
                 }
-                conn.disconnect();
+                connEmer.disconnect();
+
+                // 2. 전체공지 폴링
+                URL urlNotice = new URL(BASE_URL + "/api/board?type=notice");
+                HttpURLConnection connNotice = (HttpURLConnection) urlNotice.openConnection();
+                connNotice.setConnectTimeout(5000); connNotice.setReadTimeout(5000);
+                if (connNotice.getResponseCode() == 200) {
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(connNotice.getInputStream()));
+                    StringBuilder sb = new StringBuilder(); String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    String data = sb.toString();
+                    
+                    JSONObject jo = new JSONObject(data);
+                    if (jo.has("posts")) {
+                        JSONArray posts = jo.getJSONArray("posts");
+                        if (posts.length() > 0) {
+                            JSONObject latest = posts.getJSONObject(0);
+                            int id = latest.optInt("id", 0);
+                            String strId = latest.optString("id", "");
+                            String title = latest.optString("title", "새로운 공지사항");
+                            String combinedId = "notice_" + (id != 0 ? id : strId);
+                            String lastSeen = prefs.getString("LAST_SEEN_NOTICE", "");
+                            
+                            if (!combinedId.equals(lastSeen)) {
+                                prefs.edit().putString("LAST_SEEN_NOTICE", combinedId).apply();
+                                showHeadsUpNotification("공지", title, combinedId.hashCode());
+                            }
+                        }
+                    }
+                }
+                connNotice.disconnect();
             } catch (Exception e) {
                 Log.e(TAG, "Native Poll Error: " + e.getMessage());
             }
