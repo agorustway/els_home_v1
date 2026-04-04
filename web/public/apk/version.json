@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.34",
-  "versionCode": 334,
+  "latestVersion": "v4.3.35",
+  "versionCode": 335,
   "forceUpdate": false,
-  "changeLog": "네이버 지도 API 인증 최종 픽스 - WebView Referer 누락 방지 (unsafe-url) 메타태그 삽입 완료.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=334"
+  "changeLog": "지도 엔진 완전 교체 - Naver JS SDK 제거, Static Maps(raster-cors) 방식으로 전환하여 WebView 지도 인증 문제 근본 해결.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=335"
 }
