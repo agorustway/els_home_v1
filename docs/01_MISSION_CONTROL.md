@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.18
-> 마지막 업데이트: 2026-04-04 20:00 (KST)
+# ELS MISSION CONTROL v4.5.19
+> 마지막 업데이트: 2026-04-04 20:06 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **현재 버전**: `v4.3.26` (Mobile) / `v4.5.18` (Unified Web/Backend)  
+- **현재 버전**: `v4.3.26` (Mobile) / `v4.5.19` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-04
-- **상태**: 🚀 차량관제 GPS 필터링 및 브라우저 크래시(TDZ) 완결 조치 
+- **상태**: 🚀 주 지도 경로 GPS 이상치 필터링 완결 (drawTripPath Haversine 통합)
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,6 +17,7 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
+- [x] **2026-04-04**: [WEB/MAP] 주 지도 drawTripPath에 Haversine 이상치 필터링 통합 (v4.5.19)
 - [x] **2026-04-04**: [WEB/MAP] 차량관제 GPS 이상치 필터링 및 Android 뒤로가기 최적화 (v4.5.18)
 - [x] **2026-04-04**: [WEB/FIX] 컨테이너 이력조회 TDZ ReferenceError 완결 조치
 - [x] **2026-04-04**: [WEB/UX] 멀티 브라우저 대기 로그 실시간 동기화 구현
@@ -24,7 +25,11 @@
 - [x] **2026-04-04**: [WEB/UX] 멀티 브라우저 모니터링 UI 도입 (실시간 스크린샷 갱신 3s)
 - [x] **2026-04-04**: [WEB/APK] ELS Driver v4.3.26 업데이트 및 배포 자동화 스크립트 고도화 (v4.1.7+)
 
-## 📋 최근 변경 (v4.5.18 — 2026-04-04)
+## 📋 최근 변경 (v4.5.19 — 2026-04-04)
+- **주 지도 경로 정리**:
+  - `drawTripPath` 함수에 Haversine 기반 GPS 이상치 필터링 추가 (미니맵과 동일 로직 통합).
+  - 시속 200km 초과 GPS 튐 데이터 제거 및 50m 이내 정체 중복 마커 제거.
+  - 종착지 강제 복원 로직 추가 (마지막 위치가 필터링 돼도 E 마커 표시 보장).
 - **안정성 강화**:
   - 컨테이너 이력조회 `ReferenceError: Cannot access before initialization` 해결.
   - 리액트 Error Boundary 도입으로 의도치 않은 렌더링 오류 시 자동 복구 지원.

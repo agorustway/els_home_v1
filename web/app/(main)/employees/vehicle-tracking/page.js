@@ -220,16 +220,41 @@ export default function VehicleTrackingPage() {
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
-        // [최적화 & 버그수정] 좌표 필터링 후 시간순 정렬 및 중복 좌표 제거 (직선 튀는 현상 방지)
+        // [v4.5.18+] Haversine 기반 GPS 이상치 필터링 (미니맵과 동일한 로직 통합)
         let validLocs = locations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
         validLocs.sort((a, b) => new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at));
-        validLocs = validLocs.filter((loc, i, arr) => {
-            if (i === 0) return true;
-            return loc.lat !== arr[i - 1].lat || loc.lng !== arr[i - 1].lng;
-        });
-        if (validLocs.length === 0) return;
 
-        const path = validLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
+        // Haversine 거리 계산 (km 반환)
+        const haversine = (lat1, lng1, lat2, lng2) => {
+            const p = 0.017453292519943295;
+            const c = Math.cos;
+            const a = 0.5 - c((lat2 - lat1) * p) / 2 +
+                c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
+            return 12742 * Math.asin(Math.sqrt(a));
+        };
+
+        // 1. GPS 튐(Jumping) 이상치 제거 (시속 200km 초과) + 2. 정체 중복 제거 (50m 이내)
+        const filteredLocs = [];
+        for (const loc of validLocs) {
+            if (filteredLocs.length === 0) { filteredLocs.push(loc); continue; }
+            const prev = filteredLocs[filteredLocs.length - 1];
+            const distKm = haversine(prev.lat, prev.lng, loc.lat, loc.lng);
+            const timeDiffSec = (new Date(loc.timestamp || loc.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+            if (timeDiffSec > 0 && (distKm / (timeDiffSec / 3600)) > 200) continue; // 이상치 버림
+            if (distKm < 0.05) continue; // 50m 이내 정체 중복 버림
+            filteredLocs.push(loc);
+        }
+        // 마지막 정착지가 필터링됐어도 종착지로 복원
+        if (validLocs.length > 0 && filteredLocs[filteredLocs.length - 1] !== validLocs[validLocs.length - 1]) {
+            const veryLast = validLocs[validLocs.length - 1];
+            const p = filteredLocs[filteredLocs.length - 1];
+            const d = haversine(p.lat, p.lng, veryLast.lat, veryLast.lng);
+            const t = (new Date(veryLast.timestamp || veryLast.recorded_at) - new Date(p.timestamp || p.recorded_at)) / 1000;
+            if (!(t > 0 && (d / (t / 3600)) > 200)) filteredLocs.push(veryLast);
+        }
+
+        if (filteredLocs.length === 0) return;
+        const path = filteredLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
         const polyline = new naver.maps.Polyline({
             map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
             strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
@@ -240,7 +265,7 @@ export default function VehicleTrackingPage() {
         path.forEach(p => bounds.extend(p));
 
         // 조그만 회색 점 (마킹 포인트) 추가 - 선형(Z-index: 1)보다 위 레벨(Z-index: 10) 적용
-        validLocs.forEach(l => {
+        filteredLocs.forEach(l => {
             const pointMarker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(l.lat, l.lng),
                 map: map,
@@ -253,8 +278,8 @@ export default function VehicleTrackingPage() {
             markersRef.current.push(pointMarker);
         });
 
-        const start = validLocs[0];
-        const end = validLocs[validLocs.length - 1];
+        const start = filteredLocs[0];
+        const end = filteredLocs[filteredLocs.length - 1];
         const startMarker = new naver.maps.Marker({
             position: new naver.maps.LatLng(start.lat, start.lng), map,
             zIndex: 100, // 가장 위
