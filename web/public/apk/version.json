@@ -1,6 +1,6 @@
 {
-  "latestVersion": "v4.3.29",
-  "versionCode": 328,
-  "changeLog": "v4.3.29 (Build 328)\n- [네이버 지도] 인증 실패 및 화면 누락 문제 해결 디자인 업데이트\n- [UI] 관제 지도 하단 탭 메뉴 통합 및 뒤로가기 버튼 제거",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?v=328"
+  "latestVersion": "v4.3.30",
+  "versionCode": 330,
+  "changeLog": "v4.3.30 (Build 330 FINAL)\n- [HOTFIX] 지도 화면 중첩(다른 메뉴와 겹침) 버그 완벽 수정\n- [MAP] 네이버 지도 로딩 안정화(500ms 지연 초기화 도입)\n- [UI] 하단 메뉴 탭 고정 및 디자인 통일",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=330final"
 }
