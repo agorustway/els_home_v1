@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.42';
-  const BUILD_CODE = 342; // Build 342 (v4.3.42)
+  const APP_VERSION = 'v4.3.43';
+  const BUILD_CODE = 343; // Build 343 (v4.3.43)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2997,7 +2997,7 @@
     checkUpdate,
     // 지도
     openMap, closeMap, refreshMapData, centerMyLocation, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
-    smZoomIn, smZoomOut, toggleMapPanel, onZoomSlider,
+    toggleMapPanel,
     // [TDD] 로깅 퍼블릭 노출
     remoteLog
   };

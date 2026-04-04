@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.42",
-  "versionCode": 342,
+  "latestVersion": "v4.3.43",
+  "versionCode": 343,
   "forceUpdate": false,
-  "changeLog": "[UI/UX 개선] 줌 화면 세로 슬라이더 완전 제거 (오직 손가락 핀치 줌인/아웃만 지원) 및 드래그 체감 성능 극대화.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=342"
+  "changeLog": "[긴급 핫픽스] v4.3.42 배포 버전에서 앱 시작 불가 현상을 유발시킨 모듈 엑스포트(ReferenceError) 오류 완전 복구.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=343"
 }
