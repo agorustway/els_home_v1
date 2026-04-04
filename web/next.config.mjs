@@ -2,7 +2,6 @@ const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  swcMinify: false,
   output: isStaticExport ? 'export' : undefined,
   images: {
     unoptimized: isStaticExport ? true : false,

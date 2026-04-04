@@ -51,6 +51,7 @@ function parseContainerInput(text) {
 }
 
 function ContainerHistoryInner() {
+    const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
     const [userId, setUserId] = useState('');
     const [userPw, setUserPw] = useState('');
     const [containerInput, setContainerInput] = useState('');
@@ -99,8 +100,6 @@ function ContainerHistoryInner() {
     const hasInitialized = useRef(false);
     const pendingSearchRef = useRef(null);
     const initialCreds = useRef({ id: '', pw: '' });
-
-    const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
 
     // 마운트 후 데이터 복구
     useEffect(() => {
