@@ -320,7 +320,7 @@
   <div id="screen-map" class="screen">
     <!-- 지도 헤더 -->
     <div class="map-header">
-      <div style="width:40px;"></div> <!-- Left spacer -->
+      <button class="map-back-btn" onclick="App.closeMap()">← 닫기</button>
       <span class="map-title">실시간 관제 지도</span>
       <button class="map-refresh-btn" onclick="App.refreshMapData()">🔄</button>
     </div>
@@ -328,24 +328,41 @@
     <!-- 지도 컨테이너 -->
     <div id="driver-map" class="driver-map-container"></div>
 
-    <!-- 현재 위치 버튼 -->
-    <button class="map-myloc-btn" id="btn-map-myloc" onclick="App.centerMyLocation()">📍 내 위치</button>
+    <!-- 화면 고정 플로팅 콘트롤 (screen-map 기준 절대위치) -->
+    <div class="map-float-controls">
+      <!-- 세로 줄 슬라이더 -->
+      <div class="map-zoom-slider-wrap">
+        <span class="map-zoom-label">+</span>
+        <input type="range" id="map-zoom-slider"
+          min="1" max="20" value="7" step="1"
+          class="map-zoom-slider"
+          oninput="App.onZoomSlider(this.value)"
+        >
+        <span class="map-zoom-label">−</span>
+      </div>
+      <!-- 내 위치 버튼 -->
+      <button class="map-myloc-btn" id="btn-map-myloc" onclick="App.centerMyLocation()">📍</button>
+    </div>
 
-    <!-- 운행 목록 팝업 토글 버튼 -->
-    <button class="map-list-btn" id="btn-map-list" onclick="App.toggleMapTripList()">📋 운행목록</button>
-
-    <!-- 운행 목록 팝업 -->
-    <div id="map-trip-list" class="map-trip-list hidden">
-      <div class="map-trip-list-header">
-        <span>현재 운행 차량</span>
-        <button onclick="App.toggleMapTripList()">✕</button>
+    <!-- 하단 패널: 운행 목록 상시 노출 -->
+    <div id="map-bottom-panel" class="map-bottom-panel">
+      <div class="map-panel-header" onclick="App.toggleMapPanel()">
+        <div class="map-panel-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px;">
+          <span style="font-size:13px;font-weight:800;color:#1e293b;">현재 운행 차량</span>
+          <span id="map-panel-count" style="font-size:11px;color:#94a3b8;font-weight:600;">불러오는 중...</span>
+          <span id="map-panel-toggle-icon" style="font-size:16px;color:#94a3b8;">▾</span>
+        </div>
       </div>
       <div id="map-trip-items" class="map-trip-items">
-        <div class="map-loading">불러오는 중...</div>
+        <div class="map-state-loading">
+          <div class="spinner"></div>
+          <span>운행 차량 정보를 불러오는 중...</span>
+        </div>
       </div>
     </div>
 
-    <!-- 선택된 차량 경로 정보 패널 -->
+    <!-- 경로 정보 패널 -->
     <div id="map-route-panel" class="map-route-panel hidden">
       <div class="map-route-header">
         <div class="map-route-title" id="map-route-title">경로 정보</div>

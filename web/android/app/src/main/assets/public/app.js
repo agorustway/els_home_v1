@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.35';
-  const BUILD_CODE = 335; // Build 335 (v4.3.35)
+  const APP_VERSION = 'v4.3.36';
+  const BUILD_CODE = 336; // Build 336 (v4.3.36)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2348,9 +2348,10 @@
   // 줌 → Static Maps level 매핑 (0~20)
   function smZoomToLevel(z) { return Math.max(1, Math.min(20, Math.round(z))); }
 
-  // 위경도 → Static Maps pixel 좌표 (메르카토르 기반 근사치)
-  function latLngToPixel(lat, lng, centerLat, centerLng, zoom, w, h) {
-    const scale = Math.pow(2, zoom) * 256;
+  // 위경도 → Static Maps pixel 좌표 (메르카토르)
+  // ★ zoom은 반드시 smZoomToLevel()로 정수 변환 후 전달 — 이미지 레벨과 일치시켜야 함
+  function latLngToPixel(lat, lng, centerLat, centerLng, zoomLevel, w, h) {
+    const scale = Math.pow(2, zoomLevel) * 256;
     function toMerc(la, lo) {
       const x = (lo + 180) / 360;
       const sinLat = Math.sin(la * Math.PI / 180);
@@ -2411,15 +2412,6 @@
     smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
     el.appendChild(smOverlay);
 
-    // 줌 컨트롤
-    const zmCtrl = document.createElement('div');
-    zmCtrl.style.cssText = 'position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px;z-index:10;';
-    zmCtrl.innerHTML = `
-      <button onclick="App.smZoomIn()" style="width:36px;height:36px;border:none;background:#fff;border-radius:8px;font-size:20px;font-weight:900;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;">+</button>
-      <button onclick="App.smZoomOut()" style="width:36px;height:36px;border:none;background:#fff;border-radius:8px;font-size:20px;font-weight:900;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;">−</button>
-    `;
-    el.appendChild(zmCtrl);
-
     smContainer = el;
     bindMapTouch(el);
     renderStaticMap();
@@ -2428,11 +2420,11 @@
   function renderStaticMap() {
     if (!smImg || !smContainer) return;
     const { w, h } = getMapSize();
-    // Static Maps 픽셀 최대 1024, scale=2라 실제 요청은 w/2
     const rw = Math.min(Math.floor(w), 512);
     const rh = Math.min(Math.floor(h), 512);
     const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
-    smImg.src = url;
+    // ★ 이미지 로드 완료 후 오버레이 렌더 — 이미지와 마커 기준점 동기화
+    smImg.onload = () => { renderMapOverlay(); };
     smImg.onerror = () => {
       smImg.src = '';
       const ctx = smCanvas?.getContext('2d');
@@ -2445,12 +2437,14 @@
         ctx.fillText('지도를 불러오는 중...', smCanvas.width / 2, smCanvas.height / 2);
       }
     };
-    renderMapOverlay();
+    smImg.src = url;
   }
 
   function renderMapOverlay() {
     if (!smCanvas || !smOverlay) return;
     const { w, h } = getMapSize();
+    // ★ 오버레이 계산 시 반드시 정수 level 사용 — 이미지 요청 기준과 동일하게
+    const level = smZoomToLevel(smState.zoom);
     smCanvas.width = w * 2;
     smCanvas.height = h * 2;
     smCanvas.style.width = w + 'px';
@@ -2461,10 +2455,10 @@
 
     // 경로 렌더링
     if (smState.selectedTrip && smState.selectedTrip._path) {
-      drawPathOnCanvas(ctx, smState.selectedTrip._path, w, h);
+      drawPathOnCanvas(ctx, smState.selectedTrip._path, w, h, level);
     }
 
-    // 마커 렌더링
+    // 차량 마커 렌더링
     const contracted = isContractedVehicle();
     const visibleTrips = smState.trips.filter(function(trip) {
       if (!trip.lastLocation) return false;
@@ -2474,7 +2468,9 @@
     visibleTrips.forEach(function(trip) {
       const loc = trip.lastLocation;
       const isMe = isMyTrip(trip);
-      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, smState.zoom, w, h);
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
+      // 화면 밖 마커는 렌더 스킵
+      if (px.x < -60 || px.x > w + 60 || px.y < -40 || px.y > h + 40) return;
 
       const marker = document.createElement('div');
       const color = isMe ? '#10b981' : '#2563eb';
@@ -2485,16 +2481,23 @@
       smOverlay.appendChild(marker);
     });
 
-    // 내 위치 마커
+    // ★ 내 위치 마커 — 파란 점
     if (smState.myLat !== null && smState.myLng !== null) {
-      const px = latLngToPixel(smState.myLat, smState.myLng, smState.lat, smState.lng, smState.zoom, w, h);
-      const dot = document.createElement('div');
-      dot.style.cssText = `position:absolute;left:${px.x - 8}px;top:${px.y - 8}px;width:16px;height:16px;background:#2563eb;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.5);pointer-events:none;z-index:30;`;
-      smOverlay.appendChild(dot);
+      const px = latLngToPixel(smState.myLat, smState.myLng, smState.lat, smState.lng, level, w, h);
+      if (px.x >= -20 && px.x <= w + 20 && px.y >= -20 && px.y <= h + 20) {
+        // 외부 파급원 (halo 효과)
+        const halo = document.createElement('div');
+        halo.style.cssText = `position:absolute;left:${px.x - 16}px;top:${px.y - 16}px;width:32px;height:32px;background:rgba(37,99,235,0.15);border-radius:50%;pointer-events:none;z-index:28;`;
+        smOverlay.appendChild(halo);
+        // 파란 점 본체
+        const dot = document.createElement('div');
+        dot.style.cssText = `position:absolute;left:${px.x - 7}px;top:${px.y - 7}px;width:14px;height:14px;background:#2563eb;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.6);pointer-events:none;z-index:29;`;
+        smOverlay.appendChild(dot);
+      }
     }
   }
 
-  function drawPathOnCanvas(ctx, path, w, h) {
+  function drawPathOnCanvas(ctx, path, w, h, level) {
     if (!path || path.length < 2) return;
     ctx.save();
     ctx.scale(2, 2); // HiDPI
@@ -2505,15 +2508,14 @@
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
     path.forEach(function(loc, i) {
-      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, smState.zoom, w, h);
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
       if (i === 0) ctx.moveTo(px.x, px.y);
       else ctx.lineTo(px.x, px.y);
     });
     ctx.stroke();
 
-    // 시작/종료 마커
     function drawDot(loc, color) {
-      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, smState.zoom, w, h);
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
       ctx.beginPath();
       ctx.arc(px.x, px.y, 7, 0, Math.PI * 2);
       ctx.fillStyle = color;
@@ -2594,6 +2596,7 @@
         const newZoom = Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5));
         if (Math.abs(newZoom - smState.zoom) > 0.3) {
           smState.zoom = newZoom;
+          syncZoomSlider();
           renderStaticMap();
         }
       }
@@ -2613,12 +2616,23 @@
   }
 
   function smZoomIn() {
-    smState.zoom = Math.min(20, smState.zoom + 1);
+    smState.zoom = Math.min(20, Math.round(smState.zoom) + 1);
+    syncZoomSlider();
     renderStaticMap();
   }
   function smZoomOut() {
-    smState.zoom = Math.max(1, smState.zoom - 1);
+    smState.zoom = Math.max(1, Math.round(smState.zoom) - 1);
+    syncZoomSlider();
     renderStaticMap();
+  }
+  function onZoomSlider(val) {
+    smState.zoom = parseInt(val, 10);
+    renderStaticMap();
+  }
+  // 핵치줌/휠 등으로 이 변경될 때 슬라이더 UI도 동기화
+  function syncZoomSlider() {
+    const sl = document.getElementById('map-zoom-slider');
+    if (sl) sl.value = Math.round(smState.zoom);
   }
 
   // ─── 지도 화면 공개 API ──────────────────────────────────────────
@@ -2635,6 +2649,7 @@
     // DOM 레이아웃 안정화 후 초기화
     requestAnimationFrame(() => requestAnimationFrame(() => {
       initStaticMap();
+      syncZoomSlider(); // 슬라이더 초기값도 동기화
       refreshMapData();
     }));
 
@@ -2696,10 +2711,22 @@
     });
 
     const container = document.getElementById('map-trip-items');
+    const countEl = document.getElementById('map-panel-count');
     if (!container) return;
 
+    // 수 빙지 업데이트
+    if (countEl) {
+      if (visibleTrips.length === 0) {
+        countEl.textContent = '운행 없음';
+        countEl.style.color = '#cbd5e1';
+      } else {
+        countEl.textContent = visibleTrips.length + '대 운행 중';
+        countEl.style.color = '#10b981';
+      }
+    }
+
     if (visibleTrips.length === 0) {
-      container.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">현재 운행 중인 차량이 없습니다.</div>';
+      container.innerHTML = '<div class="map-state-empty"><span class="map-empty-icon">🚚</span><span>현재 운행 중인 차량이 없습니다.</span></div>';
       return;
     }
 
@@ -2709,14 +2736,15 @@
       const badge = isMe ? '<span style="background:#10b981;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:4px;">내 차량</span>' : '';
       const driver = trip.driver_name || trip.driverId || '-';
       const vehicle = trip.vehicle_number || '-';
-      const speed = (trip.lastLocation && trip.lastLocation.speed) ? trip.lastLocation.speed + ' km/h' : '0 km/h';
+      const speed = (trip.lastLocation && trip.lastLocation.speed != null) ? Math.round(trip.lastLocation.speed) + ' km/h' : '-';
       const addr = (trip.lastLocation && trip.lastLocation.address) || trip.last_location_address || '위치 확인 중...';
 
       const el = document.createElement('div');
       el.className = 'map-trip-item';
-      el.innerHTML = '<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;"><span style="font-size:13px;font-weight:800;color:#1e293b;">' + vehicle + '</span>' + badge + '</div>' +
-        '<div style="font-size:12px;color:#64748b;">' + driver + ' &nbsp;| 속도: ' + speed + '</div>' +
-        '<div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + addr + '</div>';
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:13px;font-weight:800;color:#1e293b;">' + vehicle + '</span>' + badge + '</div>' +
+        '<div style="font-size:12px;color:#64748b;">' + driver + ' &nbsp;· ' + speed + '</div>' +
+        '<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + addr + '</div>';
       (function(t) {
         el.onclick = function() { showTripRouteOnMap(t); };
       })(trip);
@@ -2724,12 +2752,19 @@
     });
   }
 
-  function toggleMapTripList() {
-    const panel = document.getElementById('map-trip-list');
+  // 하단 패널 접기/펼치기
+  let _mapPanelCollapsed = false;
+  function toggleMapPanel() {
+    const panel = document.getElementById('map-bottom-panel');
+    const icon = document.getElementById('map-panel-toggle-icon');
     if (!panel) return;
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) refreshMapData();
+    _mapPanelCollapsed = !_mapPanelCollapsed;
+    panel.classList.toggle('collapsed', _mapPanelCollapsed);
+    if (icon) icon.textContent = _mapPanelCollapsed ? '▴' : '▾';
   }
+
+  // 하위호환성: 구 팩업 방식에서 대실를 예상하는 코드를 위한 주석 처리
+  function toggleMapTripList() { toggleMapPanel(); }
 
   async function showTripRouteOnMap(trip) {
     document.getElementById('map-trip-list')?.classList.add('hidden');
@@ -2897,7 +2932,7 @@
     checkUpdate,
     // 지도
     openMap, closeMap, refreshMapData, centerMyLocation, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
-    smZoomIn, smZoomOut,
+    smZoomIn, smZoomOut, toggleMapPanel, onZoomSlider,
     // [TDD] 로깅 퍼블릭 노출
     remoteLog
   };

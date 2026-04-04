@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.35",
-  "versionCode": 335,
+  "latestVersion": "v4.3.36",
+  "versionCode": 336,
   "forceUpdate": false,
-  "changeLog": "지도 엔진 완전 교체 - Naver JS SDK 제거, Static Maps(raster-cors) 방식으로 전환하여 WebView 지도 인증 문제 근본 해결.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=335"
+  "changeLog": "지도 UI 전면 개선: 줌 슬라이더, 내위치 마커 정확도 수정, 차량 목록 하단 패널 상시 노출, 마커 위치 동기화 버그 수정.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=336"
 }
