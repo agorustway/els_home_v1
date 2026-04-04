@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.28';
-  const BUILD_CODE = 327; // Build 327 (v4.3.28)
+  const APP_VERSION = 'v4.3.29';
+  const BUILD_CODE = 328; // Build 328 (v4.3.29)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -358,9 +358,23 @@
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + name)?.classList.add('active');
+
+    const globalTabBar = document.getElementById('global-tab-bar');
+    const globalSafeArea = document.getElementById('global-safe-area');
+    if (globalTabBar && globalSafeArea) {
+      if (name === 'main' || name === 'map') {
+        globalTabBar.classList.remove('hidden');
+        globalSafeArea.classList.remove('hidden');
+      } else {
+        globalTabBar.classList.add('hidden');
+        globalSafeArea.classList.add('hidden');
+      }
+    }
   }
 
   function switchTab(tab) {
+    if (tab === 'map') { openMap(); return; }
+    showScreen('main');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.remove('active'));
     const tabEl = document.getElementById('tab-' + tab);
@@ -2327,6 +2341,10 @@
 
   async function openMap() {
     showScreen('map');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('tab-btn-map');
+    if (btn) btn.classList.add('active');
+
     await waitForNaverMap();
     initDriverMap();
     await refreshMapData();

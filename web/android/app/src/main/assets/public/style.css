@@ -379,6 +379,8 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
 #screen-map {
   position: relative;
   overflow: hidden;
+  display: flex !important;
+  flex-direction: column;
 }
 .driver-map-container {
   flex: 1;
