@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.29';
-  const BUILD_CODE = 328; // Build 328 (v4.3.29)
+  const APP_VERSION = 'v4.3.30';
+  const BUILD_CODE = 330; // Build 330 (v4.3.30)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2345,9 +2345,13 @@
     const btn = document.getElementById('tab-btn-map');
     if (btn) btn.classList.add('active');
 
-    await waitForNaverMap();
-    initDriverMap();
-    await refreshMapData();
+    // [TDD] \ub3c4\uba54\uc778 \ud638\uc2a4\ud2b8\ub124\uc784 \ubcc0\uacb2 \ud6c4 \uc6f9\ubdf0 \ub80c\ub354\ub9c1 \uc548\uc815\ud654\ub9bc \uc704\ud574 500ms \uc9c0\uc5f0 \ud6c4 \ucd08\uae30\ud654
+    setTimeout(async () => {
+      await waitForNaverMap();
+      initDriverMap();
+      await refreshMapData();
+    }, 500);
+
     if (mapPollTimer) clearInterval(mapPollTimer);
     mapPollTimer = setInterval(refreshMapData, 30000);
   }
