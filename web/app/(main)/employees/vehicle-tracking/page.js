@@ -497,13 +497,54 @@ export default function VehicleTrackingPage() {
 
             let validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
             validLocs.sort((a, b) => new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at));
-            validLocs = validLocs.filter((loc, i, arr) => {
-                if (i === 0) return true;
-                return loc.lat !== arr[i - 1].lat || loc.lng !== arr[i - 1].lng;
-            });
+            
             if (validLocs.length === 0) return;
 
-            const path = validLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
+            const distance = (lat1, lng1, lat2, lng2) => {
+                const p = 0.017453292519943295;
+                const c = Math.cos;
+                const a = 0.5 - c((lat2 - lat1) * p)/2 + 
+                        c(lat1 * p) * c(lat2 * p) * 
+                        (1 - c((lng2 - lng1) * p))/2;
+                return 12742 * Math.asin(Math.sqrt(a)); // returns distance in km
+            };
+
+            const filteredLocs = [];
+            for (const loc of validLocs) {
+                if (filteredLocs.length === 0) {
+                    filteredLocs.push(loc);
+                    continue;
+                }
+                const prev = filteredLocs[filteredLocs.length - 1];
+                const distKm = distance(prev.lat, prev.lng, loc.lat, loc.lng);
+                const timeDiffSec = (new Date(loc.timestamp || loc.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+                
+                // 1. GPS 튐(Jumping) 현상 방지: (시속 200km 초과 불가)
+                if (timeDiffSec > 0 && (distKm / (timeDiffSec / 3600)) > 200) {
+                     continue; // 이상치 버림
+                }
+                
+                // 2. 오래 머무르는 중복 구역 마커 정리 (반경 50m 이내면 패스해서 화면 깔끔하게 유지)
+                if (distKm < 0.05) {
+                     continue;
+                }
+                
+                filteredLocs.push(loc);
+            }
+            
+            // 마지막 1건이 50m 이내여서 버려졌더라도, 종착지로서의 의미가 있으니 다시 붙여줍니다.
+            if (validLocs.length > 0 && filteredLocs[filteredLocs.length - 1] !== validLocs[validLocs.length - 1]) {
+                const veryLast = validLocs[validLocs.length - 1];
+                // 아주 터무니없는 GPS 점프가 아니라면 마지막 지점은 포함
+                const p = filteredLocs[filteredLocs.length - 1];
+                const d = distance(p.lat, p.lng, veryLast.lat, veryLast.lng);
+                const t = (new Date(veryLast.timestamp || veryLast.recorded_at) - new Date(p.timestamp || p.recorded_at)) / 1000;
+                if (!(t > 0 && (d / (t / 3600)) > 200)) {
+                    filteredLocs.push(veryLast);
+                }
+            }
+
+            const path = filteredLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
             const polyline = new window.naver.maps.Polyline({
                 map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
                 strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
@@ -513,7 +554,7 @@ export default function VehicleTrackingPage() {
             const bounds = new window.naver.maps.LatLngBounds();
             path.forEach(p => bounds.extend(p));
 
-            validLocs.forEach(l => {
+            filteredLocs.forEach(l => {
                 const pointMarker = new window.naver.maps.Marker({
                     position: new window.naver.maps.LatLng(l.lat, l.lng), map,
                     icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
@@ -546,24 +587,32 @@ export default function VehicleTrackingPage() {
         tryDraw(); // [v4.5.12] retry 루프 진입
     }, [selectedTrip, selectedTripLocations, realtimeTarget]);
 
-    // [신규] 안드로이드 뒤로가기 버튼 연동 (모달 닫기)
+    // [신규] 안드로이드 뒤로가기 버튼 연동 (Hash를 통한 사이드이펙트 방지)
     useEffect(() => {
         if (!selectedTrip) return;
         
-        window.history.pushState({ modal: 'detail' }, '', '');
+        // 브라우저 주소창 뒤에 #detail 을 붙여서 히스토리 항목을 하나 생성
+        window.location.hash = 'detail';
         
-        const handlePopState = (e) => {
-            // 뒤로가기 발생 시
-            miniMapInstanceRef.current = null;
-            setSelectedTrip(null);
-            stopRealtimeTracking(selectedTrip.id);
+        const handleHashChange = () => {
+            if (window.location.hash !== '#detail') {
+                // 사용자가 스마트폰 뒤로가기 버튼을 눌러서 #detail 이 사라졌을 때
+                miniMapInstanceRef.current = null;
+                setSelectedTrip(null);
+                if (typeof stopRealtimeTracking === 'function') stopRealtimeTracking(selectedTrip.id);
+            }
         };
         
-        window.addEventListener('popstate', handlePopState);
+        window.addEventListener('hashchange', handleHashChange);
         return () => {
-            window.removeEventListener('popstate', handlePopState);
+            window.removeEventListener('hashchange', handleHashChange);
+            // 만약 모달이 컴포넌트 내부에서 그냥 닫혔다면 (X 버튼 등)
+            if (window.location.hash === '#detail') {
+                // 뒤로가기를 1회 소모해서 주소창을 원상복구
+                window.history.back();
+            }
         };
-    }, [selectedTrip, stopRealtimeTracking]);
+    }, [selectedTrip]);
 
     // 네이버맵 초기화
     useEffect(() => {
@@ -1134,12 +1183,7 @@ export default function VehicleTrackingPage() {
                             )}
                         </div>
                         <button className={styles.closeBtn} onClick={() => { 
-                            miniMapInstanceRef.current = null; 
                             setSelectedTrip(null); 
-                            stopRealtimeTracking(selectedTrip.id);
-                            if (window.history.state?.modal === 'detail') {
-                                window.history.back(); // history pop 호출 트리거
-                            }
                         }}>✕</button>
                     </div>
                     <div className={styles.detailContent}>

@@ -740,6 +740,8 @@
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .detailHeader::before {
@@ -766,14 +768,21 @@
     .detailContent {
         padding: 14px;
         gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .detailSection {
         padding: 12px;
         border-radius: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
-    .sectionTitle { font-size: 0.76rem; margin-bottom: 8px; }
+    .sectionTitle { font-size: 0.76rem; margin-bottom: 8px; flex-wrap: wrap; }
+    
+    .sectionTitle > div { flex-wrap: wrap; }
 
     .detailInfoGrid {
         grid-template-columns: repeat(2, 1fr);
@@ -781,14 +790,14 @@
     }
 
     .infoLabel { font-size: 0.68rem; }
-    .infoValue { font-size: 0.84rem; }
+    .infoValue { font-size: 0.84rem; display: block; word-break: break-all; }
 
     .photoGallery {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 6px;
     }
 
-    .locationList { max-height: 240px; }
+    .locationList { max-height: 240px; width: 100%; }
     .locationItem { padding: 8px 10px; }
     .locTime { font-size: 0.67rem; }
     .locAddress { font-size: 0.8rem; }
@@ -797,9 +806,10 @@
     .modalBox {
         width: 96%;
         max-width: none;
+        box-sizing: border-box;
     }
 
-    .modalBody { padding: 14px; }
+    .modalBody { padding: 14px; width: 100%; box-sizing: border-box; }
 
     /* ── 기타 ── */
     .narrowCol {
