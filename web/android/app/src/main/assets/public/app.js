@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.30';
-  const BUILD_CODE = 330; // Build 330 (v4.3.30)
+  const APP_VERSION = 'v4.3.31';
+  const BUILD_CODE = 331; // Build 331 (v4.3.31)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2329,12 +2329,14 @@
 
   function waitForNaverMap() {
     return new Promise((resolve) => {
-      if (window.naver && window.naver.maps) { resolve(); return; }
+      if (window.naver && window.naver.maps) { resolve(true); return; }
+      if (window._naverMapLoadError) { resolve(false); return; }
       let tries = 0;
       const t = setInterval(() => {
         tries++;
-        if (window.naver && window.naver.maps) { clearInterval(t); resolve(); }
-        if (tries > 40) { clearInterval(t); resolve(); }
+        if (window.naver && window.naver.maps) { clearInterval(t); resolve(true); return; }
+        if (window._naverMapLoadError) { clearInterval(t); resolve(false); return; }
+        if (tries > 50) { clearInterval(t); resolve(false); } // 15초 대기
       }, 300);
     });
   }
@@ -2345,9 +2347,23 @@
     const btn = document.getElementById('tab-btn-map');
     if (btn) btn.classList.add('active');
 
-    // [TDD] \ub3c4\uba54\uc778 \ud638\uc2a4\ud2b8\ub124\uc784 \ubcc0\uacb2 \ud6c4 \uc6f9\ubdf0 \ub80c\ub354\ub9c1 \uc548\uc815\ud654\ub9bc \uc704\ud574 500ms \uc9c0\uc5f0 \ud6c4 \ucd08\uae30\ud654
     setTimeout(async () => {
-      await waitForNaverMap();
+      const loaded = await waitForNaverMap();
+      if (!loaded) {
+        const el = document.getElementById('driver-map');
+        const origin = location.origin;
+        remoteLog(`[MAP_ERR] 네이버 지도 SDK 로드 실패. Origin: ${origin}`, 'MAP_INIT');
+        if (el) el.innerHTML = [
+          '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;">',
+          '<div style="font-size:36px;margin-bottom:12px;">🗺️</div>',
+          '<div style="font-size:15px;font-weight:900;color:#ef4444;margin-bottom:8px;">지도 로드 실패</div>',
+          '<div style="font-size:13px;color:#64748b;line-height:1.7;margin-bottom:16px;">NCP 콘솔 → Maps → 앱 선택 →<br><b>웹 서비스 URL</b>에 아래 주소를 등록하세요:</div>',
+          '<div style="background:#f1f5f9;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;color:#1e293b;word-break:break-all;margin-bottom:16px;">' + origin + '</div>',
+          '<button onclick="App.openMap()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;">🔄 다시 시도</button>',
+          '</div>'
+        ].join('');
+        return;
+      }
       initDriverMap();
       await refreshMapData();
     }, 500);

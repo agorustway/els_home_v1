@@ -300,7 +300,7 @@
             <span>개인정보 처리방침 및 이용약관</span>
           </button>
           <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.checkUpdate()">
-            <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.30</span>
+            <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;">v4.3.31</span>
           </button>
           <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.clearCache()">
             <span>캐시 지우기 (새로고침)</span>
@@ -464,7 +464,8 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=hxoj79osnj&submodules=geocoder"></script>
-<script src="app.js?v=4.3.30"></script>
+<script>window._naverMapLoadError=false;window._naverMapReady=false;window.__naverMapCB=function(){window._naverMapReady=true;console.log('[NaverMap] SDK 로드 성공! Origin:',location.origin);};</script>
+<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=hxoj79osnj&submodules=geocoder&callback=__naverMapCB" onerror="window._naverMapLoadError=true;console.error('[NaverMap] SDK 로드 실패! NCP 콘솔에서 도메인 등록 필요. Origin:',location.origin);"></script>
+<script src="app.js?v=4.3.31"></script>
 </body>
 </html>
