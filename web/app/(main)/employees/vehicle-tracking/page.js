@@ -566,13 +566,16 @@ export default function VehicleTrackingPage() {
                     const distNext = distance(curr.lat, curr.lng, next.lat, next.lng);
                     const distPrevNext = distance(prev.lat, prev.lng, next.lat, next.lng);
                     
-                    if (distPrev > 0.5 && distNext > 0.5 && distPrevNext < 0.3) {
+                    // 정차 중(속도 저저속)일 때는 50m만 튀어도 Spike로 간주
+                    const spikeThreshold = (prev.speed < 5) ? 0.05 : 0.5;
+                    if (distPrev > spikeThreshold && distNext > spikeThreshold && distPrevNext < (spikeThreshold * 0.8)) {
                         continue; 
                     }
                 }
 
-                // 3. 정체 구간 중복 제거 (30m 이내)
-                if (distPrev < 0.03) continue;
+                // 3. 정체 구간 중복 제거 (정차 중엔 50m, 주행 중엔 30m 이내 무시)
+                const moveThreshold = (prev.speed < 5) ? 0.05 : 0.03;
+                if (distPrev < moveThreshold) continue;
 
                 filteredLocs.push(curr);
             }
