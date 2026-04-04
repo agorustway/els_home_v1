@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.37",
-  "versionCode": 337,
+  "latestVersion": "v4.3.38",
+  "versionCode": 338,
   "forceUpdate": false,
-  "changeLog": "지도 UX 고도화: 드래그 시 배경지도-마커 동기화(Transform), 줌 슬라이더 스냅 조작 구현, 운행종료차량 식별 로직 보완 및 리스트 갱신 해결.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=337"
+  "changeLog": "맵뷰 터치 시스냅 개선 (자연스러운 드래그) 및 차량경로 클릭 시 화면오토줌(Auto Bounds) 반영.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=338"
 }
