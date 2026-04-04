@@ -6,8 +6,8 @@
   'use strict';
   console.log('ELS Driver App Loading... v4.2.59');
 
-  const APP_VERSION = 'v4.3.25';
-  const BUILD_CODE = 324; // Build 324 (v4.3.25)
+  const APP_VERSION = 'v4.3.26';
+  const BUILD_CODE = 325; // Build 325 (v4.3.26)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2305,7 +2305,295 @@
     }
   }
 
+  // ─── 지도 화면 ────────────────────────────────────────────────────────────
+  let driverMapInstance = null;
+  let driverMapMarkers = [];
+  let driverRoutePolyline = null;
+  let driverRouteMarkers = [];
+  let myLocationMarker = null;
+  let mapPollTimer = null;
+
+  function waitForNaverMap() {
+    return new Promise((resolve) => {
+      if (window.naver && window.naver.maps) { resolve(); return; }
+      let tries = 0;
+      const t = setInterval(() => {
+        tries++;
+        if (window.naver && window.naver.maps) { clearInterval(t); resolve(); }
+        if (tries > 40) { clearInterval(t); resolve(); }
+      }, 300);
+    });
+  }
+
+  async function openMap() {
+    showScreen('map');
+    await waitForNaverMap();
+    initDriverMap();
+    await refreshMapData();
+    if (mapPollTimer) clearInterval(mapPollTimer);
+    mapPollTimer = setInterval(refreshMapData, 30000);
+  }
+
+  function closeMap() {
+    if (mapPollTimer) { clearInterval(mapPollTimer); mapPollTimer = null; }
+    showScreen('main');
+    switchTab('trip');
+  }
+
+  function initDriverMap() {
+    if (!window.naver || !window.naver.maps) {
+      const el = document.getElementById('driver-map');
+      if (el) el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:14px;">지도를 불러오는 중...</div>';
+      return;
+    }
+    if (driverMapInstance) {
+      naver.maps.Event.trigger(driverMapInstance, 'resize');
+      return;
+    }
+    const defaultCenter = new naver.maps.LatLng(36.5, 127.5);
+    driverMapInstance = new naver.maps.Map('driver-map', {
+      center: defaultCenter,
+      zoom: 7,
+      zoomControl: true,
+      zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+    });
+    centerMyLocation();
+  }
+
+  function centerMyLocation() {
+    if (!driverMapInstance || !window.naver) return;
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        const loc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+        driverMapInstance.setCenter(loc);
+        driverMapInstance.setZoom(15);
+        if (myLocationMarker) myLocationMarker.setMap(null);
+        myLocationMarker = new naver.maps.Marker({
+          position: loc,
+          map: driverMapInstance,
+          zIndex: 200,
+          icon: {
+            content: '<div style="width:16px;height:16px;background:#2563eb;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,0.5);"></div>',
+            anchor: new naver.maps.Point(8, 8)
+          }
+        });
+      },
+      function() { showToast('현재 위치를 가져올 수 없습니다.'); }
+    );
+  }
+
+  async function refreshMapData() {
+    try {
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking?mode=active');
+      const data = await res.json();
+      const trips = data.data || [];
+      renderMapMarkers(trips);
+      renderMapTripList(trips);
+    } catch (e) {
+      console.warn('refreshMapData 오류', e);
+    }
+  }
+
+  // 계약 차량 판별: driverId가 ELSS로 시작하면 계약 차량
+  function isContractedVehicle() {
+    const id = (State.profile.driverId || '').toUpperCase();
+    return id.startsWith('ELSS');
+  }
+
+  function isMyTrip(trip) {
+    const myVehicle = (State.profile.vehicleNo || '').replace(/\s/g, '').toUpperCase();
+    const myId = (State.profile.driverId || '').toUpperCase();
+    const tripVehicle = (trip.vehicle_number || trip.vehicleNo || '').replace(/\s/g, '').toUpperCase();
+    const tripDriverId = (trip.vehicle_id || trip.driverId || '').toUpperCase();
+    return tripVehicle === myVehicle || tripDriverId === myId;
+  }
+
+  function renderMapMarkers(trips) {
+    if (!driverMapInstance || !window.naver) return;
+    driverMapMarkers.forEach(function(m) { m.setMap(null); });
+    driverMapMarkers = [];
+
+    const contracted = isContractedVehicle();
+    const visibleTrips = trips.filter(function(trip) {
+      if (!trip.lastLocation) return false;
+      return contracted ? true : isMyTrip(trip);
+    });
+
+    visibleTrips.forEach(function(trip) {
+      const loc = trip.lastLocation;
+      const isMe = isMyTrip(trip);
+      const pos = new naver.maps.LatLng(loc.lat, loc.lng);
+      const color = isMe ? '#10b981' : '#2563eb';
+      const label = trip.vehicle_number || trip.driverId || '차량';
+
+      const marker = new naver.maps.Marker({
+        position: pos,
+        map: driverMapInstance,
+        zIndex: isMe ? 100 : 50,
+        icon: {
+          content: '<div style="background:' + color + ';color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 8px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);">' + label + '</div>',
+          anchor: new naver.maps.Point(30, 15)
+        }
+      });
+
+      (function(t) {
+        naver.maps.Event.addListener(marker, 'click', function() {
+          showTripRouteOnMap(t);
+        });
+      })(trip);
+
+      driverMapMarkers.push(marker);
+    });
+  }
+
+  function renderMapTripList(trips) {
+    const contracted = isContractedVehicle();
+    const visibleTrips = trips.filter(function(trip) {
+      return contracted ? true : isMyTrip(trip);
+    });
+
+    const container = document.getElementById('map-trip-items');
+    if (!container) return;
+
+    if (visibleTrips.length === 0) {
+      container.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">현재 운행 중인 차량이 없습니다.</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    visibleTrips.forEach(function(trip) {
+      const isMe = isMyTrip(trip);
+      const badge = isMe ? '<span style="background:#10b981;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:10px;margin-left:4px;">내 차량</span>' : '';
+      const driver = trip.driver_name || trip.driverId || '-';
+      const vehicle = trip.vehicle_number || '-';
+      const speed = (trip.lastLocation && trip.lastLocation.speed) ? trip.lastLocation.speed + ' km/h' : '0 km/h';
+      const addr = (trip.lastLocation && trip.lastLocation.address) || trip.last_location_address || '위치 확인 중...';
+
+      const el = document.createElement('div');
+      el.className = 'map-trip-item';
+      el.innerHTML = '<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;"><span style="font-size:13px;font-weight:800;color:#1e293b;">' + vehicle + '</span>' + badge + '</div>' +
+        '<div style="font-size:12px;color:#64748b;">' + driver + ' &nbsp;| 속도: ' + speed + '</div>' +
+        '<div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + addr + '</div>';
+      (function(t) {
+        el.onclick = function() { showTripRouteOnMap(t); };
+      })(trip);
+      container.appendChild(el);
+    });
+  }
+
+  function toggleMapTripList() {
+    const panel = document.getElementById('map-trip-list');
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) refreshMapData();
+  }
+
+  async function showTripRouteOnMap(trip) {
+    if (!driverMapInstance || !window.naver) return;
+    document.getElementById('map-trip-list').classList.add('hidden');
+    clearMapRoute();
+
+    let locations = [];
+    try {
+      if (trip.id) {
+        const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips/' + trip.id + '/locations');
+        const data = await res.json();
+        locations = data.locations || data.data || [];
+      }
+    } catch (e) { console.warn('locations fetch 실패', e); }
+
+    if (locations.length === 0 && trip.lastLocation) {
+      locations = [Object.assign({}, trip.lastLocation, { recorded_at: new Date().toISOString() })];
+    }
+    if (locations.length === 0) { showToast('경로 데이터가 없습니다.'); return; }
+
+    var validLocs = locations
+      .filter(function(l) { return l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132; })
+      .sort(function(a, b) { return new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at); });
+
+    function hav(lat1, lng1, lat2, lng2) {
+      var p = 0.017453292519943295;
+      var a = 0.5 - Math.cos((lat2 - lat1) * p) / 2 +
+        Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lng2 - lng1) * p)) / 2;
+      return 12742 * Math.asin(Math.sqrt(a));
+    }
+
+    var filtered = [];
+    for (var i = 0; i < validLocs.length; i++) {
+      var curr = validLocs[i];
+      if (filtered.length === 0) { filtered.push(curr); continue; }
+      var prev = filtered[filtered.length - 1];
+      var dist = hav(prev.lat, prev.lng, curr.lat, curr.lng);
+      var dt = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+      if (dt > 0 && (dist / (dt / 3600)) > 120) continue;
+      if (i < validLocs.length - 1) {
+        var next = validLocs[i + 1];
+        var threshold = ((prev.speed == null ? 0 : prev.speed) < 5) ? 0.05 : 0.5;
+        var dN = hav(curr.lat, curr.lng, next.lat, next.lng);
+        var dPN = hav(prev.lat, prev.lng, next.lat, next.lng);
+        if (dist > threshold && dN > threshold && dPN < threshold * 0.8) continue;
+      }
+      var moveThreshold = ((prev.speed == null ? 0 : prev.speed) < 5) ? 0.05 : 0.03;
+      if (dist < moveThreshold) continue;
+      filtered.push(curr);
+    }
+    if (validLocs.length > 0 && filtered[filtered.length - 1] !== validLocs[validLocs.length - 1]) {
+      filtered.push(validLocs[validLocs.length - 1]);
+    }
+    if (filtered.length === 0) { showToast('표시할 경로가 없습니다.'); return; }
+
+    var path = filtered.map(function(l) { return new naver.maps.LatLng(l.lat, l.lng); });
+    driverRoutePolyline = new naver.maps.Polyline({
+      map: driverMapInstance, path: path,
+      strokeColor: '#2563eb', strokeWeight: 5, strokeOpacity: 0.85,
+      strokeLineCap: 'round', strokeLineJoin: 'round'
+    });
+
+    function addRM(pos, label, color) {
+      var m = new naver.maps.Marker({
+        position: pos, map: driverMapInstance, zIndex: 300,
+        icon: { content: '<div style="width:24px;height:24px;background:' + color + ';color:#fff;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,0.3);">' + label + '</div>', anchor: new naver.maps.Point(12, 12) }
+      });
+      driverRouteMarkers.push(m);
+    }
+    addRM(path[0], 'S', '#10b981');
+    addRM(path[path.length - 1], 'E', '#ef4444');
+
+    var bounds = new naver.maps.LatLngBounds();
+    path.forEach(function(p) { bounds.extend(p); });
+    driverMapInstance.fitBounds(bounds, { top: 80, right: 60, bottom: 200, left: 60 });
+
+    var panel = document.getElementById('map-route-panel');
+    var titleEl = document.getElementById('map-route-title');
+    var bodyEl = document.getElementById('map-route-body');
+    if (panel && titleEl && bodyEl) {
+      var vn = trip.vehicle_number || '';
+      var dn = trip.driver_name || trip.driverId || '';
+      titleEl.textContent = vn + (dn ? ' — ' + dn : '');
+      var lastLoc = filtered[filtered.length - 1];
+      var startTime = trip.started_at || filtered[0].recorded_at;
+      var elapsed = startTime ? Math.floor((Date.now() - new Date(startTime)) / 60000) : 0;
+      var elapsedStr = (elapsed >= 60 ? Math.floor(elapsed / 60) + '시간 ' : '') + (elapsed % 60) + '분';
+      var locStr = lastLoc.address || ('(' + lastLoc.lat.toFixed(5) + ', ' + lastLoc.lng.toFixed(5) + ')');
+      bodyEl.innerHTML = '<div style="font-size:12px;color:#64748b;line-height:1.8;">' +
+        '▶ 출발: ' + (startTime ? new Date(startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-') + ' 당시<br>' +
+        '⏱ 운행 시간: ' + elapsedStr + '<br>' +
+        '🔄 총 ' + filtered.length + '개 지점<br>' +
+        '📍 현 위치: ' + locStr + '</div>';
+      panel.classList.remove('hidden');
+    }
+  }
+
+  function clearMapRoute() {
+    if (driverRoutePolyline) { driverRoutePolyline.setMap(null); driverRoutePolyline = null; }
+    driverRouteMarkers.forEach(function(m) { m.setMap(null); });
+    driverRouteMarkers = [];
+    var p = document.getElementById('map-route-panel');
+    if (p) p.classList.add('hidden');
+  }
+
   // ─── 앱 종료 ──────────────────────────────────────────────────
+
   async function exitApp() {
     if (window.isTripActive()) {
       showToast('운행 중에는 종료할 수 없습니다. 운행 종료 후 앱 종료가 가능합니다.');
@@ -2373,9 +2661,12 @@
     loadLogs, openLog, saveLogEdit, onLogFieldChange, deleteLog, closeLogDetail, openLogPhoto, addLogPhoto, onLogFileSelected, forceCompleteLog,
     // 긴급
     closeEmergency,
-    // 업데이트/종료
-    checkUpdate, exitApp,
+    // 업데이트
+    checkUpdate,
+    // 지도
+    openMap, closeMap, refreshMapData, centerMyLocation, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
   };
+
 
   // ─── 핀치 줌 (사진 두 손가락 확대) ──────────────────────────────────────────
   function initPinchZoom() {

@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ELS 차량관리</title>
-<link rel="stylesheet" href="style.css?v=4.3.15">
+<link rel="stylesheet" href="style.css?v=4.3.26">
+<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=hxoj79osnj&submodules=geocoder" defer></script>
 </head>
 <body>
 <div id="app">
@@ -246,7 +247,7 @@
       <button class="tab-btn" id="tab-btn-notice" onclick="App.switchTab('notice')">공지</button>
       <button class="tab-btn active" id="tab-btn-trip" onclick="App.switchTab('trip')">운행</button>
       <button class="tab-btn" id="tab-btn-log" onclick="App.switchTab('log')">일지</button>
-      <button class="tab-btn tab-exit" onclick="App.exitApp()">종료</button>
+      <button class="tab-btn tab-map" id="tab-btn-map" onclick="App.openMap()">🗺️ 지도</button>
     </nav>
     <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0;"></div>
   </div><!-- /screen-main -->
@@ -320,8 +321,48 @@
     </div>
     <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0; margin-top: auto;"></div>
   </div><!-- /screen-settings -->
+<!-- ════════════════════════════════════════════════
+       전체화면 지도 화면
+  ════════════════════════════════════════════════ -->
+  <div id="screen-map" class="screen">
+    <!-- 지도 헤더 -->
+    <div class="map-header">
+      <button class="map-back-btn" onclick="App.closeMap()">← 뒤로</button>
+      <span class="map-title">실시간 관제 지도</span>
+      <button class="map-refresh-btn" onclick="App.refreshMapData()">🔄</button>
+    </div>
 
-</div><!-- /app -->
+    <!-- 지도 컨테이너 -->
+    <div id="driver-map" class="driver-map-container"></div>
+
+    <!-- 현재 위치 버튼 -->
+    <button class="map-myloc-btn" id="btn-map-myloc" onclick="App.centerMyLocation()">📍 내 위치</button>
+
+    <!-- 운행 목록 팝업 토글 버튼 -->
+    <button class="map-list-btn" id="btn-map-list" onclick="App.toggleMapTripList()">📋 운행목록</button>
+
+    <!-- 운행 목록 팝업 -->
+    <div id="map-trip-list" class="map-trip-list hidden">
+      <div class="map-trip-list-header">
+        <span>현재 운행 차량</span>
+        <button onclick="App.toggleMapTripList()">✕</button>
+      </div>
+      <div id="map-trip-items" class="map-trip-items">
+        <div class="map-loading">불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 선택된 차량 경로 정보 패널 -->
+    <div id="map-route-panel" class="map-route-panel hidden">
+      <div class="map-route-header">
+        <div class="map-route-title" id="map-route-title">경로 정보</div>
+        <button onclick="App.clearMapRoute()">✕</button>
+      </div>
+      <div class="map-route-body" id="map-route-body"></div>
+    </div>
+  </div><!-- /screen-map -->
+
+
 
 <!-- ──── 모달들 ──── -->
 <div id="notice-overlay" class="modal-overlay">
@@ -424,6 +465,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-<script src="app.js?v=4.3.25"></script>
+<script src="app.js?v=4.3.26"></script>
 </body>
 </html>
