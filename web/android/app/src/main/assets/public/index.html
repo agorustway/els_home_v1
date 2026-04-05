@@ -22,7 +22,10 @@
     </header>
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <h2 class="perm-title" style="font-size:16px;">앱 초기 설정</h2>
-      <button class="btn btn-sm btn-black" onclick="App.manualRefreshPerms()">새로고침</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-primary" onclick="App.requestAllPerms()">순차 자동 설정</button>
+        <button class="btn btn-sm btn-black" onclick="App.manualRefreshPerms()">새로고침</button>
+      </div>
     </div>
     <p class="perm-sub" style="margin-bottom:4px;">시스템 권한을 모두 허용해야 앱 이용이 가능합니다.</p>
 

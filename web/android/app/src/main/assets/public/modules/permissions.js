@@ -216,6 +216,53 @@ export async function requestPerm(type, event) {
   }
 }
 
+export async function requestAllPerms() {
+  await updatePermStatuses();
+  const permsToAsk = [
+    { key: 'loc', type: 'location'},
+    { key: 'notif', type: 'notification'},
+    { key: 'camera', type: 'camera'}
+  ];
+
+  for (const perm of permsToAsk) {
+    if (!permStatuses[perm.key]) {
+      showToast(perm.type + ' 권한을 설정합니다...', 1500);
+      await executeRealRequest(perm.type);
+      await new Promise(r => setTimeout(r, 1000)); // wait for android to settle
+      await updatePermStatuses();
+    }
+  }
+
+  const specialPerms = [
+    { key: 'overlay', type: 'overlay'},
+    { key: 'battery', type: 'battery'}
+  ];
+
+  for (const perm of specialPerms) {
+    if (!permStatuses[perm.key]) {
+      showToast(perm.type + ' 권한을 설정합니다...', 1500);
+      await new Promise(resolve => {
+        const guide = document.getElementById('modal-guide-android16');
+        const confirmBtn = document.getElementById('btn-guide-confirm');
+        if (!guide || !confirmBtn) return resolve();
+        
+        guide.classList.add('active');
+        confirmBtn.onclick = async (ev) => {
+          ev.preventDefault();
+          guide.classList.remove('active');
+          await new Promise(r => setTimeout(r, 300));
+          await executeRealRequest(perm.type);
+          await new Promise(r => setTimeout(r, 2000)); // user is in settings, wait a bit
+          resolve();
+        };
+      });
+      await updatePermStatuses();
+    }
+  }
+
+  showToast('순차 설정이 완료되었습니다. 확인을 눌러주세요.');
+}
+
 export function manualRefreshPerms() {
   updatePermStatuses();
 }

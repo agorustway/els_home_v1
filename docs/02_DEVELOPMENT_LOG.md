@@ -1,5 +1,35 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-04-05 (오후) - [APP] 버전 관리 자동화 및 WebView 캐시 이슈 해결 (v4.5.50)
+
+### 🚀 작업 요약
+- **대상**: 드라이버 앱 전체 (Android Native + Vanilla JS Modules)
+- **핵심 목표**: 버전 하드코딩 제거, WebView 캐시 지옥 탈출, 앱 종료 시 알림 잔상 해결
+- **배포 버전**: `v4.5.50` (Build 450)
+
+### 🛠 세부 변경 사항
+1. **[FIX] WebView 캐시 방지 (Cache-Busting)**:
+   - `index.html` 내 `app.js` 호출부에 쿼리스트링(`?v=4.5.50`) 주입.
+   - 리팩토링 후에도 구버전 코드가 실행되던 지독한 캐시 현상을 완전히 해결.
+2. **[FEAT] 버전 관리 자동화 (Single Source of Truth)**:
+   - `store.js`의 정적 상수를 `AppConfig` 객체로 변경.
+   - `init.js`에서 Capacitor `App.getInfo()` 브릿지를 통해 네이티브 버전을 실시간으로 가져와 JS 전역에 주입.
+   - 이제 안드로이드 빌드 버전만 올리면 웹 UI 및 업데이트 로직에 자동 반영됨 (하드코딩 불필요).
+3. **[FIX] 앱 강제 종료 시 알림 잔상 제거**:
+   - `FloatingWidgetService.java` 내 `onTaskRemoved()` 생명주기 핸들러 구현.
+   - 사용자가 최근 앱 목록에서 앱을 스와이프하여 종료할 때, 상단바의 GPS 유지 알림과 포그라운드 서비스가 즉시 파괴되도록 수동 처리.
+4. **[AI] Claude × Gemini 공동 작업 프로토콜 수립**:
+   - `docs/03_RULES.md`, `.cursorrules`, `.agent/workflows/init.md` 일괄 업데이트.
+   - AI 간 작업 단절 방지를 위한 **🚧 IN-PROGRESS** 핸드오프 규칙 강제화.
+5. **[CLEAN] 빌드 환경 정리**:
+   - 구버전 캐시의 원흉이었던 `public/public/` 중복 디렉토리 삭제.
+   - `gradlew clean assembleDebug`를 통한 클린 빌드 및 APK 재배포.
+
+### 🔑 다음 스텝
+- [ ] Vercel 배포 완료 후 홈페이지(`nollae.com`)를 통한 실기기 OTA 업데이트 최종 검증.
+- [ ] 오프라인 데이터 큐잉(Offline Queue) 설계 및 도입.
+
+
 ## 📅 2026-04-05 (야간) - [APP] 드라이버 앱 모듈 분리 리팩토링 (v4.5.50+)
 
 ### 🚀 작업 요약

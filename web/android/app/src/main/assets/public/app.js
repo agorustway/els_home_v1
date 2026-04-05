@@ -2,14 +2,14 @@
  * ELS Driver App — 모듈 엔트리 포인트
  * ES Modules 방식으로 각 기능 모듈을 import하여 window.App 조립
  */
-import { APP_VERSION, BUILD_CODE } from './modules/store.js';
+import { AppConfig } from './modules/store.js';
 import { remoteLog } from './modules/bridge.js';
 import { showToast, formatDate, escHtml } from './modules/utils.js';
 import { showScreen } from './modules/nav.js';
 
 // 권한
 import {
-  requestPerm, updatePermStatuses, manualRefreshPerms,
+  requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
 } from './modules/permissions.js';
@@ -68,8 +68,8 @@ import { init, showMain, openSettings, switchTab, exitApp } from './modules/init
 // index.html의 모든 onclick="App.xxx()" 호출의 단일 진입점
 window.App = {
   // 버전 (네이티브 접근용)
-  get _version()    { return APP_VERSION; },
-  get _buildCode()  { return BUILD_CODE; },
+  get _version()    { return AppConfig.APP_VERSION; },
+  get _buildCode()  { return AppConfig.BUILD_CODE; },
 
   // GPS 상태 노출 (init.js의 appStateChange 핸들러용)
   get _lastGpsTs()  { return lastGpsTimestamp; },
@@ -82,7 +82,7 @@ window.App = {
   showScreen, showMain, openSettings, switchTab,
 
   // 권한
-  requestPerm, updatePermStatuses, manualRefreshPerms,
+  requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
 
