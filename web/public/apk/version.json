@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.45",
-  "versionCode": 345,
+  "latestVersion": "v4.3.46",
+  "versionCode": 346,
   "forceUpdate": false,
-  "changeLog": "[핫픽스] 줌 슬라이더 제거 후 남은 찌꺼기 코드(syncZoomSlider) 삭제 및 삭제된 상세 정보창 UI 복구. 마커 왜곡 캘리브레이션 최종 적용.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=345"
+  "changeLog": "[v4.3.46] 지도 드래그 마커 고정 문제 근본 해결 (overlay 개별 마커 실시간 오프셋 적용, rubber-band 현상 제거).",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=346"
 }

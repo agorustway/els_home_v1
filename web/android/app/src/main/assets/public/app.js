@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.45';
-  const BUILD_CODE = 345; // Build 345 (v4.3.45)
+  const APP_VERSION = 'v4.3.46';
+  const BUILD_CODE = 346; // Build 346 (v4.3.46)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2420,18 +2420,16 @@
   function renderStaticMap() {
     if (!smImg || !smContainer) return;
     const { w, h } = getMapSize();
-    // 네이버 Static Maps는 최대 1024x1024 지원. (모바일 기기는 가뿐히 커버)
-    // rw, rh를 강제 축소하면 object-fit 비율 왜곡이 발생해 마커가 이탈함. 원본 해상도 투입.
     const rw = Math.min(Math.round(w), 1024);
     const rh = Math.min(Math.round(h), 1024);
     const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
-    // ★ 이미지 로드 완료 후 오버레이 렌더 — 이미지와 마커 기준점 동기화
-    smImg.onload = () => { 
-      // 로드 완료 시점에 드래그 이동(transform) 초기화
+    // ★ 이미지 로드 완료 시: img/canvas transform만 초기화.
+    // overlay는 onDragEnd에서 이미 새 center 기준으로 재렌더됐으므로 건드리지 않음.
+    smImg.onload = () => {
       if (smImg) smImg.style.transform = 'none';
       if (smCanvas) smCanvas.style.transform = 'none';
-      if (smOverlay) smOverlay.style.transform = 'none';
-      renderMapOverlay(); 
+      // 이미지가 완전히 바뀌었으므로 overlay도 최종 동기화 (경로 포함)
+      renderMapOverlay();
     };
     smImg.onerror = () => {
       smImg.src = '';
@@ -2478,27 +2476,27 @@
       const isMe = isMyTrip(trip);
       const isCompleted = trip.status === 'completed';
       const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
-      // 화면 밖 마커는 렌더 스킵
       if (px.x < -60 || px.x > w + 60 || px.y < -40 || px.y > h + 40) return;
 
       const marker = document.createElement('div');
-      
+
       let color, label, zIndex;
       if (isCompleted) {
-        // 운행 종료 차량
-        color = '#94a3b8'; // 회색
-        // 차량번호 뒤 4자리
+        color = '#94a3b8';
         const vNum = trip.vehicle_number || '';
         label = vNum.length > 4 ? vNum.slice(-4) : vNum;
         if (!label) label = '종료';
-        zIndex = 10; // 낮게 배치
+        zIndex = 10;
       } else {
-        // 운행 중/일시정지 차량
         color = isMe ? '#10b981' : '#2563eb';
         label = trip.vehicle_number || trip.driverId || '차량';
-        zIndex = 20; // 상단에 배치
+        zIndex = 20;
       }
 
+      // ★ data-marker + data-baseLeft/Top: 드래그 중 _cacheMarkerBases()가 읽어서 실시간 오프셋 적용
+      marker.dataset.marker = '1';
+      marker.dataset.baseLeft = px.x;
+      marker.dataset.baseTop = px.y;
       marker.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;transform:translate(-50%,-100%);pointer-events:auto;z-index:${zIndex};`;
       marker.innerHTML = `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;">${label}</div>`;
       marker.addEventListener('click', function() { showTripRouteOnMap(trip); });
@@ -2509,12 +2507,16 @@
     if (smState.myLat !== null && smState.myLng !== null) {
       const px = latLngToPixel(smState.myLat, smState.myLng, smState.lat, smState.lng, level, w, h);
       if (px.x >= -20 && px.x <= w + 20 && px.y >= -20 && px.y <= h + 20) {
-        // 외부 파급원 (halo 효과)
         const halo = document.createElement('div');
+        halo.dataset.marker = '1';
+        halo.dataset.baseLeft = px.x - 16;
+        halo.dataset.baseTop = px.y - 16;
         halo.style.cssText = `position:absolute;left:${px.x - 16}px;top:${px.y - 16}px;width:32px;height:32px;background:rgba(37,99,235,0.15);border-radius:50%;pointer-events:none;z-index:28;`;
         smOverlay.appendChild(halo);
-        // 파란 점 본체
         const dot = document.createElement('div');
+        dot.dataset.marker = '1';
+        dot.dataset.baseLeft = px.x - 7;
+        dot.dataset.baseTop = px.y - 7;
         dot.style.cssText = `position:absolute;left:${px.x - 7}px;top:${px.y - 7}px;width:14px;height:14px;background:#2563eb;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.6);pointer-events:none;z-index:29;`;
         smOverlay.appendChild(dot);
       }
@@ -2557,10 +2559,30 @@
 
 
   // ─── 터치/마우스 제어 ────────────────────────────────────────────
+  // [v4.3.45 Fix] 마커 고정 문제 및 rubber-band 현상 근본 해결
+  // 핵심 원칙:
+  //  1. 드래그 중: img+canvas만 translate. overlay는 translate 없이 각 마커 위치를 실시간 오프셋 적용.
+  //  2. 드래그 종료: smState.lat/lng 확정 → overlay 즉시 새 center 기준으로 재렌더 → img만 새로 요청.
+  //  3. 이미지 onload: img transform 해제 + overlay 최종 동기화(경로 포함).
   function bindMapTouch(el) {
     let startLat, startLng, startX, startY;
     let pinchStartDist = 0, pinchStartZoom = smState.zoom;
     let rafId = null;
+    // 드래그 중 마커 위치 추적을 위한 기준 픽셀 배열
+    // { el: DOMElement, baseLeft: number, baseTop: number }
+    let _markerBases = [];
+
+    function _cacheMarkerBases() {
+      _markerBases = [];
+      if (!smOverlay) return;
+      smOverlay.querySelectorAll('[data-marker]').forEach(function(m) {
+        _markerBases.push({
+          el: m,
+          baseLeft: parseFloat(m.dataset.baseLeft) || 0,
+          baseTop: parseFloat(m.dataset.baseTop) || 0,
+        });
+      });
+    }
 
     function onDragStart(x, y) {
       smState.isDragging = true;
@@ -2569,20 +2591,25 @@
       el.style.cursor = 'grabbing';
       if (smImg) smImg.style.transition = 'none';
       if (smCanvas) smCanvas.style.transition = 'none';
-      if (smOverlay) smOverlay.style.transition = 'none';
+      // overlay는 transition 없이 개별 마커 이동
+      _cacheMarkerBases();
     }
 
     function onDragMove(x, y) {
       if (!smState.isDragging) return;
       const dx = x - startX;
       const dy = y - startY;
-      
-      // requestAnimationFrame을 활용해 UI 렌더링 최적화 및 버벅임 방지
+
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
+        // 배경 이미지 + 캔버스 경로만 translate
         if (smImg) smImg.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
         if (smCanvas) smCanvas.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        if (smOverlay) smOverlay.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        // 마커는 각각 개별적으로 오프셋 적용 (지도 좌표에 고정된 것처럼 보이게)
+        _markerBases.forEach(function(item) {
+          item.el.style.left = (item.baseLeft + dx) + 'px';
+          item.el.style.top = (item.baseTop + dy) + 'px';
+        });
       });
     }
 
@@ -2609,8 +2636,9 @@
       if (!smState.isDragging) return;
       smState.isDragging = false;
       el.style.cursor = 'grab';
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
 
-      // 이동 거리 계산 후 중심좌표 확정
+      // 새 중심 좌표 확정
       if (x != null && y != null && startX != null && startY != null) {
         const dx = x - startX;
         const dy = y - startY;
@@ -2622,8 +2650,12 @@
         }
       }
 
-      // ★ 주의: 여기서 통째로 transform: none을 주면 이미지가 로드되기 전에 원점으로 튕겨보이는 고무줄 현상 발생.
-      // 따라서 새 이미지가 완전히 로드(`onload`)된 뒤에 transform을 해제하고 렌더링해야 함.
+      // ★ 핵심: overlay는 즉시 새 center 기준으로 재렌더 (rubber-band 완전 제거)
+      // canvas도 즉시 재렌더 (경로 기준점 갱신)
+      smCanvas.style.transform = 'none';
+      renderMapOverlay();
+
+      // 배경 이미지는 새 URL로 비동기 로드 (로드 완료 시 transform 해제)
       renderStaticMap();
     }
 
@@ -2648,9 +2680,7 @@
     }, { passive: true });
 
     el.addEventListener('touchmove', e => {
-      // 네이티브 스크롤/바운스 효과 방지 (이것이 없으면 드래그가 매우 뚝뚝 끊김)
       if (e.cancelable) e.preventDefault();
-
       if (e.touches.length === 1 && smState.isDragging) {
         onDragMove(e.touches[0].clientX, e.touches[0].clientY);
       } else if (e.touches.length === 2) {
@@ -2675,7 +2705,6 @@
       }
     });
 
-    // 마우스 휠 줌
     el.addEventListener('wheel', e => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -1 : 1;

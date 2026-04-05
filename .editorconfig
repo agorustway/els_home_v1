@@ -1,0 +1,9 @@
+# 최상위 설정 파일임을 명시
+root = true
+
+# 모든 파일에 적용
+[*]
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true

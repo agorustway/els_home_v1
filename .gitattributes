@@ -3,8 +3,8 @@
 # 한글 인코딩 정책: 모든 텍스트 파일은 UTF-8
 # ═══════════════════════════════════════════════════
 
-# 전체 텍스트 파일 UTF-8 강제
-* text=auto working-tree-encoding=UTF-8
+# 전체 텍스트 파일 UTF-8 강제 및 LF 변환 강제
+* text=auto working-tree-encoding=UTF-8 eol=lf
 
 # Dockerfile/Shell은 LF 필수 (Docker/NAS 호환)
 Dockerfile text eol=lf
