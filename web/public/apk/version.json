@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.47",
-  "versionCode": 347,
+  "latestVersion": "v4.3.48",
+  "versionCode": 348,
   "forceUpdate": false,
-  "changeLog": "[v4.3.47] 지도 엔진 전면 재설계: 오버사이즈 타일 방식 도입 - 드래그 중 네트워크 요청 없음(완벽한 부드러움) + 마커가 타일 좌표 기준으로 항상 정확한 위치에 동기화.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=347"
+  "changeLog": "[v4.3.48] 앱 종료(또는 뒤로가기로 종료) 시 알림이 백그라운드에서 다시 살아나는 버그 수정.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=348"
 }

@@ -222,6 +222,8 @@ public class FloatingWidgetService extends Service {
         if (intent != null) {
             String action = intent.getAction();
             if ("STOP_SERVICE".equals(action)) {
+                // [Fix] 운행 종료 시 명시적으로 LAST_TRIP_ID 삭제하여 좀비 알람 부활 방지
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(KEY_TRIP_ID).apply();
                 stopSelf();
                 return START_NOT_STICKY;
             }
@@ -1030,6 +1032,7 @@ public class FloatingWidgetService extends Service {
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
         Log.d(TAG, "Task removed (App Swiped) -> Stopping Foreground Service");
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(KEY_TRIP_ID).apply();
         stopSelf();
     }
 }
