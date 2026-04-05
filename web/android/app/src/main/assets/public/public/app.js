@@ -6,8 +6,8 @@
   'use strict';
   // ★ 버전은 아래 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
 
-  const APP_VERSION = 'v4.3.47';
-  const BUILD_CODE = 347; // Build 347 (v4.3.47)
+  const APP_VERSION = 'v4.3.46';
+  const BUILD_CODE = 346; // Build 346 (v4.3.46)
   const BASE_URL = 'https://www.nollae.com';
   const VERSION_URL = BASE_URL + '/apk/version.json';
 
@@ -2326,62 +2326,44 @@
     }
   }
 
-  // ─── [v4.3.47] Static Maps 지도 엔진 ─────────────────────────────────────
-  // [핵심 설계 변경] 오버사이즈(Oversized) 타일 방식:
-  //   화면의 3배 크기 이미지를 미리 받아두고, 드래그는 CSS translate만으로 처리.
-  //   → 드래그 중 네트워크 요청 없음 = 완벽하게 부드러운 이동.
-  //   경계 근처에 가면 백그라운드에서 새 타일 프리로드 후 seamless 교체.
-  //   마커는 타일 이미지 좌표계 기준 절대위치로 지도와 완전히 동기화.
+  // ─── [v4.3.35] Static Maps 지도 엔진 ──────────────────────────────────────
+  // JS SDK 방식은 Capacitor WebView에서 Referer 인증 실패로 사용 불가.
+  // NCP Static Maps(raster-cors) 이미지 URL 방식으로 완전 전환.
+  // 터치 드래그, 핀치 줌, 마커 DOM 오버레이, Canvas 경로 렌더링을 직접 구현.
 
-  const STATIC_MAP_KEY = 'hxoj79osnj';
+  const STATIC_MAP_KEY = 'hxoj79osnj'; // NCP ncpClientId = API Gateway Key ID 동일
   const STATIC_BASE = 'https://maps.apigw.ntruss.com/map-static/v2/raster-cors';
-  const SM_TILE_SCALE = 2; // 화면 대비 타일 배율 (2배 = 드래그 여유 확보)
 
-  // ─── 상태 ────────────────────────────────────────────────────────
+  // 지도 상태
   let smState = {
     lat: 36.5, lng: 127.5, zoom: 7,
-    trips: [], selectedTrip: null,
+    isDragging: false, dragStart: null, lastX: 0, lastY: 0,
+    pinchDist: 0,
+    trips: [],
+    selectedTrip: null,
     myLat: null, myLng: null,
+    pollTimer: null,
   };
-  // 현재 로드된 타일 정보
-  let _tile = { lat: null, lng: null, zoom: null, w: 0, h: 0, x: 0, y: 0, loading: false, img: null };
-  let smContainer = null, smCanvas = null, smOverlay = null;
 
-  // ─── 수학/좌표 ───────────────────────────────────────────────────
+  // 줌 → Static Maps level 매핑 (0~20)
   function smZoomToLevel(z) { return Math.max(1, Math.min(20, Math.round(z))); }
 
-  function _toMerc(lat, lng, scale) {
-    const sin = Math.sin(lat * Math.PI / 180);
+  // 위경도 → Static Maps pixel 좌표 (메르카토르)
+  // ★ zoom은 반드시 smZoomToLevel()로 정수 변환 후 전달 — 이미지 레벨과 일치시켜야 함
+  function latLngToPixel(lat, lng, centerLat, centerLng, zoomLevel, w, h) {
+    const scale = Math.pow(2, zoomLevel) * 256;
+    function toMerc(la, lo) {
+      const x = (lo + 180) / 360;
+      const sinLat = Math.sin(la * Math.PI / 180);
+      const y = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2;
+      return { x: x * scale, y: y * scale };
+    }
+    const c = toMerc(centerLat, centerLng);
+    const p = toMerc(lat, lng);
     return {
-      x: (lng + 180) / 360 * scale,
-      y: (1 - Math.log((1 + sin) / (1 - sin)) / (2 * Math.PI)) / 2 * scale,
+      x: w / 2 + (p.x - c.x),
+      y: h / 2 + (p.y - c.y)
     };
-  }
-
-  // 위경도 → 타일 이미지 내 픽셀 좌표
-  function latLngToPixel(lat, lng, cLat, cLng, level, tw, th) {
-    const scale = Math.pow(2, level) * 256;
-    const c = _toMerc(cLat, cLng, scale);
-    const p = _toMerc(lat, lng, scale);
-    return { x: tw / 2 + (p.x - c.x), y: th / 2 + (p.y - c.y) };
-  }
-
-  // 타일의 화면 위치(tileX, tileY)일 때 화면 center의 위경도
-  function _centerLatLng(tileX, tileY) {
-    if (!_tile.lat) return null;
-    const { w, h } = getMapSize();
-    const level = smZoomToLevel(_tile.zoom);
-    const scale = Math.pow(2, level) * 256;
-    const c = _toMerc(_tile.lat, _tile.lng, scale);
-    const pixX = w / 2 - tileX;
-    const pixY = h / 2 - tileY;
-    const nx = c.x + (pixX - _tile.w / 2);
-    const ny = c.y + (pixY - _tile.h / 2);
-    const newLon = (nx / scale) * 360 - 180;
-    const nYN = ny / scale;
-    const exp = Math.exp((1 - 2 * nYN) * 2 * Math.PI);
-    const sin = (exp - 1) / (exp + 1);
-    return { lat: Math.asin(Math.max(-1, Math.min(1, sin))) * 180 / Math.PI, lng: newLon };
   }
 
   function buildStaticMapUrl(lat, lng, zoom, w, h) {
@@ -2389,223 +2371,306 @@
     return `${STATIC_BASE}?w=${w}&h=${h}&center=${lng},${lat}&level=${level}&X-NCP-APIGW-API-KEY-ID=${STATIC_MAP_KEY}&scale=2`;
   }
 
+  let smContainer = null;
+  let smImg = null;
+  let smCanvas = null;
+  let smOverlay = null;
+  let smMarkers = [];
+
   function getMapSize() {
     const el = document.getElementById('driver-map');
     if (!el) return { w: 360, h: 600 };
     return { w: el.clientWidth || 360, h: el.clientHeight || 600 };
   }
 
-  // ─── 초기화 ──────────────────────────────────────────────────────
   function initStaticMap() {
     const el = document.getElementById('driver-map');
     if (!el) return;
     el.innerHTML = '';
-    el.style.cssText = 'position:relative;overflow:hidden;background:#e8eaed;cursor:grab;touch-action:none;';
-    smContainer = el;
+    el.style.position = 'relative';
+    el.style.overflow = 'hidden';
+    el.style.background = '#e8eaed';
+    el.style.cursor = 'grab';
 
+    const { w, h } = getMapSize();
+
+    // 배경 지도 이미지
+    smImg = document.createElement('img');
+    smImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;user-select:none;pointer-events:none;';
+    smImg.draggable = false;
+    el.appendChild(smImg);
+
+    // 경로/마커용 Canvas
     smCanvas = document.createElement('canvas');
-    smCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:5;';
+    smCanvas.width = w * 2;
+    smCanvas.height = h * 2;
+    smCanvas.style.cssText = `position:absolute;top:0;left:0;width:${w}px;height:${h}px;pointer-events:none;`;
     el.appendChild(smCanvas);
 
+    // DOM 마커 오버레이 컨테이너
     smOverlay = document.createElement('div');
-    smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
+    smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
     el.appendChild(smOverlay);
 
-    _tile = { lat: null, lng: null, zoom: null, w: 0, h: 0, x: 0, y: 0, loading: false, img: null };
+    smContainer = el;
     bindMapTouch(el);
-    _loadTile(smState.lat, smState.lng, smState.zoom, true);
+    renderStaticMap();
   }
 
-  // ─── 타일 로드 ───────────────────────────────────────────────────
-  function _loadTile(lat, lng, zoom, force) {
-    if (_tile.loading && !force) return;
-    _tile.loading = true;
+  function renderStaticMap() {
+    if (!smImg || !smContainer) return;
     const { w, h } = getMapSize();
-    const tw = Math.min(Math.round(w * SM_TILE_SCALE), 1024);
-    const th = Math.min(Math.round(h * SM_TILE_SCALE), 1024);
-    const url = buildStaticMapUrl(lat, lng, zoom, tw, th);
-    const img = document.createElement('img');
-    img.draggable = false;
-    img.style.cssText = `position:absolute;width:${tw}px;height:${th}px;pointer-events:none;user-select:none;`;
-    img.onload = () => {
-      if (!smContainer) { _tile.loading = false; return; }
-      const { w: vw, h: vh } = getMapSize();
-      const tx = (vw - tw) / 2;
-      const ty = (vh - th) / 2;
-      img.style.left = tx + 'px';
-      img.style.top = ty + 'px';
-      if (_tile.img && _tile.img.parentNode) smContainer.removeChild(_tile.img);
-      smContainer.insertBefore(img, smContainer.firstChild);
-      _tile.img = img; _tile.lat = lat; _tile.lng = lng; _tile.zoom = zoom;
-      _tile.w = tw; _tile.h = th; _tile.x = tx; _tile.y = ty;
-      _tile.loading = false;
-      smState.lat = lat; smState.lng = lng; smState.zoom = zoom;
-      _renderOverlay(_tile.x, _tile.y);
+    const rw = Math.min(Math.round(w), 1024);
+    const rh = Math.min(Math.round(h), 1024);
+    const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
+    // ★ 이미지 로드 완료 시: img/canvas transform만 초기화.
+    // overlay는 onDragEnd에서 이미 새 center 기준으로 재렌더됐으므로 건드리지 않음.
+    smImg.onload = () => {
+      if (smImg) smImg.style.transform = 'none';
+      if (smCanvas) smCanvas.style.transform = 'none';
+      // 이미지가 완전히 바뀌었으므로 overlay도 최종 동기화 (경로 포함)
+      renderMapOverlay();
     };
-    img.onerror = () => { _tile.loading = false; };
-    img.src = url;
+    smImg.onerror = () => {
+      smImg.src = '';
+      const ctx = smCanvas?.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillRect(0, 0, smCanvas.width, smCanvas.height);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('지도를 불러오는 중...', smCanvas.width / 2, smCanvas.height / 2);
+      }
+    };
+    smImg.src = url;
   }
 
-  // ─── 오버레이 렌더링 (canvas + markers) ─────────────────────────
-  // ox, oy: 타일 이미지의 현재 화면 상 left/top 좌표
-  function _renderOverlay(ox, oy) {
-    if (!smCanvas || !smOverlay || !_tile.lat) return;
+  function renderMapOverlay() {
+    if (!smCanvas || !smOverlay) return;
     const { w, h } = getMapSize();
-    const level = smZoomToLevel(_tile.zoom);
-
-    // Canvas (경로)
+    // ★ 오버레이 계산 시 반드시 정수 level 사용 — 이미지 요청 기준과 동일하게
+    const level = smZoomToLevel(smState.zoom);
     smCanvas.width = w * 2;
     smCanvas.height = h * 2;
     smCanvas.style.width = w + 'px';
     smCanvas.style.height = h + 'px';
     const ctx = smCanvas.getContext('2d');
     ctx.clearRect(0, 0, smCanvas.width, smCanvas.height);
+    smOverlay.innerHTML = '';
+
+    // 경로 렌더링
     if (smState.selectedTrip && smState.selectedTrip._path) {
-      _drawPath(ctx, smState.selectedTrip._path, level, ox, oy);
+      drawPathOnCanvas(ctx, smState.selectedTrip._path, w, h, level);
     }
 
-    // 마커 DOM
-    smOverlay.innerHTML = '';
+    // 차량 마커 렌더링
     const contracted = isContractedVehicle();
-    const visibles = smState.trips.filter(t => t.lastLocation && (contracted ? true : isMyTrip(t)));
+    const visibleTrips = smState.trips.filter(function(trip) {
+      if (!trip.lastLocation) return false;
+      return contracted ? true : isMyTrip(trip);
+    });
 
-    visibles.forEach(trip => {
+    visibleTrips.forEach(function(trip) {
       const loc = trip.lastLocation;
       const isMe = isMyTrip(trip);
       const isCompleted = trip.status === 'completed';
-      const px = latLngToPixel(loc.lat, loc.lng, _tile.lat, _tile.lng, level, _tile.w, _tile.h);
-      const sx = ox + px.x, sy = oy + px.y;
-      if (sx < -60 || sx > w + 60 || sy < -40 || sy > h + 40) return;
-      let color = isCompleted ? '#94a3b8' : (isMe ? '#10b981' : '#2563eb');
-      let label = isCompleted
-        ? (trip.vehicle_number || '').slice(-4) || '종료'
-        : (trip.vehicle_number || trip.driverId || '차량');
-      const zIndex = isCompleted ? 10 : 20;
-      const m = document.createElement('div');
-      m.style.cssText = `position:absolute;left:${sx}px;top:${sy}px;transform:translate(-50%,-100%);pointer-events:auto;z-index:${zIndex};`;
-      m.innerHTML = `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;">${label}</div>`;
-      m.addEventListener('click', () => showTripRouteOnMap(trip));
-      smOverlay.appendChild(m);
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
+      if (px.x < -60 || px.x > w + 60 || px.y < -40 || px.y > h + 40) return;
+
+      const marker = document.createElement('div');
+
+      let color, label, zIndex;
+      if (isCompleted) {
+        color = '#94a3b8';
+        const vNum = trip.vehicle_number || '';
+        label = vNum.length > 4 ? vNum.slice(-4) : vNum;
+        if (!label) label = '종료';
+        zIndex = 10;
+      } else {
+        color = isMe ? '#10b981' : '#2563eb';
+        label = trip.vehicle_number || trip.driverId || '차량';
+        zIndex = 20;
+      }
+
+      // ★ data-marker + data-baseLeft/Top: 드래그 중 _cacheMarkerBases()가 읽어서 실시간 오프셋 적용
+      marker.dataset.marker = '1';
+      marker.dataset.baseLeft = px.x;
+      marker.dataset.baseTop = px.y;
+      marker.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;transform:translate(-50%,-100%);pointer-events:auto;z-index:${zIndex};`;
+      marker.innerHTML = `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;">${label}</div>`;
+      marker.addEventListener('click', function() { showTripRouteOnMap(trip); });
+      smOverlay.appendChild(marker);
     });
 
-    // 내 위치 파란 점
+    // ★ 내 위치 마커 — 파란 점
     if (smState.myLat !== null && smState.myLng !== null) {
-      const px = latLngToPixel(smState.myLat, smState.myLng, _tile.lat, _tile.lng, level, _tile.w, _tile.h);
-      const sx = ox + px.x, sy = oy + px.y;
-      if (sx >= -20 && sx <= w + 20 && sy >= -20 && sy <= h + 20) {
+      const px = latLngToPixel(smState.myLat, smState.myLng, smState.lat, smState.lng, level, w, h);
+      if (px.x >= -20 && px.x <= w + 20 && px.y >= -20 && px.y <= h + 20) {
         const halo = document.createElement('div');
-        halo.style.cssText = `position:absolute;left:${sx-16}px;top:${sy-16}px;width:32px;height:32px;background:rgba(37,99,235,.15);border-radius:50%;pointer-events:none;z-index:28;`;
+        halo.dataset.marker = '1';
+        halo.dataset.baseLeft = px.x - 16;
+        halo.dataset.baseTop = px.y - 16;
+        halo.style.cssText = `position:absolute;left:${px.x - 16}px;top:${px.y - 16}px;width:32px;height:32px;background:rgba(37,99,235,0.15);border-radius:50%;pointer-events:none;z-index:28;`;
         smOverlay.appendChild(halo);
         const dot = document.createElement('div');
-        dot.style.cssText = `position:absolute;left:${sx-7}px;top:${sy-7}px;width:14px;height:14px;background:#2563eb;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.6);pointer-events:none;z-index:29;`;
+        dot.dataset.marker = '1';
+        dot.dataset.baseLeft = px.x - 7;
+        dot.dataset.baseTop = px.y - 7;
+        dot.style.cssText = `position:absolute;left:${px.x - 7}px;top:${px.y - 7}px;width:14px;height:14px;background:#2563eb;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.6);pointer-events:none;z-index:29;`;
         smOverlay.appendChild(dot);
       }
     }
   }
 
-  function _drawPath(ctx, path, level, ox, oy) {
-    if (!path || path.length < 2 || !_tile.lat) return;
+  function drawPathOnCanvas(ctx, path, w, h, level) {
+    if (!path || path.length < 2) return;
     ctx.save();
-    ctx.scale(2, 2);
-    ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 3;
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.globalAlpha = 0.85;
+    ctx.scale(2, 2); // HiDPI
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    path.forEach((loc, i) => {
-      const px = latLngToPixel(loc.lat, loc.lng, _tile.lat, _tile.lng, level, _tile.w, _tile.h);
-      i === 0 ? ctx.moveTo(ox + px.x, oy + px.y) : ctx.lineTo(ox + px.x, oy + px.y);
+    path.forEach(function(loc, i) {
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
+      if (i === 0) ctx.moveTo(px.x, px.y);
+      else ctx.lineTo(px.x, px.y);
     });
     ctx.stroke();
-    const dot = (loc, color) => {
-      const px = latLngToPixel(loc.lat, loc.lng, _tile.lat, _tile.lng, level, _tile.w, _tile.h);
-      ctx.beginPath(); ctx.arc(ox + px.x, oy + px.y, 7, 0, Math.PI * 2);
-      ctx.fillStyle = color; ctx.globalAlpha = 1; ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-    };
-    dot(path[0], '#10b981'); dot(path[path.length - 1], '#ef4444');
+
+    function drawDot(loc, color) {
+      const px = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
+      ctx.beginPath();
+      ctx.arc(px.x, px.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 1;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    drawDot(path[0], '#10b981');
+    drawDot(path[path.length - 1], '#ef4444');
     ctx.restore();
   }
 
-  // 공개 호환 API
-  function renderStaticMap() { _loadTile(smState.lat, smState.lng, smState.zoom, true); }
-  function renderMapOverlay() { _renderOverlay(_tile.x, _tile.y); }
+
 
   // ─── 터치/마우스 제어 ────────────────────────────────────────────
-  // [설계 원칙]
-  // 드래그 중: 타일 img만 translate. 매 프레임 _renderOverlay(currentX, currentY) 호출
-  //           → 마커/캔버스가 항상 타일 좌표 기준 정확한 위치에 그려짐
-  // 드래그 끝: 타일 x/y 확정 → smState lat/lng 갱신 → 경계 벗어나면 새 타일 로드
+  // [v4.3.45 Fix] 마커 고정 문제 및 rubber-band 현상 근본 해결
+  // 핵심 원칙:
+  //  1. 드래그 중: img+canvas만 translate. overlay는 translate 없이 각 마커 위치를 실시간 오프셋 적용.
+  //  2. 드래그 종료: smState.lat/lng 확정 → overlay 즉시 새 center 기준으로 재렌더 → img만 새로 요청.
+  //  3. 이미지 onload: img transform 해제 + overlay 최종 동기화(경로 포함).
   function bindMapTouch(el) {
-    let startX, startY, startTileX, startTileY;
-    let isDragging = false, rafId = null, currDx = 0, currDy = 0;
+    let startLat, startLng, startX, startY;
     let pinchStartDist = 0, pinchStartZoom = smState.zoom;
+    let rafId = null;
+    // 드래그 중 마커 위치 추적을 위한 기준 픽셀 배열
+    // { el: DOMElement, baseLeft: number, baseTop: number }
+    let _markerBases = [];
 
-    function onStart(x, y) {
-      isDragging = true;
-      startX = x; startY = y;
-      startTileX = _tile.x; startTileY = _tile.y;
-      currDx = 0; currDy = 0;
-      el.style.cursor = 'grabbing';
-    }
-
-    function onMove(x, y) {
-      if (!isDragging || !_tile.img) return;
-      currDx = x - startX;
-      currDy = y - startY;
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        if (!_tile.img) return;
-        // 타일 이미지 이동
-        _tile.img.style.transform = `translate3d(${currDx}px,${currDy}px,0)`;
-        // 마커/캔버스는 타일의 현재 화면 위치 기준으로 실시간 재계산
-        _renderOverlay(startTileX + currDx, startTileY + currDy);
+    function _cacheMarkerBases() {
+      _markerBases = [];
+      if (!smOverlay) return;
+      smOverlay.querySelectorAll('[data-marker]').forEach(function(m) {
+        _markerBases.push({
+          el: m,
+          baseLeft: parseFloat(m.dataset.baseLeft) || 0,
+          baseTop: parseFloat(m.dataset.baseTop) || 0,
+        });
       });
     }
 
-    function onEnd(x, y) {
-      if (!isDragging) return;
-      isDragging = false;
+    function onDragStart(x, y) {
+      smState.isDragging = true;
+      startX = x; startY = y;
+      startLat = smState.lat; startLng = smState.lng;
+      el.style.cursor = 'grabbing';
+      if (smImg) smImg.style.transition = 'none';
+      if (smCanvas) smCanvas.style.transition = 'none';
+      // overlay는 transition 없이 개별 마커 이동
+      _cacheMarkerBases();
+    }
+
+    function onDragMove(x, y) {
+      if (!smState.isDragging) return;
+      const dx = x - startX;
+      const dy = y - startY;
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        // 배경 이미지 + 캔버스 경로만 translate
+        if (smImg) smImg.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        if (smCanvas) smCanvas.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        // 마커는 각각 개별적으로 오프셋 적용 (지도 좌표에 고정된 것처럼 보이게)
+        _markerBases.forEach(function(item) {
+          item.el.style.left = (item.baseLeft + dx) + 'px';
+          item.el.style.top = (item.baseTop + dy) + 'px';
+        });
+      });
+    }
+
+    function pixelDeltaToLatLng(dx, dy, centerLat, centerLng, zoomLevel) {
+      const scale = Math.pow(2, zoomLevel) * 256;
+      function toMerc(la, lo) {
+        const x = (lo + 180) / 360;
+        const sinLat = Math.sin(la * Math.PI / 180);
+        const y = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2;
+        return { x: x * scale, y: y * scale };
+      }
+      const c = toMerc(centerLat, centerLng);
+      const nx = c.x - dx;
+      const ny = c.y - dy;
+      const newLng = (nx / scale) * 360 - 180;
+      const nYNorm = ny / scale;
+      const exp = Math.exp((1 - 2 * nYNorm) * 2 * Math.PI);
+      const sinLat = (exp - 1) / (exp + 1);
+      const newLat = Math.asin(sinLat) * 180 / Math.PI;
+      return { lat: newLat, lng: newLng };
+    }
+
+    function onDragEnd(x, y) {
+      if (!smState.isDragging) return;
+      smState.isDragging = false;
       el.style.cursor = 'grab';
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
 
-      const dx = (x != null) ? x - startX : currDx;
-      const dy = (y != null) ? y - startY : currDy;
-      const newTileX = startTileX + dx;
-      const newTileY = startTileY + dy;
-
-      // transform → left/top 확정
-      if (_tile.img) {
-        _tile.x = newTileX; _tile.y = newTileY;
-        _tile.img.style.transform = 'none';
-        _tile.img.style.left = _tile.x + 'px';
-        _tile.img.style.top = _tile.y + 'px';
+      // 새 중심 좌표 확정
+      if (x != null && y != null && startX != null && startY != null) {
+        const dx = x - startX;
+        const dy = y - startY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+          const level = smZoomToLevel(smState.zoom);
+          const newPos = pixelDeltaToLatLng(dx, dy, startLat, startLng, level);
+          smState.lat = newPos.lat;
+          smState.lng = newPos.lng;
+        }
       }
 
-      // 화면 center의 새 위경도
-      const newCenter = _centerLatLng(_tile.x, _tile.y);
-      if (newCenter) { smState.lat = newCenter.lat; smState.lng = newCenter.lng; }
+      // ★ 핵심: overlay는 즉시 새 center 기준으로 재렌더 (rubber-band 완전 제거)
+      // canvas도 즉시 재렌더 (경로 기준점 갱신)
+      smCanvas.style.transform = 'none';
+      renderMapOverlay();
 
-      _renderOverlay(_tile.x, _tile.y);
-
-      // 타일 경계 체크 — 여백이 20% 이하면 새 타일 로드
-      const { w, h } = getMapSize();
-      const mx = _tile.w * 0.2, my = _tile.h * 0.2;
-      const needReload = _tile.x > -mx || _tile.x + _tile.w < w + mx
-                      || _tile.y > -my || _tile.y + _tile.h < h + my;
-      if (needReload) _loadTile(smState.lat, smState.lng, smState.zoom, false);
+      // 배경 이미지는 새 URL로 비동기 로드 (로드 완료 시 transform 해제)
+      renderStaticMap();
     }
 
     // Mouse
-    el.addEventListener('mousedown', e => { if (e.button === 0) onStart(e.clientX, e.clientY); });
-    el.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX, e.clientY); });
-    el.addEventListener('mouseup', e => onEnd(e.clientX, e.clientY));
-    el.addEventListener('mouseleave', e => onEnd(e.clientX, e.clientY));
+    el.addEventListener('mousedown', e => { if (e.button === 0) onDragStart(e.clientX, e.clientY); });
+    el.addEventListener('mousemove', e => { if (smState.isDragging) onDragMove(e.clientX, e.clientY); });
+    el.addEventListener('mouseup', e => onDragEnd(e.clientX, e.clientY));
+    el.addEventListener('mouseleave', e => onDragEnd(e.clientX, e.clientY));
 
     // Touch
     el.addEventListener('touchstart', e => {
       if (e.touches.length === 1) {
-        onStart(e.touches[0].clientX, e.touches[0].clientY);
+        onDragStart(e.touches[0].clientX, e.touches[0].clientY);
       } else if (e.touches.length === 2) {
-        if (isDragging) onEnd(e.touches[0].clientX, e.touches[0].clientY);
+        if (smState.isDragging) onDragEnd(e.touches[0].clientX, e.touches[0].clientY);
         pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -2616,40 +2681,37 @@
 
     el.addEventListener('touchmove', e => {
       if (e.cancelable) e.preventDefault();
-      if (e.touches.length === 1 && isDragging) {
-        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      if (e.touches.length === 1 && smState.isDragging) {
+        onDragMove(e.touches[0].clientX, e.touches[0].clientY);
       } else if (e.touches.length === 2) {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        const newZoom = Math.round(Math.max(1, Math.min(20, pinchStartZoom + Math.log2(dist / pinchStartDist) * 1.5)));
+        const ratio = dist / pinchStartDist;
+        const newZoom = Math.round(Math.max(1, Math.min(20, pinchStartZoom + Math.log2(ratio) * 1.5)));
         if (newZoom !== smState.zoom) {
           smState.zoom = newZoom;
-          _loadTile(smState.lat, smState.lng, smState.zoom, true);
+          renderStaticMap();
         }
       }
     }, { passive: false });
 
     el.addEventListener('touchend', e => {
-      if (isDragging) {
-        e.changedTouches.length > 0
-          ? onEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
-          : onEnd(null, null);
+      if (smState.isDragging && e.changedTouches.length > 0) {
+        onDragEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      } else if (smState.isDragging) {
+        onDragEnd();
       }
     });
 
     el.addEventListener('wheel', e => {
       e.preventDefault();
-      smState.zoom = Math.max(1, Math.min(20, smState.zoom + (e.deltaY > 0 ? -1 : 1)));
-      _loadTile(smState.lat, smState.lng, smState.zoom, true);
+      const delta = e.deltaY > 0 ? -1 : 1;
+      smState.zoom = Math.max(1, Math.min(20, smState.zoom + delta));
+      renderStaticMap();
     }, { passive: false });
   }
-
-
-
-
-
 
 
 
