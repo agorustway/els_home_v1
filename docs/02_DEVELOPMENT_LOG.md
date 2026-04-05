@@ -1,13 +1,25 @@
 # 🛠 ELS DEVELOPMENT LOG
 
 ## 📅 2026-04-05 (v4.5.54 — Map Architecture Refactoring)
+## 📅 2026-04-05 (v4.6.0 — Map Architecture Refactoring)
 
 ### 🚀 배포 요약
 마커 어긋남(Drift) 문제를 물리적으로 차단하기 위해 지도 구성 요소를 단일 `smPanner` 레이어로 통합하고, 사용자 검증용 버전 HUD 상시 노출.
 
 ### 📌 주요 변경 사항
-1. **[MAP] panner 아키텍처 도입**:
-   - `img`(지도 이미지), `canvas`(경로), `overlay`(마커)를 각각 따로 움직이던 방식에서, 이들을 하나의 부모 레이어인 `smPanner`에 담아 **부모 하나만 `transform`** 하는 방식으로 전면 개편.
+- **[APP/MAP] v4.6.0: 네이버 지도 Dynamic JS SDK v3 전면 복구**
+  - **문제 분석 (Post-Mortem of Static Map)**:
+    - 3 Flash(Flash) 모델이 구현한 Static Map 엔진은 터치 드래그 시 좌표-픽셀 변환 오차가 발생하고, `touchend` 시 DOM을 재렌더링하는 과정에서 마커 클릭 이벤트 유실 및 위치 어긋남(Drift)이 발생함.
+    - 특히 1px 단위의 미세한 움직임이 '드래그'로 오인되어 렌더링 루프를 깨트리는 고질적인 버그가 확인됨.
+  - **해결책**:
+    - "Naver Maps Dynamic SDK v3"로 전면 원복하여 복잡한 지도 연산(Pinch/Pan/Marker Mapping)을 SDK 레벨로 이관.
+    - `fitBounds`를 통해 오토줌 및 경로 렌더링 기능을 네이티브하게 보장.
+    - `index.html`에 SDK 스크립트 재삽입 및 `map.js` 전체 리팩토링.
+  - **캐시 정책**: `v4.6.0` (Build 460)으로 상향 및 모든 import 경로에 쿼리스트링 캐시버스터 적용.
+  - **변경 파일**: `map.js`, `index.html`, `app.js`, `store.js`, `build.gradle`, `version.json`
+
+- **[APP/UI] v4.5.54 (Static Map Fix Attempt - Deprecated)**
+  - `smPanner` 레이어 도입으로 Static Map 마커 어긋남 1차 방어 시도. (효과 불충분으로 v4.6.0에서 SDK로 교체됨) 부모 레이어인 `smPanner`에 담아 **부모 하나만 `transform`** 하는 방식으로 전면 개편.
    - 구성 요소 간의 동기화 오차가 물리적으로 발생할 수 없도록 구조화.
 2. **[MAP] 육안 검증용 버전 표시 (HUD)**:
    - 지도 우측 상단에 `v4.5.54-MAPFIX-R1` 레이블 상시 노출. (WebView 캐시로 인해 구버전이 실행 중인지 형이 바로 알 수 있도록 함)

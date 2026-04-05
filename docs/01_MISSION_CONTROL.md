@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.54
-> 마지막 업데이트: 2026-04-05 21:05 (KST)
+# ELS MISSION CONTROL v4.6.0
+> 마지막 업데이트: 2026-04-05 21:55 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.5.54` (Panner Architecture & Visible Version HUD)
+- **현재 버전**: `v4.6.0` (Naver Maps Dynamic SDK v3 Restoration)
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 지도 엔진 아키텍처 전면 개편 (smPanner 도입) 및 검증용 HUD 추가
+- **상태**: 🟢 네이버 지도 JS SDK v3 복구 완료 (마커/오차 문제 근본 해결)
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -58,6 +58,14 @@
   - Stationary Filter로 정차 중 미세 튐 데이터(지그재그) 제거.
 - **실시간 마커 안정화 (v4.5.21)**:
   - `liveMarkersRef` 도입으로 상세 조회 시에도 운영 마커 보존.
+
+## ✅ 주요 업데이트 (v4.6.0)
+- **[APP/MAP] 네이버 지도 Dynamic SDK v3 원복**:
+  - 기존 Static Maps (DIY) 방식의 한계를 인정하고, Naver Maps JS SDK v3로 전격 원복.
+  - 마커 따라오기(Drift), 경로 렌더링 무반응, 오토줌 실패 문제를 SDK 레벨에서 근본적 해결.
+  - **필수**: Naver Cloud Console에 `https://www.nollae.com` 도메인 권한 등록 필요.
+- **[APP] 전역 캐시 무효화 (Force Upgrade)**:
+  - `v4.6.0` (Build 460)으로 상향하여 구버전 코드 캐싱을 물리적으로 차단.
 
 ## ✅ 핫픽스 (v4.5.54)
 - **[APP/MAP] 지도 엔진 panner 아키텍처 도입**:

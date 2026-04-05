@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.6.0",
-  "versionCode": 460,
+  "latestVersion": "v4.6.1",
+  "versionCode": 461,
   "forceUpdate": true,
-  "changeLog": "v4.6.0: 네이버 지도 Dynamic JS SDK v3 원복 및 마커 동기화/오토줌 근본적 해결",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=460"
+  "changeLog": "v4.6.1: API 인증 문제 해결(Static Map 복구) 및 지도 정확도 개선",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=461"
 }
