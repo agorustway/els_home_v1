@@ -1,5 +1,23 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+  ## 📅 2026-04-05 (오후) - [APP] 네이버 지도 Dynamic API V3 (JS SDK) 전격 복구 (v4.3.49)
+  
+  ### 🚀 배포 요약
+  - **버전**: `v4.3.49` (Mobile APK)
+  - **주요 내용**: DIY Static Map 엔진 폐기 및 네이버 지도 Dynamic SDK(JS SDK) 복구. 마커 드리프트 및 Rubber-band 현상 완전 해결.
+  
+  ### 🛠 세부 변경 사항
+  1. **[MAP] Dynamic API V3 (JS SDK) 연동 복구**:
+     - Capacitor `hostname`을 `www.nollae.com`으로 고정한 설정을 활용하여 웹뷰 Referer 인증 이슈를 해결.
+     - Static Maps 이미지 방식(v4.3.35)에서 다시 JS SDK 방식으로 회귀하여 60fps의 부드러운 패닝/줌 UX 제공.
+  2. **[FIX] 마커 드리프트 및 고정 문제 해결**:
+     - SDK의 `naver.maps.Marker` 및 `Polyline` 객체를 사용하여 지리적 좌표에 마커를 물리적으로 고정.
+     - 드래그 중 마커가 지도를 따라오거나, 줌 변경 시 튕기는 현상(Rubber-band)을 근본적으로 제거.
+  3. **[STABLE] 버전 동기화 및 APK 배포**:
+     - `app.js` 버전 `v4.3.49`로 상향.
+     - `version.json` 메타데이터 갱신 및 APK 빌드/배포 완료.
+
+
  ## 📅 2026-04-05 (심야) - [APP] 관제 지도 UX 고도화 및 드래그 동기화 해결 (v4.3.37)
  
  ### 🚀 배포 요약

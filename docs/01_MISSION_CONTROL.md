@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.37
-> 마지막 업데이트: 2026-04-05 11:25 (KST)
+# ELS MISSION CONTROL v4.5.38
+> 마지막 업데이트: 2026-04-05 14:15 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.3.46` (Mobile) / `v4.5.37` (Unified Web/Backend)  
+- **현재 버전**: `v4.3.49` (Mobile) / `v4.5.38` (Unified Web/Backend)  
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 지도 드래그 중 마커 고정 문제 + rubber-band 현상 근본 해결
+- **상태**: 🟢 네이버 지도 Dynamic API V3(JS SDK) 복구 완료 (마커 드리프트 완전 해결)
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,7 +17,7 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
-- [x] **2026-04-05**: [APP] v4.3.46 - 지도 드래그 마커 고정 문제 근본 해결 (overlay translate 분리, 드래그 중 개별 마커 실시간 오프셋 적용, rubber-band 현상 제거)
+- [x] **2026-04-05**: [APP] v4.3.49 - 네이버 지도 Dynamic API V2(JS SDK) 전격 복구. DIY Static Map 엔진의 한계였던 마커 드리프트 현상을 원천 해결하고 부드러운 60fps 패닝/줌 구현. (Capacitor hostname fix 기반)
 - [x] **2026-04-05**: [APP] v4.3.36 - 지도 UI/UX 전면 개선 (줌 슬라이더, 하단 상시 패널) 및 오버레이 마커 동기화(정수 줌 레벨) 해결
 - [x] **2026-04-05**: [APP] v4.3.35 - JS SDK 완전 제거, Static Maps raster-cors 이미지 방식으로 전환 — WebView Referer 인증 문제 근본 해결
 - [x] **2026-04-05**: [APP] v4.3.34 - Capacitor hostname `www.nollae.com`으로 변경하여 네이버 지도 네이티브 앱 인증 이슈 원천 해결
@@ -63,4 +63,4 @@
 - 없음 (알려진 모든 치명적 버그 해결됨)
 
 ---
-*최종 갱신일: 2026-04-05 (by Antigravity AI v4.5.32)*
+*최종 갱신일: 2026-04-05 (by Antigravity AI v4.5.38)*
