@@ -282,6 +282,12 @@ function bindMapTouch(el) {
     if (didDrag) {
       renderMapOverlay();
       renderStaticMap();
+    } else {
+      if (smImg) smImg.style.transform = 'none';
+      _markerBases.forEach(item => {
+        item.el.style.left = item.baseLeft + 'px';
+        item.el.style.top  = item.baseTop  + 'px';
+      });
     }
   }
 
