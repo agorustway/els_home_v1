@@ -93,7 +93,8 @@ function renderStaticMap() {
   smImg.onload = () => {
     if (smImg)   smImg.style.transform   = 'none';
     if (smCanvas) smCanvas.style.transform = 'none';
-    renderMapOverlay();
+    // 드래그 중 onload 발화 시 오버레이 초기화하면 _markerBases 캐시가 무효화됨 → 마커 고정 버그
+    if (!smState.isDragging) renderMapOverlay();
   };
   smImg.onerror = () => {
     smImg.src = '';
@@ -267,16 +268,21 @@ function bindMapTouch(el) {
     el.style.cursor = 'grab';
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
 
+    let didDrag = false;
     if (x != null && y != null && startX != null && startY != null) {
       const dx = x - startX, dy = y - startY;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        didDrag = true;
         const newPos = pixelDeltaToLatLng(dx, dy, startLat, startLng, smZoomToLevel(smState.zoom));
         smState.lat = newPos.lat; smState.lng = newPos.lng;
       }
     }
     smCanvas.style.transform = 'none';
-    renderMapOverlay();
-    renderStaticMap();
+    // 탭(tap)인 경우 오버레이 재렌더 금지 → touchend 후 click 이벤트가 마커에 도달할 수 있도록 보존
+    if (didDrag) {
+      renderMapOverlay();
+      renderStaticMap();
+    }
   }
 
   el.addEventListener('mousedown',  e => { if (e.button === 0) onDragStart(e.clientX, e.clientY); });
@@ -347,7 +353,7 @@ export async function refreshMapData() {
     const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips?mode=active');
     const data = await res.json();
     smState.trips = data.trips || data.data || [];
-    renderMapOverlay();
+    if (!smState.isDragging) renderMapOverlay();  // 드래그 중 폴링 재렌더 금지
     renderMapTripList(smState.trips);
   } catch (e) {
     console.warn('refreshMapData 오류', e);

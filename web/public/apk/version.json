@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.5.50",
-  "versionCode": 450,
+  "latestVersion": "v4.5.52",
+  "versionCode": 452,
   "forceUpdate": true,
-  "changeLog": "[v4.5.50] 전역 시스템 안정화 및 버전 통합 업데이트. 네이버 지도 Dynamic API V3 완벽 적용 및 마커 드리프트 현상 최종 해결.",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=450"
+  "changeLog": "[v4.5.52] 전역 시스템 안정화 및 클린 빌드 배포. 지도 마커 드래그 고정 및 클릭 무반응 버그 최종 해결 및 성능 최적화.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=452"
 }

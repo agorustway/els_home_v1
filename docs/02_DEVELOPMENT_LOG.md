@@ -1,5 +1,53 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-04-05 (저녁) - [APP] 클린 빌드 및 전역 버전 통합 배포 (v4.5.52)
+
+### 🚀 작업 요약
+- **대상**: 드라이버 앱 전체 (Android + Vanilla Modules)
+- **핵심 목표**: "클린빌드" 요청에 따른 전체 스택 재빌드 및 버전 정렬 (`v4.5.52`)
+- **버전**: `v4.5.52` (Build 452)
+
+### 🛠 세부 변경 사항
+1. **[BUILD] 클린 빌드 수행**:
+   - `web/` : `npm run build` (Next.js 포털 정적 export)
+   - `web/android/` : `gradlew clean assembleDebug` (안드로이드 APK 클린 빌드)
+2. **[DEPLOY] 버전 동기화**:
+   - `build.gradle`, `version.json`, `store.js`, `index.html` 전 구역을 `v4.5.52`로 합치.
+   - WebView 캐시 무효화를 위한 쿼리스트링 자동 갱신.
+3. **[STABLE] 버그 핫픽스 동봉**:
+   - 직전 작업(`v4.5.51`)에서 해결한 지도 마커 드래그/클릭 버그가 포함된 최종 안정본 배포.
+
+### 📁 변경 파일
+- `web/android/app/build.gradle`
+- `web/public/apk/version.json`
+- `web/android/app/src/main/assets/public/modules/store.js`
+- `web/android/app/src/main/assets/public/index.html`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+### 🚀 작업 요약
+- **대상**: `web/android/app/src/main/assets/public/modules/map.js`
+- **증상 1**: 지도 드래그 시 차량 마커가 지도와 함께 이동하지 않고 화면에 고정되는 현상
+- **증상 2**: 마커 또는 목록 항목 클릭 시 전체 경로 표시(오토줌) 무반응
+
+### 🛠 원인 분석 및 수정
+
+**버그 1 — 마커 화면 고정 (`map.js:97`, `map.js:356`)**
+- **원인**: 드래그 중 `smImg.onload` 콜백 또는 30초 폴링(`refreshMapData`) 이 `renderMapOverlay()` 호출
+  → `smOverlay.innerHTML = ''` 로 오버레이 초기화 → `bindMapTouch` 클로저 내 `_markerBases` 배열이 삭제된 DOM 요소를 참조하게 됨
+  → 이후 `onDragMove` 에서 업데이트해도 화면에 반영 안 됨
+- **수정**: `renderMapOverlay()` 호출 전 `!smState.isDragging` 가드 추가 (2곳)
+
+**버그 2 — 마커 클릭 무반응 (`map.js:265`)**
+- **원인**: 마커 탭 시 `touchend` → `onDragEnd` → `renderMapOverlay()` 로 마커 DOM 즉시 파괴
+  → 그 직후 발화되는 synthetic `click` 이벤트가 이미 삭제된 요소를 대상으로 하여 취소됨
+- **수정**: `onDragEnd` 내에 `didDrag` 플래그 도입(임계값 5px). 탭 판정 시 `renderMapOverlay()` / `renderStaticMap()` 호출 생략 → 마커 DOM 보존 → `click` 정상 발화
+
+### 📁 변경 파일
+- `modules/map.js` — 3곳 수정, +7줄 / -4줄
+
 ## 📅 2026-04-05 (오후) - [APP] 버전 관리 자동화 및 WebView 캐시 이슈 해결 (v4.5.50)
 
 ### 🚀 작업 요약

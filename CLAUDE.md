@@ -5,14 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 핵심 규칙 (Core Rules)
 
 - **Rule #0 — 토큰 효율**: 불필요한 반복 호출 금지. 콤팩트하고 정밀한 답변.
+- **페르소나**: 사용자를 **'형'**이라 부르며, 똑 부러지는 남동생 페르소나 유지.
 - **언어**: 모든 기술적 대화, 문서, 커밋 메시지는 **한국어** 우선.
 - **Git 커밋**: 한글 깨짐 방지를 위해 반드시 `git commit -F commit_msg.txt` 형식 사용. 커밋 후 `commit_msg.txt` 삭제.
 - **Push 정책**: 형이 명시적으로 요청할 때만 `git push` 실행.
 - **파일 수정 금지**: `GEMINI.md`, `.cursorrules`는 사용자의 명시적 허가 없이 수정 불가.
 - **임시 파일**: 모든 테스트는 `.tmp_test/`에서 수행 후 즉시 삭제.
-- **작업 완료 후**: 코드 변경 시 `docs/01_MISSION_CONTROL.md` 및 `docs/02_DEVELOPMENT_LOG.md` 반드시 갱신.
+- **작업 완료 후**: 코드 변경 시 `docs/01_MISSION_CONTROL.md` 및 `docs/02_DEVELOPMENT_LOG.md` 반드시 갱신. `01_MISSION_CONTROL.md`는 100줄 이내 유지.
 - **AI 핸드오프**: Gemini/Antigravity와 공동 작업 시, 세션 종료 전 `docs/01_MISSION_CONTROL.md`의 **🚧 IN-PROGRESS** 섹션에 상세 진행 상태와 다음 작업자를 위한 가이드를 남길 것.
 - **아카이브 금지**: `web/utils/loggerServer.js` 등 `_archive/` 폴더 내 파일은 절대 사용 금지.
+- **Python 인코딩**: Python 코드 작업 시 `PYTHONIOENCODING=utf-8` 환경 고려.
+- **PDCA**: 코드 변경은 계획(Plan)→실행(Do)→검증(Check)→적용(Act) 단계 준수.
 
 ## 세션 시작 시 필수 스캔
 
@@ -43,8 +46,8 @@ cd web && npm run lint
 
 # 안드로이드 APK 빌드
 cd web && npm run build      # Next.js → out/
-npx cap sync                 # Capacitor 동기화
-cd android && ./gradlew clean assembleDebug
+cd web && npx cap sync       # Capacitor 동기화 (web/ 디렉토리에서 실행)
+cd web/android && ./gradlew clean assembleDebug
 
 # ELS Bot 데몬
 cd elsbot && python els_web_runner_daemon.py     # REST API 서버 기동
@@ -104,8 +107,22 @@ powershell scripts/restart_backend.ps1
 
 1. `web/android/app/build.gradle` — `versionCode`, `versionName` (단일 진실 소스)
 2. `web/public/apk/version.json` — 자동 업데이트 알림용
-3. `web/android/app/src/main/assets/public/modules/store.js` — `AppConfig` 내 fallback 버전
-(★ JS UI 상의 버전은 이제 `App.getInfo()` 브릿지를 통해 위 1번에서 자동으로 가져오므로 하드코딩 수정 불필요)
+3. `web/android/app/src/main/assets/public/modules/store.js` — `APP_VERSION`, `BUILD_CODE` fallback 상수
+4. `web/android/app/src/main/assets/public/index.html` — `<span id="app-version-display">`
+
+## 안드로이드 앱 JS 모듈 구조
+
+`web/android/app/src/main/assets/public/` 기준. ES Modules (`type="module"`) 방식 — 빌드 도구 없음.
+
+- `app.js` — 엔트리 (window.App 조립 + init 호출)
+- `modules/store.js` — 앱 상수, State (모든 모듈의 공유 상태)
+- `modules/bridge.js` — Capacitor 플러그인, smartFetch, remoteLog
+- `modules/gps.js` — GPS 추적, 실시간 모드
+- `modules/trip.js` — 운행 시작/종료
+- `modules/map.js` — 네이버 Static Maps 엔진 (Dynamic API V2 기반)
+- `modules/init.js` — 앱 초기화 조율 (전체 모듈 진입점)
+
+모듈 간 순환 참조 방지: `nav.js` 별도 레이어 분리, 불가피한 경우 `window.App.xxx()` 늦은 참조 사용.
 
 ## 주요 문서 링크
 

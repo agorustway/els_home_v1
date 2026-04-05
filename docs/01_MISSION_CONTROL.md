@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.50
-> 마지막 업데이트: 2026-04-05 17:30 (KST)
+# ELS MISSION CONTROL v4.5.52
+> 마지막 업데이트: 2026-04-05 18:48 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.5.50` (Unified Mobile/Web)  
+- **현재 버전**: `v4.5.52` (Map Bug Hotfix & Clean Build)
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 전역 시스템 안정화 및 버전 통합 완료 (Build 450)
+- **상태**: 🟢 지도 마커 드래그/클릭 버그 해결 완료
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -58,6 +58,12 @@
   - Stationary Filter로 정차 중 미세 튐 데이터(지그재그) 제거.
 - **실시간 마커 안정화 (v4.5.21)**:
   - `liveMarkersRef` 도입으로 상세 조회 시에도 운영 마커 보존.
+
+## ✅ 핫픽스 (v4.5.51)
+- **[APP/MAP] 지도 마커 드래그 고정 버그 해결**:
+  - `smImg.onload` 및 `refreshMapData()` 폴링이 드래그 중 `renderMapOverlay()` 를 호출 → `_markerBases` 캐시 무효화 → 마커가 화면에 고정되는 버그 수정. `!smState.isDragging` 가드 추가.
+- **[APP/MAP] 마커 클릭 시 경로 조회 무반응 버그 해결**:
+  - `touchend` → `onDragEnd` → `renderMapOverlay()` 가 마커 DOM 소멸 → `click` 이벤트 취소되는 버그 수정. `didDrag` 플래그로 탭/드래그 구분, 탭 시 오버레이 재렌더 금지.
 
 ## ✅ 주요 리팩토링 (v4.5.50+)
 - **[APP] 드라이버 앱 모듈 분리 리팩토링 완료**:
