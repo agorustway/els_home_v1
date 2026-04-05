@@ -21,10 +21,10 @@ let smState = {
   pollTimer: null,
 };
 
-let smContainer = null, smImg = null, smCanvas = null, smOverlay = null;
+let smContainer = null, smImg = null, smCanvas = null, smOverlay = null, smPanner = null;
 let mapPollTimer = null;
 let _mapPanelCollapsed = false;
-let _markerUpdateRaf = null; // RAF 관리용 추가
+let _markerUpdateRaf = null;
 
 // ─── 줌 정수 변환 ────────────────────────────────────────────────
 function smZoomToLevel(z) { return Math.max(1, Math.min(20, Math.round(z))); }
@@ -59,24 +59,33 @@ function initStaticMap() {
   const el = document.getElementById('driver-map');
   if (!el) return;
   el.innerHTML     = '';
-  el.style.cssText = 'position:relative;overflow:hidden;background:#e8eaed;cursor:grab;';
+  el.style.cssText = 'position:relative;overflow:hidden;background:#e8eaed;cursor:grab;touch-action:none;';
 
   const { w, h } = getMapSize();
+
+  smPanner = document.createElement('div');
+  smPanner.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0;';
+  el.appendChild(smPanner);
 
   smImg = document.createElement('img');
   smImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;user-select:none;pointer-events:none;';
   smImg.draggable = false;
-  el.appendChild(smImg);
+  smPanner.appendChild(smImg);
 
   smCanvas = document.createElement('canvas');
   smCanvas.width  = w * 2;
   smCanvas.height = h * 2;
   smCanvas.style.cssText = `position:absolute;top:0;left:0;width:${w}px;height:${h}px;pointer-events:none;`;
-  el.appendChild(smCanvas);
+  smPanner.appendChild(smCanvas);
 
   smOverlay = document.createElement('div');
   smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
-  el.appendChild(smOverlay);
+  smPanner.appendChild(smOverlay);
+
+  const vLabel = document.createElement('div');
+  vLabel.style.cssText = 'position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.4);color:#fff;font-size:8px;padding:1px 3px;pointer-events:none;z-index:99;';
+  vLabel.textContent = 'v4.5.54-MAPFIX-R1';
+  el.appendChild(vLabel);
 
   smContainer = el;
   bindMapTouch(el);
@@ -92,9 +101,7 @@ function renderStaticMap() {
   const url = buildStaticMapUrl(smState.lat, smState.lng, smState.zoom, rw, rh);
 
   smImg.onload = () => {
-    if (smImg)   smImg.style.transform   = 'none';
-    if (smCanvas) smCanvas.style.transform = 'none';
-    // 드래그 중 onload 발화 시 오버레이 초기화하면 _markerBases 캐시가 무효화됨 → 마커 고정 버그
+    if (smPanner) smPanner.style.transform = 'none';
     if (!smState.isDragging) renderMapOverlay();
   };
   smImg.onerror = () => {
@@ -115,7 +122,7 @@ function renderStaticMap() {
 // ─── 오버레이 (마커 + 경로) 렌더 ─────────────────────────────────
 function renderMapOverlay() {
   if (!smCanvas || !smOverlay) return;
-  smOverlay.style.transform = 'none'; // 렌더 시 오프셋 초기화
+  if (smPanner) smPanner.style.transform = 'none'; // 렌더 시 오프셋 초기화
   const { w, h } = getMapSize();
   const level     = smZoomToLevel(smState.zoom);
 
@@ -239,9 +246,7 @@ function bindMapTouch(el) {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(() => {
       const ts = `translate3d(${dx}px,${dy}px,0)`;
-      if (smImg)   smImg.style.transform   = ts;
-      if (smCanvas) smCanvas.style.transform = ts;
-      if (smOverlay) smOverlay.style.transform = ts;
+      if (smPanner) smPanner.style.transform = ts;
     });
   }
 
@@ -277,8 +282,7 @@ function bindMapTouch(el) {
         smState.lat = newPos.lat; smState.lng = newPos.lng;
       }
     }
-    smCanvas.style.transform = 'none';
-    if (smOverlay) smOverlay.style.transform = 'none';
+    if (smPanner) smPanner.style.transform = 'none';
 
     // 탭(tap)인 경우 오버레이 재렌더 금지 → touchend 후 click 이벤트가 마커에 도달할 수 있도록 보존
     if (didDrag) {
@@ -471,8 +475,10 @@ export async function showTripRouteOnMap(trip) {
   };
 
   const valid = locations
-    .filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132)
+    .filter(l => l.lat > 31 && l.lat < 43 && l.lng > 123 && l.lng < 133)
     .sort((a, b) => new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at));
+  
+  remoteLog(`[MAP] showTripRouteOnMap 가공: 원본=${locations.length}, 필터후=${valid.length}`, 'MAP_ROUTE');
 
   const filtered = [];
   for (let i = 0; i < valid.length; i++) {

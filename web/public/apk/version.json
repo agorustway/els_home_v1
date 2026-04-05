@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.5.53",
-  "versionCode": 453,
+  "latestVersion": "v4.5.54",
+  "versionCode": 454,
   "forceUpdate": true,
-  "changeLog": "v4.5.53: 지도 마커 드래그/오토줌 핫픽스 (v2) 및 캐시 무효화 강화",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=453"
+  "changeLog": "v4.5.54: 지도 엔진 아키텍처 리팩토링 (smPanner) 및 가시적 버전 표시",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=454"
 }
