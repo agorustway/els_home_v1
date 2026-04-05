@@ -24,6 +24,7 @@ let smState = {
 let smContainer = null, smImg = null, smCanvas = null, smOverlay = null;
 let mapPollTimer = null;
 let _mapPanelCollapsed = false;
+let _markerUpdateRaf = null; // RAF 관리용 추가
 
 // ─── 줌 정수 변환 ────────────────────────────────────────────────
 function smZoomToLevel(z) { return Math.max(1, Math.min(20, Math.round(z))); }
@@ -114,6 +115,7 @@ function renderStaticMap() {
 // ─── 오버레이 (마커 + 경로) 렌더 ─────────────────────────────────
 function renderMapOverlay() {
   if (!smCanvas || !smOverlay) return;
+  smOverlay.style.transform = 'none'; // 렌더 시 오프셋 초기화
   const { w, h } = getMapSize();
   const level     = smZoomToLevel(smState.zoom);
 
@@ -236,12 +238,10 @@ function bindMapTouch(el) {
     const dx = x - startX, dy = y - startY;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(() => {
-      if (smImg)   smImg.style.transform   = `translate3d(${dx}px,${dy}px,0)`;
-      if (smCanvas) smCanvas.style.transform = `translate3d(${dx}px,${dy}px,0)`;
-      _markerBases.forEach(item => {
-        item.el.style.left = (item.baseLeft + dx) + 'px';
-        item.el.style.top  = (item.baseTop  + dy) + 'px';
-      });
+      const ts = `translate3d(${dx}px,${dy}px,0)`;
+      if (smImg)   smImg.style.transform   = ts;
+      if (smCanvas) smCanvas.style.transform = ts;
+      if (smOverlay) smOverlay.style.transform = ts;
     });
   }
 
@@ -278,16 +278,14 @@ function bindMapTouch(el) {
       }
     }
     smCanvas.style.transform = 'none';
+    if (smOverlay) smOverlay.style.transform = 'none';
+
     // 탭(tap)인 경우 오버레이 재렌더 금지 → touchend 후 click 이벤트가 마커에 도달할 수 있도록 보존
     if (didDrag) {
       renderMapOverlay();
       renderStaticMap();
     } else {
       if (smImg) smImg.style.transform = 'none';
-      _markerBases.forEach(item => {
-        item.el.style.left = item.baseLeft + 'px';
-        item.el.style.top  = item.baseTop  + 'px';
-      });
     }
   }
 
@@ -447,6 +445,7 @@ export const toggleMapTripList = toggleMapPanel; // 하위 호환
 
 // ─── 경로 표시 ───────────────────────────────────────────────────
 export async function showTripRouteOnMap(trip) {
+  remoteLog(`[MAP] showTripRouteOnMap 시작: ${trip.vehicle_number || trip.id}`, 'MAP_ROUTE');
   document.getElementById('map-trip-list')?.classList.add('hidden');
   clearMapRoute();
 
@@ -511,7 +510,9 @@ export async function showTripRouteOnMap(trip) {
     Math.log2((w * 0.8 * 360) / (dLng * 256)),
     Math.log2((h * 0.8 * 180) / (dLat * 256))
   ))));
+  renderMapOverlay(); // 즉시 경로 그리기 추가
   renderStaticMap();
+  remoteLog(`[MAP] showTripRouteOnMap 렌더 완료: zoom=${smState.zoom}`, 'MAP_ROUTE');
 
   const panel   = document.getElementById('map-route-panel');
   const titleEl = document.getElementById('map-route-title');
