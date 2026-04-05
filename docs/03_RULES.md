@@ -180,14 +180,24 @@ git config --global core.quotepath false
 
 ---
 
-## 🔄 제9조. 멀티 AI 도구 동기화
+## 🔄 제9조. 멀티 AI 도구 동기화 및 공동 작업 (Claude × Gemini)
 
-| 도구 | 메모리 참조 방법 |
+> **"클로드가 깎고, 제미나이가 조립하며, 룰은 하나로 통한다."**
+
+우리 프로젝트는 **Claude(Cursor/Code)**와 **Gemini(Antigravity)**가 공동으로 전함을 관리합니다. 컨텍스트가 꼬이지 않도록 아래 핸드오프(Handoff) 룰을 철저히 지킵니다.
+
+1. **상호 교차 체크인**: 
+   - 대화 시작 시 항상 `docs/01_MISSION_CONTROL.md`의 **[⏳ 다음 할 일]**과 **[🚧 IN-PROGRESS]** 구역을 확인합니다.
+   - Claude가 대규모 리팩토링 후 남긴 상태를 Gemini가 이어받고, 반대로 Gemini가 배포/스크립트 처리 후 남긴 상태를 Claude가 이어받습니다.
+2. **단일 진실 소스 존중**:
+   - 어떤 도구를 사용하든, `docs/` 디렉토리가 유일한 진실 소스(Single Source of Truth)입니다.
+3. **각자의 메모리 강제 참조**:
+
+| 도구 | 메모리 참조/강제 방법 |
 |------|------------------|
-| **Gemini AI** | 루트의 **`GEMINI.md`**를 최우선 참조 (지식의 입구) |
-| **Cursor/Claude** | 루트의 **`.cursorrules`**를 통해 `docs/` 위계 강제 준수 |
-| **Antigravity** | `.agent/workflows/` 및 `docs/` 실시간 동기화 |
-| **기타 모델** | 사용자가 대화 시작 시 "docs/01_MISSION_CONTROL.md 읽어" 명시 |
+| **Gemini AI** | 대화 시작 시 워크플로우 `/init` 실행을 통해 프로젝트 상태 강제 주입 |
+| **Claude/Cursor** | 루트의 **`.cursorrules`** 지정 룰 준수 및 수동 지식 파일 참조 |
+| **기타 모델** | 대화 시작 시 "docs/01_MISSION_CONTROL.md 읽어" 명시 |
 
 **핵심**: 어떤 도구를 사용하든, `docs/` 디렉토리가 유일한 진실 소스(Single Source of Truth).
 
@@ -244,9 +254,9 @@ git config --global core.quotepath false
 
 > **"AI가 에러로 죽어도, 기록은 죽지 않는다."**
 
-1. **중간 발자국 (WIP Logging)**: 3단계 이상의 복잡한 작업 시, 모든 단계 종료 후가 아니라 **각 단계 사이**에 `docs/01_MISSION_CONTROL.md`의 **[🚀 IN-PROGRESS]** 섹션을 업데이트해야 합니다.
-2. **단서 남기기**: 기록은 토큰 절약을 위해 "작업명: [Step 1 완료 / Step 2 진행 중]" 정도로 콤팩트하게 남깁니다.
-3. **복구 절차**: 세션 에러로 재접속한 AI는 `/init` 실행 시 이 **[IN-PROGRESS]** 칸을 최우선으로 확인하여 형(사용자)에게 복구 여부를 제안해야 합니다.
+1. **중간 발자국 (WIP Logging)**: 3단계 이상의 복잡한 작업 시, 모든 단계 종료 후가 아니라 **각 단계 사이**에 `docs/01_MISSION_CONTROL.md`에 **🚧 IN-PROGRESS** 섹션을 업데이트해야 합니다. 클로드가 치다 만 코드나 제미나이가 끊긴 쉘 스크립트의 맥락이 여기 기록됩니다.
+2. **단서 남기기**: 기록은 토큰 절약을 위해 "작업명: [Step 1 완료 / Step 2 진행 중 - Claude 핸드오프 대기]" 정도로 콤팩트하게 남깁니다.
+3. **복구 절차**: 세션 에러로 재접속하거나 다른 인공지능이 바통을 이어받을 때, 명령어 `/init` 실행 시 이 **[IN-PROGRESS]** 칸을 최우선으로 확인하여 현재 꼬임 상태가 없는지 진단해야 합니다.
 
 ---
 
@@ -272,4 +282,4 @@ git config --global core.quotepath false
 4. `web/android/app/src/main/assets/public/index.html` (설정 탭 내 하드코딩된 표시 버전 `<span id="app-version-display">`)
 
 ---
-*최종 갱신일: 2026-04-04 (by Antigravity AI)*
+*최종 갱신일: 2026-04-05 (by Antigravity v4.5.50)*

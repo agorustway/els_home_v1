@@ -65,9 +65,12 @@
   - `modules/` 디렉토리: store, bridge, nav, permissions, profile, trip, gps, notice, log, photos, emergency, update, map, init, utils
   - `index.html`: `<script type="module" src="app.js">` 적용
   - 원본 백업: `app.js.bak`
+  - [x] JS 모듈 분리(v4.5.50) 후 Android 안드로이드 앱에서 버전이 v4.3.46으로 나오고, 구 버전으로 돌아가는(마커 이슈 등) WebView 캐시 문제 해결. (`index.html` 캐시버스터 주입)
+  - [x] 버전을 Native 영역 (App.getInfo())에서 동적으로 가져오게 변경하여 더이상 `app.js` 등에 하드코딩하지 않게 개선.
+  - [x] 앱 종료(Swipe) 시 네이티브 GPS 유지 알림이 없어지지 않는 버그 해결. (`FloatingWidgetService.java` 내 `onTaskRemoved` 시 서비스/알림 파괴하도록 수정 완료)
 
 ## ⏳ 다음 할 일
-1. 실기기(갤럭시 S25) 필드 테스트 — 모듈 분리 후 APK 빌드 검증 (`gradlew clean assembleDebug`)
+1. Vercel 배포 후 실기기(갤럭시 S25)에서 최신 APK OTA 업데이트 테스트 및 모듈 동작 검증. (❗️**현재 Vercel 배포 안하면 nollae.com에서는 구버전 APK가 계속 다운로드됨**)
 2. `public/public/` 중복 디렉토리 정리 (구버전 파일 잔재)
 3. 오프라인 데이터 큐잉 설계 도입
 

@@ -1,7 +1,7 @@
 /**
  * init.js — 앱 초기화, 화면 전환 오케스트레이션
  */
-import { Store, State, APP_VERSION, BUILD_CODE } from './store.js';
+import { Store, State, AppConfig } from './store.js';
 import { remoteLog } from './bridge.js';
 import { showScreen } from './nav.js';
 import {
@@ -51,13 +51,7 @@ setupPermNav({ showMain, openSettings });
 // ─── 앱 초기화 ───────────────────────────────────────────────────
 export async function init() {
   try {
-    // 버전 단일 소스 자동 주입 (CSS 캐시버스터 + 앱 버전 표시)
-    const cssLink = document.querySelector('link[href*="style.css"]');
-    if (cssLink) cssLink.href = `style.css?v=${BUILD_CODE}`;
-    const vDisplay = document.getElementById('app-version-display');
-    if (vDisplay) vDisplay.textContent = APP_VERSION;
-
-    // 1. Capacitor 브릿지 대기 (단 1회)
+    // 0. Capacitor 브릿지 대기 (단 1회)
     if (window.Capacitor && !isAppInitialized) {
       await new Promise(r => {
         if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
@@ -65,6 +59,26 @@ export async function init() {
         setTimeout(r, 800);
       });
     }
+
+    // 1. 네이티브 버전 정보 동적 패치 (버전 하드코딩 제거)
+    if (window.Capacitor?.Plugins?.App?.getInfo) {
+      try {
+        const info = await window.Capacitor.Plugins.App.getInfo();
+        if (info.version) {
+          AppConfig.APP_VERSION = `v${info.version}`;
+          AppConfig.BUILD_CODE = parseInt(info.build, 10) || AppConfig.BUILD_CODE;
+        }
+      } catch (e) {
+        console.warn('Failed to parse Native App Info', e);
+      }
+    }
+
+    // 버전 단일 소스 자동 주입 (CSS 캐시버스터 + 앱 버전 표시)
+    const cssLink = document.querySelector('link[href*="style.css"]');
+    if (cssLink) cssLink.href = `style.css?v=${AppConfig.BUILD_CODE}`;
+    const vDisplay = document.getElementById('app-version-display');
+    if (vDisplay) vDisplay.textContent = AppConfig.APP_VERSION;
+
 
     // 앱 생명주기 리스너 (설정 화면 복귀 시 권한 갱신, GPS 재기동)
     if (window.Capacitor && !window._appStateRegistered) {

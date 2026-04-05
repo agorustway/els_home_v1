@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(rm /c/Users/hoon/Desktop/els_home_v1/commit_msg.txt)",
+      "Bash(git push:*)"
+    ]
+  }
+}

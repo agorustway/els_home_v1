@@ -1,7 +1,7 @@
 /**
  * update.js — 앱 업데이트 확인
  */
-import { State, APP_VERSION, BUILD_CODE, VERSION_URL } from './store.js';
+import { State, AppConfig, VERSION_URL } from './store.js';
 import { smartFetch } from './bridge.js';
 import { showToast } from './utils.js';
 
@@ -12,12 +12,12 @@ export async function checkUpdate(auto = false) {
     const data = await res.json().catch(() => ({}));
 
     const remoteVersion = (data.latestVersion || '').trim();
-    const localVersion  = APP_VERSION.trim();
-    const hasUpdate     = data.versionCode > BUILD_CODE
+    const localVersion  = AppConfig.APP_VERSION.trim();
+    const hasUpdate     = data.versionCode > AppConfig.BUILD_CODE
       || (remoteVersion !== localVersion && remoteVersion !== '' && !localVersion.includes(remoteVersion));
 
     if (!hasUpdate) {
-      if (!auto) showToast('이미 최신 버전입니다 (' + APP_VERSION + ')');
+      if (!auto) showToast('이미 최신 버전입니다 (' + AppConfig.APP_VERSION + ')');
       return;
     }
 

@@ -3,9 +3,11 @@
  */
 
 // ─── 상수 ──────────────────────────────────────────────────────────
-// ★ 버전은 이 두 상수만 관리. init()에서 CSS/UI 전역 자동 주입됨.
-export const APP_VERSION = 'v4.5.50';
-export const BUILD_CODE  = 450; // Build 450
+// ★ 버전은 네이티브 통신으로 자동 갱신됨. 수동 변경 시 fallback 역할
+export const AppConfig = {
+  APP_VERSION: 'v4.5.50',
+  BUILD_CODE: 450,
+};
 export const BASE_URL    = 'https://www.nollae.com';
 export const VERSION_URL = BASE_URL + '/apk/version.json';
 
