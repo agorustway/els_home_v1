@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.53
-> 마지막 업데이트: 2026-04-05 20:30 (KST)
+# ELS MISSION CONTROL v4.5.54
+> 마지막 업데이트: 2026-04-05 21:05 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.5.53` (Map Sync Refactoring & Cache Buster v2)
+- **현재 버전**: `v4.5.54` (Panner Architecture & Visible Version HUD)
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 지도 마커 동기화 리팩토링 및 탭 유실 방지 완료
+- **상태**: 🟢 지도 엔진 아키텍처 전면 개편 (smPanner 도입) 및 검증용 HUD 추가
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -58,6 +58,14 @@
   - Stationary Filter로 정차 중 미세 튐 데이터(지그재그) 제거.
 - **실시간 마커 안정화 (v4.5.21)**:
   - `liveMarkersRef` 도입으로 상세 조회 시에도 운영 마커 보존.
+
+## ✅ 핫픽스 (v4.5.54)
+- **[APP/MAP] 지도 엔진 panner 아키텍처 도입**:
+  - `img`, `canvas`, `overlay`를 하나의 `smPanner` 레이어로 묶어 단일 `transform`으로 제어. 레이어 간 어긋남 원천 차단.
+- **[APP/MAP] 가시적 버전 표시 (Version HUD)**:
+  - 지도 우측 상단에 `v4.5.54-MAPFIX-R1` 레이블을 추가하여 실제 최신 코드 로드 여부 육안 확인 가능.
+- **[APP/MAP] 터치 좌표 추적 보강**:
+  - `lastX/lastY` 백업을 통해 안드로이드 터치 종료 시 좌표 누락 대응 강화.
 
 ## ✅ 핫픽스 (v4.5.53)
 - **[APP/MAP] 지도 마커 동기화 엔진 리팩토링**:
