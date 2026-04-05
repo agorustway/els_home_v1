@@ -11,13 +11,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **파일 수정 금지**: `GEMINI.md`, `.cursorrules`는 사용자의 명시적 허가 없이 수정 불가.
 - **임시 파일**: 모든 테스트는 `.tmp_test/`에서 수행 후 즉시 삭제.
 - **작업 완료 후**: 코드 변경 시 `docs/01_MISSION_CONTROL.md` 및 `docs/02_DEVELOPMENT_LOG.md` 반드시 갱신.
+- **AI 핸드오프**: Gemini/Antigravity와 공동 작업 시, 세션 종료 전 `docs/01_MISSION_CONTROL.md`의 **🚧 IN-PROGRESS** 섹션에 상세 진행 상태와 다음 작업자를 위한 가이드를 남길 것.
 - **아카이브 금지**: `web/utils/loggerServer.js` 등 `_archive/` 폴더 내 파일은 절대 사용 금지.
 
 ## 세션 시작 시 필수 스캔
 
-1. `docs/01_MISSION_CONTROL.md` — 현재 버전, 마일스톤, 실시간 이슈
+1. `docs/01_MISSION_CONTROL.md` — 현재 버전, 마일스톤, 실시간 이슈 (**🚧 IN-PROGRESS** 필독)
 2. `docs/04_MASTER_ARCHITECTURE.md` — AI Blueprint (NAS/S3/SDK 구조 전체)
 3. `GEMINI.md` — 디렉토리 구조 및 역할 확인
+4. `docs/03_RULES.md` — 제9조 멀티 AI 협업 규칙 확인
 
 ## 프로젝트 개요
 
@@ -100,10 +102,10 @@ powershell scripts/restart_backend.ps1
 
 안드로이드 관련 코드 변경 시 **4곳 동시 버전 갱신**:
 
-1. `web/android/app/build.gradle` — `versionCode`, `versionName`
+1. `web/android/app/build.gradle` — `versionCode`, `versionName` (단일 진실 소스)
 2. `web/public/apk/version.json` — 자동 업데이트 알림용
-3. `web/android/app/src/main/assets/public/app.js` — `APP_VERSION`, `BUILD_CODE`
-4. `web/android/app/src/main/assets/public/index.html` — `<span id="app-version-display">`
+3. `web/android/app/src/main/assets/public/modules/store.js` — `AppConfig` 내 fallback 버전
+(★ JS UI 상의 버전은 이제 `App.getInfo()` 브릿지를 통해 위 1번에서 자동으로 가져오므로 하드코딩 수정 불필요)
 
 ## 주요 문서 링크
 
