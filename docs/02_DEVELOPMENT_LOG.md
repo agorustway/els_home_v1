@@ -19,14 +19,18 @@
    - `FloatingWidgetService.java` 내 `onTaskRemoved()` 생명주기 핸들러 구현.
    - 사용자가 최근 앱 목록에서 앱을 스와이프하여 종료할 때, 상단바의 GPS 유지 알림과 포그라운드 서비스가 즉시 파괴되도록 수동 처리.
 4. **[AI] Claude × Gemini 공동 작업 프로토콜 수립**:
-   - `docs/03_RULES.md`, `.cursorrules`, `.agent/workflows/init.md` 일괄 업데이트.
+   - `docs/03_RULES.md`, `.cursorrules`, `.agent/workflows/init.md`, `CLAUDE.md` 일괄 업데이트.
    - AI 간 작업 단절 방지를 위한 **🚧 IN-PROGRESS** 핸드오프 규칙 강제화.
-5. **[CLEAN] 빌드 환경 정리**:
+5. **[HOTFIX] 초기 구동 크래시 및 편의 기능 패치**:
+   - `store.js` 구조 변경(`AppConfig`) 후 `app.js`에서 이전 상수 명칭을 참조하여 발생하던 **JS 실시간 구동 중단 에러(SyntaxError)** 해결.
+   - **순차 자동 권한 설정 버튼** 도입: 사용자가 권한을 일일이 누르지 않고, 위에서부터 자동으로 설정 팝업을 띄우는 편의 로직 구현.
+6. **[CLEAN] 빌드 환경 정리**:
    - 구버전 캐시의 원흉이었던 `public/public/` 중복 디렉토리 삭제.
    - `gradlew clean assembleDebug`를 통한 클린 빌드 및 APK 재배포.
 
 ### 🔑 다음 스텝
 - [ ] Vercel 배포 완료 후 홈페이지(`nollae.com`)를 통한 실기기 OTA 업데이트 최종 검증.
+- [ ] 순차 권한 설정 로직의 안드로이드 기종별 타임아웃 적정성 검토.
 - [ ] 오프라인 데이터 큐잉(Offline Queue) 설계 및 도입.
 
 

@@ -1,5 +1,5 @@
 # ELS MISSION CONTROL v4.5.50
-> 마지막 업데이트: 2026-04-05 17:15 (KST)
+> 마지막 업데이트: 2026-04-05 17:30 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
 - **현재 버전**: `v4.5.50` (Unified Mobile/Web)  
@@ -68,6 +68,7 @@
   - [x] JS 모듈 분리(v4.5.50) 후 Android 안드로이드 앱에서 버전이 v4.3.46으로 나오고, 구 버전으로 돌아가는(마커 이슈 등) WebView 캐시 문제 해결. (`index.html` 캐시버스터 주입)
   - [x] 버전을 Native 영역 (App.getInfo())에서 동적으로 가져오게 변경하여 더이상 `app.js` 등에 하드코딩하지 않게 개선.
   - [x] 앱 종료(Swipe) 시 네이티브 GPS 유지 알림이 없어지지 않는 버그 해결. (`FloatingWidgetService.java` 내 `onTaskRemoved` 시 서비스/알림 파괴하도록 수정 완료)
+  - [x] **[HOTFIX]** 초기 권한 설정 화면 JS SyntaxError 복구 및 **"순차 자동 설정"** 버튼 기능 추가 완료.
 
 ## ⏳ 다음 할 일
 1. Vercel 배포 후 실기기(갤럭시 S25)에서 최신 APK OTA 업데이트 테스트 및 모듈 동작 검증.
