@@ -59,12 +59,20 @@
 - **실시간 마커 안정화 (v4.5.21)**:
   - `liveMarkersRef` 도입으로 상세 조회 시에도 운영 마커 보존.
 
+## ✅ 주요 리팩토링 (v4.5.50+)
+- **[APP] 드라이버 앱 모듈 분리 리팩토링 완료**:
+  - 단일 IIFE `app.js` (3,119줄) → ES Module 방식, 15개 모듈 + 엔트리 135줄으로 분리
+  - `modules/` 디렉토리: store, bridge, nav, permissions, profile, trip, gps, notice, log, photos, emergency, update, map, init, utils
+  - `index.html`: `<script type="module" src="app.js">` 적용
+  - 원본 백업: `app.js.bak`
+
 ## ⏳ 다음 할 일
-1. 실기기(갤럭시 S25) 필드 테스트 구동 확정 (지도 렌더링/데이터 통신 검증)
-2. 오프라인 데이터 큐잉 설계 도입
+1. 실기기(갤럭시 S25) 필드 테스트 — 모듈 분리 후 APK 빌드 검증 (`gradlew clean assembleDebug`)
+2. `public/public/` 중복 디렉토리 정리 (구버전 파일 잔재)
+3. 오프라인 데이터 큐잉 설계 도입
 
 ## 🐛 남은 이슈
 - 없음 (알려진 모든 치명적 버그 해결됨)
 
 ---
-*최종 갱신일: 2026-04-05 (by Antigravity AI v4.5.50)*
+*최종 갱신일: 2026-04-05 (by Claude Code — 모듈 분리 리팩토링)*

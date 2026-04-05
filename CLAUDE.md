@@ -1,0 +1,115 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## 핵심 규칙 (Core Rules)
+
+- **Rule #0 — 토큰 효율**: 불필요한 반복 호출 금지. 콤팩트하고 정밀한 답변.
+- **언어**: 모든 기술적 대화, 문서, 커밋 메시지는 **한국어** 우선.
+- **Git 커밋**: 한글 깨짐 방지를 위해 반드시 `git commit -F commit_msg.txt` 형식 사용. 커밋 후 `commit_msg.txt` 삭제.
+- **Push 정책**: 형이 명시적으로 요청할 때만 `git push` 실행.
+- **파일 수정 금지**: `GEMINI.md`, `.cursorrules`는 사용자의 명시적 허가 없이 수정 불가.
+- **임시 파일**: 모든 테스트는 `.tmp_test/`에서 수행 후 즉시 삭제.
+- **작업 완료 후**: 코드 변경 시 `docs/01_MISSION_CONTROL.md` 및 `docs/02_DEVELOPMENT_LOG.md` 반드시 갱신.
+- **아카이브 금지**: `web/utils/loggerServer.js` 등 `_archive/` 폴더 내 파일은 절대 사용 금지.
+
+## 세션 시작 시 필수 스캔
+
+1. `docs/01_MISSION_CONTROL.md` — 현재 버전, 마일스톤, 실시간 이슈
+2. `docs/04_MASTER_ARCHITECTURE.md` — AI Blueprint (NAS/S3/SDK 구조 전체)
+3. `GEMINI.md` — 디렉토리 구조 및 역할 확인
+
+## 프로젝트 개요
+
+**ELS Solution** — 물류 회사 임직원 업무 포털 및 통합 인트라넷. 컨테이너 이력 조회(Selenium), 안전운임 조회, 차량 위치 관제(GPS), NAS 자료실 등을 제공.
+
+- **웹**: `nollae.com` (Vercel 배포, Next.js 14)
+- **백엔드**: `192.168.0.4:5000` (사내 NAS, Flask/Docker)
+- **모바일**: 안드로이드 드라이버 앱 (Capacitor 8.x, `com.elssolution.driver`)
+
+## 빌드 및 실행 명령
+
+```bash
+# 웹 개발 서버
+cd web && npm run dev        # http://localhost:3000
+
+# 웹 프로덕션 빌드
+cd web && npm run build
+
+# ESLint
+cd web && npm run lint
+
+# 안드로이드 APK 빌드
+cd web && npm run build      # Next.js → out/
+npx cap sync                 # Capacitor 동기화
+cd android && ./gradlew clean assembleDebug
+
+# ELS Bot 데몬
+cd elsbot && python els_web_runner_daemon.py     # REST API 서버 기동
+cd elsbot && python local_debug_test.py          # 봇 단독 테스트
+
+# NAS 배포 (Docker, ~40분)
+bash scripts/nas-deploy.sh
+
+# NAS 백엔드 재시작만
+powershell scripts/restart_backend.ps1
+```
+
+## 시스템 아키텍처
+
+3개 서브시스템으로 구성:
+
+```
+[Vercel Cloud]
+  Next.js 14 웹 (nollae.com)
+    └─ 고부하 API → NAS로 오프로드 (Excel, ZIP, 파일 프록시)
+    └─ 인증/DB → Supabase (PostgreSQL, OAuth)
+
+[On-Premise NAS @ 192.168.0.4]
+  Docker 3-container 구성:
+    els-gateway (포트 2929) — Nginx 진입점
+    els-core    (포트 2930) — Flask 경량 API
+    els-bot     (포트 2931) — Selenium 봇 전용
+  NAS Storage (WebDAV, MinIO S3 호환)
+
+[Android 드라이버 앱]
+  Capacitor WebView — 3초 간격 GPS 전송
+  Background Geolocation → Supabase Realtime
+```
+
+**핵심 설계 원칙 (NAS-Centric):**
+- 실시간 관제, 로그 수집, 파일 서비스 → 나스 백엔드 처리 (Vercel 서버리스 타임아웃 회피)
+- Excel 생성, ZIP 압축 → 나스에서 비동기 처리 후 웹은 결과만 스트리밍
+- 사진 데이터는 Supabase/S3 저장 but 접근/가공은 나스 API 경유
+
+## 주요 디렉토리
+
+| 디렉토리 | 역할 |
+|---------|------|
+| `web/app/` | Next.js App Router (라우트 그룹: `(main)`, `(standalone)`) |
+| `web/app/api/` | 서버사이드 API 라우트 (els, vehicle-tracking, nas, naver-maps 등) |
+| `web/components/` | 공유 React 컴포넌트 (~40개) |
+| `web/utils/` | 공통 유틸 (`logger.js`, `logger.server.js`, `roles.js`, `supabase/`) |
+| `docker/els-backend/app.py` | Flask 메인 API (로그, 파일, 봇 연동) |
+| `elsbot/els_web_runner_daemon.py` | Selenium DriverPool + REST API 데몬 |
+| `elsbot/els_bot.py` | DrissionPage 기반 ETrans 스크래핑 핵심 로직 |
+| `docs/` | 프로젝트 단일 진실 소스 (`01_MISSION_CONTROL.md` 핵심) |
+| `scripts/` | 배포/재시작 PowerShell·Shell 스크립트 |
+
+## 모바일 앱 버전 관리 (필수)
+
+안드로이드 관련 코드 변경 시 **4곳 동시 버전 갱신**:
+
+1. `web/android/app/build.gradle` — `versionCode`, `versionName`
+2. `web/public/apk/version.json` — 자동 업데이트 알림용
+3. `web/android/app/src/main/assets/public/app.js` — `APP_VERSION`, `BUILD_CODE`
+4. `web/android/app/src/main/assets/public/index.html` — `<span id="app-version-display">`
+
+## 주요 문서 링크
+
+- `docs/01_MISSION_CONTROL.md` — 실시간 현황 및 TODO
+- `docs/04_MASTER_ARCHITECTURE.md` — AI/IDE Blueprint (필수)
+- `docs/05_NAS_API_SPEC.md` — 나스 통신 규약
+- `docs/07_RUNBOOK.md` — 운영/트러블슈팅
+- `docs/08_ENVIRONMENT_SETUP.md` — 개발 환경 구축
+- `docs/03_RULES.md` — 전체 협업 헌법 (상세 규칙)

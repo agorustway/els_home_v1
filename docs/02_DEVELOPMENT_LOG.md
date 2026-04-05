@@ -1,5 +1,51 @@
 # 📔 개발 로그 (DEVELOPMENT LOG)
 
+## 📅 2026-04-05 (야간) - [APP] 드라이버 앱 모듈 분리 리팩토링 (v4.5.50+)
+
+### 🚀 작업 요약
+- **대상**: `web/android/app/src/main/assets/public/app.js` (단일 IIFE 모놀리스 3,119줄)
+- **방식**: ES Modules (`type="module"`) 적용, 15개 모듈로 분리
+- **원본**: `app.js.bak` 백업 보존
+
+### 🗂️ 모듈 분리 결과
+
+```
+public/
+├── app.js                  (엔트리 135줄 — window.App 조립)
+├── index.html              (type="module" 적용, 인라인 스크립트 제거)
+└── modules/
+    ├── store.js            (앱 상수, Store localStorage 헬퍼, State 공유 객체)
+    ├── bridge.js           (Capacitor 플러그인 헬퍼, smartFetch, remoteLog)
+    ├── utils.js            (formatDate, escHtml, showToast 공통 유틸)
+    ├── nav.js              (showScreen 순수 DOM 전환 — 순환 참조 방지용 독립 레이어)
+    ├── permissions.js      (권한 상태/요청, Android 16 가이드, 앱 설정 유틸)
+    ├── profile.js          (프로필 UI, 저장, 기사 번호 조회, 프로필 사진 3종)
+    ├── trip.js             (운행 시작/종료/일시정지, 체크리스트, 오버레이 서비스)
+    ├── gps.js              (GPS watchPosition, onGpsUpdate, 실시간 모드, 상태 표시줄)
+    ├── notice.js           (공지 목록, 카테고리 필터, 상세 뷰)
+    ├── log.js              (운행 일지 목록, 상세, 수정/삭제, 사진 추가)
+    ├── photos.js           (사진 업로드, 리사이즈, 썸네일, 뷰어, 핀치줌)
+    ├── emergency.js        (긴급알림 폴링, SYSTEM_COMMAND 처리, 팝업)
+    ├── update.js           (APK 버전 체크, 운행 중 유예 처리)
+    ├── map.js              (Static Maps 엔진, 터치/핀치 제어, 경로 렌더링)
+    └── init.js             (앱 초기화, 생명주기, switchTab, showMain, openSettings)
+```
+
+### 🔑 핵심 설계 결정 사항
+
+| 사안 | 결정 | 이유 |
+|------|------|------|
+| 빌드 도구 없음 | ES Modules (`type="module"`) 직접 사용 | Capacitor WebView = Chrome 엔진, 빌드 스텝 불필요 |
+| `permissions.js ↔ init.js` 순환 참조 | `nav.js` 분리 + `setupPermNav()` 콜백 주입 | showScreen은 nav.js, showMain/openSettings는 init.js에서 주입 |
+| `trip.js ↔ gps.js` 의존 | gps.js가 독립, trip.js가 gps.js import | GPS는 단방향 데이터 흐름, 역방향 없음 |
+| 크로스 모듈 호출 | `window.App.xxx()` 늦은 참조 | 초기화 완료 후에만 호출되므로 안전, 순환 import 없음 |
+| `State` 공유 | `store.js`의 단일 `State` 객체 참조 | 모든 모듈이 동일 참조를 import하므로 뮤테이션 즉시 공유 |
+
+### 🧹 정리 사항
+- `public/public/` 중복 디렉토리: 구버전 잔재 — 다음 세션에서 별도 정리 예정
+
+---
+
   ## 📅 2026-04-05 (오후) - [APP] 네이버 지도 Dynamic API V3 (JS SDK) 전격 복구 (v4.3.49)
   
   ### 🚀 배포 요약
