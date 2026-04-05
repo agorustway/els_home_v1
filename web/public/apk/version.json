@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.3.49",
-  "versionCode": 349,
-  "forceUpdate": false,
-  "changeLog": "[v4.3.49] 네이버 지도 Dynamic API V3(JS SDK) 복구: 줌/드래그 시 마커 위치가 정확하게 유지되며 지도가 끊김 없이 부드럽습니다. (Rubber-band 및 마커 드리프트 현상 근본 해결)",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=349"
+  "latestVersion": "v4.5.50",
+  "versionCode": 450,
+  "forceUpdate": true,
+  "changeLog": "[v4.5.50] 전역 시스템 안정화 및 버전 통합 업데이트. 네이버 지도 Dynamic API V3 완벽 적용 및 마커 드리프트 현상 최종 해결.",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=450"
 }
