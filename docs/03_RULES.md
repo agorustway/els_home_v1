@@ -270,16 +270,22 @@ git config --global core.quotepath false
 
 ---
 
-## 📱 제17조. 모바일 앱 버전 관리 (App Versioning)
+## 📱 제17조. 모바일 앱 버전 관리 및 WebView 캐시 방지 (Cache-Busting)
 
-> **"네이티브 코드를 수정했다면 4군데의 버전을 모두 갱신해야 한다."**
+> **"로직을 고쳤는데 앱에 반영되지 않는다면, 100% WebView 캐시 때문이다."**
 
-앱의 배포 버전이 꼬이는 것을 방지하기 위해, 안드로이드/네이티브 관련 코드 변경 시 반드시 아래 **4곳**의 버전을 동시에 상향(Version Bump)해야 합니다.
+앱의 코드, 특히 ES 모듈 기반 파일들을 수정할 경우 아래 두 가지 절차를 반드시 수반해야 합니다.
 
+**[1. 안드로이드 버전 갱신 (Version Bump)]**
 1. `web/android/app/build.gradle` (`versionCode`와 `versionName` 갱신)
-2. `web/public/apk/version.json` (자동 업데이트 알림용 JSON 갱신)
-3. `web/android/app/src/main/assets/public/app.js` (`APP_VERSION`, `BUILD_CODE` 상수)
-4. `web/android/app/src/main/assets/public/index.html` (설정 탭 내 하드코딩된 표시 버전 `<span id="app-version-display">`)
+2. `web/public/apk/version.json` (OTA/강제 업데이트 알림용 JSON 상향)
+3. `web/android/app/src/main/assets/public/modules/store.js` (`AppConfig` 상수 갱신)
+
+**[2. 절대 규칙: WebView 캐시 무효화 (Cache-Busting)]**
+WebView는 로컬 자산(`app.js` 등)을 극단적으로 캐싱합니다. 로직을 수정했는데 반영되지 않는 "캐시 지옥"을 막기 위해:
+- `index.html`에서 엔트리 스크립트를 부를 때: `<script type="module" src="app.js?v=4.5.52"></script>` 처럼 최신 버전을 쿼리스트링으로 반드시 기입.
+- `app.js` 내부에서 모듈을 임포트 할 때: `import { ... } from './modules/map.js?v=4.5.52';` 처럼 **모든 ES Module 경로 뒤에 버전을 명시**해야만 낡은 캐시를 뚫고 새 로직이 반영됨!
+- 모듈 리팩토링이나 핫픽스 시, 반드시 `app.js` 내의 import 경로 버전도 일치시킬 것.
 
 ---
 *최종 갱신일: 2026-04-05 (by Antigravity v4.5.50)*
