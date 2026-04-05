@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.5.52
-> 마지막 업데이트: 2026-04-05 18:48 (KST)
+# ELS MISSION CONTROL v4.5.53
+> 마지막 업데이트: 2026-04-05 20:30 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.5.52` (Map Bug Hotfix & Clean Build)
+- **현재 버전**: `v4.5.53` (Map Sync Refactoring & Cache Buster v2)
 - **최근 업데이트**: 2026-04-05
-- **상태**: 🟢 지도 마커 드래그/클릭 버그 해결 완료
+- **상태**: 🟢 지도 마커 동기화 리팩토링 및 탭 유실 방지 완료
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -59,11 +59,20 @@
 - **실시간 마커 안정화 (v4.5.21)**:
   - `liveMarkersRef` 도입으로 상세 조회 시에도 운영 마커 보존.
 
-## ✅ 핫픽스 (v4.5.51)
-- **[APP/MAP] 지도 마커 드래그 고정 버그 해결**:
-  - `smImg.onload` 및 `refreshMapData()` 폴링이 드래그 중 `renderMapOverlay()` 를 호출 → `_markerBases` 캐시 무효화 → 마커가 화면에 고정되는 버그 수정. `!smState.isDragging` 가드 추가.
-- **[APP/MAP] 마커 클릭 시 경로 조회 무반응 버그 해결**:
-  - `touchend` → `onDragEnd` → `renderMapOverlay()` 가 마커 DOM 소멸 → `click` 이벤트 취소되는 버그 수정. `didDrag` 플래그로 탭/드래그 구분, 탭 시 오버레이 재렌더 금지.
+## ✅ 핫픽스 (v4.5.53)
+- **[APP/MAP] 지도 마커 동기화 엔진 리팩토링**:
+  - 개별 마커 수동 이동(`left/top`) 방식에서 `smOverlay` 전체 `transform` 제어 방식으로 전환하여 레이턴시 및 오차 원천 차단.
+- **[APP/MAP] 탭(Tap) 시 마커 소멸 방지 및 클릭 이벤트 보존**:
+  - `didDrag` 판정 실패 시(미세 떨림 등)에도 마커 DOM이 재생성되지 않도록 하여 안드로이드 `click` 이벤트 유실 문제 해결.
+- **[APP/VERSION] 캐시 무효화 v2 대응**:
+  - `v4.5.53`으로 버전 범프 및 모든 `import` 경로 쿼리스트링 갱신으로 WebView 캐시 지옥 탈출 확인.
+  - `showTripRouteOnMap` 시작/종료 시점 `remoteLog` 추가하여 동작 추적 기능 강화.
+
+## ✅ 핫픽스 (v4.5.51/52)
+- **[APP/MAP] 지도 마커 드래그 고정 버그 1차 시도**:
+  - `!smState.isDragging` 가드 추가.
+- **[APP/MAP] 마커 클릭 시 경로 조회 무반응 버그 1차 시도**:
+  - `didDrag` 플래그로 탭/드래그 구분.
 
 ## ✅ 주요 리팩토링 (v4.5.50+)
 - **[APP] 드라이버 앱 모듈 분리 리팩토링 완료**:
