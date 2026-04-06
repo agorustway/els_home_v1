@@ -18,6 +18,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **PowerShell**: 파일 I/O 시 `-Encoding UTF8` 필수. 명령어 체인은 `&&` 대신 `;` 사용 (한글 깨짐·호환성 방지).
 - **PDCA**: 코드 변경은 계획(Plan)→실행(Do)→검증(Check)→적용(Act) 단계 준수.
 
+## 명령어 트리거
+
+| 형의 말 | 실행할 것 |
+|--------|---------|
+| **"배포해줘"** / **"배포"** / **`/deploy`** | `.agent/workflows/deploy.md` 절차 그대로 실행 |
+
 ## 세션 시작 시 필수 스캔
 
 1. `docs/01_MISSION_CONTROL.md` — 현재 버전, 마일스톤, 실시간 이슈 (**🚧 IN-PROGRESS** 필독)
