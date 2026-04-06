@@ -47,7 +47,8 @@ export async function loadLogs() {
   if (vNum)  url += `&vehicle_number=${encodeURIComponent(vNum)}`;
 
   try {
-    const res    = await smartFetch(url);
+    // 캐시 무효화 (GET 캐싱 방지)
+    const res    = await smartFetch(`${url}&t=${Date.now()}`);
     const data   = await res.json();
     const trips  = data.trips || [];
     if (!trips.length) {
@@ -86,7 +87,8 @@ export async function loadLogs() {
 // ─── 일지 상세 열기 ──────────────────────────────────────────────
 export async function openLog(id) {
   try {
-    const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${id}`);
+    // 캐시 무효화를 위해 t 파라미터 추가
+    const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${id}?t=${Date.now()}`);
     const data = await res.json();
     _currentLogData   = data;
     State.currentLogId = id;

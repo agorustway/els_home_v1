@@ -46,6 +46,7 @@ export async function GET(request) {
         return new Response(data, {
             headers: {
                 'Content-Type': response.ContentType || 'image/jpeg',
+                'Content-Length': data.byteLength.toString(),
                 'Cache-Control': 'public, max-age=31536000, immutable',
             },
         });
