@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.8.3",
-  "versionCode": 483,
+  "latestVersion": "v4.8.5",
+  "versionCode": 485,
   "forceUpdate": true,
-  "changeLog": "v4.8.3: 파일 업로드(운행/일지) 시 카메라 촬영 모드 허용, 웹뷰 내 핀치 줌 적용 및 일지 레이아웃 최적화, 설정창 UI 구조 개편",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=483"
+  "changeLog": "v4.8.5: 안드로이드 앱 WebView 렌더링 캐시 강제 무효화 및 버전 동기화 영구 픽스 배포",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=485"
 }

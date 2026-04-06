@@ -7,11 +7,9 @@ description: ELS Driver App 자동 배포 및 APK 빌드 (v4.1.7+)
 형, 배포 작업을 시작할게! 소스 동기화 후 안드로이드 APK 빌드부터 깃허브 푸시까지 한 방에 처리할 거야. 🫡
 
 1. **버전 증분**
-   *   `web/out/app.js`, `web/public/apk/version.json`, `web/android/app/build.gradle`에서 버전을 1단계 올릴 거야.
-2. **Capacitor 동기화**
-   ```powershell
-   cd web; npx cap sync android
-   ```
+   * `web/public/apk/version.json`, `web/android/app/build.gradle`, `web/android/app/src/main/assets/public/modules/store.js`에서 앱 버전을 1단계 올릴 거야.
+2. **웹뷰 Cache Buster(캐시 무효화) 버전 일치화**
+   * `index.html`, `app.js` 내부에 하드코딩된 `?v=x.x.x` 값들을 새 버전으로 일괄 치환(Replace)할 거야. (이걸 안 하면 안드로이드 캐시 때문에 예전 코드가 돌아감!)
 3. **Android APK 빌드 (Debug)**
    ```powershell
    cd web/android; ./gradlew.bat assembleDebug

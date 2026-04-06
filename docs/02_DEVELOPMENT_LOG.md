@@ -1,5 +1,17 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.8.5 — App Cache Buster Auto-Sync Fix)
+### 🚀 배포 요약
+안드로이드 앱 WebView 렌더링 캐시 강제 무효화 및 자동화 룰 추가 배포
+
+### 📌 주요 변경 사항
+- **[APP/VERSION] WebView 모듈 캐시 지옥 영구 해결 및 동기화**
+  - JS 모듈 분리(v4.5.50) 후 `index.html`과 `app.js`에서 각 모듈을 임포트하는 쿼리스트링 캐시버스터가 구버전(`?v=4.8.1`)로 고정되어 최신 앱이 반영되지 않던 문제 해결 완료.
+  - `index.html`, `app.js`, `store.js`, `version.json`, `build.gradle` 모두 `v4.8.5` (485) 로 일괄 동기화.
+  - 추후 `/deploy` 명령 시 자동으로 Cache Buster(`?v=x.x.x`)를 최신화하도록 `.agent/workflows/deploy.md` 워크플로우 수정 완료.
+
+---
+
 ## 📅 2026-04-06 (v4.8.4 — Static Export 호환성 수정)
 ### 🚀 배포 요약
 Next.js `output: export` 빌드 시 `'use client'` 페이지에서 `generateStaticParams` 동시 사용 불가 오류 수정.
