@@ -1,5 +1,17 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-05 (v4.6.2 — Web Admin Detail View Rendering Fix)
+### 🚀 배포 요약
+앱 배포(Static Map/Dynamic SDK 회귀)와 별개로, 관리자(웹) 패널 내역 상세 보기의 고질적 지도 비표시 현상과 사진 링크 깨짐 문제를 완벽 수정.
+
+### 📌 주요 변경 사항
+- **[WEB/FIX] 웹 어드민 차량 상세정보 지도 로딩 및 NAS 사진 표시 문제 해결**
+  - **문제 1 (지도 미출력)**: 네이버 지도 로드 스크립트 작성 시 인자명이 `ncpKeyId`로 오기재되어 SDK 로딩이 차단되던 버그
+    - **해결**: 올바른 프로퍼티 속성인 `ncpClientId`로 교정하여 지도 및 마커 패닝 재활성화
+  - **문제 2 (NAS 저장 사진 URL 렌더링 깨짐)**: ELS_BACKEND_URL(플라스크)의 proxy uri가 image src에 자동 결합되어 NAS 경로 대신 엉뚱한(Supabase 방식 혹은 로컬) 백엔드 주소로 연결되던 통신 버그
+    - **해결**: `process.env.NEXT_PUBLIC_ELS_BACKEND_URL` 접두어를 제거하여, Next.js 로컬 내부 API 라우트를 직접 경유해 NAS S3 객체를 fetch하도록 설계 의도 복원. (엑셀 / ZIP 내보내기도 동일하게 교정 적용)
+    - **효과**: CORS 및 인증이 완벽 통제되는 정상 S3 proxy (Route.js)가 타겟되므로 즉각적인 이미지 출력 성공 보장.
+
 ## 📅 2026-04-05 (v4.5.54 — Map Architecture Refactoring)
 ## 📅 2026-04-05 (v4.6.0 — Map Architecture Refactoring)
 

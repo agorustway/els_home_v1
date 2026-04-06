@@ -680,7 +680,7 @@ export default function VehicleTrackingPage() {
             handleInit();
         } else {
             const script = document.createElement('script');
-            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
+            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
             script.async = true;
             script.onload = () => handleInit();
             document.head.appendChild(script);
@@ -829,8 +829,7 @@ export default function VehicleTrackingPage() {
     const handleDeleteRecord = async (id) => {
         if (!confirm('이 운행 기록을 삭제하시겠습니까?')) return;
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
-            const res = await fetch(`${baseUrl}/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('삭제 실패');
             setRecords(prev => prev.filter(t => t.id !== id));
             setSelectedIds(prev => prev.filter(sid => sid !== id));
@@ -1162,10 +1161,10 @@ export default function VehicleTrackingPage() {
                             <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_ELS_BACKEND_URL || ''}/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>📊 엑셀 다운로드</button>
+                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>📊 엑셀 다운로드</button>
                             <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => {
                                 if (selectedIds.length === 0) alert('다운로드할 기록을 선택해주세요.');
-                                else window.location.href = `${process.env.NEXT_PUBLIC_ELS_BACKEND_URL || ''}/api/vehicle-tracking/export/zip?ids=${selectedIds.join(',')}`;
+                                else window.location.href = `/api/vehicle-tracking/export/zip?ids=${selectedIds.join(',')}`;
                             }}>📦 선택건 사진 다운로드</button>
                         </div>
                     </div>
@@ -1271,7 +1270,7 @@ export default function VehicleTrackingPage() {
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>증빙 사진 ({selectedTrip.photos?.length || 0}) {selectedTrip.photos?.length > 0 && <button className={styles.zipDownloadBtn} style={{ width: 'auto', height: 24, padding: '0 10px', fontSize: '0.7rem' }} onClick={() => handleDownloadZip(selectedTrip)}>📦 ZIP 다운로드</button>}</div>
                             <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => {
-                                const finalUrl = p.key ? `${process.env.NEXT_PUBLIC_ELS_BACKEND_URL || ''}/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
+                                const finalUrl = p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
                                 return (
                                     <div key={i} className={styles.photoWrapper} onClick={() => {
                                         setViewingPhotoUrl(finalUrl);
