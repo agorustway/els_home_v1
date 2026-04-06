@@ -1,5 +1,18 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.9.0 — UI/UX 개선 & 권한 순서 안정화)
+### 🚀 배포 요약
+권한 순차 설정 시 배터리 설정 후 앱 복귀까지 기다리지 않던 문제 해결. 설정 페이지 불필요한 UI 정리(이전 버튼 제거, 검은칸 제거). 지도 헤더 제거하고 floating 닫기 버튼으로 변경. 일지 페이지 여백 최소화 및 스크롤 안정화.
+
+### 🔧 변경 파일
+- `modules/permissions.js` — waitForForeground() 헬퍼 추가, 배터리/오버레이 설정 후 앱 복귀 감지 대기
+- `index.html` — 설정 페이지 "이전" 버튼 제거, 하단 검은칸 제거, 지도 헤더 제거 & floating 닫기 버튼 추가
+- `modules/init.js` — openSettings() 간소화 (settings-back-btn 참조 제거)
+- `style.css` — map-close-overlay-btn 추가, map-myloc-btn 위치 조정, log-filter 여백 축소, 스크롤 떨림 제거
+- `web/android/app/build.gradle` — versionCode 490, versionName "4.9.0"
+
+---
+
 ## 📅 2026-04-06 (v4.8.9 — 권한 설정 자동 진행 & 모달 없음 처리)
 ### 🚀 배포 요약
 앱 시작 시 권한이 없으면 자동으로 순차 설정 시작. 배터리/오버레이 권한 모달 없어도 바로 요청 진행.
