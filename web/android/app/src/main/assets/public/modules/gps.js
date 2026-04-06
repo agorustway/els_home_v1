@@ -14,6 +14,14 @@ export let realtimeExpireAt  = 0;
 
 const gyroData = { magnitude: 0 };
 
+// ─── 오프라인 캐시 ────────────────────────────────────────────────
+export let _gpsOfflineQueue = [];
+try { _gpsOfflineQueue = JSON.parse(localStorage.getItem('els_gps_queue') || '[]'); } catch(e){}
+const saveGpsQueue = () => {
+  if (_gpsOfflineQueue.length > 500) _gpsOfflineQueue = _gpsOfflineQueue.slice(-500);
+  localStorage.setItem('els_gps_queue', JSON.stringify(_gpsOfflineQueue));
+};
+
 // ─── 실시간 모드 ─────────────────────────────────────────────────
 export function startRealtimeMode() {
   State.trip.isRealtime = true;
@@ -279,23 +287,40 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
 
   lastGpsSend = curTime;
 
+  const payload = {
+    trip_id:     targetId,
+    lat, lng,
+    speed:       speedKph,
+    accuracy:    accuracy || 0,
+    marker_type: markerType || null,
+    source: isForced
+      ? (markerType || 'webview_forced')
+      : (isSharpTurn ? 'webview_gyro' : 'webview'),
+  };
+
   try {
     const gpsRes = await smartFetch(BASE_URL + '/api/vehicle-tracking/location', {
       method: 'POST',
-      body: JSON.stringify({
-        trip_id:     targetId,
-        lat, lng,
-        speed:       speedKph,
-        accuracy:    accuracy || 0,
-        marker_type: markerType || null,
-        source: isForced
-          ? (markerType || 'webview_forced')
-          : (isSharpTurn ? 'webview_gyro' : 'webview'),
-      }),
+      body: JSON.stringify(payload),
     });
     if (gpsRes.ok) {
       const gpsData = await gpsRes.json().catch(() => ({}));
       lastKnownAddr = gpsData.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+      if (_gpsOfflineQueue.length > 0) {
+        const queueBackup = [..._gpsOfflineQueue];
+        _gpsOfflineQueue = [];
+        saveGpsQueue();
+        queueBackup.forEach(async (queuedPayload) => {
+          try {
+            const r = await fetch(BASE_URL + '/api/vehicle-tracking/location', { method: 'POST', body: JSON.stringify(queuedPayload) });
+            if (!r.ok) throw new Error('Offline Queue Sync Failed');
+          } catch(err) {
+            _gpsOfflineQueue.push(queuedPayload);
+            saveGpsQueue();
+          }
+        });
+      }
     } else {
       lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     }
@@ -307,8 +332,9 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   } catch (e) {
     lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateTripStatusLine();
-    remoteLog(`GPS 서버전송 실패: ${e.message}`, 'GPS_SEND_ERR');
-    console.warn('GPS 전송 실패', e);
+    remoteLog(`GPS 서버전송 실패 (오프라인 캐시 저장): ${e.message}`, 'GPS_SEND_ERR');
+    _gpsOfflineQueue.push(payload);
+    saveGpsQueue();
   }
 }
 

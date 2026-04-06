@@ -497,6 +497,25 @@ export default function VehicleTrackingPage() {
             const locData = await locRes.json();
             if (locData.locations) {
                 const locations = locData.locations;
+
+                // [데이터 보정] 안드로이드 Background 등에서 속도가 0으로 온 경우 거리를 기반으로 속도 추정
+                const distance = (lat1, lng1, lat2, lng2) => {
+                    const p = 0.017453292519943295, c = Math.cos;
+                    const a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
+                    return 12742 * Math.asin(Math.sqrt(a));
+                };
+                for (let i = 1; i < locations.length; i++) {
+                    const loc = locations[i];
+                    if (Math.round(loc.speed || 0) === 0) {
+                        const prev = locations[i - 1];
+                        const dist = distance(prev.lat, prev.lng, loc.lat, loc.lng);
+                        const timeSec = (new Date(loc.timestamp || loc.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+                        if (timeSec > 0 && dist > 0) {
+                            loc.speed = dist / (timeSec / 3600);
+                        }
+                    }
+                }
+
                 setSelectedTripLocations(locations);
                 drawTripPath(locations);
 

@@ -173,7 +173,7 @@ function updateVehicleMarkers(trips) {
     const isDone = trip.status === 'completed';
     const isMe   = isMyTrip(trip);
     const color  = isDone ? '#94a3b8' : (isMe ? '#10b981' : '#2563eb');
-    const label  = trip.vehicle_number || '차량';
+    const label  = trip.vehicle_number ? trip.vehicle_number.slice(-4) : '차량';
 
     if (_markers.has(trip.id)) {
       const m = _markers.get(trip.id);

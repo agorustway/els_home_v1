@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.8.1",
-  "versionCode": 481,
+  "latestVersion": "v4.8.2",
+  "versionCode": 482,
   "forceUpdate": true,
-  "changeLog": "v4.8.1: GPS 스파이크 필터(가위치 튀는 현상 제거) 강화, 지도 상단 여백 및 닫기 버튼 삭제, 뒤로가기 버튼 UI 보완",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=481"
+  "changeLog": "v4.8.2: 지도 차량 마커 뒷번호 표기 단순화, GPS 오프라인 캐시 적용, 속도 정상 표출 보정",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=482"
 }
