@@ -247,8 +247,7 @@
       <div class="logo"><img src="./images/els_logo_full.gif" alt="ELS"></div>
     </header>
     <div style="padding:8px 14px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1;">
-      <button class="btn btn-sm" id="settings-back-btn" onclick="App.settingsBack()" style="align-self:flex-start; flex-shrink:0; height:34px; margin-bottom:12px;">← 이전 페이지로 돌아가기</button>
-      
+
       <div id="settings-profile-photos" style="display:flex; gap:18px; margin:0 0 4px; justify-content:center; align-items:center; background:#f8fafc; padding:8px; border-radius:var(--radius); border:1px solid #e2e8f0;">
         <div class="profile-photo-item" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;" onclick="App.handleProfilePhotoClick('driver')">
           <div id="p-photo-driver" class="profile-photo-box" style="width:68px; height:68px; background-image:none; background-size:cover; background-position:center; object-fit:cover;">기사</div>
@@ -305,18 +304,14 @@
         </div>
       </div>
     </div>
-    <div style="height: env(safe-area-inset-bottom); background: #000; width: 100%; flex-shrink: 0; margin-top: auto;"></div>
   </div><!-- /screen-settings -->
 
   <!-- ════════════════════════════════════════════════
        전체화면 지도 화면
   ════════════════════════════════════════════════ -->
   <div id="screen-map" class="screen">
-    <div class="map-header">
-      <button class="map-back-btn" onclick="App.closeMap()">← 닫기</button>
-      <span class="map-title">실시간 관제 지도</span>
-    </div>
     <div id="driver-map" class="driver-map-container"></div>
+    <button class="map-close-overlay-btn" onclick="App.closeMap()">✕ 닫기</button>
     <button class="map-myloc-btn" id="btn-map-myloc" onclick="App.centerMyLocation()">📍</button>
     <div id="map-bottom-panel" class="map-bottom-panel">
       <div class="map-panel-header" onclick="App.toggleMapPanel()">
@@ -402,6 +397,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=489"></script>
+  <script type="module" src="app.js?v=490"></script>
 </body>
 </html>

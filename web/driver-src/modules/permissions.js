@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=489';
-import { Overlay, remoteLog } from './bridge.js?v=489';
-import { showScreen } from './nav.js?v=489';
+import { Store, State } from './store.js?v=490';
+import { Overlay, remoteLog } from './bridge.js?v=490';
+import { showScreen } from './nav.js?v=490';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -17,6 +17,27 @@ export function setupPermNav({ showMain, openSettings }) {
 // ─── 공유 토스트 헬퍼 (늦은 참조) ────────────────────────────────
 function showToast(msg, duration) {
   window.App?.showToast(msg, duration);
+}
+
+// ─── 앱 포그라운드 복귀 대기 (배터리/오버레이 설정 후 복귀 감지) ────
+function waitForForeground(timeoutMs = 30000) {
+  return new Promise(resolve => {
+    let done = false;
+    let handle = null;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      handle?.remove?.();
+      resolve();
+    };
+    const CapApp = window.Capacitor?.Plugins?.App;
+    if (CapApp) {
+      CapApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) finish();
+      }).then(h => { handle = h; });
+    }
+    setTimeout(finish, timeoutMs);
+  });
 }
 
 // ─── 권한 상태 ───────────────────────────────────────────────────
@@ -254,14 +275,16 @@ export async function requestAllPerms() {
             guide.classList.remove('active');
             await new Promise(r => setTimeout(r, 300));
             await executeRealRequest(perm.type);
-            await new Promise(r => setTimeout(r, 2000));
+            await waitForForeground(30_000);   // 앱 포그라운드 복귀 대기
+            await new Promise(r => setTimeout(r, 600));
             resolve();
           };
         });
       } else {
         // 모달 없으면 바로 요청
         await executeRealRequest(perm.type);
-        await new Promise(r => setTimeout(r, 2000));
+        await waitForForeground(30_000);      // 앱 포그라운드 복귀 대기
+        await new Promise(r => setTimeout(r, 600));
       }
 
       await updatePermStatuses();

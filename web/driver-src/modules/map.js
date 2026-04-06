@@ -6,10 +6,10 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=489';
-import { smartFetch, remoteLog } from './bridge.js?v=489';
-import { showToast } from './utils.js?v=489';
-import { showScreen } from './nav.js?v=489';
+import { State, BASE_URL } from './store.js?v=490';
+import { smartFetch, remoteLog } from './bridge.js?v=490';
+import { showToast } from './utils.js?v=490';
+import { showScreen } from './nav.js?v=490';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';

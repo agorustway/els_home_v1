@@ -242,9 +242,9 @@ input, textarea, select, button { font-family: inherit; }
 .settings-row .field { flex: 1; }
 
 /* ─── 일지 탭 ─── */
-#tab-log { display: flex; flex-direction: column; }
+#tab-log { display: flex; flex-direction: column; overscroll-behavior: contain; }
 
-.log-list { flex: 1; overflow-y: auto; }
+.log-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .log-item {
   padding: 10px 14px; border-bottom: 1px solid var(--border);
   cursor: pointer; transition: background 0.1s;
@@ -257,17 +257,17 @@ input, textarea, select, button { font-family: inherit; }
 
 /* 일지 필터 */
 .log-filter {
-  display: flex !important; gap: 6px; padding: 8px 12px;
+  display: flex !important; gap: 5px; padding: 5px 10px;
   background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0;
   align-items: center;
 }
 .log-filter input {
-  flex: 1; min-width: 0; height: 36px;
+  flex: 1; min-width: 0; height: 32px;
   padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius);
   font-size: 13px; font-weight: 500;
 }
 .log-filter button {
-  width: 60px !important; height: 36px !important; flex-shrink: 0; font-size: 13px; padding: 0;
+  width: 55px !important; height: 32px !important; flex-shrink: 0; font-size: 13px; padding: 0;
 }
 
 /* 일지 상세 */
@@ -395,29 +395,20 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
   display: block;
 }
 
-/* 지도 헤더 */
-.map-header {
-  display: flex; align-items: center; justify-content: space-between;
-  height: var(--header-h); padding: 0 14px;
-  background: #fff; border-bottom: 1px solid #eee;
-  flex-shrink: 0; z-index: 10;
+/* 지도 헤더 닫기 버튼 (floating overlay) */
+.map-close-overlay-btn {
+  position: absolute; top: 12px; left: 12px; z-index: 35;
+  background: rgba(0,0,0,0.55); color: #fff; border: none;
+  border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 700;
+  backdrop-filter: blur(4px); cursor: pointer; transition: background 0.2s;
 }
-.map-back-btn {
-  background: none; border: none; font-size: 15px; font-weight: 700;
-  color: var(--accent); cursor: pointer; padding: 8px 4px;
-}
-.map-title {
-  font-size: 15px; font-weight: 900; color: var(--text);
-}
-.map-refresh-btn {
-  background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px 4px;
-}
+.map-close-overlay-btn:active { background: rgba(0,0,0,0.75); }
 
 
 /* 내위치 아이콘 버튼 */
 .map-myloc-btn {
   position: absolute;
-  top: 70px; /* 우측 상단 이동 */
+  top: 12px; /* 상단 조정 (헤더 제거됨) */
   right: 12px;
   z-index: 35;
   background: #fff; border: 1px solid #e2e8f0;
