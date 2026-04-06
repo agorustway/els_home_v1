@@ -1,5 +1,16 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.8.8 — 드라이버 앱 한글 인코딩 수정 및 배포)
+### 🚀 배포 요약
+`web/driver-src/index.html` 및 `assets/public/index.html`의 한글 인코딩 깨짐 완전 복구. v4.8.0 정상 한글을 기준으로 v4.8.7 구조 유지하며 모든 텍스트 복원.
+
+### 🔧 변경 파일
+- `web/driver-src/index.html` — 모든 한글 텍스트 복구 (title, 버튼, 라벨, 설명 등)
+- `web/android/app/src/main/assets/public/index.html` — 동기화
+- `web/android/app/build.gradle` — versionCode 488, versionName "4.8.8"
+
+---
+
 ## 📅 2026-04-06 (v4.8.7 — 배포 워크플로우 자동화 검증 및 배포)
 ### 🚀 배포 요약
 "/deploy" 워크플로우를 통한 실전 배포 및 버전 증분 자동화 검증 완료.
