@@ -203,7 +203,36 @@ function drawPolyline(path) {
 
   if (!path.length || !_map) return;
 
-  const latLngs = path.map(l => new naver.maps.LatLng(l.lat, l.lng));
+  const haversine = (lat1, lng1, lat2, lng2) => {
+    const p = 0.017453292519943295, c = Math.cos;
+    const a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
+    return 12742 * Math.asin(Math.sqrt(a));
+  };
+
+  const filteredPath = [];
+  const SPEED_LIMIT_KMH = 150;
+
+  for (let i = 0; i < path.length; i++) {
+    const curr = path[i];
+    if (filteredPath.length === 0) { filteredPath.push(curr); continue; }
+
+    const prev = filteredPath[filteredPath.length - 1];
+    const distKm = haversine(prev.lat, prev.lng, curr.lat, curr.lng);
+    const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+    
+    // 비정상적으로 빠른 속도(스파이크) 제거
+    if (timeSec > 0) {
+      const speed = distKm / (timeSec / 3600);
+      if (speed > SPEED_LIMIT_KMH && distKm > 0.5) continue;
+    } else {
+      if (distKm > 0.5) continue; // 시간이 차이없는데 500m이상 튀면 제거
+    }
+    filteredPath.push(curr);
+  }
+
+  if (filteredPath.length === 0) return;
+
+  const latLngs = filteredPath.map(l => new naver.maps.LatLng(l.lat, l.lng));
 
   _polyline = new naver.maps.Polyline({
     path          : latLngs,

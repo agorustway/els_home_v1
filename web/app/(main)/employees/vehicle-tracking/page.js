@@ -251,10 +251,14 @@ export default function VehicleTrackingPage() {
 
             const prev = filteredLocs[filteredLocs.length - 1];
             const distPrev = haversine(prev.lat, prev.lng, curr.lat, curr.lng);
-            const timePrev = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+            const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
             
-            const speed = timePrev > 0 ? (distPrev / (timePrev / 3600)) : 0;
-            if (timePrev > 0 && speed > SPEED_LIMIT_KMH) continue; // 시속 150km 이상 튀는 포인트 제거
+            if (timeSec > 0) {
+                const speed = distPrev / (timeSec / 3600);
+                if (speed > SPEED_LIMIT_KMH && distPrev > 0.5) continue; // 시속 150km 이상 튀는 포인트 제거
+            } else {
+                if (distPrev > 0.5) continue; // 시간이 차이없는데 500m 이상 튀는 포인트 제거
+            }
 
             if (i < locations.length - 1) {
                 const next = locations[i + 1];
@@ -271,10 +275,6 @@ export default function VehicleTrackingPage() {
             if (distPrev < moveThreshold) continue; // 너무 인접한 데이터 합치기
             
             filteredLocs.push(curr);
-        }
-
-        if (locations.length > 0 && filteredLocs[filteredLocs.length - 1] !== locations[locations.length - 1]) {
-            filteredLocs.push(locations[locations.length - 1]); // 도착점 보존
         }
 
         if (filteredLocs.length === 0) return;
@@ -587,9 +587,15 @@ export default function VehicleTrackingPage() {
                 if (filteredLocs.length === 0) { filteredLocs.push(curr); continue; }
                 const prev = filteredLocs[filteredLocs.length - 1];
                 const distPrev = distance(prev.lat, prev.lng, curr.lat, curr.lng);
-                const timePrev = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
-                const speed = timePrev > 0 ? (distPrev / (timePrev / 3600)) : 0;
-                if (timePrev > 0 && speed > SPEED_LIMIT_KMH) continue;
+                const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
+                
+                if (timeSec > 0) {
+                    const speed = distPrev / (timeSec / 3600);
+                    if (speed > SPEED_LIMIT_KMH && distPrev > 0.5) continue;
+                } else {
+                    if (distPrev > 0.5) continue;
+                }
+                
                 filteredLocs.push(curr);
             }
             

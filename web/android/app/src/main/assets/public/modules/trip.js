@@ -398,14 +398,37 @@ export function registerBackHandler() {
     if (document.getElementById('emergency-popup')?.classList.contains('active')) { App?.closeEmergency();   return true; }
     if (document.getElementById('notice-detail')?.classList.contains('active'))   { App?.closeNoticeDetail(); return true; }
     if (document.getElementById('log-detail')?.classList.contains('active'))      { App?.closeLogDetail();   return true; }
+    if (document.getElementById('checklist-popup')?.classList.contains('active')) { App?.closeChecklist();   return true; }
+
+    // 지도 화면 뒤로가기 로직 (1.상세경로 -> 2.운행목록 -> 3.지도종료/운행탭이동)
+    if (document.getElementById('screen-map')?.classList.contains('active')) {
+      const routePanel = document.getElementById('map-route-panel');
+      const bottomPanel = document.getElementById('map-bottom-panel');
+
+      if (routePanel && !routePanel.classList.contains('hidden')) {
+        App?.clearMapRoute();
+        return true;
+      }
+      if (bottomPanel && !bottomPanel.classList.contains('collapsed')) {
+        App?.toggleMapPanel();
+        return true;
+      }
+      App?.closeMap();
+      App?.switchTab('trip');
+      return true;
+    }
+
     if (document.getElementById('screen-settings')?.classList.contains('active')) {
       if (!State.profile.name || !State.profile.phone || !State.profile.vehicleNo || !State.profile.driverId) return false;
       window.App?.switchTab('trip'); return true;
     }
+
     if (document.getElementById('screen-main')?.classList.contains('active')) {
       if (!document.getElementById('tab-trip')?.classList.contains('active')) {
         App?.switchTab('trip'); return true;
       }
+      // 운행 탭인 경우 모달도 없으면 false를 반환하여 네이티브에서 앱을 종료하도록 함
+      return false;
     }
     return false;
   };
