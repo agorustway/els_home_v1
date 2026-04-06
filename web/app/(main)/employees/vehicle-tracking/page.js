@@ -79,23 +79,31 @@ export default function VehicleTrackingPage() {
 
     // ─── 0. 지도 리사이즈 및 탭 전환 대응 ───
     useEffect(() => {
-        if (mapInstanceRef.current && mapReady) {
-            const timer = setTimeout(() => {
-                naver.maps.Event.trigger(mapInstanceRef.current, 'resize');
-                if (activeTab === 'live' && liveTrips.length > 0) {
-                    const bounds = new naver.maps.LatLngBounds();
-                    liveTrips.forEach(t => { if (t.lastLocation) bounds.extend(new naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng)); });
-                    if (!bounds.isEmpty()) mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+                if (window.naver?.maps && mapInstanceRef.current && mapReady) {
+                    naver.maps.Event.trigger(mapInstanceRef.current, 'resize');
+                    if (activeTab === 'live' && Array.isArray(liveTrips) && liveTrips.length > 0) {
+                        const bounds = new naver.maps.LatLngBounds();
+                        liveTrips.forEach(t => { 
+                            if (t && t.lastLocation && t.lastLocation.lat && t.lastLocation.lng) {
+                                bounds.extend(new naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng)); 
+                            }
+                        });
+                        // [v4.5.32] isEmpty가 함수인지 한 번 더 체크 (인증 실패 대비)
+                        if (typeof bounds.isEmpty === 'function' && !bounds.isEmpty()) {
+                            mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+                        }
+                    }
                 }
-            }, 200);
-            return () => clearTimeout(timer);
-        }
     }, [isFullscreen, mapReady, activeTab, liveTrips.length]);
 
     // ─── 1. 전역 관제 ───
     const fetchLiveTrips = useCallback(async () => {
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+            let baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+            // [v4.5.31] 브라우저에서 localhost:2929 접근 불가 대응 (동일 호스트의 2929 포트로 시도)
+            if (typeof window !== 'undefined' && baseUrl.includes('localhost')) {
+                baseUrl = `http://${window.location.hostname}:2929`;
+            }
             const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
             const data = await res.json();
             if (data && Array.isArray(data.data)) {
@@ -889,7 +897,7 @@ export default function VehicleTrackingPage() {
         URL.revokeObjectURL(url);
     };
 
-    const activeCount = liveTrips.filter(t => t.status === 'driving').length;
+    // [v4.5.32] 중복 선언 방지를 위해 상위에서 통합 관리 (기존 라인 삭제)
     const formatDateTime = (dateStr) => {
         if (!dateStr) return '-';
         const d = new Date(dateStr);
@@ -941,18 +949,25 @@ export default function VehicleTrackingPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' }); // 상단 지도로 스크롤
     };
 
-    const filteredLiveTrips = liveTrips.filter(t =>
-        (t.vehicle_number || '').includes(liveSearchKeyword) ||
-        (t.driver_name || '').includes(liveSearchKeyword) ||
-        (t.container_number || '').includes(liveSearchKeyword)
+    const activeCount = (liveTrips || []).filter(t => t && t.status === 'driving').length;
+    const pausedCount = (liveTrips || []).filter(t => t && t.status === 'paused').length;
+
+    const filteredLiveTrips = (liveTrips || []).filter(t =>
+        t && (
+            (t.vehicle_number || '').includes(liveSearchKeyword) ||
+            (t.driver_name || '').includes(liveSearchKeyword) ||
+            (t.container_number || '').includes(liveSearchKeyword)
+        )
     );
 
-    // [신규] 페이징 슬라이스 연산
-    const totalNoticePages = Math.max(1, Math.ceil(notices.length / NOTICE_LIMIT));
-    const paginatedNotices = notices.slice((noticePage - 1) * NOTICE_LIMIT, noticePage * NOTICE_LIMIT);
+    // [v4.5.31] 안전한 페이징 연산 (undefined 방지)
+    const safeNotices = Array.isArray(notices) ? notices : [];
+    const totalNoticePages = Math.max(1, Math.ceil(safeNotices.length / NOTICE_LIMIT));
+    const paginatedNotices = safeNotices.slice((noticePage - 1) * NOTICE_LIMIT, noticePage * NOTICE_LIMIT);
 
-    const totalEmPages = Math.max(1, Math.ceil(emergencies.length / EM_LIMIT));
-    const paginatedEmergencies = emergencies.slice((emergencyPage - 1) * EM_LIMIT, emergencyPage * EM_LIMIT);
+    const safeEmergencies = Array.isArray(emergencies) ? emergencies : [];
+    const totalEmPages = Math.max(1, Math.ceil(safeEmergencies.length / EM_LIMIT));
+    const paginatedEmergencies = safeEmergencies.slice((emergencyPage - 1) * EM_LIMIT, emergencyPage * EM_LIMIT);
 
     return (
         <div className={styles.trackingPage}>
@@ -972,7 +987,7 @@ export default function VehicleTrackingPage() {
             <div style={{ display: activeTab === 'live' ? 'block' : 'none' }}>
                 <div className={styles.missionDashboard} style={{ gap: '10px', marginBottom: '15px' }}>
                     <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>📡 실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981', fontSize: '2rem' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
-                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b', fontSize: '2rem' }}>{liveTrips.filter(t => t.status === 'paused').length} <span className={styles.statUnit}>대</span></div></div>
+                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b', fontSize: '2rem' }}>{pausedCount} <span className={styles.statUnit}>대</span></div></div>
                     <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue} style={{ fontSize: '2rem' }}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
                 </div>
 
