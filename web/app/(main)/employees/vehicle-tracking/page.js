@@ -230,11 +230,9 @@ export default function VehicleTrackingPage() {
         }
         const map = mapInstanceRef.current;
         if (polylineRef.current) polylineRef.current.setMap(null);
-        // 경로 상세 마커만 초기화 (live 차량 마커 liveMarkersRef는 건드리지 않음)
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
-        // [v4.5.20] 고도화된 GPS 필터링 (속도 제한 120km/h + Spike 필터)
         const haversine = (lat1, lng1, lat2, lng2) => {
             const p = 0.017453292519943295;
             const c = Math.cos;
@@ -243,9 +241,10 @@ export default function VehicleTrackingPage() {
             return 12742 * Math.asin(Math.sqrt(a));
         };
 
+        // [v4.5.38] 경로 필터링 강화 및 마커 가독성 업그레이드
         const filteredLocs = [];
-        const SPEED_LIMIT_KMH = 120;
-
+        const SPEED_LIMIT_KMH = 150; 
+        
         for (let i = 0; i < locations.length; i++) {
             const curr = locations[i];
             if (filteredLocs.length === 0) { filteredLocs.push(curr); continue; }
@@ -255,36 +254,33 @@ export default function VehicleTrackingPage() {
             const timePrev = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
             
             const speed = timePrev > 0 ? (distPrev / (timePrev / 3600)) : 0;
-            if (timePrev > 0 && speed > SPEED_LIMIT_KMH) continue;
+            if (timePrev > 0 && speed > SPEED_LIMIT_KMH) continue; // 시속 150km 이상 튀는 포인트 제거
 
             if (i < locations.length - 1) {
                 const next = locations[i + 1];
                 const distNext = haversine(curr.lat, curr.lng, next.lat, next.lng);
                 const distPrevNext = haversine(prev.lat, prev.lng, next.lat, next.lng);
                 
-                // 정차 중(속도 5km/h 이하)일 때는 50m만 튀어도 Spike로 간주하여 지그재그 제거
                 const spikeThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.5;
                 if (distPrev > spikeThreshold && distNext > spikeThreshold && distPrevNext < (spikeThreshold * 0.8)) {
-                    continue; 
+                    continue; // 뾰족하게 튀었다가 돌아오는 지그재그 데이터 제거
                 }
             }
 
-            // 정체 구간 중복 제거 (정차 중 50m, 주행 중 30m)
-            const moveThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.03;
-            if (distPrev < moveThreshold) continue; 
+            const moveThreshold = ((prev.speed ?? 0) < 5) ? 0.03 : 0.02;
+            if (distPrev < moveThreshold) continue; // 너무 인접한 데이터 합치기
             
             filteredLocs.push(curr);
         }
 
-        // 마지막 지점 복원 (필터링 되어도 최종 위치 표시 보장)
         if (locations.length > 0 && filteredLocs[filteredLocs.length - 1] !== locations[locations.length - 1]) {
-            filteredLocs.push(locations[locations.length - 1]);
+            filteredLocs.push(locations[locations.length - 1]); // 도착점 보존
         }
 
         if (filteredLocs.length === 0) return;
         const path = filteredLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
         const polyline = new naver.maps.Polyline({
-            map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
+            map: map, path: path, strokeColor: '#2563eb', strokeWeight: 6,
             strokeOpacity: 0.8, strokeStyle: 'solid', strokeLineCap: 'round', strokeLineJoin: 'round'
         });
         polylineRef.current = polyline;
@@ -292,28 +288,40 @@ export default function VehicleTrackingPage() {
         const bounds = new naver.maps.LatLngBounds();
         path.forEach(p => bounds.extend(p));
 
-        // 조그만 회색 점 (마킹 포인트) 추가 - 선형(Z-index: 1)보다 위 레벨(Z-index: 10) 적용
-        filteredLocs.forEach(l => {
+        // 중간 경유지 마커 (주소가 바뀌거나 5km 이상 이동 시에만 표시)
+        let lastMarkedAddr = "";
+        let lastMarkedPos = null;
+
+        filteredLocs.forEach((l, idx) => {
+            const isStart = idx === 0;
+            const isEnd = idx === filteredLocs.length - 1;
+            
+            // 시작과 끝 마커는 별도 처리, 중간 지점들만 주소 중복 체크
+            if (!isStart && !isEnd) {
+                const distFromLast = lastMarkedPos ? haversine(lastMarkedPos.lat, lastMarkedPos.lng, l.lat, l.lng) : 999;
+                if (l.address === lastMarkedAddr && distFromLast < 3) return; // 동일 주소이거나 3km 이하면 스킵
+            }
+            
+            lastMarkedAddr = l.address;
+            lastMarkedPos = { lat: l.lat, lng: l.lng };
+
             const pointMarker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(l.lat, l.lng),
                 map: map,
                 icon: {
-                    content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>',
-                    anchor: new naver.maps.Point(4, 4)
+                    content: isStart ? 
+                        '<div style="width:32px;height:32px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;z-index:999;">S</div>' :
+                        isEnd ? 
+                        '<div style="width:32px;height:32px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;z-index:999;">E</div>' :
+                        '<div style="width:12px;height:12px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>',
+                    anchor: new naver.maps.Point(isStart || isEnd ? 16 : 6, isStart || isEnd ? 16 : 6)
                 },
-                zIndex: 10
+                zIndex: isStart || isEnd ? 1000 : 100,
+                title: l.address || '이동 지점'
             });
             markersRef.current.push(pointMarker);
         });
 
-        const start = filteredLocs[0];
-        const end = filteredLocs[filteredLocs.length - 1];
-        const startMarker = new naver.maps.Marker({
-            position: new naver.maps.LatLng(start.lat, start.lng), map,
-            zIndex: 100, // 가장 위
-            icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new naver.maps.Point(12, 12) }
-        });
-        markersRef.current.push(startMarker);
 
         if (end) {
             const endMarker = new naver.maps.Marker({
