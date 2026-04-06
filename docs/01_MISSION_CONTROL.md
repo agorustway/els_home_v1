@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL v4.6.1
-> 마지막 업데이트: 2026-04-05 22:10 (KST)
+# ELS MISSION CONTROL v4.7.0
+> 마지막 업데이트: 2026-04-06 13:47 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.6.1` (Static Map Safety Revert & Fix)
-- **최근 업데이트**: 2026-04-05
-- **상태**: 🟡 JS SDK 인증 이슈로 인해 Static Map으로 긴급 복구 및 드리프트/오토줌 해결 완료
+- **현재 버전**: `v4.7.0` (Map Engine Redesign & 4-Worker Sync Fix)
+- **최근 업데이트**: 2026-04-06
+- **상태**: 🟢 지도 마커 드리프트 해결 및 핀치줌/패널 안정성 확보 완료
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -17,6 +17,7 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
+- [x] **2026-04-06**: [APP/MAP] v4.7.0 - **지도 엔진 전면 재설계 및 클린 빌드**. smOverlay 분리 아키텍처 도입으로 마커 드리프트를 원천 해결하고 핀치줌, 하단 패널 리사이즈 유기적 대응 구현.
 - [x] **2026-04-06**: [NAS/FIX] 아산지점 배차판 자동 동기화 고도화. Docker 마운트 지연을 해결하기 위해 WebDAV API 직접 통신 방식으로 개편하여 실시간 파일 변경 감지 및 데이터 자동 갱신 구현 (app_core.py)
 - [x] **2026-04-05**: [WEB/FIX] 웹 어드민 관리자 패널의 운행 상세정보 내 전체 경로 지도 로딩 오류(ncpClientId) 및 NAS 연동 첨부 사진 URL 출력 렌더링 오류 수정 (v4.6.2)
 - [x] **2026-04-05**: [APP] v4.3.49 - 네이버 지도 Dynamic API V2(JS SDK) 전격 복구. DIY Static Map 엔진의 한계였던 마커 드리프트 현상을 원천 해결하고 부드러운 60fps 패닝/줌 구현. (Capacitor hostname fix 기반)
