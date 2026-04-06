@@ -1,9 +1,10 @@
-# ELS MISSION CONTROL v4.7.0
+# ELS MISSION CONTROL v4.7.3
 > 마지막 업데이트: 2026-04-06 13:47 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **현재 버전**: `v4.7.0` (Map Engine Redesign & 4-Worker Sync Fix)
-- **최근 업데이트**: 2026-04-06
+- **Current Build**: `v4.7.3` (Stable Hotfix - Static Mode)
+- **Next Target**: `v4.8.0` (Naver Dynamic Map SDK Integration)
+- **Repo Status**: [main] 3 commits behind (Needs push after design phase)
 - **상태**: 🟢 지도 마커 드리프트 해결 및 핀치줌/패널 안정성 확보 완료
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
@@ -104,7 +105,10 @@
   - [x] JS 모듈 분리(v4.5.50) 후 Android 안드로이드 앱에서 버전이 v4.3.46으로 나오고, 구 버전으로 돌아가는(마커 이슈 등) WebView 캐시 문제 해결. (`index.html` 캐시버스터 주입)
   - [x] 버전을 Native 영역 (App.getInfo())에서 동적으로 가져오게 변경하여 더이상 `app.js` 등에 하드코딩하지 않게 개선.
   - [x] 앱 종료(Swipe) 시 네이티브 GPS 유지 알림이 없어지지 않는 버그 해결. (`FloatingWidgetService.java` 내 `onTaskRemoved` 시 서비스/알림 파괴하도록 수정 완료)
-  - [x] **[HOTFIX]** 초기 권한 설정 화면 JS SyntaxError 복구 및 **"순차 자동 설정"** 버튼 기능 추가 완료.
+  - [x] [v4.7.3] 마커 드리프트 핫픽스 (오버레이 분리 적용)
+- [ ] [v4.8.0] 네이버 동적 지도 SDK v3 전면 도입 (드리프트/고무줄 현상 근본 해결)
+- [x] [v4.7.x] 권한 설정 화면 클릭 불가 크래시 해결
+- [ ] [UI/UX] 지도 하단 패널 오버레이화 (Layout Push 제거)
 
 ## ⏳ 다음 할 일
 1. Vercel 배포 후 실기기(갤럭시 S25)에서 최신 APK OTA 업데이트 테스트 및 모듈 동작 검증.

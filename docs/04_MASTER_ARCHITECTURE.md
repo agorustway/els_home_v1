@@ -93,6 +93,7 @@ graph TD
 - `/elsbot`: 컨테이너 조회를 수행하는 봇 엔진 코드 (`els_bot.py`).
 - `/web/android`: 안드로이드 네이티브 소스 및 Capacitor 설정.
 - `/docs`: 프로젝트의 역사와 설계 문서 (`01_MISSION_CONTROL.md`가 최상위).
+  - [MAP V2 PLAN](./MAP_ENGINE_V2_PLAN.md): 지도 엔진 업그레이드 마스터 설계 문서.
 
 ---
 
@@ -123,7 +124,7 @@ graph TD
     │
     ├── modules/emergency.js    ← 긴급알림 폴링, SYSTEM_COMMAND               (← store, bridge, gps)
     ├── modules/update.js       ← APK 버전 체크                               (← store, bridge, utils)
-    ├── modules/map.js          ← Static Maps 엔진, 터치/경로                 (← store, bridge, utils, nav)
+    ├── modules/map.js          ← 지도 엔진 (v2: Dynamic SDK v3로 전환 예정)   (← store, bridge, utils, nav)
     │
     └── modules/init.js         ← 앱 초기화, switchTab, showMain              (← 전체 모듈 조율)
 ```
