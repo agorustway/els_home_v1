@@ -524,7 +524,15 @@ export default function DriverAppPage() {
 
     const handleStop = async () => {
         if (!activeTrip || !confirm('운행을 종료하시겠습니까?')) return;
+        
         try {
+            // [v4.5.34] 운행 종료 시점에 즉시 현재 위치를 수집하여 마지막 데이터를 확정
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    await sendLocation(activeTrip.id, pos);
+                }, null, { enableHighAccuracy: true, timeout: 5000 });
+            }
+
             const res = await fetch(`/api/vehicle-tracking/trips/${activeTrip.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -535,6 +543,7 @@ export default function DriverAppPage() {
             });
             if (res.ok) {
                 stopGPS(); stopSilence(); setActiveTrip(null); setTripStatus(null); setElapsedSeconds(0);
+                if (Overlay) Overlay.closeOverlay().catch(() => {});
                 fetchHistory();
             }
         } catch (e) { alert('오류: ' + e.message); }
