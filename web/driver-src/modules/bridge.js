@@ -1,7 +1,7 @@
 /**
  * bridge.js — Capacitor 플러그인 브릿지, smartFetch, remoteLog
  */
-import { Store, BASE_URL } from './store.js?v=496';
+import { Store, BASE_URL } from './store.js?v=497';
 
 // ─── remoteLog ────────────────────────────────────────────────────
 export async function remoteLog(msg, tag = 'JS') {

@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=496';
-import { smartFetch } from './bridge.js?v=496';
-import { showToast } from './utils.js?v=496';
-import { updateProfilePhoto } from './profile.js?v=496';
+import { State, BASE_URL } from './store.js?v=497';
+import { smartFetch } from './bridge.js?v=497';
+import { showToast } from './utils.js?v=497';
+import { updateProfilePhoto } from './profile.js?v=497';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -36,11 +36,15 @@ export async function onFileSelected(e) {
   }
   e.target.value = '';
   renderPhotoThumbs();
-  uploadPendingPhotos();
+
+  if (State.trip.id) {
+    showToast('사진 처리 중...');
+    await uploadPendingPhotos();
+  }
 }
 
 // ─── 이미지 리사이즈 (Canvas) ─────────────────────────────────────
-export async function resizePhoto(file, maxWidth = 1600, maxHeight = 1600) {
+export async function resizePhoto(file, maxWidth = 1024, maxHeight = 1024) {
   if (typeof file === 'string') return file;
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -53,7 +57,7 @@ export async function resizePhoto(file, maxWidth = 1600, maxHeight = 1600) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 품질 0.7로 낮춰서 1MB payload limit(Vercel) 회피
       };
       img.src = e.target.result;
     };
@@ -89,68 +93,69 @@ export function renderPhotoThumbs() {
 }
 
 // ─── 미업로드 사진 서버 전송 ─────────────────────────────────────
+let isPhotosUploading = false;
 export async function uploadPendingPhotos() {
-  const currentTripId = State.trip.id;
-  if (!currentTripId) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
+  if (isPhotosUploading) return;
+  const currentTripId = State.trip.id || Store.get('activeTrip')?.id;
 
-  const pending = State.photos.filter(p => !p.uploaded);
-  console.log(`[PHOTO] 미업로드 사진 ${pending.length}개, 전체 ${State.photos.length}개`);
-  if (pending.length === 0) return;
-
-  let uploadedCount = 0;
-  for (let i = 0; i < State.photos.length; i++) {
-    const p = State.photos[i];
-    if (p.uploaded) continue;
-    try {
-      console.log(`[PHOTO #${i}] 리사이징 시작`, p.file ? '(파일)' : '(dataUrl)');
-      const dataUrl = await resizePhoto(p.file || p.dataUrl);
-      console.log(`[PHOTO #${i}] 리사이징 완료, 크기: ${dataUrl.length} bytes`);
-
-      const base64  = dataUrl.split(',')[1];
-      const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-      const ext     = mime.split('/')[1] || 'jpg';
-      console.log(`[PHOTO #${i}] MIME: ${mime}, EXT: ${ext}, BASE64 길이: ${base64?.length || 0}`);
-
-      const uploadUrl = BASE_URL + '/api/vehicle-tracking/photos';
-      console.log(`[PHOTO #${i}] 업로드 URL: ${uploadUrl}`);
-      const res  = await smartFetch(uploadUrl, {
-        method: 'POST',
-        body: JSON.stringify({
-          trip_id: currentTripId,
-          photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
-        }),
-      });
-      console.log(`[PHOTO #${i}] HTTP 응답: ${res.status} ${res.statusText}`);
-
-      const data = await res.json().catch(() => ({}));
-      console.log(`[PHOTO #${i}] 응답 데이터:`, data);
-
-      if (data.photos && Array.isArray(data.photos)) {
-        // 마지막 항목 = 방금 업로드한 사진의 서버 정보
-        const sp = data.photos[data.photos.length - 1] || {};
-        let finalUrl = sp.url || sp.serverUrl || '';
-        if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:')) {
-          finalUrl = BASE_URL + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
-        }
-        // 기존 State.photos[i] 유지하며 서버 정보만 업데이트 (dataUrl 보존!)
-        State.photos[i] = { ...State.photos[i], uploaded: true, serverUrl: finalUrl };
-        renderPhotoThumbs();
-        uploadedCount++;
-        console.log(`[PHOTO #${i}] ✅ 업로드 성공, serverUrl: ${finalUrl}`);
-      } else if (data.error) {
-        console.error(`[PHOTO #${i}] ❌ 서버 에러:`, data.error);
-        showToast(`사진 업로드 실패: ${data.error}`);
-      } else {
-        console.warn(`[PHOTO #${i}] ⚠️ 응답 형식 오류:`, data);
-        showToast('사진 업로드 응답 오류. 다시 시도해주세요.');
-      }
-    } catch (e) {
-      console.error(`[PHOTO #${i}] ❌ 예외 발생:`, e.message || e);
-      showToast(`사진 전송 오류: ${e.message}`);
+  if (!currentTripId) {
+    if (State.photos.length > 0) {
+      showToast('운행 시작 버튼을 눌러야 사진이 서버에 저장됩니다.');
     }
+    return;
   }
 
-  if (uploadedCount > 0) showToast(`사진 ${uploadedCount}장 업로드 완료`);
+  const pending = State.photos.filter(p => !p.uploaded);
+  if (pending.length === 0) return;
+
+  isPhotosUploading = true;
+  let successCount = 0;
+  let failCount = 0;
+
+  try {
+    for (let i = 0; i < State.photos.length; i++) {
+      const p = State.photos[i];
+      if (p.uploaded) continue;
+
+      try {
+        console.log(`[PHOTO #${i}] 리사이징 시작`, p.file ? '(파일)' : '(dataUrl)');
+        const dataUrl = await resizePhoto(p.file || p.dataUrl);
+        const base64  = dataUrl.split(',')[1];
+        const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const ext     = mime.split('/')[1] || 'jpg';
+
+        const uploadUrl = BASE_URL + '/api/vehicle-tracking/photos';
+        const res  = await smartFetch(uploadUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            trip_id: currentTripId,
+            photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (data.photos && Array.isArray(data.photos)) {
+          const sp = data.photos[data.photos.length - 1] || {};
+          let finalUrl = sp.url || sp.serverUrl || '';
+          if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:')) {
+            finalUrl = BASE_URL + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
+          }
+          State.photos[i] = { ...State.photos[i], uploaded: true, serverUrl: finalUrl };
+          renderPhotoThumbs();
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        console.error(`[PHOTO #${i}] 에러`, e);
+        failCount++;
+      }
+    }
+  } finally {
+    isPhotosUploading = false;
+    if (successCount > 0) showToast(`사진 ${successCount}장 서버 저장 완료`);
+    if (failCount > 0) showToast(`사진 ${failCount}장 전송 실패 (나중에 운행 중 재시도)`);
+  }
 }
 
 // ─── 사진 뷰어 ───────────────────────────────────────────────────

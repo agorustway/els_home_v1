@@ -1,15 +1,15 @@
 /**
  * log.js — 운행 일지 목록, 상세, 수정, 삭제, 사진 추가
  */
-import { State, BASE_URL } from './store.js?v=496';
-import { smartFetch } from './bridge.js?v=496';
-import { formatDate, escHtml, showToast } from './utils.js?v=496';
-import { validateISO6346 } from './trip.js?v=496';
+import { State, BASE_URL } from './store.js?v=497';
+import { smartFetch } from './bridge.js?v=497';
+import { formatDate, escHtml, showToast } from './utils.js?v=497';
+import { validateISO6346 } from './trip.js?v=497';
 
 let _currentLogData = null;
 
 // ─── 사진 리사이즈 (log.js 내 독립 사본 — photos.js와 중복 허용) ─
-async function resizePhoto(file, maxWidth = 1600, maxHeight = 1600) {
+async function resizePhoto(file, maxWidth = 1024, maxHeight = 1024) {
   if (typeof file === 'string') return file;
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -22,7 +22,7 @@ async function resizePhoto(file, maxWidth = 1600, maxHeight = 1600) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
       img.src = e.target.result;
     };
@@ -272,35 +272,46 @@ export async function onLogFileSelected(e) {
   const uploadCount = Math.min(files.length, 10 - photos.length);
   if (uploadCount <= 0) return;
 
-  showToast(`사진 ${uploadCount}장을 압축/업로드 중...`, 5000);
+  showToast(`사진 ${uploadCount}장 압축/업로드 중...`);
   let successCount = 0;
+  let failCount = 0;
 
   try {
     for (let i = 0; i < uploadCount; i++) {
-      const dataUrl = await resizePhoto(files[i]);
-      const base64  = dataUrl.split(',')[1];
-      const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-      const ext     = mime.split('/')[1] || 'jpg';
+      try {
+        const dataUrl = await resizePhoto(files[i]);
+        const base64  = dataUrl.split(',')[1];
+        const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const ext     = mime.split('/')[1] || 'jpg';
 
-      const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
-        method: 'POST',
-        body: JSON.stringify({
-          trip_id: State.currentLogId,
-          photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data.photos && Array.isArray(data.photos)) {
-        State.logPhotos = data.photos;
-        successCount++;
+        const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+          method: 'POST',
+          body: JSON.stringify({
+            trip_id: State.currentLogId,
+            photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.photos && Array.isArray(data.photos)) {
+          State.logPhotos = data.photos;
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        console.error('onLogFileSelected item error', err);
+        failCount++;
       }
     }
     if (successCount > 0) {
       await openLog(State.currentLogId);
       showToast(`사진 ${successCount}장 업로드 성공`);
     }
+    if (failCount > 0) {
+      showToast(`사진 ${failCount}장 업로드 실패했습니다.`);
+    }
   } catch (err) {
     console.error('onLogFileSelected error', err);
-    showToast('업로드 중 오류 발생');
+    showToast('업로드 과정 중 오류가 발생했습니다.');
   }
 }
