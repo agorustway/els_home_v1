@@ -387,7 +387,7 @@
     <button class="btn btn-sm" onclick="App.closePhotoViewer()">닫기</button>
   </div>
   <div id="photo-viewer-wrap" style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-    <img id="photo-viewer-img" src="" alt="Photo" style="max-width:100%;max-height:100%;object-fit:contain;transition:transform 0.2s ease-out;transform-origin:0 0;">
+    <img id="photo-viewer-img" src="" alt="Photo" style="max-width:100%;max-height:100%;object-fit:contain;touch-action:none;transition:transform 0.2s ease-out;transform-origin:50% 50%;">
   </div>
   <div id="photo-viewer-nav" style="position:absolute;bottom:calc(env(safe-area-inset-bottom) + 20px);left:0;right:0;display:flex;justify-content:center;gap:30px;z-index:9999;">
     <button class="btn btn-black" onclick="App.prevPhoto()" style="border-radius:50%;width:48px;height:48px;font-size:18px;">◀</button>
@@ -395,8 +395,26 @@
   </div>
 </div>
 
+<!-- 개인정보 처리방침 모달 -->
+<div id="modal-terms" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);align-items:flex-end;">
+  <div style="background:#fff;border-radius:16px 16px 0 0;padding:20px 18px 32px;max-height:80vh;overflow-y:auto;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:16px;font-weight:800;margin:0;">개인정보 처리방침 및 이용약관</h3>
+      <button onclick="App.closeTerms()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;">✕</button>
+    </div>
+    <div style="font-size:13px;color:#374151;line-height:1.7;">
+      <p><strong>1. 수집 정보</strong><br>ELS Solution은 서비스 제공을 위해 위치정보(GPS), 차량번호, 운전자 정보, 운행 사진을 수집합니다.</p>
+      <p><strong>2. 이용 목적</strong><br>수집된 정보는 차량 위치 관제, 운행 기록 관리, 안전 운행 지원 목적으로만 사용됩니다.</p>
+      <p><strong>3. 보관 기간</strong><br>운행 종료 후 법정 보관 기간에 따라 관리되며, 요청 시 삭제됩니다.</p>
+      <p><strong>4. 제3자 제공</strong><br>수집된 정보는 법령에 근거한 경우를 제외하고 제3자에게 제공되지 않습니다.</p>
+      <p><strong>5. 이용약관</strong><br>본 앱은 업무용 차량 관제 시스템으로, 허가된 사용자만 이용 가능합니다. 수집된 데이터는 회사 정책에 따라 관리됩니다.</p>
+      <p style="color:#94a3b8;font-size:11px;margin-top:12px;">문의: ELS Solution 관리자</p>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=491"></script>
+  <script type="module" src="app.js?v=492"></script>
 </body>
 </html>

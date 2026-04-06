@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=491';
-import { smartFetch } from './bridge.js?v=491';
-import { showToast } from './utils.js?v=491';
-import { updateProfilePhoto } from './profile.js?v=491';
+import { State, BASE_URL } from './store.js?v=492';
+import { smartFetch } from './bridge.js?v=492';
+import { showToast } from './utils.js?v=492';
+import { updateProfilePhoto } from './profile.js?v=492';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -82,7 +82,8 @@ export function renderPhotoThumbs() {
     if (src && !src.startsWith('http') && !src.startsWith('data:')) {
       src = BASE_URL + (src.startsWith('/') ? '' : '/') + src;
     }
-    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`;
+    const fallback = p.dataUrl ? ` onerror="this.src='${p.dataUrl}'"` : '';
+    return `<img class="photo-thumb" src="${src}"${fallback} onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`;
   }).join('');
   scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
   const cnt = document.getElementById('photo-count-display');

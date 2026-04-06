@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=491';
-import { Overlay, remoteLog } from './bridge.js?v=491';
-import { showScreen } from './nav.js?v=491';
+import { Store, State } from './store.js?v=492';
+import { Overlay, remoteLog } from './bridge.js?v=492';
+import { showScreen } from './nav.js?v=492';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -20,7 +20,7 @@ function showToast(msg, duration) {
 }
 
 // ─── 앱 포그라운드 복귀 대기 (배터리/오버레이 설정 후 복귀 감지) ────
-function waitForForeground(timeoutMs = 30000) {
+function waitForForeground(timeoutMs = 8000) {
   return new Promise(resolve => {
     let done = false;
     let handles = [];
@@ -295,7 +295,7 @@ export async function requestAllPerms() {
             console.log(`[PERM] ${perm.type} executeRealRequest 호출`);
             await executeRealRequest(perm.type);
             console.log(`[PERM] ${perm.type} waitForForeground 시작`);
-            await waitForForeground(30_000);   // 앱 포그라운드 복귀 대기
+            await waitForForeground(8000);   // 앱 포그라운드 복귀 대기
             console.log(`[PERM] ${perm.type} waitForForeground 완료, 추가 안정화 대기 중...`);
             // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
             await new Promise(r => setTimeout(r, 1500));
@@ -306,7 +306,7 @@ export async function requestAllPerms() {
         // 모달 없으면 바로 요청
         console.log(`[PERM] ${perm.type} 모달 없음, 바로 요청`);
         await executeRealRequest(perm.type);
-        await waitForForeground(30_000);      // 앱 포그라운드 복귀 대기
+        await waitForForeground(8000);      // 앱 포그라운드 복귀 대기
         // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
         await new Promise(r => setTimeout(r, 1500));
       }
@@ -325,10 +325,12 @@ export function manualRefreshPerms() {
 }
 
 export function showTerms() {
-  document.getElementById('modal-terms')?.classList.add('active');
+  const m = document.getElementById('modal-terms');
+  if (m) m.style.display = 'flex';
 }
 export function closeTerms() {
-  document.getElementById('modal-terms')?.classList.remove('active');
+  const m = document.getElementById('modal-terms');
+  if (m) m.style.display = 'none';
 }
 
 export function finishPermSetup() {
