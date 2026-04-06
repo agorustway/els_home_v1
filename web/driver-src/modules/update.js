@@ -1,9 +1,9 @@
 /**
  * update.js — 앱 업데이트 확인
  */
-import { State, AppConfig, VERSION_URL } from './store.js?v=486';
-import { smartFetch } from './bridge.js?v=486';
-import { showToast } from './utils.js?v=486';
+import { State, AppConfig, VERSION_URL } from './store.js?v=487';
+import { smartFetch } from './bridge.js?v=487';
+import { showToast } from './utils.js?v=487';
 
 export async function checkUpdate(auto = false) {
   try {

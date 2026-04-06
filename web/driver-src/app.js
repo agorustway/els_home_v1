@@ -2,67 +2,67 @@
  * ELS Driver App — 모듈 엔트리 포인트
  * ES Modules 방식으로 각 기능 모듈을 import하여 window.App 조립
  */
-import { AppConfig } from './modules/store.js?v=486';
-import { remoteLog } from './modules/bridge.js?v=486';
-import { showToast, formatDate, escHtml } from './modules/utils.js?v=486';
-import { showScreen } from './modules/nav.js?v=486';
+import { AppConfig } from './modules/store.js?v=487';
+import { remoteLog } from './modules/bridge.js?v=487';
+import { showToast, formatDate, escHtml } from './modules/utils.js?v=487';
+import { showScreen } from './modules/nav.js?v=487';
 
 // 권한
 import {
   requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
-} from './modules/permissions.js?v=486';
+} from './modules/permissions.js?v=487';
 
 // 프로필
 import {
   saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
-} from './modules/profile.js?v=486';
+} from './modules/profile.js?v=487';
 
 // 운행 + 오버레이
 import {
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist,
   startOverlayService, updateOverlayStatus, stopOverlayService,
-} from './modules/trip.js?v=486';
+} from './modules/trip.js?v=487';
 
 // GPS
 import {
   startGPS, stopGPS, onGpsUpdate, updateTripStatusLine,
   startRealtimeMode, stopRealtimeMode,
   gpsWatchId, lastGpsTimestamp,
-} from './modules/gps.js?v=486';
+} from './modules/gps.js?v=487';
 
 // 공지
-import { loadNotices, filterNotice, openNotice, closeNoticeDetail } from './modules/notice.js?v=486';
+import { loadNotices, filterNotice, openNotice, closeNoticeDetail } from './modules/notice.js?v=487';
 
 // 사진
 import {
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,
   openPhotoViewer, openLogPhoto, closePhotoViewer, prevPhoto, nextPhoto,
   deleteCurrentPhoto, initPinchZoom,
-} from './modules/photos.js?v=486';
+} from './modules/photos.js?v=487';
 
 // 일지
 import {
   loadLogs, openLog, onLogFieldChange, saveLogEdit, deleteLog,
   forceCompleteLog, closeLogDetail, addLogPhoto, onLogFileSelected,
-} from './modules/log.js?v=486';
+} from './modules/log.js?v=487';
 
 // 긴급알림
-import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=486';
+import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=487';
 
 // 업데이트
-import { checkUpdate } from './modules/update.js?v=486';
+import { checkUpdate } from './modules/update.js?v=487';
 
 // 지도
 import {
   openMap, closeMap, refreshMapData, centerMyLocation,
   toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
-} from './modules/map.js?v=486';
+} from './modules/map.js?v=487';
 
 // 초기화
-import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=486';
+import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=487';
 
 // ─── window.App 조립 ─────────────────────────────────────────────
 // index.html의 모든 onclick="App.xxx()" 호출의 단일 진입점
