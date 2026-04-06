@@ -2,9 +2,9 @@
 > 마지막 업데이트: 2026-04-06 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **Current Build**: `v4.8.5` (드라이버 앱 빌드 구조 근본 개혁 — driver-src 분리, 버전 자동화)
-- **Next Target**: v4.8.5 APK 재빌드 및 실기기 검증 (`scripts/build_driver_apk.ps1` 으로)
-- **Repo Status**: [main] 작업 중
+- **Current Build**: `v4.8.6` (빌드 구조 개혁 + 배포 워크플로우 자동화)
+- **Next Target**: 실기기 OTA 검증 (v4.8.6 APK)
+- **Repo Status**: [main] 커밋 완료
 - **상태**: 🟢 일반 빌드(`npm run build`) 정상
 
 ## ⚠️ APK 빌드 절차 변경 (v4.8.5~)

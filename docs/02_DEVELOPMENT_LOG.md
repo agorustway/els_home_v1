@@ -1,5 +1,16 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.8.6 — 배포 워크플로우 자동화 완료)
+### 🚀 배포 요약
+build_driver_apk.ps1 + deploy.md 트리거 완성. "배포해줘" 한 마디로 버전업~푸시 원스톱.
+
+### 🔧 변경 파일
+- `scripts/build_driver_apk.ps1` — 인코딩 수정 (한글 string 제거)
+- `.agent/workflows/deploy.md` — 새 빌드 구조 반영, 트리거 키워드 등록
+- `CLAUDE.md` / `GEMINI.md` — "배포해줘" 트리거 테이블 추가
+
+---
+
 ## 📅 2026-04-06 (v4.8.5 — 드라이버 앱 빌드 구조 근본 개혁)
 ### 🚀 배포 요약
 APK 빌드 시 `cap sync`가 구버전 파일로 덮어씌우던 흰화면 원인 근본 해결. 버전 하드코딩 제거 및 자동화.

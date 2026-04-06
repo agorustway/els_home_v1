@@ -1,8 +1,8 @@
 /**
  * gps.js — GPS 추적, 오버레이 상태 표시, 역지오코딩
  */
-import { State, BASE_URL } from './store.js?v=485';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=485';
+import { State, BASE_URL } from './store.js?v=486';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=486';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;
