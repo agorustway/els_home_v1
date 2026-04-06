@@ -10,7 +10,7 @@ export function showScreen(name) {
   const globalTabBar  = document.getElementById('global-tab-bar');
   const globalSafeArea = document.getElementById('global-safe-area');
   if (globalTabBar && globalSafeArea) {
-    if (name === 'main' || name === 'map') {
+    if (name === 'main' || name === 'map' || name === 'settings') {
       globalTabBar.classList.remove('hidden');
       globalSafeArea.classList.remove('hidden');
     } else {

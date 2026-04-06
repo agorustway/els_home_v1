@@ -153,6 +153,9 @@ export function updateTripStatusLine() {
   const gpsChip     = document.getElementById('trip-gps-chip');
   const sep2        = document.getElementById('trip-status-sep2');
   const addrDisplay = document.getElementById('trip-addr-display');
+  
+  const settingsDateDisplay = document.getElementById('settings-trip-date-display');
+  const settingsAddrDisplay = document.getElementById('settings-trip-addr-display');
 
   if (State.trip.status === 'idle') {
     if (dateDisplay) {
@@ -160,10 +163,15 @@ export function updateTripStatusLine() {
       dateDisplay.style.color  = 'var(--primary)';
       dateDisplay.style.fontWeight = '700';
     }
+    if (settingsDateDisplay) {
+      settingsDateDisplay.textContent  = '운송시작 대기중';
+      settingsDateDisplay.style.color  = 'var(--primary)';
+    }
     if (sep1)        sep1.style.display  = 'none';
     if (gpsChip)     gpsChip.style.display = 'none';
     if (sep2)        sep2.style.display  = 'none';
     if (addrDisplay) addrDisplay.style.display = 'none';
+    if (settingsAddrDisplay) settingsAddrDisplay.style.display = 'none';
     return;
   }
 
@@ -208,9 +216,14 @@ export function updateTripStatusLine() {
     const dd  = String(d.getDate()).padStart(2, '0');
     const HH  = String(d.getHours()).padStart(2, '0');
     const min = String(d.getMinutes()).padStart(2, '0');
-    dateDisplay.textContent      = `${mm}/${dd} ${HH}:${min}`;
+    const timeStr = `${mm}/${dd} ${HH}:${min}`;
+    dateDisplay.textContent      = timeStr;
     dateDisplay.style.color      = '#64748b';
     dateDisplay.style.fontWeight = '400';
+    if (settingsDateDisplay) {
+        settingsDateDisplay.textContent = timeStr;
+        settingsDateDisplay.style.color = '#64748b';
+    }
   }
 
   if (sep1)    sep1.style.display = 'inline-block';
@@ -223,6 +236,10 @@ export function updateTripStatusLine() {
   if (addrDisplay) {
     addrDisplay.style.display = 'inline-block';
     addrDisplay.textContent   = addrShort || '위치 확인 중...';
+  }
+  if (settingsAddrDisplay) {
+    settingsAddrDisplay.style.display = 'inline-block';
+    settingsAddrDisplay.textContent   = addrShort || '위치 확인 중...';
   }
 
   // 오버레이 위젯 동기화
