@@ -128,21 +128,17 @@ export async function uploadPendingPhotos() {
       console.log(`[PHOTO #${i}] 응답 데이터:`, data);
 
       if (data.photos && Array.isArray(data.photos)) {
-        State.photos = data.photos.map(sp => {
-          // 서버 URL이 상대경로면 절대경로로 변환 후 저장
-          let finalUrl = sp.url || sp.serverUrl || sp.dataUrl || '';
-          if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:')) {
-            finalUrl = BASE_URL + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
-          }
-          return {
-            ...sp,
-            uploaded:  true,
-            serverUrl: finalUrl,
-          };
-        });
+        // 마지막 항목 = 방금 업로드한 사진의 서버 정보
+        const sp = data.photos[data.photos.length - 1] || {};
+        let finalUrl = sp.url || sp.serverUrl || '';
+        if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:')) {
+          finalUrl = BASE_URL + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
+        }
+        // 기존 State.photos[i] 유지하며 서버 정보만 업데이트 (dataUrl 보존!)
+        State.photos[i] = { ...State.photos[i], uploaded: true, serverUrl: finalUrl };
         renderPhotoThumbs();
         uploadedCount++;
-        console.log(`[PHOTO #${i}] ✅ 업로드 성공`);
+        console.log(`[PHOTO #${i}] ✅ 업로드 성공, serverUrl: ${finalUrl}`);
       } else if (data.error) {
         console.error(`[PHOTO #${i}] ❌ 서버 에러:`, data.error);
         showToast(`사진 업로드 실패: ${data.error}`);

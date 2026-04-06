@@ -298,7 +298,7 @@ export async function requestAllPerms() {
             await waitForForeground(8000);   // 앱 포그라운드 복귀 대기
             console.log(`[PERM] ${perm.type} waitForForeground 완료, 추가 안정화 대기 중...`);
             // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 3000));
             resolve();
           };
         });
@@ -308,7 +308,7 @@ export async function requestAllPerms() {
         await executeRealRequest(perm.type);
         await waitForForeground(8000);      // 앱 포그라운드 복귀 대기
         // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 3000));
       }
 
       console.log(`[PERM] ${perm.type} updatePermStatuses 호출`);
