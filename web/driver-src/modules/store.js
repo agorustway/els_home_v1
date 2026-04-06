@@ -5,8 +5,8 @@
 // ─── 상수 ──────────────────────────────────────────────────────────
 // ★ 버전은 네이티브 통신으로 자동 갱신됨. 수동 변경 시 fallback 역할
 export const AppConfig = {
-  APP_VERSION: 'v4.9.4',
-  BUILD_CODE: 494,
+  APP_VERSION: 'v4.9.6',
+  BUILD_CODE: 496,
 };
 export const BASE_URL    = 'https://www.nollae.com';
 export const VERSION_URL = BASE_URL + '/apk/version.json';

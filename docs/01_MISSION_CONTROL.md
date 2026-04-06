@@ -2,7 +2,7 @@
 > 마지막 업데이트: 2026-04-07 (KST)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.4` (versionCode 494)
+- **Current Build**: `v4.9.6` (versionCode 496)
 - **APK**: `web/public/apk/els_driver.apk`
 - **Vercel**: `nollae.com` (main 브랜치 자동 배포)
 - **Repo**: main 브랜치 up-to-date
