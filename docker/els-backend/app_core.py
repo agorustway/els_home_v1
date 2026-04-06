@@ -29,8 +29,10 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [CORE] %(message)s
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
-# --- [v4.5.4] 아산지점 배차판 자동 동기화 로직 ---
-def sync_asan_dispatch_python():
+last_mtime_cache = {}
+
+def sync_asan_dispatch_python(force=False):
+    global last_mtime_cache
     if not supabase: return
     try:
         app.logger.info("[자동동기화] 아산 배차판 동기화 시작...")
@@ -45,6 +47,13 @@ def sync_asan_dispatch_python():
             if not full_path.exists(): continue
             
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            
+            # 변경 감지 (force 옵션이 없으면 캐시 확인)
+            if not force and last_mtime_cache.get(dtype) == mtime:
+                continue
+            
+            app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
+            
             xl = pd.ExcelFile(full_path)
             sync_count = 0
             supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
@@ -82,17 +91,17 @@ def sync_asan_dispatch_python():
                 }).execute()
                 sync_count += 1
             app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+            last_mtime_cache[dtype] = mtime
     except Exception as e: app.logger.error(f"[자동동기화] 오류: {e}")
 
 def asan_sync_scheduler():
-    last_run_min = -1
+    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
     while True:
         try:
             now = datetime.now(KST)
             if now.weekday() < 5 and 6 <= now.hour <= 23:
-                if now.minute in [0, 30] and now.minute != last_run_min:
-                    sync_asan_dispatch_python()
-                    last_run_min = now.minute
+                # 매 루프(1분)마다 수정 여부를 체크하고, 수정된 경우만 동기화
+                sync_asan_dispatch_python()
             time.sleep(60)
         except: time.sleep(60)
 

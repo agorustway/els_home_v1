@@ -111,8 +111,11 @@ def post_debug_log():
         return jsonify({"error": str(e)}), 500
 
 # --- [v4.4.40] 아산지점 배차판 자동 동기화 로직 ---
-def sync_asan_dispatch_python():
+last_mtime_cache = {}
+
+def sync_asan_dispatch_python(force=False):
     """나스 엑셀 파일을 읽어 Supabase를 업데이트하는 Python 버전 로직"""
+    global last_mtime_cache
     if not supabase: return
     try:
         app.logger.info("[자동동기화] 아산 배차판 동기화 시작...")
@@ -134,10 +137,14 @@ def sync_asan_dispatch_python():
                 app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path} (rel_path: {rel_path})")
                 continue
             
-            app.logger.info(f"[자동동기화] 파일 존재 확인됨. 데이터 추출 시작... ({dtype})")
-            
             # 파일 수정 시간
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            
+            # 변경 감지 (force 옵션이 없으면 캐시 확인)
+            if not force and last_mtime_cache.get(dtype) == mtime:
+                continue
+            
+            app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
             
             # 엑셀 읽기
             xl = pd.ExcelFile(full_path)
@@ -206,14 +213,14 @@ def sync_asan_dispatch_python():
                 sync_count += 1
             
             app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+            last_mtime_cache[dtype] = mtime
             
     except Exception as e:
         app.logger.error(f"[자동동기화] 치명적 오류: {e}")
 
 def asan_sync_scheduler():
     """배경에서 시간을 체크하여 동기화를 수행하는 스레드"""
-    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (06:00-23:00, 30분 간격)")
-    last_run_min = -1
+    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
     
     while True:
         try:
@@ -222,11 +229,8 @@ def asan_sync_scheduler():
             if now.weekday() < 5:
                 # 06:00 ~ 23:00 사이
                 if 6 <= now.hour <= 23:
-                    # 00분 또는 30분일 때 실행
-                    if now.minute in [0, 30] and now.minute != last_run_min:
-                        app.logger.info(f"[스케줄러] 정기 동기화 시점 도달 ({now.hour:02d}:{now.minute:02d})")
-                        sync_asan_dispatch_python()
-                        last_run_min = now.minute
+                    # 매 루프(1분)마다 수정 여부를 체크하고, 수정된 경우만 동기화
+                    sync_asan_dispatch_python()
             
             # 매 60초마다 체크 (KST 기준)
             time.sleep(60)
