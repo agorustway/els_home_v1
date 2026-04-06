@@ -1,11 +1,11 @@
-# ELS MISSION CONTROL v4.7.3
-> 마지막 업데이트: 2026-04-06 13:47 (KST)
+# ELS MISSION CONTROL v4.8.0
+> 마지막 업데이트: 2026-04-06 18:22 (KST)
 
 ## 📦 최신 배포 배포 정보 (Release)
-- **Current Build**: `v4.7.3` (Stable Hotfix - Static Mode)
-- **Next Target**: `v4.8.0` (Naver Dynamic Map SDK Integration)
-- **Repo Status**: [main] 3 commits behind (Needs push after design phase)
-- **상태**: 🟢 지도 마커 드리프트 해결 및 핀치줌/패널 안정성 확보 완료
+- **Current Build**: `v4.8.0` (Naver Dynamic SDK v3)
+- **Next Target**: `v4.8.1` (실기기 검증 후 안정화)
+- **Repo Status**: [main] Commit 필요
+- **상태**: 🟡 Dynamic SDK v3 지도 엔진 전환 완료 — 실기기 검증 대기 중
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)
@@ -18,7 +18,8 @@
 ---
 
 ## ✅ 주요 마일스톤 (Milestones)
-- [x] **2026-04-06**: [APP/MAP] v4.7.0 - **지도 엔진 전면 재설계 및 클린 빌드**. smOverlay 분리 아키텍처 도입으로 마커 드리프트를 원천 해결하고 핀치줌, 하단 패널 리사이즈 유기적 대응 구현.
+- [x] **2026-04-06**: [APP/MAP] v4.8.0 - **네이버 지도 Dynamic SDK v3 전면 도입**. Static Maps(raster-cors) 방식 완전 폐기. `naver.maps.Marker`/`Polyline`이 좌표를 직접 추적하여 마커 드리프트 원천 봉쇄. 하단 패널 `position:absolute` 전환으로 고무줄 현상 구조적 해결.
+- [x] **2026-04-06**: [APP/MAP] v4.7.0 - smOverlay 분리 아키텍처 도입으로 마커 드리프트를 원천 해결하고 핀치줌, 하단 패널 리사이즈 유기적 대응 구현.
 - [x] **2026-04-06**: [NAS/FIX] 아산지점 배차판 자동 동기화 고도화. Docker 마운트 지연을 해결하기 위해 WebDAV API 직접 통신 방식으로 개편하여 실시간 파일 변경 감지 및 데이터 자동 갱신 구현 (app_core.py)
 - [x] **2026-04-05**: [WEB/FIX] 웹 어드민 관리자 패널의 운행 상세정보 내 전체 경로 지도 로딩 오류(ncpClientId) 및 NAS 연동 첨부 사진 URL 출력 렌더링 오류 수정 (v4.6.2)
 - [x] **2026-04-05**: [APP] v4.3.49 - 네이버 지도 Dynamic API V2(JS SDK) 전격 복구. DIY Static Map 엔진의 한계였던 마커 드리프트 현상을 원천 해결하고 부드러운 60fps 패닝/줌 구현. (Capacitor hostname fix 기반)
@@ -106,16 +107,16 @@
   - [x] 버전을 Native 영역 (App.getInfo())에서 동적으로 가져오게 변경하여 더이상 `app.js` 등에 하드코딩하지 않게 개선.
   - [x] 앱 종료(Swipe) 시 네이티브 GPS 유지 알림이 없어지지 않는 버그 해결. (`FloatingWidgetService.java` 내 `onTaskRemoved` 시 서비스/알림 파괴하도록 수정 완료)
   - [x] [v4.7.3] 마커 드리프트 핫픽스 (오버레이 분리 적용)
-- [ ] [v4.8.0] 네이버 동적 지도 SDK v3 전면 도입 (드리프트/고무줄 현상 근본 해결)
-- [x] [v4.7.x] 권한 설정 화면 클릭 불가 크래시 해결
-- [ ] [UI/UX] 지도 하단 패널 오버레이화 (Layout Push 제거)
+- [ ] [v4.8.1] 실기기(갤럭시 S25) Dynamic SDK v3 마커/경로 동작 검증
+- [ ] [UI/UX] 지도 하단 패널 오버레이화 (완료 — v4.8.0)
 
 ## ⏳ 다음 할 일
-1. Vercel 배포 후 실기기(갤럭시 S25)에서 최신 APK OTA 업데이트 테스트 및 모듈 동작 검증.
-2. 오프라인 데이터 큐잉 설계 도입
+1. Vercel 배포(version.json 갱신) 후 실기기에서 OTA 업데이트 수신 및 Dynamic SDK 지도 동작 검증.
+2. NCP 콘솔에서 `Maps JavaScript API` → `Dynamic Map` 사용 설정 확인 (ncpKeyId: hxoj79osnj)
+3. 오프라인 데이터 큐잉 설계 도입
 
 ## 🐛 남은 이슈
-- 없음 (알려진 모든 치명적 버그 해결됨)
+- NCP 콘솔 Dynamic Map API 활성화 여부 현장 확인 필요 (인증 실패 시 SDK 로드 오류 발생 가능)
 
 ---
-*최종 갱신일: 2026-04-05 (by Antigravity v4.5.50)*
+*최종 갱신일: 2026-04-06 (by Antigravity v4.8.0)*
