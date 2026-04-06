@@ -23,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 형의 말 | 실행할 것 |
 |--------|---------|
 | **"배포해줘"** / **"배포"** / **`/deploy`** | `.agent/workflows/deploy.md` 절차 그대로 실행 |
+| **`/init`** | `.agent/workflows/init.md` 절차 실행 — 세션 시작 시 프로젝트 컨텍스트 즉시 동기화 |
 
 ## 세션 시작 시 필수 스캔
 
@@ -36,7 +37,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **ELS Solution** — 물류 회사 임직원 업무 포털 및 통합 인트라넷. 컨테이너 이력 조회(Selenium), 안전운임 조회, 차량 위치 관제(GPS), NAS 자료실 등을 제공.
 
 - **웹**: `nollae.com` (Vercel 배포, Next.js 14)
-- **백엔드**: `192.168.0.4:5000` (사내 NAS, Flask/Docker)
+- **백엔드**: `192.168.0.4:2929` (사내 NAS, Nginx gateway → els-core:2930 / els-bot:2931)
 - **모바일**: 안드로이드 드라이버 앱 (Capacitor 8.x, `com.elssolution.driver`)
 
 ## 빌드 사전 요구사항
@@ -122,6 +123,7 @@ powershell scripts/restart_backend.ps1
 | `elsbot/els_bot.py` | DrissionPage 기반 ETrans 스크래핑 핵심 로직 |
 | `docs/` | 프로젝트 단일 진실 소스 (`01_MISSION_CONTROL.md` 핵심) |
 | `scripts/` | 배포/재시작 PowerShell·Shell 스크립트 |
+| `.agent/workflows/` | AI 워크플로우 정의 (`deploy.md`, `init.md`). 명령어 트리거 시 이 절차를 실행 |
 
 ## 주요 환경변수
 
