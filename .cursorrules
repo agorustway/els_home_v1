@@ -33,7 +33,7 @@
 - **Language**: 기술적 설명과 대화는 반드시 **한국어**로 수행합니다.
 - **Git Commit**: 메시지는 한국어로 작성하며, `git commit -F commit_msg.txt` 형식을 권장합니다.
 - **Cleanup**: 작업 중 발생하는 모든 임시 파일은 `.tmp_test/`에서 처리하고 즉시 삭제합니다.
-- **PowerShell**: `Get-Content` 사용 시 반드시 `-Encoding UTF8` 옵션을 명시합니다. (한글 깨짐 방지)
+- **PowerShell**: 파일 입출력(`cat` 등) 시 `-Encoding UTF8` 필수 사용. 여러 명령어 체인 실행 시 `&&` 대신 `;` 사용 또는 개별 명령어로 분리 실행. (한글 깨짐 & 호환성 방지)
 
 ## 🛠 4. 기술 스택 및 라이브러리 가이드
 - **Web**: Next.js 14 (App Router). API 호출 시 `@/utils/logger` 등 통합 유틸리티를 우선 사용합니다.

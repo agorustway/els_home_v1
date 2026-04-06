@@ -98,7 +98,11 @@ export default function VehicleTrackingPage() {
             const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
             const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
             const data = await res.json();
-            if (data.data) setLiveTrips(data.data);
+            if (data && Array.isArray(data.data)) {
+                setLiveTrips(data.data);
+            } else {
+                setLiveTrips([]); // [안전] 형식이 다르면 빈 배열로 초기화
+            }
         } catch (e) {
             console.error('운행 데이터 조회 실패:', e);
         } finally {
@@ -515,9 +519,14 @@ export default function VehicleTrackingPage() {
     useEffect(() => {
         if (!selectedTrip) return;
         let retries = 10;
+        let timerId = null;
+
         const tryDraw = () => {
-            if (!miniMapRef.current || !window.naver?.maps) {
-                if (retries-- > 0) setTimeout(tryDraw, 300);
+            // [안전] 이미 모달이 닫혔거나 지도가 없으면 중단
+            if (!selectedTrip || !miniMapRef.current || !window.naver?.maps) {
+                if (retries-- > 0 && selectedTrip) {
+                    timerId = setTimeout(tryDraw, 300);
+                }
                 return;
             }
 
@@ -531,15 +540,19 @@ export default function VehicleTrackingPage() {
             }
 
             if (miniPolylineRef.current) miniPolylineRef.current.setMap(null);
-            miniMarkersRef.current.forEach(m => m.setMap(null));
+            miniMarkersRef.current.forEach(m => { if (m) m.setMap(null); });
             miniMarkersRef.current = [];
 
-            if (!selectedTripLocations || selectedTripLocations.length === 0) return;
+            if (!selectedTripLocations || !Array.isArray(selectedTripLocations) || selectedTripLocations.length === 0) return;
 
-            let validLocs = selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132);
-            validLocs.sort((a, b) => new Date(a.timestamp || a.recorded_at) - new Date(b.timestamp || b.recorded_at));
-
+            let validLocs = selectedTripLocations.filter(l => l && typeof l.lat === 'number' && typeof l.lng === 'number');
             if (validLocs.length === 0) return;
+
+            validLocs.sort((a, b) => {
+                const dateA = new Date(a.timestamp || a.recorded_at);
+                const dateB = new Date(b.timestamp || b.recorded_at);
+                return dateA - dateB;
+            });
 
             const distance = (lat1, lng1, lat2, lng2) => {
                 const p = 0.017453292519943295;
@@ -547,7 +560,7 @@ export default function VehicleTrackingPage() {
                 const a = 0.5 - c((lat2 - lat1) * p) / 2 +
                     c(lat1 * p) * c(lat2 * p) *
                     (1 - c((lng2 - lng1) * p)) / 2;
-                return 12742 * Math.asin(Math.sqrt(a)); // returns distance in km
+                return 12742 * Math.asin(Math.sqrt(a));
             };
 
             const filteredLocs = [];
@@ -555,44 +568,15 @@ export default function VehicleTrackingPage() {
 
             for (let i = 0; i < validLocs.length; i++) {
                 const curr = validLocs[i];
-                if (filteredLocs.length === 0) {
-                    filteredLocs.push(curr);
-                    continue;
-                }
-
+                if (filteredLocs.length === 0) { filteredLocs.push(curr); continue; }
                 const prev = filteredLocs[filteredLocs.length - 1];
                 const distPrev = distance(prev.lat, prev.lng, curr.lat, curr.lng);
                 const timePrev = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
-                
-                // 1. 속도 기반 필터링 (120km/h)
                 const speed = timePrev > 0 ? (distPrev / (timePrev / 3600)) : 0;
                 if (timePrev > 0 && speed > SPEED_LIMIT_KMH) continue;
-
-                // 2. Spike(가시) 필터링: 현재 지점이 튀었다가 다시 돌아오는지 체크 (Look-ahead)
-                if (i < validLocs.length - 1) {
-                    const next = validLocs[i + 1];
-                    const distNext = distance(curr.lat, curr.lng, next.lat, next.lng);
-                    const distPrevNext = distance(prev.lat, prev.lng, next.lat, next.lng);
-                    
-                    // 정차 중(속도 5km/h 이하)일 때는 50m만 튀어도 Spike로 간주
-                    const spikeThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.5;
-                    if (distPrev > spikeThreshold && distNext > spikeThreshold && distPrevNext < (spikeThreshold * 0.8)) {
-                        continue; 
-                    }
-                }
-
-                // 3. 정체 구간 중복 제거 (정차 중엔 50m, 주행 중엔 30m 이내 무시)
-                const moveThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.03;
-                if (distPrev < moveThreshold) continue;
-
                 filteredLocs.push(curr);
             }
             
-            // 마지막 지점 복원
-            if (validLocs.length > 0 && filteredLocs[filteredLocs.length - 1] !== validLocs[validLocs.length - 1]) {
-                filteredLocs.push(validLocs[validLocs.length - 1]);
-            }
-
             const path = filteredLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
             const polyline = new window.naver.maps.Polyline({
                 map: map, path: path, strokeColor: '#2563eb', strokeWeight: 5,
@@ -602,38 +586,18 @@ export default function VehicleTrackingPage() {
 
             const bounds = new window.naver.maps.LatLngBounds();
             path.forEach(p => bounds.extend(p));
-
-            filteredLocs.forEach(l => {
-                const pointMarker = new window.naver.maps.Marker({
-                    position: new window.naver.maps.LatLng(l.lat, l.lng), map,
-                    icon: { content: '<div style="width:8px;height:8px;background:#94a3b8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>', anchor: new window.naver.maps.Point(4, 4) },
-                    zIndex: 10
-                });
-                miniMarkersRef.current.push(pointMarker);
-            });
-
-            const startMarker = new window.naver.maps.Marker({
-                position: path[0], map, zIndex: 100,
-                icon: { content: '<div style="width:24px;height:24px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">S</div>', anchor: new window.naver.maps.Point(12, 12) }
-            });
-            miniMarkersRef.current.push(startMarker);
-
-            const endMarker = new window.naver.maps.Marker({
-                position: path[path.length - 1], map, zIndex: 100,
-                icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new window.naver.maps.Point(12, 12) }
-            });
-            miniMarkersRef.current.push(endMarker);
-
-            window.naver.maps.Event.trigger(map, 'resize');
-
-            if (realtimeTarget === selectedTrip.id) {
-                map.panTo(path[path.length - 1]);
-            } else if (!miniMapInstanceRef.current._hasFitBounds) {
+            // fitBounds는 중복 실행 방지
+            if (path.length > 0 && !miniMapInstanceRef.current._hasFitBounds) {
                 map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
                 miniMapInstanceRef.current._hasFitBounds = true;
             }
         };
-        tryDraw(); // [v4.5.12] retry 루프 진입
+
+        tryDraw();
+        return () => {
+            if (timerId) clearTimeout(timerId);
+            if (miniMapInstanceRef.current) miniMapInstanceRef.current._hasFitBounds = false;
+        };
     }, [selectedTrip, selectedTripLocations, realtimeTarget]);
 
     // [신규] 안드로이드 뒤로가기 버튼 연동 (Hash를 통한 사이드이펙트 방지)

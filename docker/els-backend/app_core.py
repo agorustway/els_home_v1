@@ -210,11 +210,13 @@ def delete_logs():
 @app.route("/api/vehicle-tracking", methods=["GET"])
 def get_vehicle_tracking():
     twenty_four_hours_ago = (datetime.now(KST) - timedelta(hours=24)).isoformat()
-    trips = supabase.from_("vehicle_trips").select("*").gte("started_at", twenty_four_hours_ago) \
-            .in_("status", ["driving", "paused", "completed"]).order("started_at", desc=True).execute().data
-    trip_ids = [t["id"] for t in trips]
+    trips_res = supabase.from_("vehicle_trips").select("*").gte("started_at", twenty_four_hours_ago) \
+            .in_("status", ["driving", "paused", "completed"]).order("started_at", desc=True).execute()
+    trips = trips_res.data or []
+    trip_ids = [t["id"] for t in trips if t.get("id")]
     if not trip_ids: return jsonify({"data": [], "trips": []})
-    locs = supabase.from_("vehicle_locations").select("*").in_("trip_id", trip_ids).order("recorded_at", desc=True).execute().data
+    locs_res = supabase.from_("vehicle_locations").select("*").in_("trip_id", trip_ids).order("recorded_at", desc=True).execute()
+    locs = locs_res.data or []
     loc_map = {}
     for l in locs:
         tid = l["trip_id"]
