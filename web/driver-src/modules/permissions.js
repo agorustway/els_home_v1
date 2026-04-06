@@ -196,8 +196,18 @@ async function executeRealRequest(type) {
       }
       case 'overlay':
         if (overlay) {
-          await overlay.requestPermission();
+          console.log('[OVERLAY] requestPermission 호출 시작');
+          try {
+            const res = await overlay.requestPermission();
+            console.log('[OVERLAY] 응답:', JSON.stringify(res));
+            remoteLog('Overlay permission requested: ' + JSON.stringify(res), 'OVERLAY_RES');
+          } catch (e) {
+            console.error('[OVERLAY] 요청 실패:', e.message || e);
+            remoteLog('Overlay requestPermission error: ' + (e.message || JSON.stringify(e)), 'OVERLAY_ERR');
+            throw e;
+          }
         } else {
+          console.warn('[OVERLAY] 플러그인 미로드 - Overlay()가 null/undefined');
           showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
         }
         break;
@@ -267,6 +277,7 @@ export async function requestAllPerms() {
   ];
 
   for (const perm of specialPerms) {
+    console.log(`[PERM] 특별 권한 시작: ${perm.type}, 현재 상태: ${permStatuses[perm.key]}`);
     if (!permStatuses[perm.key]) {
       showToast(perm.type + ' 권한을 설정합니다...', 1500);
 
@@ -274,27 +285,39 @@ export async function requestAllPerms() {
       const guide = document.getElementById('modal-guide-android16');
       const confirmBtn = document.getElementById('btn-guide-confirm');
 
+      console.log(`[PERM] ${perm.type} 모달 찾음:`, !!guide, '버튼 찾음:', !!confirmBtn);
+
       if (guide && confirmBtn) {
         await new Promise(resolve => {
+          console.log(`[PERM] ${perm.type} 모달 표시`);
           guide.classList.add('active');
           confirmBtn.onclick = async (ev) => {
+            console.log(`[PERM] ${perm.type} 버튼 클릭됨`);
             ev.preventDefault();
             guide.classList.remove('active');
             await new Promise(r => setTimeout(r, 300));
+            console.log(`[PERM] ${perm.type} executeRealRequest 호출`);
             await executeRealRequest(perm.type);
+            console.log(`[PERM] ${perm.type} waitForForeground 시작`);
             await waitForForeground(30_000);   // 앱 포그라운드 복귀 대기
-            await new Promise(r => setTimeout(r, 600));
+            console.log(`[PERM] ${perm.type} waitForForeground 완료, 추가 안정화 대기 중...`);
+            // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
+            await new Promise(r => setTimeout(r, 1500));
             resolve();
           };
         });
       } else {
         // 모달 없으면 바로 요청
+        console.log(`[PERM] ${perm.type} 모달 없음, 바로 요청`);
         await executeRealRequest(perm.type);
         await waitForForeground(30_000);      // 앱 포그라운드 복귀 대기
-        await new Promise(r => setTimeout(r, 600));
+        // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
+        await new Promise(r => setTimeout(r, 1500));
       }
 
+      console.log(`[PERM] ${perm.type} updatePermStatuses 호출`);
       await updatePermStatuses();
+      console.log(`[PERM] ${perm.type} 완료, 현재 상태: ${permStatuses[perm.key]}`);
     }
   }
 

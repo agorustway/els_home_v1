@@ -95,6 +95,7 @@ export async function uploadPendingPhotos() {
   if (!currentTripId) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
 
   const pending = State.photos.filter(p => !p.uploaded);
+  console.log(`[PHOTO] 미업로드 사진 ${pending.length}개, 전체 ${State.photos.length}개`);
   if (pending.length === 0) return;
 
   let uploadedCount = 0;
@@ -102,19 +103,29 @@ export async function uploadPendingPhotos() {
     const p = State.photos[i];
     if (p.uploaded) continue;
     try {
+      console.log(`[PHOTO #${i}] 리사이징 시작`, p.file ? '(파일)' : '(dataUrl)');
       const dataUrl = await resizePhoto(p.file || p.dataUrl);
+      console.log(`[PHOTO #${i}] 리사이징 완료, 크기: ${dataUrl.length} bytes`);
+
       const base64  = dataUrl.split(',')[1];
       const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
       const ext     = mime.split('/')[1] || 'jpg';
+      console.log(`[PHOTO #${i}] MIME: ${mime}, EXT: ${ext}, BASE64 길이: ${base64?.length || 0}`);
 
-      const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+      const uploadUrl = BASE_URL + '/api/vehicle-tracking/photos';
+      console.log(`[PHOTO #${i}] 업로드 URL: ${uploadUrl}`);
+      const res  = await smartFetch(uploadUrl, {
         method: 'POST',
         body: JSON.stringify({
           trip_id: currentTripId,
           photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
         }),
       });
+      console.log(`[PHOTO #${i}] HTTP 응답: ${res.status} ${res.statusText}`);
+
       const data = await res.json().catch(() => ({}));
+      console.log(`[PHOTO #${i}] 응답 데이터:`, data);
+
       if (data.photos && Array.isArray(data.photos)) {
         State.photos = data.photos.map(sp => {
           // 서버 URL이 상대경로면 절대경로로 변환 후 저장
@@ -130,10 +141,15 @@ export async function uploadPendingPhotos() {
         });
         renderPhotoThumbs();
         uploadedCount++;
+        console.log(`[PHOTO #${i}] ✅ 업로드 성공`);
       } else if (data.error) {
-        console.error('Photo upload error:', data.error);
+        console.error(`[PHOTO #${i}] ❌ 서버 에러:`, data.error);
+      } else {
+        console.warn(`[PHOTO #${i}] ⚠️ 응답 형식 오류:`, data);
       }
-    } catch (e) { console.error('Photo upload catch:', e); }
+    } catch (e) {
+      console.error(`[PHOTO #${i}] ❌ 예외 발생:`, e.message || e);
+    }
   }
 
   if (uploadedCount > 0) showToast(`사진 ${uploadedCount}장 업로드 완료`);
