@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **AI 핸드오프**: Gemini/Antigravity와 공동 작업 시, 세션 종료 전 `docs/01_MISSION_CONTROL.md`의 **🚧 IN-PROGRESS** 섹션에 상세 진행 상태와 다음 작업자를 위한 가이드를 남길 것.
 - **아카이브 금지**: `web/utils/loggerServer.js` 등 `_archive/` 폴더 내 파일은 절대 사용 금지.
 - **Python 인코딩**: Python 코드 작업 시 `PYTHONIOENCODING=utf-8` 환경 고려.
+- **PowerShell**: 파일 I/O 시 `-Encoding UTF8` 필수. 명령어 체인은 `&&` 대신 `;` 사용 (한글 깨짐·호환성 방지).
 - **PDCA**: 코드 변경은 계획(Plan)→실행(Do)→검증(Check)→적용(Act) 단계 준수.
 
 ## 세션 시작 시 필수 스캔
@@ -44,8 +45,8 @@ cd web && npm run build
 # ESLint
 cd web && npm run lint
 
-# 안드로이드 APK 빌드
-cd web && npm run build      # Next.js → out/
+# 안드로이드 APK 빌드 (STATIC_EXPORT=true → next.config.mjs가 output:'export' 활성화)
+cd web && STATIC_EXPORT=true npm run build   # Next.js → out/
 cd web && npx cap sync       # Capacitor 동기화 (web/ 디렉토리에서 실행)
 cd web/android && ./gradlew clean assembleDebug
 
@@ -91,15 +92,27 @@ powershell scripts/restart_backend.ps1
 
 | 디렉토리 | 역할 |
 |---------|------|
-| `web/app/` | Next.js App Router (라우트 그룹: `(main)`, `(standalone)`) |
-| `web/app/api/` | 서버사이드 API 라우트 (els, vehicle-tracking, nas, naver-maps 등) |
+| `web/app/(main)/` | 공개 웹사이트 + 임직원 포털. 하위 `employees/(intranet)/`은 Supabase 세션 필수 보호 구역 |
+| `web/app/(standalone)/` | 드라이버 앱 WebView 전용 레이아웃 (`/driver-app`). 헤더/푸터 없는 단독 UI |
+| `web/app/api/` | 서버사이드 API 라우트. **NAS 오프로드 패턴**: 라우트 최상단에 `if (process.env.ELS_BACKEND_URL) return proxyToBackend(req)` 삽입 |
+| `web/app/api/els/proxyToBackend.js` | NAS 프록시 공통 유틸. 타임아웃·인증서 무시·바이너리 스트리밍 처리 포함 |
 | `web/components/` | 공유 React 컴포넌트 (~40개) |
 | `web/utils/` | 공통 유틸 (`logger.js`, `logger.server.js`, `roles.js`, `supabase/`) |
+| `web/utils/roles.js` | RBAC 역할 목록 (admin / headquarters / asan / jungbu / dangjin / … / visitor) |
 | `docker/els-backend/app.py` | Flask 메인 API (로그, 파일, 봇 연동) |
 | `elsbot/els_web_runner_daemon.py` | Selenium DriverPool + REST API 데몬 |
 | `elsbot/els_bot.py` | DrissionPage 기반 ETrans 스크래핑 핵심 로직 |
 | `docs/` | 프로젝트 단일 진실 소스 (`01_MISSION_CONTROL.md` 핵심) |
 | `scripts/` | 배포/재시작 PowerShell·Shell 스크립트 |
+
+## 주요 환경변수
+
+| 변수 | 설명 |
+|------|------|
+| `ELS_BACKEND_URL` | NAS Flask 백엔드 URL (예: `http://192.168.0.4:2930`). 미설정 시 프록시 비활성화 |
+| `ELS_BACKEND_FETCH_TIMEOUT_MS` | NAS 요청 타임아웃 (기본 120000ms) |
+| `STATIC_EXPORT` | `true` 설정 시 Next.js `output:'export'` 활성화 → Capacitor APK 빌드용 |
+| `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 NCP 클라이언트 ID (웹 관제용) |
 
 ## 모바일 앱 버전 관리 (필수)
 
@@ -119,10 +132,16 @@ powershell scripts/restart_backend.ps1
 - `modules/bridge.js` — Capacitor 플러그인, smartFetch, remoteLog
 - `modules/gps.js` — GPS 추적, 실시간 모드
 - `modules/trip.js` — 운행 시작/종료
-- `modules/map.js` — 네이버 Static Maps 엔진 (Dynamic API V2 기반)
+- `modules/map.js` — 네이버 지도 Dynamic SDK V3 엔진 (`naver.maps.Marker`/`Polyline` 직접 제어)
+- `modules/nav.js` — 탭 네비게이션 (순환 참조 방지용 별도 레이어)
+- `modules/permissions.js` / `modules/profile.js` / `modules/notice.js` — 권한·프로필·공지
+- `modules/log.js` / `modules/photos.js` / `modules/emergency.js` — 업무 로그·사진·긴급
+- `modules/update.js` / `modules/utils.js` — OTA 업데이트·공통 유틸
 - `modules/init.js` — 앱 초기화 조율 (전체 모듈 진입점)
 
 모듈 간 순환 참조 방지: `nav.js` 별도 레이어 분리, 불가피한 경우 `window.App.xxx()` 늦은 참조 사용.
+
+**WebView 캐시 무효화**: 버전 범프 시 `index.html`의 모든 `import` 경로 쿼리스트링(`?t=버전코드`)도 함께 갱신해야 캐시 지옥 탈출 가능.
 
 ## 주요 문서 링크
 

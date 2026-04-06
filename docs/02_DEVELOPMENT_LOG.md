@@ -1,5 +1,53 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.8.4 — Static Export 호환성 수정)
+### 🚀 배포 요약
+Next.js `output: export` 빌드 시 `'use client'` 페이지에서 `generateStaticParams` 동시 사용 불가 오류 수정.
+
+### 📌 주요 변경 사항
+- **[WEB/BUILD] 동적 `[id]` 페이지 서버 래퍼 분리 (22개 + board/edit)**
+  - `'use client'`와 `generateStaticParams`를 동일 파일에 쓸 수 없는 Next.js 14 제약 대응.
+  - 패턴: `page.js`(서버 래퍼, `generateStaticParams` 보유) + `PageClient.js`/`EditClient.js`(클라이언트 컴포넌트) 분리.
+  - 대상: `(intranet)` 하위 연락처·보고서·게시판·업무문서·현장 등 전 동적 라우트 + `webzine`, `branches/[branch]`.
+- **[WEB/BUILD] Static export와 API route 호환 관련 결론 정리**
+  - API route(`route.js`)는 Supabase `createClient()`(cookies 의존) 구조상 static export와 근본 호환 불가.
+  - APK 빌드는 `android/app/src/main/assets/public/` 직접 관리 방식이므로 `STATIC_EXPORT=true` 불필요.
+  - 일반 빌드(`npm run build`)는 정상 동작 확인.
+
+---
+
+## 📅 2026-04-06 (v4.8.3 — Camera & Photo UX Enhancements)
+### 🚀 배포 요약
+사진 촬영/조회 UX 전면 개편 및 모바일 해상도 맞춤 UI/UX 리뉴얼. 클린빌드 배포 완료.
+
+### 📌 주요 변경 사항
+- **[APP/UX] 카메라 촬영 모드 허용 (Multiple 속성 해제)**
+  - 네이티브 안드로이드 WebView에서 `multiple` 파일 업로드 시 카메라가 배제되는 스펙을 회피하여 `<input type="file" accept="image/*">`에서 `multiple` 제거. 이제 즉각적인 카메라 / 갤러리 선택창이 팝업됨.
+- **[APP/UX] 핀치 줌(Pinch Zoom) 뷰어 복구 및 카드 간격 압축**
+  - 누락됐던 `#photo-viewer`의 HTML 뼈대를 다시 삽입하여, 사진 썸네일 클릭 시 전체화면으로 띄우고 두 손가락 줌-인/아웃, 삭제 버튼 작동이 완벽하게 구동되도록 복원.
+  - 일지 상세 탭(`./style.css` `.log-detail`)의 컴포넌트 마진 및 패딩을 대폭 축소하여 정보 밀도를 한 스크린 안에 모두 들어오게 압축 설계.
+- **[APP/UI] 설정 화면 헤더 대격변 (운행 상태 바 이식)**
+  - 설정 화면 진입 시 심심했던 일반 뒤로 가기 백 버튼 대신, 메인화면과 동일한 룩앤필의 `운송시작 대기중 / 위치 상태` 헤더(`settings-trip-date-display`)를 이식. `gps.js`에 DOM을 이중 링킹하여 양쪽 화면이 모두 단일 소스에 의해 실시간 동기화.
+- **[APP/UI] 하단 탭 바 (글로벌 탭) 유지 설정**
+  - 기존 설정 창 진입 시 통째로 날아가던 `#global-tab-bar` 메뉴를 `nav.js` 수준에서 보존하도록 허용(`name === 'settings'` 포함).
+
+---
+
+## 📅 2026-04-06 (v4.8.2 — GPS Offline Queue & Map Label Optimize)
+### 🚀 배포 요약
+망(Network) 불안정 상황에 대비한 GPS 오프라인 로컬 데이터 큐 도입 및 웹/앱 단의 속도 보완 패치.
+
+### 📌 주요 변경 사항
+- **[APP/GPS] 오프라인 캐시 큐(`_gpsOfflineQueue`) 신설**
+  - 통신 연결이 끊겼을 때 보내지 못한 GPS Payload를 `localStorage`에 스택 보존.
+  - 통신 복구 시 `smartFetch`의 에러율이 낮아질 때 모아둔 큐를 서버에 일괄 밀어넣어 궤적 유실을 제로화하는 안정성 구현.
+- **[WEB/MAP] 스파이크 방어 및 속도 '0' 보정 기능 (+Haversine)**
+  - DB 기록상 `speed: 0`으로 수집되었으나 시간/좌표 상 명백히 이동한 경우, 거리를 소요된 시간계수로 역산하여 지도 좌표 패널에 가상 주행 속도로 시각화.
+- **[APP/MAP] 마커 라벨 글자 단축 (뒤 4자리)**
+  - 전체 번호판(예: 서울12가3456)을 마커 텍스트로 노출하던 로직을 정규식으로 뒤 4자리 숫자 데이터만 절삭해 표시하게 하여, 화면이 밀집될 때 마커들끼리 서로 가리던 시각 공해 절감.
+
+---
+
 ## 📅 2026-04-06 (v4.7.0 — Map Engine Architecture Redesign)
 ### 🚀 배포 요약
 앱 지도 페이지의 고질적인 마커 드리프트(어긋남) 현상과 UI 불안정성을 해소하기 위해 지도 렌더링 아키텍처를 전면 설계 변경하고 클린 빌드 수행.
