@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=492';
-import { smartFetch } from './bridge.js?v=492';
-import { showToast } from './utils.js?v=492';
-import { updateProfilePhoto } from './profile.js?v=492';
+import { State, BASE_URL } from './store.js?v=493';
+import { smartFetch } from './bridge.js?v=493';
+import { showToast } from './utils.js?v=493';
+import { updateProfilePhoto } from './profile.js?v=493';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -77,13 +77,10 @@ export function renderPhotoThumbs() {
   if (!scroll) return;
   const addBtn  = '<button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>';
   const thumbs  = State.photos.map((p, i) => {
-    let src = p.serverUrl || p.dataUrl || '';
-    // 상대경로면 절대경로로 변환
-    if (src && !src.startsWith('http') && !src.startsWith('data:')) {
-      src = BASE_URL + (src.startsWith('/') ? '' : '/') + src;
-    }
-    const fallback = p.dataUrl ? ` onerror="this.src='${p.dataUrl}'"` : '';
-    return `<img class="photo-thumb" src="${src}"${fallback} onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`;
+    // dataUrl 우선 표시 (서버 URL 접근 실패해도 항상 로컬 이미지 보임)
+    let src = p.dataUrl || p.serverUrl || '';
+    if (!src && p.serverUrl) src = p.serverUrl;
+    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`;
   }).join('');
   scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
   const cnt = document.getElementById('photo-count-display');

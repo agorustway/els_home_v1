@@ -395,6 +395,15 @@
   </div>
 </div>
 
+<!-- 권한 설정 안내 모달 (순차 자동설정 + 수동) -->
+<div id="modal-guide-android16" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:24px 20px;width:88%;max-width:340px;">
+    <h3 id="modal-guide-title" style="font-size:16px;font-weight:800;margin:0 0 10px;color:#111;">시스템 설정 안내</h3>
+    <p id="modal-guide-body" style="font-size:14px;color:#374151;line-height:1.6;margin:0 0 20px;">설정창이 열립니다.<br>설정 후 앱으로 돌아오세요.</p>
+    <button id="btn-guide-confirm" style="width:100%;padding:12px;background:#111827;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">확인 (설정창 열기)</button>
+  </div>
+</div>
+
 <!-- 개인정보 처리방침 모달 -->
 <div id="modal-terms" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);align-items:flex-end;">
   <div style="background:#fff;border-radius:16px 16px 0 0;padding:20px 18px 32px;max-height:80vh;overflow-y:auto;width:100%;">
@@ -415,6 +424,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=492"></script>
+  <script type="module" src="app.js?v=493"></script>
 </body>
 </html>

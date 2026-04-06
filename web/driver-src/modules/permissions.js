@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=492';
-import { Overlay, remoteLog } from './bridge.js?v=492';
-import { showScreen } from './nav.js?v=492';
+import { Store, State } from './store.js?v=493';
+import { Overlay, remoteLog } from './bridge.js?v=493';
+import { showScreen } from './nav.js?v=493';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -154,12 +154,18 @@ export async function updatePermStatuses() {
 function showAndroid16Guide(type) {
   const guide      = document.getElementById('modal-guide-android16');
   const confirmBtn = document.getElementById('btn-guide-confirm');
-  if (!guide || !confirmBtn) return;
+  if (!guide || !confirmBtn) { executeRealRequest(type); return; }
 
-  guide.classList.add('active');
+  const bodyEl = document.getElementById('modal-guide-body');
+  if (bodyEl) {
+    bodyEl.innerHTML = type === 'overlay'
+      ? '다른 앱 위에 표시 설정창이 열립니다.<br>ELS 앱을 찾아 허용 후 돌아오세요.'
+      : '배터리 최적화 제외 설정창이 열립니다.<br>앱 정보 → 배터리 → <b>제한 없음</b> 선택 후 돌아오세요.';
+  }
+  guide.style.display = 'flex';
   confirmBtn.onclick = (ev) => {
     ev.preventDefault();
-    guide.classList.remove('active');
+    guide.style.display = 'none';
     setTimeout(() => { executeRealRequest(type); }, 300);
   };
 }
@@ -268,8 +274,8 @@ export async function requestAllPerms() {
   }
 
   const specialPerms = [
-    { key: 'battery', type: 'battery'},
-    { key: 'overlay', type: 'overlay'}
+    { key: 'overlay', type: 'overlay'},
+    { key: 'battery', type: 'battery'}
   ];
 
   for (const perm of specialPerms) {
