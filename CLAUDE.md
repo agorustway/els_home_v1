@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Git 커밋**: 한글 깨짐 방지를 위해 반드시 `git commit -F commit_msg.txt` 형식 사용. 커밋 후 `commit_msg.txt` 삭제.
 - **Push 정책**: 형이 명시적으로 요청할 때만 `git push` 실행.
 - **파일 수정 금지**: `GEMINI.md`, `.cursorrules`는 사용자의 명시적 허가 없이 수정 불가.
-- **임시 파일**: 모든 테스트는 `.tmp_test/`에서 수행 후 즉시 삭제.
+- **임시 파일**: 모든 테스트는 `.tmp_test/`에서 수행 후 즉시 삭제. 미해결 이슈는 `docs/02_DEVELOPMENT_LOG.md` 기록 + `.tmp_issues/`에 보관 (해결 시 삭제).
 - **작업 완료 후**: 코드 변경 시 `docs/01_MISSION_CONTROL.md` 및 `docs/02_DEVELOPMENT_LOG.md` 반드시 갱신. `01_MISSION_CONTROL.md`는 100줄 이내 유지.
 - **AI 핸드오프**: Gemini/Antigravity와 공동 작업 시, 세션 종료 전 `docs/01_MISSION_CONTROL.md`의 **🚧 IN-PROGRESS** 섹션에 상세 진행 상태와 다음 작업자를 위한 가이드를 남길 것.
 - **아카이브 금지**: `web/utils/loggerServer.js` 등 `_archive/` 폴더 내 파일은 절대 사용 금지.
@@ -33,6 +33,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **백엔드**: `192.168.0.4:5000` (사내 NAS, Flask/Docker)
 - **모바일**: 안드로이드 드라이버 앱 (Capacitor 8.x, `com.elssolution.driver`)
 
+## 빌드 사전 요구사항
+
+- **Node.js** 18+
+- **Python** 3.11+
+- **Android SDK**: Java 17, Gradle 8.7.3 (APK 빌드 시)
+
 ## 빌드 및 실행 명령
 
 ```bash
@@ -45,10 +51,15 @@ cd web && npm run build
 # ESLint
 cd web && npm run lint
 
-# 안드로이드 APK 빌드 (STATIC_EXPORT=true → next.config.mjs가 output:'export' 활성화)
-cd web && STATIC_EXPORT=true npm run build   # Next.js → out/
-cd web && npx cap sync       # Capacitor 동기화 (web/ 디렉토리에서 실행)
-cd web/android && ./gradlew clean assembleDebug
+# ── 안드로이드 APK 빌드 ──────────────────────────────────────
+# ★ 반드시 이 스크립트만 사용할 것. 수동 cap sync 금지.
+powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1
+
+# 강제 업데이트 배포 (version.json forceUpdate=true)
+powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1 -ForceUpdate
+
+# cap sync만 (빌드 생략)
+powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1 -SkipBuild
 
 # ELS Bot 데몬
 cd elsbot && python els_web_runner_daemon.py     # REST API 서버 기동
@@ -92,6 +103,7 @@ powershell scripts/restart_backend.ps1
 
 | 디렉토리 | 역할 |
 |---------|------|
+| `web/driver-src/` | **드라이버 앱 단일 진실 소스** — `app.js`, `index.html`, `style.css`, `modules/`, `images/`. `cap sync` 타겟. 여기서만 편집할 것 |
 | `web/app/(main)/` | 공개 웹사이트 + 임직원 포털. 하위 `employees/(intranet)/`은 Supabase 세션 필수 보호 구역 |
 | `web/app/(standalone)/` | 드라이버 앱 WebView 전용 레이아웃 (`/driver-app`). 헤더/푸터 없는 단독 UI |
 | `web/app/api/` | 서버사이드 API 라우트. **NAS 오프로드 패턴**: 라우트 최상단에 `if (process.env.ELS_BACKEND_URL) return proxyToBackend(req)` 삽입 |
@@ -111,28 +123,37 @@ powershell scripts/restart_backend.ps1
 |------|------|
 | `ELS_BACKEND_URL` | NAS Flask 백엔드 URL (예: `http://192.168.0.4:2930`). 미설정 시 프록시 비활성화 |
 | `ELS_BACKEND_FETCH_TIMEOUT_MS` | NAS 요청 타임아웃 (기본 120000ms) |
-| `STATIC_EXPORT` | `true` 설정 시 Next.js `output:'export'` 활성화 → Capacitor APK 빌드용 |
+| `STATIC_EXPORT` | APK 빌드와 무관. 순수 Next.js static export가 필요한 경우에만 사용 |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 NCP 클라이언트 ID (웹 관제용) |
 
-## 모바일 앱 버전 관리 (필수)
+## 모바일 앱 버전 관리 (자동화)
 
-안드로이드 관련 코드 변경 시 **4곳 동시 버전 갱신**:
+> **버전 올릴 때 `build.gradle` 한 곳만 수정 → 빌드 스크립트가 나머지 전부 자동 갱신**
 
-1. `web/android/app/build.gradle` — `versionCode`, `versionName` (단일 진실 소스)
-2. `web/public/apk/version.json` — 자동 업데이트 알림용
-3. `web/android/app/src/main/assets/public/modules/store.js` — `APP_VERSION`, `BUILD_CODE` fallback 상수
-4. `web/android/app/src/main/assets/public/index.html` — `<span id="app-version-display">`
+```
+단일 진실 소스: web/android/app/build.gradle
+    ↓ scripts/build_driver_apk.ps1 실행
+자동 갱신 대상:
+  web/driver-src/modules/store.js    — APP_VERSION, BUILD_CODE
+  web/driver-src/index.html          — ?v=BUILD_CODE
+  web/driver-src/app.js              — ?v=BUILD_CODE (모든 import)
+  web/driver-src/modules/*.js        — ?v=BUILD_CODE (내부 import 전체)
+  web/public/apk/version.json        — latestVersion, versionCode, downloadUrl
+```
+
+**절대 금지**: `assets/public/`을 직접 편집하거나 `npx cap sync`를 단독 실행하는 것.  
+드라이버 앱 수정 시 반드시 `web/driver-src/`를 편집하고 빌드 스크립트로만 반영.
 
 ## 안드로이드 앱 JS 모듈 구조
 
-`web/android/app/src/main/assets/public/` 기준. ES Modules (`type="module"`) 방식 — 빌드 도구 없음.
+`web/driver-src/` 기준 (소스). `cap sync` 후 `assets/public/`에 복사됨. ES Modules (`type="module"`) — 빌드 도구 없음.
 
 - `app.js` — 엔트리 (window.App 조립 + init 호출)
-- `modules/store.js` — 앱 상수, State (모든 모듈의 공유 상태)
+- `modules/store.js` — 앱 상수·State. `APP_VERSION`/`BUILD_CODE`는 fallback(runtime에 Native에서 덮어씀)
 - `modules/bridge.js` — Capacitor 플러그인, smartFetch, remoteLog
-- `modules/gps.js` — GPS 추적, 실시간 모드
+- `modules/gps.js` — GPS 추적, 실시간 모드, 오프라인 큐
 - `modules/trip.js` — 운행 시작/종료
-- `modules/map.js` — 네이버 지도 Dynamic SDK V3 엔진 (`naver.maps.Marker`/`Polyline` 직접 제어)
+- `modules/map.js` — 네이버 지도 Dynamic SDK V3 엔진
 - `modules/nav.js` — 탭 네비게이션 (순환 참조 방지용 별도 레이어)
 - `modules/permissions.js` / `modules/profile.js` / `modules/notice.js` — 권한·프로필·공지
 - `modules/log.js` / `modules/photos.js` / `modules/emergency.js` — 업무 로그·사진·긴급
@@ -141,7 +162,7 @@ powershell scripts/restart_backend.ps1
 
 모듈 간 순환 참조 방지: `nav.js` 별도 레이어 분리, 불가피한 경우 `window.App.xxx()` 늦은 참조 사용.
 
-**WebView 캐시 무효화**: 버전 범프 시 `index.html`의 모든 `import` 경로 쿼리스트링(`?t=버전코드`)도 함께 갱신해야 캐시 지옥 탈출 가능.
+**캐시버스터 규칙**: 모든 `?v=`는 숫자 BUILD_CODE 형식 통일 (`?v=485`). 빌드 스크립트가 자동 갱신하므로 수동 편집 불필요.
 
 ## 주요 문서 링크
 

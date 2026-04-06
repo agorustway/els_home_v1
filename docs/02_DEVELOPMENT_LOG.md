@@ -1,5 +1,32 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.8.5 — 드라이버 앱 빌드 구조 근본 개혁)
+### 🚀 배포 요약
+APK 빌드 시 `cap sync`가 구버전 파일로 덮어씌우던 흰화면 원인 근본 해결. 버전 하드코딩 제거 및 자동화.
+
+### 📌 주요 변경 사항
+- **[APP/BUILD] webDir 분리 — `driver-src/` 독립 소스 폴더 신설**
+  - 기존 `webDir: 'out'` → `webDir: 'driver-src'` 변경 (`capacitor.config.ts`, `capacitor.config.json`)
+  - `web/out/`은 Next.js 빌드 결과물 전용. 드라이버 앱 소스와 충돌 영구 차단.
+  - `web/driver-src/` : 드라이버 앱 단일 진실 소스 (app.js, index.html, style.css, modules/, images/)
+- **[APP/BUILD] `?v=` 캐시버스터 완전 통일**
+  - `modules/*.js` 내부 import에도 `?v=BUILD_CODE` 추가 (기존 누락이 캐시 지옥 원인)
+  - 모든 `?v=` 형식을 숫자 `BUILD_CODE`로 통일 (예: `?v=4.8.5` → `?v=485`)
+- **[APP/BUILD] 버전 자동화 스크립트 — `scripts/build_driver_apk.ps1`**
+  - `build.gradle` versionCode/versionName 이 단일 진실 소스
+  - 스크립트 실행 시: store.js, index.html, app.js, modules/*.js ?v=, version.json 전부 자동 갱신
+  - `cap sync` + `gradlew assembleDebug` 까지 원스톱 실행
+- **[APP/BUILD] `web/out/` 중첩 `public/` 제거**
+  - 반복 `cap sync`로 누적된 `assets/public/public/public/` 3중 중첩 정리
+
+### 🔧 변경 파일
+- `web/capacitor.config.ts` — webDir 변경
+- `web/android/app/src/main/assets/capacitor.config.json` — webDir 변경
+- `web/driver-src/` — 드라이버 앱 소스 폴더 신설 (15개 모듈)
+- `scripts/build_driver_apk.ps1` — 버전 자동화 빌드 스크립트 신설
+
+---
+
 ## 📅 2026-04-06 (v4.8.5 — App Cache Buster Auto-Sync Fix)
 ### 🚀 배포 요약
 안드로이드 앱 WebView 렌더링 캐시 강제 무효화 및 자동화 룰 추가 배포

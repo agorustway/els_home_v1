@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.elssolution.driver',
   appName: 'ELS차량용',
-  webDir: 'out',
+  webDir: 'driver-src',
   server: {
     androidScheme: 'https',
     hostname: 'www.nollae.com',

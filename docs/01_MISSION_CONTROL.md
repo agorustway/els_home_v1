@@ -1,11 +1,22 @@
-# ELS MISSION CONTROL v4.8.4
+# ELS MISSION CONTROL v4.8.5
 > 마지막 업데이트: 2026-04-06 (KST)
 
-## 📦 최신 배포 배포 정보 (Release)
-- **Current Build**: `v4.8.5` (WebView 모듈 Cache Buster 갱신 자동화 및 캐시 지옥 영구 픽스 배포)
-- **Next Target**: 실기기 OTA 테스트 (v4.8.5 기능 검증 및 업데이트 전파)
-- **Repo Status**: [main] 커밋 완료
-- **상태**: 🟢 일반 빌드(`npm run build`) 정상 — 동적 라우트 서버/클라이언트 분리 완료
+## 📦 최신 배포 정보 (Release)
+- **Current Build**: `v4.8.5` (드라이버 앱 빌드 구조 근본 개혁 — driver-src 분리, 버전 자동화)
+- **Next Target**: v4.8.5 APK 재빌드 및 실기기 검증 (`scripts/build_driver_apk.ps1` 으로)
+- **Repo Status**: [main] 작업 중
+- **상태**: 🟢 일반 빌드(`npm run build`) 정상
+
+## ⚠️ APK 빌드 절차 변경 (v4.8.5~)
+```
+# ✅ 올바른 APK 빌드
+powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1
+
+# ❌ 절대 금지 (흰화면 유발)
+npx cap sync   ← 단독 실행 금지
+web/android/app/src/main/assets/public/ ← 직접 편집 금지
+```
+드라이버 앱 소스 = `web/driver-src/` | 버전 소스 = `build.gradle` 단일 진실
 
 ## 🗺️ 주요 상세 문서 바로가기 (Documentation Map)
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)** (개발 이력 관리)

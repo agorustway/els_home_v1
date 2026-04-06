@@ -181,12 +181,12 @@ input, textarea, select, button { font-family: inherit; }
 }
 
 /* ─── 일지 상세 ─── */
-.log-detail { display: none; padding: 14px; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; background: var(--surface); }
+.log-detail { display: none; padding: 6px 12px; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; background: var(--surface); }
 .log-detail.active { display: flex; }
-.log-detail .field { margin-bottom: 2px; }
-.log-detail .field label { font-size: 10px; margin-bottom: 1px; }
-.log-detail .field input, .log-detail .field textarea { padding: 6px 10px; font-size: 13px; }
-.log-detail-info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 4px; line-height: 1.5; font-size: 12px; color: #334155; }
+.log-detail .field { margin-bottom: 0px; }
+.log-detail .field label { font-size: 10px; margin-bottom: 0px; }
+.log-detail .field input, .log-detail .field textarea { padding: 4px 8px; font-size: 13px; }
+.log-detail-info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 2px; line-height: 1.5; font-size: 12px; color: #334155; }
 .log-detail-info-row { display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding: 3px 0; }
 .log-detail-info-row:last-child { border-bottom: none; }
 .log-detail-info-label { font-weight: 700; color: #64748b; }
@@ -376,7 +376,7 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
 .tab-map { color: var(--accent); font-size: 12px; }
 .tab-map.active { color: var(--accent); background: var(--accent-light); border-bottom: 2px solid var(--accent); }
 
-/* ─── 지도 화면 ─── */
+/* ─── 지도 화면 — 오버레이-퍼스트 아키텍처 ─── */
 #screen-map {
   position: relative;
   overflow: hidden;
@@ -385,11 +385,14 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
   display: flex !important;
   flex-direction: column;
 }
+/* 지도 컨테이너가 헤더 아래 남은 공간 전부를 차지 */
 .driver-map-container {
   flex: 1;
   width: 100%;
   min-height: 0;
   position: relative;
+  /* Naver SDK가 100% 높이를 채우도록 강제 */
+  display: block;
 }
 
 /* 지도 헤더 */
@@ -426,13 +429,18 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
   display: flex; align-items: center; justify-content: center;
 }
 
-/* ─── 하단 패널 (차량 목록 상시 노출) ─── */
+/* ─── 하단 패널 (차량 목록 — 지도 위 오버레이) ─── */
+/* ★ flex-shrink:0 제거 → position:absolute 오버레이로 전환 */
+/* ★ 패널 토글 시 지도 크기 불변 → 고무줄/리사이즈 현상 원천 제거 */
 .map-bottom-panel {
-  flex-shrink: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: #fff;
   border-top: 1px solid #e8ecf0;
   border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.10);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
   max-height: 42vh;

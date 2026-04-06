@@ -1,0 +1,296 @@
+/**
+ * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
+ */
+import { State, BASE_URL } from './store.js?v=485';
+import { smartFetch } from './bridge.js?v=485';
+import { showToast } from './utils.js?v=485';
+import { updateProfilePhoto } from './profile.js?v=485';
+
+// ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
+let currentZoom   = 1;
+let currentTransX = 0;
+let currentTransY = 0;
+
+function resetZoom() {
+  currentZoom = 1; currentTransX = 0; currentTransY = 0;
+  const img = document.getElementById('photo-viewer-img');
+  if (img) {
+    img.style.transition = 'transform 0.2s ease-out';
+    img.style.transform  = 'translate(0px, 0px) scale(1)';
+  }
+}
+
+// ─── 사진 추가 버튼 ──────────────────────────────────────────────
+export function addPhoto() {
+  if (State.photos.length >= 10) { showToast('최대 10장까지 첨부 가능합니다.'); return; }
+  document.getElementById('file-input-hidden').click();
+}
+
+// ─── 파일 선택 핸들러 ────────────────────────────────────────────
+export async function onFileSelected(e) {
+  const files = Array.from(e.target.files);
+  for (const file of files) {
+    if (State.photos.length >= 10) break;
+    const dataUrl = await readFileAsDataURL(file);
+    State.photos.push({ dataUrl, uploaded: false, serverUrl: null, file });
+  }
+  e.target.value = '';
+  renderPhotoThumbs();
+  uploadPendingPhotos();
+}
+
+// ─── 이미지 리사이즈 (Canvas) ─────────────────────────────────────
+export async function resizePhoto(file, maxWidth = 1600, maxHeight = 1600) {
+  if (typeof file === 'string') return file;
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > maxWidth)  { h *= maxWidth / w;  w = maxWidth;  } }
+        else        { if (h > maxHeight) { w *= maxHeight / h; h = maxHeight; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function readFileAsDataURL(file) {
+  if (typeof file === 'string') return Promise.resolve(file);
+  if (!file) return Promise.resolve('');
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── 썸네일 렌더 ─────────────────────────────────────────────────
+export function renderPhotoThumbs() {
+  const scroll  = document.getElementById('photo-scroll');
+  if (!scroll) return;
+  const addBtn  = '<button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>';
+  const thumbs  = State.photos.map((p, i) =>
+    `<img class="photo-thumb" src="${p.serverUrl || p.dataUrl}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`
+  ).join('');
+  scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
+  const cnt = document.getElementById('photo-count-display');
+  if (cnt) cnt.textContent = `(${State.photos.length}/10)`;
+}
+
+// ─── 미업로드 사진 서버 전송 ─────────────────────────────────────
+export async function uploadPendingPhotos() {
+  const currentTripId = State.trip.id;
+  if (!currentTripId) { console.warn('uploadPendingPhotos: trip.id 없음'); return; }
+
+  const pending = State.photos.filter(p => !p.uploaded);
+  if (pending.length === 0) return;
+
+  let uploadedCount = 0;
+  for (let i = 0; i < State.photos.length; i++) {
+    const p = State.photos[i];
+    if (p.uploaded) continue;
+    try {
+      const dataUrl = await resizePhoto(p.file || p.dataUrl);
+      const base64  = dataUrl.split(',')[1];
+      const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+      const ext     = mime.split('/')[1] || 'jpg';
+
+      const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+        method: 'POST',
+        body: JSON.stringify({
+          trip_id: currentTripId,
+          photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.photos && Array.isArray(data.photos)) {
+        State.photos = data.photos.map(sp => ({
+          ...sp,
+          uploaded:  true,
+          serverUrl: sp.url
+            ? (sp.url.startsWith('http') ? sp.url : BASE_URL + (sp.url.startsWith('/') ? '' : '/') + sp.url)
+            : (sp.serverUrl || sp.dataUrl || ''),
+        }));
+        renderPhotoThumbs();
+        uploadedCount++;
+      } else if (data.error) {
+        console.error('Photo upload error:', data.error);
+      }
+    } catch (e) { console.error('Photo upload catch:', e); }
+  }
+
+  if (uploadedCount > 0) showToast(`사진 ${uploadedCount}장 업로드 완료`);
+}
+
+// ─── 사진 뷰어 ───────────────────────────────────────────────────
+export function openPhotoViewer(idx, type = 'trip') {
+  State.currentPhotoIdx = idx;
+  State.viewerType      = type;
+  resetZoom();
+  document.getElementById('photo-viewer-delete-btn')?.style.setProperty('display', 'inline-block');
+  document.getElementById('photo-viewer').classList.add('active');
+  updatePhotoViewerUI();
+}
+
+export function openLogPhoto(url, idx, total) {
+  openPhotoViewer(idx, 'log');
+}
+
+function updatePhotoViewerUI() {
+  const isLog     = State.viewerType === 'log';
+  const isProfile = State.viewerType === 'profile';
+  const photos    = isLog ? (State.logPhotos || []) : (isProfile ? (State.profilePhotos || []) : (State.photos || []));
+  const p         = photos[State.currentPhotoIdx];
+  if (!p) { closePhotoViewer(); return; }
+
+  let url = '';
+  if (isProfile) {
+    url = p.dataUrl?.startsWith('http') || p.dataUrl?.startsWith('data:')
+      ? p.dataUrl
+      : BASE_URL + (p.dataUrl?.startsWith('/') ? '' : '/') + p.dataUrl;
+  } else {
+    url = isLog
+      ? (p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || ''))
+      : (p.serverUrl || p.dataUrl);
+  }
+
+  const img = document.getElementById('photo-viewer-img');
+  if (img) img.src = url;
+  const idxEl = document.getElementById('photo-viewer-index');
+  if (idxEl) idxEl.textContent = `${State.currentPhotoIdx + 1} / ${photos.length}`;
+}
+
+export function closePhotoViewer() {
+  document.getElementById('photo-viewer').classList.remove('active');
+  resetZoom();
+}
+
+export function prevPhoto() {
+  const photos = _getViewerPhotos();
+  if (State.currentPhotoIdx > 0) { State.currentPhotoIdx--; resetZoom(); updatePhotoViewerUI(); }
+}
+
+export function nextPhoto() {
+  const photos = _getViewerPhotos();
+  if (State.currentPhotoIdx < photos.length - 1) { State.currentPhotoIdx++; resetZoom(); updatePhotoViewerUI(); }
+}
+
+function _getViewerPhotos() {
+  if (State.viewerType === 'log')     return State.logPhotos     || [];
+  if (State.viewerType === 'profile') return State.profilePhotos || [];
+  return State.photos || [];
+}
+
+// ─── 현재 사진 삭제 ──────────────────────────────────────────────
+export async function deleteCurrentPhoto() {
+  if (!confirm('현재 보고 있는 사진을 삭제하시겠습니까?')) return;
+
+  if (State.viewerType === 'profile') {
+    const p        = State.profilePhotos[State.currentPhotoIdx];
+    const typeMap  = { driver: '기사', vehicle: '차량', chassis: '샤시' };
+    State.profile[`photo_${p.type}`] = '';
+    updateProfilePhoto(`p-photo-${p.type}`, '', typeMap[p.type] || '');
+    showToast('삭제되었습니다. 정보 저장을 눌러야 완전히 반영됩니다.');
+    State.profilePhotos.splice(State.currentPhotoIdx, 1);
+    if (!State.profilePhotos.length) { closePhotoViewer(); return; }
+    if (State.currentPhotoIdx >= State.profilePhotos.length) State.currentPhotoIdx = State.profilePhotos.length - 1;
+    updatePhotoViewerUI();
+    return;
+  }
+
+  if (State.viewerType === 'log') {
+    const photos = [...State.logPhotos];
+    photos.splice(State.currentPhotoIdx, 1);
+    try {
+      const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.currentLogId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ photos }),
+      });
+      if (!res.ok) throw new Error('서버 통신 실패');
+      State.logPhotos = photos;
+      showToast('사진이 삭제되었습니다.');
+      if (!State.logPhotos.length) { closePhotoViewer(); return; }
+      if (State.currentPhotoIdx >= State.logPhotos.length) State.currentPhotoIdx = State.logPhotos.length - 1;
+      updatePhotoViewerUI();
+      window.App?.openLog(State.currentLogId);
+    } catch (e) { showToast('사진 삭제 실패: ' + e.message); }
+    return;
+  }
+
+  State.photos.splice(State.currentPhotoIdx, 1);
+  if (!State.photos.length) { closePhotoViewer(); return; }
+  if (State.currentPhotoIdx >= State.photos.length) State.currentPhotoIdx = State.photos.length - 1;
+  updatePhotoViewerUI();
+  renderPhotoThumbs();
+}
+
+// ─── 핀치 줌 초기화 ──────────────────────────────────────────────
+export function initPinchZoom() {
+  const wrap = document.getElementById('photo-viewer-wrap');
+  const img  = document.getElementById('photo-viewer-img');
+  if (!wrap || !img) return;
+
+  let initialDist = 0, baseScale = 1;
+  let isDragging  = false, startX = 0, startY = 0, lastTap = 0;
+
+  wrap.addEventListener('touchstart', e => {
+    const now = Date.now();
+    // 더블 탭: 줌 토글
+    if (e.touches.length === 1 && (now - lastTap) < 300) {
+      if (currentZoom > 1.5) resetZoom();
+      else {
+        currentZoom = 3;
+        img.style.transition = 'transform 0.3s ease-out';
+        img.style.transform  = `translate(0px, 0px) scale(${currentZoom})`;
+      }
+      lastTap = 0;
+      return;
+    }
+    lastTap = now;
+
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      initialDist  = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      baseScale    = currentZoom;
+      img.style.transition = 'none';
+    } else if (e.touches.length === 1 && currentZoom > 1) {
+      isDragging   = true;
+      startX       = e.touches[0].pageX - currentTransX;
+      startY       = e.touches[0].pageY - currentTransY;
+      img.style.transition = 'none';
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist   = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      currentZoom  = Math.min(Math.max(baseScale * (dist / initialDist), 1), 6);
+      if (currentZoom <= 1.01) { currentTransX = 0; currentTransY = 0; }
+      img.style.transform = `translate(${currentTransX}px, ${currentTransY}px) scale(${currentZoom})`;
+    } else if (e.touches.length === 1 && isDragging && currentZoom > 1) {
+      e.preventDefault();
+      currentTransX = e.touches[0].pageX - startX;
+      currentTransY = e.touches[0].pageY - startY;
+      const limitX  = (currentZoom - 1) * (window.innerWidth  / 2);
+      const limitY  = (currentZoom - 1) * (window.innerHeight / 2);
+      currentTransX = Math.min(Math.max(currentTransX, -limitX), limitX);
+      currentTransY = Math.min(Math.max(currentTransY, -limitY), limitY);
+      img.style.transform = `translate(${currentTransX}px, ${currentTransY}px) scale(${currentZoom})`;
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length === 0) {
+      isDragging = false;
+      if (currentZoom <= 1.05) resetZoom();
+    }
+  });
+}
