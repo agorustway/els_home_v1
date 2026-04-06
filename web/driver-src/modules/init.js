@@ -1,20 +1,20 @@
 /**
  * init.js — 앱 초기화, 화면 전환 오케스트레이션
  */
-import { Store, State, AppConfig } from './store.js?v=487';
-import { remoteLog } from './bridge.js?v=487';
-import { showScreen } from './nav.js?v=487';
+import { Store, State, AppConfig } from './store.js?v=489';
+import { remoteLog } from './bridge.js?v=489';
+import { showScreen } from './nav.js?v=489';
 import {
-  updatePermStatuses, permStatuses, setupPermNav,
-} from './permissions.js?v=487';
-import { applyProfileToUI } from './profile.js?v=487';
-import { loadCurrentTrip, registerBackHandler } from './trip.js?v=487';
-import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=487';
-import { loadNotices } from './notice.js?v=487';
-import { startEmergencyPoll, pollEmergency } from './emergency.js?v=487';
-import { checkUpdate } from './update.js?v=487';
-import { openMap } from './map.js?v=487';
-import { loadLogs } from './log.js?v=487';
+  updatePermStatuses, permStatuses, setupPermNav, requestAllPerms,
+} from './permissions.js?v=489';
+import { applyProfileToUI } from './profile.js?v=489';
+import { loadCurrentTrip, registerBackHandler } from './trip.js?v=489';
+import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=489';
+import { loadNotices } from './notice.js?v=489';
+import { startEmergencyPoll, pollEmergency } from './emergency.js?v=489';
+import { checkUpdate } from './update.js?v=489';
+import { openMap } from './map.js?v=489';
+import { loadLogs } from './log.js?v=489';
 
 let isAppInitialized = false;
 
@@ -137,13 +137,15 @@ export async function init() {
       }
     }
 
-    // 2. 권한 확인 → 없으면 차단
+    // 2. 권한 확인 → 없으면 자동 설정 시작
     await updatePermStatuses();
     const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
     const firstRun      = !Store.get('permSetupDone');
 
     if (firstRun || !criticalPerms) {
       showScreen('permission');
+      // 권한 설정 화면 로드 후 자동으로 순차 설정 시작
+      setTimeout(() => requestAllPerms(), 500);
       return;
     }
     if (isAppInitialized) return;

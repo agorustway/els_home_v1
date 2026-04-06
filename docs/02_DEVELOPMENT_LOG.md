@@ -1,5 +1,16 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+## 📅 2026-04-06 (v4.8.9 — 권한 설정 자동 진행 & 모달 없음 처리)
+### 🚀 배포 요약
+앱 시작 시 권한이 없으면 자동으로 순차 설정 시작. 배터리/오버레이 권한 모달 없어도 바로 요청 진행.
+
+### 🔧 변경 파일
+- `modules/init.js` — requestAllPerms 자동 호출 (권한 부족 시)
+- `modules/permissions.js` — 배터리/오버레이 모달 없어도 요청 진행 (fallback)
+- `web/android/app/build.gradle` — versionCode 489, versionName "4.8.9"
+
+---
+
 ## 📅 2026-04-06 (v4.8.8 — 드라이버 앱 한글 인코딩 수정 및 배포)
 ### 🚀 배포 요약
 `web/driver-src/index.html` 및 `assets/public/index.html`의 한글 인코딩 깨짐 완전 복구. v4.8.0 정상 한글을 기준으로 v4.8.7 구조 유지하며 모든 텍스트 복원.

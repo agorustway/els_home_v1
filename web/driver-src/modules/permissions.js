@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=487';
-import { Overlay, remoteLog } from './bridge.js?v=487';
-import { showScreen } from './nav.js?v=487';
+import { Store, State } from './store.js?v=489';
+import { Overlay, remoteLog } from './bridge.js?v=489';
+import { showScreen } from './nav.js?v=489';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -241,21 +241,29 @@ export async function requestAllPerms() {
   for (const perm of specialPerms) {
     if (!permStatuses[perm.key]) {
       showToast(perm.type + ' 권한을 설정합니다...', 1500);
-      await new Promise(resolve => {
-        const guide = document.getElementById('modal-guide-android16');
-        const confirmBtn = document.getElementById('btn-guide-confirm');
-        if (!guide || !confirmBtn) return resolve();
-        
-        guide.classList.add('active');
-        confirmBtn.onclick = async (ev) => {
-          ev.preventDefault();
-          guide.classList.remove('active');
-          await new Promise(r => setTimeout(r, 300));
-          await executeRealRequest(perm.type);
-          await new Promise(r => setTimeout(r, 2000)); // user is in settings, wait a bit
-          resolve();
-        };
-      });
+
+      // 모달이 있으면 UI로 안내, 없으면 바로 요청
+      const guide = document.getElementById('modal-guide-android16');
+      const confirmBtn = document.getElementById('btn-guide-confirm');
+
+      if (guide && confirmBtn) {
+        await new Promise(resolve => {
+          guide.classList.add('active');
+          confirmBtn.onclick = async (ev) => {
+            ev.preventDefault();
+            guide.classList.remove('active');
+            await new Promise(r => setTimeout(r, 300));
+            await executeRealRequest(perm.type);
+            await new Promise(r => setTimeout(r, 2000));
+            resolve();
+          };
+        });
+      } else {
+        // 모달 없으면 바로 요청
+        await executeRealRequest(perm.type);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
       await updatePermStatuses();
     }
   }

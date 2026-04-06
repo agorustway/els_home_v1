@@ -1,8 +1,8 @@
-# ELS MISSION CONTROL v4.8.8
+# ELS MISSION CONTROL v4.8.9
 > 마지막 업데이트: 2026-04-06 (KST)
 
 ## 📦 최신 배포 정보 (Release)
-- **Current Build**: `v4.8.8` (배포 워크플로우를 통한 자동 빌드 및 배포)
+- **Current Build**: `v4.8.9` (배포 워크플로우를 통한 자동 빌드 및 배포)
 - **Next Target**: 실기기 OTA 검증 (v4.8.6 APK)
 - **Repo Status**: [main] 커밋 완료
 - **상태**: 🟢 일반 빌드(`npm run build`) 정상
