@@ -101,6 +101,12 @@ git config --global core.quotepath false
 ```
 > 이 설정이 없으면 한글 파일명이 `\354\213\230` 같은 이스케이프로 표시된다.
 
+### 4-4. PowerShell (Get-Content) 인코딩 규칙
+- **PowerShell에서 `Get-Content` 명령어를 실행할 때는 반드시 `-Encoding UTF8` 옵션을 붙여야 한다.**
+- 이 옵션이 없으면 한글이 깨져서 출력되거나 학습(Context)에 오류가 발생할 수 있다.
+- 예시: `Get-Content -Path "파일명" -Encoding UTF8`
+- (참고) 가급적 AI 전용 도구인 `view_file`을 우선 사용하되, 터미널 명령이 불가피할 때만 이 규칙을 적용한다.
+
 ---
 
 ## 🛠️ 제5조. 코딩 원칙
