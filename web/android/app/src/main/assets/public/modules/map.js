@@ -1,5 +1,6 @@
 /**
- * map.js — Static Maps 엔진 v4.7.0 (전면 재설계 — 마커 드리프트 정밀 해결)
+ * map.js — 고성능 Static Maps 엔진 (v4.7.2)
+ * v4.6.1 안정 엔진 기반. HUD 제거, 카운트 갱신, 패널 토글 리사이즈 대응 추가.
  */
 import { State, BASE_URL } from './store.js';
 import { smartFetch, remoteLog } from './bridge.js';
@@ -9,448 +10,304 @@ import { showScreen } from './nav.js';
 const STATIC_MAP_KEY = 'hxoj79osnj';
 const STATIC_BASE    = 'https://maps.apigw.ntruss.com/map-static/v2/raster-cors';
 
-// ─── 지도 엔진 상태 (내부) ─────────────────────────────────────────
+// ─── 지도 실시간 상태 ───────────────────────────────────────────────
 let smState = {
   lat: 36.5, lng: 127.5, zoom: 7,
-  isDragging: false,
-  panOffsetX: 0, panOffsetY: 0,   // 현재 드래그 중인 px 오프셋
+  isDragging: false, dragStart: null, lastX: 0, lastY: 0,
   trips: [], selectedTrip: null,
   myLat: null, myLng: null,
-  _touchStartDist: 0, _startZoom: 7, // 핀치줌용
+  isMoving: false // 현재 드래그 중인지를 나타냄
 };
 
 let smImg = null, smCanvas = null, smOverlay = null, smPanner = null;
-let mapContainer = null;
 let mapPollTimer = null;
-let _pendingRender = false;
+let _mapPanelCollapsed = false;
 
-/** 지도 화면 초기화 (최초 1회만) */
-export function initMapScreen() {
-  mapContainer = document.getElementById('map-container');
-  if (!mapContainer) return;
-
-  smPanner  = document.getElementById('sm-panner');
-  smImg     = document.getElementById('sm-img');
-  smCanvas  = document.getElementById('sm-canvas');
-  smOverlay = document.getElementById('sm-overlay');
-
-  if (!smPanner || !smOverlay) {
-    console.error('[MAP] 필수 DOM 요소 누락');
-    return;
+// ─── 유틸: 메르카토르 좌표 ──────────────────────────────────────────
+function latLngToPixel(lat, lng, centerLat, centerLng, zoomLevel, w, h) {
+  const scale = Math.pow(2, zoomLevel) * 256;
+  function toMerc(la, lo) {
+    const x = (lo + 180) / 360;
+    const sinLat = Math.sin(la * Math.PI / 180);
+    const y = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2;
+    return { x: x * scale, y: y * scale };
   }
-
-  // 1. 네이티브 드래그 방지
-  smImg.ondragstart = () => false;
-
-  // 2. 터치 핸들러 바인딩
-  bindMapTouchEvents();
-
-  // 3. 패널 토글 버튼 연동
-  const toggleBtn = document.getElementById('map-panel-toggle');
-  if (toggleBtn) {
-    toggleBtn.onclick = () => {
-      toggleMapPanel();
-    };
-  }
-
-  console.log('[MAP] v4.7.0 인터페이스 초기화 완료');
+  const c = toMerc(centerLat, centerLng);
+  const p = toMerc(lat, lng);
+  return { x: w / 2 + (p.x - c.x), y: h / 2 + (p.y - c.y) };
 }
 
-/** 지도 화면 진입 */
-export function openMap() {
-  showScreen('screen-map');
-  initMapScreen();
-  refreshMapData(true);
-  
-  if (!mapPollTimer) {
-    mapPollTimer = setInterval(() => refreshMapData(), 30000);
-  }
+function getMapSize() {
+  const el = document.getElementById('driver-map');
+  if (!el) return { w: 360, h: 600 };
+  return { w: el.clientWidth || 360, h: el.clientHeight || 600 };
 }
 
-/** 지도 화면 나가기 */
-export function closeMap() {
-  if (mapPollTimer) {
-    clearInterval(mapPollTimer);
-    mapPollTimer = null;
-  }
-  showScreen('main');
+// ─── 지도 초기화 ────────────────────────────────────────────────────
+export function initStaticMap() {
+  const el = document.getElementById('driver-map');
+  if (!el) return;
+  el.innerHTML = '';
+  el.style.cssText = 'position:relative;overflow:hidden;background:#e8eaed;cursor:grab;touch-action:none;';
+
+  const { w, h } = getMapSize();
+
+  // Panner: 지도 위 모든 요소를 한꺼번에 이동시키는 레이어
+  smPanner = document.createElement('div');
+  smPanner.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0;will-change:transform;';
+  el.appendChild(smPanner);
+
+  smImg = document.createElement('img');
+  smImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;user-select:none;pointer-events:none;';
+  smImg.draggable = false;
+  smPanner.appendChild(smImg);
+
+  smCanvas = document.createElement('canvas');
+  smCanvas.width = w * 2; smCanvas.height = h * 2;
+  smCanvas.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;`;
+  smPanner.appendChild(smCanvas);
+
+  smOverlay = document.createElement('div');
+  smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
+  smPanner.appendChild(smOverlay);
+
+  bindMapTouch(el);
+  renderStaticMap();
 }
 
-/** 지도 렌더링 (이미지 로드 + 오버레이 전개) */
-export async function renderStaticMap() {
-  if (!mapContainer || State.currentScreen !== 'screen-map') return;
+// ─── 렌더링 ────────────────────────────────────────────────────────
+function renderStaticMap() {
+  if (!smImg) return;
+  const { w, h } = getMapSize();
+  const level = Math.round(smState.zoom);
+  const rw = Math.min(Math.round(w), 1024), rh = Math.min(Math.round(h), 1024);
+  const url = `${STATIC_BASE}?w=${rw}&h=${rh}&center=${smState.lng},${smState.lat}&level=${level}&X-NCP-APIGW-API-KEY-ID=${STATIC_MAP_KEY}&scale=2`;
 
-  const w = mapContainer.clientWidth;
-  const h = mapContainer.clientHeight;
-  if (w === 0 || h === 0) return;
-
-  // 드래그 중이면 데이터 로드 생략 (깜빡임 방지)
-  if (smState.isDragging || _pendingRender) return;
-
-  _pendingRender = true;
-
-  try {
-    const lat = smState.lat;
-    const lng = smState.lng;
-    const zoom = Math.round(smState.zoom);
-
-    // 1. Static Map URL 생성 (기본 지도)
-    let url = `${STATIC_BASE}?w=${w}&h=${h}&center=${lng},${lat}&level=${zoom}&public_key=${STATIC_MAP_KEY}`;
-    
-    // 2. 이미지 로드 대기
-    await new Promise((resolve) => {
-      smImg.onload = resolve;
-      smImg.onerror = resolve;
-      smImg.src = url;
-    });
-
-    // 3. 드래그 오프셋 초기화 (0,0 으로 복귀)
-    smState.panOffsetX = 0;
-    smState.panOffsetY = 0;
-    updateLayersTransform(0, 0);
-
-    // 4. 경로 및 오버레이(마커) 초기화
-    renderMapPath(w, h);
+  smImg.onload = () => {
+    smPanner.style.transform = 'none';
     renderMapOverlay();
-
-    // 5. 카운트 갱신
-    updateMapTripCount();
-
-  } catch (e) {
-    remoteLog('renderStaticMap_err', e.message);
-  } finally {
-    _pendingRender = false;
-  }
-}
-
-/** 드래그 시 레이어(Panner + Overlay) 동기 이동 */
-function updateLayersTransform(x, y) {
-  const css = `translate3d(${x}px, ${y}px, 0)`;
-  smPanner.style.transform = css;
-  smOverlay.style.transform = css;
-}
-
-/** 터치 이벤트 (드래그 & 핀치줌) */
-function bindMapTouchEvents() {
-  let startX, startY;
-  let startLat, startLng;
-
-  mapContainer.addEventListener('touchstart', (e) => {
-    if (_pendingRender) return;
-
-    if (e.touches.length === 1) {
-      // 일반 드래그 시작
-      smState.isDragging = true;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startLat = smState.lat;
-      startLng = smState.lng;
-    } 
-    else if (e.touches.length === 2) {
-      // 핀치줌 시작
-      smState.isDragging = true;
-      smState._touchStartDist = getPinchDist(e);
-      smState._startZoom = smState.zoom;
-    }
-  }, { passive: false });
-
-  mapContainer.addEventListener('touchmove', (e) => {
-    if (!smState.isDragging) return;
-    e.preventDefault();
-
-    if (e.touches.length === 1) {
-      // 드래그 중: 레이어만 transform 이동
-      smState.panOffsetX = e.touches[0].clientX - startX;
-      smState.panOffsetY = e.touches[0].clientY - startY;
-      updateLayersTransform(smState.panOffsetX, smState.panOffsetY);
-    } 
-    else if (e.touches.length === 2) {
-      // 핀치줌 중: 즉시 줌 레벨 조정
-      const dist = getPinchDist(e);
-      const scale = dist / smState._touchStartDist;
-      let newZoom = smState._startZoom + Math.log2(scale);
-      newZoom = Math.max(3, Math.min(18, newZoom));
-      
-      if (Math.abs(newZoom - smState.zoom) > 0.1) {
-        smState.zoom = newZoom;
-      }
-    }
-  }, { passive: false });
-
-  mapContainer.addEventListener('touchend', (e) => {
-    if (!smState.isDragging) return;
-    smState.isDragging = false;
-
-    // 만약 드래그가 일정 수준 이상(10px) 발생했다면 새 좌표 계산
-    if (Math.abs(smState.panOffsetX) > 10 || Math.abs(smState.panOffsetY) > 10) {
-      const w = mapContainer.clientWidth;
-      const h = mapContainer.clientHeight;
-      
-      // 역변환: 화면 오프셋만큼 중심점 이동
-      const centerFix = pixelToLatLng(w/2 - smState.panOffsetX, h/2 - smState.panOffsetY, w, h);
-      smState.lat = centerFix.lat;
-      smState.lng = centerFix.lng;
-    }
-
-    renderStaticMap();
-  });
-}
-
-function getPinchDist(e) {
-  return Math.sqrt(
-    Math.pow(e.touches[0].clientX - e.touches[1].clientX, 2) +
-    Math.pow(e.touches[0].clientY - e.touches[1].clientY, 2)
-  );
-}
-
-/** ─── 좌표 계산 코어 (Naver Static Map Raster 변환) ─── */
-
-function latLngToPixel(lat, lng, w, h) {
-  const centerLat = smState.lat;
-  const centerLng = smState.lng;
-  const zoom = Math.round(smState.zoom);
-  
-  const worldSize = 256 * Math.pow(2, zoom);
-  const prj = (v) => worldSize * (v + 180) / 360;
-  const latPrj = (v) => {
-    const sinLat = Math.sin(v * Math.PI / 180);
-    return worldSize * (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI));
   };
-
-  const centerPxX = prj(centerLng);
-  const centerPxY = latPrj(centerLat);
-  const targetPxX = prj(lng);
-  const targetPxY = latPrj(lat);
-
-  return {
-    x: (targetPxX - centerPxX) + (w / 2),
-    y: (targetPxY - centerPxY) + (h / 2)
-  };
-}
-
-function pixelToLatLng(x, y, w, h) {
-  const centerLat = smState.lat;
-  const centerLng = smState.lng;
-  const zoom = Math.round(smState.zoom);
-
-  const worldSize = 256 * Math.pow(2, zoom);
-  const prj_inv = (px) => (px * 360 / worldSize) - 180;
-  const latPrj = (v) => {
-    const sinLat = Math.sin(v * Math.PI / 180);
-    return worldSize * (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI));
-  };
-  const latPrj_inv = (py) => {
-    const n = Math.PI - 2 * Math.PI * py / worldSize;
-    return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-  };
-
-  const centerPxX = worldSize * (centerLng + 180) / 360;
-  const centerPxY = latPrj(centerLat);
-
-  const targetPxX = centerPxX + (x - w / 2);
-  const targetPxY = centerPxY + (y - h / 2);
-
-  return {
-    lat: latPrj_inv(targetPxY),
-    lng: prj_inv(targetPxX)
-  };
-}
-
-/** ─── 경로 및 오버레이 렌더링 ─── */
-
-function renderMapPath(w, h) {
-  const ctx = smCanvas.getContext('2d');
-  smCanvas.width = w;
-  smCanvas.height = h;
-  ctx.clearRect(0, 0, w, h);
-
-  if (!smState.selectedTrip) return;
-
-  const locs = smState.selectedTrip.locations || [];
-  if (locs.length < 2) return;
-
-  ctx.beginPath();
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 4;
-  ctx.lineJoin = 'round';
-
-  locs.forEach((loc, idx) => {
-    const px = latLngToPixel(loc.latitude, loc.longitude, w, h);
-    if (idx === 0) ctx.moveTo(px.x, px.y);
-    else ctx.lineTo(px.x, px.y);
-  });
-  ctx.stroke();
+  smImg.src = url;
 }
 
 function renderMapOverlay() {
+  if (!smCanvas || !smOverlay) return;
+  const { w, h } = getMapSize();
+  const level = Math.round(smState.zoom);
+
+  // 1. 경로 그리기 (Canvas)
+  const ctx = smCanvas.getContext('2d');
+  ctx.clearRect(0, 0, smCanvas.width, smCanvas.height);
+  if (smState.selectedTrip?._path) {
+    ctx.save();
+    ctx.scale(2, 2);
+    ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 4;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    smState.selectedTrip._path.forEach((l, i) => {
+      const p = latLngToPixel(l.lat, l.lng, smState.lat, smState.lng, level, w, h);
+      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 2. 마커 그리기 (DOM)
   smOverlay.innerHTML = '';
-  const w = mapContainer.clientWidth;
-  const h = mapContainer.clientHeight;
+  const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
+  const visibleTrips = smState.trips.filter(t => t.lastLocation && (contracted || isMyTrip(t)));
 
-  // 1. 내 위치 마커
+  visibleTrips.forEach(trip => {
+    const loc = trip.lastLocation;
+    const isMe = isMyTrip(trip);
+    const isDone = trip.status === 'completed';
+    const p = latLngToPixel(loc.lat, loc.lng, smState.lat, smState.lng, level, w, h);
+    if (p.x < -100 || p.x > w + 100 || p.y < -100 || p.y > h + 100) return;
+
+    const color = isDone ? '#94a3b8' : (isMe ? '#10b981' : '#2563eb');
+    const label = trip.vehicle_number || '차량';
+
+    const m = document.createElement('div');
+    m.style.cssText = `position:absolute;left:${p.x}px;top:${p.y}px;transform:translate(-50%,-100%);pointer-events:auto;`;
+    m.innerHTML = `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;">${label}</div>`;
+    m.onclick = (e) => { e.stopPropagation(); showTripRouteOnMap(trip); };
+    smOverlay.appendChild(m);
+  });
+
+  // 내 위치 마커
   if (smState.myLat && smState.myLng) {
-    const px = latLngToPixel(smState.myLat, smState.myLng, w, h);
-    addMarkerDOM(px.x, px.y, '🔵', '내 위치', true);
+    const p = latLngToPixel(smState.myLat, smState.myLng, smState.lat, smState.lng, level, w, h);
+    const dot = document.createElement('div');
+    dot.style.cssText = `position:absolute;left:${p.x}px;top:${p.y}px;width:14px;height:14px;background:#2563eb;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,.6);transform:translate(-50%,-50%);`;
+    smOverlay.appendChild(dot);
+  }
+}
+
+// ─── 터치 인터랙션 ──────────────────────────────────────────────────
+function bindMapTouch(el) {
+  let startX, startY, startLat, startLng;
+
+  function onMove(x, y) {
+    if (!smState.isDragging) return;
+    const dx = x - startX, dy = y - startY;
+    smPanner.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) smState.isMoving = true;
   }
 
-  // 2. 차량 마커들
-  smState.trips.forEach(trip => {
-    if (!trip.latitude || !trip.longitude) return;
-    const px = latLngToPixel(trip.latitude, trip.longitude, w, h);
-    const isSel = smState.selectedTrip?.id === trip.id;
-    
-    const div = addMarkerDOM(px.x, px.y, isSel ? '🚒' : '🚚', trip.vehicle_no || '차량', false);
-    div.onclick = (e) => {
-      e.stopPropagation();
-      selectTrip(trip);
-    };
-  });
-}
+  function onEnd(x, y) {
+    if (!smState.isDragging) return;
+    const dx = x - startX, dy = y - startY;
+    smState.isDragging = false;
+    el.style.cursor = 'grab';
 
-function addMarkerDOM(x, y, emoji, label, isPulse) {
-  const div = document.createElement('div');
-  div.className = 'sm-marker' + (isPulse ? ' pulse' : '');
-  div.style.left = `${x}px`;
-  div.style.top = `${y}px`;
-  div.innerHTML = `
-    <div class="marker-icon">${emoji}</div>
-    <div class="marker-label">${label}</div>
-  `;
-  smOverlay.appendChild(div);
-  return div;
-}
-
-/** ─── 데이터 관리 ─── */
-
-export async function refreshMapData(isFirst = false) {
-  try {
-    const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips`);
-    if (res && res.trips) {
-      smState.trips = res.trips;
-      
-      // 내 위치 연동
-      if (window.State && window.State.gps) {
-        smState.myLat = window.State.gps.lat;
-        smState.myLng = window.State.gps.lng;
-        
-        if (isFirst && smState.myLat) {
-          smState.lat = smState.myLat;
-          smState.lng = smState.myLng;
-        }
-      }
-      
+    if (smState.isMoving) {
+      const level = Math.round(smState.zoom);
+      const scale = Math.pow(2, level) * 256;
+      const res = scale / 360;
+      // 단순화된 메르카토르 역변환 (중심 부근에서 유효)
+      smState.lng -= dx / res;
+      smState.lat += dy / (res * Math.cos(smState.lat * Math.PI / 180));
       renderStaticMap();
-      renderMapTripList();
     }
-  } catch (e) {
-    console.error('[MAP] 데이터 갱신 실패', e);
-  }
-}
-
-function selectTrip(trip) {
-  smState.selectedTrip = trip;
-  smState.lat = trip.latitude;
-  smState.lng = trip.longitude;
-  smState.zoom = 14;
-  renderStaticMap();
-  
-  // 패널 열기
-  const panel = document.getElementById('map-panel');
-  if (panel) panel.classList.remove('collapsed');
-}
-
-/** 차량 목록 렌더링 */
-function renderMapTripList() {
-  const list = document.getElementById('map-trip-list');
-  if (!list) return;
-
-  if (smState.trips.length === 0) {
-    list.innerHTML = '<div class="p-4 text-center text-gray-500">운행 중인 차량이 없습니다.</div>';
-    return;
+    smState.isMoving = false;
   }
 
-  list.innerHTML = smState.trips.map(trip => `
-    <div class="trip-item p-3 border-b active:bg-gray-100 ${smState.selectedTrip?.id === trip.id ? 'bg-blue-50' : ''}" id="trip-item-${trip.id}">
-      <div class="flex justify-between items-center">
-        <span class="font-bold text-gray-800">${trip.vehicle_no}</span>
-        <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">운행중</span>
-      </div>
-      <div class="text-xs text-gray-500 mt-1">마지막 위치: ${trip.last_address || '정보 없음'}</div>
-    </div>
-  `).join('');
+  el.addEventListener('mousedown', e => {
+    smState.isDragging = true; smState.isMoving = false;
+    startX = e.clientX; startY = e.clientY;
+    startLat = smState.lat; startLng = smState.lng;
+    el.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+  window.addEventListener('mouseup', e => onEnd(e.clientX, e.clientY));
 
-  // 클릭 이벤트
-  smState.trips.forEach(trip => {
-    const el = document.getElementById(`trip-item-${trip.id}`);
-    if (el) el.onclick = () => selectTrip(trip);
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      smState.isDragging = true; smState.isMoving = false;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    onEnd(t.clientX, t.clientY);
   });
 }
 
-/** 차량 대수 텍스트 갱신 */
-function updateMapTripCount() {
-  const countEl = document.getElementById('map-panel-count');
-  if (countEl) {
-    const count = smState.trips.length;
-    countEl.innerText = count > 0 ? `${count}대 운행 중` : '운행 차량 없음';
-  }
-}
+// ─── 외부 API ──────────────────────────────────────────────────────
+export function openMap() {
+  showScreen('map');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-btn-map')?.classList.add('active');
+  remoteLog('[MAP] Static Maps 복귀 모드 열기', 'MAP_OPEN');
 
-/** 하단 패널 토글 */
-export function toggleMapPanel() {
-  const panel = document.getElementById('map-panel');
-  if (panel) {
-    panel.classList.toggle('collapsed');
-    
-    // 레이아웃이 변하므로 지도 재렌더링 (애니메이션 대기 350ms)
-    setTimeout(() => {
-      renderStaticMap();
-    }, 350);
-  }
-}
-export const toggleMapTripList = toggleMapPanel;
-
-/** 오토줌 (전체 차량이 보이도록) */
-export function fitMapBounds() {
-  if (smState.trips.length === 0) return;
-
-  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-  smState.trips.forEach(t => {
-    if (!t.latitude || !t.longitude) return;
-    minLat = Math.min(minLat, t.latitude);
-    maxLat = Math.max(maxLat, t.latitude);
-    minLng = Math.min(minLng, t.longitude);
-    maxLng = Math.max(maxLng, t.longitude);
+  requestAnimationFrame(() => {
+    initStaticMap();
+    refreshMapData();
   });
 
-  smState.lat = (minLat + maxLat) / 2;
-  smState.lng = (minLng + maxLng) / 2;
-  
-  const dist = Math.max(maxLat - minLat, (maxLng - minLng) * 0.7);
-  if (dist > 2) smState.zoom = 7;
-  else if (dist > 0.5) smState.zoom = 9;
-  else if (dist > 0.1) smState.zoom = 11;
-  else smState.zoom = 13;
-
-  renderStaticMap();
+  if (mapPollTimer) clearInterval(mapPollTimer);
+  mapPollTimer = setInterval(refreshMapData, 30000);
 }
 
-/** 내 위치로 이동 */
+export function closeMap() {
+  if (mapPollTimer) { clearInterval(mapPollTimer); mapPollTimer = null; }
+  showScreen('main');
+}
+
+export async function refreshMapData() {
+  try {
+    const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips?mode=active');
+    const data = await res.json();
+    smState.trips = data.trips || data.data || [];
+    if (!smState.isDragging) renderMapOverlay();
+    renderMapTripList(smState.trips);
+    // 카운트 갱신
+    const countEl = document.getElementById('map-panel-count');
+    if (countEl) {
+      const active = (smState.trips || []).filter(t => t.status !== 'completed');
+      countEl.textContent = active.length > 0 ? `${active.length}대 운행 중` : '운행 차량 없음';
+    }
+  } catch (e) { console.warn('refreshMapData 오류', e); }
+}
+
 export function centerMyLocation() {
-  if (smState.myLat && smState.myLng) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    smState.myLat = pos.coords.latitude;
+    smState.myLng = pos.coords.longitude;
     smState.lat = smState.myLat;
     smState.lng = smState.myLng;
-    smState.zoom = 14;
+    smState.zoom = 15;
     renderStaticMap();
-  } else {
-    showToast('내 위치 정보가 없습니다.');
+    showToast('내 위치로 이동했습니다.');
+  });
+}
+
+function isMyTrip(trip) {
+  const myV = (State.profile.vehicleNo || '').replace(/\s/g, '').toUpperCase();
+  const tV = (trip.vehicle_number || '').replace(/\s/g, '').toUpperCase();
+  return tV && tV === myV;
+}
+
+function renderMapTripList(trips) {
+  const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
+  const visibleTrips = trips.filter(t => t.status !== 'completed' && (contracted || isMyTrip(t)));
+  const container = document.getElementById('map-trip-items');
+  if (!container) return;
+  container.innerHTML = visibleTrips.map(trip => `
+    <div class="map-trip-item" onclick="App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
+      <div style="font-weight:800;">${trip.vehicle_number || '-'}</div>
+      <div style="font-size:12px;color:#64748b;">${trip.lastLocation?.address || '위치 정보 없음'}</div>
+    </div>
+  `).join('');
+}
+
+export async function showTripRouteOnMap(trip) {
+  remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
+  let path = [];
+  try {
+    const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${trip.id}/locations`);
+    const data = await res.json();
+    path = data.locations || data.data || [];
+  } catch (e) { console.error('fetch 실패', e); }
+
+  if (!path.length) { showToast('경로 데이터가 없습니다.'); return; }
+
+  // 오토줌 구현
+  const lats = path.map(p => p.lat), lngs = path.map(p => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  smState.lat = (minLat + maxLat) / 2;
+  smState.lng = (minLng + maxLng) / 2;
+
+  const { w, h } = getMapSize();
+  const dLat = maxLat - minLat, dLng = maxLng - minLng;
+  smState.zoom = Math.max(5, Math.min(16, Math.floor(Math.min(
+    Math.log2(360 * w / (dLng * 256)),
+    Math.log2(180 * h / (dLat * 256))
+  ))));
+
+  smState.selectedTrip = { ...trip, _path: path };
+  renderStaticMap();
+
+  const panel = document.getElementById('map-route-panel');
+  if (panel) {
+    document.getElementById('map-route-title').textContent = trip.vehicle_number;
+    panel.classList.remove('hidden');
   }
 }
 
-/** 상세 경로 표시/제거 (기존 호환성용) */
-export function showTripRouteOnMap(trip) {
-  selectTrip(trip);
-}
 export function clearMapRoute() {
   smState.selectedTrip = null;
-  renderStaticMap();
+  document.getElementById('map-route-panel')?.classList.add('hidden');
+  renderMapOverlay();
 }
+
+export function toggleMapPanel() {
+  document.getElementById('map-bottom-panel')?.classList.toggle('collapsed');
+  // 레이아웃 변경 후 지도 리사이즈 대응
+  setTimeout(() => { if (!smState.isDragging) renderStaticMap(); }, 350);
+}
+export const toggleMapTripList = toggleMapPanel;
