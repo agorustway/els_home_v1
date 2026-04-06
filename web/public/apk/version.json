@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.7.0",
-  "versionCode": 470,
+  "latestVersion": "v4.7.1",
+  "versionCode": 471,
   "forceUpdate": true,
-  "changeLog": "v4.7.0: 지도 엔진 전면 재설계 - 마커 드리프트/HUD 제거/패널 연동 수정",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=470"
+  "changeLog": "v4.7.1: 초기 권한 설정 화면 클릭 불가 문제 수정 및 지도 모듈 인터페이스 안정화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=471"
 }

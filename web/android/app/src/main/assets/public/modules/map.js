@@ -1,17 +1,5 @@
 /**
  * map.js — Static Maps 엔진 v4.7.0 (전면 재설계 — 마커 드리프트 정밀 해결)
- * 
- * [아키텍처 개선]
- * 1. smPanner (panning layer): 지도 이미지(img) + 경로(canvas)만 포함. 드래그 중 translate3d 이동.
- * 2. smOverlay (pixed overlay): panner 바깥에 배치. 마커들이 화면 좌표에 '절대 고정'됨.
- * 3. 드래그 중: panner와 overlay에 동일한 translate3d를 적용하여 일체감 유지.
- * 4. 드래그 종료: pixelToLatLng 역변환으로 새 중심점(State.lat/lng) 계산 → 새 이미지 로드 → 오버레이 재배치(reset).
- * 
- * [수정 사항]
- * - 핀치줌 지원 (2점 터치 감지)
- * - 하단 패널 토글 시 350ms 후 리사이즈 연동 (찌그러짐 방지)
- * - "v4.6.1-STATIC-FIX" HUD 제거
- * - 차량 목록 "불러오는 중" 상태 실시간 대수 갱신 로직 추가
  */
 import { State, BASE_URL } from './store.js';
 import { smartFetch, remoteLog } from './bridge.js';
@@ -66,6 +54,26 @@ export function initMapScreen() {
   }
 
   console.log('[MAP] v4.7.0 인터페이스 초기화 완료');
+}
+
+/** 지도 화면 진입 */
+export function openMap() {
+  showScreen('screen-map');
+  initMapScreen();
+  refreshMapData(true);
+  
+  if (!mapPollTimer) {
+    mapPollTimer = setInterval(() => refreshMapData(), 30000);
+  }
+}
+
+/** 지도 화면 나가기 */
+export function closeMap() {
+  if (mapPollTimer) {
+    clearInterval(mapPollTimer);
+    mapPollTimer = null;
+  }
+  showScreen('main');
 }
 
 /** 지도 렌더링 (이미지 로드 + 오버레이 전개) */
@@ -157,7 +165,7 @@ function bindMapTouchEvents() {
       updateLayersTransform(smState.panOffsetX, smState.panOffsetY);
     } 
     else if (e.touches.length === 2) {
-      // 핀치줌 중: 즉시 줌 레벨 조정 (시점은 나중에)
+      // 핀치줌 중: 즉시 줌 레벨 조정
       const dist = getPinchDist(e);
       const scale = dist / smState._touchStartDist;
       let newZoom = smState._startZoom + Math.log2(scale);
@@ -165,9 +173,6 @@ function bindMapTouchEvents() {
       
       if (Math.abs(newZoom - smState.zoom) > 0.1) {
         smState.zoom = newZoom;
-        // 줌 변경시는 transform 대신 바로 재렌더링 예약 유도 가능하지만, 
-        // 하드웨어 부하를 위해 줌 슬라이더 등 UI만 갱신 가능.
-        // 여기서는 그냥 값만 킵
       }
     }
   }, { passive: false });
@@ -391,7 +396,7 @@ function updateMapTripCount() {
 }
 
 /** 하단 패널 토글 */
-function toggleMapPanel() {
+export function toggleMapPanel() {
   const panel = document.getElementById('map-panel');
   if (panel) {
     panel.classList.toggle('collapsed');
@@ -402,6 +407,7 @@ function toggleMapPanel() {
     }, 350);
   }
 }
+export const toggleMapTripList = toggleMapPanel;
 
 /** 오토줌 (전체 차량이 보이도록) */
 export function fitMapBounds() {
@@ -419,12 +425,32 @@ export function fitMapBounds() {
   smState.lat = (minLat + maxLat) / 2;
   smState.lng = (minLng + maxLng) / 2;
   
-  // 대략적인 줌 결정 (단순화)
   const dist = Math.max(maxLat - minLat, (maxLng - minLng) * 0.7);
   if (dist > 2) smState.zoom = 7;
   else if (dist > 0.5) smState.zoom = 9;
   else if (dist > 0.1) smState.zoom = 11;
   else smState.zoom = 13;
 
+  renderStaticMap();
+}
+
+/** 내 위치로 이동 */
+export function centerMyLocation() {
+  if (smState.myLat && smState.myLng) {
+    smState.lat = smState.myLat;
+    smState.lng = smState.myLng;
+    smState.zoom = 14;
+    renderStaticMap();
+  } else {
+    showToast('내 위치 정보가 없습니다.');
+  }
+}
+
+/** 상세 경로 표시/제거 (기존 호환성용) */
+export function showTripRouteOnMap(trip) {
+  selectTrip(trip);
+}
+export function clearMapRoute() {
+  smState.selectedTrip = null;
   renderStaticMap();
 }
