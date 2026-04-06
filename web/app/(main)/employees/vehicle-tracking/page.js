@@ -656,7 +656,8 @@ export default function VehicleTrackingPage() {
             if (document.getElementById(scriptId)) return;
             const script = document.createElement('script');
             script.id = scriptId;
-            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
+            // [v4.5.37] ncpClientId -> ncpKeyId 로 변경 (네트워크 페이지와 100% 동일하게 맞춰서 인증 해결)
+            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
             script.async = true;
             script.defer = true;
             script.onload = () => { console.log("[Naver Map] 스크립트 로드 완료!"); handleInit(); };
