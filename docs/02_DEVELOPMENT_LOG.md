@@ -1,5 +1,80 @@
 # 🛠 ELS DEVELOPMENT LOG
 
+---
+
+## 📅 2026-04-07 (v4.9.1 ~ v4.9.4 — 버그 수정 세션)
+
+### 🎯 세션 목표
+v4.9.0 이후 실기기 테스트에서 발견된 복합 버그 수정 시도. 일부 해결, 일부 미해결.
+
+### ✅ 해결된 버그
+
+#### 1. 지도 탭 — 프로필 검사 우회
+- **파일**: `web/driver-src/index.html`
+- **수정**: 지도 탭 버튼 `onclick="App.openMap()"` → `onclick="App.switchTab('map')"`
+- **효과**: 차량 정보 미입력 시 지도 탭도 차단됨
+
+#### 2. 사진 뷰어 핀치줌 — 피벗이 항상 좌상단
+- **파일**: `web/driver-src/index.html`, `web/driver-src/modules/photos.js`
+- **수정**: `transform-origin: 0 0` → `50% 50%`, `touch-action: none`, JS pivot 계산 좌표 수정
+- **효과**: 두 손가락 중간점 기준으로 확대/축소됨
+
+#### 3. 개인정보·이용약관 모달 미표시
+- **파일**: `web/driver-src/index.html`, `web/driver-src/modules/permissions.js`
+- **수정**: HTML에 `#modal-terms` 추가, `classList.add/remove('active')` → `style.display = 'flex'/'none'`
+- **효과**: 설정 > 개인정보 처리방침 버튼 클릭 시 모달 표시됨
+
+#### 4. 수동 권한 버튼 무반응 (overlay, battery)
+- **파일**: `web/driver-src/modules/permissions.js`
+- **수정**: `requestPerm()` 에서 `showAndroid16Guide()` 경유 제거 → `executeRealRequest()` 직접 호출
+- **효과**: 수동 버튼 클릭 즉시 설정창 열림
+
+#### 5. 순차 자동설정 hang (v4.9.4)
+- **파일**: `web/driver-src/modules/permissions.js`
+- **원인**: `requestAllPerms()`에서 `guide.classList.add('active')` 사용했으나, HTML 모달은 `style="display:none"` 인라인 스타일만 있고 CSS `.active` 룰이 없어서 모달이 화면에 나타나지 않음 → `confirmBtn.onclick`이 절대 호출 안 됨 → Promise 영구 hang
+- **수정**: `guide.style.display = 'flex'` / `guide.style.display = 'none'` 직접 제어로 변경
+- **효과**: 모달 정상 표시됨 (실기기 추가 검증 필요)
+
+#### 6. 사진 뷰어 깨짐 — trip 사진 (v4.9.4)
+- **파일**: `web/driver-src/modules/photos.js`, `updatePhotoViewerUI()`
+- **원인**: 뷰어가 `p.serverUrl || p.dataUrl` 순서 → 서버 URL 우선. NAS 접근 불가 시 X 표시
+- **수정**: `p.dataUrl || p.serverUrl` 로 변경 (썸네일과 동일하게)
+- **효과**: 세션 중 업로드한 trip 사진은 로컬 dataUrl로 항상 표시됨
+
+---
+
+### ❌ 미해결 버그
+
+#### 1. 일지(log) 상세 사진 깨짐
+- **증상**: 운행 일지 > 상세보기 사진 X 표시
+- **원인 분석**:
+  - 일지 사진 URL: `/api/vehicle-tracking/photos/view?key=vehicle-tracking%2Fphotos%2F{tripId}%2F{file}.jpg`
+  - 이 URL은 Vercel serverless → NAS S3 GetObject 프록시
+  - NAS S3가 Vercel 서버에서 접근 불가한 경우 (NAS_ENDPOINT가 사설 IP면 불가) 500 반환
+  - 업로드는 성공하는데 조회가 실패하는 구조적 모순 → NAS_ENDPOINT 설정 점검 필요
+- **참고 파일**:
+  - `web/app/api/vehicle-tracking/photos/view/route.js` — S3 GetObject 프록시
+  - `web/app/api/vehicle-tracking/photos/route.js` — S3 PutObject 업로드
+- **해결 방향**: Vercel 대시보드에서 `NAS_ENDPOINT` 환경변수 확인. 또는 Supabase Storage로 이전.
+
+#### 2. 순차 자동 권한 설정 — `waitForForeground` 신뢰성
+- **증상**: 모달은 표시되나, 설정창 열고 복귀 후 자동으로 다음 권한이 진행되는지 실기기 미검증
+- **원인 추정**: Android 16(Galaxy S25)에서 설정창 열릴 때 WebView `appStateChange { isActive: false }` 이벤트 미발생 가능성
+- **구 코드 참고**: commit `21f43cf` 바닐라 JS 시절에는 `waitForForeground` 없었음. 순차 자동설정 자체가 신규 기능이므로 동작 검증 필요.
+- **해결 방향**: `waitForForeground` 대신 전역 `appStateChange` 리스너 기반 상태 머신 방식으로 재설계 고려
+
+---
+
+### 📦 배포 이력 (이번 세션)
+| 버전 | 주요 내용 |
+|------|----------|
+| v4.9.1 | 권한 순차설정 개선 시도, 사진 dataUrl 보존 방식 변경 |
+| v4.9.2 | specialPerms 순서 overlay→battery 복원, waitForForeground 8s |
+| v4.9.3 | 버전 bumping (캐시 무효화 목적) |
+| v4.9.4 | hang 버그 수정(classList→style.display), 뷰어 dataUrl 우선 |
+
+---
+
 ## 📅 2026-04-06 (v4.9.0 — UI/UX 개선 & 권한 순서 안정화)
 ### 🚀 배포 요약
 권한 순차 설정 시 배터리 설정 후 앱 복귀까지 기다리지 않던 문제 해결. 설정 페이지 불필요한 UI 정리(이전 버튼 제거, 검은칸 제거). 지도 헤더 제거하고 floating 닫기 버튼으로 변경. 일지 페이지 여백 최소화 및 스크롤 안정화.
