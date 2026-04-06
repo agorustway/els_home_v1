@@ -15,6 +15,11 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from supabase import create_client, Client
 from urllib.request import urlopen
+import xml.etree.ElementTree as ET
+from urllib.parse import quote
+import requests
+import urllib3
+urllib3.disable_warnings()
 
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
@@ -40,59 +45,103 @@ def sync_asan_dispatch_python(force=False):
         settings = res.data
         if not settings: return
 
+        # NAS WebDAV 설정
+        nas_url = os.environ.get("NAS_URL", "https://elssolution.synology.me:5006").rstrip('/')
+        nas_user = os.environ.get("NAS_USER", "web_client_admin")
+        nas_pw = os.environ.get("NAS_PW", "SKDNSNFL")
+        auth = (nas_user, nas_pw)
+
         for dtype in ['glovis', 'mobis']:
             rel_path = settings.get(f"{dtype}_path")
             if not rel_path: continue
-            full_path = Path("/app/data") / rel_path.lstrip("/")
-            if not full_path.exists(): continue
             
-            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            # NAS WebDAV 직접 연결 확인
+            file_url = f"{nas_url}/{quote(rel_path.lstrip('/'))}"
             
-            # 변경 감지 (force 옵션이 없으면 캐시 확인)
-            if not force and last_mtime_cache.get(dtype) == mtime:
-                continue
-            
-            app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
-            
-            xl = pd.ExcelFile(full_path)
-            sync_count = 0
-            supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+            try:
+                # 1. 파일 상태 및 수정 시간 확인 (PROPFIND)
+                r_prop = requests.request("PROPFIND", file_url, auth=auth, headers={"Depth": "0"}, verify=False, timeout=10)
+                if r_prop.status_code not in (200, 207):
+                    app.logger.warning(f"[자동동기화] WebDAV에서 파일을 찾을 수 없습니다 ({r_prop.status_code}): {file_url}")
+                    continue
+                
+                mtime = None
+                root = ET.fromstring(r_prop.text)
+                for elem in root.iter():
+                    if 'getlastmodified' in elem.tag:
+                        mtime = elem.text
+                        break
+                        
+                if not mtime:
+                    continue
+                
+                # 변경 감지 (force 옵션이 없으면 캐시 확인)
+                if not force and last_mtime_cache.get(dtype) == mtime:
+                    continue
+                
+                app.logger.info(f"[자동동기화] 파일 변경 확인됨 (WebDAV). 데이터 다운로드 시작... ({dtype})")
+                
+                # 2. 파일 다운로드
+                r_get = requests.get(file_url, auth=auth, verify=False, timeout=60)
+                if r_get.status_code != 200:
+                    app.logger.error(f"[자동동기화] 파일 다운로드 실패 ({r_get.status_code}): {file_url}")
+                    continue
+                
+                # 임시 파일로 저장 후 처리
+                with tempfile.NamedTemporaryFile(suffix=".xlsm", delete=False) as tmp:
+                    tmp.write(r_get.content)
+                    tmp_path = tmp.name
+                
+                # 3. 엑셀 읽기
+                xl = pd.ExcelFile(tmp_path)
+                sync_count = 0
+                supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
 
-            for sheet_name in xl.sheet_names:
-                match = re.search(r'(\d+)\.(\d+)', sheet_name)
-                if not match: continue
-                m, d = int(match.group(1)), int(match.group(2))
-                now = datetime.now(KST)
-                target_date = f"{now.year}-{m:02d}-{d:02d}"
+                for sheet_name in xl.sheet_names:
+                    match = re.search(r'(\d+)\.(\d+)', sheet_name)
+                    if not match: continue
+                    m, d = int(match.group(1)), int(match.group(2))
+                    now = datetime.now(KST)
+                    target_date = f"{now.year}-{m:02d}-{d:02d}"
+                    
+                    df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
+                    header_idx = -1
+                    for i, row in df.head(10).iterrows():
+                        if row.astype(str).str.contains('구분').any():
+                            header_idx = i; break
+                    if header_idx < 0: continue
+                    
+                    headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
+                    headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
+                    data_df = df.iloc[header_idx + 1:]
+                    
+                    filter_col = 12 if dtype == 'glovis' else 15
+                    rows = []
+                    for _, row in data_df.iterrows():
+                        if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)): break
+                        f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                        if not f_val or f_val == '0' or f_val == 'nan': continue
+                        rows.append(row.fillna('').astype(str).tolist())
+                    
+                    if not rows: continue
+                    supabase.from_("branch_dispatch").insert({
+                        "branch_id": "asan", "type": dtype, "target_date": target_date,
+                        "headers": headers, "data": rows, "file_modified_at": mtime, "updated_at": now.isoformat()
+                    }).execute()
+                    sync_count += 1
                 
-                df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
-                header_idx = -1
-                for i, row in df.head(10).iterrows():
-                    if row.astype(str).str.contains('구분').any():
-                        header_idx = i; break
-                if header_idx < 0: continue
+                app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+                last_mtime_cache[dtype] = mtime
                 
-                headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
-                headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
-                data_df = df.iloc[header_idx + 1:]
+                # 사용 끝난 임시 파일 삭제
+                try: os.remove(tmp_path)
+                except: pass
+
+            except Exception as inner_e:
+                app.logger.error(f"[자동동기화] {dtype} 처리 중 오류: {inner_e}")
                 
-                filter_col = 12 if dtype == 'glovis' else 15
-                rows = []
-                for _, row in data_df.iterrows():
-                    if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)): break
-                    f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
-                    if not f_val or f_val == '0' or f_val == 'nan': continue
-                    rows.append(row.fillna('').astype(str).tolist())
-                
-                if not rows: continue
-                supabase.from_("branch_dispatch").insert({
-                    "branch_id": "asan", "type": dtype, "target_date": target_date,
-                    "headers": headers, "data": rows, "file_modified_at": mtime, "updated_at": now.isoformat()
-                }).execute()
-                sync_count += 1
-            app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
-            last_mtime_cache[dtype] = mtime
-    except Exception as e: app.logger.error(f"[자동동기화] 오류: {e}")
+    except Exception as e:
+        app.logger.error(f"[자동동기화] 전체 프로세스 오류: {e}")
 
 def asan_sync_scheduler():
     app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
