@@ -1,7 +1,7 @@
 {
-  "latestVersion": "v4.7.2",
-  "versionCode": 472,
+  "latestVersion": "v4.7.3",
+  "versionCode": 473,
   "forceUpdate": true,
-  "changeLog": "v4.7.2: 앱 안정화 복구 - 지도 엔진/권한 설정 정상화 및 HUD 제거",
-  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=472"
+  "changeLog": "v4.7.3: 마커 드리프트 근본 수정(오버레이 분리), 리프레시 버튼 제거, 사진 안정화",
+  "downloadUrl": "https://www.nollae.com/apk/els_driver.apk?t=473"
 }

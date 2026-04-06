@@ -52,7 +52,7 @@ export function initStaticMap() {
 
   const { w, h } = getMapSize();
 
-  // Panner: 지도 위 모든 요소를 한꺼번에 이동시키는 레이어
+  // Panner: 지도 이미지 + Canvas만 포함 → 드래그 시 translate3d로 이동
   smPanner = document.createElement('div');
   smPanner.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0;will-change:transform;';
   el.appendChild(smPanner);
@@ -67,9 +67,10 @@ export function initStaticMap() {
   smCanvas.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;`;
   smPanner.appendChild(smCanvas);
 
+  // ★ Overlay: panner 바깥에 배치 → 마커가 화면 좌표에 고정됨 (드리프트 방지)
   smOverlay = document.createElement('div');
   smOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
-  smPanner.appendChild(smOverlay);
+  el.appendChild(smOverlay);
 
   bindMapTouch(el);
   renderStaticMap();
@@ -85,7 +86,7 @@ function renderStaticMap() {
 
   smImg.onload = () => {
     smPanner.style.transform = 'none';
-    renderMapOverlay();
+    if (!smState.isDragging) renderMapOverlay();
   };
   smImg.src = url;
 }
@@ -143,20 +144,21 @@ function renderMapOverlay() {
   }
 }
 
-// ─── 터치 인터랙션 ──────────────────────────────────────────────────
+// ─── 터치 인터랙션 (마커 드리프트 방지 아키텍처) ──────────────────────
 function bindMapTouch(el) {
-  let startX, startY, startLat, startLng;
+  let startX, startY, lastDx = 0, lastDy = 0;
 
   function onMove(x, y) {
     if (!smState.isDragging) return;
-    const dx = x - startX, dy = y - startY;
-    smPanner.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) smState.isMoving = true;
+    lastDx = x - startX;
+    lastDy = y - startY;
+    // ★ panner(지도)만 이동, overlay(마커)는 고정 유지
+    smPanner.style.transform = `translate3d(${lastDx}px, ${lastDy}px, 0)`;
+    if (Math.abs(lastDx) > 5 || Math.abs(lastDy) > 5) smState.isMoving = true;
   }
 
-  function onEnd(x, y) {
+  function onEnd() {
     if (!smState.isDragging) return;
-    const dx = x - startX, dy = y - startY;
     smState.isDragging = false;
     el.style.cursor = 'grab';
 
@@ -164,22 +166,23 @@ function bindMapTouch(el) {
       const level = Math.round(smState.zoom);
       const scale = Math.pow(2, level) * 256;
       const res = scale / 360;
-      // 단순화된 메르카토르 역변환 (중심 부근에서 유효)
-      smState.lng -= dx / res;
-      smState.lat += dy / (res * Math.cos(smState.lat * Math.PI / 180));
+      smState.lng -= lastDx / res;
+      smState.lat += lastDy / (res * Math.cos(smState.lat * Math.PI / 180));
+      // transform 초기화 후 새 이미지 + 마커 재배치
+      smPanner.style.transform = 'none';
       renderStaticMap();
     }
     smState.isMoving = false;
+    lastDx = 0; lastDy = 0;
   }
 
   el.addEventListener('mousedown', e => {
     smState.isDragging = true; smState.isMoving = false;
     startX = e.clientX; startY = e.clientY;
-    startLat = smState.lat; startLng = smState.lng;
     el.style.cursor = 'grabbing';
   });
   window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-  window.addEventListener('mouseup', e => onEnd(e.clientX, e.clientY));
+  window.addEventListener('mouseup', () => onEnd());
 
   el.addEventListener('touchstart', e => {
     if (e.touches.length === 1) {
@@ -190,10 +193,7 @@ function bindMapTouch(el) {
   el.addEventListener('touchmove', e => {
     if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const t = e.changedTouches[0];
-    onEnd(t.clientX, t.clientY);
-  });
+  el.addEventListener('touchend', () => onEnd());
 }
 
 // ─── 외부 API ──────────────────────────────────────────────────────
