@@ -144,11 +144,14 @@ export async function uploadPendingPhotos() {
         console.log(`[PHOTO #${i}] ✅ 업로드 성공`);
       } else if (data.error) {
         console.error(`[PHOTO #${i}] ❌ 서버 에러:`, data.error);
+        showToast(`사진 업로드 실패: ${data.error}`);
       } else {
         console.warn(`[PHOTO #${i}] ⚠️ 응답 형식 오류:`, data);
+        showToast('사진 업로드 응답 오류. 다시 시도해주세요.');
       }
     } catch (e) {
       console.error(`[PHOTO #${i}] ❌ 예외 발생:`, e.message || e);
+      showToast(`사진 전송 오류: ${e.message}`);
     }
   }
 
@@ -264,6 +267,7 @@ export function initPinchZoom() {
   if (!wrap || !img) return;
 
   let initialDist = 0, baseScale = 1;
+  let pinchMidX = 0, pinchMidY = 0, startTransX = 0, startTransY = 0;
   let isDragging  = false, startX = 0, startY = 0, lastTap = 0;
 
   wrap.addEventListener('touchstart', e => {
@@ -285,6 +289,12 @@ export function initPinchZoom() {
       e.preventDefault();
       initialDist  = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
       baseScale    = currentZoom;
+      // 두 손가락 중간점을 wrap 중앙 기준 좌표로 저장 (pivot)
+      const wrapRect = wrap.getBoundingClientRect();
+      pinchMidX    = (e.touches[0].pageX + e.touches[1].pageX) / 2 - (wrapRect.left + wrapRect.width  / 2);
+      pinchMidY    = (e.touches[0].pageY + e.touches[1].pageY) / 2 - (wrapRect.top  + wrapRect.height / 2);
+      startTransX  = currentTransX;
+      startTransY  = currentTransY;
       img.style.transition = 'none';
     } else if (e.touches.length === 1 && currentZoom > 1) {
       isDragging   = true;
@@ -297,9 +307,17 @@ export function initPinchZoom() {
   wrap.addEventListener('touchmove', e => {
     if (e.touches.length === 2) {
       e.preventDefault();
-      const dist   = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-      currentZoom  = Math.min(Math.max(baseScale * (dist / initialDist), 1), 6);
-      if (currentZoom <= 1.01) { currentTransX = 0; currentTransY = 0; }
+      const dist    = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      const newZoom = Math.min(Math.max(baseScale * (dist / initialDist), 1), 6);
+      if (newZoom <= 1.01) {
+        currentZoom = 1; currentTransX = 0; currentTransY = 0;
+      } else {
+        // pivot 기준으로 translate 보정: pivot 위치가 화면에서 고정되도록
+        const ratio   = newZoom / baseScale;
+        currentTransX = pinchMidX * (1 - ratio) + startTransX * ratio;
+        currentTransY = pinchMidY * (1 - ratio) + startTransY * ratio;
+        currentZoom   = newZoom;
+      }
       img.style.transform = `translate(${currentTransX}px, ${currentTransY}px) scale(${currentZoom})`;
     } else if (e.touches.length === 1 && isDragging && currentZoom > 1) {
       e.preventDefault();

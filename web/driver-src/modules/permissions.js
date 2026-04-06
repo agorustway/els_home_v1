@@ -242,11 +242,7 @@ async function executeRealRequest(type) {
 
 export async function requestPerm(type, event) {
   if (event && event.target) event.target.classList.add('btn-active');
-
-  if (type === 'overlay' || type === 'battery') {
-    showAndroid16Guide(type);
-    return;
-  }
+  // 수동 버튼: 모달 없이 바로 실행 (모달은 순차 자동설정에서만 사용)
   try {
     await executeRealRequest(type);
   } catch (e) {
