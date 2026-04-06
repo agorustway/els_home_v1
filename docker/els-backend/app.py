@@ -54,6 +54,8 @@ DAEMON_URL = os.environ.get("DAEMON_URL", "http://127.0.0.1:31999")
 file_store = {}
 # [추가] 진행률 트래킹용 전역 변수
 global_progress = {"total": 0, "completed": 0, "is_running": False}
+# [v4.9.8] 유휴 감지용: 마지막으로 개별 컨테이너 조회가 완료된 시각
+global_last_activity_time = 0
 LAST_RESULT_FILE = ELSBOT_DIR / "last_search_result.json"
 
 # --- 전역 에러 핸들러 ---
@@ -522,10 +524,18 @@ def capabilities():
         if attempt < 3:
             time.sleep(0.5) # 잠시 대기 후 재시도
     
-    # [추가] 20분 이상 지난 작업은 좀비 프로세스로 간주하여 강제 해제 (배경 동시조회 꼬임 방지)
+    # [v4.9.8] 좀비 잠금 해제: 전체 작업 5분 초과 시 강제 종료
     if global_progress.get("is_running") and global_progress.get("start_time"):
-        if time.time() - global_progress["start_time"] > 1200:
-            app.logger.warning(f"[좀비복구] {global_progress.get('user')}의 작업이 20분을 초과하여 강제 종료 처리합니다.")
+        if time.time() - global_progress["start_time"] > 300:
+            app.logger.warning(f"[좀비복구] {global_progress.get('user')}의 작업이 5분을 초과하여 강제 종료 처리합니다.")
+            global_progress["is_running"] = False
+            global_progress["completed"] = global_progress["total"]
+
+    # [v4.9.8] 유휴 잠금 해제: 마지막 개별 조회 완료 후 3분간 추가 조회 없으면 종료로 간주
+    if global_progress.get("is_running") and global_last_activity_time > 0:
+        idle = time.time() - global_last_activity_time
+        if idle > 180:  # 3분 무활동
+            app.logger.warning(f"[유휴복구] 마지막 조회 후 {int(idle)}초 무활동. 잠금 해제")
             global_progress["is_running"] = False
             global_progress["completed"] = global_progress["total"]
 
@@ -679,7 +689,7 @@ def stop_daemon():
 
 def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
     from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-    global global_progress
+    global global_progress, global_last_activity_time
     
     final_rows = []
     headers = ["컨테이너번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
@@ -692,6 +702,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
         "start_time": time.time(),
         "user": uid
     }
+    global_last_activity_time = time.time()
     yield f"LOG:병렬 조회를 시작합니다. (대상: {len(containers)}건, 병렬: 3개 세션 구동)\n"
     
     try:
@@ -746,6 +757,7 @@ def _stream_run_daemon(containers, use_saved, uid, pw, show_browser=False):
                     
                     final_rows.extend(rows)
                     global_progress["completed"] += 1
+                    global_last_activity_time = time.time()  # [v4.9.8] 개별 조회 완료 시마다 갱신
                     
                     # 안전한 JSON 전송을 위한 처리
                     def _safe_val(v):

@@ -435,9 +435,9 @@ function ContainerHistoryInner() {
                     if (retryCount > 0) setLogLines(prev => [...prev, '✓ 데몬이 준비되었습니다. 조회를 시작합니다!'].slice(-100));
                 }
 
-                // 무한 대기 방지 (최대 약 25분 - 백엔드 좀비 해제 시간이 20분이므로 그 이후까지 기다림)
-                if (retryCount > 300) {
-                    setLogLines(prev => [...prev, '![오류] 대기 시간이 너무 깁니다. (약 25분 경과) 데몬 리셋 후 다시 시도해 주세요.'].slice(-100));
+                // 무한 대기 방지 (최대 약 6분 - 백엔드 좀비 해제 시간이 5분이므로 그 이후까지 기다림)
+                if (retryCount > 72) {
+                    setLogLines(prev => [...prev, '![오류] 대기 시간이 너무 깁니다. (약 6분 경과) 데몬 리셋 후 다시 시도해 주세요.'].slice(-100));
                     setLoading(false); stopTimer();
                     await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: 'POST' }); // 자동 리셋 시도
                     return;

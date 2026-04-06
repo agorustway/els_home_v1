@@ -20,41 +20,30 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 
 ---
 
-## 🚧 IN-PROGRESS — v4.9.5 버그 수정 세션 (2026-04-07)
+## 🚧 IN-PROGRESS — v4.9.8 컨테이너 조회 잠금 해제 개선 (2026-04-07)
 
-### ✅ 해결된 항목
-| 항목 | 수정 내용 | 버전 |
+### ✅ 해결된 항목 (v4.9.8)
+| 항목 | 수정 내용 | 위치 |
 |------|----------|------|
-| 지도 탭 프로필 검사 우회 | `onclick="App.openMap()"` → `App.switchTab('map')`으로 변경 | v4.9.x |
-| 사진 뷰어 핀치줌 피벗 | `transform-origin: 0 0` → `50% 50%`, JS pivot 좌표 수정 | v4.9.x |
-| 개인정보 모달 미표시 | HTML `modal-terms` 추가, `style.display` 방식으로 변경 | v4.9.x |
-| 권한 가이드 모달 미표시 | HTML `modal-guide-android16` 추가 | v4.9.x |
-| 수동 권한 버튼 무반응 | `requestPerm()` → `executeRealRequest()` 직접 호출로 변경 | v4.9.x |
-| 순차 자동설정 hang | `classList.add('active')` → `style.display='flex'` | v4.9.4 |
-| 사진 뷰어 깨짐(trip) | viewer가 `serverUrl||dataUrl` → `dataUrl||serverUrl`로 변경 | v4.9.4 |
-| 배터리 다이얼로그 뒤에 숨김 | 순차 자동설정에서 배터리 제외, 수동 설정 안내로 변경 | v4.9.5 |
-| 사진 깨짐 시 무표시 | img onerror fallback 추가 (빨간 배경 + 콘솔 로그) | v4.9.5 |
-| 일지 사진 삭제 후 잔존 | closePhotoViewer 후 openLog 재호출로 서버 동기화 강화 | v4.9.5 |
+| 조회 잠금 미해제 (핵심) | `generate()` 내 `try/finally`로 스트림 중단 시에도 잠금 해제 보장 | `app_bot.py`, `app.py` |
+| 좀비 타임아웃 과다 | 20분 → 5분으로 단축 (capabilities 체크 시 자동 해제) | `app.py`, `app_bot.py` |
+| 유휴 잠금 미해제 | 마지막 개별 조회 완료 후 3분 무활동 시 자동 해제 | `app_bot.py`, `app.py` |
+| 프론트 대기 시간 과다 | "다른 직원 조회 중" 최대 대기: 25분 → 6분 | `page.js` |
+| stop-daemon 누락 | `app_bot.py`에 `stop-daemon` 엔드포인트 추가 | `app_bot.py` |
 
 ### ❌ 미해결 항목
 
-#### 1. NAS S3 사진 프록시 500 에러 (핵심 미해결)
+#### 1. NAS S3 사진 프록시 500 에러
 - **증상**: 운행 사진 업로드는 성공하나, 일지에서 사진 조회 시 깨짐(X표시)
-- **진단 결과**: `GET /api/vehicle-tracking/photos/view?key=...` → Vercel → NAS S3 `GetObject` 실패 500
-- **모순**: 업로드(`PutObject`)는 성공 = S3 엔드포인트 연결 정상. 그런데 `GetObject`만 실패?
-- **NAS_ENDPOINT**: `https://elssolution.synology.me` (공인 DDNS, Vercel 접근 가능 확인)
-- **확인 필요**:
-  1. Vercel Functions 로그에서 `[NAS-VIEW-ERROR]` 메시지 확인 (실제 S3 에러 내용)
-  2. 브라우저에서 실제 사진 URL 직접 접속 테스트
-  3. NAS MinIO 서비스 상태 확인 (재시작 필요할 수 있음)
-- **코드상 차이 없음**: 리팩토링 전후 서버 API(`photos/route.js`, `photos/view/route.js`) 코드 변경 없음
-
-### 📋 사진 문제 근본 해결 방향
-- **단기**: Vercel Functions 로그에서 실제 에러 확인 → NAS MinIO 재시작 또는 설정 확인
-- **중기**: S3 `GetObject` 대신 presigned URL 방식으로 전환 (Vercel 프록시 우회)
-- **장기**: Supabase Storage로 사진 저장소 이전 (CDN URL 직접 제공, 프록시 불필요)
+- **진단 결과**: `GET /api/vehicle-tracking/photos/view?key=...` → NAS S3 `GetObject` 실패 500
+- **확인 필요**: Vercel Functions 로그, NAS MinIO 서비스 상태
 
 ---
+
+## ⏳ 다음 할 일
+- [ ] NAS 도커 재빌드/재시작 (`app.py`, `app_bot.py` 변경 반영)
+- [ ] 컨테이너 조회 실 테스트 (잠금 해제 정상 동작 확인)
+- [ ] NAS 사진 프록시 500 에러 원인 조사
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
@@ -63,4 +52,4 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-07 (by Claude Sonnet 4.6)*
+*최종 갱신: 2026-04-07 (by Antigravity/Claude Opus 4.6)*
