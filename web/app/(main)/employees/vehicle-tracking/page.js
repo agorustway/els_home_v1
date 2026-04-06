@@ -651,10 +651,16 @@ export default function VehicleTrackingPage() {
         if (window.naver?.maps) {
             handleInit();
         } else {
+            console.log("[Naver Map] 스크립트 로드 시도... ID: " + process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID);
+            const scriptId = 'naver-map-script-v3';
+            if (document.getElementById(scriptId)) return;
             const script = document.createElement('script');
+            script.id = scriptId;
             script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
             script.async = true;
-            script.onload = () => handleInit();
+            script.defer = true;
+            script.onload = () => { console.log("[Naver Map] 스크립트 로드 완료!"); handleInit(); };
+            script.onerror = () => { console.error("[Naver Map] 스크립트 로드 실패!"); setMapReady(false); };
             document.head.appendChild(script);
         }
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
