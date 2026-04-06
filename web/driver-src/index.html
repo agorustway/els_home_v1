@@ -191,7 +191,7 @@
             <textarea id="trip-memo" placeholder="특이사항, 현장 메모..." rows="3" onchange="App.saveMemo()"></textarea>
           </div>
           <div style="display:flex; justify-content:flex-end;">
-            <button class="btn btn-sm" onclick="App.clearTripData()" style="font-size:12px;padding:4px 10px;height:28px;background:#f5f5f5;color:var(--text-muted);border:1px solid #ddd;min-width:auto;">🗑️ 내용지움</button>
+            <button id="btn-clear-trip" class="btn btn-sm" onclick="App.clearTripData()" style="font-size:12px;padding:4px 10px;height:28px;background:#f5f5f5;color:var(--text-muted);border:1px solid #ddd;min-width:auto;">🗑️ 내용지움</button>
           </div>
         </div>
       </div>
@@ -397,6 +397,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=490"></script>
+  <script type="module" src="app.js?v=491"></script>
 </body>
 </html>

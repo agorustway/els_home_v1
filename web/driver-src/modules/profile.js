@@ -1,8 +1,8 @@
 /**
  * profile.js — 프로필 UI, 저장, 기사 조회, 프로필 사진 3종
  */
-import { Store, State, BASE_URL } from './store.js?v=490';
-import { smartFetch } from './bridge.js?v=490';
+import { Store, State, BASE_URL } from './store.js?v=491';
+import { smartFetch } from './bridge.js?v=491';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
 
@@ -17,6 +17,28 @@ export function applyProfileToUI() {
   updateProfilePhoto('p-photo-driver',  State.profile.photo_driver,  '기사');
   updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차량');
   updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤시');
+
+  // 프로필 저장 여부에 따라 하단 버튼 활성화/비활성화
+  const hasProfile = State.profile.name && State.profile.phone
+    && State.profile.vehicleNo && State.profile.driverId;
+  updateSettingsButtonState(hasProfile);
+}
+
+// ─── 설정 화면 하단 버튼 활성화/비활성화 ─────────────────────────
+function updateSettingsButtonState(enabled) {
+  const buttons = document.querySelectorAll('#tab-settings .field:last-of-type .btn');
+  buttons.forEach(btn => {
+    if (enabled) {
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    } else {
+      btn.setAttribute('disabled', 'disabled');
+      btn.style.opacity = '0.5';
+      btn.style.pointerEvents = 'none';
+      btn.style.cursor = 'not-allowed';
+    }
+  });
 }
 
 // ─── 프로필 저장 ─────────────────────────────────────────────────
@@ -38,7 +60,12 @@ export function saveProfile() {
   applyProfileToUI();
   upsertDriverContact();
   showToast('정보가 저장되었습니다.');
-  window.App?.showMain();
+
+  // 하단 버튼 활성화 (저장 완료 후)
+  setTimeout(() => {
+    updateSettingsButtonState(true);
+    window.App?.showMain();
+  }, 1000);
 }
 
 // ─── 기사 정보 DB 동기화 ─────────────────────────────────────────

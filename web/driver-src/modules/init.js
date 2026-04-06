@@ -1,20 +1,20 @@
 /**
  * init.js — 앱 초기화, 화면 전환 오케스트레이션
  */
-import { Store, State, AppConfig } from './store.js?v=490';
-import { remoteLog } from './bridge.js?v=490';
-import { showScreen } from './nav.js?v=490';
+import { Store, State, AppConfig } from './store.js?v=491';
+import { remoteLog } from './bridge.js?v=491';
+import { showScreen } from './nav.js?v=491';
 import {
   updatePermStatuses, permStatuses, setupPermNav, requestAllPerms,
-} from './permissions.js?v=490';
-import { applyProfileToUI } from './profile.js?v=490';
-import { loadCurrentTrip, registerBackHandler } from './trip.js?v=490';
-import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=490';
-import { loadNotices } from './notice.js?v=490';
-import { startEmergencyPoll, pollEmergency } from './emergency.js?v=490';
-import { checkUpdate } from './update.js?v=490';
-import { openMap } from './map.js?v=490';
-import { loadLogs } from './log.js?v=490';
+} from './permissions.js?v=491';
+import { applyProfileToUI } from './profile.js?v=491';
+import { loadCurrentTrip, registerBackHandler } from './trip.js?v=491';
+import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=491';
+import { loadNotices } from './notice.js?v=491';
+import { startEmergencyPoll, pollEmergency } from './emergency.js?v=491';
+import { checkUpdate } from './update.js?v=491';
+import { openMap } from './map.js?v=491';
+import { loadLogs } from './log.js?v=491';
 
 let isAppInitialized = false;
 
@@ -32,6 +32,14 @@ export function openSettings() {
 }
 
 export function switchTab(tab) {
+  // 프로필 미완성이면 탭 전환 차단
+  const profileDone = State.profile.name?.trim() && State.profile.phone?.trim()
+    && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
+  if (!profileDone) {
+    window.App?.showToast('차량 정보를 먼저 저장해 주세요.');
+    return;
+  }
+
   if (tab === 'map') { openMap(); return; }
   showScreen('main');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -160,8 +168,15 @@ export async function init() {
       applyProfileToUI();
     }
 
-    const hasProfile = State.profile.name && State.profile.phone && State.profile.vehicleNo && State.profile.driverId;
-    if (!hasProfile) { openSettings(); } else { showMain(); }
+    // 프로필 완성도 검사 (빈 값 제외, 업데이트 후 부실 데이터 방지)
+    const hasProfile = State.profile.name?.trim() && State.profile.phone?.trim()
+      && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
+
+    if (!hasProfile) {
+      openSettings();
+    } else {
+      showMain();
+    }
 
     // 월별 필터 초기값
     const monFilter = document.getElementById('log-month-filter');

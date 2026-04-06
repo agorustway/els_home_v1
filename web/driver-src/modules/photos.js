@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=490';
-import { smartFetch } from './bridge.js?v=490';
-import { showToast } from './utils.js?v=490';
-import { updateProfilePhoto } from './profile.js?v=490';
+import { State, BASE_URL } from './store.js?v=491';
+import { smartFetch } from './bridge.js?v=491';
+import { showToast } from './utils.js?v=491';
+import { updateProfilePhoto } from './profile.js?v=491';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -76,9 +76,14 @@ export function renderPhotoThumbs() {
   const scroll  = document.getElementById('photo-scroll');
   if (!scroll) return;
   const addBtn  = '<button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>';
-  const thumbs  = State.photos.map((p, i) =>
-    `<img class="photo-thumb" src="${p.serverUrl || p.dataUrl}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`
-  ).join('');
+  const thumbs  = State.photos.map((p, i) => {
+    let src = p.serverUrl || p.dataUrl || '';
+    // 상대경로면 절대경로로 변환
+    if (src && !src.startsWith('http') && !src.startsWith('data:')) {
+      src = BASE_URL + (src.startsWith('/') ? '' : '/') + src;
+    }
+    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`;
+  }).join('');
   scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
   const cnt = document.getElementById('photo-count-display');
   if (cnt) cnt.textContent = `(${State.photos.length}/10)`;
@@ -111,13 +116,18 @@ export async function uploadPendingPhotos() {
       });
       const data = await res.json().catch(() => ({}));
       if (data.photos && Array.isArray(data.photos)) {
-        State.photos = data.photos.map(sp => ({
-          ...sp,
-          uploaded:  true,
-          serverUrl: sp.url
-            ? (sp.url.startsWith('http') ? sp.url : BASE_URL + (sp.url.startsWith('/') ? '' : '/') + sp.url)
-            : (sp.serverUrl || sp.dataUrl || ''),
-        }));
+        State.photos = data.photos.map(sp => {
+          // 서버 URL이 상대경로면 절대경로로 변환 후 저장
+          let finalUrl = sp.url || sp.serverUrl || sp.dataUrl || '';
+          if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:')) {
+            finalUrl = BASE_URL + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
+          }
+          return {
+            ...sp,
+            uploaded:  true,
+            serverUrl: finalUrl,
+          };
+        });
         renderPhotoThumbs();
         uploadedCount++;
       } else if (data.error) {

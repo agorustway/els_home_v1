@@ -25,11 +25,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1
 - `web/public/apk/version.json` — latestVersion, versionCode, downloadUrl 갱신
 - `npx cap sync` — driver-src/ → assets/public/ 복사
 - `gradlew clean assembleDebug` — 클린 빌드
-
-### 3. APK 배포 경로 복사
-```powershell
-Copy-Item web\android\app\build\outputs\apk\debug\app-debug.apk web\public\apk\els_driver.apk -Force
-```
+- **APK 배포 경로 복사** — `app-debug.apk` → `web/public/apk/els_driver.apk`
+- **자동 검증** — 현재시각, 빌드시각, 배포시각 비교 + APK 내부 버전 확인
 
 ### 4. 현황판 및 개발로그 갱신
 - `docs/01_MISSION_CONTROL.md` — Current Build 버전 업데이트

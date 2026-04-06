@@ -1,12 +1,12 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=490';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=490';
+import { Store, State, BASE_URL } from './store.js?v=491';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=491';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=490';
+} from './gps.js?v=491';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -30,7 +30,9 @@ export function saveChecklist() {
   closeChecklist();
   const btn = document.getElementById('btn-trip-checklist');
   if (btn) { btn.style.background = '#2563eb'; btn.style.color = '#ffffff'; }
-  showToast('운행 전 점검 완료! 이제 운행 시작이 가능합니다.');
+  showToast('운행 전 점검 완료! 운행을 시작합니다.');
+  // 점검 완료 후 자동 운행 시작
+  setTimeout(() => startTrip(), 300);
 }
 
 // ─── 오버레이 서비스 ─────────────────────────────────────────────
@@ -337,6 +339,9 @@ export function updateTripUI() {
   const isActive = State.trip.status === 'driving' || State.trip.status === 'paused';
   document.getElementById('trip-start-row')?.classList.toggle('hidden', isActive);
   document.getElementById('trip-control-row')?.classList.toggle('hidden', !isActive);
+  // 운행 중 내용비움 버튼 숨기기
+  document.getElementById('btn-clear-trip')?.classList.toggle('hidden', isActive);
+
   const pauseBtn = document.getElementById('btn-trip-pause');
   if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '운행 재개' : '일시정지';
 

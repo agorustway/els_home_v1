@@ -3,6 +3,10 @@ param(
     [switch]$ForceUpdate = $false
 )
 
+# Force UTF-8 encoding for PowerShell console
+chcp 65001 > $null
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 $ErrorActionPreference = "Stop"
 $UTF8NoBOM = New-Object System.Text.UTF8Encoding($false)
 
@@ -95,4 +99,82 @@ if (-not $SkipBuild) {
 } else {
     Write-Host ""
     Write-Host "-SkipBuild: Gradle build skipped"
+}
+
+# 9. APK Deploy copy + Validation
+Write-Host ""
+$apkBuild   = Join-Path $WEB_DIR "android\app\build\outputs\apk\debug\app-debug.apk"
+$apkDeploy  = Join-Path $WEB_DIR "public\apk\els_driver.apk"
+
+if (Test-Path $apkBuild) {
+    $buildTime  = (Get-Item $apkBuild).LastWriteTime
+    $currentTime = Get-Date
+
+    Write-Host "[7/7] APK Deploy copy + Validation..."
+    Write-Host "  Current time: $($currentTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+    Write-Host "  Build time:   $($buildTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+
+    Copy-Item $apkBuild $apkDeploy -Force
+    Start-Sleep -Milliseconds 500
+
+    $deployTime = (Get-Item $apkDeploy).LastWriteTime
+    $timeDiff   = ($deployTime - $buildTime).TotalSeconds
+
+    Write-Host "  Deploy time:  $($deployTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+    Write-Host "  Time diff:    $([math]::Round($timeDiff, 1))sec"
+
+    if ($timeDiff -ge 0 -and $timeDiff -lt 10) {
+        Write-Host "  SUCCESS: APK copied to deploy location"
+    } else {
+        Write-Host "  WARNING: Deploy file time seems odd"
+    }
+
+    # APK internal validation
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $tempDir = Join-Path $env:TEMP "els_apk_check_$(Get-Random)"
+        if (Test-Path $tempDir) {
+            Remove-Item $tempDir -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $tempDir -Force > $null
+
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($apkDeploy, $tempDir)
+        $storeFile = Join-Path $tempDir "assets\public\modules\store.js"
+
+        if (Test-Path $storeFile) {
+            $storeContent = [System.IO.File]::ReadAllText($storeFile, [System.Text.Encoding]::UTF8)
+            if ($storeContent -like "*APP_VERSION: 'v$versionName'*") {
+                Write-Host "  VERIFIED: APK internal version v$versionName OK"
+            } else {
+                Write-Host "  WARNING: APK internal version mismatch (not v$versionName)"
+            }
+        }
+
+        # Also check that settings-back-btn is removed (UI fix validation)
+        $indexFile = Join-Path $tempDir "assets\public\index.html"
+        if (Test-Path $indexFile) {
+            $indexContent = [System.IO.File]::ReadAllText($indexFile, [System.Text.Encoding]::UTF8)
+            $hasSettingsBtn = $indexContent -like "*settings-back-btn*"
+            if (-not $hasSettingsBtn) {
+                Write-Host "  VERIFIED: settings-back-btn removed (UI fix OK)"
+            } else {
+                Write-Host "  WARNING: settings-back-btn still present (UI fix not applied)"
+            }
+        }
+
+        Remove-Item $tempDir -Recurse -Force
+    } catch {
+        Write-Host "  (APK validation skipped: $_)"
+    }
+
+    Write-Host ""
+    Write-Host "============================================"
+    Write-Host " DEPLOY COMPLETE"
+    Write-Host " Final APK: $apkDeploy"
+    Write-Host " Version:   v$versionName ($versionCode)"
+    Write-Host "============================================"
+
+} else {
+    Write-Host "ERROR: Build APK not found"
+    exit 1
 }

@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=490';
-import { Overlay, remoteLog } from './bridge.js?v=490';
-import { showScreen } from './nav.js?v=490';
+import { Store, State } from './store.js?v=491';
+import { Overlay, remoteLog } from './bridge.js?v=491';
+import { showScreen } from './nav.js?v=491';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -23,19 +23,26 @@ function showToast(msg, duration) {
 function waitForForeground(timeoutMs = 30000) {
   return new Promise(resolve => {
     let done = false;
-    let handle = null;
+    let handles = [];
     const finish = () => {
       if (done) return;
       done = true;
-      handle?.remove?.();
+      handles.forEach(h => h?.remove?.());
       resolve();
     };
     const CapApp = window.Capacitor?.Plugins?.App;
-    if (CapApp) {
-      CapApp.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) finish();
-      }).then(h => { handle = h; });
-    }
+    if (!CapApp) { setTimeout(finish, timeoutMs); return; }
+
+    let wentBackground = false;
+    // 2단계: 먼저 백그라운드 전환 감지 후, 포그라운드 복귀 감지
+    CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) {
+        wentBackground = true;  // 1단계: 백그라운드 전환 확인
+      } else if (wentBackground) {
+        finish();               // 2단계: 포그라운드 복귀 감지
+      }
+    }).then(h => { handles.push(h); });
+
     setTimeout(finish, timeoutMs);
   });
 }
@@ -162,7 +169,7 @@ async function executeRealRequest(type) {
   try {
     switch (type) {
       case 'location':
-        alert('화면이 꺼졌을 때도 위치 상태를 추적하려면 설정에서 반드시 [항상 허용]을 선택해야 합니다.');
+        // alert 제거 - 순차 자동설정 진행
         if (window.Capacitor?.Plugins?.Geolocation) {
           await window.Capacitor.Plugins.Geolocation.requestPermissions();
         }
@@ -255,8 +262,8 @@ export async function requestAllPerms() {
   }
 
   const specialPerms = [
-    { key: 'overlay', type: 'overlay'},
-    { key: 'battery', type: 'battery'}
+    { key: 'battery', type: 'battery'},
+    { key: 'overlay', type: 'overlay'}
   ];
 
   for (const perm of specialPerms) {
@@ -320,8 +327,9 @@ export function finishPermSetup() {
     }
 
     Store.set('permSetupDone', true);
-    const hasProfile = State.profile.name && State.profile.phone
-      && State.profile.vehicleNo && State.profile.driverId;
+    // 프로필 완성도 검사 (빈 값 제외, 업데이트 후 부실 데이터 방지)
+    const hasProfile = State.profile.name?.trim() && State.profile.phone?.trim()
+      && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
 
     if (!hasProfile) {
       showToast('권한 설정 완료! 차량 정보를 먼저 등록해 주세요.');
