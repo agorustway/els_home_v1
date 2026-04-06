@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=493';
-import { smartFetch } from './bridge.js?v=493';
-import { showToast } from './utils.js?v=493';
-import { updateProfilePhoto } from './profile.js?v=493';
+import { State, BASE_URL } from './store.js?v=494';
+import { smartFetch } from './bridge.js?v=494';
+import { showToast } from './utils.js?v=494';
+import { updateProfilePhoto } from './profile.js?v=494';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -181,7 +181,7 @@ function updatePhotoViewerUI() {
   } else {
     url = isLog
       ? (p.url ? (p.url.startsWith('http') ? p.url : BASE_URL + p.url) : (p.serverUrl || p.dataUrl || ''))
-      : (p.serverUrl || p.dataUrl);
+      : (p.dataUrl || p.serverUrl || '');
   }
 
   const img = document.getElementById('photo-viewer-img');
