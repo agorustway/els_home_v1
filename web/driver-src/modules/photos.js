@@ -80,7 +80,8 @@ export function renderPhotoThumbs() {
     // dataUrl 우선 표시 (서버 URL 접근 실패해도 항상 로컬 이미지 보임)
     let src = p.dataUrl || p.serverUrl || '';
     if (!src && p.serverUrl) src = p.serverUrl;
-    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}">`;
+    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}"
+      onerror="this.onerror=null;this.style.background='#fee2e2';this.style.objectFit='contain';console.error('[PHOTO] 이미지 로드 실패:',this.src)">`;
   }).join('');
   scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
   const cnt = document.getElementById('photo-count-display');
@@ -237,13 +238,17 @@ export async function deleteCurrentPhoto() {
         body: JSON.stringify({ photos }),
       });
       if (!res.ok) throw new Error('서버 통신 실패');
+      const resData = await res.json().catch(() => ({}));
+      console.log('[PHOTO-DEL] PATCH 응답:', resData);
       State.logPhotos = photos;
       showToast('사진이 삭제되었습니다.');
-      if (!State.logPhotos.length) { closePhotoViewer(); return; }
-      if (State.currentPhotoIdx >= State.logPhotos.length) State.currentPhotoIdx = State.logPhotos.length - 1;
-      updatePhotoViewerUI();
-      window.App?.openLog(State.currentLogId);
-    } catch (e) { showToast('사진 삭제 실패: ' + e.message); }
+      closePhotoViewer();
+      // 일지 상세를 서버에서 다시 불러와 상태 동기화
+      await window.App?.openLog(State.currentLogId);
+    } catch (e) {
+      console.error('[PHOTO-DEL] 삭제 실패:', e);
+      showToast('사진 삭제 실패: ' + e.message);
+    }
     return;
   }
 

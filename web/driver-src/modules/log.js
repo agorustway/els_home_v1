@@ -142,7 +142,8 @@ export async function openLog(id) {
           url = BASE_URL + (url.startsWith('/') ? '' : '/') + url;
         }
         return url
-          ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i + 1}">`
+          ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i + 1}"
+              onerror="this.onerror=null;this.style.background='#fee2e2';console.error('[LOG-PHOTO] 로드 실패:',this.src)">`
           : '';
       }).join('');
       photoScroll.innerHTML = html;

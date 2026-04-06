@@ -273,63 +273,46 @@ export async function requestAllPerms() {
     }
   }
 
-  const specialPerms = [
-    { key: 'overlay', type: 'overlay'},
-    { key: 'battery', type: 'battery'}
-  ];
+  // ── 오버레이 (순차 자동) ──
+  if (!permStatuses.overlay) {
+    console.log('[PERM] 오버레이 권한 시작');
+    showToast('다른 앱 위에 표시 권한을 설정합니다...', 1500);
 
-  for (const perm of specialPerms) {
-    console.log(`[PERM] 특별 권한 시작: ${perm.type}, 현재 상태: ${permStatuses[perm.key]}`);
-    if (!permStatuses[perm.key]) {
-      showToast(perm.type + ' 권한을 설정합니다...', 1500);
+    const guide = document.getElementById('modal-guide-android16');
+    const confirmBtn = document.getElementById('btn-guide-confirm');
 
-      // 모달이 있으면 UI로 안내, 없으면 바로 요청
-      const guide = document.getElementById('modal-guide-android16');
-      const confirmBtn = document.getElementById('btn-guide-confirm');
-
-      console.log(`[PERM] ${perm.type} 모달 찾음:`, !!guide, '버튼 찾음:', !!confirmBtn);
-
-      if (guide && confirmBtn) {
-        await new Promise(resolve => {
-          console.log(`[PERM] ${perm.type} 모달 표시`);
-          guide.style.display = 'flex';
-          const bodyEl = document.getElementById('modal-guide-body');
-          if (bodyEl) {
-            bodyEl.innerHTML = perm.type === 'overlay'
-              ? '다른 앱 위에 표시 설정창이 열립니다.<br>ELS 앱을 찾아 허용 후 돌아오세요.'
-              : '배터리 최적화 제외 설정창이 열립니다.<br>앱 정보 → 배터리 → <b>제한 없음</b> 선택 후 돌아오세요.';
-          }
-          confirmBtn.onclick = async (ev) => {
-            console.log(`[PERM] ${perm.type} 버튼 클릭됨`);
-            ev.preventDefault();
-            guide.style.display = 'none';
-            await new Promise(r => setTimeout(r, 300));
-            console.log(`[PERM] ${perm.type} executeRealRequest 호출`);
-            await executeRealRequest(perm.type);
-            console.log(`[PERM] ${perm.type} waitForForeground 시작`);
-            await waitForForeground(8000);   // 앱 포그라운드 복귀 대기
-            console.log(`[PERM] ${perm.type} waitForForeground 완료, 추가 안정화 대기 중...`);
-            // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
-            await new Promise(r => setTimeout(r, 3000));
-            resolve();
-          };
-        });
-      } else {
-        // 모달 없으면 바로 요청
-        console.log(`[PERM] ${perm.type} 모달 없음, 바로 요청`);
-        await executeRealRequest(perm.type);
-        await waitForForeground(8000);      // 앱 포그라운드 복귀 대기
-        // 배터리/오버레이 설정창이 완전히 닫힐 시간 확보
-        await new Promise(r => setTimeout(r, 3000));
-      }
-
-      console.log(`[PERM] ${perm.type} updatePermStatuses 호출`);
-      await updatePermStatuses();
-      console.log(`[PERM] ${perm.type} 완료, 현재 상태: ${permStatuses[perm.key]}`);
+    if (guide && confirmBtn) {
+      await new Promise(resolve => {
+        guide.style.display = 'flex';
+        const bodyEl = document.getElementById('modal-guide-body');
+        if (bodyEl) {
+          bodyEl.innerHTML = '다른 앱 위에 표시 설정창이 열립니다.<br>ELS 앱을 찾아 허용 후 돌아오세요.';
+        }
+        confirmBtn.onclick = async (ev) => {
+          ev.preventDefault();
+          guide.style.display = 'none';
+          await new Promise(r => setTimeout(r, 300));
+          await executeRealRequest('overlay');
+          await waitForForeground(8000);
+          await new Promise(r => setTimeout(r, 3000));
+          resolve();
+        };
+      });
+    } else {
+      await executeRealRequest('overlay');
+      await waitForForeground(8000);
+      await new Promise(r => setTimeout(r, 3000));
     }
+    await updatePermStatuses();
   }
 
-  showToast('순차 설정이 완료되었습니다. 확인을 눌러주세요.');
+  // ── 배터리 최적화 (순차 자동 불가 → 수동 안내) ──
+  // Android 시스템 다이얼로그가 앱 뒤에 숨는 문제로, 순차 자동에서 제외
+  if (!permStatuses.battery) {
+    showToast('배터리 최적화 제외는 아래 [설정] 버튼을 직접 눌러주세요.', 4000);
+  }
+
+  showToast('순차 설정이 완료되었습니다. 배터리 최적화는 수동 설정 필요합니다.', 3000);
 }
 
 export function manualRefreshPerms() {
