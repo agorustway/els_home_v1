@@ -1,23 +1,25 @@
 /**
- * ELS Driver App ??紐⑤뱢 ?뷀듃由??ъ씤?? * ES Modules 諛⑹떇?쇰줈 媛?湲곕뒫 紐⑤뱢??import?섏뿬 window.App 議곕┰
+ * ELS Driver App — 모듈 엔트리 포인트
+ * ES Modules 방식으로 각 기능 모듈을 import하여 window.App 조립
  */
 import { AppConfig } from './modules/store.js?v=486';
 import { remoteLog } from './modules/bridge.js?v=486';
 import { showToast, formatDate, escHtml } from './modules/utils.js?v=486';
 import { showScreen } from './modules/nav.js?v=486';
 
-// 沅뚰븳
+// 권한
 import {
   requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
 } from './modules/permissions.js?v=486';
 
-// ?꾨줈??import {
+// 프로필
+import {
   saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
 } from './modules/profile.js?v=486';
 
-// ?댄뻾 + ?ㅻ쾭?덉씠
+// 운행 + 오버레이
 import {
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist,
@@ -31,94 +33,100 @@ import {
   gpsWatchId, lastGpsTimestamp,
 } from './modules/gps.js?v=486';
 
-// 怨듭?
+// 공지
 import { loadNotices, filterNotice, openNotice, closeNoticeDetail } from './modules/notice.js?v=486';
 
-// ?ъ쭊
+// 사진
 import {
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,
   openPhotoViewer, openLogPhoto, closePhotoViewer, prevPhoto, nextPhoto,
   deleteCurrentPhoto, initPinchZoom,
 } from './modules/photos.js?v=486';
 
-// ?쇱?
+// 일지
 import {
   loadLogs, openLog, onLogFieldChange, saveLogEdit, deleteLog,
   forceCompleteLog, closeLogDetail, addLogPhoto, onLogFileSelected,
 } from './modules/log.js?v=486';
 
-// 湲닿툒?뚮┝
+// 긴급알림
 import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=486';
 
-// ?낅뜲?댄듃
+// 업데이트
 import { checkUpdate } from './modules/update.js?v=486';
 
-// 吏??import {
+// 지도
+import {
   openMap, closeMap, refreshMapData, centerMyLocation,
   toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
 } from './modules/map.js?v=486';
 
-// 珥덇린??import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=486';
+// 초기화
+import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=486';
 
-// ??? window.App 議곕┰ ?????????????????????????????????????????????
-// index.html??紐⑤뱺 onclick="App.xxx()" ?몄텧???⑥씪 吏꾩엯??window.App = {
-  // 踰꾩쟾 (?ㅼ씠?곕툕 ?묎렐??
+// ─── window.App 조립 ─────────────────────────────────────────────
+// index.html의 모든 onclick="App.xxx()" 호출의 단일 진입점
+window.App = {
+  // 버전 (네이티브 접근용)
   get _version()    { return AppConfig.APP_VERSION; },
   get _buildCode()  { return AppConfig.BUILD_CODE; },
 
-  // GPS ?곹깭 ?몄텧 (init.js??appStateChange ?몃뱾?ъ슜)
+  // GPS 상태 노출 (init.js의 appStateChange 핸들러용)
   get _lastGpsTs()  { return lastGpsTimestamp; },
   get _gpsWatchId() { return gpsWatchId; },
 
-  // ?좏떥
+  // 유틸
   showToast, formatDate, escHtml, remoteLog,
 
-  // ?ㅻ퉬
+  // 네비
   showScreen, showMain, openSettings, switchTab,
 
-  // 沅뚰븳
+  // 권한
   requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
 
-  // ?꾨줈??  saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
+  // 프로필
+  saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
 
-  // ?댄뻾
+  // 운행
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist,
 
-  // GPS / ?ㅼ떆媛?  startRealtimeMode, stopRealtimeMode, updateTripStatusLine,
+  // GPS / 실시간
+  startRealtimeMode, stopRealtimeMode, updateTripStatusLine,
   pollEmergency,
 
-  // 怨듭?
+  // 공지
   filterNotice, openNotice, closeNoticeDetail,
 
-  // ?ъ쭊
+  // 사진
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,
   openPhotoViewer, openLogPhoto, closePhotoViewer,
   prevPhoto, nextPhoto, deleteCurrentPhoto,
 
-  // ?쇱?
+  // 일지
   loadLogs, openLog, onLogFieldChange, saveLogEdit, deleteLog,
   forceCompleteLog, closeLogDetail, addLogPhoto, onLogFileSelected,
 
-  // 湲닿툒?뚮┝
+  // 긴급알림
   closeEmergency,
 
-  // ?낅뜲?댄듃
+  // 업데이트
   checkUpdate,
 
-  // 吏??  openMap, closeMap, refreshMapData, centerMyLocation,
+  // 지도
+  openMap, closeMap, refreshMapData, centerMyLocation,
   toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
 
-  // ??醫낅즺
+  // 앱 종료
   exitApp,
 
-  // ?ㅻ줈媛湲?(?ㅼ씠?곕툕 釉뚮┸吏??
+  // 네이티브 뒤로가기 (네이티브 브릿지용)
   handleBackButton: () => window.handleBackButton?.() ?? false,
 };
 
-// ??? ???쒖옉 ?????????????????????????????????????????????????????
+// ─── 앱 시작 ─────────────────────────────────────────────────────
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => { init(); initPinchZoom(); });
 } else {
