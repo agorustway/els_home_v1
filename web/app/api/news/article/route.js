@@ -1,9 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
-import DOMPurify from 'isomorphic-dompurify';
 
 const ALLOWED_TAGS = ['p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b', 'em', 'i', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'div', 'span'];
 
@@ -14,6 +11,13 @@ export async function GET(request) {
     if (!url || typeof url !== 'string') {
         return NextResponse.json({ error: 'url 필요' }, { status: 400 });
     }
+
+    // 빌드 타임 에러 방지를 위한 동적 임포트
+    const [{ JSDOM }, { Readability }, { default: DOMPurify }] = await Promise.all([
+        import('jsdom'),
+        import('@mozilla/readability'),
+        import('isomorphic-dompurify')
+    ]);
 
     try {
         const parsed = new URL(url);

@@ -31,7 +31,15 @@ const nextConfig = {
       }
     ];
   },
-  serverExternalPackages: ["jsdom", "isomorphic-dompurify"],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        jsdom: 'commonjs jsdom',
+        canvas: 'commonjs canvas',
+      });
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
