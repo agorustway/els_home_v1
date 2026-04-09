@@ -355,40 +355,46 @@ def run():
                 grid_text = scrape_hyper_verify(driver, cn)
             
             if grid_text:
-                pool.add_log(f"--- [DEBUG RAW TEXT: {cn}] ---")
-                pool.add_log(grid_text[:200] + "...") 
-                
-                temp_rows = []
-                # 🎯 [끝판왕 파싱] 텍스트 전체에서 번호(1~100) + 상태 가 붙은 모든 조각을 찾아냄
-                for line in grid_text.split('\n'):
-                    line = line.strip()
-                    if not line: continue
-                    if '|' in line:
-                        parts = line.split('|')
-                        if len(parts) >= 2:
-                            while len(parts) < 14: parts.append("")
-                            temp_rows.append([cn] + parts[:14])
-
-                if not temp_rows:
+                # [v4.9.9] WebSquare API에서 NODATA 응답 처리
+                if grid_text in ["NODATA_GRID_EMPTY", "내역없음확인"]:
+                    result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                    grid_text = None  # 아래 파싱 스킵
+                else:
+                    pool.add_log(f"--- [DEBUG RAW TEXT: {cn}] ---")
+                    pool.add_log(grid_text[:200] + "...") 
+                    
+                    temp_rows = []
+                    # 🎯 [끝판왕 파싱] 텍스트 전체에서 번호(1~100) + 상태 가 붙은 모든 조각을 찾아냄
                     for line in grid_text.split('\n'):
                         line = line.strip()
                         if not line: continue
-                        if re.search(r'^\d+\s+', line):
-                            parts = re.split(r'\t|\s{2,}', line)
-                            if len(parts) >= 3:
+                        if '|' in line:
+                            parts = line.split('|')
+                            if len(parts) >= 2:
                                 while len(parts) < 14: parts.append("")
                                 temp_rows.append([cn] + parts[:14])
 
-                # No 기준 중복 제거 및 유효성 검사
-                seen_no = set()
-                for r in sorted(temp_rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
-                    if r[1] not in seen_no:
-                        if any(cell.strip() and cell.strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in r[2:14]):
-                            result_rows.append(r)
-                            seen_no.add(r[1])
+                    if not temp_rows:
+                        for line in grid_text.split('\n'):
+                            line = line.strip()
+                            if not line: continue
+                            if re.search(r'^\d+\s+', line):
+                                parts = re.split(r'\t|\s{2,}', line)
+                                if len(parts) >= 3:
+                                    while len(parts) < 14: parts.append("")
+                                    temp_rows.append([cn] + parts[:14])
+
+                    # No 기준 중복 제거 및 유효성 검사
+                    seen_no = set()
+                    for r in sorted(temp_rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
+                        if r[1] not in seen_no:
+                            if any(cell.strip() and cell.strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in r[2:14]):
+                                result_rows.append(r)
+                                seen_no.add(r[1])
             
             if not result_rows:
-                if grid_text == "NODATA_CONFIRMED" or (grid_text and any(msg in grid_text for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다"])):
+                if grid_text == "NODATA_CONFIRMED" or grid_text == "NODATA_GRID_EMPTY" or grid_text == "내역없음확인" or \
+                   (grid_text and any(msg in grid_text for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다"])):
                     result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
                 else:
                     result_rows.append([cn, "ERROR", "데이터 추출 실패 (시간 초과)"] + [""]*12)

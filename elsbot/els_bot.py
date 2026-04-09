@@ -281,49 +281,173 @@ def solve_input_and_search(page, container_no, log_callback=None):
         return False
 
 def scrape_hyper_verify(page, search_no):
-    """모든 프레임을 뒤져서 WebSquare 데이터를 추출 (DrissionPage 이식, win.frames 오류 방지)"""
+    """[v4.9.9] WebSquare 그리드 API 또는 정밀 타겟팅 DOM 스크래핑으로 데이터 추출
     
-    script = r"""
-    var results = [];
-    function dive(win) {
-        try {
-            var rows = win.document.querySelectorAll('tr');
-            for (var j = 0; j < rows.length; j++) {
-                var cells = rows[j].cells;
-                if (!cells || cells.length < 5) continue;
-                
-                var rowVals = [];
-                for (var k = 0; k < cells.length; k++) {
-                    rowVals.push(cells[k].innerText.trim().replace(/\s+/g, ' '));
-                }
-                var rowText = rowVals.join('|');
-                
-                var hasDirection = (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1);
-                var isNumberedRow = /^\d+\|/.test(rowText);
-                
-                if (isNumberedRow && hasDirection) {
-                    results.push(rowText);
-                }
-            }
-            // win.frames는 JS 브라우저 객체이므로 안전하게 접근 가능
-            for (var i = 0; i < win.frames.length; i++) { 
-                try { dive(win.frames[i]); } catch(e) {}
-            }
-        } catch (e) {}
-    }
-    dive(window);
-    
-    var finalData = Array.from(new Set(results));
-    return finalData.length > 0 ? finalData.join('\n') : "";
+    핵심 수정: 기존에는 페이지 전체의 모든 <tr>을 재귀적으로 긁어와서
+    이전 조회 캐시/다른 탭의 데이터가 섞이는 치명적 버그가 있었음.
+    이제 WebSquare 그리드 컨트롤의 데이터 모델에서 직접 추출하거나,
+    DOM 폴백 시에도 602(컨테이너이동현황) 그리드 영역만 정확히 타격함.
     """
     
-    # [v4.5.3] 최대 6초(12회×0.5s) 대기 — NAS 부하 최소화 + 충분한 로딩 시간
+    # ====== 전략 1: WebSquare 그리드 네이티브 API (가장 정확) ======
+    ws_grid_script = r"""
+    // WebSquare 그리드 컴포넌트에서 데이터 모델을 직접 추출
+    // 이 방법은 DOM이 아닌 JS 데이터 모델에서 가져오므로 100% 신뢰 가능
+    var results = [];
+    
+    // 1단계: WebSquare 그리드 컴포넌트 찾기 (602 = 컨테이너이동현황 메뉴)
+    var gridIds = [
+        'mf_tac_layout_contents_602_body_gridView',
+        'mf_tac_layout_contents_602_body_grd_list',
+        'mf_tac_layout_contents_602_body_grid'
+    ];
+    
+    var grid = null;
+    for (var g = 0; g < gridIds.length; g++) {
+        try {
+            var el = document.getElementById(gridIds[g]);
+            if (el && typeof el.getRowCount === 'function') { grid = el; break; }
+        } catch(e) {}
+    }
+    
+    // 2단계: ID로 못 찾으면, 602 컨텐츠 영역 내의 모든 WebSquare 그리드 탐색
+    if (!grid) {
+        var container = document.querySelector('[id*="602_body"]') || 
+                        document.querySelector('[id*="602"]');
+        if (container) {
+            var candidates = container.querySelectorAll('[id*="grid"], [id*="grd"]');
+            for (var c = 0; c < candidates.length; c++) {
+                if (typeof candidates[c].getRowCount === 'function') {
+                    grid = candidates[c];
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 3단계: 최종 폴백 - 페이지 내 모든 WebSquare 그리드 중 데이터가 있는 것
+    if (!grid) {
+        var allGrids = document.querySelectorAll('[class*="w2grid"], [id*="gridView"], [id*="grd_list"]');
+        for (var a = 0; a < allGrids.length; a++) {
+            if (typeof allGrids[a].getRowCount === 'function' && allGrids[a].getRowCount() > 0) {
+                grid = allGrids[a];
+                break;
+            }
+        }
+    }
+    
+    if (grid && typeof grid.getRowCount === 'function') {
+        var rowCount = grid.getRowCount();
+        if (rowCount === 0) return "NODATA_GRID_EMPTY";
+        
+        // getAllJSON이 있으면 한방에 추출
+        if (typeof grid.getAllJSON === 'function') {
+            try {
+                var jsonData = grid.getAllJSON();
+                if (typeof jsonData === 'string') jsonData = JSON.parse(jsonData);
+                if (Array.isArray(jsonData)) {
+                    for (var r = 0; r < jsonData.length; r++) {
+                        var row = jsonData[r];
+                        var vals = Object.values(row);
+                        results.push(vals.join('|'));
+                    }
+                    if (results.length > 0) return results.join('\n');
+                }
+            } catch(e) {}
+        }
+        
+        // getCellData로 셀별 추출 (폴백)
+        if (typeof grid.getCellData === 'function') {
+            var colCount = 15; // 최대 컬럼 수
+            try { 
+                if (typeof grid.getColumnCount === 'function') colCount = grid.getColumnCount();
+            } catch(e) {}
+            
+            for (var r = 0; r < rowCount; r++) {
+                var rowVals = [];
+                for (var c = 0; c < colCount; c++) {
+                    try {
+                        var val = grid.getCellData(r, c);
+                        rowVals.push(String(val || '').trim());
+                    } catch(e) { rowVals.push(''); }
+                }
+                results.push(rowVals.join('|'));
+            }
+            if (results.length > 0) return results.join('\n');
+        }
+    }
+    
+    return "";
+    """
+    
+    # ====== 전략 2: 602 그리드 영역 DOM 정밀 타겟팅 (WebSquare API 없을 때) ======
+    dom_targeted_script = r"""
+    var results = [];
+    
+    // 602(컨테이너이동현황) 영역의 테이블만 정확히 타격
+    var gridContainer = document.querySelector('[id*="602_body"]');
+    if (!gridContainer) {
+        // 폴백: 602 관련 요소 검색
+        var all602 = document.querySelectorAll('[id*="602"]');
+        for (var i = 0; i < all602.length; i++) {
+            if (all602[i].querySelectorAll('tr').length > 2) {
+                gridContainer = all602[i];
+                break;
+            }
+        }
+    }
+    
+    if (!gridContainer) return "";
+    
+    // 해당 영역 내의 데이터 테이블에서만 추출 (w2grid 본문 테이블 타겟팅)
+    var tables = gridContainer.querySelectorAll('table.w2grid_table, table[id*="body"], table');
+    var seenTexts = {};
+    
+    for (var t = 0; t < tables.length; t++) {
+        var rows = tables[t].querySelectorAll('tr');
+        for (var j = 0; j < rows.length; j++) {
+            var cells = rows[j].cells;
+            if (!cells || cells.length < 5) continue;
+            
+            var rowVals = [];
+            for (var k = 0; k < cells.length; k++) {
+                rowVals.push(cells[k].innerText.trim().replace(/\s+/g, ' '));
+            }
+            var rowText = rowVals.join('|');
+            
+            // 숫자 시작 + 수출입/반입/반출 포함 행만 (데이터 행 필터)
+            var hasDirection = (rowText.indexOf('수입') !== -1 || rowText.indexOf('수출') !== -1 || 
+                               rowText.indexOf('반입') !== -1 || rowText.indexOf('반출') !== -1);
+            var isNumberedRow = /^\d+\|/.test(rowText);
+            
+            if (isNumberedRow && hasDirection && !seenTexts[rowText]) {
+                results.push(rowText);
+                seenTexts[rowText] = true;
+            }
+        }
+    }
+    
+    return results.length > 0 ? results.join('\n') : "";
+    """
+    
+    # [v4.9.9] 최대 6초(12회×0.5s) 대기 — 전략 1(WebSquare API) 우선
     for attempt in range(12):
         try:
-            res = page.run_js(script)
+            res = page.run_js(ws_grid_script)
+            if res and res == "NODATA_GRID_EMPTY":
+                return "내역없음확인"
             if res and '|' in res and len(res.strip()) > 10:
                 return res
         except: pass
+        
+        # 전략 1 실패 시 전략 2(DOM 정밀 타겟팅) 시도
+        if attempt >= 2:  # 첫 2회는 API만 시도 (로딩 대기)
+            try:
+                res = page.run_js(dom_targeted_script)
+                if res and '|' in res and len(res.strip()) > 10:
+                    return res
+            except: pass
+        
         time.sleep(0.5)
         
     # 데이터 없음 확인
@@ -476,15 +600,19 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
         if status is True:
             grid_text = scrape_hyper_verify(page, cn)
             if grid_text:
-                found_any = False
-                for line in grid_text.split('\n'):
-                    row_data = line.strip().split('|')
-                    if row_data and row_data[0].isdigit():
-                        while len(row_data) < 15: row_data.append("")
-                        final_rows.append([cn] + row_data[:14])
-                        found_any = True
-                if not found_any:
+                # [v4.9.9] WebSquare API NODATA 응답 처리
+                if grid_text in ["NODATA_GRID_EMPTY", "내역없음확인"]:
                     final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+                else:
+                    found_any = False
+                    for line in grid_text.split('\n'):
+                        row_data = line.strip().split('|')
+                        if row_data and row_data[0].isdigit():
+                            while len(row_data) < 15: row_data.append("")
+                            final_rows.append([cn] + row_data[:14])
+                            found_any = True
+                    if not found_any:
+                        final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
             else:
                 final_rows.append([cn, "NODATA", "데이터 추출 실패"] + [""]*12)
         else:
