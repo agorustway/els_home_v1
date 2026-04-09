@@ -31,6 +31,9 @@ const nextConfig = {
       }
     ];
   },
+  experimental: {
+    serverExternalPackages: ["jsdom", "isomorphic-dompurify"],
+  },
 };
 
 export default nextConfig;
