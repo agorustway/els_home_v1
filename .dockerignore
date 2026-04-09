@@ -1,0 +1,35 @@
+# Dependency directories
+node_modules/
+web/node_modules/
+jspm_packages/
+
+# Next.js build output
+.next/
+web/.next/
+out/
+web/out/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large archive files
+*.zip
+*.tar.gz
+els_cleanup_archive_*.zip
+
+# Git
+.git/
+
+# Local env files
+.env*.local
+
+# Capacitor/Android build artifacts
+web/android/
+web/driver-src/

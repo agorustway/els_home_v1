@@ -1,0 +1,8 @@
+node_modules/
+.next/
+out/
+.env*.local
+android/
+driver-src/
+build_err.log
+final_build_error.log
