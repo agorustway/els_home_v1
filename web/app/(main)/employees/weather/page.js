@@ -201,8 +201,10 @@ export default function WeatherPage() {
 
     // ─── Refresh handler ───
     function handleRefresh() {
-        fetchedRegions.current.delete(selectedRegion);
-        fetchedRegions.current.delete(selectedRegion + ''); // clear any param combo
+        // 'current' 탭은 geo 파라미터가 붙은 복합 키('currentlat=XX&lon=YY')도 모두 제거
+        for (const key of [...fetchedRegions.current]) {
+            if (key.startsWith(selectedRegion)) fetchedRegions.current.delete(key);
+        }
         setCache(prev => {
             const next = { ...prev };
             delete next[selectedRegion];
@@ -262,7 +264,7 @@ export default function WeatherPage() {
             </div>
 
             {/* ─── Loading Skeleton ─── */}
-            {(loading || (!activeData && (selectedRegion === 'current' ? geoLoading : true))) && (
+            {(loading || geoLoading || (!activeData && selectedRegion !== 'current')) && (
                 <div className={styles.skeleton}>
                     <div className={styles.skeletonHero} />
                     <div className={styles.skeletonStrip} />
