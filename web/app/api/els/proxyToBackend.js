@@ -123,6 +123,7 @@ export async function proxyToBackend(req, pathname = null, overrideBody = null) 
     if (res.body) {
         const ct = res.headers.get('content-type') || '';
         const isBinary = path.includes('/download') || ct.includes('spreadsheet') || ct.includes('octet-stream');
+        
         if (isBinary) {
             const buffer = await res.arrayBuffer();
             return new NextResponse(buffer, {
@@ -131,17 +132,10 @@ export async function proxyToBackend(req, pathname = null, overrideBody = null) 
                 headers: resHeaders,
             });
         }
-        const isApi = path.startsWith('/api/els');
-        const bodyText = await res.text();
-        const looksLikeHtml = ct.includes('text/html') || bodyText.trim().startsWith('<!');
-        if (isApi && looksLikeHtml) {
-            return NextResponse.json({
-                ok: false,
-                error: `백엔드가 HTML을 반환했습니다. 요청 URL: ${backendUrl}. ELS_BACKEND_URL 또는 NAS 컨테이너 상태를 확인하세요.`, // URL 로깅 강화
-                log: [bodyText.slice(0, 300)],
-            }, { status: res.status >= 400 ? res.status : 502 });
-        }
-        return new NextResponse(bodyText, {
+        
+        // [v4.9.10 수정] 스트리밍(SSE) 유지를 위해 텍스트도 버퍼링 없이 res.body를 그대로 스트림으로 반환
+        // (기존 `await res.text()`는 스트림을 끊고 지연시켜 Vercel 타임아웃의 원인이 됨)
+        return new NextResponse(res.body, {
             status: res.status,
             statusText: res.statusText,
             headers: resHeaders,
