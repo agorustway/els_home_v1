@@ -36,15 +36,24 @@ export async function GET(request) {
             ? `http://ip-api.com/json/${ip}?fields=${fields}`
             : `http://ip-api.com/json?fields=${fields}`;
 
-        const res = await fetch(url, { next: { revalidate: 3600 } });
-        if (!res.ok) throw new Error('IP 조회 실패');
-        const data = await res.json();
+        // [v4.9.11 최적화] Cloudtype 공용 IP 이슈나 ip-api.com 응답 지연으로 인한 무한 로딩 방지 (2초 타임아웃)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        if (data.status !== 'success' || data.lat == null || data.lon == null) {
-            return NextResponse.json({ region: 'asan' });
-        }
+        const res = await fetch(url, { 
+            next: { revalidate: 3600 },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error('IP 조회 실패');
+            const data = await res.json();
 
-        // 1. 도시명(city/regionName) 우선 확인 (IP 좌표 오차 보정)
+            if (data.status !== 'success' || data.lat == null || data.lon == null) {
+                return NextResponse.json({ region: 'asan' });
+            }
+
+            // 1. 도시명(city/regionName) 우선 확인 (IP 좌표 오차 보정)
         const locationText = `${data.city} ${data.regionName}`.toLowerCase();
         if (locationText.includes('asan') || locationText.includes('아산')) return NextResponse.json({ region: 'asan' });
         if (locationText.includes('dangjin') || locationText.includes('당진')) return NextResponse.json({ region: 'dangjin' });

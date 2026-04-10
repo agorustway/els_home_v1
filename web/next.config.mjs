@@ -2,9 +2,11 @@ const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: isStaticExport ? 'export' : undefined,
+  // [v4.9.11] Cloudtype 최적화: Vercel 밖의 컨테이너 환경에서는 standalone 빌드로 압축, CPU 부하 방지
+  output: isStaticExport ? 'export' : 'standalone',
   images: {
-    unoptimized: isStaticExport ? true : false,
+    // Cloudtype의 한정된 CPU를 On-the-fly 이미지 리사이징으로 낭비하지 않도록 강제 비활성화
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '**' },
       { protocol: 'https', hostname: 'elssolution.synology.me', pathname: '**' },

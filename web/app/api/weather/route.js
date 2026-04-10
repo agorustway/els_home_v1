@@ -128,10 +128,15 @@ export async function GET(request) {
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia/Seoul`;
 
+        // [v4.9.11 최적화] Cloudtype 공용 IP 이슈로 인한 Open-Meteo 무한 대기 방지 (3.5초 타임아웃)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
         const [weatherRes, airRes] = await Promise.all([
-            fetch(weatherUrl, { next: { revalidate: 900 } }), // 15분으로 단축
-            fetch(airUrl, { next: { revalidate: 900 } })
+            fetch(weatherUrl, { next: { revalidate: 900 }, signal: controller.signal }), 
+            fetch(airUrl, { next: { revalidate: 900 }, signal: controller.signal })
         ]);
+        clearTimeout(timeoutId);
 
         if (!weatherRes.ok) throw new Error('날씨 API 오류');
         const weatherData = await weatherRes.json();
