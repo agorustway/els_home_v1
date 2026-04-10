@@ -812,11 +812,19 @@
     .modalBody { padding: 14px; width: 100%; box-sizing: border-box; }
 
     /* ── 기타 ── */
-    .narrowCol {
-        max-width: 100% !important;
-        white-space: normal !important;
+    .detailOverlay {
+        width: 100% !important;
+        max-width: 100vw;
     }
 
+    .logChange {
+        flex-wrap: wrap;
+        word-break: break-all;
+    }
+
+    .logOld, .logNew {
+        word-break: break-all;
+    }
 }
 
 .trackingBtn {
