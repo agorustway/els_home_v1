@@ -2,6 +2,42 @@
 
 ---
 
+## 📅 2026-04-10 (v4.9.11 — Cloudtype 환경 CPU 경량화 및 날씨 API 타임아웃 방어)
+### 🚀 배포 요약
+Cloudtype 이관 후 발생한 Next.js 컨테이너의 극심한 초기 페이지 및 이미지 랜더링 병목 현상을 타개하기 위한 경량화 조치 및 날씨 API 접속 지연 대응.
+
+### 📌 주요 변경 사항
+- **[WEB/CONFIG] 강제 경량 빌드 (`standalone`)**:
+  - `next.config.mjs`의 빌드 `output`을 `standalone`으로 설정하여 사양 낮은 컨테이너 환경에서도 구동이 가벼워지도록 Vercel 종속성 제거 (v4.9.11)
+  - `images: { unoptimized: true }` 설정으로 Cloudtype의 빈약한 CPU를 이미지 On-the-fly 최적화 연산에 낭비하지 않도록 강제 차단.
+- **[API/FIX] 날씨 데이터 무한 지연(아사) 방지**:
+  - `app/api/weather/route.js` 및 `region-by-ip`에 `AbortController` 셔터 세팅 적용.
+  - 외부 API(`ip-api.com`, `open-meteo.com`) 통신이 2초~3.5초 지연될 경우 즉각 에러/폴백 반환을 수행하여 메인 페이지 레이스 컨디션 및 무한 대기화 원천 차단.
+
+---
+
+## 📅 2026-04-10 (v4.9.10 — 컨테이너 이력조회 Cloudtype SSE 스트림 무한 대기 픽스)
+### 🚀 배포 요약
+Vercel/Cloudtype 서버리스 기반에서 ELS-Bot이 전송하는 실시간 조회 이벤트 데이터를 버퍼링하여 통신 타임아웃을 유발하던 치명적 버그 수정.
+
+### 📌 주요 변경 사항
+- **[API/FIX] `proxyToBackend.js` 스트리밍 복원**:
+  - 기존에 `await res.text()`로 응답을 전체 메모리에 가둬버리던 방식 파기.
+  - `res.body`를 곧바로 클라이언트 `NextResponse` 스트림에 연결해 주입함으로써, 부분 조회 시마다 즉각적인 UI 업데이트(SSE)가 가능하도록 복원.
+
+---
+
+## 📅 2026-04-10 (v4.9.9 — WebSquare 데이터 오염 방어 및 크롤러 아키텍처 개편)
+### 🚀 배포 요약
+이전 이력/타 탭의 데이터가 혼용되어 조회되던 현상을 WebSquare Native API 직접 호출로 전환하여 추출 정확도를 100%로 끌어올린 메이저 개편.
+
+### 📌 주요 변경 사항
+- **[BOT/FIX] `scrape_hyper_verify` DOM 긁기에서 Native JS 훅킹으로 전면 전환**:
+  - 무차별 IFrame 및 Table 검색 쿼리를 폐기하고, ID `602` 그리드의 Native 함수 `getAllJSON()`을 우선 탐색하도록 개편.
+  - 강제 DOM 폴백 시 스코프를 제한하여 `tbody` 텍스트 오염을 원천 방지 및 NODATA_GRID_EMPTY 상태 처리 도입.
+
+---
+
 ## 📅 2026-04-07 (v4.9.6 — 사진 API Content-Length 및 캐싱 이슈 수정)
 ### 🚀 배포 요약
 사진 업로드 후 엑박(깨짐) 현상 처리 (Vercel Node 스트리밍 Chunked 응답 보완), 삭제한 사진이 캐시로 인해 되살아나는 버그 수정. 클린 배포 완료.
