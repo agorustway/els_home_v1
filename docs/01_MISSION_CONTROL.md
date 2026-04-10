@@ -30,22 +30,21 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 | 기상 대시보드 무한 대기 (CPU 병목) | 개별 기상청 API 10건 통신 지연으로 Next.js 응답 블로킹. `AbortController` 2초/3.5초 타임아웃 셔터(Fallback) 적용 | `api/weather/route.js` |
 | 프론트 대기 시간 과다 | "다른 직원 조회 중" 최대 대기: 25분 → 6분 | `page.js` |
 | stop-daemon 누락 | `app_bot.py`에 `stop-daemon` 엔드포인트 추가 | `app_bot.py` |
-| 앱 사진 엑박(500) | `<img>` 태그 대신 `CapacitorHttp`로 바이너리 로딩 처리 (Safe Loader) | `modules/bridge.js`, `log.js` 등 |
+| 앱 사진 엑박(500) | `<img>` 태그 대신 `CapacitorHttp`로 바이너리 로딩 처리 (Safe Loader) 및 NAS S3 프록시 안정화 확인 | `modules/bridge.js`, `log.js` 등 |
 
 ### ❌ 미해결 항목
-
-#### 1. NAS S3 사진 프록시 500 에러
-- **증상**: 운행 사진 업로드는 성공하나, 일지에서 사진 조회 시 깨짐(X표시)
-- **진단 결과**: `GET /api/vehicle-tracking/photos/view?key=...` → NAS S3 `GetObject` 실패 500
-- **확인 필요**: Vercel Functions 로그, NAS MinIO 서비스 상태
+- 현재 없음 (모든 긴급 앱 이슈 해결됨)
 
 ---
 
 ## ⏳ 다음 할 일
 - [x] NAS 도커 재빌드/재시작 (`app.py`, `app_bot.py` 변경 반영)
-- [x] 드라이버 앱 APK 빌드 및 배포 (`scripts\build_driver_apk.ps1`)
-- [ ] 컨테이너 조회 실 테스트 (잠금 해제 정상 동작 확인)
-- [ ] 앱 사진 로딩 최종 확인 (Safe Loader 작동 여부)
+- [x] 드라이버 앱 APK 빌드 및 배포 (`v4.9.16`)
+- [x] 아산지점 배차판 검색 수량 집계 오동작 수정
+- [x] 사이드메뉴 고정(Pin) 및 호버링(Hover) 자동화 구현
+- [x] 컨테이너 조회 실 테스트 (잠금 해제 정상 동작 확인)
+- [x] 앱 사진 로딩 최종 확인 (Safe Loader 작동 여부)
+- [ ] 사이드바 호버 트리거 UI 미세 조정 (형님 피드백 대기)
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
@@ -54,4 +53,4 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-07 (by Antigravity/Claude Opus 4.6)*
+*최종 갱신: 2026-04-10 (by Antigravity/Gemini Flash)*

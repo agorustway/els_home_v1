@@ -1,827 +1,849 @@
-/* weather.module.css - 디자인 시스템 통일 */
+/* ═══════════════════════════════════════════════════
+   weather.module.css — Premium Mobile-First Design
+   ═══════════════════════════════════════════════════ */
 
+/* ─── Page Container ─── */
 .page {
     width: 100%;
-    padding: 6px;
-    /* 인트라넷 기준: 초타이트 여백 */
+    max-width: 100%;
+    overflow-x: hidden;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #1e293b;
+    padding-bottom: 20px;
 }
 
-/* 페이지 헤더 (클린 스타일) */
-.headerBanner {
-    background: #fff;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+/* ─── Header ─── */
+.header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: relative;
+    padding: 10px 4px 6px;
+    gap: 8px;
 }
 
-.headerBanner::after {
-    display: none;
-}
-
-.headerText {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.mainTitle {
-    font-size: 1.25rem;
-    font-weight: 900;
-    color: #0f172a;
-    margin: 0;
-    letter-spacing: -0.03em;
-    padding-left: 12px;
-    border-left: 3px solid #2563eb;
-}
-
-.subTitle {
-    font-size: 0.78rem;
-    color: #64748b;
-    margin: 0;
-    font-weight: 500;
-}
-
-.kmaShortcut {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #eff6ff;
-    padding: 6px 12px;
-    border-radius: 6px;
-    color: #2563eb;
-    font-weight: 700;
-    font-size: 0.78rem;
-    text-decoration: none;
-    transition: all 0.15s;
-    border: 1px solid #bfdbfe;
-    position: relative;
-    z-index: 1;
-}
-
-.kmaShortcut:hover {
-    background: #dbeafe;
-    transform: translateY(-1px);
-}
-
-/* Grid Layout */
-.gridContainer {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 12px;
-    grid-auto-rows: minmax(auto, auto);
-}
-
-/* Cards Common Style */
-.card {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
-    padding: 20px;
-    transition: transform 0.2s, box-shadow 0.2s;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Removed .card:hover as requested */
-
-/* Hero Section (Current Weather) */
-.heroCard {
-    grid-column: span 8;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border: none;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 200px;
-}
-
-.heroContent {
-    flex: 1;
-    z-index: 2;
-}
-
-.locationBadgeWrap {
+.headerLeft {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
+    min-width: 0;
 }
 
-.locationBadge {
-    display: inline-flex;
+.headerTitle {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+}
+
+.headerRight {
+    display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.6);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #2563eb;
-    backdrop-filter: blur(4px);
+    flex-shrink: 0;
 }
 
-.refreshLocBtn {
+.refreshBtn {
     width: 32px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.6);
-    border: none;
-    border-radius: 50%;
-    color: #2563eb;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
     cursor: pointer;
     transition: all 0.2s;
-    backdrop-filter: blur(4px);
-    padding: 0;
 }
 
-.refreshLocBtn:hover:not(:disabled) {
-    background: #fff;
+.refreshBtn:hover {
+    background: #e2e8f0;
+    color: #2563eb;
+}
+
+.refreshBtn:active {
     transform: rotate(180deg);
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
-.refreshLocBtn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.currentTemp {
-    font-size: 3.5rem;
-    font-weight: 800;
-    color: #1e3a8a;
-    line-height: 1;
-    letter-spacing: -0.03em;
-}
-
-.currentCondition {
-    font-size: 1.25rem;
+.kmaLink {
+    display: inline-flex;
+    align-items: center;
+    background: #eff6ff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    color: #2563eb;
     font-weight: 700;
-    color: #334155;
-    margin-top: 6px;
+    font-size: 0.75rem;
+    text-decoration: none;
+    border: 1px solid #bfdbfe;
+    transition: all 0.15s;
+    white-space: nowrap;
 }
 
-.heroIconWrap {
-    width: 280px;
-    height: 280px;
+.kmaLink:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+}
+
+/* ─── Tab Bar ─── */
+.tabBar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 4px 0 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.tabBar::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 99px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
     display: flex;
     align-items: center;
-    justify-content: center;
-    z-index: 2;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.tab:active {
+    transform: scale(0.97);
+}
+
+.tabActive {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+    font-weight: 700;
+}
+
+.tabEmoji {
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.tabName {
+    line-height: 1;
+}
+
+/* ─── Content Area ─── */
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: fadeInContent 0.35s ease-out;
+}
+
+@keyframes fadeInContent {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Alert Bar ─── */
+.alertBar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    animation: slideInAlert 0.3s ease-out;
+}
+
+@keyframes slideInAlert {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.alertIcon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.alertText {
+    line-height: 1.3;
+}
+
+.alert_danger {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.alert_warning {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.alert_info {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+/* ─── Hero Card ─── */
+.hero {
+    border-radius: 20px;
+    padding: 26px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #ffffff;
     position: relative;
+    overflow: hidden;
+    min-height: 170px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 
-.heroIcon {
-    width: 100% !important;
-    height: auto !important;
-    filter: drop-shadow(0 15px 30px rgba(37, 99, 235, 0.25));
+.heroBody {
+    flex: 1;
+    z-index: 2;
+    min-width: 0;
 }
 
-.heroDecor {
+.heroLocation {
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0.85;
+    margin-bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 12px;
+    border-radius: 99px;
+    backdrop-filter: blur(4px);
+}
+
+.heroTemp {
+    font-size: 4.2rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.heroCondition {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-top: 4px;
+    opacity: 0.95;
+}
+
+.heroMeta {
+    font-size: 0.78rem;
+    margin-top: 8px;
+    opacity: 0.75;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.heroEmoji {
+    font-size: 5rem;
+    z-index: 2;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+    animation: floatEmoji 4s ease-in-out infinite;
+    margin-right: 4px;
+}
+
+@keyframes floatEmoji {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-8px) scale(1.03); }
+}
+
+.heroGlow {
     position: absolute;
-    top: -20%;
+    top: -30%;
     right: -10%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
     border-radius: 50%;
     z-index: 1;
     pointer-events: none;
 }
 
-/* Air Quality Card */
-.aqCard {
-    grid-column: span 4;
+/* ─── Summary Card ─── */
+.summaryCard {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    align-items: flex-start;
 }
 
-.cardTitle {
-    font-size: 1rem;
-    font-weight: 700;
+.summaryIcon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.summaryText {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #475569;
+    line-height: 1.55;
+    font-weight: 500;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+/* ─── Section Common ─── */
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sectionTitle {
+    font-size: 0.95rem;
+    font-weight: 800;
     color: #0f172a;
-    margin-bottom: 12px;
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.cardTitleIcon {
-    font-size: 1.1rem;
+.sectionIcon {
+    font-size: 1rem;
+    line-height: 1;
 }
 
-.aqList {
+/* ─── Hourly Forecast ─── */
+.hourlyScroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+}
+
+.hourlyScroll::-webkit-scrollbar {
+    display: none;
+}
+
+.hourlyItem {
+    flex-shrink: 0;
+    width: 68px;
+    padding: 12px 6px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    flex: 1;
-    justify-content: center;
-}
-
-.aqItem {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
-    background: #f8fafc;
-    border-radius: 8px;
+    gap: 6px;
+    text-align: center;
+    scroll-snap-align: start;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.aqName {
-    font-size: 0.85rem;
+.hourlyNow {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+.hourTime {
+    font-size: 0.72rem;
+    font-weight: 700;
     color: #64748b;
+    white-space: nowrap;
+}
+
+.hourlyNow .hourTime {
+    color: #2563eb;
+}
+
+.hourEmoji {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.hourTemp {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.hourRain {
+    font-size: 0.65rem;
+    color: #3b82f6;
     font-weight: 600;
 }
 
-.aqValue {
+/* ─── Air Quality ─── */
+.aqGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.aqCard {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform 0.15s;
+}
+
+.aqTop {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.aqIcon {
     font-size: 1rem;
+}
+
+.aqLabel {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.aqBottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.aqValue {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.aqUnit {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.aqBadge {
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* ─── Port Weather ─── */
+.portScroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+}
+
+.portScroll::-webkit-scrollbar {
+    display: none;
+}
+
+.portCard {
+    flex-shrink: 0;
+    min-width: 150px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-snap-align: start;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.portHead {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.portEmoji {
+    font-size: 1.2rem;
+}
+
+.portName {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.portBody {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.portStat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+}
+
+.portStatLabel {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.portStatVal {
+    font-size: 0.82rem;
     font-weight: 700;
     color: #334155;
 }
 
-.aqStatus {
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #fff;
-    min-width: 50px;
+.portLoading {
     text-align: center;
+    padding: 20px;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-/* Branch Grid (Detailed) */
-.branchSection {
-    grid-column: span 12;
-    overflow-x: auto;
-    padding-bottom: 4px;
+/* ─── Updated At ─── */
+.updatedAt {
+    text-align: center;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    padding: 8px 0 4px;
+    font-weight: 500;
 }
 
-.branchGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+/* ─── No Data / Retry ─── */
+.noData {
+    text-align: center;
+    padding: 60px 20px;
+    color: #64748b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 12px;
 }
 
-.branchCard {
-    min-width: 0;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.noData p {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.retryBtn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid #2563eb;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.82rem;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-/* Keep Hover for Branch Card (Interactive) */
-.branchCard:hover,
-.branchActive {
-    border-color: #3b82f6;
-    background: #f0f9ff;
-    transform: translateY(-2px);
+.retryBtn:hover {
+    background: #1d4ed8;
 }
 
-.branchActive {
-    box-shadow: inset 0 0 0 1px #3b82f6;
-}
-
-.branchInfoSide {
+/* ─── Skeleton Loading ─── */
+.skeleton {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-}
-
-.branchName {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-.branchStats {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.branchIconWrap {
-    width: 60px;
-    height: 60px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.branchIcon {
-    width: 100% !important;
-    height: auto !important;
-}
-
-
-/* Hourly Forecast (12h Linear Style) */
-.hourlySection {
-    grid-column: span 12;
-    padding-bottom: 4px;
-}
-
-.hourlyTrack {
-    display: grid;
-    /* Exactly 12 columns for 12 items */
-    grid-template-columns: repeat(12, 1fr);
-    gap: 8px;
-}
-
-.hourlyCard {
-    min-width: 0;
-    padding: 12px 6px;
-    /* Tight padding */
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: row;
-    /* Horizontal Layout (1 Line) */
-    align-items: center;
-    justify-content: center;
-    /* Center items */
-    gap: 8px;
-    /* Gap between items */
-    text-align: center;
-    /* transition: all 0.2s;  <-- Removed transition to avoid suggestion of interaction */
-}
-
-/* Removed .hourlyCard:hover */
-
-.hourTime {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #64748b;
-    white-space: nowrap;
-    /* Prevent wrapping */
-}
-
-.hourIconWrap {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.hourIconWrap img {
-    width: 100% !important;
-    height: auto !important;
-}
-
-.hourTemp {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: #1e293b;
-}
-
-/* Weekly Forecast Grid */
-.weeklySection {
-    grid-column: span 12;
-}
-
-.weeklyGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 12px;
+    padding: 4px 0;
 }
 
-.weeklyCard {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* transition: all 0.2s; <-- Removed transition */
+.skeletonHero {
+    height: 170px;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* Removed .weeklyCard:hover */
-
-.weeklyInfoSide {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.skeletonStrip {
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    animation-delay: 0.1s;
 }
 
-.weekDay {
-    font-size: 1rem;
-    font-weight: 800;
-    color: #1e293b;
-}
-
-.weekDay.today {
-    color: #2563eb;
-}
-
-.weekStats {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-/* Stat Item */
-.statItem {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: #f1f5f9;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-
-.statLabel {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    font-weight: 600;
-}
-
-.statVal {
-    color: #334155;
-    font-weight: 700;
-    font-size: 0.85rem;
-}
-
-/* Colors for specific stats */
-.statItem.temp .statVal {
-    color: #1e293b;
-}
-
-.statItem.feels .statVal {
-    color: #64748b;
-}
-
-.statItem.dust .statVal {
-    color: #eab308;
-}
-
-
-.weekIconWrap,
-.portIconWrap {
-    width: 50px;
-    height: 50px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.weekIcon,
-.portIcon {
-    width: 100% !important;
-    height: auto !important;
-}
-
-
-/* Port Grid */
-.portSection {
-    grid-column: span 12;
-}
-
-.portGrid {
+.skeletonRow {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-}
-
-.portCard {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* transition: all 0.2s; <-- Removed transition */
-}
-
-/* Removed .portCard:hover */
-
-.portInfoSide {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.portName {
-    font-size: 1rem;
-    font-weight: 800;
-    color: #0f172a;
-}
-
-.portStats {
-    display: flex;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
-    font-size: 0.8rem;
-    color: #64748b;
 }
 
-.statItem.wave .statVal {
-    color: #0284c7;
+.skeletonCard {
+    height: 90px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    animation-delay: 0.2s;
 }
 
-.statItem.wind .statVal {
-    color: #059669;
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
-.portIcon {
-    width: 100% !important;
-    height: auto !important;
+/* ─── Mini Spinner ─── */
+.miniSpinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
 }
 
-/* Responsive (Galaxy S24 \u0026 Narrow Mobile Optimized) */
-@media (max-width: 1024px) {
-
-    /* Tablet: Hourly goes to 6 cols */
-    .hourlyTrack {
-        grid-template-columns: repeat(6, 1fr);
-    }
-
-    .heroCard {
-        grid-column: span 12;
-    }
-
-    .aqCard {
-        grid-column: span 12;
-        flex-direction: row;
-        gap: 20px;
-        align-items: center;
-    }
-
-    .aqList {
-        flex-direction: row;
-        flex: 1;
-        gap: 20px;
-    }
-
-    .aqItem {
-        flex: 1;
-    }
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-@media (max-width: 768px) {
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — Tablet (768px+)
+   ═══════════════════════════════════════════════════ */
+@media (min-width: 768px) {
     .page {
-        padding: 6px;
+        padding: 0 8px;
     }
 
-    /* Header - 모바일 */
-    .headerBanner {
-        flex-direction: row;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
+    .header {
+        padding: 12px 8px 8px;
     }
 
-    .mainTitle {
-        font-size: 1.1rem;
+    .headerTitle {
+        font-size: 1.3rem;
     }
 
-    .subTitle {
-        display: none;
+    .hero {
+        min-height: 200px;
+        padding: 32px 28px;
+        border-radius: 24px;
     }
 
-    .kmaShortcut {
-        font-size: 0.72rem;
-        padding: 5px 8px;
-        white-space: nowrap;
+    .heroTemp {
+        font-size: 5rem;
     }
 
-    .gridContainer {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        /* Tighter gap */
+    .heroEmoji {
+        font-size: 6rem;
     }
 
-    /* Hero Optimization - Delicate & Readable */
-    .heroCard {
-        padding: 16px;
-        min-height: 160px;
-        justify-content: flex-start;
-        /* Align contents properly */
+    .hourlyItem {
+        width: 76px;
+        padding: 14px 8px;
     }
 
-    .heroContent {
-        flex: 2;
-        /* Allocate more space to text */
+    .portScroll {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        overflow-x: visible;
     }
 
-    .locationBadge {
-        font-size: 0.75rem;
-        padding: 2px 8px;
-        margin-bottom: 8px;
+    .portCard {
+        min-width: 0;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — Desktop (1024px+)
+   ═══════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+    .page {
+        max-width: 1200px;
+        padding: 0 16px;
     }
 
-    .currentTemp {
-        font-size: 2.8rem;
-        /* Slightly smaller to fit S24 width */
-        letter-spacing: -0.05em;
-        /* Tighter tracking */
+    .header {
+        padding: 16px 4px 10px;
     }
 
-    .currentCondition {
-        font-size: 1.1rem;
-        margin-top: 4px;
+    .headerTitle {
+        font-size: 1.4rem;
     }
 
-    .heroIconWrap {
-        width: 130px;
-        height: 130px;
-        margin-right: -15px;
-        filter: drop-shadow(0 10px 20px rgba(37, 99, 235, 0.3));
+    .content {
+        gap: 16px;
     }
 
-    .currentTemp {
-        font-size: 3.2rem;
-        letter-spacing: -0.05em;
-        margin-bottom: -5px;
+    .hero {
+        min-height: 240px;
+        padding: 40px 36px;
     }
 
-    .heroIcon {
-        width: 100% !important;
-        height: auto !important;
+    .heroTemp {
+        font-size: 5.5rem;
     }
 
-    .heroDecor {
-        width: 200px;
-        height: 200px;
-        top: -10%;
-        right: -20%;
+    .heroCondition {
+        font-size: 1.4rem;
     }
 
-    /* AQ Optimization */
-    .aqCard {
-        flex-direction: column;
-        padding: 16px;
-        gap: 12px;
+    .heroEmoji {
+        font-size: 7rem;
     }
 
-    .cardTitle {
-        margin-bottom: 8px;
-        font-size: 0.95rem;
-    }
-
-    .aqList {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .aqItem {
-        padding: 8px 10px;
-    }
-
-    .aqName {
-        font-size: 0.8rem;
-    }
-
-    .aqValue {
-        font-size: 0.9rem;
-    }
-
-    /* Branch (Horizontal Scroll) Optimization */
-    .branchSection {
-        padding-bottom: 2px;
-    }
-
-    .branchGrid {
-        display: flex;
-        overflow-x: auto;
-        gap: 10px;
-        padding: 4px 4px 12px 4px;
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-    }
-
-    .branchCard {
-        min-width: 165px;
-        /* 약간 넓혀서 다음 카드가 살짝 보이게 (Peek) */
-        flex-shrink: 0;
-        scroll-snap-align: start;
-        padding: 14px;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 16px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
-
-    .branchName {
-        font-size: 0.9rem;
-    }
-
-    .branchIconWrap {
-        width: 44px;
-        height: 44px;
-    }
-
-    .branchIcon {
-        width: 100% !important;
-        height: auto !important;
-    }
-
-    /* Hourly (Horizontal Scroll) Optimization */
-    .hourlySection {
-        padding-bottom: 2px;
-    }
-
-    .hourlyTrack {
-        display: flex;
-        overflow-x: auto;
-        gap: 8px;
-        padding: 4px 4px 12px 4px;
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-    }
-
-    .hourlyCard {
-        min-width: 105px;
-        flex-shrink: 0;
-        scroll-snap-align: start;
-        padding: 10px 8px;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 14px;
-    }
-
-    .hourTime {
-        font-size: 0.75rem;
-    }
-
-    .hourIconWrap {
-        width: 28px;
-        height: 28px;
-    }
-
-    .hourTemp {
+    .heroMeta {
         font-size: 0.85rem;
     }
 
-
-    /* Weekly \u0026 Port (Stacked) Optimization */
-    .weeklyGrid,
-    .portGrid {
-        grid-template-columns: 1fr;
-        gap: 10px;
+    .summaryCard {
+        padding: 16px 20px;
     }
 
-    .weeklyCard,
-    .portCard {
-        padding: 15px;
-        flex-direction: row;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 18px;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+    .summaryText {
+        font-size: 0.88rem;
     }
 
-    /* 주간 예보 좁은 화면에서 2열로 시도 (공간 절약) */
-    .weeklyGrid,
-    .portGrid {
+    .sectionTitle {
+        font-size: 1.05rem;
+    }
+
+    /* Hourly: 12 columns grid on widescreen */
+    .hourlyScroll {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 8px;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 10px;
+        overflow-x: visible;
     }
 
-    .weekDay,
-    .portName {
-        font-size: 0.95rem;
+    .hourlyItem {
+        width: auto;
     }
 
-    .statItem {
-        padding: 2px 6px;
-        gap: 3px;
+    .hourlyItem:hover {
+        border-color: #93c5fd;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        transform: translateY(-2px);
     }
 
-    .statLabel {
-        font-size: 0.65rem;
+    .aqGrid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
     }
 
-    .statVal {
-        font-size: 0.8rem;
+    .aqCard {
+        padding: 18px 20px;
     }
 
-    .weekIconWrap,
-    .portIconWrap {
-        width: 44px;
-        height: 44px;
+    .portScroll {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        overflow-x: visible;
+        gap: 12px;
     }
 
-    .weekIcon,
-    .portIcon {
-        width: 100% !important;
-        height: auto !important;
+    .portCard {
+        min-width: 0;
+    }
+
+    .portCard:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .tab:hover:not(.tabActive) {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #334155;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — Large Desktop (1440px+)
+   ═══════════════════════════════════════════════════ */
+@media (min-width: 1440px) {
+    .hero {
+        padding: 48px 44px;
+        min-height: 260px;
+    }
+
+    .heroTemp {
+        font-size: 6rem;
+    }
+
+    .heroEmoji {
+        font-size: 8rem;
+        margin-right: 16px;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — Very Narrow Mobile (380px 이하)
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 380px) {
+    .heroTemp {
+        font-size: 3.5rem;
+    }
+
+    .heroEmoji {
+        font-size: 3.8rem;
+    }
+
+    .hero {
+        padding: 20px 16px;
+        min-height: 150px;
+    }
+
+    .hourlyItem {
+        width: 62px;
+        padding: 10px 4px;
+    }
+
+    .hourEmoji {
+        font-size: 1.2rem;
+    }
+
+    .portCard {
+        min-width: 135px;
     }
 }

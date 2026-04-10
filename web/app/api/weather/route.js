@@ -125,7 +125,7 @@ export async function GET(request) {
     }
 
     try {
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature,windspeed_10m,relativehumidity_2m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia/Seoul`;
 
         // [v4.9.11 최적화] Cloudtype 공용 IP 이슈로 인한 Open-Meteo 무한 대기 방지 (3.5초 타임아웃)
@@ -168,6 +168,8 @@ export async function GET(request) {
                 code: weatherData.hourly?.weathercode?.[actualIdx] ?? null,
                 pop: weatherData.hourly?.precipitation_probability?.[actualIdx] ?? null,
                 apparent_temperature: weatherData.hourly?.apparent_temperature?.[actualIdx] ?? null,
+                windspeed: weatherData.hourly?.windspeed_10m?.[actualIdx] ?? null,
+                humidity: weatherData.hourly?.relativehumidity_2m?.[actualIdx] ?? null,
             };
         });
 
