@@ -2,8 +2,8 @@
 > 마지막 업데이트: 2026-04-10 (KST)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.14` (UI & 검색 팩토리 픽스)
-- **APK**: `web/public/apk/els_driver.apk` (v4.9.14 유지)
+- **Current Build**: `v4.9.15` (사이드메뉴 마우스 호버 자동 트리거 적용)
+- **APK**: `web/public/apk/els_driver.apk` (v4.9.15 유지)
 - **Repo**: main 브랜치 up-to-date
 
 ## ⚠️ APK 빌드 절차 (필독)

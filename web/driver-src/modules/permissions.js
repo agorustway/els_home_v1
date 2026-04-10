@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=4914';
-import { Overlay, remoteLog } from './bridge.js?v=4914';
-import { showScreen } from './nav.js?v=4914';
+import { Store, State } from './store.js?v=4915';
+import { Overlay, remoteLog } from './bridge.js?v=4915';
+import { showScreen } from './nav.js?v=4915';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');

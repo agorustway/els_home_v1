@@ -76,13 +76,27 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
         return pathname === item.path || pathname.startsWith(item.path + '/');
     };
 
-    const displayName = profile?.name || profile?.full_name || profile?.user_metadata?.name || profile?.email?.split('@')[0] || '사용자';
-    const displayInitial = displayName[0]?.toUpperCase() || 'U';
+    const handleMouseLeave = () => {
+        // 데스크탑 고정해제(Unpinned) 모드일 때만 마우스가 벗어나면 자동 닫기
+        if (!isPinned && window.innerWidth > 1024) {
+            if (onClose) onClose();
+        }
+    };
 
     return (
         <>
+            {/* 데스크탑 언핀 상태에서 마우스 호버로 사이드바를 여는 트리거 */}
+            {!isPinned && !isOpen && (
+                <div 
+                    className={styles.hoverTrigger}
+                    onMouseEnter={() => window.dispatchEvent(new Event('openSidebar'))}
+                />
+            )}
             <div className={`${styles.overlay} ${isOpen ? styles.overlayOpen : ''} ${isPinned ? styles.pinnedOverlay : ''}`} onClick={onClose} />
-            <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''} ${!isPinned ? styles.unpinned : ''}`}>
+            <aside 
+                className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''} ${!isPinned ? styles.unpinned : ''}`}
+                onMouseLeave={handleMouseLeave}
+            >
                 <div className={styles.sidebarHeader}>
                     <span className={styles.mobileTitle}>인트라넷 메뉴</span>
                     <div className={styles.desktopPinArea}>
