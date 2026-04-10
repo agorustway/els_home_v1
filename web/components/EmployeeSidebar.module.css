@@ -43,6 +43,13 @@
     visibility: visible;
 }
 
+/* 데스크탑 환경에서는 어떤 상태든 오버레이(배경 어두워짐)를 사용하지 않음 */
+@media (min-width: 1025px) {
+    .overlay {
+        display: none !important;
+    }
+}
+
 @media (min-width: 1025px) {
     .pinnedOverlay {
         display: none !important;
