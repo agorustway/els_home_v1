@@ -78,8 +78,10 @@ export async function smartFetch(url, options = {}) {
 
   if (http && isNative) {
     try {
-      // 이미지 등 바이너리 데이터 요청인 경우 dataType을 base64로 명시
-      const isBinary = options.dataType === 'blob' || options.dataType === 'arraybuffer';
+      // 이미지 등 바이너리 데이터 요청 판별 (호환성을 위해 dataType도 체크)
+      const resType = options.responseType || options.dataType;
+      const isBinary = resType === 'blob' || resType === 'arraybuffer';
+      
       const res = await http.request({
         url,
         method: options.method || 'GET',
@@ -87,7 +89,8 @@ export async function smartFetch(url, options = {}) {
           'Content-Type': 'application/json', 
           ...(options.headers || {}) 
         },
-        dataType: isBinary ? 'base64' : (options.dataType || 'unspecified'),
+        // CapacitorHttp는 dataType이 아닌 responseType을 사용합니다.
+        responseType: isBinary ? 'blob' : (resType || 'json'),
         data: options.body
           ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body)
           : undefined,
@@ -100,13 +103,18 @@ export async function smartFetch(url, options = {}) {
         // 바이너리 데이터 지원을 위해 blob() 추가
         blob:   async () => {
           if (isBinary && typeof res.data === 'string') {
+            // CapacitorHttp는 responseType: 'blob'일 때 base64 인코딩된 문자열을 반환합니다.
             const byteCharacters = atob(res.data);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
               byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
             const byteArray = new Uint8Array(byteNumbers);
-            return new Blob([byteArray], { type: res.headers['Content-Type'] || 'image/jpeg' });
+            // 헤더 키의 대소문자 차이 방어를 위해 무시 검색
+            const headers = res.headers || {};
+            const contentTypeKey = Object.keys(headers).find(k => k.toLowerCase() === 'content-type');
+            const contentType = contentTypeKey ? headers[contentTypeKey] : 'image/jpeg';
+            return new Blob([byteArray], { type: contentType });
           }
           throw new Error('Fallback to standard fetch for non-native blob');
         }
