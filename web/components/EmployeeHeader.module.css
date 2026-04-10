@@ -57,7 +57,7 @@
 }
 
 .mobileMenuBtn {
-    display: none;
+    display: flex;
     background: transparent;
     border: none;
     cursor: pointer;

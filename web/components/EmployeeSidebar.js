@@ -19,6 +19,20 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
 
     // Accordion State
     const [openSections, setOpenSections] = useState({});
+    
+    // Sidebar Pin State
+    const [isPinned, setIsPinned] = useState(true);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('intranet_sidebar_pinned');
+        if (saved === 'false') setIsPinned(false);
+    }, []);
+
+    const togglePin = () => {
+        const next = !isPinned;
+        setIsPinned(next);
+        localStorage.setItem('intranet_sidebar_pinned', String(next));
+    };
 
     // Initialize open sections based on current path
     useEffect(() => {
@@ -67,10 +81,21 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
 
     return (
         <>
-            <div className={`${styles.overlay} ${isOpen ? styles.overlayOpen : ''}`} onClick={onClose} />
-            <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
-                <div className={styles.mobileHeader}>
+            <div className={`${styles.overlay} ${isOpen ? styles.overlayOpen : ''} ${isPinned ? styles.pinnedOverlay : ''}`} onClick={onClose} />
+            <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''} ${!isPinned ? styles.unpinned : ''}`}>
+                <div className={styles.sidebarHeader}>
                     <span className={styles.mobileTitle}>인트라넷 메뉴</span>
+                    <div className={styles.desktopPinArea}>
+                        <label className={styles.pinLabel}>
+                            <input 
+                                type="checkbox" 
+                                className={styles.pinCheckbox}
+                                checked={isPinned} 
+                                onChange={togglePin} 
+                            />
+                            고정
+                        </label>
+                    </div>
                     <button className={styles.closeBtn} onClick={onClose}>&times;</button>
                 </div>
 

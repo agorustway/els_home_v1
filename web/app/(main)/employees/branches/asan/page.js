@@ -149,7 +149,21 @@ function doSearch(data, headers, term) {
         indices.push(ri);
         branchCols.forEach(({ i, name }) => {
             const cell = String(row[i] || '').toLowerCase();
-            if (cell.includes(t)) { const n = parseInt(cell.replace(/[^\d]/g, '')) || 1; total += n; breakdown[name] = (breakdown[name] || 0) + n; }
+            if (cell.includes(t)) {
+                // 검색어(t) 뒤에 나오는 숫자를 추출 (정규식: 한글/영문 등이 아닌 문자 또는 바로 뒤에 붙은 숫자)
+                const escapedT = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escapedT + '[^가-힣a-zA-Z\\d]*(\\d+)', 'g');
+                let cellTotal = 0;
+                let match;
+                while ((match = regex.exec(cell)) !== null) {
+                    cellTotal += parseInt(match[1], 10);
+                }
+                // 매칭된 숫자가 없으면 기본값 1
+                if (cellTotal === 0) cellTotal = 1;
+                
+                total += cellTotal; 
+                breakdown[name] = (breakdown[name] || 0) + cellTotal; 
+            }
         });
     });
     if (indices.length === 0) return { indices, summary: `"${term}" 검색 결과 없음` };

@@ -1,8 +1,8 @@
 /**
  * profile.js — 프로필 UI, 저장, 기사 조회, 프로필 사진 3종
  */
-import { Store, State, BASE_URL } from './store.js?v=4913';
-import { smartFetch } from './bridge.js?v=4913';
+import { Store, State, BASE_URL } from './store.js?v=4914';
+import { smartFetch } from './bridge.js?v=4914';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
 

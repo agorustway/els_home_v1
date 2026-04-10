@@ -43,6 +43,12 @@
     visibility: visible;
 }
 
+@media (min-width: 1025px) {
+    .pinnedOverlay {
+        display: none !important;
+    }
+}
+
 /* Mobile Header within Sidebar */
 .mobileHeader {
     display: none;
@@ -67,6 +73,11 @@
     cursor: pointer;
     line-height: 1;
     padding: 5px;
+}
+
+/* 데스크탑 고정(Pinned) 모드일 땐 닫기 버튼 숨김 */
+.sidebar:not(.unpinned) .closeBtn {
+    display: none;
 }
 
 /* Search Area */
@@ -260,7 +271,62 @@
     transform: translateY(-1px);
 }
 
-/* Mobile Styles */
+/* Mobile Styles & Unpinned State */
+.sidebar.unpinned {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    z-index: 9001;
+    transform: translateX(-100%);
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.2);
+    border-right: none;
+}
+
+.sidebar.unpinned.sidebarOpen {
+    transform: translateX(0);
+}
+
+.mobileHeader {
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 10px;
+}
+
+.sidebar.unpinned .mobileHeader {
+    display: flex;
+}
+
+.sidebarHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 10px;
+}
+
+.desktopPinArea {
+    display: flex;
+    align-items: center;
+}
+
+.pinLabel {
+    font-size: 0.85rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.pinCheckbox {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
 @media (max-width: 1024px) {
     .sidebar {
         position: fixed;
@@ -280,11 +346,14 @@
 
     .mobileHeader {
         display: flex;
-        /* Visible on mobile */
     }
 
-    .closeBtn {
+    .desktopPinArea {
+        display: none; /* 모바일에서는 고정 토글 숨김 */
+    }
+
+    /* 모바일에서는 고정 여부와 관계없이 항상 닫기 버튼을 표시 */
+    .sidebar:not(.unpinned) .closeBtn {
         display: block;
-        /* Visible on mobile */
     }
 }
