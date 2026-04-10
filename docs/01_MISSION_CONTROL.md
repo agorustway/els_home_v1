@@ -2,8 +2,8 @@
 > 마지막 업데이트: 2026-04-10 (KST)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.12` (Safe Image Loader 적용)
-- **APK**: `web/public/apk/els_driver.apk` (v4.9.12 빌드 예정)
+- **Current Build**: `v4.9.13` (Safe Image Loader Fix)
+- **APK**: `web/public/apk/els_driver.apk` (v4.9.13 유지)
 - **Repo**: main 브랜치 up-to-date
 
 ## ⚠️ APK 빌드 절차 (필독)
@@ -43,7 +43,7 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 
 ## ⏳ 다음 할 일
 - [x] NAS 도커 재빌드/재시작 (`app.py`, `app_bot.py` 변경 반영)
-- [ ] 드라이버 앱 APK 빌드 및 배포 (`scripts\build_driver_apk.ps1`)
+- [x] 드라이버 앱 APK 빌드 및 배포 (`scripts\build_driver_apk.ps1`)
 - [ ] 컨테이너 조회 실 테스트 (잠금 해제 정상 동작 확인)
 - [ ] 앱 사진 로딩 최종 확인 (Safe Loader 작동 여부)
 

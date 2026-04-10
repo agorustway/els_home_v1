@@ -2,6 +2,17 @@
 
 ---
 
+## 📅 2026-04-10 (v4.9.13 — Safe Image Loader 버그 픽스)
+### 🚀 배포 요약
+직전 버전(v4.9.12)에서 도입된 Safe Image Loader 구현 중 CapacitorHttp의 `dataType` 인자를 잘못 지정하여 오히려 바이너리 로드가 차단될 뻔한 치명적 버그를 사전 발견하고 수정함.
+
+### 📌 주요 변경 사항
+- **[APP/BRIDGE] `smartFetch` 옵션 교정**:
+  - `CapacitorHttp` 스펙 상 바이너리 로딩은 `dataType`이 아닌 `responseType: 'blob'`을 사용해야 하므로 이를 올바르게 교체.
+  - 응답 헤더 판단 시 `Content-Type`의 대소문자 혼용(예: `content-type`)으로 인한 에러를 막기 위해 추출 로직 무시 검색으로 보강.
+
+---
+
 ## 📅 2026-04-10 (v4.9.12 — 앱 사진 로드 실패 대응: Safe Image Loader 도입)
 ### 🚀 배포 요약
 안드로이드 앱 WebView에서 특정 도메인/CORS/SSL 이슈로 인해 사진이 엑박(500 혹은 로드 실패)으로 뜨는 현상을 근본적으로 해결하기 위해, Native Bridge(CapacitorHttp)를 경유하는 세이프 로더 도입.
