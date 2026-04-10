@@ -96,7 +96,7 @@ export default function WeatherPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
 
-    const [selectedRegion, setSelectedRegion] = useState('asan');
+    const [selectedRegion, setSelectedRegion] = useState('current');
     const [cache, setCache] = useState({});
     const [portData, setPortData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -125,18 +125,20 @@ export default function WeatherPage() {
             if (!res.ok) throw new Error('fetch failed');
             const data = await res.json();
             setCache(prev => ({ ...prev, [regionId]: data }));
+            setLoading(false);
             return data;
         } catch (e) {
             console.error('Weather fetch error:', e);
             fetchedRegions.current.delete(regionId + extraParams);
+            setLoading(false);
             return null;
         }
     }
 
-    // ─── Initial load (default: 아산) ───
+    // ─── Initial load (default: 현위치) ───
     useEffect(() => {
         if (!role) return;
-        fetchRegion('asan').then(() => setLoading(false));
+        handleCurrentLocation();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [role]);
 
@@ -301,18 +303,17 @@ export default function WeatherPage() {
                                 {current.windspeed != null && <span> · 풍속 {current.windspeed}m/s</span>}
                                 {current.humidity != null && <span> · 습도 {current.humidity}%</span>}
                             </div>
+                            
+                            {/* Summary incorporated into Hero beautifully centered */}
+                            {activeData.dailySummary && (
+                                <div className={styles.heroSummary}>
+                                    {activeData.dailySummary.split('.').slice(0, 2).join('.') + '.'}
+                                </div>
+                            )}
                         </div>
                         <div className={styles.heroEmoji}>{weather.emoji}</div>
                         <div className={styles.heroGlow} />
                     </div>
-
-                    {/* Daily Summary */}
-                    {activeData.dailySummary && (
-                        <div className={styles.summaryCard}>
-                            <span className={styles.summaryIcon}>📋</span>
-                            <p className={styles.summaryText}>{activeData.dailySummary.split('.').slice(0, 2).join('.') + '.'}</p>
-                        </div>
-                    )}
 
                     {/* ─── 12-Hour Forecast ─── */}
                     <div className={styles.section}>

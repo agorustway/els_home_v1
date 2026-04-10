@@ -272,6 +272,21 @@
     line-height: 1.4;
 }
 
+.heroSummary {
+    margin-top: 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(0, 0, 0, 0.15);
+    padding: 10px 14px;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    word-break: keep-all;
+    max-width: 90%;
+}
+
 .heroEmoji {
     font-size: 5rem;
     z-index: 2;
@@ -298,32 +313,7 @@
     pointer-events: none;
 }
 
-/* ─── Summary Card ─── */
-.summaryCard {
-    display: flex;
-    gap: 10px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    align-items: flex-start;
-}
-
-.summaryIcon {
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-
-.summaryText {
-    margin: 0;
-    font-size: 0.82rem;
-    color: #475569;
-    line-height: 1.55;
-    font-weight: 500;
-    word-break: keep-all;
-    overflow-wrap: break-word;
-}
+/* ─── Summary Card deleted ─── */
 
 /* ─── Section Common ─── */
 .section {
@@ -376,7 +366,6 @@
     gap: 6px;
     text-align: center;
     scroll-snap-align: start;
-    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .hourlyNow {
@@ -428,7 +417,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    transition: transform 0.15s;
 }
 
 .aqTop {
@@ -500,7 +488,6 @@
     flex-direction: column;
     gap: 10px;
     scroll-snap-align: start;
-    transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .portHead {
@@ -746,12 +733,9 @@
         font-size: 0.85rem;
     }
 
-    .summaryCard {
-        padding: 16px 20px;
-    }
-
-    .summaryText {
-        font-size: 0.88rem;
+    .heroSummary {
+        font-size: 0.95rem;
+        max-width: 80%;
     }
 
     .sectionTitle {
@@ -768,12 +752,6 @@
 
     .hourlyItem {
         width: auto;
-    }
-
-    .hourlyItem:hover {
-        border-color: #93c5fd;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
-        transform: translateY(-2px);
     }
 
     .aqGrid {
@@ -795,12 +773,6 @@
     .portCard {
         min-width: 0;
     }
-
-    .portCard:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-    }
-
 }
 
 
