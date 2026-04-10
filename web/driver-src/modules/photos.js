@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=497';
-import { smartFetch } from './bridge.js?v=497';
-import { showToast } from './utils.js?v=497';
-import { updateProfilePhoto } from './profile.js?v=497';
+import { State, BASE_URL } from './store.js?v=4912';
+import { smartFetch } from './bridge.js?v=4912';
+import { showToast, escHtml } from './utils.js?v=4912';
+import { updateProfilePhoto } from './profile.js?v=4912';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -85,7 +85,7 @@ export function renderPhotoThumbs() {
     let src = p.dataUrl || p.serverUrl || '';
     if (!src && p.serverUrl) src = p.serverUrl;
     return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}"
-      onerror="this.onerror=null;this.style.background='#fee2e2';this.style.objectFit='contain';console.error('[PHOTO] 이미지 로드 실패:',this.src)">`;
+      onerror="this.onerror=null; App.loadSafeImage(this, '${escHtml(src)}')">`;
   }).join('');
   scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
   const cnt = document.getElementById('photo-count-display');
@@ -191,7 +191,13 @@ function updatePhotoViewerUI() {
   }
 
   const img = document.getElementById('photo-viewer-img');
-  if (img) img.src = url;
+  if (img) {
+    img.src = url;
+    img.onerror = () => {
+      img.onerror = null;
+      window.App?.loadSafeImage(img, url);
+    };
+  }
   const idxEl = document.getElementById('photo-viewer-index');
   if (idxEl) idxEl.textContent = `${State.currentPhotoIdx + 1} / ${photos.length}`;
 }

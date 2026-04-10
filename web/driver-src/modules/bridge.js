@@ -1,7 +1,7 @@
 /**
  * bridge.js — Capacitor 플러그인 브릿지, smartFetch, remoteLog
  */
-import { Store, BASE_URL } from './store.js?v=497';
+import { Store, BASE_URL } from './store.js?v=4912';
 
 // ─── remoteLog ────────────────────────────────────────────────────
 export async function remoteLog(msg, tag = 'JS') {
@@ -74,27 +74,58 @@ export const CapHttp   = () => getPlugin('CapacitorHttp');
 // Capacitor 네이티브 환경에서는 CapacitorHttp를 우선 사용 (CORS 우회)
 export async function smartFetch(url, options = {}) {
   const http = CapHttp();
-  if (http && window.Capacitor?.isNativePlatform()) {
+  const isNative = window.Capacitor?.isNativePlatform();
+
+  if (http && isNative) {
     try {
+      // 이미지 등 바이너리 데이터 요청인 경우 dataType을 base64로 명시
+      const isBinary = options.dataType === 'blob' || options.dataType === 'arraybuffer';
       const res = await http.request({
         url,
         method: options.method || 'GET',
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        headers: { 
+          'Content-Type': 'application/json', 
+          ...(options.headers || {}) 
+        },
+        dataType: isBinary ? 'base64' : (options.dataType || 'unspecified'),
         data: options.body
           ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body)
           : undefined,
       });
+
       return {
-        ok:   res.status < 400,
+        ok:     res.status < 400,
         status: res.status,
-        json: async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data),
+        json:   async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data),
+        // 바이너리 데이터 지원을 위해 blob() 추가
+        blob:   async () => {
+          if (isBinary && typeof res.data === 'string') {
+            const byteCharacters = atob(res.data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: res.headers['Content-Type'] || 'image/jpeg' });
+          }
+          throw new Error('Fallback to standard fetch for non-native blob');
+        }
       };
     } catch (e) {
       console.error('smartFetch CapHttp error', e);
     }
   }
-  return fetch(url, {
+
+  // 브라우저 런타임 fallback
+  const response = await fetch(url, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
+  
+  return {
+    ok: response.ok,
+    status: response.status,
+    json: () => response.json(),
+    blob: () => response.blob(),
+  };
 }

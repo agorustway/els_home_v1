@@ -2,6 +2,22 @@
 
 ---
 
+## 📅 2026-04-10 (v4.9.12 — 앱 사진 로드 실패 대응: Safe Image Loader 도입)
+### 🚀 배포 요약
+안드로이드 앱 WebView에서 특정 도메인/CORS/SSL 이슈로 인해 사진이 엑박(500 혹은 로드 실패)으로 뜨는 현상을 근본적으로 해결하기 위해, Native Bridge(CapacitorHttp)를 경유하는 세이프 로더 도입.
+
+### 📌 주요 변경 사항
+- **[APP/BRIDGE] `smartFetch` 확장**:
+  - `CapacitorHttp` 요청 시 `dataType: 'base64'` 옵션을 지원하여 바이너리 데이터를 안전하게 수집 가능하도록 개선.
+  - 응답 객체에 `.blob()` 메서드를 추가하여 가져온 데이터를 즉시 Blob URL로 변환할 수 있는 인터페이스 제공.
+- **[APP/UI] Safe Image Loader (v4.9.12) 도입**:
+  - `utils.js`에 `loadSafeImage` 유틸리티 신설. 일반 `<img>` 태그 로드 실패 시 즉시 작동하여 Native Bridge를 통해 이미지를 강제 로딩.
+  - `log.js`(일지 상세), `photos.js`(운행 사진 및 뷰어) 전 구역에 `onerror` 핸들러 장착 완료.
+- **[BUILD/DEPLOY] 전역 버전 동기화**:
+  - `build.gradle` 버전을 `v4.9.12`로 상향하고, 원스톱 빌드 스크립트를 통해 `store.js`, `index.html`, `version.json` 등 20여 개 파일의 캐시버스터 일괄 갱신 및 배포.
+
+---
+
 ## 📅 2026-04-10 (v4.9.11 — Cloudtype 환경 CPU 경량화 및 날씨 API 타임아웃 방어)
 ### 🚀 배포 요약
 Cloudtype 이관 후 발생한 Next.js 컨테이너의 극심한 초기 페이지 및 이미지 랜더링 병목 현상을 타개하기 위한 경량화 조치 및 날씨 API 접속 지연 대응.

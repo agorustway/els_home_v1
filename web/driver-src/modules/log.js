@@ -1,10 +1,10 @@
 /**
  * log.js — 운행 일지 목록, 상세, 수정, 삭제, 사진 추가
  */
-import { State, BASE_URL } from './store.js?v=497';
-import { smartFetch } from './bridge.js?v=497';
-import { formatDate, escHtml, showToast } from './utils.js?v=497';
-import { validateISO6346 } from './trip.js?v=497';
+import { State, BASE_URL } from './store.js?v=4912';
+import { smartFetch } from './bridge.js?v=4912';
+import { formatDate, escHtml, showToast } from './utils.js?v=4912';
+import { validateISO6346 } from './trip.js?v=4912';
 
 let _currentLogData = null;
 
@@ -145,7 +145,7 @@ export async function openLog(id) {
         }
         return url
           ? `<img class="photo-thumb" src="${url}" onclick="App.openLogPhoto('${escHtml(url)}', ${i}, ${photos.length})" alt="사진${i + 1}"
-              onerror="this.onerror=null;this.style.background='#fee2e2';console.error('[LOG-PHOTO] 로드 실패:',this.src)">`
+              onerror="this.onerror=null; App.loadSafeImage(this, '${escHtml(url)}')">`
           : '';
       }).join('');
       photoScroll.innerHTML = html;

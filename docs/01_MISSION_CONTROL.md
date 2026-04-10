@@ -2,8 +2,8 @@
 > 마지막 업데이트: 2026-04-10 (KST)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.11` (Cloudtype 최적화)
-- **APK**: `web/public/apk/els_driver.apk` (v4.9.7 유지)
+- **Current Build**: `v4.9.12` (Safe Image Loader 적용)
+- **APK**: `web/public/apk/els_driver.apk` (v4.9.12 빌드 예정)
 - **Repo**: main 브랜치 up-to-date
 
 ## ⚠️ APK 빌드 절차 (필독)
@@ -30,6 +30,7 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 | 기상 대시보드 무한 대기 (CPU 병목) | 개별 기상청 API 10건 통신 지연으로 Next.js 응답 블로킹. `AbortController` 2초/3.5초 타임아웃 셔터(Fallback) 적용 | `api/weather/route.js` |
 | 프론트 대기 시간 과다 | "다른 직원 조회 중" 최대 대기: 25분 → 6분 | `page.js` |
 | stop-daemon 누락 | `app_bot.py`에 `stop-daemon` 엔드포인트 추가 | `app_bot.py` |
+| 앱 사진 엑박(500) | `<img>` 태그 대신 `CapacitorHttp`로 바이너리 로딩 처리 (Safe Loader) | `modules/bridge.js`, `log.js` 등 |
 
 ### ❌ 미해결 항목
 
@@ -41,9 +42,10 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 ---
 
 ## ⏳ 다음 할 일
-- [ ] NAS 도커 재빌드/재시작 (`app.py`, `app_bot.py` 변경 반영)
+- [x] NAS 도커 재빌드/재시작 (`app.py`, `app_bot.py` 변경 반영)
+- [ ] 드라이버 앱 APK 빌드 및 배포 (`scripts\build_driver_apk.ps1`)
 - [ ] 컨테이너 조회 실 테스트 (잠금 해제 정상 동작 확인)
-- [ ] NAS 사진 프록시 500 에러 원인 조사
+- [ ] 앱 사진 로딩 최종 확인 (Safe Loader 작동 여부)
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

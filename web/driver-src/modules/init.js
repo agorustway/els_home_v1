@@ -1,20 +1,20 @@
 /**
  * init.js — 앱 초기화, 화면 전환 오케스트레이션
  */
-import { Store, State, AppConfig } from './store.js?v=497';
-import { remoteLog } from './bridge.js?v=497';
-import { showScreen } from './nav.js?v=497';
+import { Store, State, AppConfig } from './store.js?v=4912';
+import { remoteLog } from './bridge.js?v=4912';
+import { showScreen } from './nav.js?v=4912';
 import {
   updatePermStatuses, permStatuses, setupPermNav, requestAllPerms,
-} from './permissions.js?v=497';
-import { applyProfileToUI } from './profile.js?v=497';
-import { loadCurrentTrip, registerBackHandler } from './trip.js?v=497';
-import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=497';
-import { loadNotices } from './notice.js?v=497';
-import { startEmergencyPoll, pollEmergency } from './emergency.js?v=497';
-import { checkUpdate } from './update.js?v=497';
-import { openMap } from './map.js?v=497';
-import { loadLogs } from './log.js?v=497';
+} from './permissions.js?v=4912';
+import { applyProfileToUI } from './profile.js?v=4912';
+import { loadCurrentTrip, registerBackHandler } from './trip.js?v=4912';
+import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=4912';
+import { loadNotices } from './notice.js?v=4912';
+import { startEmergencyPoll, pollEmergency } from './emergency.js?v=4912';
+import { checkUpdate } from './update.js?v=4912';
+import { openMap } from './map.js?v=4912';
+import { loadLogs } from './log.js?v=4912';
 
 let isAppInitialized = false;
 

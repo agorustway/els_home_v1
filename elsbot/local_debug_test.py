@@ -14,7 +14,7 @@ def test_user_containers():
     u_pw = "elss1106@"
     
     # 형이 요청한 테스트 컨테이너 3종
-    test_containers = ["TRHU2592715", "CMAU3093927", "ECMU4931708"]
+    test_containers = ["HPCU4963180", "FFAU6842307", "BEAU5241456"]
     
     print(f"[TEST] {u_id} 계정(게스트 모드 세션)으로 로컬 테스트 시작...")
     
