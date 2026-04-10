@@ -9,12 +9,12 @@ import styles from './weather.module.css';
    Constants
    ═══════════════════════════════════════════════════ */
 const REGIONS = [
-    { id: 'current', name: '현위치', emoji: '📍' },
-    { id: 'seoul', name: '서울', emoji: '🏙️' },
-    { id: 'asan', name: '아산', emoji: '🏢' },
-    { id: 'dangjin', name: '당진', emoji: '⚓' },
-    { id: 'yesan', name: '예산', emoji: '🌿' },
-    { id: 'sejong', name: '중부(세종)', emoji: '🏛️' },
+    { id: 'current', name: '현위치' },
+    { id: 'seoul', name: '서울' },
+    { id: 'asan', name: '아산' },
+    { id: 'dangjin', name: '당진' },
+    { id: 'yesan', name: '예산' },
+    { id: 'sejong', name: '중부(세종)' },
 ];
 
 const WEATHER_MAP = {
@@ -235,7 +235,7 @@ export default function WeatherPage() {
             {/* ─── Header ─── */}
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
-                    <h1 className={styles.headerTitle}>🌤️ 기상 대시보드</h1>
+                    <h1 className={styles.headerTitle}>기상 대시보드</h1>
                 </div>
                 <div className={styles.headerRight}>
                     <button className={styles.refreshBtn} onClick={handleRefresh} title="새로고침">
@@ -257,7 +257,6 @@ export default function WeatherPage() {
                         className={`${styles.tab} ${selectedRegion === r.id ? styles.tabActive : ''}`}
                         onClick={() => handleTabClick(r.id)}
                     >
-                        <span className={styles.tabEmoji}>{r.emoji}</span>
                         <span className={styles.tabName}>{r.name}</span>
                     </button>
                 ))}
@@ -338,15 +337,15 @@ export default function WeatherPage() {
                         </div>
                     </div>
 
-                    {/* ─── Air Quality ─── */}
+                    {/* ─── Air Quality & Additional Info ─── */}
                     <div className={styles.section}>
                         <h3 className={styles.sectionTitle}>
                             <span className={styles.sectionIcon}>🍃</span> 생활정보
                         </h3>
                         <div className={styles.aqGrid}>
                             {[
-                                { label: '미세먼지', sub: 'PM10', val: aq?.pm10, type: 'pm10', icon: '🫁' },
-                                { label: '초미세먼지', sub: 'PM2.5', val: aq?.pm2_5, type: 'pm25', icon: '🔬' },
+                                { label: '미세먼지', sub: 'PM10', val: aq?.pm10, type: 'pm10', icon: '🫁', unit: 'µg/m³' },
+                                { label: '초미세먼지', sub: 'PM2.5', val: aq?.pm2_5, type: 'pm25', icon: '🔬', unit: 'µg/m³' },
                             ].map((item, i) => {
                                 const status = getAirStatus(item.val, item.type);
                                 return (
@@ -358,7 +357,7 @@ export default function WeatherPage() {
                                         <div className={styles.aqBottom}>
                                             <span className={styles.aqValue}>
                                                 {item.val != null ? Math.round(item.val) : '—'}
-                                                <span className={styles.aqUnit}> µg/m³</span>
+                                                <span className={styles.aqUnit}> {item.unit}</span>
                                             </span>
                                             <span className={styles.aqBadge} style={{ background: status.color }}>
                                                 {status.label}
@@ -367,6 +366,40 @@ export default function WeatherPage() {
                                     </div>
                                 );
                             })}
+                            
+                            {activeData.dailyInfo && (
+                                <>
+                                    <div className={styles.aqCard}>
+                                        <div className={styles.aqTop}>
+                                            <span className={styles.aqIcon}>☀️</span>
+                                            <span className={styles.aqLabel}>최대 자외선 지수</span>
+                                        </div>
+                                        <div className={styles.aqBottom} style={{ marginTop: 'auto' }}>
+                                            <span className={styles.aqValue}>
+                                                {activeData.dailyInfo.uv_index != null ? activeData.dailyInfo.uv_index : '—'}
+                                                <span className={styles.aqUnit}> UV</span>
+                                            </span>
+                                            <span className={styles.aqBadge} style={{ background: (activeData.dailyInfo.uv_index||0) > 7 ? '#ef4444' : '#10b981' }}>
+                                                {(activeData.dailyInfo.uv_index||0) > 7 ? '높음' : '보통'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className={styles.aqCard}>
+                                        <div className={styles.aqTop}>
+                                            <span className={styles.aqIcon}>🌅</span>
+                                            <span className={styles.aqLabel}>일출 / 일몰</span>
+                                        </div>
+                                        <div className={styles.aqBottom} style={{ marginTop: 'auto', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                                            <span className={styles.aqValue} style={{ fontSize:'1rem' }}>
+                                                일출: {activeData.dailyInfo.sunrise ? new Date(activeData.dailyInfo.sunrise).toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'}) : '—'}
+                                            </span>
+                                            <span className={styles.aqValue} style={{ fontSize:'1rem' }}>
+                                                일몰: {activeData.dailyInfo.sunset ? new Date(activeData.dailyInfo.sunset).toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'}) : '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 

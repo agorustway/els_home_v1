@@ -1,26 +1,35 @@
 .trackingPage {
     padding: 6px;
+    width: 100%;
+    margin: 0 auto;
+    background: #f8fafc;
+    min-height: 100vh;
 }
 
 /* 타이틀 바 */
 .titleBar {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 10px 4px;
+    align-items: center;
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .titleBar h2 {
-    font-size: 1.4rem;
-    font-weight: 800;
+    font-size: 1.25rem;
+    font-weight: 900;
     color: #0f172a;
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 10px;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
+    padding-left: 12px;
+    border-left: 3px solid #2563eb;
 }
 
 .titleBar h2 span {
@@ -375,14 +384,15 @@
     /* ── 타이틀 바 ── */
     .titleBar {
         margin-bottom: 8px;
-        padding: 4px 2px;
+        padding: 10px 12px;
         gap: 6px;
         flex-wrap: nowrap;
         align-items: center;
+        border-radius: 10px;
     }
 
     .titleBar h2 {
-        font-size: 1rem;
+        font-size: 1.15rem;
         gap: 5px;
         flex-shrink: 1;
         min-width: 0;
