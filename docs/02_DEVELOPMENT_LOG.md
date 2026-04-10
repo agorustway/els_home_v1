@@ -2,6 +2,13 @@
 
 ---
 
+## 📅 2026-04-10 (v4.9.16 — 사이드메뉴 ReferenceError 핫픽스)
+### 🚀 주요 개선 사항
+1. **[버그수정] Application Client-Side Exception 해결**:
+   - 직전 v4.9.15 배포에서 코드 병합(`replace_file_content` 도구 오작동) 중 하단의 `displayName` 관련 변수 2줄이 누락(`ReferenceError`)되어 Next.js의 클라이언트 렌더링을 완전히 중단시키는 화이트 스크린 오류를 즉각 복구함.
+
+---
+
 ## 📅 2026-04-10 (v4.9.15 — 사이드메뉴 마우스 호버 자동화 및 햄버거 버튼 숨김)
 ### 🚀 주요 개선 사항
 1. **데스크탑 사이드메뉴 (Unpinned 모드) UX 전면 개편**:

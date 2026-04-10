@@ -83,6 +83,9 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
         }
     };
 
+    const displayName = profile?.name || profile?.full_name || profile?.user_metadata?.name || profile?.email?.split('@')[0] || '사용자';
+    const displayInitial = displayName[0]?.toUpperCase() || 'U';
+
     return (
         <>
             {/* 데스크탑 언핀 상태에서 마우스 호버로 사이드바를 여는 트리거 */}
