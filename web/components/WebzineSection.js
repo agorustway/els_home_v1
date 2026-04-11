@@ -47,7 +47,7 @@ export default function WebzineSection() {
             }
         };
         fetchPosts();
-    }, []);
+    }, [supabase]);
 
     return (
         <section id="webzine" className={styles.section}>

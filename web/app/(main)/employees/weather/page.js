@@ -358,7 +358,7 @@ export default function WeatherPage() {
                                             <span className={styles.aqIcon}>{item.icon}</span>
                                             <span className={styles.aqLabel}>{item.label}</span>
                                         </div>
-                                        <div className={styles.aqBottom}>
+                                        <div className={styles.aqBottom} style={{ marginTop: 'auto' }}>
                                             <span className={styles.aqValue}>
                                                 {item.val != null ? Math.round(item.val) : '—'}
                                                 <span className={styles.aqUnit}> {item.unit}</span>
@@ -393,11 +393,11 @@ export default function WeatherPage() {
                                             <span className={styles.aqIcon}>🌅</span>
                                             <span className={styles.aqLabel}>일출 / 일몰</span>
                                         </div>
-                                        <div className={styles.aqBottom} style={{ marginTop: 'auto', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                                            <span className={styles.aqValue} style={{ fontSize:'1rem' }}>
+                                        <div className={styles.aqBottom} style={{ marginTop: 'auto', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                                            <span className={styles.aqValue} style={{ fontSize:'1.2rem' }}>
                                                 일출: {activeData.dailyInfo.sunrise ? new Date(activeData.dailyInfo.sunrise).toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'}) : '—'}
                                             </span>
-                                            <span className={styles.aqValue} style={{ fontSize:'1rem' }}>
+                                            <span className={styles.aqValue} style={{ fontSize:'1.2rem' }}>
                                                 일몰: {activeData.dailyInfo.sunset ? new Date(activeData.dailyInfo.sunset).toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'}) : '—'}
                                             </span>
                                         </div>

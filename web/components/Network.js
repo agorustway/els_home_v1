@@ -1,8 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import styles from './Network.module.css';
 import { locations } from '@/constants/locations';
-
 
 export default function Network() {
     const mapRef = useRef(null);
@@ -12,57 +11,21 @@ export default function Network() {
     const [isError, setIsError] = useState(false);
     const [copyFeedback, setCopyFeedback] = useState("");
 
-    useEffect(() => {
-        // Debug Env Var
-        console.log("Loading Naver Map with Client ID:", process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID);
+    const handleLocSelect = useCallback((i) => {
+        setActiveIdx(i);
+        if (mapInstance.current && window.naver) {
+            const isMobile = window.innerWidth <= 768;
+            const loc = locations[i];
+            const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
+            mapInstance.current.morph(pos, 14, { duration: 500 });
 
-        // 1. 방어 코드: 이미 로드되었으면 초기화만 시도
-        if (window.naver && window.naver.maps) {
-            initMap();
-            return;
+            if (isMobile && mapRef.current) {
+                mapRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
-
-        // 2. 인증 실패 콜백 정의
-        window.navermap_authFailure = () => {
-            const currentUrl = window.location.origin;
-            setLoadingStatus(`네이버 지도 인증 실패 (설정 필요)`);
-            setCopyFeedback(`등록 필요 URL: ${currentUrl}`); // 잠시 토스트 메시지로 띄움
-            setIsError(true);
-            console.error(`[Naver Map Auth Error] NCP Console에 다음 URL을 등록해야 합니다: ${currentUrl}`);
-        };
-
-        // 3. 스크립트 중복 방지
-        const scriptId = 'naver-map-script-manual';
-        const existingScript = document.getElementById(scriptId);
-        if (existingScript) return;
-
-        // 4. 수동 스크립트 주입 (Tutorial 기반 수정)
-        // Domain: oapi.map.naver.com
-        // Param: ncpKeyId (Reverted for compatibility)
-        const script = document.createElement('script');
-        script.id = scriptId;
-        script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
-        script.async = true;
-        script.defer = true;
-
-        script.onload = () => {
-            setLoadingStatus("지도 라이브러리 로드 완료! 초기화 중...");
-            setTimeout(() => initMap(), 100);
-        };
-
-        script.onerror = () => {
-            setLoadingStatus("네이버 지도 서버 접속 실패");
-            setIsError(true);
-        };
-
-        document.head.appendChild(script);
-
-        return () => {
-            // cleanup if needed
-        };
     }, []);
 
-    const initMap = () => {
+    const initMap = useCallback(() => {
         if (!mapRef.current || mapInstance.current) return;
         if (!window.naver || !window.naver.maps) {
             setTimeout(initMap, 200); // 재시도
@@ -77,10 +40,10 @@ export default function Network() {
                 center: isMobile ? new naver.maps.LatLng(36.5, 127.8) : new naver.maps.LatLng(36.2, 126.9),
                 zoom: isMobile ? 7 : 8,
                 minZoom: 6,
-                zoomControl: false, // Disable default zoom control
-                scrollWheel: false, // Disable scroll zoom
-                draggable: false, // Disable drag to pan
-                pinchZoom: false, // Disable pinch zoom
+                zoomControl: false, 
+                scrollWheel: false, 
+                draggable: false, 
+                pinchZoom: false, 
                 keyboardShortcuts: false,
                 disableDoubleTapZoom: true,
                 disableDoubleClickZoom: true,
@@ -115,28 +78,61 @@ export default function Network() {
                     handleLocSelect(i);
                 });
             });
-            setLoadingStatus(null); // 로딩 완료
+            setLoadingStatus(null); 
         } catch (e) {
             console.error("Map Init Error:", e);
             setLoadingStatus("지도 초기화 오류 발생");
             setIsError(true);
         }
-    };
+    }, [handleLocSelect]);
 
-    const handleLocSelect = (i) => {
-        setActiveIdx(i);
-        if (mapInstance.current && window.naver) {
-            const isMobile = window.innerWidth <= 768;
-            const loc = locations[i];
-            const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
-            mapInstance.current.morph(pos, 14, { duration: 500 });
+    useEffect(() => {
+        // Debug Env Var
+        console.log("Loading Naver Map with Client ID:", process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID);
 
-            // On mobile, scroll up to the map so user can see the movement
-            if (isMobile && mapRef.current) {
-                mapRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+        // 1. 방어 코드: 이미 로드되었으면 초기화만 시도
+        if (window.naver && window.naver.maps) {
+            initMap();
+            return;
         }
-    };
+
+        // 2. 인증 실패 콜백 정의
+        window.navermap_authFailure = () => {
+            const currentUrl = window.location.origin;
+            setLoadingStatus(`네이버 지도 인증 실패 (설정 필요)`);
+            setCopyFeedback(`등록 필요 URL: ${currentUrl}`); // 잠시 토스트 메시지로 띄움
+            setIsError(true);
+            console.error(`[Naver Map Auth Error] NCP Console에 다음 URL을 등록해야 합니다: ${currentUrl}`);
+        };
+
+        // 3. 스크립트 중복 방지
+        const scriptId = 'naver-map-script-manual';
+        const existingScript = document.getElementById(scriptId);
+        if (existingScript) return;
+
+        // 4. 수동 스크립트 주입 (Tutorial 기반 수정)
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
+        script.async = true;
+        script.defer = true;
+
+        script.onload = () => {
+            setLoadingStatus("지도 라이브러리 로드 완료! 초기화 중...");
+            setTimeout(() => initMap(), 100);
+        };
+
+        script.onerror = () => {
+            setLoadingStatus("네이버 지도 서버 접속 실패");
+            setIsError(true);
+        };
+
+        document.head.appendChild(script);
+
+        return () => {
+            // cleanup if needed
+        };
+    }, [initMap]);
 
     const handleReset = () => {
         setActiveIdx(0);

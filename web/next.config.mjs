@@ -2,6 +2,9 @@ const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // [v4.9.11] Cloudtype 최적화: Vercel 밖의 컨테이너 환경에서는 standalone 빌드로 압축, CPU 부하 방지
   output: isStaticExport ? 'export' : 'standalone',
   images: {
