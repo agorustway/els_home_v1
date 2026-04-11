@@ -7,7 +7,7 @@ export const MAIN_TABS = [
     {
         id: 'home',
         label: '인트라넷 홈',
-        defaultPath: '/employees/weather', // 날씨가 첫 화면이 되도록 변경 가능
+        defaultPath: '/employees/ask', // AI 어시스턴트가 첫 화면이 되도록 변경
         pathPatterns: ['/employees', '/employees/weather', '/employees/news', '/employees/board', '/employees/random-game', '/employees/ask'],
         displayOrder: 5,
     },
@@ -58,10 +58,10 @@ export const MAIN_TABS = [
 
 export const SIDEBAR_ITEMS = {
     home: [
+        { label: 'AI 어시스턴트', path: '/employees/ask' },
         { label: '날씨', path: '/employees/weather' },
         { label: '뉴스', path: '/employees/news' },
         { label: '자유게시판', path: '/employees/board/free' },
-        { label: 'AI 어시스턴트', path: '/employees/ask' },
         { label: '랜덤게임', path: '/employees/random-game' },
     ],
     docs: [

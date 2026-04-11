@@ -133,8 +133,8 @@ export async function GET(request) {
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const [weatherRes, airRes] = await Promise.all([
-            fetch(weatherUrl, { next: { revalidate: 900 }, signal: controller.signal }), 
-            fetch(airUrl, { next: { revalidate: 900 }, signal: controller.signal })
+            fetch(weatherUrl, { next: { revalidate: 3600 }, signal: controller.signal }), 
+            fetch(airUrl, { next: { revalidate: 3600 }, signal: controller.signal })
         ]);
         clearTimeout(timeoutId);
 
