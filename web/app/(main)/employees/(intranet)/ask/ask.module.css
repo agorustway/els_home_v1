@@ -198,7 +198,7 @@
 }
 
 .statusBadge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     font-size: 0.75rem;
@@ -208,7 +208,14 @@
     border: 1px solid #bbf7d0;
     padding: 4px 10px;
     border-radius: 99px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
+
+/* 모바일에서 버튼 텍스트 숨김 (아이콘만 표시) */
+.headerBtnText { display: inline; }
+/* 모바일에서 모두 숨김 (online 배지 등) */
+.hideOnMobileXs { display: inline-flex; }
 
 .statusDot {
     width: 7px;
@@ -584,4 +591,9 @@
     .disclaimer {
         font-size: 0.68rem;
     }
+
+    /* 헤더 버튼 텍스트 숨김 — 아이콘만 표시 */
+    .headerBtnText { display: none; }
+    /* 온라인 배지 완전 숨김 */
+    .hideOnMobileXs { display: none !important; }
 }

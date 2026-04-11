@@ -51,8 +51,10 @@ export default function PartnerContactsPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보</h1>
                 <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="partner_contacts" />
-                    <Link href="/employees/partner-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
+                    <div className={styles.desktopOnlyBtns}>
+                        <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="partner_contacts" />
+                    </div>
+                    <Link href="/employees/partner-contacts/new" className={styles.btnPrimary}>등록</Link>
                 </div>
             </div>
             
@@ -61,34 +63,88 @@ export default function PartnerContactsPage() {
                 setSearchKeyword={setSearchKeyword} 
             />
 
-            <div className={styles.card}>
-                <table className={styles.table}>
-                    <thead>
-                        <tr style={{ fontSize: '0.9rem' }}>
-                            <th className={styles.colTitle} style={{ minWidth: '200px' }}>회사명</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>대표자</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자 연락처</th>
-                            <th style={{ width: '100%', padding: '12px 16px' }}>소재지</th>
-                        </tr>
-                    </thead>
-                    <tbody style={{ fontSize: '0.9rem' }}>
-                        {filteredList.map((item) => (
-                            <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/partner-contacts/' + item.id)}>
-                                <td className={styles.colTitle} style={{ color: '#1e293b', fontSize: '0.95rem' }}>{item.company_name}</td>
-                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.ceo_name}</td>
-                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a> : '—'}</td>
-                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_name}</td>
-                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_phone ? <a href={'tel:' + item.manager_phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.manager_phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.manager_phone}</a> : '—'}</td>
-                                <td className={styles.colDate} style={{ width: '100%', minWidth: '250px', wordBreak: 'break-all', padding: '12px 16px' }}>{item.address || '—'}</td>
-                            </tr>
-                        ))}
-                        {filteredList.length === 0 && (
-                            <tr><td colSpan="6" className={styles.empty}>검색 결과가 없습니다.</td></tr>
+            {/* ── 모바일 카드 뷰 (768px 이하) ── */}
+            <div className={styles.mobileList}>
+                {filteredList.length === 0 && <div className={styles.empty}>검색 결과가 없습니다.</div>}
+                {filteredList.map((item) => (
+                    <div
+                        key={item.id}
+                        className={styles.contactCard}
+                        onClick={() => router.push('/employees/partner-contacts/' + item.id)}
+                    >
+                        <div className={styles.cardRow}>
+                            <span className={styles.cardName}>{item.company_name}</span>
+                        </div>
+                        <div className={styles.cardMeta}>
+                            <span>대표: {item.ceo_name || '-'}</span>
+                            {item.phone && (
+                                <>
+                                    <span>·</span>
+                                    <a
+                                        href={'tel:' + item.phone}
+                                        onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(item.phone); }}
+                                        className={styles.cardPhone}
+                                        style={{ fontSize: '0.88rem' }}
+                                    >
+                                        {item.phone}
+                                    </a>
+                                </>
+                            )}
+                        </div>
+                        {(item.manager_name || item.manager_phone) && (
+                            <div className={styles.cardMeta}>
+                                <span>담당: {item.manager_name || '-'}</span>
+                                {item.manager_phone && (
+                                    <>
+                                        <span>·</span>
+                                        <a
+                                            href={'tel:' + item.manager_phone}
+                                            onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(item.manager_phone); }}
+                                            className={styles.cardPhone}
+                                            style={{ fontSize: '0.88rem' }}
+                                        >
+                                            {item.manager_phone}
+                                        </a>
+                                    </>
+                                )}
+                            </div>
                         )}
-                    </tbody>
-                </table>
+                        {item.address && <div className={styles.cardMemo}>{item.address}</div>}
+                    </div>
+                ))}
+            </div>
+
+            {/* ── 데스크탑 테이블 뷰 (768px 초과) ── */}
+            <div className={styles.desktopTable}>
+                <div className={styles.card}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr style={{ fontSize: '0.9rem' }}>
+                                <th className={styles.colTitle} style={{ minWidth: '200px' }}>회사명</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>대표자</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자 연락처</th>
+                                <th style={{ width: '100%', padding: '12px 16px' }}>소재지</th>
+                            </tr>
+                        </thead>
+                        <tbody style={{ fontSize: '0.9rem' }}>
+                            {filteredList.map((item) => (
+                                <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/partner-contacts/' + item.id)}>
+                                    <td className={styles.colTitle} style={{ color: '#1e293b', fontSize: '0.95rem' }}>{item.company_name}</td>
+                                    <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.ceo_name}</td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a> : '—'}</td>
+                                    <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_name}</td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_phone ? <a href={'tel:' + item.manager_phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.manager_phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.manager_phone}</a> : '—'}</td>
+                                    <td className={styles.colDate} style={{ width: '100%', minWidth: '250px', wordBreak: 'break-all', padding: '12px 16px' }}>{item.address || '—'}</td>
+                                </tr>
+                            ))}
+                            {filteredList.length === 0 && (
+                                <tr><td colSpan="6" className={styles.empty}>검색 결과가 없습니다.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

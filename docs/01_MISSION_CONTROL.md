@@ -1,8 +1,8 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-12 (KST) - [v4.9.31] safe-freight RAG 3대 버그 수정 (sfData.filter TypeError, 35MB 매요청 파싱, 고시전문 무조건 주입)
+> 마지막 업데이트: 2026-04-12 (KST) - [v4.9.32] 모바일 연락처 카드 뷰 도입 및 UI/UX 전면 개선
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.31` (safe-freight RAG 3대 버그 전면 수정)
+- **Current Build**: `v4.9.32` (모바일 연락처 카드 뷰 개편, 테이블 파괴 버그 수정, AI 어시스턴트 모바일 헤더 최적화)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 
@@ -68,6 +68,12 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] **AI 채팅 제목 자동 생성(Auto-Title)**: 첫 질문 시 Gemini 1.5 Pro를 통해 대화 맥락에 맞는 3~5단어 제목 자동 생성 및 저장
     - [x] **RAG 데이터 파일 정합성 수정**: `safe-freight.json` (35MB) 파일명 참조 오류 해결 및 대용량 데이터 로딩 하향 조정 안내 로직 보완
     - [x] **safe-freight RAG 3대 버그 수정** (v4.9.31): ①`sfData.filter()` TypeError — JSON 구조가 Object인데 배열메서드 호출 → `faresLatest` 키 기반 검색으로 교체. ②35MB 파일 매 요청 파싱 → 모듈 레벨 캐시(`_sfDataCache`)로 1회만 파싱. ③고시 전문 무조건 주입 → 안전운임/법령 키워드 있을 때만 조건부 주입 (토큰 절감)
+    - [x] **모바일 UI/UX 대대적 개편** (v4.9.32):
+      - 480px 환경에서 `<tr>` display:flex 로 인한 테이블 레이아웃 파괴 버그 수정
+      - 모든 연락처(외부/사내/협력사/운전원) 페이지에 갤럭시 S25(393px) 타겟 전용 플렉스박스 '카드 뷰' 적용
+      - 연락처 목록에서 엑셀 버튼 그룹을 PC 환경(768px 이상)에서만 노출
+      - 모바일 환경에서 연락처 페이지 상단 제목 표시 제거
+      - 모바일에서 AI 어시스턴트(`AskPage`) 상단 헤더 버튼의 텍스트를 숨기고 아이콘만 출력되도록 하여 overflow 방지
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

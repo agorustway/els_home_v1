@@ -384,17 +384,20 @@ export default function AskPage() {
                             <p className={styles.headerSub}>실시간 업무 · K-Law 연동 중</p>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button onClick={clearAllHistory} className={styles.statusBadge} style={{ background: '#fff', color: '#e11d48', border: '1px solid #fda4af', cursor: 'pointer' }}>
-                            모든 기록 삭제
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, minWidth: 0 }}>
+                        <button onClick={clearAllHistory} className={styles.statusBadge} style={{ background: '#fff', color: '#e11d48', border: '1px solid #fda4af', cursor: 'pointer' }} title="모든 기록 삭제">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            <span className={styles.headerBtnText}>기록 삭제</span>
                         </button>
-                        <button onClick={clearHistory} className={styles.statusBadge} style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
-                            🗑️ 현재 대화 비우기
+                        <button onClick={clearHistory} className={styles.statusBadge} style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }} title="현재 대화 비우기">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                            <span className={styles.headerBtnText}>비우기</span>
                         </button>
-                        <button onClick={() => setIsMobileGuideOpen(true)} className={styles.statusBadge} style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
-                            ℹ️ 가이드
+                        <button onClick={() => setIsMobileGuideOpen(true)} className={styles.statusBadge} style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }} title="가이드">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                            <span className={styles.headerBtnText}>가이드</span>
                         </button>
-                        <div className={styles.statusBadge}>
+                        <div className={`${styles.statusBadge} ${styles.hideOnMobileXs}`}>
                             <span className={styles.statusDot} />
                             온라인
                         </div>

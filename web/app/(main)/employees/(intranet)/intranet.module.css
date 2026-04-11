@@ -544,8 +544,13 @@
     }
 
     .title {
-        font-size: 1.1rem;
+        display: none; /* 모바일 제목 숨김 */
     }
+
+    /* PC 전용 버튼 숨김 */
+    .desktopOnlyBtns { display: none !important; }
+    .desktopTable    { display: none; }
+    .mobileList      { display: block; }
 
     /* 터치 영역 최소 44px */
     .btnPrimary,
@@ -667,8 +672,7 @@
     }
 
     .row {
-        display: flex;
-        /* Stack content if needed or keep table row */
+        display: table-row; /* flex 금지: 테이블 레이아웃 파괴 방지 */
     }
 
     /* Input Fields */
@@ -744,4 +748,87 @@
     .hideOnMobile {
         display: none !important;
     }
+}
+
+/* ══════════════════════════════════════════════════════
+   모바일 카드 뷰 — 연락처·목록 페이지 공통
+   갤럭시 S25(393px) 기준 최적화
+   ══════════════════════════════════════════════════════ */
+.desktopOnlyBtns { display: inline-flex; gap: 6px; align-items: center; }
+.desktopTable    { display: block; }
+.mobileList      { display: none; }
+
+.contactCard {
+    background: #fff;
+    border: 1px solid #e8eef5;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    -webkit-tap-highlight-color: transparent;
+}
+.contactCard:active {
+    background: #f1f5f9;
+}
+
+.cardRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.cardName {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.cardBadge {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    padding: 2px 9px;
+    border-radius: 99px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cardPhone {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 0.95rem;
+    display: inline-block;
+    min-height: 28px;
+    line-height: 28px;
+}
+
+.cardMeta {
+    font-size: 0.82rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.cardMemo {
+    font-size: 0.79rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
