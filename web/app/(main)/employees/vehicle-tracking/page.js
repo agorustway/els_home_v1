@@ -736,7 +736,7 @@ export default function VehicleTrackingPage() {
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                     <div>
                         <div style="font-size:16px; font-weight:800; color:#1e293b; margin-bottom:2px;">${trip.driver_name}</div>
-                        <div style="font-size:11px; font-weight:600; color:#64748b;">🚛 ${trip.vehicle_number}</div>
+                        <div style="font-size:11px; font-weight:600; color:#64748b;">${trip.vehicle_number}</div>
                     </div>
                     <span style="font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; background:${markerColor}15; color:${markerColor}; border:1px solid ${markerColor}40;">${TRIP_STATUS_LABELS[trip.status]}</span>
                 </div>
@@ -746,7 +746,7 @@ export default function VehicleTrackingPage() {
                         ${loc.address || '주소 정보 확인 중...'}
                     </div>
                     <div style="font-weight:700; color:#3b82f6; font-size:11px;">
-                        💨 현재 속도: ${Math.round(loc.speed || 0)} km/h
+                        현재 속도: ${Math.round(loc.speed || 0)} km/h
                     </div>
                 </div>
                 ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
@@ -959,9 +959,9 @@ export default function VehicleTrackingPage() {
         return styles.statusCompleted;
     };
     const getStatusIcon = (status) => {
-        if (status === 'driving') return '🟢';
-        if (status === 'paused') return '🟡';
-        return '⚪';
+        if (status === 'driving') return '●';
+        if (status === 'paused') return '◐';
+        return '○';
     };
 
     // [신규] 운행 소요 시간 계산 헬퍼
@@ -1012,29 +1012,29 @@ export default function VehicleTrackingPage() {
     return (
         <div className={styles.trackingPage}>
             <div className={styles.titleBar}>
-                <h2><span>🚛</span> 차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
+                <h2>차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
                 <div className={styles.titleBtns}>
-                    <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>🔄 새로고침</button>
-                    <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/api/debug/view', '_blank')}>📋 실시간 로그</button>
+                    <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>새로고침</button>
+                    <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/api/debug/view', '_blank')}>실시간 로그</button>
                 </div>
             </div>
 
             <div className={styles.tabNav}>
-                <button className={`${styles.tab} ${activeTab === 'live' ? styles.tabActive : ''}`} onClick={() => setActiveTab('live')}>📡 실시간 관제</button>
-                <button className={`${styles.tab} ${activeTab === 'records' ? styles.tabActive : ''}`} onClick={() => setActiveTab('records')}>📋 운행 기록 관리</button>
+                <button className={`${styles.tab} ${activeTab === 'live' ? styles.tabActive : ''}`} onClick={() => setActiveTab('live')}>실시간 관제</button>
+                <button className={`${styles.tab} ${activeTab === 'records' ? styles.tabActive : ''}`} onClick={() => setActiveTab('records')}>운행 기록</button>
             </div>
 
             <div style={{ display: activeTab === 'live' ? 'block' : 'none' }}>
                 <div className={styles.missionDashboard} style={{ gap: '10px', marginBottom: '15px' }}>
-                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>📡 실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981', fontSize: '2rem' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
-                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>⏸️ 일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b', fontSize: '2rem' }}>{pausedCount} <span className={styles.statUnit}>대</span></div></div>
-                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>🗓️ {new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue} style={{ fontSize: '2rem' }}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
+                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981', fontSize: '2rem' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
+                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b', fontSize: '2rem' }}>{pausedCount} <span className={styles.statUnit}>대</span></div></div>
+                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>{new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue} style={{ fontSize: '2rem' }}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
                 </div>
 
                 <div className={styles.liveGrid}>
                     <div className={styles.liveGridRight}>
                         <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{ height: '100%', margin: 0, borderRadius: '12px' }}>
-                            <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '↩️ 전체화면 해제' : '⛶ 지도 전체화면'}</button>
+                            <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '전체화면 해제' : '지도 전체화면'}</button>
                             <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
                             {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
                         </div>
@@ -1044,7 +1044,7 @@ export default function VehicleTrackingPage() {
                         {/* 긴급 알림 섹션 */}
                         <div className={styles.noticeSection} style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 0 }}>
                             <div className={styles.noticeHeader} style={{ marginBottom: '10px' }}>
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', fontSize: '1rem' }}>🚨 긴급 알림</h3>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', fontSize: '1rem' }}>긴급 알림</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>{emergencyPage} / {totalEmPages}</div>
                                     <button onClick={() => setEmergencyPage(p => Math.max(1, p - 1))} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>◀</button>
@@ -1074,7 +1074,7 @@ export default function VehicleTrackingPage() {
                         {/* 공지사항 섹션 */}
                         <div className={styles.noticeSection} style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 0 }}>
                             <div className={styles.noticeHeader} style={{ marginBottom: '10px' }}>
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem' }}>📣 공지사항</h3>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem' }}>공지사항</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>{noticePage} / {totalNoticePages}</div>
                                     <button onClick={() => setNoticePage(p => Math.max(1, p - 1))} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>◀</button>
@@ -1110,14 +1110,14 @@ export default function VehicleTrackingPage() {
                 </div>
 
                 <button className={styles.tableSectionMobileBtn} onClick={() => setIsMobileListOpen(true)}>
-                    📋 현재 운행 현황 목록 보기 ({filteredLiveTrips.length}건)
+                    운행 현황 목록 ({filteredLiveTrips.length}건)
                 </button>
 
                 <div className={`${styles.mobilePopupOverlay} ${isMobileListOpen ? styles.showOnMobile : ''}`} onClick={() => setIsMobileListOpen(false)}></div>
 
                 <div className={`${styles.tableSection} ${isMobileListOpen ? styles.showOnMobile : ''}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <h3 style={{ margin: 0 }}>📋 현재 운행 현황 ({filteredLiveTrips.length}건) {realtimeTarget && <span style={{ fontSize: '0.7rem', color: '#10b981', background: '#10b98115', padding: '2px 8px', borderRadius: 10, fontWeight: 800, marginLeft: 8 }}>🔴 LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
+                        <h3 style={{ margin: 0 }}>운행 현황 ({filteredLiveTrips.length}건) {realtimeTarget && <span style={{ fontSize: '0.7rem', color: '#10b981', background: '#10b98115', padding: '2px 8px', borderRadius: 10, fontWeight: 800, marginLeft: 8 }}>LIVE 추적중 ({realtimeCountdown}초)</span>}</h3>
                         <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
                     </div>
                     <table className={styles.tripTable}>
@@ -1152,7 +1152,7 @@ export default function VehicleTrackingPage() {
                     <div className={styles.filterGroup}>
                         <span className={styles.filterLabel}>상태</span>
                         <select className={styles.filterSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                            <option value="all">전체</option><option value="driving">🟢 운행 중</option><option value="paused">🟡 일시중지</option><option value="completed">⚪ 운행 완료</option>
+                            <option value="all">전체</option><option value="driving">운행 중</option><option value="paused">일시중지</option><option value="completed">운행 완료</option>
                         </select>
                     </div>
                     <div className={styles.filterGroup}>
@@ -1164,27 +1164,27 @@ export default function VehicleTrackingPage() {
                     <div className={styles.filterGroup}>
                         <input className={styles.filterInput} placeholder="이름/차량/컨테이너" value={filterKeyword} onChange={e => setFilterKeyword(e.target.value)} />
                     </div>
-                    <button className={styles.filterSearchBtn} onClick={handleSearch}>🔍 검색</button>
+                    <button className={styles.filterSearchBtn} onClick={handleSearch}>검색</button>
                     <button className={styles.filterResetBtn} onClick={handleReset}>초기화</button>
 
                     {selectedIds.length > 0 && (
                         <button className={styles.bulkDeleteBtn} onClick={handleBulkDelete}>
-                            🗑️ {selectedIds.length}건 삭제
+                            {selectedIds.length}건 삭제
                         </button>
                     )}
                 </div>
                 <div className={styles.tableSection}>
                     <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>📋 운행 기록 ({recordsTotal}건)</h3>
+                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>운행 기록 ({recordsTotal}건)</h3>
                             <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>📊 엑셀 다운로드</button>
-                            <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '44px', fontSize: '0.85rem', padding: '0 16px' }} onClick={() => {
+                            <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '36px', fontSize: '0.78rem', padding: '0 14px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>엑셀 다운로드</button>
+                            <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '36px', fontSize: '0.78rem', padding: '0 14px' }} onClick={() => {
                                 if (selectedIds.length === 0) alert('다운로드할 기록을 선택해주세요.');
                                 else window.location.href = `/api/vehicle-tracking/export/zip?ids=${selectedIds.join(',')}`;
-                            }}>📦 선택건 사진 다운로드</button>
+                            }}>선택건 ZIP</button>
                         </div>
                     </div>
                     <table className={styles.tripTable}>
@@ -1241,7 +1241,7 @@ export default function VehicleTrackingPage() {
                                     </td>
                                     <td className={styles.actionCol}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
-                                        <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>🗑️</button>
+                                        <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>삭제</button>
                                     </td>
                                 </tr>
                             ))}
@@ -1264,7 +1264,7 @@ export default function VehicleTrackingPage() {
                                         String(realtimeTarget) === String(selectedTrip.id) ? stopRealtimeTracking(selectedTrip.id) : startRealtimeTracking(selectedTrip.id);
                                     }}
                                 >
-                                    {String(realtimeTarget) === String(selectedTrip.id) ? `추적중지 (${realtimeCountdown}s)` : '🚀 실시간 추적 시작'}
+                                    {String(realtimeTarget) === String(selectedTrip.id) ? `추적중지 (${realtimeCountdown}s)` : '실시간 추적 시작'}
                                 </button>
                             )}
                         </div>
@@ -1287,7 +1287,7 @@ export default function VehicleTrackingPage() {
                             </div>
                         </div>
                         <div className={styles.detailSection}>
-                            <div className={styles.sectionTitle}>증빙 사진 ({selectedTrip.photos?.length || 0}) {selectedTrip.photos?.length > 0 && <button className={styles.zipDownloadBtn} style={{ width: 'auto', height: 24, padding: '0 10px', fontSize: '0.7rem' }} onClick={() => handleDownloadZip(selectedTrip)}>📦 ZIP 다운로드</button>}</div>
+                            <div className={styles.sectionTitle}>증빙 사진 ({selectedTrip.photos?.length || 0}) {selectedTrip.photos?.length > 0 && <button className={styles.zipDownloadBtn} style={{ width: 'auto', height: 24, padding: '0 10px', fontSize: '0.7rem' }} onClick={() => handleDownloadZip(selectedTrip)}>ZIP 다운</button>}</div>
                             <div className={styles.photoGallery}>{selectedTrip.photos?.map((p, i) => {
                                 const finalUrl = p.key ? `/api/vehicle-tracking/photos/view?key=${encodeURIComponent(p.key)}` : p.url;
                                 return (
@@ -1304,12 +1304,12 @@ export default function VehicleTrackingPage() {
                             <div className={styles.sectionTitle}>
                                 <span>이동 경로 ({selectedTripLocations.length})</span>
                                 <div style={{ display: 'flex', gap: 8 }}>
-                                    <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', padding: '0 10px', fontSize: '0.75rem', height: '26px', borderRadius: '6px' }} onClick={handleDownloadLocationsCsv}>📊 엑셀 다운로드</button>
+                                    <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', padding: '0 10px', fontSize: '0.75rem', height: '26px', borderRadius: '6px' }} onClick={handleDownloadLocationsCsv}>엑셀 다운로드</button>
                                     <button className={styles.resetZoomBtn} onClick={() => {
                                         const bounds = new window.naver.maps.LatLngBounds();
                                         selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132).forEach(l => bounds.extend(new window.naver.maps.LatLng(l.lat, l.lng)));
                                         miniMapInstanceRef.current?.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
-                                    }}>🎯 전체보기</button>
+                                    }}>전체보기</button>
                                 </div>
                             </div>
 
@@ -1377,7 +1377,7 @@ export default function VehicleTrackingPage() {
                             </div>
                         )}
                         <div className={styles.modalHeader}>
-                            <h3>{newNotice.isEmergency ? (newNotice.id ? '🚨 긴급알림 수정' : '🚨 긴급알림 발송') : (newNotice.id ? '📝 공지사항 수정' : '📝 새 공지사항 작성')}</h3>
+                            <h3>{newNotice.isEmergency ? (newNotice.id ? '긴급알림 수정' : '긴급알림 발송') : (newNotice.id ? '공지사항 수정' : '새 공지사항 작성')}</h3>
                             <button onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' }); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                         </div>
                         <div className={styles.modalBody} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '80vh', overflowY: 'auto' }}>
@@ -1436,7 +1436,7 @@ export default function VehicleTrackingPage() {
                                 </button>
                                 <button className={styles.filterResetBtn} onClick={() => { setShowWriteModal(false); setNewNotice({ title: '', content: '', target: '전체', isEmergency: false, category: '일반공지' }); }} style={{ height: 44, padding: '0 20px', borderRadius: 8 }}>닫기</button>
                                 {newNotice.id && (
-                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id, newNotice.isEmergency)} style={{ height: 44, padding: '0 20px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700 }}>🗑️ 삭제</button>
+                                    <button className={styles.filterResetBtn} onClick={() => handleDeleteNotice(newNotice.id, newNotice.isEmergency)} style={{ height: 44, padding: '0 20px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700 }}>삭제</button>
                                 )}
                             </div>
                         </div>

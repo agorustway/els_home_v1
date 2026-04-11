@@ -80,7 +80,7 @@ export default function InternalContactsPage() {
                                     {item.photo_url ? (
                                         <img src={item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '50%', border: '2px solid #f1f5f9' }} />
                                     ) : (
-                                        <div style={{ width: 44, height: 44, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.2rem' }}>👤</div>
+                                        <div style={{ width: 44, height: 44, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>{item.name?.charAt(0) || '-'}</div>
                                     )}
                                 </td>
                                 <td className={styles.colTitle} style={{ fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{item.name}</td>

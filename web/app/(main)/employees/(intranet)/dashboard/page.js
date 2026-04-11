@@ -39,22 +39,19 @@ export default function EmployeeDashboard() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-                <div style={{ background: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)', border: '1px solid #f1f5f9' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '24px' }}>📢</div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1e293b', marginBottom: '16px' }}>공지사항</h3>
-                    <p style={{ color: '#64748b', lineHeight: '1.7', fontSize: '1rem' }}>사내 주요 소식을 확인하세요. 새로운 공지사항이 있으면 여기에 표시됩니다.</p>
+                <div style={{ background: 'white', padding: '24px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderLeft: '3px solid #2563eb' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>공지사항</h3>
+                    <p style={{ color: '#64748b', lineHeight: '1.6', fontSize: '0.9rem' }}>사내 주요 소식을 확인하세요. 새로운 공지사항이 있으면 여기에 표시됩니다.</p>
                 </div>
 
-                <div style={{ background: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)', border: '1px solid #f1f5f9' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '24px' }}>📝</div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1e293b', marginBottom: '16px' }}>내 업무 현황</h3>
-                    <p style={{ color: '#64748b', lineHeight: '1.7', fontSize: '1rem' }}>이번 주 작성하신 업무보고는 총 0건입니다. 지점별 실적을 기록해 주세요.</p>
+                <div style={{ background: 'white', padding: '24px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderLeft: '3px solid #2563eb' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>내 업무 현황</h3>
+                    <p style={{ color: '#64748b', lineHeight: '1.6', fontSize: '0.9rem' }}>이번 주 작성하신 업무보고는 성 0건입니다. 지점별 실적을 기록해 주세요.</p>
                 </div>
 
-                <div style={{ background: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)', border: '1px solid #f1f5f9' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '24px' }}>📁</div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1e293b', marginBottom: '16px' }}>자료실 현황</h3>
-                    <p style={{ color: '#64748b', lineHeight: '1.7', fontSize: '1rem' }}>NAS 시스템에 안전하게 보관된 업무 자료를 탐색하고 공유할 수 있습니다.</p>
+                <div style={{ background: 'white', padding: '24px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderLeft: '3px solid #2563eb' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>자료실 현황</h3>
+                    <p style={{ color: '#64748b', lineHeight: '1.6', fontSize: '0.9rem' }}>NAS 시스템에 안전하게 보관된 업무 자료를 탐색하고 공유할 수 있습니다.</p>
                 </div>
             </div>
         </div>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import styles from '../app/(main)/employees/(intranet)/intranet.module.css';
 
 export default function ContactFilterBar({ 
@@ -31,15 +31,15 @@ export default function ContactFilterBar({
                     value={searchKeyword} 
                     onChange={(e) => setSearchKeyword(e.target.value)} 
                 />
-                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>
-                    🔍
+                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4, pointerEvents: 'none', display: 'flex' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </span>
                 {searchKeyword && (
                     <button 
                         onClick={() => setSearchKeyword('')} 
-                        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}
+                        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}
                     >
-                        ✖
+                        ×
                     </button>
                 )}
             </div>

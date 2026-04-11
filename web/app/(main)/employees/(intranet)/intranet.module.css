@@ -78,6 +78,81 @@
     font-size: 0.78rem;
 }
 
+/* .detailCard: reports등 내부 페이지 테이블 래퍼 */
+.detailCard {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow-x: auto;
+}
+
+/* .input: 관리시이 입력 필드 */
+.input {
+    width: 100%;
+    padding: 7px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    outline: none;
+    font-family: inherit;
+    background: #fff;
+    transition: border 0.2s;
+    box-sizing: border-box;
+}
+
+.input:focus {
+    border-color: #2563eb;
+}
+
+/* 게시판 테이블 */
+.boardTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.boardTable th,
+.boardTable td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.875rem;
+    vertical-align: middle;
+}
+
+.boardTable th {
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 700;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
+.postRow {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.postRow:hover {
+    background: #f8fafc;
+}
+
+.postTitle {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+
+.colNum { width: 60px; text-align: center; color: #94a3b8; }
+.colBranch { width: 100px; }
+.colTitle { }
+.colAuthor { width: 120px; white-space: nowrap; }
+.colDate { width: 110px; white-space: nowrap; }
+.author { color: #475569; font-size: 0.85rem; }
+.date { color: #94a3b8; font-size: 0.8rem; }
+.empty { padding: 60px; text-align: center; color: #94a3b8; font-weight: 500; }
+
 /* 페이지 헤더 (클린 스타일) */
 .headerBanner {
     background: #fff;
@@ -547,10 +622,11 @@
     .btnPrimary,
     .btnSecondary,
     .btnDelete {
-        height: 32px;
-        padding: 0 8px;
-        font-size: 0.75rem;
-        width: auto;
+        /* 480px에서도 터치 44px 유지 */
+        min-height: 44px;
+        height: auto;
+        padding: 10px 12px;
+        font-size: 0.8rem;
         white-space: nowrap;
         justify-content: center;
         box-sizing: border-box;

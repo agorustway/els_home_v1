@@ -92,14 +92,14 @@ export default function ExcelButtonGroup({ onUploadSuccess, tableName }) {
                 style={{ ...btnStyle, background: '#10b981', color: 'white' }}
                 title="등록할 데이터가 포함된 엑셀 양식을 다운로드합니다."
             >
-                ⬇️ 양식 다운로드
+                양식 다운로드
             </a>
 
             <label
                 style={{ ...btnStyle, background: '#f59e0b', color: 'white', cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}
                 title="양식을 채워 올려주시면 일괄 등록, 수정 및 삭제(Y표기 시)가 진행됩니다."
             >
-                {uploading ? '⏳ 처리중...' : '⬆️ 엑셀 일괄작업'}
+                {uploading ? '중...' : '엑셀 일괄작업'}
                 <input
                     type="file"
                     accept=".xlsx, .xls"
@@ -115,7 +115,7 @@ export default function ExcelButtonGroup({ onUploadSuccess, tableName }) {
                     style={{ ...btnStyle, background: '#ef4444', color: 'white', cursor: deduplicating ? 'not-allowed' : 'pointer', opacity: deduplicating ? 0.7 : 1 }}
                     title="중복된 데이터를 정리합니다."
                 >
-                    {deduplicating ? '⏳ 검사중...' : '🧹 중복 정리'}
+                    {deduplicating ? '검사중...' : '중복 정리'}
                 </button>
             )}
         </div>

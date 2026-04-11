@@ -1225,7 +1225,7 @@ function ContainerHistoryInner() {
                     <div style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', maxWidth: '1200px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', position: 'relative' }} onClick={e => e.stopPropagation()}>
                         <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>🖥️ 실시간 브라우저 모니터링</h3>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>실시간 브라우저 모니터링</h3>
                                 <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px', gap: '4px' }}>
                                     {[1, 2, 3, 4].map(idx => {
                                         const workerList = Array.isArray(workers) ? workers : [];
@@ -1255,7 +1255,7 @@ function ContainerHistoryInner() {
                                                 }}
                                             >
                                                 #{idx}
-                                                {isBusy && <span style={{ marginLeft: '3px', fontSize: '0.65rem' }}>🔄</span>}
+                                                {isBusy && <span style={{ marginLeft: '3px', fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b' }}>●</span>}
                                             </button>
                                         );
                                     })}
