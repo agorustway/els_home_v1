@@ -78,7 +78,7 @@ export async function POST(req) {
         
         // 2. 업무 보고/일지 관련 (Summary 지원)
         if (userKwd.includes('업무') || userKwd.includes('보고') || userKwd.includes('일지')) {
-            let query = supabase.from('posts').select('title, author_email, created_at').eq('board_type', 'report');
+            let query = supabase.from('posts').select('title, content, author_email, created_at').eq('board_type', 'report');
             
             // 월별 필터 감지 (ex: 4월, 04월)
             const monthMatch = userKwd.match(/(\d{1,2})월/);
@@ -90,16 +90,59 @@ export async function POST(req) {
                 query = query.gte('created_at', startDate).lte('created_at', endDate);
             }
 
-            const { data: reports } = await query.order('created_at', { ascending: false }).limit(10);
+            const { data: reports } = await query.order('created_at', { ascending: false }).limit(5);
             if (reports && reports.length > 0) {
                 const reportsText = reports.map(r => {
                     const date = new Date(r.created_at).toLocaleDateString();
-                    return `- [${date}] ${r.title}`;
+                    return `- [${date}] ${r.title}\n  내용요약: ${r.content?.slice(0, 300)}...`;
                 }).join('\n');
                 recentPostsText += `\n\n## 📝 최근 업무보고/일지 목록 (내부 DB${monthMatch ? ` - ${monthMatch[1]}월` : ''})\n` + reportsText;
             }
         }
 
+        // 2-1. 컨테이너 실시간 이력조회 연동
+        const cntrMatch = userKwd.match(/[a-z]{4}\d{7}/);
+        if (cntrMatch) {
+            const cntrNo = cntrMatch[0].toUpperCase();
+            try {
+                const backendUrl = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
+                const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(6000) });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.tracking_list && data.tracking_list.length > 0) {
+                        recentPostsText += `\n\n## ⛴️ 컨테이너(${cntrNo}) 이력 조회 (NAS 터미널 연동)\n` + JSON.stringify(data.tracking_list).slice(0, 800) + '\n=> 이 JSON 데이터를 바탕으로 사용자가 알기 쉽게 가이드해 주세요.';
+                    } else {
+                        recentPostsText += `\n\n## ⛴️ 컨테이너(${cntrNo}) 조회 결과\n결과가 없습니다. 오류이거나 아직 터미널에 반입되지 않았습니다.`;
+                    }
+                }
+            } catch (e) {
+                console.error('컨테이너 RAG 오류', e);
+            }
+        }
+
+
+        // 2-2. 안전운임표-엑셀 계산데이터 동적 주입
+        if (userKwd.includes('운임') || userKwd.includes('요금') || userKwd.includes('단가')) {
+            try {
+                const path = require('path');
+                const fs = require('fs');
+                const sfDataPath = path.join(process.cwd(), 'data', 'safe-freight-data.json');
+                if (fs.existsSync(sfDataPath)) {
+                    const sfData = JSON.parse(fs.readFileSync(sfDataPath, 'utf8'));
+                    // 검색 키워드 기반 필터링 (예: "아산 인주면 부산신항" -> 아산, 인주면, 부산신항)
+                    const searchTerms = lastUserText.replace(/[^가-힣a-zA-Z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1);
+                    const matchedRows = sfData.filter(row => {
+                        const rowStr = JSON.stringify(row);
+                        return searchTerms.some(term => rowStr.includes(term));
+                    });
+                    if (matchedRows.length > 0) {
+                        recentPostsText += `\n\n## 💰 안전운임표 (엑셀 추출본 - 관련 데이터)\n` + JSON.stringify(matchedRows.slice(0, 5)) + '\n=> 이 데이터를 참고하여 편도/왕복 등 예상 운임을 구체적으로 설명해주세요.';
+                    }
+                }
+            } catch (e) {
+                console.error("[/api/chat] 안전운임 JSON 로드 에러:", e);
+            }
+        }
         // 3. 미세먼지 K-SKILL 연동 (AI Assistant)
         if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
             const regionsMap = {
