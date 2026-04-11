@@ -842,27 +842,27 @@
     color: #f87171;
 }
 
-/* 토요일 스타일 (초록색) */
+/* 토요일 스타일 (보라색) */
 .tab_saturday {
-    background: #f0fdf4;
-    color: #16a34a;
-    border-color: #bbf7d0;
+    background: #faf5ff;
+    color: #9333ea;
+    border-color: #e9d5ff;
 }
 
 .tab_saturday.dateTabActive {
-    background: #22c55e !important; /* 선택 시 초록색 */
+    background: #a855f7 !important; /* 선택 시 보라색 */
     color: #fff !important;
-    border-color: #16a34a !important;
+    border-color: #9333ea !important;
 }
 
 .tab_saturday.dateTabActive .tabDay {
-    color: #dcfce7 !important;
+    color: #f3e8ff !important;
     opacity: 0.9;
 }
 
 .tab_past_saturday {
-    background: #f0fdf4;
-    color: #22c55e;
+    background: #faf5ff;
+    color: #a855f7;
     opacity: 0.7;
     border-color: #e2e8f0;
 }
