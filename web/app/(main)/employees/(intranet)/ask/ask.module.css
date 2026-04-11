@@ -90,8 +90,9 @@
     background: #f8fafc;
     font-family: inherit;
     overflow: hidden;
-    max-width: 768px; /* 채팅창이 너무 넓어지지 않게 */
-    margin: 0 auto;
+    max-width: 800px; /* 채팅창 크기 조금 더 늘림 */
+    margin: 0;
+    margin-right: auto; /* 남은 공백을 오른쪽으로 밀어서 채팅창을 왼쪽(사이드바)으로 붙임 */
 }
 
 /* ── 헤더 ── */

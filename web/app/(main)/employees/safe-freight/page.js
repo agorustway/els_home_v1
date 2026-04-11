@@ -917,6 +917,18 @@ export default function SafeFreightPage() {
           <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
         </button>
 
+        {/* 법규 전문 PDF (고시 원본) */}
+        <button
+          type="button"
+          className={styles.tab}
+          onClick={() => window.open(`/docs/safe_freight_notice_latest.pdf`, '_blank')}
+          aria-label="고시 전문 원본 PDF 보기"
+          title="안전운임 고시 원본 열기"
+        >
+          <span className={styles.tabLabel} style={{color: '#0284c7'}}>PDF 원본 보기</span>
+          <span className={styles.tabDesc}>최신 적용 고시 전문</span>
+        </button>
+
         {/* Forwarder.KR */}
         <button
           type="button"

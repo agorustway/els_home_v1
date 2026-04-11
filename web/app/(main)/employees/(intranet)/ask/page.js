@@ -6,11 +6,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
-    { label: '안전운임 기준 알려줘', icon: '🚛' },
-    { label: '컨테이너 조회 방법', icon: '📦' },
-    { label: '일일 업무일지 작성법', icon: '📝' },
-    { label: '차량 위치 확인 방법', icon: '📍' },
-    { label: '긴급 연락처 알려줘', icon: '📞' },
+    { label: '안전운임제 규정 및 고시 찾아줘', icon: '⚖️' },
+    { label: '아산시 미세먼지 수치 어때?', icon: '🍃' },
+    { label: '최근 작성된 내 업무일지 요약해봐', icon: '📝' },
+    { label: '영업용 화물차 번호판 규정 알려줘', icon: '📖' },
+    { label: '과태료 감경 관련 판례/규정 찾아줘', icon: '🔎' },
 ];
 
 function TypingIndicator() {
@@ -62,18 +62,53 @@ function MessageBubble({ msg, isNew }) {
 export default function AskPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
-    const [messages, setMessages] = useState([
-        {
-            role: 'assistant',
-            content: '안녕하세요! ELS 솔루션 AI 어시스턴트입니다.\n\n안전운임, 컨테이너 조회, 업무일지 등 ELS 업무에 관한 무엇이든 물어보세요!',
-        },
-    ]);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [newMsgIdx, setNewMsgIdx] = useState(null);
+    const [isLoaded, setIsLoaded] = useState(false);
     const bottomRef = useRef(null);
     const inputRef = useRef(null);
     const abortRef = useRef(null);
+
+    const DEFAULT_INIT_MSG = {
+        role: 'assistant',
+        content: '안녕하세요! ELS 솔루션 AI 어시스턴트입니다.\n\n안전운임, 컨테이너 조회, 업무일지 등 ELS 업무에 관한 무엇이든 물어보세요!',
+    };
+
+    useEffect(() => {
+        const loadMemory = async () => {
+            try {
+                const res = await fetch('/api/chat/memory');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.messages && data.messages.length > 0) {
+                        setMessages(data.messages);
+                        setIsLoaded(true);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load DB memory', err);
+            }
+            // fallback
+            setMessages([DEFAULT_INIT_MSG]);
+            setIsLoaded(true);
+        };
+        loadMemory();
+    }, []);
+
+    // Sync messages to DB
+    useEffect(() => {
+        if (isLoaded && messages.length > 0) {
+            // debounced or optimistic save to db 
+            fetch('/api/chat/memory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages })
+            }).catch(e => console.error('Failed to save to DB memory', e));
+        }
+    }, [messages, isLoaded]);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/ask');
@@ -182,41 +217,65 @@ export default function AskPage() {
 
     const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false);
 
+    const clearHistory = async () => {
+        if(confirm('대화 기록을 모두 지우시겠습니까?')) {
+            try {
+                await fetch('/api/chat/memory', { method: 'DELETE' });
+            } catch(e) {
+                console.error('기록 삭제 실패', e);
+            }
+            setMessages([DEFAULT_INIT_MSG]);
+        }
+    };
+
     const GuideContent = () => (
         <>
-            <h2 className={styles.guideTitle}>📖 ELS AI 사용 가이드</h2>
+            <h2 className={styles.guideTitle}>📖 ELS 솔루션 AI 에이전트 지침서</h2>
             <div className={styles.guideBox}>
                 <span className={styles.guideHighlight}>1. 법률/업무 전문 에이전트</span><br/>
-                단순 챗봇이 아닌 <b>ELS Solution 전용 에이전트</b>입니다. 외부 잡담보단 업무 질문에 집중해주세요.
+                단순 대화형 챗봇이 아닌 <b>ELS Solution 전용 에이전트</b>입니다. 사내망 데이터는 물론, 외부 공식 법령과 실시간 데이터를 종합하여 답변을 생성합니다.
             </div>
+            
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>2. K-Law (법망) 연동</span><br/>
-                <i>근로기준법</i>, <i>화물연대</i> 등 법령 관련 질문 시 공식 K-Law MCP를 거쳐 <b>정확한 법률 지원</b>을 제공합니다.
+                <span className={styles.guideHighlight}>2. K-Law (한국 법령) 시스템 연동</span><br/>
+                <span style={{fontSize:'0.8rem', color:'#475569'}}>법제처 OpenAPI를 통해 방대한 법률, 판례, 행정규칙을 실시간 조회합니다.</span>
+                <ul style={{fontSize: '0.8rem', color: '#475569', paddingLeft: '16px', margin: '6px 0', lineHeight: '1.4'}}>
+                    <li>자연어로 질문하면 AI가 필요한 법령/조문을 스스로 분석해 가져옵니다.</li>
+                    <li>법령 전문, 행정규칙, 조례 제정 이력 등을 함께 고려합니다.</li>
+                    <li><i style={{color:'#64748b'}}>예: "과태료 받았는데 감경 가능할까?", "건축법 허가 절차 안내해줘"</i></li>
+                </ul>
             </div>
+
+            <div className={styles.guideBox} style={{display: 'flex', flexDirection: 'column'}}>
+                <span className={styles.guideHighlight}>3. K-SKILL (한국형 실생활 API) 연동</span>
+                <span style={{fontSize:'0.75rem', color:'#94a3b8', margin:'2px 0 6px'}}>※ 현재 미세먼지 및 부분 연동 중이며 지속 확장되는 실생활 플러그인입니다.</span>
+                <div style={{fontSize: '0.8rem', color: '#475569', maxHeight: '180px', overflowY: 'auto', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}>
+                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.4'}}>
+                        <li><b>교통/예매</b>: SRT/KTX 조회예매, 싼 주유소 찾기, 하이패스 영수증 발급</li>
+                        <li><b>기상/환경</b>: 동절기 한국 날씨, 사용자 위치 미세먼지, 한강 수위/유량 정보</li>
+                        <li><b>법률/부동산</b>: 한국 법령 검색(K-Law), 아파트/빌라 실거래가, 한국 특허 색인</li>
+                        <li><b>생활/물류</b>: 식당/술집 조회, 생활쓰레기 배출, 다이소/올리브영 재고, 택배 배송 상태</li>
+                        <li><b>스포츠/기타</b>: KBO/K리그 결과 및 일정 안내, 조선왕조실록 발췌 등</li>
+                    </ul>
+                </div>
+            </div>
+
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>3. K-SKILL 환경 연동</span><br/>
-                <i>"아산 미세먼지 어때?"</i> 와 같은 질문 시 <b>안전공단 데이터 직결</b>을 통해 실시간 수치를 가져옵니다.
+                <span className={styles.guideHighlight}>4. 사내 RAG 데이터 접근 한계 및 주의</span><br/>
+                <span style={{fontSize:'0.8rem', color:'#475569'}}>사내 업무보고, 차량관제, 연락처는 최근 데이터 한정으로 접근 가능합니다.</span><br/>
+                <b style={{fontSize:'0.8rem', color: '#e11d48'}}>※ 브라우저 한계상 자료실 PDF, 엑셀 파일 본문은 에이전트가 직접 분석할 수 없습니다.</b>
             </div>
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>4. 사내망 실시간 RAG 연동</span><br/>
-                사내 임직원 연락처나 업무일지 내역, 현재 화물차 실시간 위치도 답변이 가능합니다.
-            </div>
-            <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '20px', textAlign: 'center'}}>
-                Powered by Gemini 2.5 & K-SKILL MCP
+            
+            <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
+                Powered by Gemini 2.5 flash & MCP Ecosystem
             </div>
         </>
     );
 
-    if (authLoading) return <div className={styles.loadingScreen}>로딩 중...</div>;
-    if (!role) return null;
+    if (!isLoaded) return <div className={styles.loadingScreen}>로딩 중...</div>;
 
     return (
         <div className={styles.containerLayout}>
-            {/* 데스크탑 가이드 패널 */}
-            <div className={`${styles.guidePanel} ${styles.hiddenMobile}`}>
-                <GuideContent />
-            </div>
-
             {/* 모바일 모달 가이드 */}
             {isMobileGuideOpen && (
                 <div className={styles.guideModalOverlay} onClick={() => setIsMobileGuideOpen(false)}>
@@ -248,6 +307,13 @@ export default function AskPage() {
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button 
+                            onClick={clearHistory}
+                            className={styles.statusBadge}
+                            style={{ background: '#fff', color: '#e11d48', border: '1px solid #fda4af', cursor: 'pointer' }}
+                        >
+                            🗑️ 대화 지우기
+                        </button>
                         {/* 모바일 가이드 토글 버튼 */}
                         <button 
                             onClick={() => setIsMobileGuideOpen(true)}
@@ -335,6 +401,10 @@ export default function AskPage() {
                     </div>
                     <p className={styles.disclaimer}>AI 답변은 참고용입니다. 중요한 사항은 반드시 담당자에게 확인하세요.</p>
                 </div>
+            </div>
+            {/* 데스크탑 가이드 패널 - 오른쪽 이동 */}
+            <div className={`${styles.guidePanel} ${styles.hiddenMobile}`} style={{borderRight: 'none', borderLeft: '1px solid #e2e8f0'}}>
+                <GuideContent />
             </div>
         </div>
     );

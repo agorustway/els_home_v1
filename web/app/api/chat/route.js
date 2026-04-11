@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 
-// ELS 업무 시스템 컨텍스트 — 모델이 ELS 도메인을 이해하도록 주입
 const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.
 ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.
 
@@ -13,11 +12,11 @@ ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다
 - **날씨 및 미세먼지**: [/employees/weather](/employees/weather)
 - **사내연락망**: [/employees/internal-contacts](/employees/internal-contacts)
 
-## 답변 원칙 및 가드레일 (Anti-Hallucination)
-1. **정확성**: 실시간 주입된 데이터(최근 게시글, 차량 위치, 미세먼지, K-Law 법령)를 최우선으로 참고하여 답변하라.
-2. **유연성**: 만약 특정 키워드에 대한 데이터가 주입되지 않았거나 검색 결과가 없다면, "현재 시스템(RAG)에서 해당 데이터를 실시간으로 찾을 수 없다"고 사용자에게 안내하라. 단, ELS 업무 도메인과 관련된 일반적인 절차나 지식에 대해서는 알고 있는 범위 내에서 최대한 친절하게 답변하라.
-3. **법령 답변**: 화물연대, 근로기준법, 안전운임제 등 법적 질문 시에는 반드시 주입된 'K-Law MCP' 검색 결과를 바탕으로 답변하고, 출처가 불명확한 수치나 조항은 "정확한 확인을 위해 법망 사이트 또는 담당 부서 확인이 필요하다"고 명시하라.
-4. **거절 범위**: 잡담, 연예, 정치 등 ELS 업무와 전혀 상관없는 질문에 대해서만 정중히 거절하라. 업무 관련 질문은 데이터가 조금 부족하더라도 최대한 도움을 주려 노력하라.`;
+## 답변 원칙 및 가드레일 (Anti-Hallucination 방지 및 답변 풍부화)
+1. **정확성과 친절함**: 시스템(RAG)에서 넘어온 데이터(최근 게시글, 화물차 위치, 미세먼지, 법령)를 최우선으로 활용하세요.
+2. **법령과 고시 구분 (중요)**: '안전운임' 등은 법망에 직접 조회되지 않는 '고시'입니다. 또한 '화물연대'는 법률명칭이 아닙니다. K-Law에 검색 결과가 없더라도 "검색 결과가 없습니다"라고 끝내지 말고, 네가 가진 사전 지식(자동차운수사업법, 자동차관리법, 근로기준법, 화물연대 관련 기본 지식 등)을 동원하여 최대한 자세히 풀어서 친절하게 설명해주세요.
+3. **읽기 권한 한계 명시**: 사용자가 PDF나 자료실 문서 파악을 요구하면, "현재 시스템은 보안 및 기술적 이유로 자료실의 PDF나 엑셀 파일 본문 내용을 직접 읽을 수 없습니다. 주로 최신 업무게시글, 실시간 차량 위치, 미세먼지, 법령 검색 위주로 확인해드릴 수 있습니다."라고 명확히 안내하세요.
+4. **거절 최소화**: 질문의 의도가 ELS 업무나 법률/노무 영역이라면, K-Law 데이터가 조금 빈약하더라도 절대로 거절하지 말고 일반적인 법리적 해석이나 업계 상식 수준에서 성심성의껏 답변하세요.`;
 
 /**
  * POST /api/chat
@@ -154,9 +153,31 @@ export async function POST(req) {
         console.error('[/api/chat] DB 조회 오류:', e);
     }
     
-    // 최종 시스템 프롬프트 조합
-    const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText;
+    let safeFreightText = '';
+    try {
+        const path = require('path');
+        const fs = require('fs');
+        const docsPath = path.join(process.cwd(), 'data', 'safe-freight-docs.json');
+        if (fs.existsSync(docsPath)) {
+            const safeDocs = JSON.parse(fs.readFileSync(docsPath, 'utf8'));
+            if (safeDocs && safeDocs.length > 0) {
+                // 최신순 정렬
+                safeDocs.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
+                safeFreightText += '\n\n====== [안전운임제 최신 고시 전문 데이터] ======\n이하 데이터는 시스템에 공식 등록된 화물자동차 안전운임 고시 전문입니다. 사용자가 안전운임 관련 과태료, 적용 범위, 부대조항 등을 질문할 경우, 구체적인 규정과 함께 반드시 제공된 고시 전문에 입각하여 답변하십시오.\n';
+                // 최대 최신 2개 버전까지만 컨텍스트에 포함 (비교 용이성 및 토큰 한계 고려)
+                for (const doc of safeDocs.slice(0, 2)) {
+                    const textSnippet = typeof doc.text === 'string' ? doc.text.substring(0, 8000) : '';
+                    safeFreightText += `\n--- [고시 차수: ${doc.versionDir}] ---\n${textSnippet}\n`;
+                }
+                safeFreightText += '===============================================\n';
+            }
+        }
+    } catch(err) {
+        console.error('[/api/chat] 안전운임 전문 로드 에러:', err);
+    }
 
+    // 최종 시스템 프롬프트 조합
+    const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText + safeFreightText;
     // Gemini API: 'model' role은 'assistant' → 변환 필요
     const contents = messages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
