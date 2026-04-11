@@ -1,4 +1,4 @@
-﻿# ELS Solution 프로젝트 마스터 맵 (Architecture and Blueprint)
+# ELS Solution 프로젝트 마스터 맵 (Architecture and Blueprint)
 
 > **AI/IDE Quick Scan (Project Blueprint)**
 > - **Core Stack**: Next.js 14 (App Router), Flask (Python 3.11), Capacitor 8.x, Selenium (DrissionPage).
@@ -126,7 +126,7 @@ ES Modules (type="module") 방식 적용. 빌드 도구 없음.
 
 ## 6. AI 어시스턴트 아키텍처 (Agent RAG Pipeline)
 
-> **최종 구현**: 2026-04-11 (v4.9.25)
+> **최종 구현**: 2026-04-12 (v4.9.29)
 > **구현 파일**:
 > - web/app/api/chat/route.js — 백엔드 RAG 엔진 및 Gemini 스트리밍
 > - web/app/(main)/employees/(intranet)/ask/page.js — AI 어시스턴트 UI (데스크탑/모바일 분기)
@@ -143,32 +143,45 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
         v
 [POST /api/chat] — Next.js Server-Side API Route
         |
-        +-- STEP 1: 키워드 1차 스캐닝 (0.1초 이내)
-        |       +-- '차량/위치/어디'    -> Supabase vehicle_trips + vehicle_locations JOIN
-        |       +-- '업무/보고/일지'    -> Supabase posts (board_type=report) 최근 5건
-        |       +-- '날씨/미세먼지/공기' -> K-SKILL fine-dust Proxy 호출 (AirKorea 공식)
-        |       +-- '법/규정/근로/운임'  -> K-Law REST API 호출 (api.beopmang.org)
+        +-- STEP 0: body 파싱 → messages, lastUserText, userKwd 추출
         |
-        +-- STEP 2: Context 조합
-        |       BASE_SYSTEM_INSTRUCTION
-        |         + 최근 게시글 (항상 주입: 최신 5건)
-        |         + 조건부 실시간 데이터 (키워드 매칭 시)
+        +-- STEP 1: Omni-RAG 병렬 스캔 (Promise.all, ~0.2초)
+        |       +-- external_contacts   → 거래처/고객 연락처
+        |       +-- internal_contacts   → 사내 직원 연락처
+        |       +-- posts               → 게시판/업무일지 본문 검색
+        |       +-- work_sites          → 작업지 주소/정보 검색
+        |
+        +-- STEP 2: 조건부 RAG (키워드 트리거)
+        |       +-- '차량/위치/어디'    → Supabase vehicle_trips + vehicle_locations JOIN
+        |       +-- 컨테이너번호 패턴   → NAS Backend 실시간 이력조회
+        |       +-- 안전운임 키워드     → safe-freight-data.json 엑셀 데이터 검색
+        |       +-- '날씨/미세먼지/공기' → K-SKILL fine-dust Proxy 호출
+        |       +-- '법/규정/근로/운임'  → K-Law REST API 호출
+        |
+        +-- STEP 3: Context 조합
+        |       BASE_SYSTEM_INSTRUCTION (인트라넷 전체 20+개 메뉴맵 포함)
+        |         + Omni-RAG 검색 결과
+        |         + 안전운임 고시 전문 (PDF→JSON, 최대 2차수)
         |       = finalSystemInstruction
         |
-        +-- STEP 3: Gemini 2.5 Flash 스트리밍 호출
+        +-- STEP 4: Gemini 2.5 Flash 스트리밍 호출
         |       모델: gemini-2.5-flash (streamGenerateContent, SSE)
         |       Temperature: 0.7 / MaxTokens: 2048 / Timeout: 60초
         |
-        +-- STEP 4: SSE 스트림 클라이언트 전달 -> 실시간 렌더링
+        +-- STEP 5: SSE 스트림 클라이언트 전달 → 실시간 렌더링
 ```
 
-### 6-2. 3-Layer RAG 데이터 소스 상세
+### 6-2. Omni-RAG 데이터 소스 상세
 
-| 레이어 | 소스 | 트리거 키워드 | 반환 데이터 |
+| 레이어 | 소스 | 트리거 | 반환 데이터 |
 |---|---|---|---|
-| **Layer 1: 사내 DB** | Supabase PostgreSQL | 차량, 위치, 어디, 업무, 보고, 일지 | 실시간 GPS 위치/주소, 업무일지 목록 |
-| **Layer 2: K-SKILL** | k-skill-proxy.nomadamas.org | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
-| **Layer 3: K-Law** | api.beopmang.org | 법, 근로기준법, 안전운임, 규정 | 법령 조문 전문, 개정이력 JSON |
+| **Omni-RAG (항상)** | Supabase PostgreSQL | 모든 질문 키워드 병렬 스캔 | 연락처(사내/외부), 게시글/업무일지 본문, 작업지 주소 |
+| **차량 위치** | Supabase vehicle_trips/locations | 차량, 위치, 어디 | 실시간 GPS 위치/주소 |
+| **컨테이너** | NAS Backend API | 영문4+숫자7 패턴 | 반입/반출 이력 |
+| **안전운임 단가** | safe-freight-data.json (엑셀 변환) | 지역명 키워드 매칭 | 구간별 운임 단가 |
+| **안전운임 고시** | safe-freight-docs.json (PDF 변환) | 항상 주입 (최신 2차수) | 고시 전문 텍스트 |
+| **K-SKILL** | k-skill-proxy.nomadamas.org | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
+| **K-Law** | api.beopmang.org | 법, 규정, 근로, 운임, 판례, 과태료 | 법령 조문 전문 |
 
 **K-SKILL 지역 측정소 매핑 (도시명 -> AirKorea 측정소 힌트)**:
 - 서울: 서울 중구 / 부산: 부산 연산동 / 인천: 인천 구월동
@@ -200,8 +213,9 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 
 BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
 - 너는 ELS Solution의 법률/업무 지원 에이전트다.
-- K-SKILL / K-Law MCP / 사내 DB에서 확인된 정보만 제공해라.
-- 확인 불가 외부 지식이나 잡담은 정중히 거절해라.
+- **인트라넷 전체 20+개 메뉴 경로를 시스템 프롬프트에 내장** (v4.9.29)
+- K-SKILL / K-Law MCP / 사내 DB에서 확인된 정보를 최우선으로 활용.
+- 법령/고시 검색 결과가 빈약해도 사전 지식으로 성심성의껏 답변. 거절 최소화.
 - 메뉴 안내 시 반드시 [메뉴이름](/경로) 마크다운 링크로 이동 연결해라.
 
 ### 6-4. AI 어시스턴트 UI/UX 구조 (2026-04-11 개편)
@@ -227,4 +241,4 @@ BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
 5. **K-SKILL/K-Law 가용성**: 외부 프록시 서버 의존. 네트워크 단절 시 AI는 fallback(사내 DB only)으로 동작.
 
 ---
-*최종 갱신일: 2026-04-11 (by Antigravity/Claude Sonnet | v4.9.25)*
+*최종 갱신일: 2026-04-12 (by Antigravity/Claude Opus | v4.9.29)*
