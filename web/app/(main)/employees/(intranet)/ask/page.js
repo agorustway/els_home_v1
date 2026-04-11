@@ -21,6 +21,23 @@ function TypingIndicator() {
     );
 }
 
+// 마크다운 링크 파서
+function renderTextWithLinks(text) {
+    if (!text) return null;
+    const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+    return parts.map((part, i) => {
+        const match = part.match(/\[([^\]]+)\]\(([^)]+)\)/);
+        if (match) {
+            return (
+                <a key={i} href={match[2]} style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 'bold' }}>
+                    {match[1]}
+                </a>
+            );
+        }
+        return part;
+    });
+}
+
 function MessageBubble({ msg, isNew }) {
     const isUser = msg.role === 'user';
     return (
@@ -36,7 +53,7 @@ function MessageBubble({ msg, isNew }) {
                 </div>
             )}
             <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
-                {msg.content}
+                {renderTextWithLinks(msg.content)}
             </div>
         </div>
     );
@@ -89,7 +106,8 @@ export default function AskPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messages, userMsg].map((m) => ({
+                    // 첫 번째 고정 인사말(index 0)은 토큰 절약을 위해 제외하고 전송
+                    messages: [...messages.slice(1), userMsg].map((m) => ({
                         role: m.role,
                         parts: [{ text: m.content }],
                     })),

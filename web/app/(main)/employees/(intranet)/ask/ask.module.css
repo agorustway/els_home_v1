@@ -268,7 +268,7 @@
 
 /* ── 입력 영역 ── */
 .inputArea {
-    padding: 10px 12px 12px;
+    padding: 8px 12px 10px;
     background: #fff;
     border-top: 1px solid #e2e8f0;
     flex-shrink: 0;
@@ -276,12 +276,12 @@
 
 .inputBox {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 8px;
     background: #f8fafc;
     border: 1.5px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 8px 8px 8px 14px;
+    border-radius: 12px;
+    padding: 5px 6px 5px 12px;
     transition: border-color 0.2s;
 }
 

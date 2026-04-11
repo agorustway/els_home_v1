@@ -17,10 +17,10 @@ ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다
 
 ## 응답 원칙
 - 한국어로 친절하고 간결하게 답변합니다.
-- ELS 시스템 내 기능이라면 해당 메뉴 경로를 안내합니다.
+- 메뉴나 특정 페이지를 안내할 때는 날것의 URL 주소를 그대로 노출하지 말고, **반드시 직관적인 한글이름의 마크다운 링크 포맷**(`[메뉴 이름](/url)`)을 사용하여 클릭 가능하게 만드세요. 
+  (예: `[업무일지 작성하기](/employees/reports/daily)`)
 - 물류·운송 업무(컨테이너, 안전운임, 화물차, 도로운송 등)에 관한 질문에 전문적으로 답변합니다.
-- 시스템에서 확인하기 어려운 법적·세무·의료 관련 질문은 전문가 상담을 권고합니다.
-- 마크다운 형식보다 읽기 쉬운 일반 텍스트를 우선 사용합니다.`;
+- 사용자가 컨테이너 번호를 주며 조회를 요구하면, AI가 직접 조회할 수는 없으므로 `[컨테이너 이력조회로 이동](/employees/container-history)` 링크를 주면서 직접 조회하도록 안내합니다.`;
 
 /**
  * POST /api/chat
@@ -56,12 +56,42 @@ export async function POST(req) {
             .limit(5);
 
         if (posts && posts.length > 0) {
-            recentPostsText = '\n\n## 최근 사내 게시글/공지\n' + posts.map(p => {
+            recentPostsText = '\n\n## 최근 사내 게시글/공지\n다음을 참고하여 답변하세요:\n' + posts.map(p => {
                 const date = new Date(p.created_at).toLocaleDateString();
                 const name = p.author_email?.split('@')[0] || '익명';
                 return `- [${date}] ${p.title} (작성자: ${name})`;
             }).join('\n');
         }
+
+        // --- 강력한 RAG: 사용자의 질문 키워드에 따라 DB 데이터 동적 주입 ---
+        const lastUserText = messages.filter(m => m.role === 'user').pop()?.parts?.[0]?.text || '';
+        const userKwd = lastUserText.toLowerCase();
+
+        // 1. 차량 위치 관련
+        if (userKwd.includes('차량') || userKwd.includes('위치') || userKwd.includes('어디')) {
+            const { data: trips } = await supabase.from('vehicle_trips').select('id, vehicle_number').in('status', ['driving', 'paused']);
+            if (trips && trips.length > 0) {
+                const tripIds = trips.map(t => t.id);
+                const { data: locs } = await supabase.from('vehicle_locations').select('trip_id, address').in('trip_id', tripIds).order('recorded_at', { ascending: false });
+                const locMap = {};
+                locs?.forEach(l => { if(!locMap[l.trip_id]) locMap[l.trip_id] = l.address; });
+                const vehiclesText = trips.map(t => `- 화물차(${t.vehicle_number}): 현재 [${locMap[t.id] || '알 수 없음'}] 부근 위치`).join('\n');
+                recentPostsText += '\n\n## 🚚 실시간 운행차량 위치 (내부 DB)\n' + vehiclesText;
+            }
+        }
+        
+        // 2. 업무 보고/일지 관련
+        if (userKwd.includes('업무') || userKwd.includes('보고') || userKwd.includes('일지')) {
+            const { data: reports } = await supabase.from('posts').select('title, author_email, created_at').eq('type', 'report').order('created_at', { ascending: false }).limit(3);
+            if (reports && reports.length > 0) {
+                const reportsText = reports.map(r => {
+                    const date = new Date(r.created_at).toLocaleDateString();
+                    return `- [${date}] ${r.title}`;
+                }).join('\n');
+                recentPostsText += '\n\n## 📝 최근 업무보고/일지 목록 (내부 DB)\n' + reportsText;
+            }
+        }
+        // -------------------------------------------------------------------------
     } catch (e) {
         console.error('[/api/chat] DB 조회 오류:', e);
     }
