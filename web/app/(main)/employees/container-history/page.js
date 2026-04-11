@@ -1181,16 +1181,16 @@ function ContainerHistoryInner() {
 
                     <div className={`${styles.rightColumn} ${isLogCollapsed ? styles.collapsed : ''}`}>
                         <div className={styles.section} style={{ flex: 1, overflow: 'hidden' }}>
-                            <div className={styles.sectionHeader} onClick={() => setIsLogCollapsed(!isLogCollapsed)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            <div className={styles.sectionHeader} onClick={() => setIsLogCollapsed(!isLogCollapsed)} style={{ cursor: 'pointer', userSelect: 'none', flexWrap: 'wrap', gap: '10px' }}>
                                 <h2 className={styles.sectionTitle}>
                                     {isLogCollapsed ? '로그' : '시스템 로그'}
                                     {!isLogCollapsed && <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#94a3b8', marginLeft: '4px' }}>(클릭하여 접기)</span>}
                                 </h2>
                                 {!isLogCollapsed && (
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button onClick={handleResetDaemon} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' }}>데몬 리셋</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>활동 확인</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setLogLines([]); }} className={styles.buttonSecondary} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>로그 비우기</button>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        <button onClick={handleResetDaemon} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' }}>데몬 리셋</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>활동 확인</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setLogLines([]); }} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem' }}>로그 비우기</button>
                                     </div>
                                 )}
                             </div>
