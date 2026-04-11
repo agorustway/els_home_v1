@@ -16,6 +16,7 @@ export default function ExternalContactEditPage() {
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [contactPerson, setContactPerson] = useState('');
+    const [contactPersonPhone, setContactPersonPhone] = useState('');
     const [memo, setMemo] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -36,6 +37,7 @@ export default function ExternalContactEditPage() {
                         setPhone(data.item.phone ?? '');
                         setEmail(data.item.email ?? '');
                         setContactPerson(data.item.contact_person ?? '');
+                        setContactPersonPhone(data.item.contact_person_phone ?? '');
                         setMemo(data.item.memo ?? '');
                     }
                 })
@@ -58,6 +60,7 @@ export default function ExternalContactEditPage() {
                     phone,
                     email,
                     contact_person: contactPerson,
+                    contact_person_phone: contactPersonPhone,
                     memo,
                 }),
             });
@@ -92,6 +95,10 @@ export default function ExternalContactEditPage() {
                     <div className={styles.formGroup}>
                         <label className={styles.label}>담당자</label>
                         <input className={styles.input} value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>담당자 연락처</label>
+                        <input className={styles.input} value={contactPersonPhone} onChange={(e) => setContactPersonPhone(e.target.value)} />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>주소</label>

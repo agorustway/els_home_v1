@@ -95,7 +95,7 @@ export async function GET(request) {
     ], internalData);
 
     // 2. 외부연락처
-    const { data: externalData } = await supabase.from('external_contacts').select('id, company_name, contact_type, address, phone, email, contact_person, memo').order('created_at', { ascending: true });
+    const { data: externalData } = await supabase.from('external_contacts').select('id, company_name, contact_type, address, phone, email, contact_person, contact_person_phone, memo').order('created_at', { ascending: true });
     setupSheet('외부연락처', [
         { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
         { header: '회사명/소속(필수)', key: 'company_name', width: 25 },
@@ -104,6 +104,7 @@ export async function GET(request) {
         { header: '대표 연락처', key: 'phone', width: 20 },
         { header: '이메일', key: 'email', width: 25 },
         { header: '담당자명', key: 'contact_person', width: 15 },
+        { header: '담당자 연락처', key: 'contact_person_phone', width: 20 },
         { header: '메모', key: 'memo', width: 40 },
         { header: '데이터 삭제(Y)', key: 'is_delete', width: 15 },
     ], externalData);

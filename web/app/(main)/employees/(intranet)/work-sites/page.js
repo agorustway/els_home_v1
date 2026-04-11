@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
+import ContactFilterBar from '@/components/ContactFilterBar';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../intranet.module.css';
 
@@ -12,6 +13,7 @@ export default function WorkSitesPage() {
     const router = useRouter();
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchKeyword, setSearchKeyword] = useState('');
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/work-sites');
@@ -30,6 +32,20 @@ export default function WorkSitesPage() {
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
 
+    const filteredList = list.filter(item => {
+        if (searchKeyword) {
+            const q = searchKeyword.toLowerCase();
+            const managerNames = (item.managers || []).map(m => m.name).join(' ');
+            return (
+                item.site_name?.toLowerCase().includes(q) || 
+                item.address?.toLowerCase().includes(q) || 
+                managerNames.toLowerCase().includes(q) || 
+                item.contact?.toLowerCase().includes(q)
+            );
+        }
+        return true;
+    });
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
@@ -39,10 +55,16 @@ export default function WorkSitesPage() {
                     <Link href="/employees/work-sites/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>
+            
+            <ContactFilterBar 
+                searchKeyword={searchKeyword} 
+                setSearchKeyword={setSearchKeyword} 
+            />
+
             <div className={styles.card}>
                 <table className={styles.table}>
                     <thead>
-                        <tr>
+                        <tr style={{ fontSize: '0.9rem' }}>
                             <th className={styles.colNo}>No</th>
                             <th style={{ width: '150px' }}>작업지명</th>
                             <th className={styles.colTitle}>작업지 주소</th>
@@ -51,10 +73,10 @@ export default function WorkSitesPage() {
                             <th className={styles.colDate}>등록일</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {list.map((item, i) => (
+                    <tbody style={{ fontSize: '0.9rem' }}>
+                        {filteredList.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/work-sites/' + item.id)}>
-                                <td className={styles.colNo}>{list.length - i}</td>
+                                <td className={styles.colNo}>{filteredList.length - i}</td>
                                 <td style={{ fontWeight: 600 }}>{item.site_name || '—'}</td>
                                 <td className={styles.colTitle}>{item.address}</td>
                                 <td style={{ fontWeight: 600, color: '#475569' }}>
@@ -66,8 +88,8 @@ export default function WorkSitesPage() {
                                 <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
-                        {list.length === 0 && (
-                            <tr><td colSpan="6" className={styles.empty}>등록된 고객사 정보가 없습니다.</td></tr>
+                        {filteredList.length === 0 && (
+                            <tr><td colSpan="6" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

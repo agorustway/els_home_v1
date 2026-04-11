@@ -15,6 +15,7 @@ export default function ExternalContactsNewPage() {
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [contactPerson, setContactPerson] = useState('');
+    const [contactPersonPhone, setContactPersonPhone] = useState('');
     const [memo, setMemo] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -37,6 +38,7 @@ export default function ExternalContactsNewPage() {
                     phone,
                     email,
                     contact_person: contactPerson,
+                    contact_person_phone: contactPersonPhone,
                     memo,
                 }),
             });
@@ -75,6 +77,10 @@ export default function ExternalContactsNewPage() {
                     <div className={styles.formGroup}>
                         <label className={styles.label}>담당자</label>
                         <input className={styles.input} value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="담당자명" />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>담당자 연락처</label>
+                        <input className={styles.input} value={contactPersonPhone} onChange={(e) => setContactPersonPhone(e.target.value)} placeholder="담당자 연락처" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>주소</label>

@@ -24,6 +24,7 @@ export async function POST(request) {
             phone: body.phone ?? '',
             email: body.email ?? '',
             contact_person: body.contact_person ?? '',
+            contact_person_phone: body.contact_person_phone ?? '',
             memo: body.memo ?? '',
         };
         const { data, error } = await supabase.from('external_contacts').insert([row]).select().single();

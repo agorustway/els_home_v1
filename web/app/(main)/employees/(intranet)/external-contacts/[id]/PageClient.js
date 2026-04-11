@@ -64,6 +64,7 @@ export default function ExternalContactDetailPage() {
                 <h2 className={styles.detailTitle}>{item.company_name}</h2>
                 <div className={styles.detailMeta}>{item.contact_type}</div>
                 {item.contact_person && <p><strong>담당자:</strong> {item.contact_person}</p>}
+                {item.contact_person_phone && <p><strong>담당자 연락처:</strong> {item.contact_person_phone}</p>}
                 {item.address && <p><strong>주소:</strong> {item.address}</p>}
                 {item.phone && <p><strong>대표 연락처:</strong> {item.phone}</p>}
                 {item.email && <p><strong>이메일:</strong> {item.email}</p>}

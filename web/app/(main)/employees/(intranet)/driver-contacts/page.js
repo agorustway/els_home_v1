@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
+import ContactFilterBar from '@/components/ContactFilterBar';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../intranet.module.css';
 
@@ -12,6 +13,7 @@ export default function DriverContactsPage() {
     const router = useRouter();
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchKeyword, setSearchKeyword] = useState('');
 
     const formatPhone = (val) => {
         if (!val) return '-';
@@ -38,6 +40,20 @@ export default function DriverContactsPage() {
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
 
+    const filteredList = list.filter(item => {
+        if (searchKeyword) {
+            const q = searchKeyword.toLowerCase();
+            return (
+                item.name?.toLowerCase().includes(q) || 
+                item.phone?.toLowerCase().includes(q) || 
+                item.vehicle_number?.toLowerCase().includes(q) || 
+                item.vehicle_id?.toLowerCase().includes(q)
+            );
+        }
+        return true;
+    });
+
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
@@ -47,6 +63,12 @@ export default function DriverContactsPage() {
                     <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>
+            
+            <ContactFilterBar 
+                searchKeyword={searchKeyword} 
+                setSearchKeyword={setSearchKeyword} 
+            />
+
             <div className={styles.card}>
                 <table className={styles.table}>
                     <thead>
@@ -65,7 +87,7 @@ export default function DriverContactsPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {list.map((item) => (
+                        {filteredList.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/driver-contacts/' + item.id)}>
                                 <td style={{ textAlign: 'center' }}>
                                     {item.photo_driver || item.photo_url ? (
@@ -97,8 +119,8 @@ export default function DriverContactsPage() {
                                 <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
-                        {list.length === 0 && (
-                            <tr><td colSpan="11" className={styles.empty}>등록된 운전원 정보가 없습니다.</td></tr>
+                        {filteredList.length === 0 && (
+                            <tr><td colSpan="11" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

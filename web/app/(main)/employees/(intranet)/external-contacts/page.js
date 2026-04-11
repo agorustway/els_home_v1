@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
+import ContactFilterBar from '@/components/ContactFilterBar';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from '../intranet.module.css';
 
@@ -12,6 +13,10 @@ export default function ExternalContactsPage() {
     const router = useRouter();
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    // Filter & Search states
+    const [searchKeyword, setSearchKeyword] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('');
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/external-contacts');
@@ -30,6 +35,21 @@ export default function ExternalContactsPage() {
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
 
+    const filteredList = list.filter(item => {
+        if (categoryFilter && item.contact_type !== categoryFilter) return false;
+        if (searchKeyword) {
+            const q = searchKeyword.toLowerCase();
+            return (
+                item.company_name?.toLowerCase().includes(q) || 
+                item.contact_person?.toLowerCase().includes(q) || 
+                item.phone?.toLowerCase().includes(q) || 
+                item.contact_person_phone?.toLowerCase().includes(q) ||
+                item.email?.toLowerCase().includes(q)
+            );
+        }
+        return true;
+    });
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
@@ -39,37 +59,48 @@ export default function ExternalContactsPage() {
                     <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>
+            
+            <ContactFilterBar 
+                searchKeyword={searchKeyword} 
+                setSearchKeyword={setSearchKeyword} 
+                categoryFilter={categoryFilter} 
+                setCategoryFilter={setCategoryFilter} 
+                categoryOptions={['고객사', '협력사']}
+            />
+            
             <div className={styles.card}>
                 <table className={styles.table}>
                     <thead>
-                        <tr>
+                        <tr style={{ fontSize: '0.9rem' }}>
                             <th className={styles.colTitle} style={{ width: '20%' }}>회사명</th>
                             <th className={styles.colCategory} style={{ width: '80px' }}>구분</th>
-                            <th style={{ width: '120px' }}>담당자</th>
-                            <th style={{ width: '150px' }}>연락처</th>
-                            <th style={{ width: '200px' }}>이메일</th>
+                            <th style={{ width: '100px' }}>담당자</th>
+                            <th style={{ width: '130px' }}>담당자 연락처</th>
+                            <th style={{ width: '130px' }}>대표 연락처</th>
+                            <th style={{ width: '180px' }}>이메일</th>
                             <th style={{ width: 'auto' }}>주소</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {list.map((item) => (
+                    <tbody style={{ fontSize: '0.9rem' }}>
+                        {filteredList.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/external-contacts/' + item.id)}>
-                                <td className={styles.colTitle} style={{ color: '#2563eb' }}>{item.company_name}</td>
+                                <td className={styles.colTitle} style={{ color: '#2563eb', fontSize: '0.95rem' }}>{item.company_name}</td>
                                 <td className={styles.colCategory}>
-                                    <span style={{ background: item.contact_type === '고객사' ? '#eff6ff' : '#f8fafc', color: item.contact_type === '고객사' ? '#3b82f6' : '#64748b', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 700 }}>
+                                    <span style={{ background: item.contact_type === '고객사' ? '#eff6ff' : '#f8fafc', color: item.contact_type === '고객사' ? '#3b82f6' : '#64748b', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700 }}>
                                         {item.contact_type}
                                     </span>
                                 </td>
                                 <td style={{ fontWeight: 600, color: '#475569' }}>{item.contact_person}</td>
-                                <td className={styles.colAuthor}>{item.phone}</td>
+                                <td style={{ color: '#0f172a', fontWeight: 500 }}>{item.contact_person_phone || '—'}</td>
+                                <td className={styles.colAuthor} style={{ color: '#64748b' }}>{item.phone || '—'}</td>
                                 <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{item.email}</td>
-                                <td className={styles.colDate} style={{ width: 'auto', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.address}>
+                                <td className={styles.colDate} style={{ width: 'auto', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.address}>
                                     {item.address || '—'}
                                 </td>
                             </tr>
                         ))}
-                        {list.length === 0 && (
-                            <tr><td colSpan="6" className={styles.empty}>등록된 외부연락처가 없습니다.</td></tr>
+                        {filteredList.length === 0 && (
+                            <tr><td colSpan="7" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

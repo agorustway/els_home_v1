@@ -24,6 +24,7 @@ export async function PATCH(request, { params }) {
         if (body.phone !== undefined) updates.phone = body.phone;
         if (body.email !== undefined) updates.email = body.email;
         if (body.contact_person !== undefined) updates.contact_person = body.contact_person;
+        if (body.contact_person_phone !== undefined) updates.contact_person_phone = body.contact_person_phone;
         if (body.memo !== undefined) updates.memo = body.memo;
         const { data, error } = await supabase.from('external_contacts').update(updates).eq('id', id).select().single();
         if (error) throw error;
