@@ -154,19 +154,32 @@ export default function AskPage() {
         setInput('');
         const userMsg = { role: 'user', content: trimmed };
         
-        let shouldRename = false;
-        let newTitle = '';
-        if (messages.length <= 1) {
-            shouldRename = true;
-            newTitle = trimmed.slice(0, 15) + (trimmed.length > 15 ? '...' : '');
-        }
-
+        // 제목 자동 생성 로직 (첫 질문 시)
+        const isFirstQuestion = messages.length <= 1;
+        
         setSessions((prev) => prev.map(s => {
             if (s.id === activeId) {
-                return { ...s, title: shouldRename ? newTitle : s.title, messages: [...s.messages, userMsg] };
+                // 임시로 먼저 텍스트 일부를 제목으로 설정
+                const tempTitle = isFirstQuestion ? (trimmed.slice(0, 15) + (trimmed.length > 15 ? '...' : '')) : s.title;
+                return { ...s, title: tempTitle, messages: [...s.messages, userMsg] };
             }
             return s;
         }));
+
+        // 백그라운드에서 AI 제목 생성 호출
+        if (isFirstQuestion) {
+            fetch('/api/chat/title', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: trimmed })
+            }).then(res => res.json()).then(data => {
+                if (data.title) {
+                    setSessions(prev => prev.map(s => 
+                        s.id === activeId ? { ...s, title: data.title } : s
+                    ));
+                }
+            }).catch(() => {});
+        }
         
         setIsLoading(true);
         setNewMsgIdx(null);

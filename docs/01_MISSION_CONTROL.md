@@ -1,5 +1,5 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-12 (KST) - [v4.9.29] AI 에이전트 route.js 전면 복원 및 인트라넷 전체 메뉴맵 주입
+> 마지막 업데이트: 2026-04-12 (KST) - [v4.9.30] AI 채팅 제목 자동 생성(Auto-Title) 기능 및 RAG 데이터 싱크 완료
 
 ## 📦 최신 배포 정보
 - **Current Build**: `v4.9.26` (배포 오류 해결, AI 어시스턴트 초기페이지 설정, 기상 대시보드 UI 프리미엄화)
@@ -65,6 +65,8 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] **AI route.js 전면 복원** (2026-04-12): 직전 에이전트가 body/messages/supabase 변수 정의를 삭제하고 RAG 블록을 중복 삽입하여 코드 파괴됨 → 전면 재작성으로 정상화
     - [x] **인트라넷 전체 메뉴맵 시스템 프롬프트 주입**: 6개 메뉴 → 20+개 전체 인트라넷 페이지 경로를 AI가 인지하도록 확장
     - [x] **작업지(work_sites) DB 연동**: Omni-RAG 병렬 스캔에 작업지 테이블 추가
+    - [x] **AI 채팅 제목 자동 생성(Auto-Title)**: 첫 질문 시 Gemini 1.5 Pro를 통해 대화 맥락에 맞는 3~5단어 제목 자동 생성 및 저장
+    - [x] **RAG 데이터 파일 정합성 수정**: `safe-freight.json` (35MB) 파일명 참조 오류 해결 및 대용량 데이터 로딩 하향 조정 안내 로직 보완
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

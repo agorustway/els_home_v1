@@ -102,7 +102,7 @@ export async function POST(req) {
             if (searchTerms.length > 0) {
                 const pathMod = require('path');
                 const fsMod = require('fs');
-                const sfDataPath = pathMod.join(process.cwd(), 'data', 'safe-freight-data.json');
+                const sfDataPath = pathMod.join(process.cwd(), 'data', 'safe-freight.json');
                 if (fsMod.existsSync(sfDataPath)) {
                     const sfData = JSON.parse(fsMod.readFileSync(sfDataPath, 'utf8'));
                     const sfMatches = sfData.filter(row => {
