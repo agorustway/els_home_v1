@@ -148,7 +148,7 @@ def asan_sync_scheduler():
     while True:
         try:
             now = datetime.now(KST)
-            if now.weekday() < 5 and 6 <= now.hour <= 23:
+            if 6 <= now.hour <= 23:
                 # 매 루프(1분)마다 수정 여부를 체크하고, 수정된 경우만 동기화
                 sync_asan_dispatch_python()
             time.sleep(60)
