@@ -58,6 +58,8 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] 사이드바 'AI 어시스턴트' 최상단 배치
     - [x] 기상청 API 업데이트 주기 1시간(revalidate: 3600)으로 연장 (부하 감소)
     - [x] **K-SKILL 연동**: AirKorea 미세먼지 공식 API 연동 (`fine-dust-location` proxy 도입) 🚀
+    - [x] **K-LAW MCP 연동**: 법망 API 직접 연동으로 할루시네이션 방지 및 정확한 법률 안내
+    - [x] **AI 어시스턴트 UI/UX 개편**: 데스크탑 가이드 패널 및 모바일 모달 분리 적용
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

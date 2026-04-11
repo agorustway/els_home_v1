@@ -180,102 +180,161 @@ export default function AskPage() {
         }
     };
 
+    const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false);
+
+    const GuideContent = () => (
+        <>
+            <h2 className={styles.guideTitle}>📖 ELS AI 사용 가이드</h2>
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>1. 법률/업무 전문 에이전트</span><br/>
+                단순 챗봇이 아닌 <b>ELS Solution 전용 에이전트</b>입니다. 외부 잡담보단 업무 질문에 집중해주세요.
+            </div>
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>2. K-Law (법망) 연동</span><br/>
+                <i>근로기준법</i>, <i>화물연대</i> 등 법령 관련 질문 시 공식 K-Law MCP를 거쳐 <b>정확한 법률 지원</b>을 제공합니다.
+            </div>
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>3. K-SKILL 환경 연동</span><br/>
+                <i>"아산 미세먼지 어때?"</i> 와 같은 질문 시 <b>안전공단 데이터 직결</b>을 통해 실시간 수치를 가져옵니다.
+            </div>
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>4. 사내망 실시간 RAG 연동</span><br/>
+                사내 임직원 연락처나 업무일지 내역, 현재 화물차 실시간 위치도 답변이 가능합니다.
+            </div>
+            <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '20px', textAlign: 'center'}}>
+                Powered by Gemini 2.5 & K-SKILL MCP
+            </div>
+        </>
+    );
+
     if (authLoading) return <div className={styles.loadingScreen}>로딩 중...</div>;
     if (!role) return null;
 
     return (
-        <div className={styles.wrapper}>
-            {/* 헤더 */}
-            <div className={styles.header}>
-                <div className={styles.headerLeft}>
-                    <div className={styles.headerIcon} aria-hidden="true">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
-                            <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 className={styles.headerTitle}>ELS AI 어시스턴트</h1>
-                        <p className={styles.headerSub}>업무 관련 무엇이든 물어보세요</p>
-                    </div>
-                </div>
-                <div className={styles.statusBadge}>
-                    <span className={styles.statusDot} />
-                    온라인
-                </div>
+        <div className={styles.containerLayout}>
+            {/* 데스크탑 가이드 패널 */}
+            <div className={`${styles.guidePanel} ${styles.hiddenMobile}`}>
+                <GuideContent />
             </div>
 
-            {/* 메시지 영역 */}
-            <div className={styles.chatArea} id="chat-area">
-                {messages.map((msg, i) => (
-                    <MessageBubble key={i} msg={msg} isNew={i === newMsgIdx} />
-                ))}
-                {isLoading && (
-                    <div className={`${styles.messageRow} ${styles.assistantRow}`}>
-                        <div className={styles.avatar} aria-hidden="true">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
-                                <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
-                            </svg>
-                        </div>
-                        <div className={`${styles.bubble} ${styles.assistantBubble}`}>
-                            <TypingIndicator />
-                        </div>
-                    </div>
-                )}
-                <div ref={bottomRef} />
-            </div>
-
-            {/* 빠른 질문 (초기/메시지 2개 이하) */}
-            {messages.length <= 2 && !isLoading && (
-                <div className={styles.quickPromptsArea}>
-                    <p className={styles.quickLabel}>빠른 질문</p>
-                    <div className={styles.quickPrompts}>
-                        {QUICK_PROMPTS.map((q) => (
-                            <button
-                                key={q.label}
-                                className={styles.quickBtn}
-                                onClick={() => sendMessage(q.label)}
-                                type="button"
-                            >
-                                <span className={styles.quickIcon}>{q.icon}</span>
-                                {q.label}
-                            </button>
-                        ))}
+            {/* 모바일 모달 가이드 */}
+            {isMobileGuideOpen && (
+                <div className={styles.guideModalOverlay} onClick={() => setIsMobileGuideOpen(false)}>
+                    <div className={styles.guideModalContent} onClick={e => e.stopPropagation()}>
+                        <GuideContent />
+                        <button 
+                            onClick={() => setIsMobileGuideOpen(false)}
+                            style={{marginTop: '20px', width: '100%', padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}
+                        >
+                            확인
+                        </button>
                     </div>
                 </div>
             )}
 
-            {/* 입력 영역 */}
-            <div className={styles.inputArea}>
-                <div className={styles.inputBox}>
-                    <textarea
-                        ref={inputRef}
-                        id="chat-input"
-                        className={styles.textarea}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="메시지를 입력하세요... (Shift+Enter: 줄바꿈)"
-                        rows={1}
-                        disabled={isLoading}
-                        aria-label="채팅 입력"
-                    />
-                    <button
-                        id="chat-send-btn"
-                        className={styles.sendBtn}
-                        onClick={() => sendMessage()}
-                        disabled={!input.trim() || isLoading}
-                        type="button"
-                        aria-label="전송"
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
-                    </button>
+            <div className={styles.wrapper}>
+                {/* 헤더 */}
+                <div className={styles.header}>
+                    <div className={styles.headerLeft}>
+                        <div className={styles.headerIcon} aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
+                                <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트</h1>
+                            <p className={styles.headerSub}>실시간 업무 · K-Law 연동 중</p>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* 모바일 가이드 토글 버튼 */}
+                        <button 
+                            onClick={() => setIsMobileGuideOpen(true)}
+                            className={styles.statusBadge}
+                            style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                        >
+                            ℹ️ 가이드
+                        </button>
+                        <div className={styles.statusBadge}>
+                            <span className={styles.statusDot} />
+                            온라인
+                        </div>
+                    </div>
                 </div>
-                <p className={styles.disclaimer}>AI 답변은 참고용입니다. 중요한 사항은 반드시 담당자에게 확인하세요.</p>
+
+                {/* 메시지 영역 */}
+                <div className={styles.chatArea} id="chat-area">
+                    {messages.map((msg, i) => (
+                        <MessageBubble key={i} msg={msg} isNew={i === newMsgIdx} />
+                    ))}
+                    {isLoading && (
+                        <div className={`${styles.messageRow} ${styles.assistantRow}`}>
+                            <div className={styles.avatar} aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
+                                    <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
+                                </svg>
+                            </div>
+                            <div className={`${styles.bubble} ${styles.assistantBubble}`}>
+                                <TypingIndicator />
+                            </div>
+                        </div>
+                    )}
+                    <div ref={bottomRef} />
+                </div>
+
+                {/* 빠른 질문 (초기/메시지 2개 이하) */}
+                {messages.length <= 2 && !isLoading && (
+                    <div className={styles.quickPromptsArea}>
+                        <p className={styles.quickLabel}>빠른 질문</p>
+                        <div className={styles.quickPrompts}>
+                            {QUICK_PROMPTS.map((q) => (
+                                <button
+                                    key={q.label}
+                                    className={styles.quickBtn}
+                                    onClick={() => sendMessage(q.label)}
+                                    type="button"
+                                >
+                                    <span className={styles.quickIcon}>{q.icon}</span>
+                                    {q.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 입력 영역 */}
+                <div className={styles.inputArea}>
+                    <div className={styles.inputBox}>
+                        <textarea
+                            ref={inputRef}
+                            id="chat-input"
+                            className={styles.textarea}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="메시지를 입력하세요... (Shift+Enter: 줄바꿈)"
+                            rows={1}
+                            disabled={isLoading}
+                            aria-label="채팅 입력"
+                        />
+                        <button
+                            id="chat-send-btn"
+                            className={styles.sendBtn}
+                            onClick={() => sendMessage()}
+                            disabled={!input.trim() || isLoading}
+                            type="button"
+                            aria-label="전송"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p className={styles.disclaimer}>AI 답변은 참고용입니다. 중요한 사항은 반드시 담당자에게 확인하세요.</p>
+                </div>
             </div>
         </div>
     );

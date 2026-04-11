@@ -11,18 +11,87 @@
     font-size: 0.9rem;
 }
 
-/* mainContent 패딩(12px 14px)을 상쇄하고 전체 공간 사용 */
-.wrapper {
+/* mainContent 패딩을 상쇄하고 전체 공간 사용 */
+.containerLayout {
     display: flex;
-    flex-direction: column;
-    /* mainContent의 padding(12px 상하, 14px 좌우)을 음수 마진으로 상쇄 */
+    flex-direction: row;
     margin: -12px -14px -36px;
-    /* 뷰포트 - (header70 + ticker44 + employeeheader114 + 자체padding12) ≈ 240px */
     height: calc(100dvh - 240px);
     min-height: 440px;
+    background: #f1f5f9;
+}
+
+/* ── 가이드(도움말) 패널 (데스크탑 좌측) ── */
+.guidePanel {
+    flex: 0 0 320px;
+    padding: 24px 20px;
+    background: #fff;
+    border-right: 1px solid #e2e8f0;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    color: #334155;
+    line-height: 1.6;
+}
+
+.guidePanel.hiddenMobile {
+    /* 모바일에서는 기본 숨김 (모달로 띄우거나 함) */
+}
+
+.guideTitle {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guideBox {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+}
+
+.guideHighlight {
+    color: #2563eb;
+    font-weight: 700;
+}
+
+/* 모바일 모달버전 가이드 */
+.guideModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.guideModalContent {
+    background: #fff;
+    padding: 24px;
+    border-radius: 16px;
+    max-height: 80vh;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 400px;
+}
+
+/* ── 메인 채팅 래퍼 ── */
+.wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     background: #f8fafc;
     font-family: inherit;
     overflow: hidden;
+    max-width: 768px; /* 채팅창이 너무 넓어지지 않게 */
+    margin: 0 auto;
 }
 
 /* ── 헤더 ── */
@@ -356,11 +425,18 @@
    모바일 반응형
    ======================== */
 @media (max-width: 1024px) {
-    /* 모바일: 티커 없음, mainContent padding 8px 10px 24px */
-    .wrapper {
+    .containerLayout {
         margin: -10px -10px -24px;
         height: calc(100dvh - 196px);
         min-height: 400px;
+    }
+
+    .guidePanel {
+        display: none; /* 태블릿/모바일은 모달로 가이드 대체 */
+    }
+
+    .wrapper {
+        max-width: 100%;
     }
 
     .bubble {
@@ -376,8 +452,7 @@
 }
 
 @media (max-width: 480px) {
-    /* 480px: mainContent padding 6px 4px 24px */
-    .wrapper {
+    .containerLayout {
         margin: -6px -4px -24px;
         height: calc(100dvh - 188px);
         min-height: 360px;
