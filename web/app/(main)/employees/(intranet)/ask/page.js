@@ -62,7 +62,21 @@ function MessageBubble({ msg, isNew }) {
 export default function AskPage() {
     const { role, loading: authLoading } = useUserRole();
     const router = useRouter();
-    const [messages, setMessages] = useState([]);
+    const [sessions, setSessions] = useState([]);
+    const [activeId, setActiveId] = useState('');
+    
+    const activeSession = sessions.find(s => s.id === activeId);
+    const messages = activeSession?.messages || [];
+
+    const setMessages = useCallback((updater) => {
+        setSessions(prev => prev.map(s => {
+            if (s.id === activeId) {
+                return { ...s, messages: typeof updater === 'function' ? updater(s.messages) : updater };
+            }
+            return s;
+        }));
+    }, [activeId]);
+
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [newMsgIdx, setNewMsgIdx] = useState(null);
@@ -76,23 +90,36 @@ export default function AskPage() {
         content: '안녕하세요! ELS 솔루션 AI 어시스턴트입니다.\n\n안전운임, 컨테이너 조회, 업무일지 등 ELS 업무에 관한 무엇이든 물어보세요!',
     };
 
+    const createNewSession = () => {
+        const id = Date.now().toString();
+        setSessions(prev => [{ id, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }, ...prev]);
+        setActiveId(id);
+    };
+
     useEffect(() => {
         const loadMemory = async () => {
             try {
                 const res = await fetch('/api/chat/memory');
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.messages && data.messages.length > 0) {
-                        setMessages(data.messages);
+                    let raw = data.messages || [];
+                    if (raw.length > 0) {
+                        if (raw[0].id && raw[0].messages) {
+                            setSessions(raw);
+                            setActiveId(raw[0].id);
+                        } else {
+                            const initId = Date.now().toString();
+                            setSessions([{ id: initId, title: '기본 대화', messages: raw }]);
+                            setActiveId(initId);
+                        }
                         setIsLoaded(true);
                         return;
                     }
                 }
-            } catch (err) {
-                console.error('Failed to load DB memory', err);
-            }
-            // fallback
-            setMessages([DEFAULT_INIT_MSG]);
+            } catch (err) { }
+            const initId = Date.now().toString();
+            setSessions([{ id: initId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
+            setActiveId(initId);
             setIsLoaded(true);
         };
         loadMemory();
@@ -100,15 +127,14 @@ export default function AskPage() {
 
     // Sync messages to DB
     useEffect(() => {
-        if (isLoaded && messages.length > 0) {
-            // debounced or optimistic save to db 
+        if (isLoaded && sessions.length > 0) {
             fetch('/api/chat/memory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages })
-            }).catch(e => console.error('Failed to save to DB memory', e));
+                body: JSON.stringify({ messages: sessions })
+            }).catch(() => {});
         }
-    }, [messages, isLoaded]);
+    }, [sessions, isLoaded]);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/ask');
@@ -127,7 +153,21 @@ export default function AskPage() {
 
         setInput('');
         const userMsg = { role: 'user', content: trimmed };
-        setMessages((prev) => [...prev, userMsg]);
+        
+        let shouldRename = false;
+        let newTitle = '';
+        if (messages.length <= 1) {
+            shouldRename = true;
+            newTitle = trimmed.slice(0, 15) + (trimmed.length > 15 ? '...' : '');
+        }
+
+        setSessions((prev) => prev.map(s => {
+            if (s.id === activeId) {
+                return { ...s, title: shouldRename ? newTitle : s.title, messages: [...s.messages, userMsg] };
+            }
+            return s;
+        }));
+        
         setIsLoading(true);
         setNewMsgIdx(null);
 
@@ -218,13 +258,19 @@ export default function AskPage() {
     const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false);
 
     const clearHistory = async () => {
-        if(confirm('대화 기록을 모두 지우시겠습니까?')) {
+        if(confirm('현재 대화 내용을 지우시겠습니까?')) {
+            setMessages([DEFAULT_INIT_MSG]);
+        }
+    };
+
+    const clearAllHistory = async () => {
+        if(confirm('모든 대화 목록을 초기화할까요? 복구할 수 없습니다.')) {
             try {
                 await fetch('/api/chat/memory', { method: 'DELETE' });
-            } catch(e) {
-                console.error('기록 삭제 실패', e);
-            }
-            setMessages([DEFAULT_INIT_MSG]);
+            } catch(e) {}
+            const id = Date.now().toString();
+            setSessions([{ id, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
+            setActiveId(id);
         }
     };
 
@@ -249,7 +295,7 @@ export default function AskPage() {
             <div className={styles.guideBox} style={{display: 'flex', flexDirection: 'column'}}>
                 <span className={styles.guideHighlight}>3. K-SKILL (한국형 실생활 API) 연동</span>
                 <span style={{fontSize:'0.75rem', color:'#94a3b8', margin:'2px 0 6px'}}>※ 현재 미세먼지 및 부분 연동 중이며 지속 확장되는 실생활 플러그인입니다.</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', maxHeight: '180px', overflowY: 'auto', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}>
+                <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.4'}}>
                         <li><b>교통/예매</b>: SRT/KTX 조회예매, 싼 주유소 찾기, 하이패스 영수증 발급</li>
                         <li><b>기상/환경</b>: 동절기 한국 날씨, 사용자 위치 미세먼지, 한강 수위/유량 정보</li>
@@ -291,6 +337,25 @@ export default function AskPage() {
                 </div>
             )}
 
+            <div className={`${styles.historySidebar} ${styles.hiddenMobile}`}>
+                <button className={styles.newChatBtn} onClick={createNewSession}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    새 대화 시작
+                </button>
+                <div className={styles.historyList}>
+                    {sessions.map(s => (
+                        <button 
+                            key={s.id} 
+                            className={`${styles.historyItem} ${s.id === activeId ? styles.active : ''}`}
+                            onClick={() => setActiveId(s.id)}
+                            title={s.title}
+                        >
+                            {s.title}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className={styles.wrapper}>
                 {/* 헤더 */}
                 <div className={styles.header}>
@@ -307,19 +372,13 @@ export default function AskPage() {
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button 
-                            onClick={clearHistory}
-                            className={styles.statusBadge}
-                            style={{ background: '#fff', color: '#e11d48', border: '1px solid #fda4af', cursor: 'pointer' }}
-                        >
-                            🗑️ 대화 지우기
+                        <button onClick={clearAllHistory} className={styles.statusBadge} style={{ background: '#fff', color: '#e11d48', border: '1px solid #fda4af', cursor: 'pointer' }}>
+                            모든 기록 삭제
                         </button>
-                        {/* 모바일 가이드 토글 버튼 */}
-                        <button 
-                            onClick={() => setIsMobileGuideOpen(true)}
-                            className={styles.statusBadge}
-                            style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}
-                        >
+                        <button onClick={clearHistory} className={styles.statusBadge} style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
+                            🗑️ 현재 대화 비우기
+                        </button>
+                        <button onClick={() => setIsMobileGuideOpen(true)} className={styles.statusBadge} style={{ background: '#fff', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
                             ℹ️ 가이드
                         </button>
                         <div className={styles.statusBadge}>

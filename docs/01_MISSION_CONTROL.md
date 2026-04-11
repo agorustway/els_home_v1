@@ -59,7 +59,9 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] 기상청 API 업데이트 주기 1시간(revalidate: 3600)으로 연장 (부하 감소)
     - [x] **K-SKILL 연동**: AirKorea 미세먼지 공식 API 연동 (`fine-dust-location` proxy 도입) 🚀
     - [x] **K-LAW MCP 연동**: 법망 API 직접 연동으로 할루시네이션 방지 및 정확한 법률 안내
-    - [x] **AI 어시스턴트 UI/UX 개편**: 데스크탑 가이드 패널 및 모바일 모달 분리 적용
+    - [x] **AI 어시스턴트 UI/UX 개편**: 데스크탑 가이드 패널 및 모바일 모달 분리 적용, 멀티-세션 채팅 목록 시스템 도입 (Gemini 스타일 UI 반영)
+    - [x] **AI 맞춤형 메모리/지식 축적**: Supabase `ai_chat_memory` 기반 사용자별 대화록 영구 저장 및 RAG 문맥 주입
+    - [x] **안전운임제 투-트랙 데이터 처리**: 요금제 계산용 엑셀 유지 및 AI 규정 안내용 원본 PDF JSON 파싱/RAG 주입 구조 확립 (`10_SAFE_FREIGHT_DATA_POLICY.md`)
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
