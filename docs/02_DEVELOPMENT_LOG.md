@@ -1930,3 +1930,22 @@ public/
   - 시스템 구성도에 External MCP 노드 추가
 - `docs/01_MISSION_CONTROL.md`: 전 작업 완료 기록
 - `docs/02_DEVELOPMENT_LOG.md`: 이번 세션 상세 기록 (현재 문서)
+
+
+### [v4.9.26] 배포 오류 해결 및 인트라넷 UI 프리미엄화 (2026-04-11)
+
+- **배포 오류 해결**: Cloudtype 빌드 중 ESLint 경고로 인한 중단 이슈 해결 (ignoreDuringBuilds 설정)
+- **초기 진입점 개선**: 로그인 후 기상 대시보드가 아닌 AI 어시스턴트로 자동 리다이렉트되도록 변경
+- **UI 프리미엄화**:
+    - 기상 대시보드 생활정보 카드 하단 정렬(marginTop: auto) 및 그림자 효과 강화
+    - 인트라넷 공통 카드(card), 버튼(primary/secondary) 디자인 고도화 (box-shadow, border-radius 개선)
+    - 일출/일몰 텍스트 크기 상향 (1rem -> 1.2rem) 및 굵기 보정
+- **코드 무결성**: Network.js, WebzineSection.js 내 Hook 의존성 문제 해결 및 Git Diff 전수 검증 완료
+- **커밋**: 666d10be [UI/UX/Build] 배포 오류 해결 및 인트라넷 UI 프리미엄화
+
+### [v4.9.27] AI 어시스턴트 기능 복구 및 RAG 고도화 (2026-04-11)
+
+- **K-Law MCP 실전 연동**: api.beopmang.org 검색 API를 RAG 파이프라인에 직접 연결 (법령/규정 질문 대응)
+- **가드레일 최적화**: 너무 엄격했던 사과 템플릿(Hallucination Barrier)을 완화하고, 데이터가 부족하더라도 ELS 업무 맥락 내에서 유연하게 답변하도록 시스템 프롬프트 개정
+- **업무일지 RAG 강화**: 사용자가 언급한 특정 월(ex: 4월)을 감지하여 해당 기간의 데이터를 필터링해 가져오도록 로직 보완
+- **커밋**: d9f77f3 [AI] K-Law MCP 연동 및 RAG 시스템 프롬프트 가드레일 최적화

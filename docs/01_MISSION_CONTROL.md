@@ -1,8 +1,8 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-11 (KST) - [v4.9.25] AI 어시스턴트 고도화 | 아산 배차판 24/7 자동 동기화 완료
+> 마지막 업데이트: 2026-04-11 (KST) - [v4.9.27] 인트라넷 UI 프리미엄화 | 배포 오류(ESLint) 완전 해결
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.25` (AI 어시스턴트 실시간 RAG 연동 및 초기페이지 설정 완료)
+- **Current Build**: `v4.9.26` (배포 오류 해결, AI 어시스턴트 초기페이지 설정, 기상 대시보드 UI 프리미엄화)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 
@@ -54,7 +54,7 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] 백엔드 스케줄러(`app_core.py`, `app.py`) 평일 제한 해제 (주말 포함 24/7 1분 주기로 동작)
     - [x] 토요일 탭 보라색(#a855f7) 테마 적용 및 공휴일 우선 순위 로직 보완
 - [x] ⚙️ 시스템 기본값 및 성능 최적화
-    - [x] 인트라넷 초기 페이지를 'AI 어시스턴트'로 변경
+    - [x] 인트라넷 초기 페이지를 'AI 어시스턴트'로 변경 (v4.9.26 배포 완료)
     - [x] 사이드바 'AI 어시스턴트' 최상단 배치
     - [x] 기상청 API 업데이트 주기 1시간(revalidate: 3600)으로 연장 (부하 감소)
     - [x] **K-SKILL 연동**: AirKorea 미세먼지 공식 API 연동 (`fine-dust-location` proxy 도입) 🚀
