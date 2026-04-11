@@ -78,9 +78,9 @@ export default function PartnerContactsPage() {
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/partner-contacts/' + item.id)}>
                                 <td className={styles.colTitle} style={{ color: '#2563eb', fontSize: '0.95rem' }}>{item.company_name}</td>
                                 <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.ceo_name}</td>
-                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone}</td>
+                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a> : '—'}</td>
                                 <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_name}</td>
-                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_phone}</td>
+                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_phone ? <a href={'tel:' + item.manager_phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.manager_phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.manager_phone}</a> : '—'}</td>
                                 <td className={styles.colDate} style={{ width: '100%', minWidth: '250px', wordBreak: 'break-all', padding: '12px 16px' }}>{item.address || '—'}</td>
                             </tr>
                         ))}

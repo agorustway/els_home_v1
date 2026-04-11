@@ -107,7 +107,7 @@ export default function DriverContactsPage() {
                                     </span>
                                 </td>
                                 <td className={styles.colTitle} style={{ whiteSpace: 'nowrap' }}>{item.name}</td>
-                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{formatPhone(item.phone)}</td>
+                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{formatPhone(item.phone)}</a> : '—'}</td>
                                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_number || '-'}</td>
                                 <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_id || '-'}</td>
                                 <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_number || '-'}</td>

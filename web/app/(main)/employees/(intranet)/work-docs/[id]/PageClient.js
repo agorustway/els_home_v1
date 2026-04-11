@@ -143,18 +143,18 @@ export default function WorkDocDetailPage() {
                                     const dUrl = getDownloadUrl(file);
                                     return (
                                         <li key={idx} className={styles.attachmentItem} style={{ background: '#f8fafc', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                                                    <span style={{ fontSize: '1.2rem' }}>📄</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', flex: 1, minWidth: 0 }}>
+                                                    <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>📄</span>
                                                     <a
                                                         href={dUrl}
                                                         className={styles.attachmentLink}
-                                                        style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                                                        style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', display: 'block', flex: 1, minWidth: 0 }}
                                                     >
                                                         {file.name}
                                                     </a>
                                                 </div>
-                                                <span style={{ fontSize: '0.8rem', color: '#94a3b8', flexShrink: 0 }}>{(file.size / 1024).toFixed(1)} KB</span>
+                                                <span style={{ fontSize: '0.8rem', color: '#94a3b8', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>{(file.size / 1024).toFixed(1)} KB</span>
                                             </div>
                                             <div style={{ display: 'flex', gap: 8 }}>
                                                 <a href={dUrl} className={styles.btnPrimary} style={{ flex: 1, height: '36px', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

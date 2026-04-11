@@ -661,9 +661,7 @@
     }
 
     .colTitle {
-        min-width: auto;
-        /* Allow shrink */
-        width: 100%;
+        min-width: 140px;
     }
 
     .row {
@@ -739,4 +737,9 @@
 .tabBtnActive {
     background: #e2e8f0;
     color: #1e293b;
+}
+@media (max-width: 768px) {
+    .hideOnMobile {
+        display: none !important;
+    }
 }

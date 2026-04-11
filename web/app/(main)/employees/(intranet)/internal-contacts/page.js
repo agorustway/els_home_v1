@@ -86,7 +86,7 @@ export default function InternalContactsPage() {
                                 <td className={styles.colTitle} style={{ fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{item.name}</td>
                                 <td className={styles.colCategory} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.department}</td>
                                 <td style={{ color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.position}</td>
-                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone}</td>
+                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a> : '—'}</td>
                                 <td style={{ color: '#94a3b8', fontSize: '0.9rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.email}</td>
                             </tr>
                         ))}

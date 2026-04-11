@@ -131,11 +131,11 @@ export default function FormTemplateDetailPage() {
                         </div>
                         <ul className={styles.attachmentList} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
                             <li className={styles.attachmentItem} style={{ background: '#f8faff', borderRadius: 12, padding: 20, border: '1px solid #e0e7ff', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-                                    <span style={{ fontSize: '1.4rem' }}>📄</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', width: '100%' }}>
+                                    <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>📄</span>
                                     <a
                                         href={dUrl}
-                                        style={{ fontWeight: 800, color: '#4f46e5', fontSize: '1rem', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                        style={{ fontWeight: 800, color: '#4f46e5', fontSize: '1rem', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', flex: 1, minWidth: 0 }}
                                     >
                                         {item.file_name || '파일 다운로드'}
                                     </a>
