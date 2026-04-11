@@ -65,12 +65,12 @@ export default function InternalContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr style={{ fontSize: '0.9rem' }}>
-                            <th style={{ width: '80px', textAlign: 'center' }}>프로필</th>
-                            <th className={styles.colTitle} style={{ width: '120px' }}>이름</th>
-                            <th className={styles.colCategory} style={{ width: '140px' }}>부서</th>
-                            <th style={{ width: '100px' }}>직급</th>
-                            <th className={styles.colAuthor} style={{ width: '150px' }}>연락처</th>
-                            <th>이메일</th>
+                            <th style={{ width: '60px', textAlign: 'center' }}>프로필</th>
+                            <th className={styles.colTitle} style={{ minWidth: '120px' }}>이름</th>
+                            <th className={styles.colCategory} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>부서</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>직급</th>
+                            <th className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>연락처</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', minWidth: '150px' }}>이메일</th>
                         </tr>
                     </thead>
                     <tbody style={{ fontSize: '0.9rem' }}>
@@ -83,11 +83,11 @@ export default function InternalContactsPage() {
                                         <div style={{ width: 44, height: 44, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.2rem' }}>👤</div>
                                     )}
                                 </td>
-                                <td className={styles.colTitle} style={{ fontSize: '0.95rem' }}>{item.name}</td>
-                                <td className={styles.colCategory}>{item.department}</td>
-                                <td style={{ color: '#64748b', fontWeight: 500 }}>{item.position}</td>
-                                <td className={styles.colAuthor}>{item.phone}</td>
-                                <td style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{item.email}</td>
+                                <td className={styles.colTitle} style={{ fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{item.name}</td>
+                                <td className={styles.colCategory} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.department}</td>
+                                <td style={{ color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.position}</td>
+                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone}</td>
+                                <td style={{ color: '#94a3b8', fontSize: '0.9rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.email}</td>
                             </tr>
                         ))}
                         {filteredList.length === 0 && (

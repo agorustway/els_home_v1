@@ -65,23 +65,23 @@ export default function PartnerContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr style={{ fontSize: '0.9rem' }}>
-                            <th className={styles.colTitle} style={{ width: '25%' }}>회사명</th>
-                            <th style={{ width: '120px' }}>대표자</th>
-                            <th style={{ width: '150px' }}>전화번호</th>
-                            <th style={{ width: '120px' }}>담당자</th>
-                            <th style={{ width: '150px' }}>담당자 연락처</th>
-                            <th className={styles.colDate} style={{ width: '120px' }}>등록일</th>
+                            <th className={styles.colTitle} style={{ minWidth: '200px' }}>회사명</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>대표자</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자 연락처</th>
+                            <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
                         </tr>
                     </thead>
                     <tbody style={{ fontSize: '0.9rem' }}>
                         {filteredList.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/partner-contacts/' + item.id)}>
                                 <td className={styles.colTitle} style={{ color: '#2563eb', fontSize: '0.95rem' }}>{item.company_name}</td>
-                                <td style={{ fontWeight: 600, color: '#475569' }}>{item.ceo_name}</td>
-                                <td>{item.phone}</td>
-                                <td style={{ fontWeight: 600, color: '#475569' }}>{item.manager_name}</td>
-                                <td>{item.manager_phone}</td>
-                                <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
+                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.ceo_name}</td>
+                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone}</td>
+                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_name}</td>
+                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_phone}</td>
+                                <td className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
                         {filteredList.length === 0 && (

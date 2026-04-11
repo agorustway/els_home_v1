@@ -65,27 +65,27 @@ export default function WorkSitesPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr style={{ fontSize: '0.9rem' }}>
-                            <th className={styles.colNo}>No</th>
-                            <th style={{ width: '150px' }}>작업지명</th>
-                            <th className={styles.colTitle}>작업지 주소</th>
-                            <th style={{ width: '150px' }}>담당자</th>
-                            <th className={styles.colAuthor} style={{ width: '150px' }}>연락처</th>
-                            <th className={styles.colDate}>등록일</th>
+                            <th className={styles.colNo} style={{ width: '60px' }}>No</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', minWidth: '150px' }}>작업지명</th>
+                            <th className={styles.colTitle} style={{ width: '100%' }}>작업지 주소</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
+                            <th className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>연락처</th>
+                            <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
                         </tr>
                     </thead>
                     <tbody style={{ fontSize: '0.9rem' }}>
                         {filteredList.map((item, i) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/work-sites/' + item.id)}>
                                 <td className={styles.colNo}>{filteredList.length - i}</td>
-                                <td style={{ fontWeight: 600 }}>{item.site_name || '—'}</td>
-                                <td className={styles.colTitle}>{item.address}</td>
-                                <td style={{ fontWeight: 600, color: '#475569' }}>
+                                <td style={{ fontWeight: 600, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.site_name || '—'}</td>
+                                <td className={styles.colTitle} style={{ minWidth: '200px', wordBreak: 'break-all' }}>{item.address}</td>
+                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>
                                     {(item.managers || []).map((m) => m.name).filter(Boolean).join(', ') || '—'}
                                 </td>
-                                <td className={styles.colAuthor}>
+                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>
                                     {item.contact || (item.managers && item.managers[0]?.phone) || '—'}
                                 </td>
-                                <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
+                                <td className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
                         {filteredList.length === 0 && (

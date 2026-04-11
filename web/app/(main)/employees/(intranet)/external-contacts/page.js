@@ -72,29 +72,29 @@ export default function ExternalContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr style={{ fontSize: '0.9rem' }}>
-                            <th className={styles.colTitle} style={{ width: '20%' }}>회사명</th>
-                            <th className={styles.colCategory} style={{ width: '80px' }}>구분</th>
-                            <th style={{ width: '100px' }}>담당자</th>
-                            <th style={{ width: '130px' }}>담당자 연락처</th>
-                            <th style={{ width: '130px' }}>대표 연락처</th>
-                            <th style={{ width: '180px' }}>이메일</th>
-                            <th style={{ width: 'auto' }}>주소</th>
+                            <th className={styles.colTitle} style={{ minWidth: '150px' }}>회사명</th>
+                            <th className={styles.colCategory} style={{ whiteSpace: 'nowrap' }}>구분</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>대표 연락처</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자 연락처</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>이메일</th>
+                            <th style={{ width: '100%' }}>주소</th>
                         </tr>
                     </thead>
                     <tbody style={{ fontSize: '0.9rem' }}>
                         {filteredList.map((item) => (
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/external-contacts/' + item.id)}>
                                 <td className={styles.colTitle} style={{ color: '#2563eb', fontSize: '0.95rem' }}>{item.company_name}</td>
-                                <td className={styles.colCategory}>
-                                    <span style={{ background: item.contact_type === '고객사' ? '#eff6ff' : '#f8fafc', color: item.contact_type === '고객사' ? '#3b82f6' : '#64748b', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700 }}>
+                                <td className={styles.colCategory} style={{ whiteSpace: 'nowrap' }}>
+                                    <span style={{ background: item.contact_type === '고객사' ? '#eff6ff' : '#f8fafc', color: item.contact_type === '고객사' ? '#3b82f6' : '#64748b', padding: '3px 8px', borderRadius: 4, fontSize: '0.85rem', fontWeight: 600 }}>
                                         {item.contact_type}
                                     </span>
                                 </td>
-                                <td style={{ fontWeight: 600, color: '#475569' }}>{item.contact_person}</td>
-                                <td style={{ color: '#0f172a', fontWeight: 500 }}>{item.contact_person_phone || '—'}</td>
-                                <td className={styles.colAuthor} style={{ color: '#64748b' }}>{item.phone || '—'}</td>
-                                <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{item.email}</td>
-                                <td className={styles.colDate} style={{ width: 'auto', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.address}>
+                                <td className={styles.colAuthor} style={{ color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone || '—'}</td>
+                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.contact_person}</td>
+                                <td style={{ color: '#0f172a', fontWeight: 500, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.contact_person_phone || '—'}</td>
+                                <td style={{ color: '#94a3b8', fontSize: '0.9rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.email}</td>
+                                <td className={styles.colDate} style={{ width: '100%', minWidth: '200px', wordBreak: 'break-all' }} title={item.address}>
                                     {item.address || '—'}
                                 </td>
                             </tr>

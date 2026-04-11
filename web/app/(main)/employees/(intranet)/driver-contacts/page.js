@@ -73,17 +73,17 @@ export default function DriverContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th style={{ width: '80px', textAlign: 'center' }}>사진</th>
-                            <th style={{ width: '80px', textAlign: 'center' }}>계약</th>
-                            <th className={styles.colTitle}>이름</th>
-                            <th style={{ width: '150px' }}>전화번호</th>
-                            <th style={{ width: '120px' }}>차량번호</th>
-                            <th style={{ width: '90px' }}>차량ID</th>
-                            <th style={{ width: '110px' }}>마지막 컨테이너</th>
-                            <th style={{ width: '60px' }}>타입</th>
-                            <th style={{ width: '90px' }}>종류</th>
-                            <th style={{ width: '100px' }}>마지막 운행</th>
-                            <th className={styles.colDate}>등록일</th>
+                            <th style={{ width: '60px', textAlign: 'center' }}>사진</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'center', padding: '12px 16px' }}>계약</th>
+                            <th className={styles.colTitle} style={{ minWidth: '100px' }}>이름</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량번호</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량ID</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>마지막 컨테이너</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>타입</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>종류</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>마지막 운행</th>
+                            <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -98,7 +98,7 @@ export default function DriverContactsPage() {
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
                                     <span style={{
-                                        display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: 600,
+                                        display: 'inline-block', padding: '3px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600,
                                         background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
                                         color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
                                         whiteSpace: 'nowrap'
@@ -106,17 +106,17 @@ export default function DriverContactsPage() {
                                         {item.contract_type === 'contracted' ? '계약' : '미계약'}
                                     </span>
                                 </td>
-                                <td className={styles.colTitle}>{item.name}</td>
-                                <td>{formatPhone(item.phone)}</td>
-                                <td style={{ fontWeight: 600 }}>{item.vehicle_number || '-'}</td>
-                                <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px' }}>{item.vehicle_id || '-'}</td>
-                                <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.last_container_number || '-'}</td>
-                                <td style={{ fontSize: '0.8rem' }}>{item.last_container_type || '-'}</td>
-                                <td style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.last_container_kind || '-'}</td>
-                                <td style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                <td className={styles.colTitle} style={{ whiteSpace: 'nowrap' }}>{item.name}</td>
+                                <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{formatPhone(item.phone)}</td>
+                                <td style={{ fontWeight: 600, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_number || '-'}</td>
+                                <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_id || '-'}</td>
+                                <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_number || '-'}</td>
+                                <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_type || '-'}</td>
+                                <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_kind || '-'}</td>
+                                <td style={{ fontSize: '0.85rem', color: '#94a3b8', whiteSpace: 'nowrap', padding: '12px 16px' }}>
                                     {item.last_trip_started_at ? new Date(item.last_trip_started_at).toLocaleDateString() : '-'}
                                 </td>
-                                <td className={styles.colDate}>{new Date(item.created_at).toLocaleDateString()}</td>
+                                <td className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
                             </tr>
                         ))}
                         {filteredList.length === 0 && (
