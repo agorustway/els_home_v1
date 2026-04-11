@@ -1838,26 +1838,95 @@ public/
 
 ---
 *紐⑤뱺 肄붾뱶???덈뱶濡쒖씠??16 洹쒓꺽??留욊쾶 寃利앸릺?덉쑝硫? 源껎뿀釉?硫붿씤 釉뚮옖移섏뿉 理쒖쥌 諛섏쁺?섏뿀?듬땲??*
-# # #   2 0 2 6 - 0 4 - 0 3   ( v 4 . 5 . 5 )   -   1솎텝? t??? 꽲Ч  ? x??? \皐?? 席캐T? 
- -   [ I N F R A ]   N g i n x   G a t e w a y   캐끜D? 둘\? A P I ( C o r e ) @? B o t ( S e l e n i u m )   핪쑈? <뺄?? 꽲Ч
- 
- -   [ I N F R A ]   ? L앳? 탠?  ?? ? 冒0췛? 핪쑈? 4?? 늠? U雷? 
- -   [ S E C U R I T Y ]   . g i t i g n o r e   촖?? 0?? 흼?  ?? 根쑱  (經? 
- -   [ I S S U E ]   L o g   V i e w e r   p퀃?? 翩쑲%? t?? 솨? ( 我L? 8햆? 탡퍮? ?? 
- 
- 
 
-# #   =؀�  2 0 2 6 - 0 4 - 0 3   ( |��) :   E L S   W e b / M o b i l e   U X / U I   \��T�  ( P D C A   T D D ) 
- 
- # # #   <د�  ����  ����  ( P D C A ) 
- -   * * P l a n * * :   ���|�  Xֽ����  ����  U I   �h�  �����  pȑ�  ���Ӭ�m�D�  � �. 
- -   * * D o * * : 
-     -   c o n t a i n e r - h i s t o r y :   ���|�  Xֽ�( S 2 5   �) ���  ��L�t��  pȌ�  L�t��t�  ��!�<�\�  T�t�  �<�\�  �X�X�  8��  tհ�( o v e r f l o w - x :   h i d d e n ,   m a x - w i d t h :   1 0 0 v w   ȩ�) . 
-     -   
- a s - s t o r a g e ( A r c h i v e B r o w s e r ) :   mթ�   ���  4�����  ���  �   ���  ���Ŕ�  " ��i�  Z I P   䲴�\�ܴ" ,   1 �  �|�x�  �����Ŕ�  " |��  䲴�\�ܴ"   D�t�X�D�  ����  x���X�ĳ]�  p�t���  �T���  ��. 
-     -    e h i c l e - t r a c k i n g :   ���|�  T�t����  �4�  ι@�  ���D�  (���X�X�  ֬�  �Ɖ�  0�]�  ���¸�|�  (�0��,   ����  tЭ�  ��  �@��¸�( B o t t o m   S h e e t ) \�  \���X�ĳ]�  �t�D���  ��. 
-     -    e h i c l e - t r a c k i n g :   �����   ��  ��ܴ���  ��8�$Ƅ��t�( ��Ȳ��) X�  �X�  �Ҙ���  \���  � �.   么�  ��D�  ����( d e s t r o y )   X�X�  ��D�  ɹ�,   p a n T o |�  ����t�  \�1�T��   e a l t i m e T a r g e t   (�ɷ  �X�|�  ��  ȹ�� �  ̐�  L�ȹ�  t�T�|� �  ���Ť�����  0�|� �ĳ]�  ��. 
- -   * * C h e c k * * :   \���  Xϔ�  �  ���|�  ��Ӹ�  �¬��tǸ�  LѤ¸�\�  C S S   �  tǤ���  �t�D���  U�x�  D�̸. 
- -   * * A c t * * :   �L�  �Ĭ  -   ���Ɛ� �  ���|�  Xֽ����  U I   pȑ�1�,   ����  0���,   �����  �����  ȹ��  ���  �D�췴���  U�x�t�|�h�. 
-  
- 
+---
+
+## 2026-04-11 (v4.9.15 ~ v4.9.25) — AI 어시스턴트 고도화 & K-SKILL/K-Law 연동
+
+### 주제: ELS 인트라넷 AI 에이전트 전문화 (Dynamic RAG + 할루시네이션 방지)
+
+#### 1. 배경 및 목표 (As-Is)
+- AI 어시스턴트가 단순 Gemini API 호출 수준 (내부 데이터 없이 모델 자체 지식에만 의존)
+- 법령/운임 관련 질문에 AI가 추측성 답변 제공 위험(할루시네이션) 존재
+- 일반 챗봇처럼 보여 직원들이 전문 업무 도구임을 인식하지 못함
+- 기상 페이지 미세먼지 데이터가 글로벌 Open-Meteo API 기반으로 국내 정확도 낮음
+
+#### 2. 구현 내용 (To-Be)
+
+**2-1. K-SKILL 전체 스킬 설치 (글로벌)**
+- 명령: `npx skills add NomaDamas/k-skill --all -g`
+- 설정: `~/.config/k-skill/secrets.env` 생성, OPINET_API_KEY 기존 키 연동 완료
+- 활용 우선순위 결정: 날씨/미세먼지(fine-dust-location) 스킬을 인트라넷에 먼저 적용
+
+**2-2. 기상 대시보드 K-SKILL 연동 (v4.9.15)**
+- 파일: `web/app/api/weather/route.js`
+- 변경: 글로벌 Open-Meteo 미세먼지 -> K-SKILL/AirKorea 한국환경공단 공식 데이터로 교체
+- 13개 지역 측정소 힌트 매핑 검증 완료 (아산 모종동, 당진 읍내동, 예산군 등)
+- UI 추가: 데이터 성공 시 날씨 페이지에 [AirKorea 연동] 초록 뱃지 표시
+- 커밋: `feat(weather): integrate k-skill fine-dust-location for accurate AirKorea data`
+
+**2-3. AI 어시스턴트 K-SKILL 연동 (v4.9.16)**
+- 파일: `web/app/api/chat/route.js`
+- 구현: 키워드 감지(미세먼지/날씨/공기) → K-SKILL fine-dust Proxy 자동 호출
+- RAG Context에 실시간 측정값 주입 후 Gemini에 전달
+- 커밋: `feat(ai): integrate k-skill fine-dust proxy for intelligent RAG weather response`
+
+**2-4. K-Law MCP 직결 연동 (v4.9.20)**
+- 참고 레포: https://github.com/chrisryugj/korean-law-mcp
+- 기술 결정: NAS Docker 컨테이너 운영 대신 `api.beopmang.org` 공개 프록시 서버 직결 채택
+  - 이유 1: NAS CPU/RAM 추가 부하 제로
+  - 이유 2: 정부 공공데이터포털 OpenAPI 키 발급 불필요
+  - 이유 3: 법망측 서버가 정부 API → JSON 변환 담당 (유지보수 컨테이너 없음)
+- 엔드포인트: `GET https://api.beopmang.org/api/v4/law?action=search&q={검색어}`
+- 트리거 키워드: '법', '근로기준법', '안전운임', '규정', '화물차' 등
+
+**2-5. 3-Layer RAG 파이프라인 완성 (v4.9.22)**
+- Layer 1 [사내 DB]: 차량 GPS 위치, 업무일지 → Supabase 직접 조회 (기존 구현 강화)
+- Layer 2 [K-SKILL]: 미세먼지/날씨 → AirKorea 공식 API (신규)
+- Layer 3 [K-Law]: 법령 조문 → 법망 공개 프록시 (신규)
+- 외부 API 타임아웃: 3초 `AbortSignal.timeout(3000)` 설정으로 응답 지연 방지
+
+**2-6. Anti-Hallucination 시스템 프롬프트 강화 (v4.9.22)**
+- BASE_SYSTEM_INSTRUCTION 소프트 가드레일 원칙 적용
+- [허용] 사내 DB/K-SKILL/K-Law 기반 답변, 내부 문서 요약/해석, 메뉴 안내
+- [주의] 법령 수치: K-Law 결과 인용 또는 "K-Law API 확인 필요" 출처 고지 의무화
+- [거절] 잡담, 일반 상식, 업무 범위 외 질문 → 정중 거절
+- 설계 철학: 완전 차단(하드 가드레일) 방식 지양 → 소프트 가드레일로 사용성 유지
+
+**2-7. AI 어시스턴트 UI/UX 전면 개편 (v4.9.25)**
+- 파일: `web/app/(main)/employees/(intranet)/ask/page.js`, `ask.module.css`
+- 데스크탑 (>768px): 2-Column 레이아웃
+  - 좌측: ELS AI 사용 가이드 패널 (연결 데이터 소스 배지, 예시 질문, 메뉴 링크) 상설
+  - 우측: 전체 채팅 영역
+- 모바일 (≤768px): Full-Screen 채팅창 (헤더 [가이드] 버튼 → 모달 팝업)
+- 커밋: `feat(ai): integrate K-Law MCP proxy, optimize RAG prompt against hallucination, and redesign AI Assistant UI`
+
+#### 3. 부가 작업 (동일 세션)
+
+**자료실 UI 수정**
+- 업무자료실/서식자료실 첨부파일 카드: 긴 파일명 ellipsis 처리
+- flex layout 최적화 (`flex: 1`, `minWidth: 0`) 적용
+
+**모바일 연락처 전 페이지 최적화**
+- 협력사/운전원/사내/외부 연락처 4개 페이지: 엑셀 등 부가 버튼 모바일 숨김 (hideOnMobile)
+- 데이터 테이블 min-width 설정, 가로 스크롤 보장
+- 전화번호 터치 → 클립보드 복사 + tel: 전화 연결 동시 처리
+
+**아산배차판 스케줄러 개선**
+- 평일 제한 해제 → 주말 포함 24/7 1분 주기 동작
+- 토요일 보라색(#a855f7) 테마 + 공휴일 우선순위 로직 보완
+
+**성능 최적화**
+- 기상청 API revalidate 3600초로 연장 (기존 매 요청 → 1시간 캐시, CPU 부하 대폭 감소)
+
+#### 4. 문서 업데이트 (2026-04-11)
+- `docs/04_MASTER_ARCHITECTURE.md`: 대규모 개편
+  - 섹션 6 (AI 어시스턴트 아키텍처) 신설 및 상세화
+  - 3-Layer RAG 데이터 흐름 다이어그램 추가
+  - K-SKILL 지역 측정소 매핑표 기록
+  - K-Law 기술 결정 근거 문서화
+  - Anti-Hallucination 소프트 가드레일 설계 원칙 기록
+  - AI UI/UX 구조 표 추가
+  - 시스템 구성도에 External MCP 노드 추가
+- `docs/01_MISSION_CONTROL.md`: 전 작업 완료 기록
+- `docs/02_DEVELOPMENT_LOG.md`: 이번 세션 상세 기록 (현재 문서)

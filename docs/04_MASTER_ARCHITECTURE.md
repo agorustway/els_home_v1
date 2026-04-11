@@ -1,158 +1,230 @@
-# 🗺️ ELS Solution 프로젝트 마스터 맵 (Architecture & Blueprint)
+﻿# ELS Solution 프로젝트 마스터 맵 (Architecture and Blueprint)
 
-> **🚀 AI/IDE Quick Scan (Project Blueprint)**
+> **AI/IDE Quick Scan (Project Blueprint)**
 > - **Core Stack**: Next.js 14 (App Router), Flask (Python 3.11), Capacitor 8.x, Selenium (DrissionPage).
 > - **Primary Domains**: `nollae.com` (Vercel), `192.168.0.4:5000` (Internal NAS API), Supabase (PostgreSQL).
 > - **Storage Mapping**: Cloud (Supabase Storage) + On-Premise (MinIO S3 / WebDAV).
-> - **Build Requirements**: Node 18+, Python 3.11+, **Android SDK (Java 17 / Gradle 8.7.3)**.
+> - **Build Requirements**: Node 18+, Python 3.11+, Android SDK (Java 17 / Gradle 8.7.3).
 > - **Critical Paths**: `/web` (Front), `/elsbot` (Selenium), `/docker/els-backend` (NAS API), `/web/android` (Native).
 > - **Auth Flow**: Supabase Auth (OAuth) -> Server-side Session Management.
 
 ---
 
-## 🏗️ 1. 전체 아키텍처 (High-Level Structure)
+## 1. 전체 아키텍처 (High-Level Structure)
 
-## 🏗️ 1. 전체 아키텍처 (High-Level Structure)
+우리 프로젝트는 **사내 인프라 3개 심장 + 외부 MCP 연동**으로 구성됩니다.
 
-우리 프로젝트는 크게 **3개의 심장**으로 구성되어 유기적으로 연결됩니다.
+**시스템 구성도:**
+- Cloud (Vercel): Next.js Web
+- Cloud (Supabase): PostgreSQL DB, Storage
+- NAS (Docker): Flask API Server + ELS Bot (DrissionPage)
+- Mobile: Android App (Capacitor) + Background Service (GPS)
+- External MCP: K-SKILL Proxy (nomadamas.org) + K-Law API (beopmang.org)
 
-```mermaid
-graph TD
-    subgraph "Cloud (Vercel/Supabase)"
-        WEB["Next.js Web (Vercel)"]
-        DB[("Supabase (PostgreSQL)")]
-        STORAGE["Supabase Storage (Photos)"]
-    end
-
-    subgraph "On-Premise (NAS Docker)"
-        BACKEND["Flask API Server"]
-        BOT["ELS Bot (DrissionPage)"]
-        DATA["NAS File Store (/app/data)"]
-    end
-
-    subgraph "Mobile (Driver App)"
-        APP["Android App (Capacitor)"]
-        SVC["Native Background Service (GPS/Widget)"]
-    end
-
-    %% 연결 고리
-    WEB <--> DB
-    APP <--> DB
-    WEB -- "High-Traffic API" --> BACKEND
-    BACKEND <--> DB
-    BACKEND <--> BOT
-    APP -- "GPS Telemetry" --> BACKEND
-```
+**연결 고리:**
+- Web <--> DB (Supabase 직결)
+- App <--> DB (Supabase 직결)
+- Web --> NAS Backend (High-Traffic API 프록시)
+- NAS Backend <--> Bot (컨테이너 조회 명령)
+- App --> NAS Backend (GPS 원격측정)
+- Web --> K-SKILL (AI RAG: 미세먼지 실시간)
+- Web --> K-Law  (AI RAG: 법령 조회)
 
 ---
 
-## 📡 2. 핵심 연결 고리 (Connection Logic)
+## 2. 핵심 연결 고리 (Connection Logic)
 
 ### 2-1. 웹 ↔ 나스 (API 리다이렉션)
-- **목적**: Vercel의 CPU 서버리스 요금을 아끼고, 엑셀/파일 처리 등 무거운 작업을 나스에서 처리.
+- **목적**: Vercel CPU 서버리스 요금 절감, 엑셀/파일 처리 등 무거운 작업을 나스에서 처리.
 - **주요 채널**: `NEXT_PUBLIC_ELS_BACKEND_URL` (나스 IP:포트)를 통해 통신.
 - **처리 항목**: 차량 실시간 관제(Polling), 활동 로그(Logging), 사진 프록시, 엑셀/ZIP 생성.
 
 ### 2-2. 앱 ↔ 나스 (실시간 관제)
-- **목적**: 드라이버의 위치 정보를 3초(최대) 간격으로 나스에 전송하고, 관리자의 긴급 푸시(REALTIME_ON)를 수신.
-- **주요 채널**: `HTTPS/HTTP` 요청 및 Supabase 실시간 알림 테이블 활용.
+- **목적**: 드라이버 위치 정보를 3초(최대) 간격으로 나스 전송, 관리자 긴급 푸시(REALTIME_ON) 수신.
+- **주요 채널**: HTTPS/HTTP 요청 및 Supabase 실시간 알림 테이블 활용.
 
 ### 2-3. 나스 ↔ ETrans (봇 엔진)
 - **목적**: 물류사(ETrans) 사이트에서 컨테이너 이력 데이터를 자동으로 긁어옴.
-- **동작**: Flask 백엔드가 봇 데몬에게 명령을 내리면, 봇이 크롬을 띄워(Headless) 작업을 수행한 뒤 DB를 갱신.
+- **동작**: Flask 백엔드가 봇 데몬에 명령 -> 봇이 Headless Chrome 작업 수행 -> DB 갱신.
 
 ### 2-4. 아산지점 배차판 자동화 (Asan Dispatch)
-- **목적**: 매 전 지점 배차 현황을 실시간 자동 동기화.
-- **동작**: 나스 백엔드(`app.py`)가 평일 06~23시 사이 30분 간격으로 파일 시스템을 스캔하여 Supabase를 갱신.
+- **목적**: 전 지점 배차 현황 실시간 자동 동기화.
+- **동작**: 나스 백엔드(app.py, app_core.py)가 주말 포함 24/7 1분 주기로 파일시스템 스캔 -> Supabase 갱신.
 
 ---
 
-## 🛠️ 3. 환경별 필수 설치 리스트 (Tool Inventory)
+## 3. 환경별 필수 설치 리스트 (Tool Inventory)
 
-### 💻 3-1. 개발 PC (Windows)
-- **패키지 매니저**: [Scoop](https://scoop.sh/) (강력 권장)
-- **필수 도구**: `git`, `nodejs-lts`, `python`, `ripgrep (rg)`, `fd`, `make`
+### 3-1. 개발 PC (Windows)
+- **패키지 매니저**: Scoop (강력 권장)
+- **필수 도구**: git, nodejs-lts, python, ripgrep (rg), fd, make
 - **에디터**: VS Code (Antigravity AI 연동)
 
-### 🐋 3-2. NAS 서버 (Docker)
-- **컨테이너**: `els-backend` (Flask + Chrome + Bot 통합 환경)
-- **필수 바이너리**: Google Chrome 131, Chromedriver (경로: `/usr/bin/google-chrome`)
-- **Python 의존성**: `DrissionPage`, `flask`, `supabase`, `pandas`, `openpyxl`
+### 3-2. NAS 서버 (Docker)
+- **컨테이너**: els-backend (Flask + Chrome + Bot 통합 환경)
+- **필수 바이너리**: Google Chrome 131, Chromedriver (경로: /usr/bin/google-chrome)
+- **Python 의존성**: DrissionPage, flask, supabase, pandas, openpyxl
 
-### 📱 3-3. 안드로이드 빌드 환경
-- **프레임워크**: `Capacitor` (Web to Native 릴레이)
+### 3-3. 안드로이드 빌드 환경
+- **프레임워크**: Capacitor (Web to Native 릴레이)
 - **필수 API**: Android 14+ (Foreground Service Type 필수 선언)
 - **권한 관리**: Location(Always), Overlay(위젯), Battery Optimization(제외)
 
 ---
 
-## 📂 4. 주요 디렉토리 가이드 (Navigation Map)
+## 4. 주요 디렉토리 가이드 (Navigation Map)
 
 - `/web`: Next.js 프론트엔드 코드 전반.
-- `/docker/els-backend`: 나스에서 돌아가는 Flask API 서버 핵심 코드 (`app.py`, `Dockerfile`).
-- `/elsbot`: 컨테이너 조회를 수행하는 봇 엔진 코드 (`els_bot.py`).
+- `/docker/els-backend`: 나스에서 돌아가는 Flask API 서버 핵심 코드 (app.py, Dockerfile).
+- `/elsbot`: 컨테이너 조회를 수행하는 봇 엔진 코드 (els_bot.py).
 - `/web/android`: 안드로이드 네이티브 소스 및 Capacitor 설정.
-- `/docs`: 프로젝트의 역사와 설계 문서 (`01_MISSION_CONTROL.md`가 최상위).
-  - [MAP V2 PLAN](./MAP_ENGINE_V2_PLAN.md): 지도 엔진 업그레이드 마스터 설계 문서.
+- `/web/driver-src`: [단일 진실 소스] 드라이버 앱 소스 (app.js, index.html, style.css, modules/). 여기서만 편집.
+- `/docs`: 프로젝트 역사와 설계 문서 (01_MISSION_CONTROL.md 최상위).
 
 ---
 
-## 📱 5. 안드로이드 드라이버 앱 — JS 모듈 구조 (2026-04-05 리팩토링)
+## 5. 안드로이드 드라이버 앱 — JS 모듈 구조 (2026-04-05 리팩토링)
 
-> `web/android/app/src/main/assets/public/` 기준.
-> ES Modules (`type="module"`) 방식 적용. 빌드 도구 없음 — Capacitor WebView(Chrome 엔진)에서 네이티브 지원.
+소스: `web/driver-src/` (단일 진실 소스). Capacitor webDir 타겟.
+ES Modules (type="module") 방식 적용. 빌드 도구 없음.
 
 ### 5-1. 모듈 의존성 다이어그램
 
 ```
 [app.js] ← 엔트리 (window.App 조립 + init 호출)
-    │
-    ├── modules/store.js        ← 앱 상수(APP_VERSION, BASE_URL), Store, State
-    ├── modules/bridge.js       ← Capacitor 플러그인, smartFetch, remoteLog  (← store)
-    ├── modules/utils.js        ← formatDate, escHtml, showToast              (의존성 없음)
-    ├── modules/nav.js          ← showScreen (순수 DOM)                        (의존성 없음)
-    │
-    ├── modules/permissions.js  ← 권한 관리, Android 16 가이드               (← store, bridge, nav)
-    ├── modules/profile.js      ← 프로필 UI/저장/조회/사진                    (← store, bridge)
-    │
-    ├── modules/gps.js          ← GPS 추적, 실시간 모드, 상태 표시줄          (← store, bridge)
-    ├── modules/trip.js         ← 운행 시작/종료/점검/오버레이                (← store, bridge, gps)
-    │
-    ├── modules/notice.js       ← 공지 목록/필터/상세                         (← store, bridge, utils)
-    ├── modules/log.js          ← 일지 목록/상세/수정/사진                    (← store, bridge, utils, trip)
-    ├── modules/photos.js       ← 업로드, 뷰어, 핀치줌                        (← store, bridge, utils, profile)
-    │
-    ├── modules/emergency.js    ← 긴급알림 폴링, SYSTEM_COMMAND               (← store, bridge, gps)
-    ├── modules/update.js       ← APK 버전 체크                               (← store, bridge, utils)
-    ├── modules/map.js          ← 지도 엔진 (v2: Dynamic SDK v3로 전환 예정)   (← store, bridge, utils, nav)
-    │
-    └── modules/init.js         ← 앱 초기화, switchTab, showMain              (← 전체 모듈 조율)
+    |
+    +-- modules/store.js        <- 앱 상수(APP_VERSION, BASE_URL), Store, State
+    +-- modules/bridge.js       <- Capacitor 플러그인, smartFetch, remoteLog  (<- store)
+    +-- modules/utils.js        <- formatDate, escHtml, showToast              (의존성 없음)
+    +-- modules/nav.js          <- showScreen (순수 DOM)                       (의존성 없음)
+    |
+    +-- modules/permissions.js  <- 권한 관리, Android 16 가이드               (<- store, bridge, nav)
+    +-- modules/profile.js      <- 프로필 UI/저장/조회/사진                   (<- store, bridge)
+    +-- modules/dispatch.js     <- 배차 정보 표시 및 동기화                  (<- store, bridge, utils)
+    +-- modules/log.js          <- 운행 일지 작성 및 사진 업로드              (<- store, bridge, utils)
+    +-- modules/gps.js          <- GPS 트래킹, 백그라운드 위치 전송          (<- store, bridge)
 ```
 
-### 5-2. 주요 설계 원칙
+### 5-2. 주요 패턴 및 주의사항
 
-| 원칙 | 내용 |
-|------|------|
-| **단일 상태** | `State` 객체는 `store.js` 1곳에서만 정의. 모든 모듈이 같은 참조를 import하므로 뮤테이션 즉시 공유. |
-| **순환 참조 방지** | `nav.js`를 별도 레이어로 분리. `permissions.js ↔ init.js` 양방향 의존은 `setupPermNav()` 콜백 주입으로 해소. |
-| **크로스 모듈 호출** | 모듈 간 직접 import가 어려운 경우 `window.App.xxx()` 늦은 참조 사용 (런타임 시 window.App 완성 보장). |
-| **빌드 스텝 없음** | Webpack/Vite 불필요. Capacitor WebView = Chrome → ES Module 네이티브 지원. |
+| 패턴 | 내용 |
+|---|---|
+| **이벤트 위임** | 동적 리스트는 document에 이벤트 리스너 위임. 직접 addEventListener 금지. |
+| **크로스 모듈 호출** | 모듈 간 직접 import 어려운 경우 window.App.xxx() 늦은 참조 사용. |
+| **빌드 스텝 없음** | Webpack/Vite 불필요. Capacitor WebView = Chrome -> ES Module 네이티브 지원. |
+| **APK 빌드 절차** | 항상 scripts/build_driver_apk.ps1 경유. npx cap sync 단독 실행 절대 금지. |
 
 ### 5-3. Android APK 버전 관리 (4곳 동시 갱신 필수)
-1. `web/android/app/build.gradle` — `versionCode`, `versionName`
-2. `web/public/apk/version.json` — 자동 업데이트 알림용
-3. `web/android/app/src/main/assets/public/modules/store.js` — `APP_VERSION`, `BUILD_CODE`
-4. `web/android/app/src/main/assets/public/index.html` — `<span id="app-version-display">`
+1. web/android/app/build.gradle — versionCode, versionName [단일 진실 소스]
+2. web/public/apk/version.json — 자동 업데이트 알림용
+3. web/driver-src/modules/store.js — APP_VERSION, BUILD_CODE
+4. web/driver-src/index.html — span id="app-version-display"
 
-> ⚠️ 리팩토링 후 버전 상수 위치: `modules/store.js` (기존 `app.js` 상단에서 이동됨)
+> 스크립트(build_driver_apk.ps1)가 build.gradle을 읽어 나머지 3곳에 자동 동기화.
+
+---
+
+## 6. AI 어시스턴트 아키텍처 (Agent RAG Pipeline)
+
+> **최종 구현**: 2026-04-11 (v4.9.25)
+> **구현 파일**:
+> - web/app/api/chat/route.js — 백엔드 RAG 엔진 및 Gemini 스트리밍
+> - web/app/(main)/employees/(intranet)/ask/page.js — AI 어시스턴트 UI (데스크탑/모바일 분기)
+> - web/app/(main)/employees/(intranet)/ask/ask.module.css — 전용 스타일
+
+ELS AI 어시스턴트는 단순 질의응답을 넘어 사내 DB + 외부 MCP 프록시를 실시간으로 결합하는
+Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
+
+### 6-1. 전체 데이터 흐름 (RAG Pipeline)
+
+```
+사용자 입력 (자연어 쿼리)
+        |
+        v
+[POST /api/chat] — Next.js Server-Side API Route
+        |
+        +-- STEP 1: 키워드 1차 스캐닝 (0.1초 이내)
+        |       +-- '차량/위치/어디'    -> Supabase vehicle_trips + vehicle_locations JOIN
+        |       +-- '업무/보고/일지'    -> Supabase posts (board_type=report) 최근 5건
+        |       +-- '날씨/미세먼지/공기' -> K-SKILL fine-dust Proxy 호출 (AirKorea 공식)
+        |       +-- '법/규정/근로/운임'  -> K-Law REST API 호출 (api.beopmang.org)
+        |
+        +-- STEP 2: Context 조합
+        |       BASE_SYSTEM_INSTRUCTION
+        |         + 최근 게시글 (항상 주입: 최신 5건)
+        |         + 조건부 실시간 데이터 (키워드 매칭 시)
+        |       = finalSystemInstruction
+        |
+        +-- STEP 3: Gemini 2.5 Flash 스트리밍 호출
+        |       모델: gemini-2.5-flash (streamGenerateContent, SSE)
+        |       Temperature: 0.7 / MaxTokens: 2048 / Timeout: 60초
+        |
+        +-- STEP 4: SSE 스트림 클라이언트 전달 -> 실시간 렌더링
+```
+
+### 6-2. 3-Layer RAG 데이터 소스 상세
+
+| 레이어 | 소스 | 트리거 키워드 | 반환 데이터 |
+|---|---|---|---|
+| **Layer 1: 사내 DB** | Supabase PostgreSQL | 차량, 위치, 어디, 업무, 보고, 일지 | 실시간 GPS 위치/주소, 업무일지 목록 |
+| **Layer 2: K-SKILL** | k-skill-proxy.nomadamas.org | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
+| **Layer 3: K-Law** | api.beopmang.org | 법, 근로기준법, 안전운임, 규정 | 법령 조문 전문, 개정이력 JSON |
+
+**K-SKILL 지역 측정소 매핑 (도시명 -> AirKorea 측정소 힌트)**:
+- 서울: 서울 중구 / 부산: 부산 연산동 / 인천: 인천 구월동
+- 대구: 대구 수창동 / 대전: 대전 둔산동 / 광주: 광주 농성동
+- 울산: 울산 신정동 / 세종: 세종 아름동
+- 아산: 아산 모종동 / 당진: 당진 읍내동 / 예산: 예산군 / 천안: 천안
+- default fallback: 아산 모종동 (ELS 본사 소재지)
+
+**K-Law API 기술 결정 (2026-04-11)**:
+- 엔드포인트: GET https://api.beopmang.org/api/v4/law?action=search&q={검색어}
+- NAS에 별도 Docker 컨테이너 운영 대신 공개 법망 프록시 서버 직결 채택
+- 장점1: NAS CPU/RAM 추가 부하 제로
+- 장점2: 정부 공공데이터포털 OpenAPI 키 발급 불필요
+- 장점3: 법망측 서버가 정부 API -> JSON 변환 담당 (유지보수 컨테이너 없음)
+
+### 6-3. Anti-Hallucination 설계 (환각 방지)
+
+소프트 가드레일 원칙:
+- [허용] 사내 DB(RAG) 데이터 기반 답변 (실제 Supabase 데이터 주입됨)
+- [허용] K-SKILL / K-Law 도구 호출 결과 기반 답변
+- [허용] ELS 시스템 메뉴/기능/경로 안내 (시스템 고정 지식)
+- [허용] 사이트 내부 문서/자료 요약 및 해석 (RAG 데이터 범위 내)
+- [주의] 법령 조항/수치 -> K-Law 결과 인용 또는 "K-Law API 확인 필요" 명시
+- [거절] 업무 범위 외 질문 (잡담, 일반 상식, 정치/사회 의견)
+
+**설계 원칙**: "완전 도구 차단" 방식 지양. 소프트 가드레일 채택.
+- 사이트 내 모든 문서/자료 요약/안내는 AI가 담당 (거절 시 사용성 저하)
+- 법령 등 외부 사실관계 수치는 반드시 출처 명시 또는 K-Law 조회 유도
+
+BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
+- 너는 ELS Solution의 법률/업무 지원 에이전트다.
+- K-SKILL / K-Law MCP / 사내 DB에서 확인된 정보만 제공해라.
+- 확인 불가 외부 지식이나 잡담은 정중히 거절해라.
+- 메뉴 안내 시 반드시 [메뉴이름](/경로) 마크다운 링크로 이동 연결해라.
+
+### 6-4. AI 어시스턴트 UI/UX 구조 (2026-04-11 개편)
+
+| 환경 | 레이아웃 | 특징 |
+|---|---|---|
+| **데스크탑** (>768px) | 2-Column 분할 | 좌측: ELS AI 사용 가이드 패널 (상설), 우측: 채팅창 |
+| **모바일** (<=768px) | Full-Screen 채팅 | 채팅창 100% 점유, 헤더 [가이드] 버튼 -> 모달 팝업 |
+
+가이드 패널 표시 내용:
+- 연결된 데이터 소스 배지 (사내DB / K-SKILL / K-Law)
+- 사용 가능한 질문 예시 (법령, 미세먼지, 차량위치, 업무보고)
+- 마크다운 링크로 내부 메뉴 바로가기 안내
 
 ---
 
-## 🚨 5. 운영 시 주의사항 (Operational Guardrails)
+## 7. 운영 시 주의사항 (Operational Guardrails)
 
-1. **봇 로그인**: ETrans 사이트는 세션이 민감하므로, 봇이 작업 중일 때는 수동 로그인을 자제해야 합니다.
-2. **트래픽 오프로딩**: 프론트엔드(`web/`) 수정 시 모든 API 주소 앞에 `baseUrl` 정합성을 반드시 체크하십시오. (PDCA/TDD 필수!)
-3. **나스 빌드**: `Dockerfile` 수정 후에는 반드시 `sh scripts/nas-deploy.sh`로 전체 컨테이너를 다시 구워야 합니다. (약 40분 소요)
+1. **봇 로그인**: ETrans 사이트는 세션 민감 -> 봇 작업 중 수동 로그인 자제.
+2. **트래픽 오프로딩**: 프론트엔드(web/) 수정 시 모든 API 주소 앞에 baseUrl 정합성 반드시 체크.
+3. **나스 빌드**: Dockerfile 수정 후 반드시 sh scripts/nas-deploy.sh로 전체 컨테이너 재빌드. (약 40분 소요)
+4. **APK 빌드**: npx cap sync 단독 실행 절대 금지. 반드시 scripts/build_driver_apk.ps1 경유.
+5. **K-SKILL/K-Law 가용성**: 외부 프록시 서버 의존. 네트워크 단절 시 AI는 fallback(사내 DB only)으로 동작.
 
 ---
-*최종 갱신일: 2026-04-02 (by Antigravity v4.4.40)*
+*최종 갱신일: 2026-04-11 (by Antigravity/Claude Sonnet | v4.9.25)*
