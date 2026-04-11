@@ -70,7 +70,7 @@ export default function PartnerContactsPage() {
                             <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
                             <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
                             <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자 연락처</th>
-                            <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
+                            <th style={{ width: '100%', padding: '12px 16px' }}>소재지</th>
                         </tr>
                     </thead>
                     <tbody style={{ fontSize: '0.9rem' }}>
@@ -81,7 +81,7 @@ export default function PartnerContactsPage() {
                                 <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone}</td>
                                 <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_name}</td>
                                 <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.manager_phone}</td>
-                                <td className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
+                                <td className={styles.colDate} style={{ width: '100%', minWidth: '250px', wordBreak: 'break-all', padding: '12px 16px' }}>{item.address || '—'}</td>
                             </tr>
                         ))}
                         {filteredList.length === 0 && (

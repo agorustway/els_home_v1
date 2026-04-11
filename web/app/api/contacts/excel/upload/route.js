@@ -144,12 +144,13 @@ export async function POST(request) {
             chassis_type: getVal(row, 8)
         }));
 
-        // 5. 고객사정보 (주소 2번 col 필수, 삭제 6번)
-        await processSheet('고객사정보', 'work_sites', 2, 6, (row) => ({
-            address: getVal(row, 2),
-            contact: getVal(row, 3),
-            work_method: getVal(row, 4),
-            notes: getVal(row, 5)
+        // 5. 고객사정보 (작업지명 2번 col, 주소 3번 col 필수, 삭제 7번)
+        await processSheet('고객사정보', 'work_sites', 3, 7, (row) => ({
+            site_name: getVal(row, 2),
+            address: getVal(row, 3),
+            contact: getVal(row, 4),
+            work_method: getVal(row, 5),
+            notes: getVal(row, 6)
         }));
 
         const resultMsg = `정상적으로 일괄 적용되었습니다!\n- 신규 등록: ${totalInserted}건\n- 기존 수정: ${totalUpdated}건\n- 일괄 삭제: ${totalDeleted}건`;

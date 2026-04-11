@@ -110,10 +110,11 @@ export async function GET(request) {
     ], externalData);
 
     // 3. 고객사정보 (기존 작업지안내)
-    const { data: siteData } = await supabase.from('work_sites').select('id, address, contact, work_method, notes').order('created_at', { ascending: true });
+    const { data: siteData } = await supabase.from('work_sites').select('id, site_name, address, contact, work_method, notes').order('created_at', { ascending: true });
     setupSheet('고객사정보', [
         { header: '고유 ID (비워두면 신규)', key: 'id', width: 40 },
-        { header: '고객사(작업지) 주소(필수)', key: 'address', width: 50 },
+        { header: '작업지명', key: 'site_name', width: 25 },
+        { header: '작업지 주소(필수)', key: 'address', width: 50 },
         { header: '담당자 연락처(다수기재가)', key: 'contact', width: 25 },
         { header: '작업방식', key: 'work_method', width: 30 },
         { header: '참고사항', key: 'notes', width: 40 },
@@ -127,7 +128,7 @@ export async function GET(request) {
         { header: '회사명(필수)', key: 'company_name', width: 25 },
         { header: '대표자명', key: 'ceo_name', width: 15 },
         { header: '대표 연락처', key: 'phone', width: 20 },
-        { header: '주소', key: 'address', width: 40 },
+        { header: '소재지', key: 'address', width: 40 },
         { header: '담당자명', key: 'manager_name', width: 15 },
         { header: '담당자 연락처', key: 'manager_phone', width: 20 },
         { header: '메모', key: 'memo', width: 40 },
