@@ -52,7 +52,7 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] Gemini 2.0 Flash SSE 스트리밍 엔드포인트 — `/api/chat/route.js`
     - [x] ELS 업무 컨텍스트(메뉴 경로/안전운임/컨테이너/연락처) 시스템 인스트럭션 주입
     - [ ] **⚠️ 필수**: Vercel 환경변수 `GEMINI_API_KEY` 등록 (로컬 `.env.local`에도 추가 필요)
-    - [ ] ELS 실시간 데이터(배차현황/공지) DB 조회 후 컨텍스트 주입 (선택 고도화)
+    - [x] ELS 실시간 데이터(공지/게시글) DB 조회 후 컨텍스트 주입 완료
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

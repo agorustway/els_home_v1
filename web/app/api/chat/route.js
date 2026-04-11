@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/utils/supabase/server';
 
 // ELS 업무 시스템 컨텍스트 — 모델이 ELS 도메인을 이해하도록 주입
-const ELS_SYSTEM_INSTRUCTION = `당신은 ELS 솔루션의 AI 어시스턴트입니다.
+const BASE_SYSTEM_INSTRUCTION = `당신은 ELS 솔루션의 AI 어시스턴트입니다.
 ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.
 
 ## 주요 기능 안내
@@ -44,6 +45,30 @@ export async function POST(req) {
         return NextResponse.json({ error: '메시지가 없습니다.' }, { status: 400 });
     }
 
+    // 최근 공지/게시글 컨텍스트 가져오기
+    let recentPostsText = '';
+    try {
+        const supabase = await createAdminClient();
+        const { data: posts } = await supabase
+            .from('posts')
+            .select('title, author_email, created_at')
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (posts && posts.length > 0) {
+            recentPostsText = '\n\n## 최근 사내 게시글/공지\n' + posts.map(p => {
+                const date = new Date(p.created_at).toLocaleDateString();
+                const name = p.author_email?.split('@')[0] || '익명';
+                return `- [${date}] ${p.title} (작성자: ${name})`;
+            }).join('\n');
+        }
+    } catch (e) {
+        console.error('[/api/chat] DB 조회 오류:', e);
+    }
+    
+    // 최종 시스템 프롬프트 조합
+    const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText;
+
     // Gemini API: 'model' role은 'assistant' → 변환 필요
     const contents = messages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -52,7 +77,7 @@ export async function POST(req) {
 
     const geminiPayload = {
         system_instruction: {
-            parts: [{ text: ELS_SYSTEM_INSTRUCTION }],
+            parts: [{ text: finalSystemInstruction }],
         },
         contents,
         generationConfig: {
