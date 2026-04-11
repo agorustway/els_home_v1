@@ -1,8 +1,8 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-11 (KST)
+> 마지막 업데이트: 2026-04-11 (KST) - [v4.9.20] AI 챗봇 1단계 완료 | Gemini 2.0 Flash SSE 스트리밍 연동
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.18` (연락처 UI/UX 대대적 개편 및 엑셀 메타 동기화)
+- **Current Build**: `v4.9.19` (UI 톤앤매너 통일, 이모지 제거, 모바일 최적화 및 AI 챗봇 기초 설계)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 
@@ -43,11 +43,16 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] 차량 관제 상세 패널 수정
     - [x] 사이드바 데스크탑 마우스오버 트리거 변경 (완료)
     - [x] 컨테이너 이력조회 시스템 로그 모바일 레이아웃 오버플로우 패치
-- [x] 📇 인트라넷 연락처(사내/외부/협력사/운전원/작업지) 구조 개편
-    - [x] 검색/구분 다중 필터(`ContactFilterBar`) 적용
-    - [x] 테이블 레이아웃 자동 유동폭 적용 (폰트, 여백 최적화)
-    - [x] 엑셀 대량 업로드 템플릿과 프론트엔드 UI 항목 1:1 완벽 정합성 매칭 (협력사 소재지, 작업지명 추가)
-- [ ] 🤖 챗봇(Agent) UI 고도화 (Next Task)
+- [x] 📇 인트라넷 연락처/페이지 UI 톤앤매너 통일 (2026-04-11)
+    - [x] 전 페이지 불필요한 이모지 제거 및 텍스트/SVG 교체
+    - [x] 모바일 터치 영역(44px) 보장 및 CSS 표준화 (`intranet.module.css`)
+- [ ] 🤖 챗봇(AI 어시스턴트) 고도화 (🚧 IN-PROGRESS)
+    - [x] 사이드바 메뉴 등록 및 라우팅 설정 (`/employees/ask`)
+    - [x] 챗봇 프론트엔드 UI 개발 (메시지 버블, 스트리밍, 빠른질문, 모바일 최적화) — `(intranet)/ask/page.js` + `ask.module.css`
+    - [x] Gemini 2.0 Flash SSE 스트리밍 엔드포인트 — `/api/chat/route.js`
+    - [x] ELS 업무 컨텍스트(메뉴 경로/안전운임/컨테이너/연락처) 시스템 인스트럭션 주입
+    - [ ] **⚠️ 필수**: Vercel 환경변수 `GEMINI_API_KEY` 등록 (로컬 `.env.local`에도 추가 필요)
+    - [ ] ELS 실시간 데이터(배차현황/공지) DB 조회 후 컨텍스트 주입 (선택 고도화)
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

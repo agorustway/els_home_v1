@@ -1,0 +1,452 @@
+/* ========================
+   AI 어시스턴트 챗봇 레이아웃
+   ======================== */
+
+.loadingScreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+/* mainContent 패딩(12px 14px)을 상쇄하고 전체 공간 사용 */
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    /* mainContent의 padding(12px 상하, 14px 좌우)을 음수 마진으로 상쇄 */
+    margin: -12px -14px -36px;
+    /* 뷰포트 - (header70 + ticker44 + employeeheader114 + 자체padding12) ≈ 240px */
+    height: calc(100dvh - 240px);
+    min-height: 440px;
+    background: #f8fafc;
+    font-family: inherit;
+    overflow: hidden;
+}
+
+/* ── 헤더 ── */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.headerIcon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.headerTitle {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.headerSub {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 2px 0 0;
+}
+
+.statusBadge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #10b981;
+    font-weight: 600;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    padding: 4px 10px;
+    border-radius: 99px;
+}
+
+.statusDot {
+    width: 7px;
+    height: 7px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* ── 채팅 영역 ── */
+.chatArea {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+}
+
+.chatArea::-webkit-scrollbar {
+    width: 4px;
+}
+.chatArea::-webkit-scrollbar-track { background: transparent; }
+.chatArea::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+/* ── 메시지 행 ── */
+.messageRow {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.userRow {
+    flex-direction: row-reverse;
+}
+
+.assistantRow {
+    flex-direction: row;
+}
+
+/* ── 아바타 ── */
+.avatar {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+/* ── 버블 ── */
+.bubble {
+    max-width: 72%;
+    padding: 11px 15px;
+    border-radius: 16px;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.userBubble {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.assistantBubble {
+    background: #fff;
+    color: #1e293b;
+    border-bottom-left-radius: 4px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ── 새 메시지 애니메이션 ── */
+.newMessage .bubble {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── 타이핑 인디케이터 ── */
+.typingIndicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.typingIndicator span {
+    width: 7px;
+    height: 7px;
+    background: #94a3b8;
+    border-radius: 50%;
+    display: inline-block;
+    animation: bounce 1.2s ease-in-out infinite;
+}
+
+.typingIndicator span:nth-child(2) { animation-delay: 0.2s; }
+.typingIndicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ── 빠른 질문 ── */
+.quickPromptsArea {
+    padding: 8px 12px;
+    flex-shrink: 0;
+}
+
+.quickLabel {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 8px;
+}
+
+.quickPrompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.quickBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    min-height: 36px;
+}
+
+.quickBtn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #1e293b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.quickBtn:active {
+    transform: translateY(0);
+}
+
+.quickIcon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* ── 입력 영역 ── */
+.inputArea {
+    padding: 10px 12px 12px;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.inputBox {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 8px 8px 8px 14px;
+    transition: border-color 0.2s;
+}
+
+.inputBox:focus-within {
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.textarea {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: #1e293b;
+    resize: none;
+    line-height: 1.5;
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.textarea::placeholder {
+    color: #94a3b8;
+}
+
+.textarea:disabled {
+    color: #94a3b8;
+}
+
+.sendBtn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.sendBtn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35);
+}
+
+.sendBtn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.sendBtn:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.disclaimer {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-align: center;
+    margin: 6px 0 0;
+}
+
+/* ========================
+   모바일 반응형
+   ======================== */
+@media (max-width: 1024px) {
+    /* 모바일: 티커 없음, mainContent padding 8px 10px 24px */
+    .wrapper {
+        margin: -10px -10px -24px;
+        height: calc(100dvh - 196px);
+        min-height: 400px;
+    }
+
+    .bubble {
+        max-width: 85%;
+        font-size: 0.875rem;
+    }
+
+    .quickBtn {
+        font-size: 0.78rem;
+        padding: 8px 12px;
+        min-height: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* 480px: mainContent padding 6px 4px 24px */
+    .wrapper {
+        margin: -6px -4px -24px;
+        height: calc(100dvh - 188px);
+        min-height: 360px;
+    }
+
+    .header {
+        padding: 10px 12px;
+    }
+
+    .headerIcon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+    }
+
+    .headerTitle {
+        font-size: 0.9rem;
+    }
+
+    .headerSub {
+        display: none;
+    }
+
+    .chatArea {
+        padding: 12px 10px;
+        gap: 10px;
+    }
+
+    .bubble {
+        max-width: 88%;
+        padding: 10px 13px;
+        font-size: 0.875rem;
+    }
+
+    .avatar {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+    }
+
+    .inputArea {
+        padding: 8px 10px 10px;
+    }
+
+    .inputBox {
+        padding: 6px 6px 6px 12px;
+    }
+
+    .textarea {
+        font-size: 16px; /* iOS 줌 방지 */
+    }
+
+    .sendBtn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
+
+    .quickPromptsArea {
+        padding: 6px 10px;
+    }
+
+    .quickBtn {
+        font-size: 0.78rem;
+        padding: 8px 10px;
+        min-height: 44px; /* 터치 영역 */
+    }
+
+    .disclaimer {
+        font-size: 0.68rem;
+    }
+}
