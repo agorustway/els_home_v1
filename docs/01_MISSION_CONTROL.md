@@ -1,5 +1,5 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-11 (KST) - [v4.9.28] 인트라넷 UI 프리미엄화 | 배포 오류(ESLint) 완전 해결
+> 마지막 업데이트: 2026-04-12 (KST) - [v4.9.29] AI 에이전트 route.js 전면 복원 및 인트라넷 전체 메뉴맵 주입
 
 ## 📦 최신 배포 정보
 - **Current Build**: `v4.9.26` (배포 오류 해결, AI 어시스턴트 초기페이지 설정, 기상 대시보드 UI 프리미엄화)
@@ -62,6 +62,9 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] **AI 어시스턴트 UI/UX 개편**: 데스크탑 가이드 패널 및 모바일 모달 분리 적용, 멀티-세션 채팅 목록 시스템 도입 (Gemini 스타일 UI 반영)
     - [x] **AI 맞춤형 메모리/지식 축적**: Supabase `ai_chat_memory` 기반 사용자별 대화록 영구 저장 및 RAG 문맥 주입
     - [x] **안전운임제 투-트랙 데이터 처리**: 요금제 계산용 엑셀 유지 및 AI 규정 안내용 원본 PDF JSON 파싱/RAG 주입 구조 확립 (`10_SAFE_FREIGHT_DATA_POLICY.md`)
+    - [x] **AI route.js 전면 복원** (2026-04-12): 직전 에이전트가 body/messages/supabase 변수 정의를 삭제하고 RAG 블록을 중복 삽입하여 코드 파괴됨 → 전면 재작성으로 정상화
+    - [x] **인트라넷 전체 메뉴맵 시스템 프롬프트 주입**: 6개 메뉴 → 20+개 전체 인트라넷 페이지 경로를 AI가 인지하도록 확장
+    - [x] **작업지(work_sites) DB 연동**: Omni-RAG 병렬 스캔에 작업지 테이블 추가
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
@@ -70,4 +73,4 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-11 (by Antigravity/Gemini Flash)*
+*최종 갱신: 2026-04-12 (by Antigravity/Claude Opus)*
