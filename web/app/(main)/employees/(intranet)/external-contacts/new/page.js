@@ -65,10 +65,13 @@ export default function ExternalContactsNewPage() {
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>구분</label>
-                        <select className={styles.input} value={contactType} onChange={(e) => setContactType(e.target.value)}>
-                            <option value="고객사">고객사</option>
-                            <option value="협력사">협력사</option>
-                        </select>
+                        <input className={styles.input} value={contactType} onChange={(e) => setContactType(e.target.value)} list="contact_type_list" placeholder="ex) 고객사, 부산보관소..." />
+                        <datalist id="contact_type_list">
+                            <option value="고객사" />
+                            <option value="협력사" />
+                            <option value="선사및터미널" />
+                            <option value="부산보관소" />
+                        </datalist>
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>회사/기관명 *</label>

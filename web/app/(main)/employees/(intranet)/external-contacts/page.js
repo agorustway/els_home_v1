@@ -50,6 +50,8 @@ export default function ExternalContactsPage() {
         return true;
     });
 
+    const uniqueCategories = Array.from(new Set(list.map(item => item.contact_type).filter(Boolean)));
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
@@ -59,13 +61,12 @@ export default function ExternalContactsPage() {
                     <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>
-            
             <ContactFilterBar 
                 searchKeyword={searchKeyword} 
                 setSearchKeyword={setSearchKeyword} 
                 categoryFilter={categoryFilter} 
                 setCategoryFilter={setCategoryFilter} 
-                categoryOptions={['고객사', '협력사']}
+                categoryOptions={uniqueCategories}
             />
             
             <div className={styles.card}>
@@ -86,8 +87,8 @@ export default function ExternalContactsPage() {
                             <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/external-contacts/' + item.id)}>
                                 <td className={styles.colTitle} style={{ color: '#2563eb', fontSize: '0.95rem' }}>{item.company_name}</td>
                                 <td className={styles.colCategory} style={{ whiteSpace: 'nowrap' }}>
-                                    <span style={{ background: item.contact_type === '고객사' ? '#eff6ff' : '#f8fafc', color: item.contact_type === '고객사' ? '#3b82f6' : '#64748b', padding: '3px 8px', borderRadius: 4, fontSize: '0.85rem', fontWeight: 600 }}>
-                                        {item.contact_type}
+                                    <span style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: 4, fontSize: '0.85rem', fontWeight: 600 }}>
+                                        {item.contact_type || '—'}
                                     </span>
                                 </td>
                                 <td className={styles.colAuthor} style={{ color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone || '—'}</td>
