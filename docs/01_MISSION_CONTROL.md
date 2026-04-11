@@ -1,8 +1,8 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-11 (KST) - [v4.9.20] AI 챗봇 1단계 완료 | Gemini 2.0 Flash SSE 스트리밍 연동
+> 마지막 업데이트: 2026-04-11 (KST) - [v4.9.25] AI 어시스턴트 고도화 | 아산 배차판 24/7 자동 동기화 완료
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.19` (UI 톤앤매너 통일, 이모지 제거, 모바일 최적화 및 AI 챗봇 기초 설계)
+- **Current Build**: `v4.9.25` (AI 어시스턴트 실시간 RAG 연동 및 초기페이지 설정 완료)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 
@@ -46,13 +46,17 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 - [x] 📇 인트라넷 연락처/페이지 UI 톤앤매너 통일 (2026-04-11)
     - [x] 전 페이지 불필요한 이모지 제거 및 텍스트/SVG 교체
     - [x] 모바일 터치 영역(44px) 보장 및 CSS 표준화 (`intranet.module.css`)
-- [x] 🤖 챗봇(AI 어시스턴트) 기초 고도화 완료 (DB 연동 포함)
-    - [x] 사이드바 메뉴 등록 및 라우팅 설정 (`/employees/ask`)
-    - [x] 챗봇 프론트엔드 UI 개발 (메시지 버블, 스트리밍, 빠른질문, 모바일 최적화) — `(intranet)/ask/page.js` + `ask.module.css`
-    - [x] Gemini 2.0 Flash SSE 스트리밍 엔드포인트 — `/api/chat/route.js`
+    - [x] Gemini 1.5/2.5 Flash SSE 스트리밍 연동 — `/api/chat/route.js`
     - [x] ELS 업무 컨텍스트(메뉴 경로/안전운임/컨테이너/연락처) 시스템 인스트럭션 주입
-    - [ ] **⚠️ 필수**: Vercel 환경변수 `GEMINI_API_KEY` 등록 (로컬 `.env.local`에도 추가 필요)
-    - [x] ELS 실시간 데이터(공지/게시글) DB 조회 후 컨텍스트 주입 완료
+    - [x] **RAG 고도화**: 실시간 차량 위치(GPS), 최근 게시글, 업무 보고서 DB 조회 후 컨텍스트 동적 주입 완료
+    - [x] **UI/UX**: 마크다운 링크 변환 기능(한글 메뉴 클릭 가능), 입력창 여백 슬림화, 고정 인사말 토큰 절감 로직 적용
+- [x] 📊 아산지점 배차판 자동 동기화 버그 수정 및 UI 개선
+    - [x] 백엔드 스케줄러(`app_core.py`, `app.py`) 평일 제한 해제 (주말 포함 24/7 1분 주기로 동작)
+    - [x] 토요일 탭 보라색(#a855f7) 테마 적용 및 공휴일 우선 순위 로직 보완
+- [x] ⚙️ 시스템 기본값 및 성능 최적화
+    - [x] 인트라넷 초기 페이지를 'AI 어시스턴트'로 변경
+    - [x] 사이드바 'AI 어시스턴트' 최상단 배치
+    - [x] 기상청 API 업데이트 주기 1시간(revalidate: 3600)으로 연장 (부하 감소)
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
