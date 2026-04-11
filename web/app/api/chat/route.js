@@ -143,6 +143,31 @@ export async function POST(req) {
                 console.error("[/api/chat] 안전운임 JSON 로드 에러:", e);
             }
         }
+
+        // 2-3. 연락망 및 작업지 위치 조회
+        if (userKwd.includes('연락처') || userKwd.includes('전화') || userKwd.includes('번호') || userKwd.includes('주소') || userKwd.includes('작업지')) {
+            const searchTerms = lastUserText.replace(/[^가-힣a-zA-Z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1 && !['연락처','전화번호','핸드폰','주소','작업지','가져와','알려줘','어디'].includes(w));
+            
+            if (searchTerms.length > 0) {
+                try {
+                    let orConditionsExt = searchTerms.map(term => `company_name.ilike.%${term}%,contact_person.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
+                    const { data: extContacts } = await supabase.from('external_contacts').select('*').or(orConditionsExt).limit(5);
+                    
+                    if (extContacts && extContacts.length > 0) {
+                        recentPostsText += `\n\n## 📞 외부연락처 DB 검색결과\n` + extContacts.map(c => `- 회사/작업지: ${c.company_name} | 구분: ${c.contact_type||'-'} | 대표: ${c.phone||'-'} | 담당자: ${c.contact_person||'미상'}(${c.contact_person_phone||'-'}) | 메모(주소등): ${c.memo || '-'}`).join('\n');
+                    }
+                    
+                    let orConditionsInt = searchTerms.map(term => `name.ilike.%${term}%,department.ilike.%${term}%,position.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
+                    const { data: intContacts } = await supabase.from('internal_contacts').select('*').or(orConditionsInt).limit(3);
+                    
+                    if (intContacts && intContacts.length > 0) {
+                        recentPostsText += `\n\n## 📞 사내연락망 DB 검색결과\n` + intContacts.map(c => `- 이름: ${c.name} ${c.position} (${c.department}) | 연락처: ${c.phone||'-'} | 이메일: ${c.email||'-'}`).join('\n');
+                    }
+                } catch (e) {
+                    console.error("[/api/chat] 연락망 조회 에러:", e);
+                }
+            }
+        }
         // 3. 미세먼지 K-SKILL 연동 (AI Assistant)
         if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
             const regionsMap = {
