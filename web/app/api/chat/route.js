@@ -2,22 +2,22 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 
 // ELS 업무 시스템 컨텍스트 — 모델이 ELS 도메인을 이해하도록 주입
-const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 법률/업무 지원 에이전트다.
+const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.
 ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.
 
-## 주요 기능 안내
-- **컨테이너 이력조회**: /employees/container-history (ETrans 시스템 연동 수출입 이력)
-- **안전운임 조회**: /employees/safe-freight (화물차주 안전운임 기준)
-- **차량 위치 관제**: /employees/vehicle-tracking (운전원 실시간 위치)
-- **업무일지(운행 보고)**: /employees/reports/daily
-- **날씨 및 미세먼지**: /employees/weather (K-SKILL AirKorea 연동)
-- **연락처**: /employees/internal-contacts, /employees/external-contacts
+## 주요 메뉴 및 기능 (안내 시 마크다운 링크 [\`메뉴이름\`](/경로) 필수 사용)
+- **컨테이너 이력조회**: [/employees/container-history](/employees/container-history)
+- **안전운임 조회**: [/employees/safe-freight](/employees/safe-freight)
+- **차량 위치 관제**: [/employees/vehicle-tracking](/employees/vehicle-tracking)
+- **업무일지(운행 보고)**: [/employees/reports/daily](/employees/reports/daily)
+- **날씨 및 미세먼지**: [/employees/weather](/employees/weather)
+- **사내연락망**: [/employees/internal-contacts](/employees/internal-contacts)
 
-## 핵심 준수 사항 (Anti-Hallucination)
-1. **모든 답변은 K-SKILL과 K-Law MCP(법망 API)를 통해 확인된 정보나 내부 DB(RAG) 데이터 기반으로만 답변해라.**
-2. **연결된 도구로 확인할 수 없는 외부 지식이나 사적인 대화는 정중히 거절해라.** (예: "죄송합니다. 저는 ELS 업무 및 법률 지원에 특화되어 있어, 해당 지식은 제공할 수 없습니다.")
-3. 메뉴나 특정 페이지를 안내할 때는 반드시 직관적인 한글이름의 마크다운 링크 포맷(\`[메뉴 이름](/url)\`)을 사용하여 클릭 가능하게 만드세요.
-4. 사용자가 컨테이너 번호를 주며 조회를 요구하면, AI가 직접 조회할 수는 없으므로 \`[컨테이너 이력조회로 이동](/employees/container-history)\` 링크를 주면서 시스템 이동을 안내합니다.`;
+## 답변 원칙 및 가드레일 (Anti-Hallucination)
+1. **정확성**: 실시간 주입된 데이터(최근 게시글, 차량 위치, 미세먼지, K-Law 법령)를 최우선으로 참고하여 답변하라.
+2. **유연성**: 만약 특정 키워드에 대한 데이터가 주입되지 않았거나 검색 결과가 없다면, "현재 시스템(RAG)에서 해당 데이터를 실시간으로 찾을 수 없다"고 사용자에게 안내하라. 단, ELS 업무 도메인과 관련된 일반적인 절차나 지식에 대해서는 알고 있는 범위 내에서 최대한 친절하게 답변하라.
+3. **법령 답변**: 화물연대, 근로기준법, 안전운임제 등 법적 질문 시에는 반드시 주입된 'K-Law MCP' 검색 결과를 바탕으로 답변하고, 출처가 불명확한 수치나 조항은 "정확한 확인을 위해 법망 사이트 또는 담당 부서 확인이 필요하다"고 명시하라.
+4. **거절 범위**: 잡담, 연예, 정치 등 ELS 업무와 전혀 상관없는 질문에 대해서만 정중히 거절하라. 업무 관련 질문은 데이터가 조금 부족하더라도 최대한 도움을 주려 노력하라.`;
 
 /**
  * POST /api/chat
@@ -77,15 +77,27 @@ export async function POST(req) {
             }
         }
         
-        // 2. 업무 보고/일지 관련
+        // 2. 업무 보고/일지 관련 (Summary 지원)
         if (userKwd.includes('업무') || userKwd.includes('보고') || userKwd.includes('일지')) {
-            const { data: reports } = await supabase.from('posts').select('title, author_email, created_at').eq('board_type', 'report').order('created_at', { ascending: false }).limit(5);
+            let query = supabase.from('posts').select('title, author_email, created_at').eq('board_type', 'report');
+            
+            // 월별 필터 감지 (ex: 4월, 04월)
+            const monthMatch = userKwd.match(/(\d{1,2})월/);
+            if (monthMatch) {
+                const month = parseInt(monthMatch[1]);
+                const year = new Date().getFullYear();
+                const startDate = new Date(year, month - 1, 1).toISOString();
+                const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+                query = query.gte('created_at', startDate).lte('created_at', endDate);
+            }
+
+            const { data: reports } = await query.order('created_at', { ascending: false }).limit(10);
             if (reports && reports.length > 0) {
                 const reportsText = reports.map(r => {
                     const date = new Date(r.created_at).toLocaleDateString();
                     return `- [${date}] ${r.title}`;
                 }).join('\n');
-                recentPostsText += '\n\n## 📝 최근 업무보고/일지 목록 (내부 DB)\n' + reportsText;
+                recentPostsText += `\n\n## 📝 최근 업무보고/일지 목록 (내부 DB${monthMatch ? ` - ${monthMatch[1]}월` : ''})\n` + reportsText;
             }
         }
 
@@ -112,6 +124,29 @@ export async function POST(req) {
                 }
             } catch (e) {
                 console.error("[/api/chat] K-SKILL 미세먼지 오류:", e);
+            }
+        }
+
+        // 4. K-Law (법망 API) 연동 (법령/규정/운임/근로 관련)
+        if (userKwd.includes('법') || userKwd.includes('규정') || userKwd.includes('운임') || userKwd.includes('근로') || userKwd.includes('노동') || userKwd.includes('화물연대')) {
+            const searchKwd = lastUserText.trim();
+            try {
+                // api.beopmang.org의 법령 검색 v4 API 활용
+                const url = `https://api.beopmang.org/api/v4/law?action=search&q=${encodeURIComponent(searchKwd)}`;
+                const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.results && data.results.length > 0) {
+                        const lawQuotes = data.results.slice(0, 3).map(r => {
+                            return `### [출처: K-Law] ${r.title}\n${r.content?.slice(0, 300)}...`;
+                        }).join('\n\n');
+                        recentPostsText += '\n\n## ⚖️ 실시간 법령/규정 검색 결과 (K-Law MCP)\n' + lawQuotes;
+                    } else {
+                        recentPostsText += '\n\n## ⚖️ 실시간 법령/규정 검색 결과 (K-Law MCP)\n관련된 최신 법령 정보를 찾을 수 없습니다. 법령 명칭을 정확히 입력해 보세요.';
+                    }
+                }
+            } catch (e) {
+                console.error("[/api/chat] K-Law 법망 API 오류:", e);
             }
         }
         // -------------------------------------------------------------------------
