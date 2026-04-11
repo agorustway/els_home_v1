@@ -35,7 +35,7 @@ export default function InternalContactsPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>사내연락망</h1>
             <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="internal_contacts" />
                 <Link href="/employees/internal-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
             </div>
             </div>

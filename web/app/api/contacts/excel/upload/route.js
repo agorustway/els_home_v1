@@ -116,7 +116,6 @@ export async function POST(request) {
             contact_type: getVal(row, 3),
             address: getVal(row, 4),
             phone: getVal(row, 5),
-            phone_2: getVal(row, 6),
             email: getVal(row, 7),
             contact_person: getVal(row, 8),
             memo: getVal(row, 9)

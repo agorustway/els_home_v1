@@ -35,7 +35,7 @@ export default function PartnerContactsPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>협력사정보</h1>
             <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="partner_contacts" />
                 <Link href="/employees/partner-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
             </div>
             </div>
@@ -43,12 +43,12 @@ export default function PartnerContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th className={styles.colTitle}>회사명</th>
+                            <th className={styles.colTitle} style={{ width: '25%' }}>회사명</th>
                             <th style={{ width: '120px' }}>대표자</th>
                             <th style={{ width: '150px' }}>전화번호</th>
                             <th style={{ width: '120px' }}>담당자</th>
                             <th style={{ width: '150px' }}>담당자 연락처</th>
-                            <th className={styles.colDate}>등록일</th>
+                            <th className={styles.colDate} style={{ width: '120px' }}>등록일</th>
                         </tr>
                     </thead>
                     <tbody>

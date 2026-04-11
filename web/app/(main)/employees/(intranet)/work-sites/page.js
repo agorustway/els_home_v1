@@ -35,7 +35,7 @@ export default function WorkSitesPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>고객사정보</h1>
                 <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="work_sites" />
                     <Link href="/employees/work-sites/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>

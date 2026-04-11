@@ -43,7 +43,7 @@ export default function DriverContactsPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>운전원정보</h1>
                 <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="driver_contacts" />
                     <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>

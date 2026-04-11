@@ -35,7 +35,7 @@ export default function ExternalContactsPage() {
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>외부연락처</h1>
                 <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} />
+                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="external_contacts" />
                     <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>단건 등록</Link>
                 </div>
             </div>
@@ -43,13 +43,12 @@ export default function ExternalContactsPage() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th className={styles.colTitle}>회사명</th>
-                            <th className={styles.colCategory} style={{ width: '100px' }}>구분</th>
-                            <th style={{ width: '110px' }}>담당자</th>
-                            <th style={{ width: '130px' }}>대표 연락처</th>
-                            <th style={{ width: '130px' }}>직통번호</th>
-                            <th style={{ width: '180px' }}>이메일</th>
-                            <th>주소</th>
+                            <th className={styles.colTitle} style={{ width: '20%' }}>회사명</th>
+                            <th className={styles.colCategory} style={{ width: '80px' }}>구분</th>
+                            <th style={{ width: '120px' }}>담당자</th>
+                            <th style={{ width: '150px' }}>연락처</th>
+                            <th style={{ width: '200px' }}>이메일</th>
+                            <th style={{ width: 'auto' }}>주소</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -63,7 +62,6 @@ export default function ExternalContactsPage() {
                                 </td>
                                 <td style={{ fontWeight: 600, color: '#475569' }}>{item.contact_person}</td>
                                 <td className={styles.colAuthor}>{item.phone}</td>
-                                <td className={styles.colAuthor} style={{ color: '#64748b' }}>{item.phone_2 || '—'}</td>
                                 <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{item.email}</td>
                                 <td className={styles.colDate} style={{ width: 'auto', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.address}>
                                     {item.address || '—'}

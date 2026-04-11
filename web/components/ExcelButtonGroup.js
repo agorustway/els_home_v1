@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 
-export default function ExcelButtonGroup({ onUploadSuccess }) {
+export default function ExcelButtonGroup({ onUploadSuccess, tableName }) {
     const [uploading, setUploading] = useState(false);
+    const [deduplicating, setDeduplicating] = useState(false);
 
     const handleUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -27,7 +28,7 @@ export default function ExcelButtonGroup({ onUploadSuccess }) {
 
             if (res.ok) {
                 alert(data.message);
-                if (onUploadSuccess) onUploadSuccess(); // 목록 새로고침 
+                if (onUploadSuccess) onUploadSuccess(); 
             } else {
                 alert('업로드 실패: ' + data.error + '\n' + (data.details || ''));
             }
@@ -36,7 +37,34 @@ export default function ExcelButtonGroup({ onUploadSuccess }) {
             alert('업로드 중 네트워크 오류가 발생했습니다.');
         } finally {
             setUploading(false);
-            e.target.value = ''; // 초기화
+            e.target.value = ''; 
+        }
+    };
+
+    const handleDeduplicate = async () => {
+        if (!tableName) return;
+        if (!confirm('중복된 데이터를 검색하여 등록일이 오래된 데이터를 일괄 삭제합니다.\n계속하시겠습니까?')) return;
+        
+        setDeduplicating(true);
+        try {
+            const res = await fetch('/api/contacts/deduplicate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tableName })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert(`중복 제거가 완료되었습니다.\n삭제된 중복 항목: ${data.deletedCount}건`);
+                if (onUploadSuccess) onUploadSuccess();
+            } else {
+                alert('중복 제거 실패: ' + data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('중복 제거 중 네트워크 오류가 발생했습니다.');
+        } finally {
+            setDeduplicating(false);
         }
     };
 
@@ -77,9 +105,19 @@ export default function ExcelButtonGroup({ onUploadSuccess }) {
                     accept=".xlsx, .xls"
                     style={{ display: 'none' }}
                     onChange={handleUpload}
-                    disabled={uploading}
                 />
             </label>
+
+            {tableName && (
+                <button
+                    onClick={handleDeduplicate}
+                    disabled={deduplicating}
+                    style={{ ...btnStyle, background: '#ef4444', color: 'white', cursor: deduplicating ? 'not-allowed' : 'pointer', opacity: deduplicating ? 0.7 : 1 }}
+                    title="중복된 데이터를 정리합니다."
+                >
+                    {deduplicating ? '⏳ 검사중...' : '🧹 중복 정리'}
+                </button>
+            )}
         </div>
     );
 }

@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -67,7 +66,6 @@ export default function ExternalContactDetailPage() {
                 {item.contact_person && <p><strong>담당자:</strong> {item.contact_person}</p>}
                 {item.address && <p><strong>주소:</strong> {item.address}</p>}
                 {item.phone && <p><strong>대표 연락처:</strong> {item.phone}</p>}
-                {item.phone_2 && <p><strong>직통/기타 연락처:</strong> {item.phone_2}</p>}
                 {item.email && <p><strong>이메일:</strong> {item.email}</p>}
                 {item.memo && <div className={styles.contentBody} style={{ marginTop: 16 }}>{item.memo}</div>}
             </div>
