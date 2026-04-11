@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
 
 const REGIONS = {
-    seoul: { name: '서울', lat: 37.5665, lon: 126.978 },
-    busan: { name: '부산', lat: 35.1796, lon: 129.0756 },
-    incheon: { name: '인천', lat: 37.4563, lon: 126.7052 },
-    daegu: { name: '대구', lat: 35.8714, lon: 128.6014 },
-    daejeon: { name: '대전', lat: 36.3504, lon: 127.3845 },
-    gwangju: { name: '광주', lat: 35.1595, lon: 126.8526 },
-    ulsan: { name: '울산', lat: 35.5384, lon: 129.3114 },
-    suwon: { name: '수원', lat: 37.2636, lon: 127.0286 },
-    changwon: { name: '창원', lat: 35.2281, lon: 128.6811 },
-    sejong: { name: '세종', lat: 36.5450, lon: 127.3505 }, // 세종지점 근처
-    asan: { name: '아산', lat: 36.9243, lon: 127.0570 },   // 아산지점 (외곽/둔포면)
-    dangjin: { name: '당진', lat: 36.9762, lon: 126.6867 }, // 당진지점
-    yesan: { name: '예산', lat: 36.6766, lon: 126.7515 },   // 예산지점
+    seoul: { name: '서울', dustRegion: '중구', lat: 37.5665, lon: 126.978 },
+    busan: { name: '부산', dustRegion: '연산동', lat: 35.1796, lon: 129.0756 },
+    incheon: { name: '인천', dustRegion: '구월동', lat: 37.4563, lon: 126.7052 },
+    daegu: { name: '대구', dustRegion: '수창동', lat: 35.8714, lon: 128.6014 },
+    daejeon: { name: '대전', dustRegion: '둔산동', lat: 36.3504, lon: 127.3845 },
+    gwangju: { name: '광주', dustRegion: '농성동', lat: 35.1595, lon: 126.8526 },
+    ulsan: { name: '울산', dustRegion: '신정동', lat: 35.5384, lon: 129.3114 },
+    suwon: { name: '수원', dustRegion: '인계동', lat: 37.2636, lon: 127.0286 },
+    changwon: { name: '창원', dustRegion: '용호동', lat: 35.2281, lon: 128.6811 },
+    sejong: { name: '세종', dustRegion: '아름동', lat: 36.5450, lon: 127.3505 }, // 세종지점 근처
+    asan: { name: '아산', dustRegion: '모종동', lat: 36.9243, lon: 127.0570 },   // 아산지점 (외곽/둔포면)
+    dangjin: { name: '당진', dustRegion: '읍내동', lat: 36.9762, lon: 126.6867 }, // 당진지점
+    yesan: { name: '예산', dustRegion: '예산군', lat: 36.6766, lon: 126.7515 },   // 예산지점
 };
 
 const WEATHER_LABELS = { 0: '맑음', 1: '대체로 맑음', 2: '약간 흐림', 3: '흐림', 45: '안개', 48: '서리 안개', 51: '이슬비', 61: '비', 63: '비(강함)', 71: '눈', 80: '소나기', 95: '뇌우' };
@@ -144,17 +144,31 @@ export async function GET(request) {
         let airData = null;
         if (airRes.ok) airData = await airRes.json();
 
+        // 1. K-SKILL proxy for fine dust
+        let kSkillAirData = null;
+        const regionObj = REGIONS[regionIdFinal];
+        // '현위치'가 아니고 등록된 지점의 dustRegion이 있으면 K-SKILL 호출
+        if (regionObj && regionObj.dustRegion) {
+            try {
+                const kSkillUrl = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(regionObj.dustRegion)}`;
+                const kSkillRes = await fetch(kSkillUrl, { next: { revalidate: 3600 }, signal: controller.signal });
+                if (kSkillRes.ok) {
+                    const text = await kSkillRes.text();
+                    const parsed = JSON.parse(text);
+                    if (!parsed.error && parsed.pm10 && parsed.pm25) {
+                        kSkillAirData = parsed;
+                    }
+                }
+            } catch (err) {
+                console.error("K-SKILL fine dust proxy error:", err);
+            }
+        }
+
         const now = new Date();
         const allTimes = weatherData.hourly?.time || [];
 
-        /** 
-         * [시간 로직 수정] 
-         * Open-Meteo 시간 문자열(KST)을 정확하게 파싱하여 비교.
-         * 현재 시각 10:25일 때, startIndex를 11:00이 아닌 10:00(가장 최근 과거)으로 잡음.
-         * 그래야 '현재 날씨' 카드에 10:00 데이터가 나옴.
-         */
         let startIndex = allTimes.findIndex(t => {
-            const itemTime = new Date(t + ":00+09:00"); // KST 강제 지정
+            const itemTime = new Date(t + ":00+09:00");
             return itemTime > now;
         }) - 1;
 
@@ -173,13 +187,16 @@ export async function GET(request) {
             };
         });
 
-        // Current Air Quality (using the same index logic if possible, or usually just current hour)
+        // Current Air Quality (Use K-SKILL first, fallback to Open-Meteo)
         let currentAir = null;
-        if (airData && airData.hourly) {
+        if (kSkillAirData) {
+            currentAir = {
+                pm10: Number(kSkillAirData.pm10.value),
+                pm2_5: Number(kSkillAirData.pm25.value),
+                source: 'k-skill'
+            };
+        } else if (airData && airData.hourly) {
             const airTimes = airData.hourly.time || [];
-            /** 
-             * [대기질 시간 로직 수정] 날씨와 동일하게 KST 기준 가장 가까운 과거/현재 인덱스 선택
-             */
             let airIdx = airTimes.findIndex(t => {
                 const itemTime = new Date(t + ":00+09:00");
                 return itemTime > now;
@@ -189,6 +206,7 @@ export async function GET(request) {
             currentAir = {
                 pm10: airData.hourly.pm10?.[airIdx] ?? null,
                 pm2_5: airData.hourly.pm2_5?.[airIdx] ?? null,
+                source: 'open-meteo'
             };
         }
 

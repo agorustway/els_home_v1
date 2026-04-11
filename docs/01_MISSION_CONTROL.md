@@ -57,6 +57,7 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] 인트라넷 초기 페이지를 'AI 어시스턴트'로 변경
     - [x] 사이드바 'AI 어시스턴트' 최상단 배치
     - [x] 기상청 API 업데이트 주기 1시간(revalidate: 3600)으로 연장 (부하 감소)
+    - [x] **K-SKILL 연동**: AirKorea 미세먼지 공식 API 연동 (`fine-dust-location` proxy 도입) 🚀
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**

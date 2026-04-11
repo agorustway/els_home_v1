@@ -340,8 +340,11 @@ export default function WeatherPage() {
 
                     {/* ─── Air Quality & Additional Info ─── */}
                     <div className={styles.section}>
-                        <h3 className={styles.sectionTitle}>
+                        <h3 className={styles.sectionTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span className={styles.sectionIcon}>🍃</span> 생활정보
+                            {aq?.source === 'k-skill' && (
+                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding:'2px 6px', borderRadius:'4px', marginLeft: 'auto' }}>AirKorea 연동</span>
+                            )}
                         </h3>
                         <div className={styles.aqGrid}>
                             {[
