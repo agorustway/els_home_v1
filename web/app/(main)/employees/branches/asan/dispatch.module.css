@@ -842,28 +842,29 @@
     color: #f87171;
 }
 
-/* 토요일 스타일 (옅은 노란색) */
+/* 토요일 스타일 (초록색) */
 .tab_saturday {
-    background: #fefce8;
-    color: #ca8a04;
-    border-color: #fef08a;
+    background: #f0fdf4;
+    color: #16a34a;
+    border-color: #bbf7d0;
 }
 
 .tab_saturday.dateTabActive {
-    background: #facc15 !important; /* 선택 시 노란색 */
-    color: #854d0e !important;
-    border-color: #eab308 !important;
+    background: #22c55e !important; /* 선택 시 초록색 */
+    color: #fff !important;
+    border-color: #16a34a !important;
 }
 
 .tab_saturday.dateTabActive .tabDay {
-    color: #854d0e !important;
-    opacity: 0.7;
+    color: #dcfce7 !important;
+    opacity: 0.9;
 }
 
 .tab_past_saturday {
-    background: #fefce8;
-    color: #eab308;
-    opacity: 0.6;
+    background: #f0fdf4;
+    color: #22c55e;
+    opacity: 0.7;
+    border-color: #e2e8f0;
 }
 
 /* 월별 필터 (전체 탭 전용) */

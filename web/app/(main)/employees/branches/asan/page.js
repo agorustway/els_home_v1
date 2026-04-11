@@ -82,9 +82,11 @@ function getTabType(dateStr) {
     if (dateStr === today) return 'today';
     if (dateStr < today) {
         if (isRed) return 'past_holiday';
+        if (day === 6) return 'past_saturday';
         return 'past';
     }
     if (isRed) return 'holiday';
+    if (day === 6) return 'saturday';
     return 'future';
 }
 function formatTabLabel(dateStr) {
