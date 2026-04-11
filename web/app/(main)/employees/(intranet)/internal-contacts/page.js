@@ -40,7 +40,8 @@ export default function InternalContactsPage() {
                 item.department?.toLowerCase().includes(q) || 
                 item.position?.toLowerCase().includes(q) || 
                 item.phone?.toLowerCase().includes(q) || 
-                item.email?.toLowerCase().includes(q)
+                item.email?.toLowerCase().includes(q) ||
+                item.memo?.toLowerCase().includes(q)
             );
         }
         return true;
@@ -66,11 +67,12 @@ export default function InternalContactsPage() {
                     <thead>
                         <tr style={{ fontSize: '0.9rem' }}>
                             <th style={{ width: '60px', textAlign: 'center' }}>프로필</th>
-                            <th className={styles.colTitle} style={{ minWidth: '120px' }}>이름</th>
-                            <th className={styles.colCategory} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>부서</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>직급</th>
-                            <th className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>연락처</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', minWidth: '150px' }}>이메일</th>
+                            <th className={styles.colTitle} style={{ width: '100px', minWidth: '100px' }}>이름</th>
+                            <th className={styles.colCategory} style={{ whiteSpace: 'nowrap', padding: '12px 16px', width: '120px' }}>부서</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', width: '100px' }}>직급</th>
+                            <th className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px', width: '150px' }}>연락처</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', maxWidth: '200px' }}>이메일</th>
+                            <th style={{ width: '100%', padding: '12px 16px' }}>비고</th>
                         </tr>
                     </thead>
                     <tbody style={{ fontSize: '0.9rem' }}>
@@ -83,15 +85,20 @@ export default function InternalContactsPage() {
                                         <div style={{ width: 44, height: 44, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>{item.name?.charAt(0) || '-'}</div>
                                     )}
                                 </td>
-                                <td className={styles.colTitle} style={{ fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{item.name}</td>
+                                <td className={styles.colTitle} style={{ fontSize: '0.95rem', whiteSpace: 'nowrap', fontWeight: 600 }}>{item.name}</td>
                                 <td className={styles.colCategory} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.department}</td>
                                 <td style={{ color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.position}</td>
-                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a> : '—'}</td>
-                                <td style={{ color: '#94a3b8', fontSize: '0.9rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.email}</td>
+                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>
+                                    {item.phone ? (
+                                        <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a>
+                                    ) : '—'}
+                                </td>
+                                <td style={{ color: '#94a3b8', fontSize: '0.85rem', whiteSpace: 'nowrap', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', padding: '12px 16px' }} title={item.email}>{item.email}</td>
+                                <td style={{ width: '100%', color: '#64748b', fontSize: '0.85rem', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '12px 16px' }} title={item.memo}>{item.memo || '-'}</td>
                             </tr>
                         ))}
                         {filteredList.length === 0 && (
-                            <tr><td colSpan="6" className={styles.empty}>검색 결과가 없습니다.</td></tr>
+                            <tr><td colSpan="7" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>
