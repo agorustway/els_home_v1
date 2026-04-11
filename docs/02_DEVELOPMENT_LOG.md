@@ -2,6 +2,26 @@
 
 ---
 
+## 📅 2026-04-11 (v4.9.19 — UI 표준화 완료 및 AI 챗봇 착수)
+### 🚀 주요 개선 사항
+1. **[UI/UX] 인트라넷 톤앤매너 표준화**:
+   - **이모지 제거**: 장식용 성격의 모든 이모지를 제거하고 텍스트 또는 SVG 아이콘으로 교체하여 전문성을 높임. (차량관제, 대시보드, 연락처, 컨테이너 이력 등 전 구역)
+   - **터치 영역 최적화**: 모바일(480px 이하)에서 모든 주요 버튼의 `min-height`를 `44px`로 상향 조정하여 터치 오작동 방지.
+   - **CSS 공용화**: `intranet.module.css`에 분산되어 있던 스타일을 통합하고, `.detailCard`, `.input` 등 누락된 클래스를 보강함.
+2. **[FEAT] AI 어시스턴트(챗봇) 인프라 구축**:
+   - 사이드바 메뉴에 'AI 어시스턴트' 항목 추가 및 `/employees/ask` 경로 매핑 완료.
+   - Gemini API(무료 티어) 기반의 하이브리드 자동화 챗봇 설계 완료.
+
+### 🚧 IN-PROGRESS (Hand-off)
+- **현상**: AI 모델 쿼터 제한으로 인해 작업 일시 중단.
+- **다음 작업**: 
+  - `web/app/(main)/employees/(intranet)/ask/page.js` 생성 (UI 구현)
+  - `web/app/api/chat/route.js` 생성 (Gemini API 통신 래퍼)
+  - Gemini API Key 확보 시 `.env.local`에 `GOOGLE_GENERATIVE_AI_API_KEY` 추가 필요.
+- **리딩 내용**: `.env.local` 확인 결과 현재 Gemini 관련 Key는 미등록 상태임.
+
+---
+
 ## 📅 2026-04-10 (v4.9.16 — 사이드메뉴 ReferenceError 핫픽스)
 ### 🚀 주요 개선 사항
 1. **[버그수정] Application Client-Side Exception 해결**:
