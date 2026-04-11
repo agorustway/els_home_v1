@@ -82,7 +82,7 @@ export async function POST(req) {
         
         // 2. 업무 보고/일지 관련
         if (userKwd.includes('업무') || userKwd.includes('보고') || userKwd.includes('일지')) {
-            const { data: reports } = await supabase.from('posts').select('title, author_email, created_at').eq('type', 'report').order('created_at', { ascending: false }).limit(3);
+            const { data: reports } = await supabase.from('posts').select('title, author_email, created_at').eq('board_type', 'report').order('created_at', { ascending: false }).limit(5);
             if (reports && reports.length > 0) {
                 const reportsText = reports.map(r => {
                     const date = new Date(r.created_at).toLocaleDateString();
