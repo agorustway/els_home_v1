@@ -91,6 +91,32 @@ export async function POST(req) {
                 recentPostsText += '\n\n## 📝 최근 업무보고/일지 목록 (내부 DB)\n' + reportsText;
             }
         }
+
+        // 3. 미세먼지 K-SKILL 연동 (AI Assistant)
+        if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
+            const regionsMap = {
+                '서울': '서울 중구', '부산': '부산 연산동', '인천': '인천 구월동', 
+                '대구': '대구 수창동', '대전': '대전 둔산동', '광주': '광주 농성동', 
+                '울산': '울산 신정동', '세종': '세종 아름동', '아산': '아산 모종동', 
+                '당진': '당진 읍내동', '예산': '예산군', '천안': '천안'
+            };
+            const foundKey = Object.keys(regionsMap).find(r => userKwd.includes(r));
+            const targetRegion = foundKey ? regionsMap[foundKey] : '아산 모종동'; // default
+
+            try {
+                const url = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
+                const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (!data.error && data.pm10 && data.pm25) {
+                        const pmInfo = `- 측정소: ${data.station_name}\n- 시간: ${data.measured_at}\n- 미세먼지: ${data.pm10.value}(${data.pm10.grade})\n- 초미세먼지: ${data.pm25.value}(${data.pm25.grade})\n- 총평: ${data.khai_grade}`;
+                        recentPostsText += '\n\n## 🍃 실시간 미세먼지 현황 (K-SKILL/AirKorea 제공)\n위치: ' + targetRegion + '\n' + pmInfo;
+                    }
+                }
+            } catch (e) {
+                console.error("[/api/chat] K-SKILL 미세먼지 오류:", e);
+            }
+        }
         // -------------------------------------------------------------------------
     } catch (e) {
         console.error('[/api/chat] DB 조회 오류:', e);
