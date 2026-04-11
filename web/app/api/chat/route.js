@@ -91,8 +91,8 @@ export async function POST(req) {
         ],
     };
 
-    // Gemini 2.0 Flash 스트리밍 엔드포인트
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Gemini 1.5 Flash 스트리밍 엔드포인트 (Tier 1 호환)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     let geminiRes;
     try {

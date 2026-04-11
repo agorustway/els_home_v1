@@ -63,7 +63,10 @@ export default function AskPage() {
     }, [role, authLoading, router]);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const chatArea = document.getElementById('chat-area');
+        if (chatArea) {
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
     }, [messages, isLoading]);
 
     const sendMessage = useCallback(async (text) => {
@@ -148,7 +151,7 @@ export default function AskPage() {
             ]);
         } finally {
             setIsLoading(false);
-            setTimeout(() => inputRef.current?.focus(), 100);
+            setIsLoading(false);
         }
     }, [input, isLoading, messages]);
 
