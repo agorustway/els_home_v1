@@ -24,7 +24,7 @@ async function parseAllPdfs() {
         const files = fs.readdirSync(fullDirPath);
         
         for (const file of files) {
-          if (file.endsWith('.pdf')) {
+          if (file.endsWith('.pdf') && file.includes('고시')) {
             const filePath = path.join(fullDirPath, file);
             console.log(`Parsing PDF: ${filePath}`);
             

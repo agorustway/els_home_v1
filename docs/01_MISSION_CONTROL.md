@@ -1,8 +1,8 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-12 (KST) - [v4.9.32] 모바일 연락처 카드 뷰 도입 및 UI/UX 전면 개선
+> 마지막 업데이트: 2026-04-13 (KST) - [v4.9.33] 안전운임 고시 데이터 파싱 최적화 (토큰 절감)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.32` (모바일 연락처 카드 뷰 개편, 테이블 파괴 버그 수정, AI 어시스턴트 모바일 헤더 최적화)
+- **Current Build**: `v4.9.33` (안전운임 '고시' 키별 필터링 파싱 도입, RAG 컨텍스트 용량 최적화)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 
@@ -74,6 +74,9 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
       - 연락처 목록에서 엑셀 버튼 그룹을 PC 환경(768px 이상)에서만 노출
       - 모바일 환경에서 연락처 페이지 상단 제목 표시 제거
       - 모바일에서 AI 어시스턴트(`AskPage`) 상단 헤더 버튼의 텍스트를 숨기고 아이콘만 출력되도록 하여 overflow 방지
+    - [x] **안전운임 고시 데이터 필터링 파싱** (v4.9.33):
+      - `parse-pdf.js` 수정: 파일명에 '고시'가 포함된 PDF만 JSON 변환하도록 필터링 (토큰 절감 및 컨텍스트 최적화)
+      - `10_SAFE_FREIGHT_DATA_POLICY.md` 정책 문서 업데이트
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
@@ -82,4 +85,4 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-12 (by Antigravity/Claude Opus)*
+*최종 갱신: 2026-04-13 (by Antigravity/Gemini)*

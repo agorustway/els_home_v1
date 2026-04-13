@@ -37,7 +37,7 @@ AI 어시스턴트(Gemini)가 고시 내용을 정확하게 파악하고 답변/
    ```bash
    node web/scripts/parse-pdf.js
    ```
-   *이 스크립트는 `work-docs/` 하위의 모든 차수별 PDF를 읽어서 `web/data/safe-freight-docs.json` (통합 JSON 배열)로 컴파일합니다.*
+   *이 스크립트는 `work-docs/` 하위의 모든 차수별 파일 중 **이름에 "고시"가 포함된 PDF**만 읽어서 `web/data/safe-freight-docs.json` (통합 JSON 배열)로 컴파일합니다. (토큰 최적화)*
 
 2. **통합 JSON 구조 (`safe-freight-docs.json`)**:
    ```json
