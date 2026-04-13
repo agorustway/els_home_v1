@@ -1,8 +1,8 @@
 # ELS MISSION CONTROL
-> 마지막 업데이트: 2026-04-13 (KST) - [v4.9.40] AI 어시스턴트 UX 고도화 및 RAG 정책 강화 (안전운임)
+> 마지막 업데이트: 2026-04-13 (KST) - [v4.9.41] AI 어시스턴트 빌드 이슈 해결 및 UX 안정화
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.40` (AI 어시스턴트 세션 관리(30건), 개별 삭제 기능, 모바일 UI 레이아웃 최적화)
+- **Current Build**: `v4.9.41` (함수 중복 정의 빌드 오류 수정 및 대화 목록 UI 안정화)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 

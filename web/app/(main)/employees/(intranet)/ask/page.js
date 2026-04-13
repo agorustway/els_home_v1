@@ -111,8 +111,11 @@ export default function AskPage() {
         });
     };
 
-    const clearAllHistory = () => {
+    const clearAllHistory = async () => {
         if (!window.confirm('모든 대화 기록을 일괄 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+        try {
+            await fetch('/api/chat/memory', { method: 'DELETE' });
+        } catch(e) {}
         const newId = Date.now().toString();
         setSessions([{ id: newId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
         setActiveId(newId);
@@ -298,16 +301,7 @@ export default function AskPage() {
         }
     };
 
-    const clearAllHistory = async () => {
-        if(confirm('모든 대화 목록을 초기화할까요? 복구할 수 없습니다.')) {
-            try {
-                await fetch('/api/chat/memory', { method: 'DELETE' });
-            } catch(e) {}
-            const id = Date.now().toString();
-            setSessions([{ id, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
-            setActiveId(id);
-        }
-    };
+
 
     const GuideContent = () => (
         <>
