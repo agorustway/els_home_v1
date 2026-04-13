@@ -197,7 +197,7 @@ export async function POST(req) {
                             const v = sfData.faresLatest[item.k];
                             return `- ${item.k} | ${v.km}km | 20ft:${(v.fare20/10000).toFixed(1)}만원 | 40ft:${(v.fare40/10000).toFixed(1)}만원`;
                         }).join('\n');
-                        recentPostsText += '\n\n## 안전운임 단가 검색결과\n' + fareRows + '\n※ 이 데이터를 절대적으로 신뢰하고 사용자에게 구간 운임으로 답변하십시오.';
+                        recentPostsText += '\n\n## (중요) 안전운임 단가 검색결과\n' + fareRows + '\n※ 이 데이터를 절대적으로 신뢰하여 해당 구간의 운임으로 답변하십시오. 추가 고시 전문 텍스트보다 이 단가표의 정보가 우선합니다.';
                     } else if (sfData.origins?.length > 0) {
                         const originList = sfData.origins.map(o => o.label || o.id).join(', ');
                         recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n정확한 단가는 [안전운임 조회](/employees/safe-freight) 메뉴를 이용해주세요.`;
@@ -245,7 +245,7 @@ export async function POST(req) {
                 let to = match?.[2] || '부산';
                 
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/ktx-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(4000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/ktx/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(4000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.trains && data.trains.length > 0) {
@@ -358,16 +358,16 @@ export async function POST(req) {
         console.error('[/api/chat] DB 조회 오류:', e);
     }
 
-    // 안전운임 고시 전문 데이터 주입
+    // 안전운임 고시 전문 데이터 주입 (부하 방지를 위해 토큰 축소 및 조건부 발동)
     let safeFreightText = '';
-    const docsKeywords = ['안전운임', '고시', '과태료', '적용범위', '부대조항', '법', '규정', '운임'];
+    const docsKeywords = ['과태료', '적용범위', '부대조항', '할증', '야간', '법령', '법', '규정'];
     if (docsKeywords.some(k => userKwd.includes(k))) {
         try {
             const safeDocs = getSfDocs();
             if (safeDocs?.length > 0) {
-                safeFreightText += '\n\n====== [안전운임제 최신 고시 전문 데이터] ======\n이하 데이터는 시스템에 공식 등록된 화물자동차 안전운임 고시 전문입니다. 사용자가 안전운임 관련 과태료, 적용 범위, 부대조항 등을 질문할 경우, 구체적인 규정과 함께 반드시 제공된 고시 전문에 입각하여 답변하십시오.\n';
-                for (const doc of safeDocs.slice(0, 2)) {
-                    safeFreightText += `\n--- [고시 차수: ${doc.versionDir}] ---\n${typeof doc.text === 'string' ? doc.text.substring(0, 6000) : ''}\n`;
+                safeFreightText += '\n\n====== [안전운임제 최신 고시 전문 데이터] ======\n이하 데이터는 시스템에 공식 등록된 고시 전문입니다. 과태료나 부대조항 질문 시에만 참고하십시오. 단가표 등 숫자에 대해서는 이 텍스트를 무시하십시오.\n';
+                for (const doc of safeDocs.slice(0, 1)) {
+                    safeFreightText += `\n--- [고시 차수: ${doc.versionDir}] ---\n${typeof doc.text === 'string' ? doc.text.substring(0, 3000) : ''}\n`;
                 }
                 safeFreightText += '===============================================\n';
             }
