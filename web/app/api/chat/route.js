@@ -29,7 +29,7 @@ function getSfDocs() {
     return _sfDocsCache;
 }
 
-const BASE_SYSTEM_INSTRUCTION = "너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.\nELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.\n\n## ELS 인트라넷 전체 메뉴 맵 (안내 시 마크다운 링크 [메뉴이름](/경로) 필수 사용)\n### 메인 메뉴\n- 홈(메인 대시보드): [홈](/employees) — 공지사항, 웹진, 날씨 위젯 등 종합 현황\n- 날씨 및 미세먼지: [날씨](/employees/weather) — 전국 날씨, 시간별 예보, 생활지수\n- 뉴스: [뉴스](/employees/news) — 물류/운송 관련 뉴스 피드\n- 안전운임 조회: [안전운임 조회](/employees/safe-freight) — 구간별 안전운임 단가 계산, 고시 전문 PDF 열람\n- 컨테이너 이력조회: [컨테이너 이력조회](/employees/container-history) — ETRANS 연동 실시간 반입/반출 추적\n- 차량 위치 관제: [차량 위치 관제](/employees/vehicle-tracking) — GPS 기반 실시간 화물차 위치 확인\n- 마이페이지: [마이페이지](/employees/mypage) — 개인 정보, 프로필 관리\n\n### 인트라넷 메뉴\n- AI 어시스턴트: [AI 어시스턴트](/employees/ask) — 바로 여기! 법률/업무 실시간 문의\n- 대시보드: [대시보드](/employees/dashboard) — 사내 통계 및 현황 요약\n- 자유게시판: [자유게시판](/employees/board/free) — 사내 자유 게시판\n- 업무보고: [일일보고](/employees/reports/daily), [월간보고](/employees/reports/monthly), [내 보고서](/employees/reports/my)\n- 사내연락망: [사내연락망](/employees/internal-contacts) — 직원 연락처 관리\n- 외부연락처: [외부연락처](/employees/external-contacts) — 거래처/고객 연락처\n- 기사연락처: [기사연락처](/employees/driver-contacts) — 운전기사 연락처\n- 협력사연락처: [협력사연락처](/employees/partner-contacts) — 파트너사 연락처\n- 작업지 관리: [작업지 관리](/employees/work-sites) — 작업 현장 주소/정보 관리\n- 업무자료실: [업무자료실](/employees/work-docs) — 사내 업무 참고 자료\n- 양식 모음: [양식 모음](/employees/form-templates) — 업무용 각종 서식/양식\n- 자료실(NAS): [자료실](/employees/archive) — NAS 기반 사내 파일 저장소\n- 웹진: [웹진](/employees/webzine) — 사내 소식지/웹진\n- 랜덤게임: [랜덤게임](/employees/random-game) — 사내 이벤트/복지용\n\n### 지점 관리\n- 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황\n\n## 답변 원칙 및 가드레일\n1. 정확성과 친절함: 시스템(RAG)에서 넘어온 데이터를 최우선으로 활용하세요.\n2. 법령과 고시 구분: 안전운임 등은 법망에 직접 조회되지 않는 고시입니다. K-Law에 검색 결과가 없더라도 거절하지 말고, 사전 지식을 동원하여 최대한 자세히 설명하세요.\n3. 읽기 권한 한계: PDF나 자료실 문서 파악 요구 시 한계를 명확히 안내하세요. 다만 시스템에 등록된 안전운임 고시 전문 데이터는 참고 가능합니다.\n4. 거절 최소화: ELS 업무나 법률/노무 영역이라면 절대 거절하지 말고 성심성의껏 답변하세요.\n5. 메뉴 안내 시: 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.";
+const BASE_SYSTEM_INSTRUCTION = "너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.\nELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.\n\n## ELS 인트라넷 전체 메뉴 맵 (안내 시 마크다운 링크 [메뉴이름](/경로) 필수 사용)\n### 메인 메뉴\n- 홈(메인 대시보드): [홈](/employees) — 공지사항, 웹진, 날씨 위젯 등 종합 현황\n- 날씨 및 미세먼지: [날씨](/employees/weather) — 전국 날씨, 시간별 예보, 생활지수\n- 뉴스: [뉴스](/employees/news) — 물류/운송 관련 뉴스 피드\n- 안전운임 조회: [안전운임 조회](/employees/safe-freight) — 구간별 안전운임 단가 계산, 고시 전문 PDF 열람\n- 컨테이너 이력조회: [컨테이너 이력조회](/employees/container-history) — ETRANS 연동 실시간 반입/반출 추적\n- 차량 위치 관제: [차량 위치 관제](/employees/vehicle-tracking) — GPS 기반 실시간 화물차 위치 확인\n- 마이페이지: [마이페이지](/employees/mypage) — 개인 정보, 프로필 관리\n\n### 인트라넷 메뉴\n- AI 어시스턴트: [AI 어시스턴트](/employees/ask) — 바로 여기! 법률/업무 실시간 문의\n- 대시보드: [대시보드](/employees/dashboard) — 사내 통계 및 현황 요약\n- 자유게시판: [자유게시판](/employees/board/free) — 사내 자유 게시판\n- 업무보고: [일일보고](/employees/reports/daily), [월간보고](/employees/reports/monthly), [내 보고서](/employees/reports/my)\n- 사내연락망: [사내연락망](/employees/internal-contacts) — 직원 연락처 관리\n- 외부연락처: [외부연락처](/employees/external-contacts) — 거래처/고객 연락처\n- 기사연락처: [기사연락처](/employees/driver-contacts) — 운전기사 연락처\n- 협력사연락처: [협력사연락처](/employees/partner-contacts) — 파트너사 연락처\n- 작업지 관리: [작업지 관리](/employees/work-sites) — 작업 현장 주소/정보 관리\n- 업무자료실: [업무자료실](/employees/work-docs) — 사내 업무 참고 자료\n- 양식 모음: [양식 모음](/employees/form-templates) — 업무용 각종 서식/양식\n- 자료실(NAS): [자료실](/employees/archive) — NAS 기반 사내 파일 저장소\n- 웹진: [웹진](/employees/webzine) — 사내 소식지/웹진\n- 랜덤게임: [랜덤게임](/employees/random-game) — 사내 이벤트/복지용\n\n### 지점 관리\n- 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황\n\n## 답변 원칙 및 가드레일\n1. 정확성과 친절함: 시스템(RAG)에서 넘어온 데이터를 최우선으로 활용하세요.\n2. 법령과 고시 구분: 안전운임 등은 법망에 직접 조회되지 않는 고시입니다. K-Law에 검색 결과가 없더라도 거절하지 말고, 사전 지식을 동원하여 최대한 자세히 설명하세요.\n3. 읽기 권한 한계: PDF나 자료실 문서 파악 요구 시 한계를 명확히 안내하세요. 다만 시스템에 등록된 안전운임 고시 전문 데이터는 참고 가능합니다.\n4. 거절 최소화: ELS 업무나 법률/노무 영역은 물론, K-SKILL이 제공하는 생활 편의 정보(교통 예매, 미세먼지 등)에 대해서도 성심성의껏 답변하세요.\n5. 메뉴 안내 시: 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.\n6. 안전운임 답변 정책: 안전운임 단가 조회 시, 검색된 모든 항목(편도, 왕복 등)을 제시하세요. 만약 왕복 운임 데이터만 존재한다면 '해당 구간은 왕복 운임만 존재합니다'라고 명시하세요. 또한, 구간 설명 시 '기준 행정동(출발지/목적지)에서 선적항 혹은 특정 지역까지'의 경로임을 명확히 안내하세요.";
 
 /**
  * POST /api/chat
@@ -67,7 +67,7 @@ export async function POST(req) {
 
     try {
         // --- Omni-RAG: 사용자의 질문에 맞춰 전체 사내망 DB 동시 스캔 ---
-        const stopWords = ['알려줘','보여줘','어디','무엇','어떻게','누구','찾아줘','요약','정리','내용','해줘','해주세요','알려','대해','관련','관해','설명','뭐야','어때'];
+        const stopWords = ['알려줘','보여줘','어디','무엇','어떻게','누구','찾아줘','요약','정리','내용','해줘','해주세요','알려','대해','관련','관해','설명','뭐야','어때','확인','확인해줘'];
         const searchTerms = lastUserText.replace(/[^가-힣a-zA-Z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
 
         try {
@@ -126,8 +126,8 @@ export async function POST(req) {
                 }
             }
 
-            // 3. 안전운임표 단가 데이터 주입 (faresLatest 키 기반 검색)
-            const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복'];
+            // 3. 안전운임표 단가 데이터 주입 (faresLatest 키 기반 검색 최적화)
+            const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항'];
             const isSfQuery = searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
                               sfKeywords.some(k => userKwd.includes(k));
             if (isSfQuery) {
@@ -135,19 +135,25 @@ export async function POST(req) {
                 if (sfData?.faresLatest) {
                     // faresLatest 키: '[왕복/편도] 출발지|광역시도|구|동'
                     const fareKeys = Object.keys(sfData.faresLatest);
-                    const matched = fareKeys.filter(k =>
-                        searchTerms.some(t => k.includes(t)) ||
-                        sfKeywords.filter(k2 => userKwd.includes(k2)).some(k2 => k.includes(k2))
-                    ).slice(0, 8);
-                    if (matched.length > 0) {
-                        const fareRows = matched.map(k => {
-                            const v = sfData.faresLatest[k];
-                            return `- ${k} | ${v.km}km | 20ft:${(v.fare20/10000).toFixed(1)}만원 | 40ft:${(v.fare40/10000).toFixed(1)}만원`;
+                    
+                    // 매칭 점수 계산 (검색어 포함 개수)
+                    const scored = fareKeys.map(k => {
+                        let score = 0;
+                        searchTerms.forEach(t => { if(k.includes(t)) score += 2; }); // 검색어 포함 시 +2
+                        sfKeywords.forEach(t => { if(k.includes(t) && userKwd.includes(t)) score += 1; }); // 키워드 포함 시 +1
+                        return { k, score };
+                    })
+                    .filter(item => item.score > 0)
+                    .sort((a, b) => b.score - a.score) // 점수 높은 순
+                    .slice(0, 12);
+
+                    if (scored.length > 0) {
+                        const fareRows = scored.map(item => {
+                            const v = sfData.faresLatest[item.k];
+                            return `- ${item.k} | ${v.km}km | 20ft:${(v.fare20/10000).toFixed(1)}만원 | 40ft:${(v.fare40/10000).toFixed(1)}만원`;
                         }).join('\n');
-                        recentPostsText += '\n\n## 안전운임 단가 검색결과 (최신 고시 기준)\n' + fareRows;
-                    }
-                    // 출발지(origins) 목록도 제공
-                    if (sfData.origins?.length > 0) {
+                        recentPostsText += '\n\n## 안전운임 단가 검색결과 (최신 고시 기준)\n' + fareRows + '\n※ 정확한 구간(동/리)에 따라 단가가 다를 수 있으니 위 목록에서 가장 유사한 구간을 참고하세요.';
+                    } else if (sfData.origins?.length > 0) {
                         const originList = sfData.origins.map(o => o.label || o.id).join(', ');
                         recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n정확한 단가는 [안전운임 조회](/employees/safe-freight) 메뉴를 이용해주세요.`;
                     }
@@ -157,29 +163,58 @@ export async function POST(req) {
             console.error('Omni-RAG 에러:', e);
         }
 
-        // 4. 미세먼지 K-SKILL 연동
-        if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
-            const regionsMap = {
-                '서울': '서울 중구', '부산': '부산 연산동', '인천': '인천 구월동',
-                '대구': '대구 수창동', '대전': '대전 둔산동', '광주': '광주 농성동',
-                '울산': '울산 신정동', '세종': '세종 아름동', '아산': '아산 모종동',
-                '당진': '당진 읍내동', '예산': '예산군', '천안': '천안'
-            };
-            const foundKey = Object.keys(regionsMap).find(r => userKwd.includes(r));
-            const targetRegion = foundKey ? regionsMap[foundKey] : '아산 모종동';
+        // 4. K-SKILL 연동 (미세먼지, 날씨, KTX 등)
+        const isKskillQuery = userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨') || 
+                              userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차') || userKwd.includes('예매');
+        
+        if (isKskillQuery) {
+            // (1) 미세먼지/날씨
+            if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
+                const regionsMap = {
+                    '서울': '서울 중구', '부산': '부산 연산동', '인천': '인천 구월동',
+                    '대구': '대구 수창동', '대전': '대전 둔산동', '광주': '광주 농성동',
+                    '울산': '울산 신정동', '세종': '세종 아름동', '아산': '아산 모종동',
+                    '당진': '당진 읍내동', '예산': '예산군', '천안': '천안'
+                };
+                const foundKey = Object.keys(regionsMap).find(r => userKwd.includes(r));
+                const targetRegion = foundKey ? regionsMap[foundKey] : '아산 모종동';
 
-            try {
-                const url = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
-                const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (!data.error && data.pm10 && data.pm25) {
-                        const pmInfo = `- 측정소: ${data.station_name}\n- 시간: ${data.measured_at}\n- 미세먼지: ${data.pm10.value}(${data.pm10.grade})\n- 초미세먼지: ${data.pm25.value}(${data.pm25.grade})\n- 총평: ${data.khai_grade}`;
-                        recentPostsText += '\n\n## 실시간 미세먼지 현황 (K-SKILL/AirKorea 제공)\n위치: ' + targetRegion + '\n' + pmInfo;
+                try {
+                    const url = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
+                    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (!data.error && data.pm10 && data.pm25) {
+                            const pmInfo = `- 측정소: ${data.station_name}\n- 시간: ${data.measured_at}\n- 미세먼지: ${data.pm10.value}(${data.pm10.grade})\n- 초미세먼지: ${data.pm25.value}(${data.pm25.grade})\n- 총평: ${data.khai_grade}`;
+                            recentPostsText += '\n\n## 실시간 미세먼지 현황 (K-SKILL/AirKorea 제공)\n위치: ' + targetRegion + '\n' + pmInfo;
+                        }
                     }
+                } catch (e) {
+                    console.error('[/api/chat] K-SKILL 미세먼지 오류:', e);
                 }
-            } catch (e) {
-                console.error('[/api/chat] K-SKILL 미세먼지 오류:', e);
+            }
+
+            // (2) KTX 좌석 조회
+            if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차')) {
+                const ktxRegex = /([가-힣]{2,5})\s*(?:역|에서)?\s*([가-힣]{2,5})\s*(?:역|까지)?/;
+                const match = lastUserText.match(ktxRegex);
+                let from = match?.[1] || '서울';
+                let to = match?.[2] || '부산';
+                
+                try {
+                    const kSkillKtxUrl = `https://k-skill-proxy.nomadamas.org/v1/ktx/report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+                    const res = await fetch(kSkillKtxUrl, { signal: AbortSignal.timeout(5000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && !data.error) {
+                            recentPostsText += `\n\n## KTX 열차 조회 결과 (K-SKILL 제공)\n구간: ${from} -> ${to}\n` + (data.report || JSON.stringify(data));
+                        }
+                    } else if (res.status === 404) {
+                        recentPostsText += `\n\n## KTX 열차 조회 안내\n현재 K-SKILL 프록시를 통한 ${from}->${to} 구간의 실시간 좌석 조회 서비스가 준비 중이거나 점검 중입니다. 정확한 잔여 좌석은 [코레일톡] 앱 또는 홈페이지를 확인해 주세요.`;
+                    }
+                } catch (e) {
+                    console.error('[/api/chat] K-SKILL KTX 오류:', e);
+                }
             }
         }
 
@@ -196,8 +231,6 @@ export async function POST(req) {
                             return `### [출처: K-Law] ${r.title}\n${r.content?.slice(0, 300)}...`;
                         }).join('\n\n');
                         recentPostsText += '\n\n## 실시간 법령/규정 검색 결과 (K-Law MCP)\n' + lawQuotes;
-                    } else {
-                        recentPostsText += '\n\n## 실시간 법령/규정 검색 결과 (K-Law MCP)\n관련된 최신 법령 정보를 찾을 수 없습니다. 법령 명칭을 정확히 입력해 보세요.';
                     }
                 }
             } catch (e) {
@@ -208,18 +241,16 @@ export async function POST(req) {
         console.error('[/api/chat] DB 조회 오류:', e);
     }
 
-    // 안전운임 고시 전문 데이터 — 안전운임/법령 키워드가 있을 때만 주입 (토큰 절감)
+    // 안전운임 고시 전문 데이터 주입
     let safeFreightText = '';
     const docsKeywords = ['안전운임', '고시', '과태료', '적용범위', '부대조항', '법', '규정', '운임'];
-    const needsDocs = docsKeywords.some(k => userKwd.includes(k));
-    if (needsDocs) {
+    if (docsKeywords.some(k => userKwd.includes(k))) {
         try {
             const safeDocs = getSfDocs();
             if (safeDocs?.length > 0) {
                 safeFreightText += '\n\n====== [안전운임제 최신 고시 전문 데이터] ======\n이하 데이터는 시스템에 공식 등록된 화물자동차 안전운임 고시 전문입니다. 사용자가 안전운임 관련 과태료, 적용 범위, 부대조항 등을 질문할 경우, 구체적인 규정과 함께 반드시 제공된 고시 전문에 입각하여 답변하십시오.\n';
                 for (const doc of safeDocs.slice(0, 2)) {
-                    const textSnippet = typeof doc.text === 'string' ? doc.text.substring(0, 6000) : '';
-                    safeFreightText += `\n--- [고시 차수: ${doc.versionDir}] ---\n${textSnippet}\n`;
+                    safeFreightText += `\n--- [고시 차수: ${doc.versionDir}] ---\n${typeof doc.text === 'string' ? doc.text.substring(0, 6000) : ''}\n`;
                 }
                 safeFreightText += '===============================================\n';
             }
@@ -228,7 +259,6 @@ export async function POST(req) {
         }
     }
 
-    // 최종 시스템 프롬프트 조합
     const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText + safeFreightText;
     const contents = messages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -251,7 +281,6 @@ export async function POST(req) {
         ],
     };
 
-    // Gemini 2.5 Flash 스트리밍 엔드포인트
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     let geminiRes;
@@ -263,20 +292,13 @@ export async function POST(req) {
             signal: AbortSignal.timeout(60_000),
         });
     } catch (err) {
-        console.error('[/api/chat] Gemini 연결 오류:', err);
         return NextResponse.json({ error: 'Gemini API 연결에 실패했습니다.' }, { status: 502 });
     }
 
     if (!geminiRes.ok) {
-        const errBody = await geminiRes.text().catch(() => '');
-        console.error(`[/api/chat] Gemini 오류 ${geminiRes.status}:`, errBody);
-        return NextResponse.json(
-            { error: `Gemini API 오류: ${geminiRes.status}` },
-            { status: geminiRes.status }
-        );
+        return NextResponse.json({ error: 'Gemini API 오류' }, { status: geminiRes.status });
     }
 
-    // Gemini SSE -> 클라이언트 SSE 변환 스트림
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
@@ -305,22 +327,16 @@ export async function POST(req) {
                     if (!line.startsWith('data: ')) continue;
                     const raw = line.slice(6).trim();
                     if (!raw || raw === '[DONE]') continue;
-
                     try {
                         const parsed = JSON.parse(raw);
                         const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
                         if (text) {
-                            await writer.write(
-                                encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
-                            );
+                            await writer.write(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
                         }
-                    } catch {
-                        // JSON 파싱 실패 시 무시
-                    }
+                    } catch {}
                 }
             }
         } catch (err) {
-            console.error('[/api/chat] 스트림 처리 오류:', err);
         } finally {
             await writer.write(encoder.encode('data: [DONE]\n\n'));
             await writer.close();

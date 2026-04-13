@@ -73,10 +73,10 @@ export async function middleware(request) {
         return NextResponse.redirect(url)
     }
 
-    // 0.1 Redirect authenticated users (non-visitors) to weather page if on landing
+    // 0.1 Redirect authenticated users (non-visitors) to ask page if on landing
     if (user && path === '/' && userRole !== 'visitor') {
         const url = request.nextUrl.clone()
-        url.pathname = '/employees/weather'
+        url.pathname = '/employees/ask'
         return NextResponse.redirect(url)
     }
 

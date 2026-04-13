@@ -15,9 +15,9 @@
 .containerLayout {
     display: flex;
     flex-direction: row;
-    margin: -12px -14px -36px;
-    height: calc(100dvh - 240px);
-    min-height: 440px;
+    margin: -12px -14px 0;
+    height: 100%;
+    min-height: calc(100vh - 100px);
     background: #f1f5f9;
 }
 
@@ -493,9 +493,9 @@
    ======================== */
 @media (max-width: 1024px) {
     .containerLayout {
-        margin: -10px -10px -24px;
-        height: calc(100dvh - 196px);
-        min-height: 400px;
+        margin: -10px -10px 0;
+        height: 100%;
+        min-height: calc(100vh - 100px);
     }
 
     .guidePanel, .historySidebar {
@@ -520,9 +520,9 @@
 
 @media (max-width: 480px) {
     .containerLayout {
-        margin: -6px -4px -24px;
-        height: calc(100dvh - 188px);
-        min-height: 360px;
+        margin: -6px -4px 0;
+        height: 100%;
+        min-height: calc(100vh - 80px);
     }
 
     .header {
@@ -579,7 +579,7 @@
     }
 
     .quickPromptsArea {
-        padding: 6px 10px;
+        display: none;
     }
 
     .quickBtn {

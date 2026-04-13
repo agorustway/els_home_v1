@@ -92,8 +92,30 @@ export default function AskPage() {
 
     const createNewSession = () => {
         const id = Date.now().toString();
-        setSessions(prev => [{ id, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }, ...prev]);
+        setSessions(prev => [{ id, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }, ...prev].slice(0, 30));
         setActiveId(id);
+    };
+
+    const deleteSession = (id) => {
+        if (!window.confirm('이 대화 기록을 삭제하시겠습니까?')) return;
+        setSessions(prev => {
+            const next = prev.filter(s => s.id !== id);
+            if (next.length === 0) {
+                const newId = Date.now().toString();
+                next.push({ id: newId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] });
+                setActiveId(newId);
+            } else if (activeId === id) {
+                setActiveId(next[0].id);
+            }
+            return next;
+        });
+    };
+
+    const clearAllHistory = () => {
+        if (!window.confirm('모든 대화 기록을 일괄 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+        const newId = Date.now().toString();
+        setSessions([{ id: newId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
+        setActiveId(newId);
     };
 
     useEffect(() => {
@@ -351,20 +373,32 @@ export default function AskPage() {
             )}
 
             <div className={`${styles.historySidebar} ${styles.hiddenMobile}`}>
-                <button className={styles.newChatBtn} onClick={createNewSession}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    새 대화 시작
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className={styles.newChatBtn} onClick={createNewSession} style={{ flex: 1 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        새 대화
+                    </button>
+                    <button onClick={clearAllHistory} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }} title="전체 삭제">
+                        전체 삭제
+                    </button>
+                </div>
                 <div className={styles.historyList}>
                     {sessions.map(s => (
-                        <button 
-                            key={s.id} 
-                            className={`${styles.historyItem} ${s.id === activeId ? styles.active : ''}`}
-                            onClick={() => setActiveId(s.id)}
-                            title={s.title}
-                        >
-                            {s.title}
-                        </button>
+                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: s.id === activeId ? '#dbeafe' : 'transparent', borderRadius: '8px' }}>
+                            <button 
+                                className={`${styles.historyItem} ${s.id === activeId ? styles.active : ''}`}
+                                onClick={() => setActiveId(s.id)}
+                                title={s.title}
+                                style={{ flex: 1, background: 'transparent' }}
+                            >
+                                {s.title}
+                            </button>
+                            <button 
+                                onClick={() => deleteSession(s.id)}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '8px 10px', fontSize: '1rem', borderRadius: '4px' }}
+                                title="이 대화 삭제"
+                            >×</button>
+                        </div>
                     ))}
                 </div>
             </div>

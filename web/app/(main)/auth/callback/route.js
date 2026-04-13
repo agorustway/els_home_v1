@@ -133,7 +133,7 @@ export async function GET(request) {
             // 명시적인 목적지가 없고 홈('/')으로 갈 때 역할별 분기
             if (next === '/' || next === '/login') {
                 if (['employee', 'admin', 'editor'].includes(userRole.toLowerCase())) {
-                    finalNext = '/employees/weather';
+                    finalNext = '/employees/ask';
                 } else {
                     finalNext = '/';
                 }
@@ -199,7 +199,7 @@ export async function GET(request) {
             let finalNext = next;
             if (next === '/' || next === '/login') {
                 if (['employee', 'admin', 'editor'].includes(userRole.toLowerCase())) {
-                    finalNext = '/employees/weather';
+                    finalNext = '/employees/ask';
                 } else {
                     finalNext = '/';
                 }
