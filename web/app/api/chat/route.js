@@ -136,16 +136,24 @@ export async function POST(req) {
                     // faresLatest 키: '[왕복/편도] 출발지|광역시도|구|동'
                     const fareKeys = Object.keys(sfData.faresLatest);
                     
-                    // 매칭 점수 계산 (검색어 포함 개수)
+                    // [v4.9.42] 안전운임 스코어링 고도화: 단어 매칭 수에 따른 가중치 부여
                     const scored = fareKeys.map(k => {
                         let score = 0;
-                        searchTerms.forEach(t => { if(k.includes(t)) score += 2; }); // 검색어 포함 시 +2
-                        sfKeywords.forEach(t => { if(k.includes(t) && userKwd.includes(t)) score += 1; }); // 키워드 포함 시 +1
+                        let matchedCount = 0;
+                        searchTerms.forEach(t => { 
+                            if(k.includes(t)) {
+                                score += 10; // 인주면, 아산시 등 고유명사 매칭 시 고득점
+                                matchedCount++;
+                            }
+                        });
+                        // 출발지(ex:아산)와 목적지(ex:부산)가 동시에 들어있으면 점수를 대폭 끌어올림
+                        if (matchedCount > 1) {
+                            score += (matchedCount * 15);
+                        }
                         return { k, score };
-                    })
-                    .filter(item => item.score > 0)
-                    .sort((a, b) => b.score - a.score) // 점수 높은 순
-                    .slice(0, 12);
+                    }).filter(i => i.score > 0)
+                      .sort((a, b) => b.score - a.score)
+                      .slice(0, 12);
 
                     if (scored.length > 0) {
                         const fareRows = scored.map(item => {

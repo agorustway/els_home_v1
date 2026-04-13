@@ -16,9 +16,9 @@
     display: flex;
     flex-direction: row;
     margin: -12px -14px 0;
-    height: 100%;
-    min-height: calc(100vh - 100px);
+    height: calc(100dvh - 190px);
     background: #f1f5f9;
+    overflow: hidden;
 }
 
 /* ── 사이드바 (과거 대화 목록) ── */
@@ -31,6 +31,7 @@
     padding: 16px;
     gap: 12px;
     overflow-y: auto;
+    height: 100%;
 }
 
 .newChatBtn {
@@ -91,6 +92,7 @@
     font-size: 0.9rem;
     color: #334155;
     line-height: 1.6;
+    height: 100%;
 }
 
 .guidePanel.hiddenMobile {
@@ -152,6 +154,7 @@
     overflow: hidden;
     max-width: 1000px; /* 채팅창 크기 확대 */
     margin: 0 auto; /* 중앙 정렬로 중간의 빈 여백 제거 */
+    height: 100%;
 }
 
 /* ── 헤더 ── */
@@ -239,6 +242,7 @@
     flex-direction: column;
     gap: 12px;
     scroll-behavior: smooth;
+    min-height: 0; /* flex container 내부 스태틱 높이 무시 */
 }
 
 .chatArea::-webkit-scrollbar {
@@ -494,8 +498,7 @@
 @media (max-width: 1024px) {
     .containerLayout {
         margin: -10px -10px 0;
-        height: 100%;
-        min-height: calc(100vh - 100px);
+        height: calc(100dvh - 130px);
     }
 
     .guidePanel, .historySidebar {
@@ -521,8 +524,7 @@
 @media (max-width: 480px) {
     .containerLayout {
         margin: -6px -4px 0;
-        height: 100%;
-        min-height: calc(100vh - 80px);
+        height: calc(100dvh - 120px);
     }
 
     .header {
