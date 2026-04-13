@@ -486,10 +486,10 @@
 }
 
 .disclaimer {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: #94a3b8;
     text-align: center;
-    margin: 6px 0 0;
+    margin: 4px 0 0;
 }
 
 /* ========================
@@ -563,11 +563,11 @@
     }
 
     .inputArea {
-        padding: 8px 10px 10px;
+        padding: 6px 8px 8px; /* 입력창 하단 데이터 보호 겸 여백 축소 */
     }
 
     .inputBox {
-        padding: 6px 6px 6px 12px;
+        padding: 5px 6px 5px 10px;
     }
 
     .textarea {
@@ -584,14 +584,9 @@
         display: none;
     }
 
-    .quickBtn {
-        font-size: 0.78rem;
-        padding: 8px 10px;
-        min-height: 44px; /* 터치 영역 */
-    }
-
     .disclaimer {
-        font-size: 0.68rem;
+        font-size: 0.62rem;
+        margin-top: 2px;
     }
 
     /* 헤더 버튼 텍스트 숨김 — 아이콘만 표시 */

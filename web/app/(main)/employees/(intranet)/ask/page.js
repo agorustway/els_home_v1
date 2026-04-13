@@ -342,7 +342,7 @@ export default function AskPage() {
             </div>
             
             <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
-                Powered by Gemini 2.5 flash & MCP Ecosystem
+                Powered by Gemini 2.0 Flash & MCP Ecosystem
             </div>
         </>
     );

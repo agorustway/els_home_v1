@@ -171,9 +171,9 @@ export async function POST(req) {
             console.error('Omni-RAG 에러:', e);
         }
 
-        // 4. K-SKILL 연동 (미세먼지, 날씨, KTX 등)
-        const isKskillQuery = userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨') || 
-                              userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차') || userKwd.includes('예매');
+        // 4. K-SKILL 연동 (미세먼지, 날씨, KTX, 지하철, 한강, 주식 등)
+        const kskillKeywords = ['미세먼지', '공기', '날씨', 'ktx', '열차', '기차', '예매', '지하철', '역', '도착', '한강', '수위', '주식', '증시', '삼성전자'];
+        const isKskillQuery = kskillKeywords.some(k => userKwd.includes(k));
         
         if (isKskillQuery) {
             // (1) 미세먼지/날씨
@@ -194,35 +194,68 @@ export async function POST(req) {
                         const data = await res.json();
                         if (!data.error && data.pm10 && data.pm25) {
                             const pmInfo = `- 측정소: ${data.station_name}\n- 시간: ${data.measured_at}\n- 미세먼지: ${data.pm10.value}(${data.pm10.grade})\n- 초미세먼지: ${data.pm25.value}(${data.pm25.grade})\n- 총평: ${data.khai_grade}`;
-                            recentPostsText += '\n\n## 실시간 미세먼지 현황 (K-SKILL/AirKorea 제공)\n위치: ' + targetRegion + '\n' + pmInfo;
+                            recentPostsText += '\n\n## 실시간 미세먼지 현황 (K-SKILL)\n위치: ' + targetRegion + '\n' + pmInfo;
                         }
                     }
-                } catch (e) {
-                    console.error('[/api/chat] K-SKILL 미세먼지 오류:', e);
-                }
+                } catch (e) { console.error('K-SKILL 미세먼지 오류:', e); }
             }
 
-            // (2) KTX 좌석 조회
+            // (2) KTX 좌석 조회 (현재 점검 중/준비 중 안내 강화)
             if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차')) {
                 const ktxRegex = /([가-힣]{2,5})\s*(?:역|에서)?\s*([가-힣]{2,5})\s*(?:역|까지)?/;
                 const match = lastUserText.match(ktxRegex);
                 let from = match?.[1] || '서울';
                 let to = match?.[2] || '부산';
                 
+                recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n현재 K-SKILL 공공 프록시는 무인증 서비스만 제공하므로, 로그인이 필요한 KTX/SRT 실시간 조회는 점검 중(404)으로 표시될 수 있습니다. ${from}->${to} 구간의 정확한 잔여 좌석은 [코레일톡] 앱을 권장합니다.`;
+            }
+
+            // (3) 지하철 도착 정보
+            if (userKwd.includes('지하철') || (userKwd.includes('역') && userKwd.includes('도착'))) {
+                const subRegex = /([가-힣]{2,10})\s*역?/;
+                const subMatch = lastUserText.match(subRegex);
+                const station = subMatch?.[1] || '강남';
                 try {
-                    const kSkillKtxUrl = `https://k-skill-proxy.nomadamas.org/v1/ktx/report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-                    const res = await fetch(kSkillKtxUrl, { signal: AbortSignal.timeout(5000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { signal: AbortSignal.timeout(3000) });
                     if (res.ok) {
                         const data = await res.json();
-                        if (data && !data.error) {
-                            recentPostsText += `\n\n## KTX 열차 조회 결과 (K-SKILL 제공)\n구간: ${from} -> ${to}\n` + (data.report || JSON.stringify(data));
+                        if (data.realtimeArrivalList?.length > 0) {
+                            const info = data.realtimeArrivalList.slice(0, 5).map(a => `- [${a.updnLine}] ${a.trainLineNm}: ${a.arvlMsg2}`).join('\n');
+                            recentPostsText += `\n\n## ${station}역 지하철 실시간 도착 (K-SKILL)\n${info}`;
                         }
-                    } else if (res.status === 404) {
-                        recentPostsText += `\n\n## KTX 열차 조회 안내\n현재 K-SKILL 프록시를 통한 ${from}->${to} 구간의 실시간 좌석 조회 서비스가 준비 중이거나 점검 중입니다. 정확한 잔여 좌석은 [코레일톡] 앱 또는 홈페이지를 확인해 주세요.`;
                     }
-                } catch (e) {
-                    console.error('[/api/chat] K-SKILL KTX 오류:', e);
-                }
+                } catch (e) { console.error('K-SKILL 지하철 오류:', e); }
+            }
+
+            // (4) 한강 수위 정보
+            if (userKwd.includes('한강') || userKwd.includes('수위')) {
+                const hRegex = /([가-힣]{2,10})\s*(?:교|대교)?/;
+                const hMatch = lastUserText.match(hRegex);
+                const bridge = hMatch?.[1] ? hMatch[1] + (hMatch[1].endsWith('교') ? '' : '대교') : '한강대교';
+                try {
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`, { signal: AbortSignal.timeout(3000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.measured_at) {
+                            recentPostsText += `\n\n## ${bridge} 실시간 수위 (K-SKILL)\n- 시간: ${data.measured_at}\n- 수위: ${data.water_level}m\n- 유량: ${data.discharge}㎥/s\n- 상황: ${data.status_message}`;
+                        }
+                    }
+                } catch (e) { console.error('K-SKILL 한강 오류:', e); }
+            }
+
+            // (5) 한국 주식 검색
+            if (userKwd.includes('주식') || userKwd.includes('증시') || userKwd.includes('종목') || userKwd.includes('가 가')) {
+                const stockKwd = lastUserText.replace(/[^가-힣a-zA-Z]/g, '').replace('주식', '').replace('가격', '').trim() || '삼성전자';
+                try {
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/korean-stock/search?q=${encodeURIComponent(stockKwd)}`, { signal: AbortSignal.timeout(3000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.results?.length > 0) {
+                            const s = data.results[0];
+                            recentPostsText += `\n\n## ${s.itmsNm} 주식 현황 (K-SKILL/KRX)\n- 일자: ${s.basDd}\n- 종가: ${Number(s.clpr).toLocaleString()}원 (${s.fltRt}%)\n- 고가/저가: ${Number(s.hipr).toLocaleString()} / ${Number(s.lopr).toLocaleString()}\n- 거래량: ${Number(s.trqu).toLocaleString()}주`;
+                        }
+                    }
+                } catch (e) { console.error('K-SKILL 주식 오류:', e); }
             }
         }
 
