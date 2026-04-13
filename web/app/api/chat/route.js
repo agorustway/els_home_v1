@@ -29,7 +29,44 @@ function getSfDocs() {
     return _sfDocsCache;
 }
 
-const BASE_SYSTEM_INSTRUCTION = "너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.\nELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.\n\n## ELS 인트라넷 전체 메뉴 맵 (안내 시 마크다운 링크 [메뉴이름](/경로) 필수 사용)\n### 메인 메뉴\n- 홈(메인 대시보드): [홈](/employees) — 공지사항, 웹진, 날씨 위젯 등 종합 현황\n- 날씨 및 미세먼지: [날씨](/employees/weather) — 전국 날씨, 시간별 예보, 생활지수\n- 뉴스: [뉴스](/employees/news) — 물류/운송 관련 뉴스 피드\n- 안전운임 조회: [안전운임 조회](/employees/safe-freight) — 구간별 안전운임 단가 계산, 고시 전문 PDF 열람\n- 컨테이너 이력조회: [컨테이너 이력조회](/employees/container-history) — ETRANS 연동 실시간 반입/반출 추적\n- 차량 위치 관제: [차량 위치 관제](/employees/vehicle-tracking) — GPS 기반 실시간 화물차 위치 확인\n- 마이페이지: [마이페이지](/employees/mypage) — 개인 정보, 프로필 관리\n\n### 인트라넷 메뉴\n- AI 어시스턴트: [AI 어시스턴트](/employees/ask) — 바로 여기! 법률/업무 실시간 문의\n- 대시보드: [대시보드](/employees/dashboard) — 사내 통계 및 현황 요약\n- 자유게시판: [자유게시판](/employees/board/free) — 사내 자유 게시판\n- 업무보고: [일일보고](/employees/reports/daily), [월간보고](/employees/reports/monthly), [내 보고서](/employees/reports/my)\n- 사내연락망: [사내연락망](/employees/internal-contacts) — 직원 연락처 관리\n- 외부연락처: [외부연락처](/employees/external-contacts) — 거래처/고객 연락처\n- 기사연락처: [기사연락처](/employees/driver-contacts) — 운전기사 연락처\n- 협력사연락처: [협력사연락처](/employees/partner-contacts) — 파트너사 연락처\n- 작업지 관리: [작업지 관리](/employees/work-sites) — 작업 현장 주소/정보 관리\n- 업무자료실: [업무자료실](/employees/work-docs) — 사내 업무 참고 자료\n- 양식 모음: [양식 모음](/employees/form-templates) — 업무용 각종 서식/양식\n- 자료실(NAS): [자료실](/employees/archive) — NAS 기반 사내 파일 저장소\n- 웹진: [웹진](/employees/webzine) — 사내 소식지/웹진\n- 랜덤게임: [랜덤게임](/employees/random-game) — 사내 이벤트/복지용\n\n### 지점 관리\n- 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황\n\n## 답변 원칙 및 가드레일\n1. 정확성과 친절함: 시스템(RAG)에서 넘어온 데이터를 최우선으로 활용하세요.\n2. 법령과 고시 구분: 안전운임 등은 법망에 직접 조회되지 않는 고시입니다. K-Law에 검색 결과가 없더라도 거절하지 말고, 사전 지식을 동원하여 최대한 자세히 설명하세요.\n3. 읽기 권한 한계: PDF나 자료실 문서 파악 요구 시 한계를 명확히 안내하세요. 다만 시스템에 등록된 안전운임 고시 전문 데이터는 참고 가능합니다.\n4. 거절 최소화: ELS 업무나 법률/노무 영역은 물론, K-SKILL이 제공하는 생활 편의 정보(교통 예매, 미세먼지 등)에 대해서도 성심성의껏 답변하세요.\n5. 메뉴 안내 시: 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.\n6. 안전운임 답변 정책: 안전운임 단가 조회 시, 검색된 모든 항목(편도, 왕복 등)을 제시하세요. 만약 왕복 운임 데이터만 존재한다면 '해당 구간은 왕복 운임만 존재합니다'라고 명시하세요. 또한, 구간 설명 시 '기준 행정동(출발지/목적지)에서 선적항 혹은 특정 지역까지'의 경로임을 명확히 안내하세요.";
+const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.
+ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.
+
+## ELS 인트라넷 전체 메뉴 맵 (안내 시 마크다운 링크 [메뉴이름](/경로) 필수 사용)
+### 메인 메뉴
+- 홈(메인 대시보드): [홈](/employees) — 공지사항, 웹진, 날씨 위젯 등 종합 현황
+- 날씨 및 미세먼지: [날씨](/employees/weather) — 전국 날씨, 시간별 예보, 생활지수
+- 뉴스: [뉴스](/employees/뉴스) — 물류/운송 관련 뉴스 피드
+- 안전운임 조회: [안전운임 조회](/employees/safe-freight) — 구간별 안전운임 단가 계산, 고시 전문 PDF 열람
+- 컨테이너 이력조회: [컨테이너 이력조회](/employees/container-history) — ETRANS 연동 실시간 반입/반출 추적
+- 차량 위치 관제: [차량 위치 관제](/employees/vehicle-tracking) — GPS 기반 실시간 화물차 위치 확인
+- 마이페이지: [마이페이지](/employees/mypage) — 개인 정보, 프로필 관리
+
+### 인트라넷 메뉴
+- AI 어시스턴트: [AI 어시스턴트](/employees/ask) — 바로 여기! 법률/업무 실시간 문의
+- 대시보드: [대시보드](/employees/dashboard) — 사내 통계 및 현황 요약
+- 자유게시판: [자유게시판](/employees/board/free) — 사내 자유 게시판
+- 업무보고: [일일보고](/employees/reports/daily), [월간보고](/employees/reports/monthly), [내 보고서](/employees/reports/my)
+- 사내연락망: [사내연락망](/employees/internal-contacts) — 직원 연락처 관리
+- 외부연락처: [외부연락처](/employees/external-contacts) — 거래처/고객 연락처
+- 기사연락처: [기사연락처](/employees/driver-contacts) — 운전기사 연락처
+- 협력사연락처: [협력사연락처](/employees/partner-contacts) — 파트너사 연락처
+- 작업지 관리: [작업지 관리](/employees/work-sites) — 작업 현장 주소/정보 관리
+- 업무자료실: [업무자료실](/employees/work-docs) — 사내 업무 참고 자료
+- 양식 모음: [양식 모음](/employees/form-templates) — 업무용 각종 서식/양식
+- 자료실(NAS): [자료실](/employees/archive) — NAS 기반 사내 파일 저장소
+- 웹진: [웹진](/employees/webzine) — 사내 소식지/웹진
+- 랜덤게임: [랜덤게임](/employees/random-game) — 사내 이벤트/복지용
+
+### 지점 관리
+- 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황
+
+## 답변 원칙 및 가드레일
+1. 정확성과 친절함: 시스템(RAG)에서 넘어온 데이터(검색결과)를 최우선으로 활용하세요. 정보가 "지원되지 않는 역" 또는 "점검 중"으로 주입된 경우에도, "직접 제공하지 않는다"고 핑계 대지 말고 그 안내 문구 그대로 사용자에게 친절히 응답하세요.
+2. [매우 중요] 안전운임 질문 대응: 고시 전문 PDF 텍스트에 단가표가 없다고 해서 답변을 거절하면 절대 안 됩니다! 반드시 "## 안전운임 단가 검색결과"를 확인하고, 거기에 나온 구간별 편도/왕복 요금을 사용자에게 확정적으로 제시하세요.
+3. 모든 분야 완전 허용: K-SKILL로 조회되는 생활 편의, 기상, KTX, 지하철, 한강 수위, 주식, 스포츠 결과 등의 정보는 "제가 조회해드린 결과입니다"라는 느낌으로 자연스럽고 매끄럽게 안내하세요. 
+4. 편도/왕복 유뮤 명시: 안전운임 단가를 안내할 때, 해당 구간이 편도인지 왕복인지 명시하고, [기준 행정동에서 선적항 혹은 대상 지역까지]의 경로로 자연스럽게 설명하세요.
+5. 메뉴 안내 시: 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.`;
 
 /**
  * POST /api/chat
@@ -67,7 +104,7 @@ export async function POST(req) {
 
     try {
         // --- Omni-RAG: 사용자의 질문에 맞춰 전체 사내망 DB 동시 스캔 ---
-        const stopWords = ['알려줘','보여줘','어디','무엇','어떻게','누구','찾아줘','요약','정리','내용','해줘','해주세요','알려','대해','관련','관해','설명','뭐야','어때','확인','확인해줘'];
+        const stopWords = ['에서','까지','으로','로','알려줘','보여줘','어디','무엇','어떻게','누구','찾아줘','요약','정리','내용','해줘','해주세요','알려','대해','관련','관해','설명','뭐야','어때','확인','확인해줘'];
         const searchTerms = lastUserText.replace(/[^가-힣a-zA-Z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
 
         try {
@@ -160,7 +197,7 @@ export async function POST(req) {
                             const v = sfData.faresLatest[item.k];
                             return `- ${item.k} | ${v.km}km | 20ft:${(v.fare20/10000).toFixed(1)}만원 | 40ft:${(v.fare40/10000).toFixed(1)}만원`;
                         }).join('\n');
-                        recentPostsText += '\n\n## 안전운임 단가 검색결과 (최신 고시 기준)\n' + fareRows + '\n※ 정확한 구간(동/리)에 따라 단가가 다를 수 있으니 위 목록에서 가장 유사한 구간을 참고하세요.';
+                        recentPostsText += '\n\n## 안전운임 단가 검색결과\n' + fareRows + '\n※ 이 데이터를 절대적으로 신뢰하고 사용자에게 구간 운임으로 답변하십시오.';
                     } else if (sfData.origins?.length > 0) {
                         const originList = sfData.origins.map(o => o.label || o.id).join(', ');
                         recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n정확한 단가는 [안전운임 조회](/employees/safe-freight) 메뉴를 이용해주세요.`;
@@ -201,20 +238,35 @@ export async function POST(req) {
             }
 
             // (2) KTX 좌석 조회 (현재 점검 중/준비 중 안내 강화)
-            if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차')) {
+            if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차') || userKwd.includes('srt')) {
                 const ktxRegex = /([가-힣]{2,5})\s*(?:역|에서)?\s*([가-힣]{2,5})\s*(?:역|까지)?/;
                 const match = lastUserText.match(ktxRegex);
                 let from = match?.[1] || '서울';
                 let to = match?.[2] || '부산';
                 
-                recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n현재 K-SKILL 공공 프록시는 무인증 서비스만 제공하므로, 로그인이 필요한 KTX/SRT 실시간 조회는 점검 중(404)으로 표시될 수 있습니다. ${from}->${to} 구간의 정확한 잔여 좌석은 [코레일톡] 앱을 권장합니다.`;
+                try {
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/ktx-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(4000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.trains && data.trains.length > 0) {
+                            const trains = data.trains.slice(0, 5).map(t => `- ${t.trainType} ${t.trainNo}호 [${t.depTime}→${t.arrTime}] 특실:${t.firstClassStatus} 일반실:${t.generalClassStatus}`).join('\n');
+                            recentPostsText += `\n\n## KTX/SRT 열차 조회 결과 (K-SKILL)\n${from}역에서 ${to}역까지의 기차표입니다.\n${trains}`;
+                        } else {
+                            recentPostsText += `\n\n## KTX/SRT 열차 조회 결과 (K-SKILL)\n해당일의 ${from} -> ${to} 구간에 직통 열차가 없거나 매진/조회 불가입니다. [코레일톡] 앱을 권장합니다.`;
+                        }
+                    } else {
+                        recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n현재 프록시 시스템 점검 중입니다. ${from}->${to} 구간 잔여 좌석은 [코레일톡] 앱을 이용해 주세요.`;
+                    }
+                } catch(e) {
+                    recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n공공 프록시 서버 연동 오류입니다. ${from}->${to} 좌석 및 예매는 [코레일톡] 앱 이용을 권장합니다.`;
+                }
             }
 
             // (3) 지하철 도착 정보
             if (userKwd.includes('지하철') || (userKwd.includes('역') && userKwd.includes('도착'))) {
-                const subRegex = /([가-힣]{2,10})\s*역?/;
+                const subRegex = /([가-힣]{2,10})역/;
                 const subMatch = lastUserText.match(subRegex);
-                const station = subMatch?.[1] || '강남';
+                const station = subMatch?.[1]?.replace('역', '') || '강남';
                 try {
                     const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { signal: AbortSignal.timeout(3000) });
                     if (res.ok) {
@@ -222,7 +274,11 @@ export async function POST(req) {
                         if (data.realtimeArrivalList?.length > 0) {
                             const info = data.realtimeArrivalList.slice(0, 5).map(a => `- [${a.updnLine}] ${a.trainLineNm}: ${a.arvlMsg2}`).join('\n');
                             recentPostsText += `\n\n## ${station}역 지하철 실시간 도착 (K-SKILL)\n${info}`;
+                        } else {
+                            recentPostsText += `\n\n## 지하철 안내 (K-SKILL)\n현재 OpenAPI를 통해 조회되는 ${station}역의 실시간 정보가 없거나, 지원되지 않는 역입니다.`;
                         }
+                    } else {
+                        recentPostsText += `\n\n## 지하철 안내\n시스템 오류로 ${station}역의 실시간 정보를 가져올 수 없습니다.`;
                     }
                 } catch (e) { console.error('K-SKILL 지하철 오류:', e); }
             }
@@ -256,6 +312,26 @@ export async function POST(req) {
                         }
                     }
                 } catch (e) { console.error('K-SKILL 주식 오류:', e); }
+            }
+
+            // (6) 스포츠 결과 처리 방어 로직
+            if (userKwd.includes('리그') || userKwd.includes('야구') || userKwd.includes('축구') || userKwd.includes('kbo') || userKwd.includes('결과')) {
+                try {
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/sports/korean-league/results`, { signal: AbortSignal.timeout(3000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.results && data.results.length > 0) {
+                            const scores = data.results.slice(0, 5).map(s => `- ${s.homeTeam} ${s.homeScore} : ${s.awayScore} ${s.awayTeam} (${s.status})`).join('\n');
+                            recentPostsText += `\n\n## 어제 국내 스포츠/K리그 결과 (K-SKILL)\n${scores}`;
+                        } else {
+                            recentPostsText += `\n\n## K리그 조회\n제공할 스포츠 결과가 접수되지 않았습니다. 포털사이트를 참조해 주세요.`;
+                        }
+                    } else {
+                        recentPostsText += `\n\n## K리그 조회\n현재 스포츠 관련 API가 응답하지 않습니다. 포털에서 확인을 부탁드립니다.`;
+                    }
+                } catch(e) {
+                    recentPostsText += `\n\n## K리그 조회\n현재 스포츠 K-SKILL 도구 연동이 점검 중입니다. 포털에서 확인을 부탁드립니다.`;
+                }
             }
         }
 

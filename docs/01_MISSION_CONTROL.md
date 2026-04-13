@@ -1,11 +1,11 @@
-# 🚩 MISSION CONTROL (v4.9.45)
-> **최근 업데이트**: 2026-04-13 | **상태**: 🚀 K-SKILL 대규모 확장 및 UI 최적화 완료
+# 🚩 MISSION CONTROL (v4.9.46)
+> **최근 업데이트**: 2026-04-14 | **상태**: 🚀 RAG 고도화 및 K-SKILL 연동 복구 완료 (v4.9.46)
 
 ## 🎯 현재 목표
 1. **AI 어시스턴트 고도화**: K-SKILL (지하철, 한강, 주식) 연동 및 모바일 레이아웃(S24/S25) 여백 최소화
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.45` (K-SKILL 확장, 모바일 UI 정밀 조율)
+- **Current Build**: `v4.9.46` (RAG 고도화, K-SKILL 연동 복구 완료)
 - **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
 - **Repo**: main 브랜치 up-to-date
 
@@ -78,6 +78,10 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
         - [x] 모바일(S24/S25) 채팅창 하단 여백 제거 및 레이아웃 밀도 최적화
         - [x] 안전운임 질문 시 '편도/왕복 유뮤 명시' 및 '행정동-선적항 경로 안내' 지침 강제화 (Rule 6)
         - [x] 모바일 환경 '빠른 질문' 리스트 숨김으로 가독성 확보
+    - [x] **AI RAG 및 K-SKILL 연동 최종 복구 (v4.9.46)**:
+        - [x] 안전운임 RAG 검색 키워드 필터링(Stopwords) 강화 (에서, 까지 등 제거)
+        - [x] 실시간 KTX 열차 조회 및 K리그 스포츠 결과 연동 로직 정상화
+        - [x] 시스템 인스트럭션 내 과도한 거절 지침 완화 및 도구 활용 권장 조치
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
