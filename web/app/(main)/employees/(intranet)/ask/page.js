@@ -326,11 +326,10 @@ export default function AskPage() {
                 <span style={{fontSize:'0.75rem', color:'#94a3b8', margin:'2px 0 6px'}}>※ 현재 미세먼지 및 부분 연동 중이며 지속 확장되는 실생활 플러그인입니다.</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.4'}}>
-                        <li><b>교통/예매</b>: SRT/KTX 조회예매, 싼 주유소 찾기, 하이패스 영수증 발급</li>
-                        <li><b>기상/환경</b>: 동절기 한국 날씨, 사용자 위치 미세먼지, 한강 수위/유량 정보</li>
-                        <li><b>법률/부동산</b>: 한국 법령 검색(K-Law), 아파트/빌라 실거래가, 한국 특허 색인</li>
-                        <li><b>생활/물류</b>: 식당/술집 조회, 생활쓰레기 배출, 택배 배송 상태 등 생활정보</li>
-                        <li><b>스포츠/기타</b>: KBO/K리그 결과 및 일정 안내, 조선왕조실록 발췌 등</li>
+                        <li><b>교통/예매</b>: KTX/SRT 기차표 실시간 조회</li>
+                        <li><b>기상/환경</b>: 사용자 위치 미세먼지, 한국 날씨, 한강 수위 정보</li>
+                        <li><b>법률/경제</b>: 한국 법령 검색(K-Law), 한국 주식 시세 검색</li>
+                        <li><b>스포츠/기타</b>: K리그 경기 결과 내역 검색 등</li>
                     </ul>
                 </div>
             </div>
