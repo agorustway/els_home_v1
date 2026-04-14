@@ -103,12 +103,13 @@ export async function POST(req) {
 
     // === RAG 데이터 수집 ===
     let recentPostsText = '';
+    let isSfQuery = false;
 
     try {
         // --- Omni-RAG: 사용자의 질문에 맞춰 전체 사내망 DB 동시 스캔 ---
         const stopRegex = /에서|까지|부터|으로|로|의|가|는|은|를|을|알려줘|보여줘|어디|무엇|어떻게|누구|찾아줘|요약|정리|내용|해줘|해주세요|알려|대해|관련|관해|설명|뭐야|어때|확인|확인해줘|얼마|얼마야/g;
         const cleanText = lastUserText.replace(stopRegex, ' ').replace(/[^가-힣a-zA-Z0-9\s]/g, ' ');
-        const searchTerms = [...new Set(cleanText.split(/\s+/).filter(w => w.length > 1).map(t => t.includes('터미널') ? t.replace('터미널','') : t))];
+        const searchTerms = [...new Set(cleanText.split(/\s+/).filter(w => w.length > 1).map(t => t.includes('터미널') ? t.replace('터미널', '') : t))];
 
         try {
             const orConditionsExt = searchTerms.map(term => `company_name.ilike.%${term}%,contact_person.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
@@ -125,10 +126,10 @@ export async function POST(req) {
             ]);
 
             if (extRes.data?.length > 0) {
-                recentPostsText += '\n\n## 외부연락처 검색결과\n' + extRes.data.map(c => `- ${c.company_name} | 구분:${c.contact_type||'-'} | 대표:${c.phone||'-'} | 담당:${c.contact_person||'-'}(${c.contact_person_phone||'-'}) | 메모/주소:${c.memo||'-'}`).join('\n');
+                recentPostsText += '\n\n## 외부연락처 검색결과\n' + extRes.data.map(c => `- ${c.company_name} | 구분:${c.contact_type || '-'} | 대표:${c.phone || '-'} | 담당:${c.contact_person || '-'}(${c.contact_person_phone || '-'}) | 메모/주소:${c.memo || '-'}`).join('\n');
             }
             if (intRes.data?.length > 0) {
-                recentPostsText += '\n\n## 사내연락망 검색결과\n' + intRes.data.map(c => `- ${c.name} ${c.position||''} (${c.department||''}) | 폰:${c.phone||'-'} | 메일:${c.email||'-'}`).join('\n');
+                recentPostsText += '\n\n## 사내연락망 검색결과\n' + intRes.data.map(c => `- ${c.name} ${c.position || ''} (${c.department || ''}) | 폰:${c.phone || '-'} | 메일:${c.email || '-'}`).join('\n');
             }
             if (postRes.data?.length > 0) {
                 recentPostsText += '\n\n## 사내 게시판/업무일지 검색결과\n' + postRes.data.map(r => {
@@ -137,7 +138,7 @@ export async function POST(req) {
                 }).join('\n');
             }
             if (wsRes.data?.length > 0) {
-                recentPostsText += '\n\n## 작업지 검색결과\n' + wsRes.data.map(w => `- ${w.name} | 주소:${w.address||'-'} | 메모:${w.memo||'-'}`).join('\n');
+                recentPostsText += '\n\n## 작업지 검색결과\n' + wsRes.data.map(w => `- ${w.name} | 주소:${w.address || '-'} | 메모:${w.memo || '-'}`).join('\n');
             }
 
             // 1. 차량 위치 관련
@@ -147,7 +148,7 @@ export async function POST(req) {
                     const tripIds = trips.map(t => t.id);
                     const { data: locs } = await supabase.from('vehicle_locations').select('trip_id, address').in('trip_id', tripIds).order('recorded_at', { ascending: false });
                     const locMap = {};
-                    locs?.forEach(l => { if(!locMap[l.trip_id]) locMap[l.trip_id] = l.address; });
+                    locs?.forEach(l => { if (!locMap[l.trip_id]) locMap[l.trip_id] = l.address; });
                     recentPostsText += '\n\n## 실시간 운행차량 위치 (내부 DB)\n' + trips.map(t => `- 화물차(${t.vehicle_number}): 현재 [${locMap[t.id] || '알 수 없음'}] 부근 위치`).join('\n');
                 }
             }
@@ -157,7 +158,7 @@ export async function POST(req) {
             if (cntrMatch) {
                 const cntrNo = cntrMatch[0].toUpperCase();
                 const backendUrl = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
-                const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(6000) }).catch(()=>null);
+                const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
                 if (res?.ok) {
                     const data = await res.json();
                     if (data?.tracking_list?.length > 0) {
@@ -168,20 +169,20 @@ export async function POST(req) {
 
             // 3. 안전운임표 단가 데이터 주입 (faresLatest 키 기반 검색 최적화)
             const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항'];
-            const isSfQuery = searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
-                              sfKeywords.some(k => userKwd.includes(k));
+            isSfQuery = searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
+                sfKeywords.some(k => userKwd.includes(k));
             if (isSfQuery) {
                 const sfData = getSfData();
                 if (sfData?.faresLatest) {
                     // faresLatest 키: '[왕복/편도] 출발지|광역시도|구|동'
                     const fareKeys = Object.keys(sfData.faresLatest);
-                    
+
                     // [v4.9.42] 안전운임 스코어링 고도화: 단어 매칭 수에 따른 가중치 부여
                     const scored = fareKeys.map(k => {
                         let score = 0;
                         let matchedCount = 0;
-                        searchTerms.forEach(t => { 
-                            if(k.includes(t)) {
+                        searchTerms.forEach(t => {
+                            if (k.includes(t)) {
                                 score += 10; // 인주면, 아산시 등 고유명사 매칭 시 고득점
                                 matchedCount++;
                             }
@@ -192,14 +193,14 @@ export async function POST(req) {
                         }
                         return { k, score };
                     }).filter(i => i.score > 0)
-                      .sort((a, b) => b.score - a.score)
-                      .slice(0, 12);
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 12);
 
                     if (scored.length > 0) {
                         const fareRows = scored.map(item => {
                             const v = sfData.faresLatest[item.k];
                             // 금액의 출처가 무엇이든, AI가 인지하기 쉽도록 '안전운임/운수자/위탁 통합' 등의 키워드를 임시 주입
-                            return `- ${item.k} | ${v.km}km | 20ft: ${(v.fare20/10000).toFixed(1)}만원 | 40ft: ${(v.fare40/10000).toFixed(1)}만원`;
+                            return `- ${item.k} | ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
                         }).join('\n');
                         recentPostsText += '\n\n## (중요) 안전운임 단가 표\n' + fareRows + '\n※ 이 데이터를 절대적으로 신뢰해야 합니다! 사용자가 편도를 묻더라도 표에 [왕복]만 있다면 왕복 금액만 안내하세요. AI 임의로 금액을 쪼개거나 깎아서 계산하지 말고 반드시 위 숫자를 그대로 읊으세요.';
                     } else if (sfData.origins?.length > 0) {
@@ -215,7 +216,7 @@ export async function POST(req) {
         // 4. K-SKILL 연동 (미세먼지, 날씨, KTX, 지하철, 한강, 주식 등)
         const kskillKeywords = ['미세먼지', '공기', '날씨', 'ktx', '열차', '기차', '예매', '지하철', '역', '도착', '한강', '수위', '주식', '증시', '삼성전자'];
         const isKskillQuery = kskillKeywords.some(k => userKwd.includes(k));
-        
+
         if (isKskillQuery) {
             // (1) 미세먼지/날씨
             if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
@@ -247,7 +248,7 @@ export async function POST(req) {
                 const match = lastUserText.match(ktxRegex);
                 let from = match?.[1] || '서울';
                 let to = match?.[2] || '부산';
-                
+
                 try {
                     const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/ktx/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(4000) });
                     if (res.ok) {
@@ -261,8 +262,8 @@ export async function POST(req) {
                     } else {
                         recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n공공 예약 시스템(K-SKILL OpenAPI)과의 연결이 지연되어 서비스 임시 점검 중입니다 (에러). ${from}->${to} 구간 잔여 좌석 확인 및 예매는 [코레일톡] 앱을 이용해 주시면 감사하겠습니다.`;
                     }
-                } catch(e) {
-                        recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n공공 예약 시스템(K-SKILL OpenAPI)과의 연결이 지연되어 서비스 임시 점검 중입니다 (네트워크). ${from}->${to} 좌석 및 예매는 [코레일톡] 앱 이용을 권장합니다.`;
+                } catch (e) {
+                    recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n공공 예약 시스템(K-SKILL OpenAPI)과의 연결이 지연되어 서비스 임시 점검 중입니다 (네트워크). ${from}->${to} 좌석 및 예매는 [코레일톡] 앱 이용을 권장합니다.`;
                 }
             }
 
@@ -333,7 +334,7 @@ export async function POST(req) {
                     } else {
                         recentPostsText += `\n\n## K리그 조회\n현재 스포츠 관련 API가 응답하지 않습니다. 포털에서 확인을 부탁드립니다.`;
                     }
-                } catch(e) {
+                } catch (e) {
                     recentPostsText += `\n\n## K리그 조회\n현재 스포츠 K-SKILL 도구 연동이 점검 중입니다. 포털에서 확인을 부탁드립니다.`;
                 }
             }
@@ -452,7 +453,7 @@ export async function POST(req) {
                         if (text) {
                             await writer.write(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
                         }
-                    } catch {}
+                    } catch { }
                 }
             }
         } catch (err) {
