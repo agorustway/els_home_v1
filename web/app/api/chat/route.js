@@ -363,7 +363,7 @@ export async function POST(req) {
 
     // 안전운임 고시 전문 데이터 주입 (부하 방지를 위해 토큰 축소 및 조건부 발동)
     let safeFreightText = '';
-    const docsKeywords = ['과태료', '적용범위', '부대조항', '할증', '야간', '법령', '법', '규정'];
+    const docsKeywords = ['과태료', '적용범위', '부대조항', '할증', '야간', '법령', '법', '규정', '계산', '산정', '방식', '원리', '이유', '고시자료', '이해'];
     if (docsKeywords.some(k => userKwd.includes(k))) {
         try {
             const safeDocs = getSfDocs();
