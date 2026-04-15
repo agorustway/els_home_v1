@@ -1100,14 +1100,20 @@ export default function RouteSearchView({ options, period, onBack }) {
             if (!termClean) continue;
 
             // 왕복/일반 기점 찾기
-            let matchedOrigin = originsList.find(o => {
+            const possibleOrigins = originsList.filter(o => {
                 const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                return termClean.includes(cleanId) || cleanId.includes(termClean);
+                const termCleanVariant = termClean.replace('인천항국제여객', '인천국제여객');
+                return termClean.includes(cleanId) || termCleanVariant.includes(cleanId) || cleanId.includes(termClean) || cleanId.includes(termCleanVariant);
             });
-            const roundOrigin = originsList.find(o => {
-                const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                return o.id.includes('[왕복]') && (termClean.includes(cleanId) || cleanId.includes(termClean));
+            // 일치하는 항목 중 길이가 긴(구체적인) 명칭 우선 정렬
+            possibleOrigins.sort((a, b) => {
+                const cleanA = a.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
+                const cleanB = b.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
+                return cleanB.length - cleanA.length;
             });
+            let matchedOrigin = possibleOrigins.length > 0 ? possibleOrigins[0] : null;
+            
+            const roundOrigin = possibleOrigins.find(o => o.id.includes('[왕복]'));
             if (roundOrigin) matchedOrigin = roundOrigin;
 
             // 행선지 후보들
@@ -1157,20 +1163,28 @@ export default function RouteSearchView({ options, period, onBack }) {
                     const oneWayOrigins = originsList.filter(o => {
                         if (!o.id.includes('[편도]')) return false;
                         const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, ''); 
-                        if (termClean.includes(cleanId) || cleanId.includes(termClean.substring(0, 4))) return true;
+                        const termCleanVariant = termClean.replace('인천항국제여객', '인천국제여객');
+                        
+                        // 직접 포함되는 경우
+                        if (termClean.includes(cleanId) || termCleanVariant.includes(cleanId) || cleanId.includes(termClean.substring(0, 4)) || cleanId.includes(termCleanVariant.substring(0, 4))) return true;
+                        
                         if (cleanId.includes('-')) {
                             const parts = cleanId.split('-');
                             const addrFull = (reqR1 || '') + (reqR2 || '') + (reqR3 || '');
                             const termStart = termClean.substring(0, 4);
+                            const termVarStart = termCleanVariant.substring(0, 4);
                             const addrStart = addrFull.substring(0, 2);
-                            const match1 = (termClean.includes(parts[0]) || parts[0].includes(termStart)) &&
+                            const match1 = (termClean.includes(parts[0]) || termCleanVariant.includes(parts[0]) || parts[0].includes(termStart) || parts[0].includes(termVarStart)) &&
                                             (addrFull.includes(parts[1]) || parts[1].includes(addrStart));
-                            const match2 = (termClean.includes(parts[1]) || parts[1].includes(termStart)) &&
+                            const match2 = (termClean.includes(parts[1]) || termCleanVariant.includes(parts[1]) || parts[1].includes(termStart) || parts[1].includes(termVarStart)) &&
                                             (addrFull.includes(parts[0]) || parts[0].includes(addrStart));
                             return match1 || match2;
                         }
                         return false;
                     });
+                    
+                    // 더 길고 구체적인 이름이 위로(앞으로) 오게 정렬
+                    oneWayOrigins.sort((a, b) => b.id.length - a.id.length);
 
                     for (const oneWayOrigin of oneWayOrigins) {
                         const owKey = `${oneWayOrigin.id}|${reqR1}|${reqR2}|${reqR3}`;

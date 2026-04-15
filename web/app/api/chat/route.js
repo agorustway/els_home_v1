@@ -62,9 +62,6 @@ ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다
 - 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황
 
 ## 답변 원칙 및 가드레일
-1. 정확성과 친절함: 시스템(RAG)에서 넘어온 데이터(검색결과)를 최우선으로 활용하세요. 정보가 "지원되지 않는 역" 또는 "점검 중"으로 주입된 경우에도, "직접 제공하지 않는다"고 핑계 대지 말고 그 안내 문구 그대로 사용자에게 친절히 응답하세요.
-2. [매우 중요] 안전운임 질문 대응: 고시 전문 PDF 텍스트에 단가표가 없다고 해서 답변을 거절하면 절대 안 됩니다! 반드시 "## 안전운임 단가 검색결과"를 확인하고, 거기에 나온 구간별 편도/왕복 요금을 사용자에게 확정적으로 제시하세요.
-6. 일반 지식 허용 및 거절 금지 (매우 중요): 너는 ELS 업무뿐만 아니라 일반 상식, 지역 정보, 외부 동향(부동산, 지역 맛집, 일상 상식 등)도 전부 답변할 수 있는 유능하고 똑똑한 범용 AI다. 사용자가 비업무적인 질문을 하더라도 "업무에 특화되어 있어 답할 수 없다"고 거절하지 마라! 네가 가진 기본 지식과 추론으로 최대한 친절히 답변해야 한다. (데이터 조회가 불가한 실시간 재고 같은 경우에만 부드럽게 한계를 설명하며 일반적인 조언을 덧붙여라.)
 7. [절대 원칙] 안전운임 강제 답변 및 조작 금지: 사용자가 묻는 요금의 세부 종류나 세부 주소가 표에 없더라도 절대 거절하지 마라! 검색된 표에 있는 가장 가까운 행정구역 금액을 추출하여 표에 적힌 금액 그대로 출력하라! **(매우 중요) AI 임의로 편도 요금에 곱하기 2를 하여 왕복 요금을 지어내거나, 금액을 추측해서 계산(수학 연산)하는 행위를 절대 금지한다. 데이터 표에 '편도'만 있으면 오직 편도 금액만 안내해야 한다.**
 8. [논리 설명] 산정 근거 안내: 사용자가 "왜 이 금액이냐" 또는 "계산 방식"을 물으면, 제공된 '## 안전운임 고시 전문 (산정 근거 및 부대조항)' 섹션을 참고하여 [왕복 적용 원칙], [부대조항 할증], [거리 측정 방식] 등을 근거로 들어 전문적으로 설명하세요.
 9. 편도/왕복 텍스트 엄수: 단가 안내 시 RAG 검색결과 표에 적힌 문자 그대로([편도] 또는 [왕복]) 사용자에게 고지하세요.
@@ -117,11 +114,27 @@ export async function POST(req) {
             const orConditionsPosts = searchTerms.map(term => `title.ilike.%${term}%,content.ilike.%${term}%`).join(',');
             const orConditionsWs = searchTerms.map(term => `name.ilike.%${term}%,address.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
 
+            // 날짜/기간 키워드 추출 (예: 4월, 2024년, 이번주)
+            const dateMatch = lastUserText.match(/(\d{1,2})월/);
+            const monthVal = dateMatch ? dateMatch[1] : null;
+
             // 병렬 스캔 (속도 최적화) — 연락처, 게시글, 작업지 동시 조회
+            let postQuery = supabase.from('posts').select('title, content, author_email, created_at, board_type');
+            
+            // 특정 월을 언급하면 해당 월의 데이터도 함께 조회하도록 쿼리 확장
+            if (monthVal) {
+                const year = new Date().getFullYear();
+                const startDate = `${year}-${monthVal.padStart(2, '0')}-01`;
+                const endDate = new Date(year, monthVal, 0).toISOString().split('T')[0];
+                postQuery = postQuery.gte('created_at', startDate).lte('created_at', endDate);
+            } else if (searchTerms.length > 0) {
+                postQuery = postQuery.or(orConditionsPosts);
+            }
+            
             const [extRes, intRes, postRes, wsRes] = await Promise.all([
                 searchTerms.length > 0 ? supabase.from('external_contacts').select('*').or(orConditionsExt).limit(5) : Promise.resolve({ data: [] }),
                 searchTerms.length > 0 ? supabase.from('internal_contacts').select('*').or(orConditionsInt).limit(5) : Promise.resolve({ data: [] }),
-                searchTerms.length > 0 ? supabase.from('posts').select('title, content, author_email, created_at, board_type').or(orConditionsPosts).order('created_at', { ascending: false }).limit(5) : Promise.resolve({ data: [] }),
+                postQuery.order('created_at', { ascending: false }).limit(monthVal ? 15 : 5),
                 searchTerms.length > 0 ? supabase.from('work_sites').select('*').or(orConditionsWs).limit(5).then(r => r).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
             ]);
 
@@ -132,10 +145,12 @@ export async function POST(req) {
                 recentPostsText += '\n\n## 사내연락망 검색결과\n' + intRes.data.map(c => `- ${c.name} ${c.position || ''} (${c.department || ''}) | 폰:${c.phone || '-'} | 메일:${c.email || '-'}`).join('\n');
             }
             if (postRes.data?.length > 0) {
-                recentPostsText += '\n\n## 사내 게시판/업무일지 검색결과\n' + postRes.data.map(r => {
+                recentPostsText += `\n\n## 사내 게시판/업무보고 검색결과 (${monthVal ? monthVal + '월 자료' : '검색결과'})\n` + postRes.data.map(r => {
                     const date = new Date(r.created_at).toLocaleDateString();
-                    return `- [${date}][${r.board_type}] ${r.title}\n  본문:${r.content?.slice(0, 300)}...`;
+                    return `- [${date}][${r.board_type}] ${r.title}\n  본문:${r.content?.slice(0, 500)}...`;
                 }).join('\n');
+            } else if (monthVal) {
+                recentPostsText += `\n\n## 사내 자료 검색결과\n- ${monthVal}월에 작성된 게시글이나 업무보고가 DB에 존재하지 않습니다. 메뉴에서 직접 확인해 보시겠습니까?`;
             }
             if (wsRes.data?.length > 0) {
                 recentPostsText += '\n\n## 작업지 검색결과\n' + wsRes.data.map(w => `- ${w.name} | 주소:${w.address || '-'} | 메모:${w.memo || '-'}`).join('\n');
@@ -158,7 +173,7 @@ export async function POST(req) {
             if (cntrMatch) {
                 const cntrNo = cntrMatch[0].toUpperCase();
                 const backendUrl = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
-                const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+                const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
                 if (res?.ok) {
                     const data = await res.json();
                     if (data?.tracking_list?.length > 0) {
