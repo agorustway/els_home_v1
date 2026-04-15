@@ -1,5 +1,5 @@
-# 🚩 MISSION CONTROL (v4.9.48)
-> **최근 업데이트**: 2026-04-14 | **상태**: 🚀 AI RAG 스코프 이슈(ReferenceError) 긴급 패치 완료 (v4.9.48)
+# 🚩 MISSION CONTROL (v4.9.50)
+> **최근 업데이트**: 2026-04-16 | **상태**: 🚀 AI 어시스턴트 전면 로직 개편 — RAG 데이터 활용 강제, K-Law/K-SKILL 복구 (v4.9.50)
 
 ## 🎯 현재 목표
 1. **AI 어시스턴트 고도화**: K-SKILL (지하철, 한강, 주식) 연동 및 모바일 레이아웃(S24/S25) 여백 최소화
@@ -87,6 +87,17 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
         - [x] K-SKILL(다이소/올리브영) 미지원 문구 UI 가이드에서 제거 및 범용 상식 답변 지침 복구 완료
     - [x] **AI RAG 변수 스코프 참조 오류 수정 (v4.9.48)**:
         - [x] `route.js` 내 `isSfQuery` ReferenceError 해결 (변수 호이스팅/선언 위치 조정)
+    - [x] **안전운임 기점 매칭 및 AI RAG 고도화 (v4.9.49)**:
+        - [x] 안전운임 조회 시 긴 명칭(인천국제여객)보다 짧은 명칭(인천항)이 우선 매칭되는 우선순위 버그 수정
+        - [x] AI 어시스턴트: "4월 업무보고" 등 날짜/기간 기반 DB 검색(Omni-RAG) 연동 구현 및 요약 성능 개선
+        - [x] AI 답변 지침 개정: "계산은 데이터(JSON), 설명은 고시(PDF)" 이도류 원칙 강제 적용
+        - [x] 컨테이너 이력조회 타임아웃 10초 확장 및 K-SKILL 실패 시 Fallback 안내 강화
+    - [x] **AI 어시스턴트 전면 로직 개편 (v4.9.50)**:
+        - [x] 시스템 프롬프트 전면 재설계: RAG 데이터 활용 필수 지시 추가 ("메뉴에서 확인하세요" 회피 근본 차단)
+        - [x] K-Law API 응답 파싱 교정: `data.data.results` 구조 반영, `purpose`/`law_name` 필드 활용, 800자 확장
+        - [x] K-SKILL KTX/스포츠 404 graceful fallback (코레일톡/네이버스포츠 안내)
+        - [x] 과도한 가드레일 완화: 스포츠/일반 지식 거절 폐지, 업무일지 "권한 없음" 거절 방지
+        - [x] 안전운임 고시 전문 주입 조건 확장 (isSfQuery 시 항상 주입)
 
 ## 🗺️ 주요 상세 문서
 - **[02. DEVELOPMENT LOG](./02_DEVELOPMENT_LOG.md)**
@@ -95,4 +106,4 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-13 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-16 (by Antigravity/Claude Opus)*
