@@ -29,8 +29,14 @@ function getSfDocs() {
     return _sfDocsCache;
 }
 
-const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 법률/업무 지원 전문 AI 에이전트다.
-ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다.
+const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 업무 지원 전문 AI 에이전트다.
+ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템이다.
+
+## ⚡ 최우선 답변 원칙 (절대 위반 금지)
+1. **[데이터 활용 필수]** 아래에 "## 검색결과", "## 실시간", "## 안전운임 단가 표" 등으로 주입된 데이터는 실시간으로 사내 DB 또는 외부 공식 API에서 가져온 **확인된 사실 데이터**다. 이 데이터가 존재하면 **반드시 해당 데이터의 구체적인 수치/내용을 직접 인용하여 답변**하라. 절대로 "메뉴에서 확인하세요"라고 회피하지 마라.
+2. **[거절 금지]** K-SKILL, K-Law, 사내 DB에서 데이터가 주입되었으면 해당 내용을 답변에 포함해야 한다. "저는 ~할 수 없습니다" 류의 거절은 데이터가 전혀 없을 때만 허용된다.
+3. **[범용 지식 허용]** K리그 결과, 스포츠, 날씨, 일반 상식 등 사용자가 묻는 모든 질문에 성심성의껏 답변하라. 물류 업무만 답변하라는 제한은 없다. 다만 ELS 사내 데이터가 있으면 그것을 최우선 활용하라.
+4. **[업무 데이터 전권]** 업무보고, 게시판, 연락처, 작업지, 차량위치 등 사내 DB 검색결과가 주입되면 그것을 요약/분석/안내할 수 있다. "권한이 없다"고 거절하지 마라 — 데이터가 주입된 시점에서 이미 권한이 있는 것이다.
 
 ## ELS 인트라넷 전체 메뉴 맵 (안내 시 마크다운 링크 [메뉴이름](/경로) 필수 사용)
 ### 메인 메뉴
@@ -61,11 +67,14 @@ ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템입니다
 ### 지점 관리
 - 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황
 
-## 답변 원칙 및 가드레일
-7. [절대 원칙] 안전운임 강제 답변 및 조작 금지: 사용자가 묻는 요금의 세부 종류나 세부 주소가 표에 없더라도 절대 거절하지 마라! 검색된 표에 있는 가장 가까운 행정구역 금액을 추출하여 표에 적힌 금액 그대로 출력하라! **(매우 중요) AI 임의로 편도 요금에 곱하기 2를 하여 왕복 요금을 지어내거나, 금액을 추측해서 계산(수학 연산)하는 행위를 절대 금지한다. 데이터 표에 '편도'만 있으면 오직 편도 금액만 안내해야 한다.**
-8. [논리 설명] 산정 근거 안내: 사용자가 "왜 이 금액이냐" 또는 "계산 방식"을 물으면, 제공된 '## 안전운임 고시 전문 (산정 근거 및 부대조항)' 섹션을 참고하여 [왕복 적용 원칙], [부대조항 할증], [거리 측정 방식] 등을 근거로 들어 전문적으로 설명하세요.
-9. 편도/왕복 텍스트 엄수: 단가 안내 시 RAG 검색결과 표에 적힌 문자 그대로([편도] 또는 [왕복]) 사용자에게 고지하세요.
-10. 메뉴 안내 시: 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.`;
+## 안전운임 답변 규칙
+1. **[절대 원칙]** 아래 "## 안전운임 단가 표"에 데이터가 있으면, 해당 수치(km, 20ft, 40ft 금액)를 **직접 표시**하여 답변하라. "안전운임 조회 메뉴에서 확인하세요"라고 절대 회피 금지.
+2. **[금액 조작 금지]** AI 임의로 편도×2=왕복 계산, 금액 추측 등 수학연산 절대 금지. 표에 적힌 숫자만 그대로 안내.
+3. **[편도/왕복 명시]** 표 키에 [편도] 또는 [왕복]이 있으면 그대로 고지.
+4. **[산정 근거]** "왜 이 금액이냐" 질문 시 "## 안전운임 고시 전문" 섹션 참고하여 전문적으로 설명.
+
+## 메뉴 안내 규칙
+- 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.`;
 
 /**
  * POST /api/chat
@@ -261,7 +270,7 @@ export async function POST(req) {
                 } catch (e) { console.error('K-SKILL 미세먼지 오류:', e); }
             }
 
-            // (2) KTX 좌석 조회 (현재 점검 중/준비 중 안내 강화)
+            // (2) KTX 좌석 조회
             if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차') || userKwd.includes('srt')) {
                 const ktxRegex = /([가-힣]{2,5})\s*(?:역|에서)?\s*([가-힣]{2,5})\s*(?:역|까지)?/;
                 const match = lastUserText.match(ktxRegex);
@@ -279,10 +288,10 @@ export async function POST(req) {
                             recentPostsText += `\n\n## KTX/SRT 열차 조회 결과 (K-SKILL)\n해당일의 ${from} -> ${to} 구간에 직통 열차가 없거나 매진/조회 불가입니다. [코레일톡] 앱을 권장합니다.`;
                         }
                     } else {
-                        recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n공공 예약 시스템(K-SKILL OpenAPI)과의 연결이 지연되어 서비스 임시 점검 중입니다 (에러). ${from}->${to} 구간 잔여 좌석 확인 및 예매는 [코레일톡] 앱을 이용해 주시면 감사하겠습니다.`;
+                        recentPostsText += `\n\n## KTX/SRT 열차 조회 안내\nKTX/SRT 실시간 좌석 조회 API(K-SKILL)가 현재 서비스 점검 중입니다.\n${from}→${to} 구간 잔여 좌석 확인 및 예매는 아래 앱을 이용해 주세요:\n- [코레일톡](https://www.korail.com) (KTX)\n- [SRT](https://etk.srail.kr) (SRT)\n\n또는 전화 예매: 코레일 1544-7788 / SRT 1800-8100`;
                     }
                 } catch (e) {
-                    recentPostsText += `\n\n## KTX/SRT 열차 조회 안내 (K-SKILL)\n공공 예약 시스템(K-SKILL OpenAPI)과의 연결이 지연되어 서비스 임시 점검 중입니다 (네트워크). ${from}->${to} 좌석 및 예매는 [코레일톡] 앱 이용을 권장합니다.`;
+                    recentPostsText += `\n\n## KTX/SRT 열차 조회 안내\nKTX/SRT 실시간 좌석 조회 API(K-SKILL)가 현재 서비스 점검 중입니다.\n${from}→${to} 구간 잔여 좌석 확인 및 예매는 아래 앱을 이용해 주세요:\n- [코레일톡](https://www.korail.com) (KTX)\n- [SRT](https://etk.srail.kr) (SRT)\n\n또는 전화 예매: 코레일 1544-7788 / SRT 1800-8100`;
                 }
             }
 
@@ -338,40 +347,48 @@ export async function POST(req) {
                 } catch (e) { console.error('K-SKILL 주식 오류:', e); }
             }
 
-            // (6) 스포츠 결과 처리 방어 로직
-            if (userKwd.includes('리그') || userKwd.includes('야구') || userKwd.includes('축구') || userKwd.includes('kbo') || userKwd.includes('결과')) {
+            // (6) 스포츠 결과 처리 (K-SKILL API 일시 중단 시 안내)
+            if (userKwd.includes('리그') || userKwd.includes('야구') || userKwd.includes('축구') || userKwd.includes('kbo') || userKwd.includes('결과') || userKwd.includes('경기')) {
                 try {
                     const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/sports/korean-league/results`, { signal: AbortSignal.timeout(3000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.results && data.results.length > 0) {
                             const scores = data.results.slice(0, 5).map(s => `- ${s.homeTeam} ${s.homeScore} : ${s.awayScore} ${s.awayTeam} (${s.status})`).join('\n');
-                            recentPostsText += `\n\n## 어제 국내 스포츠/K리그 결과 (K-SKILL)\n${scores}`;
+                            recentPostsText += `\n\n## 국내 스포츠 결과 (K-SKILL)\n${scores}`;
                         } else {
-                            recentPostsText += `\n\n## K리그 조회\n제공할 스포츠 결과가 접수되지 않았습니다. 포털사이트를 참조해 주세요.`;
+                            recentPostsText += `\n\n## 스포츠 결과 안내\nK-SKILL 스포츠 API에서 최근 경기 결과가 조회되지 않았습니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 확인하도록 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로 답변해도 됩니다.`;
                         }
                     } else {
-                        recentPostsText += `\n\n## K리그 조회\n현재 스포츠 관련 API가 응답하지 않습니다. 포털에서 확인을 부탁드립니다.`;
+                        recentPostsText += `\n\n## 스포츠 결과 안내\nK-SKILL 스포츠 실시간 API가 현재 점검 중입니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 확인하도록 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로 답변해도 됩니다.`;
                     }
                 } catch (e) {
-                    recentPostsText += `\n\n## K리그 조회\n현재 스포츠 K-SKILL 도구 연동이 점검 중입니다. 포털에서 확인을 부탁드립니다.`;
+                    recentPostsText += `\n\n## 스포츠 결과 안내\nK-SKILL 스포츠 API 연동이 현재 점검 중입니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 확인하도록 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로 답변해도 됩니다.`;
                 }
             }
         }
 
         // 5. K-Law (법망 API) 연동
-        if (userKwd.includes('법') || userKwd.includes('규정') || userKwd.includes('운임') || userKwd.includes('근로') || userKwd.includes('노동') || userKwd.includes('화물연대') || userKwd.includes('판례') || userKwd.includes('과태료')) {
+        if (userKwd.includes('법') || userKwd.includes('규정') || userKwd.includes('운임') || userKwd.includes('근로') || userKwd.includes('노동') || userKwd.includes('화물연대') || userKwd.includes('판례') || userKwd.includes('과태료') || userKwd.includes('벌금') || userKwd.includes('제재') || userKwd.includes('허가') || userKwd.includes('신고')) {
             const searchKwd = lastUserText.trim();
             try {
                 const url = `https://api.beopmang.org/api/v4/law?action=search&q=${encodeURIComponent(searchKwd)}`;
                 const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
                 if (res.ok) {
-                    const data = await res.json();
-                    if (data.results && data.results.length > 0) {
-                        const lawQuotes = data.results.slice(0, 3).map(r => {
-                            return `### [출처: K-Law] ${r.title}\n${r.content?.slice(0, 300)}...`;
+                    const raw = await res.json();
+                    // K-Law API v4 실제 응답 구조: { data: { total, results: [...] }, meta: {...} }
+                    const results = raw?.data?.results || raw?.results || [];
+                    if (results.length > 0) {
+                        const lawQuotes = results.slice(0, 5).map(r => {
+                            const name = r.law_name || r.title || '제목 없음';
+                            const type = r.law_type || '';
+                            const purpose = r.purpose || '';
+                            const enforcement = r.enforcement_date ? `시행일: ${r.enforcement_date}` : '';
+                            const articleCount = r.article_count ? `조문수: ${r.article_count}개` : '';
+                            const caseCount = r.case_count ? `판례: ${r.case_count}건` : '';
+                            return `### [출처: K-Law] ${name} (${type})\n${purpose.slice(0, 800)}\n${[enforcement, articleCount, caseCount].filter(Boolean).join(' | ')}`;
                         }).join('\n\n');
-                        recentPostsText += '\n\n## 실시간 법령/규정 검색 결과 (K-Law MCP)\n' + lawQuotes;
+                        recentPostsText += `\n\n## 실시간 법령/규정 검색 결과 (K-Law MCP) — 총 ${raw?.data?.total || results.length}건\n` + lawQuotes;
                     }
                 }
             } catch (e) {
@@ -382,10 +399,9 @@ export async function POST(req) {
         console.error('[/api/chat] DB 조회 오류:', e);
     }
 
-    // 안전운임 고시 전문 데이터 주입 (부재 시 답변 거절 방지 및 논리 이해용)
+    // 안전운임 고시 전문 데이터 주입 (모든 안전운임 질문에 산정 근거 제공)
     let safeFreightText = '';
-    const docsKeywords = ['과태료', '적용범위', '부대조항', '할증', '야간', '법령', '법', '규정', '계산', '산정', '방식', '원리', '이유', '고시자료', '이해'];
-    if (isSfQuery && docsKeywords.some(k => userKwd.includes(k))) {
+    if (isSfQuery) {
         try {
             const safeDocs = getSfDocs();
             if (safeDocs?.[0]?.text) {
