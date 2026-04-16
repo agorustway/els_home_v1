@@ -322,14 +322,14 @@ export default function AskPage() {
             </div>
 
             <div className={styles.guideBox} style={{display: 'flex', flexDirection: 'column'}}>
-                <span className={styles.guideHighlight}>3. K-SKILL (한국형 실생활 API) 연동</span>
-                <span style={{fontSize:'0.75rem', color:'#94a3b8', margin:'2px 0 6px'}}>※ 현재 미세먼지 및 부분 연동 중이며 지속 확장되는 실생활 플러그인입니다.</span>
+                <span className={styles.guideHighlight}>3. K-SKILL & 다이렉트 실시간 API 연동</span>
+                <span style={{fontSize:'0.75rem', color:'#94a3b8', margin:'2px 0 6px'}}>※ 기존 K-SKILL을 보완하여 네이버 스포츠 등 공식 API를 직접 호출합니다.</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.4'}}>
-                        <li><b>교통/예매</b>: KTX/SRT 기차표 실시간 조회</li>
-                        <li><b>기상/환경</b>: 사용자 위치 미세먼지, 한국 날씨, 한강 수위 정보</li>
-                        <li><b>법률/경제</b>: 한국 법령 검색(K-Law), 한국 주식 시세 검색</li>
-                        <li><b>스포츠/기타</b>: K리그 경기 결과 내역 검색 등</li>
+                        <li><b>교통/예매</b>: KTX/SRT 기차표 실시간 조회 스마트 링크 제공</li>
+                        <li><b>기상/환경</b>: 사용자 위치 미세먼지, 한강 수위 정보 (K-SKILL)</li>
+                        <li><b>법률/경제</b>: 한국 주식 시세 검색 (KRX)</li>
+                        <li><b>스포츠/기타</b>: KBO 야구 및 K리그 축구 실시간/과거 스코어 제공 (네이버 API)</li>
                     </ul>
                 </div>
             </div>

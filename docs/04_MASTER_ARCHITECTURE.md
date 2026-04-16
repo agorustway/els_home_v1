@@ -180,7 +180,9 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 | **컨테이너** | NAS Backend API | 영문4+숫자7 패턴 | 반입/반출 이력 |
 | **안전운임 단가** | safe-freight-data.json (엑셀 변환) | 지역명 키워드 매칭 | 구간별 운임 단가 |
 | **안전운임 고시** | safe-freight-docs.json (PDF 변환) | 항상 주입 (최신 2차수) | 고시 전문 텍스트 |
-| **K-SKILL** | k-skill-proxy.nomadamas.org | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
+| **K-SKILL/미세먼지** | k-skill-proxy.nomadamas.org | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
+| **스포츠 결과** | 네이버 스포츠 API (api-gw...) | 야구, 축구, KBO, K리그 등 | 실시간/과거 경기 스코어 (Direct API) |
+| **열차/KTX/SRT** | 다이렉트 딥링크 생성기 | KTX, SRT, 기차표, 좌석 | 네이버 기차표 검색 및 공식앱 연결 |
 | **K-Law** | api.beopmang.org | 법, 규정, 근로, 운임, 판례, 과태료 | 법령 조문 전문 |
 
 **K-SKILL 지역 측정소 매핑 (도시명 -> AirKorea 측정소 힌트)**:

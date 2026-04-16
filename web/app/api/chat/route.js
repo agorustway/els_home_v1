@@ -270,29 +270,23 @@ export async function POST(req) {
                 } catch (e) { console.error('K-SKILL 미세먼지 오류:', e); }
             }
 
-            // (2) KTX 좌석 조회
-            if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차') || userKwd.includes('srt')) {
+            // (2) KTX/SRT 좌석 및 시간표 조회 (다이렉트 스마트 안내 체계로 개편)
+            if (userKwd.includes('ktx') || userKwd.includes('열차') || userKwd.includes('기차') || userKwd.includes('srt') || userKwd.includes('좌석')) {
                 const ktxRegex = /([가-힣]{2,5})\s*(?:역|에서)?\s*([가-힣]{2,5})\s*(?:역|까지)?/;
                 const match = lastUserText.match(ktxRegex);
-                let from = match?.[1] || '서울';
-                let to = match?.[2] || '부산';
-
-                try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/ktx/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(4000) });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.trains && data.trains.length > 0) {
-                            const trains = data.trains.slice(0, 5).map(t => `- ${t.trainType} ${t.trainNo}호 [${t.depTime}→${t.arrTime}] 특실:${t.firstClassStatus} 일반실:${t.generalClassStatus}`).join('\n');
-                            recentPostsText += `\n\n## KTX/SRT 열차 조회 결과 (K-SKILL)\n${from}역에서 ${to}역까지의 기차표입니다.\n${trains}`;
-                        } else {
-                            recentPostsText += `\n\n## KTX/SRT 열차 조회 결과 (K-SKILL)\n해당일의 ${from} -> ${to} 구간에 직통 열차가 없거나 매진/조회 불가입니다. [코레일톡] 앱을 권장합니다.`;
-                        }
-                    } else {
-                        recentPostsText += `\n\n## KTX/SRT 열차 조회 안내\nKTX/SRT 실시간 좌석 조회 API(K-SKILL)가 현재 서비스 점검 중입니다.\n${from}→${to} 구간 잔여 좌석 확인 및 예매는 아래 앱을 이용해 주세요:\n- [코레일톡](https://www.korail.com) (KTX)\n- [SRT](https://etk.srail.kr) (SRT)\n\n또는 전화 예매: 코레일 1544-7788 / SRT 1800-8100`;
-                    }
-                } catch (e) {
-                    recentPostsText += `\n\n## KTX/SRT 열차 조회 안내\nKTX/SRT 실시간 좌석 조회 API(K-SKILL)가 현재 서비스 점검 중입니다.\n${from}→${to} 구간 잔여 좌석 확인 및 예매는 아래 앱을 이용해 주세요:\n- [코레일톡](https://www.korail.com) (KTX)\n- [SRT](https://etk.srail.kr) (SRT)\n\n또는 전화 예매: 코레일 1544-7788 / SRT 1800-8100`;
-                }
+                let from = match?.[1] || '선택출발역';
+                let to = match?.[2] || '선택도착역';
+                const isSrt = userKwd.includes('srt');
+                
+                // 네이버/카카오 다이렉트 열차 조회 링크로 유도
+                const trainType = isSrt ? 'SRT' : 'KTX';
+                const searchLink = `https://m.search.naver.com/search.naver?query=${encodeURIComponent(from + '역 ' + to + '역 ' + trainType + ' 시간표')}`;
+                
+                recentPostsText += `\n\n## ${trainType} 좌석 및 일정 조회 안내\n`;
+                recentPostsText += `현재 K-SKILL 프록시 지원 중단으로 실시간 좌석 데이터 직접 표출은 불가합니다.\n`;
+                recentPostsText += `대신 사용자가 대화창에서 바로 확인하고 예매할 수 있도록 다음 정보를 반드시 제공하세요:\n`;
+                recentPostsText += `- 🚄 **${from}역 ➔ ${to}역 ${trainType} 실시간 시간표/좌석 확인**: [네이버 열차시간표 보기](${searchLink})\n`;
+                recentPostsText += `- 🎫 **예매 안내**: 정확한 좌석 조회와 결제는 공식 앱(${isSrt ? 'SRTPlay 앱' : '코레일톡 앱'})을 이용하시기 바랍니다.`;
             }
 
             // (3) 지하철 도착 정보
