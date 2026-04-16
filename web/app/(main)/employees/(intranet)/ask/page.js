@@ -124,7 +124,7 @@ export default function AskPage() {
     useEffect(() => {
         const loadMemory = async () => {
             try {
-                const res = await fetch('/api/chat/memory');
+                const res = await fetch('/api/chat/memory', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     let raw = data.messages || [];
