@@ -347,23 +347,71 @@ export async function POST(req) {
                 } catch (e) { console.error('K-SKILL 주식 오류:', e); }
             }
 
-            // (6) 스포츠 결과 처리 (K-SKILL API 일시 중단 시 안내)
-            if (userKwd.includes('리그') || userKwd.includes('야구') || userKwd.includes('축구') || userKwd.includes('kbo') || userKwd.includes('결과') || userKwd.includes('경기')) {
+            // (6) 스포츠 결과 — 네이버 스포츠 공식 API 직접 호출 (K-SKILL 프록시 비의존)
+            if (userKwd.includes('리그') || userKwd.includes('야구') || userKwd.includes('축구') || userKwd.includes('kbo') || userKwd.includes('결과') || userKwd.includes('경기') || userKwd.includes('k리그')) {
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/sports/korean-league/results`, { signal: AbortSignal.timeout(3000) });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.results && data.results.length > 0) {
-                            const scores = data.results.slice(0, 5).map(s => `- ${s.homeTeam} ${s.homeScore} : ${s.awayScore} ${s.awayTeam} (${s.status})`).join('\n');
-                            recentPostsText += `\n\n## 국내 스포츠 결과 (K-SKILL)\n${scores}`;
-                        } else {
-                            recentPostsText += `\n\n## 스포츠 결과 안내\nK-SKILL 스포츠 API에서 최근 경기 결과가 조회되지 않았습니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 확인하도록 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로 답변해도 됩니다.`;
+                    const naverHeaders = { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://m.sports.naver.com/' };
+                    // 어제/오늘 날짜 계산 (KST 기준)
+                    const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+                    const today = kstNow.toISOString().slice(0, 10).replace(/-/g, '');
+                    const yesterday = new Date(kstNow - 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+                    // "어제" 키워드가 있으면 어제, 아니면 오늘 기준
+                    const targetDate = userKwd.includes('어제') ? yesterday : today;
+                    const targetLabel = userKwd.includes('어제') ? '어제' : '오늘';
+
+                    // KBO + K리그 동시 병렬 조회
+                    const [kboRes, kleagueRes] = await Promise.all([
+                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(3000) }).catch(() => null),
+                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(3000) }).catch(() => null),
+                    ]);
+
+                    let sportsText = '';
+
+                    // KBO 결과 처리
+                    if (kboRes?.ok) {
+                        const kboData = await kboRes.json();
+                        const kboGames = kboData.result?.games || [];
+                        if (kboGames.length > 0) {
+                            const lines = kboGames.map(g => {
+                                const home = g.homeTeam?.name || '?';
+                                const away = g.awayTeam?.name || '?';
+                                const hs = g.homeTeam?.score ?? '-';
+                                const as = g.awayTeam?.score ?? '-';
+                                const statusMap = { 'RESULT': '종료', 'BEFORE': '예정', 'STARTED': '진행중', 'POSTPONED': '연기', 'CANCEL': '취소' };
+                                const status = statusMap[g.statusCode] || g.statusCode || '?';
+                                const time = g.gameDateTime ? new Date(g.gameDateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
+                                return `- ${home} ${hs} : ${as} ${away} (${status}${status === '예정' && time ? ' ' + time : ''})`;
+                            }).join('\n');
+                            sportsText += `### KBO (${targetLabel} ${targetDate.slice(4,6)}/${targetDate.slice(6,8)})\n${lines}\n`;
                         }
+                    }
+
+                    // K리그 결과 처리
+                    if (kleagueRes?.ok) {
+                        const kleagueData = await kleagueRes.json();
+                        const kleagueGames = kleagueData.result?.games || [];
+                        if (kleagueGames.length > 0) {
+                            const lines = kleagueGames.map(g => {
+                                const home = g.homeTeam?.name || '?';
+                                const away = g.awayTeam?.name || '?';
+                                const hs = g.homeTeam?.score ?? '-';
+                                const as = g.awayTeam?.score ?? '-';
+                                const statusMap = { 'RESULT': '종료', 'BEFORE': '예정', 'STARTED': '진행중', 'POSTPONED': '연기' };
+                                const status = statusMap[g.statusCode] || g.statusCode || '?';
+                                return `- ${home} ${hs} : ${as} ${away} (${status})`;
+                            }).join('\n');
+                            sportsText += `### K리그 (${targetLabel} ${targetDate.slice(4,6)}/${targetDate.slice(6,8)})\n${lines}\n`;
+                        }
+                    }
+
+                    if (sportsText) {
+                        recentPostsText += `\n\n## 국내 스포츠 경기 현황 (네이버 스포츠 실시간)\n${sportsText}`;
                     } else {
-                        recentPostsText += `\n\n## 스포츠 결과 안내\nK-SKILL 스포츠 실시간 API가 현재 점검 중입니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 확인하도록 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로 답변해도 됩니다.`;
+                        recentPostsText += `\n\n## 스포츠 경기 안내\n${targetLabel}(${targetDate.slice(4,6)}/${targetDate.slice(6,8)}) 예정되거나 종료된 KBO/K리그 경기가 없습니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 추가 정보를 확인해보라고 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로도 답변해도 됩니다.`;
                     }
                 } catch (e) {
-                    recentPostsText += `\n\n## 스포츠 결과 안내\nK-SKILL 스포츠 API 연동이 현재 점검 중입니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 확인하도록 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로 답변해도 됩니다.`;
+                    console.error('네이버 스포츠 API 오류:', e);
+                    recentPostsText += `\n\n## 스포츠 경기 안내\n스포츠 정보 조회에 일시적 오류가 발생했습니다. 네이버 스포츠(https://sports.naver.com)에서 직접 확인해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로도 답변해도 됩니다.`;
                 }
             }
         }
