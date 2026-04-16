@@ -95,7 +95,8 @@ web/android/app/src/main/assets/public/ ← 직접 편집 금지
     - [x] **AI 어시스턴트 전면 로직 개편 (v4.9.50)**:
         - [x] 시스템 프롬프트 전면 재설계: RAG 데이터 활용 필수 지시 추가 ("메뉴에서 확인하세요" 회피 근본 차단)
         - [x] K-Law API 응답 파싱 교정: `data.data.results` 구조 반영, `purpose`/`law_name` 필드 활용, 800자 확장
-        - [x] K-SKILL KTX/스포츠 404 graceful fallback (코레일톡/네이버스포츠 안내)
+        - [x] K-SKILL KTX 404 graceful fallback (코레일톡/SRT 앱 안내)
+        - [x] K-SKILL 스포츠 API(404)를 네이버 스포츠 실시간 API로 완전 교체 (KBO/K리그 동시 조회)
         - [x] 과도한 가드레일 완화: 스포츠/일반 지식 거절 폐지, 업무일지 "권한 없음" 거절 방지
         - [x] 안전운임 고시 전문 주입 조건 확장 (isSfQuery 시 항상 주입)
 
