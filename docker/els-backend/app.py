@@ -188,7 +188,26 @@ def sync_asan_dispatch_python(force=False):
                 # 필터링 로직 (Next.js와 동일하게 적용)
                 filter_col = 12 if dtype == 'glovis' else 15 # 0-indexed
                 rows = []
-                for _, row in data_df.iterrows():
+                comments_dict = {}
+                row_idx_in_db = 0
+                
+                # 메모 추출용 openpyxl
+                sheet_comments = {}
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(full_path, data_only=True)
+                    if sheet_name in wb.sheetnames:
+                        ws = wb[sheet_name]
+                        for cmt_r_idx, r_cells in enumerate(ws.iter_rows()):
+                            for cmt_c_idx, cell in enumerate(r_cells):
+                                if cell.comment:
+                                    sheet_comments[(cmt_r_idx, cmt_c_idx)] = cell.comment.text
+                except Exception as e:
+                    app.logger.warning(f"openpyxl load_workbook 실패: {e}")
+
+                orig_index_list = data_df.index.tolist()
+                for i_pos, orig_iloc_idx in enumerate(orig_index_list):
+                    row = data_df.loc[orig_iloc_idx]
                     # '합계' 포함 시 종료
                     if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
                         break
@@ -197,7 +216,16 @@ def sync_asan_dispatch_python(force=False):
                     if not f_val or f_val == '0' or f_val == 'nan':
                         continue
                     
-                    rows.append(row.fillna('').astype(str).tolist())
+                    row_list = row.fillna('').astype(str).tolist()
+                    rows.append(row_list)
+                    
+                    # 메모 추출 (엑셀 row 인덱스는 pandas header_idx가 포함된 df의 원본 인덱스)
+                    for c_idx in range(len(row_list)):
+                        cmt = sheet_comments.get((orig_iloc_idx, c_idx))
+                        if cmt:
+                            comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
+                            
+                    row_idx_in_db += 1
                 
                 if not rows: continue
                 
@@ -208,7 +236,7 @@ def sync_asan_dispatch_python(force=False):
                     "target_date": target_date,
                     "headers": headers,
                     "data": rows,
-                    "comments": {}, # 파이썬에선 메모 추출이 복잡하므로 일단 빈 객체 (향후 openpyxl 연동 가능)
+                    "comments": comments_dict,
                     "file_modified_at": mtime,
                     "updated_at": now.isoformat()
                 }).execute()

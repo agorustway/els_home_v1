@@ -1,13 +1,13 @@
-# 🚩 MISSION CONTROL (v4.9.50)
-> **최근 업데이트**: 2026-04-16 | **상태**: 🚀 AI 어시스턴트 전면 로직 개편 — RAG 데이터 활용 강제, K-Law/K-SKILL 복구 (v4.9.50)
+# 🚩 MISSION CONTROL (v4.9.51)
+> **최근 업데이트**: 2026-04-17 | **상태**: 🚀 배차판 메모 누락 및 운송시작 DB 오류 핫픽스 (v4.9.51)
 
 ## 🎯 현재 목표
-1. **AI 어시스턴트 고도화**: K-SKILL (지하철, 한강, 주식) 연동 및 모바일 레이아웃(S24/S25) 여백 최소화
+1. **운영 안정화**: 아산지점 배차판 메모 컬럼 복구 및 앱 운송시작 시 DB 에러 해결
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.46` (RAG 고도화, K-SKILL 연동 복구 완료)
-- **APK**: `web/public/apk/els_driver.apk` (v4.9.16 유지)
-- **Repo**: main 브랜치 up-to-date
+- **Current Build**: `v4.9.51` (배차판 메모 복구, 운송시작 에러 방어)
+- **APK**: `web/public/apk/els_driver.apk` (버전 유지)
+- **Repo**: main 브랜치 적용 대기중
 
 ## ⚠️ APK 빌드 절차 (필독)
 ```
