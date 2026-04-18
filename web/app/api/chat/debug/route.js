@@ -90,7 +90,10 @@ export async function GET() {
 
     // 3. K-SKILL 테스트
     try {
-        const res = await fetch('https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=%EC%95%84%EC%82%B0%20%EB%AA%A8%EC%A2%85%EB%8F%99', { signal: AbortSignal.timeout(8000) });
+        const res = await fetch('https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=%EC%95%84%EC%82%B0%20%EB%AA%A8%EC%A2%85%EB%8F%99', { 
+            signal: AbortSignal.timeout(8000),
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)' }
+        });
         if (res.ok) {
             const data = await res.json();
             result.kskill = { status: '✅ 연결 성공', station: data.station_name, pm10: data.pm10?.value };
