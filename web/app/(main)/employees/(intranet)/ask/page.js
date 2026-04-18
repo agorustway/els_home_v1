@@ -116,32 +116,68 @@ export default function AskPage() {
         try {
             await fetch('/api/chat/memory', { method: 'DELETE' });
         } catch(e) {}
+        try { localStorage.removeItem(LS_KEY); } catch {}
         const newId = Date.now().toString();
         setSessions([{ id: newId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
         setActiveId(newId);
     };
 
+    // ─── localStorage 헬퍼 (동기적 · 즉시 · 확실) ────────────────────
+    const LS_KEY = 'els_ai_sessions';
+    const saveToLocal = useCallback((data) => {
+        try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
+    }, []);
+    const loadFromLocal = useCallback(() => {
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) return parsed;
+            }
+        } catch {}
+        return null;
+    }, []);
+
+    // ─── 세션 로드: DB 우선 → localStorage 폴백 → 빈 세션 ──────────
     useEffect(() => {
         const loadMemory = async () => {
+            // 1차: localStorage에서 즉시 로드 (화면 깜빡임 방지)
+            const localData = loadFromLocal();
+            if (localData) {
+                setSessions(localData);
+                setActiveId(localData[0].id);
+            }
+
+            // 2차: DB에서 비동기 로드 (더 최신 데이터가 있으면 덮어씀)
             try {
                 const res = await fetch('/api/chat/memory', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     let raw = data.messages || [];
-                    if (raw.length > 0) {
-                        if (raw[0].id && raw[0].messages) {
+                    if (raw.length > 0 && raw[0].id && raw[0].messages) {
+                        // DB 데이터가 localStorage보다 크면 (더 많은 대화) DB 우선
+                        const dbTotal = raw.reduce((sum, s) => sum + (s.messages?.length || 0), 0);
+                        const localTotal = localData ? localData.reduce((sum, s) => sum + (s.messages?.length || 0), 0) : 0;
+                        if (dbTotal >= localTotal) {
                             setSessions(raw);
                             setActiveId(raw[0].id);
-                        } else {
-                            const initId = Date.now().toString();
-                            setSessions([{ id: initId, title: '기본 대화', messages: raw }]);
-                            setActiveId(initId);
+                            saveToLocal(raw); // DB → localStorage 동기화
                         }
                         setIsLoaded(true);
                         return;
                     }
                 }
-            } catch (err) { }
+            } catch (err) {
+                console.warn('[ELS-AI] DB 로드 실패, localStorage 폴백 사용:', err.message);
+            }
+
+            // localStorage에서 이미 로드했으면 그대로 사용
+            if (localData) {
+                setIsLoaded(true);
+                return;
+            }
+
+            // 둘 다 없으면 빈 세션
             const initId = Date.now().toString();
             setSessions([{ id: initId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
             setActiveId(initId);
@@ -150,52 +186,48 @@ export default function AskPage() {
         loadMemory();
     }, []);
 
-    // Sync messages to DB — 디바운스 적용 (스트리밍 중 매 글자마다 저장 방지)
+    // ─── 세션 저장: localStorage 즉시 + DB 디바운스 ──────────────────
     const saveTimerRef = useRef(null);
     const sessionsRef = useRef(sessions);
     sessionsRef.current = sessions;
 
-    const saveSessionsNow = useCallback(() => {
-        if (!isLoaded || sessionsRef.current.length === 0) return;
-        const payload = JSON.stringify({ messages: sessionsRef.current });
-        // sendBeacon은 페이지 이탈 시에도 확실히 전송됨
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon('/api/chat/memory', new Blob([payload], { type: 'application/json' }));
-        } else {
+    useEffect(() => {
+        if (!isLoaded || sessions.length === 0) return;
+        
+        // localStorage는 즉시 저장 (동기적 — 절대 유실 안 됨)
+        saveToLocal(sessions);
+        
+        // DB는 디바운스 저장 (네트워크 의존적)
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
             fetch('/api/chat/memory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: payload,
-                keepalive: true
-            }).catch(() => {});
-        }
-    }, [isLoaded]);
+                body: JSON.stringify({ messages: sessions })
+            }).catch((e) => console.warn('[ELS-AI] DB 저장 실패:', e.message));
+        }, 2000); // 2초 디바운스
 
-    useEffect(() => {
-        if (isLoaded && sessions.length > 0) {
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-            saveTimerRef.current = setTimeout(() => {
-                fetch('/api/chat/memory', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: sessions })
-                }).catch(() => {});
-            }, 1500); // 1.5초 디바운스
-        }
         return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-    }, [sessions, isLoaded]);
+    }, [sessions, isLoaded, saveToLocal]);
 
-    // 페이지 이탈/전환 시 즉시 저장 (beforeunload + visibilitychange)
+    // 페이지 이탈 시 DB에도 최종 저장 시도
     useEffect(() => {
-        const handleUnload = () => saveSessionsNow();
-        const handleVisibility = () => { if (document.visibilityState === 'hidden') saveSessionsNow(); };
-        window.addEventListener('beforeunload', handleUnload);
+        const saveBeforeLeave = () => {
+            if (!isLoaded || sessionsRef.current.length === 0) return;
+            saveToLocal(sessionsRef.current); // localStorage 확실히
+            const payload = JSON.stringify({ messages: sessionsRef.current });
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/chat/memory', new Blob([payload], { type: 'application/json' }));
+            }
+        };
+        const handleVisibility = () => { if (document.visibilityState === 'hidden') saveBeforeLeave(); };
+        window.addEventListener('beforeunload', saveBeforeLeave);
         document.addEventListener('visibilitychange', handleVisibility);
         return () => {
-            window.removeEventListener('beforeunload', handleUnload);
+            window.removeEventListener('beforeunload', saveBeforeLeave);
             document.removeEventListener('visibilitychange', handleVisibility);
         };
-    }, [saveSessionsNow]);
+    }, [isLoaded, saveToLocal]);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/ask');
