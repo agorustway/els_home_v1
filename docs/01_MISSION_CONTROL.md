@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.71` | **Phase 5 (NAS) + Android v4.9.17 Complete** |
-| **상태** | 🟢 배포 완료 (Vercel/NAS) | 데이터 정밀도 향상 및 시맨틱 검색 가동 |
+| **현재 버전** | `v4.9.72` | **Phase 5 (NAS) + Android v4.9.18 Complete** |
+| **상태** | 🟢 배포 완료 (Vercel/NAS) | 배차판 메모 복구 및 앱 운행시작 ID 에러 해결 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** Vercel 미들웨어 최적화 (data/ 경로 우회 - self-fetch 정상화)
@@ -14,7 +14,7 @@
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.17` (Driver APK 배포 완료)
+- **Current Build**: `v4.9.18` (Driver APK 배포 완료)
 - **APK URL**: `https://nollae.com/apk/els_driver.apk`
 - **Repo**: main 브랜치 배포 완료
 

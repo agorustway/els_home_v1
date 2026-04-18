@@ -198,10 +198,37 @@ def sync_asan_dispatch_python(force=False):
                     wb = openpyxl.load_workbook(full_path, data_only=True)
                     if sheet_name in wb.sheetnames:
                         ws = wb[sheet_name]
-                        for cmt_r_idx, r_cells in enumerate(ws.iter_rows()):
-                            for cmt_c_idx, cell in enumerate(r_cells):
+                        
+                        # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
+                        header_col_idx = -1
+                        for j, h in enumerate(headers):
+                            if '구분' in str(h):
+                                header_col_idx = j
+                                break
+                        if header_col_idx == -1:
+                            header_col_idx = 0
+                            
+                        # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산
+                        openpyxl_r_offset = 0
+                        openpyxl_c_offset = 0
+                        found_header = False
+                        for r_cells in ws.iter_rows(min_row=1, max_row=20):
+                            for cell in r_cells:
+                                if cell.value and '구분' in str(cell.value):
+                                    openpyxl_r_offset = (cell.row - 1) - header_idx
+                                    openpyxl_c_offset = (cell.column - 1) - header_col_idx
+                                    found_header = True
+                                    break
+                            if found_header:
+                                break
+                                
+                        # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
+                        for r_cells in ws.iter_rows():
+                            for cell in r_cells:
                                 if cell.comment:
-                                    sheet_comments[(cmt_r_idx, cmt_c_idx)] = cell.comment.text
+                                    pd_r = (cell.row - 1) - openpyxl_r_offset
+                                    pd_c = (cell.column - 1) - openpyxl_c_offset
+                                    sheet_comments[(pd_r, pd_c)] = cell.comment.text
                 except Exception as e:
                     app.logger.warning(f"openpyxl load_workbook 실패: {e}")
 

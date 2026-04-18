@@ -1,3 +1,16 @@
+## 📅 2026-04-18 (v4.9.72 — 배차판 메모 및 운송 시작 에러 핫픽스)
+### 🚀 주요 개선 사항
+1. **[FIX] 아산지점 배차판 메모 정렬 오류 완벽 복구**:
+   - `app.py` 엑셀 동기화 로직에서 `openpyxl`의 동적 헤더 오프셋 탐색('구분' 텍스트 기준)을 도입.
+   - Pandas의 빈 행/빈 열 Drop 동작으로 인한 Row/Col 인덱스 시프팅 현상을 방어하여 프론트엔드로 정확한 좌표계를 전달.
+2. **[FIX] 드라이버 앱 운행 시작 API의 ID 누락 에러 고도화 방어**:
+   - `route.js`의 `supabase.auth.getUser()`가 세션 만료 시 Crash를 일으켜 Server 500 HTML 에러를 내뿜던 치명적 위치 이탈(Try-Catch 바깥쪽) 버그 수정.
+   - `trip.js` `smartFetch`에서 예외 페이로드 덤프 기능을 추가하여 원인 규명 및 복구 완료 (앱 구동 정상화).
+3. **[DEPLOY] Driver APK v4.9.18 배포**:
+   - 드라이버 앱 로직 강화 및 핫픽스를 포함한 안드로이드 APK 동기화.
+
+---
+
 ## 📅 2026-04-18 (v4.9.71 — Master Integration & APK Deployment)
 ### 🚀 Phase 5: NAS 통합 인트라넷 AI 검색 엔진 및 최종 안정화 (Omni-Agent Final)
 1. **[FEAT] NAS 백엔드 문서 고도화 (Python Crawler)**:

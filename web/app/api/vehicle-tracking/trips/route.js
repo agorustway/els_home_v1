@@ -212,9 +212,9 @@ export async function GET(request) {
  */
 export async function POST(request) {
     const supabase = await createAdminClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     try {
+        const { data: { user } } = await supabase.auth.getUser();
         const body = await request.json();
         let {
             driver_name,

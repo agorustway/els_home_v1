@@ -1,12 +1,12 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=4917';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4917';
+import { Store, State, BASE_URL } from './store.js?v=4918';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4918';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=4917';
+} from './gps.js?v=4918';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -216,7 +216,7 @@ export async function startTrip() {
     if (!res.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
 
     const finalId = data.id || (data.trip && data.trip.id) || (Array.isArray(data) && data[0]?.id);
-    if (!finalId) throw new Error('ID 누락 (서버에서 기록 아이디를 받지 못함)');
+    if (!finalId) throw new Error(`ID 누락 (서버 응답: ${JSON.stringify(data)})`);
 
     State.trip.id        = finalId;
     State.trip.status    = 'driving';
