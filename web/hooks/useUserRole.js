@@ -18,7 +18,9 @@ export function useUserRole() {
 
                 if (userError || !authUser) {
                     console.log('useUserRole: No user found');
-                    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
+                    // Vercel 환경 변수 오류 방지를 위해 쿠키도 함께 체크
+                    const hasDebugCookie = typeof document !== 'undefined' && document.cookie.includes('__debug_mode=true');
+                    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || hasDebugCookie) {
                         console.log('useUserRole: Debug mode active, granting admin role');
                         setRole('admin');
                         setUser({ email: 'debug_admin@nollae.com', user_metadata: { name: '디버그관리자' } });

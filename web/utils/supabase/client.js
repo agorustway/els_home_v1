@@ -6,7 +6,8 @@ export function createClient() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     )
 
-    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
+    const hasDebugCookie = typeof document !== 'undefined' && document.cookie.includes('__debug_mode=true');
+    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || hasDebugCookie) {
         const originalGetUser = client.auth.getUser.bind(client.auth);
         client.auth.getUser = async (token) => {
             const result = await originalGetUser(token);

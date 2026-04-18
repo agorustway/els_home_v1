@@ -56,11 +56,21 @@ export async function middleware(request) {
         }
     )
 
-    const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || process.env.DEBUG_MODE === 'true';
-
     // getSession(): 쿠키 기반으로 빠르게 확인
     const { data: { session } } = await supabase.auth.getSession();
     let user = session?.user;
+
+    // URL 쿼리에 ?debug=true 가 있으면 쿠키에 심음
+    let isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || process.env.DEBUG_MODE === 'true';
+    if (request.nextUrl.searchParams.get('debug') === 'true' || request.cookies.get('__debug_mode')?.value === 'true') {
+        isDebugMode = true;
+        // API 응답 객체에 쿠키를 심어줌 (브라우저에서 계속 유지되도록)
+        supabaseResponse.cookies.set('__debug_mode', 'true', { path: '/', maxAge: 60 * 60 * 24 * 7 }); // 7일 유지
+    }
+    if (request.nextUrl.searchParams.get('debug') === 'false') {
+        isDebugMode = false;
+        supabaseResponse.cookies.delete('__debug_mode');
+    }
 
     let userRole = 'visitor';
     if (user) {
