@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.72` | **Phase 5 (NAS) + Android v4.9.18 Complete** |
-| **상태** | 🟢 배포 완료 (Vercel/NAS) | 배차판 메모 복구 및 앱 운행시작 ID 에러 해결 |
+| **현재 버전** | `v4.9.80` | **Phase 5 (NAS Vectorization) Complete** |
+| **상태** | 🟢 Phase 5 완료 (Omni-Agent 로직 100%) | Vercel 번들링/AI 세션복구/NAS 크롤러 통합 완료 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** Vercel 미들웨어 최적화 (data/ 경로 우회 - self-fetch 정상화)
@@ -14,7 +14,7 @@
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.18` (Driver APK 배포 완료)
+- **Current Build**: `v4.9.80` (Driver APK 배포 완료)
 - **APK URL**: `https://nollae.com/apk/els_driver.apk`
 - **Repo**: main 브랜치 배포 완료
 
@@ -54,10 +54,10 @@ npx cap sync   ← 단독 실행 금지
 - **성공 항목**: 경유가 연동 ✅, 개정 사이클 ✅, SRT/KTX 안내 ✅
 
 ### ❌ 잔여 과제
-- [ ] **안전운임 요율 미표시** — Vercel에서 35MB JSON 번들 확인 필요
-- [ ] **pgvector 시맨틱 검색 route.js 연동** — match_documents() RPC 호출 코드 작성
-- [ ] **NAS 문서 크롤러** — Docker 백엔드에서 엑셀/PDF 파싱 파이프라인
-- [ ] **사용자별 접근 권한 분리** — 추후 구축 예정
+- [x] **안전운임 요율 미표시** — Webpack `require()` 번들링으로 100% 로딩 보장 ✅
+- [x] **pgvector 시맨틱 검색 route.js 연동** — `match_documents()` RPC 연동 완료 ✅
+- [x] **NAS 문서 크롤러** — Docker volume1/2 마운트 및 `/api/vectorize/nas` 가동 ✅
+- [ ] **사용자별 접근 권한 분리** — 차기 마이그레이션 단계에서 진행 예정 (계정 이치)
 
 ---
 
