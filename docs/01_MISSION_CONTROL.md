@@ -2,7 +2,7 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.66` | **Complete Stabilization** |
+| **현재 버전** | `v4.9.68` | **Complete Stabilization** |
 | **상태** | 🟢 배포 완료 (Vercel) | 대화저장, KBO 폴백, 파싱시간 정상화 |
 
 ## 🎯 현재 목표: Omni-Agent 안정화 및 고도화

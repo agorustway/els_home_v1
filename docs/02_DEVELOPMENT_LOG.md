@@ -1,4 +1,4 @@
-## 📅 2026-04-18 (v4.9.66 — Complete Stabilization)
+## 📅 2026-04-18 (v4.9.68 — Complete Stabilization)
 ### 🚀 2차 Hotfix: 대화 기록 완전 복구 및 API/미들웨어 안정화
 1. **[FIX] 대화 히스토리 RLS (Row Level Security) 권한 우회**:
    - `ai_chat_memory` 테이블의 RLS 정책으로 인해 일반 `createClient()` (anon key)로는 저장이 불가능했던 원인(사용자 인증 쿠키 릴레이 누락 등) 파악.
@@ -7,6 +7,11 @@
    - `web/middleware.js` 의 matcher 설정에서 `data/` 경로와 `.json`을 제외시켜, 서버사이드에서 `self-fetch` 시 불필요한 인증 리다이렉트나 차단이 발생하지 않도록 조치 (안전운임 로드 완전 정상화).
 3. **[FEAT] 네이버 스포츠(KBO/K리그) API 스마트 폴백 링크**:
    - Vercel IP 등으로 인해 네이버 스포츠 API(`api-gw.sports.naver.com`) 직접 호출이 차단되거나 비정상 응답이 올 경우, 단순 실패 메시지 대신 **해당 날짜가 포함된 네이버 스포츠 실시간 스코어보드 딥링크**를 제공하도록 예외 처리.
+4. **[FIX] 대화 기록 저장/불러오기 getUser() -> getSession() 오류 해결**:
+   - Next.js 서버리스 API 라우트 환경에서 `supabase.auth.getUser()`가 간헐적으로 쿠키를 파싱하지 못하거나 네트워크 딜레이로 인증 객체를 소실하여 사용자 DB(ai_chat_memory)와 매칭에 실패하는 문제 확인.
+   - 더 가볍고 확실하게 쿠키 내 세션을 확인하는 `getSession()`으로 전면 교체하여 데이터 영구 저장/불러오기 완전 복구.
+5. **[FEAT] NAS 자료실 검색 한계 인식 및 양해 모드**:
+   - AI가 사내 시스템 전반에 접근한다고 인식하면서도 NAS 자료 검색 기능(Phase 5 예정)의 부재 시 혼란을 방지하도록 시스템 프롬프트(행동 강령 9번)에 확실한 가이드라인 추가.
 
 ---
 
