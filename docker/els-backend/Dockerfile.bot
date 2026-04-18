@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 2. 소스 코드 소포 (Bot 전용)
 COPY elsbot/ /app/elsbot/
+COPY docker/els-backend/nas_vectorizer.py /app/nas_vectorizer.py
 COPY docker/els-backend/app_bot.py /app/app.py
 
 EXPOSE 2931

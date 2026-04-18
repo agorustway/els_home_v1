@@ -12,6 +12,7 @@ COPY docker/els-backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 2. 소스 코드 (Core 전용)
+COPY docker/els-backend/nas_vectorizer.py /app/nas_vectorizer.py
 COPY docker/els-backend/app_core.py /app/app.py
 
 EXPOSE 2930
