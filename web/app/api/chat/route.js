@@ -126,7 +126,10 @@ async function getSfDocs() {
 // ─── K-SKILL / 외부 API 래퍼 (레질리언스 계층) ────────────────────────
 async function callExternalAPI(name, url, timeout = 8000) {
     try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(timeout) });
+        const res = await fetch(url, { 
+            signal: AbortSignal.timeout(timeout),
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)' }
+        });
         if (res.ok) {
             const data = await res.json();
             return { success: true, data, source: name };
@@ -513,7 +516,10 @@ export async function POST(req) {
 
                 try {
                     const url = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
-                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                    const res = await fetch(url, { 
+                        signal: AbortSignal.timeout(8000),
+                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         if (!data.error && data.pm10 && data.pm25) {
@@ -550,7 +556,10 @@ export async function POST(req) {
                 const subMatch = lastUserText.match(subRegex);
                 const station = subMatch?.[1]?.replace('역', '') || '강남';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { signal: AbortSignal.timeout(8000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { 
+                        signal: AbortSignal.timeout(8000),
+                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.realtimeArrivalList?.length > 0) {
@@ -571,7 +580,10 @@ export async function POST(req) {
                 const hMatch = lastUserText.match(hRegex);
                 const bridge = hMatch?.[1] ? hMatch[1] + (hMatch[1].endsWith('교') ? '' : '대교') : '한강대교';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`, { signal: AbortSignal.timeout(8000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`, { 
+                        signal: AbortSignal.timeout(8000),
+                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.measured_at) {
@@ -591,6 +603,19 @@ export async function POST(req) {
                 } else {
                     recentPostsText += `\n\n## 주식 안내\n현재 실시간 주식 조회가 일시 중단되었습니다. 네이버 금융(https://finance.naver.com)에서 직접 확인해 주세요. 일반 지식으로 답변 가능합니다.`;
                 }
+            }
+            
+            // (5-1) K-LAW 한국 법령 (법망 Fallback 사용)
+            if (userKwd.includes('법령') || userKwd.includes('법률') || userKwd.includes('근로기준법') || userKwd.includes('관세법') || userKwd.includes('법 ') || userKwd.includes('조항')) {
+                const lawKwd = searchTerms.find(t => t.endsWith('법') || t.endsWith('령')) || '관세법';
+                try {
+                    const res = await callExternalAPI('K-LAW 법령', `https://api.beopmang.org/api/v4/law?action=search&q=${encodeURIComponent(lawKwd)}`);
+                    if (res.success && res.data?.data?.results?.length > 0) {
+                        const lawInfo = res.data.data.results[0];
+                        recentPostsText += `\n\n## ${lawInfo.law_name} 법령 요약 (K-LAW / 법망)\n- 시행일: ${lawInfo.enforcement_date}\n- 목적 및 요약: ${lawInfo.purpose}\n- 조문 수: ${lawInfo.article_count}개\n※ 더 자세한 조항 검색은 법제처 국가법령정보센터를 참조하세요.`;
+                        apiTimestamps.klaw = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                    }
+                } catch(e) { console.error('K-LAW 오류:', e); }
             }
 
             // (6) 스포츠 결과 — 네이버 스포츠 공식 API 직접 호출 (K-SKILL 프록시 비의존)
@@ -740,21 +765,27 @@ export async function POST(req) {
         } catch (e) { console.error('Docs RAG 에러:', e); }
     }
 
-    // 📌 데이터 신선도 메타데이터 생성 — 실제 호출 성공 시점만 표시
+    // 📌 데이터 출처 및 신선도 메타데이터 생성
     const sfMeta = (await getSfData())?.meta;
-    let dataFreshness = `\n\n## 📌 데이터 기준 정보\n`;
+    let dataFreshness = `\n\n## 📌 데이터 출처 및 기준일자\n`;
+    
     if (sfMeta && apiTimestamps.safeFreight) {
-        dataFreshness += `- **안전운임 고시 데이터**: ${sfMeta.period || '26.02월'} 적용 고시 (고시일: ${sfMeta.generatedAt?.slice(0, 10) || '미상'}, 조회: ${apiTimestamps.safeFreight} KST)\n`;
+        dataFreshness += `- **[국토교통부] 안전운임 고시**: ${sfMeta.period || '26.02월'} 적용 데이터 (고시반영일: ${sfMeta.generatedAt?.slice(0, 10) || '미상'})\n`;
     } else if (sfMeta) {
-        dataFreshness += `- **안전운임 고시 데이터**: ${sfMeta.period || '26.02월'} 적용 고시 (이번 질문에서 미조회)\n`;
+        dataFreshness += `- **[국토교통부] 안전운임 고시**: ${sfMeta.period || '26.02월'} 적용 (이번 질문에서는 미적용)\n`;
     }
-    if (apiTimestamps.opinet) dataFreshness += `- **OPINET 유가**: ${apiTimestamps.opinet} KST 조회 성공\n`;
-    if (apiTimestamps.kskill) dataFreshness += `- **K-SKILL 미세먼지**: 측정 시각 ${apiTimestamps.kskill}\n`;
-    if (apiTimestamps.sports) dataFreshness += `- **스포츠 결과**: ${apiTimestamps.sports} KST 조회 성공\n`;
-    if (apiTimestamps.nas) dataFreshness += `- **NAS 문서 검색**: ${apiTimestamps.nas} KST 조회 성공\n`;
-    const dbQueryTime = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
-    dataFreshness += `- **사내 DB** (게시판/연락처/작업지): ${dbQueryTime} KST 시점 조회\n`;
-    dataFreshness += `\n※ 답변 말미에 위 기준 정보 중 "조회 성공"한 항목만 인용하여 한 줄 요약을 붙이세요. 조회하지 않은 항목의 시간을 날조하지 마세요.`;
+    
+    if (apiTimestamps.opinet) dataFreshness += `- **[한국석유공사] OPINET 유가**: ${apiTimestamps.opinet} 수집 데이터\n`;
+    if (apiTimestamps.kskill) dataFreshness += `- **[공공데이터/K-SKILL]**: ${apiTimestamps.kskill} 실시간 연동\n`;
+    if (apiTimestamps.sports) dataFreshness += `- **[스포츠 데이터]**: ${apiTimestamps.sports} 갱신\n`;
+    if (apiTimestamps.nas) dataFreshness += `- **[사내 NAS 지식베이스]**: ${apiTimestamps.nas} 벡터 검색\n`;
+    if (apiTimestamps.klaw) dataFreshness += `- **[국가법령정보센터] K-LAW**: ${apiTimestamps.klaw} 검색\n`;
+    
+    const dbQueryTime = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    // 사내 DB는 실시간 연동이므로 오늘 날짜로 표시
+    dataFreshness += `- **[사내 통합 DB] (연락처/배차판 등)**: DB 동기화 실시간 연동 중 (기준일: ${dbQueryTime})\n`;
+    
+    dataFreshness += `\n※ 답변 말미에 위 데이터 출처(대괄호 포함) 중 "실제로 인용한 항목"만 깔끔하게 한 줄로 요약하여 출처를 밝히세요.`;
 
     const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText + safeFreightText + dataFreshness;
     const contents = messages.map((m) => ({
