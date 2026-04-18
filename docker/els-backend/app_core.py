@@ -177,8 +177,8 @@ def nas_sync_scheduler():
                 for target in scan_targets:
                     if not supabase: break
                     try:
-                        # asyncio.run을 사용하여 동기 함수처럼 호출
-                        res = asyncio.run(process_nas_directory(supabase, target["path"], target["branch"]))
+                        # 동기 함수로 직접 호출
+                        res = process_nas_directory(supabase, target["path"], target["branch"])
                         app.logger.info(f"✅ {target['branch']} 동기화 완료: {res}")
                     except Exception as e:
                         app.logger.error(f"❌ {target['branch']} 동기화 실패: {e}")
@@ -324,8 +324,6 @@ def handle_nas_files():
     return send_file(str(Path("/app/data") / rel.strip("/")), as_attachment=True)
 
 from nas_vectorizer import process_nas_directory
-import asyncio
-
 @app.route('/api/vectorize/nas', methods=['POST'])
 def trigger_nas_vectorize():
     """Trigger NAS folder crawling and vectorization (Phase 5)."""
@@ -336,10 +334,17 @@ def trigger_nas_vectorize():
     raw_dir = data.get("directory", "/app/data/work-docs")  # Update path to /app/data which is mounted
     branch_name = data.get("branch", "NAS자료")
     
-    # Run async function in sync route
-    result = asyncio.run(process_nas_directory(supabase, raw_dir, branch_name))
+    # 백그라운드 쓰레드로 실행하여 HTTP 타임아웃(curl hang) 방지
+    def run_task():
+        try:
+            res = process_nas_directory(supabase, raw_dir, branch_name)
+            app.logger.info(f"✅ [API Trigger] {branch_name} 동기화 완료: {res}")
+        except Exception as e:
+            app.logger.error(f"❌ [API Trigger] {branch_name} 동기화 실패: {e}")
+
+    threading.Thread(target=run_task, daemon=True).start()
     
-    return jsonify(result)
+    return jsonify({"status": "processing", "message": f"Started vectorization for {branch_name} in background."}), 202
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=2930, threaded=True)

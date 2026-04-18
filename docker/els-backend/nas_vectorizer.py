@@ -67,7 +67,7 @@ def chunk_text(text, max_len=MAX_CHUNK_SIZE, overlap=CHUNK_OVERLAP):
         start += (max_len - overlap)
     return chunks
 
-async def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
+def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         logger.error("GEMINI_API_KEY is not set.")
@@ -110,7 +110,7 @@ async def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             if res.data and len(res.data) > 0:
                 row = res.data[0]
                 if row.get("content_hash") == current_hash and row.get("is_indexed"):
-                    logger.info(f"Skipping unmodified file: {filename}")
+                    # logger.info(f"Skipping unmodified file: {filename}") - 생략해서 로그 깔끔하게
                     skipped += 1
                     continue
         except Exception as e:
@@ -200,8 +200,13 @@ async def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             else:
                 supabase.table("nas_file_index").insert(index_data).execute()
             processed += 1
+            
+            # 진행률 로깅 (너무 많은 로그 방지를 위해 10개마다 출력)
+            if processed % 10 == 0:
+                logger.info(f"[{branch_name}] Progress: {processed} files processed, {skipped} skipped, {error_cnt} errors so far.")
         except Exception as e:
             logger.error(f"Index update failed for {filename}: {e}")
             error_cnt += 1
 
+    logger.info(f"🎉 [{branch_name}] Extraction Finished! Result: {processed} processed, {skipped} skipped, {error_cnt} errors.")
     return {"processed": processed, "skipped": skipped, "errors": error_cnt}
