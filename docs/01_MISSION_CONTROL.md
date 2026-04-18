@@ -1,12 +1,18 @@
-# 🚩 MISSION CONTROL (v4.9.64)
-> **최근 업데이트**: 2026-04-18 | **상태**: 🚀 Omni-Agent Phase 1~4 완료, 안전운임 RAG 수정 중
+# 🛰️ MISSION CONTROL (2026-04-18)
 
-## 🎯 현재 목표
-1. **Omni-Agent 구축**: AI 에이전트를 전사 읽기 최고권한 비서로 전환 (Phase 1~4 완료)
-2. **안전운임 RAG 안정화**: Vercel standalone 빌드에서 35MB JSON 번들 이슈 해결 중 (v4.9.64)
+| 항목 | 내용 | 비고 |
+| :--- | :--- | :--- |
+| **현재 버전** | `v4.9.65` | **Stabilized (Critical Hotfixes)** |
+| **상태** | 🟢 배포 완료 (Vercel) | 데이터 로드 & 세션 저장 정상 |
+
+## 🎯 현재 목표: Omni-Agent 안정화 및 고도화
+1.  **[DONE]** Vercel 서버리스 환경 데이터 번들링 이슈 해결 (Self-fetch 전환)
+2.  **[DONE]** 대화 히스토리 영구 저장 로직 복구 (Supabase Sync FIX)
+3.  **[PROG]** pgvector 시맨틱 검색 파이프라인 통합 (Phase 2 확장)
+4.  **[TODO]** NAS 문서 크롤러 및 벡터화 (Phase 5)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.64` (require()로 SF JSON 로드 전환)
+- **Current Build**: `v4.9.65` (require()로 SF JSON 로드 전환)
 - **APK**: `web/public/apk/els_driver.apk` (버전 유지)
 - **Repo**: main 브랜치 배포 완료
 

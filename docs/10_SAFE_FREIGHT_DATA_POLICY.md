@@ -52,8 +52,8 @@ AI 어시스턴트(Gemini)가 고시 내용을 정확하게 파악하고 답변/
    ```
 
 ### 3.3. AI 어시스턴트(api/chat) 데이터 주입
-- **RAG 컨텍스트 주입**: `/api/chat/route.js`는 `safe-freight-docs.json`을 읽어들여, 시스템 프롬프트에 자동으로 합본합니다 (최신 기준 2개 차수).
-- **단가표 주입**: `safe-freight.json`을 `require()`로 로드하여 구간별 운임 단가를 실시간 주입. 이력 비교 엔진(`buildFareHistory`).
+- **RAG 컨텍스트 주입**: `/api/chat/route.js`는 `safe-freight-docs.json`을 `public/data/`에서 self-fetch하여 시스템 프롬프트에 자동으로 합본합니다 (최신 기준 2개 차수).
+- **단가표 주입**: `safe-freight.json`을 self-fetch로 로드하여 구간별 운임 단가를 실시간 주입. 이력 비교 엔진(`buildFareHistory`).
 - **할증 계산 엔진**: 냉동(+30%), 공휴일(+20%) 등 할증을 서버에서 미리 계산하여 AI에 결과만 전달 (`calcSurcharge`).
 - **작동 원리**: "새 고시에서 플렉시백 할증이 달라졌어?" 같이 쿼리가 인입되면, AI는 내부 RAG 메모리에 적재된 차수별 원문을 읽고 비교/가이드 합니다.
 

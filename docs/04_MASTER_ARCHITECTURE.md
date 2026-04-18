@@ -158,7 +158,7 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
         +-- STEP 2: 조건부 RAG (키워드 트리거)
         |       +-- '차량/위치/어디'    → Supabase vehicle_trips + vehicle_locations JOIN
         |       +-- 컨테이너번호 패턴   → NAS Backend 실시간 이력조회
-        |       +-- 안전운임 키워드     → require()로 safe-freight.json 로드 (35MB, 모듈캐시)
+        |       +-- 안전운임 키워드     → public/data/ 로 배치 후 self-fetch (35MB JSON)
         |       |       +-- (A) 최신 단가표 주입 (상위 8구간 스코어링)
         |       |       +-- (B) 이력 비교표 (buildFareHistory, 6개 기간)
         |       |       +-- (C) 할증 서버 계산 (calcSurcharge, 냉동/공휴일 등)
@@ -187,7 +187,7 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 | **Omni-RAG (항상)** | Supabase PostgreSQL | 모든 질문 키워드 병렬 스캔 | 연락처(사내/외부), 게시글/업무일지 본문, 작업지 주소 |
 | **차량 위치** | Supabase vehicle_trips/locations | 차량, 위치, 어디 | 실시간 GPS 위치/주소 |
 | **컨테이너** | NAS Backend API | 영문4+숫자7 패턴 | 반입/반출 이력 |
-| **안전운임 단가** | safe-freight.json (35MB, require()로 번들) | 지역명 키워드 스코어링 | 구간별 운임 단가 + 이력비교표 + 할증계산 |
+| **안전운임 단가** | safe-freight.json (public/data/ 배치, self-fetch) | 지역명 키워드 스코어링 | 구간별 운임 단가 + 이력비교표 + 할증계산 |
 | **안전운임 고시** | safe-freight-docs.json (PDF 변환) | 항상 주입 (최신 2차수) | 고시 전문 텍스트 |
 | **K-SKILL/미세먼지** | callExternalAPI() → k-skill-proxy | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
 | **OPINET 유가** | callExternalAPI() → /api/opinet/fuel-price | 경유, 유가, 기름값 | 전국 경유/휘발유 평균가, 주간변동 |
@@ -258,4 +258,4 @@ BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
 5. **K-SKILL/K-Law 가용성**: 외부 프록시 서버 의존. 네트워크 단절 시 AI는 fallback(사내 DB only)으로 동작.
 
 ---
-*최종 갱신일: 2026-04-18 (by Antigravity/Claude | v4.9.64 Omni-Agent)*
+*최종 갱신일: 2026-04-18 (by Antigravity/Gemini | v4.9.65 Omni-Agent Stabilized)*

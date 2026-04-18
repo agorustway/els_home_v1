@@ -1,4 +1,18 @@
-## 📅 2026-04-18 (v4.9.60~64 — Omni-Agent Freight Intelligence Phase 1~4)
+## 📅 2026-04-18 (v4.9.65 — Critical Bug Fixes & Stabilization)
+### 🚀 Hotfix: 대화 기록 유실 및 데이터 로딩 이슈 해결
+1. **[FIX] 대화 히스토리 영구 저장 로직 복구**:
+   - `web/app/api/chat/memory/route.js` 내의 `createClient()` 호출 시 `await`가 누락되어 비동기 처리가 정상적으로 이루어지지 않던 치명적 버그 수정.
+   - 페이지 이동 시에도 Supabase에 대화 내용이 정상적으로 `upsert`되도록 보장.
+2. **[FIX] 안전운임 데이터 로딩 전략 변경 (Self-fetch)**:
+   - `require()` 및 `fs.readFileSync` 방식이 Vercel 서버리스 번들링 환경에서 파일 누락을 야기함을 확인.
+   - `web/public/data/`에 JSON 배치 후 서버사이드에서 HTTP Fetch로 데이터를 불러오는 방식으로 전환하여 100% 로딩 성공 보장.
+3. **[FEAT] AI 가이드 패널(설명서) 최신화**:
+   - OPINET 실시간 유가, 할증 자동 계산, 분기별 개정 사이클 등 Phase 1~4에서 추가된 주요 기능을 지침서에 반영.
+   - 빠른 질문(QUICK_PROMPTS)을 실용적인 예시(운임 조회, 경유가 등)로 교체.
+4. **[FIX] 데이터 신선도 타임스탬프 로직 개선**:
+   - 단순 현재 시각 표시가 아닌, 실제 JSON 데이터 로드 완료 시점 및 로드 성공 여부를 표시하도록 변경.
+
+---
 ### 🚀 Phase 1: 안전운임 Deep Knowledge Engine (v4.9.60)
 1. **[FEAT] 시스템 프롬프트 전면 재설계 — "읽기 최고권한 Omni-Agent"**:
    - `route.js`의 `BASE_SYSTEM_INSTRUCTION`을 전면 개편. AI가 사내 DB·NAS·외부 API에 대한 최고 읽기 권한을 인지하고, "조회 페이지에서 확인하세요"식 거절을 근본 차단.
