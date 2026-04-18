@@ -1,4 +1,16 @@
-## 📅 2026-04-18 (v4.9.68 — Complete Stabilization)
+## 📅 2026-04-18 (v4.9.69 — Phase 5: NAS Vector Search Complete)
+### 🚀 Phase 5: NAS 통합 인트라넷 AI 검색 엔진 구축
+1. **[FEAT] NAS 백엔드 문서 고도화 (Python Crawler)**:
+   - `docker/els-backend/nas_vectorizer.py` 신규 작성 및 `/api/vectorize/nas` 백엔드 엔드포인트 개통.
+   - NAS 환경에 적재된 `.pdf`, `.docx`, `.xlsx` 파일의 텍스트를 파싱하고 Google Gemini API(`text-embedding-004`)를 이용해 800자 단위 백터 청크 생성 파이프라인 완성.
+2. **[FEAT] AI 에이전트 RAG 시맨틱 검색 연동**:
+   - `web/app/api/chat/route.js`의 `isNasQuery` 파이프라인에서 직통으로 사용자의 자연어 쿼리를 임베딩.
+   - Supabase `match_documents` RPC를 통해 `nas_file` 인덱스와 비교하여 >0.65 유사도의 문서를 상위 4개까지 반환받아 문맥 정보(Context)로 주입.
+3. **[REFACTOR] 시스템 프롬프트 한계 인식 해제**:
+   - 더 이상 "NAS 검색 기능 한계"를 핑계대지 않도록 프롬프트(행동 강령 9번)를 적극적인 "문서 요약 보고 모드"로 변경.
+
+---
+
 ### 🚀 2차 Hotfix: 대화 기록 완전 복구 및 API/미들웨어 안정화
 1. **[FIX] 대화 히스토리 RLS (Row Level Security) 권한 우회**:
    - `ai_chat_memory` 테이블의 RLS 정책으로 인해 일반 `createClient()` (anon key)로는 저장이 불가능했던 원인(사용자 인증 쿠키 릴레이 누락 등) 파악.
