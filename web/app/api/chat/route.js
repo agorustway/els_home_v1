@@ -14,48 +14,73 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
 
 async function getSfData() {
     if (_sfDataCache) return _sfDataCache;
+
+    // 1차: fs.readFileSync (가장 빠르고 메모리를 덜 먹음, 빌드 크기에 영향 없음)
+    // Vercel 환경에서는 outputFileTracingIncludes에 의해 해당 경로에 복사될 확률이 높음.
+    const tryPaths = [
+        path.join(process.cwd(), 'public', 'data', 'safe-freight.json'),
+        path.join(process.cwd(), 'data', 'safe-freight.json')
+    ];
+    
+    for (const p of tryPaths) {
+        if (fs.existsSync(p)) {
+            try {
+                const raw = fs.readFileSync(p, 'utf8');
+                _sfDataCache = JSON.parse(raw);
+                _sfLoadedAt = new Date().toISOString();
+                console.log(`[ELS-AI] ✅ safe-freight.json fs 로드 성공 (${p})`);
+                return _sfDataCache;
+            } catch (e) {
+                console.warn(`[ELS-AI] fs 로드 파싱 에러 (${p}):`, e.message);
+            }
+        }
+    }
+
+    // 2차: 네트워크 Fetch (fs 실패 시 폴백)
     try {
-        // 1차: self-fetch (Vercel 서버리스에서 가장 안정적)
-        const url = `${SITE_URL}/data/safe-freight.json`;
-        const res = await fetch(url, { cache: 'force-cache', signal: AbortSignal.timeout(3000) });
+        const fallBackUrl = `${SITE_URL}/data/safe-freight.json`;
+        console.log(`[ELS-AI] fs 로드 실패, 네트워크 Fetch 시도: ${fallBackUrl}`);
+        // JSON 파싱 시간이 있으므로 타임아웃 넉넉하게 6초로 설정
+        const res = await fetch(fallBackUrl, { cache: 'force-cache', signal: AbortSignal.timeout(6000) });
         if (res.ok) {
             _sfDataCache = await res.json();
             _sfLoadedAt = new Date().toISOString();
-            console.log(`[ELS-AI] ✅ safe-freight.json fetch 로드 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+            console.log(`[ELS-AI] ✅ safe-freight.json 네트워크 로드 성공`);
             return _sfDataCache;
         }
-    } catch (e1) {
-        console.error(`[ELS-AI] fetch 실패:`, e1.message);
+    } catch (e) {
+        console.error(`[ELS-AI] ❌ safe-freight.json 최종 로드 실패:`, e.message);
     }
-    try {
-        // 2차: fs 폴백 (로컬 개발 환경)
-        const p = path.join(process.cwd(), 'data', 'safe-freight.json');
-        if (fs.existsSync(p)) {
-            _sfDataCache = JSON.parse(fs.readFileSync(p, 'utf8'));
-            _sfLoadedAt = new Date().toISOString();
-            console.log(`[ELS-AI] ✅ safe-freight.json fs 폴백 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
-        } else {
-            // 3차: public/data 폴백
-            const p2 = path.join(process.cwd(), 'public', 'data', 'safe-freight.json');
-            if (fs.existsSync(p2)) {
-                _sfDataCache = JSON.parse(fs.readFileSync(p2, 'utf8'));
-                _sfLoadedAt = new Date().toISOString();
-                console.log(`[ELS-AI] ✅ safe-freight.json public 폴백 로드`);
-            } else {
-                console.error(`[ELS-AI] ❌ safe-freight.json 모든 경로 실패`);
-            }
-        }
-    } catch (e2) {
-        console.error(`[ELS-AI] ❌ safe-freight.json 로드 실패:`, e2.message);
-    }
+    
     return _sfDataCache;
 }
 
 async function getSfDocs() {
     if (_sfDocsCache) return _sfDocsCache;
+
+    const tryPaths = [
+        path.join(process.cwd(), 'public', 'data', 'safe-freight-docs.json'),
+        path.join(process.cwd(), 'data', 'safe-freight-docs.json')
+    ];
+    
+    for (const p of tryPaths) {
+        if (fs.existsSync(p)) {
+            try {
+                const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+                if (Array.isArray(raw)) {
+                    raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
+                    _sfDocsCache = raw;
+                    return _sfDocsCache;
+                }
+            } catch (e) {
+                console.warn(`[ELS-AI] sfDocs fs 로드 실패 (${p}):`, e.message);
+            }
+        }
+    }
+
     try {
-        const url = `${SITE_URL}/data/safe-freight-docs.json`;
-        const res = await fetch(url, { cache: 'force-cache', signal: AbortSignal.timeout(3000) });
+        const fallBackUrl = `${SITE_URL}/data/safe-freight-docs.json`;
+        const res = await fetch(fallBackUrl, { cache: 'force-cache', signal: AbortSignal.timeout(6000) });
         if (res.ok) {
             const raw = await res.json();
             if (Array.isArray(raw)) {
