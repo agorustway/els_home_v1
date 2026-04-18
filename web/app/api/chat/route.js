@@ -15,41 +15,15 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
 async function getSfData() {
     if (_sfDataCache) return _sfDataCache;
 
-    // 1차: fs.readFileSync (가장 빠르고 메모리를 덜 먹음, 빌드 크기에 영향 없음)
-    // Vercel 환경에서는 outputFileTracingIncludes에 의해 해당 경로에 복사될 확률이 높음.
-    const tryPaths = [
-        path.join(process.cwd(), 'public', 'data', 'safe-freight.json'),
-        path.join(process.cwd(), 'data', 'safe-freight.json')
-    ];
-    
-    for (const p of tryPaths) {
-        if (fs.existsSync(p)) {
-            try {
-                const raw = fs.readFileSync(p, 'utf8');
-                _sfDataCache = JSON.parse(raw);
-                _sfLoadedAt = new Date().toISOString();
-                console.log(`[ELS-AI] ✅ safe-freight.json fs 로드 성공 (${p})`);
-                return _sfDataCache;
-            } catch (e) {
-                console.warn(`[ELS-AI] fs 로드 파싱 에러 (${p}):`, e.message);
-            }
-        }
-    }
-
-    // 2차: 네트워크 Fetch (fs 실패 시 폴백)
     try {
-        const fallBackUrl = `${SITE_URL}/data/safe-freight.json`;
-        console.log(`[ELS-AI] fs 로드 실패, 네트워크 Fetch 시도: ${fallBackUrl}`);
-        // JSON 파싱 시간이 있으므로 타임아웃 넉넉하게 6초로 설정
-        const res = await fetch(fallBackUrl, { cache: 'force-cache', signal: AbortSignal.timeout(6000) });
-        if (res.ok) {
-            _sfDataCache = await res.json();
-            _sfLoadedAt = new Date().toISOString();
-            console.log(`[ELS-AI] ✅ safe-freight.json 네트워크 로드 성공`);
-            return _sfDataCache;
-        }
+        // [v4.9.64] Vercel 서버리스 파일 탐색/타임아웃 이슈 완전 차단: Webpack 모듈로 직접 포함
+        // 빌드 타임에 JSON이 번들링되어 런타임 파일 I/O 및 네트워크 요청 불필요
+        _sfDataCache = require('@/public/data/safe-freight.json');
+        _sfLoadedAt = new Date().toISOString();
+        console.log(`[ELS-AI] ✅ safe-freight.json Webpack 번들 로드 성공 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+        return _sfDataCache;
     } catch (e) {
-        console.error(`[ELS-AI] ❌ safe-freight.json 최종 로드 실패:`, e.message);
+        console.error(`[ELS-AI] ❌ safe-freight.json Webpack 번들 로드 실패:`, e.message);
     }
     
     return _sfDataCache;
@@ -58,50 +32,22 @@ async function getSfData() {
 async function getSfDocs() {
     if (_sfDocsCache) return _sfDocsCache;
 
-    const tryPaths = [
-        path.join(process.cwd(), 'public', 'data', 'safe-freight-docs.json'),
-        path.join(process.cwd(), 'data', 'safe-freight-docs.json')
-    ];
-    
-    for (const p of tryPaths) {
-        if (fs.existsSync(p)) {
-            try {
-                const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
-                if (Array.isArray(raw)) {
-                    raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
-                    _sfDocsCache = raw;
-                    return _sfDocsCache;
-                }
-            } catch (e) {
-                console.warn(`[ELS-AI] sfDocs fs 로드 실패 (${p}):`, e.message);
-            }
+    try {
+        const raw = require('@/public/data/safe-freight-docs.json');
+        if (Array.isArray(raw)) {
+            raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
+            _sfDocsCache = raw;
+            console.log(`[ELS-AI] ✅ safe-freight-docs.json Webpack 번들 로드 성공`);
+            return _sfDocsCache;
         }
+    } catch (e) {
+        console.error(`[ELS-AI] ❌ safe-freight-docs.json Webpack 번들 로드 실패:`, e.message);
     }
 
-    try {
-        const fallBackUrl = `${SITE_URL}/data/safe-freight-docs.json`;
-        const res = await fetch(fallBackUrl, { cache: 'force-cache', signal: AbortSignal.timeout(6000) });
-        if (res.ok) {
-            const raw = await res.json();
-            if (Array.isArray(raw)) {
-                raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
-                _sfDocsCache = raw;
-                return _sfDocsCache;
-            }
-        }
-    } catch {}
-    try {
-        const p = path.join(process.cwd(), 'data', 'safe-freight-docs.json');
-        if (fs.existsSync(p)) {
-            const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
-            if (Array.isArray(raw)) {
-                raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
-                _sfDocsCache = raw;
-            }
-        }
-    } catch (e) { console.error('[ELS-AI] safe-freight-docs.json 로드 실패:', e.message); }
     return _sfDocsCache;
 }
+
+
 
 // ─── K-SKILL / 외부 API 래퍼 (레질리언스 계층) ────────────────────────
 async function callExternalAPI(name, url, timeout = 8000) {
