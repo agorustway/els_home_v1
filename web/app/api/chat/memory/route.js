@@ -9,7 +9,8 @@ export async function GET(request) {
     try {
         // 사용자 인증은 세션 기반 클라이언트로
         const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,7 +38,8 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -64,14 +66,15 @@ export async function POST(request) {
         return NextResponse.json({ success: true });
     } catch (e) {
         console.error('[/api/chat/memory] POST 에러:', e);
-        return NextResponse.json({ error: '데이터 저장 실패' }, { status: 500 });
+        return NextResponse.json({ error: '데이터 저장 실패', detail: e.message || String(e) }, { status: 500 });
     }
 }
 
 export async function DELETE(request) {
     try {
         const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
