@@ -1,4 +1,15 @@
-## 📅 2026-04-18 (v4.9.65 — Critical Bug Fixes & Stabilization)
+## 📅 2026-04-18 (v4.9.66 — Complete Stabilization)
+### 🚀 2차 Hotfix: 대화 기록 완전 복구 및 API/미들웨어 안정화
+1. **[FIX] 대화 히스토리 RLS (Row Level Security) 권한 우회**:
+   - `ai_chat_memory` 테이블의 RLS 정책으로 인해 일반 `createClient()` (anon key)로는 저장이 불가능했던 원인(사용자 인증 쿠키 릴레이 누락 등) 파악.
+   - `web/app/api/chat/memory/route.js`에서 DB 조작 시 `createAdminClient()` (Service Role)를 사용하여 RLS를 우회하도록 수정. (사용자 인증은 기존과 같이 일반 client로 수행)
+2. **[FIX] Vercel 미들웨어 정적 파일(`public/data/`) 접근 허용**:
+   - `web/middleware.js` 의 matcher 설정에서 `data/` 경로와 `.json`을 제외시켜, 서버사이드에서 `self-fetch` 시 불필요한 인증 리다이렉트나 차단이 발생하지 않도록 조치 (안전운임 로드 완전 정상화).
+3. **[FEAT] 네이버 스포츠(KBO/K리그) API 스마트 폴백 링크**:
+   - Vercel IP 등으로 인해 네이버 스포츠 API(`api-gw.sports.naver.com`) 직접 호출이 차단되거나 비정상 응답이 올 경우, 단순 실패 메시지 대신 **해당 날짜가 포함된 네이버 스포츠 실시간 스코어보드 딥링크**를 제공하도록 예외 처리.
+
+---
+
 ### 🚀 Hotfix: 대화 기록 유실 및 데이터 로딩 이슈 해결
 1. **[FIX] 대화 히스토리 영구 저장 로직 복구**:
    - `web/app/api/chat/memory/route.js` 내의 `createClient()` 호출 시 `await`가 누락되어 비동기 처리가 정상적으로 이루어지지 않던 치명적 버그 수정.

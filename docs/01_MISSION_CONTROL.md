@@ -2,14 +2,15 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.65` | **Stabilized (Critical Hotfixes)** |
-| **상태** | 🟢 배포 완료 (Vercel) | 데이터 로드 & 세션 저장 정상 |
+| **현재 버전** | `v4.9.66` | **Complete Stabilization** |
+| **상태** | 🟢 배포 완료 (Vercel) | 대화저장, KBO 폴백, 파싱시간 정상화 |
 
 ## 🎯 현재 목표: Omni-Agent 안정화 및 고도화
-1.  **[DONE]** Vercel 서버리스 환경 데이터 번들링 이슈 해결 (Self-fetch 전환)
-2.  **[DONE]** 대화 히스토리 영구 저장 로직 복구 (Supabase Sync FIX)
-3.  **[PROG]** pgvector 시맨틱 검색 파이프라인 통합 (Phase 2 확장)
-4.  **[TODO]** NAS 문서 크롤러 및 벡터화 (Phase 5)
+1.  **[DONE]** Vercel 미들웨어 최적화 (data/ 경로 우회 - self-fetch 정상화)
+2.  **[DONE]** 대화 히스토리 RLS 우회 (createAdminClient 도입으로 저장 복구)
+3.  **[DONE]** 실시간 스포츠(KBO/K리그) API 폴백 대응 및 스마트 링크 
+4.  **[PROG]** pgvector 시맨틱 검색 파이프라인 통합 (Phase 2 확장)
+5.  **[TODO]** NAS 문서 크롤러 및 벡터화 (Phase 5)
 
 ## 📦 최신 배포 정보
 - **Current Build**: `v4.9.65` (require()로 SF JSON 로드 전환)
