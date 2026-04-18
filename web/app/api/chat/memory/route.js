@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request) {
     try {
+        // 사용자 인증은 세션 기반 클라이언트로
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -13,7 +15,9 @@ export async function GET(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data, error } = await supabase
+        // 데이터 조회는 admin 클라이언트로 (RLS 우회)
+        const admin = await createAdminClient();
+        const { data, error } = await admin
             .from('ai_chat_memory')
             .select('messages')
             .eq('email', user.email)
@@ -45,7 +49,9 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
         }
 
-        const { error } = await supabase
+        // admin 클라이언트로 upsert (RLS 우회)
+        const admin = await createAdminClient();
+        const { error } = await admin
             .from('ai_chat_memory')
             .upsert({ 
                 email: user.email, 
@@ -71,7 +77,8 @@ export async function DELETE(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { error } = await supabase
+        const admin = await createAdminClient();
+        const { error } = await admin
             .from('ai_chat_memory')
             .delete()
             .eq('email', user.email);

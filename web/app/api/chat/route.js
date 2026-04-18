@@ -528,24 +528,21 @@ export async function POST(req) {
             // (6) 스포츠 결과 — 네이버 스포츠 공식 API 직접 호출 (K-SKILL 프록시 비의존)
             if (userKwd.includes('리그') || userKwd.includes('야구') || userKwd.includes('축구') || userKwd.includes('kbo') || userKwd.includes('결과') || userKwd.includes('경기') || userKwd.includes('k리그')) {
                 try {
-                    const naverHeaders = { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://m.sports.naver.com/' };
-                    // 어제/오늘 날짜 계산 (KST 기준)
+                    const naverHeaders = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://m.sports.naver.com/' };
                     const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
                     const today = kstNow.toISOString().slice(0, 10).replace(/-/g, '');
                     const yesterday = new Date(kstNow - 86400000).toISOString().slice(0, 10).replace(/-/g, '');
-                    // "어제" 키워드가 있으면 어제, 아니면 오늘 기준
                     const targetDate = userKwd.includes('어제') ? yesterday : today;
                     const targetLabel = userKwd.includes('어제') ? '어제' : '오늘';
+                    const dateStr = `${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`;
 
-                    // KBO + K리그 동시 병렬 조회
                     const [kboRes, kleagueRes] = await Promise.all([
-                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
-                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
+                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${dateStr}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
+                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${dateStr}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
                     ]);
 
                     let sportsText = '';
 
-                    // KBO 결과 처리
                     if (kboRes?.ok) {
                         const kboData = await kboRes.json();
                         const kboGames = kboData.result?.games || [];
@@ -562,9 +559,10 @@ export async function POST(req) {
                             }).join('\n');
                             sportsText += `### KBO (${targetLabel} ${targetDate.slice(4,6)}/${targetDate.slice(6,8)})\n${lines}\n`;
                         }
+                    } else {
+                        console.log(`[ELS-AI] KBO API 응답: status=${kboRes?.status || 'null'}`);
                     }
 
-                    // K리그 결과 처리
                     if (kleagueRes?.ok) {
                         const kleagueData = await kleagueRes.json();
                         const kleagueGames = kleagueData.result?.games || [];
@@ -585,11 +583,14 @@ export async function POST(req) {
                     if (sportsText) {
                         recentPostsText += `\n\n## 국내 스포츠 경기 현황 (네이버 스포츠 실시간)\n${sportsText}`;
                     } else {
-                        recentPostsText += `\n\n## 스포츠 경기 안내\n${targetLabel}(${targetDate.slice(4,6)}/${targetDate.slice(6,8)}) 예정되거나 종료된 KBO/K리그 경기가 없습니다. 사용자에게 네이버 스포츠(https://sports.naver.com)에서 추가 정보를 확인해보라고 친절히 안내해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로도 답변해도 됩니다.`;
+                        // API 실패 또는 경기 없음 → 네이버 스포츠 직접 링크 (날짜 포함)
+                        const kboLink = `https://m.sports.naver.com/kbaseball/schedule/index?date=${dateStr}`;
+                        const kleagueLink = `https://m.sports.naver.com/kfootball/schedule/index?date=${dateStr}`;
+                        recentPostsText += `\n\n## 스포츠 경기 정보\n${targetLabel}(${targetDate.slice(4,6)}/${targetDate.slice(6,8)}) 경기 결과를 실시간 API에서 직접 가져오지 못했습니다.\n아래 링크에서 정확한 결과를 확인해 주세요:\n- **[KBO 경기 일정/결과 (${dateStr})](${kboLink})**\n- **[K리그 경기 일정/결과 (${dateStr})](${kleagueLink})**\n\n사용자에게 위 링크를 안내하세요. 만약 일반적으로 알고 있는 KBO 정규시즌 일정이나 팀 정보가 있으면 함께 답변하세요.`;
                     }
                 } catch (e) {
                     console.error('네이버 스포츠 API 오류:', e);
-                    recentPostsText += `\n\n## 스포츠 경기 안내\n스포츠 정보 조회에 일시적 오류가 발생했습니다. 네이버 스포츠(https://sports.naver.com)에서 직접 확인해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로도 답변해도 됩니다.`;
+                    recentPostsText += `\n\n## 스포츠 경기 안내\n스포츠 정보 조회에 일시적 오류가 발생했습니다. [네이버 스포츠](https://sports.naver.com)에서 직접 확인해 주세요. 거절하지 말고 알고 있는 일반 스포츠 지식으로도 답변해도 됩니다.`;
                 }
             }
         }
