@@ -7,9 +7,30 @@ echo "--- 🚀 ELS 통합 백엔드 전체 재배포 시작 ---"
 /opt/bin/git fetch origin main
 /opt/bin/git reset --hard origin/main
 
-# 2. 전체 서비스 빌드 및 재실행
+# 2. 환경변수 동기화 (web/.env.local -> docker/.env)
+echo ">>> 환경변수 동기화 중..."
+ENV_FILE="web/.env.local"
+DOCKER_ENV="docker/.env"
+
+if [ -f "$ENV_FILE" ]; then
+    # 주요 키값들만 추출 (주석 제외)
+    S_URL=$(grep "^NEXT_PUBLIC_SUPABASE_URL=" "$ENV_FILE" | cut -d'=' -f2-)
+    S_KEY=$(grep "^SUPABASE_SERVICE_ROLE_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
+    G_KEY=$(grep "^GEMINI_API_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
+    
+    cat <<EOF > "$DOCKER_ENV"
+SUPABASE_URL=$S_URL
+SUPABASE_SERVICE_ROLE_KEY=$S_KEY
+GEMINI_API_KEY=$G_KEY
+DAEMON_URL=http://127.0.0.1:31999
+EOF
+    echo "✅ docker/.env 생성 완료"
+else
+    echo "⚠️ web/.env.local 파일을 찾을 수 없어 기존 설정을 유지합니다."
+fi
+
+# 3. 전체 서비스 빌드 및 재실행
 echo ">>> 전 서비스 빌드 및 재가동..."
-# --build를 사용하여 Dockerfile 변경사항을 반영해!
 sudo docker-compose -f docker/docker-compose.yml up -d --build --force-recreate
 
 # 3. 정리
