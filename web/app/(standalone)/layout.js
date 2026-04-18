@@ -24,6 +24,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: '#1e293b', // manifest_driver.json의 theme_color와 일치
 };
 
 export default function StandaloneLayout({ children }) {

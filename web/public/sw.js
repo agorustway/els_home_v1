@@ -1,3 +1,4 @@
+// v4.9.73 - PWA address bar fix
 self.addEventListener('install', (e) => {
     self.skipWaiting();
 });

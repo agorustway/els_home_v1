@@ -29,6 +29,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: '#2563eb', // manifest.json의 theme_color와 일치시켜 브라우저 UI 숨김 최적화
 };
 
 import { Suspense } from 'react';

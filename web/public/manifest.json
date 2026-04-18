@@ -1,11 +1,11 @@
 {
-  "id": "/",
-  "scope": "/",
   "name": "이엘에스솔루션",
   "short_name": "이엘에스",
   "description": "ELS Home Intranet System",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "orientation": "any",
