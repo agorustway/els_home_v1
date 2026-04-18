@@ -1,4 +1,4 @@
-## 📅 2026-04-18 (v4.9.69 — Phase 5: NAS Vector Search Complete)
+## 📅 2026-04-18 (v4.9.70 — Hotfix: Syntax Error Fix)
 ### 🚀 Phase 5: NAS 통합 인트라넷 AI 검색 엔진 구축
 1. **[FEAT] NAS 백엔드 문서 고도화 (Python Crawler)**:
    - `docker/els-backend/nas_vectorizer.py` 신규 작성 및 `/api/vectorize/nas` 백엔드 엔드포인트 개통.

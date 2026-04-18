@@ -2,7 +2,7 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.69` | **Phase 5 (NAS Vector) Complete** |
+| **현재 버전** | `v4.9.70` | **Phase 5 (NAS Vector) Complete - Hotfix** |
 | **상태** | 🟢 배포 완료 (Vercel) | NAS 자료실 시맨틱 검색 엔진 가동 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
