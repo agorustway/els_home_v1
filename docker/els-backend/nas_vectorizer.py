@@ -88,6 +88,12 @@ async def process_nas_directory(supabase, raw_dir, branch_name="본사"):
         if not filepath.is_file():
             continue
         
+        # [SECURITY] "보안" 폴더가 경로에 포함된 경우 파싱 제외
+        if any(part == "보안" for part in filepath.parts):
+            logger.info(f"Skipping security file (in '보안' dir): {filepath.name}")
+            skipped += 1
+            continue
+        
         ext = filepath.suffix.lower()
         if ext not in [".pdf", ".docx", ".xlsx", ".txt"]:
             continue
