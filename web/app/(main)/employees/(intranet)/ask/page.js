@@ -6,11 +6,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
-    { label: '안전운임제 규정 및 고시 찾아줘', icon: '⚖️' },
+    { label: '아산 부산 40ft 안전운임 알려줘', icon: '🚛' },
+    { label: '현재 경유 가격은?', icon: '⛽' },
+    { label: '안전운임 개정 조건이 뭐야?', icon: '📋' },
+    { label: '과태료 감경 관련 규정 찾아줘', icon: '⚖️' },
     { label: '아산시 미세먼지 수치 어때?', icon: '🍃' },
-    { label: '최근 작성된 내 업무일지 요약해봐', icon: '📝' },
-    { label: '영업용 화물차 번호판 규정 알려줘', icon: '📖' },
-    { label: '과태료 감경 관련 판례/규정 찾아줘', icon: '🔎' },
 ];
 
 function TypingIndicator() {
@@ -307,41 +307,43 @@ export default function AskPage() {
         <>
             <h2 className={styles.guideTitle}>📖 ELS 솔루션 AI 에이전트 지침서</h2>
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>1. 법률/업무 전문 에이전트</span><br/>
-                단순 대화형 챗봇이 아닌 <b>ELS Solution 전용 에이전트</b>입니다. 사내망 데이터는 물론, 외부 공식 법령과 실시간 데이터를 종합하여 답변을 생성합니다.
-            </div>
-            
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>2. K-Law (한국 법령) 시스템 연동</span><br/>
-                <span style={{fontSize:'0.8rem', color:'#475569'}}>법제처 OpenAPI를 통해 방대한 법률, 판례, 행정규칙을 실시간 조회합니다.</span>
-                <ul style={{fontSize: '0.8rem', color: '#475569', paddingLeft: '16px', margin: '6px 0', lineHeight: '1.4'}}>
-                    <li>자연어로 질문하면 AI가 필요한 법령/조문을 스스로 분석해 가져옵니다.</li>
-                    <li>법령 전문, 행정규칙, 조례 제정 이력 등을 함께 고려합니다.</li>
-                    <li><i style={{color:'#64748b'}}>예: "과태료 받았는데 감경 가능할까?", "건축법 허가 절차 안내해줘"</i></li>
-                </ul>
+                <span className={styles.guideHighlight}>1. 전사 읽기 최고권한 Omni-Agent</span><br/>
+                단순 대화형 챗봇이 아닌 <b>ELS Solution 전용 업무 에이전트</b>입니다. 사내 DB, NAS 자료, 외부 공식 API를 모두 연결하여 정확한 답변을 제공합니다.
             </div>
 
-            <div className={styles.guideBox} style={{display: 'flex', flexDirection: 'column'}}>
-                <span className={styles.guideHighlight}>3. K-SKILL & 다이렉트 실시간 API 연동</span>
-                <span style={{fontSize:'0.75rem', color:'#94a3b8', margin:'2px 0 6px'}}>※ 기존 K-SKILL을 보완하여 네이버 스포츠 등 공식 API를 직접 호출합니다.</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}>
-                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.4'}}>
-                        <li><b>교통/예매</b>: KTX/SRT 기차표 실시간 조회 스마트 링크 제공</li>
-                        <li><b>기상/환경</b>: 사용자 위치 미세먼지, 한강 수위 정보 (K-SKILL)</li>
-                        <li><b>법률/경제</b>: 한국 주식 시세 검색 (KRX)</li>
-                        <li><b>스포츠/기타</b>: KBO 야구 및 K리그 축구 실시간/과거 스코어 제공 (네이버 API)</li>
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>2. 안전운임 전문 분석 시스템</span><br/>
+                <div style={{fontSize: '0.8rem', color: '#475569', background: '#f0fdf4', padding: '8px', borderRadius: '6px', border: '1px solid #86efac', margin: '6px 0'}}>
+                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.5'}}>
+                        <li><b>구간별 단가 조회</b>: &quot;아산 부산 40ft 안전운임&quot; → 즉시 금액 안내</li>
+                        <li><b>할증 자동 계산</b>: 냉동(+30%), 공휴일(+20%), 플렉시백 등 서버가 직접 계산</li>
+                        <li><b>이력 비교</b>: 6개 고시 기간 변동률 추적 (&quot;인상됐어?&quot;)</li>
+                        <li><b>개정 사이클</b>: 분기별 경유가 ±50원 변동 시 자동 개정 안내</li>
                     </ul>
                 </div>
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>4. 사내 RAG 데이터 접근 한계 및 주의</span><br/>
-                <span style={{fontSize:'0.8rem', color:'#475569'}}>사내 업무보고, 차량관제, 연락처는 최근 데이터 한정으로 접근 가능합니다.</span><br/>
-                <b style={{fontSize:'0.8rem', color: '#e11d48'}}>※ 브라우저 한계상 자료실 PDF, 엑셀 파일 본문은 에이전트가 직접 분석할 수 없습니다.</b>
+                <span className={styles.guideHighlight}>3. 실시간 데이터 연동</span>
+                <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '6px'}}>
+                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.5'}}>
+                        <li><b>경유가/유가</b>: OPINET 실시간 전국 평균 경유·휘발유 가격</li>
+                        <li><b>법령 조회</b>: K-Law API 실시간 법률·판례·행정규칙</li>
+                        <li><b>교통/예매</b>: KTX/SRT 시간표 스마트 링크 제공</li>
+                        <li><b>기상/환경</b>: 미세먼지, 한강 수위 정보 (K-SKILL)</li>
+                        <li><b>스포츠/경제</b>: KBO/K리그 실시간 스코어, 주식 시세</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>4. 사내 업무 데이터 접근</span><br/>
+                <span style={{fontSize:'0.8rem', color:'#475569'}}>업무보고, 차량 관제, 연락처, 작업지 정보를 실시간 조회합니다.</span><br/>
+                <b style={{fontSize:'0.8rem', color: '#e11d48'}}>※ NAS 자료실 PDF/엑셀 본문은 추후 크롤러 연동 예정입니다.</b>
             </div>
             
-            <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
-                Powered by Gemini 2.0 Flash & MCP Ecosystem
+            <div style={{fontSize: '0.78rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
+                Powered by Gemini 2.5 Flash &amp; Omni-Agent Ecosystem
             </div>
         </>
     );

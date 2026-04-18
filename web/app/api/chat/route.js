@@ -4,56 +4,77 @@ import path from 'path';
 import fs from 'fs';
 
 // ─── 모듈 레벨 캐시 (35MB 파일 매 요청 파싱 방지) ───────────────────────────
-// Vercel standalone 빌드에서 확실하게 번들되도록 require() 사용
-// (fs.readFileSync는 webpack file-tracing이 불확실)
+// Vercel: public/data/ 에 배치된 JSON을 self-fetch로 로드 (서버리스 번들 이슈 해결)
 let _sfDataCache = null;
 let _sfDocsCache = null;
+let _sfLoadedAt = null; // 실제 데이터 로드 완료 시각
 
-function getSfData() {
-    if (!_sfDataCache) {
-        try {
-            // webpack이 정적 분석으로 이 파일을 번들에 포함시킴
-            _sfDataCache = require('../../../data/safe-freight.json');
-            console.log(`[ELS-AI] ✅ safe-freight.json require 로드 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
-        } catch (e1) {
-            // 폴백: process.cwd() 기반 fs 로딩
-            try {
-                const p = path.join(process.cwd(), 'data', 'safe-freight.json');
-                if (fs.existsSync(p)) {
-                    _sfDataCache = JSON.parse(fs.readFileSync(p, 'utf8'));
-                    console.log(`[ELS-AI] ✅ safe-freight.json fs 폴백 로드 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
-                } else {
-                    console.error(`[ELS-AI] ❌ safe-freight.json 미발견: require 실패(${e1.message}), fs 미발견(${p})`);
-                }
-            } catch (e2) {
-                console.error(`[ELS-AI] ❌ safe-freight.json 로드 실패:`, e2.message);
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://nollae.com');
+
+async function getSfData() {
+    if (_sfDataCache) return _sfDataCache;
+    try {
+        // 1차: self-fetch (Vercel 서버리스에서 가장 안정적)
+        const url = `${SITE_URL}/data/safe-freight.json`;
+        const res = await fetch(url, { cache: 'force-cache' });
+        if (res.ok) {
+            _sfDataCache = await res.json();
+            _sfLoadedAt = new Date().toISOString();
+            console.log(`[ELS-AI] ✅ safe-freight.json fetch 로드 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+            return _sfDataCache;
+        }
+    } catch (e1) {
+        console.error(`[ELS-AI] fetch 실패:`, e1.message);
+    }
+    try {
+        // 2차: fs 폴백 (로컬 개발 환경)
+        const p = path.join(process.cwd(), 'data', 'safe-freight.json');
+        if (fs.existsSync(p)) {
+            _sfDataCache = JSON.parse(fs.readFileSync(p, 'utf8'));
+            _sfLoadedAt = new Date().toISOString();
+            console.log(`[ELS-AI] ✅ safe-freight.json fs 폴백 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+        } else {
+            // 3차: public/data 폴백
+            const p2 = path.join(process.cwd(), 'public', 'data', 'safe-freight.json');
+            if (fs.existsSync(p2)) {
+                _sfDataCache = JSON.parse(fs.readFileSync(p2, 'utf8'));
+                _sfLoadedAt = new Date().toISOString();
+                console.log(`[ELS-AI] ✅ safe-freight.json public 폴백 로드`);
+            } else {
+                console.error(`[ELS-AI] ❌ safe-freight.json 모든 경로 실패`);
             }
         }
+    } catch (e2) {
+        console.error(`[ELS-AI] ❌ safe-freight.json 로드 실패:`, e2.message);
     }
     return _sfDataCache;
 }
 
-function getSfDocs() {
-    if (!_sfDocsCache) {
-        try {
-            const raw = require('../../../data/safe-freight-docs.json');
+async function getSfDocs() {
+    if (_sfDocsCache) return _sfDocsCache;
+    try {
+        const url = `${SITE_URL}/data/safe-freight-docs.json`;
+        const res = await fetch(url, { cache: 'force-cache' });
+        if (res.ok) {
+            const raw = await res.json();
+            if (Array.isArray(raw)) {
+                raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
+                _sfDocsCache = raw;
+                return _sfDocsCache;
+            }
+        }
+    } catch {}
+    try {
+        const p = path.join(process.cwd(), 'data', 'safe-freight-docs.json');
+        if (fs.existsSync(p)) {
+            const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
             if (Array.isArray(raw)) {
                 raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
                 _sfDocsCache = raw;
             }
-        } catch {
-            try {
-                const p = path.join(process.cwd(), 'data', 'safe-freight-docs.json');
-                if (fs.existsSync(p)) {
-                    const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
-                    if (Array.isArray(raw)) {
-                        raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
-                        _sfDocsCache = raw;
-                    }
-                }
-            } catch (e) { console.error('[ELS-AI] safe-freight-docs.json 로드 실패:', e.message); }
         }
-    }
+    } catch (e) { console.error('[ELS-AI] safe-freight-docs.json 로드 실패:', e.message); }
     return _sfDocsCache;
 }
 
@@ -315,7 +336,7 @@ export async function POST(req) {
             isSfQuery = searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
                 sfKeywords.some(k => userKwd.includes(k));
             if (isSfQuery) {
-                const sfData = getSfData();
+                const sfData = await getSfData();
                 if (sfData?.faresLatest) {
                     const fareKeys = Object.keys(sfData.faresLatest);
 
@@ -607,7 +628,7 @@ export async function POST(req) {
     let safeFreightText = '';
     if (isSfQuery) {
         try {
-            const safeDocs = getSfDocs();
+            const safeDocs = await getSfDocs();
             if (safeDocs?.[0]?.text) {
                 const fullText = safeDocs[0].text;
                 const logicIdx = fullText.indexOf('[별표 1]');
@@ -618,14 +639,16 @@ export async function POST(req) {
     }
 
     // 📌 데이터 신선도 메타데이터 생성
-    const sfMeta = getSfData()?.meta;
+    const sfMeta = (await getSfData())?.meta;
     const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
     const nowStr = kstNow.toISOString().slice(0, 16).replace('T', ' ');
     let dataFreshness = `\n\n## 📌 데이터 기준 정보\n`;
-    dataFreshness += `- **실시간 API** (미세먼지/주식/스포츠/법령): ${nowStr} KST 시점 조회\n`;
     if (sfMeta) {
-        dataFreshness += `- **안전운임 고시 데이터**: ${sfMeta.period || '26.02월'} 적용 (생성일: ${sfMeta.generatedAt?.slice(0, 10) || '-'})\n`;
+        dataFreshness += `- **안전운임 고시 데이터**: ${sfMeta.period || '26.02월'} 적용 고시 (고시 생성일: ${sfMeta.generatedAt?.slice(0, 10) || '미상'}, 서버 로드: ${_sfLoadedAt?.slice(0, 16)?.replace('T', ' ') || '미로드'})\n`;
+    } else {
+        dataFreshness += `- **안전운임 고시 데이터**: ⚠️ 미로드 (서버 재시작 필요)\n`;
     }
+    dataFreshness += `- **실시간 API** (OPINET유가/미세먼지/스포츠/법령): ${nowStr} KST 시점 조회\n`;
     dataFreshness += `- **사내 DB** (게시판/연락처/작업지/업무자료): ${nowStr} KST 시점 조회\n`;
     dataFreshness += `- **안전운임 개정 사이클**: 매 분기 3개월 평균 경유가 산정 → ±50원/L 이상 변동 시 다음 분기 운임 개정 (1Q→5월, 2Q→7월, 3Q→10월, 4Q→다음해 1월)\n`;
     dataFreshness += `\n※ 답변 말미에 반드시 "📌 이 답변은 [위 기준 정보]로 확인되었습니다" 문구를 한 줄로 요약하여 붙이세요.`;
