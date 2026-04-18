@@ -56,9 +56,11 @@ export async function middleware(request) {
         }
     )
 
-    // getSession(): 쿠키 기반으로 빠르게 확인 (getUser는 매 요청마다 서버 검증으로 지연 유발)
+    const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || process.env.DEBUG_MODE === 'true';
+
+    // getSession(): 쿠키 기반으로 빠르게 확인
     const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
+    let user = session?.user;
 
     let userRole = 'visitor';
     if (user) {
@@ -66,50 +68,57 @@ export async function middleware(request) {
         userRole = roleData?.role || 'visitor';
     }
 
+    // 🚨 디버그 모드 강제 바이패스: 세션이 없어도 관리자 권한 부여
+    if (isDebugMode) {
+        if (!user) {
+            user = { email: 'debug_admin@nollae.com' };
+        }
+        userRole = 'admin';
+    }
+
     // 0. Redirect authenticated users away from login page
-    if (user && path === '/login') {
+    // 디버그 모드일 때는 로그인 페이지 접근 시 바로 대시보드로 리다이렉트
+    if ((user || isDebugMode) && path === '/login') {
         const url = request.nextUrl.clone()
         url.pathname = '/'
         return NextResponse.redirect(url)
     }
 
     // 0.1 Redirect authenticated users (non-visitors) to ask page if on landing
-    if (user && path === '/' && userRole !== 'visitor') {
+    if ((user || isDebugMode) && path === '/' && userRole !== 'visitor') {
         const url = request.nextUrl.clone()
         url.pathname = '/employees/ask'
         return NextResponse.redirect(url)
     }
 
     // 1. Protected Routes (Access Control)
-    // 🚨 예외: 운전원 모바일 페이지(기존/신규)는 로그인 없이 누구나 접근 가능해야 함
     const isDriverPage = path.startsWith('/employees/vehicle-tracking/driver') || path.startsWith('/driver-app');
-    const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 
     if (path.startsWith('/admin') || path.startsWith('/employees') || path.startsWith('/driver-app')) {
         // If not authenticated, redirect to login (except driver pages or debug mode)
         if (!user && path !== '/login' && !isDriverPage && !isDebugMode) {
             const url = request.nextUrl.clone()
             url.pathname = '/login'
-            url.searchParams.set('next', path) // Redirect back after login
+            url.searchParams.set('next', path)
             url.searchParams.set('error', '로그인이 필요합니다.')
             return NextResponse.redirect(url)
         }
 
-        // 2. 방문객(visitor) 권한 제한: 임직원 홈, 마이페이지, 운전원 페이지 외 접근 차단
+        // 2. 방문객(visitor) 권한 제한
         const isVisitorAllowedPath = path === '/employees' || path === '/employees/' || path.startsWith('/employees/mypage');
 
         if (userRole === 'visitor' && !isVisitorAllowedPath && !isDriverPage && !isDebugMode) {
             const url = request.nextUrl.clone()
-            url.pathname = '/' // 무한 리다이렉트를 막기 위해 방문자는 홈페이지(루트)로 돌려보냄
-            url.searchParams.set('error', '방문객 권한으로는 접근할 수 없는 메뉴입니다. 관리자 승인이 필요합니다.')
+            url.pathname = '/'
+            url.searchParams.set('error', '방문객 권한으로는 접근할 수 없는 메뉴입니다.')
             return NextResponse.redirect(url)
         }
 
-        // If authenticated and not visitor, but trying to access /admin pages without 'admin' role
+        // If trying to access /admin pages without 'admin' role
         if (path.startsWith('/admin') && userRole !== 'admin' && !isDebugMode) {
             const url = request.nextUrl.clone()
-            url.pathname = '/login' // Or a specific unauthorized page
-            url.searchParams.set('error', '권한이 없습니다: 관리자만 관리자 페이지에 접근할 수 있습니다.')
+            url.pathname = '/login'
+            url.searchParams.set('error', '권한이 없습니다.')
             return NextResponse.redirect(url)
         }
     }
