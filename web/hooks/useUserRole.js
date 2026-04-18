@@ -18,7 +18,13 @@ export function useUserRole() {
 
                 if (userError || !authUser) {
                     console.log('useUserRole: No user found');
-                    setRole('visitor');
+                    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
+                        console.log('useUserRole: Debug mode active, granting admin role');
+                        setRole('admin');
+                        setUser({ email: 'debug@els.com', user_metadata: { name: '디버그모드' } });
+                    } else {
+                        setRole('visitor');
+                    }
                     setLoading(false);
                     return;
                 }
