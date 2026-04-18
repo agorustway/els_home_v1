@@ -229,8 +229,9 @@ export async function POST(req) {
                             const v = sfData.faresLatest[item.k];
                             // 금액의 출처가 무엇이든, AI가 인지하기 쉽도록 '안전운임/운수자/위탁 통합' 등의 키워드를 임시 주입
                             return `- [조회된 구간] ${item.k} | 거리: ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
+                            return `- [조회된 구간] ${item.k} | 거리: ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
                         }).join('\n');
-                        recentPostsText += '\n\n## (중요) 안전운임 단가 표 (최우선 참조)\n' + fareRows + '\n\n🚨 [AI 주의사항] 사용자가 금액을 물어볼 경우 반드시 이 표에 적힌 20ft/40ft 만원 단위 금액표만 읽어서 그대로 대답하십시오. 고시 PDF 텍스트를 보고 임의로 요금을 추론하거나, 계산식으로 금액을 만들어내면 절대로 안 됩니다.';
+                        recentPostsText += '\n\n## (중요) 안전운임 단가 표 (최우선 참조)\n' + fareRows + '\n\n🚨 [AI 주의사항] 사용자가 묻는 상세 주소(예: 걸매리 등 특정 "리"나 "동")가 위 구간 목록에 정확히 일치하지 않더라도, 상위 단위인 "시/군/구/읍/면"이 포함되어 있다면 해당 구간(예: 인주면)의 금액을 안내하며 "상세 지역(리/동)이 생략되어 상위 구역 기준으로 안내해 드립니다" 라고 답변해 주세요. 데이터가 없다고 거절하지 마십시오.';
                     } else if (sfData.origins?.length > 0) {
                         const originList = sfData.origins.map(o => o.label || o.id).join(', ');
                         recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n정확한 단가는 [안전운임 조회](/employees/safe-freight) 메뉴를 이용해주세요.`;
@@ -259,7 +260,7 @@ export async function POST(req) {
 
                 try {
                     const url = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
-                    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (!data.error && data.pm10 && data.pm25) {
@@ -295,7 +296,7 @@ export async function POST(req) {
                 const subMatch = lastUserText.match(subRegex);
                 const station = subMatch?.[1]?.replace('역', '') || '강남';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { signal: AbortSignal.timeout(3000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { signal: AbortSignal.timeout(8000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.realtimeArrivalList?.length > 0) {
@@ -316,7 +317,7 @@ export async function POST(req) {
                 const hMatch = lastUserText.match(hRegex);
                 const bridge = hMatch?.[1] ? hMatch[1] + (hMatch[1].endsWith('교') ? '' : '대교') : '한강대교';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`, { signal: AbortSignal.timeout(3000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`, { signal: AbortSignal.timeout(8000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.measured_at) {
@@ -330,7 +331,7 @@ export async function POST(req) {
             if (userKwd.includes('주식') || userKwd.includes('증시') || userKwd.includes('종목') || userKwd.includes('가 가')) {
                 const stockKwd = lastUserText.replace(/[^가-힣a-zA-Z]/g, '').replace('주식', '').replace('가격', '').trim() || '삼성전자';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/korean-stock/search?q=${encodeURIComponent(stockKwd)}`, { signal: AbortSignal.timeout(3000) });
+                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/korean-stock/search?q=${encodeURIComponent(stockKwd)}`, { signal: AbortSignal.timeout(8000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.results?.length > 0) {
@@ -355,8 +356,8 @@ export async function POST(req) {
 
                     // KBO + K리그 동시 병렬 조회
                     const [kboRes, kleagueRes] = await Promise.all([
-                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(3000) }).catch(() => null),
-                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(3000) }).catch(() => null),
+                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
+                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${targetDate.slice(0,4)}-${targetDate.slice(4,6)}-${targetDate.slice(6,8)}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
                     ]);
 
                     let sportsText = '';
