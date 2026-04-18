@@ -21,7 +21,7 @@ export function useUserRole() {
                     if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
                         console.log('useUserRole: Debug mode active, granting admin role');
                         setRole('admin');
-                        setUser({ email: 'debug@els.com', user_metadata: { name: '디버그모드' } });
+                        setUser({ email: 'debug_admin@nollae.com', user_metadata: { name: '디버그관리자' } });
                     } else {
                         setRole('visitor');
                     }
