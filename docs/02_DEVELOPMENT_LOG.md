@@ -1,19 +1,23 @@
-## 📅 2026-04-18 (v4.9.70 — Hotfix: Syntax Error Fix)
-### 🚀 Phase 5: NAS 통합 인트라넷 AI 검색 엔진 구축
+## 📅 2026-04-18 (v4.9.71 — Master Integration & APK Deployment)
+### 🚀 Phase 5: NAS 통합 인트라넷 AI 검색 엔진 및 최종 안정화 (Omni-Agent Final)
 1. **[FEAT] NAS 백엔드 문서 고도화 (Python Crawler)**:
-   - `docker/els-backend/nas_vectorizer.py` 신규 작성 및 `/api/vectorize/nas` 백엔드 엔드포인트 개통.
-   - NAS 환경에 적재된 `.pdf`, `.docx`, `.xlsx` 파일의 텍스트를 파싱하고 Google Gemini API(`text-embedding-004`)를 이용해 800자 단위 백터 청크 생성 파이프라인 완성.
+   - `nas_vectorizer.py` 신규 작성 및 `/api/vectorize/nas` 엔드포인트 개통 (app_core.py 이식).
+   - PDF, DOCX, XLSX 파일 텍스트 파싱 및 Gemini `text-embedding-004` 연동 (800자 청크 단위).
 2. **[FEAT] AI 에이전트 RAG 시맨틱 검색 연동**:
-   - `web/app/api/chat/route.js`의 `isNasQuery` 파이프라인에서 직통으로 사용자의 자연어 쿼리를 임베딩.
-   - Supabase `match_documents` RPC를 통해 `nas_file` 인덱스와 비교하여 >0.65 유사도의 문서를 상위 4개까지 반환받아 문맥 정보(Context)로 주입.
-3. **[REFACTOR] 시스템 프롬프트 한계 인식 해제**:
-   - 더 이상 "NAS 검색 기능 한계"를 핑해대지 않도록 프롬프트(행동 강령 9번)를 적극적인 "문서 요약 보고 모드"로 변경.
-4. **[DEPLOY] Driver APK v4.9.17 배포**:
-   - `build_driver_apk.ps1`을 통한 자동화 빌드 완료.
-   - APK 내부 버전 검증 및 UI 수정(뒤로가기 버튼 등) 사항 확인.
-5. **[PLAN] AI 에이전트 완성 및 마이그레이션(Phase 6) 선언**:
-   - 옴니 에이전트(AI) 자체의 기능적 고도화 로드맵은 Phase 1 ~ 5로 **100% 최종 완성**됨.
-   - 이후 남은 Phase 6는 어플리케이션 기능 개발이 아닌, `08_MIGRATION_PLAN.md`에 명시된 "기존 서비스 해지 및 신규 법인망(elssolution.net) 완전 이관(Cleanup)"을 가리킴을 확정함.
+   - `route.js`에서 사용자 쿼리를 임베딩하여 Supabase `match_documents` RPC 연동.
+   - NAS 문서 문맥 주입 및 실시간 답변 요약 보고 체계 완성.
+3. **[FIX] 백엔드 라우팅 및 게이트웨이 정합성 (`app_core.py`, `nginx.conf`)**:
+   - Nginx 게이트웨이에 `/api/vectorize` 경로를 추가하여 NAS 벡터화 명령 전달 체계 구축.
+4. **[FIX] 안전운임 할루시네이션 원천 차단 (Exact Won Formatting)**:
+   - 780,000원 등 임의 수치 오답을 방지하기 위해 **1원 단위 콤마(,) 포맷팅**(`toLocaleString`) 강제 적용.
+   - 단가표 조작 금지 및 실제 데이터셋 나열 지시 강화.
+5. **[DEPLOY] Driver APK v4.9.17 배포**:
+   - `build_driver_apk.ps1` 기반 자동화 빌드 및 배포 완료.
+6. **[HOTFIX] route.js 구문 오류 수정**:
+   - Phase 5 적용 중 발생한 중괄호(`}`) 오타 제거 및 Vercel 배포 정상화 (v4.9.70).
+7. **[PLAN] AI 에이전트 완성 및 마이그레이션(Phase 6) 선언**:
+   - AI 에이전트 기능 고도화(Phase 1~5) **100% 최종 완성**.
+   - 차기 목표: `elssolution.net` 법인망 완전 이관 및 기존 서비스 해지 (Phase 6).
 
 ---
 

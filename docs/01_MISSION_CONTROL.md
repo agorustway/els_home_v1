@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.70` | **Phase 5 (NAS Vector) Complete - Hotfix** |
-| **상태** | 🟢 배포 완료 (Vercel) | NAS 자료실 시맨틱 검색 엔진 가동 |
+| **현재 버전** | `v4.9.71` | **Phase 5 (NAS) + Android v4.9.17 Complete** |
+| **상태** | 🟢 배포 완료 (Vercel/NAS) | 데이터 정밀도 향상 및 시맨틱 검색 가동 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** Vercel 미들웨어 최적화 (data/ 경로 우회 - self-fetch 정상화)
