@@ -125,10 +125,10 @@ function buildFareHistory(fareKey, sfData) {
             if (prev40 > 0) {
                 const delta = f40 - prev40;
                 const pct = ((delta / prev40) * 100).toFixed(1);
-                diff = `${delta > 0 ? '+' : ''}${(delta / 10000).toFixed(1)}만원 (${pct}%)`;
+                diff = `${delta > 0 ? '+' : ''}${delta.toLocaleString()}원 (${pct}%)`;
             }
         }
-        text += `| ${h.period} | ${h.km} | ${(f40 / 10000).toFixed(1)}만원 | ${(f20 / 10000).toFixed(1)}만원 | ${diff} |\n`;
+        text += `| ${h.period} | ${h.km} | ${f40.toLocaleString()}원 | ${f20.toLocaleString()}원 | ${diff} |\n`;
     }
     return text;
 }
@@ -359,10 +359,10 @@ export async function POST(req) {
                         // (A) 최신 운임 단가 표
                         const fareRows = scored.map(item => {
                             const v = sfData.faresLatest[item.k];
-                            return `- [구간] ${item.k} | ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
+                            return `- [구간] ${item.k} | ${v.km}km | 20ft: ${v.fare20.toLocaleString()}원 | 40ft: ${v.fare40.toLocaleString()}원`;
                         }).join('\n');
-                        recentPostsText += '\n\n## (중요) 안전운임 단가 표 — 현행 고시 (26.02월 적용)\n' + fareRows;
-                        recentPostsText += '\n\n🚨 상세주소(리/동)가 표에 없더라도 상위 읍/면/구가 있으면 해당 금액을 안내하고, "상위 구역 기준"임을 밝혀라. 데이터가 없다고 거절 금지.';
+                        recentPostsText += '\n\n## (중요) 실시간 데이터 베이스: 안전운임 단가 표 — 현행 고시 (26.02월 적용)\n' + fareRows;
+                        recentPostsText += '\n\n🚨 [필독 지시사항] 위 단가표에 있는 "정확한 금액(원)"을 절대로 조작하거나 임의로 평균을 내지 마라. "아산-부산 안전운임"을 물어보더라도 단일 금액이 없다. 반드시 "아산시에는 여러 구간(염치읍, 둔포면 등)이 있으며, 대표적으로 다음과 같습니다." 라며 위 표의 실제 금액을 그대로 2~3개 열거해라. 780000원 등 환각 데이터를 말하면 시스템 치명적 오류로 간주됨.';
 
                         // (B) 이력 비교 (상위 1~3개 구간)
                         const isHistoryQuery = ['변동', '인상', '비교', '추이', '이전', '과거', '역대'].some(k => userKwd.includes(k));
