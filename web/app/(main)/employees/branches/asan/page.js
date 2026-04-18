@@ -378,12 +378,21 @@ export default function AsanDispatchPage() {
     const centerCols = useMemo(() => { const s = new Set(); headers.forEach((h, i) => { if (CENTER_HEADERS.has(h.trim())) s.add(i); }); return s; }, [headers]);
     
     // ===== 통합현황 데이터 정렬 (글로비스 KD -> 모비스 AS 순서) =====
-    const processedData = useMemo(() => {
-        if (viewType !== 'integrated' || !allData || allData.length === 0) return allData;
-        const shipperIdx = findCol(headers, '화주');
-        if (shipperIdx === -1) return allData;
+    const dataWithIndices = useMemo(() => {
+        if (!allData) return [];
+        return allData.map((row, idx) => {
+            const r = [...row];
+            r.origIdx = idx;
+            return r;
+        });
+    }, [allData]);
 
-        return [...allData].sort((a, b) => {
+    const processedData = useMemo(() => {
+        if (viewType !== 'integrated' || !dataWithIndices || dataWithIndices.length === 0) return dataWithIndices;
+        const shipperIdx = findCol(headers, '화주');
+        if (shipperIdx === -1) return dataWithIndices;
+
+        return [...dataWithIndices].sort((a, b) => {
             const valA = String(a[shipperIdx] || '');
             const valB = String(b[shipperIdx] || '');
             
@@ -401,7 +410,7 @@ export default function AsanDispatchPage() {
 
             return 0;
         });
-    }, [allData, headers, viewType]);
+    }, [dataWithIndices, headers, viewType]);
 
     const summary = useMemo(() => calcSummary(headers, processedData, viewType), [headers, processedData, viewType]);
     const searchResult = useMemo(() => doSearch(processedData, headers, searchTerm), [processedData, headers, searchTerm]);
@@ -411,7 +420,7 @@ export default function AsanDispatchPage() {
 
     // 필터 적용된 행 (Set으로 검색 최적화)
     const displayRows = useMemo(() => {
-        let rows = processedData.map((row, idx) => {
+        let rows = processedData.map((row) => {
             let status = 'normal';
             
             // 1. 특이사항(구분이 수출/수입 외 다른 것일 때) - 최우선 순위
@@ -436,7 +445,7 @@ export default function AsanDispatchPage() {
                     if (o !== d) status = 'warn';
                 }
             }
-            return { row, idx, status };
+            return { row, idx: row.origIdx, status };
         });
 
         if (searchResult.indices) {

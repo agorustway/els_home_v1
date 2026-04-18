@@ -83,10 +83,11 @@ export async function middleware(request) {
     // 1. Protected Routes (Access Control)
     // 🚨 예외: 운전원 모바일 페이지(기존/신규)는 로그인 없이 누구나 접근 가능해야 함
     const isDriverPage = path.startsWith('/employees/vehicle-tracking/driver') || path.startsWith('/driver-app');
+    const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 
     if (path.startsWith('/admin') || path.startsWith('/employees') || path.startsWith('/driver-app')) {
-        // If not authenticated, redirect to login (except driver pages)
-        if (!user && path !== '/login' && !isDriverPage) {
+        // If not authenticated, redirect to login (except driver pages or debug mode)
+        if (!user && path !== '/login' && !isDriverPage && !isDebugMode) {
             const url = request.nextUrl.clone()
             url.pathname = '/login'
             url.searchParams.set('next', path) // Redirect back after login
@@ -97,7 +98,7 @@ export async function middleware(request) {
         // 2. 방문객(visitor) 권한 제한: 임직원 홈, 마이페이지, 운전원 페이지 외 접근 차단
         const isVisitorAllowedPath = path === '/employees' || path === '/employees/' || path.startsWith('/employees/mypage');
 
-        if (userRole === 'visitor' && !isVisitorAllowedPath && !isDriverPage) {
+        if (userRole === 'visitor' && !isVisitorAllowedPath && !isDriverPage && !isDebugMode) {
             const url = request.nextUrl.clone()
             url.pathname = '/' // 무한 리다이렉트를 막기 위해 방문자는 홈페이지(루트)로 돌려보냄
             url.searchParams.set('error', '방문객 권한으로는 접근할 수 없는 메뉴입니다. 관리자 승인이 필요합니다.')
@@ -105,7 +106,7 @@ export async function middleware(request) {
         }
 
         // If authenticated and not visitor, but trying to access /admin pages without 'admin' role
-        if (path.startsWith('/admin') && userRole !== 'admin') {
+        if (path.startsWith('/admin') && userRole !== 'admin' && !isDebugMode) {
             const url = request.nextUrl.clone()
             url.pathname = '/login' // Or a specific unauthorized page
             url.searchParams.set('error', '권한이 없습니다: 관리자만 관리자 페이지에 접근할 수 있습니다.')
