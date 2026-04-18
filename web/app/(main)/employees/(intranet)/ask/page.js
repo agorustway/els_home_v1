@@ -150,16 +150,52 @@ export default function AskPage() {
         loadMemory();
     }, []);
 
-    // Sync messages to DB
-    useEffect(() => {
-        if (isLoaded && sessions.length > 0) {
+    // Sync messages to DB — 디바운스 적용 (스트리밍 중 매 글자마다 저장 방지)
+    const saveTimerRef = useRef(null);
+    const sessionsRef = useRef(sessions);
+    sessionsRef.current = sessions;
+
+    const saveSessionsNow = useCallback(() => {
+        if (!isLoaded || sessionsRef.current.length === 0) return;
+        const payload = JSON.stringify({ messages: sessionsRef.current });
+        // sendBeacon은 페이지 이탈 시에도 확실히 전송됨
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/chat/memory', new Blob([payload], { type: 'application/json' }));
+        } else {
             fetch('/api/chat/memory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: sessions })
+                body: payload,
+                keepalive: true
             }).catch(() => {});
         }
+    }, [isLoaded]);
+
+    useEffect(() => {
+        if (isLoaded && sessions.length > 0) {
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = setTimeout(() => {
+                fetch('/api/chat/memory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: sessions })
+                }).catch(() => {});
+            }, 1500); // 1.5초 디바운스
+        }
+        return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
     }, [sessions, isLoaded]);
+
+    // 페이지 이탈/전환 시 즉시 저장 (beforeunload + visibilitychange)
+    useEffect(() => {
+        const handleUnload = () => saveSessionsNow();
+        const handleVisibility = () => { if (document.visibilityState === 'hidden') saveSessionsNow(); };
+        window.addEventListener('beforeunload', handleUnload);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('beforeunload', handleUnload);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
+    }, [saveSessionsNow]);
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/ask');
@@ -282,7 +318,8 @@ export default function AskPage() {
             ]);
         } finally {
             setIsLoading(false);
-            setIsLoading(false);
+            // AI 응답 완료 후 입력창에 자동 포커스 복원
+            setTimeout(() => inputRef.current?.focus(), 50);
         }
     }, [input, isLoading, messages]);
 
