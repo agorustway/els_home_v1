@@ -77,7 +77,7 @@ export async function GET() {
 
     // 2. Supabase 연결 테스트
     try {
-        const supabase = createAdminClient();
+        const supabase = await createAdminClient();
         const { data, error } = await supabase.from('internal_contacts').select('name').limit(1);
         if (error) {
             result.supabase = { status: '❌ 쿼리 에러: ' + error.message };

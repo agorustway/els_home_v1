@@ -295,7 +295,7 @@ export async function POST(req) {
     const userKwd = lastUserText.toLowerCase();
 
     // Supabase 클라이언트 초기화
-    const supabase = createAdminClient();
+    const supabase = await createAdminClient();
 
     // === RAG 데이터 수집 ===
     let recentPostsText = '';
