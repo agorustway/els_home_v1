@@ -588,8 +588,14 @@ export async function POST(req) {
                     });
                     if (res.ok) {
                         const data = await res.json();
-                        if (data.measured_at) {
-                            recentPostsText += `\n\n## ${bridge} 실시간 수위 (K-SKILL)\n- 시간: ${data.measured_at}\n- 수위: ${data.water_level}m\n- 유량: ${data.discharge}㎥/s\n- 상황: ${data.status_message}`;
+                        if (data.observed_at || data.measured_at) {
+                            const observed = data.observed_at || data.measured_at;
+                            const wLevel = data.water_level?.value_m ?? data.water_level ?? '알수없음';
+                            const fRate = data.flow_rate?.value_cms ?? data.discharge ?? '알수없음';
+                            recentPostsText += `\n\n## ${bridge} 실시간 수위 (K-SKILL)\n- 시간: ${observed}\n- 수위: ${wLevel}m\n- 유량: ${fRate}㎥/s`;
+                            apiTimestamps.kskill = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                        } else {
+                            recentPostsText += `\n\n## 한강 수위 안내\n해당 대교의 수위 정보를 제공하지 않습니다.`;
                         }
                     }
                 } catch (e) { console.error('K-SKILL 한강 오류:', e); }
