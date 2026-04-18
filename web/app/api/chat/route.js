@@ -17,7 +17,7 @@ async function getSfData() {
     try {
         // 1차: self-fetch (Vercel 서버리스에서 가장 안정적)
         const url = `${SITE_URL}/data/safe-freight.json`;
-        const res = await fetch(url, { cache: 'force-cache' });
+        const res = await fetch(url, { cache: 'force-cache', signal: AbortSignal.timeout(3000) });
         if (res.ok) {
             _sfDataCache = await res.json();
             _sfLoadedAt = new Date().toISOString();
@@ -55,7 +55,7 @@ async function getSfDocs() {
     if (_sfDocsCache) return _sfDocsCache;
     try {
         const url = `${SITE_URL}/data/safe-freight-docs.json`;
-        const res = await fetch(url, { cache: 'force-cache' });
+        const res = await fetch(url, { cache: 'force-cache', signal: AbortSignal.timeout(3000) });
         if (res.ok) {
             const raw = await res.json();
             if (Array.isArray(raw)) {

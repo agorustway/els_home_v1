@@ -8,8 +8,11 @@ const nextConfig = {
   // [v4.9.11] Cloudtype 최적화: Vercel 밖의 컨테이너 환경에서는 standalone 빌드로 압축, CPU 부하 방지
   output: isStaticExport ? 'export' : 'standalone',
   // [v4.9.63] standalone 빌드 시 data/ 폴더(safe-freight.json 35MB)를 서버리스 함수 번들에 포함
-  outputFileTracingIncludes: {
-    '/api/chat': ['./data/**/*'],
+  // ⚠️ Next.js 14에서는 반드시 experimental 블록 안에 위치해야 인식됨
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/chat': ['./data/**/*', './public/data/**/*'],
+    },
   },
   images: {
     // Cloudtype의 한정된 CPU를 On-the-fly 이미지 리사이징으로 낭비하지 않도록 강제 비활성화
