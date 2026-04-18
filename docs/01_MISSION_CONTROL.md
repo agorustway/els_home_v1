@@ -1,20 +1,20 @@
-# 🛰️ MISSION CONTROL (2026-04-18)
+# 🛰️ MISSION CONTROL (2026-04-19)
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.80` | **Phase 5 (NAS Vectorization) Complete** |
-| **상태** | 🟢 Phase 5 완료 (Omni-Agent 로직 100%) | Vercel 번들링/AI 세션복구/NAS 크롤러 통합 완료 |
+| **현재 버전** | `v4.9.83` | **Phase 5 (NAS Auto-Sync) Complete** |
+| **상태** | 🟢 Phase 5 고도화 완료 | 매일 새벽 04:30 NAS 자동 스캔 스케줄러 가동 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** Vercel 미들웨어 최적화 (data/ 경로 우회 - self-fetch 정상화)
 2.  **[DONE]** 대화 히스토리 RLS 우회 (createAdminClient 도입으로 저장 복구)
-3.  **[DONE]** 실시간 스포츠(KBO/K리그) API 폴백 대응 및 스마트 링크 
-4.  **[DONE]** pgvector 시맨틱 검색 파이프라인 통합 (Phase 2 확장)
+3.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시(`api/proxy/kskill`) 구축
+4.  **[DONE]** K-LAW 연동망 개편 (beopmang API 활용)
 5.  **[DONE]** NAS 문서 크롤러 및 벡터화 (Phase 5) 완료 — **AI 에이전트 개발 100% 종료**
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.80` (Driver APK 배포 완료)
+- **Current Build**: `v4.9.83` (Vercel 및 NAS Backend 배포 완료)
 - **APK URL**: `https://nollae.com/apk/els_driver.apk`
 - **Repo**: main 브랜치 배포 완료
 
@@ -77,4 +77,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-18 (by Antigravity/Claude)*
+*최종 갱신: 2026-04-19 (by Antigravity/Claude)*
