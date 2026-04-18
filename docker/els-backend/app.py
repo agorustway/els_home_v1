@@ -1021,6 +1021,24 @@ def screenshot():
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Daemon not available"}), 404
 
+from nas_vectorizer import process_nas_directory
+import asyncio
+
+@app.route('/api/vectorize/nas', methods=['POST'])
+def trigger_nas_vectorize():
+    """Trigger NAS folder crawling and vectorization (Phase 5)."""
+    if not supabase:
+        return jsonify({"error": "Supabase client not initialized"}), 500
+        
+    data = request.json or {}
+    raw_dir = data.get("directory", "/app/work-docs")  # Default to some dir
+    branch_name = data.get("branch", "본사")
+    
+    # Run async function in sync route
+    result = asyncio.run(process_nas_directory(supabase, raw_dir, branch_name))
+    
+    return jsonify(result)
+
 if __name__ == "__main__":
     app.logger.info("Backend Server Ready with CORS")
     app.run(host="0.0.0.0", port=2929, threaded=True)
