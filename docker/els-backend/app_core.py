@@ -156,6 +156,44 @@ def asan_sync_scheduler():
 
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
+def nas_sync_scheduler():
+    """매일 새벽 04:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다."""
+    app.logger.info("[스케줄러] NAS AI 지식 자동 동기화 스케줄러 대기 중...")
+    
+    # 스캔 대상 목록 (도커 내부 경로 기준)
+    scan_targets = [
+        {"path": "/app/volume1/서울본사", "branch": "본사"},
+        {"path": "/app/volume2/아산지점", "branch": "아산"},
+        {"path": "/app/volume2/당진지점", "branch": "당진"},
+        {"path": "/app/volume2/자료실", "branch": "자료실"}
+    ]
+    
+    while True:
+        try:
+            now = datetime.now(KST)
+            # 매일 새벽 04:30에 실행
+            if now.hour == 4 and now.minute == 30:
+                app.logger.info(f"[스케줄러] NAS 정기 스캔 시작 (대상: {len(scan_targets)}개 구역)")
+                for target in scan_targets:
+                    if not supabase: break
+                    try:
+                        # asyncio.run을 사용하여 동기 함수처럼 호출
+                        res = asyncio.run(process_nas_directory(supabase, target["path"], target["branch"]))
+                        app.logger.info(f"✅ {target['branch']} 동기화 완료: {res}")
+                    except Exception as e:
+                        app.logger.error(f"❌ {target['branch']} 동기화 실패: {e}")
+                
+                # 중복 실행 방지를 위해 1분간 대기
+                time.sleep(60)
+            
+            # 30초마다 체크
+            time.sleep(30)
+        except Exception as e:
+            app.logger.error(f"[스케줄러] NAS 루프 오류: {e}")
+            time.sleep(60)
+
+threading.Thread(target=nas_sync_scheduler, daemon=True).start()
+
 # --- API 엔드포인트 ---
 @app.route("/health", methods=["GET"])
 def health(): return jsonify({"status": "ok", "service": "els-core", "sb_ready": bool(supabase)})
