@@ -285,5 +285,23 @@ def handle_nas_files():
     rel = request.args.get("path")
     return send_file(str(Path("/app/data") / rel.strip("/")), as_attachment=True)
 
+from nas_vectorizer import process_nas_directory
+import asyncio
+
+@app.route('/api/vectorize/nas', methods=['POST'])
+def trigger_nas_vectorize():
+    """Trigger NAS folder crawling and vectorization (Phase 5)."""
+    if not supabase:
+        return jsonify({"error": "Supabase client not initialized"}), 500
+        
+    data = request.json or {}
+    raw_dir = data.get("directory", "/app/data/work-docs")  # Update path to /app/data which is mounted
+    branch_name = data.get("branch", "본사")
+    
+    # Run async function in sync route
+    result = asyncio.run(process_nas_directory(supabase, raw_dir, branch_name))
+    
+    return jsonify(result)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=2930, threaded=True)
