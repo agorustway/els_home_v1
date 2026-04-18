@@ -442,12 +442,12 @@ export async function POST(req) {
                             if (histText) recentPostsText += '\n' + histText;
                         }
 
-                        // (C) 할증 자동 계산 (냉동/공휴일 등 키워드 감지 시)
+                        // (C) 할증 자동 계산 (JSON에 정의된 요율 객체 기반 - 하드코딩 배제)
                         const surchargeMap = [
-                            { keywords: ['냉동', '냉장', 'reefer'], id: 'refrigerated' },
+                            { keywords: ['냉동', '냉장', 'reefer'], id: 'reefer' },
                             { keywords: ['플렉시', 'flexibag'], id: 'flexibag_liquid' },
-                            { keywords: ['탱크', 'tank', '비위험'], id: 'tank_non_hazard' },
-                            { keywords: ['험로', '오지'], id: 'hazardous_road' },
+                            { keywords: ['탱크', 'tank', '비위험'], id: 'tank' },
+                            { keywords: ['험로', '오지'], id: 'rough' },
                             { keywords: ['덤프'], id: 'dump' },
                             { keywords: ['공휴일', '일요일', '휴일'], id: 'holiday' },
                         ];
@@ -470,10 +470,12 @@ export async function POST(req) {
                                 recentPostsText += calcText;
                             }
                         }
+                        // (C) 할증 자동 계산 완료
                     } else if (sfData.origins?.length > 0) {
                         const originList = sfData.origins.map(o => o.label || o.id).join(', ');
-                        recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n정확한 단가는 [안전운임 조회](/employees/safe-freight) 메뉴를 이용해주세요.`;
+                        recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n`;
                     }
+                    recentPostsText += `\n- 💡운임 산정 및 할증에 관련된 더 자세하고 방대한 데이터베이스를 원하신다면 **[안전운임 조회](/employees/safe-freight)** 전용 메뉴를 강력히 권장합니다.`;
                 }
             }
         } catch (e) {
