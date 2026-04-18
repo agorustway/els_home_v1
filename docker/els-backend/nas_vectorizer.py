@@ -67,7 +67,7 @@ def chunk_text(text, max_len=MAX_CHUNK_SIZE, overlap=CHUNK_OVERLAP):
         start += (max_len - overlap)
     return chunks
 
-async def process_nas_directory(supabase, raw_dir, branch_name="본사"):
+async def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         logger.error("GEMINI_API_KEY is not set.")
@@ -88,9 +88,9 @@ async def process_nas_directory(supabase, raw_dir, branch_name="본사"):
         if not filepath.is_file():
             continue
         
-        # [SECURITY] "보안" 폴더가 경로에 포함된 경우 파싱 제외
-        if any(part == "보안" for part in filepath.parts):
-            logger.info(f"Skipping security file (in '보안' dir): {filepath.name}")
+        # [SECURITY] "보안" 키워드가 경로(폴더명)에 포함된 경우 파싱 제외
+        if any("보안" in part for part in filepath.parts):
+            logger.info(f"Skipping security file (path contains '보안'): {filepath.name}")
             skipped += 1
             continue
         

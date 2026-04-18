@@ -296,7 +296,7 @@ def trigger_nas_vectorize():
         
     data = request.json or {}
     raw_dir = data.get("directory", "/app/data/work-docs")  # Update path to /app/data which is mounted
-    branch_name = data.get("branch", "본사")
+    branch_name = data.get("branch", "NAS자료")
     
     # Run async function in sync route
     result = asyncio.run(process_nas_directory(supabase, raw_dir, branch_name))
