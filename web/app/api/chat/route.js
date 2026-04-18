@@ -29,52 +29,123 @@ function getSfDocs() {
     return _sfDocsCache;
 }
 
-const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution의 업무 지원 전문 AI 에이전트다.
-ELS 솔루션은 물류·운송 회사를 위한 인트라넷 시스템이다.
+// ─── K-SKILL / 외부 API 래퍼 (레질리언스 계층) ────────────────────────
+async function callExternalAPI(name, url, timeout = 8000) {
+    try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(timeout) });
+        if (res.ok) {
+            const data = await res.json();
+            return { success: true, data, source: name };
+        }
+        return { success: false, error: `HTTP ${res.status}`, source: name };
+    } catch (e) {
+        return { success: false, error: e.message, source: name };
+    }
+}
 
-## ⚡ 최우선 답변 원칙 (절대 위반 금지)
-1. **[데이터 활용 필수]** 아래에 "## 검색결과", "## 실시간", "## 안전운임 단가 표" 등으로 주입된 데이터는 실시간으로 사내 DB 또는 외부 공식 API에서 가져온 **확인된 사실 데이터**다. 이 데이터가 존재하면 **반드시 해당 데이터의 구체적인 수치/내용을 직접 인용하여 답변**하라. 절대로 "메뉴에서 확인하세요"라고 회피하지 마라.
-2. **[거절 금지]** K-SKILL, K-Law, 사내 DB에서 데이터가 주입되었으면 해당 내용을 답변에 포함해야 한다. "저는 ~할 수 없습니다" 류의 거절은 데이터가 전혀 없을 때만 허용된다.
-3. **[범용 지식 허용]** K리그 결과, 스포츠, 날씨, 일반 상식 등 사용자가 묻는 모든 질문에 성심성의껏 답변하라. 물류 업무만 답변하라는 제한은 없다. 다만 ELS 사내 데이터가 있으면 그것을 최우선 활용하라.
-4. **[업무 데이터 전권]** 업무보고, 게시판, 연락처, 작업지, 차량위치 등 사내 DB 검색결과가 주입되면 그것을 요약/분석/안내할 수 있다. "권한이 없다"고 거절하지 마라 — 데이터가 주입된 시점에서 이미 권한이 있는 것이다.
+// ─── 안전운임 할증 서버사이드 계산 엔진 ──────────────────────────────
+function calcSurcharge(baseFare, surchargeIds, sfData) {
+    if (!surchargeIds || surchargeIds.length === 0 || !sfData?.surcharges) return null;
+    const results = [];
+    let total = baseFare;
+    for (const sid of surchargeIds) {
+        const found = sfData.surcharges.find(s => s.id === sid || s.label.includes(sid));
+        if (found) {
+            const add = Math.round(baseFare * found.pct / 100);
+            total += add;
+            results.push({ label: found.label, pct: found.pct, add, subtotal: total });
+        }
+    }
+    return results.length > 0 ? { base: baseFare, surcharges: results, total } : null;
+}
 
-## ELS 인트라넷 전체 메뉴 맵 (안내 시 마크다운 링크 [메뉴이름](/경로) 필수 사용)
+// ─── 안전운임 이력 비교 엔진 ─────────────────────────────────────────
+function buildFareHistory(fareKey, sfData) {
+    const history = sfData.fares?.[fareKey];
+    if (!history || !Array.isArray(history) || history.length === 0) return '';
+    let text = `\n### 📊 구간 이력 (${fareKey})\n`;
+    text += '| 적용기간 | 거리(km) | 40ft 안전운임 | 20ft 안전운임 | 변동(40ft) |\n';
+    text += '|:---|:---:|:---:|:---:|:---:|\n';
+    for (let i = 0; i < history.length; i++) {
+        const h = history[i];
+        const f40 = h.f40안전 || h.fare40 || 0;
+        const f20 = h.f20안전 || h.fare20 || 0;
+        let diff = '-';
+        if (i < history.length - 1) {
+            const prev40 = history[i + 1].f40안전 || history[i + 1].fare40 || 0;
+            if (prev40 > 0) {
+                const delta = f40 - prev40;
+                const pct = ((delta / prev40) * 100).toFixed(1);
+                diff = `${delta > 0 ? '+' : ''}${(delta / 10000).toFixed(1)}만원 (${pct}%)`;
+            }
+        }
+        text += `| ${h.period} | ${h.km} | ${(f40 / 10000).toFixed(1)}만원 | ${(f20 / 10000).toFixed(1)}만원 | ${diff} |\n`;
+    }
+    return text;
+}
+
+const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution 전용 AI 에이전트 "ELS-AI"다.
+ELS 솔루션은 물류·운송 회사(컨테이너 내륙운송)를 위한 통합 인트라넷 시스템이다.
+너는 이 회사의 **전체 사이트/DB/파일을 읽기 최고권한으로 열람**하고 있으며, 임직원 모두를 위한 전용 비서다.
+
+## ⚡ ELS-AI 행동 강령 (절대 위반 금지)
+1. **[데이터 우선]** 아래에 주입된 "## 검색결과", "## 실시간", "## 안전운임", "## 이력" 등의 데이터는 사내 DB/외부 공식 API에서 실시간 조회한 **확인된 사실**이다. 이 데이터를 반드시 **구체 수치를 인용하여** 답변하라.
+2. **[거절 금지]** 데이터가 주입되었으면 "저는 할 수 없습니다"라고 절대 거절하지 마라. 데이터가 주입된 시점에서 너에게 '읽기 최고 권한'이 있는 것이다.
+3. **[만능 비서]** 물류 업무뿐 아니라, 날씨·스포츠·법률·상식 등 사용자가 묻는 모든 질문에 성심것 답변하라. 빈손으로 돌려보내지 마라.
+4. **[서비스 연계]** 관련 ELS 인트라넷 메뉴가 있다면 반드시 마크다운 링크 [메뉴이름](/경로)로 안내하라.
+5. **[할증 계산]** 안전운임 할증 관련 질문 시, 아래 "## 할증 계산 결과"가 주입되어 있다면 해당 결과를 그대로 읽어 안내하라. AI가 직접 곱셈/덧셈하지 마라 — 서버가 미리 계산한 결과만 전달하라.
+6. **[이력 비교]** "변동", "인상", "비교", "추이", "이전" 등의 질문에는 아래 "## 구간 이력" 표를 활용하여 기간별 비교를 제시하라.
+7. **[데이터 신선도]** 답변 마지막에 반드시 아래 "## 📌 데이터 기준 정보"를 참고하여 "이 답변은 ~기준 데이터로 확인되었습니다" 문구를 붙여라.
+8. **[학습 자세]** 사용자가 틀린 부분을 교정해주면 감사히 수용하고, 다음 답변에 반영하라.
+
+## 안전운임 전문 지식
+### 운임 적용 원칙
+1. **왕복 원칙**: 모든 내륙 컨테이너 운송은 **왕복 운임** 적용이 원칙이다. (적재→목적지→공컨테이너 반납까지가 1사이클)
+2. **편도 예외**: 오직 수도권 화주 공장(서울/인천/경기/강원)에서 작업 후 공컨테이너를 **의왕ICD**로 반납하는 경우에만 편도 운임 존재.
+3. **충청권 결론**: 아산·천안·당진 등 충청권 → 부산/광양은 의왕ICD 연계가 아니므로 **100% 왕복 기준**.
+
+### 할증(Surcharge) 종류
+- 플렉시백(액체): +20% | 플렉시백(분말): +10%
+- TANK 비위험물: +30% | 냉동/냉장: +30%
+- 험로/오지: +20% | 덤프: +30%
+- 일요일/공휴일: +20%
+- ※ 할증은 기본 안전운임에 백분율을 곱하여 **가산**. 서버에서 미리 계산 후 결과를 주입함.
+
+### 고시 버전 관리
+- 현행 적용: **2026년 1차 고시** (26.02월~, 시행일 2026.02.01)
+- 이전 버전: 22.07월, 22.04월, 22.02월, 21.12월, 21.09월
+- 차기 고시: 2026년 하반기 예정 (새 엑셀 등록 시 자동 반영)
+
+## ELS 인트라넷 전체 메뉴 맵
 ### 메인 메뉴
-- 홈(메인 대시보드): [홈](/employees) — 공지사항, 웹진, 날씨 위젯 등 종합 현황
-- 날씨 및 미세먼지: [날씨](/employees/weather) — 전국 날씨, 시간별 예보, 생활지수
-- 뉴스: [뉴스](/employees/뉴스) — 물류/운송 관련 뉴스 피드
-- 안전운임 조회: [안전운임 조회](/employees/safe-freight) — 구간별 안전운임 단가 계산, 고시 전문 PDF 열람
-- 컨테이너 이력조회: [컨테이너 이력조회](/employees/container-history) — ETRANS 연동 실시간 반입/반출 추적
-- 차량 위치 관제: [차량 위치 관제](/employees/vehicle-tracking) — GPS 기반 실시간 화물차 위치 확인
-- 마이페이지: [마이페이지](/employees/mypage) — 개인 정보, 프로필 관리
+- 홈: [홈](/employees) — 공지사항, 웹진, 날씨 등 종합 현황
+- 날씨/미세먼지: [날씨](/employees/weather) — 전국 날씨, 시간별 예보, 생활지수
+- 안전운임 조회: [안전운임 조회](/employees/safe-freight) — 구간별 단가 계산·고시 PDF 열람
+- 컨테이너 이력: [이력조회](/employees/container-history) — ETRANS 연동 실시간 추적
+- 차량 관제: [차량 위치 관제](/employees/vehicle-tracking) — GPS 실시간 화물차 위치
+- 마이페이지: [마이페이지](/employees/mypage) — 개인 정보 관리
 
 ### 인트라넷 메뉴
-- AI 어시스턴트: [AI 어시스턴트](/employees/ask) — 바로 여기! 법률/업무 실시간 문의
-- 대시보드: [대시보드](/employees/dashboard) — 사내 통계 및 현황 요약
-- 자유게시판: [자유게시판](/employees/board/free) — 사내 자유 게시판
-- 업무보고: [일일보고](/employees/reports/daily), [월간보고](/employees/reports/monthly), [내 보고서](/employees/reports/my)
-- 사내연락망: [사내연락망](/employees/internal-contacts) — 직원 연락처 관리
-- 외부연락처: [외부연락처](/employees/external-contacts) — 거래처/고객 연락처
-- 기사연락처: [기사연락처](/employees/driver-contacts) — 운전기사 연락처
-- 협력사연락처: [협력사연락처](/employees/partner-contacts) — 파트너사 연락처
-- 작업지 관리: [작업지 관리](/employees/work-sites) — 작업 현장 주소/정보 관리
-- 업무자료실: [업무자료실](/employees/work-docs) — 사내 업무 참고 자료
-- 양식 모음: [양식 모음](/employees/form-templates) — 업무용 각종 서식/양식
-- 자료실(NAS): [자료실](/employees/archive) — NAS 기반 사내 파일 저장소
-- 웹진: [웹진](/employees/webzine) — 사내 소식지/웹진
-- 랜덤게임: [랜덤게임](/employees/random-game) — 사내 이벤트/복지용
+- AI 어시스턴트: [AI 어시스턴트](/employees/ask) — 바로 이곳
+- 대시보드: [대시보드](/employees/dashboard) — 사내 현황 요약
+- 자유게시판: [자유게시판](/employees/board/free)
+- 업무보고: [일일보고](/employees/reports/daily) | [월간보고](/employees/reports/monthly) | [내 보고서](/employees/reports/my)
+- 사내연락망: [사내연락망](/employees/internal-contacts) | [외부연락처](/employees/external-contacts) | [기사연락처](/employees/driver-contacts) | [협력사](/employees/partner-contacts)
+- 작업지 관리: [작업지](/employees/work-sites)
+- 업무자료실: [업무자료실](/employees/work-docs) | [양식 모음](/employees/form-templates)
+- NAS 자료실: [자료실](/employees/archive) — NAS 파일 저장소
+- 웹진: [웹진](/employees/webzine) | 랜덤게임: [랜덤게임](/employees/random-game)
 
 ### 지점 관리
-- 아산지점 배차판: [아산지점](/employees/branches/asan) — 아산지점 실시간 배차 현황
+- 아산지점 배차판: [아산지점](/employees/branches/asan)  
 
-## 안전운임 답변 규칙
-1. **[절대 원칙]** 아래 "## 안전운임 단가 표"에 데이터가 있으면, 해당 수치(km, 20ft, 40ft 금액)를 **직접 표시**하여 답변하라. "안전운임 조회 메뉴에서 확인하세요"라고 절대 회피 금지.
-2. **[금액 조작 금지]** AI 임의로 편도×2=왕복 계산, 금액 추측 등 수학연산 절대 금지. 표에 적힌 숫자만 그대로 안내.
-3. **[편도/왕복 오해 방지]** 표 키에 [편도]만 있다면 "고시 데이터상 해당 구간은 편도만 등록되어 있습니다"라고 안내. 사용자가 왕복/편도 이유를 물으면 아래 "## 💡 [AI 사전 학습]" 원칙을 그대로 설명하라.
-4. **[산정 근거]** "왜 이 금액이냐" 질문 시 반드시 "## 💡 [AI 사전 학습]" 섹션이나 "## 안전운임 고시 전문" 섹션에 있는 조문/부대조항만을 근거로 설명하며 혼자 지어내지 마라.
-
-## 메뉴 안내 규칙
-- 위의 전체 메뉴 맵을 참고하여 정확한 마크다운 링크로 안내하세요.`;
+## 외부 서비스 연동 현황 (K-SKILL / MCP)
+- **K-SKILL**: 미세먼지(에어코리아), 지하철 도착(서울교통공사), 한강 수위, 한국 주식(KRX) — 실시간 프록시 연동
+- **K-Law (법망 MCP)**: 법령/규정/판례 검색 — 실시간 API 연동
+- **네이버 스포츠**: KBO/K리그 실시간 경기 결과
+- **컨테이너 이력**: ETRANS 웹스크래핑 봇 (elsbot) 연동
+- ※ 위 서비스 데이터가 "(K-SKILL)", "(K-Law)", "(네이버)" 태그와 함께 주입되었으면 반드시 수치를 인용하여 답변할 것.
+- ※ API 오류 시에도 거절하지 말고 "현재 실시간 조회가 일시 중단되어, 일반 지식으로 안내드립니다" + 관련 메뉴 링크를 제공할 것.`;
 
 /**
  * POST /api/chat
@@ -204,43 +275,75 @@ export async function POST(req) {
                 }
             }
 
-            // 3. 안전운임표 단가 데이터 주입 (faresLatest 키 기반 검색 최적화)
-            const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항'];
+            // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 (Omni-Agent Phase 1)
+            const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항', '인상', '변동', '비교', '추이', '이전', '할증', '냉동', '냉장', '플렉시', '탱크', '험로', '덤프', '공휴일', '울산', '평택', '마산', '포항', '군산', '대산'];
             isSfQuery = searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
                 sfKeywords.some(k => userKwd.includes(k));
             if (isSfQuery) {
                 const sfData = getSfData();
                 if (sfData?.faresLatest) {
-                    // faresLatest 키: '[왕복/편도] 출발지|광역시도|구|동'
                     const fareKeys = Object.keys(sfData.faresLatest);
 
-                    // [v4.9.42] 안전운임 스코어링 고도화: 단어 매칭 수에 따른 가중치 부여
                     const scored = fareKeys.map(k => {
                         let score = 0;
                         let matchedCount = 0;
                         searchTerms.forEach(t => {
                             if (k.includes(t)) {
-                                score += 10; // 인주면, 아산시 등 고유명사 매칭 시 고득점
+                                score += 10;
                                 matchedCount++;
                             }
                         });
-                        // 출발지(ex:아산)와 목적지(ex:부산)가 동시에 들어있으면 점수를 대폭 끌어올림
-                        if (matchedCount > 1) {
-                            score += (matchedCount * 15);
-                        }
+                        if (matchedCount > 1) score += (matchedCount * 15);
                         return { k, score };
                     }).filter(i => i.score > 0)
                         .sort((a, b) => b.score - a.score)
-                        .slice(0, 12);
+                        .slice(0, 8);
 
                     if (scored.length > 0) {
+                        // (A) 최신 운임 단가 표
                         const fareRows = scored.map(item => {
                             const v = sfData.faresLatest[item.k];
-                            // 금액의 출처가 무엇이든, AI가 인지하기 쉽도록 '안전운임/운수자/위탁 통합' 등의 키워드를 임시 주입
-                            return `- [조회된 구간] ${item.k} | 거리: ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
-                            return `- [조회된 구간] ${item.k} | 거리: ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
+                            return `- [구간] ${item.k} | ${v.km}km | 20ft: ${(v.fare20 / 10000).toFixed(1)}만원 | 40ft: ${(v.fare40 / 10000).toFixed(1)}만원`;
                         }).join('\n');
-                        recentPostsText += '\n\n## (중요) 안전운임 단가 표 (최우선 참조)\n' + fareRows + '\n\n🚨 [AI 주의사항] 사용자가 묻는 상세 주소(예: 걸매리 등 특정 "리"나 "동")가 위 구간 목록에 정확히 일치하지 않더라도, 상위 단위인 "시/군/구/읍/면"이 포함되어 있다면 해당 구간(예: 인주면)의 금액을 안내하며 "상세 지역(리/동)이 생략되어 상위 구역 기준으로 안내해 드립니다" 라고 답변해 주세요. 데이터가 없다고 거절하지 마십시오.';
+                        recentPostsText += '\n\n## (중요) 안전운임 단가 표 — 현행 고시 (26.02월 적용)\n' + fareRows;
+                        recentPostsText += '\n\n🚨 상세주소(리/동)가 표에 없더라도 상위 읍/면/구가 있으면 해당 금액을 안내하고, "상위 구역 기준"임을 밝혀라. 데이터가 없다고 거절 금지.';
+
+                        // (B) 이력 비교 (상위 1~3개 구간)
+                        const isHistoryQuery = ['변동', '인상', '비교', '추이', '이전', '과거', '역대'].some(k => userKwd.includes(k));
+                        const historyKeys = scored.slice(0, isHistoryQuery ? 3 : 1);
+                        for (const item of historyKeys) {
+                            const histText = buildFareHistory(item.k, sfData);
+                            if (histText) recentPostsText += '\n' + histText;
+                        }
+
+                        // (C) 할증 자동 계산 (냉동/공휴일 등 키워드 감지 시)
+                        const surchargeMap = [
+                            { keywords: ['냉동', '냉장', 'reefer'], id: 'refrigerated' },
+                            { keywords: ['플렉시', 'flexibag'], id: 'flexibag_liquid' },
+                            { keywords: ['탱크', 'tank', '비위험'], id: 'tank_non_hazard' },
+                            { keywords: ['험로', '오지'], id: 'hazardous_road' },
+                            { keywords: ['덤프'], id: 'dump' },
+                            { keywords: ['공휴일', '일요일', '휴일'], id: 'holiday' },
+                        ];
+                        const detectedSurcharges = surchargeMap.filter(s => s.keywords.some(k => userKwd.includes(k))).map(s => s.id);
+                        if (detectedSurcharges.length > 0 && scored[0]) {
+                            const topFare = sfData.faresLatest[scored[0].k];
+                            const calc40 = calcSurcharge(topFare.fare40, detectedSurcharges, sfData);
+                            const calc20 = calcSurcharge(topFare.fare20, detectedSurcharges, sfData);
+                            if (calc40) {
+                                let calcText = `\n\n## 💰 할증 계산 결과 (서버 산출 — AI 임의 계산 아님)\n`;
+                                calcText += `**구간**: ${scored[0].k}\n`;
+                                calcText += `| 항목 | 40ft | 20ft |\n|:---|:---:|:---:|\n`;
+                                calcText += `| 기본 안전운임 | ${(calc40.base / 10000).toFixed(1)}만원 | ${(calc20.base / 10000).toFixed(1)}만원 |\n`;
+                                for (let si = 0; si < calc40.surcharges.length; si++) {
+                                    const s40 = calc40.surcharges[si];
+                                    const s20 = calc20.surcharges[si];
+                                    calcText += `| + ${s40.label} (${s40.pct}%) | +${(s40.add / 10000).toFixed(1)}만원 | +${(s20.add / 10000).toFixed(1)}만원 |\n`;
+                                }
+                                calcText += `| **합계** | **${(calc40.total / 10000).toFixed(1)}만원** | **${(calc20.total / 10000).toFixed(1)}만원** |\n`;
+                                recentPostsText += calcText;
+                            }
+                        }
                     } else if (sfData.origins?.length > 0) {
                         const originList = sfData.origins.map(o => o.label || o.id).join(', ');
                         recentPostsText += `\n\n## 안전운임 적용 구간 (출발지 목록)\n${originList}\n정확한 단가는 [안전운임 조회](/employees/safe-freight) 메뉴를 이용해주세요.`;
@@ -455,25 +558,29 @@ export async function POST(req) {
     if (isSfQuery) {
         try {
             const safeDocs = getSfDocs();
-            let injectedRules = `\n\n## 💡 [AI 사전 학습] 수출입 컨테이너 안전운임 핵심 요약\n`;
-            injectedRules += `1. **운임 적용 원칙(왕복/편도)**: 모든 내륙 운임은 **'왕복 운임'** 적용을 원칙으로 합니다. (공컨테이너를 반납하는 과정을 필수 사이클로 보기 때문입니다)\n`;
-            injectedRules += `2. **편도의 예외**: 오직 **수도권 화주 공장(서울, 인천, 경기, 강원)** 작업 후 공컨테이너 반납 장소가 **의왕ICD**인 경우 등에 한하여 아주 예외적으로 '편도' 운임이 존재합니다.\n`;
-            injectedRules += `3. **결론 및 안내 방침**: 아산, 천안, 당진 등 충청권에서 부산/광양으로 가는 구간은 의왕ICD 연계가 아니므로 **편도 운임 자체가 없으며 100% '왕복' 기준**으로 책정됩니다.\n`;
-            injectedRules += `4. **[매우중요] 할루시네이션(임의 계산) 절대 금지**: (예: 아산-부산 구간 왕복 40FT 운임은 보통 약 100만원~102만원 내외입니다.) 질문에 대한 실제 금액은 오직 아래 추출된 '## (중요) 안전운임 단가 표'에 나타난 수치만 읽어서 대답하세요. 아래 '안전운임 고시 전문'에 나오는 퍼센트(%)나 할증률 등을 보고 AI가 마음대로 덧셈/곱셈을 하여 새로운 금액을 지어내서 안내하면 절대 안 됩니다.\n`;
-
             if (safeDocs?.[0]?.text) {
                 const fullText = safeDocs[0].text;
-                // 단순 앞부분이 아니라 '부대조항'이 시작되는 [별표 1] 지점을 찾아 그 이후를 주입 (계산 논리 집중)
                 const logicIdx = fullText.indexOf('[별표 1]');
                 const startIdx = logicIdx !== -1 ? logicIdx : 0;
-                safeFreightText = injectedRules + `\n\n## 안전운임 고시 전문 (원문 참고용)\n${fullText.slice(startIdx, startIdx + 5000)}`;
-            } else {
-                safeFreightText = injectedRules;
+                safeFreightText = `\n\n## 안전운임 고시 전문 (원문 참고용 — ${safeDocs[0].versionDir || '최신'})\n${fullText.slice(startIdx, startIdx + 5000)}`;
             }
         } catch (e) { console.error('Docs RAG 에러:', e); }
     }
 
-    const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText + safeFreightText;
+    // 📌 데이터 신선도 메타데이터 생성
+    const sfMeta = getSfData()?.meta;
+    const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const nowStr = kstNow.toISOString().slice(0, 16).replace('T', ' ');
+    let dataFreshness = `\n\n## 📌 데이터 기준 정보\n`;
+    dataFreshness += `- **실시간 API** (미세먼지/주식/스포츠/법령): ${nowStr} KST 시점 조회\n`;
+    if (sfMeta) {
+        dataFreshness += `- **안전운임 고시 데이터**: ${sfMeta.period || '26.02월'} 적용 (생성일: ${sfMeta.generatedAt?.slice(0, 10) || '-'})\n`;
+    }
+    dataFreshness += `- **사내 DB** (게시판/연락처/작업지/업무자료): ${nowStr} KST 시점 조회\n`;
+    dataFreshness += `- **차기 안전운임 고시**: 2026년 하반기 예정. 새 고시 발행 시 시스템에 자동 반영됩니다.\n`;
+    dataFreshness += `\n※ 답변 말미에 반드시 "📌 이 답변은 [위 기준 정보]로 확인되었습니다" 문구를 한 줄로 요약하여 붙이세요.`;
+
+    const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + recentPostsText + safeFreightText + dataFreshness;
     const contents = messages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: m.parts ?? [{ text: '' }],
