@@ -108,7 +108,6 @@ function calcSurcharge(baseFare, surchargeIds, sfData) {
     return results.length > 0 ? { base: baseFare, surcharges: results, total } : null;
 }
 
-}
 
 // ─── Phase 5: 문서 벡터 추출 (Gemini text-embedding-004) ───
 async function getEmbedding(text) {
