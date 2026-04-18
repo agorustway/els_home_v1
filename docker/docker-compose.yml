@@ -27,6 +27,8 @@ services:
       - DAEMON_URL=http://127.0.0.1:31999
     volumes:
       - ./data:/app/data
+      - /volume1:/app/volume1
+      - /volume2:/app/volume2
     restart: unless-stopped
 
   # 3. Light API Core (Port 2930 - Lightweight)
@@ -42,4 +44,6 @@ services:
       - PORT=2930
     volumes:
       - ./data:/app/data
+      - /volume1:/app/volume1
+      - /volume2:/app/volume2
     restart: unless-stopped
