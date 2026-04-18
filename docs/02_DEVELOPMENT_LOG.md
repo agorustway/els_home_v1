@@ -1,3 +1,63 @@
+## 📅 2026-04-18 (v4.9.60~64 — Omni-Agent Freight Intelligence Phase 1~4)
+### 🚀 Phase 1: 안전운임 Deep Knowledge Engine (v4.9.60)
+1. **[FEAT] 시스템 프롬프트 전면 재설계 — "읽기 최고권한 Omni-Agent"**:
+   - `route.js`의 `BASE_SYSTEM_INSTRUCTION`을 전면 개편. AI가 사내 DB·NAS·외부 API에 대한 최고 읽기 권한을 인지하고, "조회 페이지에서 확인하세요"식 거절을 근본 차단.
+   - 안전운임 질문 시 반드시 **주입된 데이터에서 수치를 인용**하도록 강제. 데이터 미발견 시에도 상위 행정구역 기준으로 안내.
+2. **[FEAT] 이력 비교 엔진 (`buildFareHistory`)**:
+   - 6개 고시 기간(21.09~26.02)의 동일 구간 운임을 시계열 비교표로 생성. 기간별 변동률(%) 자동 산출.
+   - "인상됐어?", "변동 추이" 등의 키워드 감지 시 상위 3개 구간까지 이력 비교표 자동 주입.
+3. **[FEAT] 할증 서버 계산 엔진 (`calcSurcharge`)**:
+   - 냉동(+30%), 공휴일(+20%), 플렉시백(+20%/+10%), 탱크(+30%), 험로(+20%), 덤프(+30%) 등 할증을 AI가 아닌 **서버에서 미리 계산**하여 주입.
+   - 할증 규정(최대 3개 적용, 첫 번째 100%·나머지 50%) 반영. AI 임의 계산(할루시네이션) 원천 차단.
+4. **[FEAT] 데이터 신선도 표시(Data Freshness Footer)**:
+   - 모든 AI 답변 말미에 "📌 이 답변은 [기준 정보]로 확인되었습니다" 문구 강제 삽입.
+   - 고시 데이터 기준일, 사내 DB 조회 시점, 외부 API 조회 시점 명시.
+
+### 🚀 Phase 2: pgvector 기반 벡터 DB 인프라 (v4.9.61)
+1. **[FEAT] Supabase pgvector 스키마 구축 (`supabase_pgvector_setup.sql`)**:
+   - `document_chunks` 테이블: 768차원 벡터 + 메타데이터(JSONB) + GIN 인덱스
+   - `nas_file_index` 테이블: NAS 파일 크롤링 인덱스 (MD5 해시 기반 변경 감지)
+   - `ai_chat_memory` 테이블: 사용자별 대화 영구 저장
+   - `match_documents()` RPC 함수: 코사인 유사도 기반 시맨틱 검색
+2. **[FEAT] 안전운임 벡터화 스크립트 (`vectorize-safe-freight.js`)**:
+   - 52,801개 안전운임 구간을 지역별로 그룹핑하여 3,770개 청크로 압축
+   - 고시 전문(68,473자)을 800자 단위로 98개 청크로 분할 (겹침 100자)
+   - Gemini `gemini-embedding-2-preview` 모델 사용, `outputDimensionality: 768`로 차원 제한
+   - 50개씩 배치 임베딩 → Supabase upsert, 총 **3,868/3,868 청크 100% 벡터화 완료**
+
+### 🚀 Phase 3: K-SKILL Resilience + OPINET 경유가 연동 (v4.9.62)
+1. **[FEAT] OPINET 경유가 AI 에이전트 연동**:
+   - "경유", "유가", "기름값", "주유소" 키워드 감지 시 내부 `/api/opinet/fuel-price` 프록시 호출
+   - 경유/휘발유 전국 평균 가격, 전일 대비 변동, 주간 변동 실시간 안내
+   - 안전운임 관련 질문 시에도 자동으로 경유가 데이터 주입 (개정 기준점 연계)
+2. **[FEAT] 안전운임 개정 사이클 동적 학습**:
+   - 하드코딩("4월 발표 5월 적용") → 분기별 사이클(화물자동차운수사업법 시행령)로 교체:
+     - 1Q(1~3월 평균) → 5~6월 적용 | 2Q(4~6월) → 7~9월 | 3Q(7~9월) → 10~12월 | 4Q(10~12월) → 다음해 1~3월
+   - **±50원/L 미만 변동 시 동결** 규칙 AI 학습 반영
+3. **[FEAT] `callExternalAPI()` 래퍼 — K-SKILL 레질리언스 계층**:
+   - 모든 외부 API 호출을 단일 래퍼로 통합. 타임아웃 8초, try/catch, 실패 시 구조화된 폴백 반환.
+   - 미세먼지 실패 → 에어코리아 링크 | 주식 실패 → 네이버 금융 링크 | 유가 실패 → 안전운임 조회 메뉴 링크
+
+### 🚀 Phase 4: 안정화 — Vercel 빌드 이슈 대응 (v4.9.63~64)
+1. **[FIX] `safe-freight.json`(35MB) Vercel 서버리스 번들 미포함 이슈**:
+   - **원인**: `fs.readFileSync`로 읽는 파일은 Next.js standalone 빌드의 webpack file-tracing이 추적하지 못함
+   - **시도 1** (v4.9.63): `resolveSfPath()` 함수 — `__dirname` 기반 폴백 3단계 + `outputFileTracingIncludes` 설정 → 미해결
+   - **시도 2** (v4.9.63a): `next.config.mjs`에 `outputFileTracingIncludes: { '/api/chat': ['./data/**/*'] }` 추가 → 미해결
+   - **최종 해결** (v4.9.64): `require('../../../data/safe-freight.json')` 방식으로 전환. webpack 정적 분석이 확실하게 번들에 포함시킴. `fs.readFileSync` 폴백 유지.
+2. **[FEAT] 데이터 로드 디버그 로깅 추가**:
+   - 콘솔에 `[ELS-AI] ✅/❌ safe-freight.json` 로드 결과 출력. Vercel Logs에서 확인 가능.
+
+### 📁 변경 파일 요약
+| 파일 | 변경 내용 |
+|------|----------|
+| `web/app/api/chat/route.js` | 시스템 프롬프트, RAG 파이프라인, OPINET 연동, K-SKILL 래퍼, 데이터 로드 방식 전면 개편 |
+| `web/next.config.mjs` | `outputFileTracingIncludes` 추가 |
+| `scripts/supabase_pgvector_setup.sql` | pgvector 스키마, RPC 함수, 인덱스 정의 |
+| `scripts/vectorize-safe-freight.js` | 안전운임 벡터화 스크립트 (Gemini embedding) |
+| `docs/01_MISSION_CONTROL.md` | Omni-Agent Phase 1~4 현황 반영 |
+
+---
+
 ## 📅 2026-04-18 (v4.9.52 — 배차판 메모 정렬, 디버그 모드, AI 할루시네이션 핫픽스)
 ### ✨ 주요 업데이트 내역
 1. **[FIX] 아산지점 배차판 메모 열 정렬 오류 복구**:

@@ -29,6 +29,8 @@
 - App --> NAS Backend (GPS 원격측정)
 - Web --> K-SKILL (AI RAG: 미세먼지 실시간)
 - Web --> K-Law  (AI RAG: 법령 조회)
+- Web --> OPINET (AI RAG: 경유가 실시간)
+- Web --> Supabase pgvector (시맨틱 검색: document_chunks)
 
 ---
 
@@ -126,11 +128,13 @@ ES Modules (type="module") 방식 적용. 빌드 도구 없음.
 
 ## 6. AI 어시스턴트 아키텍처 (Agent RAG Pipeline)
 
-> **최종 구현**: 2026-04-12 (v4.9.29)
+> **최종 구현**: 2026-04-18 (v4.9.64 — Omni-Agent Phase 1~4)
 > **구현 파일**:
-> - web/app/api/chat/route.js — 백엔드 RAG 엔진 및 Gemini 스트리밍
+> - web/app/api/chat/route.js — 백엔드 RAG 엔진, 할증 계산, OPINET 연동, Gemini 스트리밍
 > - web/app/(main)/employees/(intranet)/ask/page.js — AI 어시스턴트 UI (데스크탑/모바일 분기)
 > - web/app/(main)/employees/(intranet)/ask/ask.module.css — 전용 스타일
+> - scripts/supabase_pgvector_setup.sql — pgvector 벡터 DB 스키마
+> - scripts/vectorize-safe-freight.js — 안전운임 벡터화 파이프라인
 
 ELS AI 어시스턴트는 단순 질의응답을 넘어 사내 DB + 외부 MCP 프록시를 실시간으로 결합하는
 Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
@@ -154,14 +158,19 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
         +-- STEP 2: 조건부 RAG (키워드 트리거)
         |       +-- '차량/위치/어디'    → Supabase vehicle_trips + vehicle_locations JOIN
         |       +-- 컨테이너번호 패턴   → NAS Backend 실시간 이력조회
-        |       +-- 안전운임 키워드     → safe-freight-data.json 엑셀 데이터 검색
-        |       +-- '날씨/미세먼지/공기' → K-SKILL fine-dust Proxy 호출
+        |       +-- 안전운임 키워드     → require()로 safe-freight.json 로드 (35MB, 모듈캐시)
+        |       |       +-- (A) 최신 단가표 주입 (상위 8구간 스코어링)
+        |       |       +-- (B) 이력 비교표 (buildFareHistory, 6개 기간)
+        |       |       +-- (C) 할증 서버 계산 (calcSurcharge, 냉동/공휴일 등)
+        |       +-- '날씨/미세먼지/공기' → callExternalAPI() → K-SKILL fine-dust
         |       +-- '법/규정/근로/운임'  → K-Law REST API 호출
+        |       +-- '경유/유가/기름값'   → callExternalAPI() → OPINET /api/opinet/fuel-price
         |
         +-- STEP 3: Context 조합
-        |       BASE_SYSTEM_INSTRUCTION (인트라넷 전체 20+개 메뉴맵 포함)
+        |       BASE_SYSTEM_INSTRUCTION (분기별 개정사이클 + 20+개 메뉴맵 포함)
         |         + Omni-RAG 검색 결과
         |         + 안전운임 고시 전문 (PDF→JSON, 최대 2차수)
+        |         + 데이터 신선도 Footer (고시일, DB조회 시점, API시점)
         |       = finalSystemInstruction
         |
         +-- STEP 4: Gemini 2.5 Flash 스트리밍 호출
@@ -178,12 +187,14 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 | **Omni-RAG (항상)** | Supabase PostgreSQL | 모든 질문 키워드 병렬 스캔 | 연락처(사내/외부), 게시글/업무일지 본문, 작업지 주소 |
 | **차량 위치** | Supabase vehicle_trips/locations | 차량, 위치, 어디 | 실시간 GPS 위치/주소 |
 | **컨테이너** | NAS Backend API | 영문4+숫자7 패턴 | 반입/반출 이력 |
-| **안전운임 단가** | safe-freight-data.json (엑셀 변환) | 지역명 키워드 매칭 | 구간별 운임 단가 |
+| **안전운임 단가** | safe-freight.json (35MB, require()로 번들) | 지역명 키워드 스코어링 | 구간별 운임 단가 + 이력비교표 + 할증계산 |
 | **안전운임 고시** | safe-freight-docs.json (PDF 변환) | 항상 주입 (최신 2차수) | 고시 전문 텍스트 |
-| **K-SKILL/미세먼지** | k-skill-proxy.nomadamas.org | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
+| **K-SKILL/미세먼지** | callExternalAPI() → k-skill-proxy | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
+| **OPINET 유가** | callExternalAPI() → /api/opinet/fuel-price | 경유, 유가, 기름값 | 전국 경유/휘발유 평균가, 주간변동 |
 | **스포츠 결과** | 네이버 스포츠 API (api-gw...) | 야구, 축구, KBO, K리그 등 | 실시간/과거 경기 스코어 (Direct API) |
 | **열차/KTX/SRT** | 다이렉트 딥링크 생성기 | KTX, SRT, 기차표, 좌석 | 네이버 기차표 검색 및 공식앱 연결 |
 | **K-Law** | api.beopmang.org | 법, 규정, 근로, 운임, 판례, 과태료 | 법령 조문 전문 |
+| **pgvector 시맨틱** | Supabase document_chunks (3,868 청크) | match_documents() RPC | 코사인 유사도 기반 구간/고시 검색 (예정) |
 
 **K-SKILL 지역 측정소 매핑 (도시명 -> AirKorea 측정소 힌트)**:
 - 서울: 서울 중구 / 부산: 부산 연산동 / 인천: 인천 구월동
@@ -214,9 +225,13 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 - 법령 등 외부 사실관계 수치는 반드시 출처 명시 또는 K-Law 조회 유도
 
 BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
-- 너는 ELS Solution의 법률/업무 지원 에이전트다.
+- 너는 ELS Solution의 전사 읽기 최고권한 Omni-Agent다.
 - **인트라넷 전체 20+개 메뉴 경로를 시스템 프롬프트에 내장** (v4.9.29)
-- K-SKILL / K-Law MCP / 사내 DB에서 확인된 정보를 최우선으로 활용.
+- **분기별 안전운임 개정 사이클 학습**: 1Q→5월, 2Q→7월, 3Q→10월, 4Q→다음해 1월
+- **±50원/L 경유가 변동 기준 이해**: 50원 미만 시 동결 규칙 포함
+- K-SKILL / K-Law / OPINET / 사내 DB에서 확인된 정보를 최우선으로 활용.
+- **할증 계산은 서버가 수행** → AI는 결과만 인용 (서버 산출 결과임을 명시)
+- **데이터 신선도**: 답변 말미에 조회 기준 시점 필수 명시
 - 법령/고시 검색 결과가 빈약해도 사전 지식으로 성심성의껏 답변. 거절 최소화.
 - 메뉴 안내 시 반드시 [메뉴이름](/경로) 마크다운 링크로 이동 연결해라.
 
@@ -243,4 +258,4 @@ BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
 5. **K-SKILL/K-Law 가용성**: 외부 프록시 서버 의존. 네트워크 단절 시 AI는 fallback(사내 DB only)으로 동작.
 
 ---
-*최종 갱신일: 2026-04-12 (by Antigravity/Claude Opus | v4.9.29)*
+*최종 갱신일: 2026-04-18 (by Antigravity/Claude | v4.9.64 Omni-Agent)*
