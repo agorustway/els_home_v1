@@ -122,6 +122,7 @@ export async function POST(req) {
             const orConditionsInt = searchTerms.map(term => `name.ilike.%${term}%,department.ilike.%${term}%,position.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
             const orConditionsPosts = searchTerms.map(term => `title.ilike.%${term}%,content.ilike.%${term}%`).join(',');
             const orConditionsWs = searchTerms.map(term => `name.ilike.%${term}%,address.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
+            const orConditionsWd = searchTerms.map(term => `title.ilike.%${term}%,content.ilike.%${term}%`).join(',');
 
             // 날짜/기간 키워드 추출 (예: 4월, 2024년, 이번주)
             const dateMatch = lastUserText.match(/(\d{1,2})월/);
@@ -140,11 +141,12 @@ export async function POST(req) {
                 postQuery = postQuery.or(orConditionsPosts);
             }
             
-            const [extRes, intRes, postRes, wsRes] = await Promise.all([
+            const [extRes, intRes, postRes, wsRes, wdRes] = await Promise.all([
                 searchTerms.length > 0 ? supabase.from('external_contacts').select('*').or(orConditionsExt).limit(5) : Promise.resolve({ data: [] }),
                 searchTerms.length > 0 ? supabase.from('internal_contacts').select('*').or(orConditionsInt).limit(5) : Promise.resolve({ data: [] }),
                 postQuery.order('created_at', { ascending: false }).limit(monthVal ? 15 : 5),
                 searchTerms.length > 0 ? supabase.from('work_sites').select('*').or(orConditionsWs).limit(5).then(r => r).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+                searchTerms.length > 0 ? supabase.from('work_docs').select('title, content, author_email, category, attachments, created_at').or(orConditionsWd).limit(5).then(r => r).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
             ]);
 
             if (extRes.data?.length > 0) {
@@ -163,6 +165,13 @@ export async function POST(req) {
             }
             if (wsRes.data?.length > 0) {
                 recentPostsText += '\n\n## 작업지 검색결과\n' + wsRes.data.map(w => `- ${w.name} | 주소:${w.address || '-'} | 메모:${w.memo || '-'}`).join('\n');
+            }
+            if (wdRes.data?.length > 0) {
+                recentPostsText += '\n\n## 업무자료(Work-Docs) 검색결과\n' + wdRes.data.map(w => {
+                    const date = new Date(w.created_at).toLocaleDateString();
+                    const attach = w.attachments && w.attachments.length > 0 ? ` (첨부파일: ${w.attachments.length}개)` : '';
+                    return `- [${date}][${w.category}] ${w.title}${attach}\n  본문 요약: ${w.content?.slice(0, 500)}...`;
+                }).join('\n');
             }
 
             // 1. 차량 위치 관련
