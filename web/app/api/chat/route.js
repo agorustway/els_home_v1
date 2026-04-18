@@ -480,6 +480,42 @@ export async function POST(req) {
             console.error('Omni-RAG 에러:', e);
         }
 
+        // 3.5 NAS & 메뉴얼 시맨틱 검색 (Phase 2/5 - pgvector)
+        try {
+            if (process.env.GEMINI_API_KEY && lastUserText.trim().length > 2) {
+                const embedRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "models/text-embedding-004",
+                        content: { parts: [{ text: lastUserText }] },
+                        outputDimensionality: 768
+                    }),
+                    signal: AbortSignal.timeout(5000)
+                }).catch(() => null);
+                
+                if (embedRes && embedRes.ok) {
+                    const embedData = await embedRes.json();
+                    if (embedData.embedding?.values) {
+                        const { data: matchedDocs } = await supabase.rpc('match_documents', {
+                            query_embedding: embedData.embedding.values,
+                            match_threshold: 0.5,
+                            match_count: 3
+                        });
+                        
+                        if (matchedDocs && matchedDocs.length > 0) {
+                            recentPostsText += '\n\n## 📚 사내 지식베이스 (안전운임 원문 / 사내문서) 검색결과\n';
+                            matchedDocs.forEach(doc => {
+                                const source = doc.metadata?.source_file || doc.metadata?.title || '사내문서';
+                                recentPostsText += `- [출처: ${source}]\n${doc.content}\n\n`;
+                            });
+                            apiTimestamps.nasKnowledge = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                        }
+                    }
+                }
+            }
+        } catch (e) { console.error('pgvector 시맨틱 검색 에러:', e); }
+
         // 4. K-SKILL & 직접 실시간 API 연동 + OPINET 유가 + Phase 3 Resilience
         const kskillKeywords = ['미세먼지', '공기', '날씨', 'ktx', '열차', '기차', '예매', '지하철', '역', '도착', '한강', '수위', '주식', '증시', '삼성전자', '야구', '축구', 'kbo', 'k리그', '경기', '결과', '스포츠', '좌석', '경유', '유가', '기름값', '주유소'];
         const isKskillQuery = kskillKeywords.some(k => userKwd.includes(k));
