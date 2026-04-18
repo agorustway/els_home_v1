@@ -346,5 +346,21 @@ def trigger_nas_vectorize():
     
     return jsonify({"status": "processing", "message": f"Started vectorization for {branch_name} in background."}), 202
 
+import requests
+
+@app.route('/api/proxy/kskill', methods=['GET'])
+def proxy_kskill():
+    """Vercel 의 IP 차단(403)을 우회하기 위한 NAS 자체 프록시"""
+    target_url = request.args.get('url')
+    if not target_url:
+        return jsonify({"error": "Missing proxy url"}), 400
+        
+    try:
+        res = requests.get(target_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        return (res.text, res.status_code, {'Content-Type': 'application/json'})
+    except Exception as e:
+        app.logger.error(f"K-SKILL Proxy error: {e}")
+        return jsonify({"error": str(e)}), 502
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=2930, threaded=True)

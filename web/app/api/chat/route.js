@@ -305,6 +305,8 @@ export async function POST(req) {
     let isSfQuery = false;
     // 실제 API 호출 성공 시점 추적 (데이터 신선도 정확도 개선)
     const apiTimestamps = {};
+    const backendUrl = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'https://elssolution.synology.me:8443';
+    const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
 
     try {
         // --- Omni-RAG: 사용자의 질문에 맞춰 전체 사내망 DB 동시 스캔 ---
@@ -385,7 +387,6 @@ export async function POST(req) {
             const cntrMatch = userKwd.match(/[a-z]{4}\d{7}/);
             if (cntrMatch) {
                 const cntrNo = cntrMatch[0].toUpperCase();
-                const backendUrl = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
                 const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
                 if (res?.ok) {
                     const data = await res.json();
@@ -515,7 +516,8 @@ export async function POST(req) {
                 const targetRegion = foundKey ? regionsMap[foundKey] : '아산 모종동';
 
                 try {
-                    const url = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
+                    const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
+                    const url = kskillProxyBase + encodeURIComponent(targetUri);
                     const res = await fetch(url, { 
                         signal: AbortSignal.timeout(8000),
                         headers: { 'User-Agent': 'Mozilla/5.0' }
@@ -556,9 +558,9 @@ export async function POST(req) {
                 const subMatch = lastUserText.match(subRegex);
                 const station = subMatch?.[1]?.replace('역', '') || '강남';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`, { 
-                        signal: AbortSignal.timeout(8000),
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    const targetUri = `https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival?stationName=${encodeURIComponent(station)}`;
+                    const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), { 
+                        signal: AbortSignal.timeout(8000)
                     });
                     if (res.ok) {
                         const data = await res.json();
@@ -580,9 +582,9 @@ export async function POST(req) {
                 const hMatch = lastUserText.match(hRegex);
                 const bridge = hMatch?.[1] ? hMatch[1] + (hMatch[1].endsWith('교') ? '' : '대교') : '한강대교';
                 try {
-                    const res = await fetch(`https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`, { 
-                        signal: AbortSignal.timeout(8000),
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    const targetUri = `https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`;
+                    const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), { 
+                        signal: AbortSignal.timeout(8000)
                     });
                     if (res.ok) {
                         const data = await res.json();
@@ -596,7 +598,8 @@ export async function POST(req) {
             // (5) 한국 주식 검색
             if (userKwd.includes('주식') || userKwd.includes('증시') || userKwd.includes('종목') || userKwd.includes('가 가')) {
                 const stockKwd = lastUserText.replace(/[^가-힣a-zA-Z]/g, '').replace('주식', '').replace('가격', '').trim() || '삼성전자';
-                const result = await callExternalAPI('K-SKILL 주식', `https://k-skill-proxy.nomadamas.org/v1/korean-stock/search?q=${encodeURIComponent(stockKwd)}`);
+                const targetUri = `https://k-skill-proxy.nomadamas.org/v1/korean-stock/search?q=${encodeURIComponent(stockKwd)}`;
+                const result = await callExternalAPI('K-SKILL 주식', kskillProxyBase + encodeURIComponent(targetUri));
                 if (result.success && result.data.results?.length > 0) {
                     const s = result.data.results[0];
                     recentPostsText += `\n\n## ${s.itmsNm} 주식 현황 (K-SKILL/KRX)\n- 일자: ${s.basDd}\n- 종가: ${Number(s.clpr).toLocaleString()}원 (${s.fltRt}%)\n- 고가/저가: ${Number(s.hipr).toLocaleString()} / ${Number(s.lopr).toLocaleString()}\n- 거래량: ${Number(s.trqu).toLocaleString()}주`;
