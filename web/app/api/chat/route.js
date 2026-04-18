@@ -4,29 +4,30 @@ import path from 'path';
 import fs from 'fs';
 
 // ─── 모듈 레벨 캐시 (35MB 파일 매 요청 파싱 방지) ───────────────────────────
-let _sfDataCache = null;   // safe-freight.json
-let _sfDocsCache = null;   // safe-freight-docs.json
-
-function resolveSfPath(filename) {
-    // 1) Next.js 표준: process.cwd()/data/
-    const p1 = path.join(process.cwd(), 'data', filename);
-    if (fs.existsSync(p1)) return p1;
-    // 2) Vercel 서버리스 폴백: 이 파일 기준 상대경로
-    const p2 = path.resolve(__dirname, '..', '..', '..', 'data', filename);
-    if (fs.existsSync(p2)) return p2;
-    // 3) 추가 폴백
-    const p3 = path.resolve(__dirname, '..', '..', 'data', filename);
-    if (fs.existsSync(p3)) return p3;
-    console.error(`[ELS-AI] ❌ ${filename} 미발견: ${p1}, ${p2}, ${p3}`);
-    return null;
-}
+// Vercel standalone 빌드에서 확실하게 번들되도록 require() 사용
+// (fs.readFileSync는 webpack file-tracing이 불확실)
+let _sfDataCache = null;
+let _sfDocsCache = null;
 
 function getSfData() {
     if (!_sfDataCache) {
-        const p = resolveSfPath('safe-freight.json');
-        if (p) {
-            _sfDataCache = JSON.parse(fs.readFileSync(p, 'utf8'));
-            console.log(`[ELS-AI] ✅ safe-freight.json 로드 완료 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+        try {
+            // webpack이 정적 분석으로 이 파일을 번들에 포함시킴
+            _sfDataCache = require('../../../data/safe-freight.json');
+            console.log(`[ELS-AI] ✅ safe-freight.json require 로드 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+        } catch (e1) {
+            // 폴백: process.cwd() 기반 fs 로딩
+            try {
+                const p = path.join(process.cwd(), 'data', 'safe-freight.json');
+                if (fs.existsSync(p)) {
+                    _sfDataCache = JSON.parse(fs.readFileSync(p, 'utf8'));
+                    console.log(`[ELS-AI] ✅ safe-freight.json fs 폴백 로드 (${Object.keys(_sfDataCache.faresLatest || {}).length}구간)`);
+                } else {
+                    console.error(`[ELS-AI] ❌ safe-freight.json 미발견: require 실패(${e1.message}), fs 미발견(${p})`);
+                }
+            } catch (e2) {
+                console.error(`[ELS-AI] ❌ safe-freight.json 로드 실패:`, e2.message);
+            }
         }
     }
     return _sfDataCache;
@@ -34,13 +35,23 @@ function getSfData() {
 
 function getSfDocs() {
     if (!_sfDocsCache) {
-        const p = resolveSfPath('safe-freight-docs.json');
-        if (p) {
-            const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+        try {
+            const raw = require('../../../data/safe-freight-docs.json');
             if (Array.isArray(raw)) {
                 raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
                 _sfDocsCache = raw;
             }
+        } catch {
+            try {
+                const p = path.join(process.cwd(), 'data', 'safe-freight-docs.json');
+                if (fs.existsSync(p)) {
+                    const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+                    if (Array.isArray(raw)) {
+                        raw.sort((a, b) => (b.versionDir || '').localeCompare(a.versionDir || ''));
+                        _sfDocsCache = raw;
+                    }
+                }
+            } catch (e) { console.error('[ELS-AI] safe-freight-docs.json 로드 실패:', e.message); }
         }
     }
     return _sfDocsCache;
