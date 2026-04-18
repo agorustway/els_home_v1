@@ -14,8 +14,8 @@
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.65` (require()로 SF JSON 로드 전환)
-- **APK**: `web/public/apk/els_driver.apk` (버전 유지)
+- **Current Build**: `v4.9.17` (Driver APK 배포 완료)
+- **APK URL**: `https://nollae.com/apk/els_driver.apk`
 - **Repo**: main 브랜치 배포 완료
 
 ## ⚠️ APK 빌드 절차 (필독)
