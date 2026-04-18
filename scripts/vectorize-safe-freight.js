@@ -43,10 +43,11 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !GEMINI_KEY) {
 // ─── Gemini Embedding API ─────────────────────────────────────────────
 async function getEmbeddings(texts) {
     // Batch embedding (최대 100개씩)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${GEMINI_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:batchEmbedContents?key=${GEMINI_KEY}`;
     const requests = texts.map(text => ({
-        model: 'models/text-embedding-004',
+        model: 'models/gemini-embedding-2-preview',
         content: { parts: [{ text }] },
+        outputDimensionality: 768,
     }));
 
     const res = await fetch(url, {
