@@ -211,10 +211,8 @@ export async function GET(request) {
  * 운행 시작 — 새 trip 생성
  */
 export async function POST(request) {
-    const supabase = await createAdminClient();
-
     try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const supabase = await createAdminClient();
         const body = await request.json();
         let {
             driver_name,
@@ -250,8 +248,6 @@ export async function POST(request) {
             .limit(1);
 
         if (existing && existing.length > 0) {
-            // [Fix] 이미 존재하면 새 데이터를 만들지 않고 기존 데이터를 요청 정보로 업데이트하여 반환
-            // 기사님이 운행 중에 정보를 추가/변경하고 다시 '운행 시작'을 눌렀을 때를 대비
             const updatePayload = {
                 container_number: container_number || undefined,
                 seal_number:      seal_number || undefined,
@@ -262,7 +258,6 @@ export async function POST(request) {
                 updated_at:       new Date().toISOString()
             };
 
-            // 만약 새로 점검 결과가 넘어왔다면 업데이트 (DB 컬럼 대신 메모에 백업)
             if (body.chk_brake !== undefined) {
                 updatePayload.special_notes = (updatePayload.special_notes || '') + ` [점검:${body.chk_brake?'o':'x'}${body.chk_tire?'o':'x'}${body.chk_lamp?'o':'x'}${body.chk_cargo?'o':'x'}${body.chk_driver?'o':'x'}]`;
             }
@@ -274,11 +269,14 @@ export async function POST(request) {
                 .select()
                 .single();
 
+            const finalTrip = updatedTrip || existing[0];
             return NextResponse.json({ 
-                id: existing[0].id, 
-                trip: updatedTrip || existing[0],
-                status: existing[0].status,
+                id: finalTrip.id, 
+                trip: finalTrip,
+                status: finalTrip.status,
                 message: '진행 중인 기존 운행 기록이 업데이트되었습니다.' 
+            }, {
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
@@ -286,7 +284,7 @@ export async function POST(request) {
         const { data: trip, error } = await supabase
             .from('vehicle_trips')
             .insert([{
-                user_id: user?.id || null,
+                user_id: null,
                 driver_name,
                 driver_phone,
                 vehicle_number,
@@ -302,12 +300,17 @@ export async function POST(request) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Trip create error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
         
+        if (!trip) {
+            return NextResponse.json({ error: '데이터 생성에 실패했습니다 (No Trip Returned).' }, { status: 500 });
+        }
+
         return NextResponse.json({ id: trip.id, trip }, {
-            headers: {
-                'Access-Control-Allow-Origin': '*'
-            }
+            headers: { 'Access-Control-Allow-Origin': '*' }
         });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

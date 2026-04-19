@@ -125,6 +125,8 @@ powershell scripts/restart_backend.ps1
 **pgvector**: Supabase `document_chunks` (3,868청크, gemini-embedding-2-preview 768차원). RPC: `match_documents()`  
 **디버그 라우트**: `web/app/api/chat/debug/route.js`
 
+**Supabase 핵심 테이블**: `external_contacts` / `internal_contacts` (연락처) · `posts` / `work_sites` (게시판·작업지) · `vehicle_trips` / `vehicle_locations` (GPS) · `document_chunks` / `nas_file_index` / `ai_chat_memory` (벡터DB·NAS·AI기억)
+
 ## 주요 디렉토리
 
 | 디렉토리 | 역할 |
@@ -148,10 +150,15 @@ powershell scripts/restart_backend.ps1
 
 | 변수 | 설명 |
 |------|------|
-| `ELS_BACKEND_URL` | NAS Flask 백엔드 URL (예: `http://192.168.0.4:2930`). 미설정 시 프록시 비활성화 |
+| `ELS_BACKEND_URL` | NAS Flask 백엔드 URL (서버사이드, 예: `http://192.168.0.4:2930`). 미설정 시 프록시 비활성화 |
+| `NEXT_PUBLIC_ELS_BACKEND_URL` | NAS 백엔드 URL (클라이언트사이드 직접 호출용 — vehicle-tracking, admin logs) |
 | `ELS_BACKEND_FETCH_TIMEOUT_MS` | NAS 요청 타임아웃 (기본 120000ms) |
-| `STATIC_EXPORT` | APK 빌드와 무관. 순수 Next.js static export가 필요한 경우에만 사용 |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL (클라이언트/서버 공용) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 익명 키 (클라이언트 인증) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 서비스 롤 키 (서버사이드 관리 작업, asan-dispatch 등) |
+| `GEMINI_API_KEY` | Google Gemini API 키 (AI 채팅 스트리밍 + 임베딩, 미설정 시 AI 채팅 503) |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 NCP 클라이언트 ID (웹 관제용) |
+| `STATIC_EXPORT` | 순수 Next.js static export가 필요한 경우에만 사용 |
 
 ## 모바일 앱 버전 관리 (자동화)
 
