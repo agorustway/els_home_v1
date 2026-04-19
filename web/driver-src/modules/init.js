@@ -1,23 +1,24 @@
 /**
- * init.js ????珥덇린?? ?붾㈃ ?꾪솚 ?ㅼ??ㅽ듃?덉씠?? */
-import { Store, State, AppConfig } from './store.js?v=4919';
-import { remoteLog } from './bridge.js?v=4919';
-import { showScreen } from './nav.js?v=4919';
+ * init.js — 앱 초기화, 화면 전환 오케스트레이션
+ */
+import { Store, State, AppConfig } from './store.js?v=4920';
+import { remoteLog } from './bridge.js?v=4920';
+import { showScreen } from './nav.js?v=4920';
 import {
   updatePermStatuses, permStatuses, setupPermNav, requestAllPerms,
-} from './permissions.js?v=4919';
-import { applyProfileToUI } from './profile.js?v=4919';
-import { loadCurrentTrip, registerBackHandler } from './trip.js?v=4919';
-import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=4919';
-import { loadNotices } from './notice.js?v=4919';
-import { startEmergencyPoll, pollEmergency } from './emergency.js?v=4919';
-import { checkUpdate } from './update.js?v=4919';
-import { openMap } from './map.js?v=4919';
-import { loadLogs } from './log.js?v=4919';
+} from './permissions.js?v=4920';
+import { applyProfileToUI } from './profile.js?v=4920';
+import { loadCurrentTrip, registerBackHandler } from './trip.js?v=4920';
+import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=4920';
+import { loadNotices } from './notice.js?v=4920';
+import { startEmergencyPoll, pollEmergency } from './emergency.js?v=4920';
+import { checkUpdate } from './update.js?v=4920';
+import { openMap } from './map.js?v=4920';
+import { loadLogs } from './log.js?v=4920';
 
 let isAppInitialized = false;
 
-// ??? 怨듦컻 ?ㅻ퉬寃뚯씠???⑥닔 (permissions.js??肄쒕갚 二쇱엯) ????????????
+// ─── 공개 네비게이션 함수 (permissions.js에 콜백 주입) ────────────
 export function showMain() {
   showScreen('main');
   switchTab('trip');
@@ -31,11 +32,11 @@ export function openSettings() {
 }
 
 export function switchTab(tab) {
-  // ?꾨줈??誘몄셿?깆씠硫????꾪솚 李⑤떒
+  // 프로필 미완성이면 탭 전환 차단
   const profileDone = State.profile.name?.trim() && State.profile.phone?.trim()
     && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
   if (!profileDone) {
-    window.App?.showToast('李⑤웾 ?뺣낫瑜?癒쇱? ??ν빐 二쇱꽭??');
+    window.App?.showToast('차량 정보를 먼저 저장해 주세요.');
     return;
   }
 
@@ -49,13 +50,13 @@ export function switchTab(tab) {
   if (tab === 'log')    loadLogs();
 }
 
-// permissions.js???ㅻ퉬寃뚯씠??肄쒕갚 二쇱엯
+// permissions.js에 네비게이션 콜백 주입
 setupPermNav({ showMain, openSettings });
 
-// ??? ??珥덇린?????????????????????????????????????????????????????
+// ─── 앱 초기화 ───────────────────────────────────────────────────
 export async function init() {
   try {
-    // 0. Capacitor 釉뚮┸吏 ?湲?(??1??
+    // 0. Capacitor 브릿지 대기 (단 1회)
     if (window.Capacitor && !isAppInitialized) {
       await new Promise(r => {
         if (window.Capacitor.isPluginAvailable('CapacitorHttp')) { r(); return; }
@@ -64,7 +65,7 @@ export async function init() {
       });
     }
 
-    // 1. ?ㅼ씠?곕툕 踰꾩쟾 ?뺣낫 ?숈쟻 ?⑥튂 (踰꾩쟾 ?섎뱶肄붾뵫 ?쒓굅)
+    // 1. 네이티브 버전 정보 동적 패치 (버전 하드코딩 제거)
     if (window.Capacitor?.Plugins?.App?.getInfo) {
       try {
         const info = await window.Capacitor.Plugins.App.getInfo();
@@ -77,14 +78,14 @@ export async function init() {
       }
     }
 
-    // 踰꾩쟾 ?⑥씪 ?뚯뒪 ?먮룞 二쇱엯 (CSS 罹먯떆踰꾩뒪??+ ??踰꾩쟾 ?쒖떆)
+    // 버전 단일 소스 자동 주입 (CSS 캐시버스터 + 앱 버전 표시)
     const cssLink = document.querySelector('link[href*="style.css"]');
     if (cssLink) cssLink.href = `style.css?v=${AppConfig.BUILD_CODE}`;
     const vDisplay = document.getElementById('app-version-display');
     if (vDisplay) vDisplay.textContent = AppConfig.APP_VERSION;
 
 
-    // ???앸챸二쇨린 由ъ뒪??(?ㅼ젙 ?붾㈃ 蹂듦? ??沅뚰븳 媛깆떊, GPS ?ш린??
+    // 앱 생명주기 리스너 (설정 화면 복귀 시 권한 갱신, GPS 재기동)
     if (window.Capacitor && !window._appStateRegistered) {
       window._appStateRegistered = true;
       const CapApp = window.Capacitor.Plugins.App;
@@ -104,9 +105,9 @@ export async function init() {
                 Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
                   if (res?.value) {
                     const nativeTime = parseInt(res.value, 10);
-                    // gps.js??lastGpsTimestamp??import濡??쎄린留?媛????window.App 寃쎌쑀
+                    // gps.js의 lastGpsTimestamp는 import로 읽기만 가능 → window.App 경유
                     if (nativeTime && nativeTime > (window.App?._lastGpsTs || 0)) {
-                      remoteLog(`?ш렇?쇱슫??蹂듦?: ?ㅼ씠?곕툕 GPS ?쒓컙 ?숆린??(${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
+                      remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
                     }
                   }
                 }).catch(() => { });
@@ -119,7 +120,7 @@ export async function init() {
                 const isGpsDead = !lastTs || elapsed > 90_000;
 
                 if (isGpsDead || !window.App?._gpsWatchId) {
-                  remoteLog(`?ш렇?쇱슫??蹂듦?: GPS ?딄? 媛먯? (${Math.round(elapsed / 1000)}s 怨듬갚) ???ш린??, 'GPS_RESUME');
+                  remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
                   stopGPS();
                   startGPS();
                   return;
@@ -129,9 +130,9 @@ export async function init() {
                   pos => {
                     window.App._lastGpsTs = Date.now();
                     onGpsUpdate(pos, true, State.trip.id);
-                    remoteLog(`?ш렇?쇱슫??蹂듦? ??GPS 媛뺤젣?섏떊 ?깃났 (${Math.round(elapsed / 1000)}s 怨듬갚)`, 'GPS_RESUME_OK');
+                    remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
                   },
-                  err => remoteLog(`?ш렇?쇱슫??蹂듦? 媛뺤젣?섏떊 ?ㅽ뙣: ${err.code}`, 'GPS_RESUME_ERR'),
+                  err => remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code}`, 'GPS_RESUME_ERR'),
                   { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 }
                 );
               }, 500);
@@ -141,21 +142,22 @@ export async function init() {
       }
     }
 
-    // 2. 沅뚰븳 ?뺤씤 ???놁쑝硫??먮룞 ?ㅼ젙 ?쒖옉
+    // 2. 권한 확인 → 없으면 자동 설정 시작
     await updatePermStatuses();
     const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
     const firstRun      = !Store.get('permSetupDone');
 
     if (firstRun || !criticalPerms) {
       showScreen('permission');
-      // 沅뚰븳 ?ㅼ젙 ?붾㈃ 濡쒕뱶 ???먮룞?쇰줈 ?쒖감 ?ㅼ젙 ?쒖옉
+      // 권한 설정 화면 로드 후 자동으로 순차 설정 시작
       setTimeout(() => requestAllPerms(), 500);
       return;
     }
     if (isAppInitialized) return;
     isAppInitialized = true;
 
-    // 3. 沅뚰븳 ?뺣낫 ??珥덇린??    if (window.Capacitor?.Plugins?.StatusBar) {
+    // 3. 권한 확보 후 초기화
+    if (window.Capacitor?.Plugins?.StatusBar) {
       window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' }).catch(() => { });
       window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(() => { });
     }
@@ -166,7 +168,7 @@ export async function init() {
       applyProfileToUI();
     }
 
-    // ?꾨줈???꾩꽦??寃??(鍮?媛??쒖쇅, ?낅뜲?댄듃 ??遺???곗씠??諛⑹?)
+    // 프로필 완성도 검사 (빈 값 제외, 업데이트 후 부실 데이터 방지)
     const hasProfile = State.profile.name?.trim() && State.profile.phone?.trim()
       && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
 
@@ -176,7 +178,8 @@ export async function init() {
       showMain();
     }
 
-    // ?붾퀎 ?꾪꽣 珥덇린媛?    const monFilter = document.getElementById('log-month-filter');
+    // 월별 필터 초기값
+    const monFilter = document.getElementById('log-month-filter');
     if (monFilter && !monFilter.value) monFilter.value = new Date().toISOString().slice(0, 7);
 
     checkUpdate(true);
@@ -187,25 +190,24 @@ export async function init() {
     registerBackHandler();
 
   } catch (e) {
-    console.error('init ?щ옒??諛⑹뼱:', e);
+    console.error('init 크래시 방어:', e);
     showScreen('permission');
   }
 }
 
-// ??? ??醫낅즺 ?????????????????????????????????????????????????????
+// ─── 앱 종료 ─────────────────────────────────────────────────────
 export function exitApp() {
   if (window.isTripActive?.()) {
-    window.App?.showToast('?댄뻾 以묒뿉??醫낅즺?????놁뒿?덈떎. ?댄뻾 醫낅즺 ????醫낅즺媛 媛?ν빀?덈떎.');
+    window.App?.showToast('운행 중에는 종료할 수 없습니다. 운행 종료 후 앱 종료가 가능합니다.');
     return;
   }
-  if (!confirm('?깆쓣 醫낅즺?섏떆寃좎뒿?덇퉴?')) return;
+  if (!confirm('앱을 종료하시겠습니까?')) return;
   const overlayPlugin = window.Capacitor?.Plugins?.Overlay;
   if (overlayPlugin?.exitAppForce) {
     overlayPlugin.exitAppForce();
   } else if (window.Capacitor?.Plugins?.App) {
     window.Capacitor.Plugins.App.exitApp();
   } else {
-    window.App?.showToast('?깆쓣 吏곸젒 ?レ븘二쇱꽭??');
+    window.App?.showToast('앱을 직접 닫아주세요.');
   }
 }
-

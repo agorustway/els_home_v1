@@ -1,17 +1,17 @@
 /**
- * bridge.js ??Capacitor ?뚮윭洹몄씤 釉뚮┸吏, smartFetch, remoteLog
+ * bridge.js — Capacitor 플러그인 브릿지, smartFetch, remoteLog
  */
-import { Store, BASE_URL } from './store.js?v=4919';
+import { Store, BASE_URL } from './store.js?v=4920';
 
-// ??? remoteLog ????????????????????????????????????????????????????
+// ─── remoteLog ────────────────────────────────────────────────────
 export async function remoteLog(msg, tag = 'JS') {
   if (!msg) return;
   try {
-    // [TDD] 濡쒖뺄 濡쒓렇 罹≫븨 (釉뚮씪?곗? 硫붾え由???＜ 諛⑹?)
+    // [TDD] 로컬 로그 캡핑 (브라우저 메모리 폭주 방지)
     const logHistory = Store.get('logHistory') || [];
     if (logHistory.length > 50) logHistory.shift();
 
-    // KST ?쒓컙 ?щ㎎ (ISO 8601 + 9?쒓컙)
+    // KST 시간 포맷 (ISO 8601 + 9시간)
     const now = new Date();
     const kst = new Date(now.getTime() + (9 * 60 * 60 * 1000))
       .toISOString().replace('Z', '+09:00');
@@ -27,7 +27,7 @@ export async function remoteLog(msg, tag = 'JS') {
   } catch { }
 }
 
-// ??? Capacitor ?뚮윭洹몄씤 ?ы띁 ?????????????????????????????????????
+// ─── Capacitor 플러그인 헬퍼 ─────────────────────────────────────
 export function getPlugin(name) {
   try {
     const plugins = window.Capacitor?.Plugins;
@@ -36,13 +36,13 @@ export function getPlugin(name) {
       return null;
     }
 
-    // 1. ?대? ?깅줉???뚮윭洹몄씤 ?뺤씤
+    // 1. 이미 등록된 플러그인 확인
     let found = plugins[name]
       || plugins[name.toLowerCase()]
       || plugins[name.toUpperCase()]
       || plugins[name + 'Plugin'];
 
-    // 2. Capacitor 4+ 諛⑹떇: 紐낆떆???깅줉 ?쒕룄 (?ㅼ씠?곕툕 釉뚮┸吏 媛뺤젣 ?곌껐)
+    // 2. Capacitor 4+ 방식: 명시적 등록 시도 (네이티브 브릿지 강제 연결)
     if (!found && window.Capacitor?.registerPlugin) {
       try {
         found = window.Capacitor.registerPlugin(name);
@@ -65,20 +65,20 @@ export function getPlugin(name) {
   } catch { return null; }
 }
 
-// ??? ?뚮윭洹몄씤 ?묎렐???????????????????????????????????????????????
+// ─── 플러그인 접근자 ─────────────────────────────────────────────
 export const Overlay   = () => getPlugin('Overlay');
 export const Emergency = () => getPlugin('Emergency');
 export const CapHttp   = () => getPlugin('CapacitorHttp');
 
-// ??? smartFetch ???????????????????????????????????????????????????
-// Capacitor ?ㅼ씠?곕툕 ?섍꼍?먯꽌??CapacitorHttp瑜??곗꽑 ?ъ슜 (CORS ?고쉶)
+// ─── smartFetch ───────────────────────────────────────────────────
+// Capacitor 네이티브 환경에서는 CapacitorHttp를 우선 사용 (CORS 우회)
 export async function smartFetch(url, options = {}) {
   const http = CapHttp();
   const isNative = window.Capacitor?.isNativePlatform();
 
   if (http && isNative) {
     try {
-      // ?대?吏 ??諛붿씠?덈━ ?곗씠???붿껌 ?먮퀎 (?명솚?깆쓣 ?꾪빐 dataType??泥댄겕)
+      // 이미지 등 바이너리 데이터 요청 판별 (호환성을 위해 dataType도 체크)
       const resType = options.responseType || options.dataType;
       const isBinary = resType === 'blob' || resType === 'arraybuffer';
       
@@ -89,7 +89,7 @@ export async function smartFetch(url, options = {}) {
           'Content-Type': 'application/json', 
           ...(options.headers || {}) 
         },
-        // CapacitorHttp??dataType???꾨땶 responseType???ъ슜?⑸땲??
+        // CapacitorHttp는 dataType이 아닌 responseType을 사용합니다.
         responseType: isBinary ? 'blob' : (resType || 'json'),
         data: options.body
           ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body)
@@ -100,17 +100,18 @@ export async function smartFetch(url, options = {}) {
         ok:     res.status < 400,
         status: res.status,
         json:   async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data),
-        // 諛붿씠?덈━ ?곗씠??吏?먯쓣 ?꾪빐 blob() 異붽?
+        // 바이너리 데이터 지원을 위해 blob() 추가
         blob:   async () => {
           if (isBinary && typeof res.data === 'string') {
-            // CapacitorHttp??responseType: 'blob'????base64 ?몄퐫?⑸맂 臾몄옄?댁쓣 諛섑솚?⑸땲??
+            // CapacitorHttp는 responseType: 'blob'일 때 base64 인코딩된 문자열을 반환합니다.
             const byteCharacters = atob(res.data);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
               byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
             const byteArray = new Uint8Array(byteNumbers);
-            // ?ㅻ뜑 ?ㅼ쓽 ??뚮Ц??李⑥씠 諛⑹뼱瑜??꾪빐 臾댁떆 寃??            const headers = res.headers || {};
+            // 헤더 키의 대소문자 차이 방어를 위해 무시 검색
+            const headers = res.headers || {};
             const contentTypeKey = Object.keys(headers).find(k => k.toLowerCase() === 'content-type');
             const contentType = contentTypeKey ? headers[contentTypeKey] : 'image/jpeg';
             return new Blob([byteArray], { type: contentType });
@@ -123,7 +124,7 @@ export async function smartFetch(url, options = {}) {
     }
   }
 
-  // 釉뚮씪?곗? ?고???fallback
+  // 브라우저 런타임 fallback
   const response = await fetch(url, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
@@ -136,4 +137,3 @@ export async function smartFetch(url, options = {}) {
     blob: () => response.blob(),
   };
 }
-

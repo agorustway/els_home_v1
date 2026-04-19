@@ -83,130 +83,157 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
     processed = 0
     skipped = 0
     error_cnt = 0
+    
+    # 먼저 전체 파일 목록을 확보해서 개수를 파악 (형에게 알려주기 위함)
+    all_target_files = []
+    print(f"[VECTORIZE] {branch_name} ({target_dir}) 탐색 중...")
+    for root, dirs, files in os.walk(str(target_dir)):
+        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE"]
+        if any(word in root for word in skip_words): continue
+        for file in files:
+            filepath = Path(root) / file
+            if filepath.suffix.lower() in [".pdf", ".docx", ".xlsx", ".txt", ".hwp"]:
+                all_target_files.append(filepath)
+    
+    total_to_process = len(all_target_files)
+    print(f"[VECTORIZE] {branch_name}: 총 {total_to_process}개의 대상 파일을 찾았습니다. 인덱싱 시작...")
 
-    for filepath in target_dir.rglob("*"):
-        if not filepath.is_file():
+    # walk를 사용하여 더 안정적으로 탐색
+    for root, dirs, files in os.walk(str(target_dir)):
+        # 불필요한 폴더 스킵 (#recycle, 보안, @eaDir 등)
+        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE"]
+        if any(word in root for word in skip_words):
+            skipped += len(files)
             continue
-        
-        # [SECURITY] "보안" 키워드가 경로(폴더명)에 포함된 경우 파싱 제외
-        if any("보안" in part for part in filepath.parts):
-            logger.info(f"Skipping security file (path contains '보안'): {filepath.name}")
-            skipped += 1
-            continue
-        
-        ext = filepath.suffix.lower()
-        if ext not in [".pdf", ".docx", ".xlsx", ".txt"]:
-            continue
+
+        for file in files:
+            filepath = Path(root) / file
             
-        file_path_str = str(filepath.resolve())
-        filename = filepath.name
-        size_bytes = filepath.stat().st_size
-        modified_ts = datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc)
-        current_hash = get_file_hash(file_path_str)
-
-        # DB 확인 (nas_file_index)
-        try:
-            res = supabase.table("nas_file_index").select("*").eq("path", file_path_str).execute()
-            if res.data and len(res.data) > 0:
-                row = res.data[0]
-                if row.get("content_hash") == current_hash and row.get("is_indexed"):
-                    # logger.info(f"Skipping unmodified file: {filename}") - 생략해서 로그 깔끔하게
-                    skipped += 1
-                    continue
-        except Exception as e:
-            logger.error(f"DB Error checking file {filename}: {e}")
-
-        # 추출
-        logger.info(f"Extracting {filename} ...")
-        text = ""
-        if ext == ".pdf":
-            text = extract_text_pypdf(file_path_str)
-        elif ext == ".docx":
-            text = extract_text_docx(file_path_str)
-        elif ext == ".xlsx":
-            text = extract_text_xlsx(file_path_str)
-        elif ext == ".txt":
+            ext = filepath.suffix.lower()
+            if ext not in [".pdf", ".docx", ".xlsx", ".txt"]:
+                continue
+                
+            file_path_str = str(filepath.resolve())
+            filename = filepath.name
+            
             try:
-                with open(file_path_str, "r", encoding="utf-8") as f:
-                    text = f.read()
-            except UnicodeDecodeError:
-                with open(file_path_str, "r", encoding="euc-kr") as f:
-                    text = f.read()
-        
-        if not text.strip():
-            logger.warning(f"Empty text for {filename}")
-            error_cnt += 1
-            continue
+                size_bytes = filepath.stat().st_size
+                modified_ts = datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc)
+                current_hash = get_file_hash(file_path_str)
 
-        # 청킹
-        chunks = chunk_text(text)
-        
-        # 이전 청크 삭제
-        try:
-            supabase.table("document_chunks").delete().eq("source_id", file_path_str).execute()
-        except:
-            pass
+                # DB 확인 (nas_file_index)
+                res = supabase.table("nas_file_index").select("content_hash, is_indexed").eq("path", file_path_str).execute()
+                if res.data and len(res.data) > 0:
+                    row = res.data[0]
+                    if row.get("content_hash") == current_hash and row.get("is_indexed"):
+                        skipped += 1
+                        continue
+            except Exception as e:
+                logger.error(f"File access error {filename}: {e}")
+                error_cnt += 1
+                continue
 
-        # 임베딩 & Upsert
-        chunk_count = 0
-        for i, chunk in enumerate(chunks):
-            if not chunk.strip():
+            # 추출
+            text = ""
+            try:
+                if ext == ".pdf":
+                    text = extract_text_pypdf(file_path_str)
+                elif ext == ".docx":
+                    text = extract_text_docx(file_path_str)
+                elif ext == ".xlsx":
+                    text = extract_text_xlsx(file_path_str)
+                elif ext == ".txt":
+                    try:
+                        with open(file_path_str, "r", encoding="utf-8") as f:
+                            text = f.read()
+                    except UnicodeDecodeError:
+                        with open(file_path_str, "r", encoding="euc-kr") as f:
+                            text = f.read()
+            except Exception as e:
+                logger.error(f"Extraction failed for {filename}: {e}")
+                error_cnt += 1
                 continue
             
-            try:
-                emb_res = client.models.embed_content(
-                    model='text-embedding-004',
-                    contents=chunk,
-                )
-                embedding = emb_res.embeddings[0].values
-                
-                chunk_data = {
-                    "source_type": "nas_file",
-                    "source_id": file_path_str,
-                    "source_version": modified_ts.strftime('%Y-%m-%d'),
-                    "chunk_index": i,
-                    "content": chunk,
-                    "metadata": {
-                        "filename": filename,
-                        "branch": branch_name,
-                        "extension": ext
-                    },
-                    "embedding": embedding
-                }
-                supabase.table("document_chunks").insert(chunk_data).execute()
-                chunk_count += 1
-            except Exception as e:
-                logger.error(f"Embedding failed for chunk {i} of {filename}: {e}")
+            if not text.strip():
+                error_cnt += 1
+                continue
 
-        # index 업데이트
-        index_data = {
-            "path": file_path_str,
-            "filename": filename,
-            "extension": ext,
-            "size_bytes": size_bytes,
-            "branch": branch_name,
-            "last_modified": modified_ts.isoformat(),
-            "content_hash": current_hash,
-            "is_indexed": True,
-            "chunk_count": chunk_count,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
-        
-        try:
-            # upsert manually if eq gives none? Just delete and insert
-            res = supabase.table("nas_file_index").select("id").eq("path", file_path_str).execute()
-            if res.data and len(res.data) > 0:
-                supabase.table("nas_file_index").update(index_data).eq("path", file_path_str).execute()
-            else:
-                supabase.table("nas_file_index").insert(index_data).execute()
-            processed += 1
+            # 청킹
+            chunks = chunk_text(text)
             
-            # 진행률 로깅 (너무 많은 로그 방지를 위해 10개마다 출력)
-            if processed % 10 == 0:
-                logger.info(f"[{branch_name}] Progress: {processed} files processed, {skipped} skipped, {error_cnt} errors so far.")
-        except Exception as e:
-            logger.error(f"Index update failed for {filename}: {e}")
-            error_cnt += 1
+            # 이전 청크 삭제
+            try:
+                supabase.table("document_chunks").delete().eq("source_id", file_path_str).execute()
+            except:
+                pass
 
-    logger.info(f"🎉 [{branch_name}] Extraction Finished! Result: {processed} processed, {skipped} skipped, {error_cnt} errors.")
+            # 임베딩 & 배치 Insert
+            chunk_batch = []
+            valid_chunk_count = 0
+            
+            for i, chunk in enumerate(chunks):
+                if not chunk.strip():
+                    continue
+                
+                try:
+                    emb_res = client.models.embed_content(
+                        model='text-embedding-004',
+                        contents=chunk,
+                    )
+                    embedding = emb_res.embeddings[0].values
+                    
+                    chunk_batch.append({
+                        "source_type": "nas_file",
+                        "source_id": file_path_str,
+                        "source_version": modified_ts.strftime('%Y-%m-%d'),
+                        "chunk_index": i,
+                        "content": chunk,
+                        "metadata": {
+                            "filename": filename,
+                            "branch": branch_name,
+                            "extension": ext
+                        },
+                        "embedding": embedding
+                    })
+                    valid_chunk_count += 1
+                    
+                    # 10개 단위로 끊어서 인서트 (메모리 및 DB 부하 조절)
+                    if len(chunk_batch) >= 10:
+                        supabase.table("document_chunks").insert(chunk_batch).execute()
+                        chunk_batch = []
+                except Exception as e:
+                    logger.error(f"Embedding/Insert failed for chunk {i} of {filename}: {e}")
+
+            # 남은 청크 마지막으로 인서트
+            if chunk_batch:
+                try:
+                    supabase.table("document_chunks").insert(chunk_batch).execute()
+                except Exception as e:
+                    logger.error(f"Final batch insert failed for {filename}: {e}")
+
+            # index 업데이트
+            index_data = {
+                "path": file_path_str,
+                "filename": filename,
+                "extension": ext,
+                "size_bytes": size_bytes,
+                "branch": branch_name,
+                "last_modified": modified_ts.isoformat(),
+                "content_hash": current_hash,
+                "is_indexed": True,
+                "chunk_count": valid_chunk_count,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            try:
+                res = supabase.table("nas_file_index").upsert(index_data, on_conflict="path").execute()
+                processed += 1
+                if processed % 10 == 0:
+                    logger.info(f"▶️ [{branch_name}] {processed}개 처리 중... (Skip: {skipped}, Err: {error_cnt})")
+            except Exception as e:
+                logger.error(f"Index update failed for {filename}: {e}")
+                error_cnt += 1
+
+    logger.info(f"🎉 [{branch_name}] 작업 완료! (처리: {processed}, 스킵: {skipped}, 에러: {error_cnt})")
     return {"processed": processed, "skipped": skipped, "errors": error_cnt}
+

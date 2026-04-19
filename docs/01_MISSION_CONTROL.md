@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.87` | **NAS Vectorizer & Driver App Hotfix** |
-| **상태** | 🟢 Phase 5 안정화 완료 | 배치 처리 도입으로 수만 건 대량 데이터 처리 안정성 확보 |
+| **현재 버전** | `v4.9.88` | **NAS & Driver Hotfix Deployment** |
+| **상태** | 🟢 배포 완료 (v4.9.20) | NAS 벡터라이저 최적화 및 드라이버 앱 오류 수정 완료 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -14,7 +14,7 @@
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.87` (드라이버 앱 v4.9.19 포함)
+- **Current Build**: `v4.9.88` (드라이버 앱 v4.9.20 포함)
 - **APK URL**: `https://nollae.com/apk/els_driver.apk`
 - **Repo**: main 브랜치 배포 완료
 

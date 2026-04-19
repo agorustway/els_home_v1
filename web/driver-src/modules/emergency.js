@@ -1,20 +1,20 @@
 /**
- * emergency.js ??湲닿툒?뚮┝ ?대쭅, ?앹뾽, ?ㅼ씠?곕툕 ?뚮┝
+ * emergency.js — 긴급알림 폴링, 팝업, 네이티브 알림
  */
-import { Store, State, BASE_URL } from './store.js?v=4919';
-import { smartFetch, Emergency } from './bridge.js?v=4919';
-import { startRealtimeMode, stopRealtimeMode } from './gps.js?v=4919';
+import { Store, State, BASE_URL } from './store.js?v=4920';
+import { smartFetch, Emergency } from './bridge.js?v=4920';
+import { startRealtimeMode, stopRealtimeMode } from './gps.js?v=4920';
 
 let emergencyPollTimer = null;
 
-// ??? 湲닿툒?뚮┝ ?대쭅 ?쒖옉 ??????????????????????????????????????????
+// ─── 긴급알림 폴링 시작 ──────────────────────────────────────────
 export function startEmergencyPoll() {
   if (emergencyPollTimer) return;
   pollEmergency();
   emergencyPollTimer = setInterval(pollEmergency, 30_000);
 }
 
-// ??? ?대쭅 1???ㅽ뻾 ???????????????????????????????????????????????
+// ─── 폴링 1회 실행 ───────────────────────────────────────────────
 export async function pollEmergency() {
   try {
     const res   = await smartFetch(`${BASE_URL}/api/vehicle-tracking/emergency?unread=true`);
@@ -27,10 +27,11 @@ export async function pollEmergency() {
       State.emergencyIds.add(item.id);
       Store.set('emergencyIds', Array.from(State.emergencyIds));
 
-      // 1?쒓컙 ?댁쟾 ?뚮┝? ?앹뾽 ?놁씠 ?쎌쓬 泥섎━留?      const createdMs = new Date(item.created_at || now).getTime();
+      // 1시간 이전 알림은 팝업 없이 읽음 처리만
+      const createdMs = new Date(item.created_at || now).getTime();
       if (now - createdMs > 60 * 60 * 1000) continue;
 
-      // ?쒖뒪??紐낅졊 泥섎━ (?ㅼ떆媛?紐⑤뱶 on/off)
+      // 시스템 명령 처리 (실시간 모드 on/off)
       if (item.title === 'SYSTEM_COMMAND') {
         if (item.message?.startsWith('REALTIME_ON:')) {
           const targetId = item.message.split(':')[1];
@@ -45,10 +46,10 @@ export async function pollEmergency() {
       showEmergencyPopup(item);
       sendNativeEmergencyNotif(item);
     }
-  } catch { /* 議곗슜???ㅽ뙣 */ }
+  } catch { /* 조용히 실패 */ }
 }
 
-// ??? ?앹뾽 ?쒖떆 / ?リ린 ????????????????????????????????????????????
+// ─── 팝업 표시 / 닫기 ────────────────────────────────────────────
 function stripHtml(html) {
   if (!html) return '';
   return String(html)
@@ -74,10 +75,9 @@ function sendNativeEmergencyNotif(item) {
   if (em) {
     const raw = item.message || item.content || '';
     em.showEmergencyAlert({
-      title:   '?좑툘 ELS 湲닿툒?뚮┝',
+      title:   '⚠️ ELS 긴급알림',
       message: stripHtml(raw),
       id:      item.id,
     }).catch(() => { });
   }
 }
-

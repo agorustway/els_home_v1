@@ -1,77 +1,82 @@
 /**
- * map.js ???ㅼ씠踰?吏??Dynamic SDK v3 ?붿쭊 (v4.8.0)
+ * map.js — 네이버 지도 Dynamic SDK v3 엔진 (v4.8.0)
  *
- * ??Static Maps (raster-cors) ?대?吏 諛⑹떇 ?꾩쟾 ?먭린
- * ??Naver Maps JS SDK v3 湲곕컲 ?ㅼ씠?곕툕 ?뚮뜑留? * ??naver.maps.Marker媛 吏???대??먯꽌 醫뚰몴瑜?吏곸젒 異붿쟻 ??留덉빱 ?쒕━?꾪듃 ?먯쿇 李⑤떒
- * ???섎떒 ?⑤꼸 ?ㅻ쾭?덉씠 諛⑹떇 ???⑤꼸 ?좉? ??吏??由ъ궗?댁쫰 遺덊븘??(怨좊Т以??꾩긽 ?쒓굅)
+ * ✅ Static Maps (raster-cors) 이미지 방식 완전 폐기
+ * ✅ Naver Maps JS SDK v3 기반 네이티브 렌더링
+ * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
+ * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=4919';
-import { smartFetch, remoteLog } from './bridge.js?v=4919';
-import { showToast } from './utils.js?v=4919';
-import { showScreen } from './nav.js?v=4919';
+import { State, BASE_URL } from './store.js?v=4920';
+import { smartFetch, remoteLog } from './bridge.js?v=4920';
+import { showToast } from './utils.js?v=4920';
+import { showScreen } from './nav.js?v=4920';
 
-// ??? ?곸닔 ??????????????????????????????????????????????????????????
+// ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
 const SDK_SCRIPT_ID = 'naver-map-sdk';
 
-// ??? 紐⑤뱢 ?대? ?곹깭 ????????????????????????????????????????????????
-let _map         = null;           // naver.maps.Map ?몄뒪?댁뒪
-let _markers     = new Map();      // tripId ??naver.maps.Marker
-let _myMarker    = null;           // ???꾩튂 留덉빱
-let _polyline    = null;           // 寃쎈줈 Polyline
-let _startMarker = null;           // 寃쎈줈 異쒕컻??留덉빱
-let _endMarker   = null;           // 寃쎈줈 ?꾩옱?꾩튂 留덉빱
-let _trips       = [];             // 理쒖떊 ?댄뻾 ?곗씠??let _mapPollTimer = null;          // ?대쭅 ??대㉧
-let _sdkReady    = false;          // SDK 濡쒕뱶 ?꾨즺 ?щ?
+// ─── 모듈 내부 상태 ────────────────────────────────────────────────
+let _map         = null;           // naver.maps.Map 인스턴스
+let _markers     = new Map();      // tripId → naver.maps.Marker
+let _myMarker    = null;           // 내 위치 마커
+let _polyline    = null;           // 경로 Polyline
+let _startMarker = null;           // 경로 출발점 마커
+let _endMarker   = null;           // 경로 현재위치 마커
+let _trips       = [];             // 최신 운행 데이터
+let _mapPollTimer = null;          // 폴링 타이머
+let _sdkReady    = false;          // SDK 로드 완료 여부
 
-// ??? SDK ?숈쟻 濡쒕뱶 (openMap ?쒖젏??lazy) ???????????????????????????
+// ─── SDK 동적 로드 (openMap 시점에 lazy) ───────────────────────────
 function loadNaverSDK() {
   return new Promise((resolve, reject) => {
-    // ?대? 濡쒕뱶??寃쎌슦
+    // 이미 로드된 경우
     if (window.naver?.maps?.Map) {
       _sdkReady = true;
       resolve();
       return;
     }
 
-    // ?대? script ?쒓렇媛 異붽???寃쎌슦 ??onload ?湲?    const existing = document.getElementById(SDK_SCRIPT_ID);
+    // 이미 script 태그가 추가된 경우 → onload 대기
+    const existing = document.getElementById(SDK_SCRIPT_ID);
     if (existing) {
       existing.addEventListener('load', () => { _sdkReady = true; resolve(); });
       existing.addEventListener('error', reject);
       return;
     }
 
-    // ?덈줈 script ?쎌엯
+    // 새로 script 삽입
     const script = document.createElement('script');
     script.id    = SDK_SCRIPT_ID;
     script.src   = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NCP_KEY_ID}`;
     script.onload = () => {
       _sdkReady = true;
-      remoteLog('[MAP] Naver SDK v3 濡쒕뱶 ?꾨즺', 'MAP_SDK_OK');
+      remoteLog('[MAP] Naver SDK v3 로드 완료', 'MAP_SDK_OK');
       resolve();
     };
     script.onerror = (e) => {
-      remoteLog('[MAP] Naver SDK v3 濡쒕뱶 ?ㅽ뙣', 'MAP_SDK_ERR');
+      remoteLog('[MAP] Naver SDK v3 로드 실패', 'MAP_SDK_ERR');
       reject(e);
     };
     document.head.appendChild(script);
   });
 }
 
-// ??? 吏??珥덇린??????????????????????????????????????????????????????
+// ─── 지도 초기화 ────────────────────────────────────────────────────
 function initNaverMap() {
   const el = document.getElementById('driver-map');
   if (!el) return;
 
-  // ?대? 珥덇린?붾맂 寃쎌슦 ??DOM???몄뒪?댁뒪媛 ?댁븘?덉쑝硫??ъ궗??  if (_map) {
-    // ?붾㈃???ㅼ떆 蹂댁씤 ??吏???ш린 ?숆린??    naver.maps.Event.trigger(_map, 'resize');
+  // 이미 초기화된 경우 — DOM에 인스턴스가 살아있으면 재사용
+  if (_map) {
+    // 화면이 다시 보인 후 지도 크기 동기화
+    naver.maps.Event.trigger(_map, 'resize');
     return;
   }
 
   _map = new naver.maps.Map(el, {
     center : new naver.maps.LatLng(36.5, 127.5),
     zoom   : 7,
-    // 遺덊븘?뷀븳 UI ?쒓굅 (?먯껜 back-btn, my-loc-btn ?덉쓬)
+    // 불필요한 UI 제거 (자체 back-btn, my-loc-btn 있음)
     mapDataControl   : false,
     scaleControl     : true,
     scaleControlOptions : {
@@ -82,10 +87,10 @@ function initNaverMap() {
     },
   });
 
-  remoteLog('[MAP] naver.maps.Map 珥덇린???꾨즺', 'MAP_INIT');
+  remoteLog('[MAP] naver.maps.Map 초기화 완료', 'MAP_INIT');
 }
 
-// ??? 留덉빱 ?꾩씠肄??ы띁 ???????????????????????????????????????????????
+// ─── 마커 아이콘 헬퍼 ───────────────────────────────────────────────
 function makeVehicleIcon(label, color) {
   const html = [
     '<div style="',
@@ -106,7 +111,7 @@ function makeVehicleIcon(label, color) {
 
   return {
     content: html,
-    // 留먰뭾???꾨옯 瑗?쭞?먯씠 醫뚰몴??留욌룄濡??듭빱 ?ㅼ젙
+    // 말풍선 아랫 꼭짓점이 좌표에 맞도록 앵커 설정
     anchor : new naver.maps.Point(18, 36),
   };
 }
@@ -145,7 +150,7 @@ function makeWaypointIcon(label, color) {
   return { content: html, anchor: new naver.maps.Point(20, 24) };
 }
 
-// ??? 留덉빱 媛깆떊 ??????????????????????????????????????????????????????
+// ─── 마커 갱신 ──────────────────────────────────────────────────────
 function updateVehicleMarkers(trips) {
   if (!_map) return;
 
@@ -153,7 +158,7 @@ function updateVehicleMarkers(trips) {
   const visible    = trips.filter(t => t.lastLocation && (contracted || isMyTrip(t)));
   const visibleIds = new Set(visible.map(t => t.id));
 
-  // ?щ씪吏?留덉빱 ?쒓굅
+  // 사라진 마커 제거
   for (const [id, marker] of _markers) {
     if (!visibleIds.has(id)) {
       marker.setMap(null);
@@ -161,14 +166,14 @@ function updateVehicleMarkers(trips) {
     }
   }
 
-  // 媛깆떊 ?먮뒗 ?좉퇋 異붽?
+  // 갱신 또는 신규 추가
   for (const trip of visible) {
     const { lat, lng } = trip.lastLocation;
     const pos   = new naver.maps.LatLng(lat, lng);
     const isDone = trip.status === 'completed';
     const isMe   = isMyTrip(trip);
     const color  = isDone ? '#94a3b8' : (isMe ? '#10b981' : '#2563eb');
-    const label  = trip.vehicle_number ? trip.vehicle_number.slice(-4) : '李⑤웾';
+    const label  = trip.vehicle_number ? trip.vehicle_number.slice(-4) : '차량';
 
     if (_markers.has(trip.id)) {
       const m = _markers.get(trip.id);
@@ -182,16 +187,16 @@ function updateVehicleMarkers(trips) {
         title    : label,
         zIndex   : 100,
       });
-      // ?대┃ ??寃쎈줈 議고쉶
+      // 클릭 시 경로 조회
       naver.maps.Event.addListener(m, 'click', () => showTripRouteOnMap(trip));
       _markers.set(trip.id, m);
     }
   }
 }
 
-// ??? 寃쎈줈(Polyline) 洹몃━湲????????????????????????????????????????????
+// ─── 경로(Polyline) 그리기 ───────────────────────────────────────────
 function drawPolyline(path) {
-  // 湲곗〈 寃쎈줈/?쒖옉醫낅즺 留덉빱 ?쒓굅
+  // 기존 경로/시작종료 마커 제거
   if (_polyline)    { _polyline.setMap(null);    _polyline    = null; }
   if (_startMarker) { _startMarker.setMap(null); _startMarker = null; }
   if (_endMarker)   { _endMarker.setMap(null);   _endMarker   = null; }
@@ -215,12 +220,12 @@ function drawPolyline(path) {
     const distKm = haversine(prev.lat, prev.lng, curr.lat, curr.lng);
     const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
     
-    // 鍮꾩젙?곸쟻?쇰줈 鍮좊Ⅸ ?띾룄(?ㅽ뙆?댄겕) ?쒓굅
+    // 비정상적으로 빠른 속도(스파이크) 제거
     if (timeSec > 0) {
       const speed = distKm / (timeSec / 3600);
       if (speed > SPEED_LIMIT_KMH && distKm > 0.5) continue;
     } else {
-      if (distKm > 0.5) continue; // ?쒓컙??李⑥씠?녿뒗??500m?댁긽 ?硫??쒓굅
+      if (distKm > 0.5) continue; // 시간이 차이없는데 500m이상 튀면 제거
     }
     filteredPath.push(curr);
   }
@@ -239,22 +244,22 @@ function drawPolyline(path) {
     zIndex        : 50,
   });
 
-  // 異쒕컻 / ?꾩옱?꾩튂 留덉빱
+  // 출발 / 현재위치 마커
   _startMarker = new naver.maps.Marker({
     position : latLngs[0],
     map      : _map,
-    icon     : makeWaypointIcon('異쒕컻', '#16a34a'),
+    icon     : makeWaypointIcon('출발', '#16a34a'),
     zIndex   : 200,
   });
 
   _endMarker = new naver.maps.Marker({
     position : latLngs[latLngs.length - 1],
     map      : _map,
-    icon     : makeWaypointIcon('?꾩옱', '#dc2626'),
+    icon     : makeWaypointIcon('현재', '#dc2626'),
     zIndex   : 201,
   });
 
-  // ?섎떒 ?⑤꼸 ?믪씠瑜?媛먯븞???щ갚?쇰줈 fitBounds
+  // 하단 패널 높이를 감안한 여백으로 fitBounds
   try {
     const bounds = _polyline.getBounds();
     _map.fitBounds(bounds, { top: 60, right: 20, bottom: 230, left: 20 });
@@ -264,13 +269,13 @@ function drawPolyline(path) {
   }
 }
 
-// ??? ?섎떒 李⑤웾 紐⑸줉 ?뚮뜑留????????????????????????????????????????????
+// ─── 하단 차량 목록 렌더링 ───────────────────────────────────────────
 function renderTripList(trips) {
   const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
   const visible    = trips.filter(t => t.status !== 'completed' && (contracted || isMyTrip(t)));
 
   const countEl = document.getElementById('map-panel-count');
-  if (countEl) countEl.textContent = visible.length > 0 ? `${visible.length}? ?댄뻾 以? : '?댄뻾 李⑤웾 ?놁쓬';
+  if (countEl) countEl.textContent = visible.length > 0 ? `${visible.length}대 운행 중` : '운행 차량 없음';
 
   const container = document.getElementById('map-trip-items');
   if (!container) return;
@@ -278,8 +283,8 @@ function renderTripList(trips) {
   if (!visible.length) {
     container.innerHTML = `
       <div class="map-state-empty">
-        <span class="map-empty-icon">?슋</span>
-        <span>?댄뻾 以묒씤 李⑤웾???놁뒿?덈떎.</span>
+        <span class="map-empty-icon">🚛</span>
+        <span>운행 중인 차량이 없습니다.</span>
       </div>`;
     return;
   }
@@ -289,42 +294,43 @@ function renderTripList(trips) {
          onclick="App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
       <div style="font-weight:800;">${trip.vehicle_number || '-'}</div>
       <div style="font-size:12px;color:#64748b;">
-        ${trip.lastLocation?.address || '?꾩튂 ?뺣낫 ?놁쓬'}
+        ${trip.lastLocation?.address || '위치 정보 없음'}
       </div>
     </div>
   `).join('');
 }
 
-// ??? ?좏떥 ???????????????????????????????????????????????????????????
+// ─── 유틸 ───────────────────────────────────────────────────────────
 function isMyTrip(trip) {
   const myV = (State.profile.vehicleNo || '').replace(/\s/g, '').toUpperCase();
   const tV  = (trip.vehicle_number  || '').replace(/\s/g, '').toUpperCase();
   return tV && tV === myV;
 }
 
-// ??? ?몃? 怨듦컻 API ???????????????????????????????????????????????????
+// ─── 외부 공개 API ───────────────────────────────────────────────────
 
 /**
- * 吏???붾㈃ ?닿린
+ * 지도 화면 열기
  * 1) showScreen('map')
  * 2) Naver SDK lazy-load
- * 3) 吏??珥덇린?? * 4) 李⑤웾 ?곗씠???대쭅 ?쒖옉
+ * 3) 지도 초기화
+ * 4) 차량 데이터 폴링 시작
  */
 export async function openMap() {
   showScreen('map');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-btn-map')?.classList.add('active');
 
-  // SDK 濡쒕뱶 (?대? 濡쒕뱶??寃쎌슦 利됱떆 resolve)
+  // SDK 로드 (이미 로드된 경우 즉시 resolve)
   try {
     await loadNaverSDK();
   } catch (e) {
-    showToast('吏??濡쒕뱶 ?ㅽ뙣. ?ㅽ듃?뚰겕瑜??뺤씤?댁＜?몄슂.');
-    remoteLog('[MAP] SDK 濡쒕뱶 ?ㅽ뙣: ' + (e?.message || e), 'MAP_SDK_ERR');
+    showToast('지도 로드 실패. 네트워크를 확인해주세요.');
+    remoteLog('[MAP] SDK 로드 실패: ' + (e?.message || e), 'MAP_SDK_ERR');
     return;
   }
 
-  // DOM ?섏씤??蹂댁옣 ??珥덇린??(2-frame ?쒕젅??
+  // DOM 페인팅 보장 후 초기화 (2-frame 딜레이)
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       initNaverMap();
@@ -332,29 +338,29 @@ export async function openMap() {
     });
   });
 
-  // 30珥??대쭅
+  // 30초 폴링
   if (_mapPollTimer) clearInterval(_mapPollTimer);
   _mapPollTimer = setInterval(refreshMapData, 30000);
 
-  remoteLog('[MAP] openMap ?꾨즺 (Dynamic SDK v3)', 'MAP_OPEN');
+  remoteLog('[MAP] openMap 완료 (Dynamic SDK v3)', 'MAP_OPEN');
 }
 
-/** 吏???붾㈃ ?リ린 */
+/** 지도 화면 닫기 */
 export async function closeMap() {
   if (_mapPollTimer) { clearInterval(_mapPollTimer); _mapPollTimer = null; }
   showScreen('main');
-  // trip ???쒖꽦??諛??곗씠??濡쒕뱶
+  // trip 탭 활성화 및 데이터 로드
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=4919');
+    const { loadCurrentTrip } = await import('./trip.js?v=4920');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
 
-/** 李⑤웾 ?꾩튂 ?곗씠??媛깆떊 */
+/** 차량 위치 데이터 갱신 */
 export async function refreshMapData() {
   try {
     const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips?mode=active');
@@ -363,11 +369,11 @@ export async function refreshMapData() {
     updateVehicleMarkers(_trips);
     renderTripList(_trips);
   } catch (e) {
-    console.warn('[MAP] refreshMapData ?ㅻ쪟', e);
+    console.warn('[MAP] refreshMapData 오류', e);
   }
 }
 
-/** ???꾩튂濡??대룞 */
+/** 내 위치로 이동 */
 export function centerMyLocation() {
   navigator.geolocation.getCurrentPosition(
     pos => {
@@ -388,15 +394,15 @@ export function centerMyLocation() {
 
       _map.setCenter(position);
       _map.setZoom(15, true);
-      showToast('???꾩튂濡??대룞?덉뒿?덈떎.');
+      showToast('내 위치로 이동했습니다.');
     },
-    () => showToast('?꾩튂 ?뺣낫瑜?媛?몄삱 ???놁뒿?덈떎.')
+    () => showToast('위치 정보를 가져올 수 없습니다.')
   );
 }
 
-/** ?뱀젙 李⑤웾??寃쎈줈瑜?吏???꾩뿉 ?쒖떆 */
+/** 특정 차량의 경로를 지도 위에 표시 */
 export async function showTripRouteOnMap(trip) {
-  remoteLog(`[MAP] 寃쎈줈 議고쉶: ${trip.vehicle_number}`, 'MAP_ROUTE');
+  remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
 
   let path = [];
   try {
@@ -404,18 +410,18 @@ export async function showTripRouteOnMap(trip) {
     const data = await res.json();
     path = data.locations || data.data || [];
   } catch (e) {
-    console.error('[MAP] 寃쎈줈 fetch ?ㅽ뙣', e);
+    console.error('[MAP] 경로 fetch 실패', e);
   }
 
-  if (!path.length) { showToast('寃쎈줈 ?곗씠?곌? ?놁뒿?덈떎.'); return; }
+  if (!path.length) { showToast('경로 데이터가 없습니다.'); return; }
 
   drawPolyline(path);
 
-  // 寃쎈줈 ?⑤꼸 ?쒖떆
+  // 경로 패널 표시
   const panel = document.getElementById('map-route-panel');
   if (panel) {
     const titleEl = document.getElementById('map-route-title');
-    if (titleEl) titleEl.textContent = trip.vehicle_number || '寃쎈줈 ?뺣낫';
+    if (titleEl) titleEl.textContent = trip.vehicle_number || '경로 정보';
 
     const bodyEl = document.getElementById('map-route-body');
     if (bodyEl) {
@@ -423,9 +429,9 @@ export async function showTripRouteOnMap(trip) {
       const e = path[path.length - 1];
       bodyEl.innerHTML = `
         <div style="font-size:12px;color:#64748b;line-height:1.9;">
-          <div>?윟 <b>異쒕컻</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
-          <div>?뵶 <b>?꾩옱</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
-          <div>?뱤 <b>湲곕줉</b>: ${path.length}媛??ъ씤??/div>
+          <div>🟢 <b>출발</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
+          <div>🔴 <b>현재</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
+          <div>📊 <b>기록</b>: ${path.length}개 포인트</div>
         </div>`;
     }
 
@@ -433,7 +439,7 @@ export async function showTripRouteOnMap(trip) {
   }
 }
 
-/** 寃쎈줈 ?쒖떆 珥덇린??*/
+/** 경로 표시 초기화 */
 export function clearMapRoute() {
   if (_polyline)    { _polyline.setMap(null);    _polyline    = null; }
   if (_startMarker) { _startMarker.setMap(null); _startMarker = null; }
@@ -441,12 +447,12 @@ export function clearMapRoute() {
   document.getElementById('map-route-panel')?.classList.add('hidden');
 }
 
-/** ?섎떒 李⑤웾 紐⑸줉 ?⑤꼸 ?좉? */
+/** 하단 차량 목록 패널 토글 */
 export function toggleMapPanel() {
   const panel = document.getElementById('map-bottom-panel');
   if (!panel) return;
   panel.classList.toggle('collapsed');
-  // ???ㅻ쾭?덉씠 諛⑹떇?대?濡?吏??resize 遺덊븘??}
+  // ★ 오버레이 방식이므로 지도 resize 불필요
+}
 
 export const toggleMapTripList = toggleMapPanel;
-

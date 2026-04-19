@@ -1,11 +1,11 @@
 /**
- * permissions.js ??沅뚰븳 ?붿껌/?곹깭 愿由? Android 16 媛?대뱶, ???ㅼ젙 ?좏떥
+ * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=4919';
-import { Overlay, remoteLog } from './bridge.js?v=4919';
-import { showScreen } from './nav.js?v=4919';
+import { Store, State } from './store.js?v=4920';
+import { Overlay, remoteLog } from './bridge.js?v=4920';
+import { showScreen } from './nav.js?v=4920';
 
-// ??? 肄쒕갚 二쇱엯 (init.js ??setupPermNav ?몄텧濡??쒗솚 李몄“ ?댁냼) ????
+// ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
 let _openSettings = () => showScreen('settings');
 
@@ -14,12 +14,12 @@ export function setupPermNav({ showMain, openSettings }) {
   _openSettings = openSettings;
 }
 
-// ??? 怨듭쑀 ?좎뒪???ы띁 (??? 李몄“) ????????????????????????????????
+// ─── 공유 토스트 헬퍼 (늦은 참조) ────────────────────────────────
 function showToast(msg, duration) {
   window.App?.showToast(msg, duration);
 }
 
-// ??? ???ш렇?쇱슫??蹂듦? ?湲?(諛고꽣由??ㅻ쾭?덉씠 ?ㅼ젙 ??蹂듦? 媛먯?) ????
+// ─── 앱 포그라운드 복귀 대기 (배터리/오버레이 설정 후 복귀 감지) ────
 function waitForForeground(timeoutMs = 8000) {
   return new Promise(resolve => {
     let done = false;
@@ -34,12 +34,12 @@ function waitForForeground(timeoutMs = 8000) {
     if (!CapApp) { setTimeout(finish, timeoutMs); return; }
 
     let wentBackground = false;
-    // 2?④퀎: 癒쇱? 諛깃렇?쇱슫???꾪솚 媛먯? ?? ?ш렇?쇱슫??蹂듦? 媛먯?
+    // 2단계: 먼저 백그라운드 전환 감지 후, 포그라운드 복귀 감지
     CapApp.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) {
-        wentBackground = true;  // 1?④퀎: 諛깃렇?쇱슫???꾪솚 ?뺤씤
+        wentBackground = true;  // 1단계: 백그라운드 전환 확인
       } else if (wentBackground) {
-        finish();               // 2?④퀎: ?ш렇?쇱슫??蹂듦? 媛먯?
+        finish();               // 2단계: 포그라운드 복귀 감지
       }
     }).then(h => { handles.push(h); });
 
@@ -47,7 +47,7 @@ function waitForForeground(timeoutMs = 8000) {
   });
 }
 
-// ??? 沅뚰븳 ?곹깭 ???????????????????????????????????????????????????
+// ─── 권한 상태 ───────────────────────────────────────────────────
 export const permStatuses = Store.get('permStatuses')
   || { loc: false, camera: false, notif: false, overlay: false, battery: false };
 
@@ -59,7 +59,7 @@ export function setPermStatus(type, ok) {
   const el = document.getElementById('perm-' + type + '-status');
   if (!el) return;
 
-  el.textContent  = permStatuses[type] ? '?덉슜?? : '誘몄꽕??;
+  el.textContent  = permStatuses[type] ? '허용됨' : '미설정';
   el.className    = 'perm-status ' + (permStatuses[type] ? 'perm-ok' : 'perm-ng');
 
   const btn = el.nextElementSibling;
@@ -68,15 +68,15 @@ export function setPermStatus(type, ok) {
       btn.classList.remove('btn-ok', 'btn-primary');
       if (['loc', 'overlay', 'battery'].includes(type)) {
         btn.classList.add('btn-pulse', 'btn-ng');
-        btn.textContent = '?ㅼ젙(?꾩닔)';
+        btn.textContent = '설정(필수)';
       } else {
         btn.classList.add('btn-ng');
-        btn.textContent = '?ㅼ젙';
+        btn.textContent = '설정';
       }
     } else {
       btn.classList.remove('btn-pulse', 'btn-ng', 'btn-primary');
       btn.classList.add('btn-ok');
-      btn.textContent = '?덉슜?꾨즺';
+      btn.textContent = '허용완료';
     }
   }
 }
@@ -85,7 +85,7 @@ export async function updatePermStatuses() {
   console.log('--- updatePermStatuses start ---');
   for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
 
-  // 1. ?ㅻ쾭?덉씠 & 諛고꽣由?(而ㅼ뒪? ?뚮윭洹몄씤)
+  // 1. 오버레이 & 배터리 (커스텀 플러그인)
   const overlay = Overlay();
   if (overlay) {
     try {
@@ -96,7 +96,7 @@ export async function updatePermStatuses() {
     } catch (e) { console.warn('Overlay check fail', e); }
   }
 
-  // 2. ?꾩튂
+  // 2. 위치
   const Geo = window.Capacitor?.Plugins?.Geolocation;
   if (Geo) {
     try {
@@ -110,7 +110,8 @@ export async function updatePermStatuses() {
     } catch { }
   }
 
-  // 3. 移대찓??/ 誘몃뵒??  const Cam = window.Capacitor?.Plugins?.Camera;
+  // 3. 카메라 / 미디어
+  const Cam = window.Capacitor?.Plugins?.Camera;
   if (Cam) {
     try {
       const p = await Cam.checkPermissions().catch(() => ({}));
@@ -118,7 +119,7 @@ export async function updatePermStatuses() {
     } catch (e) { console.warn('Cam check fail', e); }
   }
 
-  // 4. ?뚮┝
+  // 4. 알림
   const Notif = window.Capacitor?.Plugins?.LocalNotifications
     || window.Capacitor?.Plugins?.PushNotifications;
   if (Notif) {
@@ -131,9 +132,10 @@ export async function updatePermStatuses() {
     setPermStatus('notif', Notification.permission === 'granted');
   }
 
-  // 理쒖쥌 媛뺤젣 ?숆린??  for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
+  // 최종 강제 동기화
+  for (const k in permStatuses) { setPermStatus(k, permStatuses[k]); }
 
-  // ?ㅼ젙 ?꾨즺 踰꾪듉 ?됱긽 ?숈쟻 ?낅뜲?댄듃
+  // 설정 완료 버튼 색상 동적 업데이트
   const btnFinish = document.getElementById('btn-finish-setup');
   if (btnFinish) {
     const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
@@ -148,7 +150,7 @@ export async function updatePermStatuses() {
   console.log('--- updatePermStatuses end --- perms:', JSON.stringify(permStatuses));
 }
 
-// ??? ?덈뱶濡쒖씠??16 ?꾩슜 媛?대뱶 ???????????????????????????????????
+// ─── 안드로이드 16 전용 가이드 ───────────────────────────────────
 function showAndroid16Guide(type) {
   const guide      = document.getElementById('modal-guide-android16');
   const confirmBtn = document.getElementById('btn-guide-confirm');
@@ -157,8 +159,8 @@ function showAndroid16Guide(type) {
   const bodyEl = document.getElementById('modal-guide-body');
   if (bodyEl) {
     bodyEl.innerHTML = type === 'overlay'
-      ? '?ㅻⅨ ???꾩뿉 ?쒖떆 ?ㅼ젙李쎌씠 ?대┰?덈떎.<br>ELS ?깆쓣 李얠븘 ?덉슜 ???뚯븘?ㅼ꽭??'
-      : '諛고꽣由?理쒖쟻???쒖쇅 ?ㅼ젙李쎌씠 ?대┰?덈떎.<br>???뺣낫 ??諛고꽣由???<b>?쒗븳 ?놁쓬</b> ?좏깮 ???뚯븘?ㅼ꽭??';
+      ? '다른 앱 위에 표시 설정창이 열립니다.<br>ELS 앱을 찾아 허용 후 돌아오세요.'
+      : '배터리 최적화 제외 설정창이 열립니다.<br>앱 정보 → 배터리 → <b>제한 없음</b> 선택 후 돌아오세요.';
   }
   guide.style.display = 'flex';
   confirmBtn.onclick = (ev) => {
@@ -173,7 +175,7 @@ async function executeRealRequest(type) {
   try {
     switch (type) {
       case 'location':
-        // alert ?쒓굅 - ?쒖감 ?먮룞?ㅼ젙 吏꾪뻾
+        // alert 제거 - 순차 자동설정 진행
         if (window.Capacitor?.Plugins?.Geolocation) {
           await window.Capacitor.Plugins.Geolocation.requestPermissions();
         }
@@ -200,24 +202,24 @@ async function executeRealRequest(type) {
       }
       case 'overlay':
         if (overlay) {
-          console.log('[OVERLAY] requestPermission ?몄텧 ?쒖옉');
+          console.log('[OVERLAY] requestPermission 호출 시작');
           try {
             const res = await overlay.requestPermission();
-            console.log('[OVERLAY] ?묐떟:', JSON.stringify(res));
+            console.log('[OVERLAY] 응답:', JSON.stringify(res));
             remoteLog('Overlay permission requested: ' + JSON.stringify(res), 'OVERLAY_RES');
           } catch (e) {
-            console.error('[OVERLAY] ?붿껌 ?ㅽ뙣:', e.message || e);
+            console.error('[OVERLAY] 요청 실패:', e.message || e);
             remoteLog('Overlay requestPermission error: ' + (e.message || JSON.stringify(e)), 'OVERLAY_ERR');
             throw e;
           }
         } else {
-          console.warn('[OVERLAY] ?뚮윭洹몄씤 誘몃줈??- Overlay()媛 null/undefined');
-          showToast('?ㅼ젙李쎌쓣 ?????놁뒿?덈떎. (?뚮윭洹몄씤 誘몃줈??');
+          console.warn('[OVERLAY] 플러그인 미로드 - Overlay()가 null/undefined');
+          showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
         }
         break;
       case 'battery':
         if (overlay) {
-          showToast("?ㅼ젙李쎌뿉??'?쒗븳 ?놁쓬'???좏깮?댁빞 ?꾩튂 愿?쒓? ?딄린吏 ?딆뒿?덈떎", 4000);
+          showToast("설정창에서 '제한 없음'을 선택해야 위치 관제가 끊기지 않습니다", 4000);
           remoteLog('User clicked Battery Optimization button', 'UI_ACTION');
           try {
             const res = await overlay.requestBatteryOptimization();
@@ -226,16 +228,16 @@ async function executeRealRequest(type) {
             remoteLog('Native requestBatteryOptimization error: ' + e.message, 'NATIVE_ERR');
           }
         } else {
-          showToast('?ㅼ젙李쎌쓣 ?????놁뒿?덈떎. (?뚮윭洹몄씤 誘몃줈??');
+          showToast('설정창을 열 수 없습니다. (플러그인 미로드)');
         }
         break;
     }
   } catch (err) {
     console.error('executeRealRequest error', type, err);
     if (err.message && (err.message.includes('Permission') || err.message.includes('denied'))) {
-      showToast('沅뚰븳??嫄곕??섏뿀?듬땲?? ?덈뱶濡쒖씠??[?ㅼ젙 > ?좏뵆由ъ??댁뀡 > 沅뚰븳] ?먯꽌 吏곸젒 ?덉슜?댁＜?몄슂.', 4000);
+      showToast('권한이 거부되었습니다. 안드로이드 [설정 > 애플리케이션 > 권한] 에서 직접 허용해주세요.', 4000);
     } else {
-      showToast('沅뚰븳 ?붿껌 ?ㅽ뙣: ' + err.message);
+      showToast('권한 요청 실패: ' + err.message);
     }
   } finally {
     setTimeout(() => {
@@ -246,7 +248,7 @@ async function executeRealRequest(type) {
 
 export async function requestPerm(type, event) {
   if (event && event.target) event.target.classList.add('btn-active');
-  // ?섎룞 踰꾪듉: 紐⑤떖 ?놁씠 諛붾줈 ?ㅽ뻾 (紐⑤떖? ?쒖감 ?먮룞?ㅼ젙?먯꽌留??ъ슜)
+  // 수동 버튼: 모달 없이 바로 실행 (모달은 순차 자동설정에서만 사용)
   try {
     await executeRealRequest(type);
   } catch (e) {
@@ -264,17 +266,17 @@ export async function requestAllPerms() {
 
   for (const perm of permsToAsk) {
     if (!permStatuses[perm.key]) {
-      showToast(perm.type + ' 沅뚰븳???ㅼ젙?⑸땲??..', 1500);
+      showToast(perm.type + ' 권한을 설정합니다...', 1500);
       await executeRealRequest(perm.type);
       await new Promise(r => setTimeout(r, 1000)); // wait for android to settle
       await updatePermStatuses();
     }
   }
 
-  // ?? ?ㅻ쾭?덉씠 (?쒖감 ?먮룞) ??
+  // ── 오버레이 (순차 자동) ──
   if (!permStatuses.overlay) {
-    console.log('[PERM] ?ㅻ쾭?덉씠 沅뚰븳 ?쒖옉');
-    showToast('?ㅻⅨ ???꾩뿉 ?쒖떆 沅뚰븳???ㅼ젙?⑸땲??..', 1500);
+    console.log('[PERM] 오버레이 권한 시작');
+    showToast('다른 앱 위에 표시 권한을 설정합니다...', 1500);
 
     const guide = document.getElementById('modal-guide-android16');
     const confirmBtn = document.getElementById('btn-guide-confirm');
@@ -284,7 +286,7 @@ export async function requestAllPerms() {
         guide.style.display = 'flex';
         const bodyEl = document.getElementById('modal-guide-body');
         if (bodyEl) {
-          bodyEl.innerHTML = '?ㅻⅨ ???꾩뿉 ?쒖떆 ?ㅼ젙李쎌씠 ?대┰?덈떎.<br>ELS ?깆쓣 李얠븘 ?덉슜 ???뚯븘?ㅼ꽭??';
+          bodyEl.innerHTML = '다른 앱 위에 표시 설정창이 열립니다.<br>ELS 앱을 찾아 허용 후 돌아오세요.';
         }
         confirmBtn.onclick = async (ev) => {
           ev.preventDefault();
@@ -304,13 +306,13 @@ export async function requestAllPerms() {
     await updatePermStatuses();
   }
 
-  // ?? 諛고꽣由?理쒖쟻??(?쒖감 ?먮룞 遺덇? ???섎룞 ?덈궡) ??
-  // Android ?쒖뒪???ㅼ씠?쇰줈洹멸? ???ㅼ뿉 ?⑤뒗 臾몄젣濡? ?쒖감 ?먮룞?먯꽌 ?쒖쇅
+  // ── 배터리 최적화 (순차 자동 불가 → 수동 안내) ──
+  // Android 시스템 다이얼로그가 앱 뒤에 숨는 문제로, 순차 자동에서 제외
   if (!permStatuses.battery) {
-    showToast('諛고꽣由?理쒖쟻???쒖쇅???꾨옒 [?ㅼ젙] 踰꾪듉??吏곸젒 ?뚮윭二쇱꽭??', 4000);
+    showToast('배터리 최적화 제외는 아래 [설정] 버튼을 직접 눌러주세요.', 4000);
   }
 
-  showToast('?쒖감 ?ㅼ젙???꾨즺?섏뿀?듬땲?? 諛고꽣由?理쒖쟻?붾뒗 ?섎룞 ?ㅼ젙 ?꾩슂?⑸땲??', 3000);
+  showToast('순차 설정이 완료되었습니다. 배터리 최적화는 수동 설정 필요합니다.', 3000);
 }
 
 export function manualRefreshPerms() {
@@ -329,27 +331,27 @@ export function closeTerms() {
 export function finishPermSetup() {
   updatePermStatuses().then(() => {
     const missing = [];
-    if (!permStatuses.loc)     missing.push('?꾩튂(??긽 ?덉슜)');
-    if (!permStatuses.overlay) missing.push('?ㅻⅨ ???꾩뿉 ?쒖떆');
-    if (!permStatuses.battery) missing.push('諛고꽣由?理쒖쟻???쒖쇅');
+    if (!permStatuses.loc)     missing.push('위치(항상 허용)');
+    if (!permStatuses.overlay) missing.push('다른 앱 위에 표시');
+    if (!permStatuses.battery) missing.push('배터리 최적화 제외');
 
     if (missing.length > 0) {
-      alert('?꾨옒 ?꾩닔 沅뚰븳???ㅼ젙?섏? ?딆븯?듬땲??\n\n'
+      alert('아래 필수 권한이 설정되지 않았습니다:\n\n'
         + missing.join('\n')
-        + '\n\n紐⑤뱺 ?꾩닔 沅뚰븳???덉슜?댁빞 ?깆쓣 ?쒖옉?????덉뒿?덈떎.');
+        + '\n\n모든 필수 권한을 허용해야 앱을 시작할 수 있습니다.');
       return;
     }
 
     Store.set('permSetupDone', true);
-    // ?꾨줈???꾩꽦??寃??(鍮?媛??쒖쇅, ?낅뜲?댄듃 ??遺???곗씠??諛⑹?)
+    // 프로필 완성도 검사 (빈 값 제외, 업데이트 후 부실 데이터 방지)
     const hasProfile = State.profile.name?.trim() && State.profile.phone?.trim()
       && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
 
     if (!hasProfile) {
-      showToast('沅뚰븳 ?ㅼ젙 ?꾨즺! 李⑤웾 ?뺣낫瑜?癒쇱? ?깅줉??二쇱꽭??');
+      showToast('권한 설정 완료! 차량 정보를 먼저 등록해 주세요.');
       _openSettings();
     } else {
-      showToast('諛섍컩?듬땲?? ?덉쟾 ?댁쟾 ?섏꽭??');
+      showToast('반갑습니다! 안전 운전 하세요.');
       _showMain();
     }
   });
@@ -366,7 +368,7 @@ export function settingsBack() {
 }
 
 export function clearCache() {
-  if (confirm('罹먯떆瑜?吏?곌퀬 ?덈줈怨좎묠 ?섏떆寃좎뒿?덇퉴? (?몄뀡???ㅼ떆 ?쒖옉?⑸땲??')) {
+  if (confirm('캐시를 지우고 새로고침 하시겠습니까? (세션이 다시 시작됩니다)')) {
     window.location.reload(true);
   }
 }
@@ -377,7 +379,7 @@ export function openPermissionSetup() {
 }
 
 export function resetApp() {
-  if (!confirm('?깆쓣 珥덇린?뷀븯硫?紐⑤뱺 ?ㅼ젙怨?諛곗감 湲곕줉????젣?⑸땲?? 怨꾩냽?섏떆寃좎뒿?덇퉴?')) return;
+  if (!confirm('앱을 초기화하면 모든 설정과 배차 기록이 삭제됩니다. 계속하시겠습니까?')) return;
   localStorage.clear();
 
   State.profile = { name: '', phone: '', vehicleNo: '', driverId: '' };
@@ -388,7 +390,6 @@ export function resetApp() {
 
   showScreen('permission');
   updatePermStatuses().then(() => {
-    showToast('?깆씠 珥덇린?붾릺?덉뒿?덈떎. 沅뚰븳???ㅼ떆 ?ㅼ젙?댁＜?몄슂.');
+    showToast('앱이 초기화되었습니다. 권한을 다시 설정해주세요.');
   });
 }
-

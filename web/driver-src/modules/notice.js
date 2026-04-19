@@ -1,17 +1,17 @@
 /**
- * notice.js ??怨듭? 紐⑸줉, ?꾪꽣, ?곸꽭
+ * notice.js — 공지 목록, 필터, 상세
  */
-import { Store, State, BASE_URL } from './store.js?v=4919';
-import { smartFetch } from './bridge.js?v=4919';
-import { formatDate, escHtml, showToast } from './utils.js?v=4919';
+import { Store, State, BASE_URL } from './store.js?v=4920';
+import { smartFetch } from './bridge.js?v=4920';
+import { formatDate, escHtml, showToast } from './utils.js?v=4920';
 
 let _notices             = [];
 let _currentNoticeFilter = '';
 
-// ??? 怨듭? 濡쒕뱶 ???????????????????????????????????????????????????
+// ─── 공지 로드 ───────────────────────────────────────────────────
 export async function loadNotices() {
   document.getElementById('notice-list').innerHTML =
-    '<div class="loading"><div class="spinner"></div>遺덈윭?ㅻ뒗 以?..</div>';
+    '<div class="loading"><div class="spinner"></div>불러오는 중...</div>';
   try {
     const [res1, res2] = await Promise.all([
       smartFetch(`${BASE_URL}/api/vehicle-tracking/notices`).catch(() => null),
@@ -36,9 +36,10 @@ export async function loadNotices() {
       }
     } catch (e) { console.error(e); }
 
-    emerg.forEach(e => { e.isEmergency = true; e.category = '湲닿툒?뚮┝'; });
+    emerg.forEach(e => { e.isEmergency = true; e.category = '긴급알림'; });
 
-    // SYSTEM_COMMAND ?꾪꽣留????ㅼ떆媛??쒖뼱 紐낅졊? 怨듭? 紐⑸줉??誘몃끂異?    const isSystemMsg = (item) => {
+    // SYSTEM_COMMAND 필터링 — 실시간 제어 명령은 공지 목록에 미노출
+    const isSystemMsg = (item) => {
       const t = (item.title || item.message || '').trim();
       return t === 'SYSTEM_COMMAND' || t.startsWith('SYSTEM_') || item.type === 'SYSTEM_COMMAND';
     };
@@ -53,15 +54,15 @@ export async function loadNotices() {
 
     if (merged.length === 0) {
       document.getElementById('notice-list').innerHTML =
-        '<div class="loading">?깅줉??怨듭??ы빆???놁뒿?덈떎.</div>';
+        '<div class="loading">등록된 공지사항이 없습니다.</div>';
     }
   } catch {
     document.getElementById('notice-list').innerHTML =
-      '<div class="loading">遺덈윭?ㅺ린 ?ㅽ뙣</div>';
+      '<div class="loading">불러오기 실패</div>';
   }
 }
 
-// ??? ?꾪꽣 ????????????????????????????????????????????????????????
+// ─── 필터 ────────────────────────────────────────────────────────
 export function filterNotice(category, btnElement) {
   if (_currentNoticeFilter === category) {
     _currentNoticeFilter = '';
@@ -83,28 +84,28 @@ export function filterNotice(category, btnElement) {
   renderNoticeList();
 }
 
-// ??? 紐⑸줉 ?뚮뜑 ???????????????????????????????????????????????????
+// ─── 목록 렌더 ───────────────────────────────────────────────────
 function renderNoticeList() {
   const read = Store.get('readNotices') || [];
   const filtered = _notices.filter(n => {
     if (!_currentNoticeFilter) return true;
-    const cat = n.category || (n.isEmergency ? '湲닿툒?뚮┝' : '?쇰컲怨듭?');
+    const cat = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
     return cat === _currentNoticeFilter;
   });
 
   const html = filtered.map(n => {
     const dateVal = n.created_at || n.date || n.started_at;
-    const dateStr = dateVal ? formatDate(new Date(dateVal)) : '??;
-    const cat     = n.category || (n.isEmergency ? '湲닿툒?뚮┝' : '?쇰컲怨듭?');
+    const dateStr = dateVal ? formatDate(new Date(dateVal)) : '—';
+    const cat     = n.category || (n.isEmergency ? '긴급알림' : '일반공지');
     const isOld   = dateVal && (Date.now() - new Date(dateVal).getTime() > 14 * 24 * 60 * 60 * 1000);
     const isRead  = read.includes(n.id) || isOld;
 
     let prefix = '';
-    if (cat === '湲닿툒?뚮┝')      prefix = '<span style="color:#ef4444; font-weight:700; margin-right:4px;">?슚[湲닿툒]</span>';
-    else if (cat !== '?쇰컲怨듭?') prefix = `<span style="color:#0ea5e9; font-weight:700; margin-right:4px;">[${escHtml(cat)}]</span>`;
+    if (cat === '긴급알림')      prefix = '<span style="color:#ef4444; font-weight:700; margin-right:4px;">🚨[긴급]</span>';
+    else if (cat !== '일반공지') prefix = `<span style="color:#0ea5e9; font-weight:700; margin-right:4px;">[${escHtml(cat)}]</span>`;
 
-    let title = escHtml(n.title || n.message || '?쒕ぉ ?놁쓬');
-    if (title.startsWith('[湲닿툒] ')) title = title.replace('[湲닿툒] ', '');
+    let title = escHtml(n.title || n.message || '제목 없음');
+    if (title.startsWith('[긴급] ')) title = title.replace('[긴급] ', '');
 
     return `
       <div id="notice-item-${n.id}" class="notice-item ${isRead ? '' : 'notice-item-unread'}" onclick="App.openNotice('${n.id}')">
@@ -115,17 +116,17 @@ function renderNoticeList() {
         <div class="notice-item-meta" style="margin-top:4px;">${dateStr}</div>
       </div>
     `;
-  }).join('') || '<div class="loading" style="margin-top:20px;">怨듭??ы빆???놁뒿?덈떎.</div>';
+  }).join('') || '<div class="loading" style="margin-top:20px;">공지사항이 없습니다.</div>';
 
   document.getElementById('notice-list').innerHTML = html;
 }
 
-// ??? 怨듭? ?곸꽭 ???????????????????????????????????????????????????
+// ─── 공지 상세 ───────────────────────────────────────────────────
 export function openNotice(id) {
   const n = _notices.find(x => String(x.id) === String(id));
   if (!n) return;
 
-  document.getElementById('notice-detail-title').textContent = n.title || '?쒕ぉ ?놁쓬';
+  document.getElementById('notice-detail-title').textContent = n.title || '제목 없음';
   document.getElementById('notice-detail-meta').textContent  = formatDate(new Date(n.created_at || n.date));
 
   const bodyEl = document.getElementById('notice-detail-body');
@@ -155,4 +156,3 @@ export function closeNoticeDetail() {
   document.getElementById('notice-detail').classList.remove('active');
   document.getElementById('notice-list').style.display = '';
 }
-

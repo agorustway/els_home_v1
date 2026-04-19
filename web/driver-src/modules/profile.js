@@ -1,29 +1,30 @@
 /**
- * profile.js ???꾨줈??UI, ??? 湲곗궗 議고쉶, ?꾨줈???ъ쭊 3醫? */
-import { Store, State, BASE_URL } from './store.js?v=4919';
-import { smartFetch } from './bridge.js?v=4919';
+ * profile.js — 프로필 UI, 저장, 기사 조회, 프로필 사진 3종
+ */
+import { Store, State, BASE_URL } from './store.js?v=4920';
+import { smartFetch } from './bridge.js?v=4920';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
 
-// ??? ?꾨줈??UI 諛섏쁺 ??????????????????????????????????????????????
+// ─── 프로필 UI 반영 ──────────────────────────────────────────────
 export function applyProfileToUI() {
   document.getElementById('s-name').value    = State.profile.name;
   document.getElementById('s-phone').value   = State.profile.phone;
   document.getElementById('s-vehicle').value = State.profile.vehicleNo;
   document.getElementById('s-id').value      = State.profile.driverId;
-  document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '??;
+  document.getElementById('header-vehicle').textContent = State.profile.vehicleNo || '—';
 
-  updateProfilePhoto('p-photo-driver',  State.profile.photo_driver,  '湲곗궗');
-  updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '李⑤웾');
-  updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '?ㅼ떆');
+  updateProfilePhoto('p-photo-driver',  State.profile.photo_driver,  '기사');
+  updateProfilePhoto('p-photo-vehicle', State.profile.photo_vehicle, '차량');
+  updateProfilePhoto('p-photo-chassis', State.profile.photo_chassis, '샤시');
 
-  // ?꾨줈??????щ????곕씪 ?섎떒 踰꾪듉 ?쒖꽦??鍮꾪솢?깊솕
+  // 프로필 저장 여부에 따라 하단 버튼 활성화/비활성화
   const hasProfile = State.profile.name && State.profile.phone
     && State.profile.vehicleNo && State.profile.driverId;
   updateSettingsButtonState(hasProfile);
 }
 
-// ??? ?ㅼ젙 ?붾㈃ ?섎떒 踰꾪듉 ?쒖꽦??鍮꾪솢?깊솕 ?????????????????????????
+// ─── 설정 화면 하단 버튼 활성화/비활성화 ─────────────────────────
 function updateSettingsButtonState(enabled) {
   const buttons = document.querySelectorAll('#tab-settings .field:last-of-type .btn');
   buttons.forEach(btn => {
@@ -40,7 +41,7 @@ function updateSettingsButtonState(enabled) {
   });
 }
 
-// ??? ?꾨줈??????????????????????????????????????????????????????
+// ─── 프로필 저장 ─────────────────────────────────────────────────
 export function saveProfile() {
   const name      = document.getElementById('s-name').value.trim();
   const phone     = document.getElementById('s-phone').value.replace(/[^0-9]/g, '');
@@ -50,7 +51,7 @@ export function saveProfile() {
   document.getElementById('s-phone').value = phone;
 
   if (!name || !phone || !vehicleNo || !driverId) {
-    showToast('?대쫫, ?꾪솕踰덊샇, 李⑤웾踰덊샇, 湲곗궗 ID瑜?紐⑤몢 ?낅젰??二쇱꽭??');
+    showToast('이름, 전화번호, 차량번호, 기사 ID를 모두 입력해 주세요.');
     return;
   }
 
@@ -58,16 +59,16 @@ export function saveProfile() {
   Store.set('profile', State.profile);
   applyProfileToUI();
   upsertDriverContact();
-  showToast('?뺣낫媛 ??λ릺?덉뒿?덈떎.');
+  showToast('정보가 저장되었습니다.');
 
-  // ?섎떒 踰꾪듉 ?쒖꽦??(????꾨즺 ??
+  // 하단 버튼 활성화 (저장 완료 후)
   setTimeout(() => {
     updateSettingsButtonState(true);
     window.App?.showMain();
   }, 1000);
 }
 
-// ??? 湲곗궗 ?뺣낫 DB ?숆린???????????????????????????????????????????
+// ─── 기사 정보 DB 동기화 ─────────────────────────────────────────
 export async function upsertDriverContact() {
   try {
     await smartFetch(BASE_URL + '/api/vehicle-tracking/drivers', {
@@ -85,11 +86,11 @@ export async function upsertDriverContact() {
   } catch (e) { console.warn('upsertDriverContact', e); }
 }
 
-// ??? ?꾪솕踰덊샇濡?湲곗궗 議고쉶 ????????????????????????????????????????
+// ─── 전화번호로 기사 조회 ────────────────────────────────────────
 export async function lookupDriver() {
   const phone = document.getElementById('s-phone').value.replace(/\D/g, '');
-  if (phone.length < 10) { showToast('?꾪솕踰덊샇瑜?癒쇱? ?낅젰??二쇱꽭??'); return; }
-  showToast('議고쉶 以?..');
+  if (phone.length < 10) { showToast('전화번호를 먼저 입력해 주세요.'); return; }
+  showToast('조회 중...');
   try {
     const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/drivers?phone=${phone}`);
     const data = await res.json();
@@ -99,22 +100,22 @@ export async function lookupDriver() {
       document.getElementById('s-vehicle').value = d.vehicle_number || d.business_number || '';
       document.getElementById('s-id').value      = d.vehicle_id || d.driver_id || '';
 
-      updateProfilePhoto('p-photo-driver',  d.photo_driver,  '湲곗궗');
-      updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '李⑤웾');
-      updateProfilePhoto('p-photo-chassis', d.photo_chassis, '?ㅼ떆');
+      updateProfilePhoto('p-photo-driver',  d.photo_driver,  '기사');
+      updateProfilePhoto('p-photo-vehicle', d.photo_vehicle, '차량');
+      updateProfilePhoto('p-photo-chassis', d.photo_chassis, '샤시');
 
       State.profile.photo_driver  = d.photo_driver;
       State.profile.photo_vehicle = d.photo_vehicle;
       State.profile.photo_chassis = d.photo_chassis;
 
-      showToast('湲곗궗 ?뺣낫瑜?遺덈윭?붿뒿?덈떎.');
+      showToast('기사 정보를 불러왔습니다.');
     } else {
-      showToast('?대떦 ?꾪솕踰덊샇濡??깅줉??湲곗궗 ?뺣낫媛 ?놁뒿?덈떎.');
+      showToast('해당 전화번호로 등록된 기사 정보가 없습니다.');
     }
-  } catch (e) { showToast('議고쉶 ?ㅽ뙣: ' + e.message); }
+  } catch (e) { showToast('조회 실패: ' + e.message); }
 }
 
-// ??? ?꾨줈???ъ쭊 DOM ?낅뜲?댄듃 ????????????????????????????????????
+// ─── 프로필 사진 DOM 업데이트 ────────────────────────────────────
 export function updateProfilePhoto(id, url, fallback) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -132,11 +133,11 @@ export function updateProfilePhoto(id, url, fallback) {
   }
 }
 
-// ??? ?꾨줈???ъ쭊 珥ъ쁺/?좏깮 ???????????????????????????????????????
+// ─── 프로필 사진 촬영/선택 ───────────────────────────────────────
 export async function pickProfilePhoto(type) {
   try {
     const Camera = window.Capacitor?.Plugins?.Camera;
-    if (!Camera) { showToast('移대찓??湲곕뒫???ъ슜?????놁뒿?덈떎.'); return; }
+    if (!Camera) { showToast('카메라 기능을 사용할 수 없습니다.'); return; }
 
     const image = await Camera.getPhoto({
       quality:       70,
@@ -146,10 +147,10 @@ export async function pickProfilePhoto(type) {
       resultType:    'base64',
       source:        'PROMPT',
       saveToGallery: false,
-      promptLabelHeader:  '?ъ쭊 ?좏깮',
-      promptLabelCancel:  '痍⑥냼',
-      promptLabelPhoto:   '?⑤쾾?먯꽌 ?좏깮',
-      promptLabelPicture: '?ъ쭊 珥ъ쁺',
+      promptLabelHeader:  '사진 선택',
+      promptLabelCancel:  '취소',
+      promptLabelPhoto:   '앨범에서 선택',
+      promptLabelPicture: '사진 촬영',
     });
 
     const dataUrl = `data:image/jpeg;base64,${image.base64String}`;
@@ -158,13 +159,13 @@ export async function pickProfilePhoto(type) {
     if (type === 'chassis') State.profile.photo_chassis = dataUrl;
 
     updateProfilePhoto('p-photo-' + type, dataUrl, '');
-    showToast('?ъ쭊???좏깮?섏뿀?듬땲?? ?뺣낫 ??????낅줈?쒕맗?덈떎.');
+    showToast('사진이 선택되었습니다. 정보 저장 시 업로드됩니다.');
   } catch (e) {
     console.warn('pickProfilePhoto skip', e);
   }
 }
 
-// ??? ?꾨줈???ъ쭊 ?대┃ ?몃뱾???????????????????????????????????????
+// ─── 프로필 사진 클릭 핸들러 ─────────────────────────────────────
 export function handleProfilePhotoClick(type) {
   if (State.profile[`photo_${type}`]) {
     const types = ['driver', 'vehicle', 'chassis'];
@@ -181,4 +182,3 @@ export function handleProfilePhotoClick(type) {
     pickProfilePhoto(type);
   }
 }
-
