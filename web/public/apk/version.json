@@ -2,6 +2,6 @@
     "latestVersion":  "v4.9.22",
     "versionCode":  4922,
     "forceUpdate":  true,
-    "changeLog":  "v4.9.22 - ID 누락 및 버전 불일치 수정",
-    "downloadUrl":  "https://www.nollae.com/apk/els_driver.apk?t=4922"
+    "changeLog":  "v4.9.22 - 캐시 무력화 배포 (ID 누락 수정)",
+    "downloadUrl":  "https://www.nollae.com/apk/els_driver_v4922.apk"
 }
