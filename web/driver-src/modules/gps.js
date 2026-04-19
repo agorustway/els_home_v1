@@ -1,20 +1,19 @@
 /**
- * gps.js — GPS 추적, 오버레이 상태 표시, 역지오코딩
- */
-import { State, BASE_URL } from './store.js?v=4918';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=4918';
+ * gps.js ??GPS 異붿쟻, ?ㅻ쾭?덉씠 ?곹깭 ?쒖떆, ????ㅼ퐫?? */
+import { State, BASE_URL } from './store.js?v=4919';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=4919';
 
-// ─── GPS 상태 변수 ────────────────────────────────────────────────
+// ??? GPS ?곹깭 蹂??????????????????????????????????????????????????
 export let gpsWatchId        = null;
 export let lastGpsSend       = 0;
 export let currentGpsInterval = 60_000;
 export let lastGpsTimestamp  = 0;
-export let lastKnownAddr     = '위치 확인 중...';
+export let lastKnownAddr     = '?꾩튂 ?뺤씤 以?..';
 export let realtimeExpireAt  = 0;
 
 const gyroData = { magnitude: 0 };
 
-// ─── 오프라인 캐시 ────────────────────────────────────────────────
+// ??? ?ㅽ봽?쇱씤 罹먯떆 ????????????????????????????????????????????????
 export let _gpsOfflineQueue = [];
 try { _gpsOfflineQueue = JSON.parse(localStorage.getItem('els_gps_queue') || '[]'); } catch(e){}
 const saveGpsQueue = () => {
@@ -22,13 +21,13 @@ const saveGpsQueue = () => {
   localStorage.setItem('els_gps_queue', JSON.stringify(_gpsOfflineQueue));
 };
 
-// ─── 실시간 모드 ─────────────────────────────────────────────────
+// ??? ?ㅼ떆媛?紐⑤뱶 ?????????????????????????????????????????????????
 export function startRealtimeMode() {
   State.trip.isRealtime = true;
   realtimeExpireAt = Date.now() + 60000;
   updateTripStatusLine();
   _syncRealtimeModeToNative(true);
-  remoteLog('실시간 고정밀 관제 모드 시작 (1분)', 'SYSTEM');
+  remoteLog('?ㅼ떆媛?怨좎젙諛 愿??紐⑤뱶 ?쒖옉 (1遺?', 'SYSTEM');
 }
 
 export function stopRealtimeMode() {
@@ -36,7 +35,7 @@ export function stopRealtimeMode() {
   realtimeExpireAt = 0;
   updateTripStatusLine();
   _syncRealtimeModeToNative(false);
-  remoteLog('실시간 고정밀 관제 모드 수동 종료', 'SYSTEM');
+  remoteLog('?ㅼ떆媛?怨좎젙諛 愿??紐⑤뱶 ?섎룞 醫낅즺', 'SYSTEM');
 }
 
 function _syncRealtimeModeToNative(isRealtime) {
@@ -45,15 +44,15 @@ function _syncRealtimeModeToNative(isRealtime) {
   overlay.updateStatus({ status: State.trip.status, isRealtime }).catch(() => { });
 }
 
-// ─── GPS watchPosition ────────────────────────────────────────────
+// ??? GPS watchPosition ????????????????????????????????????????????
 export function startGPS() {
   if (!navigator.geolocation) {
-    remoteLog('navigator.geolocation 없음 - GPS 불가', 'GPS_FATAL');
+    remoteLog('navigator.geolocation ?놁쓬 - GPS 遺덇?', 'GPS_FATAL');
     return;
   }
   if (gpsWatchId) return;
 
-  remoteLog('startGPS() called - watchPosition 시작', 'GPS_INIT');
+  remoteLog('startGPS() called - watchPosition ?쒖옉', 'GPS_INIT');
 
   if (window.DeviceOrientationEvent) {
     window.addEventListener('deviceorientation', handleGyro, { passive: true });
@@ -62,17 +61,17 @@ export function startGPS() {
     window.addEventListener('devicemotion', handleMotion, { passive: true });
   }
 
-  // 즉시 1회 강제 수신 (초기 공백 방지)
+  // 利됱떆 1??媛뺤젣 ?섏떊 (珥덇린 怨듬갚 諛⑹?)
   navigator.geolocation.getCurrentPosition(
     pos => {
       lastGpsTimestamp = Date.now();
       remoteLog(
-        `GPS 초기수신 성공: ${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)} acc:${pos.coords.accuracy?.toFixed(0)}m`,
+        `GPS 珥덇린?섏떊 ?깃났: ${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)} acc:${pos.coords.accuracy?.toFixed(0)}m`,
         'GPS_INIT'
       );
       onGpsUpdate(pos, true, State.trip.id);
     },
-    err => remoteLog(`GPS 초기수신 실패: ${err.code} ${err.message}`, 'GPS_INIT_ERR'),
+    err => remoteLog(`GPS 珥덇린?섏떊 ?ㅽ뙣: ${err.code} ${err.message}`, 'GPS_INIT_ERR'),
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 
@@ -82,18 +81,18 @@ export function startGPS() {
       onGpsUpdate(pos, false);
     },
     err => {
-      remoteLog(`GPS watchPosition 에러: code=${err.code} msg=${err.message}`, 'GPS_WATCH_ERR');
+      remoteLog(`GPS watchPosition ?먮윭: code=${err.code} msg=${err.message}`, 'GPS_WATCH_ERR');
       console.warn('GPS watch error', err.code, err.message);
     },
     { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
   );
-  remoteLog(`GPS watchPosition 등록됨 ID=${gpsWatchId}`, 'GPS_INIT');
+  remoteLog(`GPS watchPosition ?깅줉??ID=${gpsWatchId}`, 'GPS_INIT');
 }
 
 export function stopGPS() {
   if (gpsWatchId) {
     navigator.geolocation.clearWatch(gpsWatchId);
-    remoteLog(`GPS watchPosition 해제 ID=${gpsWatchId}`, 'GPS_STOP');
+    remoteLog(`GPS watchPosition ?댁젣 ID=${gpsWatchId}`, 'GPS_STOP');
     gpsWatchId = null;
   }
   window.removeEventListener('deviceorientation', handleGyro);
@@ -113,7 +112,7 @@ function handleMotion(e) {
   }
 }
 
-// ─── 운행 상태 타이머 ─────────────────────────────────────────────
+// ??? ?댄뻾 ?곹깭 ??대㉧ ?????????????????????????????????????????????
 let tripStatusTimer = null;
 export function startTripStatusTimer() {
   if (tripStatusTimer) clearInterval(tripStatusTimer);
@@ -129,23 +128,23 @@ export function formatDuration(ms) {
   return [h, m, ss].map(v => String(v).padStart(2, '0')).join(':');
 }
 
-// ─── 주소 축약 ───────────────────────────────────────────────────
+// ??? 二쇱냼 異뺤빟 ???????????????????????????????????????????????????
 function abbreviateAddr(full) {
-  if (!full || full.includes('확인 중')) return full;
+  if (!full || full.includes('?뺤씤 以?)) return full;
   return full.split(' ')
     .map(s => s
-      .replace(/특별시|광역시|특별자치시|특별자치도/g, '')
-      .replace(/(도|시|구|동|읍|면|리)$/g, ''))
+      .replace(/?밸퀎??愿묒뿭???밸퀎?먯튂???밸퀎?먯튂??g, '')
+      .replace(/(????援?????硫?由?$/g, ''))
     .filter(s => s.length > 0)
     .join(' ');
 }
 
-// ─── 상태 표시줄 갱신 (1초 타이머 + GPS 수신 시) ─────────────────
+// ??? ?곹깭 ?쒖떆以?媛깆떊 (1珥???대㉧ + GPS ?섏떊 ?? ?????????????????
 export function updateTripStatusLine() {
-  // 절대 시간으로 실시간 모드 만료 체크 (백그라운드 setTimeout 지연 대응)
+  // ?덈? ?쒓컙?쇰줈 ?ㅼ떆媛?紐⑤뱶 留뚮즺 泥댄겕 (諛깃렇?쇱슫??setTimeout 吏?????
   if (State.trip.isRealtime && Date.now() > realtimeExpireAt) {
     State.trip.isRealtime = false;
-    remoteLog('실시간 고정밀 관제 모드 종료', 'SYSTEM');
+    remoteLog('?ㅼ떆媛?怨좎젙諛 愿??紐⑤뱶 醫낅즺', 'SYSTEM');
   }
 
   const dateDisplay = document.getElementById('trip-date-display');
@@ -159,12 +158,12 @@ export function updateTripStatusLine() {
 
   if (State.trip.status === 'idle') {
     if (dateDisplay) {
-      dateDisplay.textContent  = '운송시작 대기중';
+      dateDisplay.textContent  = '?댁넚?쒖옉 ?湲곗쨷';
       dateDisplay.style.color  = 'var(--primary)';
       dateDisplay.style.fontWeight = '700';
     }
     if (settingsDateDisplay) {
-      settingsDateDisplay.textContent  = '운송시작 대기중';
+      settingsDateDisplay.textContent  = '?댁넚?쒖옉 ?湲곗쨷';
       settingsDateDisplay.style.color  = 'var(--primary)';
     }
     if (sep1)        sep1.style.display  = 'none';
@@ -182,14 +181,14 @@ export function updateTripStatusLine() {
 
   if (State.trip.status === 'paused') {
     gpsColor = '#ef4444';
-    gpsText  = '수신중지';
+    gpsText  = '?섏떊以묒?';
   } else if (isDown && State.trip.status === 'driving') {
     if (window._resumeGracePeriod) {
       gpsColor = '#10b981';
-      gpsText  = '수신중';
+      gpsText  = '?섏떊以?;
     } else {
       gpsColor = '#ef4444';
-      gpsText  = '연결안됨';
+      gpsText  = '?곌껐?덈맖';
 
       const now = Date.now();
       if (!window._lastGpsRetry || (now - window._lastGpsRetry > 3000)) {
@@ -205,7 +204,7 @@ export function updateTripStatusLine() {
     }
   } else if (State.trip.isRealtime) {
     gpsColor = '#f59e0b';
-    gpsText  = '실시간 수집중';
+    gpsText  = '?ㅼ떆媛??섏쭛以?;
   }
 
   const addrShort = abbreviateAddr(lastKnownAddr);
@@ -235,15 +234,14 @@ export function updateTripStatusLine() {
   if (sep2)        sep2.style.display  = 'inline-block';
   if (addrDisplay) {
     addrDisplay.style.display = 'inline-block';
-    addrDisplay.textContent   = addrShort || '위치 확인 중...';
+    addrDisplay.textContent   = addrShort || '?꾩튂 ?뺤씤 以?..';
   }
   if (settingsAddrDisplay) {
     settingsAddrDisplay.style.display = 'inline-block';
-    settingsAddrDisplay.textContent   = addrShort || '위치 확인 중...';
+    settingsAddrDisplay.textContent   = addrShort || '?꾩튂 ?뺤씤 以?..';
   }
 
-  // 오버레이 위젯 동기화
-  const overlay = Overlay();
+  // ?ㅻ쾭?덉씠 ?꾩젽 ?숆린??  const overlay = Overlay();
   if (overlay && (State.trip.status === 'driving' || State.trip.status === 'paused')) {
     overlay.updateStatus({
       status:     State.trip.status,
@@ -255,14 +253,14 @@ export function updateTripStatusLine() {
   }
 }
 
-// ─── GPS 수신 처리 (서버 전송) ────────────────────────────────────
+// ??? GPS ?섏떊 泥섎━ (?쒕쾭 ?꾩넚) ????????????????????????????????????
 let lastEmergencyPollMs = 0;
 
 export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, markerType = null) {
   const targetId = forcedTripId || State.trip.id;
   if (!targetId) return;
 
-  // 30초마다 긴급명령 폴링
+  // 30珥덈쭏??湲닿툒紐낅졊 ?대쭅
   const _now = Date.now();
   if (_now - lastEmergencyPollMs > 30000 && State.trip.status === 'driving') {
     lastEmergencyPollMs = _now;
@@ -272,23 +270,23 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   if (State.trip.status !== 'driving' && !isForced) return;
   const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
 
-  // 기지국/네트워크 위치 원천 차단 (속도 데이터 없음 = GPS 아님)
+  // 湲곗?援??ㅽ듃?뚰겕 ?꾩튂 ?먯쿇 李⑤떒 (?띾룄 ?곗씠???놁쓬 = GPS ?꾨떂)
   if (!State.trip.isRealtime && (speed === null || speed === undefined)) {
-    remoteLog(`기지국/네트워크 위치 스킵 (속도 불명): acc=${accuracy?.toFixed(0)}m`, 'GPS_SKIP_NETWORK');
+    remoteLog(`湲곗?援??ㅽ듃?뚰겕 ?꾩튂 ?ㅽ궢 (?띾룄 遺덈챸): acc=${accuracy?.toFixed(0)}m`, 'GPS_SKIP_NETWORK');
     return;
   }
 
   const speedKph = (speed || 0) * 3.6;
   lastGpsTimestamp = Date.now();
 
-  // 정확도 필터 (200m 초과 → 스킵, 단 강제수신/실시간 예외)
+  // ?뺥솗???꾪꽣 (200m 珥덇낵 ???ㅽ궢, ??媛뺤젣?섏떊/?ㅼ떆媛??덉쇅)
   if (!State.trip.isRealtime && !isForced && accuracy && accuracy > 200) {
-    remoteLog(`GPS 정확도 낮음: ${accuracy.toFixed(0)}m - 전송 스킵`, 'GPS_ACCURACY');
+    remoteLog(`GPS ?뺥솗????쓬: ${accuracy.toFixed(0)}m - ?꾩넚 ?ㅽ궢`, 'GPS_ACCURACY');
     updateTripStatusLine();
     return;
   }
 
-  // 속도 기반 가변 주기
+  // ?띾룄 湲곕컲 媛蹂 二쇨린
   let interval = 60_000;
   if (State.trip.isRealtime)  interval = 3000;
   else if (speedKph >= 60)    interval = 30_000;
@@ -343,19 +341,19 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     }
     updateTripStatusLine();
     remoteLog(
-      `GPS전송[${markerType || 'normal'}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)}`,
+      `GPS?꾩넚[${markerType || 'normal'}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)}`,
       'GPS_OK'
     );
   } catch (e) {
     lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateTripStatusLine();
-    remoteLog(`GPS 서버전송 실패 (오프라인 캐시 저장): ${e.message}`, 'GPS_SEND_ERR');
+    remoteLog(`GPS ?쒕쾭?꾩넚 ?ㅽ뙣 (?ㅽ봽?쇱씤 罹먯떆 ???: ${e.message}`, 'GPS_SEND_ERR');
     _gpsOfflineQueue.push(payload);
     saveGpsQueue();
   }
 }
 
-// ─── 역지오코딩 (단독 조회용) ────────────────────────────────────
+// ??? ????ㅼ퐫??(?⑤룆 議고쉶?? ????????????????????????????????????
 export async function reverseGeocode(lat, lng) {
   try {
     const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/geocode?lat=${lat}&lng=${lng}`);
@@ -367,3 +365,4 @@ export async function reverseGeocode(lat, lng) {
     return null;
   }
 }
+

@@ -1,17 +1,16 @@
 /**
- * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
- */
-import { Store, State, BASE_URL } from './store.js?v=4918';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4918';
+ * trip.js ???댄뻾 愿由? 泥댄겕由ъ뒪?? ?ㅻ쾭?덉씠 ?쒕퉬?? */
+import { Store, State, BASE_URL } from './store.js?v=4919';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4919';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=4918';
+} from './gps.js?v=4919';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
 
-// ─── 운행 전 점검 체크리스트 ──────────────────────────────────────
+// ??? ?댄뻾 ???먭? 泥댄겕由ъ뒪????????????????????????????????????????
 export function openChecklist() {
   document.getElementById('checklist-popup')?.classList.add('active');
 }
@@ -22,7 +21,7 @@ export function saveChecklist() {
   const checks = ['chk_brake', 'chk_tire', 'chk_lamp', 'chk_cargo', 'chk_driver'];
   for (const id of checks) {
     if (!document.getElementById(id)?.checked) {
-      showToast('모든 법정 필수 점검 항목에 체크해야 합니다.');
+      showToast('紐⑤뱺 踰뺤젙 ?꾩닔 ?먭? ??ぉ??泥댄겕?댁빞 ?⑸땲??');
       return;
     }
   }
@@ -30,18 +29,18 @@ export function saveChecklist() {
   closeChecklist();
   const btn = document.getElementById('btn-trip-checklist');
   if (btn) { btn.style.background = '#2563eb'; btn.style.color = '#ffffff'; }
-  showToast('운행 전 점검 완료! 운행을 시작합니다.');
-  // 점검 완료 후 자동 운행 시작
+  showToast('?댄뻾 ???먭? ?꾨즺! ?댄뻾???쒖옉?⑸땲??');
+  // ?먭? ?꾨즺 ???먮룞 ?댄뻾 ?쒖옉
   setTimeout(() => startTrip(), 300);
 }
 
-// ─── 오버레이 서비스 ─────────────────────────────────────────────
+// ??? ?ㅻ쾭?덉씠 ?쒕퉬???????????????????????????????????????????????
 export function startOverlayService() {
   const overlay = Overlay();
   if (!overlay) return;
   overlay.startService({
     tripId:          State.trip.id,
-    container:       State.trip.containerNo || '미입력',
+    container:       State.trip.containerNo || '誘몄엯??,
     status:          'driving',
     startTimeMillis: State.trip.startTime,
   }).catch(() => { });
@@ -52,7 +51,7 @@ export function updateOverlayStatus() {
   if (!overlay) return;
   overlay.updateStatus({
     status:    State.trip.status,
-    container: State.trip.containerNo || '미입력',
+    container: State.trip.containerNo || '誘몄엯??,
   }).catch(() => { });
 }
 
@@ -60,7 +59,7 @@ export function stopOverlayService() {
   Overlay()?.stopService().catch(() => { });
 }
 
-// ─── 컨테이너 번호 ISO 6346 검증 ─────────────────────────────────
+// ??? 而⑦뀒?대꼫 踰덊샇 ISO 6346 寃利??????????????????????????????????
 export function validateISO6346(str) {
   const charMap = {
     A:10,B:12,C:13,D:14,E:15,F:16,G:17,H:18,I:19,J:20,K:21,L:23,M:24,
@@ -74,7 +73,7 @@ export function validateISO6346(str) {
   return (sum % 11) % 10 === parseInt(str[10], 10);
 }
 
-// ─── 운행 필드 입력 핸들러 ───────────────────────────────────────
+// ??? ?댄뻾 ?꾨뱶 ?낅젰 ?몃뱾?????????????????????????????????????????
 let _tripFieldSaveTimer = null;
 export function onTripFieldChange() {
   const cEl   = document.getElementById('container-no');
@@ -92,19 +91,19 @@ export function onTripFieldChange() {
     if (match) {
       if (cEl.value.length === 11) {
         if (validateISO6346(cEl.value)) {
-          if (errEl) { errEl.textContent = '유효한 번호입니다'; errEl.style.color = 'var(--primary)'; }
+          if (errEl) { errEl.textContent = '?좏슚??踰덊샇?낅땲??; errEl.style.color = 'var(--primary)'; }
         } else {
-          if (errEl) { errEl.textContent = '컨테이너번호 오기입'; errEl.style.color = 'var(--danger)'; }
+          if (errEl) { errEl.textContent = '而⑦뀒?대꼫踰덊샇 ?ㅺ린??; errEl.style.color = 'var(--danger)'; }
         }
       } else {
-        if (errEl) { errEl.textContent = '입력 중...'; errEl.style.color = 'var(--text-muted)'; }
+        if (errEl) { errEl.textContent = '?낅젰 以?..'; errEl.style.color = 'var(--text-muted)'; }
       }
     } else {
-      if (errEl) { errEl.textContent = '영문 4자 + 숫자 7자'; errEl.style.color = 'var(--danger)'; }
+      if (errEl) { errEl.textContent = '?곷Ц 4??+ ?レ옄 7??; errEl.style.color = 'var(--danger)'; }
     }
   }
 
-  // 운행 중 실시간 서버 패치 (1초 디바운스)
+  // ?댄뻾 以??ㅼ떆媛??쒕쾭 ?⑥튂 (1珥??붾컮?댁뒪)
   if (State.trip.id && (State.trip.status === 'driving' || State.trip.status === 'paused')) {
     const cType = document.getElementById('container-type')?.value;
     const cKind = document.getElementById('container-kind')?.value;
@@ -123,7 +122,7 @@ export function onTripFieldChange() {
   }
 }
 
-// ─── 진행 중 운행 복구 ───────────────────────────────────────────
+// ??? 吏꾪뻾 以??댄뻾 蹂듦뎄 ???????????????????????????????????????????
 export async function loadCurrentTrip() {
   const saved = Store.get('activeTrip');
   if (!saved) return;
@@ -172,17 +171,17 @@ export async function loadCurrentTrip() {
   } catch (e) { console.warn('loadCurrentTrip error', e); }
 }
 
-// ─── 운행 시작 ───────────────────────────────────────────────────
+// ??? ?댄뻾 ?쒖옉 ???????????????????????????????????????????????????
 export async function startTrip() {
   if (!State.profile.name || !State.profile.phone
     || !State.profile.vehicleNo || !State.profile.driverId) {
-    showToast('차량 정보를 먼저 모두 입력해 주세요.');
+    showToast('李⑤웾 ?뺣낫瑜?癒쇱? 紐⑤몢 ?낅젰??二쇱꽭??');
     window.App?.openSettings();
     return;
   }
   if (!State.preTripDone) {
     openChecklist();
-    showToast('안전 운행을 위해 [운행전점검] 필수 항목을 모두 체크해주세요.');
+    showToast('?덉쟾 ?댄뻾???꾪빐 [?댄뻾?꾩젏寃] ?꾩닔 ??ぉ??紐⑤몢 泥댄겕?댁＜?몄슂.');
     return;
   }
 
@@ -213,17 +212,17 @@ export async function startTrip() {
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
+    if (!res.ok) throw new Error(data.error || `?쒕쾭 ?ㅻ쪟 (${res.status})`);
 
     const finalId = data.id || (data.trip && data.trip.id) || (Array.isArray(data) && data[0]?.id);
-    if (!finalId) throw new Error(`ID 누락 (서버 응답: ${JSON.stringify(data)})`);
+    if (!finalId) throw new Error(`ID ?꾨씫 (?쒕쾭 ?묐떟: ${JSON.stringify(data)})`);
 
     State.trip.id        = finalId;
     State.trip.status    = 'driving';
     State.trip.startTime = Date.now();
     Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
 
-    document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date())}`;
+    document.getElementById('trip-date-display').textContent = `?댁넚?쒖옉: ${formatDate(new Date())}`;
     setTripStatus('driving');
     updateTripUI();
     startOverlayService();
@@ -241,11 +240,11 @@ export async function startTrip() {
         { enableHighAccuracy: true }
       );
     }
-    showToast(data.message || '운행이 시작되었습니다.');
-  } catch (e) { showToast('오류: ' + e.message); }
+    showToast(data.message || '?댄뻾???쒖옉?섏뿀?듬땲??');
+  } catch (e) { showToast('?ㅻ쪟: ' + e.message); }
 }
 
-// ─── 일시정지 / 재개 ─────────────────────────────────────────────
+// ??? ?쇱떆?뺤? / ?ш컻 ?????????????????????????????????????????????
 export async function togglePause() {
   if (!State.trip.id) return;
   const action = State.trip.status === 'driving' ? 'pause' : 'resume';
@@ -269,24 +268,24 @@ export async function togglePause() {
     if (State.trip.status === 'paused') {
       stopGPS();
     } else {
-      // 재개 시 즉각 수신안됨 오표기 방지
+      // ?ш컻 ??利됯컖 ?섏떊?덈맖 ?ㅽ몴湲?諛⑹?
       import('./gps.js').then(g => { g.lastGpsTimestamp = Date.now(); });
       startGPS();
     }
     updateTripUI();
     updateTripStatusLine();
-  } catch { showToast('상태 변경 실패'); }
+  } catch { showToast('?곹깭 蹂寃??ㅽ뙣'); }
 }
 
-// ─── 운행 종료 ───────────────────────────────────────────────────
+// ??? ?댄뻾 醫낅즺 ???????????????????????????????????????????????????
 export async function endTrip() {
   if (!State.trip.id) return;
 
   const isUploading = State.photos.some(p => !p.uploaded);
   if (isUploading) {
-    if (!confirm('아직 서버에 전송 중인 사진이 있습니다. 그래도 운행을 종료하시겠습니까? (미전송 사진은 유실될 수 있습니다)')) return;
+    if (!confirm('?꾩쭅 ?쒕쾭???꾩넚 以묒씤 ?ъ쭊???덉뒿?덈떎. 洹몃옒???댄뻾??醫낅즺?섏떆寃좎뒿?덇퉴? (誘몄쟾???ъ쭊? ?좎떎?????덉뒿?덈떎)')) return;
   } else {
-    if (!confirm('운행을 종료하시겠습니까?')) return;
+    if (!confirm('?댄뻾??醫낅즺?섏떆寃좎뒿?덇퉴?')) return;
   }
 
   if (navigator.geolocation) {
@@ -313,47 +312,46 @@ export async function endTrip() {
     Store.rm('activeTrip');
     clearTripData(true);
     updateTripStatusLine();
-    showToast('운행이 안전하게 종료되었습니다.');
+    showToast('?댄뻾???덉쟾?섍쾶 醫낅즺?섏뿀?듬땲??');
 
     if (State.pendingUpdate) {
       State.pendingUpdate = false;
       setTimeout(() => window.App?.checkUpdate(true), 1500);
     }
-  } catch (e) { showToast('종료 실패: ' + e.message); }
+  } catch (e) { showToast('醫낅즺 ?ㅽ뙣: ' + e.message); }
 }
 
-// ─── 운행 상태 뱃지 ─────────────────────────────────────────────
+// ??? ?댄뻾 ?곹깭 諭껋? ?????????????????????????????????????????????
 export function setTripStatus(status) {
   State.trip.status = status;
   const badge   = document.getElementById('header-status');
-  const labels  = { idle: '대기중', driving: '운행중', paused: '일시정지', completed: '운행종료' };
+  const labels  = { idle: '?湲곗쨷', driving: '?댄뻾以?, paused: '?쇱떆?뺤?', completed: '?댄뻾醫낅즺' };
   const classes = { idle: 'status-idle', driving: 'status-driving', paused: 'status-paused', completed: 'status-done' };
   if (badge) {
-    badge.textContent = labels[status] || '대기중';
+    badge.textContent = labels[status] || '?湲곗쨷';
     badge.className   = 'status-badge ' + (classes[status] || 'status-idle');
   }
 }
 
-// ─── 운행 UI 업데이트 ────────────────────────────────────────────
+// ??? ?댄뻾 UI ?낅뜲?댄듃 ????????????????????????????????????????????
 export function updateTripUI() {
   const isActive = State.trip.status === 'driving' || State.trip.status === 'paused';
   document.getElementById('trip-start-row')?.classList.toggle('hidden', isActive);
   document.getElementById('trip-control-row')?.classList.toggle('hidden', !isActive);
-  // 운행 중 내용비움 버튼 숨기기
-  document.getElementById('btn-clear-trip')?.classList.toggle('hidden', isActive);
+  // ?댄뻾 以??댁슜鍮꾩? 踰꾪듉 ?④린湲?  document.getElementById('btn-clear-trip')?.classList.toggle('hidden', isActive);
 
   const pauseBtn = document.getElementById('btn-trip-pause');
-  if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '운행 재개' : '일시정지';
+  if (pauseBtn) pauseBtn.textContent = State.trip.status === 'paused' ? '?댄뻾 ?ш컻' : '?쇱떆?뺤?';
 
   if (State.trip.startTime) {
     const dateEl = document.getElementById('trip-date-display');
     if (dateEl && !dateEl.innerHTML.includes('|')) {
-      dateEl.textContent = `운송시작: ${formatDate(new Date(State.trip.startTime))}`;
+      dateEl.textContent = `?댁넚?쒖옉: ${formatDate(new Date(State.trip.startTime))}`;
     }
   }
 }
 
-// ─── 메모 저장 ───────────────────────────────────────────────────
+// ??? 硫붾え ??????????????????????????????????????????????????????
 export function saveMemo() {
   if (!State.trip.id) return;
   smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {
@@ -362,10 +360,10 @@ export function saveMemo() {
   }).catch(() => { });
 }
 
-// ─── 운행 데이터 초기화 ──────────────────────────────────────────
+// ??? ?댄뻾 ?곗씠??珥덇린????????????????????????????????????????????
 export function clearTripData(bypassAuth = false) {
   if (!bypassAuth && State.trip.status !== 'idle') {
-    showToast('운행 중에는 내용 지움을 사용할 수 없습니다.');
+    showToast('?댄뻾 以묒뿉???댁슜 吏????ъ슜?????놁뒿?덈떎.');
     return;
   }
   if (State.trip.id) {
@@ -391,10 +389,10 @@ export function clearTripData(bypassAuth = false) {
   window.App?.renderPhotoThumbs();
   setTripStatus('idle');
   updateTripUI();
-  showToast('운행 데이터가 초기화되었습니다.');
+  showToast('?댄뻾 ?곗씠?곌? 珥덇린?붾릺?덉뒿?덈떎.');
 }
 
-// ─── 네이티브 뒤로가기 핸들러 ────────────────────────────────────
+// ??? ?ㅼ씠?곕툕 ?ㅻ줈媛湲??몃뱾??????????????????????????????????????
 export function registerBackHandler() {
   window.isTripActive = () => State.trip.status === 'driving' || State.trip.status === 'paused';
   window.handleBackButton = () => {
@@ -405,7 +403,7 @@ export function registerBackHandler() {
     if (document.getElementById('log-detail')?.classList.contains('active'))      { App?.closeLogDetail();   return true; }
     if (document.getElementById('checklist-popup')?.classList.contains('active')) { App?.closeChecklist();   return true; }
 
-    // 지도 화면 뒤로가기 로직 (1.상세경로 -> 2.운행목록 -> 3.지도종료/운행탭이동)
+    // 吏???붾㈃ ?ㅻ줈媛湲?濡쒖쭅 (1.?곸꽭寃쎈줈 -> 2.?댄뻾紐⑸줉 -> 3.吏?꾩쥌猷??댄뻾??씠??
     if (document.getElementById('screen-map')?.classList.contains('active')) {
       const routePanel = document.getElementById('map-route-panel');
       const bottomPanel = document.getElementById('map-bottom-panel');
@@ -432,9 +430,9 @@ export function registerBackHandler() {
       if (!document.getElementById('tab-trip')?.classList.contains('active')) {
         App?.switchTab('trip'); return true;
       }
-      // 운행 탭인 경우 모달도 없으면 false를 반환하여 네이티브에서 앱을 종료하도록 함
-      return false;
+      // ?댄뻾 ??씤 寃쎌슦 紐⑤떖???놁쑝硫?false瑜?諛섑솚?섏뿬 ?ㅼ씠?곕툕?먯꽌 ?깆쓣 醫낅즺?섎룄濡???      return false;
     }
     return false;
   };
 }
+

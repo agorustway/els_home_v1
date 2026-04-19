@@ -1,12 +1,12 @@
 /**
- * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
+ * photos.js ???ъ쭊 ?낅줈?? ?몃꽕?? 酉곗뼱, ?移섏쨲
  */
-import { State, BASE_URL } from './store.js?v=4918';
-import { smartFetch } from './bridge.js?v=4918';
-import { showToast, escHtml } from './utils.js?v=4918';
-import { updateProfilePhoto } from './profile.js?v=4918';
+import { State, BASE_URL } from './store.js?v=4919';
+import { smartFetch } from './bridge.js?v=4919';
+import { showToast, escHtml } from './utils.js?v=4919';
+import { updateProfilePhoto } from './profile.js?v=4919';
 
-// ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
+// ??? 以??곹깭 (酉곗뼱 ?꾩슜) ?????????????????????????????????????????
 let currentZoom   = 1;
 let currentTransX = 0;
 let currentTransY = 0;
@@ -20,13 +20,13 @@ function resetZoom() {
   }
 }
 
-// ─── 사진 추가 버튼 ──────────────────────────────────────────────
+// ??? ?ъ쭊 異붽? 踰꾪듉 ??????????????????????????????????????????????
 export function addPhoto() {
-  if (State.photos.length >= 10) { showToast('최대 10장까지 첨부 가능합니다.'); return; }
+  if (State.photos.length >= 10) { showToast('理쒕? 10?κ퉴吏 泥⑤? 媛?ν빀?덈떎.'); return; }
   document.getElementById('file-input-hidden').click();
 }
 
-// ─── 파일 선택 핸들러 ────────────────────────────────────────────
+// ??? ?뚯씪 ?좏깮 ?몃뱾??????????????????????????????????????????????
 export async function onFileSelected(e) {
   const files = Array.from(e.target.files);
   for (const file of files) {
@@ -38,12 +38,12 @@ export async function onFileSelected(e) {
   renderPhotoThumbs();
 
   if (State.trip.id) {
-    showToast('사진 처리 중...');
+    showToast('?ъ쭊 泥섎━ 以?..');
     await uploadPendingPhotos();
   }
 }
 
-// ─── 이미지 리사이즈 (Canvas) ─────────────────────────────────────
+// ??? ?대?吏 由ъ궗?댁쫰 (Canvas) ?????????????????????????????????????
 export async function resizePhoto(file, maxWidth = 1024, maxHeight = 1024) {
   if (typeof file === 'string') return file;
   return new Promise(resolve => {
@@ -57,7 +57,7 @@ export async function resizePhoto(file, maxWidth = 1024, maxHeight = 1024) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 품질 0.7로 낮춰서 1MB payload limit(Vercel) 회피
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // ?덉쭏 0.7濡???떠??1MB payload limit(Vercel) ?뚰뵾
       };
       img.src = e.target.result;
     };
@@ -75,16 +75,16 @@ function readFileAsDataURL(file) {
   });
 }
 
-// ─── 썸네일 렌더 ─────────────────────────────────────────────────
+// ??? ?몃꽕???뚮뜑 ?????????????????????????????????????????????????
 export function renderPhotoThumbs() {
   const scroll  = document.getElementById('photo-scroll');
   if (!scroll) return;
   const addBtn  = '<button class="photo-add-btn" id="btn-photo-add" onclick="App.addPhoto()">+</button>';
   const thumbs  = State.photos.map((p, i) => {
-    // dataUrl 우선 표시 (서버 URL 접근 실패해도 항상 로컬 이미지 보임)
+    // dataUrl ?곗꽑 ?쒖떆 (?쒕쾭 URL ?묎렐 ?ㅽ뙣?대룄 ??긽 濡쒖뺄 ?대?吏 蹂댁엫)
     let src = p.dataUrl || p.serverUrl || '';
     if (!src && p.serverUrl) src = p.serverUrl;
-    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="사진${i + 1}"
+    return `<img class="photo-thumb" src="${src}" onclick="App.openPhotoViewer(${i})" alt="?ъ쭊${i + 1}"
       onerror="this.onerror=null; App.loadSafeImage(this, '${escHtml(src)}')">`;
   }).join('');
   scroll.innerHTML = thumbs + (State.photos.length < 10 ? addBtn : '');
@@ -92,7 +92,7 @@ export function renderPhotoThumbs() {
   if (cnt) cnt.textContent = `(${State.photos.length}/10)`;
 }
 
-// ─── 미업로드 사진 서버 전송 ─────────────────────────────────────
+// ??? 誘몄뾽濡쒕뱶 ?ъ쭊 ?쒕쾭 ?꾩넚 ?????????????????????????????????????
 let isPhotosUploading = false;
 export async function uploadPendingPhotos() {
   if (isPhotosUploading) return;
@@ -100,7 +100,7 @@ export async function uploadPendingPhotos() {
 
   if (!currentTripId) {
     if (State.photos.length > 0) {
-      showToast('운행 시작 버튼을 눌러야 사진이 서버에 저장됩니다.');
+      showToast('?댄뻾 ?쒖옉 踰꾪듉???뚮윭???ъ쭊???쒕쾭????λ맗?덈떎.');
     }
     return;
   }
@@ -118,7 +118,7 @@ export async function uploadPendingPhotos() {
       if (p.uploaded) continue;
 
       try {
-        console.log(`[PHOTO #${i}] 리사이징 시작`, p.file ? '(파일)' : '(dataUrl)');
+        console.log(`[PHOTO #${i}] 由ъ궗?댁쭠 ?쒖옉`, p.file ? '(?뚯씪)' : '(dataUrl)');
         const dataUrl = await resizePhoto(p.file || p.dataUrl);
         const base64  = dataUrl.split(',')[1];
         const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
@@ -147,18 +147,18 @@ export async function uploadPendingPhotos() {
           failCount++;
         }
       } catch (e) {
-        console.error(`[PHOTO #${i}] 에러`, e);
+        console.error(`[PHOTO #${i}] ?먮윭`, e);
         failCount++;
       }
     }
   } finally {
     isPhotosUploading = false;
-    if (successCount > 0) showToast(`사진 ${successCount}장 서버 저장 완료`);
-    if (failCount > 0) showToast(`사진 ${failCount}장 전송 실패 (나중에 운행 중 재시도)`);
+    if (successCount > 0) showToast(`?ъ쭊 ${successCount}???쒕쾭 ????꾨즺`);
+    if (failCount > 0) showToast(`?ъ쭊 ${failCount}???꾩넚 ?ㅽ뙣 (?섏쨷???댄뻾 以??ъ떆??`);
   }
 }
 
-// ─── 사진 뷰어 ───────────────────────────────────────────────────
+// ??? ?ъ쭊 酉곗뼱 ???????????????????????????????????????????????????
 export function openPhotoViewer(idx, type = 'trip') {
   State.currentPhotoIdx = idx;
   State.viewerType      = type;
@@ -223,16 +223,16 @@ function _getViewerPhotos() {
   return State.photos || [];
 }
 
-// ─── 현재 사진 삭제 ──────────────────────────────────────────────
+// ??? ?꾩옱 ?ъ쭊 ??젣 ??????????????????????????????????????????????
 export async function deleteCurrentPhoto() {
-  if (!confirm('현재 보고 있는 사진을 삭제하시겠습니까?')) return;
+  if (!confirm('?꾩옱 蹂닿퀬 ?덈뒗 ?ъ쭊????젣?섏떆寃좎뒿?덇퉴?')) return;
 
   if (State.viewerType === 'profile') {
     const p        = State.profilePhotos[State.currentPhotoIdx];
-    const typeMap  = { driver: '기사', vehicle: '차량', chassis: '샤시' };
+    const typeMap  = { driver: '湲곗궗', vehicle: '李⑤웾', chassis: '?ㅼ떆' };
     State.profile[`photo_${p.type}`] = '';
     updateProfilePhoto(`p-photo-${p.type}`, '', typeMap[p.type] || '');
-    showToast('삭제되었습니다. 정보 저장을 눌러야 완전히 반영됩니다.');
+    showToast('??젣?섏뿀?듬땲?? ?뺣낫 ??μ쓣 ?뚮윭???꾩쟾??諛섏쁺?⑸땲??');
     State.profilePhotos.splice(State.currentPhotoIdx, 1);
     if (!State.profilePhotos.length) { closePhotoViewer(); return; }
     if (State.currentPhotoIdx >= State.profilePhotos.length) State.currentPhotoIdx = State.profilePhotos.length - 1;
@@ -248,17 +248,16 @@ export async function deleteCurrentPhoto() {
         method: 'PATCH',
         body: JSON.stringify({ photos }),
       });
-      if (!res.ok) throw new Error('서버 통신 실패');
+      if (!res.ok) throw new Error('?쒕쾭 ?듭떊 ?ㅽ뙣');
       const resData = await res.json().catch(() => ({}));
-      console.log('[PHOTO-DEL] PATCH 응답:', resData);
+      console.log('[PHOTO-DEL] PATCH ?묐떟:', resData);
       State.logPhotos = photos;
-      showToast('사진이 삭제되었습니다.');
+      showToast('?ъ쭊????젣?섏뿀?듬땲??');
       closePhotoViewer();
-      // 일지 상세를 서버에서 다시 불러와 상태 동기화
-      await window.App?.openLog(State.currentLogId);
+      // ?쇱? ?곸꽭瑜??쒕쾭?먯꽌 ?ㅼ떆 遺덈윭? ?곹깭 ?숆린??      await window.App?.openLog(State.currentLogId);
     } catch (e) {
-      console.error('[PHOTO-DEL] 삭제 실패:', e);
-      showToast('사진 삭제 실패: ' + e.message);
+      console.error('[PHOTO-DEL] ??젣 ?ㅽ뙣:', e);
+      showToast('?ъ쭊 ??젣 ?ㅽ뙣: ' + e.message);
     }
     return;
   }
@@ -270,7 +269,7 @@ export async function deleteCurrentPhoto() {
   renderPhotoThumbs();
 }
 
-// ─── 핀치 줌 초기화 ──────────────────────────────────────────────
+// ??? ?移?以?珥덇린????????????????????????????????????????????????
 export function initPinchZoom() {
   const wrap = document.getElementById('photo-viewer-wrap');
   const img  = document.getElementById('photo-viewer-img');
@@ -282,7 +281,7 @@ export function initPinchZoom() {
 
   wrap.addEventListener('touchstart', e => {
     const now = Date.now();
-    // 더블 탭: 줌 토글
+    // ?붾툝 ?? 以??좉?
     if (e.touches.length === 1 && (now - lastTap) < 300) {
       if (currentZoom > 1.5) resetZoom();
       else {
@@ -299,7 +298,7 @@ export function initPinchZoom() {
       e.preventDefault();
       initialDist  = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
       baseScale    = currentZoom;
-      // 두 손가락 중간점을 wrap 중앙 기준 좌표로 저장 (pivot)
+      // ???먭???以묎컙?먯쓣 wrap 以묒븰 湲곗? 醫뚰몴濡????(pivot)
       const wrapRect = wrap.getBoundingClientRect();
       pinchMidX    = (e.touches[0].pageX + e.touches[1].pageX) / 2 - (wrapRect.left + wrapRect.width  / 2);
       pinchMidY    = (e.touches[0].pageY + e.touches[1].pageY) / 2 - (wrapRect.top  + wrapRect.height / 2);
@@ -322,8 +321,7 @@ export function initPinchZoom() {
       if (newZoom <= 1.01) {
         currentZoom = 1; currentTransX = 0; currentTransY = 0;
       } else {
-        // pivot 기준으로 translate 보정: pivot 위치가 화면에서 고정되도록
-        const ratio   = newZoom / baseScale;
+        // pivot 湲곗??쇰줈 translate 蹂댁젙: pivot ?꾩튂媛 ?붾㈃?먯꽌 怨좎젙?섎룄濡?        const ratio   = newZoom / baseScale;
         currentTransX = pinchMidX * (1 - ratio) + startTransX * ratio;
         currentTransY = pinchMidY * (1 - ratio) + startTransY * ratio;
         currentZoom   = newZoom;
@@ -348,3 +346,4 @@ export function initPinchZoom() {
     }
   });
 }
+
