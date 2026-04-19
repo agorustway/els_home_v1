@@ -215,15 +215,18 @@ export async function startTrip() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
 
-    // Debug log of API response
+    // [v4.9.25] ID 누락 극단적 추적
     console.log('🚀 Trip API 응답:', data);
     const finalId = data.id ?? (data.trip && data.trip.id) ?? (Array.isArray(data) && data[0]?.id);
+    
     if (!finalId) {
+        // [긴급 디버깅] 서버 응답이 이상하면 형 폰에 팝업을 띄움
+        window.alert("서버응답: " + JSON.stringify(data));
+        
         if (State.trip.id) {
-            console.warn('⚠️ 서버 응답에 ID가 없지만 기존 ID 사용', State.trip.id);
-            State.trip.id = State.trip.id; // reuse existing
+            console.warn('⚠️ ID 누락 - 기존 ID 사용', State.trip.id);
         } else {
-            throw new Error(`ID 누락 (서버 응답: ${JSON.stringify(data)})`);
+            throw new Error(`ID 누락 (서버 응답 확인: ${JSON.stringify(data)})`);
         }
     } else {
         State.trip.id = finalId;

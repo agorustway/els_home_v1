@@ -1,7 +1,7 @@
 {
-    "latestVersion":  "v4.9.23",
-    "versionCode":  4923,
+    "latestVersion":  "v4.9.25",
+    "versionCode":  4925,
     "forceUpdate":  true,
-    "changeLog":  "v4.9.23",
-    "downloadUrl":  "https://www.nollae.com/apk/els_driver.apk?t=4923"
+    "changeLog":  "v4.9.25 - ID 누락 현상 극단적 추적 레이어 추가",
+    "downloadUrl":  "https://www.nollae.com/apk/els_driver.apk?t=4925"
 }
