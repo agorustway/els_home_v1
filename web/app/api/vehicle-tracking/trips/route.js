@@ -258,10 +258,6 @@ export async function POST(request) {
                 updated_at:       new Date().toISOString()
             };
 
-            if (body.chk_brake !== undefined) {
-                updatePayload.special_notes = (updatePayload.special_notes || '') + ` [점검:${body.chk_brake?'o':'x'}${body.chk_tire?'o':'x'}${body.chk_lamp?'o':'x'}${body.chk_cargo?'o':'x'}${body.chk_driver?'o':'x'}]`;
-            }
-
             const { data: updatedTrip, error: updateError } = await supabase
                 .from('vehicle_trips')
                 .update(updatePayload)
@@ -270,16 +266,21 @@ export async function POST(request) {
                 .single();
 
             const finalTrip = updatedTrip || existing[0];
-            return NextResponse.json({ 
+            const responseData = { 
                 id: finalTrip.id, 
                 trip: finalTrip,
                 status: finalTrip.status,
                 message: '진행 중인 기존 운행 기록이 업데이트되었습니다.' 
-            }, {
-                headers: { 'Access-Control-Allow-Origin': '*' }
+            };
+            
+            return new Response(JSON.stringify(responseData), {
+                status: 200,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*' 
+                }
             });
         }
-
 
         const { data: trip, error } = await supabase
             .from('vehicle_trips')
@@ -301,21 +302,31 @@ export async function POST(request) {
             .single();
 
         if (error) {
-            console.error('Trip create error:', error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return new Response(JSON.stringify({ error: `DB 에러: ${error.message}`, details: error }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
         }
         
         if (!trip) {
-            return NextResponse.json({ error: '데이터 생성에 실패했습니다 (No Trip Returned).' }, { status: 500 });
+            return new Response(JSON.stringify({ error: '데이터 생성 성공했으나 결과 객체(trip)가 비어있음' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
         }
 
-        // Debug log of created trip
-        console.log('🚀 Trip 생성 응답:', { id: trip.id, trip });
-        return NextResponse.json({ id: trip.id, trip }, {
-            headers: { 'Access-Control-Allow-Origin': '*' }
+        return new Response(JSON.stringify({ id: trip.id, trip }), {
+            status: 200,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*' 
+            }
         });
     } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return new Response(JSON.stringify({ error: `서버 예외 발생: ${error.message}` }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
     }
 }
 
