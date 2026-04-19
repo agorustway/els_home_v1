@@ -215,13 +215,22 @@ export async function startTrip() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
 
-    const finalId = data.id || (data.trip && data.trip.id) || (Array.isArray(data) && data[0]?.id);
-    if (!finalId) throw new Error(`ID 누락 (서버 응답: ${JSON.stringify(data)})`);
-
-    State.trip.id        = finalId;
+    // Debug log of API response
+    console.log('🚀 Trip API 응답:', data);
+    const finalId = data.id ?? (data.trip && data.trip.id) ?? (Array.isArray(data) && data[0]?.id);
+    if (!finalId) {
+        if (State.trip.id) {
+            console.warn('⚠️ 서버 응답에 ID가 없지만 기존 ID 사용', State.trip.id);
+            State.trip.id = State.trip.id; // reuse existing
+        } else {
+            throw new Error(`ID 누락 (서버 응답: ${JSON.stringify(data)})`);
+        }
+    } else {
+        State.trip.id = finalId;
+    }
     State.trip.status    = 'driving';
     State.trip.startTime = Date.now();
-    Store.set('activeTrip', { id: finalId, startTime: State.trip.startTime });
+    Store.set('activeTrip', { id: State.trip.id, startTime: State.trip.startTime });
 
     document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date())}`;
     setTripStatus('driving');

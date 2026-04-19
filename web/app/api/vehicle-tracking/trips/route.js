@@ -309,6 +309,8 @@ export async function POST(request) {
             return NextResponse.json({ error: '데이터 생성에 실패했습니다 (No Trip Returned).' }, { status: 500 });
         }
 
+        // Debug log of created trip
+        console.log('🚀 Trip 생성 응답:', { id: trip.id, trip });
         return NextResponse.json({ id: trip.id, trip }, {
             headers: { 'Access-Control-Allow-Origin': '*' }
         });
