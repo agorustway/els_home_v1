@@ -217,17 +217,17 @@ export async function POST(request) {
         try {
             body = await request.json();
         } catch (e) {
-            return new Response(JSON.stringify({ error: "JSON 파싱 실패", rawError: e.message }), {
+            return NextResponse.json({ error: "JSON 파싱 실패", rawError: e.message }, {
                 status: 400,
-                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
         // [v4.9.27 DEBUG] 만약 데이터가 없으면 즉시 에러 보고
         if (!body || Object.keys(body).length === 0) {
-            return new Response(JSON.stringify({ error: "받은 데이터가 비어있음(Empty Body)", received: body }), {
+            return NextResponse.json({ error: "받은 데이터가 비어있음(Empty Body)", received: body }, {
                 status: 200, // 성공이지만 데이터 없음을 알림
-                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
@@ -251,9 +251,9 @@ export async function POST(request) {
         }
 
         if (!vehicle_number || !driver_name) {
-            return new Response(JSON.stringify({ error: '차량번호와 이름은 필수입니다.', received: body }), {
+            return NextResponse.json({ error: '차량번호와 이름은 필수입니다.', received: body }, {
                 status: 400,
-                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
@@ -293,10 +293,9 @@ export async function POST(request) {
                 message: '진행 중인 기존 운행 기록이 업데이트되었습니다.' 
             };
             
-            return new Response(JSON.stringify(responseData), {
+            return NextResponse.json(responseData, {
                 status: 200,
                 headers: { 
-                    'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*' 
                 }
             });
@@ -322,30 +321,29 @@ export async function POST(request) {
             .single();
 
         if (error) {
-            return new Response(JSON.stringify({ error: `DB 에러: ${error.message}`, details: error }), {
+            return NextResponse.json({ error: `DB 에러: ${error.message}`, details: error }, {
                 status: 500,
-                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
         
         if (!trip) {
-            return new Response(JSON.stringify({ error: '데이터 생성 성공했으나 결과 객체(trip)가 비어있음' }), {
+            return NextResponse.json({ error: '데이터 생성 성공했으나 결과 객체(trip)가 비어있음' }, {
                 status: 500,
-                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
-        return new Response(JSON.stringify({ id: trip.id, trip }), {
+        return NextResponse.json({ id: trip.id, trip }, {
             status: 200,
             headers: { 
-                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*' 
             }
         });
     } catch (error) {
-        return new Response(JSON.stringify({ error: `서버 예외 발생: ${error.message}` }), {
+        return NextResponse.json({ error: `서버 예외 발생: ${error.message}` }, {
             status: 500,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            headers: { 'Access-Control-Allow-Origin': '*' }
         });
     }
 }
