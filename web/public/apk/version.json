@@ -2,6 +2,6 @@
     "latestVersion":  "v4.9.26",
     "versionCode":  4926,
     "forceUpdate":  true,
-    "changeLog":  "v4.9.26 - 서버 응답 신뢰성 강화 (JSON 강제 직렬화)",
+    "changeLog":  "v4.9.26",
     "downloadUrl":  "https://www.nollae.com/apk/els_driver.apk?t=4926"
 }
