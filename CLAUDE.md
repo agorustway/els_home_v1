@@ -106,6 +106,25 @@ powershell scripts/restart_backend.ps1
 - Excel 생성, ZIP 압축 → 나스에서 비동기 처리 후 웹은 결과만 스트리밍
 - 사진 데이터는 Supabase/S3 저장 but 접근/가공은 나스 API 경유
 
+## AI Chat RAG 파이프라인 (`web/app/api/chat/route.js`)
+
+프로젝트에서 가장 복잡한 파일. 단계별 구조:
+
+1. **STEP 1 — Omni-RAG 병렬 스캔** (`Promise.all`): Supabase에서 연락처·게시글·작업지 동시 조회
+2. **STEP 2 — 조건부 RAG** (키워드 트리거):
+   - `차량/위치/어디` → `vehicle_trips` + `vehicle_locations` JOIN
+   - 컨테이너 번호 패턴(영문4+숫자7) → NAS Backend 실시간 이력
+   - 안전운임 키워드 → `public/data/safe-freight.json` self-fetch (35MB, 상위 8구간 스코어링)
+   - `날씨/미세먼지` → `callExternalAPI()` → K-SKILL fine-dust 프록시
+   - `법/규정/운임` → K-Law REST (`api.beopmang.org/api/v4/law?action=search&q=`)
+   - `경유/유가` → `/api/opinet/fuel-price`
+3. **STEP 3 — Context 조합**: BASE_SYSTEM_INSTRUCTION + RAG결과 + 안전운임 고시전문(최신 2차수)
+4. **STEP 4 — Gemini 2.5 Flash 스트리밍**: SSE, Temperature 0.7, MaxTokens 2048, Timeout 60초
+5. **STEP 5 — SSE 스트림 → 클라이언트**
+
+**pgvector**: Supabase `document_chunks` (3,868청크, gemini-embedding-2-preview 768차원). RPC: `match_documents()`  
+**디버그 라우트**: `web/app/api/chat/debug/route.js`
+
 ## 주요 디렉토리
 
 | 디렉토리 | 역할 |

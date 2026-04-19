@@ -2,7 +2,7 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.85` | **Phase 5 (NAS Auto-Sync) Complete** |
+| **현재 버전** | `v4.9.86` | **Phase 5 (NAS Auto-Sync) Complete** |
 | **상태** | 🟢 Phase 5 고도화 완료 | 매일 새벽 04:30 NAS 자동 스캔 스케줄러 가동 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
@@ -14,7 +14,7 @@
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.85` (Vercel 및 NAS Backend 배포 완료)
+- **Current Build**: `v4.9.86` (배포 대기 중 — 고시 할루시네이션 핫픽스)
 - **APK URL**: `https://nollae.com/apk/els_driver.apk`
 - **Repo**: main 브랜치 배포 완료
 
