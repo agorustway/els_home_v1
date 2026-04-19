@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.88` | **NAS & Driver Hotfix Deployment** |
-| **상태** | 🟢 배포 완료 (v4.9.20) | NAS 벡터라이저 최적화 및 드라이버 앱 오류 수정 완료 |
+| **현재 버전** | `v4.9.89` | **Driver App ID Hotfix & Cache-Busting** |
+| **상태** | 🟢 배포 완료 (v4.9.22) | 드라이버 앱 ID 누락 오류 방어 및 캐시 무력화 배포 완료 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -14,8 +14,8 @@
 6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.88` (드라이버 앱 v4.9.20 포함)
-- **APK URL**: `https://nollae.com/apk/els_driver.apk`
+- **Current Build**: `v4.9.89` (드라이버 앱 v4.9.22 포함)
+- **APK URL**: `https://nollae.com/apk/els_driver_v4922.apk` (캐시 방지용) / `els_driver.apk` (홈페이지용)
 - **Repo**: main 브랜치 배포 완료
 
 ## ⚠️ APK 빌드 절차 (필독)
