@@ -1,22 +1,22 @@
-# 🛰️ MISSION CONTROL (2026-04-19)
+# 🛰️ MISSION CONTROL (2026-04-20)
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.92` | **Driver App Critical Failure Resolved** |
-| **상태** | 🟢 해결완료 | `new Response(JSON)` -> `NextResponse.json` 변환으로 안드로이드 CapacitorHttp 바디 드랍 이슈 우회 및 해결 |
+| **현재 버전** | `v4.9.93` | **Driver App Module Load Failure Fixed** |
+| **상태** | 🟢 해결완료 | `trip.js` 구문 오류(SyntaxError) 수정 및 v4.9.29 배포 완료 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
 2.  **[DONE]** RAG 시맨틱 검색(`match_documents`) 유실 복구 및 대기료 할루시네이션 해결
-3.  **[DONE]** 안전운임 할증 엔진 하드코딩 제거 (ID 기반 동적 매핑 완료)
-4.  **[DONE]** 한강 수위 API 스키마 변경 대응 및 K-LAW 법망 연동 개편
-5.  **[DONE]** NAS 문서 크롤러 및 벡터화 (Phase 5) 완료 — **AI 에이전트 개발 100% 종료**
-6.  **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
-7.  **[DONE]** 드라이버 앱 "ID 누락" 현상 근본 원인 해결 완료 (NextResponse 직렬화 적용)
+11. **[DONE]** 안전운임 할증 엔진 하드코딩 제거 (ID 기반 동적 매핑 완료)
+12. **[DONE]** 한강 수위 API 스키마 변경 대응 및 K-LAW 법망 연동 개편
+13. **[DONE]** NAS 문서 크롤러 및 벡터화 (Phase 5) 완료 — **AI 에이전트 개발 100% 종료**
+14. **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
+15. **[DONE]** 드라이버 앱 "ID 누락" 현상 근본 원인 해결 완료 (NextResponse 직렬화 적용)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.89` (드라이버 앱 v4.9.22 포함)
-- **APK URL**: `https://nollae.com/apk/els_driver_v4922.apk` (캐시 방지용) / `els_driver.apk` (홈페이지용)
+- **Current Build**: `v4.9.93` (드라이버 앱 v4.9.29 포함)
+- **APK URL**: `https://nollae.com/apk/els_driver.apk` (홈페이지 및 자동 업데이트용)
 - **Repo**: main 브랜치 배포 완료
 
 ## ⚠️ APK 빌드 절차 (필독)
@@ -78,4 +78,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-19 (by Antigravity/Claude)*
+*최종 갱신: 2026-04-20 (by Antigravity/Gemini)*

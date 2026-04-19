@@ -1,3 +1,27 @@
+## 📅 2026-04-20 (v4.9.93 — 드라이버 앱 SyntaxError 수정 및 긴급 배포)
+### 🚀 주요 개선 사항
+1. **[FIX] `trip.js` 모듈 로드 실패(먹통) 해결**:
+   - **원인**: 이전 배포(v4.9.28) 과정에서 `web/driver-src/modules/trip.js` 파일 수정 중 `if`문 구조가 깨지면서 `SyntaxError` 발생. 이로 인해 앱 초기화 시 JS 모듈 실행이 중단되어 버튼 클릭 등 UI 상호작용이 전혀 불가능한 "먹통" 상태가 됨.
+   - **해결**: 누락된 `const finalId = data.id || data.trip?.id; if (!finalId) {` 구문을 원복하여 문법 오류 해결 및 앱 정상 작동 확인.
+2. **[DEPLOY] 드라이버 앱 v4.9.29 공식 배포**:
+   - `build.gradle`: `versionCode 4929`, `versionName 4.9.29` 업데이트.
+   - `build_driver_apk.ps1` 실행으로 모든 캐시버스터(`?v=4929`) 갱신 및 APK 배포 완료.
+
+---
+
+## 📅 2026-04-20 (v4.9.92 — Driver App ID 누락 이슈 영구 픽스 및 배포)
+### 🚀 주요 개선 사항
+1. **[FIX] 드라이버 앱 ID 누락(Empty Body Drop) 완벽 해결**:
+   - **원인**: 과거 Cloudtype 환경 마이그레이션 당시 Next.js 빌드 문제를 우회하기 위해 `NextResponse.json(...)` 대신 원시 웹 `new Response(JSON.stringify(...))`로 응답을 반환하도록 수정한 이력 존재. 
+   - **문제 재발**: 현재 다시 Vercel 환경으로 롤백한 상태에서, 원시 `new Response()`를 사용할 경우 Next.js의 고성능 직렬화와 헤더(Content-Length/Chunked Encoding 등) 처리가 누락되어 네이티브 앱의 `CapacitorHttp` 브릿지가 스트림을 파싱하지 못하고 바디를 조용히 드랍(Empty Object 반환)하는 현상 발생.
+   - **해결**: `web/app/api/vehicle-tracking/trips/route.js`의 응답 객체를 Next.js 14 네이티브인 `NextResponse.json()`으로 전면 복구. Capacitor 측에서 직렬화된 JSON을 온전히 수신하여 UUID가 사라지는 버그 영구 픽스.
+2. **[DEPLOY] 드라이버 앱 v4.9.28 공식 배포 및 강제 업데이트**:
+   - `trip.js`: 분석용 임시 디버그 코드(`window.alert`) 제거 및 프로덕션 안정화.
+   - `build_driver_apk.ps1`: `versionCode 4928`, `versionName 4.9.28` 동기화 및 클린 빌드 수행.
+   - `ForceUpdate=true`: 모든 사용자가 즉시 최신 보안 패치(ID 누락 해결 버전)를 적용받도록 강제 업데이트 트리거 활성화.
+
+---
+
 ## 📅 2026-04-20 (v4.9.91 — 드라이버 앱 ID 누락 미스터리 사후 분석 및 세션 종료)
 ### 🚀 주요 개선 사항 및 이슈
 1. **[ISSUE] 드라이버 앱 v4.9.27 배포 후에도 ID 누락 지속**:

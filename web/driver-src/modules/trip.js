@@ -1,12 +1,12 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=4928';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4928';
+import { Store, State, BASE_URL } from './store.js?v=4929';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4929';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=4928';
+} from './gps.js?v=4929';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -217,7 +217,9 @@ export async function startTrip() {
 
     // [v4.9.28] 서버 응답 무결성 확보 - NextResponse.json 복구로 ID 누락 해결됨
     console.log('🚀 Trip API 응답:', data);
-        
+    
+    const finalId = data.id || data.trip?.id;
+    if (!finalId) {
         if (State.trip.id) {
             console.warn('⚠️ ID 누락 - 기존 ID 사용', State.trip.id);
         } else {
