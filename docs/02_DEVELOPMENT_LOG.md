@@ -1,3 +1,12 @@
+## 📅 2026-04-20 (v4.9.92 — Driver App ID 누락 이슈 영구 픽스)
+### 🚀 주요 개선 사항
+1. **[FIX] 드라이버 앱 ID 누락(Empty Body Drop) 완벽 해결**:
+   - **원인**: 과거 Cloudtype 환경 마이그레이션 당시 Next.js 빌드 문제를 우회하기 위해 `NextResponse.json(...)` 대신 원시 웹 `new Response(JSON.stringify(...))`로 응답을 반환하도록 수정한 이력 존재. 
+   - **문제 재발**: 현재 다시 Vercel 환경으로 롤백한 상태에서, 원시 `new Response()`를 사용할 경우 Next.js의 고성능 직렬화와 헤더(Content-Length/Chunked Encoding 등) 처리가 누락되어 네이티브 앱의 `CapacitorHttp` 브릿지가 스트림을 파싱하지 못하고 바디를 조용히 드랍(Empty Object 반환)하는 현상 발생.
+   - **해결**: `web/app/api/vehicle-tracking/trips/route.js`의 응답 객체를 Next.js 14 네이티브인 `NextResponse.json()`으로 전면 복구. Capacitor 측에서 직렬화된 JSON을 온전히 수신하여 UUID가 사라지는 버그 영구 픽스.
+
+---
+
 ## 📅 2026-04-20 (v4.9.91 — 드라이버 앱 ID 누락 미스터리 사후 분석 및 세션 종료)
 ### 🚀 주요 개선 사항 및 이슈
 1. **[ISSUE] 드라이버 앱 v4.9.27 배포 후에도 ID 누락 지속**:
