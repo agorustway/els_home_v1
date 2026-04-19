@@ -213,7 +213,24 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const supabase = await createAdminClient();
-        const body = await request.json();
+        let body;
+        try {
+            body = await request.json();
+        } catch (e) {
+            return new Response(JSON.stringify({ error: "JSON 파싱 실패", rawError: e.message }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
+        }
+
+        // [v4.9.27 DEBUG] 만약 데이터가 없으면 즉시 에러 보고
+        if (!body || Object.keys(body).length === 0) {
+            return new Response(JSON.stringify({ error: "받은 데이터가 비어있음(Empty Body)", received: body }), {
+                status: 200, // 성공이지만 데이터 없음을 알림
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
+        }
+
         let {
             driver_name,
             driver_phone,
@@ -234,7 +251,10 @@ export async function POST(request) {
         }
 
         if (!vehicle_number || !driver_name) {
-            return NextResponse.json({ error: '차량번호와 이름은 필수입니다.' }, { status: 400 });
+            return new Response(JSON.stringify({ error: '차량번호와 이름은 필수입니다.', received: body }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
         }
 
         // [TDD 강화] 중복 생성 원천 차단: 차량번호와 기사로 이미 진행 중(driving/paused)인 건이 있는지 전수 조사
