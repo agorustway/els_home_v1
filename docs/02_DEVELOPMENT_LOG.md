@@ -2370,3 +2370,8 @@ public/
 - (Fix) CapacitorHttp preflight bug bypass: nollae.com API 호출 시 표준 fetch를 사용하도록 bridge.js 수정
 - (Build) v4.9.31 일괄 배포 완료 (한글 인코딩 안전 확인)
 
+### 2026-04-20 (v4.9.32) - Enhanced Debug for ID Missing
+- (Fix) Database insert fields safety: container_number/seal_number null check added.
+- (Debug) Extended logging in client/server: Headers and response status now logged to help pinpoint interceptors.
+- (Deploy) v4.9.32 rolled out with forceUpdate=true.
+

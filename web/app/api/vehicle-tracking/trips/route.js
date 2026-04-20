@@ -309,11 +309,11 @@ export async function POST(request) {
                 driver_phone,
                 vehicle_number,
                 vehicle_id: vehicle_id || null,
-                container_number,
-                seal_number,
+                container_number: container_number || '',
+                seal_number:      seal_number || '',
                 container_type,
                 container_kind,
-                special_notes: special_notes + (body.chk_brake !== undefined ? ` [점검:${body.chk_brake?'o':'x'}${body.chk_tire?'o':'x'}${body.chk_lamp?'o':'x'}${body.chk_cargo?'o':'x'}${body.chk_driver?'o':'x'}]` : ''),
+                special_notes: (special_notes || '') + (body.chk_brake !== undefined ? ` [점검:${body.chk_brake?'o':'x'}${body.chk_tire?'o':'x'}${body.chk_lamp?'o':'x'}${body.chk_cargo?'o':'x'}${body.chk_driver?'o':'x'}]` : ''),
                 status: 'driving',
                 started_at: new Date().toISOString(),
             }])
@@ -321,29 +321,40 @@ export async function POST(request) {
             .single();
 
         if (error) {
-            return NextResponse.json({ error: `DB 에러: ${error.message}`, details: error }, {
+            console.error('❌ POST /api/vehicle-tracking/trips DB Error:', error);
+            return NextResponse.json({ 
+                error: `DB 에러: ${error.message}`, 
+                debug_code: error.code,
+                received: body 
+            }, {
                 status: 500,
-                headers: { 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*', 'x-debug-error': 'db' }
             });
         }
         
         if (!trip) {
             return NextResponse.json({ error: '데이터 생성 성공했으나 결과 객체(trip)가 비어있음' }, {
                 status: 500,
-                headers: { 'Access-Control-Allow-Origin': '*' }
+                headers: { 'Access-Control-Allow-Origin': '*', 'x-debug-error': 'no_trip' }
             });
         }
 
-        return NextResponse.json({ id: trip.id, trip }, {
+        // [v4.9.32] 명시적 응답 보장
+        const responseData = { id: trip.id, trip, status: 'ok' };
+        console.log('✅ POST /api/vehicle-tracking/trips Success:', trip.id);
+
+        return NextResponse.json(responseData, {
             status: 200,
             headers: { 
-                'Access-Control-Allow-Origin': '*' 
+                'Access-Control-Allow-Origin': '*',
+                'x-debug-id': trip.id // 헤더로도 전송
             }
         });
     } catch (error) {
-        return NextResponse.json({ error: `서버 예외 발생: ${error.message}` }, {
+        console.error('❌ POST /api/vehicle-tracking/trips Crash:', error);
+        return NextResponse.json({ error: `서버 예외: ${error.message}` }, {
             status: 500,
-            headers: { 'Access-Control-Allow-Origin': '*' }
+            headers: { 'Access-Control-Allow-Origin': '*', 'x-debug-error': 'catch' }
         });
     }
 }

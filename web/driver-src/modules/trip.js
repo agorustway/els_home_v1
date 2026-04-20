@@ -1,12 +1,12 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=4931';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4931';
+import { Store, State, BASE_URL } from './store.js?v=4932';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=4932';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=4931';
+} from './gps.js?v=4932';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -215,15 +215,21 @@ export async function startTrip() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
 
-    // [v4.9.28] 서버 응답 무결성 확보 - NextResponse.json 복구로 ID 누락 해결됨
-    console.log('🚀 Trip API 응답:', data);
+    // [v4.9.32] 서버 응답 무결성 확보 - 상세 디버그 로깅 추가
+    console.log('🚀 Trip API Response Data:', data);
+    console.log('🚀 Trip API Response Status:', res.status);
     
-    const finalId = data.id || data.trip?.id;
+    // 헤더 정보 추출 시도 (debug 전용)
+    const debugId = res.headers?.['x-debug-id'] || res.headers?.get?.('x-debug-id');
+    const debugErr = res.headers?.['x-debug-error'] || res.headers?.get?.('x-debug-error');
+    
+    const finalId = data.id || data.trip?.id || debugId;
     if (!finalId) {
         if (State.trip.id) {
             console.warn('⚠️ ID 누락 - 기존 ID 사용', State.trip.id);
         } else {
-            throw new Error(`ID 누락 (서버 응답 확인: ${JSON.stringify(data)})`);
+            const detail = `Status:${res.status}, Data:${JSON.stringify(data)}, DebugH:${debugId||'N/A'}, ErrH:${debugErr||'N/A'}`;
+            throw new Error(`ID 누락 (상세: ${detail})`);
         }
     } else {
         State.trip.id = finalId;
