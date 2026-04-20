@@ -2375,3 +2375,8 @@ public/
 - (Debug) Extended logging in client/server: Headers and response status now logged to help pinpoint interceptors.
 - (Deploy) v4.9.32 rolled out with forceUpdate=true.
 
+### 2026-04-20 (v4.9.33) - Critical Fix: Reverting to Native CapacitorHttp
+- (Fix) Removed the standard fetch bypass for nollae.com due to CORS/Redirect issues on some devices.
+- (Fix) Rewrote smartFetch to robustly handle JSON objects vs strings and detect HTML error pages.
+- (Deploy) v4.9.33 Build & Push 완료.
+
