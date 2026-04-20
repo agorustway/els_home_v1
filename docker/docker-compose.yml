@@ -40,9 +40,7 @@ services:
     build:
       context: ..
       dockerfile: docker/els-backend/Dockerfile.core
-    container_name: els-core
-    ports:
-      - "2930:2930"
+    network_mode: host
     extra_hosts:
       - "pzfnrnscwudifgcctzke.supabase.co:172.64.149.246"
       - "k-skill-proxy.nomadamas.org:172.67.129.146"
