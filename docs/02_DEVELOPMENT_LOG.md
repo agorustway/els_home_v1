@@ -1,3 +1,14 @@
+## 📅 2026-04-20 (v5.0.16 — 프로젝트 구조 최적화 및 쓰레기통 정리)
+### 🚀 주요 개선 사항
+1. **[REFACTOR] 데이터 생성 스크립트 경로 최적화**:
+   - `build-safe-freight-data.js`, `parse-pdf.js`, `read-safe-freight-xlsx.js`의 출력 경로를 `web/public/data`로 일원화.
+   - 중복 데이터 생성을 근절하고 단일 진실 소스(Single Source of Truth) 체계 확립.
+2. **[CLEANUP] 레거시 파일 격리 (Trash Can)**:
+   - 루트 디렉토리에 `trash/` 폴더를 생성.
+   - `web/data` (obsolete) 및 `els_cleanup_archive_20260401.zip`을 해당 폴더로 이동하여 프로젝트 루트 및 소스 폴더 정화.
+
+---
+
 ## 📅 2026-04-20 (v5.0.15 — 데이터 조회 타임아웃 연장 및 UA 보강)
 ### 🚀 주요 개선 사항
 1. **[RESILIENCE] 데이터 조회 타임아웃 최적화**:

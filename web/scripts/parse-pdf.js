@@ -3,7 +3,7 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 
 const WORK_DOCS_DIR = path.join(__dirname, '../../work-docs');
-const OUTPUT_FILE = path.join(__dirname, '../data/safe-freight-docs.json');
+const OUTPUT_FILE = path.join(__dirname, '../public/data/safe-freight-docs.json');
 
 async function parseAllPdfs() {
   const result = [];

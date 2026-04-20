@@ -257,7 +257,7 @@ const output = {
   otherSections,
 };
 
-const outPath = path.join(__dirname, '..', 'data', 'safe-freight.json');
+const outPath = path.join(__dirname, '..', 'public', 'data', 'safe-freight.json');
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, JSON.stringify(output, null, 0), 'utf8');
 console.log('Written', outPath);

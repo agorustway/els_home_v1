@@ -19,7 +19,7 @@ wb.SheetNames.forEach((name) => {
   out.sheets[name] = { rowCount: rows.length, firstRows: rows.slice(0, 15) };
 });
 
-const outDir = path.join(__dirname, '..', 'data');
+const outDir = path.join(__dirname, '..', 'public', 'data');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'safe-freight-structure.json'), JSON.stringify(out, null, 2), 'utf8');
 console.log('Written safe-freight-structure.json');
