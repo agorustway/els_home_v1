@@ -67,106 +67,162 @@ def sync_asan_dispatch_python(force=False):
         settings = res.data
         if not settings: return
 
-        # NAS WebDAV 설정 (고정 IP 강제 매핑 v5.0.36)
-        nas_url = os.environ.get("NAS_URL", "https://elssolution.synology.me:5006").rstrip('/')
-        if "elssolution.synology.me" in nas_url:
-            nas_url = nas_url.replace("elssolution.synology.me", "192.168.0.4")
-        
-        nas_user = os.environ.get("NAS_USER", "web_client_admin")
-        nas_pw = os.environ.get("NAS_PW", "SKDNSNFL")
-        auth = (nas_user, nas_pw)
+        # (웹대브 로직 완전 삭제 - 로컬 마운트 경로 직접 사용)
 
         for dtype in ['glovis', 'mobis']:
             rel_path = settings.get(f"{dtype}_path")
             if not rel_path: continue
             
-            # NAS WebDAV 직접 연결 확인
-            file_url = f"{nas_url}/{quote(rel_path.lstrip('/'))}"
+            full_path = Path("/app/data") / rel_path.lstrip("/")
+            app.logger.info(f"[자동동기화] 대상 파일 체크: {full_path}")
             
-            try:
-                # 1. 파일 상태 및 수정 시간 확인 (PROPFIND)
-                r_prop = requests.request("PROPFIND", file_url, auth=auth, headers={"Depth": "0"}, verify=False, timeout=10)
-                if r_prop.status_code not in (200, 207):
-                    app.logger.warning(f"[자동동기화] WebDAV에서 파일을 찾을 수 없습니다 ({r_prop.status_code}): {file_url}")
-                    continue
+            if not full_path.exists():
+                app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path} (rel_path: {rel_path})")
+                continue
+            
+            # 파일 수정 시간
+            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            
+            # 변경 감지 (force 옵션이 없으면 캐시 확인)
+            if not force and last_mtime_cache.get(dtype) == mtime:
+                continue
+            
+            app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
+            
+            # 엑셀 읽기
+            xl = pd.ExcelFile(full_path)
+            sync_count = 0
+            
+            # 기존 데이터 삭제 (정합성 보장)
+            supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+
+            for sheet_name in xl.sheet_names:
+                # "3.3" 형식의 시트명 파싱
+                match = re.search(r'(\d+)\.(\d+)', sheet_name)
+                if not match: continue
                 
-                mtime = None
-                root = ET.fromstring(r_prop.text)
-                for elem in root.iter():
-                    if 'getlastmodified' in elem.tag:
-                        mtime = elem.text
+                m, d = int(match.group(1)), int(match.group(2))
+                now = datetime.now(KST)
+                year = now.year
+                if m > now.month + 3: year -= 1 # 12월 시트인데 현재 3월이면 작년거
+                target_date = f"{year}-{m:02d}-{d:02d}"
+                
+                # 시트 파싱
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
+                # '구분'이 포함된 행 찾기 (헤더 행) - 범위를 100줄로 대폭 확장하여 다양한 엑셀 레이아웃에 대응
+                header_idx = -1
+                for i, row in df.head(100).iterrows():
+                    if row.astype(str).str.contains('구분').any():
+                        header_idx = i
                         break
+                
+                if header_idx < 0: continue
+                
+                # 헤더 추출 및 정제
+                headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
+                # 빈 헤더 보정
+                headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
+                
+                # 데이터 추출
+                data_df = df.iloc[header_idx + 1:]
+                
+                # 필터링 로직 (Next.js와 동일하게 적용)
+                filter_col = 12 if dtype == 'glovis' else 15 # 0-indexed
+                rows = []
+                comments_dict = {}
+                row_idx_in_db = 0
+                
+                # 메모 추출용 openpyxl
+                sheet_comments = {}
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(full_path, data_only=True)
+                    target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
+                    if target_ws_name not in wb.sheetnames:
+                        continue
+                    ws = wb[target_ws_name]
+                    
+                    # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
+                    header_col_idx = -1
+                    for j, h in enumerate(headers):
+                        if '구분' in str(h):
+                            header_col_idx = j
+                            break
+                    if header_col_idx == -1:
+                        header_col_idx = 0
                         
-                if not mtime:
-                    continue
-                
-                # 변경 감지 (force 옵션이 없으면 캐시 확인)
-                if not force and last_mtime_cache.get(dtype) == mtime:
-                    continue
-                
-                app.logger.info(f"[자동동기화] 파일 변경 확인됨 (WebDAV). 데이터 다운로드 시작... ({dtype})")
-                
-                # 2. 파일 다운로드
-                r_get = requests.get(file_url, auth=auth, verify=False, timeout=60)
-                if r_get.status_code != 200:
-                    app.logger.error(f"[자동동기화] 파일 다운로드 실패 ({r_get.status_code}): {file_url}")
-                    continue
-                
-                # 임시 파일로 저장 후 처리
-                with tempfile.NamedTemporaryFile(suffix=".xlsm", delete=False) as tmp:
-                    tmp.write(r_get.content)
-                    tmp_path = tmp.name
-                
-                # 3. 엑셀 읽기
-                xl = pd.ExcelFile(tmp_path)
-                sync_count = 0
-                supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+                    # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산 (검색 범위 100행으로 확장)
+                    openpyxl_r_offset = 0
+                    openpyxl_c_offset = 0
+                    found_header = False
+                    for r_cells in ws.iter_rows(min_row=1, max_row=100):
+                        for cell in r_cells:
+                            val = str(cell.value) if cell.value else ""
+                            if '구분' in val:
+                                openpyxl_r_offset = (cell.row - 1) - header_idx
+                                openpyxl_c_offset = (cell.column - 1) - header_col_idx
+                                found_header = True
+                                app.logger.info(f"[오프셋계산] 시트:{sheet_name}, 구분위치(R/C):{cell.row}/{cell.column}, Offset(R/C):{openpyxl_r_offset}/{openpyxl_c_offset}")
+                                break
+                        if found_header:
+                            break
+                    
+                    if not found_header:
+                        app.logger.warning(f"[오프셋계산 실패] 시트:{sheet_name}에서 '구분' 헤더를 찾지 못함. 기본값 유지.")
+                            
+                    # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
+                    for r_cells in ws.iter_rows():
+                        for cell in r_cells:
+                            if cell.comment:
+                                pd_r = (cell.row - 1) - openpyxl_r_offset
+                                pd_c = (cell.column - 1) - openpyxl_c_offset
+                                sheet_comments[(pd_r, pd_c)] = cell.comment.text
+                except Exception as e:
+                    app.logger.warning(f"openpyxl load_workbook 실패: {e}")
 
-                for sheet_name in xl.sheet_names:
-                    match = re.search(r'(\d+)\.(\d+)', sheet_name)
-                    if not match: continue
-                    m, d = int(match.group(1)), int(match.group(2))
-                    now = datetime.now(KST)
-                    target_date = f"{now.year}-{m:02d}-{d:02d}"
+                orig_index_list = data_df.index.tolist()
+                for i_pos, orig_iloc_idx in enumerate(orig_index_list):
+                    row = data_df.loc[orig_iloc_idx]
+                    # '합계' 포함 시 종료
+                    if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
+                        break
                     
-                    df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
-                    header_idx = -1
-                    for i, row in df.head(10).iterrows():
-                        if row.astype(str).str.contains('구분').any():
-                            header_idx = i; break
-                    if header_idx < 0: continue
+                    f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                    if not f_val or f_val == '0' or f_val == 'nan':
+                        continue
                     
-                    headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
-                    headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
-                    data_df = df.iloc[header_idx + 1:]
+                    row_list = row.fillna('').astype(str).tolist()
+                    rows.append(row_list)
                     
-                    filter_col = 12 if dtype == 'glovis' else 15
-                    rows = []
-                    for _, row in data_df.iterrows():
-                        if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)): break
-                        f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
-                        if not f_val or f_val == '0' or f_val == 'nan': continue
-                        rows.append(row.fillna('').astype(str).tolist())
-                    
-                    if not rows: continue
-                    supabase.from_("branch_dispatch").insert({
-                        "branch_id": "asan", "type": dtype, "target_date": target_date,
-                        "headers": headers, "data": rows, "file_modified_at": mtime, "updated_at": now.isoformat()
-                    }).execute()
-                    sync_count += 1
+                    # 메모 추출 (엑셀 row 인덱스는 pandas header_idx가 포함된 df의 원본 인덱스)
+                    for c_idx in range(len(row_list)):
+                        cmt = sheet_comments.get((orig_iloc_idx, c_idx))
+                        if cmt:
+                            comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
+                            
+                    row_idx_in_db += 1
                 
-                app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
-                last_mtime_cache[dtype] = mtime
+                if not rows: continue
                 
-                # 사용 끝난 임시 파일 삭제
-                try: os.remove(tmp_path)
-                except: pass
+                # Supabase 저장
+                supabase.from_("branch_dispatch").insert({
+                    "branch_id": "asan",
+                    "type": dtype,
+                    "target_date": target_date,
+                    "headers": headers,
+                    "data": rows,
+                    "comments": comments_dict,
+                    "file_modified_at": mtime,
+                    "updated_at": now.isoformat()
+                }).execute()
+                sync_count += 1
+            
+            app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+            last_mtime_cache[dtype] = mtime
 
-            except Exception as inner_e:
-                app.logger.error(f"[자동동기화] {dtype} 처리 중 오류: {inner_e}")
                 
     except Exception as e:
-        app.logger.error(f"[자동동기화] 전체 프로세스 오류: {e}")
+        app.logger.error(f"[자동동기화] 전체 프로세스 오류: {e}", exc_info=True)
 
 def asan_sync_scheduler():
     app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")

@@ -24,6 +24,10 @@ HOST_MAPPING = {
     
     # NAS Local Domains (Synology DDNS)
     "elssolution.synology.me": NAS_LOCAL_IP,
+    
+    # Fallback for External APIs in case of total DNS failure
+    "generativelanguage.googleapis.com": "142.250.199.138",
+    "api.beopmang.org": "104.21.5.12"
 }
 
 def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
@@ -35,13 +39,22 @@ def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     return original_getaddrinfo(host, port, family, type, proto, flags)
 
 def apply_dns_patch():
-    """socket.getaddrinfo를 패치하여 DNS가 없는 환경에서도 특정 도메인 접속이 가능하도록 합니다."""
-    if socket.getaddrinfo != host_forced_getaddrinfo:
-        socket.getaddrinfo = host_forced_getaddrinfo
-        logger.info(f"[{datetime.now()}] [DNS-FIX] socket.getaddrinfo monkeypatch applied for {len(HOST_MAPPING)} hosts.")
-        # print(f"[{datetime.now()}] [DNS-FIX] socket.getaddrinfo monkeypatch applied.")
+    """/etc/hosts 파일을 직접 수정하여 모든 라이브러리(httpx 포함)가 강제 IP를 바라보게 만듭니다."""
+    try:
+        with open("/etc/hosts", "r") as f:
+            content = f.read()
+        
+        with open("/etc/hosts", "a") as f:
+            f.write("\n# [v5.0.40] DNS FIX\n")
+            for host, ip in HOST_MAPPING.items():
+                if host not in content:
+                    f.write(f"{ip}\t{host}\n")
+        logger.info(f"[{datetime.now()}] [DNS-FIX] /etc/hosts updated with {len(HOST_MAPPING)} hosts.")
+    except Exception as e:
+        logger.error(f"[{datetime.now()}] [DNS-FIX] Failed to update /etc/hosts: {e}")
+        # Fallback to monkeypatch
+        if socket.getaddrinfo != host_forced_getaddrinfo:
+            socket.getaddrinfo = host_forced_getaddrinfo
+            logger.info(f"[{datetime.now()}] [DNS-FIX] Fallback to monkeypatch applied.")
 
-if __name__ == "__main__":
-    # 단독 실행 시 테스트
-    apply_dns_patch()
-    print(f"Test resolution: {socket.getaddrinfo('pzfnrnscwudifgcctzke.supabase.co', 443)[0][4][0]}")
+apply_dns_patch()
