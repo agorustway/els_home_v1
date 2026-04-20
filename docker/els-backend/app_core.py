@@ -27,6 +27,16 @@ KST = timezone(timedelta(hours=9))
 # --- Supabase 설정 ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+# DNS 실패 대비 Supabase IP 매핑 (Host 모드에서는 extra_hosts가 무시됨)
+if SUPABASE_URL and "pzfnrnscwudifgcctzke.supabase.co" in SUPABASE_URL:
+    try:
+        import socket
+        socket.gethostbyname("pzfnrnscwudifgcctzke.supabase.co")
+    except:
+        SUPABASE_URL = SUPABASE_URL.replace("pzfnrnscwudifgcctzke.supabase.co", "172.64.149.246")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] Supabase DNS 실패로 IP 우회 사용")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 # --- 로깅 설정 ---
@@ -62,11 +72,21 @@ def sync_asan_dispatch_python(force=False):
         settings = res.data
         if not settings: return
 
-        # NAS WebDAV 설정
+        # NAS WebDAV 설정 (DNS 실패 대비 로컬 IP 폴백)
         nas_url = os.environ.get("NAS_URL", "https://elssolution.synology.me:5006").rstrip('/')
         nas_user = os.environ.get("NAS_USER", "web_client_admin")
         nas_pw = os.environ.get("NAS_PW", "SKDNSNFL")
         auth = (nas_user, nas_pw)
+
+        # DNS 해소 시도 및 실패 시 로컬 IP로 교체
+        original_nas_url = nas_url
+        if "elssolution.synology.me" in nas_url:
+            try:
+                import socket
+                socket.gethostbyname("elssolution.synology.me")
+            except:
+                nas_url = nas_url.replace("elssolution.synology.me", "192.168.0.4")
+                app.logger.warning(f"[자동동기화] DNS 해소 실패로 로컬 IP 우회: {original_nas_url} -> {nas_url}")
 
         for dtype in ['glovis', 'mobis']:
             rel_path = settings.get(f"{dtype}_path")
