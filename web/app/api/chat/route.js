@@ -313,7 +313,33 @@ export async function POST(req) {
         // --- Omni-RAG: 사용자의 질문에 맞춰 전체 사내망 DB 동시 스캔 ---
         const stopRegex = /에서|까지|부터|으로|로|의|가|는|은|를|을|알려줘|보여줘|어디|무엇|어떻게|누구|찾아줘|요약|정리|내용|해줘|해주세요|알려|대해|관련|관해|설명|뭐야|어때|확인|확인해줘|얼마|얼마야/g;
         const cleanText = lastUserText.replace(stopRegex, ' ').replace(/[^가-힣a-zA-Z0-9\s]/g, ' ');
-        const searchTerms = [...new Set(cleanText.split(/\s+/).filter(w => w.length > 1).map(t => t.includes('터미널') ? t.replace('터미널', '') : t))];
+        // 항구 별칭 매핑: 사용자가 쓰는 자연어 → safe-freight.json 실제 키 접두사
+        const PORT_ALIAS_MAP = [
+            { pattern: /인천국제여객|인천여객터미널|인천여객|여객터미널/g, replace: '인천국제여객' },
+            { pattern: /부산북항|부산항북항/g,               replace: '부산북항' },
+            { pattern: /부산신항|신항/g,                     replace: '부산신항' },
+            { pattern: /인천신항/g,                          replace: '인천신항' },
+            { pattern: /인천항/g,                            replace: '인천항' },
+            { pattern: /광양항|광양/g,                       replace: '광양항' },
+            { pattern: /평택항|평택/g,                       replace: '평택항' },
+            { pattern: /울산항|울산구항/g,                   replace: '울산항' },
+            { pattern: /울산신항/g,                          replace: '울산신항' },
+            { pattern: /포항항|포항/g,                       replace: '포항항' },
+            { pattern: /군산항|군산/g,                       replace: '군산항' },
+            { pattern: /마산항|마산/g,                       replace: '마산항' },
+            { pattern: /대산항|대산/g,                       replace: '대산항' },
+            { pattern: /의왕icd|의왕아이씨디|의왕/gi,       replace: '의왕ICD' },
+        ];
+        // 사용자 원문에서 항구 별칭을 표준 키로 정규화한 별칭 리스트 추출
+        const portAliasTerms = [];
+        for (const { pattern, replace } of PORT_ALIAS_MAP) {
+            if (pattern.test(lastUserText)) portAliasTerms.push(replace);
+            pattern.lastIndex = 0; // regex 전역 플래그 리셋
+        }
+        const searchTerms = [...new Set([
+            ...cleanText.split(/\s+/).filter(w => w.length > 1),
+            ...portAliasTerms,
+        ])];
 
         try {
             const orConditionsExt = searchTerms.map(term => `company_name.ilike.%${term}%,contact_person.ilike.%${term}%,memo.ilike.%${term}%`).join(',');
@@ -402,23 +428,38 @@ export async function POST(req) {
             }
 
             // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 (Omni-Agent Phase 1)
-            const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항', '인상', '변동', '비교', '추이', '이전', '할증', '냉동', '냉장', '플렉시', '탱크', '험로', '덤프', '공휴일', '울산', '평택', '마산', '포항', '군산', '대산', '대기료', '부대조항', '추가요금', '반납', '도착'];
+            const sfKeywords = ['안전운임', '운임', '단가', '요금', '위탁', '위탁운임', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항', '여객터미널', '인천여객', '인천국제여객', '인천신항', '인천항', '울산항', '울산신항', '평택항', '포항항', '군산항', '마산항', '대산항', '인상', '변동', '비교', '추이', '이전', '할증', '냉동', '냉장', '플렉시', '탱크', '험로', '덤프', '공휴일', '울산', '평택', '마산', '포항', '군산', '대산', '대기료', '부대조항', '추가요금', '반납', '도착'];
             isSfQuery = searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
-                sfKeywords.some(k => userKwd.includes(k));
+                sfKeywords.some(k => userKwd.includes(k)) ||
+                portAliasTerms.length > 0; // 항구 별칭이 1개라도 감지되면 안전운임 쿼리로 처리
             if (isSfQuery) {
                 const sfData = await getSfData();
                 if (sfData?.faresLatest) {
                     const fareKeys = Object.keys(sfData.faresLatest);
 
+                    // 키 형식: "[왕복] 인천국제여객|울산시|울주군|온산읍"
+                    // 파이프(|) 기준으로 세그먼트 분리하여 정밀 매칭
                     const scored = fareKeys.map(k => {
                         let score = 0;
                         let matchedCount = 0;
+                        const kSegments = k.replace(/[\[\]]/g, '').split('|').map(s => s.trim());
                         searchTerms.forEach(t => {
+                            // 정방향: 키에 검색어가 포함 (기존 로직)
                             if (k.includes(t)) {
                                 score += 10;
                                 matchedCount++;
                             }
+                            // 역방향: 검색어가 키 세그먼트를 포함 (예: "인천국제여객" 검색 → 세그먼트 "인천국제여객" 매칭)
+                            else if (kSegments.some(seg => t.includes(seg) || seg.includes(t))) {
+                                score += 8;
+                                matchedCount++;
+                            }
                         });
+                        // 출발지 세그먼트(index 0) 정확 매칭 시 가중치 추가
+                        if (portAliasTerms.some(alias => kSegments[0] && kSegments[0].includes(alias))) {
+                            score += 20;
+                            matchedCount++;
+                        }
                         if (matchedCount > 1) score += (matchedCount * 15);
                         return { k, score };
                     }).filter(i => i.score > 0)
