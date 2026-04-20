@@ -95,6 +95,11 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             filepath = Path(root) / file
             if filepath.suffix.lower() in [".pdf", ".docx", ".xlsx", ".txt", ".hwp"]:
                 all_target_files.append(filepath)
+        # 디렉터리 목록 로깅 (디버그용)
+        if not dirs and root == str(target_dir):
+            print(f"[DEBUG] {root} 에 하위 디렉토리가 없습니다.")
+        elif root == str(target_dir):
+            print(f"[DEBUG] {root} 내부 디렉토리: {dirs}")
     
     total_to_process = len(all_target_files)
     print(f"[VECTORIZE] {branch_name}: 총 {total_to_process}개의 대상 파일을 찾았습니다. 인덱싱 시작...")
@@ -137,6 +142,9 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             # 추출
             text = ""
             try:
+            # 추출
+            text = ""
+            try:
                 if ext == ".pdf":
                     text = extract_text_pypdf(file_path_str)
                 elif ext == ".docx":
@@ -150,6 +158,18 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     except UnicodeDecodeError:
                         with open(file_path_str, "r", encoding="euc-kr") as f:
                             text = f.read()
+                elif ext == ".hwp":
+                    logger.info(f"⏩ [{branch_name}] .hwp 파일은 현재 텍스트 추출을 지원하지 않아 스킵합니다: {filename}")
+                    skipped += 1
+                    # 인덱스에는 기록하여 다음 스캔 시 반복 로깅 방지 (Supabase upsert)
+                    try:
+                        supabase.table("nas_file_index").upsert({
+                            "path": file_path_str, "filename": filename, "extension": ext,
+                            "branch": branch_name, "is_indexed": True, "chunk_count": 0,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }, on_conflict="path").execute()
+                    except: pass
+                    continue
             except Exception as e:
                 logger.error(f"Extraction failed for {filename}: {e}")
                 error_cnt += 1

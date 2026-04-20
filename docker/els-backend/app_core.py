@@ -334,13 +334,22 @@ def trigger_nas_vectorize():
     raw_dir = data.get("directory", "/app/data/work-docs")  # Update path to /app/data which is mounted
     branch_name = data.get("branch", "NAS자료")
     
-    # 백그라운드 쓰레드로 실행하여 HTTP 타임아웃(curl hang) 방지
+    # 백그라운드 태스크 중복 실행 방지
+    global vect_lock
+    if not 'vect_lock' in globals():
+        vect_lock = threading.Lock()
+        
+    if vect_lock.locked():
+        return jsonify({"status": "busy", "message": "Another vectorization task is already running. Please wait."}), 429
+
     def run_task():
-        try:
-            res = process_nas_directory(supabase, raw_dir, branch_name)
-            app.logger.info(f"✅ [API Trigger] {branch_name} 동기화 완료: {res}")
-        except Exception as e:
-            app.logger.error(f"❌ [API Trigger] {branch_name} 동기화 실패: {e}")
+        with vect_lock:
+            try:
+                app.logger.info(f"🚀 [API Trigger] {branch_name} ({raw_dir}) 벡터화 시작...")
+                res = process_nas_directory(supabase, raw_dir, branch_name)
+                app.logger.info(f"✅ [API Trigger] {branch_name} 완료: {res}")
+            except Exception as e:
+                app.logger.error(f"❌ [API Trigger] {branch_name} 실패: {e}")
 
     threading.Thread(target=run_task, daemon=True).start()
     
