@@ -1068,10 +1068,13 @@ def trigger_nas_vectorize():
     raw_dir = data.get("directory", "/app/work-docs")  # Default to some dir
     branch_name = data.get("branch", "본사")
     
-    # Run async function in sync route
-    result = asyncio.run(process_nas_directory(supabase, raw_dir, branch_name))
-    
-    return jsonify(result)
+    # Run synchronous function
+    try:
+        result = process_nas_directory(supabase, raw_dir, branch_name)
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"Vectorize error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.logger.info("Backend Server Ready with CORS")

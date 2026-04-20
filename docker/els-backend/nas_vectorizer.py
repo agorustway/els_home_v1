@@ -3,6 +3,7 @@ import hashlib
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
+import time
 import openpyxl
 import fitz  # PyMuPDF
 from docx import Document
@@ -176,6 +177,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     continue
                 
                 try:
+                    time.sleep(0.5)  # API Rate Limit 방어를 위한 휴식
                     emb_res = client.models.embed_content(
                         model='text-embedding-004',
                         contents=chunk,
@@ -203,6 +205,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                         chunk_batch = []
                 except Exception as e:
                     logger.error(f"Embedding/Insert failed for chunk {i} of {filename}: {e}")
+                    time.sleep(5)  # 에러 발생 시(Quota 등) 5초 휴식
 
             # 남은 청크 마지막으로 인서트
             if chunk_batch:
@@ -210,6 +213,11 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     supabase.table("document_chunks").insert(chunk_batch).execute()
                 except Exception as e:
                     logger.error(f"Final batch insert failed for {filename}: {e}")
+                    
+            # 성공 여부 판별 (청크가 있는데 하나도 통과 못했거나 중간에 실패했다면 재시도 대상)
+            is_success = True
+            if len(chunks) > 0 and valid_chunk_count < len(chunks):
+                is_success = False
 
             # index 업데이트
             index_data = {
@@ -220,7 +228,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                 "branch": branch_name,
                 "last_modified": modified_ts.isoformat(),
                 "content_hash": current_hash,
-                "is_indexed": True,
+                "is_indexed": is_success,
                 "chunk_count": valid_chunk_count,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
