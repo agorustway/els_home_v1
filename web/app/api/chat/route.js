@@ -334,9 +334,14 @@ export async function POST(req) {
     // === RAG 데이터 수집 ===
     let recentPostsText = '';
     let isSfQuery = false;
-    // 실제 API 호출 성공 시점 추적 (데이터 신선도 정확도 개선)
     const apiTimestamps = {};
-    const backendUrl = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'https://elssolution.synology.me:8443';
+    
+    // [Resilience] Vercel 환경에서는 localhost:2929가 동작하지 않으므로, Synology 외부 주소를 우선 고려
+    const primaryBackend = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL;
+    const backendUrl = (primaryBackend && !primaryBackend.includes('localhost')) 
+        ? primaryBackend 
+        : 'https://elssolution.synology.me:2929'; // 2929 게이트웨이 포트로 고정
+        
     const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
 
     try {
@@ -772,9 +777,13 @@ export async function POST(req) {
                     const targetLabel = userKwd.includes('어제') ? '어제' : '오늘';
                     const dateStr = `${targetDate.slice(0, 4)}-${targetDate.slice(4, 6)}-${targetDate.slice(6, 8)}`;
 
+                    const kboUri = `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${dateStr}`;
+                    const kleagueUri = `https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${dateStr}`;
+
+                    // Vercel IP 차단 회피를 위해 NAS 프록시를 통해 네이버 스포츠 호출
                     const [kboRes, kleagueRes] = await Promise.all([
-                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kbaseball&categoryId=kbo&date=${dateStr}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
-                        fetch(`https://api-gw.sports.naver.com/schedule/games?fields=basic&upperCategoryId=kfootball&categoryId=kleague&date=${dateStr}`, { headers: naverHeaders, signal: AbortSignal.timeout(8000) }).catch(() => null),
+                        fetch(kskillProxyBase + encodeURIComponent(kboUri), { signal: AbortSignal.timeout(8000) }).catch(() => null),
+                        fetch(kskillProxyBase + encodeURIComponent(kleagueUri), { signal: AbortSignal.timeout(8000) }).catch(() => null),
                     ]);
 
                     let sportsText = '';

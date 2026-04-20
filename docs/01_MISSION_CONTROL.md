@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v5.0.9` | **NAS 백엔드 인덱싱 가동 중단(SyntaxError) 긴급 복구** |
-| **상태** | 🟢 정상 | IndentationError 수정 및 정상 가동 확인 완료 |
+| **현재 버전** | `v5.0.10` | **외부 API(K-SKILL/스포츠) 프록시 통신 복구 및 검색 고도화** |
+| **상태** | 🟢 정상 | Localhost 이슈 해결 및 항구 키워드 가중치(Port Bonus) 적용 완료 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -83,4 +83,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-20 v5.0.9 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-20 v5.0.10 (by Antigravity/Gemini)*
