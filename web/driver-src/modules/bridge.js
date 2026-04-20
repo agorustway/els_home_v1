@@ -1,7 +1,7 @@
 /**
  * bridge.js — Capacitor 플러그인 브릿지, smartFetch, remoteLog
  */
-import { Store, BASE_URL } from './store.js?v=4932';
+import { Store, BASE_URL } from './store.js?v=4933';
 
 // ─── remoteLog ────────────────────────────────────────────────────
 export async function remoteLog(msg, tag = 'JS') {
@@ -76,55 +76,62 @@ export async function smartFetch(url, options = {}) {
   const http = CapHttp();
   const isNative = window.Capacitor?.isNativePlatform();
 
-  // [v4.9.31] nollae.com 계열의 최신 Next.js API는 자체 CORS를 완벽 지원하며,
-  // CapacitorHttp의 OPTIONS Preflight 가로채기 버그(빈 응답 200)를 방지하기 위해 표준 fetch를 강제합니다.
-  const isBypassCapHttp = url.includes('nollae.com') || url.includes('/api/vehicle-tracking');
-
-  if (http && isNative && !isBypassCapHttp) {
+  if (http && isNative) {
     try {
-      // 이미지 등 바이너리 데이터 요청 판별 (호환성을 위해 dataType도 체크)
       const resType = options.responseType || options.dataType;
       const isBinary = resType === 'blob' || resType === 'arraybuffer';
       
       const res = await http.request({
-        url,
+        url: url,
         method: options.method || 'GET',
         headers: { 
-          'Content-Type': 'application/json', 
+          'Content-Type': 'application/json',
           ...(options.headers || {}) 
         },
-        // CapacitorHttp는 dataType이 아닌 responseType을 사용합니다.
-        responseType: isBinary ? 'blob' : (resType || 'json'),
-        data: options.body
+        data: options.body 
           ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body)
           : undefined,
+        responseType: isBinary ? 'blob' : 'text'
       });
 
+      console.log(`[smartFetch] Native ${options.method || 'GET'} ${url} -> ${res.status}`);
+      
       return {
-        ok:     res.status < 400,
+        ok: res.status >= 200 && res.status < 300,
         status: res.status,
-        json:   async () => (typeof res.data === 'string' ? JSON.parse(res.data) : res.data),
-        // 바이너리 데이터 지원을 위해 blob() 추가
-        blob:   async () => {
+        headers: res.headers,
+        // json() 호출 시 res.data가 객체면 그대로, 문자열이면 파싱, 실패 시 원문 반환
+        json: async () => {
+          if (typeof res.data === 'object' && res.data !== null) return res.data;
+          try {
+            return JSON.parse(res.data);
+          } catch (e) {
+            console.error('[smartFetch] JSON Parse Failed. Raw Data:', res.data);
+            if (typeof res.data === 'string' && res.data.includes('<!DOCTYPE')) {
+              throw new Error(`서버가 JSON 대신 HTML을 반환했습니다. (Status: ${res.status})`);
+            }
+            return res.data;
+          }
+        },
+        blob: async () => {
           if (isBinary && typeof res.data === 'string') {
-            // CapacitorHttp는 responseType: 'blob'일 때 base64 인코딩된 문자열을 반환합니다.
             const byteCharacters = atob(res.data);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
               byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
             const byteArray = new Uint8Array(byteNumbers);
-            // 헤더 키의 대소문자 차이 방어를 위해 무시 검색
             const headers = res.headers || {};
             const contentTypeKey = Object.keys(headers).find(k => k.toLowerCase() === 'content-type');
             const contentType = contentTypeKey ? headers[contentTypeKey] : 'image/jpeg';
             return new Blob([byteArray], { type: contentType });
           }
-          throw new Error('Fallback to standard fetch for non-native blob');
-        }
+          return res.data;
+        },
       };
-    } catch (e) {
-      console.error('smartFetch CapHttp error', e);
+    } catch (err) {
+      console.error('[smartFetch] Native Request Error:', err);
+      throw err;
     }
   }
 
@@ -137,6 +144,7 @@ export async function smartFetch(url, options = {}) {
   return {
     ok: response.ok,
     status: response.status,
+    headers: response.headers,
     json: () => response.json(),
     blob: () => response.blob(),
   };
