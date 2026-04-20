@@ -2366,3 +2366,7 @@ public/
 - (TDD) empty body 예외처리: 빈 Body 요청시 200 대신 400 반환하도록 route.js 수정
 - app/build.gradle 및 상수 파일 버전 4.9.30, 스크립트 실행하여 캐시버스터 포함 일괄 배포 완료
 
+### 2026-04-20 (v4.9.31) - Driver App ID Missing Root Cause Fix
+- (Fix) CapacitorHttp preflight bug bypass: nollae.com API 호출 시 표준 fetch를 사용하도록 bridge.js 수정
+- (Build) v4.9.31 일괄 배포 완료 (한글 인코딩 안전 확인)
+

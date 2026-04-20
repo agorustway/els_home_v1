@@ -1,7 +1,7 @@
 /**
  * bridge.js — Capacitor 플러그인 브릿지, smartFetch, remoteLog
  */
-import { Store, BASE_URL } from './store.js?v=4930';
+import { Store, BASE_URL } from './store.js?v=4931';
 
 // ─── remoteLog ────────────────────────────────────────────────────
 export async function remoteLog(msg, tag = 'JS') {
@@ -76,7 +76,11 @@ export async function smartFetch(url, options = {}) {
   const http = CapHttp();
   const isNative = window.Capacitor?.isNativePlatform();
 
-  if (http && isNative) {
+  // [v4.9.31] nollae.com 계열의 최신 Next.js API는 자체 CORS를 완벽 지원하며,
+  // CapacitorHttp의 OPTIONS Preflight 가로채기 버그(빈 응답 200)를 방지하기 위해 표준 fetch를 강제합니다.
+  const isBypassCapHttp = url.includes('nollae.com') || url.includes('/api/vehicle-tracking');
+
+  if (http && isNative && !isBypassCapHttp) {
     try {
       // 이미지 등 바이너리 데이터 요청 판별 (호환성을 위해 dataType도 체크)
       const resType = options.responseType || options.dataType;

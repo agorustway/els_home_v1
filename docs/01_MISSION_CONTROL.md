@@ -16,12 +16,13 @@
 16. **[DONE]** AI 안전운임 조회 부산 이외 항구 응답 누락 버그 수정 (PORT_ALIAS_MAP + 스코어링 개선)
 
 ## 📦 최신 배포 정보
-- Current Build: `v4.9.30` (APK, Driver App)
+- Current Build: `v4.9.31` (APK, Driver App)
 - Active Agent Profile: Omnipotent AI Assistant (ELS Solution Dedicated)
 - Core Tasks:
   - [x] Driver App PWA Address Bar Hidden Fix
   - [x] Dispatch Board Memo Read Fix (Asan) 
-  - [x] Driver App ID Null Patch (Empty body 400 return for auto-reconnect)(필독)
+  - [x] Driver App ID Null Patch (Empty body 400 return)
+  - [x] **CapacitorHttp Bypass Fix** (Nollae API 표준 fetch 강제 — ID 누락 근본 해결) (필독)
 
 ## ⚠️ APK 빌드 절차 (필독)
 ```
