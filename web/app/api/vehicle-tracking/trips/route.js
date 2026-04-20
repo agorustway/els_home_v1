@@ -223,10 +223,10 @@ export async function POST(request) {
             });
         }
 
-        // [v4.9.27 DEBUG] 만약 데이터가 없으면 즉시 에러 보고
+        // [v4.9.30] 빈 Body 수신 시 400으로 반환 (200이면 클라이언트가 res.ok=true로 판단해 ID 누락 에러 발생)
         if (!body || Object.keys(body).length === 0) {
-            return NextResponse.json({ error: "받은 데이터가 비어있음(Empty Body)", received: body }, {
-                status: 200, // 성공이지만 데이터 없음을 알림
+            return NextResponse.json({ error: "요청 데이터가 비어있습니다. 앱을 재시작 후 다시 시도해주세요.", received: body }, {
+                status: 400,
                 headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }

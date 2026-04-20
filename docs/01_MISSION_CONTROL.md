@@ -16,9 +16,12 @@
 16. **[DONE]** AI 안전운임 조회 부산 이외 항구 응답 누락 버그 수정 (PORT_ALIAS_MAP + 스코어링 개선)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.94` (AI 스코어링 엔진 개선)
-- **APK URL**: `https://nollae.com/apk/els_driver.apk` (홈페이지 및 자동 업데이트용)
-- **Repo**: main 브랜치 배포 완료
+- Current Build: `v4.9.30` (APK, Driver App)
+- Active Agent Profile: Omnipotent AI Assistant (ELS Solution Dedicated)
+- Core Tasks:
+  - [x] Driver App PWA Address Bar Hidden Fix
+  - [x] Dispatch Board Memo Read Fix (Asan) 
+  - [x] Driver App ID Null Patch (Empty body 400 return for auto-reconnect)(필독)
 
 ## ⚠️ APK 빌드 절차 (필독)
 ```
