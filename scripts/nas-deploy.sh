@@ -13,11 +13,10 @@ ENV_FILE="web/.env.local"
 DOCKER_ENV="docker/.env"
 
 if [ -f "$ENV_FILE" ]; then
-    # \r 제거 및 공백 정제 후 변수 추출 (윈도우-리눅스 호환성 강화)
-    CLEAN_ENV=$(cat "$ENV_FILE" | tr -d '\r')
-    S_URL=$(echo "$CLEAN_ENV" | grep "^NEXT_PUBLIC_SUPABASE_URL=" | cut -d'=' -f2- | xargs)
-    S_KEY=$(echo "$CLEAN_ENV" | grep "^SUPABASE_SERVICE_ROLE_KEY=" | cut -d'=' -f2- | xargs)
-    G_KEY=$(echo "$CLEAN_ENV" | grep "^GEMINI_API_KEY=" | cut -d'=' -f2- | xargs)
+    # 더 유연한 정규식으로 키 추출 (앞뒤 공백 무관)
+    S_URL=$(grep "SUPABASE_URL=" "$ENV_FILE" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
+    S_KEY=$(grep "SUPABASE_SERVICE_ROLE_KEY=" "$ENV_FILE" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
+    G_KEY=$(grep "GEMINI_API_KEY=" "$ENV_FILE" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
     
     cat <<EOF > "$DOCKER_ENV"
 SUPABASE_URL=$S_URL
@@ -25,7 +24,9 @@ SUPABASE_SERVICE_ROLE_KEY=$S_KEY
 GEMINI_API_KEY=$G_KEY
 DAEMON_URL=http://127.0.0.1:2931
 EOF
-    echo "✅ docker/.env 생성 완료 (G_KEY 존재 확인: $([ -n "$G_KEY" ] && echo "YES" || echo "NO"))"
+    # 키 존재 여부뿐만 아니라 앞 4자리만 살짝 보여줘서 확인 사살
+    G_MASKED=$([ -n "$G_KEY" ] && echo "${G_KEY:0:4}***" || echo "EMPTY")
+    echo "✅ docker/.env 생성 완료 (G_KEY: $G_MASKED)"
 else
     echo "⚠️ web/.env.local 파일을 찾을 수 없어 기존 설정을 유지합니다."
 fi

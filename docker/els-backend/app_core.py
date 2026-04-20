@@ -39,10 +39,23 @@ for v in required_vars:
     if val:
         # 값의 앞뒤 공백이나 \r이 있는지 체크 (디버깅용)
         has_whitespace = val != val.strip()
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] {v}: ✅ 설정됨 (길이: {len(val)}, 공백포함: {has_whitespace})")
+        # 보안상 앞 4자리만 출력
+        masked = val[:4] + "****" if len(val) > 4 else "****"
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] {v}: ✅ {masked} (길이: {len(val)}, 공백포함: {has_whitespace})")
     else:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] {v}: ❌ 미설정")
-print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] 환경변수 체크 완료")
+
+# DNS 자가 진단
+try:
+    import socket
+    supabase_host = os.environ.get("SUPABASE_URL", "").replace("https://", "").split("/")[0]
+    if supabase_host:
+        ip = socket.gethostbyname(supabase_host)
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] {supabase_host} -> {ip} ✅")
+except Exception as e:
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] ❌ 해소 실패: {str(e)}")
+
+print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] 환경변수/DNS 체크 완료")
 # -----------------------------
 
 app = Flask(__name__)
