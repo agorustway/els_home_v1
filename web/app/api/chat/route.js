@@ -432,13 +432,18 @@ export async function POST(req) {
             }
 
             // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 (Omni-Agent Phase 1)
-            // [BUG FIX] '위탁' 키워드 감지 범위를 넓혀 '위탁단가' 등도 위탁운임 안내로 유도
+            // [BUG FIX] 위탁운임 / 운수사(운수자간) 운임은 안전운임과 별개 → 파이프라인 분리
             const isWitakQuery = userKwd.includes('위탁');
+            const isUnsusaQuery = userKwd.includes('운수사') || userKwd.includes('운수자');
             if (isWitakQuery) {
                 recentPostsText += `\n\n## ⚠️ 위탁운임 안내\n**위탁운임**은 안전운임과 다른 별개의 운임 체계입니다.\n- 안전운임: 국토교통부 고시 기준, 화주가 운송사에 지급하는 최저 법정 운임 (시스템에 단가 데이터 보유)\n- **위탁운임: 운송사(ELS)가 협력사/용차 업체에 지급하는 운임** — 사내 계약/배차 시스템 기준이며 공개된 DB가 없습니다.\n❗ 위탁운임 단가는 [아산지점 배차판](/employees/branches/asan)의 배차 정보 또는 영업 담당자에게 확인하세요. (AI가 임의로 단가를 지어낼 수 없음)`;
             }
+            if (isUnsusaQuery && !isWitakQuery) {
+                recentPostsText += `\n\n## ⚠️ 운수사(운수자간) 운임 안내\n**운수사 운임**은 안전운임과 다른 별개의 운임 체계입니다.\n- 안전운임: 국토교통부 고시 기준, 화주가 운송사에 지급하는 최저 법정 운임 (시스템에 단가 데이터 보유)\n- **운수사 운임: 화주(글로비스 등)가 ELS 같은 운송사에 지급하는 운임** — 개별 계약(운송위탁계약서) 단가 기준이며 공개된 DB가 없습니다.\n❗ 운수사 운임 단가는 영업 담당자 또는 계약서를 확인하세요. (AI가 임의로 단가를 지어낼 수 없음)`;
+            }
+            const isNonSfFreightQuery = isWitakQuery || isUnsusaQuery;
             const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항', '여객터미널', '인천여객', '인천국제여객', '인천신항', '인천항', '울산항', '울산신항', '평택항', '포항항', '군산항', '마산항', '대산항', '인상', '변동', '비교', '추이', '이전', '할증', '냉동', '냉장', '플렉시', '탱크', '험로', '덤프', '공휴일', '울산', '평택', '마산', '포항', '군산', '대산', '대기료', '부대조항', '추가요금', '반납', '도착'];
-            isSfQuery = !isWitakQuery && (
+            isSfQuery = !isNonSfFreightQuery && (
                 searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
                 sfKeywords.some(k => userKwd.includes(k)) ||
                 portAliasTerms.length > 0 // 항구 별칭이 1개라도 감지되면 안전운임 쿼리로 처리
