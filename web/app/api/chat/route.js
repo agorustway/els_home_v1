@@ -596,7 +596,7 @@ export async function POST(req) {
                         content: { parts: [{ text: lastUserText }] },
                         outputDimensionality: 768
                     }),
-                    signal: AbortSignal.timeout(5000)
+                    signal: AbortSignal.timeout(15000)
                 }).catch(() => null);
 
                 if (embedRes && embedRes.ok) {
@@ -660,8 +660,8 @@ export async function POST(req) {
                     const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
                     const url = kskillProxyBase + encodeURIComponent(targetUri);
                     const res = await fetch(url, {
-                        signal: AbortSignal.timeout(8000),
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                        signal: AbortSignal.timeout(15000), // 장비 지연 고려하여 15초로 연장
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)' }
                     });
                     if (res.ok) {
                         const data = await res.json();
