@@ -44,9 +44,7 @@ EOF
     # 키 존재 여부뿐만 아니라 앞 4자리만 살짝 보여줘서 확인 사살
     G_MASKED=$([ -n "$G_KEY" ] && echo "${G_KEY:0:4}***" || echo "EMPTY")
     echo "✅ docker/.env 생성 완료 (G_KEY: $G_MASKED)"
-else
-    echo "⚠️ web/.env.local 파일을 찾을 수 없어 기존 설정을 유지합니다."
-fi
+
 
 # 3. 전체 서비스 빌드 및 재실행
 echo ">>> 전 서비스 빌드 및 재가동..."
