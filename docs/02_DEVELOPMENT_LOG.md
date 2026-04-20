@@ -1,3 +1,12 @@
+## 📅 2026-04-20 (v5.0.27 — [최종병기] DNS over HTTPS (DoH) 도입 및 방화벽 완전 돌파)
+### 🚀 주요 개선 사항
+1. **[NETWORK] DNS over HTTPS (DoH) 몽키패치 적용**:
+   - `docker-compose` 설정(`dns:`)만으로는 해결되지 않는 폐쇄적인 UDP 53 포트 차단 환경(기업 방화벽/나스 특유의 설정)을 원천적으로 해결.
+   - `socket.getaddrinfo`를 파이썬 수준에서 몽키패치하여, 표준 DNS 해소 실패 시 **Google DoH API(HTTPS)**를 통해 도메인을 IP로 변환하도록 구현.
+   - 이제 UDP 패킷이 아닌 일반 웹 트래픽(HTTPS)을 통해 Supabase 및 외부 API 주소를 완벽하게 찾아낼 수 있음.
+
+---
+
 ## 📅 2026-04-20 (v5.0.25 ~ v5.0.26 — NAS DNS 함정 분석 및 통신사 DNS 강제 주입)
 ### 🚀 주요 개선 사항
 1. **[DIAGNOSTICS] 도커 내부 `resolv.conf` 함정 발견**:

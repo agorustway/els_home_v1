@@ -21,6 +21,43 @@ import requests
 import urllib3
 urllib3.disable_warnings()
 
+# ==========================================
+# 🚨 [최종 병기] DNS over HTTPS (DoH) 몽키패치 🚨
+# 나스 방화벽이 UDP 53 포트를 차단하는 경우를 완전히 우회합니다.
+import socket
+import urllib.request
+_original_getaddrinfo = socket.getaddrinfo
+
+def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    # 로컬 호스트나 이미 IP인 경우는 바로 통과
+    if host in ("localhost", "127.0.0.1", "0.0.0.0") or (re.match(r"^\d+\.\d+\.\d+\.\d+$", host)):
+        return _original_getaddrinfo(host, port, family, type, proto, flags)
+    
+    try:
+        # 먼저 표준 방식으로 시도
+        return _original_getaddrinfo(host, port, family, type, proto, flags)
+    except socket.gaierror:
+        # 실패 시 Google DoH 사용하여 IP 직접 해소
+        try:
+            doh_url = f"https://dns.google/resolve?name={host}&type=A"
+            req = urllib.request.Request(doh_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode())
+                for answer in data.get('Answer', []):
+                    if answer.get('type') == 1: # A record
+                        ip = answer['data']
+                        print(f"[DoH SUCCESS] {host} -> {ip}")
+                        # 가짜 addrinfo 생성 (TCP 전용으로 간략화)
+                        return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
+        except Exception as doh_e:
+            print(f"[DoH FAILED] {host} resolution failed: {str(doh_e)}")
+        
+        # DoH도 실패하면 원래 에러 발생
+        raise
+
+socket.getaddrinfo = _doh_getaddrinfo
+# ==========================================
+
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
 
