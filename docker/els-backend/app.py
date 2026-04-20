@@ -221,9 +221,13 @@ def sync_asan_dispatch_python(force=False):
                                 openpyxl_r_offset = (cell.row - 1) - header_idx
                                 openpyxl_c_offset = (cell.column - 1) - header_col_idx
                                 found_header = True
+                                app.logger.info(f"[오프셋계산] 시트:{sheet_name}, 구분위치(R/C):{cell.row}/{cell.column}, Offset(R/C):{openpyxl_r_offset}/{openpyxl_c_offset}")
                                 break
                         if found_header:
                             break
+                    
+                    if not found_header:
+                        app.logger.warning(f"[오프셋계산 실패] 시트:{sheet_name}에서 '구분' 헤더를 찾지 못함. 기본값 유지.")
                             
                     # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
                     for r_cells in ws.iter_rows():
