@@ -142,9 +142,6 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             # 추출
             text = ""
             try:
-            # 추출
-            text = ""
-            try:
                 if ext == ".pdf":
                     text = extract_text_pypdf(file_path_str)
                 elif ext == ".docx":
