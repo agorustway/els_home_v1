@@ -40,7 +40,8 @@ services:
       context: ..
       dockerfile: docker/els-backend/Dockerfile.core
     container_name: els-core
-    network_mode: host
+    ports:
+      - "2930:2930"
     dns:
       - 8.8.8.8
       - 8.8.4.4
