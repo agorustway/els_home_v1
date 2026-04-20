@@ -13,10 +13,10 @@ ENV_FILE="web/.env.local"
 DOCKER_ENV="docker/.env"
 
 if [ -f "$ENV_FILE" ]; then
-    # 더 유연한 정규식으로 키 추출 (앞뒤 공백 무관)
+    # 더 강력한 패턴 매칭 (이름이 틀려도 AIza... 패턴으로 찾아냄)
     S_URL=$(grep "SUPABASE_URL=" "$ENV_FILE" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
     S_KEY=$(grep "SUPABASE_SERVICE_ROLE_KEY=" "$ENV_FILE" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
-    G_KEY=$(grep "GEMINI_API_KEY=" "$ENV_FILE" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
+    G_KEY=$(grep -E "(GEMINI_API_KEY|AIza)" "$ENV_FILE" | grep "=" | head -n 1 | cut -d'=' -f2- | xargs | tr -d '\r')
     
     cat <<EOF > "$DOCKER_ENV"
 SUPABASE_URL=$S_URL
