@@ -20,9 +20,6 @@ services:
       dockerfile: docker/els-backend/Dockerfile.bot
     container_name: els-bot
     network_mode: host
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     env_file:
       - .env
     environment:
@@ -42,9 +39,6 @@ services:
     container_name: els-core
     ports:
       - "2930:2930"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     env_file:
       - .env
     environment:
