@@ -40,6 +40,7 @@ services:
     build:
       context: ..
       dockerfile: docker/els-backend/Dockerfile.core
+    container_name: els-core
     network_mode: host
     extra_hosts:
       - "pzfnrnscwudifgcctzke.supabase.co:172.64.149.246"
