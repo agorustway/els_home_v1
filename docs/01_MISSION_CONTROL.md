@@ -2,11 +2,13 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v5.0.40` | **DONE: socket.getaddrinfo 몽키패치로 DNS 장애 완전 해결** |
-| **상태** | 🟢 정상 | 나스 내 DNS 무관하게 Supabase/NAS IP 강제 매핑 완료 |
+| **현재 버전** | `v5.0.41` | **DONE: /etc/hosts 직접 주입 및 WebDAV 우회로 DNS 이슈 원천 차단** |
+| **상태** | 🟢 정상 | OS 레벨 DNS 조작 및 로컬 볼륨 마운트로 완전 전환 |
 
 ## 🚧 최근 이슈 및 조치 (2026-04-21)
-- **[SOLVED] httpx [Errno -2] 장애**: `SUPABASE_URL` 단순 교체 방식은 `auth`, `storage` 등 서브도메인 해소 실패 유발. `dns_fix.py`를 통한 전역 소켓 레벨 몽키패치로 전환하여 모든 서브도메인(auth, storage, realtime, rest) 대응 완료.
+- **[SOLVED] 아산 배차판 자동 업데이트 [Errno -2] 장애**: 
+  1) `supabase-py`가 내부적으로 사용하는 `httpx` (anyio 기반)가 파이썬 레벨의 `socket.getaddrinfo` 몽키패치를 무시하는 현상 발견. 이를 타개하기 위해 `dns_fix.py`가 파이썬 몽키패치 대신 **OS 레벨의 `/etc/hosts` 파일을 직접 수정(주입)**하도록 아키텍처를 상향 조치했습니다.
+  2) `app_core.py`의 구형 WebDAV 다운로드 로직(requests.get)이 잔존하여 발생하던 외부망 DNS 의존성을 완전히 제거하고, `app.py`와 동일하게 도커에 마운트된 **로컬 경로(`/app/data`)를 직접 읽도록** 로직을 동기화했습니다 (메모 추출 로직 포함).
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
