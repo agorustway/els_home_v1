@@ -73,12 +73,13 @@ function safeNote(cell) {
  */
 function parseSheet(sheet, type) {
     let headerRowIdx = -1;
-    for (let r = 1; r <= 10; r++) {
+    // 헤더 검색 범위를 30줄로 확장
+    for (let r = 1; r <= 30; r++) {
         const row = sheet.getRow(r);
         let found = false;
-        row.eachCell((cell) => {
+        row.eachCell({ includeEmpty: true }, (cell) => {
             const v = safeValue(cell);
-            if (v.includes('구분')) found = true;
+            if (v && v.includes('구분')) found = true;
         });
         if (found) { headerRowIdx = r; break; }
     }
@@ -103,20 +104,24 @@ function parseSheet(sheet, type) {
     const rows = [];
     const comments = {}; // sparse: "rowIdx:colIdx" → "text"
 
+    // 전체 시트에서 메모(note) 추출 (사전 캐싱으로 성능 확보 고려 가능하나 현재는 루프 내 처리)
     for (let r = headerRowIdx + 1; r <= 800; r++) {
         const row = sheet.getRow(r);
+        if (!row) continue;
+        
         const firstVal = safeValue(row.getCell(1));
-        if (firstVal.includes('합계')) break;
+        if (firstVal && firstVal.includes('합계')) break;
 
         const filterVal = safeValue(row.getCell(filterCol));
-        if (!filterVal || filterVal === '0') continue;
+        if (!filterVal || filterVal === '0' || filterVal === 'nan') continue;
 
         const rowIdx = rows.length;
         const rowData = [];
         for (let c = 1; c <= maxCol; c++) {
-            rowData.push(safeValue(row.getCell(c)));
-            // 메모 추출
-            const note = safeNote(row.getCell(c));
+            const cell = row.getCell(c);
+            rowData.push(safeValue(cell));
+            // 메모(exceljs에서는 note) 추출
+            const note = safeNote(cell);
             if (note) comments[`${rowIdx}:${c - 1}`] = note;
         }
         rows.push(rowData);

@@ -168,9 +168,9 @@ def sync_asan_dispatch_python(force=False):
                 
                 # 시트 파싱
                 df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
-                # '구분'이 포함된 행 찾기 (헤더 행)
+                # '구분'이 포함된 행 찾기 (헤더 행) - 범위를 100줄로 대폭 확장하여 다양한 엑셀 레이아웃에 대응
                 header_idx = -1
-                for i, row in df.head(10).iterrows():
+                for i, row in df.head(100).iterrows():
                     if row.astype(str).str.contains('구분').any():
                         header_idx = i
                         break
@@ -196,39 +196,42 @@ def sync_asan_dispatch_python(force=False):
                 try:
                     import openpyxl
                     wb = openpyxl.load_workbook(full_path, data_only=True)
-                    if sheet_name in wb.sheetnames:
-                        ws = wb[sheet_name]
+                    target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
+                    if target_ws_name not in wb.sheetnames:
+                        continue
+                    ws = wb[target_ws_name]
+                    
+                    # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
+                    header_col_idx = -1
+                    for j, h in enumerate(headers):
+                        if '구분' in str(h):
+                            header_col_idx = j
+                            break
+                    if header_col_idx == -1:
+                        header_col_idx = 0
                         
-                        # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
-                        header_col_idx = -1
-                        for j, h in enumerate(headers):
-                            if '구분' in str(h):
-                                header_col_idx = j
+                    # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산 (검색 범위 100행으로 확장)
+                    openpyxl_r_offset = 0
+                    openpyxl_c_offset = 0
+                    found_header = False
+                    for r_cells in ws.iter_rows(min_row=1, max_row=100):
+                        for cell in r_cells:
+                            val = str(cell.value) if cell.value else ""
+                            if '구분' in val:
+                                openpyxl_r_offset = (cell.row - 1) - header_idx
+                                openpyxl_c_offset = (cell.column - 1) - header_col_idx
+                                found_header = True
                                 break
-                        if header_col_idx == -1:
-                            header_col_idx = 0
+                        if found_header:
+                            break
                             
-                        # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산
-                        openpyxl_r_offset = 0
-                        openpyxl_c_offset = 0
-                        found_header = False
-                        for r_cells in ws.iter_rows(min_row=1, max_row=20):
-                            for cell in r_cells:
-                                if cell.value and '구분' in str(cell.value):
-                                    openpyxl_r_offset = (cell.row - 1) - header_idx
-                                    openpyxl_c_offset = (cell.column - 1) - header_col_idx
-                                    found_header = True
-                                    break
-                            if found_header:
-                                break
-                                
-                        # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
-                        for r_cells in ws.iter_rows():
-                            for cell in r_cells:
-                                if cell.comment:
-                                    pd_r = (cell.row - 1) - openpyxl_r_offset
-                                    pd_c = (cell.column - 1) - openpyxl_c_offset
-                                    sheet_comments[(pd_r, pd_c)] = cell.comment.text
+                    # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
+                    for r_cells in ws.iter_rows():
+                        for cell in r_cells:
+                            if cell.comment:
+                                pd_r = (cell.row - 1) - openpyxl_r_offset
+                                pd_c = (cell.column - 1) - openpyxl_c_offset
+                                sheet_comments[(pd_r, pd_c)] = cell.comment.text
                 except Exception as e:
                     app.logger.warning(f"openpyxl load_workbook 실패: {e}")
 
