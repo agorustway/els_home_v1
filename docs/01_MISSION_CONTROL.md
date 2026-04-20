@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v5.0.31` | **DNS 무시 및 고정 IP 매핑(extra_hosts) 도입** |
-| **상태** | 🟢 정상 | Supabase/K-Skill 주소에 고정 IP 할당하여 DNS 에러 원천 봉쇄 |
+| **현재 버전** | `v5.0.32` | **나스 내부망 주소 고정 IP 매핑 추가** |
+| **상태** | 🟢 정상 | elssolution.synology.me를 내부 IP로 매핑하여 WebDAV 통신 오류 해결 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -83,4 +83,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-20 v5.0.31 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-20 v5.0.32 (by Antigravity/Gemini)*

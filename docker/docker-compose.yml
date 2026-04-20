@@ -23,6 +23,7 @@ services:
     extra_hosts:
       - "pzfnrnscwudifgcctzke.supabase.co:172.64.149.246"
       - "k-skill-proxy.nomadamas.org:172.67.129.146"
+      - "elssolution.synology.me:192.168.0.4"
     env_file:
       - .env
     environment:
@@ -45,6 +46,7 @@ services:
     extra_hosts:
       - "pzfnrnscwudifgcctzke.supabase.co:172.64.149.246"
       - "k-skill-proxy.nomadamas.org:172.67.129.146"
+      - "elssolution.synology.me:192.168.0.4"
     env_file:
       - .env
     environment:
