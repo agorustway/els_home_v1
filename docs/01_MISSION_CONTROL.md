@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v4.9.93` | **Driver App Module Load Failure Fixed** |
-| **상태** | 🟢 해결완료 | `trip.js` 구문 오류(SyntaxError) 수정 및 v4.9.29 배포 완료 |
+| **현재 버전** | `v4.9.94` | **AI 부산 이외 항구 안전운임 스코어링 버그 수정** |
+| **상태** | 🟢 정상 | 인천여객터미널 등 부산 이외 항구 쿼리 정상 응답 확인 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -13,9 +13,10 @@
 13. **[DONE]** NAS 문서 크롤러 및 벡터화 (Phase 5) 완료 — **AI 에이전트 개발 100% 종료**
 14. **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
 15. **[DONE]** 드라이버 앱 "ID 누락" 현상 근본 원인 해결 완료 (NextResponse 직렬화 적용)
+16. **[DONE]** AI 안전운임 조회 부산 이외 항구 응답 누락 버그 수정 (PORT_ALIAS_MAP + 스코어링 개선)
 
 ## 📦 최신 배포 정보
-- **Current Build**: `v4.9.93` (드라이버 앱 v4.9.29 포함)
+- **Current Build**: `v4.9.94` (AI 스코어링 엔진 개선)
 - **APK URL**: `https://nollae.com/apk/els_driver.apk` (홈페이지 및 자동 업데이트용)
 - **Repo**: main 브랜치 배포 완료
 
@@ -78,4 +79,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-20 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-20 v4.9.94 (by Antigravity/Gemini)*
