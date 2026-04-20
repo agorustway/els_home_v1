@@ -484,27 +484,29 @@ export async function POST(req) {
                         let matchedCount = 0;
                         const kSegments = k.replace(/[\[\]]/g, '').split('|').map(s => s.trim());
                         searchTerms.forEach(t => {
-                            // 정방향: 키에 검색어가 포함 (기존 로직)
+                            // 정방향: 키에 검색어가 포함
                             if (k.includes(t)) {
+                                score += 15;
+                                matchedCount++;
+                            }
+                            // 역방향: 검색어가 키 세그먼트의 일부이거나 포함 (예: "수원" 검색 -> "수원시" 매칭)
+                            else if (kSegments.some(seg => t.includes(seg) || seg.includes(t))) {
                                 score += 10;
                                 matchedCount++;
                             }
-                            // 역방향: 검색어가 키 세그먼트를 포함 (예: "인천국제여객" 검색 → 세그먼트 "인천국제여객" 매칭)
-                            else if (kSegments.some(seg => t.includes(seg) || seg.includes(t))) {
-                                score += 8;
-                                matchedCount++;
-                            }
                         });
-                        // 출발지 세그먼트(index 0) 정확 매칭 시 가중치 추가
+                        // 출발지 세그먼트(index 0) 매칭 시 가중치 추가
                         if (portAliasTerms.some(alias => kSegments[0] && kSegments[0].includes(alias))) {
-                            score += 20;
+                            score += 15;
                             matchedCount++;
                         }
-                        if (matchedCount > 1) score += (matchedCount * 15);
+                        // 다중 토큰 매칭 시 가속 (수원 + 인천 등)
+                        if (matchedCount > 1) score += (matchedCount * 25);
+                        
                         return { k, score };
-                    }).filter(i => i.score > 0)
+                    }).filter(i => i.score >= 10)
                         .sort((a, b) => b.score - a.score)
-                        .slice(0, 8);
+                        .slice(0, 5);
 
                     if (scored.length > 0) {
                         // (A) 최신 운임 단가 표
