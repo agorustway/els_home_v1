@@ -2380,3 +2380,8 @@ public/
 - (Fix) Rewrote smartFetch to robustly handle JSON objects vs strings and detect HTML error pages.
 - (Deploy) v4.9.33 Build & Push 완료.
 
+### 2026-04-20 (v4.9.34) - Critical Fix: Non-WWW URL & Redirect Issue
+- (Fix) Changed BASE_URL to https://nollae.com to eliminate 307 temporary redirect issues.
+- (Fix) Confirmed that 307 redirects were dropping POST body or failing in CapacitorHttp.
+- (Deploy) v4.9.34 Build & Push 완료.
+

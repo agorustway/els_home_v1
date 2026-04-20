@@ -1,9 +1,9 @@
 /**
  * emergency.js — 긴급알림 폴링, 팝업, 네이티브 알림
  */
-import { Store, State, BASE_URL } from './store.js?v=4933';
-import { smartFetch, Emergency } from './bridge.js?v=4933';
-import { startRealtimeMode, stopRealtimeMode } from './gps.js?v=4933';
+import { Store, State, BASE_URL } from './store.js?v=4934';
+import { smartFetch, Emergency } from './bridge.js?v=4934';
+import { startRealtimeMode, stopRealtimeMode } from './gps.js?v=4934';
 
 let emergencyPollTimer = null;
 
