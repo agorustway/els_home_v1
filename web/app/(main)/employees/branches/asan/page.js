@@ -382,7 +382,7 @@ export default function AsanDispatchPage() {
         if (!allData) return [];
         return allData.map((row, idx) => {
             const r = [...row];
-            r.origIdx = idx;
+            r.origIdx = idx; // DB 저장 순서 (comments 키 기준)
             return r;
         });
     }, [allData]);
@@ -457,7 +457,8 @@ export default function AsanDispatchPage() {
         if (colorFilter) { rows = rows.filter(r => r.status === colorFilter); }
 
         return rows;
-    }, [allData, headers, viewType, searchResult, columnFilters, colorFilter]);
+    // [BUG FIX] processedData를 deps에 추가: integrated 뷰 정렬 후 row.origIdx가 올바르게 반영되어야 comments key가 일치함
+    }, [processedData, headers, viewType, searchResult, columnFilters, colorFilter]);
 
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
@@ -719,6 +720,8 @@ export default function AsanDispatchPage() {
                                             ${status === 'other_category' ? styles.rowOther : ''}
                                         `}>
                                             {visibleCols.map(ci => {
+                                                // [BUG FIX] origIdx는 DB 저장 순서 = comments 키 기준.
+                                                // integrated 정렬 후에도 origIdx(DB row 번호)로 comments를 찾아야 함.
                                                 const ck = `${origIdx}:${ci}`;
                                                 const hc = !!comments[ck];
                                                 const w = colWidths[headers[ci]];
