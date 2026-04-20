@@ -2777,3 +2777,9 @@ public/
 - (Fix) Confirmed that 307 redirects were dropping POST body or failing in CapacitorHttp.
 - (Deploy) v4.9.34 Build & Push 완료.
 
+
+### 2026-04-21 (v5.0.40) - Robust DNS Fix for NAS Environment
+- (Fix) Implemented global DNS monkeypatch using socket.getaddrinfo in dns_fix.py.
+- (Fix) Solved [Errno -2] Name or service not known by mapping all required Supabase subdomains to static IPs.
+- (Architecture) Centralized DNS resilience logic and applied to all NAS backend entry points (app.py, app_core.py, app_bot.py).
+- (Deploy) Updated Dockerfiles to include dns_fix.py in build images.

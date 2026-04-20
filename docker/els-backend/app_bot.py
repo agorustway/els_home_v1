@@ -18,6 +18,9 @@ import pandas as pd
 KST = timezone(timedelta(hours=9))
 
 # --- [v4.5.1] BOT 전용 백엔드 ---
+import dns_fix
+dns_fix.apply_dns_patch()
+
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 

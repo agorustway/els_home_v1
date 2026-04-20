@@ -24,14 +24,13 @@ urllib3.disable_warnings()
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
 
+# [v5.0.40] DNS 장애 환경 대응: 전역 소켓 패치 적용
+import dns_fix
+dns_fix.apply_dns_patch()
+
 # --- Supabase 설정 ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-
-# [v5.0.36] DNS 장애 환경 대응: 고정 IP 강제 매핑 (Host 모드 대비)
-if SUPABASE_URL and "pzfnrnscwudifgcctzke.supabase.co" in SUPABASE_URL:
-    SUPABASE_URL = SUPABASE_URL.replace("pzfnrnscwudifgcctzke.supabase.co", "172.64.149.246")
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS-FORCE] Supabase 고정 IP 강제 매핑 적용")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 

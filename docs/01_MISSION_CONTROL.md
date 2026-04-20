@@ -1,14 +1,12 @@
-# 🛰️ MISSION CONTROL (2026-04-20)
+# 🛰️ MISSION CONTROL (2026-04-21)
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v5.0.36` | **WIP: DNS 장애 하드코딩 우회 중** |
-| **상태** | 🔴 점검 중 | 나스 사내망 DNS 차단으로 인한 Supabase 연동 장애 해결 중 (내일 재개) |
+| **현재 버전** | `v5.0.40` | **DONE: socket.getaddrinfo 몽키패치로 DNS 장애 완전 해결** |
+| **상태** | 🟢 정상 | 나스 내 DNS 무관하게 Supabase/NAS IP 강제 매핑 완료 |
 
-## 🚧 현재 블로커 및 긴급 현황 (2026-04-20)
-- **현상**: `v5.0.36`까지 강제 IP 매핑을 적용했으나, `httpx` 호출 시 여전히 `[Errno -2]` 발생.
-- **의심**: `supabase-py` 내부에서 `pzfn...` 외에 `auth`, `realtime` 등 보조 도메인을 추가 해소하려다 실패하는 것으로 추정.
-- **다음 조치**: `httpx`의 `Resolver`를 직접 재정의하거나 나스 본체 호스트 파일 수정 검토 필요.
+## 🚧 최근 이슈 및 조치 (2026-04-21)
+- **[SOLVED] httpx [Errno -2] 장애**: `SUPABASE_URL` 단순 교체 방식은 `auth`, `storage` 등 서브도메인 해소 실패 유발. `dns_fix.py`를 통한 전역 소켓 레벨 몽키패치로 전환하여 모든 서브도메인(auth, storage, realtime, rest) 대응 완료.
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -88,4 +86,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-20 v5.0.36 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-21 v5.0.40 (by Antigravity/Gemini)*
