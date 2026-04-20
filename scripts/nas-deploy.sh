@@ -13,18 +13,19 @@ ENV_FILE="web/.env.local"
 DOCKER_ENV="docker/.env"
 
 if [ -f "$ENV_FILE" ]; then
-    # 주요 키값들만 추출 (주석 제외)
-    S_URL=$(grep "^NEXT_PUBLIC_SUPABASE_URL=" "$ENV_FILE" | cut -d'=' -f2-)
-    S_KEY=$(grep "^SUPABASE_SERVICE_ROLE_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
-    G_KEY=$(grep "^GEMINI_API_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
+    # \r 제거 및 공백 정제 후 변수 추출 (윈도우-리눅스 호환성 강화)
+    CLEAN_ENV=$(cat "$ENV_FILE" | tr -d '\r')
+    S_URL=$(echo "$CLEAN_ENV" | grep "^NEXT_PUBLIC_SUPABASE_URL=" | cut -d'=' -f2- | xargs)
+    S_KEY=$(echo "$CLEAN_ENV" | grep "^SUPABASE_SERVICE_ROLE_KEY=" | cut -d'=' -f2- | xargs)
+    G_KEY=$(echo "$CLEAN_ENV" | grep "^GEMINI_API_KEY=" | cut -d'=' -f2- | xargs)
     
     cat <<EOF > "$DOCKER_ENV"
 SUPABASE_URL=$S_URL
 SUPABASE_SERVICE_ROLE_KEY=$S_KEY
 GEMINI_API_KEY=$G_KEY
-DAEMON_URL=http://127.0.0.1:31999
+DAEMON_URL=http://127.0.0.1:2931
 EOF
-    echo "✅ docker/.env 생성 완료"
+    echo "✅ docker/.env 생성 완료 (G_KEY 존재 확인: $([ -n "$G_KEY" ] && echo "YES" || echo "NO"))"
 else
     echo "⚠️ web/.env.local 파일을 찾을 수 없어 기존 설정을 유지합니다."
 fi
