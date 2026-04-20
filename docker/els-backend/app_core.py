@@ -31,41 +31,42 @@ _original_getaddrinfo = socket.getaddrinfo
 import ssl
 
 def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    # 로컬 호스트, IP, 또는 DoH 서버 자신은 바로 통과 (무한 루프 방지)
-    if host in ("localhost", "127.0.0.1", "0.0.0.0") or host == "dns.google" or (re.match(r"^\d+\.\d+\.\d+\.\d+$", host)):
+    # 로컬/IP/DoH 서버 확인 (더 단순한 체크)
+    is_ip = all(c.isdigit() or c == '.' for c in host) if host else False
+    if not host or host in ("localhost", "127.0.0.1", "0.0.0.0", "dns.google") or is_ip:
         return _original_getaddrinfo(host, port, family, type, proto, flags)
     
+    # ⚠️ 디버깅: 모든 도메인 해소 시도 기록
+    # print(f"[DoH-DEBUG] Resolving: {host}")
+
     try:
-        # 먼저 표준 방식으로 시도
         return _original_getaddrinfo(host, port, family, type, proto, flags)
-    except socket.gaierror:
-        # 실패 시 Google DoH 사용하여 IP 직접 해소
+    except Exception: # 더 넓은 범위의 에러 포착
         try:
-            # dns.google의 IP (8.8.8.8)를 직접 사용하여 DNS가 아예 안되는 상황 대비
-            # SSL 인증서 매칭을 위해 주소는 그대로 두되, 해소만 우회
+            # Google DoH (HTTPS)로 우회
             doh_url = f"https://8.8.8.8/resolve?name={host}&type=A"
-            # 인증서 검증 건너뛰기 (이미 IP로 접속하므로)
             ctx = ssl._create_unverified_context()
             req = urllib.request.Request(doh_url, headers={'User-Agent': 'Mozilla/5.0', 'Host': 'dns.google'})
             with urllib.request.urlopen(req, timeout=5, context=ctx) as response:
-                data = json.loads(response.read().decode())
-                for answer in data.get('Answer', []):
+                result = json.loads(response.read().decode())
+                for answer in result.get('Answer', []):
                     if answer.get('type') == 1: # A record
                         ip = answer['data']
-                        print(f"[DoH SUCCESS] {host} -> {ip}")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DoH] ✅ {host} -> {ip}")
                         return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
-        except Exception as doh_e:
-            print(f"[DoH FAILED] {host} resolution failed: {str(doh_e)}")
-        
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DoH] ❌ {host} 우회 실패: {str(e)}")
         raise
 
 socket.getaddrinfo = _doh_getaddrinfo
 
 def _doh_gethostbyname(host):
     try:
-        return socket.getaddrinfo(host, 80)[0][4][0]
-    except:
-        return _original_getaddrinfo(host, 80)[0][4][0] # Fallback to original if DoH fails and original somehow works
+        ais = socket.getaddrinfo(host, 80)
+        return ais[0][4][0]
+    except Exception:
+        # 최후의 수단: original 호출 (보통 여기서 gaierror 발생)
+        return _original_getaddrinfo(host, 80)[0][4][0]
 
 socket.gethostbyname = _doh_gethostbyname
 # ==========================================
