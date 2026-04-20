@@ -31,6 +31,20 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and
 
 # --- 로깅 설정 ---
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [CORE] %(message)s')
+# --- 환경 변수 로드 상태 디버깅 ---
+required_vars = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "GEMINI_API_KEY"]
+print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] 환경변수 체크 시작...")
+for v in required_vars:
+    val = os.environ.get(v)
+    if val:
+        # 값의 앞뒤 공백이나 \r이 있는지 체크 (디버깅용)
+        has_whitespace = val != val.strip()
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] {v}: ✅ 설정됨 (길이: {len(val)}, 공백포함: {has_whitespace})")
+    else:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] {v}: ❌ 미설정")
+print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] 환경변수 체크 완료")
+# -----------------------------
+
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 

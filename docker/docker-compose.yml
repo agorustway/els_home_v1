@@ -23,15 +23,11 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - TZ=Asia/Seoul
-      - PORT=2931
-      - DAEMON_URL=http://127.0.0.1:31999
     env_file:
       - .env
+    environment:
+      - PORT=2931
+      - DAEMON_URL=http://127.0.0.1:31999
     volumes:
       - ./data:/app/data
       - /volume1:/app/volume1
@@ -48,14 +44,10 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - TZ=Asia/Seoul
-      - PORT=2930
     env_file:
       - .env
+    environment:
+      - PORT=2930
     volumes:
       - ./data:/app/data
       - /volume1:/app/volume1
