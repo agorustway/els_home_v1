@@ -56,6 +56,14 @@ def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
         raise
 
 socket.getaddrinfo = _doh_getaddrinfo
+
+def _doh_gethostbyname(host):
+    try:
+        return socket.getaddrinfo(host, 80)[0][4][0]
+    except:
+        return _original_getaddrinfo(host, 80)[0][4][0] # Fallback to original if DoH fails and original somehow works
+
+socket.gethostbyname = _doh_gethostbyname
 # ==========================================
 
 # --- KST 설정 ---

@@ -1,3 +1,11 @@
+## 📅 2026-04-20 (v5.0.28 — gethostbyname 포함 전체 DNS 호출 DoH 통합)
+### 🚀 주요 개선 사항
+1. **[FIX] DNS 몽키패치 범위 확장**:
+   - 기존 `getaddrinfo`뿐만 아니라 `gethostbyname`까지 DoH(HTTPS 방식) 조회를 사용하도록 몽키패치를 보강.
+   - 일부 라이브러리나 진단 코드에서 사용하는 구형 DNS 조회 방식까지 모두 HTTPS로 우회시켜 나스 사내망 방화벽 문제를 완벽하게 소멸시킴.
+
+---
+
 ## 📅 2026-04-20 (v5.0.27 — [최종병기] DNS over HTTPS (DoH) 도입 및 방화벽 완전 돌파)
 ### 🚀 주요 개선 사항
 1. **[NETWORK] DNS over HTTPS (DoH) 몽키패치 적용**:

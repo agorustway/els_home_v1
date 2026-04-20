@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v5.0.27` | **HTTP 기반 DNS 해소(DoH) 도입으로 방화벽 완전 돌파** |
-| **상태** | 🟢 정상 | UDP 53 차단 환경 무력화 (DNS over HTTPS 몽키패치 상시 가동) |
+| **현재 버전** | `v5.0.28` | **gethostbyname 포함 모든 DNS 호출 DoH로 통합** |
+| **상태** | 🟢 정상 | 파이썬 소켓 레벨의 모든 DNS 조회를 HTTPS로 우회 완료 |
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -83,4 +83,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-20 v5.0.27 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-20 v5.0.28 (by Antigravity/Gemini)*
