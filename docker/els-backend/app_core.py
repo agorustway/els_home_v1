@@ -21,56 +21,6 @@ import requests
 import urllib3
 urllib3.disable_warnings()
 
-# ==========================================
-# 🚨 [최종 병기] DNS over HTTPS (DoH) 몽키패치 🚨
-# 나스 방화벽이 UDP 53 포트를 차단하는 경우를 완전히 우회합니다.
-import socket
-import urllib.request
-_original_getaddrinfo = socket.getaddrinfo
-
-import ssl
-
-def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    # 로컬/IP/DoH 서버 확인 (더 단순한 체크)
-    is_ip = all(c.isdigit() or c == '.' for c in host) if host else False
-    if not host or host in ("localhost", "127.0.0.1", "0.0.0.0", "dns.google") or is_ip:
-        return _original_getaddrinfo(host, port, family, type, proto, flags)
-    
-    # ⚠️ 디버깅: 모든 도메인 해소 시도 기록
-    # print(f"[DoH-DEBUG] Resolving: {host}")
-
-    try:
-        return _original_getaddrinfo(host, port, family, type, proto, flags)
-    except Exception: # 더 넓은 범위의 에러 포착
-        try:
-            # Google DoH (HTTPS)로 우회
-            doh_url = f"https://8.8.8.8/resolve?name={host}&type=A"
-            ctx = ssl._create_unverified_context()
-            req = urllib.request.Request(doh_url, headers={'User-Agent': 'Mozilla/5.0', 'Host': 'dns.google'})
-            with urllib.request.urlopen(req, timeout=5, context=ctx) as response:
-                result = json.loads(response.read().decode())
-                for answer in result.get('Answer', []):
-                    if answer.get('type') == 1: # A record
-                        ip = answer['data']
-                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DoH] ✅ {host} -> {ip}")
-                        return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
-        except Exception as e:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DoH] ❌ {host} 우회 실패: {str(e)}")
-        raise
-
-socket.getaddrinfo = _doh_getaddrinfo
-
-def _doh_gethostbyname(host):
-    try:
-        ais = socket.getaddrinfo(host, 80)
-        return ais[0][4][0]
-    except Exception:
-        # 최후의 수단: original 호출 (보통 여기서 gaierror 발생)
-        return _original_getaddrinfo(host, 80)[0][4][0]
-
-socket.gethostbyname = _doh_gethostbyname
-# ==========================================
-
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
 
@@ -95,29 +45,7 @@ for v in required_vars:
     else:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] {v}: ❌ 미설정")
 
-# DNS 자가 진단 및 강제 해소 시도
-try:
-    import socket
-    supabase_host = os.environ.get("SUPABASE_URL", "").replace("https://", "").split("/")[0]
-    
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS-DIAG] /etc/resolv.conf 내용:")
-    try:
-        with open('/etc/resolv.conf', 'r') as f:
-            print(f.read())
-    except Exception as e:
-        print(f"읽기 실패: {str(e)}")
-
-    if supabase_host:
-        try:
-            ip = socket.gethostbyname(supabase_host)
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] {supabase_host} -> {ip} ✅")
-        except:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] ⚠️ 시스템 DNS 실패, 표준 해소 재시도...")
-            raise
-except Exception as e:
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] ❌ 최종 해소 실패: {str(e)}")
-
-print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] 환경변수/DNS 체크 완료")
+print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DEBUG] 환경변수/네트워크 체크 완료")
 # -----------------------------
 
 app = Flask(__name__)
