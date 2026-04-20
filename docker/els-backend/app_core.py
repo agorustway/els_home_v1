@@ -49,14 +49,20 @@ for v in required_vars:
 try:
     import socket
     supabase_host = os.environ.get("SUPABASE_URL", "").replace("https://", "").split("/")[0]
+    
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS-DIAG] /etc/resolv.conf 내용:")
+    try:
+        with open('/etc/resolv.conf', 'r') as f:
+            print(f.read())
+    except Exception as e:
+        print(f"읽기 실패: {str(e)}")
+
     if supabase_host:
         try:
             ip = socket.gethostbyname(supabase_host)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] {supabase_host} -> {ip} ✅")
         except:
-            # 해소 실패 시 구글 DNS 등 외부망 확인 (간이 루틴)
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] ⚠️ 시스템 DNS 실패, 표준 해소 재시도...")
-            # 여기서는 직접적인 resolver 교체보다는 로그 확인에 집중
             raise
 except Exception as e:
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [CORE] [DNS] ❌ 최종 해소 실패: {str(e)}")
