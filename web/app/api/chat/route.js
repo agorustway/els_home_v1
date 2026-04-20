@@ -338,10 +338,12 @@ export async function POST(req) {
     
     // [Resilience] Vercel 환경에서는 localhost:2929가 동작하지 않으므로, Synology 외부 주소를 우선 고려
     const primaryBackend = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL;
-    const backendUrl = (primaryBackend && !primaryBackend.includes('localhost')) 
-        ? primaryBackend 
-        : 'https://elssolution.synology.me:2929'; // 2929 게이트웨이 포트로 고정
-        
+    // 기본적으로 HTTPS를 시도하되, 포트가 2929 등 커스텀 포트면 HTTP 폴백 가능성 염두
+    let backendUrl = 'https://elssolution.synology.me:2929'; 
+    if (primaryBackend && !primaryBackend.includes('localhost')) {
+        backendUrl = primaryBackend;
+    }
+    
     const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
 
     try {
