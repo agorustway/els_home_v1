@@ -658,10 +658,12 @@ export async function POST(req) {
 
                 try {
                     const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
-                    const url = kskillProxyBase + encodeURIComponent(targetUri);
-                    const res = await fetch(url, {
-                        signal: AbortSignal.timeout(15000), // 장비 지연 고려하여 15초로 연장
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)' }
+                    const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), {
+                        signal: AbortSignal.timeout(20000), // 20초로 연장
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)',
+                            'Accept': 'application/json'
+                        }
                     });
                     if (res.ok) {
                         const data = await res.json();
@@ -723,9 +725,11 @@ export async function POST(req) {
                 const hMatch = lastUserText.match(hRegex);
                 const bridge = hMatch?.[1] ? hMatch[1] + (hMatch[1].endsWith('교') ? '' : '대교') : '한강대교';
                 try {
+                    // K-SKILL 한강 수위 최신 엔드포인트 적용
                     const targetUri = `https://k-skill-proxy.nomadamas.org/v1/han-river/water-level?stationName=${encodeURIComponent(bridge)}`;
                     const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), {
-                        signal: AbortSignal.timeout(8000)
+                        signal: AbortSignal.timeout(20000),
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)' }
                     });
                     if (res.ok) {
                         const data = await res.json();
