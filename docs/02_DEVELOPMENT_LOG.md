@@ -1,3 +1,33 @@
+## 📅 2026-04-22 (v5.3.0 — AI Persistence & Knowledge Link Model)
+### 🚀 주요 개선 사항
+1. **[FEAT] AI 커스텀 지식베이스(Knowledge Base) 도입**:
+   - `ai_custom_rules` DB 테이블 신설. 사용자의 피드백 및 교정 사항을 사내 DB에 영구 저장.
+   - 대화 세션이 종료되거나 삭제되어도, 저장된 규칙을 시스템 프롬프트에 실시간 주입하여 "영구적 학습" 구현.
+2. **[FEAT] Knowledge Link Model (도메인간 지식 연결)**:
+   - 날씨(기온)와 차량 운행 안전(결빙, 예열) 간의 상관관계를 정의하여 지능형 복합 답변 제공.
+   - 특정 도메인(운임) 조회 시 관련 도메인(유가, 대기 상황)을 함께 고려하여 제안하는 로직 강화.
+3. **[FEAT] NAS 실시간 업데이트 알림 (Push-style Awareness)**:
+   - 최근 24시간 내 NAS에 새로 추가/수정된 문서를 감지하여 대화 시작 시 AI가 먼저 인지하고 안내하도록 개선.
+4. **[UX] 컨테이너 조회 지연 고지 의무화**:
+   - 데몬 작동에 따른 30초 대기 시간을 답변 전 반드시 안내하도록 AI 행동 강령(Constitution)에 반영.
+5. **[INFRA] SQL 자동화 스크립트**:
+   - `scripts/db_setup/02_ai_custom_rules.sql`을 통해 환경 구축 자동화 지원.
+
+---
+
+## 📅 2026-04-22 (v5.2.5 — NAS Vectorizer Stability & Dependency Patch)
+### 🚀 주요 개선 사항
+1. **[FIX] AI 임베딩 모델 폴백(Fallback) 로직 도입**:
+   - `text-embedding-004` 호출 실패(404) 시 즉시 `embedding-001`으로 자동 전환하여 중단 없는 벡터화 보장.
+2. **[INFRA] 문서 파싱 시스템 의존성 보강**:
+   - `Dockerfile.core`에 `antiword`(.doc 파싱), `poppler-utils`(PDF 분석) 패키지 추가 설치.
+3. **[FIX] 인덱싱 무한 루프 및 중복 작업 방지**:
+   - 추출 텍스트가 없는 파일(이미지 전용 PDF 등)도 `is_indexed: True`로 기록하여 재검색 효율 최적화.
+   - HWP 및 스킵된 파일들에 대한 해시값 저장 누락 수정.
+4. **[DOCS] 전체 진행 현황 v5.2.5 업데이트**.
+
+---
+
 ## 📅 2026-04-21 (v5.2 — NAS Crawler Extension & AI Link UX Improvement)
 ### 🚀 주요 개선 사항
 1. **[FEAT] NAS 크롤러 확장 및 파싱 엔진 고도화**:
@@ -2803,7 +2833,9 @@ public/
 
 - **목록 페이지 최적화**: 컬럼 너비 재배치(이름-부서 간격 축소), 비고(Memo) 컬럼 신설, 긴 텍스트 ellipsis(...) 처리
 - **상세 페이지 고도화**: 비즈니스 프로필 카드 형태의 2컬럼 레이아웃 도입, 메모 영역 전문화, 아이콘 기반 가용성 향상
-- **데이터 통합**: 목록 검색 필터에 메모(memo) 필드 포함하여 검색 정확도 상향### 2026-04-20 (v4.9.30) - Driver App ID Missing Fix
+- **데이터 통합**: 목록 검색 필터에 메모(memo) 필드 포함하여 검색 정확도 상향
+
+### 2026-04-20 (v4.9.30) - Driver App ID Missing Fix
 - (TDD) empty body 예외처리: 빈 Body 요청시 200 대신 400 반환하도록 route.js 수정
 - app/build.gradle 및 상수 파일 버전 4.9.30, 스크립트 실행하여 캐시버스터 포함 일괄 배포 완료
 
@@ -2833,10 +2865,3 @@ public/
 - (Architecture) Centralized DNS resilience logic and applied to all NAS backend entry points (app.py, app_core.py, app_bot.py).
 - (Deploy) Updated Dockerfiles to include dns_fix.py in build images.
 
-### 2026-04-22 (v5.2.1) - NAS Parsing Optimization & Filtering
-- (Fix) NAS 자료실 제외: scripts/run_nas_vectorize.sh 및 
-as_vectorizer.py에서 자료실 경로 제외 조치.
-- (Fix) 아산지점 특정 폴더 제외: E_임직원캐비넷, G_Downloads, F_Backup 경로 파싱 스킵 로직 추가.
-- (Opt) 대용량 파일 방어: 20MB를 초과하는 파일은 텍스트 추출 및 벡터화 대상에서 제외 (리소스 보호).
-- (Sync) 파일 카운트 정합성: 시작 전 스캔 시에도 동일한 필터링 조건을 적용하여 수치 정확도 확보.
-- (Commit) v5.2.1 반영 완료.
