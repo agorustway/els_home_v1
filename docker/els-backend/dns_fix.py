@@ -33,12 +33,16 @@ HOST_MAPPING = {
 def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     try:
         check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+        
+        # DEBUG: Print ALL intercepted getaddrinfo attempts to see exactly what httpx is doing!
+        print(f"[{datetime.now()}] [DNS-FIX-DEBUG] getaddrinfo called with host={repr(host)} ({type(host)}), port={port}")
+        
         if check_host in HOST_MAPPING:
             ip = HOST_MAPPING[check_host]
             print(f"[{datetime.now()}] [DNS-FIX] Intercepted getaddrinfo: {check_host} -> {ip}")
             return original_getaddrinfo(ip, port, family, type, proto, flags)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[{datetime.now()}] [DNS-FIX] Error in getaddrinfo hook: {e}")
     return original_getaddrinfo(host, port, family, type, proto, flags)
 
 # 3. 소켓 객체 자체를 래핑 [v5.0.43]
@@ -51,6 +55,7 @@ class PatchedSocket(original_socket):
             if isinstance(address, tuple) and len(address) >= 2:
                 host = address[0]
                 check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+                print(f"[{datetime.now()}] [DNS-FIX-DEBUG] PatchedSocket.connect called with host={repr(host)} ({type(host)})")
                 if check_host in HOST_MAPPING:
                     ip = HOST_MAPPING[check_host]
                     print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket intercepted: {check_host} -> {ip}")
@@ -98,5 +103,46 @@ def apply_dns_patch():
     if socket.socket != PatchedSocket:
         socket.socket = PatchedSocket
         print(f"[{datetime.now()}] [DNS-FIX] Global socket.socket subclass wrapper applied.")
+        
+    # [v5.0.45] HTTPCore 몽키패치 추가 (가장 확실한 계층)
+    try:
+        import httpcore._backends.sync
+        original_connect_tcp = httpcore._backends.sync.SyncBackend.connect_tcp
+        
+        def patched_connect_tcp(self, host, port, *args, **kwargs):
+            try:
+                check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+                if check_host in HOST_MAPPING:
+                    ip = HOST_MAPPING[check_host]
+                    print(f"[{datetime.now()}] [DNS-FIX] httpcore intercepted: {check_host} -> {ip}")
+                    # Replace host with ip (keep type consistent just in case)
+                    host = ip.encode('utf-8') if isinstance(host, bytes) else ip
+            except Exception as e:
+                print(f"[{datetime.now()}] [DNS-FIX] httpcore patch error: {e}")
+            return original_connect_tcp(self, host, port, *args, **kwargs)
+            
+        httpcore._backends.sync.SyncBackend.connect_tcp = patched_connect_tcp
+        print(f"[{datetime.now()}] [DNS-FIX] httpcore.SyncBackend.connect_tcp monkeypatch applied.")
+    except Exception as e:
+        print(f"[{datetime.now()}] [DNS-FIX] Failed to patch httpcore sync: {e}")
+        
+    try:
+        import httpcore._backends.anyio
+        original_anyio_connect = httpcore._backends.anyio.AnyIOBackend.connect_tcp
+        async def patched_anyio_connect(self, host, port, *args, **kwargs):
+            try:
+                check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+                if check_host in HOST_MAPPING:
+                    ip = HOST_MAPPING[check_host]
+                    print(f"[{datetime.now()}] [DNS-FIX] httpcore(anyio) intercepted: {check_host} -> {ip}")
+                    host = ip.encode('utf-8') if isinstance(host, bytes) else ip
+            except Exception as e:
+                print(f"[{datetime.now()}] [DNS-FIX] httpcore(anyio) patch error: {e}")
+            return await original_anyio_connect(self, host, port, *args, **kwargs)
+            
+        httpcore._backends.anyio.AnyIOBackend.connect_tcp = patched_anyio_connect
+        print(f"[{datetime.now()}] [DNS-FIX] httpcore.AnyIOBackend.connect_tcp monkeypatch applied.")
+    except Exception as e:
+        pass # Ignore anyio if not present or fails
 
 apply_dns_patch()
