@@ -122,7 +122,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             # 확장자 및 사이즈 체크 동일 적용
             if filepath.suffix.lower() in SUPPORTED_EXTS:
                 try:
-                    if filepath.stat().st_size <= 20 * 1024 * 1024:
+                    if filepath.stat().st_size <= 50 * 1024 * 1024:
                         all_target_files.append(filepath)
                 except:
                     all_target_files.append(filepath)
@@ -162,8 +162,8 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             
             # 대용량 파일 스킵 (20MB 초과) - 토큰 및 메모리 보호
             try:
-                if filepath.stat().st_size > 20 * 1024 * 1024:
-                    logger.warning(f"⏩ [SKIP] 대용량 파일(20MB 초과) 제외: {file}")
+                if filepath.stat().st_size > 50 * 1024 * 1024:
+                    logger.warning(f"⏩ [SKIP] 대용량 파일(50MB 초과) 제외: {file}")
                     skipped += 1
                     continue
             except: pass
@@ -272,13 +272,13 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     # 최신 모델 시도 후 실패 시 범용 모델로 폴백
                     try:
                         emb_res = client.models.embed_content(
-                            model='text-embedding-004',
+                            model='models/text-embedding-004',
                             contents=chunk,
                         )
                     except Exception as e:
                         logger.warning(f"text-embedding-004 failed, falling back to embedding-001: {e}")
                         emb_res = client.models.embed_content(
-                            model='embedding-001',
+                            model='models/embedding-001',
                             contents=chunk,
                         )
                     

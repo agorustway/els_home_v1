@@ -1,3 +1,13 @@
+## 📅 2026-04-22 (v5.3.1 — NAS Scale-up & Embedding API Fix)
+### 🚀 주요 개선 사항
+1. **[FEAT] NAS 벡터화 문서 크기 제한 상향**:
+   - 기존 20MB에서 **50MB**로 상한선을 조정하여 대용량 업무 기안문 및 보고서 누락 방지.
+2. **[FIX] Embedding API 모델 접근 이름 수정**:
+   - Google AI API 호출 시 모델 이름에 `models/` 접두어를 강제(`models/text-embedding-004`)하여 404 Not Found 오류 해결.
+   - Fallback 과정에서도 정규화된 모델명을 사용하여 인덱싱 안정성 확보.
+
+---
+
 ## 📅 2026-04-22 (v5.3.0 — AI Persistence & Knowledge Link Model)
 ### 🚀 주요 개선 사항
 1. **[FEAT] AI 커스텀 지식베이스(Knowledge Base) 도입**:

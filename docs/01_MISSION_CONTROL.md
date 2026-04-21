@@ -1,7 +1,7 @@
 # 🛰️ MISSION CONTROL (2026-04-22)
 
 ## 📌 현재 상태 및 핵심 지표
-- **현재 버전**: `v5.3.0` (AI Knowledge Link & Persistence Engine)
+- **현재 버전**: `v5.3.1` (NAS Scale-up & Embedding API Fix)
 - **핵심 목표**: 사용자와의 교정/피드백 사내 DB 영구 저장 + 지식 연결 모델(Weather-Safety 등) 도입
 - **최근 승전보**: AI 커스텀 규칙 테이블(`ai_custom_rules`) 신설 및 NAS 실시간 업데이트 알림 로직 적용 (2026-04-22)
 
