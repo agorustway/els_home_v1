@@ -1,3 +1,17 @@
+## 📅 2026-04-22 (v5.3.4 — NAS Document AI Stability & Embedding Protocol Fix)
+### 🚀 주요 개선 사항
+1. **[FIX] NAS 벡터화 파이프라인 정규화 및 안정화**:
+   - **404 해결**: Google AI SDK(`google-genai`)의 내부 엔드포인트 생성 규칙 이슈를 우회하기 위해 `requests.post`를 통한 REST API 직접 호출 방식으로 전환.
+   - **차원 일치(768)**: `embedding-2-preview` 등 최신 모델이 기본 3072차원을 반환하여 Supabase DB(768차원)와 충돌하는 문제를 `outputDimensionality: 768` 옵션 강제 주입으로 완벽 해결.
+   - **모델 표준화**: `gemini-embedding-001`을 주력으로, 최신 지능이 필요한 파일은 Fallback 매커니즘을 통해 유연하게 처리.
+2. **[RESILIENCE] Rate Limit 대응 및 처리 속도 최적화**:
+   - `time.sleep(0.7)` 상향 조정을 통해 대량 문서 인덱싱 시 발생하는 `429 Too Many Requests` 에러 빈도 감소.
+   - 배치 처리 로직 고도화로 나스 내 수만 개의 문서를 중단 없이 순차적 벡터화 성공 확인.
+3. **[DOCS] 아키텍처 및 미션 컨트롤 최신화**:
+   - 앞으로의 모든 임베딩 작업은 "REST API + 768차원 강제" 프로토콜을 준수하도록 설계 문서(`04_MASTER_ARCHITECTURE.md`) 박제.
+
+---
+
 ## 📅 2026-04-22 (v5.3.3 — Professional Polish & Emoji-Free Update)
 ### 🚀 주요 개선 사항
 1. **[FEAT] Gemini 2.5 Flash 엔진 정규화 및 성능 최적화**:

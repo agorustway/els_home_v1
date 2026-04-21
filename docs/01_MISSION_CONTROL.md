@@ -12,9 +12,10 @@
 - [✅] **v5.3**: AI "경험 학습" 사내 DB 이관 + Knowledge Link Model + NAS 실시간 알림 ✅
 - [ ] **Next**: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
-## 🚧 최근 이슈 및 조치 (2026-04-22)
+## 🚧 최근 이슈 및 조치 (2026-04-22 v5.3.4)
+- **[SOLVED] NAS 벡터화 파이프라인 정규화**: `gemini-embedding-001` 모델 및 768차원 강제 적용으로 404 및 차원 오류 최종 해결.
+- **[SOLVED] Gemini 임베딩 404 최종 해결**: Google API 모델 체계 개편에 대응하여 `gemini-embedding-001`으로 전면 교체 완료.
 - **[SOLVED] AI 메모리 (AI Memory)**: 사용자의 피드백 및 지시사항을 `ai_custom_rules` 테이블에 저장하여 세션 리셋 후에도 영구 학습되도록 구현.
-- **[FIX] 임베딩 API 404 해결**: SDK 내부 중복 접두사(`models/`) 제거 및 TDD(Unit Test)를 통한 검증 완료.
 - **[FEAT] 실시간 날씨 RAG**: AI가 단순 지식이 아닌 `/api/weather` 데이터를 기반으로 강수량, 결빙 주의 정보 등을 안내하도록 연동.
 - **[UI] AI 가이드 익명화**: 예시 질문에서 특정 인명("남진봉" 등)을 제거하고 비즈니스 공용 명칭으로 교체.
 
@@ -102,4 +103,5 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-22 v5.3.2 (by Antigravity/Gemini — AI Memory & Weather RAG 연동)*
+*최종 갱신일: 2026-04-22 (by Antigravity/Gemini | v5.3.4 NAS Vectorization Stable)*
+

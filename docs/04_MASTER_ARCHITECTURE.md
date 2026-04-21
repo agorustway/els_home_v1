@@ -275,5 +275,13 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 5. **K-SKILL/K-Law 가용성**: 외부 프록시 서버 의존. 네트워크 단절 시 AI는 fallback(사내 DB only)으로 동작.
 6. **v5.1 일반 질문 대응**: 업무 외 질문(스포츠, KTX, 상식 등)은 거절하지 않고 Gemini 일반지식으로 답변. 단, 사내 데이터 아님을 밝힘.
 
+### 6-5. NAS 지식 벡터화 (Knowledge Vectorization Standard)
+
+1. **표준 모델**: `models/gemini-embedding-001` (v1beta endpoint)
+2. **규격 차원**: **768** (Supabase document_chunks 테이블 고정 규격)
+3. **호출 방식**: Python `requests.post` REST API 호출 (SDK 사용 지양 - 404 방폭)
+4. **차원 보장**: 모든 요청 시 `outputDimensionality: 768` 옵션을 명시하여 DB 호환성 유지.
+5. **백그라운드 처리**: Docker `els-core` 컨테이너 내에서 `scripts/run_nas_vectorize.sh`를 통해 순차 진행.
+
 ---
-*최종 갱신일: 2026-04-22 (by Antigravity/Gemini | v5.3.3 Professionalism & Emoji-Free Update)*
+*최종 갱신일: 2026-04-22 (by Antigravity/Gemini | v5.3.4 Standard Embedding Protocol Update)*
