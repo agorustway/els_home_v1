@@ -12,34 +12,43 @@
 
 ## 1. 전체 아키텍처 (High-Level Structure)
 
-우리 프로젝트는 **사내 인프라 3개 심장 + 외부 MCP 연동**으로 구성됩니다.
+우리 프로젝트는 **사내 인프라 3개 심장 + 외부 MCP 연동**으로 구성되며, 특히 **NAS(Backdoor)**가 Vercel의 네트워크 제한과 서버리스 한계를 돌파하는 핵심 전진기지 역할을 수행합니다.
 
 **시스템 구성도:**
-- Cloud (Vercel): Next.js Web
-- Cloud (Supabase): PostgreSQL DB, Storage
-- NAS (Docker): Flask API Server + ELS Bot (DrissionPage)
-- Mobile: Android App (Capacitor) + Background Service (GPS)
-- External MCP: K-SKILL Proxy (nomadamas.org) + K-Law API (beopmang.org)
+- **Cloud (Vercel)**: Next.js Web (사용자 접점, UI/UX)
+- **Cloud (Supabase)**: PostgreSQL DB, Storage (데이터 지능, Auth)
+- **NAS (Docker - The Backdoor)**: Flask API Server + ELS Bot (실질적 작업반장)
+- **Mobile**: Android App (Capacitor) + Background Service (GPS)
+- **External MCP**: K-SKILL Proxy (nomadamas.org) + K-Law API (beopmang.org)
 
 **연결 고리:**
-- Web <--> DB (Supabase 직결)
-- App <--> DB (Supabase 직결)
-- Web --> NAS Backend (High-Traffic API 프록시)
-- NAS Backend <--> Bot (컨테이너 조회 명령)
-- App --> NAS Backend (GPS 원격측정)
-- Web --> K-SKILL (AI RAG: 미세먼지 실시간)
-- Web --> K-Law  (AI RAG: 법령 조회)
-- Web --> OPINET (AI RAG: 경유가 실시간)
-- Web --> Supabase pgvector (시맨틱 검색: document_chunks)
+- **Web <--> DB**: Supabase 직결 (표준 데이터 조회)
+- **App <--> DB**: Supabase 직결 (프로필, 공지사항)
+- **Web --> NAS Backend**: **[Critical]** High-Traffic API 프록시 및 대용량 파일(엑셀) 처리 오프로딩
+- **NAS Backend <--> Bot**: 컨테이너 조회 명령 (Selenium/DrissionPage 엔진)
+- **App --> NAS Backend**: GPS 원격측정 및 실시간 위치 전송
+- **Web --> K-SKILL/K-Law/OPINET**: AI RAG를 위한 외부 지식 프록시
+- **NAS --> Git/Vercel**: 안전운임 고시 및 정적 데이터 자동 빌드/배포 파이프라인
 
 ---
 
-## 2. 핵심 연결 고리 (Connection Logic)
+## 2. 핵심 연결 고리 및 인프라 특화 기술 (Infrastructure Engine)
 
-### 2-1. 웹 ↔ 나스 (API 리다이렉션)
-- **목적**: Vercel CPU 서버리스 요금 절감, 엑셀/파일 처리 등 무거운 작업을 나스에서 처리.
-- **주요 채널**: `NEXT_PUBLIC_ELS_BACKEND_URL` (나스 IP:포트)를 통해 통신.
-- **처리 항목**: 차량 실시간 관제(Polling), 활동 로그(Logging), 사진 프록시, 엑셀/ZIP 생성.
+### 2-1. Triple-Net DNS 방어선 (NAS 전용)
+나스 도커 환경의 고질적인 외부 DNS 리졸빙 장애를 해결하기 위해 적용된 삼중 레이어 패치입니다.
+1. **L1 (Static Hosts)**: `/etc/hosts` 파일 강제 업데이트 (OS 레벨)
+2. **L2 (Socket Wrapper)**: 파이썬 `socket.getaddrinfo` 몽키패치 (App 레벨)
+3. **L3 (HttpCore Hijacking)**: **[최종 병기]** `httpx` 내부의 `httpcore` 연결 로직을 직접 가로채서 DNS 서버를 거치지 않고 호스트네임을 IP로 강제 치환 (라이브러리 레벨)
+
+### 2-2. 웹 ↔ 나스 (API 리다이렉션 / Backdoor)
+- **목적**: Vercel CPU 서버리스 요금 절감, 504 Gateway Timeout 방지, NAS 실물 데이터(아산지점 배차판 등) 직접 접근.
+- **주요 채널**: `NEXT_PUBLIC_ELS_BACKEND_URL` (나스 공인 IP/DDNS)를 통해 통신.
+- **처리 항목**: 차량 실시간 관제(Polling), 활동 로그(Logging), 사진 프록시, **아산 배차판 실시간 동기화**.
+
+### 2-3. 안전운임 자동화 빌더 (Safety Freight Automation)
+- **구조**: `scripts/update-safe-freight.sh` (NAS 전용)
+- **동작**: NAS 내부 `work-docs/`의 원천 엑셀 파일 탐색 -> JSON 빌드 -> Git Commit/Push -> Vercel 자동 빌드 트리거.
+- **특징**: 수동 작업 없이 스크립트 한 번으로 전사 인트라넷 및 AI 단가표 동시 갱신.
 
 ### 2-2. 앱 ↔ 나스 (실시간 관제)
 - **목적**: 드라이버 위치 정보를 3초(최대) 간격으로 나스 전송, 관리자 긴급 푸시(REALTIME_ON) 수신.
@@ -157,14 +166,15 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
         |
         +-- STEP 2: 조건부 RAG (키워드 트리거)
         |       +-- '차량/위치/어디'    → Supabase vehicle_trips + vehicle_locations JOIN
-        |       +-- 컨테이너번호 패턴   → NAS Backend 실시간 이력조회
-        |       +-- 안전운임 키워드     → public/data/ 로 배치 후 self-fetch (35MB JSON)
+        |       +-- '컨테이너번호 패턴'   → NAS Backend 실시간 이력조회 (DrissionPage 연동)
+        |       +-- '안전운임 키워드'     → public/data/ 로 배치 후 self-fetch (35MB JSON)
         |       |       +-- (A) 최신 단가표 주입 (상위 8구간 스코어링)
         |       |       +-- (B) 이력 비교표 (buildFareHistory, 6개 기간)
         |       |       +-- (C) 할증 서버 계산 (calcSurcharge, 냉동/공휴일 등)
-        |       +-- '날씨/미세먼지/공기' → callExternalAPI() → K-SKILL fine-dust
+        |       +-- '날씨/미세먼지/공기' → callExternalAPI() → K-SKILL fine-dust (NAS DNS 패치 기반)
         |       +-- '법/규정/근로/운임'  → K-Law REST API 호출
         |       +-- '경유/유가/기름값'   → callExternalAPI() → OPINET /api/opinet/fuel-price
+        |       +-- '열차/KTX'         → 네이버 기차표 딥링크 프록시 연동 (elssolution.synology.me)
         |
         +-- STEP 3: Context 조합
         |       BASE_SYSTEM_INSTRUCTION (분기별 개정사이클 + 20+개 메뉴맵 포함)

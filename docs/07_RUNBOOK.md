@@ -279,13 +279,61 @@ docker system prune -a -f
 
 ## 7. 환경 전환 체크리스트
 
-### 로컬 → 배포 전환 시
-- [ ] `.env.local`에서 `ELS_BACKEND_URL`을 NAS 주소로 변경
-- [ ] `NEXT_PUBLIC_ELS_BACKEND_URL`도 동일하게 변경
-- [ ] `npm run build` 성공 확인
-- [ ] Git commit (한글 메시지)
-- [ ] NAS에서 `nas-deploy.sh` 실행
+---
 
-### 배포 → 로컬 복귀 시
-- [ ] `.env.local`에서 `ELS_BACKEND_URL`을 `http://localhost:2929`로 변경
-- [ ] `NEXT_PUBLIC_ELS_BACKEND_URL`도 동일하게 변경
+## 8. 안전운임 & 아산 배차판 데이터 관리
+
+### 8-1. 안전운임 고시 업데이트 (연 1~2회)
+정부 공식 안전운임 고시가 새로 발표되었을 때 적용하는 절차입니다.
+1. **엑셀 준비**: 국토부 엑셀 파일을 NAS의 `work-docs/` 폴더에 업로드합니다.
+2. **자동화 스크립트 실행 (NAS SSH)**:
+   ```bash
+   cd /volume1/docker/els_home_v1
+   sh scripts/update-safe-freight.sh
+   ```
+   - 이 스크립트는 `JSON 빌드 -> Git Commit -> Push`를 한 번에 수행합니다.
+3. **확인**: 약 5~10분 후 `nollae.com` 웹사이트 및 AI 어시스턴트에 새 단가가 반영됩니다.
+
+### 8-2. 아산 배차판 동기화 관리
+1. **파일 위치**: `/volume2/아산지점/A_운송실무/` 폴더 내에 엑셀 파일이 있어야 합니다.
+2. **동기화 확인**:
+   ```bash
+   sudo docker logs -f els-core | grep "[자동동기화]"
+   ```
+   - `파일 변경 확인됨. 데이터 추출 시작...` 메시지가 나오면 정상입니다.
+
+---
+
+## 9. 백도어(NAS) 환경변수 및 DNS 관리
+
+### 9-1. Supabase 프로젝트 이관 시 수정 사항
+수파베이스 주소(`URL`)나 `SERVICE_ROLE_KEY`가 변경되면 아래 파일들을 동시에 수정해야 합니다.
+- **Web**: `web/.env.local`
+- **NAS Backend**: `docker/els-backend/.env.local` (또는 `app_core.py` 내 하드코딩된 주소)
+- **NAS Git**: `git remote set-url origin https://[TOKEN]@github.com/...` (토큰 만료 시)
+
+### 9-2. DNS 장애 패치 (`dns_fix.py`)
+나스 도커에서 특정 주소를 못 찾을 때 조치법입니다.
+- **수정 파일**: `docker/els-backend/dns_fix.py`
+- **방법**: `HOST_MAPPING` 딕셔너리에 `{ "도메인": "IP주소" }`를 추가합니다.
+- **적용**: `sh scripts/deploy-core.sh` 실행하여 백엔드 재시작.
+
+---
+
+## 10. 긴급 장애 조치 (Troubleshooting Plus)
+
+### 🚨 동기화 로그에 "파일을 찾을 수 없음" 발생 시
+- **원인**: 도커 볼륨 마운트 설정과 나스 실제 경로가 꼬임.
+- **해결**:
+  1. `sudo docker inspect els-core | grep -A 10 "Mounts"` 로 실제 `Source` 경로 확인.
+  2. `docker/docker-compose.yml`에서 `/volume2/아산지점` 등 실제 경로로 핀셋 마운트 수정.
+  3. `sudo docker-compose up -d --force-recreate els-core` 로 재실행.
+
+### 🚨 AI 어시스턴트가 외부 데이터를 못 가져올 때
+- **원인**: K-SKILL 또는 K-Law 서버 장애 혹은 나스 DNS 패치 중단.
+- **해결**:
+  1. `els-core` 로그에서 `[DNS-FIX]` 메시지 확인.
+  2. 나스 터미널에서 `ping k-skill-proxy.nomadamas.org` 가 되는지 확인.
+
+---
+*최종 갱신일: 2026-04-21 (by Antigravity | v5.0.51 Infrastructure Stabilized)*
