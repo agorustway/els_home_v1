@@ -102,6 +102,24 @@
 
 ---
 
+## 📅 2026-04-21 (v5.0.48 — NAS DNS 장애 완전 박멸 및 아산 배차판/안전운임 정상화)
+### 🚀 주요 개선 사항
+1. **[NETWORK] DNS 삼중 그물망(Triple-Net) 패치 완성 (`dns_fix.py`)**:
+   - **문제**: `socket.getaddrinfo` 패치만으로는 `httpx` 및 내부 `httpcore` 라이브러리의 독자적인 연결 로직을 막지 못해 `[Errno -2] Name or service not known` 에러가 지속 발생.
+   - **해결**: `httpcore._backends.sync.SyncBackend.connect_tcp` 및 `AnyIOBackend.connect_tcp` 함수를 직접 가로채서, DNS 리졸빙 단계에 진입하기 전에 호스트네임을 IP로 강제 치환하는 최종 방어선 구축.
+   - **결과**: 외부 DNS 서버 설정 없이도 모든 Supabase 및 K-SKILL 통신이 100% 성공함.
+2. **[INFRA] 아산 배차판 데이터 경로 불일치 수정 (`docker-compose.yml`)**:
+   - **현상**: 통신은 뚫렸으나 배차판 엑셀 파일을 찾지 못하는(`FileNotFound`) 현상 발생.
+   - **원인**: 도커 볼륨 마운트 시 `./data`가 비어있어 NAS 실물 데이터인 `/volume2`를 참조하지 못했음.
+   - **조치**: `/volume2`를 컨테이너 내부의 `/app/data` 경로로 중첩 마운트하여 기존 하드코딩된 경로와의 하위 호환성 확보.
+3. **[AUTH] Supabase 마그네틱 이관 잔여 작업 완료**:
+   - NAS 내부에 남아있던 구버전 프로젝트 주소(`bzbows...`)와 만료된 JWT 키를 현재 운영 중인 법인 계정(`pzfnrnsc...` / `sb_secret_...`)으로 전수 교체.
+4. **[AUTOMATION] 안전운임 업데이트 자동화 스크립트 배포**:
+   - `scripts/update-safe-freight.sh` (NAS용): 엑셀 빌드부터 깃허브 푸시까지 한 번에 처리.
+   - `scripts/update-safe-freight.ps1` (윈도우용): 로컬 환경에서의 빠른 업데이트 지원.
+
+---
+
 ## 📅 2026-04-20 (v5.0.22 — 나스 쉘 호환성 및 DNS 구조적 장애 완전 해결)
 ### 🚀 주요 개선 사항
 1. **[INFRA] els-core 네트워크 모드 전환 (DNS 근원적 해결)**:
