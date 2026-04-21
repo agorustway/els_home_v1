@@ -227,6 +227,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                         supabase.table("nas_file_index").upsert({
                             "path": file_path_str, "filename": filename, "extension": ext,
                             "branch": branch_name, "is_indexed": True, "chunk_count": 0,
+                            "content_hash": current_hash,
                             "updated_at": datetime.now(timezone.utc).isoformat()
                         }, on_conflict="path").execute()
                     except: pass
@@ -237,8 +238,16 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                 continue
             
             if not text.strip():
-                logger.warning(f"⚠️ [{branch_name}] {filename}에서 추출된 텍스트가 비어있습니다. (스킵)")
-                error_cnt += 1
+                logger.warning(f"⚠️ [{branch_name}] {filename}에서 추출된 텍스트가 비어있습니다. (스킵 처리)")
+                # 텍스트가 없는 파일도 일단 '인덱싱 시도함'으로 기록 (무한루프 방지)
+                try:
+                    supabase.table("nas_file_index").upsert({
+                        "path": file_path_str, "filename": filename, "extension": ext,
+                        "branch": branch_name, "is_indexed": True, "chunk_count": 0,
+                        "content_hash": current_hash,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }, on_conflict="path").execute()
+                except: pass
                 continue
 
             # 청킹
@@ -260,10 +269,19 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                 
                 try:
                     time.sleep(0.5)  # API Rate Limit 방어를 위한 휴식
-                    emb_res = client.models.embed_content(
-                        model='text-embedding-004',
-                        contents=chunk,
-                    )
+                    # 최신 모델 시도 후 실패 시 범용 모델로 폴백
+                    try:
+                        emb_res = client.models.embed_content(
+                            model='text-embedding-004',
+                            contents=chunk,
+                        )
+                    except Exception as e:
+                        logger.warning(f"text-embedding-004 failed, falling back to embedding-001: {e}")
+                        emb_res = client.models.embed_content(
+                            model='embedding-001',
+                            contents=chunk,
+                        )
+                    
                     embedding = emb_res.embeddings[0].values
                     
                     chunk_batch.append({
