@@ -1,3 +1,7 @@
+# [v5.0.42] DNS 장애 환경 대응: 전역 소켓 패치 적용 (가장 먼저 실행)
+import dns_fix
+dns_fix.apply_dns_patch()
+
 import os
 import sys
 import json
@@ -25,10 +29,6 @@ from supabase import create_client, Client
 
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
-
-# [v5.0.40] DNS 장애 환경 대응: 전역 소켓 패치 적용
-import dns_fix
-dns_fix.apply_dns_patch()
 
 # --- Supabase 설정 ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")

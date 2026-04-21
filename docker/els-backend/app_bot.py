@@ -1,3 +1,7 @@
+# [v5.0.42] DNS 장애 환경 대응: 전역 소켓 패치 적용 (가장 먼저 실행)
+import dns_fix
+dns_fix.apply_dns_patch()
+
 import os
 import sys
 import json
@@ -16,10 +20,6 @@ import pandas as pd
 
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
-
-# --- [v4.5.1] BOT 전용 백엔드 ---
-import dns_fix
-dns_fix.apply_dns_patch()
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
