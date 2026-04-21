@@ -7,6 +7,9 @@ import time
 import openpyxl
 import fitz  # PyMuPDF
 from docx import Document
+import pytesseract
+from PIL import Image
+import textract
 from google import genai
 from google.genai import types
 
@@ -15,6 +18,21 @@ logger = logging.getLogger(__name__)
 # chunking params
 MAX_CHUNK_SIZE = 800
 CHUNK_OVERLAP = 150
+
+# Supported extensions mapping to type
+SUPPORTED_EXTS = {
+    ".pdf": "pdf",
+    ".docx": "docx",
+    ".doc": "doc",
+    ".xlsx": "xlsx",
+    ".xlsm": "xlsx",
+    ".txt": "txt",
+    ".hwp": "hwp",
+    ".png": "image",
+    ".jpg": "image",
+    ".jpeg": "image",
+    ".gif": "image",
+}
 
 def get_file_hash(filepath):
     hash_md5 = hashlib.md5()
@@ -93,7 +111,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
         if any(word in root for word in skip_words): continue
         for file in files:
             filepath = Path(root) / file
-            if filepath.suffix.lower() in [".pdf", ".docx", ".xlsx", ".txt", ".hwp"]:
+            if filepath.suffix.lower() in SUPPORTED_EXTS:
                 all_target_files.append(filepath)
         # 디렉터리 목록 로깅 (디버그용)
         if not dirs and root == str(target_dir):
@@ -116,7 +134,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             filepath = Path(root) / file
             
             ext = filepath.suffix.lower()
-            if ext not in [".pdf", ".docx", ".xlsx", ".txt"]:
+            if ext not in SUPPORTED_EXTS:
                 continue
                 
             file_path_str = str(filepath.resolve())
@@ -146,7 +164,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     text = extract_text_pypdf(file_path_str)
                 elif ext == ".docx":
                     text = extract_text_docx(file_path_str)
-                elif ext == ".xlsx":
+                elif ext == ".xlsx" or ext == ".xlsm":
                     text = extract_text_xlsx(file_path_str)
                 elif ext == ".txt":
                     try:
@@ -155,6 +173,21 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     except UnicodeDecodeError:
                         with open(file_path_str, "r", encoding="euc-kr") as f:
                             text = f.read()
+                elif ext in [".png", ".jpg", ".jpeg", ".gif"]:
+                    # 이미지 OCR
+                    try:
+                        image = Image.open(file_path_str)
+                        text = pytesseract.image_to_string(image, lang='kor+eng')
+                    except Exception as e:
+                        logger.error(f"Image OCR failed for {filename}: {e}")
+                        text = ""
+                elif ext == ".doc":
+                    # .doc 파일 처리 (textract)
+                    try:
+                        text = textract.process(file_path_str).decode('utf-8', errors='ignore')
+                    except Exception as e:
+                        logger.error(f"DOC extraction failed for {filename}: {e}")
+                        text = ""
                 elif ext == ".hwp":
                     logger.info(f"⏩ [{branch_name}] .hwp 파일은 현재 텍스트 추출을 지원하지 않아 스킵합니다: {filename}")
                     skipped += 1

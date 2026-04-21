@@ -29,7 +29,7 @@ function renderTextWithLinks(text) {
         const match = part.match(/\[([^\]]+)\]\(([^)]+)\)/);
         if (match) {
             return (
-                <a key={i} href={match[2]} style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 'bold' }}>
+                <a key={i} href={match[2]} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 'bold' }}>
                     {match[1]}
                 </a>
             );
