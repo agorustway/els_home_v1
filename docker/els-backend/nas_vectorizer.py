@@ -271,18 +271,27 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     time.sleep(0.5)  # API Rate Limit 방어를 위한 휴식
                     # 최신 모델 시도 후 실패 시 범용 모델로 폴백
                     try:
-                        emb_res = client.models.embed_content(
-                            model='text-embedding-004',
-                            contents=chunk,
-                        )
+                        import requests
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={api_key}"
+                        payload = {
+                            "model": "models/text-embedding-004",
+                            "content": {"parts": [{"text": chunk}]}
+                        }
+                        resp = requests.post(url, json=payload, timeout=10)
+                        if resp.status_code != 200:
+                            raise Exception(f"API Error {resp.status_code}: {resp.text}")
+                        embedding = resp.json()['embedding']['values']
                     except Exception as e:
                         logger.warning(f"text-embedding-004 failed, falling back to embedding-001: {e}")
-                        emb_res = client.models.embed_content(
-                            model='embedding-001',
-                            contents=chunk,
-                        )
-                    
-                    embedding = emb_res.embeddings[0].values
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key={api_key}"
+                        payload_fallback = {
+                            "model": "models/embedding-001",
+                            "content": {"parts": [{"text": chunk}]}
+                        }
+                        resp = requests.post(url, json=payload_fallback, timeout=10)
+                        if resp.status_code != 200:
+                            raise Exception(f"Fallback Error {resp.status_code}: {resp.text}")
+                        embedding = resp.json()['embedding']['values']
                     
                     chunk_batch.append({
                         "source_type": "nas_file",
