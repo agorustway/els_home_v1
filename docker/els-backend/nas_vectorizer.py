@@ -268,14 +268,15 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     continue
                 
                 try:
-                    time.sleep(0.5)  # API Rate Limit 방어를 위한 휴식
+                    time.sleep(0.7)  # API Rate Limit 방어를 위한 휴식 (살짝 늘림)
                     # 최신 모델 시도 후 실패 시 범용 모델로 폴백
                     try:
                         import requests
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={api_key}"
                         payload = {
                             "model": "models/gemini-embedding-001",
-                            "content": {"parts": [{"text": chunk}]}
+                            "content": {"parts": [{"text": chunk}]},
+                            "outputDimensionality": 768
                         }
                         resp = requests.post(url, json=payload, timeout=10)
                         if resp.status_code != 200:
@@ -286,7 +287,8 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key={api_key}"
                         payload_fallback = {
                             "model": "models/gemini-embedding-2-preview",
-                            "content": {"parts": [{"text": chunk}]}
+                            "content": {"parts": [{"text": chunk}]},
+                            "outputDimensionality": 768
                         }
                         resp = requests.post(url, json=payload_fallback, timeout=10)
                         if resp.status_code != 200:
