@@ -1,3 +1,18 @@
+## 📅 2026-04-22 (v5.3.3 — Professional Polish & Emoji-Free Update)
+### 🚀 주요 개선 사항
+1. **[FEAT] Gemini 2.5 Flash 엔진 정규화 및 성능 최적화**:
+   - 구글 AI 스튜디오 최신 엔진인 `gemini-2.5-flash`로 백엔드 API 연동 (사용자 실사용 확인).
+2. **[UI/UX] AI 모델 브랜딩 제거 및 전문성 강화**:
+   - UI 상의 "Powered by Gemini" 등 모델 노출 텍스트 전면 제거.
+   - 서비스 명칭을 `ELS AI (Dedicated Build)`로 익명화하여 사내 전용 솔루션 느낌 강조.
+3. **[RULE] 답변 내 모든 이모지(Emoji) 사용 금지**:
+   - 시스템 프롬프트(BASE_SYSTEM_INSTRUCTION) 내 '이모지 사용 금지' 0순위 강령 추가.
+   - 전문적이고 절제된 텍스트 위주의 톤앤매너 구축.
+4. **[FIX] 실시간 기상 데이터 직접 보고 로직 강화**:
+   - 날씨 질문 시 단순히 "확인 가능합니다"라고 답하는 대신, 주입된 환경 데이터(기온, 강수 등)의 수치를 즉각 인용하도록 강제.
+
+---
+
 ## 📅 2026-04-22 (v5.3.2 — AI Memory & Weather RAG Patch)
 ### 🚀 주요 개선 사항
 1. **[FEAT] AI 메모리(AI Memory) 영구 저장 체계 구축**:

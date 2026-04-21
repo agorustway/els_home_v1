@@ -6,11 +6,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
-    { label: 'TCLU4255167 이력 조회', icon: '🔍' },
-    { label: '아산지점 24년_운임표.xlsx 내용 요약', icon: '📊' },
-    { label: '[본사] 명함 신청서(이미지) 요약', icon: '📄' },
-    { label: '내일 아산 차량관리 주의사항', icon: '❄️' },
-    { label: '부산 신항 40ft 안전운임', icon: '🚛' },
+    { label: 'TCLU4255167 이력 조회', icon: null },
+    { label: '아산지점 24년_운임표.xlsx 내용 요약', icon: null },
+    { label: '[본사] 명함 신청서(이미지) 요약', icon: null },
+    { label: '내일 아산 차량관리 주의사항', icon: null },
+    { label: '부산 신항 40ft 안전운임', icon: null },
 ];
 
 function TypingIndicator() {
@@ -374,7 +374,7 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <>
-            <h2 className={styles.guideTitle}>🚀 ELS AI 가이드 (v5.3.1)</h2>
+            <h2 className={styles.guideTitle}>🚀 ELS AI 가이드 (v5.3.2)</h2>
             
             <div className={styles.guideBox} style={{borderLeft: '4px solid #2563eb'}}>
                 <span className={styles.guideHighlight}>📂 사내 문서/이미지 지식 (NAS)</span>
@@ -418,7 +418,7 @@ export default function AskPage() {
             </div>
             
             <div style={{fontSize: '0.78rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
-                Next Gen AI Powered by Gemini 1.5 Pro
+                ELS Solution AI Assistant (Dedicated Build)
             </div>
         </>
     );
@@ -484,8 +484,8 @@ export default function AskPage() {
                             </svg>
                         </div>
                         <div>
-                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.3.1</span></h1>
-                            <p className={styles.headerSub}>NAS Knowledge Link · Multi-Domain AI 가동 중</p>
+                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.3.2</span></h1>
+                            <p className={styles.headerSub}>AI Memory Persistence · Knowledge Link System</p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, minWidth: 0 }}>

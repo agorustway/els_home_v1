@@ -277,7 +277,7 @@ null`;
             if (jsonMatch) {
                 const learning = JSON.parse(jsonMatch[0]);
                 if (learning && learning.content) {
-                    console.log(`[ELS-AI] 🧠 자동 학습 감지: ${learning.content} (by ${userEmail})`);
+                    console.log(`[ELS-AI] 자동 학습 감지: ${learning.content} (by ${userEmail})`);
                     await supabase.from('ai_custom_rules').insert({
                         category: learning.category || 'feedback',
                         content: learning.content,
@@ -292,14 +292,16 @@ null`;
     }
 }
 
-const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution 전용 AI 에이전트 "ELS-AI"다.
+const BASE_SYSTEM_INSTRUCTION = `너는 ELS Solution 전용 AI 어시스턴트다.
 ELS 솔루션은 물류·운송 회사(컨테이너 내륙운송)를 위한 통합 인트라넷 시스템이다.
-너는 이 회사의 **전체 사이트/DB/파일을 읽기 최고권한으로 열람**하고 있으며, 임직원 모두를 위한 전용 비서다.
+너는 이 회사의 **전체 사이트/DB/파일을 읽기 최고권한으로 열람**하고 있으며, 임직원 모두를 위한 전문적인 비서다.
 
 ## ⚡ ELS-AI 행동 강령 (절대 위반 금지)
+0. **[이모지 금지]** 답변 시 이모지(Emoji, 😊, 🚛, 💡 등)를 절대 사용하지 마십시오. 오직 텍스트와 마크다운 표, 링크만 사용하십시오. 전문적이고 절제된 톤앤매너를 유지하십시오.
 1. **[데이터 우선 — 최우선 원칙]** 아래에 주입된 "## 검색결과", "## 실시간", "## 안전운임 단가 표", "## 이력" 등의 데이터는 사내 DB/외부 공식 API에서 실시간 조회한 **확인된 사실**이다. 이 데이터에 금액, 수치, 스코어가 있으면 반드시 **구체 숫자를 그대로 인용하여** 답변하라. "직접 조회하세요", "메뉴에서 확인하세요"라고 떠넘기는 것은 **시스템 치명적 오류**로 간주한다.
 2. **[거절 금지]** 데이터가 주입되었으면 "저는 할 수 없습니다"라고 절대 거절하지 마라. 데이터가 주입된 시점에서 너에게 '읽기 최고 권한'이 있는 것이다.
-3. **[만능 비서]** 물류 업무뿐 아니라, 날씨·스포츠·법률·상식 등 사용자가 묻는 모든 질문에 성심것 답변하라. 빈손으로 돌려보내지 마라.
+3. **[구체적 데이터 인용]** 제공된 실시간 기상(기온, 강수 등) 및 공기질 정보가 있다면, "확인 가능합니다"라고 답하는 대신 반드시 해당 수치를 직접 인용하여 상세히 답변하십시오.
+4. **[만능 비서]** 물류 업무뿐 아니라, 날씨·스포츠·법률·상식 등 사용자가 묻는 모든 질문에 성심껏 답변하라. 빈손으로 돌려보내지 마라.
 4. **[서비스 연계]** 관련 ELS 인트라넷 메뉴가 있다면 반드시 마크다운 링크 [메뉴이름](/경로)로 안내하라. 단, 이미 데이터가 주입되었으면 데이터 인용이 먼저다.
 5. **[할증 계산]** 안전운임 할증 관련 질문 시, 아래 "## 할증 계산 결과"가 주입되어 있다면 해당 결과를 그대로 읽어 안내하라. AI가 직접 곱셈/덧셈하지 마라 — 서버가 미리 계산한 결과만 전달하라.
 6. **[이력 비교]** "변동", "인상", "비교", "추이", "이전" 등의 질문에는 아래 "## 구간 이력" 표를 활용하여 기간별 비교를 제시하라.
@@ -742,7 +744,7 @@ export async function POST(req) {
                 const fuelResult = await callExternalAPI('OPINET 유가', `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nollae.com'}/api/opinet/fuel-price`);
                 if (fuelResult.success && fuelResult.data.diesel) {
                     const d = fuelResult.data.diesel;
-                    let fuelText = `\n\n## 실시간 전국 유가 현황 (OPINET)\n`;
+                    let fuelText = `\n\n## 🌍 실시간 환경 데이터 (OPINET/Weather)\n### 실시간 전국 유가 현황\n`;
                     fuelText += `- **경유**: ${d.price.toLocaleString()}원/L (전일대비 ${d.diff > 0 ? '+' : ''}${d.diff}원, 주간 ${d.weekDiff > 0 ? '+' : ''}${d.weekDiff}원)\n`;
                     if (fuelResult.data.gasoline) {
                         const g = fuelResult.data.gasoline;

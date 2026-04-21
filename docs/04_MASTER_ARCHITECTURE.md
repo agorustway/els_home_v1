@@ -276,4 +276,4 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 6. **v5.1 일반 질문 대응**: 업무 외 질문(스포츠, KTX, 상식 등)은 거절하지 않고 Gemini 일반지식으로 답변. 단, 사내 데이터 아님을 밝힘.
 
 ---
-*최종 갱신일: 2026-04-22 (by Antigravity/Gemini | v5.3.2 AI Memory & Weather RAG Patch)*
+*최종 갱신일: 2026-04-22 (by Antigravity/Gemini | v5.3.3 Professionalism & Emoji-Free Update)*
