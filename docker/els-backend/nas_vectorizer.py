@@ -206,6 +206,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                 continue
             
             if not text.strip():
+                logger.warning(f"⚠️ [{branch_name}] {filename}에서 추출된 텍스트가 비어있습니다. (스킵)")
                 error_cnt += 1
                 continue
 

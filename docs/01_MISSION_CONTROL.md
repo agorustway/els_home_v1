@@ -1,16 +1,17 @@
 # 🛰️ MISSION CONTROL (2026-04-21)
 
 ## 📌 현재 상태 및 핵심 지표
-- **현재 버전**: `v5.1` (AI Restructured — Smart Agent)
-- **핵심 목표**: 불안정 외부 API 제거 + 영리한 AI 에이전트 전환
-- **최근 승전보**: K-SKILL 불안정 기능 과감히 제거, 일반 질문에도 유연 답변하는 영리한 AI로 전환 (2026-04-21)
+- **현재 버전**: `v5.2` (NAS Crawler Extended + Link UX)
+- **핵심 목표**: NAS 모든 문서 파싱(OCR/이미지/Word/Excel) + AI 답변 링크 사용성 개선
+- **최근 승전보**: 이미지 OCR 및 legacy Word/Excel 크롤링 성공, AI 답변 링크 새 탭 열기 적용 (2026-04-21)
 
 ### 🚀 마일스톤 (Milestones)
 - [✅] **Phase 1-5**: AI 에이전트 및 RAG 엔진 구축 완료
 - [✅] **Phase 6**: 인프라 최적화 및 DNS 장애 박멸 (Triple-Net Patch)
 - [✅] **Operation**: 안전운임/아산 배차판 자동화 파이프라인 구축
 - [✅] **v5.1**: K-SKILL 구조조정 + AI 가이드 재설계 + 유연 답변 원칙 도입
-- [ ] **Next**: NAS 크롤러 PDF/Excel/Word 파싱 확장 + UX 고도화
+- [✅] **v5.2**: NAS 크롤러 PDF/Excel/Word 파싱 확장 + UX 고도화 (새 탭 열기)
+- [ ] **Next**: 사용자별 접근 권한 분리 및 최종 마이그레이션 (Phase 6)
 
 ## 🚧 최근 이슈 및 조치 (2026-04-21)
 - **[SOLVED] 아산 배차판 자동 업데이트 [Errno -2] 끈질긴 장애 완전 종결**: 
@@ -81,7 +82,7 @@ npx cap sync   ← 단독 실행 금지
 ### ❌ 잔여 과제
 - [x] **안전운임 요율 미표시** — Webpack `require()` 번들링으로 100% 로딩 보장 ✅
 - [x] **pgvector 시맨틱 검색 route.js 연동** — `match_documents()` RPC 연동 완료 ✅
-- [x] **NAS 문서 크롤러** — Docker volume1/2 마운트 및 `/api/vectorize/nas` 가동 ✅
+- [✅] **NAS 문서 크롤러** — 이미지(OCR), .doc, .xlsm 확장 및 04:30 스케줄 가동 ✅
 - [ ] **사용자별 접근 권한 분리** — 차기 마이그레이션 단계에서 진행 예정 (계정 이치)
 
 ---
@@ -102,4 +103,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-21 v5.1 (by Antigravity/Gemini — AI 구조조정 완료)*
+*최종 갱신: 2026-04-21 v5.2 (by Antigravity/Gemini — NAS 클로러 확장 및 UI 개선)*
