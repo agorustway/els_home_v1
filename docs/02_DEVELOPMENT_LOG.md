@@ -2832,3 +2832,11 @@ public/
 - (Fix) Solved [Errno -2] Name or service not known by mapping all required Supabase subdomains to static IPs.
 - (Architecture) Centralized DNS resilience logic and applied to all NAS backend entry points (app.py, app_core.py, app_bot.py).
 - (Deploy) Updated Dockerfiles to include dns_fix.py in build images.
+
+### 2026-04-22 (v5.2.1) - NAS Parsing Optimization & Filtering
+- (Fix) NAS 자료실 제외: scripts/run_nas_vectorize.sh 및 
+as_vectorizer.py에서 자료실 경로 제외 조치.
+- (Fix) 아산지점 특정 폴더 제외: E_임직원캐비넷, G_Downloads, F_Backup 경로 파싱 스킵 로직 추가.
+- (Opt) 대용량 파일 방어: 20MB를 초과하는 파일은 텍스트 추출 및 벡터화 대상에서 제외 (리소스 보호).
+- (Sync) 파일 카운트 정합성: 시작 전 스캔 시에도 동일한 필터링 조건을 적용하여 수치 정확도 확보.
+- (Commit) v5.2.1 반영 완료.

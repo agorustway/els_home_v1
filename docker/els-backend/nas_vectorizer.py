@@ -107,12 +107,25 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
     all_target_files = []
     print(f"[VECTORIZE] {branch_name} ({target_dir}) 탐색 중...")
     for root, dirs, files in os.walk(str(target_dir)):
-        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE"]
-        if any(word in root for word in skip_words): continue
+        # 파싱 로직과 일관된 스킵 적용
+        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE", "자료실"]
+        is_skip_dir = any(word in root for word in skip_words)
+        if not is_skip_dir and "아산지점" in root:
+            asan_skips = ["E_임직원캐비넷", "G_Downloads", "F_Backup"]
+            if any(sub in root for sub in asan_skips):
+                is_skip_dir = True
+        
+        if is_skip_dir: continue
+
         for file in files:
             filepath = Path(root) / file
+            # 확장자 및 사이즈 체크 동일 적용
             if filepath.suffix.lower() in SUPPORTED_EXTS:
-                all_target_files.append(filepath)
+                try:
+                    if filepath.stat().st_size <= 20 * 1024 * 1024:
+                        all_target_files.append(filepath)
+                except:
+                    all_target_files.append(filepath)
         # 디렉터리 목록 로깅 (디버그용)
         if not dirs and root == str(target_dir):
             print(f"[DEBUG] {root} 에 하위 디렉토리가 없습니다.")
@@ -124,9 +137,18 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
 
     # walk를 사용하여 더 안정적으로 탐색
     for root, dirs, files in os.walk(str(target_dir)):
-        # 불필요한 폴더 스킵 (#recycle, 보안, @eaDir 등)
-        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE"]
-        if any(word in root for word in skip_words):
+        # 불필요한 폴더 스킵 (#recycle, 보안, @eaDir, 자료실 등)
+        # 아산지점 내 특정 하위폴더 제외: E_임직원캐비넷, G_Downloads, F_Backup
+        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE", "자료실"]
+        
+        # root 경로에 skip_words가 포함되거나, 아산지점 내 특정 폴더인 경우 스킵
+        is_skip_dir = any(word in root for word in skip_words)
+        if not is_skip_dir and "아산지점" in root:
+            asan_skips = ["E_임직원캐비넷", "G_Downloads", "F_Backup"]
+            if any(sub in root for sub in asan_skips):
+                is_skip_dir = True
+        
+        if is_skip_dir:
             skipped += len(files)
             continue
 
@@ -134,8 +156,17 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             filepath = Path(root) / file
             
             ext = filepath.suffix.lower()
+            # .eml, .msg 등 이메일 파일은 SUPPORTED_EXTS에 없어 자동 제외됨
             if ext not in SUPPORTED_EXTS:
                 continue
+            
+            # 대용량 파일 스킵 (20MB 초과) - 토큰 및 메모리 보호
+            try:
+                if filepath.stat().st_size > 20 * 1024 * 1024:
+                    logger.warning(f"⏩ [SKIP] 대용량 파일(20MB 초과) 제외: {file}")
+                    skipped += 1
+                    continue
+            except: pass
                 
             file_path_str = str(filepath.resolve())
             filename = filepath.name

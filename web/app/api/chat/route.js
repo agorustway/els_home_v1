@@ -337,15 +337,15 @@ export async function POST(req) {
     let recentPostsText = '';
     let isSfQuery = false;
     const apiTimestamps = {};
-    
+
     // [Resilience] Vercel 환경에서는 localhost 주소가 동작하지 않으므로, Synology 외부 주소를 우선 고려
     const primaryBackend = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL;
     // 디버그 페이지(v5.0.13) 확인 결과, 현재 8443 포트가 정상 응답함
-    let backendUrl = 'https://elssolution.synology.me:8443'; 
+    let backendUrl = 'https://elssolution.synology.me:8443';
     if (primaryBackend && !primaryBackend.includes('localhost')) {
         backendUrl = primaryBackend;
     }
-    
+
     const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
 
     try {
@@ -513,7 +513,7 @@ export async function POST(req) {
                         }
                         // 다중 토큰 매칭 시 가속 (수원 + 인천 등)
                         if (matchedCount > 1) score += (matchedCount * 25);
-                        
+
                         return { k, score };
                     }).filter(i => i.score >= 10)
                         .sort((a, b) => b.score - a.score)
@@ -525,15 +525,15 @@ export async function POST(req) {
                             const vList = sfData.fares[item.k];
                             const v = vList && vList.length > 0 ? vList[0] : sfData.faresLatest[item.k];
                             if (!v) return `- [구간] ${item.k} | 데이터 없음`;
-                            
+
                             const f40c = v.f40위탁 || Math.round(v.fare40 * 0.85);
                             const f40u = v.f40운수자 || Math.round(v.fare40 * 0.92);
                             const f20c = v.f20위탁 || Math.round(v.fare20 * 0.85);
                             const f20u = v.f20운수자 || Math.round(v.fare20 * 0.92);
 
                             return `- [구간] ${item.k} | ${v.km}km\n` +
-                                   `  * 40FT: 위탁 ${f40c.toLocaleString()}원 | 운수사간 ${f40u.toLocaleString()}원 | 안전운송 ${(v.f40안전 || v.fare40).toLocaleString()}원\n` +
-                                   `  * 20FT: 위탁 ${f20c.toLocaleString()}원 | 운수사간 ${f20u.toLocaleString()}원 | 안전운송 ${(v.f20안전 || v.fare20).toLocaleString()}원`;
+                                `  * 40FT: 위탁 ${f40c.toLocaleString()}원 | 운수사간 ${f40u.toLocaleString()}원 | 안전운송 ${(v.f40안전 || v.fare40).toLocaleString()}원\n` +
+                                `  * 20FT: 위탁 ${f20c.toLocaleString()}원 | 운수사간 ${f20u.toLocaleString()}원 | 안전운송 ${(v.f20안전 || v.fare20).toLocaleString()}원`;
                         }).join('\n');
                         recentPostsText += '\n\n## (중요) 실시간 데이터 베이스: 안전운임 단가 표 — 현행 고시 (26.02월 적용)\n' + fareRows;
                         recentPostsText += '\n\n🚨 [필독 지시사항] 위 단가표에는 위탁운임/운수사간운임/안전운송운임의 **실제 수치**가 모두 포함되어 있다. 더 이상 85~86% 같은 임의 계산을 하지 말고, 위 표의 숫자를 그대로 인용하여 답변하라. 표에 없는 구간일 때만 고시 전문 텍스트를 참고하거나 예외 안내를 하라.';
@@ -663,7 +663,7 @@ export async function POST(req) {
                     const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
                     const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), {
                         signal: AbortSignal.timeout(20000), // 20초로 연장
-                        headers: { 
+                        headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)',
                             'Accept': 'application/json'
                         }

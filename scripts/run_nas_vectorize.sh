@@ -17,7 +17,6 @@ declare -A TARGETS=(
     ["/app/volume2/영천지점"]="영천"
     ["/app/volume2/영천업무파일"]="영천"
     ["/app/volume2/임고지점"]="임고"
-    ["/app/volume2/자료실"]="자료실"
 )
 
 # 순서 보장을 위해 키보드 배열을 순차적으로 지정
@@ -32,7 +31,6 @@ ORDER=(
     "/app/volume2/영천지점"
     "/app/volume2/영천업무파일"
     "/app/volume2/임고지점"
-    "/app/volume2/자료실"
 )
 
 for DIR in "${ORDER[@]}"; do
