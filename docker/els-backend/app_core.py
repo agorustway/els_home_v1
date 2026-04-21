@@ -74,7 +74,6 @@ def sync_asan_dispatch_python(force=False):
             if not rel_path: continue
             
             full_path = Path("/app/data") / rel_path.lstrip("/")
-            app.logger.info(f"[자동동기화] 대상 파일 체크: {full_path}")
             
             if not full_path.exists():
                 app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path} (rel_path: {rel_path})")
@@ -82,12 +81,16 @@ def sync_asan_dispatch_python(force=False):
             
             # 파일 수정 시간
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            cache_mtime = last_mtime_cache.get(dtype)
+            
+            # 상세로그 추가 (디버깅용)
+            # app.logger.info(f"[자동동기화] {dtype} 체크: cache={cache_mtime}, current={mtime}")
             
             # 변경 감지 (force 옵션이 없으면 캐시 확인)
-            if not force and last_mtime_cache.get(dtype) == mtime:
+            if not force and cache_mtime == mtime:
                 continue
             
-            app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
+            app.logger.info(f"[자동동기화] 파일 변경 확인됨(또는 강제실행). 데이터 추출 시작... ({dtype})")
             
             # 엑셀 읽기
             xl = pd.ExcelFile(full_path)
@@ -226,14 +229,22 @@ def sync_asan_dispatch_python(force=False):
 
 def asan_sync_scheduler():
     app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
+    check_count = 0
     while True:
         try:
             now = datetime.now(KST)
             if 6 <= now.hour <= 23:
-                # 매 루프(1분)마다 수정 여부를 체크하고, 수정된 경우만 동기화
+                check_count += 1
+                # 10회(약 10분)마다 "살아있음" 생존 신고 로그 출력
+                if check_count % 10 == 0:
+                    app.logger.info(f"[스케줄러] 아산 배차판 감시 중... (현재시간: {now.strftime('%H:%M:%S')})")
+                
+                # 매 루프(60초)마다 수정 여부를 체크하고, 수정된 경우만 동기화
                 sync_asan_dispatch_python()
             time.sleep(60)
-        except: time.sleep(60)
+        except Exception as e:
+            app.logger.error(f"[스케줄러] 에러 발생: {e}")
+            time.sleep(60)
 
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
@@ -387,6 +398,18 @@ def get_branch_dispatch(branch_id):
     dtype = request.args.get("type", "glovis")
     res = supabase.from_("branch_dispatch").select("*").eq("branch_id", branch_id).eq("type", dtype).order("target_date", asc=True).execute()
     return jsonify({"ok": True, "data": res.data})
+
+# 3-1. 아산 배차판 강제 동기화 (Manual Trigger)
+@app.route("/api/branches/asan/sync", methods=["POST"])
+def trigger_asan_sync():
+    """웹 UI의 'NAS 동기화' 버튼 클릭 시 호출됨"""
+    try:
+        app.logger.info("🚀 [API] 아산 배차판 강제 동기화 요청 수신")
+        # force=True 옵션으로 캐시 무시하고 강제 실행
+        sync_asan_dispatch_python(force=True)
+        return jsonify({"ok": True, "message": "강제 동기화 완료"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # 4. 공휴일/나스파일/스크린샷-릴레이
 @app.route("/api/off-days", methods=["GET"])
