@@ -31,9 +31,14 @@ HOST_MAPPING = {
 }
 
 def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    if host in HOST_MAPPING:
-        ip = HOST_MAPPING[host]
-        return original_getaddrinfo(ip, port, family, type, proto, flags)
+    try:
+        check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+        if check_host in HOST_MAPPING:
+            ip = HOST_MAPPING[check_host]
+            print(f"[{datetime.now()}] [DNS-FIX] Intercepted getaddrinfo: {check_host} -> {ip}")
+            return original_getaddrinfo(ip, port, family, type, proto, flags)
+    except Exception:
+        pass
     return original_getaddrinfo(host, port, family, type, proto, flags)
 
 # 3. 소켓 객체 자체를 래핑 [v5.0.43]
@@ -45,24 +50,29 @@ class PatchedSocket(original_socket):
         try:
             if isinstance(address, tuple) and len(address) >= 2:
                 host = address[0]
-                if isinstance(host, str) and host in HOST_MAPPING:
-                    ip = HOST_MAPPING[host]
-                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket intercepted: {host} -> {ip}")
-                    address = (ip,) + address[1:]
-        except Exception:
-            pass
+                check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+                if check_host in HOST_MAPPING:
+                    ip = HOST_MAPPING[check_host]
+                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket intercepted: {check_host} -> {ip}")
+                    # If the original host was bytes, provide the IP as bytes to maintain type safety just in case
+                    out_ip = ip.encode('utf-8') if isinstance(host, bytes) else ip
+                    address = (out_ip,) + address[1:]
+        except Exception as e:
+            print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket error: {e}")
         return super().connect(address)
         
     def connect_ex(self, address):
         try:
             if isinstance(address, tuple) and len(address) >= 2:
                 host = address[0]
-                if isinstance(host, str) and host in HOST_MAPPING:
-                    ip = HOST_MAPPING[host]
-                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket(ex) intercepted: {host} -> {ip}")
-                    address = (ip,) + address[1:]
-        except Exception:
-            pass
+                check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+                if check_host in HOST_MAPPING:
+                    ip = HOST_MAPPING[check_host]
+                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket(ex) intercepted: {check_host} -> {ip}")
+                    out_ip = ip.encode('utf-8') if isinstance(host, bytes) else ip
+                    address = (out_ip,) + address[1:]
+        except Exception as e:
+            print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket(ex) error: {e}")
         return super().connect_ex(address)
 
 def apply_dns_patch():
