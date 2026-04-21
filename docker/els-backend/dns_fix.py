@@ -15,13 +15,20 @@ SUPABASE_IP = "172.64.149.246"
 NAS_LOCAL_IP = "192.168.0.4"
 
 HOST_MAPPING = {
-    # Supabase Domains
+    # New Supabase Domain (Local Workspace)
     "pzfnrnscwudifgcctzke.supabase.co": SUPABASE_IP,
     "auth.pzfnrnscwudifgcctzke.supabase.co": SUPABASE_IP,
     "realtime.pzfnrnscwudifgcctzke.supabase.co": SUPABASE_IP,
     "storage.pzfnrnscwudifgcctzke.supabase.co": SUPABASE_IP,
     "rest.pzfnrnscwudifgcctzke.supabase.co": SUPABASE_IP,
     
+    # Old Supabase Domain (NAS Production Workspace - bzbowsvfsyerhpgrdrva)
+    "bzbowsvfsyerhpgrdrva.supabase.co": SUPABASE_IP,
+    "auth.bzbowsvfsyerhpgrdrva.supabase.co": SUPABASE_IP,
+    "realtime.bzbowsvfsyerhpgrdrva.supabase.co": SUPABASE_IP,
+    "storage.bzbowsvfsyerhpgrdrva.supabase.co": SUPABASE_IP,
+    "rest.bzbowsvfsyerhpgrdrva.supabase.co": SUPABASE_IP,
+
     # NAS Local Domains (Synology DDNS)
     "elssolution.synology.me": NAS_LOCAL_IP,
     
