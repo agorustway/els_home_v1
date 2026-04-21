@@ -34,8 +34,9 @@ def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     try:
         check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
         
-        # DEBUG: Print ALL intercepted getaddrinfo attempts to see exactly what httpx is doing!
-        print(f"[{datetime.now()}] [DNS-FIX-DEBUG] getaddrinfo called with host={repr(host)} ({type(host)}), port={port}")
+        # FIX: Cannot use type() because 'type' is masked by the argument 'type=0'!
+        host_type_name = host.__class__.__name__
+        print(f"[{datetime.now()}] [DNS-FIX-DEBUG] getaddrinfo called with host={repr(host)} ({host_type_name}), port={port}")
         
         if check_host in HOST_MAPPING:
             ip = HOST_MAPPING[check_host]
@@ -112,6 +113,9 @@ def apply_dns_patch():
         def patched_connect_tcp(self, host, port, *args, **kwargs):
             try:
                 check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
+                host_type_name = host.__class__.__name__
+                print(f"[{datetime.now()}] [DNS-FIX-DEBUG] httpcore connect_tcp called with host={repr(host)} ({host_type_name}), port={port}")
+                
                 if check_host in HOST_MAPPING:
                     ip = HOST_MAPPING[check_host]
                     print(f"[{datetime.now()}] [DNS-FIX] httpcore intercepted: {check_host} -> {ip}")
