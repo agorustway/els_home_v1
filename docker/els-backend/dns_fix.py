@@ -33,10 +33,37 @@ HOST_MAPPING = {
 def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     if host in HOST_MAPPING:
         ip = HOST_MAPPING[host]
-        # 릴레이 로깅 (너무 잦으면 level=DEBUG로 변경)
-        # print(f"[{datetime.now()}] [DNS-FIX] Local Mapping: {host} -> {ip}")
         return original_getaddrinfo(ip, port, family, type, proto, flags)
     return original_getaddrinfo(host, port, family, type, proto, flags)
+
+# 3. 소켓 객체 자체를 래핑 [v5.0.43]
+# C-level socket.connect() calls bypass python's getaddrinfo. We must wrap socket.socket directly.
+original_socket = socket.socket
+
+class PatchedSocket(original_socket):
+    def connect(self, address):
+        try:
+            if isinstance(address, tuple) and len(address) >= 2:
+                host = address[0]
+                if isinstance(host, str) and host in HOST_MAPPING:
+                    ip = HOST_MAPPING[host]
+                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket intercepted: {host} -> {ip}")
+                    address = (ip,) + address[1:]
+        except Exception:
+            pass
+        return super().connect(address)
+        
+    def connect_ex(self, address):
+        try:
+            if isinstance(address, tuple) and len(address) >= 2:
+                host = address[0]
+                if isinstance(host, str) and host in HOST_MAPPING:
+                    ip = HOST_MAPPING[host]
+                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket(ex) intercepted: {host} -> {ip}")
+                    address = (ip,) + address[1:]
+        except Exception:
+            pass
+        return super().connect_ex(address)
 
 def apply_dns_patch():
     """/etc/hosts 파일을 직접 수정하여 모든 라이브러리(httpx 포함)가 강제 IP를 바라보게 만듭니다."""
@@ -49,12 +76,17 @@ def apply_dns_patch():
             for host, ip in HOST_MAPPING.items():
                 if host not in content:
                     f.write(f"{ip}\t{host}\n")
-        logger.info(f"[{datetime.now()}] [DNS-FIX] /etc/hosts updated with {len(HOST_MAPPING)} hosts.")
+        print(f"[{datetime.now()}] [DNS-FIX] /etc/hosts updated with {len(HOST_MAPPING)} hosts.")
     except Exception as e:
-        logger.error(f"[{datetime.now()}] [DNS-FIX] Failed to update /etc/hosts: {e}")
-        # Fallback to monkeypatch
-        if socket.getaddrinfo != host_forced_getaddrinfo:
-            socket.getaddrinfo = host_forced_getaddrinfo
-            logger.info(f"[{datetime.now()}] [DNS-FIX] Fallback to monkeypatch applied.")
+        print(f"[{datetime.now()}] [DNS-FIX] Failed to update /etc/hosts: {e}")
+        
+    # [v5.0.43] 항상 몽키패치를 적용 (파일 쓰기가 성공하더라도 OS 환경에 따라 무시될 수 있으므로 이중 보장)
+    if socket.getaddrinfo != host_forced_getaddrinfo:
+        socket.getaddrinfo = host_forced_getaddrinfo
+        print(f"[{datetime.now()}] [DNS-FIX] Global socket.getaddrinfo monkeypatch applied.")
+        
+    if socket.socket != PatchedSocket:
+        socket.socket = PatchedSocket
+        print(f"[{datetime.now()}] [DNS-FIX] Global socket.socket subclass wrapper applied.")
 
 apply_dns_patch()
