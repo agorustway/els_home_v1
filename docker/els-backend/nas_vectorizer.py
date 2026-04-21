@@ -10,6 +10,8 @@ from docx import Document
 import pytesseract
 from PIL import Image
 import textract
+import gc
+import requests
 from google import genai
 from google.genai import types
 
@@ -43,12 +45,16 @@ def get_file_hash(filepath):
 
 def extract_text_pypdf(filepath):
     text = ""
+    doc = None
     try:
         doc = fitz.open(filepath)
         for page in doc:
             text += page.get_text("text") + "\n\n"
     except Exception as e:
         logger.error(f"PDF extraction failed for {filepath}: {e}")
+    finally:
+        if doc:
+            doc.close()
     return text
 
 def extract_text_docx(filepath):
@@ -64,9 +70,12 @@ def extract_text_docx(filepath):
 
 def extract_text_xlsx(filepath):
     text = ""
+    wb = None
     try:
-        wb = openpyxl.load_workbook(filepath, data_only=True)
-        for sheet in wb.worksheets:
+        # read_only=True는 메모리 사용량을 획기적으로 줄여줍니다.
+        wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+        for sheet_name in wb.sheetnames:
+            sheet = wb[sheet_name]
             text += f"--- 시트명: {sheet.title} ---\n"
             for row in sheet.iter_rows(values_only=True):
                 row_vals = [str(v).strip() for v in row if v is not None and str(v).strip()]
@@ -74,6 +83,9 @@ def extract_text_xlsx(filepath):
                     text += " | ".join(row_vals) + "\n"
     except Exception as e:
         logger.error(f"XLSX extraction failed for {filepath}: {e}")
+    finally:
+        if wb:
+            wb.close()
     return text
 
 def chunk_text(text, max_len=MAX_CHUNK_SIZE, overlap=CHUNK_OVERLAP):
@@ -122,7 +134,8 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             # 확장자 및 사이즈 체크 동일 적용
             if filepath.suffix.lower() in SUPPORTED_EXTS:
                 try:
-                    if filepath.stat().st_size <= 50 * 1024 * 1024:
+                    # 제한 용량을 20MB로 하향 조정 (나스 메모리 보호)
+                    if filepath.stat().st_size <= 20 * 1024 * 1024:
                         all_target_files.append(filepath)
                 except:
                     all_target_files.append(filepath)
@@ -162,8 +175,8 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             
             # 대용량 파일 스킵 (20MB 초과) - 토큰 및 메모리 보호
             try:
-                if filepath.stat().st_size > 50 * 1024 * 1024:
-                    logger.warning(f"⏩ [SKIP] 대용량 파일(50MB 초과) 제외: {file}")
+                if filepath.stat().st_size > 20 * 1024 * 1024:
+                    logger.warning(f"⏩ [SKIP] 대용량 파일(20MB 초과) 제외: {file}")
                     skipped += 1
                     continue
             except: pass
@@ -206,12 +219,16 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                             text = f.read()
                 elif ext in [".png", ".jpg", ".jpeg", ".gif"]:
                     # 이미지 OCR
+                    image = None
                     try:
                         image = Image.open(file_path_str)
                         text = pytesseract.image_to_string(image, lang='kor+eng')
                     except Exception as e:
                         logger.error(f"Image OCR failed for {filename}: {e}")
                         text = ""
+                    finally:
+                        if image:
+                            image.close()
                 elif ext == ".doc":
                     # .doc 파일 처리 (textract)
                     try:
@@ -352,6 +369,9 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             except Exception as e:
                 logger.error(f"Index update failed for {filename}: {e}")
                 error_cnt += 1
+            
+            # 파일 하나 끝날 때마다 메모리 강제 해제
+            gc.collect()
 
     logger.info(f"🎉 [{branch_name}] 작업 완료! (처리: {processed}, 스킵: {skipped}, 에러: {error_cnt})")
     return {"processed": processed, "skipped": skipped, "errors": error_cnt}
