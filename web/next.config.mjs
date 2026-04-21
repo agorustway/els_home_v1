@@ -12,6 +12,7 @@ const nextConfig = {
   experimental: {
     outputFileTracingIncludes: {
       '/api/chat': ['./data/**/*', './public/data/**/*'],
+      '/api/safe-freight/**/*': ['./public/data/**/*'],
     },
   },
   images: {

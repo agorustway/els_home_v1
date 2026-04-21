@@ -9,6 +9,8 @@ function getDataPath() {
   const candidates = [
     path.join(cwd, 'data', 'safe-freight.json'),
     path.join(cwd, 'web', 'data', 'safe-freight.json'),
+    path.join(cwd, 'public', 'data', 'safe-freight.json'),
+    path.join(cwd, 'web', 'public', 'data', 'safe-freight.json'),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
