@@ -6,11 +6,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
-    { label: '아산 부산 40ft 안전운임 알려줘', icon: '🚛' },
-    { label: '현재 경유 가격은?', icon: '⛽' },
-    { label: '안전운임 개정 조건이 뭐야?', icon: '📋' },
-    { label: '과태료 감경 관련 규정 찾아줘', icon: '⚖️' },
-    { label: '아산시 미세먼지 수치 어때?', icon: '🍃' },
+    { label: '아산 부산 40ft 안전운임', icon: '🚛' },
+    { label: '오늘 경유가는?', icon: '⛽' },
+    { label: '과태료 감경 규정 찾아줘', icon: '⚖️' },
+    { label: '대구 미세먼지 알려줘', icon: '🍃' },
+    { label: '최병훈 연락처', icon: '📞' },
 ];
 
 function TypingIndicator() {
@@ -87,7 +87,7 @@ export default function AskPage() {
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
-        content: '안녕하세요! ELS 솔루션 AI 어시스턴트입니다.\n\n안전운임, 컨테이너 조회, 업무일지 등 ELS 업무에 관한 무엇이든 물어보세요!',
+        content: '안녕하세요! ELS AI 어시스턴트입니다.\n\n안전운임, 경유가, 법령 검색, 사내 연락처 등 업무 질문은 물론,\n일반 상식이나 궁금한 것도 무엇이든 물어보세요!',
     };
 
     const createNewSession = () => {
@@ -374,45 +374,43 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <>
-            <h2 className={styles.guideTitle}>📖 ELS 솔루션 AI 에이전트 지침서</h2>
+            <h2 className={styles.guideTitle}>📖 ELS AI 사용 가이드</h2>
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>1. 전사 읽기 최고권한 Omni-Agent</span><br/>
-                단순 대화형 챗봇이 아닌 <b>ELS Solution 전용 업무 에이전트</b>입니다. 사내 DB, NAS 자료, 외부 공식 API를 모두 연결하여 정확한 답변을 제공합니다.
-            </div>
-
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>2. 안전운임 전문 분석 시스템</span><br/>
+                <span className={styles.guideHighlight}>🚛 안전운임 조회</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', background: '#f0fdf4', padding: '8px', borderRadius: '6px', border: '1px solid #86efac', margin: '6px 0'}}>
-                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.5'}}>
-                        <li><b>구간별 단가 조회</b>: &quot;아산 부산 40ft 안전운임&quot; → 즉시 금액 안내</li>
-                        <li><b>할증 자동 계산</b>: 냉동(+30%), 공휴일(+20%), 플렉시백 등 서버가 직접 계산</li>
-                        <li><b>이력 비교</b>: 6개 고시 기간 변동률 추적 (&quot;인상됐어?&quot;)</li>
-                        <li><b>개정 사이클</b>: 분기별 경유가 ±50원 변동 시 자동 개정 안내</li>
+                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
+                        <li>&quot;아산 부산 40ft 안전운임&quot; → 즉시 금액</li>
+                        <li>&quot;냉동 할증 포함 얼마?&quot; → 자동 계산</li>
+                        <li>&quot;작년 대비 인상됐어?&quot; → 6개 기간 비교</li>
+                        <li>&quot;위탁운임 / 운수사간 운임&quot; → 세부 운임 안내</li>
                     </ul>
                 </div>
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>3. 실시간 데이터 연동</span>
+                <span className={styles.guideHighlight}>📊 실시간 데이터</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '6px'}}>
-                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.5'}}>
-                        <li><b>경유가/유가</b>: OPINET 실시간 전국 평균 경유·휘발유 가격</li>
-                        <li><b>법령 조회</b>: K-Law API 실시간 법률·판례·행정규칙</li>
-                        <li><b>교통/예매</b>: KTX/SRT 시간표 스마트 링크 제공</li>
-                        <li><b>기상/환경</b>: 미세먼지, 한강 수위 정보 (K-SKILL)</li>
-                        <li><b>스포츠/경제</b>: KBO/K리그 실시간 스코어, 주식 시세</li>
+                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
+                        <li><b>경유가</b>: &quot;오늘 경유가&quot; → OPINET 전국 평균</li>
+                        <li><b>법령</b>: &quot;과태료 감경 규정&quot; → 국가법령 검색</li>
+                        <li><b>미세먼지</b>: &quot;대구 미세먼지&quot; → 에어코리아 수치</li>
+                        <li><b>컨테이너</b>: 컨테이너 번호 입력 → 실시간 이력</li>
                     </ul>
                 </div>
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>4. 사내 업무 데이터 접근</span><br/>
-                <span style={{fontSize:'0.8rem', color:'#475569'}}>업무보고, 차량 관제, 연락처, 작업지 정보를 실시간 조회합니다.</span><br/>
-                <b style={{fontSize:'0.8rem', color: '#e11d48'}}>※ NAS 자료실 PDF/엑셀 본문은 추후 크롤러 연동 예정입니다.</b>
+                <span className={styles.guideHighlight}>📂 사내 업무</span><br/>
+                <span style={{fontSize:'0.8rem', color:'#475569'}}>연락처, 차량 위치, 배차판, 업무보고, NAS 문서를 실시간 조회합니다.</span>
+            </div>
+            
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>💡 그 외 무엇이든!</span><br/>
+                <span style={{fontSize:'0.8rem', color:'#475569'}}>날씨, 스포츠, KTX, 상식 등 자유롭게 질문하세요. AI가 보유 지식으로 성실히 답변합니다.</span>
             </div>
             
             <div style={{fontSize: '0.78rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
-                Powered by Gemini 2.5 Flash &amp; Omni-Agent Ecosystem
+                Powered by Gemini 2.5 Flash
             </div>
         </>
     );
@@ -479,7 +477,7 @@ export default function AskPage() {
                         </div>
                         <div>
                             <h1 className={styles.headerTitle}>ELS AI 어시스턴트</h1>
-                            <p className={styles.headerSub}>실시간 업무 · K-Law 연동 중</p>
+                            <p className={styles.headerSub}>안전운임 · 유가 · 법령 · 사내DB 연동 중</p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, minWidth: 0 }}>
