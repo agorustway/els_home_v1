@@ -19,7 +19,7 @@
 - **Cloud (Supabase)**: PostgreSQL DB, Storage (데이터 지능, Auth)
 - **NAS (Docker - The Backdoor)**: Flask API Server + ELS Bot (실질적 작업반장)
 - **Mobile**: Android App (Capacitor) + Background Service (GPS)
-- **External MCP**: K-SKILL Proxy (nomadamas.org) + K-Law API (beopmang.org)
+- **External MCP**: K-SKILL Proxy (미세먼지 한정) + K-Law API (beopmang.org) + OPINET (유가)
 
 **연결 고리:**
 - **Web <--> DB**: Supabase 직결 (표준 데이터 조회)
@@ -27,7 +27,7 @@
 - **Web --> NAS Backend**: **[Critical]** High-Traffic API 프록시 및 대용량 파일(엑셀) 처리 오프로딩
 - **NAS Backend <--> Bot**: 컨테이너 조회 명령 (Selenium/DrissionPage 엔진)
 - **App --> NAS Backend**: GPS 원격측정 및 실시간 위치 전송
-- **Web --> K-SKILL/K-Law/OPINET**: AI RAG를 위한 외부 지식 프록시
+- **Web --> OPINET/K-Law/K-SKILL**: AI RAG를 위한 외부 지식 연동 (안정 채널만 유지)
 - **NAS --> Git/Vercel**: 안전운임 고시 및 정적 데이터 자동 빌드/배포 파이프라인
 
 ---
@@ -137,7 +137,7 @@ ES Modules (type="module") 방식 적용. 빌드 도구 없음.
 
 ## 6. AI 어시스턴트 아키텍처 (Agent RAG Pipeline)
 
-> **최종 구현**: 2026-04-18 (v4.9.64 — Omni-Agent Phase 1~4)
+> **최종 구현**: 2026-04-21 (v5.1 — K-SKILL 구조조정 + 영리한 AI 전환)
 > **구현 파일**:
 > - web/app/api/chat/route.js — 백엔드 RAG 엔진, 할증 계산, OPINET 연동, Gemini 스트리밍
 > - web/app/(main)/employees/(intranet)/ask/page.js — AI 어시스턴트 UI (데스크탑/모바일 분기)
@@ -145,8 +145,10 @@ ES Modules (type="module") 방식 적용. 빌드 도구 없음.
 > - scripts/supabase_pgvector_setup.sql — pgvector 벡터 DB 스키마
 > - scripts/vectorize-safe-freight.js — 안전운임 벡터화 파이프라인
 
-ELS AI 어시스턴트는 단순 질의응답을 넘어 사내 DB + 외부 MCP 프록시를 실시간으로 결합하는
+ELS AI 어시스턴트는 사내 DB + 안정적 외부 API를 실시간으로 결합하는
 Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
+불안정한 외부 K-SKILL 기능(KTX/지하철/한강/주식/스포츠)은 v5.1에서 제거하고,
+해당 주제는 Gemini 자체 지식으로 유연하게 답변하도록 전환했습니다.
 
 ### 6-1. 전체 데이터 흐름 (RAG Pipeline)
 
@@ -171,10 +173,10 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
         |       |       +-- (A) 최신 단가표 주입 (상위 8구간 스코어링)
         |       |       +-- (B) 이력 비교표 (buildFareHistory, 6개 기간)
         |       |       +-- (C) 할증 서버 계산 (calcSurcharge, 냉동/공휴일 등)
-        |       +-- '날씨/미세먼지/공기' → callExternalAPI() → K-SKILL fine-dust (NAS DNS 패치 기반)
-        |       +-- '법/규정/근로/운임'  → K-Law REST API 호출
-        |       +-- '경유/유가/기름값'   → callExternalAPI() → OPINET /api/opinet/fuel-price
-        |       +-- '열차/KTX'         → 네이버 기차표 딥링크 프록시 연동 (elssolution.synology.me)
+        |       +-- '날씨/미세먼지/공기' → callExternalAPI() → K-SKILL fine-dust (안정)
+        |       +-- '법/규정/근로/운임'  → K-Law REST API 호출 (안정)
+        |       +-- '경유/유가/기름값'   → callExternalAPI() → OPINET /api/opinet/fuel-price (안정)
+        |       +-- [v5.1 제거] KTX/지하철/한강수위/주식/스포츠 → Gemini 일반지식 대응
         |
         +-- STEP 3: Context 조합
         |       BASE_SYSTEM_INSTRUCTION (분기별 개정사이클 + 20+개 메뉴맵 포함)
@@ -199,12 +201,13 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 | **컨테이너** | NAS Backend API | 영문4+숫자7 패턴 | 반입/반출 이력 |
 | **안전운임 단가** | safe-freight.json (public/data/ 배치, self-fetch) | 지역명 키워드 스코어링 | 구간별 운임 단가 + 이력비교표 + 할증계산 |
 | **안전운임 고시** | safe-freight-docs.json (PDF 변환) | 항상 주입 (최신 2차수) | 고시 전문 텍스트 |
-| **K-SKILL/미세먼지** | callExternalAPI() → k-skill-proxy | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI |
-| **OPINET 유가** | callExternalAPI() → /api/opinet/fuel-price | 경유, 유가, 기름값 | 전국 경유/휘발유 평균가, 주간변동 |
-| **스포츠 결과** | 네이버 스포츠 API (api-gw...) | 야구, 축구, KBO, K리그 등 | 실시간/과거 경기 스코어 (Direct API) |
-| **열차/KTX/SRT** | 다이렉트 딥링크 생성기 | KTX, SRT, 기차표, 좌석 | 네이버 기차표 검색 및 공식앱 연결 |
-| **K-Law** | api.beopmang.org | 법, 규정, 근로, 운임, 판례, 과태료 | 법령 조문 전문 |
-| **pgvector 시맨틱** | Supabase document_chunks (3,868 청크) | match_documents() RPC | 코사인 유사도 기반 구간/고시 검색 (예정) |
+| **K-SKILL/미세먼지** | callExternalAPI() → k-skill-proxy | 날씨, 미세먼지, 공기 | AirKorea 공식 PM10/PM2.5/KHAI | ✅ 안정 |
+| **OPINET 유가** | callExternalAPI() → /api/opinet/fuel-price | 경유, 유가, 기름값 | 전국 경유/휘발유 평균가, 주간변동 | ✅ 안정 |
+| **K-Law** | api.beopmang.org | 법, 규정, 근로, 운임, 판례, 과태료 | 법령 조문 전문 | ✅ 안정 |
+| **pgvector 시맨틱** | Supabase document_chunks (3,868 청크) | match_documents() RPC | 코사인 유사도 기반 구간/고시 검색 | ✅ 안정 |
+| ~~스포츠 결과~~ | ~~네이버 스포츠 API~~ | ~~야구, 축구 등~~ | v5.1에서 제거 → Gemini 일반지식 | ❌ 제거 |
+| ~~열차/KTX/SRT~~ | ~~딥링크 생성기~~ | ~~KTX, SRT 등~~ | v5.1에서 제거 → Gemini 일반지식 | ❌ 제거 |
+| ~~한강수위/지하철/주식~~ | ~~K-SKILL 프록시~~ | ~~한강, 지하철, 주식~~ | v5.1에서 제거 → Gemini 일반지식 | ❌ 제거 |
 
 **K-SKILL 지역 측정소 매핑 (도시명 -> AirKorea 측정소 힌트)**:
 - 서울: 서울 중구 / 부산: 부산 연산동 / 인천: 인천 구월동
@@ -220,42 +223,42 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 - 장점2: 정부 공공데이터포털 OpenAPI 키 발급 불필요
 - 장점3: 법망측 서버가 정부 API -> JSON 변환 담당 (유지보수 컨테이너 없음)
 
-### 6-3. Anti-Hallucination 설계 (환각 방지)
+### 6-3. 정확도 계층 및 유연 답변 원칙 (v5.1 개편)
 
-소프트 가드레일 원칙:
-- [허용] 사내 DB(RAG) 데이터 기반 답변 (실제 Supabase 데이터 주입됨)
-- [허용] K-SKILL / K-Law 도구 호출 결과 기반 답변
-- [허용] ELS 시스템 메뉴/기능/경로 안내 (시스템 고정 지식)
-- [허용] 사이트 내부 문서/자료 요약 및 해석 (RAG 데이터 범위 내)
-- [주의] 법령 조항/수치 -> K-Law 결과 인용 또는 "K-Law API 확인 필요" 명시
-- [거절] 업무 범위 외 질문 (잡담, 일반 상식, 정치/사회 의견)
+**3계층 정확도 모델:**
+| 계층 | 대상 | 원칙 | 예시 |
+|---|---|---|---|
+| 🔴 **절대 정확** | 안전운임, 사내 DB, K-Law, OPINET | 데이터 인용 필수. 할루시네이션 금지 | "아산→부산 40ft = 568,000원" |
+| 🟡 **정확 우선** | 미세먼지, NAS 문서 | 데이터 있으면 인용, 없으면 일반지식 | "현재 대구 PM10 = 42㎍/㎥" |
+| 🟢 **유연 답변** | 날씨, 스포츠, KTX, 주식, 상식 | Gemini 일반지식 활용. 출처 밝힘 | "일반 지식 기반 답변입니다" |
 
-**설계 원칙**: "완전 도구 차단" 방식 지양. 소프트 가드레일 채택.
-- 사이트 내 모든 문서/자료 요약/안내는 AI가 담당 (거절 시 사용성 저하)
-- 법령 등 외부 사실관계 수치는 반드시 출처 명시 또는 K-Law 조회 유도
+**유연 답변 원칙 (v5.1 신규):**
+- 업무 외 일반 질문도 **거절하지 않는다** (기존: 잡담/상식 거절 → 폐지)
+- 데이터 미주입 주제는 Gemini 보유 지식으로 성실히 답변
+- 단, 사내 확인 데이터가 아닌 일반 지식 기반임을 명시
+- 관련 외부 링크(네이버, 코레일 등)를 함께 안내
 
-BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
-- 너는 ELS Solution의 전사 읽기 최고권한 Omni-Agent다.
+**유지되는 핵심 지시:**
 - **인트라넷 전체 20+개 메뉴 경로를 시스템 프롬프트에 내장** (v4.9.29)
 - **분기별 안전운임 개정 사이클 학습**: 1Q→5월, 2Q→7월, 3Q→10월, 4Q→다음해 1월
-- **±50원/L 경유가 변동 기준 이해**: 50원 미만 시 동결 규칙 포함
-- K-SKILL / K-Law / OPINET / 사내 DB에서 확인된 정보를 최우선으로 활용.
-- **할증 계산은 서버가 수행** → AI는 결과만 인용 (서버 산출 결과임을 명시)
+- **할증 계산은 서버가 수행** → AI는 결과만 인용
 - **데이터 신선도**: 답변 말미에 조회 기준 시점 필수 명시
-- 법령/고시 검색 결과가 빈약해도 사전 지식으로 성심성의껏 답변. 거절 최소화.
-- 메뉴 안내 시 반드시 [메뉴이름](/경로) 마크다운 링크로 이동 연결해라.
+- 메뉴 안내 시 반드시 [메뉴이름](/경로) 마크다운 링크로 이동 연결
 
-### 6-4. AI 어시스턴트 UI/UX 구조 (2026-04-11 개편)
+### 6-4. AI 어시스턴트 UI/UX 구조 (v5.1 재설계)
 
 | 환경 | 레이아웃 | 특징 |
 |---|---|---|
 | **데스크탑** (>768px) | 2-Column 분할 | 좌측: ELS AI 사용 가이드 패널 (상설), 우측: 채팅창 |
 | **모바일** (<=768px) | Full-Screen 채팅 | 채팅창 100% 점유, 헤더 [가이드] 버튼 -> 모달 팝업 |
 
-가이드 패널 표시 내용:
-- 연결된 데이터 소스 배지 (사내DB / K-SKILL / K-Law)
-- 사용 가능한 질문 예시 (법령, 미세먼지, 차량위치, 업무보고)
-- 마크다운 링크로 내부 메뉴 바로가기 안내
+**가이드 패널 구성 (v5.1):**
+- 🚛 안전운임 조회 — 구간별 단가, 할증 계산, 이력 비교, 위탁/운수사간 운임
+- 📊 실시간 데이터 — 경유가(OPINET), 법령(K-Law), 미세먼지(에어코리아), 컨테이너 이력
+- 📂 사내 업무 — 연락처, 차량 위치, 배차판, 업무보고, NAS 문서 벡터검색
+- 💡 그 외 무엇이든 — 날씨, 스포츠, KTX, 상식 등 자유 질문 (Gemini 일반지식)
+
+**빠른 질문 버튼:** 아산 부산 40ft 안전운임 / 오늘 경유가 / 과태료 감경 규정 / 대구 미세먼지 / 연락처 검색
 
 ---
 
@@ -266,6 +269,7 @@ BASE_SYSTEM_INSTRUCTION 핵심 지시 요약:
 3. **나스 빌드**: Dockerfile 수정 후 반드시 sh scripts/nas-deploy.sh로 전체 컨테이너 재빌드. (약 40분 소요)
 4. **APK 빌드**: npx cap sync 단독 실행 절대 금지. 반드시 scripts/build_driver_apk.ps1 경유.
 5. **K-SKILL/K-Law 가용성**: 외부 프록시 서버 의존. 네트워크 단절 시 AI는 fallback(사내 DB only)으로 동작.
+6. **v5.1 일반 질문 대응**: 업무 외 질문(스포츠, KTX, 상식 등)은 거절하지 않고 Gemini 일반지식으로 답변. 단, 사내 데이터 아님을 밝힘.
 
 ---
-*최종 갱신일: 2026-04-18 (by Antigravity/Gemini | v4.9.65 Omni-Agent Stabilized)*
+*최종 갱신일: 2026-04-21 (by Antigravity/Gemini | v5.1 AI 구조조정 — K-SKILL 불안정 기능 제거 + 영리한 AI 전환)*

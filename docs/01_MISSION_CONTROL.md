@@ -1,15 +1,16 @@
 # 🛰️ MISSION CONTROL (2026-04-21)
 
 ## 📌 현재 상태 및 핵심 지표
-- **현재 버전**: `v5.0.51` (Infrastructure Stabilized)
-- **핵심 목표**: NAS 백도어 안정화 및 전사 데이터 동기화 자동화
-- **최근 승전보**: httpx/httpcore 삼중 DNS 패치로 나스 통신 장애 완전 종결 (2026-04-21)
+- **현재 버전**: `v5.1` (AI Restructured — Smart Agent)
+- **핵심 목표**: 불안정 외부 API 제거 + 영리한 AI 에이전트 전환
+- **최근 승전보**: K-SKILL 불안정 기능 과감히 제거, 일반 질문에도 유연 답변하는 영리한 AI로 전환 (2026-04-21)
 
 ### 🚀 마일스톤 (Milestones)
 - [✅] **Phase 1-5**: AI 에이전트 및 RAG 엔진 구축 완료
 - [✅] **Phase 6**: 인프라 최적화 및 DNS 장애 박멸 (Triple-Net Patch)
 - [✅] **Operation**: 안전운임/아산 배차판 자동화 파이프라인 구축
-- [ ] **Next**: 현장 피드백 기반 유저 경험(UX) 고도화
+- [✅] **v5.1**: K-SKILL 구조조정 + AI 가이드 재설계 + 유연 답변 원칙 도입
+- [ ] **Next**: NAS 크롤러 PDF/Excel/Word 파싱 확장 + UX 고도화
 
 ## 🚧 최근 이슈 및 조치 (2026-04-21)
 - **[SOLVED] 아산 배차판 자동 업데이트 [Errno -2] 끈질긴 장애 완전 종결**: 
@@ -68,8 +69,14 @@ npx cap sync   ← 단독 실행 금지
 ### 🔧 Phase 4 — 안정화 (v4.9.63~64, 진행 중)
 - **문제**: Vercel standalone 빌드에서 `safe-freight.json`(35MB) 미번들
 - **시도 1**: `outputFileTracingIncludes` 추가 → 미해결
-- **시도 2**: `require()` 기반 로드로 전환 → 배포 확인 대기 중
-- **성공 항목**: 경유가 연동 ✅, 개정 사이클 ✅, SRT/KTX 안내 ✅
+- **시도 2**: `require()` 기반 로드로 전환 → 해결 완료
+- **성공 항목**: 경유가 연동 ✅, 개정 사이클 ✅, 미세먼지 연동 ✅
+
+### ✅ Phase 5.1 — AI 구조조정 (v5.1)
+- **K-SKILL 불안정 기능 제거**: KTX/SRT, 지하철, 한강수위, 주식, 스포츠 비활성화
+- **유연 답변 원칙**: 업무 외 일반 질문 거절 폐지 → Gemini 일반지식으로 대응
+- **가이드 패널 재설계**: 기술 용어 → 사용자 실용 가이드 전면 교체
+- **안정 기능 유지**: 안전운임(자체), 경유가(OPINET), 미세먼지(K-SKILL), 법령(K-Law)
 
 ### ❌ 잔여 과제
 - [x] **안전운임 요율 미표시** — Webpack `require()` 번들링으로 100% 로딩 보장 ✅
@@ -95,4 +102,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-21 v5.0.40 (by Antigravity/Gemini)*
+*최종 갱신: 2026-04-21 v5.1 (by Antigravity/Gemini — AI 구조조정 완료)*
