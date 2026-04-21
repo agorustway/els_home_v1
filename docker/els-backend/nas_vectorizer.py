@@ -272,9 +272,9 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     # 최신 모델 시도 후 실패 시 범용 모델로 폴백
                     try:
                         import requests
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={api_key}"
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={api_key}"
                         payload = {
-                            "model": "models/text-embedding-004",
+                            "model": "models/gemini-embedding-001",
                             "content": {"parts": [{"text": chunk}]}
                         }
                         resp = requests.post(url, json=payload, timeout=10)
@@ -282,10 +282,10 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                             raise Exception(f"API Error {resp.status_code}: {resp.text}")
                         embedding = resp.json()['embedding']['values']
                     except Exception as e:
-                        logger.warning(f"text-embedding-004 failed, falling back to embedding-001: {e}")
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key={api_key}"
+                        logger.warning(f"gemini-embedding-001 failed, falling back to gemini-embedding-2-preview: {e}")
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key={api_key}"
                         payload_fallback = {
-                            "model": "models/embedding-001",
+                            "model": "models/gemini-embedding-2-preview",
                             "content": {"parts": [{"text": chunk}]}
                         }
                         resp = requests.post(url, json=payload_fallback, timeout=10)

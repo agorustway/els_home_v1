@@ -64,10 +64,10 @@ def test_vectorizer_gemini_model_name(tmp_path, mock_supabase, mock_requests_pos
     
     print(f"\n[TDD DEBUG] JSON Payload in API call: {payload}")
     
-    # Verify the model field matches what the REST API expects for the 004 model
+    # Verify the model field matches what the REST API expects for the new model
     assert payload is not None
     assert "model" in payload
-    assert payload["model"] == "models/text-embedding-004"
+    assert payload["model"] == "models/gemini-embedding-001"
 
 def test_file_size_limit_respect(tmp_path, mock_supabase, mock_requests_post, monkeypatch):
     """

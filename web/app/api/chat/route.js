@@ -157,20 +157,20 @@ function calcSurcharge(baseFare, surchargeIds, sfData) {
 }
 
 
-// ─── Phase 5: 문서 벡터 추출 (Gemini text-embedding-004) ───
+// ─── Phase 5: 문서 벡터 추출 (Gemini gemini-embedding-001) ───
 async function getEmbedding(text) {
     try {
         const apiKey = process.env.GEMINI_API_KEY;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
-        const res = await fetch(url, {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
+        const embedRes = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: "models/text-embedding-004",
-                content: { parts: [{ text }] }
+                model: "models/gemini-embedding-001",
+                content: { parts: [{ text: text }] }
             })
         });
-        const data = await res.json();
+        const data = await embedRes.json();
         return data.embedding?.values || null;
     } catch (e) {
         console.error('[ELS-AI] 임베딩 생성 오류:', e);
@@ -700,13 +700,12 @@ export async function POST(req) {
         // 3.5 NAS & 메뉴얼 시맨틱 검색 (Phase 2/5 - pgvector)
         try {
             if (process.env.GEMINI_API_KEY && lastUserText.trim().length > 2) {
-                const embedRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`, {
+                const embedRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: "models/text-embedding-004",
-                        content: { parts: [{ text: lastUserText }] },
-                        outputDimensionality: 768
+                        model: "models/gemini-embedding-001",
+                        content: { parts: [{ text: userQuery }] }
                     }),
                     signal: AbortSignal.timeout(15000)
                 }).catch(() => null);
