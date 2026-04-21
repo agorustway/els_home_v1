@@ -2,8 +2,8 @@
 
 | 항목 | 내용 | 비고 |
 | :--- | :--- | :--- |
-| **현재 버전** | `v5.0.46` | **DONE: getaddrinfo 훅 인자(type) 충돌 오류 수정 (Failsafe 강화)** |
-| **상태** | 🟢 정상 | `socket` 모듈 우회 대비, `httpcore._backends` 직접 래핑 및 타입 체크 강화 |
+| **현재 버전** | `v5.0.47` | **DONE: NAS-specific Supabase URL HOST_MAPPING 추가 완료** |
+| **상태** | 🟢 정상 | `httpcore` 훅은 정상 작동했으나 매핑 사전에 URL 누락으로 인한 바이패스 방어 완료 |
 
 ## 🚧 최근 이슈 및 조치 (2026-04-21)
 - **[SOLVED] 아산 배차판 자동 업데이트 [Errno -2] 끈질긴 장애 완전 종결**: 
