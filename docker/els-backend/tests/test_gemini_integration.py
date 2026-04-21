@@ -26,19 +26,19 @@ def mock_supabase():
     return mock_client
 
 @pytest.fixture
-def mock_genai_client():
-    with mock.patch('nas_vectorizer.genai.Client') as MockClient:
-        mock_instance = MockClient.return_value
-        # Mock embed_content to simulate successful API call
-        mock_instance.models.embed_content.return_value = mock.Mock(
-            embeddings=[mock.Mock(values=[0.1, 0.2, 0.3])]
-        )
-        yield mock_instance
+def mock_requests_post():
+    with mock.patch('nas_vectorizer.requests.post') as mock_post:
+        mock_resp = mock.Mock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"embedding": {"values": [0.1, 0.2, 0.3]}}
+        mock_post.return_value = mock_resp
+        yield mock_post
 
-def test_vectorizer_gemini_model_name(tmp_path, mock_supabase, mock_genai_client, monkeypatch):
+
+def test_vectorizer_gemini_model_name(tmp_path, mock_supabase, mock_requests_post, monkeypatch):
     """
-    TDD: Verify that process_nas_directory calls embed_content with the CORRECT model name string.
-    Specifically checking against the 'models/models/...' double prefix issue.
+    TDD: Verify that process_nas_directory constructs the correct JSON payload with the 'model' field.
+    Specifically checking against the 404 REST API payload issue.
     """
     # 1. Setup environment
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
@@ -54,26 +54,22 @@ def test_vectorizer_gemini_model_name(tmp_path, mock_supabase, mock_genai_client
     assert result["processed"] == 1
     assert result["errors"] == 0
     
-    # 5. Core Check: Verify the model name string used in the call
-    # We expect 'text-embedding-004', NOT 'models/text-embedding-004' if the SDK handles it
-    # OR we check if our previous redundant fix (adding models/) was indeed redundant.
-    
-    # Get all calls to embed_content
-    calls = mock_genai_client.models.embed_content.call_args_list
+    # 5. Core Check: Verify the model name string used in the JSON payload
+    calls = mock_requests_post.call_args_list
     assert len(calls) > 0
     
-    # Check the 'model' argument of the first call
+    # Check the JSON payload of the first call
     call_kwargs = calls[0].kwargs
-    model_name = call_kwargs.get('model')
+    payload = call_kwargs.get('json')
     
-    print(f"\n[TDD DEBUG] Model name used in API call: {model_name}")
+    print(f"\n[TDD DEBUG] JSON Payload in API call: {payload}")
     
-    # IF the user is using the SDK, 'text-embedding-004' is standard.
-    # If the user saw 404 with 'models/text-embedding-004', then 'text-embedding-004' should be the fix.
-    assert model_name == "text-embedding-004"
-    assert "models/" not in model_name, "Redundant 'models/' prefix detected!"
+    # Verify the model field matches what the REST API expects for the 004 model
+    assert payload is not None
+    assert "model" in payload
+    assert payload["model"] == "models/text-embedding-004"
 
-def test_file_size_limit_respect(tmp_path, mock_supabase, mock_genai_client, monkeypatch):
+def test_file_size_limit_respect(tmp_path, mock_supabase, mock_requests_post, monkeypatch):
     """
     Verify that files over 50MB are skipped as per the latest requirements.
     """
