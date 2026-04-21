@@ -178,6 +178,10 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
         |       +-- '경유/유가/기름값'   → callExternalAPI() → OPINET /api/opinet/fuel-price (안정)
         |       +-- [v5.1 제거] KTX/지하철/한강수위/주식/스포츠 → Gemini 일반지식 대응
         |
+        +-- STEP 2.5: AI 메모리(AI Memory) 주입 (Persistence)
+        |       +-- `ai_custom_rules` 테이블에서 사용자의 피드백/교정 내역 조회
+        |       +-- 시스템 프롬프트 하단에 '최근 지침'으로 동적 병합 (영구 학습 효과)
+        |
         +-- STEP 3: Context 조합
         |       BASE_SYSTEM_INSTRUCTION (분기별 개정사이클 + 20+개 메뉴맵 포함)
         |         + Omni-RAG 검색 결과
@@ -272,4 +276,4 @@ Dynamic RAG (Retrieval-Augmented Generation) 아키텍처를 따릅니다.
 6. **v5.1 일반 질문 대응**: 업무 외 질문(스포츠, KTX, 상식 등)은 거절하지 않고 Gemini 일반지식으로 답변. 단, 사내 데이터 아님을 밝힘.
 
 ---
-*최종 갱신일: 2026-04-21 (by Antigravity/Gemini | v5.1 AI 구조조정 — K-SKILL 불안정 기능 제거 + 영리한 AI 전환)*
+*최종 갱신일: 2026-04-22 (by Antigravity/Gemini | v5.3.2 AI Memory & Weather RAG Patch)*

@@ -1,9 +1,9 @@
 # 🛰️ MISSION CONTROL (2026-04-22)
 
 ## 📌 현재 상태 및 핵심 지표
-- **현재 버전**: `v5.3.1` (NAS Scale-up & Embedding API Fix)
+- **현재 버전**: `v5.3.2` (AI Memory & Weather RAG Patch)
 - **핵심 목표**: 사용자와의 교정/피드백 사내 DB 영구 저장 + 지식 연결 모델(Weather-Safety 등) 도입
-- **최근 승전보**: AI 커스텀 규칙 테이블(`ai_custom_rules`) 신설 및 NAS 실시간 업데이트 알림 로직 적용 (2026-04-22)
+- **최근 승전보**: AI 메모리(`ai_custom_rules`) 영구 저장 체계 구축 및 기상청 RAG 연동 완료 (2026-04-22)
 
 ### 🚀 마일스톤 (Milestones)
 - [✅] **Phase 1-5**: AI 에이전트 및 RAG 엔진 구축 완료
@@ -14,10 +14,10 @@
 - [ ] **Next**: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## 🚧 최근 이슈 및 조치 (2026-04-22)
-- **[SOLVED] AI 학습 귀속 이슈**: Gemini 내부 상태가 아닌 사내 DB(`ai_custom_rules`)에 피드백을 저장하여 영구 보존.
-- **[FEAT] NAS 업데이트 알림**: 대화 시작 시 최근 24시간 내 변경된 문서를 AI가 먼저 인지하도록 개선.
-- **[FEAT] 컨테이너 조회 고지**: 30초 대기 고지 로직을 AI 행동 강령으로 강제화.
-  3) **안전운임 복구**: 유실되었던 웹용 운임 데이터를 수동 빌드 후 배포 완료. 향후 자동화를 위해 `scripts/update-safe-freight.sh` 제작.
+- **[SOLVED] AI 메모리 (AI Memory)**: 사용자의 피드백 및 지시사항을 `ai_custom_rules` 테이블에 저장하여 세션 리셋 후에도 영구 학습되도록 구현.
+- **[FIX] 임베딩 API 404 해결**: SDK 내부 중복 접두사(`models/`) 제거 및 TDD(Unit Test)를 통한 검증 완료.
+- **[FEAT] 실시간 날씨 RAG**: AI가 단순 지식이 아닌 `/api/weather` 데이터를 기반으로 강수량, 결빙 주의 정보 등을 안내하도록 연동.
+- **[UI] AI 가이드 익명화**: 예시 질문에서 특정 인명("남진봉" 등)을 제거하고 비즈니스 공용 명칭으로 교체.
 
 ## 🎯 현재 목표: Omni-Agent 완성 및 마이그레이션 착수
 1.  **[DONE]** K-SKILL 403 차단 회피를 위한 NAS 백엔드 프록시 구축 완료
@@ -103,4 +103,4 @@ npx cap sync   ← 단독 실행 금지
 - **[07. RUNBOOK](./07_RUNBOOK.md)**
 
 ---
-*최종 갱신: 2026-04-21 v5.2 (by Antigravity/Gemini — NAS 클로러 확장 및 UI 개선)*
+*최종 갱신: 2026-04-22 v5.3.2 (by Antigravity/Gemini — AI Memory & Weather RAG 연동)*

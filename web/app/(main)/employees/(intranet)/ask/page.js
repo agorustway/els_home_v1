@@ -6,11 +6,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
-    { label: '아산 부산 40ft 안전운임', icon: '🚛' },
-    { label: '오늘 경유가는?', icon: '⛽' },
-    { label: '과태료 감경 규정 찾아줘', icon: '⚖️' },
-    { label: '대구 미세먼지 알려줘', icon: '🍃' },
-    { label: '최병훈 연락처', icon: '📞' },
+    { label: 'TCLU4255167 이력 조회', icon: '🔍' },
+    { label: '아산지점 24년_운임표.xlsx 내용 요약', icon: '📊' },
+    { label: '[본사] 명함 신청서(이미지) 요약', icon: '📄' },
+    { label: '내일 아산 차량관리 주의사항', icon: '❄️' },
+    { label: '부산 신항 40ft 안전운임', icon: '🚛' },
 ];
 
 function TypingIndicator() {
@@ -87,7 +87,7 @@ export default function AskPage() {
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
-        content: '안녕하세요! ELS AI 어시스턴트입니다.\n\n안전운임, 경유가, 법령 검색, 사내 연락처 등 업무 질문은 물론,\n일반 상식이나 궁금한 것도 무엇이든 물어보세요!',
+        content: '안녕하세요! **더 똑똑해진 ELS AI 어시스턴트**입니다.\n\n이제 사내 NAS의 수만 권의 **문서(PDF, 엑셀, 워드)**와 **이미지**까지 스스로 읽고 답변할 수 있습니다.\n\n안전운임, 이트랜스 이력, 차량 관제는 물론 사내 지식에 대해 무엇이든 물어보세요!',
     };
 
     const createNewSession = () => {
@@ -374,43 +374,51 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <>
-            <h2 className={styles.guideTitle}>📖 ELS AI 사용 가이드</h2>
+            <h2 className={styles.guideTitle}>🚀 ELS AI 가이드 (v5.3.1)</h2>
+            
+            <div className={styles.guideBox} style={{borderLeft: '4px solid #2563eb'}}>
+                <span className={styles.guideHighlight}>📂 사내 문서/이미지 지식 (NAS)</span>
+                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
+                    NAS의 방대한 자료를 AI가 직접 분석합니다.
+                    <ul style={{paddingLeft: '16px', margin: '4px 0 0 0'}}>
+                        <li>&quot;운임표 엑셀 파일에서 대기료 찾아줘&quot;</li>
+                        <li>&quot;[본사] 명함 신청서(이미지) 요약해줘&quot;</li>
+                        <li>&quot;아산지점 최근 업무보고 내용 뭐야?&quot;</li>
+                    </ul>
+                </div>
+            </div>
+
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>🚛 안전운임 조회</span>
+                <span className={styles.guideHighlight}>🚛 안전운임 및 물류 데이터</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', background: '#f0fdf4', padding: '8px', borderRadius: '6px', border: '1px solid #86efac', margin: '6px 0'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
-                        <li>&quot;아산 부산 40ft 안전운임&quot; → 즉시 금액</li>
-                        <li>&quot;냉동 할증 포함 얼마?&quot; → 자동 계산</li>
-                        <li>&quot;작년 대비 인상됐어?&quot; → 6개 기간 비교</li>
-                        <li>&quot;위탁운임 / 운수사간 운임&quot; → 세부 운임 안내</li>
+                        <li>&quot;아산 부산 40ft 안전운임&quot; → 즉시 조회</li>
+                        <li>&quot;컨테이너 번호&quot; → 실시간 이력/위치</li>
+                        <li>&quot;할증 포함 총 운임 계산해줘&quot;</li>
                     </ul>
                 </div>
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>📊 실시간 데이터</span>
+                <span className={styles.guideHighlight}>🧠 자율 학습 엔진 (Active)</span>
+                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px'}}>
+                    형이 가르쳐준 교정 사항을 **DB에 영구 저장**하여 다음 대화에 반영합니다. (실시간 학습 중)
+                </div>
+            </div>
+
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>🎨 멀티 도메인 연결</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '6px'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
-                        <li><b>경유가</b>: &quot;오늘 경유가&quot; → OPINET 전국 평균</li>
-                        <li><b>법령</b>: &quot;과태료 감경 규정&quot; → 국가법령 검색</li>
-                        <li><b>미세먼지</b>: &quot;대구 미세먼지&quot; → 에어코리아 수치</li>
-                        <li><b>컨테이너</b>: 컨테이너 번호 입력 → 실시간 이력</li>
+                        <li><b>기상-운송</b>: 결빙주의보 시 안전 가이드</li>
+                        <li><b>유가-운임</b>: 경유가 변동에 따른 운임 대응</li>
+                        <li><b>법령-행정</b>: 과태료 감경 규정 및 실무 연계</li>
                     </ul>
                 </div>
-            </div>
-
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>📂 사내 업무</span><br/>
-                <span style={{fontSize:'0.8rem', color:'#475569'}}>연락처, 차량 위치, 배차판, 업무보고, NAS 문서를 실시간 조회합니다.</span>
-            </div>
-            
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>💡 그 외 무엇이든!</span><br/>
-                <span style={{fontSize:'0.8rem', color:'#475569'}}>날씨, 스포츠, KTX, 상식 등 자유롭게 질문하세요. AI가 보유 지식으로 성실히 답변합니다.</span>
             </div>
             
             <div style={{fontSize: '0.78rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
-                Powered by Gemini 2.5 Flash
+                Next Gen AI Powered by Gemini 1.5 Pro
             </div>
         </>
     );
@@ -476,8 +484,8 @@ export default function AskPage() {
                             </svg>
                         </div>
                         <div>
-                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트</h1>
-                            <p className={styles.headerSub}>안전운임 · 유가 · 법령 · 사내DB 연동 중</p>
+                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.3.1</span></h1>
+                            <p className={styles.headerSub}>NAS Knowledge Link · Multi-Domain AI 가동 중</p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, minWidth: 0 }}>

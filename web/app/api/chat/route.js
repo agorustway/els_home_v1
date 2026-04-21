@@ -756,8 +756,32 @@ export async function POST(req) {
                     recentPostsText += `\n\n## 유가 안내\n오피넷 유가 조회가 일시 중단되었습니다. [안전운임 조회](/employees/safe-freight) 메뉴에서 유가 정보를 직접 확인해 주세요.`;
                 }
             }
-            // (1) 미세먼지/날씨
-            if (userKwd.includes('미세먼지') || userKwd.includes('공기') || userKwd.includes('날씨')) {
+            // (1) 날씨 및 미세먼지
+            if (userKwd.includes('날씨') || userKwd.includes('기온') || userKwd.includes('온도') || userKwd.includes('비') || userKwd.includes('눈')) {
+                const regionsMap = {
+                    '서울': 'seoul', '부산': 'busan', '인천': 'incheon',
+                    '대구': 'daegu', '대전': 'daejeon', '광주': 'gwangju',
+                    '울산': 'ulsan', '세종': 'sejong', '아산': 'asan',
+                    '당진': 'dangjin', '예산': 'yesan'
+                };
+                const foundKey = Object.keys(regionsMap).find(r => userKwd.includes(r));
+                const targetRegionId = foundKey ? regionsMap[foundKey] : 'asan';
+
+                try {
+                    const weatherApiUrl = `${SITE_URL}/api/weather?region=${targetRegionId}`;
+                    const res = await fetch(weatherApiUrl, { signal: AbortSignal.timeout(5000) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.dailySummary) {
+                            recentPostsText += `\n\n## (실시간) ${data.region.name} 날씨 예보 (Weather API)\n${data.dailySummary}`;
+                            if (data.airQuality) {
+                                recentPostsText += `\n- 미세먼지(PM10): ${data.airQuality.pm10} | 초미세먼지(PM2.5): ${data.airQuality.pm2_5}`;
+                            }
+                            apiTimestamps.weather = data.updatedAt || new Date().toISOString();
+                        }
+                    }
+                } catch (e) { console.error('Weather API 연동 오류:', e); }
+            } else if (userKwd.includes('미세먼지') || userKwd.includes('공기')) {
                 const regionsMap = {
                     '서울': '서울 중구', '부산': '부산 연산동', '인천': '인천 구월동',
                     '대구': '대구 수창동', '대전': '대전 둔산동', '광주': '광주 농성동',
@@ -770,7 +794,7 @@ export async function POST(req) {
                 try {
                     const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
                     const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), {
-                        signal: AbortSignal.timeout(20000), // 20초로 연장
+                        signal: AbortSignal.timeout(20000), 
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)',
                             'Accept': 'application/json'

@@ -272,13 +272,13 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                     # 최신 모델 시도 후 실패 시 범용 모델로 폴백
                     try:
                         emb_res = client.models.embed_content(
-                            model='models/text-embedding-004',
+                            model='text-embedding-004',
                             contents=chunk,
                         )
                     except Exception as e:
                         logger.warning(f"text-embedding-004 failed, falling back to embedding-001: {e}")
                         emb_res = client.models.embed_content(
-                            model='models/embedding-001',
+                            model='embedding-001',
                             contents=chunk,
                         )
                     
