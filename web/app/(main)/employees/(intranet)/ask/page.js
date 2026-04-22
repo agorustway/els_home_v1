@@ -463,10 +463,10 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <>
-            <h2 className={styles.guideTitle}>🚀 ELS AI 가이드 (v5.3.2)</h2>
+            <h2 className={styles.guideTitle}>ELS AI 가이드 (v5.3.3)</h2>
             
-            <div className={styles.guideBox} style={{borderLeft: '4px solid #2563eb'}}>
-                <span className={styles.guideHighlight}>📂 사내 문서/이미지 지식 (NAS)</span>
+            <div className={styles.guideBox}>
+                <span className={styles.guideHighlight}>사내 문서/이미지 지식 (NAS)</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
                     NAS의 방대한 자료를 AI가 직접 분석합니다.
                     <ul style={{paddingLeft: '16px', margin: '4px 0 0 0'}}>
@@ -478,8 +478,8 @@ export default function AskPage() {
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>🚛 안전운임 및 물류 데이터</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', background: '#f0fdf4', padding: '8px', borderRadius: '6px', border: '1px solid #86efac', margin: '6px 0'}}>
+                <span className={styles.guideHighlight}>안전운임 및 물류 데이터</span>
+                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
                         <li>&quot;아산 부산 40ft 안전운임&quot; → 즉시 조회</li>
                         <li>&quot;컨테이너 번호&quot; → 실시간 이력/위치</li>
@@ -489,15 +489,15 @@ export default function AskPage() {
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>🧠 자율 학습 엔진 (Active)</span>
+                <span className={styles.guideHighlight}>자율 학습 엔진 (Active)</span>
                 <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px'}}>
-                    형이 가르쳐준 교정 사항을 **DB에 영구 저장**하여 다음 대화에 반영합니다. (실시간 학습 중)
+                    사용자가 교정한 사항을 **DB에 영구 저장**하여 다음 대화에 반영합니다. (실시간 학습 중)
                 </div>
             </div>
 
             <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>🎨 멀티 도메인 연결</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '6px'}}>
+                <span className={styles.guideHighlight}>멀티 도메인 연결</span>
+                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
                     <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
                         <li><b>기상-운송</b>: 결빙주의보 시 안전 가이드</li>
                         <li><b>유가-운임</b>: 경유가 변동에 따른 운임 대응</li>
