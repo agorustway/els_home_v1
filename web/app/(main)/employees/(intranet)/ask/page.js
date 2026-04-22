@@ -127,6 +127,7 @@ export default function AskPage() {
     const [input, setInput] = useState('');
     const [selectedImages, setSelectedImages] = useState([]); // [{ file, preview, base64 }]
     const [isLoading, setIsLoading] = useState(false);
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false); // 모바일 히스토리 드로어 상태
     const [newMsgIdx, setNewMsgIdx] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const bottomRef = useRef(null);
@@ -514,8 +515,53 @@ export default function AskPage() {
 
     if (!isLoaded) return <div className={styles.loadingScreen}>로딩 중...</div>;
 
+    const HistoryContent = () => (
+        <>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <button className={styles.newChatBtn} onClick={() => { createNewSession(); setIsHistoryOpen(false); }} style={{ flex: 1 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    새 대화
+                </button>
+                <button onClick={clearAllHistory} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }} title="전체 삭제">
+                    삭제
+                </button>
+            </div>
+            <div className={styles.historyList}>
+                {sessions.map(s => (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: s.id === activeId ? '#dbeafe' : 'transparent', borderRadius: '8px' }}>
+                        <button 
+                            className={`${styles.historyItem} ${s.id === activeId ? styles.active : ''}`}
+                            onClick={() => { setActiveId(s.id); setIsHistoryOpen(false); }}
+                            title={s.title}
+                            style={{ flex: 1, background: 'transparent' }}
+                        >
+                            {s.title}
+                        </button>
+                        <button 
+                            onClick={() => deleteSession(s.id)}
+                            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '8px 10px', fontSize: '1rem', borderRadius: '4px' }}
+                            title="이 대화 삭제"
+                        >×</button>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+
     return (
         <div className={styles.containerLayout}>
+            {/* 모바일 히스토리 드로어 */}
+            {isHistoryOpen && (
+                <div className={styles.guideModalOverlay} onClick={() => setIsHistoryOpen(false)}>
+                    <div className={styles.mobileHistoryDrawer} onClick={e => e.stopPropagation()}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800}}>대화 목록</h3>
+                            <button onClick={() => setIsHistoryOpen(false)} style={{background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer'}}>×</button>
+                        </div>
+                        <HistoryContent />
+                    </div>
+                </div>
+            )}
             {/* 모바일 모달 가이드 */}
             {isMobileGuideOpen && (
                 <div className={styles.guideModalOverlay} onClick={() => setIsMobileGuideOpen(false)}>
@@ -532,46 +578,25 @@ export default function AskPage() {
             )}
 
             <div className={`${styles.historySidebar} ${styles.hiddenMobile}`}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className={styles.newChatBtn} onClick={createNewSession} style={{ flex: 1 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        새 대화
-                    </button>
-                    <button onClick={clearAllHistory} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }} title="전체 삭제">
-                        전체 삭제
-                    </button>
-                </div>
-                <div className={styles.historyList}>
-                    {sessions.map(s => (
-                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: s.id === activeId ? '#dbeafe' : 'transparent', borderRadius: '8px' }}>
-                            <button 
-                                className={`${styles.historyItem} ${s.id === activeId ? styles.active : ''}`}
-                                onClick={() => setActiveId(s.id)}
-                                title={s.title}
-                                style={{ flex: 1, background: 'transparent' }}
-                            >
-                                {s.title}
-                            </button>
-                            <button 
-                                onClick={() => deleteSession(s.id)}
-                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '8px 10px', fontSize: '1rem', borderRadius: '4px' }}
-                                title="이 대화 삭제"
-                            >×</button>
-                        </div>
-                    ))}
-                </div>
+                <HistoryContent />
             </div>
 
             <div className={styles.wrapper}>
                 {/* 헤더 */}
                 <div className={styles.header}>
                     <div className={styles.headerLeft}>
-                        <div className={styles.headerIcon} aria-hidden="true">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
-                                <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
-                            </svg>
-                        </div>
+                        <button 
+                            className={styles.headerIconBtn} 
+                            onClick={() => setIsHistoryOpen(true)}
+                            aria-label="대화 목록 열기"
+                        >
+                            <div className={styles.headerIcon} aria-hidden="true">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
+                                    <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
+                                </svg>
+                            </div>
+                        </button>
                         <div>
                             <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.3.2</span></h1>
                             <p className={styles.headerSub}>AI Memory Persistence · Knowledge Link System</p>
