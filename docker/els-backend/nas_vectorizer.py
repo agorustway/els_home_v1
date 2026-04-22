@@ -138,7 +138,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
     all_target_files = []
     logger.info(f"🔍 [{branch_name}] ({target_dir}) 파일 탐색 중...")
     for root, dirs, files in os.walk(str(target_dir)):
-        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE", "자료실"]
+        skip_words = ["#recycle", "@eaDir", "보안", "RESTRICTED", "PRIVATE", "자료실", "E_임직원캐비넷", "F_Backup", "G_Downloads"]
         if any(word in root for word in skip_words):
             continue
             
