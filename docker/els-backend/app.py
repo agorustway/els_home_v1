@@ -145,9 +145,13 @@ def sync_asan_dispatch_python(force=False):
             
             # 파일 수정 시간
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            cached_mtime = last_mtime_cache.get(dtype)
+            
+            app.logger.info(f"[자동동기화] {dtype} 체크: 현재={mtime}, 캐시={cached_mtime}")
             
             # 변경 감지 (force 옵션이 없으면 캐시 확인)
-            if not force and last_mtime_cache.get(dtype) == mtime:
+            if not force and cached_mtime == mtime:
+                app.logger.info(f"[자동동기화] {dtype} 변경 없음 (스킵)")
                 continue
             
             app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
