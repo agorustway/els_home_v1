@@ -54,9 +54,56 @@ function MessageBubble({ msg, isNew }) {
             )}
             <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
                 {renderTextWithLinks(msg.content)}
+                
+                {/* 사용자 메시지에 이미지가 포함된 경우 출력 */}
+                {msg.images && msg.images.length > 0 && (
+                    <div className={styles.messageImageContainer}>
+                        {msg.images.map((img, idx) => (
+                            <img 
+                                key={idx} 
+                                src={`data:${img.mime_type};base64,${img.data}`} 
+                                className={styles.messageImage} 
+                                alt="사용자 첨부 이미지"
+                                onClick={() => window.open(`data:${img.mime_type};base64,${img.data}`, '_blank')}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
+}
+
+/** ── 브라우저 단 이미지 압축 헬퍼 ── */
+async function compressImage(file, maxWidth = 1024, quality = 0.7) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const base64 = canvas.toDataURL('image/jpeg', quality);
+                const [header, data] = base64.split(',');
+                const mime = header.match(/:(.*?);/)[1];
+                resolve({ mime_type: mime, data });
+            };
+        };
+    });
 }
 
 export default function AskPage() {
@@ -78,11 +125,13 @@ export default function AskPage() {
     }, [activeId]);
 
     const [input, setInput] = useState('');
+    const [selectedImages, setSelectedImages] = useState([]); // [{ file, preview, base64 }]
     const [isLoading, setIsLoading] = useState(false);
     const [newMsgIdx, setNewMsgIdx] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const bottomRef = useRef(null);
     const inputRef = useRef(null);
+    const fileInputRef = useRef(null);
     const abortRef = useRef(null);
 
     const DEFAULT_INIT_MSG = {
@@ -238,14 +287,49 @@ export default function AskPage() {
         if (chatArea) {
             chatArea.scrollTop = chatArea.scrollHeight;
         }
-    }, [messages, isLoading]);
+    }, [messages, isLoading, selectedImages]);
+
+    const handleImageSelect = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        if (selectedImages.length + files.length > 10) {
+            alert('이미지는 한 번에 최대 10장까지 업로드 가능합니다.');
+            return;
+        }
+
+        const newImgs = [];
+        for (const file of files) {
+            const preview = URL.createObjectURL(file);
+            const compressed = await compressImage(file);
+            newImgs.push({ file, preview, ...compressed });
+        }
+        setSelectedImages(prev => [...prev, ...newImgs]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeImage = (idx) => {
+        setSelectedImages(prev => {
+            const next = [...prev];
+            if (next[idx]?.preview) URL.revokeObjectURL(next[idx].preview);
+            next.splice(idx, 1);
+            return next;
+        });
+    };
 
     const sendMessage = useCallback(async (text) => {
         const trimmed = (text ?? input).trim();
-        if (!trimmed || isLoading) return;
+        if ((!trimmed && selectedImages.length === 0) || isLoading) return;
 
         setInput('');
-        const userMsg = { role: 'user', content: trimmed };
+        const imagesToSend = selectedImages.map(img => ({ mime_type: img.mime_type, data: img.data }));
+        setSelectedImages([]);
+
+        const userMsg = { 
+            role: 'user', 
+            content: trimmed,
+            images: imagesToSend
+        };
         
         // 제목 자동 생성 로직 (첫 질문 시)
         const isFirstQuestion = messages.length <= 1;
@@ -288,10 +372,15 @@ export default function AskPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     // 첫 번째 고정 인사말(index 0)은 토큰 절약을 위해 제외하고 전송
-                    messages: [...messages.slice(1), userMsg].map((m) => ({
-                        role: m.role,
-                        parts: [{ text: m.content }],
-                    })),
+                    messages: [...messages.slice(1), userMsg].map((m) => {
+                        const parts = [{ text: m.content || '' }];
+                        if (m.images && m.images.length > 0) {
+                            m.images.forEach(img => {
+                                parts.push({ inline_data: { mime_type: img.mime_type, data: img.data } });
+                            });
+                        }
+                        return { role: m.role, parts };
+                    }),
                 }),
                 signal: controller.signal,
             });
@@ -549,9 +638,40 @@ export default function AskPage() {
                     </div>
                 )}
 
+                {/* 이미지 미리보기 영역 */}
+                {selectedImages.length > 0 && (
+                    <div className={styles.imagePreviewArea}>
+                        {selectedImages.map((img, idx) => (
+                            <div key={idx} className={styles.previewItem}>
+                                <img src={img.preview} className={styles.previewImg} alt="미리보기" />
+                                <button className={styles.removePreview} onClick={() => removeImage(idx)}>×</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* 입력 영역 */}
                 <div className={styles.inputArea}>
                     <div className={styles.inputBox}>
+                        <button 
+                            type="button" 
+                            className={styles.imageUploadBtn}
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isLoading}
+                            title="이미지 업로드 (최대 10장)"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                        </button>
+                        <input 
+                            ref={fileInputRef}
+                            type="file" 
+                            accept="image/*" 
+                            multiple 
+                            style={{ display: 'none' }} 
+                            onChange={handleImageSelect}
+                        />
                         <textarea
                             ref={inputRef}
                             id="chat-input"
@@ -568,7 +688,7 @@ export default function AskPage() {
                             id="chat-send-btn"
                             className={styles.sendBtn}
                             onClick={() => sendMessage()}
-                            disabled={!input.trim() || isLoading}
+                            disabled={(!input.trim() && selectedImages.length === 0) || isLoading}
                             type="button"
                             aria-label="전송"
                         >

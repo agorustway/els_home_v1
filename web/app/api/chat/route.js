@@ -705,7 +705,7 @@ export async function POST(req) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model: "models/gemini-embedding-001",
-                        content: { parts: [{ text: userQuery }] }
+                        content: { parts: [{ text: lastUserText }] }
                     }),
                     signal: AbortSignal.timeout(15000)
                 }).catch(() => null);
@@ -1102,7 +1102,10 @@ export async function POST(req) {
     const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + customRules + nasUpdates + recentPostsText + safeFreightText + dataFreshness;
     const contents = messages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
-        parts: m.parts ?? [{ text: '' }],
+        parts: m.parts.map(p => {
+            if (p.inline_data) return p; // 이미지 데이터 그대로 통과
+            return { text: p.text || '' }; // 텍스트 처리
+        }),
     }));
 
     const geminiPayload = {
