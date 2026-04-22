@@ -178,11 +178,13 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             existing_item = index_map.get(file_path_str)
             
             if existing_item and existing_item.get("is_indexed") and existing_item.get("content_hash") == current_hash:
-                # logger.debug(f"⏩ {progress_str} [SKIP] {filename}") # 너무 많으면 로그 지저분하므로 debug로 처리
                 skipped += 1
+                if skipped % 50 == 0: # 50개마다 하나씩만 로그 찍어서 가독성 유지
+                    logger.info(f"⏩ {progress_str} [SKIP] 이전 작업 완료된 파일들 통과 중...")
                 continue
 
-            logger.info(f"⚙️ {progress_str} Processing: {filename} ({ext})")
+            # [v5.5.1] 진행 상황 가독성 강화
+            logger.info(f"⚙️ {progress_str} 처리 시작: {filename} ({ext})")
             
             # 텍스트 추출
             text = ""
@@ -262,21 +264,27 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
 
             if chunk_batch:
                 supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
-                time.sleep(0.2)
+               
+            # 인덱스 업데이트 (재시도 적용)
+            try:
+                supabase_retry_execute(lambda: supabase.table("nas_file_index").upsert({
+                    "path": file_path_str,
+                    "filename": filename,
+                    "extension": ext,
+                    "branch": branch_name,
+                    "content_hash": current_hash,
+                    "is_indexed": True,
+                    "chunk_count": len(chunks),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }))
+            except Exception as e:
+                logger.error(f"Failed to update index for {filename}: {e}")
 
-            # 인덱스 업데이트
-            index_data = {
-                "path": file_path_str,
-                "filename": filename,
-                "extension": ext,
-                "branch": branch_name,
-                "is_indexed": True,
-                "content_hash": current_hash,
-                "size_bytes": filepath.stat().st_size,
-                "updated_at": "now()"
-            }
-            supabase_retry_execute(lambda: supabase.table("nas_file_index").upsert(index_data, on_conflict="path"))
             processed += 1
+            
+            # [v5.5.1] NAS 보호를 위한 강제 휴식 및 메모리 정리
+            time.sleep(2)  # 파일 하나당 2초 휴식 (CPU 과부하 방지)
+            gc.collect()   # 메모리 즉시 회수
             
         except Exception as e:
             logger.error(f"❌ Error processing {filename}: {e}")
