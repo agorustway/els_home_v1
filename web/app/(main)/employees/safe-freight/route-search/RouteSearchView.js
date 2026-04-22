@@ -999,17 +999,28 @@ export default function RouteSearchView({ options, period, onBack }) {
             const tDest = findTerminalInfo(resolvedDest.text, destination.text);
             setTerminalInfo({ origin: tOrigin, dest: tDest });
 
-            // 전체 경로 지도에 표시 + 첫 번째 선택
+            // 전체 경로 지도에 표시 + 법규에 따른 최적 경로 자동 선택 (#1)
+            // 법규: '최적(추천)'과 '큰길 우선' 중 짧은 거리 선택
             const routeKeys = Object.keys(fullResult.route || {});
             if (routeKeys.length > 0) {
-                const firstKey = routeKeys[0];
-                setSelectedRouteKey(firstKey);
-                drawAllRoutes(fullResult.route, firstKey);
-                const firstRoute = fullResult.route[firstKey]?.[0];
-                if (firstRoute) {
-                    // [중요] 상태 업데이트는 비동기이므로, setDestination 직후에 lookupFare를 호출할 때는 
-                    // 상태값인 destination.text 대신 방금 해결된 resolvedDest를 직접 전달함
-                    await lookupFare(firstRoute.summary.distance, resolvedOrigin, resolvedDest);
+                // 추천 로직: traoptimal(최적)과 tracomfort(큰길우선) 중 더 짧은 것 찾기
+                let bestKey = routeKeys[0];
+                const optDist = fullResult.route['traoptimal']?.[0]?.summary?.distance ?? Infinity;
+                const comDist = fullResult.route['tracomfort']?.[0]?.summary?.distance ?? Infinity;
+                
+                if (fullResult.route['traoptimal'] && fullResult.route['tracomfort']) {
+                    bestKey = optDist <= comDist ? 'traoptimal' : 'tracomfort';
+                } else if (fullResult.route['traoptimal']) {
+                    bestKey = 'traoptimal';
+                } else if (fullResult.route['tracomfort']) {
+                    bestKey = 'tracomfort';
+                }
+
+                setSelectedRouteKey(bestKey);
+                drawAllRoutes(fullResult.route, bestKey);
+                const bestRoute = fullResult.route[bestKey]?.[0];
+                if (bestRoute) {
+                    await lookupFare(bestRoute.summary.distance, resolvedOrigin, resolvedDest);
                 }
             }
 
@@ -1357,13 +1368,21 @@ export default function RouteSearchView({ options, period, onBack }) {
                     ['20FT', distFareResult.f20위탁, distFareResult.f20운수자, distFareResult.f20안전],
                 ];
                 sectionFareResults.forEach(fare => {
-                    fareRows.push([], [`[구간별운임] ${fare.origin}`, '위탁', '운수자', '안전운임']);
+                    fareRows.push([], [`[구간별운임] ${fare.origin} → ${fare.destination}`]);
+                    fareRows.push(['기점', fare.origin]);
+                    fareRows.push(['행선지', fare.destination]);
+                    fareRows.push(['고시 거리 / 기간', `${fare.km}km / ${fare.period}`]);
+                    fareRows.push(['구분', '위탁', '운수자', '안전운임']);
                     fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
                     fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
                 });
 
                 sectionFareOneWayResults.forEach(fare => {
-                    fareRows.push([], [`[편도구간] ${fare.origin}`, '위탁', '운수자', '안전운임']);
+                    fareRows.push([], [`[편도구간] ${fare.origin} → ${fare.destination}`]);
+                    fareRows.push(['기점', fare.origin]);
+                    fareRows.push(['행선지', fare.destination]);
+                    fareRows.push(['고시 거리 / 기간', `${fare.km}km / ${fare.period}`]);
+                    fareRows.push(['구분', '위탁', '운수자', '안전운임']);
                     fareRows.push(['40FT', fare.f40위탁, fare.f40운수자, fare.f40안전]);
                     fareRows.push(['20FT', fare.f20위탁, fare.f20운수자, fare.f20안전]);
                 });
@@ -1399,8 +1418,13 @@ export default function RouteSearchView({ options, period, onBack }) {
                         if (!ws1[ref]) ws1[ref] = { v: '', t: 's' };
                         ws1[ref].s = { ...baseStyle };
                         if (r === 0) ws1[ref].s = titleStyle;
-                        if (fareRows[r]?.[0]?.toString().startsWith('[') || fareRows[r]?.[0] === '항목') {
+                        const firstCol = fareRows[r]?.[0]?.toString() || '';
+                        if (firstCol.startsWith('[') || firstCol === '항목' || firstCol === '구분') {
                             ws1[ref].s = headerStyle;
+                        }
+                        // 기점/행선지 강조
+                        if (firstCol === '기점' || firstCol === '행선지' || firstCol === '고시 거리 / 기간') {
+                            ws1[ref].s = { ...baseStyle, font: { bold: true, name: '맑은 고딕' }, fill: { fgColor: { rgb: "F1F5F9" } } };
                         }
                     }
                 }
