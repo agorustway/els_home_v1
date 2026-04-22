@@ -12,6 +12,8 @@ from PIL import Image
 import textract
 import gc
 import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,22 @@ SUPPORTED_EXTS = {
     ".jpeg": "image",
     ".gif": "image",
 }
+
+def supabase_retry_execute(query_func, max_retries=5, base_delay=2):
+    """Supabase 호출 실패 시(특히 429 Rate Limit) 재시도 로직"""
+    for attempt in range(max_retries):
+        try:
+            return query_func().execute()
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "Too Many Requests" in err_str:
+                delay = base_delay * (2 ** attempt)
+                logger.warning(f"⚠️ Supabase Rate Limit 감지 (시도 {attempt+1}/{max_retries}). {delay}초 후 재시도... 에러: {err_str}")
+                time.sleep(delay)
+            else:
+                # 일반적인 에러는 바로 발생시킴
+                raise e
+    return query_func().execute() # 마지막 시도
 
 def get_file_hash(filepath):
     """파일의 MD5 해시를 계산하여 변경 여부 감지"""
@@ -203,8 +221,11 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
             chunks = chunk_text(text)
             chunk_batch = []
             
-            # 이전 청크 삭제
-            supabase.table("document_chunks").delete().eq("source_id", file_path_str).execute()
+            # 이전 청크 삭제 (재시도 적용)
+            try:
+                supabase_retry_execute(lambda: supabase.table("document_chunks").delete().eq("source_id", file_path_str))
+            except Exception as e:
+                logger.error(f"Failed to delete old chunks for {filename}: {e}")
 
             for idx, chunk in enumerate(chunks):
                 if not chunk.strip(): continue
@@ -233,13 +254,15 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                         })
                     
                     if len(chunk_batch) >= 10:
-                        supabase.table("document_chunks").insert(chunk_batch).execute()
+                        supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
                         chunk_batch = []
+                        time.sleep(0.2) # 삽입 후 짧은 휴식 (Rate Limit 방어)
                 except Exception as e:
                     logger.error(f"Embedding error at chunk {idx}: {e}")
 
             if chunk_batch:
-                supabase.table("document_chunks").insert(chunk_batch).execute()
+                supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
+                time.sleep(0.2)
 
             # 인덱스 업데이트
             index_data = {
@@ -252,7 +275,7 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                 "size_bytes": filepath.stat().st_size,
                 "updated_at": "now()"
             }
-            supabase.table("nas_file_index").upsert(index_data, on_conflict="path").execute()
+            supabase_retry_execute(lambda: supabase.table("nas_file_index").upsert(index_data, on_conflict="path"))
             processed += 1
             
         except Exception as e:

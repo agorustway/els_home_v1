@@ -33,13 +33,19 @@ ORDER=(
     "/app/volume2/임고지점"
 )
 
+# 0. 시작 전 기존 작업 강제 잠금 해제 (Zombie Lock 방지)
+echo "🔓 기존 작업 잠금 해제를 시도합니다..."
+curl -s -X POST http://127.0.0.1:2930/api/vectorize/nas/unlock
+echo ""
+
 for DIR in "${ORDER[@]}"; do
     BRANCH="${TARGETS[$DIR]}"
     echo "▶️ [$BRANCH] 작업 시작 (경로: $DIR)..."
     
+    RETRY_COUNT=0
     while true; do
-        # curl 수행
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://127.0.0.1:2930/api/vectorize/nas \
+        # curl 수행 (타임아웃 300초로 대폭 연장)
+        RESPONSE=$(curl -s -m 300 -w "\n%{http_code}" -X POST http://127.0.0.1:2930/api/vectorize/nas \
           -H "Content-Type: application/json" \
           -d "{\"directory\": \"$DIR\", \"branch\": \"$BRANCH\"}")
         
@@ -47,14 +53,22 @@ for DIR in "${ORDER[@]}"; do
         BODY=$(echo "$RESPONSE" | head -n -1)
         
         if [ "$HTTP_STATUS" -eq 202 ]; then
-            echo "✅ [$BRANCH] 백그라운드 작업 시작됨: $BODY"
+            echo "✅ [$BRANCH] 백그라운드 작업 시작됨"
             echo "💡 다음 지점 실행을 위해 작업 완료를 기다립니다..."
             break
         elif [ "$HTTP_STATUS" -eq 429 ]; then
-            echo "⏳ [$BRANCH] 다른 지점이 작업 중입니다. 30초 후 재시도... ($BODY)"
-            sleep 30
+            echo "⏳ [$BRANCH] 다른 지점이 작업 중입니다. 60초 후 재시도... ($BODY)"
+            sleep 60
+        elif [ "$HTTP_STATUS" -eq 000 ]; then
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            if [ $RETRY_COUNT -gt 3 ]; then
+                echo "❌ [$BRANCH] 서버 응답 없음 (연속 3회). 서버 상태를 확인하세요."
+                break
+            fi
+            echo "⚠️ [$BRANCH] 서버 응답 없음. 10초 후 재시도... (시도 $RETRY_COUNT/3)"
+            sleep 10
         else
-            echo "❌ [$BRANCH] 오류 발생 (HTTP $HTTP_STATUS): $BODY"
+            echo "❌ [$BRANCH] 기타 오류 발생 (HTTP $HTTP_STATUS): $BODY"
             break
         fi
     done

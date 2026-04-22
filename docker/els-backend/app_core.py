@@ -428,6 +428,25 @@ def handle_nas_files():
     return send_file(str(Path("/app/data") / rel.strip("/")), as_attachment=True)
 
 from nas_vectorizer import process_nas_directory
+
+# 벡터화 작업 상태 추적용 전역 변수
+vect_status = {
+    "is_running": False,
+    "start_time": None,
+    "current_branch": None
+}
+vect_lock = threading.Lock()
+
+@app.route('/api/vectorize/nas/unlock', methods=['POST'])
+def force_unlock_nas_vectorize():
+    """작업이 꼬였을 때 강제로 락을 해제하는 API"""
+    global vect_status
+    vect_status["is_running"] = False
+    vect_status["start_time"] = None
+    vect_status["current_branch"] = None
+    app.logger.info("🔓 [API] 벡터화 락 강제 해제됨")
+    return jsonify({"ok": True, "message": "Vectorization lock forced to release."})
+
 @app.route('/api/vectorize/nas', methods=['POST'])
 def trigger_nas_vectorize():
     """Trigger NAS folder crawling and vectorization (Phase 5)."""
@@ -438,22 +457,39 @@ def trigger_nas_vectorize():
     raw_dir = data.get("directory", "/app/data/work-docs")  # Update path to /app/data which is mounted
     branch_name = data.get("branch", "NAS자료")
     
-    # 백그라운드 태스크 중복 실행 방지
-    global vect_lock
-    if not 'vect_lock' in globals():
-        vect_lock = threading.Lock()
+    # 백그라운드 태스크 중복 실행 방지 및 좀비 락 해제
+    global vect_status, vect_lock
+    
+    # 2시간 이상 실행 중이면 좀비로 간주하고 강제 해제
+    if vect_status["is_running"] and vect_status["start_time"]:
+        elapsed = time.time() - vect_status["start_time"]
+        if elapsed > 7200: # 2시간
+            app.logger.warning(f"⚠️ [좀비방지] {vect_status['current_branch']} 작업이 2시간을 초과하여 락을 강제 해제합니다.")
+            vect_status["is_running"] = False
         
-    if vect_lock.locked():
-        return jsonify({"status": "busy", "message": "Another vectorization task is already running. Please wait."}), 429
+    if vect_status["is_running"]:
+        return jsonify({
+            "status": "busy", 
+            "message": f"Another task ({vect_status['current_branch']}) is already running.",
+            "elapsed_sec": int(time.time() - vect_status["start_time"]) if vect_status["start_time"] else 0
+        }), 429
 
     def run_task():
+        global vect_status
         with vect_lock:
             try:
+                vect_status["is_running"] = True
+                vect_status["start_time"] = time.time()
+                vect_status["current_branch"] = branch_name
+                
                 app.logger.info(f"🚀 [API Trigger] {branch_name} ({raw_dir}) 벡터화 시작...")
                 res = process_nas_directory(supabase, raw_dir, branch_name)
                 app.logger.info(f"✅ [API Trigger] {branch_name} 완료: {res}")
             except Exception as e:
                 app.logger.error(f"❌ [API Trigger] {branch_name} 실패: {e}")
+            finally:
+                vect_status["is_running"] = False
+                vect_status["start_time"] = None
 
     threading.Thread(target=run_task, daemon=True).start()
     
