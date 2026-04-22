@@ -160,9 +160,11 @@ def sync_asan_dispatch_python(force=False):
             supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
 
             for sheet_name in xl.sheet_names:
-                # "3.3" 형식의 시트명 파싱
-                match = re.search(r'(\d+)\.(\d+)', sheet_name)
-                if not match: continue
+                # "3.3" 또는 "3.3 수정" 형식의 시트명 파싱 (유연하게 변경)
+                match = re.search(r'(\d+)[\./](\d+)', sheet_name)
+                if not match:
+                    app.logger.debug(f"[자동동기화] 시트 스킵 (패턴 불일치): {sheet_name}")
+                    continue
                 
                 m, d = int(match.group(1)), int(match.group(2))
                 now = datetime.now(KST)
@@ -179,7 +181,9 @@ def sync_asan_dispatch_python(force=False):
                         header_idx = i
                         break
                 
-                if header_idx < 0: continue
+                if header_idx < 0:
+                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트에서 '구분' 헤더를 찾지 못함")
+                    continue
                 
                 # 헤더 추출 및 정제
                 headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
