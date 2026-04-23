@@ -33,7 +33,9 @@ services:
       - /volume2/아산지점:/app/data/아산지점
       - /volume1:/app/volume1
       - /volume2:/app/volume2
-      - ./els-backend:/app
+      - ../elsbot:/app/elsbot
+      - ./els-backend/app_bot.py:/app/app.py
+      - ./els-backend/dns_fix.py:/app/dns_fix.py
     restart: unless-stopped
 
   # 3. Light API Core (Port 2930 - Lightweight)
@@ -55,5 +57,7 @@ services:
       - /volume2/아산지점:/app/data/아산지점
       - /volume1:/app/volume1
       - /volume2:/app/volume2
-      - ./els-backend:/app
+      - ./els-backend/app_core.py:/app/app.py
+      - ./els-backend/dns_fix.py:/app/dns_fix.py
+      - ./els-backend/nas_vectorizer.py:/app/nas_vectorizer.py
     restart: unless-stopped
