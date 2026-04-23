@@ -24,7 +24,7 @@ from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS 
 from werkzeug.utils import secure_filename
 from openpyxl.styles import PatternFill
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, date, timezone
 from supabase import create_client, Client
 
 # --- KST 설정 ---
