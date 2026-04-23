@@ -7,13 +7,14 @@ import sys
 import json
 import threading
 import time
+import gc
 import logging
 import pandas as pd
 import io
 import re
 import tempfile
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -58,7 +59,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 last_mtime_cache = {}
 
-def sync_asan_dispatch_python(force=False):
+def sync_asan_dispatch_python(force=False, full_sync=False):
     global last_mtime_cache
     if not supabase: return
     try:
@@ -86,8 +87,8 @@ def sync_asan_dispatch_python(force=False):
             # 상세로그 추가 (디버깅용)
             # app.logger.info(f"[자동동기화] {dtype} 체크: cache={cache_mtime}, current={mtime}")
             
-            # 변경 감지 (force 옵션이 없으면 캐시 확인)
-            if not force and cache_mtime == mtime:
+            # 변경 감지 (force/full_sync 옵션이 없으면 캐시 확인)
+            if not force and not full_sync and cache_mtime == mtime:
                 continue
             
             app.logger.info(f"[자동동기화] 파일 변경 확인됨(또는 강제실행). 데이터 추출 시작... ({dtype})")
@@ -96,8 +97,16 @@ def sync_asan_dispatch_python(force=False):
             xl = pd.ExcelFile(full_path)
             sync_count = 0
             
-            # 기존 데이터 삭제 (정합성 보장)
-            supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+            # sync_count track
+            sync_count = 0
+            
+            # [Optimization] Open workbook once outside sheet loop
+            wb = None
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(full_path, data_only=True, read_only=True)
+            except Exception as e:
+                app.logger.warning(f"openpyxl load_workbook(전체) 실패: {e}")
 
             for sheet_name in xl.sheet_names:
                 # "3.3" 형식의 시트명 파싱
@@ -110,6 +119,16 @@ def sync_asan_dispatch_python(force=False):
                 if m > now.month + 3: year -= 1 # 12월 시트인데 현재 3월이면 작년거
                 target_date = f"{year}-{m:02d}-{d:02d}"
                 
+                # [v5.5.13] 듀얼 모드 지원
+                is_priority_only = not full_sync
+                if is_priority_only:
+                    try:
+                        target_date_dt = date(year, m, d)
+                        current_date_only = now.date()
+                        diff_days = abs((target_date_dt - current_date_only).days)
+                        if diff_days > 15: continue
+                    except: continue
+
                 # 시트 파싱
                 df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
                 # '구분'이 포함된 행 찾기 (헤더 행) - 범위를 100줄로 대폭 확장하여 다양한 엑셀 레이아웃에 대응
@@ -137,51 +156,49 @@ def sync_asan_dispatch_python(force=False):
                 
                 # 메모 추출용 openpyxl
                 sheet_comments = {}
-                try:
-                    import openpyxl
-                    wb = openpyxl.load_workbook(full_path, data_only=True)
-                    target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
-                    if target_ws_name not in wb.sheetnames:
-                        continue
-                    ws = wb[target_ws_name]
-                    
-                    # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
-                    header_col_idx = -1
-                    for j, h in enumerate(headers):
-                        if '구분' in str(h):
-                            header_col_idx = j
-                            break
-                    if header_col_idx == -1:
-                        header_col_idx = 0
-                        
-                    # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산 (검색 범위 100행으로 확장)
-                    openpyxl_r_offset = 0
-                    openpyxl_c_offset = 0
-                    found_header = False
-                    for r_cells in ws.iter_rows(min_row=1, max_row=100):
-                        for cell in r_cells:
-                            val = str(cell.value) if cell.value else ""
-                            if '구분' in val:
-                                openpyxl_r_offset = (cell.row - 1) - header_idx
-                                openpyxl_c_offset = (cell.column - 1) - header_col_idx
-                                found_header = True
-                                app.logger.info(f"[오프셋계산] 시트:{sheet_name}, 구분위치(R/C):{cell.row}/{cell.column}, Offset(R/C):{openpyxl_r_offset}/{openpyxl_c_offset}")
-                                break
-                        if found_header:
-                            break
-                    
-                    if not found_header:
-                        app.logger.warning(f"[오프셋계산 실패] 시트:{sheet_name}에서 '구분' 헤더를 찾지 못함. 기본값 유지.")
+                if wb:
+                    try:
+                        target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
+                        if target_ws_name in wb.sheetnames:
+                            ws = wb[target_ws_name]
                             
-                    # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
-                    for r_cells in ws.iter_rows():
-                        for cell in r_cells:
-                            if cell.comment:
-                                pd_r = (cell.row - 1) - openpyxl_r_offset
-                                pd_c = (cell.column - 1) - openpyxl_c_offset
-                                sheet_comments[(pd_r, pd_c)] = cell.comment.text
-                except Exception as e:
-                    app.logger.warning(f"openpyxl load_workbook 실패: {e}")
+                            # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
+                            header_col_idx = -1
+                            for j, h in enumerate(headers):
+                                if '구분' in str(h):
+                                    header_col_idx = j
+                                    break
+                            if header_col_idx == -1:
+                                header_col_idx = 0
+                                
+                            # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산 (검색 범위 100행으로 확장)
+                            openpyxl_r_offset = 0
+                            openpyxl_c_offset = 0
+                            found_header = False
+                            for r_cells in ws.iter_rows(min_row=1, max_row=100):
+                                for cell in r_cells:
+                                    val = str(cell.value) if cell.value else ""
+                                    if '구분' in val:
+                                        openpyxl_r_offset = (cell.row - 1) - header_idx
+                                        openpyxl_c_offset = (cell.column - 1) - header_col_idx
+                                        found_header = True
+                                        app.logger.info(f"[오프셋계산] 시트:{sheet_name}, 구분위치(R/C):{cell.row}/{cell.column}, Offset(R/C):{openpyxl_r_offset}/{openpyxl_c_offset}")
+                                        break
+                                if found_header:
+                                    break
+                            
+                            if not found_header:
+                                app.logger.warning(f"[오프셋계산 실패] 시트:{sheet_name}에서 '구분' 헤더를 찾지 못함. 기본값 유지.")
+                                    
+                            # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
+                            for r_cells in ws.iter_rows():
+                                for cell in r_cells:
+                                    if cell.comment:
+                                        pd_r = (cell.row - 1) - openpyxl_r_offset
+                                        pd_c = (cell.column - 1) - openpyxl_c_offset
+                                        sheet_comments[(pd_r, pd_c)] = cell.comment.text
+                    except Exception as e:
+                        app.logger.warning(f"openpyxl 시트 메모 추출 실패({sheet_name}): {e}")
 
                 orig_index_list = data_df.index.tolist()
                 for i_pos, orig_iloc_idx in enumerate(orig_index_list):
@@ -205,20 +222,41 @@ def sync_asan_dispatch_python(force=False):
                             
                     row_idx_in_db += 1
                 
-                if not rows: continue
+                if rows:
+                    payload = {
+                        "branch_id": "asan",
+                        "type": dtype,
+                        "target_date": target_date,
+                        "rows": rows,
+                        "comments": comments_dict,
+                        "file_modified_at": mtime,
+                        "updated_at": now.isoformat()
+                    }
+                    try:
+                        # [v5.5.13] 데이터 증발 방지: UPSERT 시도
+                        supabase.from_("branch_dispatch").upsert(payload).execute()
+                    except Exception as e:
+                        # UPSERT 실패 시 Delete-Insert 폴백
+                        app.logger.warning(f"[자동동기화] UPSERT 실패({target_date}): {e}")
+                        supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
+                        supabase.from_("branch_dispatch").insert(payload).execute()
+
+                    sync_count += 1
                 
-                # Supabase 저장
-                supabase.from_("branch_dispatch").insert({
-                    "branch_id": "asan",
-                    "type": dtype,
-                    "target_date": target_date,
-                    "headers": headers,
-                    "data": rows,
-                    "comments": comments_dict,
-                    "file_modified_at": mtime,
-                    "updated_at": now.isoformat()
-                }).execute()
-                sync_count += 1
+                if wb:
+                    # wb is closed after the sheet loop
+                    pass
+                
+                # [NAS 배려] 전체 모드일 때는 시트 간 0.5초 휴식
+                if full_sync:
+                    time.sleep(0.5)
+                
+                del sheet_comments
+                gc.collect()
+            
+            
+            if wb:
+                wb.close()
             
             app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
             last_mtime_cache[dtype] = mtime
@@ -227,26 +265,7 @@ def sync_asan_dispatch_python(force=False):
     except Exception as e:
         app.logger.error(f"[자동동기화] 전체 프로세스 오류: {e}", exc_info=True)
 
-def asan_sync_scheduler():
-    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
-    check_count = 0
-    while True:
-        try:
-            now = datetime.now(KST)
-            if 6 <= now.hour <= 23:
-                check_count += 1
-                # 10회(약 10분)마다 "살아있음" 생존 신고 로그 출력
-                if check_count % 10 == 0:
-                    app.logger.info(f"[스케줄러] 아산 배차판 감시 중... (현재시간: {now.strftime('%H:%M:%S')})")
-                
-                # 매 루프(60초)마다 수정 여부를 체크하고, 수정된 경우만 동기화
-                sync_asan_dispatch_python()
-            time.sleep(60)
-        except Exception as e:
-            app.logger.error(f"[스케줄러] 에러 발생: {e}")
-            time.sleep(60)
-
-threading.Thread(target=asan_sync_scheduler, daemon=True).start()
+# 스케줄러는 app.py에서 관리함
 
 def nas_sync_scheduler():
     """매일 새벽 04:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다."""
