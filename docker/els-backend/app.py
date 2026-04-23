@@ -165,7 +165,10 @@ def sync_asan_dispatch_python(force=False):
             current_month = now.month
             date_sheets = []
             
-            for s in xl.sheet_names:
+            all_sheets = xl.sheet_names
+            app.logger.info(f"[자동동기화] {dtype} 파일 전체 시트 목록: {all_sheets}")
+            
+            for s in all_sheets:
                 match = re.search(r'(\d+)[\./](\d+)', s)
                 if match:
                     m = int(match.group(1))
