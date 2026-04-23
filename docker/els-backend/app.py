@@ -190,134 +190,114 @@ def sync_asan_dispatch_python(force=False):
                 app.logger.warning(f"[자동동기화] {dtype} 파일에서 날짜 형식의 시트를 하나도 찾지 못했습니다.")
                 continue
             
-            # 가중치 점수 순으로 정렬하여 가장 최신(미래) 시트 선택
+            # 가중치 점수 순으로 정렬 (최신순으로 처리하되, 모든 시트 동기화)
             date_sheets.sort(key=lambda x: x[3], reverse=True)
-            sheet_name, month, day, _ = date_sheets[0]
-            app.logger.info(f"[자동동기화] {dtype} 최종 선택 시트: {sheet_name} ({month}/{day})")
+            
+            for sheet_name, month, day, sort_score in date_sheets:
+                app.logger.info(f"[자동동기화] {dtype} 시트 처리 중: {sheet_name} ({month}/{day})")
 
-            # 타겟 날짜 계산 (연도 결정)
-            year = now.year
-            if current_month <= 3 and month >= 10:
-                year -= 1 # 작년 11~12월
-            elif current_month >= 10 and month <= 3:
-                year += 1 # 내년 1~2월
-            target_date = f"{year}-{month:02d}-{day:02d}"
+                # 타겟 날짜 계산 (연도 결정)
+                year = now.year
+                if current_month <= 3 and month >= 10:
+                    year -= 1 # 작년 11~12월
+                elif current_month >= 10 and month <= 3:
+                    year += 1 # 내년 1~2월
+                target_date = f"{year}-{month:02d}-{day:02d}"
 
-            # 기존 데이터 삭제 (정합성 보장)
-            supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+                # 해당 날짜/타입의 기존 데이터만 삭제 (다른 시트 데이터 보존)
+                supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
 
-            # 시트 파싱
-            df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
-            # '구분'이 포함된 행 찾기 (헤더 행) - 범위를 100줄로 대폭 확장하여 다양한 엑셀 레이아웃에 대응
-            header_idx = -1
-            for i, row in df.head(100).iterrows():
-                if row.astype(str).str.contains('구분').any():
-                    header_idx = i
-                    break
-            
-            if header_idx < 0:
-                app.logger.warning(f"[자동동기화] '{sheet_name}' 시트에서 '구분' 헤더를 찾지 못함")
-                continue
-            
-            # 헤더 추출 및 정제
-            headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
-            # 빈 헤더 보정
-            headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
-            
-            # 데이터 추출
-            data_df = df.iloc[header_idx + 1:]
-            
-            # 필터링 로직 (Next.js와 동일하게 적용)
-            filter_col = 12 if dtype == 'glovis' else 15 # 0-indexed
-            rows = []
-            comments_dict = {}
-            row_idx_in_db = 0
-            
-            # 메모 추출용 openpyxl
-            sheet_comments = {}
-            try:
-                import openpyxl
-                wb = openpyxl.load_workbook(full_path, data_only=True)
-                target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
-                if target_ws_name not in wb.sheetnames:
-                    continue
-                ws = wb[target_ws_name]
-                
-                # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
-                header_col_idx = -1
-                for j, h in enumerate(headers):
-                    if '구분' in str(h):
-                        header_col_idx = j
+                # 시트 파싱
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
+                # '구분'이 포함된 행 찾기
+                header_idx = -1
+                for i, row in df.head(100).iterrows():
+                    if row.astype(str).str.contains('구분').any():
+                        header_idx = i
                         break
-                if header_col_idx == -1:
-                    header_col_idx = 0
+                
+                if header_idx < 0:
+                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트에서 '구분' 헤더를 찾지 못함")
+                    continue
+                
+                headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
+                headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
+                data_df = df.iloc[header_idx + 1:]
+                
+                filter_col = 12 if dtype == 'glovis' else 15
+                rows = []
+                comments_dict = {}
+                row_idx_in_db = 0
+                
+                # 메모 추출용 openpyxl
+                sheet_comments = {}
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(full_path, data_only=True)
+                    target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
+                    if target_ws_name in wb.sheetnames:
+                        ws = wb[target_ws_name]
+                        header_col_idx = -1
+                        for j, h in enumerate(headers):
+                            if '구분' in str(h):
+                                header_col_idx = j
+                                break
+                        if header_col_idx == -1: header_col_idx = 0
+                            
+                        openpyxl_r_offset = 0
+                        openpyxl_c_offset = 0
+                        found_header = False
+                        for r_cells in ws.iter_rows(min_row=1, max_row=100):
+                            for cell in r_cells:
+                                val = str(cell.value) if cell.value else ""
+                                if '구분' in val:
+                                    openpyxl_r_offset = (cell.row - 1) - header_idx
+                                    openpyxl_c_offset = (cell.column - 1) - header_col_idx
+                                    found_header = True
+                                    break
+                            if found_header: break
+                        
+                        if found_header:
+                            for r_cells in ws.iter_rows():
+                                for cell in r_cells:
+                                    if cell.comment:
+                                        pd_r = (cell.row - 1) - openpyxl_r_offset
+                                        pd_c = (cell.column - 1) - openpyxl_c_offset
+                                        sheet_comments[(pd_r, pd_c)] = cell.comment.text
+                except Exception as e:
+                    app.logger.warning(f"openpyxl 처리 실패 ({sheet_name}): {e}")
+
+                orig_index_list = data_df.index.tolist()
+                for i_pos, orig_iloc_idx in enumerate(orig_index_list):
+                    row = data_df.loc[orig_iloc_idx]
+                    if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
+                        break
                     
-                # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산 (검색 범위 100행으로 확장)
-                openpyxl_r_offset = 0
-                openpyxl_c_offset = 0
-                found_header = False
-                for r_cells in ws.iter_rows(min_row=1, max_row=100):
-                    for cell in r_cells:
-                        val = str(cell.value) if cell.value else ""
-                        if '구분' in val:
-                            openpyxl_r_offset = (cell.row - 1) - header_idx
-                            openpyxl_c_offset = (cell.column - 1) - header_col_idx
-                            found_header = True
-                            app.logger.info(f"[오프셋계산] 시트:{sheet_name}, 구분위치(R/C):{cell.row}/{cell.column}, Offset(R/C):{openpyxl_r_offset}/{openpyxl_c_offset}")
-                            break
-                    if found_header:
-                        break
+                    f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                    if not f_val or f_val == '0' or f_val == 'nan':
+                        continue
+                    
+                    row_list = row.fillna('').astype(str).tolist()
+                    rows.append(row_list)
+                    for c_idx in range(len(row_list)):
+                        cmt = sheet_comments.get((orig_iloc_idx, c_idx))
+                        if cmt: comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
+                    row_idx_in_db += 1
                 
-                if not found_header:
-                    app.logger.warning(f"[오프셋계산 실패] 시트:{sheet_name}에서 '구분' 헤더를 찾지 못함. 기본값 유지.")
-                        
-                # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
-                for r_cells in ws.iter_rows():
-                    for cell in r_cells:
-                        if cell.comment:
-                            pd_r = (cell.row - 1) - openpyxl_r_offset
-                            pd_c = (cell.column - 1) - openpyxl_c_offset
-                            sheet_comments[(pd_r, pd_c)] = cell.comment.text
-            except Exception as e:
-                app.logger.warning(f"openpyxl load_workbook 실패: {e}")
+                if rows: 
+                    supabase.from_("branch_dispatch").insert({
+                        "branch_id": "asan",
+                        "type": dtype,
+                        "target_date": target_date,
+                        "headers": headers,
+                        "data": rows,
+                        "comments": comments_dict,
+                        "file_modified_at": mtime,
+                        "updated_at": now.isoformat()
+                    }).execute()
+                    sync_count += 1
+                    app.logger.info(f"[자동동기화] {dtype} - {target_date} 동기화 완료 ({len(rows)}건)")
 
-            orig_index_list = data_df.index.tolist()
-            for i_pos, orig_iloc_idx in enumerate(orig_index_list):
-                row = data_df.loc[orig_iloc_idx]
-                # '합계' 포함 시 종료
-                if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
-                    break
-                
-                f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
-                if not f_val or f_val == '0' or f_val == 'nan':
-                    continue
-                
-                row_list = row.fillna('').astype(str).tolist()
-                rows.append(row_list)
-                
-                # 메모 추출 (엑셀 row 인덱스는 pandas header_idx가 포함된 df의 원본 인덱스)
-                for c_idx in range(len(row_list)):
-                    cmt = sheet_comments.get((orig_iloc_idx, c_idx))
-                    if cmt:
-                        comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
-                        
-                row_idx_in_db += 1
-            
-            if rows: 
-                # Supabase 저장
-                supabase.from_("branch_dispatch").insert({
-                    "branch_id": "asan",
-                    "type": dtype,
-                    "target_date": target_date,
-                    "headers": headers,
-                    "data": rows,
-                    "comments": comments_dict,
-                    "file_modified_at": mtime,
-                    "updated_at": now.isoformat()
-                }).execute()
-                sync_count += 1
-            
-            app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
             last_mtime_cache[dtype] = mtime
             
     except Exception as e:
