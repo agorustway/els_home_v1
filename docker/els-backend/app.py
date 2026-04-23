@@ -217,7 +217,7 @@ def sync_asan_dispatch_python(force=False):
                         break
                 
                 if header_idx < 0:
-                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트에서 '구분' 헤더를 찾지 못함")
+                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트 건너뜀: '구분' 헤더를 찾지 못함 (체크한 100줄 내에 없음)")
                     continue
                 
                 headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
@@ -284,7 +284,9 @@ def sync_asan_dispatch_python(force=False):
                         if cmt: comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
                     row_idx_in_db += 1
                 
-                if rows: 
+                if not rows:
+                    app.logger.info(f"[자동동기화] '{sheet_name}' 시트 건너뜀: 조건에 맞는 데이터 행이 없음 (필터 컬럼 {filter_col} 확인)")
+                else:
                     supabase.from_("branch_dispatch").insert({
                         "branch_id": "asan",
                         "type": dtype,
