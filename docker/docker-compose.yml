@@ -33,6 +33,7 @@ services:
       - /volume2/아산지점:/app/data/아산지점
       - /volume1:/app/volume1
       - /volume2:/app/volume2
+      - ./els-backend:/app
     restart: unless-stopped
 
   # 3. Light API Core (Port 2930 - Lightweight)
@@ -54,4 +55,5 @@ services:
       - /volume2/아산지점:/app/data/아산지점
       - /volume1:/app/volume1
       - /volume2:/app/volume2
+      - ./els-backend:/app
     restart: unless-stopped
