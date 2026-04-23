@@ -81,7 +81,6 @@ const navLinks = [
                     { href: '/employees/weather', label: '날씨' },
                     { href: '/employees/news', label: '뉴스' },
                     { href: '/employees/board/free', label: '자유게시판' },
-                    { href: '/employees/random-game', label: '랜덤게임' },
                 ]
             },
             {

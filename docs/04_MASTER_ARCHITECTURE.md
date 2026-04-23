@@ -72,4 +72,14 @@ graph TD
 4. **포트 관리**: Core(2930), Bot(2931) 포트 준수 (Docker 환경).
 
 ---
-*최종 갱신일: 2026-04-23 (by Antigravity/Gemini | v5.5.9 Architecture Update)*
+
+## 8. 비활성화 및 유산 페이지 (Legacy/Hidden Pages)
+관리자 요청 또는 운영 정책에 따라 UI에서 제거되었으나, 코드는 유지 중인 페이지 목록입니다.
+- **랜덤게임 (Random Game)**:
+  - **경로**: `/employees/random-game`
+  - **제거일**: 2026-04-23 (v5.5.16)
+  - **사유**: 관리자 요청 (불필요한 기능 제거 및 업무 집중도 향상)
+  - **복구 방법**: `web/constants/intranetMenu.js` 및 `web/components/Header.js`에 다시 추가.
+
+---
+*최종 갱신일: 2026-04-23 (by Antigravity | v5.5.16 Sidebar Cleanup)*
