@@ -148,8 +148,16 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                 # 데이터 추출
                 data_df = df.iloc[header_idx + 1:]
                 
-                # 필터링 로직 (Next.js와 동일하게 적용)
-                filter_col = 12 if dtype == 'glovis' else 15 # 0-indexed
+                # 동적 필터 컬럼 찾기 ('오더', '계', '수량' 중 하나)
+                filter_col = -1
+                for j, h in enumerate(headers):
+                    if h.strip() in ['오더', '계', '수량', '오더(계)']:
+                        filter_col = j
+                        break
+                # 찾지 못하면 '구분' 컬럼 사용
+                if filter_col == -1:
+                    filter_col = header_col_idx
+
                 rows = []
                 comments_dict = {}
                 row_idx_in_db = 0
@@ -163,15 +171,9 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                             ws = wb[target_ws_name]
                             
                             # Pandas에서의 헤더 컬럼 인덱스 찾기 ('구분')
-                            header_col_idx = -1
-                            for j, h in enumerate(headers):
-                                if '구분' in str(h):
-                                    header_col_idx = j
-                                    break
-                            if header_col_idx == -1:
-                                header_col_idx = 0
+                            # ... (already computed as header_col_idx, we just use it above if needed)
                                 
-                            # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산 (검색 범위 100행으로 확장)
+                            # openpyxl에서 헤더 컬럼 마커 ('구분') 찾아서 Offset 계산
                             openpyxl_r_offset = 0
                             openpyxl_c_offset = 0
                             found_header = False
@@ -182,7 +184,6 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                                         openpyxl_r_offset = (cell.row - 1) - header_idx
                                         openpyxl_c_offset = (cell.column - 1) - header_col_idx
                                         found_header = True
-                                        app.logger.info(f"[오프셋계산] 시트:{sheet_name}, 구분위치(R/C):{cell.row}/{cell.column}, Offset(R/C):{openpyxl_r_offset}/{openpyxl_c_offset}")
                                         break
                                 if found_header:
                                     break
@@ -190,7 +191,6 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                             if not found_header:
                                 app.logger.warning(f"[오프셋계산 실패] 시트:{sheet_name}에서 '구분' 헤더를 찾지 못함. 기본값 유지.")
                                     
-                            # 주석 데이터 적재 (Pandas index 기준으로 상대적 변환)
                             for r_cells in ws.iter_rows():
                                 for cell in r_cells:
                                     if cell.comment:
@@ -203,11 +203,10 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                 orig_index_list = data_df.index.tolist()
                 for i_pos, orig_iloc_idx in enumerate(orig_index_list):
                     row = data_df.loc[orig_iloc_idx]
-                    # '합계' 포함 시 종료
                     if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
                         continue
                     
-                    f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                    f_val = str(row.iloc[filter_col]) if filter_col >= 0 and filter_col < len(row) else ''
                     if not f_val or f_val == '0' or f_val == 'nan':
                         continue
                     
@@ -227,6 +226,7 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                         "branch_id": "asan",
                         "type": dtype,
                         "target_date": target_date,
+                        "headers": headers,
                         "data": rows,
                         "comments": comments_dict,
                         "file_modified_at": mtime,
