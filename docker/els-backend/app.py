@@ -191,53 +191,54 @@ def sync_asan_dispatch_python(force=False):
                 continue
             
             # 가중치 점수 순으로 정렬 (최신순으로 처리하되, 모든 시트 동기화)
-            # 메모리 최적화: openpyxl 워크북을 루프 밖에서 딱 한 번만 로드
+            # 초절전 메모리 최적화: read_only=True 모드 사용
             wb = None
             try:
                 import openpyxl
-                wb = openpyxl.load_workbook(full_path, data_only=True)
+                import gc
+                wb = openpyxl.load_workbook(full_path, data_only=True, read_only=True)
             except Exception as e:
-                app.logger.warning(f"[자동동기화] openpyxl 워크북 로드 실패: {e}")
+                app.logger.warning(f"[자동동기화] openpyxl 로드 실패: {e}")
 
             for sheet_name, month, day, sort_score in date_sheets:
-                app.logger.info(f"[자동동기화] {dtype} 시트 처리 중: {sheet_name} ({month}/{day})")
+                try:
+                    app.logger.info(f"[자동동기화] {dtype} 시트 처리 중: {sheet_name} ({month}/{day})")
 
-                # 타겟 날짜 계산 (연도 결정)
-                year = now.year
-                if current_month <= 3 and month >= 10:
-                    year -= 1 # 작년 11~12월
-                elif current_month >= 10 and month <= 3:
-                    year += 1 # 내년 1~2월
-                target_date = f"{year}-{month:02d}-{day:02d}"
+                    # 타겟 날짜 계산 (연도 결정)
+                    year = now.year
+                    if current_month <= 3 and month >= 10:
+                        year -= 1 # 작년 11~12월
+                    elif current_month >= 10 and month <= 3:
+                        year += 1 # 내년 1~2월
+                    target_date = f"{year}-{month:02d}-{day:02d}"
 
-                # 해당 날짜/타입의 기존 데이터만 삭제
-                supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
+                    # 해당 날짜/타입의 기존 데이터만 삭제
+                    supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
 
-                # 시트 파싱
-                df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
-                header_idx = -1
-                for i, row in df.head(100).iterrows():
-                    if row.astype(str).str.contains('구분').any():
-                        header_idx = i
-                        break
-                
-                if header_idx < 0:
-                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트 건너뜀: '구분' 헤더 미발견")
-                    continue
-                
-                headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
-                headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
-                data_df = df.iloc[header_idx + 1:]
-                
-                filter_col = 12 if dtype == 'glovis' else 15
-                rows = []
-                comments_dict = {}
-                row_idx_in_db = 0
-                
-                # 메모 추출 (미리 로드한 wb 사용)
-                sheet_comments = {}
-                if wb and sheet_name in wb.sheetnames:
-                    try:
+                    # 시트 파싱
+                    df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
+                    header_idx = -1
+                    for i, row in df.head(100).iterrows():
+                        if row.astype(str).str.contains('구분').any():
+                            header_idx = i
+                            break
+                    
+                    if header_idx < 0:
+                        app.logger.warning(f"[자동동기화] '{sheet_name}' 시트 건너뜀: 헤더 미발견")
+                        continue
+                    
+                    headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
+                    headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
+                    data_df = df.iloc[header_idx + 1:]
+                    
+                    filter_col = 12 if dtype == 'glovis' else 15
+                    rows = []
+                    comments_dict = {}
+                    row_idx_in_db = 0
+                    
+                    # 메모 추출 (read_only 모드에서도 가능)
+                    sheet_comments = {}
+                    if wb and sheet_name in wb.sheetnames:
                         ws = wb[sheet_name]
                         header_col_idx = -1
                         for j, h in enumerate(headers):
@@ -249,59 +250,63 @@ def sync_asan_dispatch_python(force=False):
                         openpyxl_r_offset = 0
                         openpyxl_c_offset = 0
                         found_header = False
-                        for r_cells in ws.iter_rows(min_row=1, max_row=100):
-                            for cell in r_cells:
+                        # read_only 모드에서는 iter_rows가 가장 효율적
+                        for r_idx, r_cells in enumerate(ws.iter_rows(min_row=1, max_row=100)):
+                            for c_idx, cell in enumerate(r_cells):
                                 val = str(cell.value) if cell.value else ""
                                 if '구분' in val:
-                                    openpyxl_r_offset = (cell.row - 1) - header_idx
-                                    openpyxl_c_offset = (cell.column - 1) - header_col_idx
+                                    openpyxl_r_offset = r_idx - header_idx
+                                    openpyxl_c_offset = c_idx - header_col_idx
                                     found_header = True
                                     break
                             if found_header: break
                         
                         if found_header:
-                            for r_cells in ws.iter_rows():
-                                for cell in r_cells:
-                                    if cell.comment:
-                                        pd_r = (cell.row - 1) - openpyxl_r_offset
-                                        pd_c = (cell.column - 1) - openpyxl_c_offset
+                            for r_idx, r_cells in enumerate(ws.iter_rows()):
+                                for c_idx, cell in enumerate(r_cells):
+                                    if hasattr(cell, 'comment') and cell.comment:
+                                        pd_r = r_idx - openpyxl_r_offset
+                                        pd_c = c_idx - openpyxl_c_offset
                                         sheet_comments[(pd_r, pd_c)] = cell.comment.text
-                    except Exception as e:
-                        app.logger.warning(f"시트 '{sheet_name}' 메모 추출 실패: {e}")
+                    
+                    orig_index_list = data_df.index.tolist()
+                    for i_pos, orig_iloc_idx in enumerate(orig_index_list):
+                        row = data_df.loc[orig_iloc_idx]
+                        if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
+                            break
+                        f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                        if not f_val or f_val == '0' or f_val == 'nan':
+                            continue
+                        row_list = row.fillna('').astype(str).tolist()
+                        rows.append(row_list)
+                        for c_idx in range(len(row_list)):
+                            cmt = sheet_comments.get((orig_iloc_idx, c_idx))
+                            if cmt: comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
+                        row_idx_in_db += 1
+                    
+                    if rows: 
+                        supabase.from_("branch_dispatch").insert({
+                            "branch_id": "asan",
+                            "type": dtype,
+                            "target_date": target_date,
+                            "headers": headers,
+                            "data": rows,
+                            "comments": comments_dict,
+                            "file_modified_at": mtime,
+                            "updated_at": now.isoformat()
+                        }).execute()
+                        sync_count += 1
+                        app.logger.info(f"[자동동기화] {dtype} - {target_date} 완료 ({len(rows)}건)")
+                    
+                    # 매 시트 처리 후 메모리 강제 해제
+                    del sheet_comments
+                    gc.collect()
 
-                orig_index_list = data_df.index.tolist()
-                for i_pos, orig_iloc_idx in enumerate(orig_index_list):
-                    row = data_df.loc[orig_iloc_idx]
-                    if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
-                        break
-                    
-                    f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
-                    if not f_val or f_val == '0' or f_val == 'nan':
-                        continue
-                    
-                    row_list = row.fillna('').astype(str).tolist()
-                    rows.append(row_list)
-                    for c_idx in range(len(row_list)):
-                        cmt = sheet_comments.get((orig_iloc_idx, c_idx))
-                        if cmt: comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
-                    row_idx_in_db += 1
-                
-                if rows: 
-                    supabase.from_("branch_dispatch").insert({
-                        "branch_id": "asan",
-                        "type": dtype,
-                        "target_date": target_date,
-                        "headers": headers,
-                        "data": rows,
-                        "comments": comments_dict,
-                        "file_modified_at": mtime,
-                        "updated_at": now.isoformat()
-                    }).execute()
-                    sync_count += 1
-                    app.logger.info(f"[자동동기화] {dtype} - {target_date} 동기화 완료 ({len(rows)}건)")
-            
-            # 워크북 닫기 (메모리 해제)
+                except Exception as sheet_err:
+                    app.logger.error(f"[자동동기화] 시트 '{sheet_name}' 처리 중 오류: {sheet_err}")
+
             if wb: wb.close()
+            gc.collect()
 
             last_mtime_cache[dtype] = mtime
             
