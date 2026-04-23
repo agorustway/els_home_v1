@@ -191,8 +191,14 @@ def sync_asan_dispatch_python(force=False):
                 continue
             
             # 가중치 점수 순으로 정렬 (최신순으로 처리하되, 모든 시트 동기화)
-            date_sheets.sort(key=lambda x: x[3], reverse=True)
-            
+            # 메모리 최적화: openpyxl 워크북을 루프 밖에서 딱 한 번만 로드
+            wb = None
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(full_path, data_only=True)
+            except Exception as e:
+                app.logger.warning(f"[자동동기화] openpyxl 워크북 로드 실패: {e}")
+
             for sheet_name, month, day, sort_score in date_sheets:
                 app.logger.info(f"[자동동기화] {dtype} 시트 처리 중: {sheet_name} ({month}/{day})")
 
@@ -204,12 +210,11 @@ def sync_asan_dispatch_python(force=False):
                     year += 1 # 내년 1~2월
                 target_date = f"{year}-{month:02d}-{day:02d}"
 
-                # 해당 날짜/타입의 기존 데이터만 삭제 (다른 시트 데이터 보존)
+                # 해당 날짜/타입의 기존 데이터만 삭제
                 supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
 
                 # 시트 파싱
                 df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
-                # '구분'이 포함된 행 찾기
                 header_idx = -1
                 for i, row in df.head(100).iterrows():
                     if row.astype(str).str.contains('구분').any():
@@ -217,7 +222,7 @@ def sync_asan_dispatch_python(force=False):
                         break
                 
                 if header_idx < 0:
-                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트 건너뜀: '구분' 헤더를 찾지 못함 (체크한 100줄 내에 없음)")
+                    app.logger.warning(f"[자동동기화] '{sheet_name}' 시트 건너뜀: '구분' 헤더 미발견")
                     continue
                 
                 headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
@@ -229,14 +234,11 @@ def sync_asan_dispatch_python(force=False):
                 comments_dict = {}
                 row_idx_in_db = 0
                 
-                # 메모 추출용 openpyxl
+                # 메모 추출 (미리 로드한 wb 사용)
                 sheet_comments = {}
-                try:
-                    import openpyxl
-                    wb = openpyxl.load_workbook(full_path, data_only=True)
-                    target_ws_name = next((s for s in wb.sheetnames if s.strip() == sheet_name.strip()), sheet_name)
-                    if target_ws_name in wb.sheetnames:
-                        ws = wb[target_ws_name]
+                if wb and sheet_name in wb.sheetnames:
+                    try:
+                        ws = wb[sheet_name]
                         header_col_idx = -1
                         for j, h in enumerate(headers):
                             if '구분' in str(h):
@@ -264,8 +266,8 @@ def sync_asan_dispatch_python(force=False):
                                         pd_r = (cell.row - 1) - openpyxl_r_offset
                                         pd_c = (cell.column - 1) - openpyxl_c_offset
                                         sheet_comments[(pd_r, pd_c)] = cell.comment.text
-                except Exception as e:
-                    app.logger.warning(f"openpyxl 처리 실패 ({sheet_name}): {e}")
+                    except Exception as e:
+                        app.logger.warning(f"시트 '{sheet_name}' 메모 추출 실패: {e}")
 
                 orig_index_list = data_df.index.tolist()
                 for i_pos, orig_iloc_idx in enumerate(orig_index_list):
@@ -284,9 +286,7 @@ def sync_asan_dispatch_python(force=False):
                         if cmt: comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
                     row_idx_in_db += 1
                 
-                if not rows:
-                    app.logger.info(f"[자동동기화] '{sheet_name}' 시트 건너뜀: 조건에 맞는 데이터 행이 없음 (필터 컬럼 {filter_col} 확인)")
-                else:
+                if rows: 
                     supabase.from_("branch_dispatch").insert({
                         "branch_id": "asan",
                         "type": dtype,
@@ -299,6 +299,9 @@ def sync_asan_dispatch_python(force=False):
                     }).execute()
                     sync_count += 1
                     app.logger.info(f"[자동동기화] {dtype} - {target_date} 동기화 완료 ({len(rows)}건)")
+            
+            # 워크북 닫기 (메모리 해제)
+            if wb: wb.close()
 
             last_mtime_cache[dtype] = mtime
             
