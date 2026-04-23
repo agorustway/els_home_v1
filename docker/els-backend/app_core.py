@@ -205,7 +205,7 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                     row = data_df.loc[orig_iloc_idx]
                     # '합계' 포함 시 종료
                     if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
-                        break
+                        continue
                     
                     f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
                     if not f_val or f_val == '0' or f_val == 'nan':
