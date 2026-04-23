@@ -475,7 +475,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     unique_id = int(time.time())
     import tempfile 
     # Windows/Linux 호환을 위해 tempfile 사용하거나 .tmp_profile 폴더 활용
-    profile_path = os.path.join(os.path.dirname(__file__), ".tmp_profile", f"port_{port}_{unique_id}")
+    profile_path = os.path.join("/tmp", ".tmp_profile", f"port_{port}_{unique_id}")
     if not os.path.exists(os.path.dirname(profile_path)):
         os.makedirs(os.path.dirname(profile_path), exist_ok=True)
     

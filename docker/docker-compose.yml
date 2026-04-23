@@ -29,6 +29,7 @@ services:
     environment:
       - PORT=2931
       - DAEMON_URL=http://127.0.0.1:31999
+    shm_size: 2gb
     volumes:
       - /volume2/아산지점:/app/data/아산지점
       - /volume1:/app/volume1
