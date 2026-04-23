@@ -275,6 +275,11 @@ export async function POST(request) {
                 container_kind:   container_kind || undefined,
                 special_notes:    special_notes || undefined,
                 vehicle_id:       vehicle_id || undefined,
+                chk_brake:        body.chk_brake  !== undefined ? body.chk_brake : undefined,
+                chk_tire:         body.chk_tire   !== undefined ? body.chk_tire  : undefined,
+                chk_lamp:         body.chk_lamp   !== undefined ? body.chk_lamp  : undefined,
+                chk_cargo:        body.chk_cargo  !== undefined ? body.chk_cargo : undefined,
+                chk_driver:       body.chk_driver !== undefined ? body.chk_driver : undefined,
                 updated_at:       new Date().toISOString()
             };
 
@@ -313,7 +318,11 @@ export async function POST(request) {
                 seal_number:      seal_number || '',
                 container_type,
                 container_kind,
-                special_notes: (special_notes || '') + (body.chk_brake !== undefined ? ` [점검:${body.chk_brake?'o':'x'}${body.chk_tire?'o':'x'}${body.chk_lamp?'o':'x'}${body.chk_cargo?'o':'x'}${body.chk_driver?'o':'x'}]` : ''),
+                chk_brake: body.chk_brake || false,
+                chk_tire:  body.chk_tire  || false,
+                chk_lamp:  body.chk_lamp  || false,
+                chk_cargo: body.chk_cargo || false,
+                chk_driver: body.chk_driver || false,
                 status: 'driving',
                 started_at: new Date().toISOString(),
             }])

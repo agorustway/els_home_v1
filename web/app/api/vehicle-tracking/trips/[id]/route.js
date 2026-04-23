@@ -134,6 +134,11 @@ export async function PATCH(request, { params }) {
         if (driver_name !== undefined) updates.driver_name = driver_name;
         if (driver_phone !== undefined) updates.driver_phone = driver_phone;
         if (vehicle_number !== undefined) updates.vehicle_number = vehicle_number;
+        if (body.chk_brake !== undefined) updates.chk_brake = body.chk_brake;
+        if (body.chk_tire !== undefined) updates.chk_tire = body.chk_tire;
+        if (body.chk_lamp !== undefined) updates.chk_lamp = body.chk_lamp;
+        if (body.chk_cargo !== undefined) updates.chk_cargo = body.chk_cargo;
+        if (body.chk_driver !== undefined) updates.chk_driver = body.chk_driver;
 
         const { data, error } = await supabase
             .from('vehicle_trips')

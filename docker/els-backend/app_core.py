@@ -96,8 +96,8 @@ def sync_asan_dispatch_python(force=False):
             xl = pd.ExcelFile(full_path)
             sync_count = 0
             
-            # 기존 데이터 삭제 (정합성 보장)
-            supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
+            # 기존 데이터 삭제 (정합성 보장) - UPSERT 도입으로 인해 불필요한 전체 삭제 로직 제거 (v5.5.14)
+            # supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).execute()
 
             for sheet_name in xl.sheet_names:
                 # "3.3" 형식의 시트명 파싱

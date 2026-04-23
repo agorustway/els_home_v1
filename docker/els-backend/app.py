@@ -212,8 +212,8 @@ def sync_asan_dispatch_python(force=False):
                         year += 1 # 내년 1~2월
                     target_date = f"{year}-{month:02d}-{day:02d}"
 
-                    # 해당 날짜/타입의 기존 데이터만 삭제
-                    supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
+                    # 해당 날짜/타입의 기존 데이터 삭제 - UPSERT 도입으로 스킵 (v5.5.14)
+                    # supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
 
                     # 시트 파싱
                     df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
