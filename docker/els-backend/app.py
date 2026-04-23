@@ -124,7 +124,7 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
     global last_mtime_cache
     if not supabase: return
     try:
-        mode_str = "전체" if full_sync else "최근(±7일)"
+        mode_str = "전체" if full_sync else "최근(±14일)"
         app.logger.info(f"[자동동기화] 아산 배차판 동기화 시작... (모드: {mode_str})")
         # 1. 설정 가져오기
         res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
@@ -147,9 +147,10 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
             # 파일 수정 시간
             mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
             cached_mtime = last_mtime_cache.get(dtype)
-
+            
             # 변경 감지 (force/full_sync 옵션이 없으면 캐시 확인)
-            if not force and not full_sync and cached_mtime == mtime:
+            # v5.5.11 패치: 서버 시작 후 첫 실행 시에는 무조건 동기화 시도 (cached_mtime이 None인 경우)
+            if not force and not full_sync and cached_mtime and cached_mtime == mtime:
                 continue
 
             # 엑셀 읽기
@@ -186,10 +187,10 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                     target_date_dt = date(year, month, day)
                     target_date = target_date_dt.isoformat()
 
-                    # 실시간 모드일 때 ±7일 범위를 벗어나면 스킵
+                    # 실시간 모드일 때 ±15일 범위를 벗어나면 스킵
                     if not full_sync:
                         diff_days = abs((target_date_dt - current_date_only).days)
-                        if diff_days > 7:
+                        if diff_days > 15:
                             continue
 
                     app.logger.info(f"[자동동기화] {dtype} 시트 처리 중: {sheet_name} ({target_date})")
@@ -249,6 +250,10 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                     
                     if rows: 
                         supabase.from_("branch_dispatch").insert({
+                            "branch_id": "asan",
+                            "type": dtype,
+                            "target_date": target_date,
+                            "rows": rows,
                             "comments": comments_dict,
                             "file_modified_at": mtime,
                             "updated_at": now.isoformat()
@@ -266,7 +271,10 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
             if wb: wb.close()
             gc.collect()
 
-            last_mtime_cache[dtype] = mtime
+            # 성공적으로 최소 한 개 이상의 시트를 동기화했거나, 아예 변경이 없었던 경우가 아니라면 캐시 갱신
+            if sync_count > 0:
+                last_mtime_cache[dtype] = mtime
+                app.logger.info(f"[자동동기화] {dtype} 동기화 성공 및 캐시 갱신 (처리: {sync_count}건)")
             
     except Exception as e:
         app.logger.error(f"[자동동기화] 치명적 오류: {e}")
