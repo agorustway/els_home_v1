@@ -227,7 +227,7 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                         "branch_id": "asan",
                         "type": dtype,
                         "target_date": target_date,
-                        "rows": rows,
+                        "data": rows,
                         "comments": comments_dict,
                         "file_modified_at": mtime,
                         "updated_at": now.isoformat()
