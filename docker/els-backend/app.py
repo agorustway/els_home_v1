@@ -1118,5 +1118,6 @@ def trigger_nas_vectorize():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.logger.info("Backend Server Ready with CORS")
-    app.run(host="0.0.0.0", port=2929, threaded=True)
+    port = int(os.environ.get("PORT", 2929))
+    app.logger.info(f"Backend Server Ready with CORS on port {port}")
+    app.run(host="0.0.0.0", port=port, threaded=True)
