@@ -233,8 +233,8 @@ def sync_asan_dispatch_python(force=False, full_sync=False):
                         "updated_at": now.isoformat()
                     }
                     try:
-                        # [v5.5.13] 데이터 증발 방지: UPSERT 시도
-                        supabase.from_("branch_dispatch").upsert(payload).execute()
+                        # [v5.5.16] 데이터 증발 방지: UPSERT 시 고유키 충돌 해결
+                        supabase.from_("branch_dispatch").upsert(payload, on_conflict="branch_id,type,target_date").execute()
                     except Exception as e:
                         # UPSERT 실패 시 Delete-Insert 폴백
                         app.logger.warning(f"[자동동기화] UPSERT 실패({target_date}): {e}")
