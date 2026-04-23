@@ -161,29 +161,43 @@ def sync_asan_dispatch_python(force=False):
             sync_count = 0
             
             # 숫자 형태의 시트 이름 필터링 (최신 날짜 우선)
+            now = datetime.now(KST)
+            current_month = now.month
             date_sheets = []
+            
             for s in xl.sheet_names:
-                # "3.3" 또는 "3.3 수정" 형식의 시트명 파싱 (유연하게 변경)
                 match = re.search(r'(\d+)[\./](\d+)', s)
                 if match:
-                    month = int(match.group(1))
-                    day = int(match.group(2))
-                    date_sheets.append((s, month, day))
-                    app.logger.info(f"[자동동기화] 날짜 시트 발견: {s} -> ({month}월 {day}일)")
+                    m = int(match.group(1))
+                    d = int(match.group(2))
+                    
+                    # 연도 롤오버를 고려한 정렬용 가중치 계산
+                    # 현재가 1, 2월인데 시트가 11, 12월이면 작년 자료로 취급 (가중치 낮춤)
+                    # 현재가 11, 12월인데 시트가 1, 2월이면 내년 자료로 취급 (가중치 높임)
+                    sort_score = m * 100 + d
+                    if current_month <= 3 and m >= 10:
+                        sort_score -= 1200 # 작년
+                    elif current_month >= 10 and m <= 3:
+                        sort_score += 1200 # 내년
+                    
+                    date_sheets.append((s, m, d, sort_score))
+                    app.logger.info(f"[자동동기화] 날짜 시트 발견: {s} -> ({m}월 {d}일, 점수: {sort_score})")
             
             if not date_sheets:
-                app.logger.warning(f"[자동동기화] {dtype} 파일에서 날짜 형식의 시트를 하나도 찾지 못했습니다. (전체 시트: {xl.sheet_names[:5]}...)")
+                app.logger.warning(f"[자동동기화] {dtype} 파일에서 날짜 형식의 시트를 하나도 찾지 못했습니다.")
                 continue
             
-            # 가장 최신 날짜 시트 선택 (월, 일 순으로 정렬)
-            date_sheets.sort(key=lambda x: (x[1], x[2]), reverse=True)
-            sheet_name, month, day = date_sheets[0]
+            # 가중치 점수 순으로 정렬하여 가장 최신(미래) 시트 선택
+            date_sheets.sort(key=lambda x: x[3], reverse=True)
+            sheet_name, month, day, _ = date_sheets[0]
             app.logger.info(f"[자동동기화] {dtype} 최종 선택 시트: {sheet_name} ({month}/{day})")
 
-            # 타겟 날짜 계산
-            now = datetime.now(KST)
+            # 타겟 날짜 계산 (연도 결정)
             year = now.year
-            if month > now.month + 3: year -= 1 # 12월 시트인데 현재 3월이면 작년거
+            if current_month <= 3 and month >= 10:
+                year -= 1 # 작년 11~12월
+            elif current_month >= 10 and month <= 3:
+                year += 1 # 내년 1~2월
             target_date = f"{year}-{month:02d}-{day:02d}"
 
             # 기존 데이터 삭제 (정합성 보장)
