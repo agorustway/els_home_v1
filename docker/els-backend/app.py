@@ -7,7 +7,6 @@ import sys
 import json
 import threading
 import subprocess
-import gc
 import tempfile
 import uuid
 import logging
@@ -25,7 +24,7 @@ from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS 
 from werkzeug.utils import secure_filename
 from openpyxl.styles import PatternFill
-from datetime import datetime, timedelta, date, timezone
+from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 
 # --- KST 설정 ---
@@ -120,44 +119,218 @@ def post_debug_log():
 # --- [v4.4.40] 아산지점 배차판 자동 동기화 로직 ---
 last_mtime_cache = {}
 
-def sync_asan_dispatch_python(force=False, full_sync=False):
-    """Wrapper that delegates to core sync with full_sync flag"""
-    # Import core sync function
-    from app_core import sync_asan_dispatch_python as core_sync
-    # core_sync handles settings retrieval and full sync logic
-    core_sync(force=force, full_sync=full_sync)
+def sync_asan_dispatch_python(force=False):
+    """나스 엑셀 파일을 읽어 Supabase를 업데이트하는 Python 버전 로직"""
+    global last_mtime_cache
+    if not supabase: return
+    try:
+        app.logger.info("[자동동기화] 아산 배차판 동기화 시작...")
+        # 1. 설정 가져오기
+        res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
+        settings = res.data
+        if not settings:
+            app.logger.error("[자동동기화] 설정을 찾을 수 없습니다.")
+            return
+
+        for dtype in ['glovis', 'mobis']:
+            rel_path = settings.get(f"{dtype}_path")
+            if not rel_path: continue
+            
+            full_path = Path("/app/data") / rel_path.lstrip("/")
+            app.logger.info(f"[자동동기화] 대상 파일 체크: {full_path}")
+            
+            if not full_path.exists():
+                app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path} (rel_path: {rel_path})")
+                continue
+            
+            # 파일 수정 시간
+            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            cached_mtime = last_mtime_cache.get(dtype)
+            
+            app.logger.info(f"[자동동기화] {dtype} 체크: 현재={mtime}, 캐시={cached_mtime}")
+            
+            # 변경 감지 (force 옵션이 없으면 캐시 확인)
+            if not force and cached_mtime == mtime:
+                app.logger.info(f"[자동동기화] {dtype} 변경 없음 (스킵)")
+                continue
+            
+            app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
+            
+            # 엑셀 읽기
+            xl = pd.ExcelFile(full_path)
+            sync_count = 0
+            
+            # 숫자 형태의 시트 이름 필터링 (최신 날짜 우선)
+            now = datetime.now(KST)
+            current_month = now.month
+            date_sheets = []
+            
+            all_sheets = xl.sheet_names
+            app.logger.info(f"[자동동기화] {dtype} 파일 전체 시트 목록: {all_sheets}")
+            
+            for s in all_sheets:
+                match = re.search(r'(\d+)[\./](\d+)', s)
+                if match:
+                    m = int(match.group(1))
+                    d = int(match.group(2))
+                    
+                    # 연도 롤오버를 고려한 정렬용 가중치 계산
+                    # 현재가 1, 2월인데 시트가 11, 12월이면 작년 자료로 취급 (가중치 낮춤)
+                    # 현재가 11, 12월인데 시트가 1, 2월이면 내년 자료로 취급 (가중치 높임)
+                    sort_score = m * 100 + d
+                    if current_month <= 3 and m >= 10:
+                        sort_score -= 1200 # 작년
+                    elif current_month >= 10 and m <= 3:
+                        sort_score += 1200 # 내년
+                    
+                    date_sheets.append((s, m, d, sort_score))
+                    app.logger.info(f"[자동동기화] 날짜 시트 발견: {s} -> ({m}월 {d}일, 점수: {sort_score})")
+            
+            if not date_sheets:
+                app.logger.warning(f"[자동동기화] {dtype} 파일에서 날짜 형식의 시트를 하나도 찾지 못했습니다.")
+                continue
+            
+            # 가중치 점수 순으로 정렬 (최신순으로 처리하되, 모든 시트 동기화)
+            # 초절전 메모리 최적화: read_only=True 모드 사용
+            wb = None
+            try:
+                import openpyxl
+                import gc
+                wb = openpyxl.load_workbook(full_path, data_only=True, read_only=True)
+            except Exception as e:
+                app.logger.warning(f"[자동동기화] openpyxl 로드 실패: {e}")
+
+            for sheet_name, month, day, sort_score in date_sheets:
+                try:
+                    app.logger.info(f"[자동동기화] {dtype} 시트 처리 중: {sheet_name} ({month}/{day})")
+
+                    # 타겟 날짜 계산 (연도 결정)
+                    year = now.year
+                    if current_month <= 3 and month >= 10:
+                        year -= 1 # 작년 11~12월
+                    elif current_month >= 10 and month <= 3:
+                        year += 1 # 내년 1~2월
+                    target_date = f"{year}-{month:02d}-{day:02d}"
+
+                    # 해당 날짜/타입의 기존 데이터만 삭제
+                    supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", target_date).execute()
+
+                    # 시트 파싱
+                    df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
+                    header_idx = -1
+                    for i, row in df.head(100).iterrows():
+                        if row.astype(str).str.contains('구분').any():
+                            header_idx = i
+                            break
+                    
+                    if header_idx < 0:
+                        app.logger.warning(f"[자동동기화] '{sheet_name}' 시트 건너뜀: 헤더 미발견")
+                        continue
+                    
+                    headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
+                    headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
+                    data_df = df.iloc[header_idx + 1:]
+                    
+                    filter_col = 12 if dtype == 'glovis' else 15
+                    rows = []
+                    comments_dict = {}
+                    row_idx_in_db = 0
+                    
+                    # 메모 추출 (read_only 모드에서도 가능)
+                    sheet_comments = {}
+                    if wb and sheet_name in wb.sheetnames:
+                        ws = wb[sheet_name]
+                        header_col_idx = -1
+                        for j, h in enumerate(headers):
+                            if '구분' in str(h):
+                                header_col_idx = j
+                                break
+                        if header_col_idx == -1: header_col_idx = 0
+                            
+                        openpyxl_r_offset = 0
+                        openpyxl_c_offset = 0
+                        found_header = False
+                        # read_only 모드에서는 iter_rows가 가장 효율적
+                        for r_idx, r_cells in enumerate(ws.iter_rows(min_row=1, max_row=100)):
+                            for c_idx, cell in enumerate(r_cells):
+                                val = str(cell.value) if cell.value else ""
+                                if '구분' in val:
+                                    openpyxl_r_offset = r_idx - header_idx
+                                    openpyxl_c_offset = c_idx - header_col_idx
+                                    found_header = True
+                                    break
+                            if found_header: break
+                        
+                        if found_header:
+                            for r_idx, r_cells in enumerate(ws.iter_rows()):
+                                for c_idx, cell in enumerate(r_cells):
+                                    if hasattr(cell, 'comment') and cell.comment:
+                                        pd_r = r_idx - openpyxl_r_offset
+                                        pd_c = c_idx - openpyxl_c_offset
+                                        sheet_comments[(pd_r, pd_c)] = cell.comment.text
+                    
+                    orig_index_list = data_df.index.tolist()
+                    for i_pos, orig_iloc_idx in enumerate(orig_index_list):
+                        row = data_df.loc[orig_iloc_idx]
+                        # '합계' 포함 시 건너뜀 (break 대신 continue로 변경하여 데이터 유실 방지)
+                        if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
+                            continue
+                        f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
+                        if not f_val or f_val == '0' or f_val == 'nan':
+                            continue
+                        row_list = row.fillna('').astype(str).tolist()
+                        rows.append(row_list)
+                        for c_idx in range(len(row_list)):
+                            cmt = sheet_comments.get((orig_iloc_idx, c_idx))
+                            if cmt: comments_dict[f"{row_idx_in_db}:{c_idx}"] = str(cmt)
+                        row_idx_in_db += 1
+                    
+                    if rows: 
+                        # upsert로 변경하여 중복 데이터 방지
+                        supabase.from_("branch_dispatch").upsert({
+                            "branch_id": "asan",
+                            "type": dtype,
+                            "target_date": target_date,
+                            "headers": headers,
+                            "data": rows,
+                            "comments": comments_dict,
+                            "file_modified_at": mtime,
+                            "updated_at": now.isoformat()
+                        }, on_conflict="branch_id,type,target_date").execute()
+                        sync_count += 1
+                        app.logger.info(f"[자동동기화] {dtype} - {target_date} 완료 ({len(rows)}건)")
+                    
+                    # 매 시트 처리 후 메모리 강제 해제
+                    del sheet_comments
+                    gc.collect()
+
+                except Exception as sheet_err:
+                    app.logger.error(f"[자동동기화] 시트 '{sheet_name}' 처리 중 오류: {sheet_err}")
+
+            if wb: wb.close()
+            gc.collect()
+
+            last_mtime_cache[dtype] = mtime
+            
+    except Exception as e:
+        app.logger.error(f"[자동동기화] 치명적 오류: {e}")
 
 def asan_sync_scheduler():
-    """아산 배차판 자동 동기화 스케줄러 (듀얼 모드)
-    - 실시간: 파일 변경 시 ±15일치 즉시 동기화 (Fast Sync)
-    - 백그라운드: 10분마다 전체 시트 동기화 (Slow Sync, NAS 부하 분산)
-    - 정기: 새벽 4시 전체 시트 정밀 동기화
-    """
-    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 가동 (실시간 ±15일 / 10분 주기 전체)")
-    last_full_sync_time = None
+    """배경에서 시간을 체크하여 동기화를 수행하는 스레드"""
+    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
     
     while True:
         try:
             now = datetime.now(KST)
+            # 06:00 ~ 23:00 사이 (주말 포함 매일)
+            if 6 <= now.hour <= 23:
+                # 매 루프(1분)마다 수정 여부를 체크하고, 수정된 경우만 동기화
+                sync_asan_dispatch_python()
             
-            # 1. 새벽 4시 정기 전체 동기화 트리거
-            is_4am_time = (now.hour == 4 and 0 <= now.minute <= 5)
-            # 2. 10분 주기 전체 동기화 트리거 (마지막 전체 동기화로부터 10분 경과 시)
-            is_10min_tick = (last_full_sync_time is None or (now - last_full_sync_time).total_seconds() >= 600)
-            
-            full_sync_trigger = is_4am_time or is_10min_tick
-            
-            # 업무 시간(06~23시) 또는 전체 동기화 트리거 시 실행
-            if (6 <= now.hour <= 23) or full_sync_trigger:
-                # sync_asan_dispatch_python 내부에서 mtime을 체크하므로 매분 호출해도 안전함
-                sync_asan_dispatch_python(full_sync=full_sync_trigger)
-                
-                if full_sync_trigger:
-                    last_full_sync_time = now
-            
-            time.sleep(60) # 1분마다 체크
+            # 매 60초마다 체크 (KST 기준)
+            time.sleep(60)
         except Exception as e:
-            app.logger.error(f"[스케줄러] 아산 스케줄러 에러: {e}")
+            app.logger.error(f"[스케줄러] 루프 오류: {e}")
             time.sleep(60)
 
 # 스케줄러 시작
@@ -581,7 +754,16 @@ def login():
         "Cache-Control": "no-cache"
     })
 
-
+    extra = []
+    if not use_saved: extra.extend(["--user-id", uid, "--user-pw", pw])
+    r = run_runner("login", extra_args=extra)
+    out = (r.stdout or "").strip()
+    try:
+        start, end = out.rfind("{"), out.rfind("}")
+        obj = json.loads(out[start : end + 1]) if start >= 0 else json.loads(out)
+        return jsonify(obj)
+    except:
+        return jsonify({"ok": False, "error": "응답 파싱 실패"})
 
 @app.route("/api/els/stop-daemon", methods=["POST"])
 def stop_daemon():
@@ -906,7 +1088,26 @@ def screenshot():
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Daemon not available"}), 404
 
+from nas_vectorizer import process_nas_directory
+import asyncio
 
+@app.route('/api/vectorize/nas', methods=['POST'])
+def trigger_nas_vectorize():
+    """Trigger NAS folder crawling and vectorization (Phase 5)."""
+    if not supabase:
+        return jsonify({"error": "Supabase client not initialized"}), 500
+        
+    data = request.json or {}
+    raw_dir = data.get("directory", "/app/work-docs")  # Default to some dir
+    branch_name = data.get("branch", "본사")
+    
+    # Run synchronous function
+    try:
+        result = process_nas_directory(supabase, raw_dir, branch_name)
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"Vectorize error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 2929))
