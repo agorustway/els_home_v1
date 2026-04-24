@@ -595,10 +595,10 @@ export async function POST(req) {
             }
 
             // 2. 컨테이너 실시간 이력조회 연동
-            const cntrMatch = userKwd.match(/[a-z]{4}\d{7}/);
             if (cntrMatch) {
                 const cntrNo = cntrMatch[0].toUpperCase();
-                const res = await fetch(`${backendUrl}/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+                // [v5.6.2] 경로 수정: /container/tracking -> /api/els/container/tracking
+                const res = await fetch(`${backendUrl}/api/els/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(120000) }).catch(() => null);
                 if (res?.ok) {
                     const data = await res.json();
                     if (data?.tracking_list?.length > 0) {
@@ -611,26 +611,78 @@ export async function POST(req) {
                 }
             }
 
-            // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 (Omni-Agent Phase 1)
-            // [설계 원칙] 위탁/운수자간 운임 질문이어도 안전운임 데이터는 "참고용 법정 최저운임"으로 주입.
-            // 차단하면 할증/대기료/이력 등 모든 기능도 함께 차단됨. 명칭 혼동 방지는 컨텍스트로 처리.
-            const isWitakQuery = userKwd.includes('위탁');
-            const isUnsusaQuery = userKwd.includes('운수사') || userKwd.includes('운수자');
-            if (isWitakQuery) {
-                recentPostsText += `\n\n## 🚨 [절대 지시] 안전위탁운임(위탁운임) 질문 감지!\n사용자가 위탁운임을 물었다. 너는 아래 제공된 **안전운임 단가 표(운송운임)**와 **고시 전문**을 모두 활용해야 한다. "위탁운임 데이터가 없다"는 거짓말을 하지 마라. 고시 원문에서 '안전위탁운임' 수치를 찾아 답변하거나, 찾기 어려우면 아래 단가표의 '안전운송운임'을 기준으로 위탁운임은 보통 이보다 낮은 수준(약 85%)임을 설명하며 참고 데이터를 제시해라.`;
-            }
-            if (isUnsusaQuery && !isWitakQuery) {
-                recentPostsText += `\n\n## 🚨 [절대 지시] 운수사업자간 운임 질문 감지!\n사용자가 운수사간 운임을 물었다. 고시 원문에 명시된 '운수사업자간운임'을 찾아 안내해라. 찾지 못할 경우 단가표의 안전운송운임을 제시하며, 운수사간 운임은 보통 이의 92~93% 수준임을 설명해라.`;
-            }
+            // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 + 역방향 조회 (Omni-Agent Phase 1)
             const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항', '여객터미널', '인천여객', '인천국제여객', '인천신항', '인천항', '울산항', '울산신항', '평택항', '포항항', '군산항', '마산항', '대산항', '인상', '변동', '비교', '추이', '이전', '할증', '냉동', '냉장', '플렉시', '탱크', '험로', '덤프', '공휴일', '울산', '평택', '마산', '포항', '군산', '대산', '대기료', '부대조항', '추가요금', '반납', '도착', '밥테일', '온그라운드', '복화', '공차', '취소료', 'X-ray', '검색기', '대형교량'];
+            
+            // 금액 역조회용 숫자 추출 (예: 782,600 -> 782600)
+            const amountMatches = lastUserText.replace(/,/g, '').match(/\d{5,7}/g) || [];
+            const manMatches = lastUserText.match(/(\d{1,4})만/g) || [];
+            const targetAmounts = [...amountMatches.map(n => parseInt(n))];
+            manMatches.forEach(m => targetAmounts.push(parseInt(m.replace('만', '')) * 10000));
+
             isSfQuery = (
                 searchTerms.some(t => sfKeywords.some(k => t.includes(k))) ||
                 sfKeywords.some(k => userKwd.includes(k)) ||
-                portAliasTerms.length > 0 // 항구 별칭이 1개라도 감지되면 안전운임 쿼리로 처리
+                portAliasTerms.length > 0 ||
+                targetAmounts.length > 0
             );
             if (isSfQuery) {
                 const sfData = await getSfData();
                 if (sfData?.faresLatest) {
+                    const isWitakQuery = userKwd.includes('위탁');
+                    const isUnsusaQuery = userKwd.includes('운수사') || userKwd.includes('운수자');
+
+                    // (A-1) 역방향 금액 조회 로직 (Amount -> Route/Distance)
+                    if (targetAmounts.length > 0) {
+                        let reverseResults = `\n\n## 🔍 역방향 운임 조회 결과 (금액: ${targetAmounts.map(a => a.toLocaleString()).join(', ')}원 기준)\n`;
+                        const foundRoutes = [];
+                        const tolerance = 2000; // 오차 범위 ±2000원
+
+                        for (const amt of targetAmounts) {
+                            // 1. 구간별 운임표 검색
+                            const fareKeys = Object.keys(sfData.faresLatest);
+                            for (const k of fareKeys) {
+                                const v = sfData.faresLatest[k];
+                                const f40 = v.f40안전 || v.fare40;
+                                const f20 = v.f20안전 || v.fare20;
+                                const w40 = v.f40위탁 || Math.round(f40 * 0.85);
+                                const u40 = v.f40운수자 || Math.round(f40 * 0.92);
+
+                                if (Math.abs(f40 - amt) <= tolerance || Math.abs(w40 - amt) <= tolerance || Math.abs(u40 - amt) <= tolerance ||
+                                    Math.abs(f20 - amt) <= tolerance) {
+                                    foundRoutes.push(`- [매칭구간] ${k}\n  * 금액: 안전운송 ${f40.toLocaleString()}원 | 위탁 ${w40.toLocaleString()}원 | 운수자간 ${u40.toLocaleString()}원`);
+                                }
+                            }
+
+                            // 2. 거리별 운임표 검색
+                            if (sfData.distanceBased) {
+                                const distKeys = Object.keys(sfData.distanceBased);
+                                for (const dk of distKeys) {
+                                    const d = sfData.distanceBased[dk];
+                                    if (!d) continue;
+                                    const df40 = d.f40안전 || d.fare40;
+                                    const dw40 = d.f40위탁 || Math.round(df40 * 0.85);
+                                    if (Math.abs(df40 - amt) <= tolerance || Math.abs(dw40 - amt) <= tolerance) {
+                                        foundRoutes.push(`- [매칭거리] 약 ${dk}km 구간\n  * 금액: 안전운송 ${df40.toLocaleString()}원 | 위탁 ${dw40.toLocaleString()}원`);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (foundRoutes.length > 0) {
+                            reverseResults += [...new Set(foundRoutes)].slice(0, 10).join('\n');
+                            reverseResults += `\n※ 입력하신 금액과 가장 유사한 구간/거리를 찾았습니다. 할증(심야, 공휴일 등)이 포함된 금액일 경우 실제와 다를 수 있으니 유의하십시오.`;
+                            recentPostsText += reverseResults;
+                        }
+                    }
+
+                    if (isWitakQuery) {
+                        recentPostsText += `\n\n## 🚨 [절대 지시] 안전위탁운임(위탁운임) 질문 감지!\n사용자가 위탁운임을 물었다. 너는 아래 제공된 **안전운임 단가 표(운송운임)**와 **고시 전문**을 모두 활용해야 한다. "위탁운임 데이터가 없다"는 거짓말을 하지 마라. 고시 원문에서 '안전위탁운임' 수치를 찾아 답변하거나, 찾기 어려우면 아래 단가표의 '안전운송운임'을 기준으로 위탁운임은 보통 이보다 낮은 수준(약 85%)임을 설명하며 참고 데이터를 제시해라.`;
+                    }
+                    if (isUnsusaQuery && !isWitakQuery) {
+                        recentPostsText += `\n\n## 🚨 [절대 지시] 운수사업자간 운임 질문 감지!\n사용자가 운수사간 운임을 물었다. 고시 원문에 명시된 '운수사업자간운임'을 찾아 안내해라. 찾지 못할 경우 단가표의 안전운송운임을 제시하며, 운수사간 운임은 보통 이의 92~93% 수준임을 설명해라.`;
+                    }
+
                     const fareKeys = Object.keys(sfData.faresLatest);
 
                     // 키 형식: "[왕복] 인천국제여객|울산시|울주군|온산읍"

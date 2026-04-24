@@ -285,6 +285,38 @@ def run():
             global_progress["completed"] = global_progress.get("total", 0)
 
     return Response(generate(), mimetype="text/plain; charset=utf-8")
+        
+# --- [v5.6.2] AI 어시스턴트 전용: 단일 컨테이너 실시간 조회 (JSON 반환) ---
+@app.route("/api/els/container/tracking", methods=["GET"])
+def container_tracking():
+    cntr_no = request.args.get("cntrNo")
+    if not cntr_no: return jsonify({"ok": False, "error": "컨테이너 번호 누락"}), 400
+    
+    # 봇 데몬에게 단일 조회 요청
+    try:
+        body = json.dumps({"containerNo": cntr_no}, ensure_ascii=False).encode("utf-8")
+        req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
+        r = urlopen(req, timeout=120) # AI 답변용이므로 2분 내외 타임아웃
+        resp_data = json.loads(r.read().decode("utf-8"))
+        
+        if not resp_data.get("ok"):
+            return jsonify({"ok": False, "error": resp_data.get("error", "조회 실패")})
+            
+        # 결과 파싱 (성공 또는 내역없음)
+        rows = resp_data.get("result", [])
+        tracking_list = []
+        for row in rows:
+            if len(row) >= 15:
+                tracking_list.append({
+                    "no": row[1], "type": row[2], "status": row[3], "terminal": row[4],
+                    "time": row[5], "vessel": row[6], "voyage": row[7], "line": row[8],
+                    "full_empty": row[9], "size": row[10], "pod": row[11], "pol": row[12],
+                    "vehicle": row[13], "rfid": row[14]
+                })
+        
+        return jsonify({"ok": True, "tracking_list": tracking_list})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/els/download/<token>", methods=["GET"])
 def download(token):
