@@ -58,17 +58,31 @@ function MessageBubble({ msg, isNew }) {
                 <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
                     {renderTextWithLinks(msg.content)}
                     
-                    {msg.images && msg.images.length > 0 && (
-                        <div className={styles.messageImageContainer}>
-                            {msg.images.map((img, idx) => (
-                                <img 
-                                    key={idx} 
-                                    src={`data:${img.mime_type};base64,${img.data}`} 
-                                    className={styles.messageImage} 
-                                    alt="사용자 첨부 이미지"
-                                    onClick={() => window.open(`data:${img.mime_type};base64,${img.data}`, '_blank')}
-                                />
-                            ))}
+                    {/* 첨부 파일(이미지/문서) 출력 */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                        <div className={styles.messageAttachmentContainer}>
+                            {msg.attachments.map((att, idx) => {
+                                const isImage = att.mime_type?.startsWith('image/');
+                                if (isImage) {
+                                    return (
+                                        <img 
+                                            key={idx} 
+                                            src={`data:${att.mime_type};base64,${att.data}`} 
+                                            className={styles.messageImage} 
+                                            alt="첨부 이미지"
+                                            onClick={() => window.open(`data:${att.mime_type};base64,${att.data}`, '_blank')}
+                                        />
+                                    );
+                                }
+                                return (
+                                    <div key={idx} className={styles.messageFileItem}>
+                                        <div className={styles.fileIcon}>
+                                            {att.mime_type?.includes('pdf') ? 'PDF' : att.mime_type?.includes('sheet') ? 'XLS' : 'DOC'}
+                                        </div>
+                                        <span className={styles.fileName}>{att.name || '첨부 파일'}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -129,7 +143,7 @@ export default function AskPage() {
     }, [activeId]);
 
     const [input, setInput] = useState('');
-    const [selectedImages, setSelectedImages] = useState([]); // [{ file, preview, base64 }]
+    const [selectedFiles, setSelectedFiles] = useState([]); // [{ file, preview, base64, mime_type, name, type: 'image'|'doc' }]
     const [isLoading, setIsLoading] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false); // 모바일 히스토리 드로어 상태
     const [newMsgIdx, setNewMsgIdx] = useState(null);
@@ -293,29 +307,47 @@ export default function AskPage() {
         if (chatArea) {
             chatArea.scrollTop = chatArea.scrollHeight;
         }
-    }, [messages, isLoading, selectedImages]);
+    }, [messages, isLoading, selectedFiles]);
 
-    const handleImageSelect = async (e) => {
+    const handleFileSelect = async (e) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        if (selectedImages.length + files.length > 10) {
-            alert('이미지는 한 번에 최대 10장까지 업로드 가능합니다.');
+        if (selectedFiles.length + files.length > 10) {
+            alert('파일은 한 번에 최대 10개까지 업로드 가능합니다.');
             return;
         }
 
-        const newImgs = [];
+        const newFiles = [];
         for (const file of files) {
-            const preview = URL.createObjectURL(file);
-            const compressed = await compressImage(file);
-            newImgs.push({ file, preview, ...compressed });
+            const isImage = file.type.startsWith('image/');
+            const isDoc = file.type.includes('pdf') || file.type.includes('sheet') || file.type.includes('word') || file.type.includes('text') || file.name.endsWith('.txt');
+            
+            if (!isImage && !isDoc) {
+                alert(`${file.name}은(는) 지원되지 않는 형식입니다. (이미지, PDF, 엑셀, 워드, 텍스트만 가능)`);
+                continue;
+            }
+
+            if (isImage) {
+                const preview = URL.createObjectURL(file);
+                const compressed = await compressImage(file);
+                newFiles.push({ file, preview, ...compressed, name: file.name, type: 'image' });
+            } else {
+                // 문서는 Base64로 직접 변환
+                const base64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                });
+                newFiles.push({ file, name: file.name, mime_type: file.type || 'application/octet-stream', data: base64, type: 'doc' });
+            }
         }
-        setSelectedImages(prev => [...prev, ...newImgs]);
+        setSelectedFiles(prev => [...prev, ...newFiles]);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const removeImage = (idx) => {
-        setSelectedImages(prev => {
+    const removeFile = (idx) => {
+        setSelectedFiles(prev => {
             const next = [...prev];
             if (next[idx]?.preview) URL.revokeObjectURL(next[idx].preview);
             next.splice(idx, 1);
@@ -328,13 +360,13 @@ export default function AskPage() {
         if ((!trimmed && selectedImages.length === 0) || isLoading) return;
 
         setInput('');
-        const imagesToSend = selectedImages.map(img => ({ mime_type: img.mime_type, data: img.data }));
-        setSelectedImages([]);
+        const attachmentsToSend = selectedFiles.map(f => ({ mime_type: f.mime_type, data: f.data, name: f.name }));
+        setSelectedFiles([]);
 
         const userMsg = { 
             role: 'user', 
             content: trimmed,
-            images: imagesToSend,
+            attachments: attachmentsToSend,
             timestamp: new Date().toISOString()
         };
         
@@ -381,9 +413,9 @@ export default function AskPage() {
                     // 첫 번째 고정 인사말(index 0)은 토큰 절약을 위해 제외하고 전송
                     messages: [...messages.slice(1), userMsg].map((m) => {
                         const parts = [{ text: m.content || '' }];
-                        if (m.images && m.images.length > 0) {
-                            m.images.forEach(img => {
-                                parts.push({ inline_data: { mime_type: img.mime_type, data: img.data } });
+                        if (m.attachments && m.attachments.length > 0) {
+                            m.attachments.forEach(att => {
+                                parts.push({ inline_data: { mime_type: att.mime_type, data: att.data } });
                             });
                         }
                         return { role: m.role, parts };
@@ -669,13 +701,24 @@ export default function AskPage() {
                     </div>
                 )}
 
-                {/* 이미지 미리보기 영역 */}
-                {selectedImages.length > 0 && (
+                {/* 파일 미리보기 영역 */}
+                {selectedFiles.length > 0 && (
                     <div className={styles.imagePreviewArea}>
-                        {selectedImages.map((img, idx) => (
-                            <div key={idx} className={styles.previewItem}>
-                                <img src={img.preview} className={styles.previewImg} alt="미리보기" />
-                                <button className={styles.removePreview} onClick={() => removeImage(idx)}>×</button>
+                        {selectedFiles.map((f, idx) => (
+                            <div key={idx} className={styles.previewItem} title={f.name}>
+                                {f.type === 'image' ? (
+                                    <img src={f.preview} className={styles.previewImg} alt="미리보기" />
+                                ) : (
+                                    <div className={styles.docPreview}>
+                                        <div style={{fontSize: '0.6rem', fontWeight: 800, color: '#64748b'}}>
+                                            {f.name.split('.').pop().toUpperCase()}
+                                        </div>
+                                        <div style={{fontSize: '0.5rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center'}}>
+                                            {f.name}
+                                        </div>
+                                    </div>
+                                )}
+                                <button className={styles.removePreview} onClick={() => removeFile(idx)}>×</button>
                             </div>
                         ))}
                     </div>
@@ -689,7 +732,7 @@ export default function AskPage() {
                             className={styles.imageUploadBtn}
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isLoading}
-                            title="이미지 업로드 (최대 10장)"
+                            title="파일 업로드 (이미지, PDF, 엑셀, 워드, 텍스트)"
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -698,10 +741,10 @@ export default function AskPage() {
                         <input 
                             ref={fileInputRef}
                             type="file" 
-                            accept="image/*" 
+                            accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.txt" 
                             multiple 
                             style={{ display: 'none' }} 
-                            onChange={handleImageSelect}
+                            onChange={handleFileSelect}
                         />
                         <textarea
                             ref={inputRef}
