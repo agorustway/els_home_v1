@@ -1,8 +1,8 @@
-# 🚩 ELS MISSION CONTROL (v5.5.13)
+# 🚩 ELS MISSION CONTROL (v5.6.0)
 
-> **"똑똑한 동기화, 평온한 NAS (v5.5.13 듀얼 스피드 동기화)"**
-> - **최근 업데이트**: 아산 배차판 **듀얼 스케줄링(실시간 ±15일 / 10분 주기 전체)** 도입.
-> - **주요 상태**: 데이터 증발 방지(UPSERT) 및 NAS 부하 분산 로직 가동 중.
+> **"2026 안전운임 정조준, 완벽한 법규 준수 (v5.6.0)"**
+> - **최근 업데이트**: 2026년 안전운임 고시(10원 단위 반올림, 할증 합산 법칙) 로직 전면 반영.
+> - **주요 상태**: AI 어시스턴트 및 프론트엔드 계산기 동기화 완료.
 
 ## 🕒 실시간 가동 지표 (Automation)
 | 타겟 | 주기 | 상세 로직 | 상태 |
@@ -42,13 +42,12 @@
 16. **[DONE]** AI 안전운임 조회 부산 이외 항구 응답 누락 버그 수정 (PORT_ALIAS_MAP + 스코어링 개선)
 
 ## 📦 최신 배포 정보
-- Current Build: `v4.9.33` (APK, Driver App)
-- Active Agent Profile: Omnipotent AI Assistant (ELS Solution Dedicated)
-- Core Tasks:
-  - [x] Driver App PWA Address Bar Hidden Fix
-  - [x] Dispatch Board Memo Read Fix (Asan) 
-  - [x] Driver App ID Null Patch (Empty body 400 return)
-  - [x] **Native Bridge Recovery** (CapacitorHttp 재복구 — 번호조회/ID누락 최종 해결 시도) (필독)
+## 🚨 Current Status (2026-04-23)
+- **이슈**: `els-bot` 컨테이너 분리 후 NAS 파일시스템 마운트 권한 충돌 및 SHM 부족으로 인한 DrissionPage(Chromium) 크래시 현상 발생 (`Address: 127.0.0.1:32003` 에러).
+- **조치**: 
+  1. `docker-compose.yml`에 `els-bot`용 `shm_size: 2gb` 추가하여 메모리 안정성 확보.
+  2. `els_bot.py`의 Chromium 프로필 임시 폴더(`.tmp_profile`) 경로를 호스트 마운트 영역(`/app/elsbot`)에서 컨테이너 내부 임시 영역(`/tmp`)으로 변경하여 IO 잠금 및 권한 충돌 방지.
+- **다음 단계**: NAS에서 `git pull` 후 컨테이너 재배포 (`docker-compose up -d els-bot`). Docker 데몬 응답 지연 시 데몬 재시작 필요.
 
 ## ⚠️ APK 빌드 절차 (필독)
 ```
@@ -60,4 +59,4 @@ npx cap sync   ← 단독 실행 금지
 드라이버 앱 소스 = `web/driver-src/` | 버전 소스 = `build.gradle` 단일 진실
 
 ---
-*최종 갱신일: 2026-04-23 (by Antigravity/Gemini | v5.5.13 Dual-Speed Sync)*
+*최종 갱신일: 2026-04-24 (by Antigravity/Gemini | v5.6.0 Safe Freight Logic)*

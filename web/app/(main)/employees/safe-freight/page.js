@@ -509,6 +509,18 @@ export default function SafeFreightPage() {
     };
   }, [options?.surcharges, options?.surchargeRegulation, surchargeIds, roughPct, queryType, tripMode]);
 
+  /** 지역별 기점 할증률 (고시 제23조 카, 타목): 거리제/이외구간 조회 시에만 적용 */
+  const regionalBaseSurchargePct = useMemo(() => {
+    if (queryType === 'section') return 0;
+    const cleanOrigin = origin.replace(/\[.*?\]\s*/g, '').trim();
+    if (cleanOrigin.includes('인천')) return 20;
+    if (cleanOrigin.includes('평택')) return 18;
+    return 0;
+  }, [origin, queryType]);
+
+  /** 십원 단위 반올림 (고시 제7조) */
+  const round10 = (val) => Math.round(val / 10) * 10;
+
   /** 할증 적용한 금액 객체 반환 (고시 제22조: 할증률 최대 3개, 1개 전액·나머지 50%) */
   const applySurchargesToRow = useMemo(() => {
     return (row) => {
@@ -516,21 +528,39 @@ export default function SafeFreightPage() {
       const isDistanceBased = queryType === 'distance' || queryType === 'other';
       const baseMult = (isDistanceBased && tripMode === 'oneWay') ? 0.5 : 1.0;
 
+      // 1. 기본 운임 (편도/왕복 반영)
       let f40위탁 = (row.f40위탁 || 0) * baseMult;
       let f40운수자 = (row.f40운수자 || 0) * baseMult;
       let f40안전 = (row.f40안전 || 0) * baseMult;
       let f20위탁 = (row.f20위탁 || 0) * baseMult;
       let f20운수자 = (row.f20운수자 || 0) * baseMult;
       let f20안전 = (row.f20안전 || 0) * baseMult;
+
+      // 2. 지역별 기점 할증 적용 (인천 20%, 평택 18%) - 거리제/이외구간 전용
+      if (regionalBaseSurchargePct > 0) {
+        const regMult = 1 + regionalBaseSurchargePct / 100;
+        f40위탁 *= regMult;
+        f40운수자 *= regMult;
+        f40안전 *= regMult;
+        f20위탁 *= regMult;
+        f20운수자 *= regMult;
+        f20안전 *= regMult;
+      }
+
+      // 3. 일반 할증률 합산 (최고 할증률 100%, 나머지 50% - 최대 3개)
       const { pctApplied, fixedApplied } = appliedSurchargeInfo;
       const totalPct = pctApplied.reduce((sum, item) => sum + (item.pct * item.effective) / 100, 0);
       const mult = 1 + totalPct / 100;
-      f40위탁 = Math.round(f40위탁 * mult);
-      f40운수자 = Math.round(f40운수자 * mult);
-      f40안전 = Math.round(f40안전 * mult);
-      f20위탁 = Math.round(f20위탁 * mult);
-      f20운수자 = Math.round(f20운수자 * mult);
-      f20안전 = Math.round(f20안전 * mult);
+
+      // 4. 할증률 적용 및 10원 단위 반올림
+      f40위탁 = round10(f40위탁 * mult);
+      f40운수자 = round10(f40운수자 * mult);
+      f40안전 = round10(f40안전 * mult);
+      f20위탁 = round10(f20위탁 * mult);
+      f20운수자 = round10(f20운수자 * mult);
+      f20안전 = round10(f20안전 * mult);
+
+      // 5. 고정 금액(실비 등) 추가
       fixedApplied.forEach((s) => {
         const add = s.fixed || 0;
         f40위탁 += add;
@@ -540,6 +570,7 @@ export default function SafeFreightPage() {
         f20운수자 += add;
         f20안전 += add;
       });
+
       return {
         ...row,
         f40위탁,
@@ -549,9 +580,10 @@ export default function SafeFreightPage() {
         f20운수자,
         f20안전,
         tripMode,
+        appliedRegionalPct: regionalBaseSurchargePct,
       };
     };
-  }, [appliedSurchargeInfo, queryType, tripMode]);
+  }, [appliedSurchargeInfo, queryType, tripMode, regionalBaseSurchargePct]);
 
   const runLookup = async () => {
     setLookupError(null);
@@ -593,7 +625,7 @@ export default function SafeFreightPage() {
       const rows = data.rows || [];
       if (!rows.length) {
         if (queryType === 'other') {
-          throw new Error('해당 구간은 [구간별 운임]에 자료가 존재할 수 있습니다. [구간별 운임] 탭에서 조회해주세요.\n(본 자료는 2022년 이전 법정동 사용 시 있던 구형 자료입니다.)');
+          throw new Error('해당 구간은 [구간별 운임]에 자료가 존재할 수 있습니다. [구간별 운임] 탭에서 조회해주세요.\n(본 자료는 고시 외 구간의 거리 정보입니다.)');
         }
         throw new Error('해당 운임을 찾을 수 없습니다.');
       }
@@ -634,6 +666,9 @@ export default function SafeFreightPage() {
       if (saveToTemp) {
         // [중복 방지] 같은 조건(기점, 행선지, 타입, 할증)의 최신 이력이 이미 있으면 추가하지 않음
         const appliedLabels = [
+          ...(appliedRow.appliedRegionalPct > 0
+            ? [`📍기점할증(${origin.includes('인천') ? '인천' : '평택'} ${appliedRow.appliedRegionalPct}%)`]
+            : []),
           ...appliedSurchargeInfo.pctApplied.map((s) =>
             s.effective === 100 ? s.label : `${s.label} (50% 적용)`
           ),
@@ -1499,6 +1534,11 @@ export default function SafeFreightPage() {
                   );
                 })}
               </div>
+              {regionalBaseSurchargePct > 0 && (
+                <div className={styles.regionalNote} style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#fff8e1', borderRadius: '8px', borderLeft: '4px solid #ffc107', fontSize: '0.9rem', color: '#856404' }}>
+                  <strong>📍 지역별 기점 할증 적용:</strong> {origin.includes('인천') ? '인천' : '평택'} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조).
+                </div>
+              )}
               {surchargeIds.size > 0 && (
                 <>
                   <p className={styles.fareNote}>
