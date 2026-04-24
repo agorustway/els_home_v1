@@ -63,7 +63,8 @@ function MessageBubble({ msg, isNew }) {
                         <div className={styles.messageAttachmentContainer}>
                             {msg.attachments.map((att, idx) => {
                                 const isImage = att.mime_type?.startsWith('image/');
-                                if (isImage) {
+                                // [v5.7.3] 데이터가 있는 경우만 이미지로 출력 (과거 기록은 용량상 데이터가 없을 수 있음)
+                                if (isImage && att.data) {
                                     return (
                                         <img 
                                             key={idx} 
@@ -74,12 +75,16 @@ function MessageBubble({ msg, isNew }) {
                                         />
                                     );
                                 }
+                                // 데이터가 없거나 문서인 경우 아이콘 표시
                                 return (
                                     <div key={idx} className={styles.messageFileItem}>
-                                        <div className={styles.fileIcon}>
-                                            {att.mime_type?.includes('pdf') ? 'PDF' : att.mime_type?.includes('sheet') ? 'XLS' : 'DOC'}
+                                        <div className={styles.fileIcon} style={{ background: isImage ? '#94a3b8' : '#2563eb' }}>
+                                            {isImage ? 'IMG' : att.mime_type?.includes('pdf') ? 'PDF' : att.mime_type?.includes('sheet') ? 'XLS' : 'DOC'}
                                         </div>
-                                        <span className={styles.fileName}>{att.name || '첨부 파일'}</span>
+                                        <div style={{display: 'flex', flexDirection: 'column'}}>
+                                            <span className={styles.fileName}>{att.name || (isImage ? '이미지' : '첨부 파일')}</span>
+                                            {!att.data && <span style={{fontSize: '0.6rem', color: '#94a3b8'}}>내용 미리보기 만료</span>}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -194,7 +199,19 @@ export default function AskPage() {
     // ─── localStorage 헬퍼 (동기적 · 즉시 · 확실) ────────────────────
     const LS_KEY = 'els_ai_sessions';
     const saveToLocal = useCallback((data) => {
-        try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
+        try {
+            // [v5.7.2] 대용량 첨부파일 데이터(Base64) 제거 후 저장
+            const optimized = data.map(s => ({
+                ...s,
+                messages: s.messages.map(m => {
+                    if (m.attachments && m.attachments.length > 0) {
+                        return { ...m, attachments: m.attachments.map(att => ({ ...att, data: undefined })) };
+                    }
+                    return m;
+                })
+            }));
+            localStorage.setItem(LS_KEY, JSON.stringify(optimized));
+        } catch (e) { console.error('[ELS-AI] localStorage 저장 실패:', e); }
     }, []);
     const loadFromLocal = useCallback(() => {
         try {
@@ -266,13 +283,22 @@ export default function AskPage() {
         // localStorage는 즉시 저장 (동기적 — 절대 유실 안 됨)
         saveToLocal(sessions);
         
-        // DB는 디바운스 저장 (네트워크 의존적)
+        // DB는 디바운스 저장 (네트워크 의존적 + 데이터 다이어트)
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
+            const optimized = sessions.map(s => ({
+                ...s,
+                messages: s.messages.map(m => {
+                    if (m.attachments && m.attachments.length > 0) {
+                        return { ...m, attachments: m.attachments.map(att => ({ ...att, data: undefined })) };
+                    }
+                    return m;
+                })
+            }));
             fetch('/api/chat/memory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: sessions })
+                body: JSON.stringify({ messages: optimized })
             }).catch((e) => console.warn('[ELS-AI] DB 저장 실패:', e.message));
         }, 2000); // 2초 디바운스
 
@@ -357,7 +383,7 @@ export default function AskPage() {
 
     const sendMessage = useCallback(async (text) => {
         const trimmed = (text ?? input).trim();
-        if ((!trimmed && selectedImages.length === 0) || isLoading) return;
+        if ((!trimmed && selectedFiles.length === 0) || isLoading) return;
 
         setInput('');
         const attachmentsToSend = selectedFiles.map(f => ({ mime_type: f.mime_type, data: f.data, name: f.name }));
@@ -762,7 +788,7 @@ export default function AskPage() {
                             id="chat-send-btn"
                             className={styles.sendBtn}
                             onClick={() => sendMessage()}
-                            disabled={(!input.trim() && selectedImages.length === 0) || isLoading}
+                            disabled={(!input.trim() && selectedFiles.length === 0) || isLoading}
                             type="button"
                             aria-label="전송"
                         >
