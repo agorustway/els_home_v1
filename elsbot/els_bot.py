@@ -471,27 +471,29 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
     co = ChromiumOptions()
     co.set_local_port(port)
     
-    # [v4.4.39] 매번 새로운 세션(게스트 모드)으로 시작하기 위해 타임스탬프 기반 고유 프로필 폴더 생성
-    unique_id = int(time.time())
+    # [v5.6.3] NAS 최적화: /tmp 용량 부족 문제를 피하기 위해 현재 작업 디렉토리에 프로필 생성
     import tempfile 
-    # Windows/Linux 호환을 위해 tempfile 사용하거나 .tmp_profile 폴더 활용
-    profile_path = os.path.join("/tmp", ".tmp_profile", f"port_{port}_{unique_id}")
-    if not os.path.exists(os.path.dirname(profile_path)):
-        os.makedirs(os.path.dirname(profile_path), exist_ok=True)
+    base_profile_dir = os.path.join(os.getcwd(), ".tmp_profiles")
+    profile_path = os.path.join(base_profile_dir, f"drission_port_{port}")
+    if not os.path.exists(base_profile_dir):
+        os.makedirs(base_profile_dir, exist_ok=True)
     
     co.set_user_data_path(profile_path)
     
     co.set_argument('--no-sandbox')
+    co.set_argument('--disable-setuid-sandbox') # [추가] 리눅스 권한 격리 해제
     co.set_argument('--disable-dev-shm-usage')
-    co.set_argument('--disable-gpu') # [v4.5.11] NAS 환경 GPU 부하 제거
+    co.set_argument('--disable-gpu') 
     co.set_argument('--disable-software-rasterizer')
+    co.set_argument('--no-first-run') # [추가] 첫 실행 설정 건너뜀
+    co.set_argument('--no-default-browser-check') # [추가] 기본 브라우저 체크 해제
     co.set_argument('--proxy-server=direct://')
     co.set_argument('--proxy-bypass-list=*')
     co.set_argument('--window-size=1920,1080')
-    co.set_argument('--incognito') # 시크릿 모드 (게스트 모드와 유사)
-    co.set_argument('--disable-blank-features=AutomationControlled')
-    co.set_argument('--disable-infobars') # 인포바 제거 (v4.4.43)
-    co.set_argument('--test-type') # 인포바 보강 (v4.4.43)
+    co.set_argument('--incognito') 
+    co.set_argument('--disable-blink-features=AutomationControlled')
+    co.set_argument('--disable-infobars') 
+    co.set_argument('--test-type') 
     co.set_argument('--disable-extensions')
     
     # Docker/NAS 환경 고려
