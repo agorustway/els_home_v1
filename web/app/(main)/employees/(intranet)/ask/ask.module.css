@@ -458,11 +458,18 @@
 
 /* ── 입력 영역 ── */
 .inputArea {
-    padding: 8px 12px 10px;
+    padding: 12px 16px;
     background: #fff;
     border-top: 1px solid #e2e8f0;
     flex-shrink: 0;
+    transition: all 0.2s ease;
 }
+
+.inputArea.dragging {
+    background: #f0fdf4;
+    border: 2px dashed #22c55e;
+}
+
 
 .inputBox {
     display: flex;

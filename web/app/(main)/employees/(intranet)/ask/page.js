@@ -149,6 +149,7 @@ export default function AskPage() {
 
     const [input, setInput] = useState('');
     const [selectedFiles, setSelectedFiles] = useState([]); // [{ file, preview, base64, mime_type, name, type: 'image'|'doc' }]
+    const [isDragging, setIsDragging] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false); // 모바일 히스토리 드로어 상태
     const [newMsgIdx, setNewMsgIdx] = useState(null);
@@ -335,8 +336,13 @@ export default function AskPage() {
         }
     }, [messages, isLoading, selectedFiles]);
 
-    const handleFileSelect = async (e) => {
-        const files = Array.from(e.target.files || []);
+    const handleFileSelect = async (eOrFiles) => {
+        let files = [];
+        if (eOrFiles.target && eOrFiles.target.files) {
+            files = Array.from(eOrFiles.target.files);
+        } else if (Array.isArray(eOrFiles)) {
+            files = eOrFiles;
+        }
         if (files.length === 0) return;
 
         if (selectedFiles.length + files.length > 10) {
@@ -370,6 +376,27 @@ export default function AskPage() {
         }
         setSelectedFiles(prev => [...prev, ...newFiles]);
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileSelect(Array.from(e.dataTransfer.files));
+        }
     };
 
     const removeFile = (idx) => {
@@ -751,7 +778,12 @@ export default function AskPage() {
                 )}
 
                 {/* 입력 영역 */}
-                <div className={styles.inputArea}>
+                <div 
+                    className={`${styles.inputArea} ${isDragging ? styles.dragging : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
                     <div className={styles.inputBox}>
                         <button 
                             type="button" 

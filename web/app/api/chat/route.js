@@ -603,6 +603,7 @@ export async function POST(req) {
             }
 
             // 2. 컨테이너 실시간 이력조회 연동
+            const cntrMatch = lastUserText.match(/[a-zA-Z]{4}\d{7}/);
             if (cntrMatch) {
                 const cntrNo = cntrMatch[0].toUpperCase();
                 // [v5.6.2] 경로 수정: /container/tracking -> /api/els/container/tracking
