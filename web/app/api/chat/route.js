@@ -485,11 +485,18 @@ export async function POST(req) {
 
     // [Resilience] Vercel 환경에서는 localhost 주소가 동작하지 않으므로, Synology 외부 주소를 우선 고려
     const primaryBackend = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL;
-    // 디버그 페이지(v5.0.13) 확인 결과, 현재 8443 포트가 정상 응답함
-    let backendUrl = 'https://elssolution.synology.me:8443';
-    if (primaryBackend && !primaryBackend.includes('localhost')) {
-        backendUrl = primaryBackend;
+    let backendUrl = 'https://elssolution.synology.me:8443'; // 기본값 (Synology Reverse Proxy)
+    
+    if (primaryBackend) {
+        // Vercel 배포 환경인데 localhost로 설정되어 있으면 강제로 외부 주소 사용
+        const isVercel = process.env.VERCEL || process.env.VERCEL_URL;
+        if (isVercel && primaryBackend.includes('localhost')) {
+            backendUrl = 'https://elssolution.synology.me:8443';
+        } else {
+            backendUrl = primaryBackend;
+        }
     }
+    // console.log(`[ELS-AI] Using backendUrl: ${backendUrl}`);
 
     const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
 
