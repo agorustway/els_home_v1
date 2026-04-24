@@ -40,6 +40,8 @@ function renderTextWithLinks(text) {
 
 function MessageBubble({ msg, isNew }) {
     const isUser = msg.role === 'user';
+    const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+
     return (
         <div className={`${styles.messageRow} ${isUser ? styles.userRow : styles.assistantRow} ${isNew ? styles.newMessage : ''}`}>
             {!isUser && (
@@ -52,23 +54,25 @@ function MessageBubble({ msg, isNew }) {
                     </svg>
                 </div>
             )}
-            <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
-                {renderTextWithLinks(msg.content)}
-                
-                {/* 사용자 메시지에 이미지가 포함된 경우 출력 */}
-                {msg.images && msg.images.length > 0 && (
-                    <div className={styles.messageImageContainer}>
-                        {msg.images.map((img, idx) => (
-                            <img 
-                                key={idx} 
-                                src={`data:${img.mime_type};base64,${img.data}`} 
-                                className={styles.messageImage} 
-                                alt="사용자 첨부 이미지"
-                                onClick={() => window.open(`data:${img.mime_type};base64,${img.data}`, '_blank')}
-                            />
-                        ))}
-                    </div>
-                )}
+            <div className={styles.bubbleContainer}>
+                <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
+                    {renderTextWithLinks(msg.content)}
+                    
+                    {msg.images && msg.images.length > 0 && (
+                        <div className={styles.messageImageContainer}>
+                            {msg.images.map((img, idx) => (
+                                <img 
+                                    key={idx} 
+                                    src={`data:${img.mime_type};base64,${img.data}`} 
+                                    className={styles.messageImage} 
+                                    alt="사용자 첨부 이미지"
+                                    onClick={() => window.open(`data:${img.mime_type};base64,${img.data}`, '_blank')}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {timeStr && <span className={styles.messageTime}>{timeStr}</span>}
             </div>
         </div>
     );
@@ -138,6 +142,7 @@ export default function AskPage() {
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
         content: '안녕하세요! **더 똑똑해진 ELS AI 어시스턴트**입니다.\n\n이제 사내 NAS의 수만 권의 **문서(PDF, 엑셀, 워드)**와 **이미지**까지 스스로 읽고 답변할 수 있습니다.\n\n안전운임, 이트랜스 이력, 차량 관제는 물론 사내 지식에 대해 무엇이든 물어보세요!',
+        timestamp: new Date().toISOString()
     };
 
     const createNewSession = () => {
@@ -329,7 +334,8 @@ export default function AskPage() {
         const userMsg = { 
             role: 'user', 
             content: trimmed,
-            images: imagesToSend
+            images: imagesToSend,
+            timestamp: new Date().toISOString()
         };
         
         // 제목 자동 생성 로직 (첫 질문 시)
@@ -399,7 +405,7 @@ export default function AskPage() {
             let assistantText = '';
             const assistantIdx = messages.length + 1; // user msg 다음 인덱스
 
-            setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+            setMessages((prev) => [...prev, { role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
             setNewMsgIdx(assistantIdx);
 
             while (true) {

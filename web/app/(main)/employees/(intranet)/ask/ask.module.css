@@ -310,9 +310,33 @@
     margin-bottom: 2px;
 }
 
+/* ── 버블 컨테이너 (버블 + 시간) ── */
+.bubbleContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 72%;
+}
+
+.userRow .bubbleContainer {
+    align-items: flex-end;
+}
+
+.assistantRow .bubbleContainer {
+    align-items: flex-start;
+}
+
+.messageTime {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin: 0 4px;
+    white-space: nowrap;
+}
+
 /* ── 버블 ── */
 .bubble {
-    max-width: 72%;
+    width: fit-content;
+    max-width: 100%;
     padding: 11px 15px;
     border-radius: 16px;
     font-size: 0.875rem;
@@ -535,8 +559,12 @@
         max-width: 100%;
     }
 
-    .bubble {
+    .bubbleContainer {
         max-width: 85%;
+    }
+
+    .bubble {
+        max-width: 100%;
         font-size: 0.875rem;
     }
 
@@ -576,8 +604,12 @@
         gap: 10px;
     }
 
-    .bubble {
+    .bubbleContainer {
         max-width: 88%;
+    }
+
+    .bubble {
+        max-width: 100%;
         padding: 10px 13px;
         font-size: 0.875rem;
     }
