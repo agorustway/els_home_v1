@@ -672,7 +672,23 @@ export default function AskPage() {
                 <HistoryContent />
             </div>
 
-            <div className={styles.wrapper}>
+            <div 
+                className={styles.wrapper}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                {/* [v5.7.7] 드래그 오버 시 오버레이 표시 */}
+                {isDragging && (
+                    <div className={styles.dragOverlay}>
+                        <div className={styles.dragOverlayContent}>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p>여기에 파일을 놓아 업로드하세요</p>
+                        </div>
+                    </div>
+                )}
                 {/* 헤더 */}
                 <div className={styles.header}>
                     <div className={styles.headerLeft}>
@@ -778,12 +794,7 @@ export default function AskPage() {
                 )}
 
                 {/* 입력 영역 */}
-                <div 
-                    className={`${styles.inputArea} ${isDragging ? styles.dragging : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
+                <div className={styles.inputArea}>
                     <div className={styles.inputBox}>
                         <button 
                             type="button" 
