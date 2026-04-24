@@ -25,7 +25,7 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False 
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v4.5.11] 4마리 병렬 가속 기본값으로 상향
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 2)) # [v5.6.4] NAS 부하 방지를 위해 4 -> 2로 하향
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0 
         self.log_buffer = deque(maxlen=300)

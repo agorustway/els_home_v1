@@ -3,6 +3,10 @@ import logging
 import os
 from datetime import datetime
 
+# --- 설정 ---
+# [v5.6.4] 안정화 단계이므로 디버그 로그 비활성화
+DEBUG_MODE = False
+
 logger = logging.getLogger("DNS-FIX")
 
 # 1. 원본 getaddrinfo 보관
@@ -43,11 +47,13 @@ def host_forced_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
         
         # FIX: Cannot use type() because 'type' is masked by the argument 'type=0'!
         host_type_name = host.__class__.__name__
-        print(f"[{datetime.now()}] [DNS-FIX-DEBUG] getaddrinfo called with host={repr(host)} ({host_type_name}), port={port}")
+        if DEBUG_MODE:
+            print(f"[{datetime.now()}] [DNS-FIX-DEBUG] getaddrinfo called with host={repr(host)} ({host_type_name}), port={port}")
         
         if check_host in HOST_MAPPING:
             ip = HOST_MAPPING[check_host]
-            print(f"[{datetime.now()}] [DNS-FIX] Intercepted getaddrinfo: {check_host} -> {ip}")
+            if DEBUG_MODE:
+                print(f"[{datetime.now()}] [DNS-FIX] Intercepted getaddrinfo: {check_host} -> {ip}")
             return original_getaddrinfo(ip, port, family, type, proto, flags)
     except Exception as e:
         print(f"[{datetime.now()}] [DNS-FIX] Error in getaddrinfo hook: {e}")
@@ -63,10 +69,12 @@ class PatchedSocket(original_socket):
             if isinstance(address, tuple) and len(address) >= 2:
                 host = address[0]
                 check_host = host.decode('utf-8') if isinstance(host, bytes) else str(host)
-                print(f"[{datetime.now()}] [DNS-FIX-DEBUG] PatchedSocket.connect called with host={repr(host)} ({type(host)})")
+                if DEBUG_MODE:
+                    print(f"[{datetime.now()}] [DNS-FIX-DEBUG] PatchedSocket.connect called with host={repr(host)} ({type(host)})")
                 if check_host in HOST_MAPPING:
                     ip = HOST_MAPPING[check_host]
-                    print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket intercepted: {check_host} -> {ip}")
+                    if DEBUG_MODE:
+                        print(f"[{datetime.now()}] [DNS-FIX] PatchedSocket intercepted: {check_host} -> {ip}")
                     # If the original host was bytes, provide the IP as bytes to maintain type safety just in case
                     out_ip = ip.encode('utf-8') if isinstance(host, bytes) else ip
                     address = (out_ip,) + address[1:]
