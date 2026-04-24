@@ -85,7 +85,11 @@ def sync_asan_dispatch_python(force=False):
             
             # 변경 감지 (force 옵션이 없으면 캐시 확인)
             if not force and cache_mtime == mtime:
+                # app.logger.info(f"[자동동기화] {dtype} 변경 없음. (mtime: {mtime})")
                 continue
+            
+            # [v5.7.8] 캐시 즉시 업데이트하여 중복 실행 방지
+            last_mtime_cache[dtype] = mtime
             
             app.logger.info(f"[자동동기화] 파일 변경 확인됨(또는 강제실행). 데이터 추출 시작... ({dtype})")
             
