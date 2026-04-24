@@ -643,7 +643,7 @@ export async function POST(req) {
                     if (targetAmounts.length > 0) {
                         let reverseResults = `\n\n## 🔍 역방향 운임 조회 결과 (금액: ${targetAmounts.map(a => a.toLocaleString()).join(', ')}원 기준)\n`;
                         const foundRoutes = [];
-                        const tolerance = 2000; // 오차 범위 ±2000원
+                        const tolerance = 5000; // [v5.6.6] 오차 범위 상향
 
                         for (const amt of targetAmounts) {
                             // 1. 구간별 운임표 검색
@@ -651,13 +651,13 @@ export async function POST(req) {
                             for (const k of fareKeys) {
                                 const v = sfData.faresLatest[k];
                                 const f40 = v.f40안전 || v.fare40;
-                                const f20 = v.f20안전 || v.fare20;
                                 const w40 = v.f40위탁 || Math.round(f40 * 0.85);
                                 const u40 = v.f40운수자 || Math.round(f40 * 0.92);
 
-                                if (Math.abs(f40 - amt) <= tolerance || Math.abs(w40 - amt) <= tolerance || Math.abs(u40 - amt) <= tolerance ||
-                                    Math.abs(f20 - amt) <= tolerance) {
-                                    foundRoutes.push(`- [매칭구간] ${k}\n  * 금액: 안전운송 ${f40.toLocaleString()}원 | 위탁 ${w40.toLocaleString()}원 | 운수자간 ${u40.toLocaleString()}원`);
+                                const match = (val) => Math.abs(val - amt) <= tolerance || Math.abs(Math.round(val * 1.2) - amt) <= tolerance || Math.abs(Math.round(val * 1.3) - amt) <= tolerance;
+
+                                if (match(f40) || match(w40) || match(u40)) {
+                                    foundRoutes.push(`- [매칭구간] ${k}\n  * 기본단가: 안전운송 ${f40.toLocaleString()}원 | 위탁 ${w40.toLocaleString()}원\n  * (할증안내: 입력하신 금액이 단가보다 높다면 냉동/위험물 할증이 포함된 것일 수 있습니다.)`);
                                 }
                             }
 
@@ -668,9 +668,9 @@ export async function POST(req) {
                                     const d = sfData.distanceBased[dk];
                                     if (!d) continue;
                                     const df40 = d.f40안전 || d.fare40;
-                                    const dw40 = d.f40위탁 || Math.round(df40 * 0.85);
-                                    if (Math.abs(df40 - amt) <= tolerance || Math.abs(dw40 - amt) <= tolerance) {
-                                        foundRoutes.push(`- [매칭거리] 약 ${dk}km 구간\n  * 금액: 안전운송 ${df40.toLocaleString()}원 | 위탁 ${dw40.toLocaleString()}원`);
+                                    const match = (val) => Math.abs(val - amt) <= tolerance || Math.abs(Math.round(val * 1.2) - amt) <= tolerance || Math.abs(Math.round(val * 1.3) - amt) <= tolerance;
+                                    if (match(df40)) {
+                                        foundRoutes.push(`- [매칭거리] 약 ${dk}km 구간\n  * 기본단가: 안전운송 ${df40.toLocaleString()}원`);
                                     }
                                 }
                             }
@@ -678,8 +678,9 @@ export async function POST(req) {
 
                         if (foundRoutes.length > 0) {
                             reverseResults += [...new Set(foundRoutes)].slice(0, 10).join('\n');
-                            reverseResults += `\n※ 입력하신 금액과 가장 유사한 구간/거리를 찾았습니다. 할증(심야, 공휴일 등)이 포함된 금액일 경우 실제와 다를 수 있으니 유의하십시오.`;
                             recentPostsText += reverseResults;
+                        } else {
+                            recentPostsText += `\n\n## 🔍 역방향 운임 조회 결과\n입력하신 금액(${targetAmounts.map(a => a.toLocaleString()).join(', ')}원)은 표준 단가(최대 약 120만원)를 크게 벗어납니다. 초장거리 구간이거나 특수 할증(냉동 20%, 위험물 30% 등)이 중첩된 금액일 수 있습니다.`;
                         }
                     }
 
