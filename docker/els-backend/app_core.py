@@ -250,22 +250,23 @@ def asan_sync_scheduler():
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
 def nas_sync_scheduler():
-    """매일 새벽 04:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다."""
-    app.logger.info("[스케줄러] NAS AI 지식 자동 동기화 스케줄러 대기 중...")
+    """매일 새벽 01:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다. (자료실 제외)"""
+    app.logger.info("[스케줄러] NAS AI 지식 자동 동기화 스케줄러 대기 중 (01:30 실행)")
     
     # 스캔 대상 목록 (도커 내부 경로 기준)
     scan_targets = [
         {"path": "/app/volume1/서울본사", "branch": "본사"},
         {"path": "/app/volume2/아산지점", "branch": "아산"},
         {"path": "/app/volume2/당진지점", "branch": "당진"},
-        {"path": "/app/volume2/자료실", "branch": "자료실"}
+        {"path": "/app/volume2/중부지점", "branch": "중부"},
+        {"path": "/app/volume2/예산지점", "branch": "예산"}
     ]
     
     while True:
         try:
             now = datetime.now(KST)
-            # 매일 새벽 04:30에 실행
-            if now.hour == 4 and now.minute == 30:
+            # 매일 새벽 01:30에 실행
+            if now.hour == 1 and now.minute == 30:
                 app.logger.info(f"[스케줄러] NAS 정기 스캔 시작 (대상: {len(scan_targets)}개 구역)")
                 for target in scan_targets:
                     if not supabase: break
