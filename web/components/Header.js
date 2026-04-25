@@ -37,10 +37,10 @@ const navLinks = [
     { href: '/contact', label: '문의하기', isContact: true },
     {
         label: '인트라넷',
-        href: '/employees/weather',
+        href: '/employees/ask',
         isEmployee: true,
         children: [
-            { href: '/employees/weather', label: '인트라넷 홈' },
+            { href: '/employees/ask', label: '인트라넷 홈' },
             { type: 'divider' },
             { label: '자동화시스템', type: 'label' },
             { href: '/employees/safe-freight', label: '안전운임 조회' },
