@@ -128,13 +128,25 @@ export async function GET(request) {
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature,windspeed_10m,relativehumidity_2m&daily=temperature_2m_max,temperature_2m_min,weathercode,uv_index_max,sunrise,sunset&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia/Seoul`;
 
-        // [v4.9.11 최적화] Cloudtype 공용 IP 이슈로 인한 Open-Meteo 무한 대기 방지 (3.5초 타임아웃)
+        // [v4.9.12 Resilience] Vercel IP 차단 우회를 위해 NAS 백엔드 프록시 사용 여부 결정
+        const primaryBackend = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL;
+        let backendUrl = 'https://elssolution.synology.me:8443';
+        const isVercel = process.env.VERCEL || process.env.VERCEL_URL;
+        if (primaryBackend && (!isVercel || !primaryBackend.includes('localhost'))) {
+            backendUrl = primaryBackend;
+        }
+        const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
+
+        // Vercel 환경이면 Open-Meteo 직접 호출 시 403/Timeout 빈번하므로 NAS 프록시 경유
+        const finalWeatherUrl = isVercel ? (kskillProxyBase + encodeURIComponent(weatherUrl)) : weatherUrl;
+        const finalAirUrl = isVercel ? (kskillProxyBase + encodeURIComponent(airUrl)) : airUrl;
+
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 타임아웃 8초로 상향
 
         const [weatherRes, airRes] = await Promise.all([
-            fetch(weatherUrl, { next: { revalidate: 3600 }, signal: controller.signal }), 
-            fetch(airUrl, { next: { revalidate: 3600 }, signal: controller.signal })
+            fetch(finalWeatherUrl, { next: { revalidate: 3600 }, signal: controller.signal }), 
+            fetch(finalAirUrl, { next: { revalidate: 3600 }, signal: controller.signal })
         ]);
         clearTimeout(timeoutId);
 

@@ -939,7 +939,7 @@ export async function POST(req) {
                 let weatherSummary = '';
                 try {
                     const weatherApiUrl = `${SITE_URL}/api/weather?region=${target.id}`;
-                    const res = await fetch(weatherApiUrl, { signal: AbortSignal.timeout(6000) });
+                    const res = await fetch(weatherApiUrl, { signal: AbortSignal.timeout(10000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.dailySummary) {
