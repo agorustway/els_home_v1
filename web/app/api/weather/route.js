@@ -128,26 +128,45 @@ export async function GET(request) {
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,precipitation_probability,apparent_temperature,windspeed_10m,relativehumidity_2m&daily=temperature_2m_max,temperature_2m_min,weathercode,uv_index_max,sunrise,sunset&timezone=Asia/Seoul&past_days=0&forecast_days=2`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia/Seoul`;
 
-        // [v4.9.12 Resilience] Vercel IP 차단 우회를 위해 NAS 백엔드 프록시 사용 여부 결정
+        // [v4.9.13 Resilience] Vercel IP 차단 우회를 위해 NAS 백엔드 프록시 사용 여부 결정
         const primaryBackend = process.env.ELS_BACKEND_URL || process.env.NEXT_PUBLIC_ELS_BACKEND_URL;
         let backendUrl = 'https://elssolution.synology.me:8443';
-        const isVercel = process.env.VERCEL || process.env.VERCEL_URL;
+        
+        // Vercel 환경 체크 (환경변수 + 호스트명)
+        const host = request.headers.get('host') || '';
+        const isVercel = process.env.VERCEL || process.env.VERCEL_URL || host.includes('vercel.app') || host.includes('nollae.com');
+        
         if (primaryBackend && (!isVercel || !primaryBackend.includes('localhost'))) {
             backendUrl = primaryBackend;
         }
         const kskillProxyBase = `${backendUrl}/api/proxy/kskill?url=`;
 
-        // Vercel 환경이면 Open-Meteo 직접 호출 시 403/Timeout 빈번하므로 NAS 프록시 경유
-        const finalWeatherUrl = isVercel ? (kskillProxyBase + encodeURIComponent(weatherUrl)) : weatherUrl;
-        const finalAirUrl = isVercel ? (kskillProxyBase + encodeURIComponent(airUrl)) : airUrl;
+        // Vercel 환경이면 Open-Meteo 직접 호출 시 403/Timeout 빈번하므로 NAS 프록시 우선 시도
+        const useProxy = isVercel && !host.includes('localhost');
+        const finalWeatherUrl = useProxy ? (kskillProxyBase + encodeURIComponent(weatherUrl)) : weatherUrl;
+        const finalAirUrl = useProxy ? (kskillProxyBase + encodeURIComponent(airUrl)) : airUrl;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 타임아웃 8초로 상향
+        const timeoutId = setTimeout(() => controller.abort(), 12000); // 타임아웃 12초로 상향
 
-        const [weatherRes, airRes] = await Promise.all([
-            fetch(finalWeatherUrl, { next: { revalidate: 3600 }, signal: controller.signal }), 
-            fetch(finalAirUrl, { next: { revalidate: 3600 }, signal: controller.signal })
-        ]);
+        let weatherRes, airRes;
+        try {
+            [weatherRes, airRes] = await Promise.all([
+                fetch(finalWeatherUrl, { next: { revalidate: 3600 }, signal: controller.signal }), 
+                fetch(finalAirUrl, { next: { revalidate: 3600 }, signal: controller.signal })
+            ]);
+        } catch (err) {
+            if (useProxy) {
+                console.warn('⚠️ NAS Proxy failed, falling back to direct fetch:', err.message);
+                // 프록시 실패 시 직접 호출로 마지막 발악
+                [weatherRes, airRes] = await Promise.all([
+                    fetch(weatherUrl, { next: { revalidate: 3600 }, signal: controller.signal }), 
+                    fetch(airUrl, { next: { revalidate: 3600 }, signal: controller.signal })
+                ]);
+            } else {
+                throw err;
+            }
+        }
         clearTimeout(timeoutId);
 
         if (!weatherRes.ok) throw new Error('날씨 API 오류');
