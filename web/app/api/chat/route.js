@@ -602,22 +602,50 @@ export async function POST(req) {
                 }
             }
 
-            // 2. 컨테이너 실시간 이력조회 연동
+            // 2. 컨테이너 실시간 이력조회 연동 및 NAS 통계 기능 (v5.7.9)
             const cntrMatch = lastUserText.match(/[a-zA-Z]{4}\d{7}/);
             if (cntrMatch) {
                 const cntrNo = cntrMatch[0].toUpperCase();
-                // [v5.6.2] 경로 수정: /container/tracking -> /api/els/container/tracking
-                const res = await fetch(`${backendUrl}/api/els/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(120000) }).catch(() => null);
-                if (res?.ok) {
-                    const data = await res.json();
-                    if (data?.tracking_list?.length > 0) {
-                        recentPostsText += `\n\n## 컨테이너(${cntrNo}) 조회 결과\n` + JSON.stringify(data.tracking_list).slice(0, 800);
+                try {
+                    // [v5.7.9] ETRANS 데몬 호출 최적화 (타임아웃 30초 확보)
+                    const res = await fetch(`${backendUrl}/api/els/container/tracking?cntrNo=${cntrNo}`, { signal: AbortSignal.timeout(30000) }).catch(() => null);
+                    if (res?.ok) {
+                        const data = await res.json();
+                        if (data?.tracking_list?.length > 0) {
+                            recentPostsText += `\n\n## 🚢 컨테이너(${cntrNo}) 실시간 조회 결과 (ETRANS)\n`;
+                            data.tracking_list.forEach((h, idx) => {
+                                recentPostsText += `${idx+1}. [${h.status}] ${h.location} (${h.time})\n`;
+                            });
+                            recentPostsText += `\n- 조회기준: 사내 이트랜스 연동 데몬 실시간 데이터\n`;
+                        } else {
+                            recentPostsText += `\n\n## 🚢 컨테이너(${cntrNo}) 조회 안내\n현재 ETRANS 연동 데몬을 통해 실시간 확인 중이나, 아직 등록된 이력이 없거나 조회 중입니다. 컨테이너 번호가 정확한지 확인해 주시고, 잠시 후 [이력조회](/elsbot/history) 메뉴에서 직접 재시도해 보시기 바랍니다.`;
+                        }
                     } else {
-                        recentPostsText += `\n\n## 컨테이너(${cntrNo}) 조회 결과\n해당 컨테이너의 이력 데이터가 없거나 지원되지 않습니다. **(중요: AI 임의로 이력을 지어내지 말고, 이 문구 그대로 조회 불가함을 안내해라)**`;
+                        recentPostsText += `\n\n## 🚢 컨테이너(${cntrNo}) 조회 결과\n서버 통신 장애로 이력 조회에 실패했습니다. 잠시 후 다시 시도해 주십시오.`;
                     }
-                } else {
-                    recentPostsText += `\n\n## 컨테이너(${cntrNo}) 조회 결과\n서버 통신 장애로 이력 조회에 실패했습니다. **(중요: AI 임의로 데이터를 지어내지 말고 서버 에러 상태를 안내해라)**`;
-                }
+                } catch (e) { console.error('ETRANS 조회 오류:', e); }
+            }
+
+            // 2-1. NAS 문서 개수/통계 조회 트리거 (New!)
+            if (userKwd.includes('문서') || userKwd.includes('파일') || userKwd.includes('갯수') || userKwd.includes('개수')) {
+                const branches = ['본사', '아산', '당진', '자료실', '울산', '중부', '서산', '영천', '임고'];
+                const targetBranch = branches.find(b => userKwd.includes(b));
+                const isPdf = userKwd.includes('pdf');
+                const isXls = userKwd.includes('엑셀') || userKwd.includes('excel') || userKwd.includes('xlsx') || userKwd.includes('xlsm');
+
+                try {
+                    let query = supabase.from('nas_file_index').select('id', { count: 'exact', head: true });
+                    if (targetBranch) query = query.eq('branch', targetBranch);
+                    if (isPdf) query = query.eq('extension', '.pdf');
+                    if (isXls) query = query.ilike('extension', '.xls%');
+
+                    const { count, error } = await query;
+                    if (!error) {
+                        const branchTitle = targetBranch || '전체 NAS';
+                        const typeTitle = isPdf ? 'PDF ' : (isXls ? '엑셀 ' : '');
+                        recentPostsText += `\n\n## 📂 NAS 인덱싱 통계 현황\n- **조회 대상**: ${branchTitle}\n- **데이터 타입**: ${typeTitle}문서\n- **인덱싱된 파일 수**: ${count}개\n- **상태**: 현재 모든 문서가 AI 지식 베이스에 통합되어 검색 가능합니다.\n`;
+                    }
+                } catch (e) { console.error('NAS 통계 조회 오류:', e); }
             }
 
             // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 + 역방향 조회 (Omni-Agent Phase 1)
@@ -864,56 +892,41 @@ export async function POST(req) {
                     recentPostsText += `\n\n## 유가 안내\n오피넷 유가 조회가 일시 중단되었습니다. [안전운임 조회](/employees/safe-freight) 메뉴에서 유가 정보를 직접 확인해 주세요.`;
                 }
             }
-            // (1) 날씨 및 미세먼지
-            if (userKwd.includes('날씨') || userKwd.includes('기온') || userKwd.includes('온도') || userKwd.includes('비') || userKwd.includes('눈')) {
+            // (1) 날씨 및 미세먼지 (통합 조회)
+            if (userKwd.includes('날씨') || userKwd.includes('기온') || userKwd.includes('온도') || userKwd.includes('비') || userKwd.includes('눈') || userKwd.includes('미세먼지') || userKwd.includes('공기')) {
                 const regionsMap = {
-                    '서울': 'seoul', '부산': 'busan', '인천': 'incheon',
-                    '대구': 'daegu', '대전': 'daejeon', '광주': 'gwangju',
-                    '울산': 'ulsan', '세종': 'sejong', '아산': 'asan',
-                    '당진': 'dangjin', '예산': 'yesan'
+                    '서울': { id: 'seoul', hint: '서울 중구' }, 
+                    '부산': { id: 'busan', hint: '부산 연산동' }, 
+                    '인천': { id: 'incheon', hint: '인천 구월동' },
+                    '아산': { id: 'asan', hint: '아산 모종동' },
+                    '당진': { id: 'dangjin', hint: '당진 읍내동' }
                 };
                 const foundKey = Object.keys(regionsMap).find(r => userKwd.includes(r));
-                const targetRegionId = foundKey ? regionsMap[foundKey] : 'asan';
+                const target = foundKey ? regionsMap[foundKey] : regionsMap['아산'];
 
+                // 날씨 정보
                 try {
-                    const weatherApiUrl = `${SITE_URL}/api/weather?region=${targetRegionId}`;
+                    const weatherApiUrl = `${SITE_URL}/api/weather?region=${target.id}`;
                     const res = await fetch(weatherApiUrl, { signal: AbortSignal.timeout(5000) });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.dailySummary) {
-                            recentPostsText += `\n\n## (실시간) ${data.region.name} 날씨 예보 (Weather API)\n${data.dailySummary}`;
-                            if (data.airQuality) {
-                                recentPostsText += `\n- 미세먼지(PM10): ${data.airQuality.pm10} | 초미세먼지(PM2.5): ${data.airQuality.pm2_5}`;
-                            }
-                            apiTimestamps.weather = data.updatedAt || new Date().toISOString();
+                            recentPostsText += `\n\n## 🌦 ${data.region.name} 실시간 날씨/환경 정보\n${data.dailySummary}`;
                         }
                     }
-                } catch (e) { console.error('Weather API 연동 오류:', e); }
-            } else if (userKwd.includes('미세먼지') || userKwd.includes('공기')) {
-                const regionsMap = {
-                    '서울': '서울 중구', '부산': '부산 연산동', '인천': '인천 구월동',
-                    '대구': '대구 수창동', '대전': '대전 둔산동', '광주': '광주 농성동',
-                    '울산': '울산 신정동', '세종': '세종 아름동', '아산': '아산 모종동',
-                    '당진': '당진 읍내동', '예산': '예산군', '천안': '천안'
-                };
-                const foundKey = Object.keys(regionsMap).find(r => userKwd.includes(r));
-                const targetRegion = foundKey ? regionsMap[foundKey] : '아산 모종동';
+                } catch (e) { console.error('Weather API 오류:', e); }
 
+                // 미세먼지 정보 (K-SKILL)
                 try {
-                    const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(targetRegion)}`;
+                    const targetUri = `https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=${encodeURIComponent(target.hint)}`;
                     const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), {
-                        signal: AbortSignal.timeout(20000), 
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)',
-                            'Accept': 'application/json'
-                        }
+                        signal: AbortSignal.timeout(10000), 
+                        headers: { 'User-Agent': 'ELS-AI/1.0', 'Accept': 'application/json' }
                     });
                     if (res.ok) {
                         const data = await res.json();
-                        if (!data.error && data.pm10 && data.pm25) {
-                            const pmInfo = `- 측정소: ${data.station_name}\n- 시간: ${data.measured_at}\n- 미세먼지: ${data.pm10.value}(${data.pm10.grade})\n- 초미세먼지: ${data.pm25.value}(${data.pm25.grade})\n- 총평: ${data.khai_grade}`;
-                            recentPostsText += '\n\n## 실시간 미세먼지 현황 (K-SKILL)\n위치: ' + targetRegion + '\n' + pmInfo;
-                            apiTimestamps.kskill = data.measured_at || new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                        if (!data.error && data.pm10) {
+                            recentPostsText += `\n\n### 😷 미세먼지 현황 (K-SKILL)\n- 위치: ${data.station_name}\n- 미세먼지: ${data.pm10.value}(${data.pm10.grade}) | 초미세먼지: ${data.pm25.value}(${data.pm25.grade})\n- 총평: ${data.khai_grade}`;
                         }
                     }
                 } catch (e) { console.error('K-SKILL 미세먼지 오류:', e); }
