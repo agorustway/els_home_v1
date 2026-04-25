@@ -41,6 +41,32 @@ function renderTextWithLinks(text) {
 function MessageBubble({ msg, isNew }) {
     const isUser = msg.role === 'user';
     const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+    const [copied, setCopied] = useState(false);
+    const pressTimer = useRef(null);
+
+    const handleCopy = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (!msg.content) return;
+        
+        // 텍스트 복사 (HTML 태그 제거 및 마크다운 정리)
+        const cleanText = msg.content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+        navigator.clipboard.writeText(cleanText).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            
+            // 모바일 진동 피드백 (지원되는 경우)
+            if (navigator.vibrate) navigator.vibrate(50);
+        }).catch(err => {
+            console.error('복사 실패:', err);
+        });
+    };
+
+    // 모바일 롱프레스 핸들러
+    const startPress = () => { pressTimer.current = setTimeout(handleCopy, 600); };
+    const endPress = () => { if (pressTimer.current) clearTimeout(pressTimer.current); };
 
     return (
         <div className={`${styles.messageRow} ${isUser ? styles.userRow : styles.assistantRow} ${isNew ? styles.newMessage : ''}`}>
@@ -55,7 +81,31 @@ function MessageBubble({ msg, isNew }) {
                 </div>
             )}
             <div className={styles.bubbleContainer}>
-                <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
+                <div 
+                    className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}
+                    onTouchStart={startPress}
+                    onTouchEnd={endPress}
+                    onMouseDown={startPress}
+                    onMouseUp={endPress}
+                    onMouseLeave={endPress}
+                    style={{ position: 'relative' }}
+                >
+                    {/* 복사 버튼 (데스크톱/모바일 공용) */}
+                    <button 
+                        className={styles.copyMessageBtn} 
+                        onClick={handleCopy} 
+                        title="메시지 복사"
+                        aria-label="메시지 복사"
+                    >
+                        {copied ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        ) : (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        )}
+                    </button>
+
                     {renderTextWithLinks(msg.content)}
                     
                     {/* 첨부 파일(이미지/문서) 출력 */}
@@ -71,7 +121,7 @@ function MessageBubble({ msg, isNew }) {
                                             src={`data:${att.mime_type};base64,${att.data}`} 
                                             className={styles.messageImage} 
                                             alt="첨부 이미지"
-                                            onClick={() => window.open(`data:${att.mime_type};base64,${att.data}`, '_blank')}
+                                            onClick={(e) => { e.stopPropagation(); window.open(`data:${att.mime_type};base64,${att.data}`, '_blank'); }}
                                         />
                                     );
                                 }
@@ -90,6 +140,8 @@ function MessageBubble({ msg, isNew }) {
                             })}
                         </div>
                     )}
+                    
+                    {copied && <div className={styles.copyBadge}>복사됨!</div>}
                 </div>
                 {timeStr && <span className={styles.messageTime}>{timeStr}</span>}
             </div>

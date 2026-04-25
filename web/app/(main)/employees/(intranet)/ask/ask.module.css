@@ -343,6 +343,9 @@
     line-height: 1.65;
     white-space: pre-wrap;
     word-break: break-word;
+    position: relative;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .userBubble {
@@ -358,6 +361,67 @@
     border-bottom-left-radius: 4px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.copyMessageBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #e2e8f0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.bubble:hover .copyMessageBtn {
+    opacity: 1;
+}
+
+.userBubble .copyMessageBtn {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+.userBubble .copyMessageBtn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 1024px) {
+    .copyMessageBtn {
+        opacity: 0.6;
+    }
+}
+
+.copyBadge {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    background: #10b981;
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    animation: fadeInOut 2s forwards;
+    z-index: 20;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(5px); }
+    15% { opacity: 1; transform: translateY(0); }
+    85% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-5px); }
 }
 
 /* ── 새 메시지 애니메이션 ── */
