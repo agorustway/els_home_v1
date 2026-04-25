@@ -626,26 +626,40 @@ export async function POST(req) {
                 } catch (e) { console.error('ETRANS 조회 오류:', e); }
             }
 
-            // 2-1. NAS 문서 개수/통계 조회 트리거 (New!)
-            if (userKwd.includes('문서') || userKwd.includes('파일') || userKwd.includes('갯수') || userKwd.includes('개수')) {
-                const branches = ['본사', '아산', '당진', '자료실', '울산', '중부', '서산', '영천', '임고'];
-                const targetBranch = branches.find(b => userKwd.includes(b));
-                const isPdf = userKwd.includes('pdf');
-                const isXls = userKwd.includes('엑셀') || userKwd.includes('excel') || userKwd.includes('xlsx') || userKwd.includes('xlsm');
-
+            // 2-1. NAS 지능형 현황 브리핑 엔진 (v5.8.0 - 파싱 %, 개수, 상태 통합)
+            if (userKwd.includes('문서') || userKwd.includes('파일') || userKwd.includes('갯수') || userKwd.includes('개수') || userKwd.includes('파싱') || userKwd.includes('진행') || userKwd.includes('상태') || userKwd.includes('목록')) {
                 try {
-                    let query = supabase.from('nas_file_index').select('id', { count: 'exact', head: true });
-                    if (targetBranch) query = query.eq('branch', targetBranch);
-                    if (isPdf) query = query.eq('extension', '.pdf');
-                    if (isXls) query = query.ilike('extension', '.xls%');
+                    const { data: allStats, error: statError } = await supabase.from('nas_file_index').select('branch, is_indexed');
+                    if (!statError && allStats?.length > 0) {
+                        const branches = {};
+                        allStats.forEach(s => {
+                            const b = s.branch || '미분류';
+                            if (!branches[b]) branches[b] = { total: 0, indexed: 0 };
+                            branches[b].total++;
+                            if (s.is_indexed) branches[b].indexed++;
+                        });
 
-                    const { count, error } = await query;
-                    if (!error) {
-                        const branchTitle = targetBranch || '전체 NAS';
-                        const typeTitle = isPdf ? 'PDF ' : (isXls ? '엑셀 ' : '');
-                        recentPostsText += `\n\n## 📂 NAS 인덱싱 통계 현황\n- **조회 대상**: ${branchTitle}\n- **데이터 타입**: ${typeTitle}문서\n- **인덱싱된 파일 수**: ${count}개\n- **상태**: 현재 모든 문서가 AI 지식 베이스에 통합되어 검색 가능합니다.\n`;
+                        let statsReport = `\n\n## 📂 실시간 NAS 인덱싱(파싱) 현황 리포트\n`;
+                        statsReport += `AI가 사내 NAS의 모든 문서를 실시간으로 모니터링 중입니다. 현재 지점별 파싱 진행도는 다음과 같습니다:\n\n`;
+                        
+                        let totalFiles = 0;
+                        let totalIndexed = 0;
+
+                        Object.entries(branches).forEach(([name, s]) => {
+                            const percent = ((s.indexed / s.total) * 100).toFixed(1);
+                            const statusEmoji = s.indexed === s.total ? '✅' : '🔄';
+                            statsReport += `- **${name}**: ${percent}% (${s.indexed}/${s.total}개) ${statusEmoji}\n`;
+                            totalFiles += s.total;
+                            totalIndexed += s.indexed;
+                        });
+
+                        const totalPercent = ((totalIndexed / totalFiles) * 100).toFixed(1);
+                        statsReport += `\n- **전체 요약**: 총 ${totalFiles}개 파일 중 ${totalIndexed}개 파싱 완료 (**전체 진행률: ${totalPercent}%**)\n`;
+                        statsReport += `- **참고**: 파싱이 완료된 문서는 즉시 검색 및 질문 답변이 가능합니다.\n`;
+                        
+                        recentPostsText += statsReport;
                     }
-                } catch (e) { console.error('NAS 통계 조회 오류:', e); }
+                } catch (e) { console.error('NAS 지능형 통계 오류:', e); }
             }
 
             // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 + 역방향 조회 (Omni-Agent Phase 1)
