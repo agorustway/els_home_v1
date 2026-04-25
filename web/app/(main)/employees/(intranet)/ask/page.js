@@ -161,7 +161,7 @@ export default function AskPage() {
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
-        content: '안녕하세요! **더 똑똑해진 ELS AI 어시스턴트**입니다.\n\n이제 사내 NAS의 수만 권의 **문서(PDF, 엑셀, 워드)**와 **이미지**까지 스스로 읽고 답변할 수 있습니다.\n\n안전운임, 이트랜스 이력, 차량 관제는 물론 사내 지식에 대해 무엇이든 물어보세요!',
+        content: '안녕하세요! **더 똑똑해진 ELS AI 어시스턴트(v5.8.0)**입니다.\n\n이제 사외 데이터(실시간 날씨, 미세먼지, 유가, KBO/K리그)와 사내 데이터(NAS 문서 수만 권, 이트랜스 이력, 차량 관제)를 통합하여 답변해 드립니다.\n\n사내 지식이나 실시간 현황에 대해 무엇이든 물어보세요!',
         timestamp: new Date().toISOString()
     };
 
@@ -555,7 +555,7 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <>
-            <h2 className={styles.guideTitle}>ELS AI 가이드 (v5.3.3)</h2>
+            <h2 className={styles.guideTitle}>ELS AI 가이드 (v5.8.0)</h2>
             
             <div className={styles.guideBox}>
                 <span className={styles.guideHighlight}>사내 문서/이미지 지식 (NAS)</span>
@@ -705,8 +705,8 @@ export default function AskPage() {
                             </div>
                         </button>
                         <div>
-                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.3.2</span></h1>
-                            <p className={styles.headerSub}>AI Memory Persistence · Knowledge Link System</p>
+                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.8.0</span></h1>
+                            <p className={styles.headerSub}>Omni-Agent Infrastructure · Knowledge Link System</p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, minWidth: 0 }}>
