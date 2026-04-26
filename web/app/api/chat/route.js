@@ -904,8 +904,8 @@ export async function POST(req) {
                     if (embedData.embedding?.values) {
                         const { data: matchedDocs } = await supabase.rpc('match_documents', {
                             query_embedding: embedData.embedding.values,
-                            match_threshold: 0.5,
-                            match_count: 3
+                            match_threshold: 0.45, // [v5.9.0] 검색 신뢰도 향상을 위해 임계값 하향 (기존 0.5)
+                            match_count: 5
                         });
 
                         if (matchedDocs && matchedDocs.length > 0) {
@@ -1195,16 +1195,16 @@ export async function POST(req) {
         }
 
         // 6. NAS 자료실 문서 시맨틱 검색 (Phase 5)
-        const nasKeywords = ['자료', '문서', '파일', 'nas', '가이드', '규정', '매뉴얼', '보고서', '계약서', '마감', '정산', '양식', '폴더', '엑셀', '한글'];
-        const isNasQuery = searchTerms.some(t => nasKeywords.includes(t.toLowerCase()));
+        const nasKeywords = ['자료', '문서', '파일', 'nas', '가이드', '규정', '매뉴얼', '보고서', '계약서', '마감', '정산', '양식', '폴더', '엑셀', '한글', '현황', '배차', '차량', '실적', '작업', '매출', '지정', '운송', '운임'];
+        const isNasQuery = searchTerms.some(t => nasKeywords.some(k => t.includes(k))) || lastUserText.toLowerCase().includes('.xls') || lastUserText.toLowerCase().includes('.pdf');
         if (isNasQuery) {
             try {
                 const vector = await getEmbedding(lastUserText);
                 if (vector) {
                     const { data: docs, error } = await supabase.rpc('match_documents', {
                         query_embedding: vector,
-                        match_threshold: 0.55,
-                        match_count: 6,
+                        match_threshold: 0.45, // [v5.9.0] 문항 검색 신뢰도 향상을 위해 임계값 하향 (기존 0.55)
+                        match_count: 8,       // 검색 결과 수 상향
                         filter_source_type: 'nas_file'
                     });
 
@@ -1216,8 +1216,26 @@ export async function POST(req) {
                         });
                         recentPostsText += nasText + `\n※ 원본 문서는 NAS의 해당 폴더에서 열람하실 수 있습니다. 위 내용을 바탕으로 요약해 주세요.`;
                         apiTimestamps.nas = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
-                    } else if (error) {
-                        console.error('[ELS-AI] NAS 벡터 검색 RPC 오류:', error);
+                    } else {
+                        // [v5.9.0] 벡터 검색 결과가 없거나 오류 시 키워드 기반 파일명 직접 검색 (Resilience)
+                        const importantTerms = searchTerms.filter(t => t.length > 2).slice(0, 3);
+                        if (importantTerms.length > 0) {
+                            const orConditions = importantTerms.map(t => `metadata->>filename.ilike.%${t}%`).join(',');
+                            const { data: kwDocs } = await supabase
+                                .from('document_chunks')
+                                .select('content, metadata')
+                                .or(orConditions)
+                                .limit(5);
+
+                            if (kwDocs && kwDocs.length > 0) {
+                                let nasText = '\n\n## 사내 NAS 자료실 문서 (파일명 키워드 검색 결과)\n';
+                                kwDocs.forEach(d => {
+                                    nasText += `- **[${d.metadata?.filename || '문서'}]** (경로: ${d.metadata?.filepath || ''}):\n${d.content}\n\n`;
+                                });
+                                recentPostsText += nasText;
+                                apiTimestamps.nas = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                            }
+                        }
                     }
                 }
             } catch (e) {
