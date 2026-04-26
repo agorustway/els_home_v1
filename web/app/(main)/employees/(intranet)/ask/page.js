@@ -280,12 +280,40 @@ export default function AskPage() {
     // ─── 세션 로드: DB 우선 → localStorage 폴백 → 빈 세션 ──────────
     useEffect(() => {
         const loadMemory = async () => {
+            // [v5.8.8] 새 대화 시작 유틸리티
+            const startNewIfNeeded = (existingSessions) => {
+                if (!existingSessions || existingSessions.length === 0) {
+                    const initId = Date.now().toString();
+                    const initSessions = [{ id: initId, title: '새로운 대화', messages: [{ ...DEFAULT_INIT_MSG, timestamp: new Date().toISOString() }] }];
+                    setSessions(initSessions);
+                    setActiveId(initId);
+                    return initSessions;
+                }
+                
+                const lastSession = existingSessions[0];
+                // 마지막 세션이 비어있지 않으면(메시지 1개 초과) 새 세션 생성
+                if (lastSession.messages.length > 1) {
+                    const newId = Date.now().toString();
+                    const newSession = { id: newId, title: '새로운 대화', messages: [{ ...DEFAULT_INIT_MSG, timestamp: new Date().toISOString() }] };
+                    const updated = [newSession, ...existingSessions].slice(0, 30);
+                    setSessions(updated);
+                    setActiveId(newId);
+                    return updated;
+                } else {
+                    // 마지막 세션이 비어있으면 그대로 사용하되 타임스탬프만 갱신
+                    setActiveId(lastSession.id);
+                    return existingSessions;
+                }
+            };
+
             // 1차: localStorage에서 즉시 로드 (화면 깜빡임 방지)
             const localData = loadFromLocal();
             if (localData) {
                 setSessions(localData);
                 setActiveId(localData[0].id);
             }
+
+            let finalSessions = localData;
 
             // 2차: DB에서 비동기 로드 (더 최신 데이터가 있으면 덮어씀)
             try {
@@ -294,32 +322,21 @@ export default function AskPage() {
                     const data = await res.json();
                     let raw = data.messages || [];
                     if (raw.length > 0 && raw[0].id && raw[0].messages) {
-                        // DB 데이터가 localStorage보다 크면 (더 많은 대화) DB 우선
                         const dbTotal = raw.reduce((sum, s) => sum + (s.messages?.length || 0), 0);
                         const localTotal = localData ? localData.reduce((sum, s) => sum + (s.messages?.length || 0), 0) : 0;
                         if (dbTotal >= localTotal) {
+                            finalSessions = raw;
                             setSessions(raw);
-                            setActiveId(raw[0].id);
-                            saveToLocal(raw); // DB → localStorage 동기화
+                            saveToLocal(raw);
                         }
-                        setIsLoaded(true);
-                        return;
                     }
                 }
             } catch (err) {
                 console.warn('[ELS-AI] DB 로드 실패, localStorage 폴백 사용:', err.message);
             }
 
-            // localStorage에서 이미 로드했으면 그대로 사용
-            if (localData) {
-                setIsLoaded(true);
-                return;
-            }
-
-            // 둘 다 없으면 빈 세션
-            const initId = Date.now().toString();
-            setSessions([{ id: initId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
-            setActiveId(initId);
+            // [v5.8.8] 형의 요청: 페이지 진입 시 항상 새 대화로 시작 (기존 기록은 보존)
+            startNewIfNeeded(finalSessions);
             setIsLoaded(true);
         };
         loadMemory();
