@@ -1203,14 +1203,24 @@ export async function POST(req) {
                 if (vector) {
                     const { data: docs, error } = await supabase.rpc('match_documents', {
                         query_embedding: vector,
-                        match_threshold: 0.45, // [v5.9.0] 문항 검색 신뢰도 향상을 위해 임계값 하향 (기존 0.55)
-                        match_count: 8,       // 검색 결과 수 상향
+                        match_threshold: 0.45,
+                        match_count: 12,      // [v5.9.1] 후보군 상향 (기존 8)
                         filter_source_type: 'nas_file'
                     });
 
                     if (!error && docs && docs.length > 0) {
+                        // [v5.9.1] 파일명 기반 재정렬 (Re-ranking) — 파일명이 검색어와 일치하면 가중치 부여
+                        const rankedDocs = docs.map(doc => {
+                            let boost = 0;
+                            const fname = doc.metadata?.filename?.toLowerCase() || '';
+                            searchTerms.forEach(term => {
+                                if (term.length >= 2 && fname.includes(term.toLowerCase())) boost += 0.15;
+                            });
+                            return { ...doc, adjustedScore: (doc.similarity || 0) + boost };
+                        }).sort((a, b) => b.adjustedScore - a.adjustedScore).slice(0, 8); // 상위 8개만 사용
+
                         let nasText = '\n\n## 사내 NAS 자료실 문서 (시맨틱 검색 엔진)\n';
-                        docs.forEach(d => {
+                        rankedDocs.forEach(d => {
                             const fpath = d.metadata?.filepath || '';
                             nasText += `- **[${d.metadata?.filename || '문서'}]** (경로: ${fpath}, ${(d.similarity * 100).toFixed(1)}% 일치):\n${d.content}\n\n`;
                         });
