@@ -90,7 +90,7 @@ export default function VehicleTrackingPage() {
                         });
                         // [v4.5.32] isEmpty가 함수인지 한 번 더 체크 (인증 실패 대비)
                         if (typeof bounds.isEmpty === 'function' && !bounds.isEmpty()) {
-                            mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+                            mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60, maxZoom: 14 });
                         }
                     }
                 }
@@ -331,7 +331,7 @@ export default function VehicleTrackingPage() {
             });
             markersRef.current.push(endMarker);
         }
-        map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
+        map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100, maxZoom: 14 });
     };
 
     // [공통] 주소 역지오코딩 헬퍼 (캐시 적용)
@@ -629,7 +629,7 @@ export default function VehicleTrackingPage() {
             path.forEach(p => bounds.extend(p));
             // fitBounds는 중복 실행 방지
             if (path.length > 0 && !miniMapInstanceRef.current._hasFitBounds) {
-                map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+                map.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30, maxZoom: 14 });
                 miniMapInstanceRef.current._hasFitBounds = true;
             }
         };
@@ -665,6 +665,8 @@ export default function VehicleTrackingPage() {
                 if (window.location.hash === '#detail') {
                     window.history.back();
                 }
+                // [신규] 모달 닫힐 때 미니맵 인스턴스 초기화 (다음 모달에서 지도 깨짐 방지)
+                miniMapInstanceRef.current = null;
             };
         }
     }, [selectedTrip !== null]);
@@ -763,7 +765,11 @@ export default function VehicleTrackingPage() {
             const markerColor = isDriving ? '#10b981' : (isPaused ? '#f59e0b' : '#6b7280');
             const vNum = trip.vehicle_number || '';
             const vLabel = vNum.length >= 4 ? vNum.slice(-4) : vNum;
-            const markerZIndex = isDriving ? 300 : (isPaused ? 200 : 100);
+            
+            // [신규] 마커 Z-index 오더링: 운행중 > 일시정지 > 종료 순이며, 최신일수록 상단
+            const baseZ = isDriving ? 300000 : (isPaused ? 200000 : 100000);
+            const timeVal = (new Date(loc.timestamp || loc.recorded_at || trip.updated_at || Date.now()).getTime() / 10000) % 100000;
+            const markerZIndex = Math.floor(baseZ + timeVal);
 
             const marker = new naver.maps.Marker({
                 position: pos, map,
@@ -1209,8 +1215,8 @@ export default function VehicleTrackingPage() {
                         </thead>
                         <tbody>
                             {records.map(trip => (
-                                <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''}>
-                                    <td><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
+                                <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''} onClick={(e) => { if (selectedTrip) handleSelectTrip(trip); }} style={{ cursor: selectedTrip ? 'pointer' : 'default' }}>
+                                    <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td>
                                         <div><strong>{trip.driver_name}</strong></div>
@@ -1243,7 +1249,7 @@ export default function VehicleTrackingPage() {
                                         <div>{trip.last_location_address || '-'}</div>
                                         {trip.max_speed > 0 && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: 2 }}>최고속도: {trip.max_speed} km/h</div>}
                                     </td>
-                                    <td className={styles.actionCol}>
+                                    <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
                                         <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>삭제</button>
                                     </td>
@@ -1312,7 +1318,7 @@ export default function VehicleTrackingPage() {
                                     <button className={styles.resetZoomBtn} onClick={() => {
                                         const bounds = new window.naver.maps.LatLngBounds();
                                         selectedTripLocations.filter(l => l.lat > 33 && l.lat < 40 && l.lng > 124 && l.lng < 132).forEach(l => bounds.extend(new window.naver.maps.LatLng(l.lat, l.lng)));
-                                        miniMapInstanceRef.current?.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30 });
+                                        miniMapInstanceRef.current?.fitBounds(bounds, { top: 30, right: 30, bottom: 30, left: 30, maxZoom: 14 });
                                     }}>전체보기</button>
                                 </div>
                             </div>
