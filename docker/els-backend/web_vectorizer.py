@@ -1,28 +1,26 @@
+"""
+웹 게시판 첨부파일 벡터화 모듈 (v5.9.3)
+
+게시판(posts) 및 자료실(work_docs) 테이블의 첨부파일을 
+S3(MinIO)에서 다운로드하여 벡터화하고 document_chunks에 저장한다.
+nas_vectorizer의 공용 함수(extract_text_by_ext, embed_and_store_chunks)를 재사용한다.
+"""
 import os
 import hashlib
 import logging
 import tempfile
-from datetime import datetime, timezone
-import time
+from datetime import datetime
 import requests
 from supabase import create_client, Client
-from pathlib import Path
 
-# Import parsing tools from existing nas_vectorizer
 from nas_vectorizer import (
-    extract_text_pypdf,
-    extract_text_docx,
-    extract_text_hwpx,
+    extract_text_by_ext,
     extract_sheets_xlsx,
     chunk_text,
+    embed_and_store_chunks,
     supabase_retry_execute,
-    MAX_CHUNK_SIZE,
-    CHUNK_OVERLAP,
-    SUPPORTED_EXTS
+    SUPPORTED_EXTS,
 )
-import pytesseract
-from PIL import Image
-import textract
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -35,215 +33,124 @@ SITE_URL = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://nollae.com")
 
 supabase: Client = None
 
+
 def init_supabase(client: Client):
     global supabase
     supabase = client
 
-def get_buffer_hash(buffer):
-    hash_md5 = hashlib.md5()
-    hash_md5.update(buffer)
-    return hash_md5.hexdigest()
 
-def process_table(table_name):
-    logger.info(f"🔍 [{table_name}] 게시판 첨부파일 검색 중...")
-    try:
-        # attachments 필드가 비어있지 않은 항목 조회
-        res = supabase.table(table_name).select("id, title, attachments").not_.is_("attachments", "null").execute()
-        records = res.data
-        if not records:
-            logger.info(f"✅ [{table_name}] 처리할 게시물이 없습니다.")
-            return
+def _download_file(key):
+    """S3 프록시 API를 통해 첨부파일을 다운로드하여 바이트 버퍼를 반환한다."""
+    download_url = f"{SITE_URL}/api/s3/files?key={key}"
+    resp = requests.get(download_url, timeout=30)
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code}")
+    return resp.content
 
-        logger.info(f"✅ [{table_name}] 총 {len(records)}개의 게시물을 확인합니다.")
-    except Exception as e:
-        logger.error(f"❌ DB 조회 실패: {e}")
+
+def _process_attachment(table_name, post_title, key, filename):
+    """단일 첨부파일을 다운로드 → 파싱 → 벡터화하는 파이프라인."""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in SUPPORTED_EXTS:
         return
 
+    source_id = f"web::{table_name}::{key}"
+
+    # 이미 벡터화된 파일은 스킵 (게시판 첨부파일은 수정보다 신규 업로드가 대부분)
+    existing = supabase.table("document_chunks").select("id").eq("source_id", source_id).limit(1).execute()
+    if existing.data:
+        return
+
+    logger.info(f"⚙️ 다운로드 시작: {filename} (게시물: {post_title})")
+
+    try:
+        file_buffer = _download_file(key)
+    except Exception as e:
+        logger.error(f"❌ 다운로드 실패 ({filename}): {e}")
+        return
+
+    content_hash = hashlib.md5(file_buffer).hexdigest()
+    base_metadata = {
+        "filename": filename,
+        "branch": f"웹자료실({table_name})",
+        "extension": ext,
+        "post_title": post_title,
+    }
+
+    # 임시 파일로 저장 (파싱 라이브러리가 파일 경로를 요구)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        tmp.write(file_buffer)
+        tmp_path = tmp.name
+
+    try:
+        total_stored = 0
+
+        if ext in [".xlsx", ".xlsm"]:
+            sheets = extract_sheets_xlsx(tmp_path)
+            for s in (sheets or []):
+                chunks = chunk_text(s["text"])
+                meta = {**base_metadata, "sheet_name": s["name"], "sheet_hash": s["hash"]}
+                total_stored += embed_and_store_chunks(
+                    supabase, chunks,
+                    source_type="web_attachment",
+                    source_id=source_id,
+                    source_version=content_hash,
+                    metadata=meta,
+                    api_key=GEMINI_API_KEY,
+                )
+        else:
+            text = extract_text_by_ext(tmp_path, ext)
+            if text and text.strip():
+                chunks = chunk_text(text)
+                total_stored += embed_and_store_chunks(
+                    supabase, chunks,
+                    source_type="web_attachment",
+                    source_id=source_id,
+                    source_version=content_hash,
+                    metadata=base_metadata,
+                    api_key=GEMINI_API_KEY,
+                )
+
+        logger.info(f"✅ {filename} 처리 완료 (청크: {total_stored}개)")
+    except Exception as e:
+        logger.error(f"❌ 파싱/벡터화 에러 ({filename}): {e}")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def process_table(table_name):
+    """특정 테이블의 모든 게시물에서 첨부파일을 스캔하여 벡터화."""
+    logger.info(f"🔍 [{table_name}] 게시판 첨부파일 검색 중...")
+    try:
+        res = supabase.table(table_name).select("id, title, attachments").not_.is_("attachments", "null").execute()
+        records = res.data or []
+    except Exception as e:
+        logger.error(f"❌ [{table_name}] DB 조회 실패: {e}")
+        return
+
+    att_count = sum(len(r.get("attachments") or []) for r in records)
+    logger.info(f"✅ [{table_name}] {len(records)}개 게시물, {att_count}개 첨부파일 확인")
+
     for rec in records:
-        post_id = rec.get("id")
-        post_title = rec.get("title", "Unknown")
-        attachments = rec.get("attachments", [])
-
-        if not attachments:
-            continue
-
-        for att in attachments:
+        for att in (rec.get("attachments") or []):
             key = att.get("key")
             filename = att.get("name", "")
-            if not key or not filename:
-                continue
-
-            ext = os.path.splitext(filename)[1].lower()
-            if ext not in SUPPORTED_EXTS:
-                continue
-
-            # 중복 체크
-            source_id = f"web::{table_name}::{key}"
-            existing = supabase.table("document_chunks").select("id").eq("source_id", source_id).limit(1).execute()
-            if existing.data:
-                # 이미 벡터화됨 (단순 처리를 위해 해시가 변경되었는지는 여기서는 패스. 게시물 첨부파일은 보통 수정되지 않고 새로 올라감)
-                continue
-
-            logger.info(f"⚙️ 다운로드 및 파싱 시작: {filename} (게시물: {post_title})")
-            
-            # S3 API를 통해 파일 다운로드
-            download_url = f"{SITE_URL}/api/s3/files?key={key}"
-            try:
-                resp = requests.get(download_url, timeout=30)
-                if resp.status_code != 200:
-                    logger.error(f"❌ 다운로드 실패: HTTP {resp.status_code} ({download_url})")
-                    continue
-                file_buffer = resp.content
-            except Exception as e:
-                logger.error(f"❌ 다운로드 에러: {e}")
-                continue
-
-            current_hash = get_buffer_hash(file_buffer)
-
-            # 임시 파일로 저장 후 파싱 (라이브러리 호환성)
-            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
-                temp_file.write(file_buffer)
-                temp_filepath = temp_file.name
-
-            try:
-                total_new_chunks = 0
-                if ext in [".xlsx", ".xlsm"]:
-                    sheets = extract_sheets_xlsx(temp_filepath)
-                    if not sheets: continue
-                    
-                    for s in sheets:
-                        s_name = s["name"]
-                        s_hash = s["hash"]
-                        s_text = s["text"]
-
-                        chunks = chunk_text(s_text)
-                        chunk_batch = []
-                        for idx, chunk in enumerate(chunks):
-                            if not chunk.strip(): continue
-                            
-                            time.sleep(0.4)
-                            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={GEMINI_API_KEY}"
-                            payload = {
-                                "model": "models/gemini-embedding-001",
-                                "content": {"parts": [{"text": chunk}]},
-                                "outputDimensionality": 768
-                            }
-                            
-                            r = requests.post(url, json=payload, timeout=10)
-                            if r.status_code == 200:
-                                embedding = r.json()['embedding']['values']
-                                chunk_batch.append({
-                                    "source_type": "web_attachment",
-                                    "source_id": source_id,
-                                    "source_version": current_hash,
-                                    "chunk_index": idx,
-                                    "content": chunk,
-                                    "metadata": {
-                                        "filename": filename, 
-                                        "branch": f"웹자료실({table_name})", 
-                                        "extension": ext,
-                                        "sheet_name": s_name,
-                                        "sheet_hash": s_hash,
-                                        "post_title": post_title
-                                    },
-                                    "embedding": embedding
-                                })
-                            
-                            if len(chunk_batch) >= 10:
-                                supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
-                                total_new_chunks += len(chunk_batch)
-                                chunk_batch = []
-                        
-                        if chunk_batch:
-                            supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
-                            total_new_chunks += len(chunk_batch)
-
-                else:
-                    text = ""
-                    if ext == ".pdf":
-                        text = extract_text_pypdf(temp_filepath)
-                    elif ext == ".docx":
-                        text = extract_text_docx(temp_filepath)
-                    elif ext == ".txt":
-                        try:
-                            with open(temp_filepath, "r", encoding="utf-8") as f: text = f.read()
-                        except:
-                            with open(temp_filepath, "r", encoding="euc-kr") as f: text = f.read()
-                    elif ext in [".png", ".jpg", ".jpeg", ".gif"]:
-                        image = None
-                        try:
-                            image = Image.open(temp_filepath)
-                            text = pytesseract.image_to_string(image, lang='kor+eng')
-                        finally:
-                            if image: image.close()
-                    elif ext == ".doc":
-                        try:
-                            text = textract.process(temp_filepath).decode('utf-8', errors='ignore')
-                        except:
-                            pass
-                    elif ext == ".hwpx":
-                        text = extract_text_hwpx(temp_filepath)
-
-                    if text.strip():
-                        chunks = chunk_text(text)
-                        chunk_batch = []
-                        for idx, chunk in enumerate(chunks):
-                            if not chunk.strip(): continue
-                            
-                            time.sleep(0.4)
-                            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={GEMINI_API_KEY}"
-                            payload = {
-                                "model": "models/gemini-embedding-001",
-                                "content": {"parts": [{"text": chunk}]},
-                                "outputDimensionality": 768
-                            }
-                            
-                            r = requests.post(url, json=payload, timeout=10)
-                            if r.status_code == 200:
-                                embedding = r.json()['embedding']['values']
-                                chunk_batch.append({
-                                    "source_type": "web_attachment",
-                                    "source_id": source_id,
-                                    "source_version": current_hash,
-                                    "chunk_index": idx,
-                                    "content": chunk,
-                                    "metadata": {
-                                        "filename": filename, 
-                                        "branch": f"웹자료실({table_name})", 
-                                        "extension": ext,
-                                        "post_title": post_title
-                                    },
-                                    "embedding": embedding
-                                })
-                            
-                            if len(chunk_batch) >= 10:
-                                supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
-                                total_new_chunks += len(chunk_batch)
-                                chunk_batch = []
-                        
-                        if chunk_batch:
-                            supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
-                            total_new_chunks += len(chunk_batch)
-                
-                logger.info(f"✅ {filename} 처리 완료 (새로운 청크: {total_new_chunks}개)")
-
-            except Exception as e:
-                logger.error(f"❌ 파싱/벡터화 에러 ({filename}): {e}")
-            finally:
-                # 임시 파일 삭제
-                if os.path.exists(temp_filepath):
-                    os.remove(temp_filepath)
+            if key and filename:
+                _process_attachment(table_name, rec.get("title", "Unknown"), key, filename)
 
 
 def process_web_attachments():
+    """메인 진입점: posts와 work_docs 테이블의 첨부파일을 모두 벡터화."""
     if not supabase:
         logger.error("❌ Supabase 클라이언트가 초기화되지 않았습니다.")
         return False
     logger.info("🚀 웹 게시판 첨부파일 벡터화 시작...")
     process_table("posts")
     process_table("work_docs")
-    logger.info("🎉 모든 작업이 완료되었습니다.")
+    logger.info("🎉 웹 첨부파일 벡터화 완료!")
     return True
+
 
 if __name__ == "__main__":
     if not SUPABASE_URL or not SUPABASE_KEY:

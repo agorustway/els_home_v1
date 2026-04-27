@@ -152,6 +152,88 @@ def chunk_text(text, max_len=MAX_CHUNK_SIZE, overlap=CHUNK_OVERLAP):
         start += (max_len - overlap)
     return chunks
 
+
+def extract_text_by_ext(filepath, ext):
+    """확장자에 따라 적절한 텍스트 추출기를 호출하는 공용 함수"""
+    text = ""
+    if ext == ".pdf":
+        text = extract_text_pypdf(filepath)
+    elif ext == ".docx":
+        text = extract_text_docx(filepath)
+    elif ext == ".txt":
+        try:
+            with open(filepath, "r", encoding="utf-8") as f: text = f.read()
+        except:
+            with open(filepath, "r", encoding="euc-kr") as f: text = f.read()
+    elif ext in [".png", ".jpg", ".jpeg", ".gif"]:
+        image = None
+        try:
+            image = Image.open(filepath)
+            text = pytesseract.image_to_string(image, lang='kor+eng')
+        finally:
+            if image: image.close()
+    elif ext == ".doc":
+        try:
+            text = textract.process(filepath).decode('utf-8', errors='ignore')
+        except:
+            text = ""
+    elif ext == ".hwpx":
+        text = extract_text_hwpx(filepath)
+    return text
+
+
+def embed_and_store_chunks(supabase, chunks, source_type, source_id, source_version, metadata, api_key=None):
+    """청크 리스트를 임베딩하고 document_chunks 테이블에 저장하는 공용 함수.
+    Returns: 저장된 청크 수
+    """
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        logger.error("GEMINI_API_KEY is not set.")
+        return 0
+
+    stored = 0
+    chunk_batch = []
+    for idx, chunk in enumerate(chunks):
+        if not chunk.strip():
+            continue
+
+        time.sleep(0.4)  # Rate Limit 방어
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={api_key}"
+        payload = {
+            "model": "models/gemini-embedding-001",
+            "content": {"parts": [{"text": chunk}]},
+            "outputDimensionality": 768
+        }
+
+        try:
+            resp = requests.post(url, json=payload, timeout=10)
+            if resp.status_code == 200:
+                embedding = resp.json()['embedding']['values']
+                chunk_batch.append({
+                    "source_type": source_type,
+                    "source_id": source_id,
+                    "source_version": source_version,
+                    "chunk_index": idx,
+                    "content": chunk,
+                    "metadata": metadata,
+                    "embedding": embedding
+                })
+
+            if len(chunk_batch) >= 10:
+                supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
+                stored += len(chunk_batch)
+                chunk_batch = []
+                time.sleep(0.2)
+        except Exception as e:
+            logger.error(f"Embedding error at chunk {idx}: {e}")
+
+    if chunk_batch:
+        supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
+        stored += len(chunk_batch)
+
+    return stored
+
 def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -323,65 +405,25 @@ def process_nas_directory(supabase, raw_dir, branch_name="NAS자료"):
                 logger.info(f"✅ {filename} 처리 완료 (새로운 청크: {total_new_chunks}개)")
 
             else:
-                # 일반 파일 (PDF, DOCX 등) 처리 로직
-                text = ""
-                if ext == ".pdf":
-                    text = extract_text_pypdf(file_path_str)
-                elif ext == ".docx":
-                    text = extract_text_docx(file_path_str)
-                elif ext == ".txt":
-                    try:
-                        with open(file_path_str, "r", encoding="utf-8") as f: text = f.read()
-                    except:
-                        with open(file_path_str, "r", encoding="euc-kr") as f: text = f.read()
-                elif ext in [".png", ".jpg", ".jpeg", ".gif"]:
-                    image = None
-                    try:
-                        image = Image.open(file_path_str)
-                        text = pytesseract.image_to_string(image, lang='kor+eng')
-                    finally:
-                        if image: image.close()
-                elif ext == ".doc":
-                    try:
-                        text = textract.process(file_path_str).decode('utf-8', errors='ignore')
-                    except:
-                        text = ""
-                elif ext == ".hwpx":
-                    text = extract_text_hwpx(file_path_str)
+                # 일반 파일 (PDF, DOCX 등) — 공용 함수 사용
+                text = extract_text_by_ext(file_path_str, ext)
 
                 if not text or len(text.strip()) < 10:
                     logger.warning(f"⚠️ {progress_str} [SKIP] {filename}: 텍스트 부족")
                     skipped += 1
                     continue
 
-                # 청킹 및 임베딩 (기존 로직 유지)
                 chunks = chunk_text(text)
-                chunk_batch = []
                 supabase_retry_execute(lambda: supabase.table("document_chunks").delete().eq("source_id", file_path_str))
 
-                for idx, chunk in enumerate(chunks):
-                    if not chunk.strip(): continue
-                    time.sleep(0.4)
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={api_key}"
-                    payload = {"model": "models/gemini-embedding-001", "content": {"parts": [{"text": chunk}]}, "outputDimensionality": 768}
-                    try:
-                        resp = requests.post(url, json=payload, timeout=10)
-                        if resp.status_code == 200:
-                            embedding = resp.json()['embedding']['values']
-                            chunk_batch.append({
-                                "source_type": "nas_file", "source_id": file_path_str, "source_version": datetime.now().strftime('%Y-%m-%d'),
-                                "chunk_index": idx, "content": chunk, "embedding": embedding,
-                                "metadata": {"filename": filename, "branch": branch_name, "extension": ext}
-                            })
-                        if len(chunk_batch) >= 10:
-                            supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
-                            chunk_batch = []
-                            time.sleep(0.2)
-                    except Exception as e:
-                        logger.error(f"Embedding error at {filename} chunk {idx}: {e}")
-
-                if chunk_batch:
-                    supabase_retry_execute(lambda: supabase.table("document_chunks").insert(chunk_batch))
+                embed_and_store_chunks(
+                    supabase, chunks,
+                    source_type="nas_file",
+                    source_id=file_path_str,
+                    source_version=datetime.now().strftime('%Y-%m-%d'),
+                    metadata={"filename": filename, "branch": branch_name, "extension": ext},
+                    api_key=api_key
+                )
 
                 supabase_retry_execute(lambda: supabase.table("nas_file_index").upsert({
                     "path": file_path_str, "filename": filename, "extension": ext, "branch": branch_name,

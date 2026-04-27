@@ -432,7 +432,7 @@ def handle_nas_files():
 from nas_vectorizer import process_nas_directory
 from web_vectorizer import process_web_attachments, init_supabase as init_web_supabase
 
-# 벡터화 작업 상태 추적용 전역 변수
+# --- 벡터화 작업 상태 추적 (NAS/Web 공유) ---
 vect_status = {
     "is_running": False,
     "start_time": None,
@@ -440,104 +440,87 @@ vect_status = {
 }
 vect_lock = threading.Lock()
 
+def _check_vect_busy():
+    """좀비 락 해제 후 busy 여부를 반환. busy이면 (True, response) 반환."""
+    global vect_status
+    if vect_status["is_running"] and vect_status["start_time"]:
+        elapsed = time.time() - vect_status["start_time"]
+        if elapsed > 7200:
+            app.logger.warning(f"⚠️ [좀비방지] {vect_status['current_branch']} 작업이 2시간 초과 → 락 강제 해제")
+            vect_status["is_running"] = False
+
+    if vect_status["is_running"]:
+        return True, jsonify({
+            "status": "busy",
+            "message": f"Another task ({vect_status['current_branch']}) is already running.",
+            "elapsed_sec": int(time.time() - vect_status["start_time"]) if vect_status["start_time"] else 0
+        })
+    return False, None
+
+def _run_vect_task(branch_name, task_fn):
+    """벡터화 백그라운드 태스크를 공통 패턴으로 실행."""
+    global vect_status
+    with vect_lock:
+        try:
+            vect_status["is_running"] = True
+            vect_status["start_time"] = time.time()
+            vect_status["current_branch"] = branch_name
+
+            app.logger.info(f"🚀 [Vectorize] {branch_name} 시작...")
+            task_fn()
+            app.logger.info(f"✅ [Vectorize] {branch_name} 완료")
+        except Exception as e:
+            app.logger.error(f"❌ [Vectorize] {branch_name} 실패: {e}")
+        finally:
+            vect_status["is_running"] = False
+            vect_status["start_time"] = None
+
 @app.route('/api/vectorize/nas/unlock', methods=['POST'])
 def force_unlock_nas_vectorize():
     """작업이 꼬였을 때 강제로 락을 해제하는 API"""
     global vect_status
-    vect_status["is_running"] = False
-    vect_status["start_time"] = None
-    vect_status["current_branch"] = None
+    vect_status = {"is_running": False, "start_time": None, "current_branch": None}
     app.logger.info("🔓 [API] 벡터화 락 강제 해제됨")
     return jsonify({"ok": True, "message": "Vectorization lock forced to release."})
 
 @app.route('/api/vectorize/nas', methods=['POST'])
 def trigger_nas_vectorize():
-    """Trigger NAS folder crawling and vectorization (Phase 5)."""
+    """NAS 폴더 크롤링 및 벡터화 트리거 (Phase 5)."""
     if not supabase:
         return jsonify({"error": "Supabase client not initialized"}), 500
-        
+
     data = request.json or {}
-    raw_dir = data.get("directory", "/app/data/work-docs")  # Update path to /app/data which is mounted
+    raw_dir = data.get("directory", "/app/data/work-docs")
     branch_name = data.get("branch", "NAS자료")
-    
-    # 백그라운드 태스크 중복 실행 방지 및 좀비 락 해제
-    global vect_status, vect_lock
-    
-    # 2시간 이상 실행 중이면 좀비로 간주하고 강제 해제
-    if vect_status["is_running"] and vect_status["start_time"]:
-        elapsed = time.time() - vect_status["start_time"]
-        if elapsed > 7200: # 2시간
-            app.logger.warning(f"⚠️ [좀비방지] {vect_status['current_branch']} 작업이 2시간을 초과하여 락을 강제 해제합니다.")
-            vect_status["is_running"] = False
-        
-    if vect_status["is_running"]:
-        return jsonify({
-            "status": "busy", 
-            "message": f"Another task ({vect_status['current_branch']}) is already running.",
-            "elapsed_sec": int(time.time() - vect_status["start_time"]) if vect_status["start_time"] else 0
-        }), 429
 
-    def run_task():
-        global vect_status
-        with vect_lock:
-            try:
-                vect_status["is_running"] = True
-                vect_status["start_time"] = time.time()
-                vect_status["current_branch"] = branch_name
-                
-                app.logger.info(f"🚀 [API Trigger] {branch_name} ({raw_dir}) 벡터화 시작...")
-                res = process_nas_directory(supabase, raw_dir, branch_name)
-                app.logger.info(f"✅ [API Trigger] {branch_name} 완료: {res}")
-            except Exception as e:
-                app.logger.error(f"❌ [API Trigger] {branch_name} 실패: {e}")
-            finally:
-                vect_status["is_running"] = False
-                vect_status["start_time"] = None
+    busy, resp = _check_vect_busy()
+    if busy:
+        return resp, 429
 
-    threading.Thread(target=run_task, daemon=True).start()
-    
+    threading.Thread(
+        target=_run_vect_task,
+        args=(branch_name, lambda: process_nas_directory(supabase, raw_dir, branch_name)),
+        daemon=True
+    ).start()
+
     return jsonify({"status": "processing", "message": f"Started vectorization for {branch_name} in background."}), 202
 
 @app.route('/api/vectorize/web', methods=['POST'])
 def trigger_web_vectorize():
-    """Trigger Web Attachment vectorization (Phase 5 Extension)."""
+    """웹 게시판 첨부파일 벡터화 트리거 (Phase 5 Extension)."""
     if not supabase:
         return jsonify({"error": "Supabase client not initialized"}), 500
-        
-    global vect_status, vect_lock
-    
-    if vect_status["is_running"] and vect_status["start_time"]:
-        elapsed = time.time() - vect_status["start_time"]
-        if elapsed > 7200:
-            app.logger.warning(f"⚠️ [좀비방지] {vect_status['current_branch']} 작업이 2시간을 초과하여 락을 강제 해제합니다.")
-            vect_status["is_running"] = False
-            
-    if vect_status["is_running"]:
-        return jsonify({
-            "status": "busy", 
-            "message": f"Another task ({vect_status['current_branch']}) is already running."
-        }), 429
 
-    def run_web_task():
-        global vect_status
-        with vect_lock:
-            try:
-                vect_status["is_running"] = True
-                vect_status["start_time"] = time.time()
-                vect_status["current_branch"] = "Web Attachments"
-                
-                app.logger.info("🚀 [API Trigger] Web Attachments 벡터화 시작...")
-                init_web_supabase(supabase)
-                process_web_attachments()
-                app.logger.info("✅ [API Trigger] Web Attachments 벡터화 완료")
-            except Exception as e:
-                app.logger.error(f"❌ [API Trigger] Web Attachments 실패: {e}")
-            finally:
-                vect_status["is_running"] = False
-                vect_status["start_time"] = None
+    busy, resp = _check_vect_busy()
+    if busy:
+        return resp, 429
 
-    threading.Thread(target=run_web_task, daemon=True).start()
-    
+    def task():
+        init_web_supabase(supabase)
+        process_web_attachments()
+
+    threading.Thread(target=_run_vect_task, args=("Web Attachments", task), daemon=True).start()
+
     return jsonify({"status": "processing", "message": "Started vectorization for Web Attachments in background."}), 202
 
 import requests
