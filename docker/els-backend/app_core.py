@@ -430,6 +430,7 @@ def handle_nas_files():
     return send_file(str(Path("/app/data") / rel.strip("/")), as_attachment=True)
 
 from nas_vectorizer import process_nas_directory
+from web_vectorizer import process_web_attachments, init_supabase as init_web_supabase
 
 # 벡터화 작업 상태 추적용 전역 변수
 vect_status = {
@@ -496,6 +497,48 @@ def trigger_nas_vectorize():
     threading.Thread(target=run_task, daemon=True).start()
     
     return jsonify({"status": "processing", "message": f"Started vectorization for {branch_name} in background."}), 202
+
+@app.route('/api/vectorize/web', methods=['POST'])
+def trigger_web_vectorize():
+    """Trigger Web Attachment vectorization (Phase 5 Extension)."""
+    if not supabase:
+        return jsonify({"error": "Supabase client not initialized"}), 500
+        
+    global vect_status, vect_lock
+    
+    if vect_status["is_running"] and vect_status["start_time"]:
+        elapsed = time.time() - vect_status["start_time"]
+        if elapsed > 7200:
+            app.logger.warning(f"⚠️ [좀비방지] {vect_status['current_branch']} 작업이 2시간을 초과하여 락을 강제 해제합니다.")
+            vect_status["is_running"] = False
+            
+    if vect_status["is_running"]:
+        return jsonify({
+            "status": "busy", 
+            "message": f"Another task ({vect_status['current_branch']}) is already running."
+        }), 429
+
+    def run_web_task():
+        global vect_status
+        with vect_lock:
+            try:
+                vect_status["is_running"] = True
+                vect_status["start_time"] = time.time()
+                vect_status["current_branch"] = "Web Attachments"
+                
+                app.logger.info("🚀 [API Trigger] Web Attachments 벡터화 시작...")
+                init_web_supabase(supabase)
+                process_web_attachments()
+                app.logger.info("✅ [API Trigger] Web Attachments 벡터화 완료")
+            except Exception as e:
+                app.logger.error(f"❌ [API Trigger] Web Attachments 실패: {e}")
+            finally:
+                vect_status["is_running"] = False
+                vect_status["start_time"] = None
+
+    threading.Thread(target=run_web_task, daemon=True).start()
+    
+    return jsonify({"status": "processing", "message": "Started vectorization for Web Attachments in background."}), 202
 
 import requests
 

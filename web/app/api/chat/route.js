@@ -1204,14 +1204,25 @@ export async function POST(req) {
             try {
                 const vector = await getEmbedding(lastUserText);
                 if (vector) {
-                    const { data: docs, error } = await supabase.rpc('match_documents', {
-                        query_embedding: vector,
-                        match_threshold: 0.45,
-                        match_count: 12,      // [v5.9.1] 후보군 상향 (기존 8)
-                        filter_source_type: 'nas_file'
-                    });
+                    const [nasRes, webRes] = await Promise.all([
+                        supabase.rpc('match_documents', {
+                            query_embedding: vector,
+                            match_threshold: 0.45,
+                            match_count: 12,
+                            filter_source_type: 'nas_file'
+                        }),
+                        supabase.rpc('match_documents', {
+                            query_embedding: vector,
+                            match_threshold: 0.45,
+                            match_count: 12,
+                            filter_source_type: 'web_attachment'
+                        })
+                    ]);
 
-                    if (!error && docs && docs.length > 0) {
+                    const docs = [...(nasRes.data || []), ...(webRes.data || [])];
+                    const error = nasRes.error || webRes.error;
+
+                    if (!error && docs.length > 0) {
                         // [v5.9.1] 파일명 기반 재정렬 (Re-ranking) — 파일명이 검색어와 일치하면 가중치 부여
                         const currentYear = new Date().getFullYear();
                         const currentMonth = new Date().getMonth() + 1;
@@ -1246,8 +1257,9 @@ export async function POST(req) {
                             const orConditions = importantTerms.map(t => `metadata->>filename.ilike.%${t}%`).join(',');
                             const { data: kwDocs } = await supabase
                                 .from('document_chunks')
-                                .select('content, metadata')
+                                .select('content, metadata, source_type')
                                 .or(orConditions)
+                                .in('source_type', ['nas_file', 'web_attachment'])
                                 .limit(5);
 
                             if (kwDocs && kwDocs.length > 0) {
