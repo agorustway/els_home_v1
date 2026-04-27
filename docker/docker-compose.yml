@@ -61,4 +61,5 @@ services:
       - ./els-backend/app_core.py:/app/app.py
       - ./els-backend/dns_fix.py:/app/dns_fix.py
       - ./els-backend/nas_vectorizer.py:/app/nas_vectorizer.py
+      - ./els-backend/web_vectorizer.py:/app/web_vectorizer.py
     restart: unless-stopped

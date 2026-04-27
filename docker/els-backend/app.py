@@ -1089,6 +1089,7 @@ def screenshot():
     return jsonify({"error": "Daemon not available"}), 404
 
 from nas_vectorizer import process_nas_directory
+from web_vectorizer import process_web_attachments, init_supabase as init_web_supabase
 import asyncio
 
 @app.route('/api/vectorize/nas', methods=['POST'])
@@ -1107,6 +1108,20 @@ def trigger_nas_vectorize():
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"Vectorize error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/vectorize/web', methods=['POST'])
+def trigger_web_vectorize():
+    """Trigger Web Attachment vectorization (Phase 5 Extension)."""
+    if not supabase:
+        return jsonify({"error": "Supabase client not initialized"}), 500
+    
+    try:
+        init_web_supabase(supabase)
+        success = process_web_attachments()
+        return jsonify({"ok": success})
+    except Exception as e:
+        app.logger.error(f"Web vectorize error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
