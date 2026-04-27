@@ -633,13 +633,13 @@ export default function AskPage() {
             </div>
 
             <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>사내 문서/이미지 지식 (NAS)</span>
+                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>사내 문서 검색 (NAS)</span>
                 <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    NAS의 방대한 자료를 AI가 직접 읽고 요약합니다.
+                    NAS에 저장된 방대한 문서를 검색하고 요약합니다.
                     <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li>&quot;운임표 엑셀 파일에서 대기료 찾아줘&quot;</li>
-                        <li>&quot;[본사] 명함 신청서(이미지) 요약해줘&quot;</li>
-                        <li>&quot;아산지점 최근 업무보고 내용 뭐야?&quot;</li>
+                        <li>&quot;안전운임 고시 문서에서 대기료 규정 찾아줘&quot;</li>
+                        <li>&quot;아산지점 최근 업무보고 내용 요약해줘&quot;</li>
+                        <li>&quot;현재 NAS 자료실 파싱 진행 상태 알려줘&quot;</li>
                     </ul>
                 </div>
             </div>
