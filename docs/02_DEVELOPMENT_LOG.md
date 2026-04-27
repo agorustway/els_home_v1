@@ -6,10 +6,12 @@
 - **궤적 정밀도 대폭 강화**: 수집 주기를 시간(5~10초) 및 거리(10m) 동시 트리거 방식으로 변경하여, 기존에 누락되던 커브길 및 저속 구간의 데이터를 촘촘하게 확보했습니다.
 - **코드 슬림화 및 안정화**: 자이로/모션 기반의 복잡한 우회 로직과 심폐소생 타이머 등 레거시 코드를 제거하고, 네이티브 브릿지 기반의 안정적인 수집 체계로 일원화했습니다.
 - **오프라인 데이터 강건화**: 네트워크 단절 시에도 위치 데이터를 순차적으로 캐싱하고 복구 시 누락 없이 서버에 전송하는 플러시 로직을 강화했습니다.
+- **일반 공지사항 네이티브 푸시 통합**: 기존 30초 긴급알림 폴링 파이프라인(`emergency.js`)에 일반 공지사항(`notices`) API를 병렬로 연동하여, 새 공지 등록 시 앱 화면을 보지 않아도 스마트폰 네이티브 알림(소리+진동)이 발송되도록 구축했습니다.
 
 ### 🛠 Technical Changes
-- `web/driver-src/modules/gps.js`: 네이티브 플러그인 기반으로 전면 재작성.
-- `web/driver-src/modules/init.js`: 포그라운드 복귀 시의 불필요한 GPS 재기동 로직 제거 및 정리.
+- `web/driver-src/modules/gps.js`: 네이티브 플러그인 기반으로 전면 재작성 (거리 필터 제거 및 90초 타임아웃 상향).
+- `web/driver-src/modules/init.js`: 포그라운드 복귀 시의 불필요한 GPS 재기동 로직 제거 및 1회 강제 UI 갱신 로직 추가.
+- `web/driver-src/modules/emergency.js`: `emergency` 및 `notices` API 병렬 폴링 통합, 중복 알림 방지 캐싱 로직 추가.
 - `web/capacitor.config.ts`: `android.useLegacyBridge: true` 설정 추가로 안드로이드 백그라운드 유지력 확보.
 - `docs/09_GPS_REFACTORING_PROPOSAL.md`: 상세 설계 및 완료 보고서 작성.
 
