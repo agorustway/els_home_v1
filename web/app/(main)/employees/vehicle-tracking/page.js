@@ -473,6 +473,7 @@ export default function VehicleTrackingPage() {
 
     const handleSelectTrip = async (trip) => {
         setIsDetailLoading(true);
+        setSelectedTrip(trip); // 클릭 즉시 기본 정보로 UI 전환
         setSelectedTripLocations([]);
         setTripLogs([]);
 
@@ -491,8 +492,7 @@ export default function VehicleTrackingPage() {
             ]);
 
             const tripData = await tripRes.json();
-            if (tripData) setSelectedTrip(tripData);
-            else setSelectedTrip(trip);
+            if (tripData && !tripData.error) setSelectedTrip(tripData);
 
             const locData = await locRes.json();
             if (locData.locations) {
@@ -643,30 +643,31 @@ export default function VehicleTrackingPage() {
 
     // [신규] 안드로이드 뒤로가기 버튼 연동 (Hash를 통한 사이드이펙트 방지)
     useEffect(() => {
-        if (!selectedTrip) return;
+        const isModalOpen = selectedTrip !== null;
 
-        // 브라우저 주소창 뒤에 #detail 을 붙여서 히스토리 항목을 하나 생성
-        window.location.hash = 'detail';
-
-        const handleHashChange = () => {
+        if (isModalOpen) {
             if (window.location.hash !== '#detail') {
-                // 사용자가 스마트폰 뒤로가기 버튼을 눌러서 #detail 이 사라졌을 때
-                miniMapInstanceRef.current = null;
-                setSelectedTrip(null);
-                if (typeof stopRealtimeTracking === 'function') stopRealtimeTracking(selectedTrip.id);
+                window.location.hash = 'detail';
             }
-        };
 
-        window.addEventListener('hashchange', handleHashChange);
-        return () => {
-            window.removeEventListener('hashchange', handleHashChange);
-            // 만약 모달이 컴포넌트 내부에서 그냥 닫혔다면 (X 버튼 등)
-            if (window.location.hash === '#detail') {
-                // 뒤로가기를 1회 소모해서 주소창을 원상복구
-                window.history.back();
-            }
-        };
-    }, [selectedTrip]);
+            const handleHashChange = () => {
+                if (window.location.hash !== '#detail') {
+                    miniMapInstanceRef.current = null;
+                    setSelectedTrip(null);
+                }
+            };
+
+            window.addEventListener('hashchange', handleHashChange);
+            
+            return () => {
+                window.removeEventListener('hashchange', handleHashChange);
+                // 모달이 완전히 닫히는 경우에만 뒤로가기 처리 (다른 항목 클릭 시에는 무시)
+                if (window.location.hash === '#detail') {
+                    window.history.back();
+                }
+            };
+        }
+    }, [selectedTrip !== null]);
 
     // 네이버맵 초기화
     useEffect(() => {
