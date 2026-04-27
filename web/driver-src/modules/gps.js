@@ -124,7 +124,7 @@ export async function startGPS() {
         backgroundTitle: 'ELS 위치 관제',
         requestPermissions: true,
         stale: false,
-        distanceFilter: 10,         // 10m 이동 시마다 콜백
+        distanceFilter: 0, // 거리 무관하게 지속 수집 (배터리 무시, 포인트 최대 확보)
       },
       (location, error) => {
         if (error) {
@@ -291,8 +291,8 @@ export function updateTripStatusLine() {
     return;
   }
 
-  // GPS 수신 상태 판단: 네이티브 플러그인이므로 임계값을 45초로 상향
-  const deadTimeout = 45_000;
+  // GPS 수신 상태 판단: 네이티브 플러그인이므로 임계값을 90초로 상향 (정차 시 지연 고려)
+  const deadTimeout = 90_000;
   const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > deadTimeout);
   let gpsColor = '#10b981';
   let gpsText  = `${Math.round(currentGpsInterval / 1000)}s`;
@@ -301,8 +301,13 @@ export function updateTripStatusLine() {
     gpsColor = '#ef4444';
     gpsText  = '수신중지';
   } else if (isDown && State.trip.status === 'driving') {
-    gpsColor = '#ef4444';
-    gpsText  = '연결안됨';
+    if (window._resumeGracePeriod) {
+      gpsColor = '#10b981';
+      gpsText  = '수신대기';
+    } else {
+      gpsColor = '#ef4444';
+      gpsText  = '연결안됨';
+    }
   } else if (State.trip.isRealtime) {
     gpsColor = '#f59e0b';
     gpsText  = '실시간 수집중';

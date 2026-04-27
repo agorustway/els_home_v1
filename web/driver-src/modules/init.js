@@ -93,17 +93,31 @@ export async function init() {
         CapApp.addListener('appStateChange', ({ isActive }) => {
           console.log('App State Change - isActive:', isActive);
           if (isActive) {
+            window._resumeGracePeriod = true;
+            setTimeout(() => { window._resumeGracePeriod = false; }, 3000);
+
             // 포그라운드 복귀: 권한 갱신 + 긴급 폴링
             setTimeout(() => updatePermStatuses(), 300);
             setTimeout(() => updatePermStatuses(), 1200);
             pollEmergency().catch(() => { });
 
-            // 네이티브 BackgroundGeolocation이 백그라운드에서 계속 수집하므로
-            // GPS watcher 재기동은 불필요. watcher가 죽은 경우만 복구.
-            if (State.trip.status === 'driving' && !window.App?._gpsWatchId) {
-              remoteLog('포그라운드 복귀: GPS watcher 미존재 — 재기동', 'GPS_RESUME');
-              stopGPS();
-              startGPS();
+            if (State.trip.status === 'driving') {
+              if (!window.App?._gpsWatchId) {
+                remoteLog('포그라운드 복귀: GPS watcher 미존재 — 재기동', 'GPS_RESUME');
+                stopGPS();
+                startGPS();
+              } else {
+                // 백그라운드에서 정차 중이었을 경우를 대비해 화면 켜질 때 1회 강제 수신
+                navigator.geolocation.getCurrentPosition(
+                  pos => {
+                    if (window.App) window.App._lastGpsTs = Date.now();
+                    onGpsUpdate(pos, true, State.trip.id);
+                    remoteLog(`포그라운드 복귀 후 UI 갱신용 강제수신 성공`, 'GPS_RESUME_OK');
+                  },
+                  err => remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code}`, 'GPS_RESUME_ERR'),
+                  { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+              }
             }
           }
         });
