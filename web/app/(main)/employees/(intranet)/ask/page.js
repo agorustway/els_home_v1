@@ -622,12 +622,12 @@ export default function AskPage() {
             <h2 className={styles.guideTitle} style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '8px' }}>ELS AI 가이드 (v5.10.0)</h2>
             
             <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>데이터 분석 (DB & 엑셀)</span>
+                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>배차 및 마감자료 분석</span>
                 <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    마감자료 및 배차판 데이터를 정밀 분석합니다. (구축 중)
+                    엑셀 배차판과 실적 데이터를 정밀 검색합니다.
                     <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li>&quot;1145 차량 3월 하불 총액 얼마야?&quot;</li>
-                        <li>&quot;글로비스KD 4월 예상 매출액 정리해줘&quot;</li>
+                        <li>&quot;1145 차량 4월 13일 작업지 어디야?&quot;</li>
+                        <li>&quot;8163 수출리스트보고 3월 내역 찾아줘&quot;</li>
                     </ul>
                 </div>
             </div>
@@ -648,9 +648,9 @@ export default function AskPage() {
                 <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>안전운임 및 물류 관제</span>
                 <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
                     <ul style={{ paddingLeft: '20px', margin: '0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li>&quot;아산 부산 40ft 안전운임&quot; → 즉시 조회</li>
-                        <li>&quot;컨테이너 번호&quot; → 실시간 이력/위치 추적</li>
-                        <li>&quot;의왕 반납 시 할증 포함 총 운임 계산해줘&quot;</li>
+                        <li>&quot;아산 부산 40ft 안전운임 얼마야?&quot;</li>
+                        <li>&quot;TCLU1234567 컨테이너 위치 어디야?&quot;</li>
+                        <li>&quot;의왕 반납 시 할증 포함 총 운임은?&quot;</li>
                     </ul>
                 </div>
             </div>
