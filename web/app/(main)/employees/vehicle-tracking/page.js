@@ -477,13 +477,6 @@ export default function VehicleTrackingPage() {
         setSelectedTripLocations([]);
         setTripLogs([]);
 
-        // [제거] 상세보기 시 자동 실시간 추적 시작 로직은 사용자의 명시적 요청을 위해 제거합니다.
-        /*
-        if (trip.status === 'driving' || trip.status === 'paused') {
-            startRealtimeTracking(trip.id);
-        }
-        */
-
         try {
             const [tripRes, locRes, logRes] = await Promise.all([
                 fetch(`/api/vehicle-tracking/trips/${trip.id}`),
@@ -687,7 +680,7 @@ export default function VehicleTrackingPage() {
         if (window.naver?.maps) {
             handleInit();
         } else {
-            console.log("[Naver Map] 스크립트 로드 시도... ID: " + process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID);
+
             const scriptId = 'naver-map-script-v3';
             if (document.getElementById(scriptId)) return;
             const script = document.createElement('script');
@@ -696,7 +689,7 @@ export default function VehicleTrackingPage() {
             script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
             script.async = true;
             script.defer = true;
-            script.onload = () => { console.log("[Naver Map] 스크립트 로드 완료!"); handleInit(); };
+            script.onload = () => { handleInit(); };
             script.onerror = () => { console.error("[Naver Map] 스크립트 로드 실패!"); setMapReady(false); };
             document.head.appendChild(script);
         }
@@ -1509,11 +1502,3 @@ export default function VehicleTrackingPage() {
         </div>
     );
 }
-
-
-
-
-
-
-
-
