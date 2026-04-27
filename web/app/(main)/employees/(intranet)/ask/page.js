@@ -71,13 +71,8 @@ function MessageBubble({ msg, isNew }) {
     return (
         <div className={`${styles.messageRow} ${isUser ? styles.userRow : styles.assistantRow} ${isNew ? styles.newMessage : ''}`}>
             {!isUser && (
-                <div className={styles.avatar} aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
-                        <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
-                        <line x1="8" y1="21" x2="8" y2="22"/>
-                        <line x1="16" y1="21" x2="16" y2="22"/>
-                    </svg>
+                <div className={styles.avatar} aria-hidden="true" style={{ padding: 0, overflow: 'hidden', background: 'transparent' }}>
+                    <img src="/images/EL_S_AI_LOGO.jpg" alt="ELS AI 엘스" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                 </div>
             )}
             <div className={styles.bubbleContainer}>
@@ -213,7 +208,7 @@ export default function AskPage() {
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
-        content: '안녕하세요! **더 똑똑해진 ELS AI 어시스턴트(v5.8.0)**입니다.\n\n이제 사외 데이터(실시간 날씨, 미세먼지, 유가, KBO/K리그)와 사내 데이터(NAS 문서 수만 권, 이트랜스 이력, 차량 관제)를 통합하여 답변해 드립니다.\n\n사내 지식이나 실시간 현황에 대해 무엇이든 물어보세요!',
+        content: '안녕하세요! **더 똑똑해진 ELS AI 엘스(v5.10.0)**입니다.\n\n이제 사외 데이터(실시간 날씨, 미세먼지, 유가, KBO/K리그)와 사내 데이터(NAS 문서 수만 권, 이트랜스 이력, 차량 관제)를 통합하여 답변해 드립니다.\n\n사내 지식이나 실시간 현황에 대해 무엇이든 물어보세요!',
         timestamp: new Date().toISOString()
     };
 
@@ -623,14 +618,25 @@ export default function AskPage() {
 
 
     const GuideContent = () => (
-        <>
-            <h2 className={styles.guideTitle}>ELS AI 가이드 (v5.8.0)</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h2 className={styles.guideTitle} style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '8px' }}>ELS AI 가이드 (v5.10.0)</h2>
             
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>사내 문서/이미지 지식 (NAS)</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
-                    NAS의 방대한 자료를 AI가 직접 분석합니다.
-                    <ul style={{paddingLeft: '16px', margin: '4px 0 0 0'}}>
+            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>데이터 분석 (DB & 엑셀)</span>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
+                    마감자료 및 배차판 데이터를 정밀 분석합니다. (구축 중)
+                    <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <li>&quot;1145 차량 3월 하불 총액 얼마야?&quot;</li>
+                        <li>&quot;글로비스KD 4월 예상 매출액 정리해줘&quot;</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>사내 문서/이미지 지식 (NAS)</span>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
+                    NAS의 방대한 자료를 AI가 직접 읽고 요약합니다.
+                    <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <li>&quot;운임표 엑셀 파일에서 대기료 찾아줘&quot;</li>
                         <li>&quot;[본사] 명함 신청서(이미지) 요약해줘&quot;</li>
                         <li>&quot;아산지점 최근 업무보고 내용 뭐야?&quot;</li>
@@ -638,39 +644,32 @@ export default function AskPage() {
                 </div>
             </div>
 
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>안전운임 및 물류 데이터</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
-                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
+            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>안전운임 및 물류 관제</span>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
+                    <ul style={{ paddingLeft: '20px', margin: '0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <li>&quot;아산 부산 40ft 안전운임&quot; → 즉시 조회</li>
-                        <li>&quot;컨테이너 번호&quot; → 실시간 이력/위치</li>
-                        <li>&quot;할증 포함 총 운임 계산해줘&quot;</li>
+                        <li>&quot;컨테이너 번호&quot; → 실시간 이력/위치 추적</li>
+                        <li>&quot;의왕 반납 시 할증 포함 총 운임 계산해줘&quot;</li>
                     </ul>
                 </div>
             </div>
 
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>자율 학습 엔진 (Active)</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px'}}>
-                    사용자가 교정한 사항을 **DB에 영구 저장**하여 다음 대화에 반영합니다. (실시간 학습 중)
-                </div>
-            </div>
-
-            <div className={styles.guideBox}>
-                <span className={styles.guideHighlight}>멀티 도메인 연결</span>
-                <div style={{fontSize: '0.8rem', color: '#475569', marginTop: '6px', lineHeight: '1.6'}}>
-                    <ul style={{paddingLeft: '16px', margin: 0, lineHeight: '1.6'}}>
+            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>멀티 도메인 연결 (Omni-RAG)</span>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
+                    <ul style={{ paddingLeft: '20px', margin: '0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <li><b>기상-운송</b>: 결빙주의보 시 안전 가이드</li>
-                        <li><b>유가-운임</b>: 경유가 변동에 따른 운임 대응</li>
-                        <li><b>법령-행정</b>: 과태료 감경 규정 및 실무 연계</li>
+                        <li><b>유가-운임</b>: 실시간 경유가 및 운임 대응</li>
+                        <li><b>법령-행정</b>: 과태료 감경 규정 실무 연계</li>
                     </ul>
                 </div>
             </div>
             
-            <div style={{fontSize: '0.78rem', color: '#64748b', marginTop: '16px', textAlign: 'center'}}>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 'auto', textAlign: 'center', paddingTop: '16px' }}>
                 ELS Solution AI Assistant (Dedicated Build)
             </div>
-        </>
+        </div>
     );
 
     if (!isLoaded) return <div className={styles.loadingScreen}>로딩 중...</div>;
@@ -766,15 +765,12 @@ export default function AskPage() {
                             onClick={() => setIsHistoryOpen(true)}
                             aria-label="대화 목록 열기"
                         >
-                            <div className={styles.headerIcon} aria-hidden="true">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
-                                    <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
-                                </svg>
+                            <div className={styles.headerIcon} aria-hidden="true" style={{ padding: 0, overflow: 'hidden', background: 'transparent' }}>
+                                <img src="/images/EL_S_AI_LOGO.jpg" alt="ELS AI 엘스" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                             </div>
                         </button>
                         <div>
-                            <h1 className={styles.headerTitle}>ELS AI 어시스턴트 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.8.0</span></h1>
+                            <h1 className={styles.headerTitle}>ELS AI 엘스 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.10.0</span></h1>
                             <p className={styles.headerSub}>Omni-Agent Infrastructure · Knowledge Link System</p>
                         </div>
                     </div>
@@ -805,11 +801,8 @@ export default function AskPage() {
                     ))}
                     {isLoading && (
                         <div className={`${styles.messageRow} ${styles.assistantRow}`}>
-                            <div className={styles.avatar} aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/>
-                                    <path d="M3 14v1a9 9 0 0 0 18 0v-1"/>
-                                </svg>
+                            <div className={styles.avatar} aria-hidden="true" style={{ padding: 0, overflow: 'hidden', background: 'transparent' }}>
+                                <img src="/images/EL_S_AI_LOGO.jpg" alt="ELS AI 엘스" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                             </div>
                             <div className={`${styles.bubble} ${styles.assistantBubble}`}>
                                 <TypingIndicator />

@@ -51,17 +51,17 @@
 11. **[DONE]** 안전운임 할증 엔진 하드코딩 제거 (ID 기반 동적 매핑 완료)
 12. **[DONE]** 한강 수위 API 스키마 변경 대응 및 K-LAW 법망 연동 개편
 13. **[DONE]** NAS 문서 크롤러 및 벡터화 (Phase 5) 완료 — **AI 에이전트 개발 100% 종료**
-14. **[TODO]** 법인/계정 이관 밎 최종 마이그레이션 (Phase 6: Rollback/Cleanup - 08_MIGRATION_PLAN 기준)
-15. **[DONE]** 드라이버 앱 "ID 누락" 현상 근본 원인 해결 완료 (NextResponse 직렬화 적용)
-16. **[DONE]** AI 안전운임 조회 부산 이외 항구 응답 누락 버그 수정 (PORT_ALIAS_MAP + 스코어링 개선)
+14. **[TODO]** 법인/계정 이관 및 최종 마이그레이션 (Phase 6: Rollback/Cleanup)
+15. **[TODO]** 마감자료(Closing Data) DB화 및 AI 분석 기능(Text-to-SQL) 구축
+16. **[TODO]** 리팩토링된 드라이버 앱(v5.10.0) GPS 궤적 정밀도 필드 테스트
 
 ## 📦 최신 배포 정보
 ## 🚨 Current Status (2026-04-27)
 - **이슈**: v5.9.3 배포 후 백그라운드에서 위치 수집이 중단되는 현상 및 커브길 데이터 부족 확인.
 - **조치**: 
-  1. **GPS 리팩토링**: 4/27: [v5.10.0] 네이티브 백그라운드 지오로케이션 플러그인 전환 및 수집 주기/거리 필터 최적화 완료.
-  2. **환경 설정**: `capacitor.config.ts`에 `useLegacyBridge` 적용으로 백그라운드 유지력 강화.
-- **다음 단계**: 리팩토링된 드라이버 앱 필드 테스트 및 Phase 6 최종 이관 준비.
+  1. **GPS 리팩토링**: 4/27: [v5.10.0] 네이티브 백그라운드 지오로케이션 플러그인 전환 완료.
+  2. **AI 개선**: 어시스턴트 버전 UI 업데이트(v5.10.0) 및 마감자료 분석 기능 기획 완료.
+- **다음 단계**: GPS 필드 테스트 및 마감자료 DB 동기화 파이프라인 개발 착수.
 
 ## ⚠️ APK 빌드 절차 (필독)
 ```
@@ -73,4 +73,4 @@ npx cap sync   ← 단독 실행 금지
 드라이버 앱 소스 = `web/driver-src/` | 버전 소스 = `build.gradle` 단일 진실
 
 ---
-*최종 갱신일: 2026-04-27 (by Antigravity/Gemini | v5.9.6 NAS Backend Hotfix)*
+*최종 갱신일: 2026-04-27 (by Antigravity/Gemini | v5.10.0 GPS & AI Refactor)*
