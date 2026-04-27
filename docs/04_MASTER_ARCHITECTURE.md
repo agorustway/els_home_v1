@@ -56,7 +56,7 @@ graph TD
 | **미세먼지** | K-SKILL Proxy | 날씨, 미세먼지 | AirKorea 공식 실시간 농도 |
 | **유가 정보** | OPINET API | 경유, 유가, 기름값 | 전국 평균가 및 주간 변동 |
 | **법률 정보** | K-Law API | 법, 규정, 과태료 | 법령 조문 및 판례 |
-| **문서 검색** | pgvector (768d) | 항상 적용 | NAS 문서(Excel, PDF 등) 의미론적 검색 |
+| **문서 검색** | pgvector (768d) | 항상 적용 | NAS(Excel, PDF) + Web 게시판(S3) 의미론적 검색 |
 
 ### 6-3. 정확도 계층 및 유연 답변 원칙
 - 🔴 **절대 정확 (Hallucination 금지)**: 안전운임, 사내 DB, 법령, 유가. (데이터 인용 필수)
@@ -82,4 +82,4 @@ graph TD
   - **복구 방법**: `web/constants/intranetMenu.js` 및 `web/components/Header.js`에 다시 추가.
 
 ---
-*최종 갱신일: 2026-04-23 (by Antigravity | v5.5.16 Sidebar Cleanup)*
+*최종 갱신일: 2026-04-27 (by Antigravity | v5.9.3 Web Attachment RAG & Refactor)*

@@ -1,5 +1,32 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-27] 웹 게시판 첨부파일 벡터화(Web Attachment RAG) 및 리팩토링 (v5.9.3)
+### 🚀 Achievement
+- **웹 게시판 첨부파일 통합**: 인트라넷 게시판(`posts`) 및 업무자료실(`work_docs`)에 업로드된 첨부파일(S3/MinIO)을 자동으로 다운로드하여 벡터화하는 엔진(`web_vectorizer.py`)을 구축했습니다.
+- **RAG 파이프라인 확장**: AI가 NAS 문서뿐만 아니라 웹 게시판에 올라온 최신 엑셀, PDF 자료까지 통합 검색하여 답변할 수 있도록 `route.js` 검색 로직을 병렬화(`nas_file` + `web_attachment`)했습니다.
+- **백엔드 아키텍처 리팩토링**:
+  - `nas_vectorizer.py`에서 텍스트 추출(`extract_text_by_ext`) 및 임베딩 적재(`embed_and_store_chunks`) 로직을 공용 함수로 분리하여 코드 중복을 제거했습니다.
+  - `app_core.py` 내의 좀비 락 체크 및 태스크 실행 패턴을 표준화하여 안정성을 높였습니다.
+
+### 🛠 Technical Changes
+- `docker/els-backend/web_vectorizer.py`: 신규 작성. S3 API 연동 및 공용 함수 기반 파싱 로직 구현.
+- `docker/els-backend/app_core.py`: `/api/vectorize/web` 엔드포인트 추가 및 벡터화 태스크 헬퍼 추출.
+- `web/app/api/chat/route.js`: `match_documents` 호출 시 `web_attachment` 소스 타입 추가 및 병렬 쿼리 적용.
+
+---
+
+## [2026-04-27] NAS 최신 자료 가중치(Recency Boost) 및 다중 제안 로직 (v5.9.2)
+### 🚀 Achievement
+- **최신성 기반 재정렬(Recency Boost)**: 검색 결과 중 파일명이나 시트명에 현재 연도(2026)나 월(4월)이 포함된 문서에 가중치를 부여하여, 사용자가 원하는 최신 정보를 최상단에 배치하도록 개선했습니다.
+- **다중 후보 능동 제안**: 검색 결과가 모호하거나 여러 파일이 경합할 경우, AI가 자율적으로 최신 순 3~5개의 후보를 나열하며 사용자에게 선택을 제안하도록 지침(Rule 17)을 추가했습니다.
+- **검색 트리거 정교화**: '최근', '최신' 등의 키워드를 NAS 검색 트리거에 포함하여 사용자 의도 파악 정확도를 높였습니다.
+
+### 🛠 Technical Changes
+- `web/app/api/chat/route.js`: `adjustedScore` 계산 로직 추가 및 `nasKeywords` 확장.
+- `BASE_SYSTEM_INSTRUCTION`: `Rule 17 (Multi-Proposal)` 추가.
+
+---
+
 ## [2026-04-25] 구형 HWP 제외 및 HWPX 단일 지원 체계 (v5.8.6)
 ### 🚀 Achievement
 - **구형 HWP 공식 제외**: 리눅스 환경에서 텍스트 추출의 신뢰도가 떨어지는 구형 바이너리 포맷(`.hwp`)을 스캔 대상에서 공식 제외했습니다.
