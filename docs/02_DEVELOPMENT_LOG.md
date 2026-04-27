@@ -1,5 +1,30 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-27] NAS 백엔드 실행 오류 핫픽스 (v5.9.6)
+### 🚀 Achievement
+- **백엔드 기동 불가 문제 해결**: v5.9.3 업데이트 시 추가된 `web_vectorizer.py` 파일이 Docker 컨테이너 내부에 누락되어 `els-core` 서비스가 중단되었던 문제를 긴급 수정했습니다.
+- **활동 로그 및 배차 동기화 복구**: 백엔드 크래시로 인해 중단되었던 활동 로그 관리 페이지와 아산 배차판 자동 동기화 스케줄러를 정상화했습니다.
+
+### 🛠 Technical Changes
+- `docker/els-backend/Dockerfile.core`: `web_vectorizer.py` 복사 로직 추가.
+- `docker/docker-compose.yml`: `els-core` 서비스에 `web_vectorizer.py` 볼륨 마운트 추가.
+- `web/.env.local`: 백엔드 주소를 로컬호스트에서 실제 나스 외부 주소(`8443` 포트)로 원복.
+
+---
+
+## [2026-04-27] NAS 검색 고도화 및 정밀 쿼리(Precision Query) 도입 (v5.9.5)
+### 🚀 Achievement
+- **정밀 타겟 검색(Precision Query)**: 차량번호(3~4자리)와 날짜/월 키워드가 포함된 경우, 벡터 검색 대신 DB 직접 쿼리(`LIKE`)를 우선 수행하여 100% 정확한 행을 추출하도록 파이프라인을 재설계했습니다.
+- **파일명 별칭(Alias) 매핑**: "수출리스트", "마감자료", "배차판" 등 사용자가 자주 쓰는 별칭을 실제 NAS 파일명과 자동으로 매칭하여 검색 정확도를 높였습니다.
+- **월 시트 인식 개선**: "3월", "4월" 등 월 단독 검색 시 해당 시트명을 정확히 탐색하도록 정규식 패턴을 보강했습니다. (Rule 20 적용)
+
+### 🛠 Technical Changes
+- `web/app/api/chat/route.js`: `Precision Query` 파이프라인(STEP A/B/C) 구현 및 `FILE_ALIAS` 맵 추가.
+- `web/app/api/chat/route.js`: Supabase 클라이언트 초기화 위치를 `POST` 최상단으로 이동하여 안정성 확보.
+
+---
+*최종 갱신일: 2026-04-27 (by Antigravity/Gemini | v5.9.6 NAS Backend Hotfix)*
+
 ## [2026-04-27] 웹 게시판 첨부파일 벡터화(Web Attachment RAG) 및 리팩토링 (v5.9.3)
 ### 🚀 Achievement
 - **웹 게시판 첨부파일 통합**: 인트라넷 게시판(`posts`) 및 업무자료실(`work_docs`)에 업로드된 첨부파일(S3/MinIO)을 자동으로 다운로드하여 벡터화하는 엔진(`web_vectorizer.py`)을 구축했습니다.
@@ -104,7 +129,7 @@
 ### 🛠 Technical Changes
 - `web/app/api/chat/route.js`: `nas_file_index` 테이블 쿼리에 `extension` 필드 추가 및 `extensions` 객체 기반 카운팅 로직 구현.
 - `web/app/(main)/employees/(intranet)/ask/page.js`: `DEFAULT_INIT_MSG` 및 헤더/가이드 버전 정보 갱신.
-- `docs/01_MISSION_CONTROL.md`: 전체 시스템 버전을 v5.8.0으로 승격하고 이슈 현황 최신화.
+- `docs/01_MISSION_CONTROL.md`: 전체 시스템 버전을 v5.9.6으로 승격하고 이슈 현황 최신화.
 
 ---
 
