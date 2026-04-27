@@ -1197,24 +1197,35 @@ export async function POST(req) {
             }
         }
 
-        // 6. NAS 자료실 문서 시맨틱 검색 (Phase 5)
-        const nasKeywords = ['자료', '문서', '파일', 'nas', '가이드', '규정', '매뉴얼', '보고서', '계약서', '마감', '정산', '양식', '폴더', '엑셀', '한글', '현황', '배차', '차량', '실적', '작업', '매출', '지정', '운송', '운임', '최근', '최신'];
+        // 6. NAS 자료실 문서 시맨틱 검색 (Phase 5) — v5.9.4 Refactored
+        const nasKeywords = ['자료', '문서', '파일', 'nas', '가이드', '규정', '매뉴얼', '보고서', '계약서', '마감', '정산', '양식', '폴더', '엑셀', '한글', '현황', '배차', '차량', '실적', '작업', '작업지', '매출', '지정', '운송', '운임', '최근', '최신', '하불', '지점', '씰', '마감자료', '리스트', '목록', '일배차', '컨테이너'];
         const isNasQuery = searchTerms.some(t => nasKeywords.some(k => t.includes(k))) || lastUserText.toLowerCase().includes('.xls') || lastUserText.toLowerCase().includes('.pdf');
         if (isNasQuery) {
             try {
+                // [v5.9.4] 사용자 질문에서 날짜 패턴 추출 (시트명 부스트용)
+                const datePatterns = [];
+                // "4/11", "4.11", "4월11일", "4월 11일" 패턴
+                const dpMatch = lastUserText.match(/(\d{1,2})[\/.월\s]+(\d{1,2})일?/);
+                if (dpMatch) {
+                    const dm = dpMatch[1], dd = dpMatch[2];
+                    datePatterns.push(`${dm}.${dd}`, `${dm}/${dd}`, `${dm}월${dd}`, `${dm}. ${dd}`);
+                }
+
                 const vector = await getEmbedding(lastUserText);
+                let nasDocsFound = false;
+
                 if (vector) {
                     const [nasRes, webRes] = await Promise.all([
                         supabase.rpc('match_documents', {
                             query_embedding: vector,
-                            match_threshold: 0.45,
-                            match_count: 12,
+                            match_threshold: 0.40,  // [v5.9.4] 더 넓은 후보 확보를 위해 0.45→0.40
+                            match_count: 15,
                             filter_source_type: 'nas_file'
                         }),
                         supabase.rpc('match_documents', {
                             query_embedding: vector,
-                            match_threshold: 0.45,
-                            match_count: 12,
+                            match_threshold: 0.40,
+                            match_count: 15,
                             filter_source_type: 'web_attachment'
                         })
                     ]);
@@ -1223,53 +1234,88 @@ export async function POST(req) {
                     const error = nasRes.error || webRes.error;
 
                     if (!error && docs.length > 0) {
-                        // [v5.9.1] 파일명 기반 재정렬 (Re-ranking) — 파일명이 검색어와 일치하면 가중치 부여
                         const currentYear = new Date().getFullYear();
                         const currentMonth = new Date().getMonth() + 1;
                         const rankedDocs = docs.map(doc => {
                             let boost = 0;
                             const fname = doc.metadata?.filename?.toLowerCase() || '';
                             const sname = doc.metadata?.sheet_name?.toLowerCase() || '';
+                            const content = doc.content?.toLowerCase() || '';
                             
-                            // 검색어 매칭 부스트
+                            // 검색어 매칭 부스트 (파일명 + 시트명 + 본문)
                             searchTerms.forEach(term => {
-                                if (term.length >= 2 && (fname.includes(term.toLowerCase()) || sname.includes(term.toLowerCase()))) boost += 0.15;
+                                const lt = term.toLowerCase();
+                                if (lt.length >= 2) {
+                                    if (fname.includes(lt)) boost += 0.15;
+                                    if (sname.includes(lt)) boost += 0.12;
+                                    if (content.includes(lt)) boost += 0.08;
+                                }
                             });
                             
-                            // [v5.9.2] 형의 요청: 최근 자료 가중치 (연도/월 기반)
+                            // [v5.9.4] 사용자가 언급한 날짜와 시트명이 일치하면 강력 부스트
+                            if (datePatterns.length > 0) {
+                                datePatterns.forEach(dp => {
+                                    if (sname.includes(dp.toLowerCase())) boost += 0.25;
+                                });
+                            }
+                            
+                            // 최근 자료 가중치 (연도/월 기반)
                             if (fname.includes(currentYear.toString()) || sname.includes(currentYear.toString())) boost += 0.1;
                             if (fname.includes(`${currentMonth}월`) || sname.includes(`${currentMonth}월`) || sname.includes(`${currentMonth}.`)) boost += 0.05;
                             
                             return { ...doc, adjustedScore: (doc.similarity || 0) + boost };
-                        }).sort((a, b) => b.adjustedScore - a.adjustedScore).slice(0, 8); // 상위 8개만 사용
+                        }).sort((a, b) => b.adjustedScore - a.adjustedScore).slice(0, 8);
 
                         let nasText = '\n\n## 사내 NAS 자료실 문서 (시맨틱 검색 엔진)\n';
                         rankedDocs.forEach(d => {
                             const fpath = d.metadata?.filepath || '';
-                            nasText += `- **[${d.metadata?.filename || '문서'}]** (경로: ${fpath}, ${(d.similarity * 100).toFixed(1)}% 일치):\n${d.content}\n\n`;
+                            const sheet = d.metadata?.sheet_name ? ` [시트: ${d.metadata.sheet_name}]` : '';
+                            nasText += `- **[${d.metadata?.filename || '문서'}]**${sheet} (경로: ${fpath}, ${(d.similarity * 100).toFixed(1)}% 유사도, 부스트: +${(d.adjustedScore - d.similarity).toFixed(2)}):\n${d.content}\n\n`;
                         });
                         recentPostsText += nasText + `\n※ 원본 문서는 NAS의 해당 폴더에서 열람하실 수 있습니다. 위 내용을 바탕으로 요약해 주세요.`;
                         apiTimestamps.nas = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
-                    } else {
-                        // [v5.9.0] 벡터 검색 결과가 없거나 오류 시 키워드 기반 파일명 직접 검색 (Resilience)
-                        const importantTerms = searchTerms.filter(t => t.length > 2).slice(0, 3);
-                        if (importantTerms.length > 0) {
-                            const orConditions = importantTerms.map(t => `metadata->>filename.ilike.%${t}%`).join(',');
-                            const { data: kwDocs } = await supabase
-                                .from('document_chunks')
-                                .select('content, metadata, source_type')
-                                .or(orConditions)
-                                .in('source_type', ['nas_file', 'web_attachment'])
-                                .limit(5);
+                        nasDocsFound = true;
+                    }
+                }
+                
+                // [v5.9.4] 벡터 검색 실패 시 → 파일명 + 시트명 + 본문 키워드 복합 검색 (Fallback)
+                if (!nasDocsFound) {
+                    const importantTerms = searchTerms.filter(t => t.length >= 2).slice(0, 5);
+                    if (importantTerms.length > 0) {
+                        // 파일명 OR 시트명 OR 본문에서 키워드 검색
+                        const filenameConditions = importantTerms.map(t => `metadata->>filename.ilike.%${t}%`).join(',');
+                        const sheetConditions = importantTerms.map(t => `metadata->>sheet_name.ilike.%${t}%`).join(',');
+                        const contentConditions = importantTerms.map(t => `content.ilike.%${t}%`).join(',');
+                        
+                        const allConditions = [filenameConditions, sheetConditions, contentConditions].join(',');
+                        
+                        const { data: kwDocs } = await supabase
+                            .from('document_chunks')
+                            .select('content, metadata, source_type')
+                            .or(allConditions)
+                            .in('source_type', ['nas_file', 'web_attachment'])
+                            .limit(8);
 
-                            if (kwDocs && kwDocs.length > 0) {
-                                let nasText = '\n\n## 사내 NAS 자료실 문서 (파일명 키워드 검색 결과)\n';
-                                kwDocs.forEach(d => {
-                                    nasText += `- **[${d.metadata?.filename || '문서'}]** (경로: ${d.metadata?.filepath || ''}):\n${d.content}\n\n`;
+                        if (kwDocs && kwDocs.length > 0) {
+                            // 날짜 패턴 시트명 일치 시 우선 배치
+                            const sorted = kwDocs.sort((a, b) => {
+                                let aScore = 0, bScore = 0;
+                                const aSheet = a.metadata?.sheet_name?.toLowerCase() || '';
+                                const bSheet = b.metadata?.sheet_name?.toLowerCase() || '';
+                                datePatterns.forEach(dp => {
+                                    if (aSheet.includes(dp.toLowerCase())) aScore += 10;
+                                    if (bSheet.includes(dp.toLowerCase())) bScore += 10;
                                 });
-                                recentPostsText += nasText;
-                                apiTimestamps.nas = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
-                            }
+                                return bScore - aScore;
+                            });
+
+                            let nasText = '\n\n## 사내 NAS 자료실 문서 (키워드 검색 결과)\n';
+                            sorted.forEach(d => {
+                                const sheet = d.metadata?.sheet_name ? ` [시트: ${d.metadata.sheet_name}]` : '';
+                                nasText += `- **[${d.metadata?.filename || '문서'}]**${sheet} (경로: ${d.metadata?.filepath || ''}):\n${d.content}\n\n`;
+                            });
+                            recentPostsText += nasText;
+                            apiTimestamps.nas = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
                         }
                     }
                 }
