@@ -277,6 +277,15 @@ def nas_sync_scheduler():
                     except Exception as e:
                         app.logger.error(f"❌ {target['branch']} 동기화 실패: {e}")
                 
+                # [v5.9.3] 웹 게시판 첨부파일 정기 동기화 추가
+                try:
+                    app.logger.info("🚀 [스케줄러] 웹 게시판 첨부파일 동기화 시작...")
+                    init_web_supabase(supabase)
+                    process_web_attachments()
+                    app.logger.info("✅ [스케줄러] 웹 게시판 첨부파일 동기화 완료")
+                except Exception as e:
+                    app.logger.error(f"❌ [스케줄러] 웹 게시판 첨부파일 동기화 실패: {e}")
+                
                 # 중복 실행 방지를 위해 1분간 대기
                 time.sleep(60)
             
