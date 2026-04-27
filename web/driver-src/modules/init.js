@@ -93,49 +93,17 @@ export async function init() {
         CapApp.addListener('appStateChange', ({ isActive }) => {
           console.log('App State Change - isActive:', isActive);
           if (isActive) {
-            window._resumeGracePeriod = true;
-            setTimeout(() => { window._resumeGracePeriod = false; }, 3000);
+            // 포그라운드 복귀: 권한 갱신 + 긴급 폴링
             setTimeout(() => updatePermStatuses(), 300);
             setTimeout(() => updatePermStatuses(), 1200);
             pollEmergency().catch(() => { });
 
-            if (State.trip.status === 'driving') {
-              const Prefs = window.Capacitor?.Plugins?.Preferences;
-              if (Prefs) {
-                Prefs.get({ key: 'LAST_NATIVE_GPS_TIME' }).then(res => {
-                  if (res?.value) {
-                    const nativeTime = parseInt(res.value, 10);
-                    // gps.js의 lastGpsTimestamp는 import로 읽기만 가능 → window.App 경유
-                    if (nativeTime && nativeTime > (window.App?._lastGpsTs || 0)) {
-                      remoteLog(`포그라운드 복귀: 네이티브 GPS 시간 동기화 (${new Date(nativeTime).toLocaleTimeString()})`, 'GPS_SYNC');
-                    }
-                  }
-                }).catch(() => { });
-              }
-
-              setTimeout(() => {
-                const now     = Date.now();
-                const lastTs  = window.App?._lastGpsTs || 0;
-                const elapsed = now - lastTs;
-                const isGpsDead = !lastTs || elapsed > 90_000;
-
-                if (isGpsDead || !window.App?._gpsWatchId) {
-                  remoteLog(`포그라운드 복귀: GPS 끊김 감지 (${Math.round(elapsed / 1000)}s 공백) → 재기동`, 'GPS_RESUME');
-                  stopGPS();
-                  startGPS();
-                  return;
-                }
-
-                navigator.geolocation.getCurrentPosition(
-                  pos => {
-                    window.App._lastGpsTs = Date.now();
-                    onGpsUpdate(pos, true, State.trip.id);
-                    remoteLog(`포그라운드 복귀 후 GPS 강제수신 성공 (${Math.round(elapsed / 1000)}s 공백)`, 'GPS_RESUME_OK');
-                  },
-                  err => remoteLog(`포그라운드 복귀 강제수신 실패: ${err.code}`, 'GPS_RESUME_ERR'),
-                  { enableHighAccuracy: true, timeout: 6000, maximumAge: 3000 }
-                );
-              }, 500);
+            // 네이티브 BackgroundGeolocation이 백그라운드에서 계속 수집하므로
+            // GPS watcher 재기동은 불필요. watcher가 죽은 경우만 복구.
+            if (State.trip.status === 'driving' && !window.App?._gpsWatchId) {
+              remoteLog('포그라운드 복귀: GPS watcher 미존재 — 재기동', 'GPS_RESUME');
+              stopGPS();
+              startGPS();
             }
           }
         });

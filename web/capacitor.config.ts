@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
     hostname: 'www.nollae.com',
     cleartext: true
   },
+  android: {
+    useLegacyBridge: true,  // BackgroundGeolocation 플러그인 필수 — 5분 후 백그라운드 중단 방지
+  },
   plugins: {
     CapacitorHttp: {
       enabled: true,

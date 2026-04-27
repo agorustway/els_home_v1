@@ -1,26 +1,69 @@
 /**
- * gps.js — GPS 추적, 오버레이 상태 표시, 역지오코딩
+ * gps.js — GPS 추적 (네이티브 BackgroundGeolocation 플러그인 기반)
+ *
+ * [v5.10.0] 전면 리팩토링
+ * - navigator.geolocation.watchPosition 폐기 → @capacitor-community/background-geolocation 전환
+ * - 백그라운드 위치 수집 끊김 근본 해결 (네이티브 포그라운드 서비스)
+ * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
+ * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
 import { State, BASE_URL } from './store.js?v=4934';
 import { Overlay, remoteLog, smartFetch } from './bridge.js?v=4934';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
-export let gpsWatchId        = null;
+export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)
 export let lastGpsSend       = 0;
-export let currentGpsInterval = 60_000;
+export let currentGpsInterval = 10_000;
 export let lastGpsTimestamp  = 0;
 export let lastKnownAddr     = '위치 확인 중...';
 export let realtimeExpireAt  = 0;
 
-const gyroData = { magnitude: 0 };
-
-// ─── 오프라인 캐시 ────────────────────────────────────────────────
+// ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
 try { _gpsOfflineQueue = JSON.parse(localStorage.getItem('els_gps_queue') || '[]'); } catch(e){}
-const saveGpsQueue = () => {
-  if (_gpsOfflineQueue.length > 500) _gpsOfflineQueue = _gpsOfflineQueue.slice(-500);
+
+const MAX_QUEUE_SIZE = 500;
+let _isFlushingQueue = false;
+
+function saveGpsQueue() {
+  if (_gpsOfflineQueue.length > MAX_QUEUE_SIZE) {
+    _gpsOfflineQueue = _gpsOfflineQueue.slice(-MAX_QUEUE_SIZE);
+  }
   localStorage.setItem('els_gps_queue', JSON.stringify(_gpsOfflineQueue));
-};
+}
+
+/** 오프라인 큐를 순차적으로 서버에 전송 (동시 전송 방지) */
+async function flushOfflineQueue() {
+  if (_isFlushingQueue || _gpsOfflineQueue.length === 0) return;
+  _isFlushingQueue = true;
+
+  const snapshot = [..._gpsOfflineQueue];
+  _gpsOfflineQueue = [];
+  saveGpsQueue();
+
+  const failed = [];
+  for (const payload of snapshot) {
+    try {
+      const r = await fetch(BASE_URL + '/api/vehicle-tracking/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } catch {
+      failed.push(payload);
+    }
+  }
+
+  if (failed.length > 0) {
+    _gpsOfflineQueue.push(...failed);
+    saveGpsQueue();
+    remoteLog(`오프라인 큐 플러시: ${snapshot.length - failed.length}건 성공, ${failed.length}건 실패`, 'GPS_QUEUE');
+  } else if (snapshot.length > 0) {
+    remoteLog(`오프라인 큐 플러시 완료: ${snapshot.length}건 전송`, 'GPS_QUEUE');
+  }
+  _isFlushingQueue = false;
+}
 
 // ─── 실시간 모드 ─────────────────────────────────────────────────
 export function startRealtimeMode() {
@@ -45,72 +88,145 @@ function _syncRealtimeModeToNative(isRealtime) {
   overlay.updateStatus({ status: State.trip.status, isRealtime }).catch(() => { });
 }
 
-// ─── GPS watchPosition ────────────────────────────────────────────
-export function startGPS() {
-  if (!navigator.geolocation) {
-    remoteLog('navigator.geolocation 없음 - GPS 불가', 'GPS_FATAL');
+// ─── BackgroundGeolocation 플러그인 접근 ──────────────────────────
+function getBgGeo() {
+  try {
+    // Capacitor registerPlugin 방식
+    if (window.Capacitor?.registerPlugin) {
+      return window.Capacitor.Plugins?.BackgroundGeolocation
+        || window.Capacitor.registerPlugin('BackgroundGeolocation');
+    }
+    return window.Capacitor?.Plugins?.BackgroundGeolocation || null;
+  } catch (e) {
+    console.warn('BackgroundGeolocation 플러그인 로드 실패:', e);
+    return null;
+  }
+}
+
+// ─── GPS 시작: 네이티브 BackgroundGeolocation ─────────────────────
+export async function startGPS() {
+  if (gpsWatchId !== null) return;
+
+  const BgGeo = getBgGeo();
+  if (!BgGeo) {
+    // 네이티브 플러그인 없으면 (브라우저 개발 환경) 폴백
+    remoteLog('BackgroundGeolocation 플러그인 없음 — 브라우저 폴백', 'GPS_FALLBACK');
+    _startBrowserFallback();
     return;
   }
-  if (gpsWatchId) return;
 
-  remoteLog('startGPS() called - watchPosition 시작', 'GPS_INIT');
+  remoteLog('startGPS() — 네이티브 BackgroundGeolocation.addWatcher 시작', 'GPS_INIT');
 
-  if (window.DeviceOrientationEvent) {
-    window.addEventListener('deviceorientation', handleGyro, { passive: true });
+  try {
+    const watcherId = await BgGeo.addWatcher(
+      {
+        backgroundMessage: 'ELS 차량 위치를 추적 중입니다.',
+        backgroundTitle: 'ELS 위치 관제',
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 10,         // 10m 이동 시마다 콜백
+      },
+      (location, error) => {
+        if (error) {
+          if (error.code === 'NOT_AUTHORIZED') {
+            remoteLog('GPS 권한 거부 — 사용자에게 설정 안내 필요', 'GPS_PERM_ERR');
+          } else {
+            remoteLog(`GPS 네이티브 에러: ${error.code} ${error.message || ''}`, 'GPS_NATIVE_ERR');
+          }
+          return;
+        }
+        if (!location) return;
+
+        lastGpsTimestamp = Date.now();
+
+        // 네이티브 location → 표준 좌표 객체로 변환
+        const pos = {
+          coords: {
+            latitude:  location.latitude,
+            longitude: location.longitude,
+            accuracy:  location.accuracy || 0,
+            speed:     location.speed,       // m/s 또는 null
+            altitude:  location.altitude,
+          },
+        };
+        onGpsUpdate(pos, false);
+      }
+    );
+
+    gpsWatchId = watcherId;
+    remoteLog(`네이티브 GPS Watcher 등록 완료: ID=${watcherId}`, 'GPS_INIT');
+
+    // 즉시 1회 강제 수신 (초기 공백 방지)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          lastGpsTimestamp = Date.now();
+          remoteLog(
+            `GPS 초기수신: ${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)} acc:${pos.coords.accuracy?.toFixed(0)}m`,
+            'GPS_INIT'
+          );
+          onGpsUpdate(pos, true, State.trip.id);
+        },
+        err => remoteLog(`GPS 초기수신 실패: ${err.code} ${err.message}`, 'GPS_INIT_ERR'),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  } catch (e) {
+    remoteLog(`BackgroundGeolocation.addWatcher 실패: ${e.message}`, 'GPS_INIT_ERR');
+    // 네이티브 실패 시 브라우저 폴백
+    _startBrowserFallback();
   }
-  if (window.DeviceMotionEvent) {
-    window.addEventListener('devicemotion', handleMotion, { passive: true });
-  }
+}
 
-  // 즉시 1회 강제 수신 (초기 공백 방지)
+// ─── GPS 정지 ────────────────────────────────────────────────────
+export function stopGPS() {
+  if (gpsWatchId !== null) {
+    const BgGeo = getBgGeo();
+    if (BgGeo) {
+      BgGeo.removeWatcher({ id: gpsWatchId }).catch(() => { });
+      remoteLog(`네이티브 GPS Watcher 해제: ID=${gpsWatchId}`, 'GPS_STOP');
+    } else if (_browserWatchId !== null) {
+      navigator.geolocation.clearWatch(_browserWatchId);
+      remoteLog(`브라우저 GPS 해제: ID=${_browserWatchId}`, 'GPS_STOP');
+      _browserWatchId = null;
+    }
+    gpsWatchId = null;
+  }
+  lastGpsTimestamp = 0;
+}
+
+// ─── 브라우저 폴백 (PC 개발/테스트용) ────────────────────────────
+let _browserWatchId = null;
+
+function _startBrowserFallback() {
+  if (!navigator.geolocation) {
+    remoteLog('navigator.geolocation 없음 — GPS 완전 불가', 'GPS_FATAL');
+    return;
+  }
+  if (gpsWatchId !== null) return;
+
+  // 즉시 1회
   navigator.geolocation.getCurrentPosition(
     pos => {
       lastGpsTimestamp = Date.now();
-      remoteLog(
-        `GPS 초기수신 성공: ${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)} acc:${pos.coords.accuracy?.toFixed(0)}m`,
-        'GPS_INIT'
-      );
       onGpsUpdate(pos, true, State.trip.id);
     },
-    err => remoteLog(`GPS 초기수신 실패: ${err.code} ${err.message}`, 'GPS_INIT_ERR'),
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    () => {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 
-  gpsWatchId = navigator.geolocation.watchPosition(
+  _browserWatchId = navigator.geolocation.watchPosition(
     pos => {
       lastGpsTimestamp = Date.now();
       onGpsUpdate(pos, false);
     },
     err => {
-      remoteLog(`GPS watchPosition 에러: code=${err.code} msg=${err.message}`, 'GPS_WATCH_ERR');
-      console.warn('GPS watch error', err.code, err.message);
+      remoteLog(`브라우저 GPS watch 에러: ${err.code} ${err.message}`, 'GPS_WATCH_ERR');
     },
-    { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
+    { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
   );
-  remoteLog(`GPS watchPosition 등록됨 ID=${gpsWatchId}`, 'GPS_INIT');
-}
-
-export function stopGPS() {
-  if (gpsWatchId) {
-    navigator.geolocation.clearWatch(gpsWatchId);
-    remoteLog(`GPS watchPosition 해제 ID=${gpsWatchId}`, 'GPS_STOP');
-    gpsWatchId = null;
-  }
-  window.removeEventListener('deviceorientation', handleGyro);
-  window.removeEventListener('devicemotion', handleMotion);
-  lastGpsTimestamp = 0;
-}
-
-function handleGyro(e) {
-  gyroData.magnitude = Math.abs(e.alpha || 0) + Math.abs(e.beta || 0) + Math.abs(e.gamma || 0);
-}
-
-function handleMotion(e) {
-  const acc = e.acceleration;
-  if (acc) {
-    const mag = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
-    if (gyroData.magnitude < 10) gyroData.magnitude = Math.max(gyroData.magnitude, mag * 3);
-  }
+  gpsWatchId = '__browser__';
+  remoteLog(`브라우저 GPS watchPosition 등록 (폴백): ID=${_browserWatchId}`, 'GPS_INIT');
 }
 
 // ─── 운행 상태 타이머 ─────────────────────────────────────────────
@@ -142,7 +258,7 @@ function abbreviateAddr(full) {
 
 // ─── 상태 표시줄 갱신 (1초 타이머 + GPS 수신 시) ─────────────────
 export function updateTripStatusLine() {
-  // 절대 시간으로 실시간 모드 만료 체크 (백그라운드 setTimeout 지연 대응)
+  // 절대 시간으로 실시간 모드 만료 체크
   if (State.trip.isRealtime && Date.now() > realtimeExpireAt) {
     State.trip.isRealtime = false;
     remoteLog('실시간 고정밀 관제 모드 종료', 'SYSTEM');
@@ -175,7 +291,8 @@ export function updateTripStatusLine() {
     return;
   }
 
-  const deadTimeout = Math.max(currentGpsInterval + 10_000, 30_000);
+  // GPS 수신 상태 판단: 네이티브 플러그인이므로 임계값을 45초로 상향
+  const deadTimeout = 45_000;
   const isDown = !lastGpsTimestamp || (Date.now() - lastGpsTimestamp > deadTimeout);
   let gpsColor = '#10b981';
   let gpsText  = `${Math.round(currentGpsInterval / 1000)}s`;
@@ -184,25 +301,8 @@ export function updateTripStatusLine() {
     gpsColor = '#ef4444';
     gpsText  = '수신중지';
   } else if (isDown && State.trip.status === 'driving') {
-    if (window._resumeGracePeriod) {
-      gpsColor = '#10b981';
-      gpsText  = '수신중';
-    } else {
-      gpsColor = '#ef4444';
-      gpsText  = '연결안됨';
-
-      const now = Date.now();
-      if (!window._lastGpsRetry || (now - window._lastGpsRetry > 3000)) {
-        window._lastGpsRetry = now;
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            pos => { lastGpsTimestamp = Date.now(); onGpsUpdate(pos, true, State.trip.id); },
-            () => { },
-            { enableHighAccuracy: true, timeout: 2500, maximumAge: 0 }
-          );
-        }
-      }
-    }
+    gpsColor = '#ef4444';
+    gpsText  = '연결안됨';
   } else if (State.trip.isRealtime) {
     gpsColor = '#f59e0b';
     gpsText  = '실시간 수집중';
@@ -272,34 +372,33 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   if (State.trip.status !== 'driving' && !isForced) return;
   const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
 
-  // 기지국/네트워크 위치 원천 차단 (속도 데이터 없음 = GPS 아님)
-  if (!State.trip.isRealtime && (speed === null || speed === undefined)) {
-    remoteLog(`기지국/네트워크 위치 스킵 (속도 불명): acc=${accuracy?.toFixed(0)}m`, 'GPS_SKIP_NETWORK');
-    return;
-  }
-
   const speedKph = (speed || 0) * 3.6;
   lastGpsTimestamp = Date.now();
 
-  // 정확도 필터 (200m 초과 → 스킵, 단 강제수신/실시간 예외)
-  if (!State.trip.isRealtime && !isForced && accuracy && accuracy > 200) {
+  // 정확도 필터: 500m 초과만 스킵 (기존 200m → 완화)
+  if (!isForced && accuracy && accuracy > 500) {
     remoteLog(`GPS 정확도 낮음: ${accuracy.toFixed(0)}m - 전송 스킵`, 'GPS_ACCURACY');
     updateTripStatusLine();
     return;
   }
 
-  // 속도 기반 가변 주기
-  let interval = 60_000;
-  if (State.trip.isRealtime)  interval = 3000;
-  else if (speedKph >= 60)    interval = 30_000;
-  else if (speedKph >= 20)    interval = 45_000;
+  // 속도 기반 가변 전송 주기 (네이티브 수집 주기와 별개로 서버 전송 빈도)
+  let interval = 10_000;           // 기본 10초
+  if (State.trip.isRealtime) {
+    interval = 3_000;              // 실시간 모드: 3초
+  } else if (speedKph >= 80) {
+    interval = 5_000;              // 고속: 5초
+  } else if (speedKph >= 40) {
+    interval = 8_000;              // 중속: 8초
+  }
+  // 저속/정지: 10초 (기본값 유지)
+
   if (interval !== currentGpsInterval) currentGpsInterval = interval;
 
   updateTripStatusLine();
 
-  const isSharpTurn = gyroData.magnitude > 25;
   const curTime     = Date.now();
-  const minInterval = (isForced || markerType) ? 0 : (isSharpTurn ? Math.min(10_000, interval) : interval);
+  const minInterval = (isForced || markerType) ? 0 : interval;
   if (!isForced && !markerType && curTime - lastGpsSend < minInterval) return;
 
   lastGpsSend = curTime;
@@ -311,8 +410,8 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     accuracy:    accuracy || 0,
     marker_type: markerType || null,
     source: isForced
-      ? (markerType || 'webview_forced')
-      : (isSharpTurn ? 'webview_gyro' : 'webview'),
+      ? (markerType || 'native_forced')
+      : 'native_bg',
   };
 
   try {
@@ -324,32 +423,20 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
       const gpsData = await gpsRes.json().catch(() => ({}));
       lastKnownAddr = gpsData.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-      if (_gpsOfflineQueue.length > 0) {
-        const queueBackup = [..._gpsOfflineQueue];
-        _gpsOfflineQueue = [];
-        saveGpsQueue();
-        queueBackup.forEach(async (queuedPayload) => {
-          try {
-            const r = await fetch(BASE_URL + '/api/vehicle-tracking/location', { method: 'POST', body: JSON.stringify(queuedPayload) });
-            if (!r.ok) throw new Error('Offline Queue Sync Failed');
-          } catch(err) {
-            _gpsOfflineQueue.push(queuedPayload);
-            saveGpsQueue();
-          }
-        });
-      }
+      // 서버 응답 성공 시 오프라인 큐 플러시 시도
+      flushOfflineQueue();
     } else {
       lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     }
     updateTripStatusLine();
     remoteLog(
-      `GPS전송[${markerType || 'normal'}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m gyro=${gyroData.magnitude.toFixed(1)}`,
+      `GPS전송[${markerType || 'normal'}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m`,
       'GPS_OK'
     );
   } catch (e) {
     lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateTripStatusLine();
-    remoteLog(`GPS 서버전송 실패 (오프라인 캐시 저장): ${e.message}`, 'GPS_SEND_ERR');
+    remoteLog(`GPS 서버전송 실패 (오프라인 캐시): ${e.message}`, 'GPS_SEND_ERR');
     _gpsOfflineQueue.push(payload);
     saveGpsQueue();
   }
