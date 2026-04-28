@@ -5,10 +5,10 @@
 // ─── 상수 ──────────────────────────────────────────────────────────
 // ★ 버전은 네이티브 통신으로 자동 갱신됨. 수동 변경 시 fallback 역할
 export const AppConfig = {
-  APP_VERSION: 'v5.10.1',
-  BUILD_CODE: 5101,
+  APP_VERSION: 'v5.10.2',
+  BUILD_CODE: 5102,
 };
-export const BASE_URL    = 'https://elssolution.com';
+export const BASE_URL    = 'https://www.elssolution.com';
 export const VERSION_URL = BASE_URL + '/apk/version.json';
 
 // ─── localStorage 헬퍼 ────────────────────────────────────────────
