@@ -56,7 +56,7 @@ function buildAdvisoryText(weatherCode, apparentTemp) {
     if (apparentTemp != null) {
         const t = Number(apparentTemp);
         if (t < -15) {
-            lines.push('영하권의 매우 강력한 한파가 지속되고 있습니다. 야외 노출 부위를 최소화하고 한량 질환 예방을 위해 생체 리듬 유지에 힘써 주세요.');
+            lines.push('영하권의 매우 강력한 한파가 지속되고 있습니다. 야외 노출 부위를 최소화하고 한랭 질환 예방을 위해 생체 리듬 유지에 힘써 주세요.');
         } else if (t < -5) {
             lines.push('찬 바람이 강하게 불어 실제 온도보다 훨씬 쌀쌀하게 느껴지므로, 보온성이 좋은 기능성 의류와 방한 용품을 갖추는 것이 권장됩니다.');
         } else if (t < 5) {
