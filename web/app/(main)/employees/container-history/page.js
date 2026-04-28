@@ -51,7 +51,7 @@ function parseContainerInput(text) {
 }
 
 function ContainerHistoryInner() {
-    const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || 'http://localhost:2929';
+    const BACKEND_BASE_URL = ''; // Route through Vercel proxy to avoid CORS/cert issues
     const [userId, setUserId] = useState('');
     const [userPw, setUserPw] = useState('');
     const [containerInput, setContainerInput] = useState('');

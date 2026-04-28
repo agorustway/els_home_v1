@@ -1062,8 +1062,7 @@ export default function VehicleTrackingPage() {
                                             paginatedEmergencies.map(em => (
                                                 <tr key={em.id} onClick={() => handleEditNotice(em, true)} style={{ cursor: 'pointer', background: '#fef2f2' }}>
                                                     <td style={{ color: '#dc2626', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.85rem', padding: '10px 18px' }}>
-                                                        {formatDateShort(em.created_at)}
-                                                        {em.created_at && !isNaN(new Date(em.created_at)) ? new Date(em.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                                                        {formatDateShort(em.created_at)}{' '}{formatTime(em.created_at)}
                                                     </td>
                                                     <td style={{ fontWeight: 600, color: '#991b1b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>{em.title}</td>
                                                 </tr>
