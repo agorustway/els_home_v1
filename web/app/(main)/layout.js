@@ -5,8 +5,8 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "ELS SOLUTION",
-  description: "Total Logistics Solution Provider",
+  title: "주식회사 이엘에스솔루션",
+  description: "종합 물류 서비스 - 기업물류, 내륙운송, 컨테이너운송",
   referrer: 'origin-when-cross-origin',
   manifest: '/manifest.json',
   icons: {
