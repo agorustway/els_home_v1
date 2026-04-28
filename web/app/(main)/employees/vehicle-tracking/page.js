@@ -1054,15 +1054,15 @@ export default function VehicleTrackingPage() {
                             </div>
                             <div className={styles.tableCard} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', maxHeight: '200px', overflowY: 'auto' }}>
                                 <table className={styles.adminNoticeTable} style={{ margin: 0 }}>
-                                    <thead><tr><th style={{ width: '80px', textAlign: 'center' }}>날짜</th><th>긴급 내용</th></tr></thead>
+                                    <thead><tr><th style={{ width: '120px', textAlign: 'center' }}>날짜</th><th>긴급 내용</th></tr></thead>
                                     <tbody>
                                         {paginatedEmergencies.length === 0 ? (
                                             <tr><td colSpan="2" style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>발송된 알림이 없습니다.</td></tr>
                                         ) : (
                                             paginatedEmergencies.map(em => (
                                                 <tr key={em.id} onClick={() => handleEditNotice(em, true)} style={{ cursor: 'pointer', background: '#fef2f2' }}>
-                                                    <td style={{ color: '#dc2626', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                                                        {formatDateShort(em.created_at)}<br />
+                                                    <td style={{ color: '#dc2626', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.85rem', padding: '10px 18px' }}>
+                                                        {formatDateShort(em.created_at)}
                                                         {em.created_at && !isNaN(new Date(em.created_at)) ? new Date(em.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
                                                     </td>
                                                     <td style={{ fontWeight: 600, color: '#991b1b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>{em.title}</td>
@@ -1087,14 +1087,14 @@ export default function VehicleTrackingPage() {
                             </div>
                             <div className={styles.tableCard} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', maxHeight: '200px', overflowY: 'auto' }}>
                                 <table className={styles.adminNoticeTable} style={{ margin: 0 }}>
-                                    <thead><tr><th style={{ width: '80px', textAlign: 'center' }}>날짜</th><th>제목</th><th style={{ width: '80px', textAlign: 'center' }}>상태</th></tr></thead>
+                                    <thead><tr><th style={{ width: '100px', textAlign: 'center' }}>날짜</th><th>제목</th><th style={{ width: '80px', textAlign: 'center' }}>상태</th></tr></thead>
                                     <tbody>
                                         {paginatedNotices.length === 0 ? (
                                             <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>게시된 공지사항이 없습니다.</td></tr>
                                         ) : (
                                             paginatedNotices.map(n => (
                                                 <tr key={n.id} onClick={() => handleEditNotice(n, false)} style={{ cursor: 'pointer' }}>
-                                                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.85rem', color: '#475569' }}>{formatDateShort(n.created_at)}</td>
+                                                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.85rem', color: '#475569', padding: '8px 12px' }}>{formatDateShort(n.created_at)}</td>
                                                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>{n.title}</td>
                                                     <td style={{ textAlign: 'center' }}><span className={styles.statusDriving} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', display: 'inline-block' }}>{n.status}</span></td>
                                                 </tr>
