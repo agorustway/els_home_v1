@@ -15,8 +15,8 @@ export const metadata = {
     apple: '/icon.png', // iOS 바탕화면 아이콘
   },
   openGraph: {
-    title: "ELS SOLUTION",
-    description: "Total Logistics Solution Provider",
+    title: "주식회사 이엘에스솔루션",
+    description: "종합 물류 서비스 - 기업물류, 내륙운송, 컨테이너운송",
     url: "https://elssolution.com",
     siteName: "ELS SOLUTION",
     locale: "ko_KR",
