@@ -336,6 +336,22 @@ def asan_sync_scheduler():
 # 스케줄러 시작
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
+@app.route("/api/branches/asan/sync", methods=["POST"])
+def manual_asan_sync():
+    """아산지점 배차판 수동 동기화 (프론트엔드 버튼 클릭 시)"""
+    try:
+        app.logger.info("[수동동기화] 프론트엔드에서 아산 배차판 동기화 요청 (force=True)")
+        sync_asan_dispatch_python(force=True)
+        return jsonify({
+            "results": [
+                {"type": "glovis", "success": True, "sheets": "backend-sync"},
+                {"type": "mobis", "success": True, "sheets": "backend-sync"}
+            ]
+        })
+    except Exception as e:
+        app.logger.error(f"[수동동기화] 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/logs", methods=["GET"])
 def get_logs():
     """활동 로그 조회 (날짜 범위 검색 포함)"""
