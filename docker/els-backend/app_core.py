@@ -416,9 +416,9 @@ def trigger_asan_sync():
     """웹 UI의 'NAS 동기화' 버튼 클릭 시 호출됨"""
     try:
         app.logger.info("🚀 [API] 아산 배차판 강제 동기화 요청 수신")
-        # force=True 옵션으로 캐시 무시하고 강제 실행
-        sync_asan_dispatch_python(force=True)
-        return jsonify({"ok": True, "message": "강제 동기화 완료"})
+        # force=True 옵션으로 캐시 무시하고 강제 실행하되, 백그라운드 쓰레드로 분리하여 Vercel Timeout(504) 방지
+        threading.Thread(target=sync_asan_dispatch_python, args=(True,), daemon=True).start()
+        return jsonify({"ok": True, "message": "강제 동기화가 백그라운드에서 시작되었습니다. 잠시 후 새로고침 해주세요."}), 202
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

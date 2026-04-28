@@ -65,11 +65,15 @@ class DriverPool:
         """[추가] 해당 포트를 사용 중인 크롬 프로세스를 강제 종료하여 충돌 방지"""
         import subprocess
         try:
-            # Linux 환경 (fuser 사용)
-            subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True)
-            # 혹은 pkill -f 사용하여 관련 유저 데이터 디렉토리 사용 중인 것들 정리
-            subprocess.run(["pkill", "-9", "-f", f"drission_port_{port}"], capture_output=True)
+            # Linux 환경 (fuser 사용): SIGTERM(-15)을 사용하여 자식 프로세스(렌더러 등)가 정상 종료될 기회를 줌
+            subprocess.run(["fuser", "-k", "-15", f"{port}/tcp"], capture_output=True)
             time.sleep(1)
+            # 종료되지 않은 메인 프로세스와 자식들을 찾아 강제 종료 (-9)
+            subprocess.run(["pkill", "-9", "-f", f"drission_port_{port}"], capture_output=True)
+            
+            # [고아 프로세스(Zombie) 방지]: 부모를 잃은 렌더러 프로세스 등은 pkill -f chrome으로 주기적 정리
+            # 단독 실행 중이 아닌 고아 렌더러만 안전하게 삭제하려면 os.system("pkill -9 -f '--type=renderer'") 등을 쓸 수 있음
+            # 일단 여기서는 포트 기반으로만 정리
         except:
             pass
 
