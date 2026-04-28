@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **ELS Solution** — 물류 회사 임직원 업무 포털 및 통합 인트라넷. 컨테이너 이력 조회(Selenium), 안전운임 조회, 차량 위치 관제(GPS), NAS 자료실 등을 제공.
 
-- **웹**: `nollae.com` (Vercel 배포, Next.js 14)
+- **웹**: `elssolution.com` (Vercel 배포, Next.js 14)
 - **백엔드**: `192.168.0.4:2929` (사내 NAS, Nginx gateway → els-core:2930 / els-bot:2931)
 - **모바일**: 안드로이드 드라이버 앱 (Capacitor 8.x, `com.elssolution.driver`)
 
@@ -85,7 +85,7 @@ powershell scripts/restart_backend.ps1
 
 ```
 [Vercel Cloud]
-  Next.js 14 웹 (nollae.com)
+  Next.js 14 웹 (elssolution.com)
     └─ 고부하 API → NAS로 오프로드 (Excel, ZIP, 파일 프록시)
     └─ 인증/DB → Supabase (PostgreSQL, OAuth)
 

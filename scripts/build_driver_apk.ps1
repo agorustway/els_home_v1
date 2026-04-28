@@ -68,7 +68,7 @@ $verObj = [ordered]@{
     versionCode   = $versionCode
     forceUpdate   = [bool]$ForceUpdate
     changeLog     = "v$versionName"
-    downloadUrl   = "https://www.nollae.com/apk/els_driver.apk?t=$versionCode"
+    downloadUrl   = "https://www.elssolution.com/apk/els_driver.apk?t=$versionCode"
 }
 $verJson = $verObj | ConvertTo-Json
 [System.IO.File]::WriteAllText($VER_JSON, $verJson, $UTF8NoBOM)

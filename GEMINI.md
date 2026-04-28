@@ -20,7 +20,7 @@
 ELS Solution은 물류 회사 임직원을 위한 업무 포털 및 통합 인트라넷 시스템입니다. 컨테이너 이력 조회(Selenium Scraping), 안전운임 조회, 업무 보고, 차량 위치 관제, NAS 자료실 등 다양한 업무 자동화 기능을 제공합니다.
 
 - **핵심 목표**: 물류 업무의 디지털 전환 및 자동화 (ETRANS 데이터 연동 등)
-- **주요 도메인**: `nollae.com` (Vercel 배포) / `192.168.0.4` (Internal NAS API)
+- **주요 도메인**: `elssolution.com` (Vercel 배포) / `192.168.0.4` (Internal NAS API)
 - **관리 대상**: Next.js 웹, Flask 백엔드(NAS), Selenium 봇, 안드로이드(Capacitor) 앱
 
 ## 🛠 기술 스택

@@ -9,9 +9,9 @@ let _sfDataCache = null;
 let _sfDocsCache = null;
 let _sfLoadedAt = null; // 실제 데이터 로드 완료 시각
 
-// SITE_URL은 환경변수가 없으면 VERCEL_URL이나 nollae.com을 폴백으로 사용
+// SITE_URL은 환경변수가 없으면 VERCEL_URL이나 elssolution.com을 폴백으로 사용
 const DEFAULT_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://nollae.com');
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://elssolution.com');
 
 async function getSfData() {
     if (_sfDataCache) return _sfDataCache;
@@ -944,7 +944,7 @@ export async function POST(req) {
         if (isKskillQuery) {
             // (0) OPINET 실시간 유가 (경유/휘발유 등) — 안전운임 개정 기준점 연계
             if (userKwd.includes('경유') || userKwd.includes('유가') || userKwd.includes('기름') || userKwd.includes('주유') || isSfQuery) {
-                const fuelResult = await callExternalAPI('OPINET 유가', `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nollae.com'}/api/opinet/fuel-price`);
+                const fuelResult = await callExternalAPI('OPINET 유가', `${process.env.NEXT_PUBLIC_SITE_URL || 'https://elssolution.com'}/api/opinet/fuel-price`);
                 if (fuelResult.success && fuelResult.data.diesel) {
                     const d = fuelResult.data.diesel;
                     let fuelText = `\n\n## 🌍 실시간 환경 데이터 (OPINET/Weather)\n### 실시간 전국 유가 현황\n`;

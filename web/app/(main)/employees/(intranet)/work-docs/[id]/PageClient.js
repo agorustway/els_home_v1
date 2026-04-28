@@ -73,7 +73,7 @@ export default function WorkDocDetailPage() {
     const getDownloadUrl = (file) => {
         let url = file.url || '';
 
-        // Fix: Strip external domain from old absolute URLs (e.g. https://www.nollae.com/api/s3/...)
+        // Fix: Strip external domain from old absolute URLs (e.g. https://www.elssolution.com/api/s3/...)
         // Convert to relative path so it works on current domain
         if (url && url.startsWith('http')) {
             try {

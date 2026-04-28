@@ -190,7 +190,7 @@ public class OverlayPlugin extends Plugin {
     private void sendRemoteLog(String msg, String tag) {
         new Thread(() -> {
             try {
-                URL url = new URL("https://www.nollae.com/api/debug/log");
+                URL url = new URL("https://www.elssolution.com/api/debug/log");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");

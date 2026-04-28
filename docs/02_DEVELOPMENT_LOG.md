@@ -218,6 +218,6 @@
 ## [2026-04-20] 드라이버 앱 ID 누락 근본 원인 해결 (v4.9.30~34)
 - **통신 로직 복구**: CapacitorHttp preflight 버그 대응을 위한 Native Bridge 복구.
 - **직렬화 최적화**: NextResponse 직렬화 적용으로 빈 Body 요청 및 ID 증발 현상 최종 해결.
-- **Redirect 대응**: `nollae.com` (non-www) 통일로 307 리다이렉트 시 Body 유실 방지.
+- **Redirect 대응**: `elssolution.com` (non-www) 통일로 307 리다이렉트 시 Body 유실 방지.
 
 *(v4.9 이전의 상세 기록은 Git History 참조)*

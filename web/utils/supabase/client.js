@@ -16,7 +16,7 @@ export function createClient() {
                 data: {
                     user: {
                         id: 'debug-admin-id',
-                        email: 'debug_admin@nollae.com',
+                        email: 'debug_admin@elssolution.com',
                         user_metadata: { name: '디버그관리자' },
                         role: 'authenticated'
                     }

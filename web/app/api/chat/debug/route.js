@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://nollae.com');
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://elssolution.com');
 
 export async function GET() {
     const result = {

@@ -1,7 +1,7 @@
 # 📱 ELS 운송관리 네이티브 앱 개발 현황판 (APP_MISSION_CONTROL)
 
 **마지막 업데이트**: 2026-03-25 (v4.0.0 완전 재구축)
-**목적**: 기존 `nollae.com/driver-app` 웹뷰(WebView) 기반 PWA 방식에서 벗어나, 완전히 로컬에서 구동되는 독립형 안드로이드 네이티브(Standalone Native) 앱에 대한 개발 목표와 아키텍처, 작업 이력을 집중 관리하는 문서.
+**목적**: 기존 `elssolution.com/driver-app` 웹뷰(WebView) 기반 PWA 방식에서 벗어나, 완전히 로컬에서 구동되는 독립형 안드로이드 네이티브(Standalone Native) 앱에 대한 개발 목표와 아키텍처, 작업 이력을 집중 관리하는 문서.
 
 ---
 
@@ -22,7 +22,7 @@
 | **빌드/동기화** | `npx cap sync android` | `out/` 폴더의 에셋을 안드로이드 `assets/public/`에 복사 |
 | **로컬 저장소** | `localStorage` | 기사 기본 정보 보존. 향후 오프라인 큐잉 시 SQLite 고려 |
 | **안드로이드 네이티브** | Java (`MainActivity.java`, `Androidmanifest.xml`) | 오버레이(Floating) 및 Foreground Service 직접 구현 |
-| **백엔드 통신** | Fetch API | `nollae.com/api/vehicle-tracking`의 기존 백엔드 재사용 |
+| **백엔드 통신** | Fetch API | `elssolution.com/api/vehicle-tracking`의 기존 백엔드 재사용 |
 
 ---
 
@@ -35,7 +35,7 @@
 - [x] **연락처 기반 자동 복구 (Autofill)**: 프로필 등록 시 전화번호를 백엔드(`route.js`)와 대조해 이름/차량/ID 자동 입력 및 양방향 동기화(Upsert) 구현.
 
 ### ✅ Phase 2: 네이티브 기능 연동 최적화 (완료)
-- [x] **Foreground Service 궤도 안착**: `NotificationChannel`을 통해 앱이 죽지 않고 백그라운드에서도 GPS(`https://nollae.com/api/vehicle-tracking/locations`) 실시간 전송.
+- [x] **Foreground Service 궤도 안착**: `NotificationChannel`을 통해 앱이 죽지 않고 백그라운드에서도 GPS(`https://elssolution.com/api/vehicle-tracking/locations`) 실시간 전송.
 - [x] **플로팅 위젯 양방향 제어(Two-Way)**: `OverlayPlugin.java`의 `BroadcastReceiver`를 통해 안드로이드 네이티브 버튼(일시정지, 종료) 신호를 `app.js`로 쏘아 TMAP 위에서도 즉시 앱 제어 가능 및 상태(색상) 자동 변환 처리.
 
 ### ✅ Phase 3: UI 안정화 및 통신 브릿지 확보 (완료)
@@ -65,5 +65,5 @@ StandAlone (APK) 앱은 구글 플레이스토어를 거치지 않고 직접 수
 - **버전 메타데이터 (업데이트 트리거) 경로**: `C:\Users\hoon\Desktop\els_home_v1\web\public\apk\version.json`
   - 배포할 새 APK의 버전 정보(`latestVersion` 등)를 이 JSON 파일에 수정 반영합니다.
 - **실제 구동 원리**:
-  1. 기사님들이 앱을 실행하거나 **[설정 > 수동 업데이트 확인]** 버튼을 누를 때마다 `https://www.nollae.com/apk/version.json`을 검사합니다.
+  1. 기사님들이 앱을 실행하거나 **[설정 > 수동 업데이트 확인]** 버튼을 누를 때마다 `https://www.elssolution.com/apk/version.json`을 검사합니다.
   2. 현재 버전과 서버의 `latestVersion`이 다를 경우, 즉시 화면에 업데이트 알림창을 띄우고 `els_driver.apk` 다운로드 링크를 제공합니다.

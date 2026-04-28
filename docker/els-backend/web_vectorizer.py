@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-SITE_URL = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://nollae.com")
+SITE_URL = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://elssolution.com")
 
 supabase: Client = None
 

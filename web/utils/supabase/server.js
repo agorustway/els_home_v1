@@ -37,7 +37,7 @@ export async function createClient() {
                 data: {
                     user: {
                         id: 'debug-admin-id',
-                        email: 'debug_admin@nollae.com', // 전용 디버그 관리자 계정
+                        email: 'debug_admin@elssolution.com', // 전용 디버그 관리자 계정
                         user_metadata: { name: '디버그관리자' },
                         role: 'authenticated'
                     }
@@ -56,7 +56,7 @@ export async function createClient() {
                     session: {
                         user: {
                             id: 'debug-admin-id',
-                            email: 'debug_admin@nollae.com',
+                            email: 'debug_admin@elssolution.com',
                             user_metadata: { name: '디버그관리자' }
                         }
                     }

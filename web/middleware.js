@@ -81,7 +81,7 @@ export async function middleware(request) {
     // 🚨 디버그 모드 강제 바이패스: 세션이 없어도 관리자 권한 부여
     if (isDebugMode) {
         if (!user) {
-            user = { email: 'debug_admin@nollae.com' };
+            user = { email: 'debug_admin@elssolution.com' };
         }
         userRole = 'admin';
     }

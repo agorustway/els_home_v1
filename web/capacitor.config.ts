@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'driver-src',
   server: {
     androidScheme: 'https',
-    hostname: 'www.nollae.com',
+    hostname: 'www.elssolution.com',
     cleartext: true
   },
   android: {

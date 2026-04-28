@@ -25,7 +25,7 @@ Note: _This is purely the output of the chat conversation and does not contain a
 - **마지막 작전 일자**: 2026년 4월 5일
 - **주요 인프라**:
     - **메인 서버 (NAS)**: `192.168.0.4:5000` (Flask API 및 ELS Bot 구동 중)
-    - **웹 도메인**: `nollae.com` (Vercel 배포)
+    - **웹 도메인**: `elssolution.com` (Vercel 배포)
     - **데이터베이스**: Supabase (PostgreSQL / 실시간 관제 연동)
 
 ### 🚀 최근 주요 성과 (지도 엔진 혁신)

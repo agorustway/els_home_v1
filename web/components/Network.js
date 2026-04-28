@@ -223,8 +223,8 @@ export default function Network() {
                                         {isError && (
                                             <div style={{ fontSize: '0.8rem', marginTop: '10px', color: '#ff6b6b' }}>
                                                 <p>지도 인증 오류가 발생했습니다.</p>
-                                                <p style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', margin: '8px 0', cursor: 'pointer', color: '#fff' }} onClick={() => window.location.href = 'https://nollae.com'}>
-                                                    nollae.com 으로 이동 ➔
+                                                <p style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', margin: '8px 0', cursor: 'pointer', color: '#fff' }} onClick={() => window.location.href = 'https://elssolution.com'}>
+                                                    elssolution.com 으로 이동 ➔
                                                 </p>
                                                 <p style={{ opacity: 0.6, fontSize: '0.7rem' }}>NCP Console URL: {typeof window !== 'undefined' ? window.location.origin : ''}</p>
                                             </div>

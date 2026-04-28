@@ -134,7 +134,7 @@ export async function GET(request) {
         
         // Vercel 환경 체크 (환경변수 + 호스트명)
         const host = request.headers.get('host') || '';
-        const isVercel = process.env.VERCEL || process.env.VERCEL_URL || host.includes('vercel.app') || host.includes('nollae.com');
+        const isVercel = process.env.VERCEL || process.env.VERCEL_URL || host.includes('vercel.app') || host.includes('elssolution.com');
         
         if (primaryBackend && (!isVercel || !primaryBackend.includes('localhost'))) {
             backendUrl = primaryBackend;

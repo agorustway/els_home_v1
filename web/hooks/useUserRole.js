@@ -23,7 +23,7 @@ export function useUserRole() {
                     if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || hasDebugCookie) {
                         console.log('useUserRole: Debug mode active, granting admin role');
                         setRole('admin');
-                        setUser({ email: 'debug_admin@nollae.com', user_metadata: { name: '디버그관리자' } });
+                        setUser({ email: 'debug_admin@elssolution.com', user_metadata: { name: '디버그관리자' } });
                     } else {
                         setRole('visitor');
                     }

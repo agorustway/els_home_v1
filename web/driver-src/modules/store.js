@@ -8,7 +8,7 @@ export const AppConfig = {
   APP_VERSION: 'v5.10.0',
   BUILD_CODE: 5100,
 };
-export const BASE_URL    = 'https://nollae.com';
+export const BASE_URL    = 'https://elssolution.com';
 export const VERSION_URL = BASE_URL + '/apk/version.json';
 
 // ─── localStorage 헬퍼 ────────────────────────────────────────────

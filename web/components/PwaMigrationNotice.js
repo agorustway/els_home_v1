@@ -17,7 +17,7 @@ export default function PwaMigrationNotice() {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 
         // 나중에 elssolution.net 으로 완전히 서버를 이전했을 때:
-        // nollae.com 으로 접속(또는 설치된 PWA)한 사용자는 이 알림을 보게 됩니다.
+        // elssolution.com 으로 접속(또는 설치된 PWA)한 사용자는 이 알림을 보게 됩니다.
         if (isStandalone && !isLocalhost && window.location.hostname !== EXPECTED_DOMAIN) {
             // 아직 elssolution.net 서버가 준비되지 않았을 수 있으므로 지금 바로 띄우지 않고,
             // 향후 서버 도메인이 elssolution.net으로 통일되었을 때만 작동하도록 플래그 활용 가능.

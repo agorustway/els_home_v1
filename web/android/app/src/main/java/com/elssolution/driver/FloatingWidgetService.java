@@ -58,7 +58,7 @@ public class FloatingWidgetService extends Service {
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
-    private static final String BASE_URL = "https://www.nollae.com";
+    private static final String BASE_URL = "https://www.elssolution.com";
 
     // 오버레이 위젯
     private WindowManager mWindowManager;
@@ -761,7 +761,7 @@ public class FloatingWidgetService extends Service {
     }
 
     // ─── [v4.2.50] 네이티브 역지오코딩 (JS 완전 독립) ───────────────
-    // nollae.com 서버 프록시 경유 → Kakao REST API 키 앱에 미노출
+    // elssolution.com 서버 프록시 경유 → Kakao REST API 키 앱에 미노출
     private void geocodeAndUpdateOverlay(double lat, double lng) {
         try {
             String urlStr = String.format(Locale.US,

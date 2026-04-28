@@ -69,7 +69,7 @@
 ---
 
 ## 🚨 운영 시 주의사항 (Developer Guardrails)
-- **CORS 설정**: 나스 Flask 서버는 `nollae.com` 도메인으로부터의 요청만 정식 허용합니다. (Vercel IP 대역폭 인지)
+- **CORS 설정**: 나스 Flask 서버는 `elssolution.com` 도메인으로부터의 요청만 정식 허용합니다. (Vercel IP 대역폭 인지)
 - **Timeout**: 무거운 작업(ZIP 생성 등)은 최대 60초까지 소요될 수 있으므로 클라이언트(Next.js)단에서 타임아웃 처리가 필요합니다.
 - **Logging**: 모든 `/api/*` 요청은 자동으로 로그 서버를 통과하여 기록됩니다.
 

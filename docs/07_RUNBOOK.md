@@ -292,7 +292,7 @@ docker system prune -a -f
    sh scripts/update-safe-freight.sh
    ```
    - 이 스크립트는 `JSON 빌드 -> Git Commit -> Push`를 한 번에 수행합니다.
-3. **확인**: 약 5~10분 후 `nollae.com` 웹사이트 및 AI 어시스턴트에 새 단가가 반영됩니다.
+3. **확인**: 약 5~10분 후 `elssolution.com` 웹사이트 및 AI 어시스턴트에 새 단가가 반영됩니다.
 
 ### 8-2. 아산 배차판 동기화 관리
 1. **파일 위치**: `/volume2/아산지점/A_운송실무/` 폴더 내에 엑셀 파일이 있어야 합니다.

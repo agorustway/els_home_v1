@@ -43,11 +43,11 @@
 - [ ] **도메인 연결**: Vercel Domains 탭에서 `elssolution.net` 및 `www.elssolution.net` 추가 후, 도메인 구입처 DNS 설정에서 Vercel의 네임서버/A레코드 반영.
 
 ## 5. 안드로이드 앱 및 백엔드(NAS) 갱신 (Phase 5)
-- [ ] **기사님 앱(Driver App) 상수 변경**: `web/android/app/src/main/assets/public/app.js` 등 안드로이드 내부에서 호출하는 `BASE_URL` 상수 및 API 엔드포인트를 `https://www.nollae.com`에서 `https://www.elssolution.net`으로 즉시 변경.
+- [ ] **기사님 앱(Driver App) 상수 변경**: `web/android/app/src/main/assets/public/app.js` 등 안드로이드 내부에서 호출하는 `BASE_URL` 상수 및 API 엔드포인트를 `https://www.elssolution.com`에서 `https://www.elssolution.net`으로 즉시 변경.
 - [ ] **앱 재배포**: `v4.3.X` 버전으로 클린 빌드 후 APK 새로 추출 ('앱을 무조건 업데이트' 하도록 공지).
 - [ ] **통합 NAS 점검**: 시놀로지 NAS Docker 환경 내 `.env`의 Supabase 및 Github Token을 신규 발급본으로 교체한 뒤 `restart_backend.ps1` 스크립트로 백엔드 재시작.
 
 ## 6. 완료 및 기존 서비스 해지 (Rollback/Cleanup)
 - [ ] 모든 서비스(안드로이드 봇, ETRANS 조회, 모바일 맵 연동, 유가조회) 정상작동 확인.
-- [ ] 기존 Vercel (`nollae.com`) 다운타임 예방차 도메인 리다이렉트(301)를 일주일간 유지해 줌.
+- [ ] 기존 Vercel (`elssolution.com`) 다운타임 예방차 도메인 리다이렉트(301)를 일주일간 유지해 줌.
 - [ ] 이전 개인 프로젝트(Supabase, Vercel) 삭제 혹은 Pause 전환.
