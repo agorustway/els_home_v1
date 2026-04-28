@@ -14,6 +14,14 @@ export const metadata = {
     shortcut: '/favicon.png',
     apple: '/icon.png', // iOS 바탕화면 아이콘
   },
+  openGraph: {
+    title: "ELS SOLUTION",
+    description: "Total Logistics Solution Provider",
+    url: "https://elssolution.com",
+    siteName: "ELS SOLUTION",
+    locale: "ko_KR",
+    type: "website",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
