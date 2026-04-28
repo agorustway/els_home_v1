@@ -1,12 +1,12 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5100';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5100';
+import { Store, State, BASE_URL } from './store.js?v=5101';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5101';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5100';
+} from './gps.js?v=5101';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -14,9 +14,24 @@ function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString();
 // ─── 운행 전 점검 체크리스트 ──────────────────────────────────────
 export function openChecklist() {
   document.getElementById('checklist-popup')?.classList.add('active');
+  checkChecklistValid(); // Update initial state
 }
 export function closeChecklist() {
   document.getElementById('checklist-popup')?.classList.remove('active');
+}
+export function checkChecklistValid() {
+  const checks = ['chk_brake', 'chk_tire', 'chk_lamp', 'chk_cargo', 'chk_driver'];
+  const allChecked = checks.every(id => document.getElementById(id)?.checked);
+  const btn = document.getElementById('btn-save-checklist');
+  if (btn) {
+    if (allChecked) {
+      btn.style.background = '#2563eb'; // blue
+      btn.style.color = '#ffffff';
+    } else {
+      btn.style.background = '#ef4444'; // red
+      btn.style.color = '#ffffff';
+    }
+  }
 }
 export function saveChecklist() {
   const checks = ['chk_brake', 'chk_tire', 'chk_lamp', 'chk_cargo', 'chk_driver'];

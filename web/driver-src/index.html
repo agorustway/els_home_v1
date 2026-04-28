@@ -350,23 +350,23 @@
     </div>
     <div class="modal-body" style="background:#fff; font-size:14px; color:#334155; display:flex; flex-direction:column; gap:12px; padding:16px 14px;">
       <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_brake" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <input type="checkbox" id="chk_brake" onchange="App.checkChecklistValid()" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
          <span style="line-height:1.4;"><b>제동장치(브레이크)</b> 상태 정상 확인 (응답성/파손 여부)</span>
       </label>
       <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_tire" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <input type="checkbox" id="chk_tire" onchange="App.checkChecklistValid()" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
          <span style="line-height:1.4;"><b>바퀴/타이어</b> 공기압/마모(1.6mm 이상), 너트 체결 확인</span>
       </label>
       <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_lamp" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <input type="checkbox" id="chk_lamp" onchange="App.checkChecklistValid()" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
          <span style="line-height:1.4;"><b>등화장치</b> (전조등, 후미등, 방향지시등) 점등 확인</span>
       </label>
       <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_cargo" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <input type="checkbox" id="chk_cargo" onchange="App.checkChecklistValid()" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
          <span style="line-height:1.4;"><b>적재함 고정상태</b> (결박/덮개/지지대 등 화물 이탈 방지)</span>
       </label>
       <label style="display:flex; align-items:flex-start; gap:8px;">
-         <input type="checkbox" id="chk_driver" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
+         <input type="checkbox" id="chk_driver" onchange="App.checkChecklistValid()" style="width:20px;height:20px; flex-shrink:0; margin-top:2px;">
          <span style="line-height:1.4;"><b>운전자 건강/음주여부</b> 확인 (정상 운행 가능 상태)</span>
       </label>
       <div style="font-size:11px; color:#ef4444; margin-top:8px; line-height:1.4;">
@@ -375,7 +375,7 @@
     </div>
     <div class="modal-footer" style="background:#fff; display:flex; gap:8px;">
       <button class="btn btn-outline" style="flex:1;" onclick="App.closeChecklist()">취소</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="App.saveChecklist()">모두 점검완료</button>
+      <button id="btn-save-checklist" class="btn" style="flex:1; background:#ef4444; color:#fff;" onclick="App.saveChecklist()">모두 점검완료</button>
     </div>
   </div>
 </div>
@@ -424,6 +424,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=5100"></script>
+  <script type="module" src="app.js?v=5101"></script>
 </body>
 </html>
