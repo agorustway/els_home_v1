@@ -143,22 +143,42 @@ export async function GET(request) {
                 return !isJunk;
             });
 
-            const newData = (item.data || []).map(row =>
-                validIndices.map(vi => row[vi])
-            );
+            let targetIdx = -1;
+            if (item.type === 'glovis') {
+                targetIdx = item.headers.indexOf('오더');
+            } else if (item.type === 'mobis') {
+                targetIdx = item.headers.indexOf('계');
+                if (targetIdx === -1) targetIdx = item.headers.indexOf('수량');
+            }
+
+            const newData = [];
+            const rowMapping = {}; // old_ri -> new_ri
+            
+            (item.data || []).forEach((row, ri) => {
+                if (targetIdx >= 0) {
+                    const val = String(row[targetIdx] || '').trim();
+                    if (!val || val === '0' || val === 'nan' || val === 'None') return;
+                }
+                rowMapping[ri] = newData.length;
+                newData.push(validIndices.map(vi => row[vi]));
+            });
 
             const newComments = {};
             if (item.comments) {
                 Object.entries(item.comments).forEach(([k, v]) => {
                     const [ri, ci] = k.split(':').map(Number);
-                    const newCi = validIndices.indexOf(ci);
-                    if (newCi !== -1) {
-                        newComments[`${ri}:${newCi}`] = v;
+                    if (rowMapping[ri] !== undefined) {
+                        const newRi = rowMapping[ri];
+                        const newCi = validIndices.indexOf(ci);
+                        if (newCi !== -1) {
+                            newComments[`${newRi}:${newCi}`] = v;
+                        }
                     }
                 });
             }
 
             return {
+
                 ...item,
                 headers: newHeaders,
                 data: newData,
