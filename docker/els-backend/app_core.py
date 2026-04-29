@@ -107,8 +107,8 @@ def sync_asan_dispatch_python(force=False):
                 app.logger.info(f"[자동동기화] {dtype} 엑셀 로드 완료. 시트수: {len(xl.sheet_names)}")
                 
                 for sheet_name in xl.sheet_names:
-                    # "3.3" 형식의 시트명 파싱 (월.일)
-                    match = re.search(r'(\d+)\.(\d+)', sheet_name)
+                    # [v5.10.9] 더 유연한 시트명 파싱 ("4.29", "04. 29", "4월29일" 등 모두 매칭)
+                    match = re.search(r'(\d+)\s*[\.월]\s*(\d+)', sheet_name)
                     if not match: continue
                     
                     m, d = int(match.group(1)), int(match.group(2))
@@ -123,17 +123,19 @@ def sync_asan_dispatch_python(force=False):
                     df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
                     header_idx = -1
                     for i, row in df.head(50).iterrows(): # 검색 범위 축소 (최적화)
-                        if row.astype(str).str.contains('구분').any():
+                        # 공백 제거 후 '구분' 글자 포함 여부 확인
+                        if row.astype(str).str.replace(' ', '').str.contains('구분').any():
                             header_idx = i
                             break
                     
-                    if header_idx < 0: continue
+                    if header_idx < 0: 
+                        app.logger.warning(f"[자동동기화] {dtype} - 시트 '{sheet_name}'에서 '구분' 헤더를 찾을 수 없어 건너뜁니다.")
+                        continue
                     
                     headers = df.iloc[header_idx].fillna('').astype(str).map(lambda x: x.replace('\n', ' ').strip()).tolist()
                     headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
                     data_df = df.iloc[header_idx + 1:]
                     
-                    filter_col = 12 if dtype == 'glovis' else 15
                     rows = []
                     comments_dict = {}
                     
@@ -144,8 +146,6 @@ def sync_asan_dispatch_python(force=False):
                         wb = openpyxl.load_workbook(full_path, data_only=True, read_only=True) # ReadOnly 모드 사용
                         if sheet_name in wb.sheetnames:
                             ws = wb[sheet_name]
-                            # ... (주석 추출 로직 생략 가능하나 기존 유지)
-                            # 최적화를 위해 주석 추출은 일단 스킵하거나 간소화 고려 가능
                     except: pass
 
                     row_idx_in_db = 0
@@ -153,8 +153,9 @@ def sync_asan_dispatch_python(force=False):
                         if any(str(c).find('합계') >= 0 for c in row if pd.notnull(c)):
                             continue
                         
-                        f_val = str(row.iloc[filter_col]) if filter_col < len(row) else ''
-                        if not f_val or f_val in ['0', 'nan', 'None']:
+                        # [v5.10.9] 하드코딩된 filter_col(12, 15) 제거하고, 유효한 데이터가 최소 3개 이상인지 검증
+                        valid_cells = [c for c in row if str(c).strip() not in ['', '0', 'nan', 'None']]
+                        if len(valid_cells) < 3:
                             continue
                         
                         rows.append(row.fillna('').astype(str).tolist())
