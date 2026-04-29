@@ -101,6 +101,9 @@ def sync_asan_dispatch_python(force=False):
             
             app.logger.info(f"[자동동기화] {dtype} 데이터 추출 시작... (파일수정됨/강제)")
             
+            # [v5.10.19] 삭제된 시트 추적용 리스트
+            valid_dates = []
+            
             # 엑셀 읽기
             try:
                 # [v5.10.6] 엔진 명시 및 최적화
@@ -128,6 +131,7 @@ def sync_asan_dispatch_python(force=False):
                     if m == 12 and now.month == 1: year -= 1
                     elif m == 1 and now.month == 12: year += 1
                     target_date = f"{year}-{m:02d}-{d:02d}"
+                    valid_dates.append(target_date) # [v5.10.19] 유효한 날짜 수집
                     
                     # 시트 파싱
                     df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
@@ -202,6 +206,26 @@ def sync_asan_dispatch_python(force=False):
                             app.logger.error(f"[자동동기화] {dtype} 시트 '{sheet_name}' 최종 저장 실패.")
                 
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+                
+                # [v5.10.19] 엑셀에서 삭제된 시트는 DB에서도 제거
+                if valid_dates:
+                    try:
+                        res = supabase.from_("branch_dispatch").select("target_date").eq("branch_id", "asan").eq("type", dtype).execute()
+                        db_dates = [r["target_date"] for r in res.data]
+                        deleted_count = 0
+                        for db_date in db_dates:
+                            if db_date not in valid_dates:
+                                supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", db_date).execute()
+                                # 캐시 정리
+                                for k in list(last_sheet_hash_cache.keys()):
+                                    if k.startswith(f"{dtype}:") and f"{int(db_date[5:7])}.{int(db_date[8:10])}" in k:
+                                        del last_sheet_hash_cache[k]
+                                deleted_count += 1
+                        if deleted_count > 0:
+                            app.logger.info(f"[자동동기화] {dtype} 엑셀에 없는 과거 시트 {deleted_count}개 DB에서 삭제 완료.")
+                    except Exception as clean_err:
+                        app.logger.error(f"[자동동기화] {dtype} 삭제된 시트 정리 실패: {clean_err}")
+
                 # [v5.10.15] 메모용 워크북 메모리 해제
                 if wb_comments:
                     try: wb_comments.close()

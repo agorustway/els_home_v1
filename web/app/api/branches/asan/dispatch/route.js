@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; // [v5.10.12] Vercel 엣지 캐시 완전 비활성화
+export const revalidate = 60; // [v5.10.19] 1분 캐싱 허용으로 로딩 속도 대폭 개선
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
