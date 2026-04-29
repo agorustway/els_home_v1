@@ -330,7 +330,11 @@ export default function AsanDispatchPage() {
 
     // 날짜 정보
     const dateInfo = useMemo(() => {
-        if (isAllTab) return { label: '전체 날짜 합산', type: '전체', isRed: false, fileModStr: '' };
+        if (isAllTab) {
+            // [v5.10.10] isAllTab일 때 가장 최근 업데이트된 시간을 찾아 표시 (data[0]은 가장 오래된 날짜일 수 있음)
+            const maxTs = data && data.length > 0 ? Math.max(...data.map(d => new Date(d.file_modified_at || 0).getTime())) : null;
+            return { label: '전체 날짜 합산', type: '전체', isRed: false, fileModStr: fmtTs(maxTs) };
+        }
         if (!activeItem?.target_date) return null;
         const ds = activeItem.target_date;
         const d = new Date(ds + 'T00:00:00');
@@ -342,11 +346,14 @@ export default function AsanDispatchPage() {
             type: isRed ? '공휴일' : '평일', isRed,
             fileModStr: fmtTs(activeItem.file_modified_at)
         };
-    }, [activeItem, isAllTab]);
+    }, [activeItem, isAllTab, data]);
 
     // 경과 시간 카운터 (1초마다 업데이트)
     useEffect(() => {
-        const fileTs = isAllTab ? data[0]?.file_modified_at : activeItem?.file_modified_at;
+        const fileTs = isAllTab 
+            ? (data && data.length > 0 ? Math.max(...data.map(d => new Date(d.file_modified_at || 0).getTime())) : null)
+            : activeItem?.file_modified_at;
+            
         if (!fileTs) { setElapsed(''); return; }
         const update = () => {
             const diff = Math.max(0, Date.now() - new Date(fileTs).getTime());
