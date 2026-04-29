@@ -66,13 +66,23 @@ export async function GET(request) {
             }
 
             const itemType = item.type; // 'glovis' or 'mobis'
-            // [v5.10.20] 더 유연한 컬럼 매핑 (공백 제거 및 부분 일치 지원)
+            // [v5.10.21] 더 정교한 컬럼 매핑 (완전 일치 우선, 그 다음 부분 일치)
             const getCol = (nameArr) => {
+                // 1. 완전 일치 우선 검색
                 for (let n of nameArr) {
                     const idx = item.headers.findIndex(h => {
                         const trimmed = (h || '').replace(/\s+/g, '');
                         const target = n.replace(/\s+/g, '');
-                        return trimmed === target || trimmed.includes(target);
+                        return trimmed === target;
+                    });
+                    if (idx >= 0) return idx;
+                }
+                // 2. 부분 일치 검색 (완전 일치가 없을 경우에만)
+                for (let n of nameArr) {
+                    const idx = item.headers.findIndex(h => {
+                        const trimmed = (h || '').replace(/\s+/g, '');
+                        const target = n.replace(/\s+/g, '');
+                        return trimmed.includes(target);
                     });
                     if (idx >= 0) return idx;
                 }
@@ -154,13 +164,23 @@ export async function GET(request) {
                 return !isJunk;
             });
 
-            // [v5.10.20] 통합현황과 동일한 로직으로 컬럼 찾기
-            const getCol = names => {
-                for (let n of names) {
+            // [v5.10.21] 통합현황과 동일한 로직으로 컬럼 찾기 (완전 일치 우선)
+            const getCol = (nameArr) => {
+                // 1. 완전 일치 우선 검색
+                for (let n of nameArr) {
                     const idx = item.headers.findIndex(h => {
                         const trimmed = (h || '').replace(/\s+/g, '');
                         const target = n.replace(/\s+/g, '');
-                        return trimmed === target || trimmed.includes(target);
+                        return trimmed === target;
+                    });
+                    if (idx >= 0) return idx;
+                }
+                // 2. 부분 일치 검색
+                for (let n of nameArr) {
+                    const idx = item.headers.findIndex(h => {
+                        const trimmed = (h || '').replace(/\s+/g, '');
+                        const target = n.replace(/\s+/g, '');
+                        return trimmed.includes(target);
                     });
                     if (idx >= 0) return idx;
                 }
