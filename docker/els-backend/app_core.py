@@ -11,6 +11,7 @@ import logging
 import pandas as pd
 import io
 import re
+import hashlib
 import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -54,10 +55,11 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 last_mtime_cache = {}
+last_sheet_hash_cache = {}  # [v5.10.14] 시트별 데이터 해시 캐시 — 변경된 시트만 Supabase upsert
 asan_sync_lock = threading.Lock()
 
 def sync_asan_dispatch_python(force=False):
-    global last_mtime_cache
+    global last_mtime_cache, last_sheet_hash_cache
     if not supabase: return
     
     # 중복 실행 방지
@@ -162,6 +164,12 @@ def sync_asan_dispatch_python(force=False):
                         row_idx_in_db += 1
                     
                     if rows:
+                        # [v5.10.14] 시트 데이터 해시 비교 — 변경 없으면 Supabase 호출 스킵
+                        sheet_hash = hashlib.md5(str(rows).encode('utf-8')).hexdigest()
+                        cache_key = f"{dtype}:{sheet_name}"
+                        if not force and last_sheet_hash_cache.get(cache_key) == sheet_hash:
+                            continue  # 데이터 동일 → Supabase 호출 생략
+                        
                         for attempt in range(3): # 최대 3번 재시도
                             try:
                                 supabase.from_("branch_dispatch").upsert({
@@ -169,6 +177,7 @@ def sync_asan_dispatch_python(force=False):
                                     "headers": headers, "data": rows, "comments": {}, # 우선 comments 비움 (성능)
                                     "file_modified_at": mtime, "updated_at": now.isoformat()
                                 }, on_conflict="branch_id,type,target_date").execute()
+                                last_sheet_hash_cache[cache_key] = sheet_hash  # 성공 시 캐시 업데이트
                                 sync_count += 1
                                 break # 성공 시 재시도 루프 탈출
                             except Exception as e:
