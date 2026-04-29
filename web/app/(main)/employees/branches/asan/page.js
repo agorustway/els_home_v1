@@ -116,15 +116,17 @@ function calcSummary(headers, data, viewType) {
         return { order, cats, disp, unmatch: order - disp, ft40, ft20 };
     } else if (viewType === 'mobis') {
         const qC = findCol(headers, '계') >= 0 ? findCol(headers, '계') : findCol(headers, '수량');
-        const dC = findCol(headers, '배차'), gC = findCol(headers, '구분');
-        let order = 0, disp = 0;
+        const dC = findCol(headers, '배차'), gC = findCol(headers, '구분'), tC = findCol(headers, 'TYPE');
+        let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
             const o = parseInt(row[qC]) || 0; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
             disp += parseInt(row[dC]) || 0;
+            const t = parseInt(row[tC]) || 0;
+            if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
-        return { order, cats, disp, unmatch: order - disp };
+        return { order, cats, disp, unmatch: order - disp, ft40, ft20 };
     } else {
         // integrated
         const oC = findCol(headers, '오더(계)'), dC = findCol(headers, '배차'), tC = findCol(headers, 'TYPE'), gC = findCol(headers, '구분');

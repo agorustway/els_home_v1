@@ -101,6 +101,8 @@ export async function GET(request) {
 
                 byDate[item.target_date].data.push(newRow);
 
+                const newRi = byDate[item.target_date].data.length - 1;
+
                 Object.entries(item.comments || {}).forEach(([k, v]) => {
                     const [ri, ci] = k.split(':').map(Number);
                     if (ri === rIdx) {
@@ -110,7 +112,7 @@ export async function GET(request) {
                             if (mapCols[unifiedHeaders[i]] === ci) { uniIdx = i; break; }
                         }
                         if (uniIdx >= 0) {
-                            byDate[item.target_date].comments[`${currentOffset + rIdx}:${uniIdx}`] = v;
+                            byDate[item.target_date].comments[`${newRi}:${uniIdx}`] = v;
                         }
                     }
                 });
@@ -127,7 +129,7 @@ export async function GET(request) {
             const validIndices = [];
             const newHeaders = item.headers.filter((h, i) => {
                 const trimmed = (h || '').trim();
-                const isJunk = /^(col_\d+|[A-Z])$/i.test(trimmed) || trimmed === '함축';
+                const isJunk = /^(col_\d+)$/i.test(trimmed) || trimmed === '함축'; // [v5.10.16] 'T' 컬럼 필터링 방지
                 if (!isJunk) validIndices.push(i);
                 return !isJunk;
             });
