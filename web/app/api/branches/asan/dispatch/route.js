@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // [v5.10.12] Vercel 엣지 캐시 완전 비활성화
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
