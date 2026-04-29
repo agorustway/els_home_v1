@@ -126,6 +126,15 @@ export async function GET(request) {
     if (type !== 'integrated') {
         // Filter out junk columns for specific views (e.g. col_31, A, B...)
         const filteredData = (data || []).map(item => {
+            // [v5.10.17] 엑셀에서 헤더가 비어있어 col_12, col_15로 파싱된 TYPE 컬럼을 복구
+            if (item.type === 'glovis') {
+                const idx = item.headers.indexOf('col_12');
+                if (idx >= 0) item.headers[idx] = 'T';
+            } else if (item.type === 'mobis') {
+                const idx = item.headers.indexOf('col_15');
+                if (idx >= 0) item.headers[idx] = 'TYPE';
+            }
+
             const validIndices = [];
             const newHeaders = item.headers.filter((h, i) => {
                 const trimmed = (h || '').trim();
