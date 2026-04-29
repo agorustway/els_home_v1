@@ -35,6 +35,18 @@ export async function GET(request) {
         ];
 
         const byDate = {};
+        
+        // [v5.10.20] 엑셀에서 헤더가 비어있어 col_12, col_15로 파싱된 TYPE 컬럼을 복구 (통합현황 및 개별현황 모두 적용)
+        (data || []).forEach(item => {
+            if (item.type === 'glovis') {
+                const idx = item.headers.indexOf('col_12');
+                if (idx >= 0) item.headers[idx] = 'T';
+            } else if (item.type === 'mobis') {
+                const idx = item.headers.indexOf('col_15');
+                if (idx >= 0) item.headers[idx] = 'TYPE';
+            }
+        });
+
         for (const item of (data || [])) {
             if (!byDate[item.target_date]) {
                 byDate[item.target_date] = {
@@ -54,9 +66,14 @@ export async function GET(request) {
             }
 
             const itemType = item.type; // 'glovis' or 'mobis'
+            // [v5.10.20] 더 유연한 컬럼 매핑 (공백 제거 및 부분 일치 지원)
             const getCol = (nameArr) => {
                 for (let n of nameArr) {
-                    const idx = item.headers.findIndex(h => h.trim() === n);
+                    const idx = item.headers.findIndex(h => {
+                        const trimmed = (h || '').replace(/\s+/g, '');
+                        const target = n.replace(/\s+/g, '');
+                        return trimmed === target || trimmed.includes(target);
+                    });
                     if (idx >= 0) return idx;
                 }
                 return -1;
@@ -73,7 +90,7 @@ export async function GET(request) {
                 "라인(선사명)": itemType === 'glovis' ? getCol(["라인", "선사"]) : getCol(["선사명", "선사"]),
                 "TYPE": getCol(["TYPE", "T"]),
                 "배차정보": getCol(["배차정보"]),
-                "오더(계)": itemType === 'glovis' ? getCol(["오더"]) : getCol(["계", "수량"]),
+                "오더(계)": itemType === 'glovis' ? getCol(["오더", "오더(계)"]) : getCol(["계", "수량", "오더"]),
                 "배차예정": getCol(["배차예정"]),
                 "기타": getCol(["기타/철송", "기타"]),
                 "아산": getCol(["아산"]),
@@ -95,9 +112,12 @@ export async function GET(request) {
                     const cIdx = mapCols[h];
                     return cIdx >= 0 ? row[cIdx] : '';
                 });
-                // [v5.10.15] 오더(계) 값 없는 빈 행 제외
-                const orderVal = orderColIdx >= 0 ? String(newRow[orderColIdx] || '').trim() : '';
-                if (!orderVal || orderVal === '0' || orderVal === 'nan' || orderVal === 'None') return;
+                // [v5.10.20] 컬럼 매핑 성공 시에만 필터링 수행 (매핑 실패 시 데이터 유실 방지)
+                const cIdxForOrder = mapCols['오더(계)'];
+                if (cIdxForOrder >= 0) {
+                    const orderVal = String(row[cIdxForOrder] || '').trim();
+                    if (!orderVal || orderVal === '0' || orderVal === 'nan' || orderVal === 'None') return;
+                }
 
                 byDate[item.target_date].data.push(newRow);
 
@@ -126,15 +146,6 @@ export async function GET(request) {
     if (type !== 'integrated') {
         // Filter out junk columns for specific views (e.g. col_31, A, B...)
         const filteredData = (data || []).map(item => {
-            // [v5.10.17] 엑셀에서 헤더가 비어있어 col_12, col_15로 파싱된 TYPE 컬럼을 복구
-            if (item.type === 'glovis') {
-                const idx = item.headers.indexOf('col_12');
-                if (idx >= 0) item.headers[idx] = 'T';
-            } else if (item.type === 'mobis') {
-                const idx = item.headers.indexOf('col_15');
-                if (idx >= 0) item.headers[idx] = 'TYPE';
-            }
-
             const validIndices = [];
             const newHeaders = item.headers.filter((h, i) => {
                 const trimmed = (h || '').trim();
@@ -143,12 +154,24 @@ export async function GET(request) {
                 return !isJunk;
             });
 
+            // [v5.10.20] 통합현황과 동일한 로직으로 컬럼 찾기
+            const getCol = names => {
+                for (let n of names) {
+                    const idx = item.headers.findIndex(h => {
+                        const trimmed = (h || '').replace(/\s+/g, '');
+                        const target = n.replace(/\s+/g, '');
+                        return trimmed === target || trimmed.includes(target);
+                    });
+                    if (idx >= 0) return idx;
+                }
+                return -1;
+            };
+
             let targetIdx = -1;
             if (item.type === 'glovis') {
-                targetIdx = item.headers.indexOf('오더');
+                targetIdx = getCol(['오더', '오더(계)']);
             } else if (item.type === 'mobis') {
-                targetIdx = item.headers.indexOf('계');
-                if (targetIdx === -1) targetIdx = item.headers.indexOf('수량');
+                targetIdx = getCol(['계', '수량', '오더']);
             }
 
             const newData = [];
