@@ -240,8 +240,8 @@ export default function AsanDispatchPage() {
         try {
             const r = await fetch('/api/branches/asan/sync', { method: 'POST' });
             const j = await r.json();
-            const msg = (j.results || []).map(r => `${r.type === 'glovis' ? '글로비스' : '모비스'}: ${r.success ? `성공 (${r.sheets}시트)` : '실패'}`).join(' / ') || '응답 없음';
-            setSyncStatus({ message: msg, isError: !j.results?.every(r => r.success) });
+            const msg = j.message || (j.results || []).map(r => `${r.type === 'glovis' ? '글로비스' : '모비스'}: ${r.success ? `성공 (${r.sheets}시트)` : '실패'}`).join(' / ') || '응답 없음';
+            setSyncStatus({ message: msg, isError: j.ok === false || (j.results && !j.results.every(r => r.success)) });
             await fetchData(viewType);
         } catch (e) {
             setSyncStatus({ message: '동기화 실패: ' + e.message, isError: true });
