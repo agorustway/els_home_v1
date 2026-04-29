@@ -162,12 +162,20 @@ def sync_asan_dispatch_python(force=False):
                         row_idx_in_db += 1
                     
                     if rows:
-                        supabase.from_("branch_dispatch").upsert({
-                            "branch_id": "asan", "type": dtype, "target_date": target_date,
-                            "headers": headers, "data": rows, "comments": {}, # 우선 comments 비움 (성능)
-                            "file_modified_at": mtime, "updated_at": now.isoformat()
-                        }, on_conflict="branch_id,type,target_date").execute()
-                        sync_count += 1
+                        for attempt in range(3): # 최대 3번 재시도
+                            try:
+                                supabase.from_("branch_dispatch").upsert({
+                                    "branch_id": "asan", "type": dtype, "target_date": target_date,
+                                    "headers": headers, "data": rows, "comments": {}, # 우선 comments 비움 (성능)
+                                    "file_modified_at": mtime, "updated_at": now.isoformat()
+                                }, on_conflict="branch_id,type,target_date").execute()
+                                sync_count += 1
+                                break # 성공 시 재시도 루프 탈출
+                            except Exception as e:
+                                app.logger.error(f"[자동동기화] {dtype} 시트 '{sheet_name}' 저장 실패 (시도 {attempt+1}/3): {e}")
+                                time.sleep(1) # 1초 대기 후 재시도
+                        else:
+                            app.logger.error(f"[자동동기화] {dtype} 시트 '{sheet_name}' 최종 저장 실패.")
                 
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
             except Exception as e:
