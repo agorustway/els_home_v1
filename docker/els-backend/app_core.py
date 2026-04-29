@@ -108,6 +108,14 @@ def sync_asan_dispatch_python(force=False):
                 sync_count = 0
                 app.logger.info(f"[자동동기화] {dtype} 엑셀 로드 완료. 시트수: {len(xl.sheet_names)}")
                 
+                # [v5.10.15] 메모 추출용 워크북은 파일당 1회만 로드 (루프 밖)
+                import openpyxl as _openpyxl
+                wb_comments = None
+                try:
+                    wb_comments = _openpyxl.load_workbook(full_path, data_only=True, keep_vba=False)
+                except Exception as e:
+                    app.logger.warning(f"[자동동기화] {dtype} 메모 워크북 로드 실패: {e}")
+                
                 for sheet_name in xl.sheet_names:
                     # [v5.10.9] 더 유연한 시트명 파싱 ("4.29", "04. 29", "4월29일" 등 모두 매칭)
                     match = re.search(r'(\d+)\s*[\.월]\s*(\d+)', sheet_name)
@@ -141,14 +149,10 @@ def sync_asan_dispatch_python(force=False):
                     rows = []
                     comments_dict = {}
                     
-                    # 메모 추출 (필요한 경우만)
-                    sheet_comments = {}
-                    try:
-                        import openpyxl
-                        wb = openpyxl.load_workbook(full_path, data_only=True, read_only=True) # ReadOnly 모드 사용
-                        if sheet_name in wb.sheetnames:
-                            ws = wb[sheet_name]
-                    except: pass
+                    # [v5.10.15] ws 참조 준비 (메모 추출용)
+                    ws_c = None
+                    if wb_comments and sheet_name in wb_comments.sheetnames:
+                        ws_c = wb_comments[sheet_name]
 
                     row_idx_in_db = 0
                     for orig_iloc_idx, row in data_df.iterrows():
@@ -161,6 +165,17 @@ def sync_asan_dispatch_python(force=False):
                             continue
                         
                         rows.append(row.fillna('').astype(str).tolist())
+                        
+                        # [v5.10.15] 메모 추출: ws 행(1-based) = pandas iloc index + 1
+                        if ws_c is not None:
+                            ws_row_num = orig_iloc_idx + 1  # openpyxl은 1-based
+                            try:
+                                for ws_col_idx, cell in enumerate(ws_c[ws_row_num]):
+                                    if cell.comment and cell.comment.text:
+                                        comments_dict[f"{row_idx_in_db}:{ws_col_idx}"] = cell.comment.text.strip()
+                            except Exception:
+                                pass
+                        
                         row_idx_in_db += 1
                     
                     if rows:
@@ -174,7 +189,7 @@ def sync_asan_dispatch_python(force=False):
                             try:
                                 supabase.from_("branch_dispatch").upsert({
                                     "branch_id": "asan", "type": dtype, "target_date": target_date,
-                                    "headers": headers, "data": rows, "comments": {}, # 우선 comments 비움 (성능)
+                                    "headers": headers, "data": rows, "comments": comments_dict, # [v5.10.15] 메모 복원
                                     "file_modified_at": mtime, "updated_at": now.isoformat()
                                 }, on_conflict="branch_id,type,target_date").execute()
                                 last_sheet_hash_cache[cache_key] = sheet_hash  # 성공 시 캐시 업데이트
@@ -187,6 +202,10 @@ def sync_asan_dispatch_python(force=False):
                             app.logger.error(f"[자동동기화] {dtype} 시트 '{sheet_name}' 최종 저장 실패.")
                 
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+                # [v5.10.15] 메모용 워크북 메모리 해제
+                if wb_comments:
+                    try: wb_comments.close()
+                    except: pass
             except Exception as e:
                 app.logger.error(f"[자동동기화] {dtype} 엑셀 처리 중 에러: {e}")
 

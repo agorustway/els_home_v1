@@ -89,11 +89,16 @@ export async function GET(request) {
             };
 
             const currentOffset = byDate[item.target_date].data.length;
+            const orderColIdx = unifiedHeaders.indexOf('오더(계)');
             (item.data || []).forEach((row, rIdx) => {
                 const newRow = unifiedHeaders.map(h => {
                     const cIdx = mapCols[h];
                     return cIdx >= 0 ? row[cIdx] : '';
                 });
+                // [v5.10.15] 오더(계) 값 없는 빈 행 제외
+                const orderVal = orderColIdx >= 0 ? String(newRow[orderColIdx] || '').trim() : '';
+                if (!orderVal || orderVal === '0' || orderVal === 'nan' || orderVal === 'None') return;
+
                 byDate[item.target_date].data.push(newRow);
 
                 Object.entries(item.comments || {}).forEach(([k, v]) => {
