@@ -17,7 +17,7 @@ export async function POST() {
         }
         
         const data = await response.json();
-        return NextResponse.json({ results: data.results || [] });
+        return NextResponse.json(data);
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
