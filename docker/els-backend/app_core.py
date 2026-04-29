@@ -189,33 +189,6 @@ def asan_sync_scheduler():
             app.logger.error(f"[스케줄러] 에러: {e}")
             time.sleep(60)
 
-threading.Thread(target=asan_sync_scheduler, daemon=True).start()         
-            app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
-            last_mtime_cache[dtype] = mtime
-
-                
-    except Exception as e:
-        app.logger.error(f"[자동동기화] 전체 프로세스 오류: {e}", exc_info=True)
-
-def asan_sync_scheduler():
-    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
-    check_count = 0
-    while True:
-        try:
-            now = datetime.now(KST)
-            if 6 <= now.hour <= 23:
-                check_count += 1
-                # 10회(약 10분)마다 "살아있음" 생존 신고 로그 출력
-                if check_count % 10 == 0:
-                    app.logger.info(f"[스케줄러] 아산 배차판 감시 중... (현재시간: {now.strftime('%H:%M:%S')})")
-                
-                # 매 루프(60초)마다 수정 여부를 체크하고, 수정된 경우만 동기화
-                sync_asan_dispatch_python()
-            time.sleep(60)
-        except Exception as e:
-            app.logger.error(f"[스케줄러] 에러 발생: {e}")
-            time.sleep(60)
-
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
 def nas_sync_scheduler():
