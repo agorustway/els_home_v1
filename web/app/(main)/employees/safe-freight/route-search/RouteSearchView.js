@@ -25,8 +25,6 @@ const ROUTE_OPTIONS = [
     { id: 'trafast', label: '실시간 추천', desc: '실시간 추천 경로', color: '#2563eb' },
     { id: 'tracomfort', label: '큰길우선', desc: '큰길 우선 경로', color: '#059669' },
     { id: 'traoptimal', label: '최적경로', desc: '최적 경로', color: '#d97706' },
-    { id: 'traavoidtoll', label: '무료우선', desc: '무료도로 우선', color: '#7c3aed' },
-    { id: 'traavoidcaronly', label: '전용도로회피', desc: '자동차전용도로 회피', color: '#dc2626' },
 ];
 
 /** 고시 내 항만/터미널 정보 (안내용 — 거리 추가 X, 고시 거리에 이미 포함됨) */
@@ -197,7 +195,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [waypoints, setWaypoints] = useState([]); // [{text, lng, lat, r1, r2, r3, terminalKey}]
     const [cartype, setCartype] = useState(5);
     const [timeMode, setTimeMode] = useState('scheduled'); // 'scheduled' | 'realtime'
-    const [selectedOptions, setSelectedOptions] = useState(['trafast', 'tracomfort', 'traoptimal', 'traavoidtoll', 'traavoidcaronly']);
+    const [selectedOptions, setSelectedOptions] = useState(['trafast', 'tracomfort', 'traoptimal']);
     const [tripMode, setTripMode] = useState('round');
     const [displayPeriod, setDisplayPeriod] = useState(period || '26.02월');
 
@@ -886,7 +884,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 }
             }
 
-            // 2. Directions 15 호출 — option 최대 3개 제한이므로 2회 분할
+            // 2. Directions 15 호출 — 안전운임 기준 경로 3종만 조회
             // [수정] 출발지와 도착지가 완전히 동일한 경우(0km) 네이버 API 호출 시 오류가 발생하므로, 
             // 0.0001도(약 10m) 이내면 동일 위치로 간주하고 가상 결과를 생성합니다.
             const isSameLoc = (resolvedOrigin.lng && resolvedDest.lng) &&
@@ -902,12 +900,10 @@ export default function RouteSearchView({ options, period, onBack }) {
                 baseParams.departtime = recent0600.departtime;
             }
 
-            // 선택된 옵션을 3개씩 분할 (#1)
-            const opts = selectedOptions.length > 0 ? selectedOptions : ['trafast', 'tracomfort', 'traoptimal'];
-            const chunks = [];
-            for (let i = 0; i < opts.length; i += 3) {
-                chunks.push(opts.slice(i, i + 3));
-            }
+            const opts = (selectedOptions.length > 0 ? selectedOptions : ['trafast', 'tracomfort', 'traoptimal'])
+                .filter((id) => ROUTE_OPTIONS.some((opt) => opt.id === id))
+                .slice(0, 3);
+            const chunks = [opts];
 
             let mergedRoute = {};
             let firstData = null;
@@ -1058,7 +1054,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     /* ═══════════════════════════════════════════════
        운임 조회 — 거리별(항상) + 구간별(있으면)
        ═══════════════════════════════════════════════ */
-    const applySurchargesToRow = useCallback((row, isSection = false) => {
+    const applySurchargesToRow = useCallback((row, isSection = false, regionalOverride = null) => {
         if (!row) return row;
         // 편도 모드일 때 50% 적용 (거리제/이외구간 전용)
         const baseMult = (tripMode === 'oneWay' && !isSection) ? 0.5 : 1.0;
@@ -1071,8 +1067,9 @@ export default function RouteSearchView({ options, period, onBack }) {
         let f20안전 = (row.f20안전 || 0) * baseMult;
 
         // 지역별 기점 할증 적용 (인천 20%, 평택 18%) - 거리제 전용
-        if (!isSection && regionalBaseSurchargePct > 0) {
-            const regMult = 1 + regionalBaseSurchargePct / 100;
+        const regionalPct = regionalOverride?.pct ?? regionalBaseSurchargePct;
+        if (!isSection && regionalPct > 0) {
+            const regMult = 1 + regionalPct / 100;
             f40위탁 *= regMult;
             f40운수자 *= regMult;
             f40안전 *= regMult;
@@ -1085,9 +1082,11 @@ export default function RouteSearchView({ options, period, onBack }) {
         return {
             ...row,
             f40위탁: round10(f40위탁), f40운수자: round10(f40운수자), f40안전: round10(f40안전),
-            f20위탁: round10(f20위탁), f20운수자: round10(f20운수자), f20안전: round10(f20안전)
+            f20위탁: round10(f20위탁), f20운수자: round10(f20운수자), f20안전: round10(f20안전),
+            appliedRegionalPct: regionalPct,
+            appliedRegionalLabel: regionalOverride?.label ?? regionalBaseSurcharge.label,
         };
-    }, [tripMode, regionalBaseSurchargePct]);
+    }, [tripMode, regionalBaseSurchargePct, regionalBaseSurcharge.label]);
 
     const lookupFare = async (distanceMeters, resolvedOrigin, resolvedDest) => {
         const totalKm = metersToKm(distanceMeters);
@@ -1108,7 +1107,13 @@ export default function RouteSearchView({ options, period, onBack }) {
             const data = await res.json();
 
             if (data.rows?.length > 0) {
-                const row = applySurchargesToRow(data.rows[0], false);
+                const routeRegionalBaseSurcharge = getRegionalBaseSurcharge({
+                    origin: useOrigin.text,
+                    destination: useDest.text,
+                    tripMode,
+                    queryType: 'distance',
+                });
+                const row = applySurchargesToRow(data.rows[0], false, routeRegionalBaseSurcharge);
                 setDistFareResult({
                     totalKm,
                     routeKm: totalKm,
@@ -1120,6 +1125,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                     f20위탁: row.f20위탁 || 0,
                     f20운수자: row.f20운수자 || 0,
                     f20안전: row.f20안전 || 0,
+                    appliedRegionalPct: row.appliedRegionalPct || 0,
+                    appliedRegionalLabel: row.appliedRegionalLabel || '',
                 });
             } else {
                 setDistFareResult(null);
@@ -1278,13 +1285,11 @@ export default function RouteSearchView({ options, period, onBack }) {
         if (!distFareResult || !routeResult) return;
         const sel = parsedRoutes.find(r => r.key === selectedRouteKey);
 
-        const routeNameMap = {
-            'trafast': '실시간 빠른길',
-            'tracomfort': '실시간 편안한길',
-            'traoptimal': '최적경로',
-            'traavoidtoll': '통행료 회피',
-            'traavoidcaronly': '이륜차 회피'
-        };
+            const routeNameMap = {
+                'trafast': '실시간 빠른길',
+                'tracomfort': '큰길우선',
+                'traoptimal': '최적경로',
+            };
         const routeName = routeNameMap[selectedRouteKey] || sel?.desc || selectedRouteKey;
 
         const createEntry = (fare, isSection, fareTypeLabel) => ({
@@ -1722,7 +1727,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                     {/* 경로 옵션 */}
                     <div className={styles.routeOptionsBar}>
-                        <label className={styles.miniLabel}>경로 옵션 (최대 5개, 네이버 지도 기준)</label>
+                        <label className={styles.miniLabel}>경로 옵션 (안전운임 기준 3개)</label>
                         <div className={styles.optionChips}>
                             {ROUTE_OPTIONS.map(opt => (
                                 <button
@@ -1957,9 +1962,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                                         <strong>{distFareResult.period}</strong>
                                     </div>
                                 </div>
-                                {regionalBaseSurchargePct > 0 && (
+                                {distFareResult.appliedRegionalPct > 0 && (
                                     <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
-                                        <strong>지역별 기점 할증 적용:</strong> {regionalBaseSurcharge.label} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
+                                        <strong>지역별 기점 할증 적용:</strong> {distFareResult.appliedRegionalLabel} 기점 {distFareResult.appliedRegionalPct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
                                     </div>
                                 )}
                                 <table className={styles.fareTable}>

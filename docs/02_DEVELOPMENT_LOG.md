@@ -1,5 +1,25 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 안전운임 인천·평택 기점 할증 규칙 엄격화 (v5.10.30)
+### 🚀 Achievement
+- **고시 본문 재확인**: 제7조의 거리 반올림 기준과 제23조 카·타목의 인천/평택 기점 할증 문구를 기준으로 거리별·구간조회 적용 규칙을 다시 잠갔습니다.
+- **기점 할증 오적용 차단**: `인천-아산-인천`처럼 동일 인천 기점으로 복귀하는 왕복 운송은 20%를 적용하고, `인천-아산-부산`처럼 최종 기점이 다른 항만인 경로는 인천 기점 할증을 적용하지 않도록 수정했습니다.
+- **왕복거리 표시 정수화**: 화면, 저장 내역, 엑셀 다운로드에서 왕복거리가 `123.0km`처럼 보이지 않도록 정수 반올림 표시로 통일했습니다.
+- **경로 조회 쿼터 절감**: 안전운임 산정과 직접 관련이 낮은 `무료도로 우선`, `자동차전용도로 회피` 옵션을 제거하고 Directions15 요청을 `실시간 추천`, `큰길우선`, `최적경로` 3종으로 축소했습니다.
+
+### 🛠 Technical Changes
+- `web/utils/safeFreightRules.mjs`: 안전운임 km 표시와 인천/평택 기점 할증 판정 공통 유틸 추가.
+- `web/app/(main)/employees/safe-freight/page.js`: 거리별/이외구간 조회의 왕복거리 표시 및 기점 할증 라벨 정리.
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`: 경로조회 최종 도착 터미널 기준으로 기점 할증 오적용 차단.
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`: 구간조회 경로 옵션을 안전운임 기준 3종으로 축소해 Naver Directions15 중복 호출 완화.
+- `web/app/api/safe-freight/download-excel/route.js`: 엑셀의 구간/왕복 km 값을 정수 표시로 보정.
+
+### ✅ Verification
+- `.tmp_test/safeFreightRegionalRules.test.mjs`, `.tmp_test/safeFreightRouteOptions.test.mjs`: 인천-아산-인천 20%, 인천-아산-부산 0%, 평택 왕복 18%, 편도/구간표 중복할증 금지, km 정수 표시, 경로 옵션 3종 제한 테스트 통과 후 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] 안드로이드 드라이버 앱 GPS 도로보정 실전 패치 배포 (v5.10.4 / 5104)
 ### 🚀 Achievement
 - **GPS 도로보정 실전 적용**: Naver Directions15 기반 도로 경로 보정 및 첫/끝 튐 제거 로직이 통합된 드라이버 앱 v5.10.4(5104) 버전을 빌드 및 배포했습니다.
