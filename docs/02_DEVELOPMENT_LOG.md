@@ -1,5 +1,25 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 차량관제 앱 사진 일괄 업로드 및 안전교육 이수 기록 (v5.10.31)
+### 🚀 Achievement
+- **운행사진 일괄 업로드**: 드라이버 앱에서 운행 사진을 10장까지 다중 선택하고 한 번의 업로드 요청으로 저장할 수 있도록 개선했습니다.
+- **안전교육 콘텐츠 관리**: 웹 차량관제 공지 작성에서 `안전교육` 카테고리 선택 시 YouTube 주소와 PDF/이미지 등 교육자료를 등록할 수 있게 했습니다.
+- **차량별 이수 기록**: 앱 공지 상세에서 안전교육 영상/자료를 확인한 뒤 `시청 완료 및 이수 기록`을 누르면 현재 운행의 `vehicle_trip_logs`에 이수 내역이 남도록 API를 추가했습니다.
+- **웹 기록 확인**: 차량 상세의 운행 기록 영역에서 안전교육 이수 내역을 함께 확인할 수 있게 했습니다.
+
+### 🛠 Technical Changes
+- `web/app/api/vehicle-tracking/education/complete/route.js`: 안전교육 이수 완료 로그 API 신규 추가.
+- `web/driver-src/modules/photos.js`, `web/driver-src/index.html`: 운행사진 다중 선택 및 pending 사진 묶음 업로드 적용.
+- `web/driver-src/modules/notice.js`, `web/driver-src/app.js`: 앱 안전교육 영상/첨부자료 표시 및 이수 완료 액션 연결.
+- `web/app/(standalone)/driver-app/page.js`: standalone 앱 사진 묶음 업로드와 안전교육 완료 버튼 추가.
+- `web/app/(main)/employees/vehicle-tracking/page.js`: 안전교육 자료 등록 UI 및 운행 상세 이수기록 표시 추가.
+
+### ✅ Verification
+- `.tmp_test/vehicleEducationAndPhotos.test.mjs`: 다중 사진 업로드, 안전교육 완료 API, 앱/웹 연결 정적 테스트 통과 후 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] 안전운임 인천·평택 기점 할증 규칙 엄격화 (v5.10.30)
 ### 🚀 Achievement
 - **고시 본문 재확인**: 제7조의 거리 반올림 기준과 제23조 카·타목의 인천/평택 기점 할증 문구를 기준으로 거리별·구간조회 적용 규칙을 다시 잠갔습니다.

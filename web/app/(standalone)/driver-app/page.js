@@ -733,27 +733,25 @@ export default function DriverAppPage() {
             return next;
         });
 
-        // 한 장씩 순차적으로 업로드 (Vercel 4.5MB 몸체 제한 우회)
         if (activeTrip) {
             setUploading(true);
             try {
-                for (let i = 0; i < rawFiles.length; i++) {
-                    const file = rawFiles[i];
+                const formData = new FormData();
+                formData.append('trip_id', activeTrip.id);
+                for (const file of rawFiles) {
                     const compressed = await resizeImage(file);
-                    
-                    const formData = new FormData();
-                    formData.append('trip_id', activeTrip.id);
                     formData.append('photos', compressed);
-
-                    const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
-                    if (!res.ok) throw new Error(`${file.name} 업로드 중 오류 발생`);
-                    
-                    const data = await res.json();
-                    setPhotos(prev => prev.map(p => {
-                        const uploadedPhoto = data.photos.find(up => up.name === file.name || up.original_name === file.name);
-                        return (p.uploading && (p.name === file.name)) ? { ...p, previewUrl: uploadedPhoto.url, key: uploadedPhoto.key, uploaded: true, uploading: false } : p;
-                    }));
                 }
+                const res = await fetch('/api/vehicle-tracking/photos', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error('사진 업로드 중 오류 발생');
+                const data = await res.json();
+                const uploaded = Array.isArray(data.photos) ? data.photos.slice(-rawFiles.length) : [];
+                let uploadIdx = 0;
+                setPhotos(prev => prev.map(p => {
+                    if (!p.uploading) return p;
+                    const uploadedPhoto = uploaded[uploadIdx++];
+                    return uploadedPhoto ? { ...p, previewUrl: uploadedPhoto.url, key: uploadedPhoto.key, uploaded: true, uploading: false } : p;
+                }));
             } catch (e) {
                 console.error(e);
                 alert('사진 전송 오류: ' + e.message);
@@ -1192,7 +1190,7 @@ export default function DriverAppPage() {
                     notices.map((n, idx) => (
                         <div key={idx} className={styles.noticeItem} onClick={() => { triggerHaptic('LIGHT'); setSelectedNotice(n); }}>
                             <div className={styles.noticeMain}>
-                                <span className={styles.noticeBadge}>공지</span>
+                                <span className={styles.noticeBadge}>{n.category === '안전교육' ? '교육' : '공지'}</span>
                                 <span className={styles.noticeTitle}>{n.title}</span>
                             </div>
                             <div className={styles.noticeMeta}>
@@ -1326,6 +1324,17 @@ export default function DriverAppPage() {
                             </div>
                             
                             <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                                {selectedNotice.education_url && (
+                                    <div style={{ marginBottom: 15, borderRadius: 10, overflow: 'hidden', background: '#000', aspectRatio: '16 / 9' }}>
+                                        <iframe
+                                            title="안전교육 영상"
+                                            src={selectedNotice.education_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                                            style={{ width: '100%', height: '100%', border: 0 }}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        />
+                                    </div>
+                                )}
                                 <div 
                                     style={{ fontSize: '0.95rem', color: '#334155', lineHeight: 1.6 }}
                                     dangerouslySetInnerHTML={{ __html: selectedNotice.content }} 
@@ -1346,6 +1355,24 @@ export default function DriverAppPage() {
                             </div>
                             
                             <div style={{ padding: '15px 20px', background: '#f8fafc' }}>
+                                {selectedNotice.category === '안전교육' && activeTrip && (
+                                    <button className={styles.onboardingBtn} onClick={async () => {
+                                        const res = await fetch('/api/vehicle-tracking/education/complete', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                trip_id: activeTrip.id,
+                                                notice_id: selectedNotice.id,
+                                                title: selectedNotice.title,
+                                                driver_name: driverName,
+                                                vehicle_number: vehicleNumber,
+                                                completed_by: driverName || vehicleNumber,
+                                            }),
+                                        });
+                                        if (res.ok) alert('안전교육 이수 기록이 저장되었습니다.');
+                                        else alert('이수 기록 저장에 실패했습니다.');
+                                    }} style={{ margin: '0 0 10px', background: '#10b981' }}>시청 완료 및 이수 기록</button>
+                                )}
                                 <button className={styles.onboardingBtn} onClick={() => setSelectedNotice(null)} style={{ margin: 0 }}>닫기</button>
                             </div>
                         </motion.div>

@@ -2,68 +2,68 @@
  * ELS Driver App — 모듈 엔트리 포인트
  * ES Modules 방식으로 각 기능 모듈을 import하여 window.App 조립
  */
-import { AppConfig } from './modules/store.js?v=5104';
-import { remoteLog } from './modules/bridge.js?v=5104';
-import { showToast, formatDate, escHtml, loadSafeImage } from './modules/utils.js?v=5104';
-import { showScreen } from './modules/nav.js?v=5104';
-import { smartFetch } from './modules/bridge.js?v=5104';
+import { AppConfig } from './modules/store.js?v=5131';
+import { remoteLog } from './modules/bridge.js?v=5131';
+import { showToast, formatDate, escHtml, loadSafeImage } from './modules/utils.js?v=5131';
+import { showScreen } from './modules/nav.js?v=5131';
+import { smartFetch } from './modules/bridge.js?v=5131';
 
 // 권한
 import {
   requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
-} from './modules/permissions.js?v=5104';
+} from './modules/permissions.js?v=5131';
 
 // 프로필
 import {
   saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
-} from './modules/profile.js?v=5104';
+} from './modules/profile.js?v=5131';
 
 // 운행 + 오버레이
 import {
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist, checkChecklistValid,
   startOverlayService, updateOverlayStatus, stopOverlayService,
-} from './modules/trip.js?v=5104';
+} from './modules/trip.js?v=5131';
 
 // GPS
 import {
   startGPS, stopGPS, onGpsUpdate, updateTripStatusLine,
   startRealtimeMode, stopRealtimeMode,
   gpsWatchId, lastGpsTimestamp,
-} from './modules/gps.js?v=5104';
+} from './modules/gps.js?v=5131';
 
 // 공지
-import { loadNotices, filterNotice, openNotice, closeNoticeDetail } from './modules/notice.js?v=5104';
+import { loadNotices, filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation } from './modules/notice.js?v=5131';
 
 // 사진
 import {
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,
   openPhotoViewer, openLogPhoto, closePhotoViewer, prevPhoto, nextPhoto,
   deleteCurrentPhoto, initPinchZoom,
-} from './modules/photos.js?v=5104';
+} from './modules/photos.js?v=5131';
 
 // 일지
 import {
   loadLogs, openLog, onLogFieldChange, saveLogEdit, deleteLog,
   forceCompleteLog, closeLogDetail, addLogPhoto, onLogFileSelected,
-} from './modules/log.js?v=5104';
+} from './modules/log.js?v=5131';
 
 // 긴급알림
-import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=5104';
+import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=5131';
 
 // 업데이트
-import { checkUpdate } from './modules/update.js?v=5104';
+import { checkUpdate } from './modules/update.js?v=5131';
 
 // 지도
 import {
   openMap, closeMap, refreshMapData, centerMyLocation,
   toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
-} from './modules/map.js?v=5104';
+} from './modules/map.js?v=5131';
 
 // 초기화
-import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=5104';
+import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=5131';
 
 // ─── window.App 조립 ─────────────────────────────────────────────
 // index.html의 모든 onclick="App.xxx()" 호출의 단일 진입점
@@ -100,7 +100,7 @@ window.App = {
   pollEmergency,
 
   // 공지
-  filterNotice, openNotice, closeNoticeDetail,
+  filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation,
 
   // 사진
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,

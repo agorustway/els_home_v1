@@ -146,7 +146,16 @@ export default function VehicleTrackingPage() {
             const method = newNotice.id ? 'PUT' : 'POST';
             const bodyData = newNotice.isEmergency
                 ? { id: newNotice.id, title: newNotice.title, message: newNotice.content }
-                : { id: newNotice.id, title: newNotice.title, content: newNotice.content, target: newNotice.target, category: newNotice.category, status: '공지중' };
+                : {
+                    id: newNotice.id,
+                    title: newNotice.title,
+                    content: newNotice.content,
+                    target: newNotice.target,
+                    category: newNotice.category,
+                    status: '공지중',
+                    attachments: newNotice.attachments || [],
+                    education_url: newNotice.education_url || '',
+                };
 
             const res = await fetch(endpoint, {
                 method,
@@ -199,26 +208,30 @@ export default function VehicleTrackingPage() {
 
     // [신규] 첨부파일 업로드 (NAS 연동 권장하지만 일단 Supabase Storage 또는 S3 Presigned 이용 가능하도록 틀만 구성)
     const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
         setLoading(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('path', '/공지사항_첨부');
+            const uploaded = [];
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('path', '/공지사항_첨부');
 
-            const res = await fetch('/api/nas/files', { method: 'POST', body: formData });
-            const d = await res.json();
-            if (!res.ok) throw new Error(d.error || '업로드 실패');
+                const res = await fetch('/api/nas/files', { method: 'POST', body: formData });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.error || '업로드 실패');
+                uploaded.push({ name: file.name, url: `/api/nas/files?download=true&path=${encodeURIComponent(d.path)}&name=${encodeURIComponent(file.name)}`, type: file.type });
+            }
 
             setNewNotice(prev => ({
                 ...prev,
-                attachments: [...(prev.attachments || []), { name: file.name, url: `/api/nas/files?download=true&path=${encodeURIComponent(d.path)}&name=${encodeURIComponent(file.name)}` }]
+                attachments: [...(prev.attachments || []), ...uploaded]
             }));
-            alert('파일이 업로드되었습니다.');
+            alert(`파일 ${uploaded.length}개가 업로드되었습니다.`);
         } catch (e) { alert('파일 업로드 실패: ' + e.message); }
-        finally { setLoading(false); }
+        finally { setLoading(false); e.target.value = ''; }
     };
 
     // ─── 2. 상세 경로 조회 ───
@@ -1290,6 +1303,28 @@ export default function VehicleTrackingPage() {
                                 </table>
                             </div>
                         </div>
+                        <div className={styles.detailSection}>
+                            <div className={styles.sectionTitle}>운행 기록 / 안전교육 이수 ({tripLogs.length})</div>
+                            <div className={styles.locationList} style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff' }}>
+                                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                    <thead style={{ background: '#f8fafc' }}>
+                                        <tr><th style={{ padding: 6 }}>시간</th><th style={{ padding: 6 }}>항목</th><th style={{ padding: 6 }}>내용</th><th style={{ padding: 6 }}>처리자</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {tripLogs.length === 0 ? (
+                                            <tr><td colSpan="4" style={{ padding: 14, textAlign: 'center', color: '#94a3b8' }}>기록이 없습니다.</td></tr>
+                                        ) : tripLogs.map((log, i) => (
+                                            <tr key={log.id || i} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                                <td style={{ padding: 6, whiteSpace: 'nowrap' }}>{new Date(log.created_at).toLocaleString('ko-KR')}</td>
+                                                <td style={{ padding: 6, fontWeight: 800, color: log.field_name === 'safety_education' ? '#059669' : '#475569' }}>{log.field_name === 'safety_education' ? '안전교육' : log.field_name}</td>
+                                                <td style={{ padding: 6 }}>{log.field_name === 'safety_education' ? String(log.new_value || '').split('|').slice(1).join('|').trim() : `${log.old_value || '-'} → ${log.new_value || '-'}`}</td>
+                                                <td style={{ padding: 6 }}>{log.modified_by || '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1343,6 +1378,26 @@ export default function VehicleTrackingPage() {
                                             <option value="미계약차량">미계약차량 (외부 기사)</option>
                                         </select>
                                     </div>
+                                </div>
+                            )}
+                            {!newNotice.isEmergency && newNotice.category === '안전교육' && (
+                                <div style={{ marginTop: 12, padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>YouTube 교육 영상 주소</label>
+                                    <input
+                                        className={styles.modalInput}
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        value={newNotice.education_url || ''}
+                                        onChange={e => setNewNotice({ ...newNotice, education_url: e.target.value })}
+                                    />
+                                    <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', display: 'block', margin: '10px 0 4px' }}>교육 자료 업로드 (PDF/이미지 등 다중 선택)</label>
+                                    <input type="file" multiple accept="image/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} />
+                                    {(newNotice.attachments || []).length > 0 && (
+                                        <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                            {(newNotice.attachments || []).map((f, i) => (
+                                                <span key={i} style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 700 }}>{f.name}</span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=5104';
-import { smartFetch } from './bridge.js?v=5104';
-import { showToast, escHtml } from './utils.js?v=5104';
-import { updateProfilePhoto } from './profile.js?v=5104';
+import { State, BASE_URL } from './store.js?v=5131';
+import { smartFetch } from './bridge.js?v=5131';
+import { showToast, escHtml } from './utils.js?v=5131';
+import { updateProfilePhoto } from './profile.js?v=5131';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
@@ -113,42 +113,45 @@ export async function uploadPendingPhotos() {
   let failCount = 0;
 
   try {
+    const payload = [];
+    const indexes = [];
     for (let i = 0; i < State.photos.length; i++) {
       const p = State.photos[i];
       if (p.uploaded) continue;
 
       try {
-        console.log(`[PHOTO #${i}] 리사이징 시작`, p.file ? '(파일)' : '(dataUrl)');
         const dataUrl = await resizePhoto(p.file || p.dataUrl);
         const base64  = dataUrl.split(',')[1];
         const mime    = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         const ext     = mime.split('/')[1] || 'jpg';
+        payload.push({ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime });
+        indexes.push(i);
+      } catch (e) {
+        console.error(`[PHOTO #${i}] 리사이즈 에러`, e);
+        failCount++;
+      }
+    }
 
-        const uploadUrl = BASE_URL + '/api/vehicle-tracking/photos';
-        const res  = await smartFetch(uploadUrl, {
-          method: 'POST',
-          body: JSON.stringify({
-            trip_id: currentTripId,
-            photos:  [{ name: `photo_${Date.now()}_${i}.${ext}`, base64, type: mime }],
-          }),
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (data.photos && Array.isArray(data.photos)) {
-          const sp = data.photos[data.photos.length - 1] || {};
+    if (payload.length > 0) {
+      const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/photos', {
+        method: 'POST',
+        body: JSON.stringify({ trip_id: currentTripId, photos: payload }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.photos && Array.isArray(data.photos)) {
+        const uploaded = data.photos.slice(-payload.length);
+        indexes.forEach((idx, pos) => {
+          const sp = uploaded[pos] || {};
           let finalUrl = sp.url || sp.serverUrl || '';
           if (finalUrl && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:')) {
             finalUrl = BASE_URL + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
           }
-          State.photos[i] = { ...State.photos[i], uploaded: true, serverUrl: finalUrl };
-          renderPhotoThumbs();
+          State.photos[idx] = { ...State.photos[idx], uploaded: true, serverUrl: finalUrl };
           successCount++;
-        } else {
-          failCount++;
-        }
-      } catch (e) {
-        console.error(`[PHOTO #${i}] 에러`, e);
-        failCount++;
+        });
+        renderPhotoThumbs();
+      } else {
+        failCount += payload.length;
       }
     }
   } finally {

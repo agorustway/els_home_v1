@@ -1,9 +1,9 @@
 /**
  * notice.js — 공지 목록, 필터, 상세
  */
-import { Store, State, BASE_URL } from './store.js?v=5104';
-import { smartFetch } from './bridge.js?v=5104';
-import { formatDate, escHtml, showToast } from './utils.js?v=5104';
+import { Store, State, BASE_URL } from './store.js?v=5131';
+import { smartFetch } from './bridge.js?v=5131';
+import { formatDate, escHtml, showToast } from './utils.js?v=5131';
 
 let _notices             = [];
 let _currentNoticeFilter = '';
@@ -138,6 +138,17 @@ export function openNotice(id) {
       .replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
     bodyEl.innerHTML = raw.trim().replace(/\n\s*\n/g, '\n').replace(/\n/g, '<br>');
   }
+  const mediaEl = document.getElementById('notice-detail-media');
+  if (mediaEl) {
+    const attachments = Array.isArray(n.attachments) ? n.attachments : [];
+    const yt = n.education_url || '';
+    const embed = yt ? yt.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/') : '';
+    const attachHtml = attachments.map(a => `<a href="${escHtml(a.url)}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${escHtml(a.name || '첨부파일')}</a>`).join('');
+    const completeBtn = n.category === '안전교육'
+      ? `<button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="App.completeSafetyEducation('${n.id}')">시청 완료 및 이수 기록</button>`
+      : '';
+    mediaEl.innerHTML = `${embed ? `<iframe title="안전교육 영상" src="${escHtml(embed)}" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:12px;" allowfullscreen></iframe>` : ''}${attachHtml}${completeBtn}`;
+  }
 
   document.getElementById('notice-list').style.display = 'none';
   const detail = document.getElementById('notice-detail');
@@ -150,6 +161,29 @@ export function openNotice(id) {
     document.getElementById('notice-item-' + id)?.classList.remove('notice-item-unread');
   }
   detail.scrollTop = 0;
+}
+
+export async function completeSafetyEducation(id) {
+  const n = _notices.find(x => String(x.id) === String(id));
+  const trip = State.trip || {};
+  if (!trip.id) { showToast('운행 중일 때 이수 기록을 저장할 수 있습니다.'); return; }
+  try {
+    const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/education/complete`, {
+      method: 'POST',
+      body: JSON.stringify({
+        trip_id: trip.id,
+        notice_id: n.id,
+        title: n.title,
+        driver_name: State.profile?.name,
+        vehicle_number: State.profile?.vehicleNo,
+        completed_by: State.profile?.name || State.profile?.vehicleNo,
+      }),
+    });
+    if (!res.ok) throw new Error('fail');
+    showToast('안전교육 이수 기록 저장 완료');
+  } catch {
+    showToast('이수 기록 저장 실패');
+  }
 }
 
 export function closeNoticeDetail() {
