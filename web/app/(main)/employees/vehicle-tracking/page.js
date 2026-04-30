@@ -918,6 +918,34 @@ export default function VehicleTrackingPage() {
         return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
     };
 
+    const educationRows = useMemo(() => {
+        return records.flatMap(trip => (trip.education_logs || []).map(log => ({ trip, log })));
+    }, [records]);
+
+    const recordSummary = useMemo(() => {
+        const amount = records.reduce((sum, trip) => sum + (Number(trip.billing_amount) || 0), 0);
+        const vehicleSet = new Set(records.map(t => t.vehicle_number).filter(Boolean));
+        return { count: records.length, amount, vehicles: vehicleSet.size };
+    }, [records]);
+
+    const toggleTripClosed = async (trip) => {
+        const nextClosed = !trip.is_closed;
+        if (!confirm(nextClosed ? '이 운행기록을 마감 완료 처리할까요? 기사 앱 수정이 제한됩니다.' : '마감을 해제할까요?')) return;
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips/${trip.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_closed: nextClosed, source: 'web', closed_by: 'web' }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || '마감 처리 실패');
+            setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, ...data.trip } : t));
+            if (selectedTrip?.id === trip.id) setSelectedTrip(prev => ({ ...prev, ...data.trip }));
+        } catch (e) {
+            alert(e.message);
+        }
+    };
+
     // [신규] 실시간 관제 리스트 줌 이동
     const handleZoomToLiveTrip = (trip) => {
         if (!mapInstanceRef.current || !trip.lastLocation) return;
@@ -954,7 +982,7 @@ export default function VehicleTrackingPage() {
                 <h2>차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
                 <div className={styles.titleBtns}>
                     <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>새로고침</button>
-                    <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/api/debug/view', '_blank')}>실시간 로그</button>
+                    <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/admin/logs', '_blank')}>실시간 로그</button>
                 </div>
             </div>
 
@@ -1118,6 +1146,11 @@ export default function VehicleTrackingPage() {
                         </button>
                     )}
                 </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, margin: '0 0 12px' }}>
+                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>조회 운행건수</div><div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{recordSummary.count.toLocaleString('ko-KR')}건</div></div>
+                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>조회 차량수</div><div style={{ fontSize: 22, fontWeight: 900, color: '#2563eb' }}>{recordSummary.vehicles.toLocaleString('ko-KR')}대</div></div>
+                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>청구금액 합계</div><div style={{ fontSize: 22, fontWeight: 900, color: '#059669' }}>{recordSummary.amount.toLocaleString('ko-KR')}원</div></div>
+                </div>
                 <div className={styles.tableSection}>
                     <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
@@ -1132,6 +1165,25 @@ export default function VehicleTrackingPage() {
                             }}>선택건 ZIP</button>
                         </div>
                     </div>
+                    {educationRows.length > 0 && (
+                        <div style={{ margin: '0 0 12px', border: '1px solid #d1fae5', borderRadius: 8, overflow: 'hidden', background: '#f0fdf4' }}>
+                            <div style={{ padding: '8px 12px', fontSize: '0.85rem', fontWeight: 900, color: '#047857', borderBottom: '1px solid #d1fae5' }}>교육 이수 기록 ({educationRows.length}건)</div>
+                            <table className={styles.tripTable} style={{ margin: 0 }}>
+                                <thead><tr><th>이수일시</th><th>기사/차량</th><th>교육명</th><th>처리자</th><th>연결 운행</th></tr></thead>
+                                <tbody>
+                                    {educationRows.map(({ trip, log }) => (
+                                        <tr key={log.id}>
+                                            <td>{new Date(log.created_at).toLocaleString('ko-KR')}</td>
+                                            <td><strong>{trip.driver_name}</strong><div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div></td>
+                                            <td style={{ fontWeight: 800, color: '#047857' }}>{parseEducationLogTitle(log.new_value)}</td>
+                                            <td>{log.modified_by || '-'}</td>
+                                            <td><button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                     <table className={styles.tripTable}>
                         <thead>
                             <tr>
@@ -1141,7 +1193,7 @@ export default function VehicleTrackingPage() {
                                 <th style={{ minWidth: '130px' }}>컨테이너/씰넘버</th>
                                 <th>규격/종류</th>
                                 <th>점검여부(브/타/램/적/기)</th>
-                                <th style={{ maxWidth: '120px' }}>메모</th>
+                                <th style={{ maxWidth: '160px' }}>일보/메모</th>
                                 <th style={{ width: '60px' }}>사진</th>
                                 <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{ width: '130px' }}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
                                 <th style={{ width: '240px' }}>최종위치(속도)</th>
@@ -1172,8 +1224,9 @@ export default function VehicleTrackingPage() {
                                         <span title="적재물" style={{ marginRight: 2 }}>{trip.chk_cargo ? '✅' : '❌'}</span>
                                         <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
                                     </td>
-                                    <td style={{ fontSize: '0.75rem', color: '#475569', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={trip.special_notes || '-'}>
-                                        {trip.special_notes || '-'}
+                                    <td style={{ fontSize: '0.75rem', color: '#475569', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`}>
+                                        <div>{trip.transport_type || '왕복'} · {trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'}</div>
+                                        <div style={{ color: '#64748b' }}>{trip.work_site || trip.special_notes || '-'}</div>
                                     </td>
                                     <td style={{ textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>{trip.photos?.length || 0}장</td>
                                     <td style={{ fontSize: '0.8rem' }}>
@@ -1187,6 +1240,7 @@ export default function VehicleTrackingPage() {
                                     </td>
                                     <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
+                                        <button className={styles.viewIconBtn} style={{ borderColor: trip.is_closed ? '#ef4444' : '#10b981', color: trip.is_closed ? '#ef4444' : '#10b981' }} onClick={() => toggleTripClosed(trip)}>{trip.is_closed ? '마감해제' : '마감완료'}</button>
                                         <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>삭제</button>
                                     </td>
                                 </tr>
@@ -1226,6 +1280,10 @@ export default function VehicleTrackingPage() {
                                 <div><div className={styles.infoLabel}>차량번호</div><div className={styles.infoValue}>{selectedTrip.vehicle_number}</div></div>
                                 <div><div className={styles.infoLabel}>컨테이너</div><div className={styles.infoValue}>{selectedTrip.container_number || '-'}</div></div>
                                 <div><div className={styles.infoLabel}>씰 넘버</div><div className={styles.infoValue}>{selectedTrip.seal_number || '-'}</div></div>
+                                <div><div className={styles.infoLabel}>운송구분</div><div className={styles.infoValue}>{selectedTrip.transport_type || '왕복'}</div></div>
+                                <div><div className={styles.infoLabel}>청구금액</div><div className={styles.infoValue}>{selectedTrip.billing_amount ? Number(selectedTrip.billing_amount).toLocaleString('ko-KR') + '원' : '-'}</div></div>
+                                <div><div className={styles.infoLabel}>작업지</div><div className={styles.infoValue}>{selectedTrip.work_site || '-'}</div></div>
+                                <div><div className={styles.infoLabel}>마감여부</div><div className={styles.infoValue} style={{ color: selectedTrip.is_closed ? '#ef4444' : '#10b981' }}>{selectedTrip.is_closed ? '마감완료' : '미마감'}</div></div>
                                 <div style={{ gridColumn: 'span 2', background: '#f0f9ff', padding: '8px 12px', borderRadius: 8, border: '1px solid #bae6fd' }}>
                                     <div className={styles.infoLabel} style={{ color: '#0369a1' }}>총 소요 운행 시간</div>
                                     <div className={styles.infoValue} style={{ color: '#0284c7', fontSize: '1.1rem', fontWeight: 800 }}>{getElapsedTimeString(selectedTrip.started_at, selectedTrip.completed_at)}</div>

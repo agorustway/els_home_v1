@@ -36,7 +36,8 @@ export async function POST(request) {
       .eq('field_name', 'safety_education')
       .like('new_value', `${notice_id}%`)
       .maybeSingle();
-    if (existing?.id) return NextResponse.json({ completed: true, duplicated: true });
+    const completedAt = new Date().toISOString();
+    if (existing?.id) return NextResponse.json({ completed: true, duplicated: true, trip_id: resolvedTripId });
 
     const { error } = await supabase.from('vehicle_trip_logs').insert({
       trip_id: resolvedTripId,
@@ -44,10 +45,10 @@ export async function POST(request) {
       modified_by: completed_by || driver_name || vehicle_number || 'driver',
       old_value: vehicle_number || '-',
       new_value: makeEducationLogValue(notice_id, title),
-      created_at: new Date().toISOString(),
+      created_at: completedAt,
     });
     if (error) throw error;
-    return NextResponse.json({ completed: true });
+    return NextResponse.json({ completed: true, trip_id: resolvedTripId, completed_at: completedAt });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

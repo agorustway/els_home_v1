@@ -35,7 +35,7 @@ import {
 } from './modules/gps.js?v=5137';
 
 // 공지
-import { loadNotices, filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation } from './modules/notice.js?v=5137';
+import { loadNotices, filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation, confirmEducationRead } from './modules/notice.js?v=5137';
 
 // 사진
 import {
@@ -100,7 +100,7 @@ window.App = {
   pollEmergency,
 
   // 공지
-  filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation,
+  filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation, confirmEducationRead,
 
   // 사진
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,

@@ -7,6 +7,7 @@ import { formatDate, escHtml, showToast } from './utils.js?v=5137';
 
 let _notices             = [];
 let _currentNoticeFilter = '';
+let _currentEducationProgress = null;
 
 function toYouTubeEmbedUrl(rawUrl = '') {
   const raw = String(rawUrl || '').trim();
@@ -36,17 +37,75 @@ function renderEducationMedia(notice) {
   const attachments = Array.isArray(notice.attachments) ? notice.attachments : [];
   const textSource = `${notice.education_url || ''}\n${notice.content || notice.body || notice.message || ''}\n${attachments.map(a => `${a.url || ''} ${a.name || ''}`).join('\n')}`;
   const youtubeUrls = [...new Set(extractYouTubeUrls(textSource))];
-  const videoHtml = youtubeUrls.map(url => `<iframe title="안전교육 영상" src="${escHtml(toYouTubeEmbedUrl(url))}" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`).join('');
-  const attachHtml = attachments.map(a => {
+  const videoAttachments = attachments.filter(a => String(a.type || '').toLowerCase().startsWith('video/'));
+  const totalVideoCount = youtubeUrls.length + videoAttachments.length;
+  const videoHtml = youtubeUrls.map((url, idx) => `<iframe title="안전교육 영상" src="${escHtml(toYouTubeEmbedUrl(url))}" data-edu-video="${idx}" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe>`).join('');
+  const attachHtml = attachments.map((a, idx) => {
     const url = escHtml(a.url || '');
     const name = escHtml(a.name || '첨부파일');
     const type = String(a.type || '').toLowerCase();
     if (type.startsWith('image/')) return `<img src="${url}" alt="${name}" style="display:block;width:100%;max-height:260px;object-fit:contain;margin-top:8px;border-radius:8px;background:#f8fafc;">`;
-    if (type.startsWith('video/')) return `<video controls src="${url}" style="display:block;width:100%;margin-top:8px;border-radius:8px;background:#000;"></video>`;
+    if (type.startsWith('video/')) return `<video controls playsinline src="${url}" data-edu-video="${youtubeUrls.length + idx}" style="display:block;width:100%;margin-top:8px;border-radius:8px;background:#000;"></video>`;
     if (type.includes('pdf') || name.toLowerCase().endsWith('.pdf')) return `<iframe title="${name}" src="${url}" style="width:100%;height:360px;border:1px solid #e2e8f0;border-radius:8px;margin-top:8px;background:#fff;"></iframe><a href="${url}" target="_blank" style="display:block;padding:10px;margin-top:6px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">PDF 열기: ${name}</a>`;
     return `<a href="${url}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${name}</a>`;
   }).join('');
-  return videoHtml + attachHtml;
+  const readConfirm = notice.category === '안전교육'
+    ? `<button id="education-read-confirm-btn" class="btn btn-secondary" style="width:100%;margin-top:12px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;" onclick="App.confirmEducationRead()">본문/자료 읽음 확인</button>`
+    : '';
+  const hint = notice.category === '안전교육'
+    ? `<div id="education-complete-hint" style="font-size:12px;color:#64748b;line-height:1.5;margin-top:10px;">영상은 80% 이상 시청, 본문/문서/PDF/이미지는 읽음 확인 후 이수 가능합니다.</div>`
+    : '';
+  return `${videoHtml}${attachHtml}${readConfirm}${hint}<span id="education-video-count" data-count="${totalVideoCount}" style="display:none;"></span>`;
+}
+
+function getEducationCompletedMap() {
+  return Store.get('educationCompleted') || {};
+}
+
+function setEducationCompleted(id, payload) {
+  const map = getEducationCompletedMap();
+  map[id] = payload;
+  Store.set('educationCompleted', map);
+}
+
+function isEducationCompleted(id) {
+  return !!getEducationCompletedMap()[id];
+}
+
+function updateEducationButtonState() {
+  const btn = document.getElementById('education-complete-btn');
+  if (!btn || !_currentEducationProgress) return;
+  const videoReady = _currentEducationProgress.videoTotal === 0 || _currentEducationProgress.videoWatched.size >= _currentEducationProgress.videoTotal;
+  const ready = videoReady && _currentEducationProgress.readConfirmed;
+  btn.disabled = !ready;
+  btn.style.background = ready ? '#2563eb' : '#ef4444';
+  btn.style.opacity = ready ? '1' : '0.85';
+  btn.textContent = ready ? '시청 완료 및 이수 기록' : '자료 확인 후 이수 가능';
+}
+
+function bindEducationProgress() {
+  const countEl = document.getElementById('education-video-count');
+  const videoTotal = Number(countEl?.dataset?.count || 0);
+  _currentEducationProgress = { videoTotal, videoWatched: new Set(), readConfirmed: false };
+
+  document.querySelectorAll('[data-edu-video]').forEach((el) => {
+    if (el.tagName === 'VIDEO') {
+      el.addEventListener('timeupdate', () => {
+        if (el.duration > 0 && el.currentTime / el.duration >= 0.8) {
+          _currentEducationProgress.videoWatched.add(el.dataset.eduVideo);
+          updateEducationButtonState();
+        }
+      });
+    } else {
+      el.addEventListener('load', () => {
+        setTimeout(() => {
+          _currentEducationProgress.videoWatched.add(el.dataset.eduVideo);
+          updateEducationButtonState();
+        }, 3000);
+      }, { once: true });
+    }
+  });
+  updateEducationButtonState();
 }
 
 function normalizeNoticeBody(notice) {
@@ -153,6 +212,7 @@ function renderNoticeList() {
     let prefix = '';
     if (cat === '긴급알림')      prefix = '<span style="color:#ef4444; font-weight:700; margin-right:4px;">🚨[긴급]</span>';
     else if (cat !== '일반공지') prefix = `<span style="color:#0ea5e9; font-weight:700; margin-right:4px;">[${escHtml(cat)}]</span>`;
+    const completed = cat === '안전교육' && isEducationCompleted(n.id);
 
     let title = escHtml(n.title || n.message || '제목 없음');
     if (title.startsWith('[긴급] ')) title = title.replace('[긴급] ', '');
@@ -164,6 +224,7 @@ function renderNoticeList() {
           <span style="flex:1; line-height:1.4;">${title}</span>
         </div>
         <div class="notice-item-meta" style="margin-top:4px;">${dateStr}</div>
+        ${completed ? '<div style="font-size:12px;color:#059669;font-weight:800;margin-top:4px;">이수완료</div>' : ''}
       </div>
     `;
   }).join('') || '<div class="loading" style="margin-top:20px;">공지사항이 없습니다.</div>';
@@ -186,9 +247,10 @@ export function openNotice(id) {
   const mediaEl = document.getElementById('notice-detail-media');
   if (mediaEl) {
     const completeBtn = n.category === '안전교육'
-      ? `<button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="App.completeSafetyEducation('${n.id}')">시청 완료 및 이수 기록</button>`
+      ? `<button id="education-complete-btn" class="btn btn-primary" style="width:100%;margin-top:12px;background:#ef4444;" onclick="App.completeSafetyEducation('${n.id}')" disabled>자료 확인 후 이수 가능</button>`
       : '';
     mediaEl.innerHTML = `${renderEducationMedia(n)}${completeBtn}`;
+    if (n.category === '안전교육') setTimeout(bindEducationProgress, 0);
   }
 
   document.getElementById('notice-list').style.display = 'none';
@@ -202,6 +264,19 @@ export function openNotice(id) {
     document.getElementById('notice-item-' + id)?.classList.remove('notice-item-unread');
   }
   detail.scrollTop = 0;
+}
+
+export function confirmEducationRead() {
+  if (!_currentEducationProgress) return;
+  _currentEducationProgress.readConfirmed = true;
+  const btn = document.getElementById('education-read-confirm-btn');
+  if (btn) {
+    btn.textContent = '읽음 확인 완료';
+    btn.style.background = '#dcfce7';
+    btn.style.color = '#166534';
+    btn.style.borderColor = '#86efac';
+  }
+  updateEducationButtonState();
 }
 
 export async function completeSafetyEducation(id) {
@@ -223,6 +298,10 @@ export async function completeSafetyEducation(id) {
       const errorBody = await res.json().catch(() => ({}));
       throw new Error(errorBody.error || `서버 오류 ${res.status}`);
     }
+    const saved = await res.json().catch(() => ({}));
+    const completedAt = saved.completed_at || new Date().toISOString();
+    setEducationCompleted(id, { completed_at: completedAt, trip_id: saved.trip_id || trip.id || null, title: n.title });
+    renderNoticeList();
     showToast('안전교육 이수 기록 저장 완료');
   } catch (e) {
     showToast(`이수 기록 저장 실패: ${e.message || e}`);

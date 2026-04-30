@@ -79,8 +79,13 @@ export async function GET(request, { params }) {
 
         if (error) throw error;
         if (!data) return NextResponse.json({ error: '데이터를 찾을 수 없습니다.' }, { status: 404 });
+        const { data: logs } = await supabase
+            .from('vehicle_trip_logs')
+            .select('*')
+            .eq('trip_id', id)
+            .order('created_at', { ascending: false });
 
-        return NextResponse.json(data);
+        return NextResponse.json({ ...data, logs: logs || [] });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -101,7 +106,7 @@ export async function PATCH(request, { params }) {
     try {
         const body = await request.json();
         // ... (이하 동일)
-        const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, vehicle_id, driver_name, driver_phone, vehicle_number } = body;
+        const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, transport_type, billing_amount, work_site, vehicle_id, driver_name, driver_phone, vehicle_number, source } = body;
 
         // 기존 데이터 조회 (로그용)
         const { data: oldData } = await supabase
@@ -109,6 +114,10 @@ export async function PATCH(request, { params }) {
             .select('*')
             .eq('id', id)
             .single();
+
+        if (oldData?.is_closed && source === 'driver_app' && action !== 'pause' && action !== 'resume') {
+            return NextResponse.json({ error: '마감 완료된 운행기록은 기사 앱에서 수정할 수 없습니다.' }, { status: 403 });
+        }
 
         const updates = { updated_at: new Date().toISOString() };
 
@@ -130,6 +139,9 @@ export async function PATCH(request, { params }) {
         if (seal_number !== undefined) updates.seal_number = seal_number;
         if (container_type !== undefined) updates.container_type = container_type;
         if (container_kind !== undefined) updates.container_kind = container_kind;
+        if (transport_type !== undefined) updates.transport_type = transport_type;
+        if (billing_amount !== undefined) updates.billing_amount = billing_amount;
+        if (work_site !== undefined) updates.work_site = work_site;
         if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
         if (driver_name !== undefined) updates.driver_name = driver_name;
         if (driver_phone !== undefined) updates.driver_phone = driver_phone;
@@ -139,6 +151,11 @@ export async function PATCH(request, { params }) {
         if (body.chk_lamp !== undefined) updates.chk_lamp = body.chk_lamp;
         if (body.chk_cargo !== undefined) updates.chk_cargo = body.chk_cargo;
         if (body.chk_driver !== undefined) updates.chk_driver = body.chk_driver;
+        if (body.is_closed !== undefined) {
+            updates.is_closed = !!body.is_closed;
+            updates.closed_at = body.is_closed ? new Date().toISOString() : null;
+            updates.closed_by = body.closed_by || driver_name || 'web';
+        }
 
         const { data, error } = await supabase
             .from('vehicle_trips')
@@ -152,7 +169,7 @@ export async function PATCH(request, { params }) {
         // 수정 로그 기록 (수정 모드일 경우)
         if (oldData && !action) {
             const logEntries = [];
-            const checkFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'special_notes'];
+            const checkFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'transport_type', 'billing_amount', 'work_site', 'is_closed', 'special_notes'];
             checkFields.forEach(f => {
                 if (updates[f] !== undefined && updates[f] !== oldData[f]) {
                     logEntries.push({
@@ -160,7 +177,7 @@ export async function PATCH(request, { params }) {
                         field_name: f,
                         old_value: String(oldData[f] || '-'),
                         new_value: String(updates[f] || '-'),
-                        modified_by: driver_name || oldData.driver_name,
+                        modified_by: source === 'driver_app' ? (oldData.driver_name || 'driver') : (driver_name || oldData.driver_name || 'web'),
                         created_at: new Date().toISOString()
                     });
                 }

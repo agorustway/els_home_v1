@@ -19,6 +19,7 @@ export let lastKnownAddr     = '위치 확인 중...';
 export let realtimeExpireAt  = 0;
 let _lastSentMotion = null;
 let _currentSpeedKph = 0;
+let _motionBurstUntil = 0;
 
 // ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
@@ -105,6 +106,16 @@ function getBgGeo() {
   }
 }
 
+function startMotionBurstWatcher() {
+  if (!window.DeviceMotionEvent) return;
+  window.addEventListener('devicemotion', (event) => {
+    const acc = event.accelerationIncludingGravity || event.acceleration;
+    if (!acc) return;
+    const magnitude = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
+    if (magnitude >= 15) _motionBurstUntil = Date.now() + 15000;
+  }, { passive: true });
+}
+
 // ─── GPS 시작: 네이티브 BackgroundGeolocation ─────────────────────
 export async function startGPS() {
   if (gpsWatchId !== null) return;
@@ -118,6 +129,7 @@ export async function startGPS() {
   }
 
   remoteLog('startGPS() — 네이티브 BackgroundGeolocation.addWatcher 시작', 'GPS_INIT');
+  startMotionBurstWatcher();
 
   try {
     const watcherId = await BgGeo.addWatcher(
@@ -126,7 +138,7 @@ export async function startGPS() {
         backgroundTitle: 'ELS 위치 관제',
         requestPermissions: true,
         stale: false,
-        distanceFilter: 0, // 거리 무관하게 지속 수집 (배터리 무시, 포인트 최대 확보)
+        distanceFilter: 5,
       },
       (location, error) => {
         if (error) {
@@ -416,20 +428,23 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const headingDelta = (lastMotion && heading !== null && lastMotion.heading !== null)
     ? Math.min(Math.abs(heading - lastMotion.heading), 360 - Math.abs(heading - lastMotion.heading))
     : 0;
-  const isTurningOrChangingSpeed = speedDelta >= 12 || headingDelta >= 25;
+  const isMotionBurst = Date.now() < _motionBurstUntil;
+  const isTurningOrChangingSpeed = isMotionBurst || speedDelta >= 10 || headingDelta >= 22;
 
   // 내비게이션식 가변 전송 주기: 저속/회전/가감속은 촘촘히, 고속 안정 주행은 여유 있게.
-  let interval = 12_000;
+  let interval = 15_000;
   if (State.trip.isRealtime) {
     interval = 3_000;
   } else if (isTurningOrChangingSpeed) {
-    interval = 4_000;
+    interval = 3_000;
   } else if (speedKph < 15) {
-    interval = 5_000;
+    interval = 6_000;
   } else if (speedKph < 45) {
-    interval = 7_000;
+    interval = 9_000;
   } else if (speedKph >= 80) {
     interval = 15_000;
+  } else {
+    interval = 12_000;
   }
 
   if (interval !== currentGpsInterval) currentGpsInterval = interval;

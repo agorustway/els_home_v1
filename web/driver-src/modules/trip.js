@@ -11,6 +11,35 @@ import {
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
 
+function parseBillingAmount(value) {
+  const num = Number(String(value || '').replace(/[^0-9]/g, ''));
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function formatBillingAmount(value) {
+  const num = parseBillingAmount(value);
+  return num ? num.toLocaleString('ko-KR') : '';
+}
+
+function getTripExtraFields() {
+  const billingEl = document.getElementById('billing-amount');
+  if (billingEl) billingEl.value = formatBillingAmount(billingEl.value);
+  return {
+    transport_type: document.getElementById('transport-type')?.value || '왕복',
+    billing_amount: parseBillingAmount(billingEl?.value),
+    work_site: document.getElementById('work-site')?.value.trim() || '',
+  };
+}
+
+function setTripExtraFields(data = {}) {
+  const transportEl = document.getElementById('transport-type');
+  const billingEl = document.getElementById('billing-amount');
+  const workSiteEl = document.getElementById('work-site');
+  if (transportEl) transportEl.value = data.transport_type || '왕복';
+  if (billingEl) billingEl.value = formatBillingAmount(data.billing_amount);
+  if (workSiteEl) workSiteEl.value = data.work_site || '';
+}
+
 // ─── 운행 전 점검 체크리스트 ──────────────────────────────────────
 export function openChecklist() {
   document.getElementById('checklist-popup')?.classList.add('active');
@@ -105,6 +134,7 @@ export function onTripFieldChange() {
   sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
   State.trip.containerNo = cEl.value;
   State.trip.sealNo      = sEl.value;
+  const extras = getTripExtraFields();
 
   if (errEl) errEl.textContent = '';
   if (cEl.value.length >= 4) {
@@ -137,6 +167,8 @@ export function onTripFieldChange() {
           seal_number:      sEl.value || '',
           container_type:   cType,
           container_kind:   cKind,
+          ...extras,
+          source:           'driver_app',
         }),
       }).catch(() => { });
     }, 1000);
@@ -163,6 +195,7 @@ export async function loadCurrentTrip() {
       document.getElementById('container-type').value  = data.container_type || '40FT';
       document.getElementById('container-kind').value  = data.container_kind || 'DRY';
       document.getElementById('trip-memo').value       = data.special_notes || '';
+      setTripExtraFields(data);
 
       let photos = [];
       try {
@@ -211,6 +244,7 @@ export async function startTrip() {
   const cType       = document.getElementById('container-type').value;
   const cKind       = document.getElementById('container-kind').value;
   const memo        = document.getElementById('trip-memo').value;
+  const extras      = getTripExtraFields();
 
   try {
     const res = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips', {
@@ -224,6 +258,7 @@ export async function startTrip() {
         seal_number:      sealNo,
         container_type:   cType,
         container_kind:   cKind,
+        ...extras,
         special_notes:    memo,
         chk_brake:  State.preTripDone.chk_brake  || false,
         chk_tire:   State.preTripDone.chk_tire   || false,
@@ -340,6 +375,8 @@ export async function endTrip() {
         action:           'complete',
         container_number: document.getElementById('container-no')?.value.trim() || undefined,
         seal_number:      document.getElementById('seal-no')?.value.trim()      || undefined,
+        ...getTripExtraFields(),
+        source:           'driver_app',
         special_notes:    document.getElementById('trip-memo')?.value.trim()    || undefined,
       }),
     });

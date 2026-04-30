@@ -1,5 +1,13 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 운행일보 정산 및 마감 스키마 보강 (v5.10.38)
+### 🚀 Achievement
+- **운행일보 정산 지원**: `vehicle_trips` 테이블에 운송구분, 청구금액, 작업지 정보를 저장할 수 있는 필드를 추가하여 기사 앱에서 입력한 정산 데이터를 관리할 수 있도록 했습니다.
+- **마감 로직 토대 마련**: `is_closed` 필드를 추가하여 관리자 마감 완료 후 기사 앱에서 과거 데이터를 수정하지 못하도록 제어하는 기능을 위한 스키마를 확정했습니다.
+
+### 🛠 Technical Changes
+- `web/supabase_sql/20260430_vehicle_trip_daily_report_fields.sql`: 운행일보/마감 필드 추가 SQL 마이그레이션 파일.
+
 ## [2026-04-30] 안전교육 데이터 스키마 보강 및 마이그레이션 (v5.10.37)
 ### 🚀 Achievement
 - **DB 스키마 확정**: `notices` 테이블에 `education_url` 및 `attachments` 컬럼을 정식 추가하고, 운행 이력 관리를 위한 `vehicle_trip_logs` 테이블을 생성하는 SQL 마이그레이션을 배포했습니다.
@@ -24,6 +32,10 @@
 - **본문 유튜브 재생 보강**: 안전교육 URL 입력칸이 아닌 본문/첨부에 붙여넣은 YouTube 주소도 자동 추출하고, `education_url` 컬럼이 없는 환경에서도 본문에 URL이 보존되도록 처리했습니다.
 - **교육자료 미리보기/다중자료 보강**: 웹 작성 모달에서 여러 YouTube URL 미리보기를 지원하고, 앱 상세에서 이미지/동영상/PDF 첨부를 직접 확인할 수 있도록 렌더링을 확장했습니다.
 - **완료 운행 평균속도 표시**: 운행 기록 API가 위치 포인트 기반 평균속도를 계산해 완료 운행 목록에 최고속도와 함께 표시하도록 보강했습니다.
+- **이수 완료 UX/기록 가시화**: 앱은 영상 80% 시청+본문/자료 읽음 확인 후 이수 버튼이 빨강→파랑으로 전환되고, 공지 목록에 이수완료를 표시합니다. 웹 운행기록에는 안전교육 이수 로그를 별도 행으로 노출합니다.
+- **GPS 수집 최적화**: 기본 수집 간격/거리 필터를 완화하되, 저속·회전·급가감속·모션 충격 감지 시 3초 수집으로 즉시 강화되도록 조정했습니다.
+- **운행일보 입력/마감 확장**: 기사 앱 운행 시작·운행 중·일지 수정 화면에 운송구분/청구금액/작업지를 추가하고, 웹에서 마감 완료 처리 시 기사 앱 수정을 차단하도록 했습니다.
+- **웹 기록 요약/로그 버튼 수정**: 운행기록 검색 결과 상단에 운행건수·차량수·청구금액 합계를 표시하고, 깨진 실시간 로그 버튼을 관리자 로그 페이지로 연결했습니다.
 - **지도 통계 누락 보정**: 앱 지도 경로 패널의 `쳙 운행시간` 오타를 `총운행시간`으로 수정하고, API 통계 필드가 없어도 위치 포인트의 속도값으로 최고속도/평균속도를 계산해 항상 표시하도록 개선했습니다.
 
 ### 🛠 Technical Changes
@@ -31,10 +43,14 @@
 - `web/utils/vehicleEducation.mjs`, `web/app/api/vehicle-tracking/notices/route.js`, `web/driver-src/modules/notice.js`, `web/app/(standalone)/driver-app/page.js`: 안전교육 완료 버튼과 요청 payload의 운행 중 의존성 제거, 본문/첨부 YouTube URL 자동 embed 및 저장 보존.
 - `web/supabase_sql/20260430_vehicle_education_support.sql`: 운영 DB 적용용 `notices.education_url`, `notices.attachments`, `vehicle_trip_logs` 스키마 추가 SQL 정리.
 - `web/app/api/vehicle-tracking/trips/route.js`, `web/app/(main)/employees/vehicle-tracking/page.js`: 완료 운행 평균속도 계산/표시 및 안전교육 다중 URL/파일 관리 UI 보강.
+- `web/driver-src/modules/notice.js`, `web/driver-src/app.js`, `web/driver-src/modules/gps.js`: 앱 안전교육 완료 조건/목록 표시 및 GPS 동적 수집 주기 조정.
+- `web/driver-src/index.html`, `web/driver-src/modules/trip.js`, `web/driver-src/modules/log.js`: 운행일보 필드 추가 및 앱/일지 수정 payload 연결.
+- `web/app/api/vehicle-tracking/trips/route.js`, `web/app/api/vehicle-tracking/trips/[id]/route.js`: 운행일보 필드 저장, 마감 완료 후 기사 앱 수정 차단, 수정 로그 기록 확장.
+- `web/supabase_sql/20260430_vehicle_trip_daily_report_fields.sql`: 운영 DB 적용용 운행일보/마감 컬럼 추가 SQL 정리.
 - `web/driver-src/modules/map.js`: 경로 포인트 기반 운행시간/최고속도/평균속도 fallback 계산 추가.
 
 ### ✅ Verification
-- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`, `.tmp_test/educationMediaAndAvgSpeed.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 교육자료 미리보기, 평균속도, 지도 통계/오타 회귀 테스트 통과 후 삭제.
+- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`, `.tmp_test/educationMediaAndAvgSpeed.test.mjs`, `.tmp_test/educationCompletionAndGps.test.mjs`, `.tmp_test/vehicleDailyReportFields.test.mjs`, `.tmp_test/vehicleTrackingIntegratedRegression.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 교육자료 미리보기, 평균속도/이수목록, GPS 동적 수집, 운행일보/마감/요약, 지도 통계/오타 회귀 테스트 통과 후 삭제.
 - `web`: `npm.cmd run lint` 통과.
 
 ---

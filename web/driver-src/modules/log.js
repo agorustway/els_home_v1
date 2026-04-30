@@ -8,6 +8,16 @@ import { validateISO6346 } from './trip.js?v=5137';
 
 let _currentLogData = null;
 
+function parseBillingAmount(value) {
+  const num = Number(String(value || '').replace(/[^0-9]/g, ''));
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function formatBillingAmount(value) {
+  const num = parseBillingAmount(value);
+  return num ? num.toLocaleString('ko-KR') : '';
+}
+
 // ─── 사진 리사이즈 (log.js 내 독립 사본 — photos.js와 중복 허용) ─
 async function resizePhoto(file, maxWidth = 1024, maxHeight = 1024) {
   if (typeof file === 'string') return file;
@@ -119,6 +129,9 @@ export async function openLog(id) {
     document.getElementById('log-edit-container').value = data.container_number || '';
     document.getElementById('log-edit-seal').value      = data.seal_number      || '';
     document.getElementById('log-edit-memo').value      = data.special_notes    || '';
+    document.getElementById('log-edit-transport-type').value = data.transport_type || '왕복';
+    document.getElementById('log-edit-billing-amount').value = formatBillingAmount(data.billing_amount);
+    document.getElementById('log-edit-work-site').value = data.work_site || '';
     onLogFieldChange();
 
     const isAllChecked = !!(data.chk_brake && data.chk_tire && data.chk_lamp && data.chk_cargo && data.chk_driver);
@@ -144,6 +157,8 @@ export async function openLog(id) {
             <span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검완료' : '미점검'}</span>
           </span>
         </div>
+        <div class="log-detail-info-row"><span class="log-detail-info-label">일보 정보</span><span>${escHtml(data.transport_type || '왕복')} · ${data.billing_amount ? Number(data.billing_amount).toLocaleString('ko-KR') + '원' : '청구금액 미입력'} · ${escHtml(data.work_site || '작업지 미입력')}</span></div>
+        ${data.is_closed ? `<div class="log-detail-info-row"><span class="log-detail-info-label">마감</span><span style="font-weight:800;color:var(--danger);">마감완료 · 기사 수정 제한</span></div>` : ''}
       </div>
     `;
 
@@ -187,6 +202,8 @@ export function onLogFieldChange() {
 
   cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
   sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+  const billingEl = document.getElementById('log-edit-billing-amount');
+  if (billingEl) billingEl.value = formatBillingAmount(billingEl.value);
 
   const errEl = document.getElementById('log-container-check-msg');
   if (errEl) errEl.textContent = '';
@@ -223,6 +240,10 @@ export async function saveLogEdit() {
       body: JSON.stringify({
         container_number: cEl?.value || '',
         seal_number:      sEl?.value || '',
+        transport_type:   document.getElementById('log-edit-transport-type')?.value || '왕복',
+        billing_amount:   parseBillingAmount(document.getElementById('log-edit-billing-amount')?.value),
+        work_site:        document.getElementById('log-edit-work-site')?.value.trim() || '',
+        source:           'driver_app',
         special_notes:    document.getElementById('log-edit-memo').value,
       }),
     });

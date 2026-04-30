@@ -73,6 +73,21 @@ export async function GET(request) {
                         if (loc) locations.push(loc);
                     }
                 }
+
+                const { data: logData, error: logError } = await supabase
+                    .from('vehicle_trip_logs')
+                    .select('id, trip_id, field_name, new_value, modified_by, created_at')
+                    .in('trip_id', tripIds)
+                    .eq('field_name', 'safety_education')
+                    .order('created_at', { ascending: false });
+                if (!logError && logData) {
+                    const logMap = {};
+                    logData.forEach(log => {
+                        if (!logMap[log.trip_id]) logMap[log.trip_id] = [];
+                        logMap[log.trip_id].push(log);
+                    });
+                    data.forEach(t => { t.education_logs = logMap[t.id] || []; });
+                }
             }
 
             const locationMap = {};
@@ -249,6 +264,9 @@ export async function POST(request) {
             seal_number,
             container_type = '40FT',
             container_kind = 'DRY',
+            transport_type = '왕복',
+            billing_amount = null,
+            work_site = '',
             special_notes = '',
         } = body;
 
@@ -282,6 +300,9 @@ export async function POST(request) {
                 seal_number:      seal_number || undefined,
                 container_type:   container_type || undefined,
                 container_kind:   container_kind || undefined,
+                transport_type:   transport_type || undefined,
+                billing_amount:   billing_amount ?? undefined,
+                work_site:        work_site || undefined,
                 special_notes:    special_notes || undefined,
                 vehicle_id:       vehicle_id || undefined,
                 chk_brake:        body.chk_brake  !== undefined ? body.chk_brake : undefined,
@@ -327,6 +348,9 @@ export async function POST(request) {
                 seal_number:      seal_number || '',
                 container_type,
                 container_kind,
+                transport_type,
+                billing_amount,
+                work_site,
                 chk_brake: body.chk_brake || false,
                 chk_tire:  body.chk_tire  || false,
                 chk_lamp:  body.chk_lamp  || false,
