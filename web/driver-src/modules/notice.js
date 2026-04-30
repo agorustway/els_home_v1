@@ -1,9 +1,9 @@
 /**
  * notice.js — 공지 목록, 필터, 상세
  */
-import { Store, State, BASE_URL } from './store.js?v=5134';
-import { smartFetch } from './bridge.js?v=5134';
-import { formatDate, escHtml, showToast } from './utils.js?v=5134';
+import { Store, State, BASE_URL } from './store.js?v=5135';
+import { smartFetch } from './bridge.js?v=5135';
+import { formatDate, escHtml, showToast } from './utils.js?v=5135';
 
 let _notices             = [];
 let _currentNoticeFilter = '';
@@ -24,6 +24,12 @@ function toYouTubeEmbedUrl(rawUrl = '') {
     return raw.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/');
   }
   return raw;
+}
+
+function extractFirstYouTubeUrl(text = '') {
+  const source = String(text || '');
+  const [match] = source.match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/i) || [];
+  return match || '';
 }
 
 function normalizeNoticeBody(notice) {
@@ -163,7 +169,7 @@ export function openNotice(id) {
   const mediaEl = document.getElementById('notice-detail-media');
   if (mediaEl) {
     const attachments = Array.isArray(n.attachments) ? n.attachments : [];
-    const yt = n.education_url || '';
+    const yt = n.education_url || extractFirstYouTubeUrl(n.content || n.body || n.message);
     const embed = toYouTubeEmbedUrl(yt);
     const attachHtml = attachments.map(a => `<a href="${escHtml(a.url)}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${escHtml(a.name || '첨부파일')}</a>`).join('');
     const completeBtn = n.category === '안전교육'

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 import { Capacitor } from '@capacitor/core';
-import { toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
+import { extractFirstYouTubeUrl, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
 
 // Native Plugins
 let Haptics, StatusBar, App;
@@ -1325,11 +1325,11 @@ export default function DriverAppPage() {
                             </div>
                             
                             <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-                                {selectedNotice.education_url && (
+                                {(selectedNotice.education_url || extractFirstYouTubeUrl(selectedNotice.content)) && (
                                     <div style={{ marginBottom: 15, borderRadius: 10, overflow: 'hidden', background: '#000', aspectRatio: '16 / 9' }}>
                                         <iframe
                                             title="안전교육 영상"
-                                            src={toYouTubeEmbedUrl(selectedNotice.education_url)}
+                                            src={toYouTubeEmbedUrl(selectedNotice.education_url || extractFirstYouTubeUrl(selectedNotice.content))}
                                             style={{ width: '100%', height: '100%', border: 0 }}
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen

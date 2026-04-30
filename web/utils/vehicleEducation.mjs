@@ -29,3 +29,9 @@ export function toYouTubeEmbedUrl(rawUrl = '') {
   }
   return raw;
 }
+
+export function extractFirstYouTubeUrl(text = '') {
+  const source = String(text || '');
+  const [match] = source.match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/i) || [];
+  return match || '';
+}
