@@ -218,7 +218,7 @@ export default function AsanDispatchPage() {
     const fetchData = async (type) => {
         setLoading(true);
         try {
-            const r = await fetch(`/api/branches/asan/dispatch?type=${type}`, { next: { revalidate: 60 } }); 
+            const r = await fetch(`/api/branches/asan/dispatch?type=${type}&t=${Date.now()}`, { cache: 'no-store' }); 
             const j = await r.json();
             const items = j.data || []; setData(items);
             const d = new Date();
