@@ -106,7 +106,7 @@ export async function PATCH(request, { params }) {
     try {
         const body = await request.json();
         // ... (이하 동일)
-        const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, transport_type, billing_amount, work_site, vehicle_id, driver_name, driver_phone, vehicle_number, source } = body;
+        const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, transport_type, billing_amount, work_site, vehicle_id, driver_name, driver_phone, vehicle_number, source, admin_edit } = body;
 
         // 기존 데이터 조회 (로그용)
         const { data: oldData } = await supabase
@@ -143,9 +143,19 @@ export async function PATCH(request, { params }) {
         if (billing_amount !== undefined) updates.billing_amount = billing_amount;
         if (work_site !== undefined) updates.work_site = work_site;
         if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
-        if (driver_name !== undefined) updates.driver_name = driver_name;
+        // [v5.10.42] admin_edit 시 driver_name 보존 (기사명이 '마감담당자'로 바뀌지 않도록)
+        if (driver_name !== undefined && !admin_edit) updates.driver_name = driver_name;
         if (driver_phone !== undefined) updates.driver_phone = driver_phone;
         if (vehicle_number !== undefined) updates.vehicle_number = vehicle_number;
+
+        // [v5.10.42] 관리자 수정 필드 추적: admin_edited_fields에 수정된 필드 누적
+        if (admin_edit && oldData) {
+            const prevAdminFields = oldData.admin_edited_fields || [];
+            const editedFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'transport_type', 'billing_amount', 'work_site', 'special_notes']
+                .filter(f => updates[f] !== undefined && updates[f] !== oldData[f]);
+            const merged = [...new Set([...prevAdminFields, ...editedFields])];
+            updates.admin_edited_fields = merged;
+        }
         if (body.chk_brake !== undefined) updates.chk_brake = body.chk_brake;
         if (body.chk_tire !== undefined) updates.chk_tire = body.chk_tire;
         if (body.chk_lamp !== undefined) updates.chk_lamp = body.chk_lamp;
@@ -177,7 +187,7 @@ export async function PATCH(request, { params }) {
                         field_name: f,
                         old_value: String(oldData[f] || '-'),
                         new_value: String(updates[f] || '-'),
-                        modified_by: source === 'driver_app' ? (oldData.driver_name || 'driver') : (body.admin_edit ? `${oldData.driver_name || 'driver'}|admin` : (oldData.driver_name || 'web')),
+                        modified_by: source === 'driver_app' ? (oldData.driver_name || 'driver') : (admin_edit ? `${oldData.driver_name || 'driver'}|admin` : (oldData.driver_name || 'web')),
                         created_at: new Date().toISOString()
                     });
                 }

@@ -18,7 +18,7 @@ const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토
 
 export default function VehicleTrackingPage() {
     // 탭 상태
-    const [activeTab, setActiveTab] = useState('live'); // 'live' | 'records'
+    const [activeTab, setActiveTab] = useState('live'); // 'live' | 'records' | 'education'
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // 상세 조회 상태
@@ -952,12 +952,31 @@ export default function VehicleTrackingPage() {
             const res = await fetch(`/api/vehicle-tracking/trips/${trip.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ billing_amount: amount, source: 'web', driver_name: '마감담당자' }),
+                body: JSON.stringify({ billing_amount: amount, source: 'web', admin_edit: true }),
             });
             const data = await res.json();
             if (!res.ok || data.error) throw new Error(data.error || '금액 수정 실패');
-            setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, billing_amount: amount } : t));
-            if (selectedTrip?.id === trip.id) setSelectedTrip(prev => ({ ...prev, billing_amount: amount }));
+            const adminFields = [...new Set([...(trip.admin_edited_fields || []), 'billing_amount'])];
+            setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, billing_amount: amount, admin_edited_fields: adminFields } : t));
+            if (selectedTrip?.id === trip.id) setSelectedTrip(prev => ({ ...prev, billing_amount: amount, admin_edited_fields: adminFields }));
+        } catch (e) {
+            alert(e.message);
+        }
+    };
+
+    // [v5.10.42] 범용 필드 저장 (관리자 인라인 편집용)
+    const saveTripField = async (trip, fieldName, value) => {
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips/${trip.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [fieldName]: value, source: 'web', admin_edit: true }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || '수정 실패');
+            const adminFields = [...new Set([...(trip.admin_edited_fields || []), fieldName])];
+            setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, [fieldName]: value, admin_edited_fields: adminFields } : t));
+            if (selectedTrip?.id === trip.id) setSelectedTrip(prev => ({ ...prev, [fieldName]: value, admin_edited_fields: adminFields }));
         } catch (e) {
             alert(e.message);
         }
@@ -1006,6 +1025,7 @@ export default function VehicleTrackingPage() {
             <div className={styles.tabNav}>
                 <button className={`${styles.tab} ${activeTab === 'live' ? styles.tabActive : ''}`} onClick={() => setActiveTab('live')}>실시간 관제</button>
                 <button className={`${styles.tab} ${activeTab === 'records' ? styles.tabActive : ''}`} onClick={() => setActiveTab('records')}>운행 기록</button>
+                <button className={`${styles.tab} ${activeTab === 'education' ? styles.tabActive : ''}`} onClick={() => setActiveTab('education')}>교육 이수</button>
             </div>
 
             <div style={{ display: activeTab === 'live' ? 'block' : 'none' }}>
@@ -1137,7 +1157,7 @@ export default function VehicleTrackingPage() {
                 </div>
             </div>
 
-            <div style={{ display: activeTab === 'records' ? 'block' : 'none' }}>
+            <div style={{ display: (activeTab === 'records' || activeTab === 'education') ? 'block' : 'none' }}>
                 <div className={styles.filterBar}>
                     <div className={styles.filterGroup}>
                         <span className={styles.filterLabel}>상태</span>
@@ -1211,13 +1231,17 @@ export default function VehicleTrackingPage() {
                                         <div><strong>{trip.driver_name}</strong></div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div>
                                     </td>
-                                    <td>
-                                        <div style={{ fontWeight: 600 }}>{trip.container_number || '-'}</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>씰: {trip.seal_number || '-'}</div>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                        <div><input defaultValue={trip.container_number || ''} placeholder="컨테이너" onBlur={(e) => { if (e.target.value !== (trip.container_number || '')) saveTripField(trip, 'container_number', e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontWeight: 600, color: (trip.admin_edited_fields || []).includes('container_number') ? '#2563eb' : '#1e293b' }} /></div>
+                                        <div style={{ marginTop: 2 }}><input defaultValue={trip.seal_number || ''} placeholder="씰넘버" onBlur={(e) => { if (e.target.value !== (trip.seal_number || '')) saveTripField(trip, 'seal_number', e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', color: (trip.admin_edited_fields || []).includes('seal_number') ? '#2563eb' : '#64748b' }} /></div>
                                     </td>
-                                    <td style={{ fontSize: '0.85rem' }}>
-                                        <div>{trip.container_type || '-'}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.container_kind || '-'}</div>
+                                    <td style={{ fontSize: '0.85rem' }} onClick={(e) => e.stopPropagation()}>
+                                        <select defaultValue={trip.container_type || '40FT'} onChange={(e) => saveTripField(trip, 'container_type', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.8rem', color: (trip.admin_edited_fields || []).includes('container_type') ? '#2563eb' : '#1e293b', fontWeight: (trip.admin_edited_fields || []).includes('container_type') ? 700 : 400 }}>
+                                            <option value="20FT">20FT</option><option value="40FT">40FT</option>
+                                        </select>
+                                        <select defaultValue={trip.container_kind || 'DRY'} onChange={(e) => saveTripField(trip, 'container_kind', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', marginTop: 2, color: (trip.admin_edited_fields || []).includes('container_kind') ? '#2563eb' : '#64748b' }}>
+                                            <option value="DRY">DRY</option><option value="REEFER">REEFER</option><option value="TANK">TANK</option><option value="OPEN_TOP">OPEN TOP</option><option value="FLAT">FLAT RACK</option>
+                                        </select>
                                     </td>
                                     <td style={{ fontSize: '12px', letterSpacing: '-0.5px' }}>
                                         <span title="브레이크" style={{ marginRight: 2 }}>{trip.chk_brake ? '✅' : '❌'}</span>
@@ -1226,8 +1250,8 @@ export default function VehicleTrackingPage() {
                                         <span title="적재물" style={{ marginRight: 2 }}>{trip.chk_cargo ? '✅' : '❌'}</span>
                                         <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
                                     </td>
-                                    <td style={{ fontSize: '0.75rem', color: '#475569', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`}>
-                                        <div>{trip.transport_type || '왕복'} · <input defaultValue={trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onClick={(e) => e.stopPropagation()} onBlur={(e) => saveBillingAmount(trip, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 86, border: '1px solid #dbeafe', borderRadius: 4, padding: '2px 4px', color: '#2563eb', fontWeight: 800, textAlign: 'right' }} />원</div>
+                                    <td style={{ fontSize: '0.75rem', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`} onClick={(e) => e.stopPropagation()}>
+                                        <div>{trip.transport_type || '왕복'} · <input defaultValue={trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onBlur={(e) => saveBillingAmount(trip, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 86, border: '1px solid #dbeafe', borderRadius: 4, padding: '2px 4px', color: (trip.admin_edited_fields || []).includes('billing_amount') ? '#2563eb' : '#1e293b', fontWeight: (trip.admin_edited_fields || []).includes('billing_amount') ? 800 : 600, textAlign: 'right' }} />원</div>
                                         <div style={{ color: '#64748b' }}>{trip.work_site || trip.special_notes || '-'}</div>
                                     </td>
                                     <td style={{ textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>{trip.photos?.length || 0}장</td>

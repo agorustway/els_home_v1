@@ -133,11 +133,17 @@ export async function openLog(id) {
     document.getElementById('log-edit-billing-amount').value = formatBillingAmount(data.billing_amount);
     document.getElementById('log-edit-work-site').value = data.work_site || '';
 
+    // [v5.10.42] 관리자 수정 필드 감지: admin_edited_fields 또는 로그 |admin 플래그
     const adminEdited = {};
+    // API에서 이미 계산된 admin_edited_fields 사용 (있으면)
+    if (Array.isArray(data.admin_edited_fields)) {
+      data.admin_edited_fields.forEach(f => { adminEdited[f] = true; });
+    }
+    // 로그에서도 추가 감지 (한 번이라도 |admin 이력이 있으면 파란색)
     if (data.logs && Array.isArray(data.logs)) {
       data.logs.forEach(log => {
-        if (!adminEdited.hasOwnProperty(log.field_name)) {
-          adminEdited[log.field_name] = !!(log.modified_by && log.modified_by.includes('|admin'));
+        if (log.modified_by && log.modified_by.includes('|admin')) {
+          adminEdited[log.field_name] = true;
         }
       });
     }

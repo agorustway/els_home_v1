@@ -172,6 +172,36 @@ export async function GET(request) {
                 }
             }
 
+            // [v5.10.42] 운행 로그 조회: 관리자 수정 필드 추적 + 교육 이수 로그
+            if (tripIds.length > 0) {
+                const { data: logData, error: logError } = await supabase
+                    .from('vehicle_trip_logs')
+                    .select('id, trip_id, field_name, old_value, new_value, modified_by, created_at')
+                    .in('trip_id', tripIds)
+                    .order('created_at', { ascending: false });
+
+                if (!logError && logData) {
+                    const adminFieldsMap = {};  // trip_id → Set of admin-edited field names
+                    const eduLogsMap = {};       // trip_id → education logs array
+                    logData.forEach(log => {
+                        // 관리자 수정 필드 감지 (modified_by에 |admin 포함)
+                        if (log.modified_by && log.modified_by.includes('|admin')) {
+                            if (!adminFieldsMap[log.trip_id]) adminFieldsMap[log.trip_id] = new Set();
+                            adminFieldsMap[log.trip_id].add(log.field_name);
+                        }
+                        // 교육 이수 로그
+                        if (log.field_name === 'safety_education') {
+                            if (!eduLogsMap[log.trip_id]) eduLogsMap[log.trip_id] = [];
+                            eduLogsMap[log.trip_id].push(log);
+                        }
+                    });
+                    data.forEach(t => {
+                        t.admin_edited_fields = adminFieldsMap[t.id] ? [...adminFieldsMap[t.id]] : [];
+                        t.education_logs = eduLogsMap[t.id] || [];
+                    });
+                }
+            }
+
             return NextResponse.json({ trips: data, total: data.length });
         }
 
