@@ -7,20 +7,36 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { trip_id, notice_id, title, driver_name, vehicle_number, completed_by } = body;
-    if (!trip_id) return NextResponse.json({ error: 'trip_id는 필수입니다.' }, { status: 400 });
     if (!notice_id) return NextResponse.json({ error: 'notice_id는 필수입니다.' }, { status: 400 });
+
+    let resolvedTripId = trip_id || null;
+    if (!resolvedTripId && vehicle_number) {
+      const { data: latestTrip, error: latestTripError } = await supabase
+        .from('vehicle_trips')
+        .select('id')
+        .eq('vehicle_number', vehicle_number)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestTripError) throw latestTripError;
+      resolvedTripId = latestTrip?.id || null;
+    }
+
+    if (!resolvedTripId) {
+      return NextResponse.json({ error: '이수 기록을 연결할 운행기록을 찾을 수 없습니다.' }, { status: 400 });
+    }
 
     const { data: existing } = await supabase
       .from('vehicle_trip_logs')
       .select('id')
-      .eq('trip_id', trip_id)
+      .eq('trip_id', resolvedTripId)
       .eq('field_name', 'safety_education')
       .like('new_value', `${notice_id}%`)
       .maybeSingle();
     if (existing?.id) return NextResponse.json({ completed: true, duplicated: true });
 
     const { error } = await supabase.from('vehicle_trip_logs').insert({
-      trip_id,
+      trip_id: resolvedTripId,
       field_name: 'safety_education',
       modified_by: completed_by || driver_name || vehicle_number || 'driver',
       old_value: vehicle_number || '-',

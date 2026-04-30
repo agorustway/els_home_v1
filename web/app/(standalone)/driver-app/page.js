@@ -1356,13 +1356,13 @@ export default function DriverAppPage() {
                             </div>
                             
                             <div style={{ padding: '15px 20px', background: '#f8fafc' }}>
-                                {selectedNotice.category === '안전교육' && activeTrip && (
+                                {selectedNotice.category === '안전교육' && (
                                     <button className={styles.onboardingBtn} onClick={async () => {
                                         const res = await fetch('/api/vehicle-tracking/education/complete', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
-                                                trip_id: activeTrip.id,
+                                                trip_id: activeTrip?.id || null,
                                                 notice_id: selectedNotice.id,
                                                 title: selectedNotice.title,
                                                 driver_name: driverName,

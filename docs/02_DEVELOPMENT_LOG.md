@@ -1,5 +1,21 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 차량관제 안전교육 비운행 이수/지도 통계 보정 (v5.10.35)
+### 🚀 Achievement
+- **비운행 이수 오류 수정**: 안전교육 이수 버튼이 운행 중 상태에만 저장되던 제약을 제거하고, 운행 중이 아니면 차량번호 기준 최근 운행기록에 이수 로그를 연결하도록 보강했습니다.
+- **지도 통계 누락 보정**: 앱 지도 경로 패널의 `쳙 운행시간` 오타를 `총운행시간`으로 수정하고, API 통계 필드가 없어도 위치 포인트의 속도값으로 최고속도/평균속도를 계산해 항상 표시하도록 개선했습니다.
+
+### 🛠 Technical Changes
+- `web/app/api/vehicle-tracking/education/complete/route.js`: `trip_id` 미전달 시 `vehicle_trips` 최신 기록 fallback 조회 후 `vehicle_trip_logs` 저장.
+- `web/driver-src/modules/notice.js`, `web/app/(standalone)/driver-app/page.js`: 안전교육 완료 버튼과 요청 payload의 운행 중 의존성 제거.
+- `web/driver-src/modules/map.js`: 경로 포인트 기반 운행시간/최고속도/평균속도 fallback 계산 추가.
+
+### ✅ Verification
+- `.tmp_test/driverTrackingRegression.test.mjs`: 안전교육 비운행 저장 조건, 지도 통계/오타 회귀 테스트 통과 후 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] 차량관제 안전교육/사진 업로드 후속 리팩토링 (v5.10.34)
 ### 🚀 Achievement
 - **안전교육 공통 규칙 정리**: YouTube 주소 embed 변환, 이수 로그 저장 포맷, 웹 표시용 교육명 파싱을 공통 유틸로 분리했습니다.

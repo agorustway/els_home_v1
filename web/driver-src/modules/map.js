@@ -282,6 +282,45 @@ function isMyTrip(trip) {
   return tV && tV === myV;
 }
 
+function normalizeSpeed(value) {
+  const speed = Number(value);
+  if (!Number.isFinite(speed) || speed < 0 || speed > 160) return null;
+  return Math.round(speed);
+}
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return '0분';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+}
+
+function readPointTime(point) {
+  const raw = point?.recorded_at || point?.created_at || point?.timestamp || point?.time;
+  const parsed = raw ? new Date(raw).getTime() : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildRouteStats(trip, points) {
+  const endedAt = trip.ended_at || trip.completed_at || trip.updated_at || trip.lastLocation?.created_at;
+  const firstTimedPoint = points.find(p => readPointTime(p));
+  const startedAt = trip.started_at || firstTimedPoint?.recorded_at || firstTimedPoint?.created_at;
+  const startMs = startedAt ? new Date(startedAt).getTime() : readPointTime(points[0]);
+  const endMs = endedAt ? new Date(endedAt).getTime() : readPointTime(points[points.length - 1]);
+  const durationMs = (Number.isFinite(startMs) && Number.isFinite(endMs)) ? endMs - startMs : 0;
+  const speeds = points
+    .map(p => normalizeSpeed(p.speed ?? p.speed_kmh ?? p.velocity))
+    .filter(v => v != null);
+  const maxSpeed = normalizeSpeed(trip.max_speed) ?? (speeds.length ? Math.max(...speeds) : 0);
+  const avgSpeed = normalizeSpeed(trip.avg_speed) ?? (speeds.length ? Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length) : 0);
+
+  return {
+    duration: formatDuration(durationMs),
+    maxSpeed,
+    avgSpeed,
+  };
+}
+
 // ─── 외부 공개 API ───────────────────────────────────────────────────
 
 /**
@@ -380,12 +419,14 @@ export async function showTripRouteOnMap(trip) {
   remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
 
   let path = [];
+  let rawLocations = [];
   try {
     const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${trip.id}/matched-route`);
     const data = await res.json();
+    rawLocations = Array.isArray(data.locations) ? data.locations : (Array.isArray(data.data) ? data.data : []);
     path = (Array.isArray(data.matchedPath) && data.matchedPath.length >= 2)
       ? data.matchedPath
-      : (data.locations || data.data || []);
+      : rawLocations;
     path._matchedSource = data.source;
   } catch (e) {
     console.error('[MAP] 경로 fetch 실패', e);
@@ -400,31 +441,21 @@ export async function showTripRouteOnMap(trip) {
   if (panel) {
     const titleEl = document.getElementById('map-route-title');
     if (titleEl) titleEl.textContent = trip.vehicle_number || '경로 정보';
+    const countEl = document.getElementById('map-panel-count');
+    if (countEl) countEl.textContent = trip.vehicle_number ? `선택 차량 ${trip.vehicle_number}` : '선택 차량 경로';
 
     const bodyEl = document.getElementById('map-route-body');
     if (bodyEl) {
       const cleanPath = path._matchedSource === 'naver-directions15' ? path : filterRouteLocations(path);
       const s = cleanPath[0] || path[0];
       const e = cleanPath[cleanPath.length - 1] || path[path.length - 1];
+      const stats = buildRouteStats(trip, rawLocations.length ? rawLocations : cleanPath);
 
-      // 운행 통계 계산
-      let statsHtml = '';
-      const endedAt = trip.ended_at || trip.completed_at;
-      if (trip.started_at && endedAt) {
-        const ms = new Date(endedAt) - new Date(trip.started_at);
-        if (ms > 0) {
-          const h = Math.floor(ms / 3600000);
-          const m = Math.floor((ms % 3600000) / 60000);
-          const dur = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
-          statsHtml += `<div>⏱ <b>쳙 운행시간</b>: ${dur}</div>`;
-        }
-      }
-      if (trip.max_speed != null) {
-        statsHtml += `<div>⚡ <b>최고속도</b>: ${Math.round(trip.max_speed)} km/h</div>`;
-      }
-      if (trip.avg_speed != null) {
-        statsHtml += `<div>📊 <b>평균속도</b>: ${Math.round(trip.avg_speed)} km/h</div>`;
-      }
+      const statsHtml = [
+        `<div>⏱ <b>총운행시간</b>: ${stats.duration}</div>`,
+        `<div>⚡ <b>최고속도</b>: ${stats.maxSpeed} km/h</div>`,
+        `<div>📊 <b>평균속도</b>: ${stats.avgSpeed} km/h</div>`,
+      ].join('');
 
       bodyEl.innerHTML = `
         <div style="font-size:12px;color:#64748b;line-height:1.9;">
