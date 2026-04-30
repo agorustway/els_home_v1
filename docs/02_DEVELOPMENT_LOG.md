@@ -1,5 +1,32 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] AI 어시스턴트 과거 운행 이력 추적 지능 고도화 (v5.10.23)
+### 🚀 Achievement
+- **과거 운행 종료 위치 조회 기능 구현**: AI가 "어제 0140 차량 어디서 끝났어?"와 같은 질문에 대답할 수 있도록, 실시간 운행 차량뿐만 아니라 완료된 트립(Completed Trips)의 최종 GPS 좌표 및 주소를 DB에서 추출하여 AI에게 주입하는 로직을 구현했습니다.
+- **KST 기반 날짜 필터링 정밀화**: "어제"라는 키워드 사용 시 UTC와 KST의 시차(9시간)를 고려하여 정확한 한국 날짜의 운행 데이터를 필터링하도록 로직을 보강했습니다. (v5.10.23)
+- **AI 행동 지침(Rule 21) 추가**: 주입된 '최종위치' 데이터를 AI가 '운행 종료 지점'으로 명확히 인식하고 답변하도록 시스템 프롬프트를 업데이트했습니다.
+
+### 🛠 Technical Changes
+- `web/app/api/chat/route.js`: 차량 위치 조회 로직 전면 개편 (차량번호 추출 및 과거 이력 포함 쿼리).
+- `web/app/api/chat/route.js`: `BASE_SYSTEM_INSTRUCTION`에 Rule 21(운행 이력 및 종료 위치 해석 지침) 추가.
+
+---
+
+## [2026-04-30] 아산 배차판 동기화 데이터 정합성 완결 및 최적화 (v5.10.22)
+### 🚀 Achievement
+- **삭제된 시트 자동 DB 정리**: 엑셀 원본 파일에서 특정 날짜 시트가 삭제되었을 때, Supabase DB에서도 해당 데이터를 자동으로 추적하여 삭제하는 Cleanup 로직을 구현하여 데이터 정합성을 확보했습니다. (v5.10.19)
+- **통합현황 컬럼 매핑 오류 해결**: 컬럼 찾기(`getCol`) 로직에 '완전 일치 우선'순위를 도입하여, '배차'와 '배차정보'를 혼동하여 배차 시간(15:30 등)을 수량으로 합산하던 오류를 근본적으로 해결했습니다. (v5.10.21)
+- **Vercel 캐시 부정합 문제 해결**: 통합현황에서 이틀 전 데이터가 노출되던 문제를 해결하기 위해, Next.js의 `revalidate=0` 및 `cache: 'no-store'` 설정을 적용하고 타임스탬프 기반 캐시 버스터를 도입하여 실시간 데이터 로딩을 보장했습니다. (v5.10.22)
+- **헤더 복구 로직 전역화**: 엑셀 원본의 병합/공백 문제로 인해 `col_12`, `col_15`로 파싱되던 TYPE 헤더를 `T`, `TYPE`으로 복구하는 로직을 통합현황과 개별현황 모두에 전역 적용하여 합산 정확도를 높였습니다.
+
+### 🛠 Technical Changes
+- `docker/els-backend/app_core.py`: `valid_dates` 리스트를 통한 DB 미존재 시트 제거 로직 추가.
+- `web/app/api/branches/asan/dispatch/route.js`: `getCol` 함수 리팩토링 (완전 일치 -> 부분 일치 순), 캐시 비활성화 설정.
+- `web/app/(main)/employees/branches/asan/page.js`: `fetchData`에 타임스탬프 캐시 버스터 추가 및 캐시 정책 변경.
+- `web/app/(main)/employees/branches/asan/page.js`: `mobis` 요약 합산 시 40FT/20FT 분류 로직 보강.
+
+---
+
 ## [2026-04-27] 차량위치관제 GPS 전면 리팩토링 및 백그라운드 끊김 해결 (v5.10.0)
 ### 🚀 Achievement
 - **네이티브 백그라운드 수집 전환**: 브라우저 기반 `navigator.geolocation`을 폐기하고 `@capacitor-community/background-geolocation` 네이티브 플러그인을 도입하여, 앱이 백그라운드나 절전 모드에 진입해도 위치 수집이 중단되지 않도록 개선했습니다.
