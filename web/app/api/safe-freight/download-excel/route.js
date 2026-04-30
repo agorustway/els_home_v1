@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 
+const formatKm = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n) : (value ?? '');
+};
+
 /** 운임조회 시트 헤더 */
 const QUERY_HEADERS = ['적용', '구간', '행선지', '구간(KM)', '왕복(KM)', '40FT 위탁', '40FT 운수자', '40FT 안전', '20FT 위탁', '20FT 운수자', '20FT 안전'];
 
@@ -73,7 +78,7 @@ export async function POST(request) {
     // 1. 운임조회
     const qRows = querySheetRows.map(r => [
       r.period ?? '', r.origin ?? '', r.destination ?? '', 
-      r.sectionKm ?? '', r.roundTripKm ?? '',
+      formatKm(r.sectionKm), formatKm(r.roundTripKm),
       r.f40위탁 ?? '', r.f40운수자 ?? '', r.f40안전 ?? '',
       r.f20위탁 ?? '', r.f20운수자 ?? '', r.f20안전 ?? ''
     ]);
@@ -88,7 +93,7 @@ export async function POST(request) {
         : '';
       return [
         idx + 1, s.period ?? '', s.origin ?? '', s.destination ?? '', 
-        s.sectionKm ?? '', s.roundTripKm ?? '',
+        formatKm(s.sectionKm), formatKm(s.roundTripKm),
         s.f40위탁 ?? '', s.f40운수자 ?? '', s.f40안전 ?? '',
         s.f20위탁 ?? '', s.f20운수자 ?? '', s.f20안전 ?? '',
         savedAt, appliedStr, excludedStr
