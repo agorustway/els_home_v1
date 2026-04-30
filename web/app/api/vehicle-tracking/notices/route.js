@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 
+function preserveEducationUrlInContent(payload = {}) {
+  const next = { ...payload };
+  const url = String(next.education_url || '').trim();
+  if (!url) return next;
+  const content = String(next.content || next.body || next.message || '').trim();
+  if (!content.includes(url)) {
+    next.content = content ? `${content}\n\n${url}` : url;
+  }
+  return next;
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
@@ -64,7 +75,7 @@ export async function POST(request) {
   const supabase = await createAdminClient();
   try {
     const body = await request.json();
-    const row = await safeMutate(supabase, 'insert', body);
+    const row = await safeMutate(supabase, 'insert', preserveEducationUrlInContent(body));
     return NextResponse.json({ notice: row });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
@@ -73,7 +84,7 @@ export async function PUT(request) {
   const supabase = await createAdminClient();
   try {
     const body = await request.json();
-    const row = await safeMutate(supabase, 'update', body);
+    const row = await safeMutate(supabase, 'update', preserveEducationUrlInContent(body));
     return NextResponse.json({ notice: row });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }

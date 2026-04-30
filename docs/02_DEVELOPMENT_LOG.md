@@ -1,17 +1,28 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 공지 본문 유튜브 URL 자동 감지 및 렌더링 최적화 (v5.10.36)
+### 🚀 Achievement
+- **유튜브 URL 자동 임베드**: 공지사항 본문이나 첨부파일 설명에 포함된 YouTube URL을 자동으로 추출하여 영상 섹션에 표시하도록 개선했습니다. (별도의 education_url 입력 없이도 동작)
+- **비운행 이수 오류 수정**: 안전교육 이수 버튼이 운행 중 상태에만 저장되던 제약을 제거하고, 운행 중이 아니면 차량번호 기준 최근 운행기록에 이수 로그를 연결하도록 보강했습니다.
+- **지도 통계 누락 보정**: 앱 지도 경로 패널의 `총운행시간` 오타 수정 및 포인트 데이터 기반 통계 계산 로직을 보강했습니다.
+
+### 🛠 Technical Changes
+- `web/driver-src/modules/notice.js`: `extractFirstYouTubeUrl`, `getNoticeYouTubeUrl` 유틸 추가 및 상세 화면 연동.
+- `web/app/api/vehicle-tracking/education/complete/route.js`: `trip_id` fallback 로직 고도화.
+
 ## [2026-04-30] 차량관제 안전교육 비운행 이수/지도 통계 보정 (v5.10.35)
 ### 🚀 Achievement
 - **비운행 이수 오류 수정**: 안전교육 이수 버튼이 운행 중 상태에만 저장되던 제약을 제거하고, 운행 중이 아니면 차량번호 기준 최근 운행기록에 이수 로그를 연결하도록 보강했습니다.
+- **본문 유튜브 재생 보강**: 안전교육 URL 입력칸이 아닌 본문/첨부에 붙여넣은 YouTube 주소도 자동 추출하고, `education_url` 컬럼이 없는 환경에서도 본문에 URL이 보존되도록 처리했습니다.
 - **지도 통계 누락 보정**: 앱 지도 경로 패널의 `쳙 운행시간` 오타를 `총운행시간`으로 수정하고, API 통계 필드가 없어도 위치 포인트의 속도값으로 최고속도/평균속도를 계산해 항상 표시하도록 개선했습니다.
 
 ### 🛠 Technical Changes
 - `web/app/api/vehicle-tracking/education/complete/route.js`: `trip_id` 미전달 시 `vehicle_trips` 최신 기록 fallback 조회 후 `vehicle_trip_logs` 저장.
-- `web/driver-src/modules/notice.js`, `web/app/(standalone)/driver-app/page.js`: 안전교육 완료 버튼과 요청 payload의 운행 중 의존성 제거.
+- `web/utils/vehicleEducation.mjs`, `web/app/api/vehicle-tracking/notices/route.js`, `web/driver-src/modules/notice.js`, `web/app/(standalone)/driver-app/page.js`: 안전교육 완료 버튼과 요청 payload의 운행 중 의존성 제거, 본문/첨부 YouTube URL 자동 embed 및 저장 보존.
 - `web/driver-src/modules/map.js`: 경로 포인트 기반 운행시간/최고속도/평균속도 fallback 계산 추가.
 
 ### ✅ Verification
-- `.tmp_test/driverTrackingRegression.test.mjs`: 안전교육 비운행 저장 조건, 지도 통계/오타 회귀 테스트 통과 후 삭제.
+- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 지도 통계/오타 회귀 테스트 통과 후 삭제.
 - `web`: `npm.cmd run lint` 통과.
 
 ---

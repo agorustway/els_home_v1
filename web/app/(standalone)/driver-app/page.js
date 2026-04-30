@@ -48,6 +48,13 @@ const formatPhone = (val) => {
     return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
 };
 
+const getNoticeYouTubeUrl = (notice) => {
+    const attachments = Array.isArray(notice?.attachments) ? notice.attachments : [];
+    return notice?.education_url
+        || extractFirstYouTubeUrl(notice?.content)
+        || extractFirstYouTubeUrl(attachments.map(a => `${a.url || ''} ${a.name || ''}`).join(' '));
+};
+
 // ─── 이미지 압축 및 리사이징 (Vercel 4.5MB 제한 및 속도 최적화) ───
 const resizeImage = (file, maxWidth = 1024, maxHeight = 1024) => {
     return new Promise((resolve) => {
@@ -1325,11 +1332,11 @@ export default function DriverAppPage() {
                             </div>
                             
                             <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-                                {(selectedNotice.education_url || extractFirstYouTubeUrl(selectedNotice.content)) && (
+                                {getNoticeYouTubeUrl(selectedNotice) && (
                                     <div style={{ marginBottom: 15, borderRadius: 10, overflow: 'hidden', background: '#000', aspectRatio: '16 / 9' }}>
                                         <iframe
                                             title="안전교육 영상"
-                                            src={toYouTubeEmbedUrl(selectedNotice.education_url || extractFirstYouTubeUrl(selectedNotice.content))}
+                                            src={toYouTubeEmbedUrl(getNoticeYouTubeUrl(selectedNotice))}
                                             style={{ width: '100%', height: '100%', border: 0 }}
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen
@@ -1371,7 +1378,10 @@ export default function DriverAppPage() {
                                             }),
                                         });
                                         if (res.ok) alert('안전교육 이수 기록이 저장되었습니다.');
-                                        else alert('이수 기록 저장에 실패했습니다.');
+                                        else {
+                                            const errorBody = await res.json().catch(() => ({}));
+                                            alert(`이수 기록 저장에 실패했습니다. ${errorBody.error || ''}`.trim());
+                                        }
                                     }} style={{ margin: '0 0 10px', background: '#10b981' }}>시청 완료 및 이수 기록</button>
                                 )}
                                 <button className={styles.onboardingBtn} onClick={() => setSelectedNotice(null)} style={{ margin: 0 }}>닫기</button>

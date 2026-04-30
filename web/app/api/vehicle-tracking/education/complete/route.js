@@ -11,10 +11,13 @@ export async function POST(request) {
 
     let resolvedTripId = trip_id || null;
     if (!resolvedTripId && vehicle_number) {
+      const normalizedVehicle = String(vehicle_number).replace(/\s/g, '');
+      const shortVehicle = normalizedVehicle.slice(-4);
       const { data: latestTrip, error: latestTripError } = await supabase
         .from('vehicle_trips')
         .select('id')
-        .eq('vehicle_number', vehicle_number)
+        .or(`vehicle_number.eq.${vehicle_number},vehicle_number.ilike.%${normalizedVehicle}%,vehicle_number.ilike.%${shortVehicle}%`)
+        .in('status', ['driving', 'paused', 'completed'])
         .order('started_at', { ascending: false })
         .limit(1)
         .maybeSingle();

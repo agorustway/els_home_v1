@@ -32,6 +32,13 @@ function extractFirstYouTubeUrl(text = '') {
   return match || '';
 }
 
+function getNoticeYouTubeUrl(notice) {
+  const attachments = Array.isArray(notice.attachments) ? notice.attachments : [];
+  return notice.education_url
+    || extractFirstYouTubeUrl(notice.content || notice.body || notice.message)
+    || extractFirstYouTubeUrl(attachments.map(a => `${a.url || ''} ${a.name || ''}`).join(' '));
+}
+
 function normalizeNoticeBody(notice) {
   let raw = notice.content || notice.body || notice.message || '';
   raw = raw
@@ -169,7 +176,7 @@ export function openNotice(id) {
   const mediaEl = document.getElementById('notice-detail-media');
   if (mediaEl) {
     const attachments = Array.isArray(n.attachments) ? n.attachments : [];
-    const yt = n.education_url || extractFirstYouTubeUrl(n.content || n.body || n.message);
+    const yt = getNoticeYouTubeUrl(n);
     const embed = toYouTubeEmbedUrl(yt);
     const attachHtml = attachments.map(a => `<a href="${escHtml(a.url)}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${escHtml(a.name || '첨부파일')}</a>`).join('');
     const completeBtn = n.category === '안전교육'
@@ -206,10 +213,13 @@ export async function completeSafetyEducation(id) {
         completed_by: State.profile?.name || State.profile?.vehicleNo,
       }),
     });
-    if (!res.ok) throw new Error('fail');
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.error || `서버 오류 ${res.status}`);
+    }
     showToast('안전교육 이수 기록 저장 완료');
-  } catch {
-    showToast('이수 기록 저장 실패');
+  } catch (e) {
+    showToast(`이수 기록 저장 실패: ${e.message || e}`);
   }
 }
 
