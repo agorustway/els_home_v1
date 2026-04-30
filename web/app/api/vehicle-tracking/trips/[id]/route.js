@@ -167,14 +167,29 @@ export async function PATCH(request, { params }) {
             updates.closed_by = body.closed_by || driver_name || 'web';
         }
 
-        const { data, error } = await supabase
+        let data, error;
+        const result1 = await supabase
             .from('vehicle_trips')
             .update(updates)
             .eq('id', id)
             .select()
             .single();
-
-        if (error) throw error;
+        
+        if (result1.error && result1.error.message && result1.error.message.includes('admin_edited_fields')) {
+            // 컬럼이 존재하지 않을 경우 해당 필드 제거 후 재시도
+            delete updates.admin_edited_fields;
+            const result2 = await supabase
+                .from('vehicle_trips')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+            data = result2.data;
+            error = result2.error;
+        } else {
+            data = result1.data;
+            error = result1.error;
+        }
 
         // 수정 로그 기록 (수정 모드일 경우)
         if (oldData && !action) {

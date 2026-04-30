@@ -1018,7 +1018,7 @@ export default function VehicleTrackingPage() {
                 <h2>차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
                 <div className={styles.titleBtns}>
                     <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>새로고침</button>
-                    <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/admin/logs', '_blank')}>실시간 로그</button>
+                    <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/api/debug/view', '_blank')}>실시간 로그</button>
                 </div>
             </div>
 
@@ -1448,7 +1448,7 @@ export default function VehicleTrackingPage() {
                             </div>
                         </div>
                         <div className={styles.detailSection}>
-                            <div className={styles.sectionTitle}>운행 기록 / 안전교육 이수 ({tripLogs.length})</div>
+                            <div className={styles.sectionTitle}>운행 기록 ({tripLogs.length})</div>
                             <div className={styles.locationList} style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff' }}>
                                 <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                                     <thead style={{ background: '#f8fafc' }}>
