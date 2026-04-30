@@ -310,23 +310,6 @@
     transform: translateY(-1px);
 }
 
-.versionArea {
-    margin-top: 12px;
-    text-align: center;
-}
-
-.versionEgg {
-    font-size: 0.7rem;
-    color: #cbd5e1;
-    text-decoration: none;
-    transition: color 0.2s;
-    cursor: default; /* 마우스 포인터를 숨겨서 더 이스트에그스럽게 */
-}
-
-.versionEgg:hover {
-    color: #94a3b8;
-}
-
 /* Mobile Styles & Unpinned State */
 .sidebar.unpinned {
     position: fixed;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from './ask.module.css';
 
@@ -667,7 +668,9 @@ export default function AskPage() {
             </div>
             
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 'auto', textAlign: 'center', paddingTop: '16px' }}>
-                ELS Solution AI Assistant (Dedicated Build)
+                <Link href="/employees/random-game" style={{ color: 'inherit', textDecoration: 'none', cursor: 'default' }}>
+                    ELS Solution AI Assistant (Dedicated Build)
+                </Link>
             </div>
         </div>
     );
