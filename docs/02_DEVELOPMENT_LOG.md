@@ -1,5 +1,16 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 웹 정산 기능 강화 및 앱 UX 정밀 조정 (v5.10.39)
+### 🚀 Achievement
+- **웹 정산 편의성 개선**: 관리자 웹 운행 리스트에서 청구금액을 즉시 수정할 수 있는 인라인 입력 기능을 추가하고, 교육 이수 기록을 별도 섹션이 아닌 해당 운행 기록 바로 아래에 표시하도록 통합했습니다.
+- **앱 교육 이수 간소화**: 텍스트나 PDF 문서에 대한 '읽음 확인' 버튼 클릭 단계를 제거하여, 영상 시청(있는 경우)만으로 즉시 이수가 가능하도록 프로세스를 개선했습니다.
+- **앱 UI 가독성 향상**: 드라이버 앱 상단 상태 바의 폰트 크기 및 간격을 조정하고, 점검/운행 시작 버튼의 색상 테마를 일관성 있게 보정했습니다.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/vehicle-tracking/page.js`: `saveBillingAmount` 함수 추가 및 운행 리스트 `Fragment` 기반 교육 로그 통합 렌더링.
+- `web/driver-src/modules/notice.js`: `_currentEducationProgress.readConfirmed` 기본값 true 설정 및 관련 UI 제거.
+- `web/driver-src/modules/trip.js`: 점검 완료 및 운행 시작 버튼의 기본 배경색을 `#111827` (Black)으로 통일.
+
 ## [2026-04-30] 운행일보 정산 및 마감 스키마 보강 (v5.10.38)
 ### 🚀 Achievement
 - **운행일보 정산 지원**: `vehicle_trips` 테이블에 운송구분, 청구금액, 작업지 정보를 저장할 수 있는 필드를 추가하여 기사 앱에서 입력한 정산 데이터를 관리할 수 있도록 했습니다.
@@ -36,6 +47,8 @@
 - **GPS 수집 최적화**: 기본 수집 간격/거리 필터를 완화하되, 저속·회전·급가감속·모션 충격 감지 시 3초 수집으로 즉시 강화되도록 조정했습니다.
 - **운행일보 입력/마감 확장**: 기사 앱 운행 시작·운행 중·일지 수정 화면에 운송구분/청구금액/작업지를 추가하고, 웹에서 마감 완료 처리 시 기사 앱 수정을 차단하도록 했습니다.
 - **웹 기록 요약/로그 버튼 수정**: 운행기록 검색 결과 상단에 운행건수·차량수·청구금액 합계를 표시하고, 깨진 실시간 로그 버튼을 관리자 로그 페이지로 연결했습니다.
+- **운행기록 테이블 통합 표시**: 안전교육 이수 기록을 별도 상세/상단 박스가 아닌 운행기록 테이블 내 동등 행으로 표시하고, 청구금액을 목록에서 바로 수정할 수 있게 보정했습니다.
+- **앱 운행 화면 UX 정리**: 운행 상태바 여백/높이를 줄여 주소 잘림을 완화하고, 작업지 placeholder를 `작업지 이름 기입`으로 변경했습니다. 운행전점검 완료 후 버튼 색상은 검은색으로 통일하고, 교육자료 별도 읽음확인 버튼은 제거했습니다.
 - **지도 통계 누락 보정**: 앱 지도 경로 패널의 `쳙 운행시간` 오타를 `총운행시간`으로 수정하고, API 통계 필드가 없어도 위치 포인트의 속도값으로 최고속도/평균속도를 계산해 항상 표시하도록 개선했습니다.
 
 ### 🛠 Technical Changes
@@ -50,7 +63,7 @@
 - `web/driver-src/modules/map.js`: 경로 포인트 기반 운행시간/최고속도/평균속도 fallback 계산 추가.
 
 ### ✅ Verification
-- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`, `.tmp_test/educationMediaAndAvgSpeed.test.mjs`, `.tmp_test/educationCompletionAndGps.test.mjs`, `.tmp_test/vehicleDailyReportFields.test.mjs`, `.tmp_test/vehicleTrackingIntegratedRegression.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 교육자료 미리보기, 평균속도/이수목록, GPS 동적 수집, 운행일보/마감/요약, 지도 통계/오타 회귀 테스트 통과 후 삭제.
+- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`, `.tmp_test/educationMediaAndAvgSpeed.test.mjs`, `.tmp_test/educationCompletionAndGps.test.mjs`, `.tmp_test/vehicleDailyReportFields.test.mjs`, `.tmp_test/vehicleTrackingIntegratedRegression.test.mjs`, `.tmp_test/vehicleRecordsTableRegression.test.mjs`, `.tmp_test/appUxPolishRegression.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 교육자료 미리보기, 평균속도/이수목록, GPS 동적 수집, 운행일보/마감/요약, 운행기록 테이블 통합 표시, 앱 UX 정리, 지도 통계/오타 회귀 테스트 통과.
 - `web`: `npm.cmd run lint` 통과.
 
 ---

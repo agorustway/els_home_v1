@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -946,6 +946,23 @@ export default function VehicleTrackingPage() {
         }
     };
 
+    const saveBillingAmount = async (trip, rawValue) => {
+        const amount = Number(String(rawValue || '').replace(/[^0-9]/g, '')) || null;
+        try {
+            const res = await fetch(`/api/vehicle-tracking/trips/${trip.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ billing_amount: amount, source: 'web', driver_name: '마감담당자' }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || '금액 수정 실패');
+            setRecords(prev => prev.map(t => t.id === trip.id ? { ...t, billing_amount: amount } : t));
+            if (selectedTrip?.id === trip.id) setSelectedTrip(prev => ({ ...prev, billing_amount: amount }));
+        } catch (e) {
+            alert(e.message);
+        }
+    };
+
     // [신규] 실시간 관제 리스트 줌 이동
     const handleZoomToLiveTrip = (trip) => {
         if (!mapInstanceRef.current || !trip.lastLocation) return;
@@ -1165,25 +1182,6 @@ export default function VehicleTrackingPage() {
                             }}>선택건 ZIP</button>
                         </div>
                     </div>
-                    {educationRows.length > 0 && (
-                        <div style={{ margin: '0 0 12px', border: '1px solid #d1fae5', borderRadius: 8, overflow: 'hidden', background: '#f0fdf4' }}>
-                            <div style={{ padding: '8px 12px', fontSize: '0.85rem', fontWeight: 900, color: '#047857', borderBottom: '1px solid #d1fae5' }}>교육 이수 기록 ({educationRows.length}건)</div>
-                            <table className={styles.tripTable} style={{ margin: 0 }}>
-                                <thead><tr><th>이수일시</th><th>기사/차량</th><th>교육명</th><th>처리자</th><th>연결 운행</th></tr></thead>
-                                <tbody>
-                                    {educationRows.map(({ trip, log }) => (
-                                        <tr key={log.id}>
-                                            <td>{new Date(log.created_at).toLocaleString('ko-KR')}</td>
-                                            <td><strong>{trip.driver_name}</strong><div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div></td>
-                                            <td style={{ fontWeight: 800, color: '#047857' }}>{parseEducationLogTitle(log.new_value)}</td>
-                                            <td>{log.modified_by || '-'}</td>
-                                            <td><button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
                     <table className={styles.tripTable}>
                         <thead>
                             <tr>
@@ -1202,6 +1200,7 @@ export default function VehicleTrackingPage() {
                         </thead>
                         <tbody>
                             {records.map(trip => (
+                                <Fragment key={`trip-row-${trip.id}`}>
                                 <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''} onClick={(e) => { if (selectedTrip) handleSelectTrip(trip); }} style={{ cursor: selectedTrip ? 'pointer' : 'default' }}>
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
@@ -1225,7 +1224,7 @@ export default function VehicleTrackingPage() {
                                         <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
                                     </td>
                                     <td style={{ fontSize: '0.75rem', color: '#475569', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`}>
-                                        <div>{trip.transport_type || '왕복'} · {trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'}</div>
+                                        <div>{trip.transport_type || '왕복'} · <input defaultValue={trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onClick={(e) => e.stopPropagation()} onBlur={(e) => saveBillingAmount(trip, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 86, border: '1px solid #dbeafe', borderRadius: 4, padding: '2px 4px', color: '#2563eb', fontWeight: 800, textAlign: 'right' }} />원</div>
                                         <div style={{ color: '#64748b' }}>{trip.work_site || trip.special_notes || '-'}</div>
                                     </td>
                                     <td style={{ textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>{trip.photos?.length || 0}장</td>
@@ -1244,6 +1243,23 @@ export default function VehicleTrackingPage() {
                                         <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>삭제</button>
                                     </td>
                                 </tr>
+                                {(trip.education_logs || []).map(log => (
+                                    <tr key={`edu-${log.id}`} style={{ background: '#f0fdf4' }}>
+                                        <td></td>
+                                        <td><span className={styles.statusBadge} style={{ color: '#047857', borderColor: '#86efac', background: '#dcfce7' }}>교육 이수</span></td>
+                                        <td><strong>{trip.driver_name}</strong><div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div></td>
+                                        <td colSpan={3} style={{ color: '#047857', fontWeight: 800 }}>
+                                            <div>{parseEducationLogTitle(log.new_value)}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>공지/교육 내용 이수 기록</div>
+                                        </td>
+                                        <td style={{ color: '#047857', fontWeight: 800 }}>수료완료</td>
+                                        <td>-</td>
+                                        <td><div>{new Date(log.created_at).toLocaleString('ko-KR')}</div><div style={{ color: '#64748b' }}>수강/수료</div></td>
+                                        <td>처리자: {log.modified_by || '-'}</td>
+                                        <td><button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>연결 운행</button></td>
+                                    </tr>
+                                ))}
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

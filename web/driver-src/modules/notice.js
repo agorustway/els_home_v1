@@ -49,13 +49,10 @@ function renderEducationMedia(notice) {
     if (type.includes('pdf') || name.toLowerCase().endsWith('.pdf')) return `<iframe title="${name}" src="${url}" style="width:100%;height:360px;border:1px solid #e2e8f0;border-radius:8px;margin-top:8px;background:#fff;"></iframe><a href="${url}" target="_blank" style="display:block;padding:10px;margin-top:6px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">PDF 열기: ${name}</a>`;
     return `<a href="${url}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${name}</a>`;
   }).join('');
-  const readConfirm = notice.category === '안전교육'
-    ? `<button id="education-read-confirm-btn" class="btn btn-secondary" style="width:100%;margin-top:12px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;" onclick="App.confirmEducationRead()">본문/자료 읽음 확인</button>`
-    : '';
   const hint = notice.category === '안전교육'
-    ? `<div id="education-complete-hint" style="font-size:12px;color:#64748b;line-height:1.5;margin-top:10px;">영상은 80% 이상 시청, 본문/문서/PDF/이미지는 읽음 확인 후 이수 가능합니다.</div>`
+    ? `<div id="education-complete-hint" style="font-size:12px;color:#64748b;line-height:1.5;margin-top:10px;">교육 시청/본문 확인 완료 후 아래 버튼을 눌러주세요.</div>`
     : '';
-  return `${videoHtml}${attachHtml}${readConfirm}${hint}<span id="education-video-count" data-count="${totalVideoCount}" style="display:none;"></span>`;
+  return `${videoHtml}${attachHtml}${hint}<span id="education-video-count" data-count="${totalVideoCount}" style="display:none;"></span>`;
 }
 
 function getEducationCompletedMap() {
@@ -76,7 +73,7 @@ function updateEducationButtonState() {
   const btn = document.getElementById('education-complete-btn');
   if (!btn || !_currentEducationProgress) return;
   const videoReady = _currentEducationProgress.videoTotal === 0 || _currentEducationProgress.videoWatched.size >= _currentEducationProgress.videoTotal;
-  const ready = videoReady && _currentEducationProgress.readConfirmed;
+  const ready = videoReady;
   btn.disabled = !ready;
   btn.style.background = ready ? '#2563eb' : '#ef4444';
   btn.style.opacity = ready ? '1' : '0.85';
@@ -86,7 +83,7 @@ function updateEducationButtonState() {
 function bindEducationProgress() {
   const countEl = document.getElementById('education-video-count');
   const videoTotal = Number(countEl?.dataset?.count || 0);
-  _currentEducationProgress = { videoTotal, videoWatched: new Set(), readConfirmed: false };
+  _currentEducationProgress = { videoTotal, videoWatched: new Set(), readConfirmed: true };
 
   document.querySelectorAll('[data-edu-video]').forEach((el) => {
     if (el.tagName === 'VIDEO') {
@@ -269,13 +266,6 @@ export function openNotice(id) {
 export function confirmEducationRead() {
   if (!_currentEducationProgress) return;
   _currentEducationProgress.readConfirmed = true;
-  const btn = document.getElementById('education-read-confirm-btn');
-  if (btn) {
-    btn.textContent = '읽음 확인 완료';
-    btn.style.background = '#dcfce7';
-    btn.style.color = '#166534';
-    btn.style.borderColor = '#86efac';
-  }
   updateEducationButtonState();
 }
 

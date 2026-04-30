@@ -72,9 +72,9 @@ export function saveChecklist() {
   }
   State.preTripDone = { chk_brake: true, chk_tire: true, chk_lamp: true, chk_cargo: true, chk_driver: true };
   closeChecklist();
-  // 점검 완료 버튼 파란색
+  // 점검 완료 버튼 검은색
   const btn = document.getElementById('btn-trip-checklist');
-  if (btn) { btn.style.background = '#2563eb'; btn.style.color = '#ffffff'; }
+  if (btn) { btn.style.background = '#111827'; btn.style.color = '#ffffff'; }
   // 운행시작 버튼을 파란색으로 전환 (점검 완료 = 운행 준비 완료)
   const startBtn = document.getElementById('btn-trip-start');
   if (startBtn) {
@@ -452,9 +452,9 @@ export function clearTripData(bypassAuth = false) {
   // 점검 버튼 빨간색으로 복원
   const btnCheck = document.getElementById('btn-trip-checklist');
   if (btnCheck) { btnCheck.style.background = '#ef4444'; btnCheck.style.color = '#ffffff'; }
-  // 운행시작 버튼도 빨간색으로 복원 (점검 필요 상태)
+  // 운행시작 버튼은 대기 상태 기본 검은색
   const startBtn = document.getElementById('btn-trip-start');
-  if (startBtn) { startBtn.style.background = '#ef4444'; startBtn.style.color = '#ffffff'; }
+  if (startBtn) { startBtn.style.background = '#111827'; startBtn.style.color = '#ffffff'; }
 
   document.getElementById('container-no').value = '';
   document.getElementById('seal-no').value      = '';
