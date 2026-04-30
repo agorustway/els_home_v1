@@ -177,7 +177,7 @@ export async function PATCH(request, { params }) {
                         field_name: f,
                         old_value: String(oldData[f] || '-'),
                         new_value: String(updates[f] || '-'),
-                        modified_by: source === 'driver_app' ? (oldData.driver_name || 'driver') : (driver_name || oldData.driver_name || 'web'),
+                        modified_by: source === 'driver_app' ? (oldData.driver_name || 'driver') : (body.admin_edit ? `${oldData.driver_name || 'driver'}|admin` : (oldData.driver_name || 'web')),
                         created_at: new Date().toISOString()
                     });
                 }

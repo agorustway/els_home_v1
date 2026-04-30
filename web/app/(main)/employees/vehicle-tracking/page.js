@@ -1243,7 +1243,31 @@ export default function VehicleTrackingPage() {
                                         <button className={styles.deleteIconBtn} onClick={() => handleDeleteRecord(trip.id)}>삭제</button>
                                     </td>
                                 </tr>
-                                {(trip.education_logs || []).map(log => (
+
+                                </Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                    ) : activeTab === 'education' ? (
+                    <table className={styles.tripTable}>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" /></th>
+                                <th>상태</th>
+                                <th>기사명/차량</th>
+                                <th colSpan={3}>교육 제목 / 내용</th>
+                                <th>상태</th>
+                                <th>-</th>
+                                <th>날짜</th>
+                                <th>처리자</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {educationRows.length === 0 ? (
+                                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '20px' }}>조회된 교육 이수 기록이 없습니다.</td></tr>
+                            ) : (
+                                educationRows.map(({ trip, log }) => (
                                     <tr key={`edu-${log.id}`} style={{ background: '#f0fdf4' }}>
                                         <td></td>
                                         <td><span className={styles.statusBadge} style={{ color: '#047857', borderColor: '#86efac', background: '#dcfce7' }}>교육 이수</span></td>
@@ -1258,11 +1282,11 @@ export default function VehicleTrackingPage() {
                                         <td>처리자: {log.modified_by || '-'}</td>
                                         <td><button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>연결 운행</button></td>
                                     </tr>
-                                ))}
-                                </Fragment>
-                            ))}
+                                ))
+                            )}
                         </tbody>
                     </table>
+                    ) : null}
                 </div>
             </div>
 
@@ -1294,11 +1318,23 @@ export default function VehicleTrackingPage() {
                             <div className={styles.detailInfoGrid}>
                                 <div><div className={styles.infoLabel}>드라이버</div><div className={styles.infoValue}>{selectedTrip.driver_name}</div></div>
                                 <div><div className={styles.infoLabel}>차량번호</div><div className={styles.infoValue}>{selectedTrip.vehicle_number}</div></div>
-                                <div><div className={styles.infoLabel}>컨테이너</div><div className={styles.infoValue}>{selectedTrip.container_number || '-'}</div></div>
-                                <div><div className={styles.infoLabel}>씰 넘버</div><div className={styles.infoValue}>{selectedTrip.seal_number || '-'}</div></div>
-                                <div><div className={styles.infoLabel}>운송구분</div><div className={styles.infoValue}>{selectedTrip.transport_type || '왕복'}</div></div>
-                                <div><div className={styles.infoLabel}>청구금액</div><div className={styles.infoValue}>{selectedTrip.billing_amount ? Number(selectedTrip.billing_amount).toLocaleString('ko-KR') + '원' : '-'}</div></div>
-                                <div><div className={styles.infoLabel}>작업지</div><div className={styles.infoValue}>{selectedTrip.work_site || '-'}</div></div>
+                                <div><div className={styles.infoLabel}>컨테이너</div><div className={styles.infoValue}><input defaultValue={selectedTrip.container_number || ''} placeholder="컨테이너 번호" onBlur={(e) => saveTripField(selectedTrip, 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
+                                <div><div className={styles.infoLabel}>씰 넘버</div><div className={styles.infoValue}><input defaultValue={selectedTrip.seal_number || ''} placeholder="씰 넘버" onBlur={(e) => saveTripField(selectedTrip, 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
+                                <div><div className={styles.infoLabel}>규격/타입</div><div className={styles.infoValue}>
+                                    <select defaultValue={selectedTrip.container_type || '40FT'} onChange={(e) => saveTripField(selectedTrip, 'container_type', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem', marginBottom: '4px' }}>
+                                        <option value="20FT">20FT</option><option value="40FT">40FT</option>
+                                    </select>
+                                    <select defaultValue={selectedTrip.container_kind || 'DRY'} onChange={(e) => saveTripField(selectedTrip, 'container_kind', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }}>
+                                        <option value="DRY">DRY</option><option value="REEFER">REEFER</option><option value="TANK">TANK</option><option value="OPEN_TOP">OPEN TOP</option><option value="FLAT">FLAT RACK</option>
+                                    </select>
+                                </div></div>
+                                <div><div className={styles.infoLabel}>운송구분</div><div className={styles.infoValue}>
+                                    <select defaultValue={selectedTrip.transport_type || '왕복'} onChange={(e) => saveTripField(selectedTrip, 'transport_type', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }}>
+                                        <option value="왕복">왕복</option><option value="편도">편도</option><option value="복화">복화</option><option value="기타">기타</option>
+                                    </select>
+                                </div></div>
+                                <div><div className={styles.infoLabel}>청구금액</div><div className={styles.infoValue}><input defaultValue={selectedTrip.billing_amount ? Number(selectedTrip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onBlur={(e) => saveTripField(selectedTrip, 'billing_amount', e.target.value.replace(/[^0-9]/g, ''))} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
+                                <div><div className={styles.infoLabel}>작업지</div><div className={styles.infoValue}><input defaultValue={selectedTrip.work_site || ''} placeholder="작업지" onBlur={(e) => saveTripField(selectedTrip, 'work_site', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>마감여부</div><div className={styles.infoValue} style={{ color: selectedTrip.is_closed ? '#ef4444' : '#10b981' }}>{selectedTrip.is_closed ? '마감완료' : '미마감'}</div></div>
                                 <div style={{ gridColumn: 'span 2', background: '#f0f9ff', padding: '8px 12px', borderRadius: 8, border: '1px solid #bae6fd' }}>
                                     <div className={styles.infoLabel} style={{ color: '#0369a1' }}>총 소요 운행 시간</div>
@@ -1392,14 +1428,14 @@ export default function VehicleTrackingPage() {
                                         <tr><th style={{ padding: 6 }}>시간</th><th style={{ padding: 6 }}>항목</th><th style={{ padding: 6 }}>내용</th><th style={{ padding: 6 }}>처리자</th></tr>
                                     </thead>
                                     <tbody>
-                                        {tripLogs.length === 0 ? (
+                                        {tripLogs.filter(log => log.field_name !== 'safety_education').length === 0 ? (
                                             <tr><td colSpan="4" style={{ padding: 14, textAlign: 'center', color: '#94a3b8' }}>기록이 없습니다.</td></tr>
-                                        ) : tripLogs.map((log, i) => (
+                                        ) : tripLogs.filter(log => log.field_name !== 'safety_education').map((log, i) => (
                                             <tr key={log.id || i} style={{ borderTop: '1px solid #f1f5f9' }}>
                                                 <td style={{ padding: 6, whiteSpace: 'nowrap' }}>{new Date(log.created_at).toLocaleString('ko-KR')}</td>
-                                                <td style={{ padding: 6, fontWeight: 800, color: log.field_name === 'safety_education' ? '#059669' : '#475569' }}>{log.field_name === 'safety_education' ? '안전교육' : log.field_name}</td>
-                                                <td style={{ padding: 6 }}>{log.field_name === 'safety_education' ? parseEducationLogTitle(log.new_value) : `${log.old_value || '-'} → ${log.new_value || '-'}`}</td>
-                                                <td style={{ padding: 6 }}>{log.modified_by || '-'}</td>
+                                                <td style={{ padding: 6, fontWeight: 800, color: '#475569' }}>{log.field_name}</td>
+                                                <td style={{ padding: 6 }}>{`${log.old_value || '-'} → ${log.new_value || '-'}`}</td>
+                                                <td style={{ padding: 6 }}>{log.modified_by ? log.modified_by.replace('|admin', '') : '-'}</td>
                                             </tr>
                                         ))}
                                     </tbody>

@@ -132,6 +132,36 @@ export async function openLog(id) {
     document.getElementById('log-edit-transport-type').value = data.transport_type || '왕복';
     document.getElementById('log-edit-billing-amount').value = formatBillingAmount(data.billing_amount);
     document.getElementById('log-edit-work-site').value = data.work_site || '';
+
+    const adminEdited = {};
+    if (data.logs && Array.isArray(data.logs)) {
+      data.logs.forEach(log => {
+        if (!adminEdited.hasOwnProperty(log.field_name)) {
+          adminEdited[log.field_name] = !!(log.modified_by && log.modified_by.includes('|admin'));
+        }
+      });
+    }
+
+    const setAdminBlue = (elId, fieldName) => {
+      const el = document.getElementById(elId);
+      if (el) {
+        if (adminEdited[fieldName]) {
+          el.style.color = '#2563eb';
+          el.style.fontWeight = '700';
+        } else {
+          el.style.color = '';
+          el.style.fontWeight = '';
+        }
+      }
+    };
+
+    setAdminBlue('log-edit-container', 'container_number');
+    setAdminBlue('log-edit-seal', 'seal_number');
+    setAdminBlue('log-edit-memo', 'special_notes');
+    setAdminBlue('log-edit-transport-type', 'transport_type');
+    setAdminBlue('log-edit-billing-amount', 'billing_amount');
+    setAdminBlue('log-edit-work-site', 'work_site');
+
     onLogFieldChange();
 
     const isAllChecked = !!(data.chk_brake && data.chk_tire && data.chk_lamp && data.chk_cargo && data.chk_driver);
@@ -157,7 +187,7 @@ export async function openLog(id) {
             <span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검완료' : '미점검'}</span>
           </span>
         </div>
-        <div class="log-detail-info-row"><span class="log-detail-info-label">일보 정보</span><span>${escHtml(data.transport_type || '왕복')} · ${data.billing_amount ? Number(data.billing_amount).toLocaleString('ko-KR') + '원' : '청구금액 미입력'} · ${escHtml(data.work_site || '작업지 미입력')}</span></div>
+        <div class="log-detail-info-row"><span class="log-detail-info-label">일보 정보</span><span><span style="${adminEdited['transport_type'] ? 'color:#2563eb;font-weight:700;' : ''}">${escHtml(data.transport_type || '왕복')}</span> · <span style="${adminEdited['billing_amount'] ? 'color:#2563eb;font-weight:700;' : ''}">${data.billing_amount ? Number(data.billing_amount).toLocaleString('ko-KR') + '원' : '청구금액 미입력'}</span> · <span style="${adminEdited['work_site'] ? 'color:#2563eb;font-weight:700;' : ''}">${escHtml(data.work_site || '작업지 미입력')}</span></span></div>
         ${data.is_closed ? `<div class="log-detail-info-row"><span class="log-detail-info-label">마감</span><span style="font-weight:800;color:var(--danger);">마감완료 · 기사 수정 제한</span></div>` : ''}
       </div>
     `;

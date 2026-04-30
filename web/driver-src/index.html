@@ -149,24 +149,24 @@
                 <span>컨테이너 번호</span>
                 <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
-              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important;height:34px;">
+              <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
             <div class="field" style="margin-bottom:0; min-width:0;">
               <label>씰 번호</label>
-              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important;height:34px;">
+              <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
           </div>
           <div class="trip-row" style="gap:6px;">
             <div class="field">
               <label>타입</label>
-              <select id="container-type" onchange="App.onTripFieldChange()" style="height:34px;">
+              <select id="container-type" onchange="App.onTripFieldChange()" style="height:44px;font-size:14px;">
                 <option value="20FT">20FT</option>
                 <option value="40FT" selected>40FT</option>
               </select>
             </div>
             <div class="field">
               <label>종류</label>
-              <select id="container-kind" onchange="App.onTripFieldChange()" style="height:34px;">
+              <select id="container-kind" onchange="App.onTripFieldChange()" style="height:44px;font-size:14px;">
                 <option value="DRY" selected>DRY</option>
                 <option value="REEFER">REEFER</option>
                 <option value="TANK">TANK</option>
@@ -178,7 +178,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; overflow:hidden;">
             <div class="field" style="margin-bottom:0;">
               <label>운송구분</label>
-              <select id="transport-type" onchange="App.onTripFieldChange()" style="height:34px;">
+              <select id="transport-type" onchange="App.onTripFieldChange()" style="height:44px;font-size:14px;">
                 <option value="왕복" selected>왕복</option>
                 <option value="편도">편도</option>
                 <option value="복화">복화</option>
@@ -187,12 +187,12 @@
             </div>
             <div class="field" style="margin-bottom:0;">
               <label>청구금액</label>
-              <input type="text" id="billing-amount" inputmode="numeric" placeholder="0" oninput="App.onTripFieldChange()" style="width:100% !important;height:34px;text-align:right;">
+              <input type="text" id="billing-amount" inputmode="numeric" placeholder="0" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;text-align:right;font-size:14px;">
             </div>
           </div>
           <div class="field" style="margin-bottom:0;">
             <label>작업지</label>
-            <input type="text" id="work-site" placeholder="작업지 이름 기입" maxlength="100" oninput="App.onTripFieldChange()" style="width:100% !important;height:34px;">
+            <input type="text" id="work-site" placeholder="작업지 이름 기입" maxlength="100" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
           </div>
           <div id="trip-actions">
             <div id="trip-start-row" class="trip-action-row">
@@ -249,18 +249,18 @@
                 <span>컨테이너 번호</span>
                 <span id="log-container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
-              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()" style="width:100% !important;">
+              <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
             <div class="field">
               <label>씰 번호</label>
-              <input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()" style="width:100% !important;">
+              <input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <div class="field"><label>운송구분</label><select id="log-edit-transport-type" style="width:100% !important;"><option value="왕복">왕복</option><option value="편도">편도</option><option value="복화">복화</option><option value="기타">기타</option></select></div>
-            <div class="field"><label>청구금액</label><input type="text" id="log-edit-billing-amount" inputmode="numeric" style="width:100% !important;text-align:right;"></div>
+            <div class="field"><label>운송구분</label><select id="log-edit-transport-type" style="width:100% !important;height:44px;font-size:14px;"><option value="왕복">왕복</option><option value="편도">편도</option><option value="복화">복화</option><option value="기타">기타</option></select></div>
+            <div class="field"><label>청구금액</label><input type="text" id="log-edit-billing-amount" inputmode="numeric" style="width:100% !important;text-align:right;height:44px;font-size:14px;"></div>
           </div>
-          <div class="field"><label>작업지</label><input type="text" id="log-edit-work-site" maxlength="100" style="width:100% !important;"></div>
+          <div class="field"><label>작업지</label><input type="text" id="log-edit-work-site" maxlength="100" style="width:100% !important;height:44px;font-size:14px;"></div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>
           <button class="btn btn-primary btn-sm btn-full" onclick="App.saveLogEdit()" style="margin-top:8px; flex-shrink:0; min-height:32px; height:32px;">기록 수정 저장</button>
         </div>

@@ -221,6 +221,26 @@ export async function GET(request) {
             const { data, error } = await query;
             if (error) throw error;
 
+            if (data && data.length > 0) {
+                const tripIds = data.map(t => t.id);
+                const { data: logs } = await supabase
+                    .from('vehicle_trip_logs')
+                    .select('trip_id, field_name')
+                    .in('trip_id', tripIds)
+                    .like('modified_by', '%|admin%');
+                
+                if (logs) {
+                    const logMap = {};
+                    logs.forEach(log => {
+                        if (!logMap[log.trip_id]) logMap[log.trip_id] = {};
+                        logMap[log.trip_id][log.field_name] = true;
+                    });
+                    data.forEach(t => {
+                        t.admin_modified_fields = logMap[t.id] || {};
+                    });
+                }
+            }
+
             return NextResponse.json({ trips: data });
         }
 
