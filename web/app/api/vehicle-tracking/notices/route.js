@@ -33,13 +33,39 @@ export async function GET(request) {
   }
 }
 
+// notices 테이블에 안전하게 insert/update (없는 컬럼 자동 제거 후 재시도)
+async function safeMutate(supabase, mode, payload) {
+  const attempt = async (data) => {
+    if (mode === 'insert') {
+      const { data: row, error } = await supabase.from('notices').insert([data]).select().single();
+      if (error) throw error;
+      return row;
+    } else {
+      const { id, ...updateData } = data;
+      const { data: row, error } = await supabase.from('notices').update(updateData).eq('id', id).select().single();
+      if (error) throw error;
+      return row;
+    }
+  };
+
+  try {
+    return await attempt(payload);
+  } catch (e) {
+    // schema cache 오류(없는 컬럼)이면 extended 필드 제거 후 재시도
+    if (e.message?.includes('column') || e.message?.includes('schema') || e.code === 'PGRST204') {
+      const { education_url, attachments, ...safe } = payload;
+      return await attempt(safe);
+    }
+    throw e;
+  }
+}
+
 export async function POST(request) {
   const supabase = await createAdminClient();
   try {
     const body = await request.json();
-    const { data, error } = await supabase.from('notices').insert([body]).select().single();
-    if (error) throw error;
-    return NextResponse.json({ notice: data });
+    const row = await safeMutate(supabase, 'insert', body);
+    return NextResponse.json({ notice: row });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
 
@@ -47,10 +73,8 @@ export async function PUT(request) {
   const supabase = await createAdminClient();
   try {
     const body = await request.json();
-    const { id, ...updateData } = body;
-    const { data, error } = await supabase.from('notices').update(updateData).eq('id', id).select().single();
-    if (error) throw error;
-    return NextResponse.json({ notice: data });
+    const row = await safeMutate(supabase, 'update', body);
+    return NextResponse.json({ notice: row });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
 

@@ -43,11 +43,16 @@ export function saveChecklist() {
   }
   State.preTripDone = { chk_brake: true, chk_tire: true, chk_lamp: true, chk_cargo: true, chk_driver: true };
   closeChecklist();
+  // 점검 완료 버튼 파란색
   const btn = document.getElementById('btn-trip-checklist');
   if (btn) { btn.style.background = '#2563eb'; btn.style.color = '#ffffff'; }
-  showToast('운행 전 점검 완료! 운행을 시작합니다.');
-  // 점검 완료 후 자동 운행 시작
-  setTimeout(() => startTrip(), 300);
+  // 운행시작 버튼을 파란색으로 전환 (점검 완료 = 운행 준비 완료)
+  const startBtn = document.getElementById('btn-trip-start');
+  if (startBtn) {
+    startBtn.style.background = '#2563eb';
+    startBtn.style.color = '#ffffff';
+  }
+  showToast('운행 전 점검 완료! 운행 시작 버튼을 눌러주세요.');
 }
 
 // ─── 오버레이 서비스 ─────────────────────────────────────────────
@@ -407,8 +412,12 @@ export function clearTripData(bypassAuth = false) {
   State.photos     = [];
   State.preTripDone = null;
 
+  // 점검 버튼 빨간색으로 복원
   const btnCheck = document.getElementById('btn-trip-checklist');
   if (btnCheck) { btnCheck.style.background = '#ef4444'; btnCheck.style.color = '#ffffff'; }
+  // 운행시작 버튼도 빨간색으로 복원 (점검 필요 상태)
+  const startBtn = document.getElementById('btn-trip-start');
+  if (startBtn) { startBtn.style.background = '#ef4444'; startBtn.style.color = '#ffffff'; }
 
   document.getElementById('container-no').value = '';
   document.getElementById('seal-no').value      = '';

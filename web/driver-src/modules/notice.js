@@ -166,7 +166,7 @@ export function openNotice(id) {
 export async function completeSafetyEducation(id) {
   const n = _notices.find(x => String(x.id) === String(id));
   const trip = State.trip || {};
-  if (!trip.id) { showToast('운행 중일 때 이수 기록을 저장할 수 있습니다.'); return; }
+  // 운행 중이 아니어도 이수 기록 가능 (trip_id는 선택적)
   try {
     const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/education/complete`, {
       method: 'POST',

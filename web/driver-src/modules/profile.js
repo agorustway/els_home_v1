@@ -25,19 +25,20 @@ export function applyProfileToUI() {
 }
 
 // ─── 설정 화면 하단 버튼 활성화/비활성화 ─────────────────────────
-function updateSettingsButtonState(enabled) {
-  const buttons = document.querySelectorAll('#tab-settings .field:last-of-type .btn');
-  buttons.forEach(btn => {
-    if (enabled) {
-      btn.removeAttribute('disabled');
-      btn.style.opacity = '1';
-      btn.style.pointerEvents = 'auto';
-    } else {
-      btn.setAttribute('disabled', 'disabled');
-      btn.style.opacity = '0.5';
-      btn.style.pointerEvents = 'none';
-      btn.style.cursor = 'not-allowed';
-    }
+export function updateSettingsButtonState(enabled) {
+  const saveBtn = document.getElementById('btn-save-profile');
+  if (saveBtn) {
+    saveBtn.style.background = enabled ? '#2563eb' : '#ef4444';
+    saveBtn.style.color = '#ffffff';
+    saveBtn.style.opacity = '1';
+    saveBtn.style.pointerEvents = 'auto';
+    saveBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+  }
+  // 부가 버튼 (lookup 버튼 제외)
+  const otherBtns = document.querySelectorAll('#screen-settings .btn:not(#btn-lookup-driver):not(#btn-save-profile)');
+  otherBtns.forEach(btn => {
+    btn.style.opacity = enabled ? '1' : '0.7';
+    btn.style.pointerEvents = enabled ? 'auto' : 'none';
   });
 }
 

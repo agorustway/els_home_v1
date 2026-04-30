@@ -406,11 +406,32 @@ export async function showTripRouteOnMap(trip) {
       const cleanPath = path._matchedSource === 'naver-directions15' ? path : filterRouteLocations(path);
       const s = cleanPath[0] || path[0];
       const e = cleanPath[cleanPath.length - 1] || path[path.length - 1];
+
+      // 운행 통계 계산
+      let statsHtml = '';
+      const endedAt = trip.ended_at || trip.completed_at;
+      if (trip.started_at && endedAt) {
+        const ms = new Date(endedAt) - new Date(trip.started_at);
+        if (ms > 0) {
+          const h = Math.floor(ms / 3600000);
+          const m = Math.floor((ms % 3600000) / 60000);
+          const dur = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+          statsHtml += `<div>⏱ <b>쳙 운행시간</b>: ${dur}</div>`;
+        }
+      }
+      if (trip.max_speed != null) {
+        statsHtml += `<div>⚡ <b>최고속도</b>: ${Math.round(trip.max_speed)} km/h</div>`;
+      }
+      if (trip.avg_speed != null) {
+        statsHtml += `<div>📊 <b>평균속도</b>: ${Math.round(trip.avg_speed)} km/h</div>`;
+      }
+
       bodyEl.innerHTML = `
         <div style="font-size:12px;color:#64748b;line-height:1.9;">
-          <div><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:50%;margin-right:6px;"></span><b>출발</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
+          <div><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:50%;margin-right:6px;"></span><b>입차</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
           <div><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:50%;margin-right:6px;"></span><b>마지막</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
           <div>📊 <b>기록</b>: ${cleanPath.length}개 보정 포인트 / 원본 ${path.length}개</div>
+          ${statsHtml}
         </div>`;
     }
 

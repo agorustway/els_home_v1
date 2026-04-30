@@ -59,12 +59,34 @@ export async function loadLogs() {
     const statusLabel = { driving: '운송중', paused: '일시정지', completed: '완료' };
     const statusColor = { driving: 'var(--success)', paused: 'var(--warn)', completed: 'var(--text-muted)' };
 
+    // 통계 포매터 계산
+    function fmtDuration(startedAt, endedAt) {
+      if (!startedAt || !endedAt) return null;
+      const ms = new Date(endedAt) - new Date(startedAt);
+      if (ms <= 0) return null;
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    }
+
     document.getElementById('log-list').innerHTML = trips.map(t => {
       let pCount = 0;
       try {
         if (Array.isArray(t.photos)) pCount = t.photos.length;
         else if (typeof t.photos === 'string' && t.photos.trim()) pCount = JSON.parse(t.photos).length;
       } catch { }
+
+      const endedAt = t.ended_at || t.completed_at;
+      const duration = fmtDuration(t.started_at, endedAt);
+      const maxSpd = t.max_speed != null ? `${Math.round(t.max_speed)}km/h` : null;
+      const avgSpd = t.avg_speed != null ? `${Math.round(t.avg_speed)}km/h` : null;
+
+      const statsHtml = (duration || maxSpd || avgSpd) ? `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;font-size:10px;color:#64748b;">
+          ${duration ? `<span>⏱ ${duration}</span>` : ''}
+          ${maxSpd ? `<span>⚡ 최고 ${maxSpd}</span>` : ''}
+          ${avgSpd ? `<span>📊 평균 ${avgSpd}</span>` : ''}
+        </div>` : '';
 
       return `
         <div class="log-item" onclick="App.openLog('${t.id}')">
@@ -76,6 +98,7 @@ export async function loadLogs() {
             <span>${formatDate(new Date(t.started_at))} · ${escHtml(t.vehicle_number || '')}</span>
             ${pCount > 0 ? `<span style="font-size:10px; color:var(--accent); font-weight:700;">📸 ${pCount}장</span>` : ''}
           </div>
+          ${statsHtml}
         </div>
       `;
     }).join('');
