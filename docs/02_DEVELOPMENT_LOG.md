@@ -1,5 +1,25 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 차량위치관제 경로 안정화 및 지도 UX 정리 (v5.10.24)
+### 🚀 Achievement
+- **지도 표시 안정화**: 동일 차량이 종료 후 다시 운행을 시작하면 최신 1건만 관제 지도에 남도록 정리하고, 목록 정렬을 운행중 → 일시정지 → 운행종료 및 최신 수신순으로 통일했습니다.
+- **GPS 이상점 필터 1차 적용**: 비현실적 속도 점프, 한국 범위 밖 좌표, 낮은 정확도, 튀었다가 돌아오는 스파이크를 공통 필터로 제거해 말도 안 되는 경로 꺾임을 줄였습니다.
+- **앱 지도 UI 정리**: 출발/현재 텍스트 마커를 작은 점으로 바꾸고, 차량 마커에는 짧은 포인터 선을 붙여 경로와 차량 위치가 덜 겹치게 개선했습니다.
+- **운행 정보 가시화**: 웹 관제 목록에 진행 중 차량의 현재 속도와 운행 시간을 추가했습니다.
+
+### 🛠 Technical Changes
+- `web/utils/vehicleLocation.mjs`: 라이브 운행 정렬/중복 제거, 경로 이상점 필터, 서버 저장 전 좌표 판정 유틸 신규 추가.
+- `web/app/api/vehicle-tracking/location/route.js`: 위치 저장 전 직전 좌표 기준 불가능한 점프/저정확도 좌표 스킵.
+- `web/app/api/vehicle-tracking/trips/route.js`, `docker/els-backend/app.py`: active 응답에서 차량별 최신 1건만 반환하고 상태/시간순 정렬.
+- `web/app/(main)/employees/vehicle-tracking/page.js`: 보정 경로 표시 및 실시간 목록 속도/운행시간 컬럼 추가.
+- `web/driver-src/modules/map.js`, `web/driver-src/modules/gps.js`, `web/driver-src/modules/locationFilter.js`: 앱 지도 마커/경로 UI 정리 및 속도·회전·가감속 기반 GPS 전송 간격 조절.
+
+### ✅ Verification
+- `.tmp_test/vehicleLocation.test.mjs`: 중복 차량 최신 1건, 상태 정렬, GPS 스파이크 제거 테스트 통과 후 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] AI 어시스턴트 과거 운행 이력 추적 지능 고도화 (v5.10.23)
 ### 🚀 Achievement
 - **과거 운행 종료 위치 조회 기능 구현**: AI가 "어제 0140 차량 어디서 끝났어?"와 같은 질문에 대답할 수 있도록, 실시간 운행 차량뿐만 아니라 완료된 트립(Completed Trips)의 최종 GPS 좌표 및 주소를 DB에서 추출하여 AI에게 주입하는 로직을 구현했습니다.

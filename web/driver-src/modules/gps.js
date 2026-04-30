@@ -17,6 +17,7 @@ export let currentGpsInterval = 10_000;
 export let lastGpsTimestamp  = 0;
 export let lastKnownAddr     = '위치 확인 중...';
 export let realtimeExpireAt  = 0;
+let _lastSentMotion = null;
 
 // ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
@@ -146,6 +147,7 @@ export async function startGPS() {
             longitude: location.longitude,
             accuracy:  location.accuracy || 0,
             speed:     location.speed,       // m/s 또는 null
+            heading:   location.bearing ?? location.heading ?? null,
             altitude:  location.altitude,
           },
         };
@@ -387,16 +389,27 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     return;
   }
 
-  // 속도 기반 가변 전송 주기 (네이티브 수집 주기와 별개로 서버 전송 빈도)
-  let interval = 10_000;           // 기본 10초
+  const heading = typeof pos.coords.heading === 'number' ? pos.coords.heading : null;
+  const lastMotion = _lastSentMotion;
+  const speedDelta = lastMotion ? Math.abs(speedKph - lastMotion.speedKph) : 0;
+  const headingDelta = (lastMotion && heading !== null && lastMotion.heading !== null)
+    ? Math.min(Math.abs(heading - lastMotion.heading), 360 - Math.abs(heading - lastMotion.heading))
+    : 0;
+  const isTurningOrChangingSpeed = speedDelta >= 12 || headingDelta >= 25;
+
+  // 내비게이션식 가변 전송 주기: 저속/회전/가감속은 촘촘히, 고속 안정 주행은 여유 있게.
+  let interval = 12_000;
   if (State.trip.isRealtime) {
-    interval = 3_000;              // 실시간 모드: 3초
+    interval = 3_000;
+  } else if (isTurningOrChangingSpeed) {
+    interval = 4_000;
+  } else if (speedKph < 15) {
+    interval = 5_000;
+  } else if (speedKph < 45) {
+    interval = 7_000;
   } else if (speedKph >= 80) {
-    interval = 5_000;              // 고속: 5초
-  } else if (speedKph >= 40) {
-    interval = 8_000;              // 중속: 8초
+    interval = 15_000;
   }
-  // 저속/정지: 10초 (기본값 유지)
 
   if (interval !== currentGpsInterval) currentGpsInterval = interval;
 
@@ -427,6 +440,9 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     if (gpsRes.ok) {
       const gpsData = await gpsRes.json().catch(() => ({}));
       lastKnownAddr = gpsData.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      if (!gpsData.skipped) {
+        _lastSentMotion = { speedKph, heading };
+      }
 
       // 서버 응답 성공 시 오프라인 큐 플러시 시도
       flushOfflineQueue();

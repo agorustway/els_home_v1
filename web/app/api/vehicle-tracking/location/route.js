@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
+import { shouldAcceptLocation } from '@/utils/vehicleLocation.mjs';
 
 /**
  * POST /api/vehicle-tracking/location
@@ -43,6 +44,29 @@ export async function POST(request) {
         const { data: trip } = await supabase.from('vehicle_trips').select('status').eq('id', trip_id).single();
         if (!trip || trip.status === 'completed') {
             return NextResponse.json({ error: '운행 중이 아닙니다.' }, { status: 400 });
+        }
+
+        const { data: previousLocations } = await supabase
+            .from('vehicle_locations')
+            .select('lat,lng,accuracy,speed,recorded_at,marker_type')
+            .eq('trip_id', trip_id)
+            .order('recorded_at', { ascending: false })
+            .limit(1);
+
+        const decision = shouldAcceptLocation({
+            current: { lat, lng, accuracy, speed, recorded_at: new Date().toISOString(), marker_type },
+            previous: previousLocations?.[0] || null,
+            forced: Boolean(marker_type) || source === 'native_forced',
+        });
+
+        if (!decision.ok) {
+            return NextResponse.json({
+                skipped: true,
+                reason: decision.reason,
+                address,
+            }, {
+                headers: { 'Access-Control-Allow-Origin': '*' }
+            });
         }
 
         const { data, error } = await supabase

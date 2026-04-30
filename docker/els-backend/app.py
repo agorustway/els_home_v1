@@ -454,11 +454,28 @@ def get_vehicle_tracking():
             if tid not in loc_map:
                 loc_map[tid] = l
         
-        merged = []
+        latest_by_vehicle = {}
         for t in trips:
             t["lastLocation"] = loc_map.get(t["id"])
             t["last_location_address"] = t["lastLocation"]["address"] if t["lastLocation"] else None
-            merged.append(t)
+            vehicle_key = (t.get("vehicle_number") or t.get("vehicle_id") or t.get("id") or "").replace(" ", "").upper()
+            last_time = (
+                (t.get("lastLocation") or {}).get("recorded_at")
+                or (t.get("lastLocation") or {}).get("timestamp")
+                or t.get("updated_at")
+                or t.get("completed_at")
+                or t.get("started_at")
+                or ""
+            )
+            if not vehicle_key or vehicle_key not in latest_by_vehicle or last_time > latest_by_vehicle[vehicle_key].get("_sort_time", ""):
+                t["_sort_time"] = last_time
+                latest_by_vehicle[vehicle_key] = t
+
+        status_rank = {"driving": 0, "paused": 1, "completed": 2}
+        merged = sorted(latest_by_vehicle.values(), key=lambda x: x.get("_sort_time", ""), reverse=True)
+        merged = sorted(merged, key=lambda x: status_rank.get(x.get("status"), 9))
+        for t in merged:
+            t.pop("_sort_time", None)
 
         # 프론트엔드 하위 호환성을 위해 trips와 data 양쪽으로 반환
         return jsonify({"data": merged, "trips": merged})

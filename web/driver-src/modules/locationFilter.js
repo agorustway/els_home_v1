@@ -1,0 +1,78 @@
+export function haversineKm(lat1, lng1, lat2, lng2) {
+  const p = Math.PI / 180;
+  const a = 0.5 - Math.cos((lat2 - lat1) * p) / 2
+    + Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lng2 - lng1) * p)) / 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+
+function pointTime(point) {
+  const raw = point?.recorded_at || point?.timestamp || point?.created_at;
+  const time = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
+function speedKmh(speed) {
+  const n = Number(speed);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n > 80 ? n : n * 3.6;
+}
+
+export function filterRouteLocations(locations = []) {
+  const ordered = locations
+    .filter(Boolean)
+    .map(l => ({ ...l, lat: Number(l.lat), lng: Number(l.lng), speed: Number(l.speed || 0) }))
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && l.lat >= 33 && l.lat <= 39.5 && l.lng >= 124 && l.lng <= 132)
+    .sort((a, b) => pointTime(a) - pointTime(b));
+
+  const filtered = [];
+  for (let i = 0; i < ordered.length; i += 1) {
+    const curr = ordered[i];
+    const prev = filtered[filtered.length - 1];
+    if (!prev) {
+      filtered.push(curr);
+      continue;
+    }
+
+    const distKm = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
+    const timeSec = Math.max(1, (pointTime(curr) - pointTime(prev)) / 1000);
+    const implied = distKm / (timeSec / 3600);
+    const sensor = speedKmh(curr.speed);
+    if (distKm > 0.5 && implied > Math.max(135, sensor + 45)) continue;
+
+    const next = ordered[i + 1];
+    if (next) {
+      const nextDist = haversineKm(curr.lat, curr.lng, Number(next.lat), Number(next.lng));
+      const bridgeDist = haversineKm(prev.lat, prev.lng, Number(next.lat), Number(next.lng));
+      if (sensor < 15 && distKm > 0.08 && nextDist > 0.08 && bridgeDist < Math.max(0.06, distKm * 0.45)) continue;
+      if (distKm > 0.7 && nextDist > 0.7 && bridgeDist < Math.max(0.3, Math.min(distKm, nextDist) * 0.55)) continue;
+    }
+
+    const minMoveKm = sensor < 10 ? 0.015 : sensor < 40 ? 0.025 : 0.05;
+    if (distKm < minMoveKm && !curr.marker_type) continue;
+    filtered.push(curr);
+  }
+  return filtered;
+}
+
+function tripTime(trip) {
+  const raw = trip?.lastLocation?.recorded_at || trip?.lastLocation?.timestamp || trip?.updated_at || trip?.completed_at || trip?.started_at;
+  const time = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
+export function prepareLiveTrips(trips = []) {
+  const latest = new Map();
+  for (const trip of trips) {
+    const key = String(trip?.vehicle_number || trip?.vehicle_id || trip?.id || '').replace(/\s/g, '').toUpperCase();
+    if (!key) continue;
+    if (!latest.has(key) || tripTime(trip) > tripTime(latest.get(key))) latest.set(key, trip);
+  }
+
+  const rank = { driving: 0, paused: 1, completed: 2 };
+  return trips
+    .filter(trip => {
+      const key = String(trip?.vehicle_number || trip?.vehicle_id || trip?.id || '').replace(/\s/g, '').toUpperCase();
+      return !key || latest.get(key)?.id === trip.id;
+    })
+    .sort((a, b) => (rank[a?.status] ?? 9) - (rank[b?.status] ?? 9) || tripTime(b) - tripTime(a));
+}

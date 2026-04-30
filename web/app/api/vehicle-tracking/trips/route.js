@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
 
 /**
  * GET /api/vehicle-tracking/trips
@@ -77,11 +78,11 @@ export async function GET(request) {
             const locationMap = {};
             locations.forEach(l => { locationMap[l.trip_id] = l; });
 
-            const merged = data.map(trip => ({
+            const merged = prepareLiveTrips(data.map(trip => ({
                 ...trip,
                 lastLocation: locationMap[trip.id] || null,
                 last_location_address: locationMap[trip.id]?.address || null,
-            }));
+            })));
 
             return NextResponse.json({ trips: merged });
         }
@@ -367,5 +368,4 @@ export async function POST(request) {
         });
     }
 }
-
 

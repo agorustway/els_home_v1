@@ -10,6 +10,7 @@ import 'react-quill/dist/quill.snow.css';
 import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
 import { createClient } from '@/utils/supabase/client';
+import { filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
@@ -107,7 +108,7 @@ export default function VehicleTrackingPage() {
             const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
             const data = await res.json();
             if (data && Array.isArray(data.data)) {
-                setLiveTrips(data.data);
+                setLiveTrips(prepareLiveTrips(data.data));
             } else {
                 setLiveTrips([]); // [안전] 형식이 다르면 빈 배열로 초기화
             }
@@ -233,49 +234,7 @@ export default function VehicleTrackingPage() {
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
-        const haversine = (lat1, lng1, lat2, lng2) => {
-            const p = 0.017453292519943295;
-            const c = Math.cos;
-            const a = 0.5 - c((lat2 - lat1) * p) / 2 +
-                c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
-            return 12742 * Math.asin(Math.sqrt(a));
-        };
-
-        // [v4.5.38] 경로 필터링 강화 및 마커 가독성 업그레이드
-        const filteredLocs = [];
-        const SPEED_LIMIT_KMH = 150; 
-        
-        for (let i = 0; i < locations.length; i++) {
-            const curr = locations[i];
-            if (filteredLocs.length === 0) { filteredLocs.push(curr); continue; }
-
-            const prev = filteredLocs[filteredLocs.length - 1];
-            const distPrev = haversine(prev.lat, prev.lng, curr.lat, curr.lng);
-            const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
-            
-            if (timeSec > 0) {
-                const speed = distPrev / (timeSec / 3600);
-                if (speed > SPEED_LIMIT_KMH && distPrev > 0.5) continue; // 시속 150km 이상 튀는 포인트 제거
-            } else {
-                if (distPrev > 0.5) continue; // 시간이 차이없는데 500m 이상 튀는 포인트 제거
-            }
-
-            if (i < locations.length - 1) {
-                const next = locations[i + 1];
-                const distNext = haversine(curr.lat, curr.lng, next.lat, next.lng);
-                const distPrevNext = haversine(prev.lat, prev.lng, next.lat, next.lng);
-                
-                const spikeThreshold = ((prev.speed ?? 0) < 5) ? 0.05 : 0.5;
-                if (distPrev > spikeThreshold && distNext > spikeThreshold && distPrevNext < (spikeThreshold * 0.8)) {
-                    continue; // 뾰족하게 튀었다가 돌아오는 지그재그 데이터 제거
-                }
-            }
-
-            const moveThreshold = ((prev.speed ?? 0) < 5) ? 0.03 : 0.02;
-            if (distPrev < moveThreshold) continue; // 너무 인접한 데이터 합치기
-            
-            filteredLocs.push(curr);
-        }
+        const filteredLocs = filterRouteLocations(locations);
 
         if (filteredLocs.length === 0) return;
         const path = filteredLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
@@ -323,14 +282,6 @@ export default function VehicleTrackingPage() {
         });
 
 
-        if (end) {
-            const endMarker = new naver.maps.Marker({
-                position: new naver.maps.LatLng(end.lat, end.lng), map,
-                zIndex: 100, // 가장 위
-                icon: { content: '<div style="width:24px;height:24px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;">E</div>', anchor: new naver.maps.Point(12, 12) }
-            });
-            markersRef.current.push(endMarker);
-        }
         map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100, maxZoom: 14 });
     };
 
@@ -723,7 +674,7 @@ export default function VehicleTrackingPage() {
         liveMarkersRef.current = [];
         if (infoWindowRef.current) infoWindowRef.current.close();
 
-        const tripsWithLocation = liveTrips.filter(t => t.lastLocation);
+        const tripsWithLocation = prepareLiveTrips(liveTrips).filter(t => t.lastLocation);
         if (tripsWithLocation.length === 0) return;
 
         const bounds = new naver.maps.LatLngBounds();
@@ -761,7 +712,7 @@ export default function VehicleTrackingPage() {
             
             // [신규] 마커 Z-index 오더링: 운행중 > 일시정지 > 종료 순이며, 최신일수록 상단
             const baseZ = isDriving ? 300000 : (isPaused ? 200000 : 100000);
-            const timeVal = (new Date(loc.timestamp || loc.recorded_at || trip.updated_at || Date.now()).getTime() / 10000) % 100000;
+            const timeVal = (toTripTime(trip) / 10000) % 100000;
             const markerZIndex = Math.floor(baseZ + timeVal);
 
             const marker = new naver.maps.Marker({
@@ -992,7 +943,7 @@ export default function VehicleTrackingPage() {
     const activeCount = (liveTrips || []).filter(t => t && t.status === 'driving').length;
     const pausedCount = (liveTrips || []).filter(t => t && t.status === 'paused').length;
 
-    const filteredLiveTrips = (liveTrips || []).filter(t =>
+    const filteredLiveTrips = prepareLiveTrips(liveTrips || []).filter(t =>
         t && (
             (t.vehicle_number || '').includes(liveSearchKeyword) ||
             (t.driver_name || '').includes(liveSearchKeyword) ||
@@ -1123,7 +1074,7 @@ export default function VehicleTrackingPage() {
                         <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
                     </div>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>속도/운행시간</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {filteredLiveTrips.map(trip => (
                                 <tr key={trip.id} onClick={(e) => {
@@ -1135,6 +1086,10 @@ export default function VehicleTrackingPage() {
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
+                                    <td>
+                                        <div style={{ fontWeight: 800, color: '#2563eb' }}>{Math.round(trip.lastLocation?.speed || 0)} km/h</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: 2 }}>{getElapsedTimeString(trip.started_at, trip.completed_at)}</div>
+                                    </td>
                                     <td title={trip.lastLocation?.address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', maxWidth: '220px' }}>
                                         <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.8rem', lineHeight: '1.3' }}>{trip.lastLocation?.address || '-'}</div>
                                         <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>{formatDateTime(trip.lastLocation?.timestamp || trip.lastLocation?.recorded_at)}</div>

@@ -10,6 +10,7 @@ import { State, BASE_URL } from './store.js?v=5102';
 import { smartFetch, remoteLog } from './bridge.js?v=5102';
 import { showToast } from './utils.js?v=5102';
 import { showScreen } from './nav.js?v=5102';
+import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5102';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -97,15 +98,19 @@ function makeVehicleIcon(label, color) {
     `background:${color};`,
     'color:#fff;',
     'border:2.5px solid #fff;',
-    'border-radius:20px;',
+    'border-radius:18px;',
     'padding:5px 12px;',
     'font-size:11px;',
     'font-weight:800;',
     'white-space:nowrap;',
+    'position:relative;',
     "box-shadow:0 2px 8px rgba(0,0,0,0.35);",
     "font-family:'Noto Sans KR',sans-serif;",
     '">',
     label,
+    '<span style="position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);width:3px;height:9px;background:',
+    color,
+    ';border-radius:0 0 3px 3px;box-shadow:0 2px 4px rgba(0,0,0,.2);"></span>',
     '</div>',
   ].join('');
 
@@ -130,24 +135,19 @@ function makeMyLocIcon() {
   return { content: html, anchor: new naver.maps.Point(8, 8) };
 }
 
-function makeWaypointIcon(label, color) {
+function makeWaypointIcon(color) {
   const html = [
     '<div style="',
     `background:${color};`,
-    'color:#fff;',
-    'border:2px solid #fff;',
-    'border-radius:6px;',
-    'padding:3px 8px;',
-    'font-size:10px;',
-    'font-weight:800;',
+    'width:14px;height:14px;',
+    'border:3px solid #fff;',
+    'border-radius:50%;',
     'box-shadow:0 2px 6px rgba(0,0,0,0.3);',
-    "font-family:'Noto Sans KR',sans-serif;",
     '">',
-    label,
     '</div>',
   ].join('');
 
-  return { content: html, anchor: new naver.maps.Point(20, 24) };
+  return { content: html, anchor: new naver.maps.Point(10, 10) };
 }
 
 // ─── 마커 갱신 ──────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ function updateVehicleMarkers(trips) {
   if (!_map) return;
 
   const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
-  const visible    = trips.filter(t => t.lastLocation && (contracted || isMyTrip(t)));
+  const visible    = prepareLiveTrips(trips).filter(t => t.lastLocation && (contracted || isMyTrip(t)));
   const visibleIds = new Set(visible.map(t => t.id));
 
   // 사라진 마커 제거
@@ -203,32 +203,7 @@ function drawPolyline(path) {
 
   if (!path.length || !_map) return;
 
-  const haversine = (lat1, lng1, lat2, lng2) => {
-    const p = 0.017453292519943295, c = Math.cos;
-    const a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
-    return 12742 * Math.asin(Math.sqrt(a));
-  };
-
-  const filteredPath = [];
-  const SPEED_LIMIT_KMH = 150;
-
-  for (let i = 0; i < path.length; i++) {
-    const curr = path[i];
-    if (filteredPath.length === 0) { filteredPath.push(curr); continue; }
-
-    const prev = filteredPath[filteredPath.length - 1];
-    const distKm = haversine(prev.lat, prev.lng, curr.lat, curr.lng);
-    const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
-    
-    // 비정상적으로 빠른 속도(스파이크) 제거
-    if (timeSec > 0) {
-      const speed = distKm / (timeSec / 3600);
-      if (speed > SPEED_LIMIT_KMH && distKm > 0.5) continue;
-    } else {
-      if (distKm > 0.5) continue; // 시간이 차이없는데 500m이상 튀면 제거
-    }
-    filteredPath.push(curr);
-  }
+  const filteredPath = filterRouteLocations(path);
 
   if (filteredPath.length === 0) return;
 
@@ -244,18 +219,18 @@ function drawPolyline(path) {
     zIndex        : 50,
   });
 
-  // 출발 / 현재위치 마커
+  // 출발 / 종료 위치는 작은 점만 표시하고, 현재 위치는 차량 마커와 경로선으로 식별한다.
   _startMarker = new naver.maps.Marker({
     position : latLngs[0],
     map      : _map,
-    icon     : makeWaypointIcon('출발', '#16a34a'),
+    icon     : makeWaypointIcon('#16a34a'),
     zIndex   : 200,
   });
 
   _endMarker = new naver.maps.Marker({
     position : latLngs[latLngs.length - 1],
     map      : _map,
-    icon     : makeWaypointIcon('현재', '#dc2626'),
+    icon     : makeWaypointIcon('#dc2626'),
     zIndex   : 201,
   });
 
@@ -272,7 +247,7 @@ function drawPolyline(path) {
 // ─── 하단 차량 목록 렌더링 ───────────────────────────────────────────
 function renderTripList(trips) {
   const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
-  const visible    = trips.filter(t => t.status !== 'completed' && (contracted || isMyTrip(t)));
+  const visible    = prepareLiveTrips(trips).filter(t => t.status !== 'completed' && (contracted || isMyTrip(t)));
 
   const countEl = document.getElementById('map-panel-count');
   if (countEl) countEl.textContent = visible.length > 0 ? `${visible.length}대 운행 중` : '운행 차량 없음';
@@ -365,7 +340,7 @@ export async function refreshMapData() {
   try {
     const res  = await smartFetch(BASE_URL + '/api/vehicle-tracking/trips?mode=active');
     const data = await res.json();
-    _trips = data.trips || data.data || [];
+    _trips = prepareLiveTrips(data.trips || data.data || []);
     updateVehicleMarkers(_trips);
     renderTripList(_trips);
   } catch (e) {
@@ -425,13 +400,14 @@ export async function showTripRouteOnMap(trip) {
 
     const bodyEl = document.getElementById('map-route-body');
     if (bodyEl) {
-      const s = path[0];
-      const e = path[path.length - 1];
+      const cleanPath = filterRouteLocations(path);
+      const s = cleanPath[0] || path[0];
+      const e = cleanPath[cleanPath.length - 1] || path[path.length - 1];
       bodyEl.innerHTML = `
         <div style="font-size:12px;color:#64748b;line-height:1.9;">
-          <div>🟢 <b>출발</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
-          <div>🔴 <b>현재</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
-          <div>📊 <b>기록</b>: ${path.length}개 포인트</div>
+          <div><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:50%;margin-right:6px;"></span><b>출발</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
+          <div><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:50%;margin-right:6px;"></span><b>마지막</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
+          <div>📊 <b>기록</b>: ${cleanPath.length}개 보정 포인트 / 원본 ${path.length}개</div>
         </div>`;
     }
 
