@@ -630,41 +630,59 @@ export async function POST(req) {
                 }).join('\n');
             }
 
-            // 1. 차량 위치 및 운행 이력 관련 (v5.10.23 업그레이드)
-            if (userKwd.includes('차량') || userKwd.includes('위치') || userKwd.includes('어디') || userKwd.includes('운행')) {
-                // 차량번호 패턴 추출 (3~4자리 숫자)
-                const vNumMatch = lastUserText.match(/\b(\d{3,4})\b/g);
-                const targetVNums = vNumMatch ? vNumMatch.filter(n => {
-                    const num = parseInt(n);
-                    return num >= 100 && !(num >= 2024 && num <= 2030);
-                }) : [];
+            // 1. 차량 위치 및 운행 이력 관련 (v5.10.32 — 트리거/종료위치 개선)
+            // 트리거: 차량/위치/운행/도착/종료 키워드 OR 3~4자리 숫자가 포함된 경우
+            const vNumMatchGlobal = lastUserText.match(/\b(\d{3,4})\b/g);
+            const targetVNumsGlobal = vNumMatchGlobal ? vNumMatchGlobal.filter(n => {
+                const num = parseInt(n);
+                return num >= 100 && !(num >= 2024 && num <= 2030);
+            }) : [];
 
+            const isVehicleQuery = (
+                userKwd.includes('차량') || userKwd.includes('위치') || userKwd.includes('어디') ||
+                userKwd.includes('운행') || userKwd.includes('도착') || userKwd.includes('종료') ||
+                userKwd.includes('도착지') || userKwd.includes('종착') || userKwd.includes('위치관제') ||
+                userKwd.includes('어디서') || userKwd.includes('어디에') || userKwd.includes('기사') ||
+                targetVNumsGlobal.length > 0
+            );
+
+            if (isVehicleQuery) {
                 const isYesterday = userKwd.includes('어제');
-                const isPast = isYesterday || userKwd.includes('지난') || userKwd.includes('기록') || userKwd.includes('이력');
+                const isToday = userKwd.includes('오늘');
+                const isPast = isYesterday || isToday || userKwd.includes('지난') || userKwd.includes('기록') ||
+                    userKwd.includes('이력') || userKwd.includes('도착') || userKwd.includes('종료') || userKwd.includes('종착') || userKwd.includes('도착지');
 
                 let tripQuery = supabase.from('vehicle_trips').select('id, vehicle_number, status, started_at, completed_at');
                 
-                if (targetVNums.length > 0) {
-                    const filters = targetVNums.map(v => `vehicle_number.ilike.%${v}%`).join(',');
+                if (targetVNumsGlobal.length > 0) {
+                    const filters = targetVNumsGlobal.map(v => `vehicle_number.ilike.%${v}%`).join(',');
                     tripQuery = tripQuery.or(filters);
                 }
 
                 if (isPast) {
                     tripQuery = tripQuery.in('status', ['driving', 'paused', 'completed']);
                     if (isYesterday) {
-                        // KST 기준 어제 날짜 계산 (v5.10.23 정밀화)
+                        // KST 기준 어제 날짜 계산
                         const yesterdayStr = new Date(Date.now() + (9 - 24) * 60 * 60 * 1000).toISOString().split('T')[0];
                         tripQuery = tripQuery.gte('started_at', `${yesterdayStr} 00:00:00`).lte('started_at', `${yesterdayStr} 23:59:59`);
+                    } else if (isToday) {
+                        const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
+                        tripQuery = tripQuery.gte('started_at', `${todayStr} 00:00:00`);
                     }
                 } else {
                     tripQuery = tripQuery.in('status', ['driving', 'paused']);
                 }
 
-                const { data: trips } = await tripQuery.order('started_at', { ascending: false }).limit(10);
+                const { data: trips } = await tripQuery.order('started_at', { ascending: false }).limit(15);
                 
                 if (trips?.length > 0) {
                     const tripIds = trips.map(t => t.id);
-                    const { data: locs } = await supabase.from('vehicle_locations').select('trip_id, address, recorded_at').in('trip_id', tripIds).order('recorded_at', { ascending: false });
+                    // 완료된 트립: 마지막 기록 위치 (address 우선, 없으면 좌표)
+                    const { data: locs } = await supabase
+                        .from('vehicle_locations')
+                        .select('trip_id, address, latitude, longitude, recorded_at')
+                        .in('trip_id', tripIds)
+                        .order('recorded_at', { ascending: false });
                     
                     const locMap = {};
                     locs?.forEach(l => {
@@ -674,16 +692,25 @@ export async function POST(req) {
                     let trackText = isPast ? '\n\n## 차량 운행 이력 및 종료 위치 (내부 DB)\n' : '\n\n## 실시간 운행차량 위치 (내부 DB)\n';
                     trips.forEach(t => {
                         const lastLoc = locMap[t.id];
-                        const addr = lastLoc ? lastLoc.address : '알 수 없음';
-                        const time = lastLoc ? new Date(lastLoc.recorded_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
+                        let addr = '알 수 없음';
+                        if (lastLoc?.address) {
+                            addr = lastLoc.address;
+                        } else if (lastLoc?.latitude && lastLoc?.longitude) {
+                            addr = `위도 ${lastLoc.latitude.toFixed(5)}, 경도 ${lastLoc.longitude.toFixed(5)} (주소 미등록)`;
+                        }
+                        const recTime = lastLoc ? new Date(lastLoc.recorded_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
+                        const completedTime = t.completed_at ? new Date(t.completed_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
                         
                         if (t.status === 'completed') {
-                            trackText += `- 화물차(${t.vehicle_number}): 운행 종료 (${t.completed_at?.slice(11, 16)}) | 최종위치: [${addr}]\n`;
+                            trackText += `- 화물차(${t.vehicle_number}): 운행 종료 | 종료시각: ${completedTime} | 최종 GPS 기록위치(${recTime}): [${addr}]\n`;
+                            trackText += `  ※ 최종 GPS 기록 위치가 실제 하차·도착지와 다를 수 있습니다. 정확한 위치는 [차량 위치 관제](/employees/vehicle-tracking)에서 확인하세요.\n`;
                         } else {
-                            trackText += `- 화물차(${t.vehicle_number}): 현재 운행 중 (${time}) | 현재위치: [${addr}]\n`;
+                            trackText += `- 화물차(${t.vehicle_number}): 현재 운행 중 (${recTime}) | 현재위치: [${addr}]\n`;
                         }
                     });
                     recentPostsText += trackText;
+                } else if (targetVNumsGlobal.length > 0) {
+                    recentPostsText += `\n\n## 차량 조회 결과 (내부 DB)\n- 차량번호 ${targetVNumsGlobal.join(', ')}에 해당하는 오늘자 운행 기록이 없습니다. 어제 기록이 필요하면 "어제 ${targetVNumsGlobal[0]} 위치"로 다시 질문해주세요.\n`;
                 }
             }
 
