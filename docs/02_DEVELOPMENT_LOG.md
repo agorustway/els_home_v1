@@ -1,5 +1,23 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 안전운임 구간/왕복 거리 기준 정합성 보강 (v5.10.28)
+### 🚀 Achievement
+- **고시 거리 기준 재확인**: 2026년 안전운임 고시 본문상 거리별 운임표가 `구간 거리(km)`와 `운송(왕복) 거리(km)`를 병기한다는 점을 기준으로 조회/표시 로직을 재검토했습니다.
+- **구간조회 엑셀 오류 수정**: 구간조회 저장 내역에 `왕복(KM)` 컬럼이 추가되었으나 헤더/열 너비/필터 범위가 기존 13열 기준으로 남아 있던 불일치를 14열 기준으로 교정했습니다.
+- **법규 근거 표시 강화**: 구간조회 결과/엑셀 문구를 `지도 구간거리`, `적용 구간거리(고시)`, `적용 왕복거리(고시)`로 분리해 검증 가능하게 정리했습니다.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`: 구간조회 엑셀 저장 내역 헤더/컬럼/오토필터 범위 수정 및 거리 항목명 정리.
+- `web/app/(main)/employees/safe-freight/page.js`: 거리별 조회 시 왕복 입력은 구간거리로 환산하고, 결과/저장 내역에 구간·왕복 거리 분리 표기.
+- `web/app/api/safe-freight/download-excel/route.js`: 안전운임 엑셀 다운로드 API의 구간/왕복 거리 컬럼 분리 반영.
+
+### ✅ Verification
+- `.tmp_test/safeFreightDistanceRules.test.mjs`: 수기 왕복/편도, 구간조회 지도거리, 인천 20%·평택 18% 할증 케이스 통과 후 삭제.
+- `web/scratch/test_safe_freight_logic.mjs`: 기존 5개 안전운임 로직 테스트 통과 후 임시 폴더 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] 안드로이드 드라이버 앱 GPS 안정화 패치 배포 (v5.10.3 / 5103)
 ### 🚀 Achievement
 - **드라이버 앱 GPS 정교화 배포**: 서버사이드의 GPS 이상점 필터 로직과 보조를 맞추어, 앱 내에서도 튀는 좌표를 1차 필터링하고 강제 전송 시의 정확도를 높인 v5.10.3(5103) 버전을 빌드 및 배포했습니다.

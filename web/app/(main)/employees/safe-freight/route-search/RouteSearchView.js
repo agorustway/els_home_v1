@@ -235,6 +235,14 @@ export default function RouteSearchView({ options, period, onBack }) {
     const mapPolylinesRef = useRef([]);
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);
+    
+    // ── 지역별 기점 할증률 (고시 제23조 카, 타목) ────
+    const regionalBaseSurchargePct = useMemo(() => {
+        const cleanOrigin = origin.text.replace(/\[.*?\]\s*/g, '').trim();
+        if (cleanOrigin.includes('인천')) return 20;
+        if (cleanOrigin.includes('평택')) return 18;
+        return 0;
+    }, [origin.text]);
 
     // ── 06:00 날짜 표기 ────
     const recent0600 = useMemo(() => getRecent0600(), []);
@@ -1048,6 +1056,37 @@ export default function RouteSearchView({ options, period, onBack }) {
     /* ═══════════════════════════════════════════════
        운임 조회 — 거리별(항상) + 구간별(있으면)
        ═══════════════════════════════════════════════ */
+    const applySurchargesToRow = useCallback((row, isSection = false) => {
+        if (!row) return row;
+        // 편도 모드일 때 50% 적용 (거리제/이외구간 전용)
+        const baseMult = (tripMode === 'oneWay' && !isSection) ? 0.5 : 1.0;
+
+        let f40위탁 = (row.f40위탁 || 0) * baseMult;
+        let f40운수자 = (row.f40운수자 || 0) * baseMult;
+        let f40안전 = (row.f40안전 || 0) * baseMult;
+        let f20위탁 = (row.f20위탁 || 0) * baseMult;
+        let f20운수자 = (row.f20운수자 || 0) * baseMult;
+        let f20안전 = (row.f20안전 || 0) * baseMult;
+
+        // 지역별 기점 할증 적용 (인천 20%, 평택 18%) - 거리제 전용
+        if (!isSection && regionalBaseSurchargePct > 0) {
+            const regMult = 1 + regionalBaseSurchargePct / 100;
+            f40위탁 *= regMult;
+            f40운수자 *= regMult;
+            f40안전 *= regMult;
+            f20위탁 *= regMult;
+            f20운수자 *= regMult;
+            f20안전 *= regMult;
+        }
+
+        const round10 = (val) => Math.round(val / 10) * 10;
+        return {
+            ...row,
+            f40위탁: round10(f40위탁), f40운수자: round10(f40운수자), f40안전: round10(f40안전),
+            f20위탁: round10(f20위탁), f20운수자: round10(f20운수자), f20안전: round10(f20안전)
+        };
+    }, [tripMode, regionalBaseSurchargePct]);
+
     const lookupFare = async (distanceMeters, resolvedOrigin, resolvedDest) => {
         const totalKm = metersToKm(distanceMeters);
         
@@ -1067,7 +1106,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             const data = await res.json();
 
             if (data.rows?.length > 0) {
-                const row = data.rows[0];
+                const row = applySurchargesToRow(data.rows[0], false);
                 setDistFareResult({
                     totalKm,
                     routeKm: totalKm,
@@ -1152,18 +1191,18 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     region1: reqR1, region2: reqR2, region3: reqR3, mode: 'latest'
                                 });
                                 const sRes = await fetch(`/api/safe-freight/lookup?${sParams.toString()}`);
-                                if (sRes.ok) {
-                                    const sData = await sRes.json();
-                                    if (sData.rows?.length > 0) {
-                                        const sRow = sData.rows[0];
-                                        tempSections.push({
-                                            origin: matchedOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                            period: sRow.period, km: sRow.km,
-                                            f40위탁: sRow.f40위탁 || 0, f40운수자: sRow.f40운수자 || 0, f40안전: sRow.f40안전 || 0,
-                                            f20위탁: sRow.f20위탁 || 0, f20운수자: sRow.f20운수자 || 0, f20안전: sRow.f20안전 || 0,
-                                        });
+                                    if (sRes.ok) {
+                                        const sData = await sRes.json();
+                                        if (sData.rows?.length > 0) {
+                                            const sRow = applySurchargesToRow(sData.rows[0], true);
+                                            tempSections.push({
+                                                origin: matchedOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                                period: sRow.period, km: sRow.km,
+                                                f40위탁: sRow.f40위탁 || 0, f40운수자: sRow.f40운수자 || 0, f40안전: sRow.f40안전 || 0,
+                                                f20위탁: sRow.f20위탁 || 0, f20운수자: sRow.f20운수자 || 0, f20안전: sRow.f20안전 || 0,
+                                            });
+                                        }
                                     }
-                                }
                             } catch (err) {
                                 console.warn('Section fare lookup error:', err);
                             }
@@ -1207,18 +1246,18 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     region1: reqR1, region2: reqR2, region3: reqR3, mode: 'latest'
                                 });
                                 const owRes = await fetch(`/api/safe-freight/lookup?${owParams.toString()}`);
-                                if (owRes.ok) {
-                                    const owData = await owRes.json();
-                                    if (owData.rows?.length > 0) {
-                                        const owRow = owData.rows[0];
-                                        tempOneWays.push({
-                                            origin: oneWayOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                            period: owRow.period, km: owRow.km,
-                                            f40위탁: owRow.f40위탁 || 0, f40운수자: owRow.f40운수자 || 0, f40안전: owRow.f40안전 || 0,
-                                            f20위탁: owRow.f20위탁 || 0, f20운수자: owRow.f20운수자 || 0, f20안전: owRow.f20안전 || 0,
-                                        });
+                                    if (owRes.ok) {
+                                        const owData = await owRes.json();
+                                        if (owData.rows?.length > 0) {
+                                            const owRow = applySurchargesToRow(owData.rows[0], true);
+                                            tempOneWays.push({
+                                                origin: oneWayOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                                period: owRow.period, km: owRow.km,
+                                                f40위탁: owRow.f40위탁 || 0, f40운수자: owRow.f40운수자 || 0, f40안전: owRow.f40안전 || 0,
+                                                f20위탁: owRow.f20위탁 || 0, f20운수자: owRow.f20운수자 || 0, f20안전: owRow.f20안전 || 0,
+                                            });
+                                        }
                                     }
-                                }
                             } catch (err) {
                                 console.warn('One-way section fare lookup error:', err);
                             }
@@ -1257,8 +1296,8 @@ export default function RouteSearchView({ options, period, onBack }) {
             origin: isSection && fare.origin ? fare.origin : origin.text, // 편도/구간 기점 우선
             destination: isSection && fare.destination ? fare.destination : destination.text,
             waypoints: waypoints.filter(w => w.text).map(w => w.text),
-            km: Number(distFareResult.routeKm || distFareResult.matchedKm || 0),
-            matchedKm: Number(fare.km || distFareResult.matchedKm || 0),
+            sectionKm: Number(fare.km || distFareResult.matchedKm || 0),
+            roundTripKm: (Number(fare.km || distFareResult.matchedKm || 0) * 2).toFixed(1),
             routeOption: routeName,
 
             // 안전운임 데이터
@@ -1358,8 +1397,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                     ['도착지', destination.text || '-'],
                     ...(waypoints.filter(w => w.text).map((w, i) => [`경유지${i + 1}`, w.text])),
                     ['선택 경로', sel?.desc || selectedRouteKey],
-                    ['구간거리', `${distFareResult.routeKm}km`],
-                    ['적용거리 (고시 매칭)', `${distFareResult.matchedKm}km`],
+                    ['지도 구간거리', `${distFareResult.routeKm}km`],
+                    ['적용 구간거리(고시)', `${distFareResult.matchedKm}km`],
+                    ['적용 왕복거리(고시)', `${(distFareResult.matchedKm * 2).toFixed(1)}km`],
                     ['적용기간', distFareResult.period],
                     ['왕복/편도', tripMode === 'round' ? '왕복' : '편도'],
                     [],
@@ -1439,7 +1479,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             const historyRows = [
                 ['이전 조회 내역 (임시보존)'],
                 [],
-                ['순번', '저장시각', '구분', '유형', '적용기간', '구간', '거리(km)', '40FT위탁', '40FT운수자', '40FT안전', '20FT위탁', '20FT운수자', '20FT안전'],
+                ['순번', '저장시각', '구분', '유형', '적용기간', '구간', '구간(KM)', '왕복(KM)', '40FT위탁', '40FT운수자', '40FT안전', '20FT위탁', '20FT운수자', '20FT안전'],
                 ...savedResults.map((s, idx) => [
                     savedResults.length - idx,
                     new Date(s.savedAt || s.id).toLocaleString('ko-KR'),
@@ -1447,13 +1487,14 @@ export default function RouteSearchView({ options, period, onBack }) {
                     s.tripMode === 'round' ? '왕복' : '편도',
                     s.period,
                     `${s.origin} → ${s.destination}`,
-                    s.km,
+                    s.sectionKm,
+                    s.roundTripKm,
                     s.f40위탁, s.f40운수자, s.f40안전,
                     s.f20위탁, s.f20운수자, s.f20안전
                 ])
             ];
             const wsHistory = XLSX.utils.aoa_to_sheet(historyRows);
-            wsHistory['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 50 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+            wsHistory['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 50 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
 
             const rh = XLSX.utils.decode_range(wsHistory['!ref']);
             for (let r = 0; r <= rh.e.r; r++) {
@@ -1465,7 +1506,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 }
             }
             wsHistory['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 3, topLeftCell: 'A4', activePane: 'bottomLeft' }];
-            wsHistory['!autofilter'] = { ref: 'A3:M3' };
+            wsHistory['!autofilter'] = { ref: 'A3:N3' };
 
             XLSX.utils.book_append_sheet(wb, wsHistory, '저장운임');
         }
@@ -1902,14 +1943,23 @@ export default function RouteSearchView({ options, period, onBack }) {
                                         <strong>{distFareResult.routeKm}km</strong>
                                     </div>
                                     <div className={`${styles.distRow} ${styles.distTotal}`}>
-                                        <span>적용 거리 (고시 매칭)</span>
+                                        <span>적용 구간거리 (고시 제32·33조 기준)</span>
                                         <strong>{distFareResult.matchedKm}km</strong>
+                                    </div>
+                                    <div className={styles.distRow}>
+                                        <span>적용 왕복거리 (고시 매칭)</span>
+                                        <strong>{(distFareResult.matchedKm * 2).toFixed(1)}km</strong>
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>적용 기간</span>
                                         <strong>{distFareResult.period}</strong>
                                     </div>
                                 </div>
+                                {regionalBaseSurchargePct > 0 && (
+                                    <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
+                                        <strong>📍 지역별 기점 할증 적용:</strong> {origin.text.includes('인천') ? '인천' : '평택'} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
+                                    </div>
+                                )}
                                 <table className={styles.fareTable}>
                                     <thead>
                                         <tr><th></th><th>위탁</th><th>운수자</th><th>안전</th></tr>
@@ -2094,7 +2144,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             <div className={styles.sRouteMeta}>
                                                 <span>운임타입: {s.fareType || '거리제'}</span>
                                                 <span>경로옵션: {s.routeOption}</span>
-                                                <span>지도: {s.km}km / 고시: {s.matchedKm || 0}km</span>
+                                                <span>구간: {s.sectionKm}km / 왕복: {s.roundTripKm}km</span>
                                                 <span>적용월: {s.period}</span>
                                             </div>
                                         </div>

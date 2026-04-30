@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 
 /** 운임조회 시트 헤더 */
-const QUERY_HEADERS = ['적용', '구간', '행선지', '거리(KM)', '40FT 위탁', '40FT 운수자', '40FT 안전', '20FT 위탁', '20FT 운수자', '20FT 안전'];
+const QUERY_HEADERS = ['적용', '구간', '행선지', '구간(KM)', '왕복(KM)', '40FT 위탁', '40FT 운수자', '40FT 안전', '20FT 위탁', '20FT 운수자', '20FT 안전'];
 
 /** 저장운임 시트 헤더 */
-const SAVED_HEADERS = ['순번', '적용', '구간', '행선지', '거리(KM)', '40FT 위탁', '40FT 운수자', '40FT 안전', '20FT 위탁', '20FT 운수자', '20FT 안전', '저장일시', '적용할증', '제외할증'];
+const SAVED_HEADERS = ['순번', '적용', '구간', '행선지', '구간(KM)', '왕복(KM)', '40FT 위탁', '40FT 운수자', '40FT 안전', '20FT 위탁', '20FT 운수자', '20FT 안전', '저장일시', '적용할증', '제외할증'];
 
 export async function POST(request) {
   try {
@@ -72,7 +72,8 @@ export async function POST(request) {
 
     // 1. 운임조회
     const qRows = querySheetRows.map(r => [
-      r.period ?? '', r.origin ?? '', r.destination ?? '', r.km ?? '',
+      r.period ?? '', r.origin ?? '', r.destination ?? '', 
+      r.sectionKm ?? '', r.roundTripKm ?? '',
       r.f40위탁 ?? '', r.f40운수자 ?? '', r.f40안전 ?? '',
       r.f20위탁 ?? '', r.f20운수자 ?? '', r.f20안전 ?? ''
     ]);
@@ -86,7 +87,8 @@ export async function POST(request) {
         ? s.excludedSurcharges.map((e) => (e.label && e.reason ? `${e.label}: ${e.reason}` : e.label || '')).join('; ')
         : '';
       return [
-        idx + 1, s.period ?? '', s.origin ?? '', s.destination ?? '', s.km ?? '',
+        idx + 1, s.period ?? '', s.origin ?? '', s.destination ?? '', 
+        s.sectionKm ?? '', s.roundTripKm ?? '',
         s.f40위탁 ?? '', s.f40운수자 ?? '', s.f40안전 ?? '',
         s.f20위탁 ?? '', s.f20운수자 ?? '', s.f20안전 ?? '',
         savedAt, appliedStr, excludedStr

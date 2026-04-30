@@ -604,7 +604,8 @@ export default function SafeFreightPage() {
           return;
         }
         params.set('distType', distType);
-        params.set('km', String(km));
+        const lookupKm = tripMode === 'round' ? Math.round(km / 2) : km;
+        params.set('km', String(lookupKm));
       } else {
         if (!origin || !region1 || !region2 || !region3) {
           setLookupError('기간·구간·행선지(시/도, 시/군/구, 읍/면/동)를 모두 선택해 주세요.');
@@ -693,7 +694,8 @@ export default function SafeFreightPage() {
             period: data.period ?? period,
             origin: data.origin || origin,
             destination: data.destination || [region1, region2, region3].join(' '),
-            km: latest.km,
+            sectionKm: latest.km,
+            roundTripKm: (latest.km * 2).toFixed(1),
             f40위탁: appliedRow.f40위탁,
             f40운수자: appliedRow.f40운수자,
             f40안전: appliedRow.f40안전,
@@ -809,7 +811,8 @@ export default function SafeFreightPage() {
             origin: resultAll.origin ?? '',
             destination: resultAll.destination ?? '',
             tripMode: applied.tripMode === 'oneWay' ? '편도' : '왕복',
-            km: applied.km,
+            sectionKm: applied.km,
+            roundTripKm: (applied.km * 2).toFixed(1),
             f40위탁: applied.f40위탁,
             f40운수자: applied.f40운수자,
             f40안전: applied.f40안전,
@@ -1427,7 +1430,8 @@ export default function SafeFreightPage() {
                       <th rowSpan={2}>기점</th>
                       <th rowSpan={2}>행선지</th>
                       <th rowSpan={2}>구분</th>
-                      <th rowSpan={2}>거리(KM)</th>
+                      <th rowSpan={2}>구간(KM)</th>
+                      <th rowSpan={2}>왕복(KM)</th>
                       <th colSpan={3} className={styles.thGroup}>40FT</th>
                       <th colSpan={3} className={styles.thGroup}>20FT</th>
                     </tr>
@@ -1457,6 +1461,7 @@ export default function SafeFreightPage() {
                             </span>
                           </td>
                           <td className={styles.cellKm}>{applied.km}</td>
+                          <td className={styles.cellKm}>{(applied.km * 2).toFixed(1)}</td>
                           <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
                           <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
                           <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
@@ -1528,7 +1533,9 @@ export default function SafeFreightPage() {
                           {applied.tripMode === 'oneWay' ? '편도' : '왕복'}
                         </span>
                         <span>|</span>
-                        <span>주행거리: <strong>{applied.km}km</strong></span>
+                        <span>구간: <strong>{applied.km}km</strong></span>
+                        <span>|</span>
+                        <span>왕복: <strong>{(applied.km * 2).toFixed(1)}km</strong></span>
                       </div>
                     </div>
                   );
@@ -1598,7 +1605,8 @@ export default function SafeFreightPage() {
                           <span className={styles.savedCond}>
                             {s.origin && `${s.origin} → `}
                             {s.destination || '-'}
-                            {s.km != null && ` · ${s.km}km`}
+                            {s.sectionKm && ` | 구간: ${s.sectionKm}km`}
+                            {s.roundTripKm && ` | 왕복: ${s.roundTripKm}km`}
                           </span>
                           <button
                             type="button"
