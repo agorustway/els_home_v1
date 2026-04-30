@@ -5,8 +5,8 @@
 // ─── 상수 ──────────────────────────────────────────────────────────
 // ★ 버전은 네이티브 통신으로 자동 갱신됨. 수동 변경 시 fallback 역할
 export const AppConfig = {
-  APP_VERSION: 'v5.10.2',
-  BUILD_CODE: 5102,
+  APP_VERSION: 'v5.10.3',
+  BUILD_CODE: 5103,
 };
 export const BASE_URL    = 'https://www.elssolution.com';
 export const VERSION_URL = BASE_URL + '/apk/version.json';
