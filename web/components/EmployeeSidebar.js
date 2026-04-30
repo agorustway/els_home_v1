@@ -210,6 +210,11 @@ export default function EmployeeSidebar({ isOpen, onClose }) {
                     <button onClick={handleLogout} className={styles.logoutBtn}>
                         로그아웃
                     </button>
+                    <div className={styles.versionArea}>
+                        <Link href="/employees/random-game" className={styles.versionEgg}>
+                            v5.10.25
+                        </Link>
+                    </div>
                 </div>
             </aside>
         </>
