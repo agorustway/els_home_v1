@@ -1171,9 +1171,10 @@ export default function VehicleTrackingPage() {
                 <div className={styles.tableSection}>
                     <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>운행 기록 ({recordsTotal}건)</h3>
+                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>{activeTab === 'records' ? '운행 기록' : '교육 이수'} ({activeTab === 'records' ? recordsTotal : educationRows.length}건)</h3>
                             <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
                         </div>
+                        {activeTab === 'records' && (
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '36px', fontSize: '0.78rem', padding: '0 14px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>엑셀 다운로드</button>
                             <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '36px', fontSize: '0.78rem', padding: '0 14px' }} onClick={() => {
@@ -1181,7 +1182,9 @@ export default function VehicleTrackingPage() {
                                 else window.location.href = `/api/vehicle-tracking/export/zip?ids=${selectedIds.join(',')}`;
                             }}>선택건 ZIP</button>
                         </div>
+                        )}
                     </div>
+                    {activeTab === 'records' ? (
                     <table className={styles.tripTable}>
                         <thead>
                             <tr>
