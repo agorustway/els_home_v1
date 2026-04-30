@@ -1,10 +1,10 @@
 /**
  * photos.js — 사진 업로드, 썸네일, 뷰어, 핀치줌
  */
-import { State, BASE_URL } from './store.js?v=5131';
-import { smartFetch } from './bridge.js?v=5131';
-import { showToast, escHtml } from './utils.js?v=5131';
-import { updateProfilePhoto } from './profile.js?v=5131';
+import { State, BASE_URL } from './store.js?v=5133';
+import { smartFetch } from './bridge.js?v=5133';
+import { showToast, escHtml } from './utils.js?v=5133';
+import { updateProfilePhoto } from './profile.js?v=5133';
 
 // ─── 줌 상태 (뷰어 전용) ─────────────────────────────────────────
 let currentZoom   = 1;
