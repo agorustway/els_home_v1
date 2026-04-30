@@ -1,5 +1,23 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 차량위치관제 GPS 도로보정 및 운행 정보 표시 안정화 (v5.10.29)
+### 🚀 Achievement
+- **첫/끝 튐 제거 강화**: 운행 경로의 시작/종료 지점이 실제 운행 구간에서 멀리 튀는 케이스를 별도 endpoint outlier 규칙으로 제거했습니다.
+- **도로 경로 보정 적용**: 필터링된 GPS 포인트를 Naver Directions15 경유지로 샘플링해 지도 polyline을 인근 도로 경로로 보정하고, API 실패 시 기존 필터 경로로 자동 fallback합니다.
+- **속도/시간 표시 정합성 보강**: 비현실 속도(160km/h 초과)는 표시/집계에서 숨기고, 웹과 앱에 운행 중 경과 시간 및 현재속도가 보이도록 정리했습니다.
+
+### 🛠 Technical Changes
+- `web/app/api/vehicle-tracking/trips/[id]/matched-route/route.js`: Naver Directions15 기반 matched route API 신규 추가.
+- `web/utils/vehicleLocation.mjs`, `web/driver-src/modules/locationFilter.js`: km/h 단위 기준 통일, endpoint outlier trimming, 표시 속도 보정 유틸 추가.
+- `web/app/(main)/employees/vehicle-tracking/page.js`, `web/driver-src/modules/map.js`: 상세/미니 지도 경로를 matched route 우선 표시로 변경.
+- `web/app/(standalone)/driver-app/page.js`, `web/driver-src/modules/gps.js`, `web/driver-src/index.html`: 운행 중 경과 시간, 현재속도, 적응형 GPS 수신 간격 표시 추가.
+
+### ✅ Verification
+- `.tmp_test/vehicleLocation.test.mjs`: 첫/끝 튐 제거, 비현실 속도 숨김, Directions15 경유지 샘플링 테스트 통과 후 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] 안전운임 구간/왕복 거리 기준 정합성 보강 (v5.10.28)
 ### 🚀 Achievement
 - **고시 거리 기준 재확인**: 2026년 안전운임 고시 본문상 거리별 운임표가 `구간 거리(km)`와 `운송(왕복) 거리(km)`를 병기한다는 점을 기준으로 조회/표시 로직을 재검토했습니다.

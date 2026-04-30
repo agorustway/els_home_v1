@@ -14,15 +14,48 @@ function pointTime(point) {
 function speedKmh(speed) {
   const n = Number(speed);
   if (!Number.isFinite(n) || n < 0) return 0;
-  return n > 80 ? n : n * 3.6;
+  return n;
+}
+
+function trimEndpointOutliers(points = []) {
+  let list = points.filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && l.lat >= 33 && l.lat <= 39.5 && l.lng >= 124 && l.lng <= 132);
+  if (list.length < 3) return list;
+
+  const dropFirst = () => {
+    if (list.length < 3) return false;
+    const [a, b, c] = list;
+    const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
+    const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
+    const timeSec = Math.max(1, (pointTime(b) - pointTime(a)) / 1000);
+    const implied = ab / (timeSec / 3600);
+    return (ab > 0.5 && implied > 120) || (ab > 1.5 && bc < 0.35);
+  };
+
+  const dropLast = () => {
+    if (list.length < 3) return false;
+    const a = list[list.length - 3];
+    const b = list[list.length - 2];
+    const c = list[list.length - 1];
+    const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
+    const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
+    const timeSec = Math.max(1, (pointTime(c) - pointTime(b)) / 1000);
+    const implied = bc / (timeSec / 3600);
+    return (bc > 0.5 && implied > 120) || (bc > 1.5 && ab < 0.35);
+  };
+
+  while (dropFirst()) list = list.slice(1);
+  while (dropLast()) list = list.slice(0, -1);
+  return list;
 }
 
 export function filterRouteLocations(locations = []) {
-  const ordered = locations
+  let ordered = locations
     .filter(Boolean)
     .map(l => ({ ...l, lat: Number(l.lat), lng: Number(l.lng), speed: Number(l.speed || 0) }))
     .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && l.lat >= 33 && l.lat <= 39.5 && l.lng >= 124 && l.lng <= 132)
     .sort((a, b) => pointTime(a) - pointTime(b));
+
+  ordered = trimEndpointOutliers(ordered);
 
   const filtered = [];
   for (let i = 0; i < ordered.length; i += 1) {
@@ -52,6 +85,12 @@ export function filterRouteLocations(locations = []) {
     filtered.push(curr);
   }
   return filtered;
+}
+
+export function displaySpeedKmh(speed) {
+  const n = Number(speed);
+  if (!Number.isFinite(n) || n < 0 || n > 160) return 0;
+  return Math.round(n);
 }
 
 function tripTime(trip) {

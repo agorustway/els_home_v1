@@ -195,7 +195,7 @@ function updateVehicleMarkers(trips) {
 }
 
 // ─── 경로(Polyline) 그리기 ───────────────────────────────────────────
-function drawPolyline(path) {
+function drawPolyline(path, options = {}) {
   // 기존 경로/시작종료 마커 제거
   if (_polyline)    { _polyline.setMap(null);    _polyline    = null; }
   if (_startMarker) { _startMarker.setMap(null); _startMarker = null; }
@@ -203,7 +203,7 @@ function drawPolyline(path) {
 
   if (!path.length || !_map) return;
 
-  const filteredPath = filterRouteLocations(path);
+  const filteredPath = options.alreadyMatched ? path : filterRouteLocations(path);
 
   if (filteredPath.length === 0) return;
 
@@ -381,16 +381,19 @@ export async function showTripRouteOnMap(trip) {
 
   let path = [];
   try {
-    const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${trip.id}/locations`);
+    const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${trip.id}/matched-route`);
     const data = await res.json();
-    path = data.locations || data.data || [];
+    path = (Array.isArray(data.matchedPath) && data.matchedPath.length >= 2)
+      ? data.matchedPath
+      : (data.locations || data.data || []);
+    path._matchedSource = data.source;
   } catch (e) {
     console.error('[MAP] 경로 fetch 실패', e);
   }
 
   if (!path.length) { showToast('경로 데이터가 없습니다.'); return; }
 
-  drawPolyline(path);
+  drawPolyline(path, { alreadyMatched: path._matchedSource === 'naver-directions15' });
 
   // 경로 패널 표시
   const panel = document.getElementById('map-route-panel');
@@ -400,7 +403,7 @@ export async function showTripRouteOnMap(trip) {
 
     const bodyEl = document.getElementById('map-route-body');
     if (bodyEl) {
-      const cleanPath = filterRouteLocations(path);
+      const cleanPath = path._matchedSource === 'naver-directions15' ? path : filterRouteLocations(path);
       const s = cleanPath[0] || path[0];
       const e = cleanPath[cleanPath.length - 1] || path[path.length - 1];
       bodyEl.innerHTML = `

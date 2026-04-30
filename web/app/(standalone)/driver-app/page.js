@@ -174,10 +174,30 @@ export default function DriverAppPage() {
     }, [driverPhone, vehicleNumber, historyMonth]);
 
     const lastWatcherIdRef = useRef(null);
+    const displaySpeedKmh = (value) => {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric) || numeric < 0 || numeric > 160) return 0;
+        return Math.round(numeric);
+    };
+
+    const getAdaptiveInterval = (speedKmh, isRealtime) => {
+        if (isRealtime) return 3000;
+        const safeSpeed = displaySpeedKmh(speedKmh);
+        if (safeSpeed > 0 && safeSpeed < 20) return 5000;
+        if (safeSpeed < 45) return 7000;
+        if (safeSpeed < 75) return 12000;
+        return 15000;
+    };
+
+    const formatIntervalLabel = (speedKmh, isRealtime = false) => {
+        const seconds = Math.round(getAdaptiveInterval(speedKmh, isRealtime) / 1000);
+        return `${seconds}초`;
+    };
 
     const sendLocation = useCallback(async (tripId, pos) => {
         const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
-        setLastCoords({ lat, lng, speed: (speed || 0) * 3.6 });
+        const speedKmh = displaySpeedKmh((speed || 0) * 3.6);
+        setLastCoords({ lat, lng, speed: speedKmh });
         setGpsActive(true);
 
         const isMoved = !lastPosRef.current || 
@@ -191,9 +211,9 @@ export default function DriverAppPage() {
             await fetch('/api/vehicle-tracking/location', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed }),
+                body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed: speedKmh, source: 'standalone_app' }),
             });
-            speedRef.current = (speed || 0) * 3.6; // km/h
+            speedRef.current = speedKmh;
             setSendCount(prev => prev + 1);
         } catch { }
     }, []);
@@ -221,15 +241,7 @@ export default function DriverAppPage() {
                     const now = Date.now();
                     const lastSent = lastPosRef.current?.lastSentAt || 0;
                     
-                    // 실시간 모드면 3초, 아니면 속도별 차등
-                    let minInterval = isRealtime ? 3000 : 30000;
-                    if (!isRealtime) {
-                        const speedKm = (location.speed || 0) * 3.6;
-                        if (speedKm >= 70) minInterval = 30000;
-                        else if (speedKm >= 20) minInterval = 60000;
-                        else if (speedKm >= 5) minInterval = 180000;
-                        else minInterval = 300000;
-                    }
+                    const minInterval = getAdaptiveInterval((location.speed || 0) * 3.6, isRealtime);
 
                     if (now - lastSent >= minInterval) {
                          sendLocation(tripId, location);
@@ -244,14 +256,7 @@ export default function DriverAppPage() {
             // Fallback: Web Geolocation
             if (gpsIntervalRef.current) clearTimeout(gpsIntervalRef.current);
             const tick = () => {
-                let interval = isRealtime ? 3000 : 30000;
-                if (!isRealtime) {
-                    const speedKm = speedRef.current;
-                    if (speedKm >= 70) interval = 30000;
-                    else if (speedKm >= 20) interval = 60000;
-                    else if (speedKm >= 5) interval = 180000;
-                    else interval = 300000;
-                }
+                const interval = getAdaptiveInterval(speedRef.current, isRealtime);
 
                 navigator.geolocation.getCurrentPosition((pos) => {
                     sendLocation(tripId, pos);
@@ -1012,7 +1017,7 @@ export default function DriverAppPage() {
                     )}
                 </span>
                 <span style={{marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8'}}>
-                    {isActive ? (isDriving ? `수신중(${speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})` : 'GPS정지') : '대기중'}
+                    {isActive ? (isDriving ? `수신중(${formatIntervalLabel(speedRef.current)}) · ${displaySpeedKmh(speedRef.current)}km/h` : 'GPS정지') : '대기중'}
                 </span>
             </div>
 
@@ -1047,7 +1052,7 @@ export default function DriverAppPage() {
                     </div>
                     {isDriving && (
                         <div style={{textAlign:'center', color:'var(--accent)', fontSize:'0.8rem', fontWeight:700, marginTop:'-10px', marginBottom:'15px'}}>
-                            GPS수집중 ({speedRef.current >= 70 ? '30초' : (speedRef.current >= 20 ? '1분' : (speedRef.current >= 5 ? '3분' : '5분'))})
+                            운행시간 {formatTime(elapsedSeconds)} · 현재속도 {displaySpeedKmh(speedRef.current)}km/h · GPS {formatIntervalLabel(speedRef.current)}
                         </div>
                     )}
                     

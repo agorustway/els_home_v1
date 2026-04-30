@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
-import { prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
+import { displaySpeedKmh, prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
 
 /**
  * GET /api/vehicle-tracking/trips
@@ -137,8 +137,9 @@ export async function GET(request) {
                     // 내림차순 정렬이므로 가장 먼저 만나는 것이 최신
                     locData.forEach(l => {
                         if (!locMap[l.trip_id]) locMap[l.trip_id] = l;
-                        if (!maxSpeedMap[l.trip_id] || l.speed > maxSpeedMap[l.trip_id]) {
-                            maxSpeedMap[l.trip_id] = l.speed;
+                        const speed = displaySpeedKmh(l.speed);
+                        if (!maxSpeedMap[l.trip_id] || speed > maxSpeedMap[l.trip_id]) {
+                            maxSpeedMap[l.trip_id] = speed;
                         }
                     });
                     data.forEach(t => {
@@ -368,4 +369,3 @@ export async function POST(request) {
         });
     }
 }
-

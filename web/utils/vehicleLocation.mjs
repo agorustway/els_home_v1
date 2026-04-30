@@ -53,7 +53,14 @@ export function haversineKm(lat1, lng1, lat2, lng2) {
 export function normalizeSpeedKmh(speed) {
     const n = Number(speed);
     if (!Number.isFinite(n) || n < 0) return 0;
-    return n > 80 ? n : n * 3.6;
+    return n;
+}
+
+export function displaySpeedKmh(speed) {
+    const n = Number(speed);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    if (n > 160) return 0;
+    return Math.round(n);
 }
 
 export function isCoordinateInKorea(lat, lng) {
@@ -103,11 +110,13 @@ export function shouldAcceptLocation({ current, previous, next = null, forced = 
 }
 
 export function filterRouteLocations(locations = []) {
-    const ordered = locations
+    let ordered = locations
         .filter(Boolean)
         .map((l) => ({ ...l, lat: Number(l.lat), lng: Number(l.lng), speed: Number(l.speed || 0) }))
         .filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
         .sort((a, b) => getPointTime(a) - getPointTime(b));
+
+    ordered = trimEndpointOutliers(ordered);
 
     const filtered = [];
     for (let i = 0; i < ordered.length; i += 1) {
@@ -129,3 +138,46 @@ export function filterRouteLocations(locations = []) {
     return filtered;
 }
 
+export function trimEndpointOutliers(points = []) {
+    let list = points.filter((p) => isCoordinateInKorea(Number(p.lat), Number(p.lng)));
+    if (list.length < 3) return list;
+
+    const shouldDropFirst = () => {
+        if (list.length < 3) return false;
+        const [a, b, c] = list;
+        const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
+        const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
+        const timeSec = Math.max(1, (getPointTime(b) - getPointTime(a)) / 1000);
+        const implied = ab / (timeSec / 3600);
+        return (ab > 0.5 && implied > 120) || (ab > 1.5 && bc < 0.35);
+    };
+
+    const shouldDropLast = () => {
+        if (list.length < 3) return false;
+        const a = list[list.length - 3];
+        const b = list[list.length - 2];
+        const c = list[list.length - 1];
+        const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
+        const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
+        const timeSec = Math.max(1, (getPointTime(c) - getPointTime(b)) / 1000);
+        const implied = bc / (timeSec / 3600);
+        return (bc > 0.5 && implied > 120) || (bc > 1.5 && ab < 0.35);
+    };
+
+    while (shouldDropFirst()) list = list.slice(1);
+    while (shouldDropLast()) list = list.slice(0, -1);
+    return list;
+}
+
+export function sampleRouteWaypoints(locations = [], maxWaypoints = 12) {
+    const clean = filterRouteLocations(locations);
+    if (clean.length <= 2) return { clean, waypoints: [] };
+    const middle = clean.slice(1, -1);
+    if (middle.length <= maxWaypoints) return { clean, waypoints: middle };
+    const step = (middle.length - 1) / Math.max(1, maxWaypoints - 1);
+    const waypoints = [];
+    for (let i = 0; i < maxWaypoints; i += 1) {
+        waypoints.push(middle[Math.round(i * step)]);
+    }
+    return { clean, waypoints };
+}

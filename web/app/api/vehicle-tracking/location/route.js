@@ -46,6 +46,12 @@ export async function POST(request) {
             return NextResponse.json({ error: '운행 중이 아닙니다.' }, { status: 400 });
         }
 
+        const speedNum = Number(speed || 0);
+        const sourceText = String(source || '');
+        const speedKmh = sourceText.startsWith('native') || sourceText === 'standalone_app'
+            ? speedNum
+            : (speedNum > 80 ? speedNum : speedNum * 3.6);
+
         const { data: previousLocations } = await supabase
             .from('vehicle_locations')
             .select('lat,lng,accuracy,speed,recorded_at,marker_type')
@@ -54,7 +60,7 @@ export async function POST(request) {
             .limit(1);
 
         const decision = shouldAcceptLocation({
-            current: { lat, lng, accuracy, speed, recorded_at: new Date().toISOString(), marker_type },
+            current: { lat, lng, accuracy, speed: speedKmh, recorded_at: new Date().toISOString(), marker_type },
             previous: previousLocations?.[0] || null,
             forced: Boolean(marker_type) || source === 'native_forced',
         });
@@ -76,7 +82,7 @@ export async function POST(request) {
                 lat,
                 lng,
                 accuracy: accuracy || null,
-                speed: speed || null,
+                speed: Number.isFinite(speedKmh) ? Math.max(0, Math.min(speedKmh, 160)) : null,
                 method: source || method,
                 address,
                 // [v4.2.48] 이벤트 마커 & 자이로 데이터 저장 (DB 컬럼이 없으면 무시됨)

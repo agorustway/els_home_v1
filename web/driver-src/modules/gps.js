@@ -18,6 +18,7 @@ export let lastGpsTimestamp  = 0;
 export let lastKnownAddr     = '위치 확인 중...';
 export let realtimeExpireAt  = 0;
 let _lastSentMotion = null;
+let _currentSpeedKph = 0;
 
 // ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
@@ -268,6 +269,10 @@ export function updateTripStatusLine() {
 
   const dateDisplay = document.getElementById('trip-date-display');
   const sep1        = document.getElementById('trip-status-sep1');
+  const elapsedEl   = document.getElementById('trip-elapsed-display');
+  const sepTime     = document.getElementById('trip-status-sep-time');
+  const speedEl     = document.getElementById('trip-speed-display');
+  const sepSpeed    = document.getElementById('trip-status-sep-speed');
   const gpsChip     = document.getElementById('trip-gps-chip');
   const sep2        = document.getElementById('trip-status-sep2');
   const addrDisplay = document.getElementById('trip-addr-display');
@@ -286,6 +291,10 @@ export function updateTripStatusLine() {
       settingsDateDisplay.style.color  = 'var(--primary)';
     }
     if (sep1)        sep1.style.display  = 'none';
+    if (elapsedEl)   elapsedEl.style.display = 'none';
+    if (sepTime)     sepTime.style.display = 'none';
+    if (speedEl)     speedEl.style.display = 'none';
+    if (sepSpeed)    sepSpeed.style.display = 'none';
     if (gpsChip)     gpsChip.style.display = 'none';
     if (sep2)        sep2.style.display  = 'none';
     if (addrDisplay) addrDisplay.style.display = 'none';
@@ -333,7 +342,18 @@ export function updateTripStatusLine() {
     }
   }
 
-  if (sep1)    sep1.style.display = 'inline-block';
+  const elapsedText = State.trip.startTime ? formatDuration(Date.now() - State.trip.startTime) : '00:00:00';
+  if (sep1)      sep1.style.display = 'inline-block';
+  if (elapsedEl) {
+    elapsedEl.style.display = 'inline-block';
+    elapsedEl.textContent = elapsedText;
+  }
+  if (sepTime)   sepTime.style.display = 'inline-block';
+  if (speedEl) {
+    speedEl.style.display = 'inline-block';
+    speedEl.textContent = `${Math.round(Math.max(0, Math.min(_currentSpeedKph, 160)))}km/h`;
+  }
+  if (sepSpeed)  sepSpeed.style.display = 'inline-block';
   if (gpsChip) {
     gpsChip.style.display = 'inline-block';
     gpsChip.style.color   = gpsColor;
@@ -380,6 +400,7 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
 
   const speedKph = (speed || 0) * 3.6;
+  _currentSpeedKph = speedKph > 160 ? 0 : speedKph;
   lastGpsTimestamp = Date.now();
 
   // 정확도 필터: 500m 초과만 스킵 (기존 200m → 완화)

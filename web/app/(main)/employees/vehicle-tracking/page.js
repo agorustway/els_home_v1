@@ -10,7 +10,7 @@ import 'react-quill/dist/quill.snow.css';
 import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
 import { createClient } from '@/utils/supabase/client';
-import { filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
+import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
@@ -23,6 +23,7 @@ export default function VehicleTrackingPage() {
     // 상세 조회 상태
     const [selectedTrip, setSelectedTrip] = useState(null);
     const [selectedTripLocations, setSelectedTripLocations] = useState([]);
+    const [selectedMatchedPath, setSelectedMatchedPath] = useState([]);
     const [tripLogs, setTripLogs] = useState([]);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
 
@@ -221,7 +222,7 @@ export default function VehicleTrackingPage() {
     };
 
     // ─── 2. 상세 경로 조회 ───
-    const drawTripPath = (locations, retries = 5) => {
+    const drawTripPath = (locations, retries = 5, options = {}) => {
         // [v4.5.12][Fix] naver 전역 + mapRef 동시 체크 — 미초기화 시 retry
         if (!window.naver?.maps || !mapInstanceRef.current || !locations?.length) {
             if (retries > 0 && locations?.length) {
@@ -234,7 +235,7 @@ export default function VehicleTrackingPage() {
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
 
-        const filteredLocs = filterRouteLocations(locations);
+        const filteredLocs = options.alreadyMatched ? locations : filterRouteLocations(locations);
 
         if (filteredLocs.length === 0) return;
         const path = filteredLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
@@ -254,6 +255,7 @@ export default function VehicleTrackingPage() {
         filteredLocs.forEach((l, idx) => {
             const isStart = idx === 0;
             const isEnd = idx === filteredLocs.length - 1;
+            if (options.alreadyMatched && !isStart && !isEnd) return;
             
             // 시작과 끝 마커는 별도 처리, 중간 지점들만 주소 중복 체크
             if (!isStart && !isEnd) {
@@ -377,12 +379,16 @@ export default function VehicleTrackingPage() {
 
                 // [추가] 상세보기와 동기화 (LIVE 동안 상세 지도의 경로와 위치 리스트 최신화)
                 if (tripId && window.location.pathname.includes('/vehicle-tracking')) {
-                    const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
-                    const locRes = await fetch(`${baseUrl}/api/vehicle-tracking/${tripId}/locations`);
+                    const locRes = await fetch(`/api/vehicle-tracking/trips/${tripId}/matched-route`);
                     const locData = await locRes.json();
                     if (locData.locations && locData.locations.length > 0) {
-                        setSelectedTripLocations(locData.locations);
-                        drawTripPath(locData.locations);
+                        const cleanLocations = filterRouteLocations(locData.locations);
+                        const matchedPath = Array.isArray(locData.matchedPath) && locData.matchedPath.length >= 2
+                            ? locData.matchedPath
+                            : cleanLocations;
+                        setSelectedTripLocations(cleanLocations);
+                        setSelectedMatchedPath(matchedPath);
+                        drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15' });
                     }
                 }
             } catch (e) { console.error('실시간 추적 오류:', e); }
@@ -426,12 +432,13 @@ export default function VehicleTrackingPage() {
         setIsDetailLoading(true);
         setSelectedTrip(trip); // 클릭 즉시 기본 정보로 UI 전환
         setSelectedTripLocations([]);
+        setSelectedMatchedPath([]);
         setTripLogs([]);
 
         try {
             const [tripRes, locRes, logRes] = await Promise.all([
                 fetch(`/api/vehicle-tracking/trips/${trip.id}`),
-                fetch(`/api/vehicle-tracking/trips/${trip.id}/locations`),
+                fetch(`/api/vehicle-tracking/trips/${trip.id}/matched-route`),
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/logs`)
             ]);
 
@@ -440,28 +447,14 @@ export default function VehicleTrackingPage() {
 
             const locData = await locRes.json();
             if (locData.locations) {
-                const locations = locData.locations;
-
-                // [데이터 보정] 안드로이드 Background 등에서 속도가 0으로 온 경우 거리를 기반으로 속도 추정
-                const distance = (lat1, lng1, lat2, lng2) => {
-                    const p = 0.017453292519943295, c = Math.cos;
-                    const a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
-                    return 12742 * Math.asin(Math.sqrt(a));
-                };
-                for (let i = 1; i < locations.length; i++) {
-                    const loc = locations[i];
-                    if (Math.round(loc.speed || 0) === 0) {
-                        const prev = locations[i - 1];
-                        const dist = distance(prev.lat, prev.lng, loc.lat, loc.lng);
-                        const timeSec = (new Date(loc.timestamp || loc.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
-                        if (timeSec > 0 && dist > 0) {
-                            loc.speed = dist / (timeSec / 3600);
-                        }
-                    }
-                }
+                const locations = filterRouteLocations(locData.locations);
+                const matchedPath = Array.isArray(locData.matchedPath) && locData.matchedPath.length >= 2
+                    ? locData.matchedPath
+                    : locations;
 
                 setSelectedTripLocations(locations);
-                drawTripPath(locations);
+                setSelectedMatchedPath(matchedPath);
+                drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15' });
 
                 if (locations.length > 0) {
                     // 시작/종료 주소만 즉시 조회 (상세보기용)
@@ -522,45 +515,21 @@ export default function VehicleTrackingPage() {
             miniMarkersRef.current.forEach(m => { if (m) m.setMap(null); });
             miniMarkersRef.current = [];
 
-            if (!selectedTripLocations || !Array.isArray(selectedTripLocations) || selectedTripLocations.length === 0) return;
+            const pathSource = selectedMatchedPath.length >= 2 ? selectedMatchedPath : selectedTripLocations;
+            if (!pathSource || !Array.isArray(pathSource) || pathSource.length === 0) return;
 
-            let validLocs = selectedTripLocations.filter(l => l && typeof l.lat === 'number' && typeof l.lng === 'number');
+            let validLocs = pathSource.filter(l => l && typeof l.lat === 'number' && typeof l.lng === 'number');
             if (validLocs.length === 0) return;
 
-            validLocs.sort((a, b) => {
-                const dateA = new Date(a.timestamp || a.recorded_at);
-                const dateB = new Date(b.timestamp || b.recorded_at);
-                return dateA - dateB;
-            });
-
-            const distance = (lat1, lng1, lat2, lng2) => {
-                const p = 0.017453292519943295;
-                const c = Math.cos;
-                const a = 0.5 - c((lat2 - lat1) * p) / 2 +
-                    c(lat1 * p) * c(lat2 * p) *
-                    (1 - c((lng2 - lng1) * p)) / 2;
-                return 12742 * Math.asin(Math.sqrt(a));
-            };
-
-            const filteredLocs = [];
-            const SPEED_LIMIT_KMH = 120;
-
-            for (let i = 0; i < validLocs.length; i++) {
-                const curr = validLocs[i];
-                if (filteredLocs.length === 0) { filteredLocs.push(curr); continue; }
-                const prev = filteredLocs[filteredLocs.length - 1];
-                const distPrev = distance(prev.lat, prev.lng, curr.lat, curr.lng);
-                const timeSec = (new Date(curr.timestamp || curr.recorded_at) - new Date(prev.timestamp || prev.recorded_at)) / 1000;
-                
-                if (timeSec > 0) {
-                    const speed = distPrev / (timeSec / 3600);
-                    if (speed > SPEED_LIMIT_KMH && distPrev > 0.5) continue;
-                } else {
-                    if (distPrev > 0.5) continue;
-                }
-                
-                filteredLocs.push(curr);
+            if (selectedMatchedPath.length < 2) {
+                validLocs.sort((a, b) => {
+                    const dateA = new Date(a.timestamp || a.recorded_at);
+                    const dateB = new Date(b.timestamp || b.recorded_at);
+                    return dateA - dateB;
+                });
             }
+
+            const filteredLocs = selectedMatchedPath.length >= 2 ? validLocs : filterRouteLocations(validLocs);
             
             const path = filteredLocs.map(l => new window.naver.maps.LatLng(l.lat, l.lng));
             const polyline = new window.naver.maps.Polyline({
@@ -583,7 +552,7 @@ export default function VehicleTrackingPage() {
             if (timerId) clearTimeout(timerId);
             if (miniMapInstanceRef.current) miniMapInstanceRef.current._hasFitBounds = false;
         };
-    }, [selectedTrip, selectedTripLocations, realtimeTarget]);
+    }, [selectedTrip, selectedTripLocations, selectedMatchedPath, realtimeTarget]);
 
     // [신규] 안드로이드 뒤로가기 버튼 연동 (Hash를 통한 사이드이펙트 방지)
     useEffect(() => {
@@ -693,7 +662,7 @@ export default function VehicleTrackingPage() {
                         ${loc.address || '주소 정보 확인 중...'}
                     </div>
                     <div style="font-weight:700; color:#3b82f6; font-size:11px;">
-                        현재 속도: ${Math.round(loc.speed || 0)} km/h
+                        현재 속도: ${displaySpeedKmh(loc.speed)} km/h
                     </div>
                 </div>
                 ${!loc.address ? `<div style="font-size:9px; color:#94a3b8; margin-top:6px; text-align:right;">(좌표: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})</div>` : ''}
@@ -869,7 +838,7 @@ export default function VehicleTrackingPage() {
 
         selectedTripLocations.forEach(loc => {
             const timeStr = new Date(loc.timestamp || loc.recorded_at).toLocaleString('ko-KR');
-            const speed = Math.round(loc.speed || 0);
+            const speed = displaySpeedKmh(loc.speed);
             const address = `"${(loc.address || '').replace(/"/g, '""')}"`;
             const lat = (loc.lat || 0).toFixed(6);
             const lng = (loc.lng || 0).toFixed(6);
@@ -1087,7 +1056,7 @@ export default function VehicleTrackingPage() {
                                     <td>{trip.vehicle_number}</td>
                                     <td>{trip.container_number || '-'}</td>
                                     <td>
-                                        <div style={{ fontWeight: 800, color: '#2563eb' }}>{Math.round(trip.lastLocation?.speed || 0)} km/h</div>
+                                        <div style={{ fontWeight: 800, color: '#2563eb' }}>{displaySpeedKmh(trip.lastLocation?.speed)} km/h</div>
                                         <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: 2 }}>{getElapsedTimeString(trip.started_at, trip.completed_at)}</div>
                                     </td>
                                     <td title={trip.lastLocation?.address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', maxWidth: '220px' }}>
@@ -1301,7 +1270,7 @@ export default function VehicleTrackingPage() {
                                                 return (
                                                     <tr key={i} onClick={() => { const mInstance = miniMapInstanceRef.current || mapInstanceRef.current; if (mInstance) { mInstance.setCenter(new window.naver.maps.LatLng(loc.lat, loc.lng)); mInstance.setZoom(16); } }} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
                                                         <td style={{ padding: '4px', color: '#475569', fontWeight: 500, letterSpacing: '-0.5px' }}>{dateStr}</td>
-                                                        <td style={{ padding: '4px', color: '#3b82f6', fontWeight: 700 }}>{Math.round(loc.speed || 0)}</td>
+                                                        <td style={{ padding: '4px', color: '#3b82f6', fontWeight: 700 }}>{displaySpeedKmh(loc.speed)}</td>
                                                         <td style={{ padding: '4px', textAlign: 'left', color: hasAddr ? '#334155' : '#94a3b8', fontSize: '0.7rem' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }} title={loc.address || '주소 확인 필요'}>{loc.address || '확인 필요'}</span>
