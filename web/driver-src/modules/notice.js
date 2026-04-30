@@ -8,6 +8,33 @@ import { formatDate, escHtml, showToast } from './utils.js?v=5133';
 let _notices             = [];
 let _currentNoticeFilter = '';
 
+function toYouTubeEmbedUrl(rawUrl = '') {
+  const raw = String(rawUrl || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') return `https://www.youtube.com/embed/${url.pathname.replace('/', '')}`;
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (url.pathname === '/watch' && url.searchParams.get('v')) return `https://www.youtube.com/embed/${url.searchParams.get('v')}`;
+      if (url.pathname.startsWith('/shorts/')) return `https://www.youtube.com/embed/${url.pathname.split('/')[2] || ''}`;
+      if (url.pathname.startsWith('/embed/')) return raw;
+    }
+  } catch {
+    return raw.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/');
+  }
+  return raw;
+}
+
+function normalizeNoticeBody(notice) {
+  let raw = notice.content || notice.body || notice.message || '';
+  raw = raw
+    .replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/&lt;\/p&gt;/gi, '\n').replace(/&lt;p&gt;/gi, '')
+    .replace(/&lt;[^&]*&gt;/g, '')
+    .replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
+  return raw.trim().replace(/\n\s*\n/g, '\n').replace(/\n/g, '<br>');
+}
+
 // ─── 공지 로드 ───────────────────────────────────────────────────
 export async function loadNotices() {
   document.getElementById('notice-list').innerHTML =
@@ -131,18 +158,13 @@ export function openNotice(id) {
 
   const bodyEl = document.getElementById('notice-detail-body');
   if (bodyEl) {
-    let raw = n.content || n.body || n.message || '';
-    raw = raw
-      .replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/&lt;\/p&gt;/gi, '\n').replace(/&lt;p&gt;/gi, '')
-      .replace(/&lt;[^&]*&gt;/g, '')
-      .replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
-    bodyEl.innerHTML = raw.trim().replace(/\n\s*\n/g, '\n').replace(/\n/g, '<br>');
+    bodyEl.innerHTML = normalizeNoticeBody(n);
   }
   const mediaEl = document.getElementById('notice-detail-media');
   if (mediaEl) {
     const attachments = Array.isArray(n.attachments) ? n.attachments : [];
     const yt = n.education_url || '';
-    const embed = yt ? yt.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/') : '';
+    const embed = toYouTubeEmbedUrl(yt);
     const attachHtml = attachments.map(a => `<a href="${escHtml(a.url)}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${escHtml(a.name || '첨부파일')}</a>`).join('');
     const completeBtn = n.category === '안전교육'
       ? `<button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="App.completeSafetyEducation('${n.id}')">시청 완료 및 이수 기록</button>`
@@ -166,7 +188,7 @@ export function openNotice(id) {
 export async function completeSafetyEducation(id) {
   const n = _notices.find(x => String(x.id) === String(id));
   const trip = State.trip || {};
-  // 운행 중이 아니어도 이수 기록 가능 (trip_id는 선택적)
+  if (!trip.id) { showToast('운행 중일 때 이수 기록을 저장할 수 있습니다.'); return; }
   try {
     const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/education/complete`, {
       method: 'POST',

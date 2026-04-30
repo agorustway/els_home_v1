@@ -1,5 +1,21 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 차량관제 안전교육/사진 업로드 후속 리팩토링 (v5.10.34)
+### 🚀 Achievement
+- **안전교육 공통 규칙 정리**: YouTube 주소 embed 변환, 이수 로그 저장 포맷, 웹 표시용 교육명 파싱을 공통 유틸로 분리했습니다.
+- **앱 공지 상세 정리**: 드라이버 앱의 공지 본문 정규화와 교육 영상/첨부자료 렌더링을 헬퍼로 분리하고, 이수 기록 저장 기준을 명확히 했습니다.
+
+### 🛠 Technical Changes
+- `web/utils/vehicleEducation.mjs`: 교육 로그/YouTube URL 변환 유틸 추가.
+- `web/app/api/vehicle-tracking/education/complete/route.js`: 교육 로그 저장 포맷을 공통 유틸로 통일.
+- `web/app/(main)/employees/vehicle-tracking/page.js`, `web/app/(standalone)/driver-app/page.js`, `web/driver-src/modules/notice.js`: 중복 문자열 처리와 YouTube 변환 로직 정리.
+
+### ✅ Verification
+- `.tmp_test/vehicleEducationRefactor.test.mjs`: 교육 로그 포맷/파싱, YouTube URL 변환, 앱 이수기록 기준 테스트 통과 후 삭제.
+- `web`: `npm.cmd run lint` 통과.
+
+---
+
 ## [2026-04-30] 드라이버 앱 UX 및 운행 통계 고도화 (v5.10.33)
 ### 🚀 Achievement
 - **App UX 직관성 강화**: 설정 화면의 '저장' 버튼을 활성화/비활성화 상태에 따라 빨간색/파란색 배경으로 시각화하여 명확한 입력 피드백 제공.

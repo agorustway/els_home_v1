@@ -11,6 +11,7 @@ import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
 import { createClient } from '@/utils/supabase/client';
 import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
+import { parseEducationLogTitle } from '@/utils/vehicleEducation.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
@@ -1317,7 +1318,7 @@ export default function VehicleTrackingPage() {
                                             <tr key={log.id || i} style={{ borderTop: '1px solid #f1f5f9' }}>
                                                 <td style={{ padding: 6, whiteSpace: 'nowrap' }}>{new Date(log.created_at).toLocaleString('ko-KR')}</td>
                                                 <td style={{ padding: 6, fontWeight: 800, color: log.field_name === 'safety_education' ? '#059669' : '#475569' }}>{log.field_name === 'safety_education' ? '안전교육' : log.field_name}</td>
-                                                <td style={{ padding: 6 }}>{log.field_name === 'safety_education' ? String(log.new_value || '').split('|').slice(1).join('|').trim() : `${log.old_value || '-'} → ${log.new_value || '-'}`}</td>
+                                                <td style={{ padding: 6 }}>{log.field_name === 'safety_education' ? parseEducationLogTitle(log.new_value) : `${log.old_value || '-'} → ${log.new_value || '-'}`}</td>
                                                 <td style={{ padding: 6 }}>{log.modified_by || '-'}</td>
                                             </tr>
                                         ))}

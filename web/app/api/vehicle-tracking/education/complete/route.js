@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
+import { makeEducationLogValue } from '@/utils/vehicleEducation.mjs';
 
 export async function POST(request) {
   const supabase = await createAdminClient();
@@ -23,7 +24,7 @@ export async function POST(request) {
       field_name: 'safety_education',
       modified_by: completed_by || driver_name || vehicle_number || 'driver',
       old_value: vehicle_number || '-',
-      new_value: `${notice_id} | ${title || '안전교육'}`,
+      new_value: makeEducationLogValue(notice_id, title),
       created_at: new Date().toISOString(),
     });
     if (error) throw error;

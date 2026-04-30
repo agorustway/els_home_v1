@@ -1,0 +1,31 @@
+export function makeEducationLogValue(noticeId, title) {
+  return `${noticeId} | ${title || '안전교육'}`;
+}
+
+export function parseEducationLogTitle(value = '') {
+  const text = String(value || '');
+  const [, ...titleParts] = text.split('|');
+  return titleParts.join('|').trim() || text || '-';
+}
+
+export function toYouTubeEmbedUrl(rawUrl = '') {
+  const raw = String(rawUrl || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') return `https://www.youtube.com/embed/${url.pathname.replace('/', '')}`;
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (url.pathname === '/watch' && url.searchParams.get('v')) {
+        return `https://www.youtube.com/embed/${url.searchParams.get('v')}`;
+      }
+      if (url.pathname.startsWith('/shorts/')) {
+        return `https://www.youtube.com/embed/${url.pathname.split('/')[2] || ''}`;
+      }
+      if (url.pathname.startsWith('/embed/')) return raw;
+    }
+  } catch {
+    return raw.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/');
+  }
+  return raw;
+}
