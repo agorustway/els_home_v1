@@ -1,5 +1,13 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-04-30] 안전교육 데이터 스키마 보강 및 마이그레이션 (v5.10.37)
+### 🚀 Achievement
+- **DB 스키마 확정**: `notices` 테이블에 `education_url` 및 `attachments` 컬럼을 정식 추가하고, 운행 이력 관리를 위한 `vehicle_trip_logs` 테이블을 생성하는 SQL 마이그레이션을 배포했습니다.
+- **유튜브 URL 자동 임베드 고도화**: 공지사항 본문에서 추출한 유튜브 URL이 최우선적으로 영상 섹션에 노출되도록 렌더링 로직을 안정화했습니다.
+
+### 🛠 Technical Changes
+- `web/supabase_sql/20260430_vehicle_education_support.sql`: 안전교육 지원 스키마 마이그레이션 파일 추가.
+
 ## [2026-04-30] 공지 본문 유튜브 URL 자동 감지 및 렌더링 최적화 (v5.10.36)
 ### 🚀 Achievement
 - **유튜브 URL 자동 임베드**: 공지사항 본문이나 첨부파일 설명에 포함된 YouTube URL을 자동으로 추출하여 영상 섹션에 표시하도록 개선했습니다. (별도의 education_url 입력 없이도 동작)
@@ -14,15 +22,19 @@
 ### 🚀 Achievement
 - **비운행 이수 오류 수정**: 안전교육 이수 버튼이 운행 중 상태에만 저장되던 제약을 제거하고, 운행 중이 아니면 차량번호 기준 최근 운행기록에 이수 로그를 연결하도록 보강했습니다.
 - **본문 유튜브 재생 보강**: 안전교육 URL 입력칸이 아닌 본문/첨부에 붙여넣은 YouTube 주소도 자동 추출하고, `education_url` 컬럼이 없는 환경에서도 본문에 URL이 보존되도록 처리했습니다.
+- **교육자료 미리보기/다중자료 보강**: 웹 작성 모달에서 여러 YouTube URL 미리보기를 지원하고, 앱 상세에서 이미지/동영상/PDF 첨부를 직접 확인할 수 있도록 렌더링을 확장했습니다.
+- **완료 운행 평균속도 표시**: 운행 기록 API가 위치 포인트 기반 평균속도를 계산해 완료 운행 목록에 최고속도와 함께 표시하도록 보강했습니다.
 - **지도 통계 누락 보정**: 앱 지도 경로 패널의 `쳙 운행시간` 오타를 `총운행시간`으로 수정하고, API 통계 필드가 없어도 위치 포인트의 속도값으로 최고속도/평균속도를 계산해 항상 표시하도록 개선했습니다.
 
 ### 🛠 Technical Changes
 - `web/app/api/vehicle-tracking/education/complete/route.js`: `trip_id` 미전달 시 `vehicle_trips` 최신 기록 fallback 조회 후 `vehicle_trip_logs` 저장.
 - `web/utils/vehicleEducation.mjs`, `web/app/api/vehicle-tracking/notices/route.js`, `web/driver-src/modules/notice.js`, `web/app/(standalone)/driver-app/page.js`: 안전교육 완료 버튼과 요청 payload의 운행 중 의존성 제거, 본문/첨부 YouTube URL 자동 embed 및 저장 보존.
+- `web/supabase_sql/20260430_vehicle_education_support.sql`: 운영 DB 적용용 `notices.education_url`, `notices.attachments`, `vehicle_trip_logs` 스키마 추가 SQL 정리.
+- `web/app/api/vehicle-tracking/trips/route.js`, `web/app/(main)/employees/vehicle-tracking/page.js`: 완료 운행 평균속도 계산/표시 및 안전교육 다중 URL/파일 관리 UI 보강.
 - `web/driver-src/modules/map.js`: 경로 포인트 기반 운행시간/최고속도/평균속도 fallback 계산 추가.
 
 ### ✅ Verification
-- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 지도 통계/오타 회귀 테스트 통과 후 삭제.
+- `.tmp_test/driverTrackingRegression.test.mjs`, `.tmp_test/youtubeBodyEmbed.test.mjs`, `.tmp_test/noticeEducationFix.test.mjs`, `.tmp_test/educationMediaAndAvgSpeed.test.mjs`: 안전교육 비운행 저장 조건, 본문 YouTube URL embed/보존, 교육자료 미리보기, 평균속도, 지도 통계/오타 회귀 테스트 통과 후 삭제.
 - `web`: `npm.cmd run lint` 통과.
 
 ---

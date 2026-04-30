@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 import { Capacitor } from '@capacitor/core';
-import { extractFirstYouTubeUrl, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
+import { extractYouTubeUrls, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
 
 // Native Plugins
 let Haptics, StatusBar, App;
@@ -48,11 +48,11 @@ const formatPhone = (val) => {
     return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
 };
 
-const getNoticeYouTubeUrl = (notice) => {
+const renderNoticeAttachments = (notice) => {
     const attachments = Array.isArray(notice?.attachments) ? notice.attachments : [];
-    return notice?.education_url
-        || extractFirstYouTubeUrl(notice?.content)
-        || extractFirstYouTubeUrl(attachments.map(a => `${a.url || ''} ${a.name || ''}`).join(' '));
+    const source = `${notice?.education_url || ''}\n${notice?.content || ''}\n${attachments.map(a => `${a.url || ''} ${a.name || ''}`).join('\n')}`;
+    const videos = [...new Set(extractYouTubeUrls(source))];
+    return { attachments, videos };
 };
 
 // ─── 이미지 압축 및 리사이징 (Vercel 4.5MB 제한 및 속도 최적화) ───
@@ -1332,31 +1332,38 @@ export default function DriverAppPage() {
                             </div>
                             
                             <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-                                {getNoticeYouTubeUrl(selectedNotice) && (
-                                    <div style={{ marginBottom: 15, borderRadius: 10, overflow: 'hidden', background: '#000', aspectRatio: '16 / 9' }}>
+                                {renderNoticeAttachments(selectedNotice).videos.map((url, idx) => (
+                                    <div key={url || idx} style={{ marginBottom: 15, borderRadius: 10, overflow: 'hidden', background: '#000', aspectRatio: '16 / 9' }}>
                                         <iframe
                                             title="안전교육 영상"
-                                            src={toYouTubeEmbedUrl(getNoticeYouTubeUrl(selectedNotice))}
+                                            src={toYouTubeEmbedUrl(url)}
                                             style={{ width: '100%', height: '100%', border: 0 }}
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen
                                         />
                                     </div>
-                                )}
+                                ))}
                                 <div 
                                     style={{ fontSize: '0.95rem', color: '#334155', lineHeight: 1.6 }}
                                     dangerouslySetInnerHTML={{ __html: selectedNotice.content }} 
                                 />
                                 
-                                {selectedNotice.attachments?.length > 0 && (
+                                {renderNoticeAttachments(selectedNotice).attachments?.length > 0 && (
                                     <div style={{ marginTop: 25, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginBottom: 10 }}>첨부파일 ({selectedNotice.attachments.length})</div>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginBottom: 10 }}>첨부파일 ({renderNoticeAttachments(selectedNotice).attachments.length})</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                            {selectedNotice.attachments.map((at, ai) => (
-                                                <a key={ai} href={at.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#2563eb', fontSize: '0.85rem', fontWeight: 600 }}>
-                                                    <span>📎</span> {at.name}
-                                                </a>
-                                            ))}
+                                            {renderNoticeAttachments(selectedNotice).attachments.map((at, ai) => {
+                                                const type = String(at.type || '').toLowerCase();
+                                                const lowerName = String(at.name || '').toLowerCase();
+                                                if (type.startsWith('image/')) return <img key={ai} src={at.url} alt={at.name || '첨부 이미지'} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, background: '#f8fafc' }} />;
+                                                if (type.startsWith('video/')) return <video key={ai} controls src={at.url} style={{ width: '100%', borderRadius: 8, background: '#000' }} />;
+                                                if (type.includes('pdf') || lowerName.endsWith('.pdf')) return <iframe key={ai} title={at.name || 'PDF'} src={at.url} style={{ width: '100%', height: 360, border: '1px solid #e2e8f0', borderRadius: 8 }} />;
+                                                return (
+                                                    <a key={ai} href={at.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#2563eb', fontSize: '0.85rem', fontWeight: 600 }}>
+                                                        <span>📎</span> {at.name}
+                                                    </a>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

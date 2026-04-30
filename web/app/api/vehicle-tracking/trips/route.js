@@ -134,6 +134,8 @@ export async function GET(request) {
                 if (!locError && locData) {
                     const locMap = {};
                     const maxSpeedMap = {};
+                    const speedSumMap = {};
+                    const speedCountMap = {};
                     // 내림차순 정렬이므로 가장 먼저 만나는 것이 최신
                     locData.forEach(l => {
                         if (!locMap[l.trip_id]) locMap[l.trip_id] = l;
@@ -141,11 +143,16 @@ export async function GET(request) {
                         if (!maxSpeedMap[l.trip_id] || speed > maxSpeedMap[l.trip_id]) {
                             maxSpeedMap[l.trip_id] = speed;
                         }
+                        if (speed > 0) {
+                            speedSumMap[l.trip_id] = (speedSumMap[l.trip_id] || 0) + speed;
+                            speedCountMap[l.trip_id] = (speedCountMap[l.trip_id] || 0) + 1;
+                        }
                     });
                     data.forEach(t => {
                         t.lastLocation = locMap[t.id] || null;
                         t.last_location_address = locMap[t.id]?.address || null;
                         t.max_speed = maxSpeedMap[t.id] ? Math.round(maxSpeedMap[t.id]) : 0;
+                        t.avg_speed = speedCountMap[t.id] ? Math.round(speedSumMap[t.id] / speedCountMap[t.id]) : 0;
                     });
                 }
             }

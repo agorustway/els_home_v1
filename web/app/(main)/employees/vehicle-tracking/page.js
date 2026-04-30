@@ -11,7 +11,7 @@ import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
 import { createClient } from '@/utils/supabase/client';
 import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
-import { parseEducationLogTitle } from '@/utils/vehicleEducation.mjs';
+import { extractYouTubeUrls, parseEducationLogTitle, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
@@ -913,6 +913,11 @@ export default function VehicleTrackingPage() {
         return `${diffMins}분`;
     };
 
+    const getAverageSpeed = (trip) => {
+        const value = Number(trip.avg_speed ?? trip.average_speed);
+        return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+    };
+
     // [신규] 실시간 관제 리스트 줌 이동
     const handleZoomToLiveTrip = (trip) => {
         if (!mapInstanceRef.current || !trip.lastLocation) return;
@@ -1139,7 +1144,7 @@ export default function VehicleTrackingPage() {
                                 <th style={{ maxWidth: '120px' }}>메모</th>
                                 <th style={{ width: '60px' }}>사진</th>
                                 <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{ width: '130px' }}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th style={{ width: '220px' }}>최종위치(최고속도)</th>
+                                <th style={{ width: '240px' }}>최종위치(속도)</th>
                                 <th style={{ width: '100px' }}>관리</th>
                             </tr>
                         </thead>
@@ -1178,6 +1183,7 @@ export default function VehicleTrackingPage() {
                                     <td title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '220px' }}>
                                         <div>{trip.last_location_address || '-'}</div>
                                         {trip.max_speed > 0 && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: 2 }}>최고속도: {trip.max_speed} km/h</div>}
+                                        {trip.status === 'completed' && getAverageSpeed(trip) > 0 && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>평균속도: {getAverageSpeed(trip)} km/h</div>}
                                     </td>
                                     <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
@@ -1386,16 +1392,26 @@ export default function VehicleTrackingPage() {
                                     <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>YouTube 교육 영상 주소</label>
                                     <input
                                         className={styles.modalInput}
-                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        placeholder="여러 개 입력 가능: https://www.youtube.com/watch?v=... (줄바꿈)"
                                         value={newNotice.education_url || ''}
                                         onChange={e => setNewNotice({ ...newNotice, education_url: e.target.value })}
                                     />
+                                    {extractYouTubeUrls(newNotice.education_url || '').length > 0 && (
+                                        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+                                            {extractYouTubeUrls(newNotice.education_url || '').map((url, i) => (
+                                                <iframe key={`${url}-${i}`} title={`교육 영상 ${i + 1}`} src={toYouTubeEmbedUrl(url)} style={{ width: '100%', aspectRatio: '16 / 9', border: 0, borderRadius: 8, background: '#000' }} allowFullScreen />
+                                            ))}
+                                        </div>
+                                    )}
                                     <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', display: 'block', margin: '10px 0 4px' }}>교육 자료 업로드 (PDF/이미지 등 다중 선택)</label>
-                                    <input type="file" multiple accept="image/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} />
+                                    <input type="file" multiple accept="image/*,video/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} />
                                     {(newNotice.attachments || []).length > 0 && (
                                         <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                             {(newNotice.attachments || []).map((f, i) => (
-                                                <span key={i} style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 700 }}>{f.name}</span>
+                                                <span key={i} style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                                    <a href={f.url} target="_blank" rel="noreferrer" style={{ color: '#0369a1', textDecoration: 'none' }}>{f.name}</a>
+                                                    <button type="button" onClick={() => setNewNotice(prev => ({ ...prev, attachments: (prev.attachments || []).filter((_, idx) => idx !== i) }))} style={{ border: 0, background: 'transparent', color: '#ef4444', fontWeight: 900, cursor: 'pointer' }}>×</button>
+                                                </span>
                                             ))}
                                         </div>
                                     )}

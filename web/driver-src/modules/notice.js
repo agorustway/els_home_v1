@@ -26,17 +26,27 @@ function toYouTubeEmbedUrl(rawUrl = '') {
   return raw;
 }
 
-function extractFirstYouTubeUrl(text = '') {
+function extractYouTubeUrls(text = '') {
   const source = String(text || '');
-  const [match] = source.match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/i) || [];
-  return match || '';
+  return [...source.matchAll(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/gi)]
+    .map(match => match[0]);
 }
 
-function getNoticeYouTubeUrl(notice) {
+function renderEducationMedia(notice) {
   const attachments = Array.isArray(notice.attachments) ? notice.attachments : [];
-  return notice.education_url
-    || extractFirstYouTubeUrl(notice.content || notice.body || notice.message)
-    || extractFirstYouTubeUrl(attachments.map(a => `${a.url || ''} ${a.name || ''}`).join(' '));
+  const textSource = `${notice.education_url || ''}\n${notice.content || notice.body || notice.message || ''}\n${attachments.map(a => `${a.url || ''} ${a.name || ''}`).join('\n')}`;
+  const youtubeUrls = [...new Set(extractYouTubeUrls(textSource))];
+  const videoHtml = youtubeUrls.map(url => `<iframe title="안전교육 영상" src="${escHtml(toYouTubeEmbedUrl(url))}" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`).join('');
+  const attachHtml = attachments.map(a => {
+    const url = escHtml(a.url || '');
+    const name = escHtml(a.name || '첨부파일');
+    const type = String(a.type || '').toLowerCase();
+    if (type.startsWith('image/')) return `<img src="${url}" alt="${name}" style="display:block;width:100%;max-height:260px;object-fit:contain;margin-top:8px;border-radius:8px;background:#f8fafc;">`;
+    if (type.startsWith('video/')) return `<video controls src="${url}" style="display:block;width:100%;margin-top:8px;border-radius:8px;background:#000;"></video>`;
+    if (type.includes('pdf') || name.toLowerCase().endsWith('.pdf')) return `<iframe title="${name}" src="${url}" style="width:100%;height:360px;border:1px solid #e2e8f0;border-radius:8px;margin-top:8px;background:#fff;"></iframe><a href="${url}" target="_blank" style="display:block;padding:10px;margin-top:6px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">PDF 열기: ${name}</a>`;
+    return `<a href="${url}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${name}</a>`;
+  }).join('');
+  return videoHtml + attachHtml;
 }
 
 function normalizeNoticeBody(notice) {
@@ -175,14 +185,10 @@ export function openNotice(id) {
   }
   const mediaEl = document.getElementById('notice-detail-media');
   if (mediaEl) {
-    const attachments = Array.isArray(n.attachments) ? n.attachments : [];
-    const yt = getNoticeYouTubeUrl(n);
-    const embed = toYouTubeEmbedUrl(yt);
-    const attachHtml = attachments.map(a => `<a href="${escHtml(a.url)}" target="_blank" style="display:block;padding:10px;margin-top:8px;border-radius:8px;background:#f8fafc;color:#2563eb;font-weight:700;text-decoration:none;">자료: ${escHtml(a.name || '첨부파일')}</a>`).join('');
     const completeBtn = n.category === '안전교육'
       ? `<button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="App.completeSafetyEducation('${n.id}')">시청 완료 및 이수 기록</button>`
       : '';
-    mediaEl.innerHTML = `${embed ? `<iframe title="안전교육 영상" src="${escHtml(embed)}" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:12px;" allowfullscreen></iframe>` : ''}${attachHtml}${completeBtn}`;
+    mediaEl.innerHTML = `${renderEducationMedia(n)}${completeBtn}`;
   }
 
   document.getElementById('notice-list').style.display = 'none';

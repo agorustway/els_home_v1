@@ -35,3 +35,9 @@ export function extractFirstYouTubeUrl(text = '') {
   const [match] = source.match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/i) || [];
   return match || '';
 }
+
+export function extractYouTubeUrls(text = '') {
+  const source = String(text || '');
+  return [...source.matchAll(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/gi)]
+    .map(match => match[0]);
+}
