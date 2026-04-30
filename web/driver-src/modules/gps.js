@@ -7,8 +7,8 @@
  * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
  * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
-import { State, BASE_URL } from './store.js?v=5103';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5103';
+import { State, BASE_URL } from './store.js?v=5104';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5104';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)

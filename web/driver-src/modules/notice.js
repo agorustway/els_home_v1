@@ -1,9 +1,9 @@
 /**
  * notice.js — 공지 목록, 필터, 상세
  */
-import { Store, State, BASE_URL } from './store.js?v=5103';
-import { smartFetch } from './bridge.js?v=5103';
-import { formatDate, escHtml, showToast } from './utils.js?v=5103';
+import { Store, State, BASE_URL } from './store.js?v=5104';
+import { smartFetch } from './bridge.js?v=5104';
+import { formatDate, escHtml, showToast } from './utils.js?v=5104';
 
 let _notices             = [];
 let _currentNoticeFilter = '';

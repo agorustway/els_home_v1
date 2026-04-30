@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx-js-style';
 import Script from 'next/script';
 import styles from './route-search.module.css';
 import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
+import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
 
 /* ═══════════════════════════════════════════════════
    상수 정의
@@ -237,12 +238,13 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [mapError, setMapError] = useState(false);
     
     // ── 지역별 기점 할증률 (고시 제23조 카, 타목) ────
-    const regionalBaseSurchargePct = useMemo(() => {
-        const cleanOrigin = origin.text.replace(/\[.*?\]\s*/g, '').trim();
-        if (cleanOrigin.includes('인천')) return 20;
-        if (cleanOrigin.includes('평택')) return 18;
-        return 0;
-    }, [origin.text]);
+    const regionalBaseSurcharge = useMemo(() => getRegionalBaseSurcharge({
+        origin: origin.text,
+        destination: destination.text,
+        tripMode,
+        queryType: 'distance',
+    }), [origin.text, destination.text, tripMode]);
+    const regionalBaseSurchargePct = regionalBaseSurcharge.pct;
 
     // ── 06:00 날짜 표기 ────
     const recent0600 = useMemo(() => getRecent0600(), []);
@@ -1297,7 +1299,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             destination: isSection && fare.destination ? fare.destination : destination.text,
             waypoints: waypoints.filter(w => w.text).map(w => w.text),
             sectionKm: Number(fare.km || distFareResult.matchedKm || 0),
-            roundTripKm: (Number(fare.km || distFareResult.matchedKm || 0) * 2).toFixed(1),
+            roundTripKm: formatSafeFreightKm(Number(fare.km || distFareResult.matchedKm || 0) * 2),
             routeOption: routeName,
 
             // 안전운임 데이터
@@ -1399,7 +1401,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                     ['선택 경로', sel?.desc || selectedRouteKey],
                     ['지도 구간거리', `${distFareResult.routeKm}km`],
                     ['적용 구간거리(고시)', `${distFareResult.matchedKm}km`],
-                    ['적용 왕복거리(고시)', `${(distFareResult.matchedKm * 2).toFixed(1)}km`],
+                    ['적용 왕복거리(고시)', `${formatSafeFreightKm(distFareResult.matchedKm * 2)}km`],
                     ['적용기간', distFareResult.period],
                     ['왕복/편도', tripMode === 'round' ? '왕복' : '편도'],
                     [],
@@ -1948,7 +1950,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>적용 왕복거리 (고시 매칭)</span>
-                                        <strong>{(distFareResult.matchedKm * 2).toFixed(1)}km</strong>
+                                        <strong>{formatSafeFreightKm(distFareResult.matchedKm * 2)}km</strong>
                                     </div>
                                     <div className={styles.distRow}>
                                         <span>적용 기간</span>
@@ -1957,7 +1959,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 </div>
                                 {regionalBaseSurchargePct > 0 && (
                                     <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
-                                        <strong>📍 지역별 기점 할증 적용:</strong> {origin.text.includes('인천') ? '인천' : '평택'} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
+                                        <strong>지역별 기점 할증 적용:</strong> {regionalBaseSurcharge.label} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
                                     </div>
                                 )}
                                 <table className={styles.fareTable}>

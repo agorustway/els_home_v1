@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './safe-freight.module.css';
 import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
 import RouteSearchView from './route-search/RouteSearchView';
+import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
 
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
@@ -509,14 +510,14 @@ export default function SafeFreightPage() {
     };
   }, [options?.surcharges, options?.surchargeRegulation, surchargeIds, roughPct, queryType, tripMode]);
 
-  /** 지역별 기점 할증률 (고시 제23조 카, 타목): 거리제/이외구간 조회 시에만 적용 */
-  const regionalBaseSurchargePct = useMemo(() => {
-    if (queryType === 'section') return 0;
-    const cleanOrigin = origin.replace(/\[.*?\]\s*/g, '').trim();
-    if (cleanOrigin.includes('인천')) return 20;
-    if (cleanOrigin.includes('평택')) return 18;
-    return 0;
-  }, [origin, queryType]);
+  /** 지역별 기점 할증률 (고시 제23조 카, 타목): 거리제/이외구간 왕복 운송에만 적용 */
+  const regionalBaseSurcharge = useMemo(() => getRegionalBaseSurcharge({
+    origin,
+    destination: [region1, region2, region3].join(' '),
+    tripMode,
+    queryType,
+  }), [origin, region1, region2, region3, tripMode, queryType]);
+  const regionalBaseSurchargePct = regionalBaseSurcharge.pct;
 
   /** 십원 단위 반올림 (고시 제7조) */
   const round10 = (val) => Math.round(val / 10) * 10;
@@ -668,7 +669,7 @@ export default function SafeFreightPage() {
         // [중복 방지] 같은 조건(기점, 행선지, 타입, 할증)의 최신 이력이 이미 있으면 추가하지 않음
         const appliedLabels = [
           ...(appliedRow.appliedRegionalPct > 0
-            ? [`📍기점할증(${origin.includes('인천') ? '인천' : '평택'} ${appliedRow.appliedRegionalPct}%)`]
+            ? [`기점할증(${regionalBaseSurcharge.label} ${appliedRow.appliedRegionalPct}%)`]
             : []),
           ...appliedSurchargeInfo.pctApplied.map((s) =>
             s.effective === 100 ? s.label : `${s.label} (50% 적용)`
@@ -695,7 +696,7 @@ export default function SafeFreightPage() {
             origin: data.origin || origin,
             destination: data.destination || [region1, region2, region3].join(' '),
             sectionKm: latest.km,
-            roundTripKm: (latest.km * 2).toFixed(1),
+            roundTripKm: formatSafeFreightKm(latest.km * 2),
             f40위탁: appliedRow.f40위탁,
             f40운수자: appliedRow.f40운수자,
             f40안전: appliedRow.f40안전,
@@ -812,7 +813,7 @@ export default function SafeFreightPage() {
             destination: resultAll.destination ?? '',
             tripMode: applied.tripMode === 'oneWay' ? '편도' : '왕복',
             sectionKm: applied.km,
-            roundTripKm: (applied.km * 2).toFixed(1),
+            roundTripKm: formatSafeFreightKm(applied.km * 2),
             f40위탁: applied.f40위탁,
             f40운수자: applied.f40운수자,
             f40안전: applied.f40안전,
@@ -1461,7 +1462,7 @@ export default function SafeFreightPage() {
                             </span>
                           </td>
                           <td className={styles.cellKm}>{applied.km}</td>
-                          <td className={styles.cellKm}>{(applied.km * 2).toFixed(1)}</td>
+                          <td className={styles.cellKm}>{formatSafeFreightKm(applied.km * 2)}</td>
                           <td className={styles.cellAmount}>{format(applied.f40위탁)}</td>
                           <td className={styles.cellAmount}>{format(applied.f40운수자)}</td>
                           <td className={styles.cellAmount}>{format(applied.f40안전)}</td>
@@ -1535,7 +1536,7 @@ export default function SafeFreightPage() {
                         <span>|</span>
                         <span>구간: <strong>{applied.km}km</strong></span>
                         <span>|</span>
-                        <span>왕복: <strong>{(applied.km * 2).toFixed(1)}km</strong></span>
+                        <span>왕복: <strong>{formatSafeFreightKm(applied.km * 2)}km</strong></span>
                       </div>
                     </div>
                   );
@@ -1543,7 +1544,7 @@ export default function SafeFreightPage() {
               </div>
               {regionalBaseSurchargePct > 0 && (
                 <div className={styles.regionalNote} style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#fff8e1', borderRadius: '8px', borderLeft: '4px solid #ffc107', fontSize: '0.9rem', color: '#856404' }}>
-                  <strong>📍 지역별 기점 할증 적용:</strong> {origin.includes('인천') ? '인천' : '평택'} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조).
+                  <strong>지역별 기점 할증 적용:</strong> {regionalBaseSurcharge.label} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
                 </div>
               )}
               {surchargeIds.size > 0 && (
