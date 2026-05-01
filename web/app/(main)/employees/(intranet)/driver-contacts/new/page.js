@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { CARGO_TYPES, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../intranet.module.css';
 
 export default function DriverContactsNewPage() {
@@ -22,6 +23,8 @@ export default function DriverContactsNewPage() {
     const [formData, setFormData] = useState({
         branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
         contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '',
+        cargo_type: 'container', map_visibility: 'own',
+        general_vehicle_type: '트럭', general_payload: '5ton', general_body_type: '일반',
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -150,6 +153,18 @@ export default function DriverContactsNewPage() {
                             </select>
                         </div>
                         <div className={styles.formGroup}>
+                            <label className={styles.label}>업무유형</label>
+                            <select name="cargo_type" className={styles.input} value={formData.cargo_type} onChange={handleInputChange} style={{ height: '42px' }}>
+                                {CARGO_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>앱 지도 공개범위</label>
+                            <select name="map_visibility" className={styles.input} value={formData.map_visibility} onChange={handleInputChange} style={{ height: '42px' }}>
+                                {MAP_VISIBILITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
                             <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="전화번호" />
                         </div>
@@ -166,16 +181,41 @@ export default function DriverContactsNewPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>차량 아이디</label>
-                            <input name="vehicle_id" className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value.toUpperCase() }))} placeholder="ABCD1234" maxLength={8} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
+                            <input name="vehicle_id" className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value.toUpperCase() }))} placeholder={formData.cargo_type === 'general' ? '일반화물일시 생략가능' : 'ABCD1234'} maxLength={20} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
                         </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>차종</label>
-                            <input name="vehicle_type" className={styles.input} value={formData.vehicle_type} onChange={handleInputChange} placeholder="차종 (예: 25톤 트럭)" />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>샤시종류</label>
-                            <input name="chassis_type" className={styles.input} value={formData.chassis_type} onChange={handleInputChange} placeholder="샤시 종류" />
-                        </div>
+                        {formData.cargo_type === 'general' ? (
+                            <>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>차량종류</label>
+                                    <select name="general_vehicle_type" className={styles.input} value={formData.general_vehicle_type} onChange={handleInputChange} style={{ height: '42px' }}>
+                                        {GENERAL_VEHICLE_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>적재중량</label>
+                                    <select name="general_payload" className={styles.input} value={formData.general_payload} onChange={handleInputChange} style={{ height: '42px' }}>
+                                        {GENERAL_PAYLOADS.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>특장구분</label>
+                                    <select name="general_body_type" className={styles.input} value={formData.general_body_type} onChange={handleInputChange} style={{ height: '42px' }}>
+                                        {GENERAL_BODY_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>차종</label>
+                                    <input name="vehicle_type" className={styles.input} value={formData.vehicle_type} onChange={handleInputChange} placeholder="차종 (예: 25톤 트럭)" />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>샤시종류</label>
+                                    <input name="chassis_type" className={styles.input} value={formData.chassis_type} onChange={handleInputChange} placeholder="샤시 종류" />
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className={styles.formGroup} style={{ marginTop: 30 }}>

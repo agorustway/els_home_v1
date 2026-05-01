@@ -1,5 +1,53 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-01] 컨테이너/일반화물 업무유형 및 지도 공개범위 확장 (v5.10.42)
+### 🚀 Achievement
+- **업무유형 1차 분류 도입**: 운전원정보와 관제 화면에 `컨테이너`/`일반화물` 구분을 추가하고, 계약차량/미계약차량 2차 선별 필터를 구성했습니다.
+- **앱 차량설정 확장**: 차량설정에 업무유형, 지도 공개범위(단독 자기차량만/계약차량끼리/전체 운행차량), 일반화물 차량종류·적재중량·특장구분 선택 항목을 추가했습니다. 일반화물은 차량 ID를 생략 가능하도록 처리했습니다.
+- **일반화물 운행 UI 전환**: 앱 운행 입력과 일지 상세에서 일반화물 차량은 컨테이너 번호/씰번호 대신 화물명/오더·관리번호 중심으로 표시되며, 제원은 차량종류·적재중량·특장구분으로 표시됩니다.
+- **지도 노출 정책 보강**: 앱 지도는 차량설정의 업무유형과 공개범위에 맞춰 같은 그룹 차량만 표시하고, 지도 상단에 전체보기 버튼을 추가했습니다. 웹 관제 지도/리스트도 업무유형 및 계약상태 필터를 반영합니다.
+
+### 🛠 Technical Changes
+- `web/utils/vehicleCargoOptions.mjs`, `web/driver-src/modules/cargoOptions.js`: 업무유형, 지도 공개범위, 일반화물 차량종류/적재중량/특장구분 옵션 상수화.
+- `web/driver-src/index.html`, `modules/profile.js`, `modules/trip.js`, `modules/log.js`, `modules/map.js`, `app.js`: 앱 설정/운행/일지/지도 그룹 필터 및 일반화물 라벨 전환 구현.
+- `web/app/(main)/employees/(intranet)/driver-contacts/*`: 운전원정보 등록/수정/상세/목록에 업무유형, 계약상태, 지도 공개범위 및 일반화물 제원 표시 추가.
+- `web/app/(main)/employees/vehicle-tracking/page.js`, `tracking.module.css`: 웹 관제/운행기록에 업무유형·계약상태 필터 및 일반화물 표시 보강.
+- `web/app/api/vehicle-tracking/trips/*`, `web/app/api/vehicle-tracking/drivers/route.js`, `docker/els-backend/app.py`, `app_core.py`: 운행/지도 응답에 업무유형, 계약상태, 지도 공개범위, 일반화물 제원 메타를 포함하도록 확장.
+- `web/supabase_sql/20260501_vehicle_cargo_type_visibility.sql`: 운영 DB 적용용 컬럼/인덱스 마이그레이션 추가.
+
+### ✅ TDD / Verification
+- `.tmp_test/vehicle_cargo_policy_test.mjs`: 업무유형 옵션 순서, 지도 공개범위 정책값, 일반화물 선택지의 `기타` fallback, 앱 지도 공개범위 필터(`own`/`contracted`/`all`/`includeCompleted`), 안전교육 본문 YouTube URL 숨김, Supabase 마이그레이션 핵심 컬럼 포함 여부를 검증하고 통과 후 삭제했습니다.
+- `web`: `npm.cmd run lint` 통과.
+- `node --check`: `web/driver-src/modules/profile.js`, `trip.js`, `map.js`, `log.js`, `cargoOptions.js`, `web/app/api/vehicle-tracking/trips/route.js`, `trips/[id]/route.js`, `drivers/route.js` 문법검사 통과.
+- `web`: `npm.cmd run build`는 Next.js production compile까지 성공했으나, 타입 검사용 child process 생성 단계에서 현재 로컬 실행 환경의 `spawn EPERM`으로 중단되었습니다. 코드 컴파일 실패가 아닌 워커 프로세스 권한 이슈로 분리 기록합니다.
+- `python`/`py` 명령이 현재 PATH에 없어 NAS Flask 파일 `py_compile` 검증은 실행하지 못했습니다. NAS 배포 전 Python 3.11 환경에서 `docker/els-backend/app.py`, `app_core.py` 구문 확인이 필요합니다.
+
+### 🚚 Deployment Pipeline Notes
+- 1순위: Supabase에 `web/supabase_sql/20260501_vehicle_cargo_type_visibility.sql`을 먼저 적용해야 합니다. 앱/웹/API가 `driver_contacts` 및 `vehicle_trips`의 신규 컬럼을 읽고 쓰므로, 스키마 선반영 없이 배포하면 저장 요청이 실패할 수 있습니다.
+- 2순위: 웹(Vercel)과 NAS core를 함께 배포합니다. NAS `/api/vehicle-tracking` 응답도 운전원 메타를 조인해 업무유형/계약상태/지도공개범위를 내려주도록 변경되었습니다.
+- 3순위: 드라이버 앱은 반드시 `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`로만 빌드합니다. 단독 `npx cap sync` 실행 금지.
+- 배포 후 스모크 테스트: 운전원정보 등록/수정에서 컨테이너·일반화물 및 계약상태 저장, 일반화물 차량 ID 공란 저장, 앱 차량설정 일반화물 옵션 표시, 앱 지도 `전체보기`, 웹 관제 1차/2차 필터, 운행기록 일반화물 라벨 전환을 확인합니다.
+
+## [2026-05-01] 차량관제 표 겹침 해소 및 앱 안전교육 이수 UX 보강 (v5.10.41)
+### 🚀 Achievement
+- **운행기록 테이블 겹침 해소**: 관리자 웹 운행기록 목록에서 `규격/종류`와 `점검여부` 컬럼 폭을 고정하고 셀 클래스를 분리해 입력/select 영역이 점검여부와 겹치지 않도록 보정했습니다.
+- **안전교육 이수 조건 개선**: 앱 안전교육 상세에서 HTML5 동영상은 80% 이상 시청, YouTube/PDF/본문 자료는 1분 확인 후 `시청 완료 및 이수 기록` 버튼이 활성화되도록 변경했습니다.
+- **안전교육 본문 주소 숨김**: 본문에 붙여넣은 YouTube 원본 URL은 영상 임베드 추출에만 사용하고, 앱 상세 본문에서는 보이지 않도록 처리했습니다.
+- **이수완료 상태 유지**: 완료한 교육은 로컬 저장소에 남기고 상세 재진입 시 `이수완료` 버튼 상태로 표시되며, 서버 중복 이수 응답도 기존 완료 시간을 반환하도록 보강했습니다.
+- **공지 필터 전환 보정**: 공지 상세를 읽는 중에도 상단 `긴급알림/일반공지/작업안내/안전교육` 버튼을 누르면 상세를 닫고 해당 목록으로 즉시 이동하도록 수정했습니다.
+- **앱 일지 버튼 높이 통일**: 일지 상세의 `기록 수정 저장` 버튼 높이를 다른 입력 항목과 동일한 44px로 맞췄습니다.
+- **스플래시 분리 적용**: 웹 크롬앱으로 열리는 사이트에서는 `splash.jpg` 기반 React/iOS 스플래시를 제거해 빠르게 창이 뜨게 하고, Android 차량관제앱 네이티브 launch splash는 동일 `splash.jpg` 이미지로 변경했습니다.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/vehicle-tracking/page.js`, `tracking.module.css`: 규격/종류·점검여부 컬럼 전용 클래스 및 모바일 카드 컬럼 순서 보정.
+- `web/driver-src/modules/notice.js`: 안전교육 이수 버튼 60초 타이머, HTML5 동영상 80% 감지, 완료 상태 재진입 UI 처리.
+- `web/driver-src/modules/notice.js`: 공지 상세 활성 상태에서 분류 필터 클릭 시 상세 닫기 및 목록 스크롤 초기화 처리.
+- `web/utils/vehicleEducation.mjs`, `web/app/(standalone)/driver-app/page.js`: YouTube URL 제거 유틸 추가 및 React 기반 드라이버 앱 상세 본문에 적용.
+- `web/app/api/vehicle-tracking/education/complete/route.js`: 중복 이수 시 기존 `created_at`을 `completed_at`으로 반환.
+- `web/driver-src/index.html`: 일지 상세 저장 버튼 높이 44px 적용.
+- `web/app/(main)/layout.js`: 웹 PWA 스플래시 컴포넌트 및 iOS startup image 참조 제거.
+- `web/capacitor.config.ts`, `web/android/app/src/main/res/values/styles.xml`, `web/android/app/src/main/res/drawable/splash.jpg`, `splash_screen.xml`: Android 네이티브 스플래시 이미지 리소스 연결.
+
 ## [2026-05-01] 관리자 웹 정산 기능 고도화 및 드라이버 앱 UI 2차 최적화 (v5.10.40)
 ### 🚀 Achievement
 - **운행기록 및 교육이수 관리 분리**: 교육 이수 기록을 별도의 '교육이수' 탭으로 독립시켜 운행 기록과 혼재되지 않도록 관리 효율성을 높였습니다.

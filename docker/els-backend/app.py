@@ -453,9 +453,30 @@ def get_vehicle_tracking():
             tid = l["trip_id"]
             if tid not in loc_map:
                 loc_map[tid] = l
+
+        driver_map = {}
+        vehicle_numbers = list({t.get("vehicle_number") for t in trips if t.get("vehicle_number")})
+        if vehicle_numbers:
+            try:
+                driver_res = supabase.from_("driver_contacts") \
+                    .select("vehicle_number, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type") \
+                    .in_("vehicle_number", vehicle_numbers) \
+                    .execute()
+                for d in (driver_res.data or []):
+                    if d.get("vehicle_number"):
+                        driver_map[d["vehicle_number"]] = d
+            except Exception as meta_err:
+                app.logger.warning(f"운전원 메타 조회 실패(무시): {meta_err}")
         
         latest_by_vehicle = {}
         for t in trips:
+            d = driver_map.get(t.get("vehicle_number")) or {}
+            t["cargo_type"] = t.get("cargo_type") or d.get("cargo_type") or "container"
+            t["driver_contract_type"] = t.get("driver_contract_type") or d.get("contract_type") or "uncontracted"
+            t["map_visibility"] = t.get("map_visibility") or d.get("map_visibility") or "own"
+            t["general_vehicle_type"] = t.get("general_vehicle_type") or d.get("general_vehicle_type")
+            t["general_payload"] = t.get("general_payload") or d.get("general_payload")
+            t["general_body_type"] = t.get("general_body_type") or d.get("general_body_type")
             t["lastLocation"] = loc_map.get(t["id"])
             t["last_location_address"] = t["lastLocation"]["address"] if t["lastLocation"] else None
             vehicle_key = (t.get("vehicle_number") or t.get("vehicle_id") or t.get("id") or "").replace(" ", "").upper()

@@ -283,6 +283,26 @@
     white-space: nowrap;
 }
 
+.containerSpecCell {
+    min-width: 160px;
+    width: 160px;
+    box-sizing: border-box;
+}
+
+.containerSpecCell select {
+    display: block;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.checkCell {
+    min-width: 150px;
+    width: 150px;
+    box-sizing: border-box;
+    font-size: 12px;
+    letter-spacing: 0;
+}
+
 .tripTable th {
     background: #f8fafc;
     color: #64748b;
@@ -666,27 +686,39 @@
         padding-right: 28px;
     }
 
-    /* 기사명 */
+    /* 구분 */
     .tripTable td:nth-child(3) {
+        font-size: 0.78rem;
+        color: #475569;
+    }
+
+    /* 기사명 */
+    .tripTable td:nth-child(4) {
         font-size: 1rem;
         color: #1e293b;
         font-weight: 800;
     }
 
     /* 차량/컨테이너 */
-    .tripTable td:nth-child(4) {
+    .tripTable td:nth-child(5) {
         font-size: 0.8rem;
         color: #475569;
     }
 
+    /* 규격/종류 */
+    .tripTable td:nth-child(6) { font-size: 0.83rem; letter-spacing: 0; }
+
     /* 점검여부 */
-    .tripTable td:nth-child(5) { font-size: 0.88rem; letter-spacing: 1px; }
+    .tripTable td:nth-child(7) { font-size: 0.88rem; letter-spacing: 1px; }
+
+    /* 일보/메모 */
+    .tripTable td:nth-child(8) { font-size: 0.83rem; }
 
     /* 사진 */
-    .tripTable td:nth-child(6) { font-size: 0.83rem; }
+    .tripTable td:nth-child(9) { font-size: 0.83rem; }
 
     /* 날짜 */
-    .tripTable td:nth-child(7) {
+    .tripTable td:nth-child(10) {
         font-size: 0.78rem;
         color: #64748b;
         padding-top: 8px;
@@ -698,7 +730,7 @@
     }
 
     /* 최종위치 */
-    .tripTable td:nth-child(8) {
+    .tripTable td:nth-child(11) {
         font-size: 0.8rem !important;
         color: #374151 !important;
         max-width: 100% !important;

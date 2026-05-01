@@ -8,6 +8,7 @@ import { formatDate, escHtml, showToast } from './utils.js?v=5140';
 let _notices             = [];
 let _currentNoticeFilter = '';
 let _currentEducationProgress = null;
+const EDUCATION_FALLBACK_SECONDS = 60;
 
 function toYouTubeEmbedUrl(rawUrl = '') {
   const raw = String(rawUrl || '').trim();
@@ -31,6 +32,14 @@ function extractYouTubeUrls(text = '') {
   const source = String(text || '');
   return [...source.matchAll(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/gi)]
     .map(match => match[0]);
+}
+
+function stripYouTubeUrls(text = '') {
+  return String(text || '')
+    .replace(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/gi, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function renderEducationMedia(notice) {
@@ -72,18 +81,41 @@ function isEducationCompleted(id) {
 function updateEducationButtonState() {
   const btn = document.getElementById('education-complete-btn');
   if (!btn || !_currentEducationProgress) return;
+  if (_currentEducationProgress.completed) {
+    btn.disabled = true;
+    btn.style.background = '#059669';
+    btn.style.opacity = '1';
+    btn.textContent = '이수완료';
+    return;
+  }
   const videoReady = _currentEducationProgress.videoTotal === 0 || _currentEducationProgress.videoWatched.size >= _currentEducationProgress.videoTotal;
-  const ready = videoReady;
+  const ready = videoReady && _currentEducationProgress.timerDone;
   btn.disabled = !ready;
   btn.style.background = ready ? '#2563eb' : '#ef4444';
   btn.style.opacity = ready ? '1' : '0.85';
-  btn.textContent = ready ? '시청 완료 및 이수 기록' : '자료 확인 후 이수 가능';
+  btn.textContent = ready ? '시청 완료 및 이수 기록' : `자료 확인 중 ${_currentEducationProgress.remainingSeconds}초`;
+  const hint = document.getElementById('education-complete-hint');
+  if (hint) {
+    hint.textContent = ready
+      ? '교육 확인이 완료되었습니다. 아래 버튼으로 이수 기록을 저장하세요.'
+      : '동영상은 80% 이상 시청, 유튜브/PDF/본문 자료는 1분 확인 후 이수 기록이 가능합니다.';
+  }
 }
 
-function bindEducationProgress() {
+function bindEducationProgress(noticeId) {
   const countEl = document.getElementById('education-video-count');
   const videoTotal = Number(countEl?.dataset?.count || 0);
-  _currentEducationProgress = { videoTotal, videoWatched: new Set(), readConfirmed: true };
+  if (_currentEducationProgress?.timer) clearInterval(_currentEducationProgress.timer);
+  const completed = isEducationCompleted(noticeId);
+  _currentEducationProgress = {
+    videoTotal,
+    videoWatched: new Set(),
+    readConfirmed: true,
+    timerDone: completed,
+    remainingSeconds: completed ? 0 : EDUCATION_FALLBACK_SECONDS,
+    completed,
+    timer: null,
+  };
 
   document.querySelectorAll('[data-edu-video]').forEach((el) => {
     if (el.tagName === 'VIDEO') {
@@ -94,14 +126,21 @@ function bindEducationProgress() {
         }
       });
     } else {
-      el.addEventListener('load', () => {
-        setTimeout(() => {
-          _currentEducationProgress.videoWatched.add(el.dataset.eduVideo);
-          updateEducationButtonState();
-        }, 3000);
-      }, { once: true });
+      _currentEducationProgress.videoWatched.add(el.dataset.eduVideo);
     }
   });
+  if (!completed) {
+    _currentEducationProgress.timer = setInterval(() => {
+      if (!_currentEducationProgress) return;
+      _currentEducationProgress.remainingSeconds = Math.max(0, _currentEducationProgress.remainingSeconds - 1);
+      if (_currentEducationProgress.remainingSeconds <= 0) {
+        _currentEducationProgress.timerDone = true;
+        clearInterval(_currentEducationProgress.timer);
+        _currentEducationProgress.timer = null;
+      }
+      updateEducationButtonState();
+    }, 1000);
+  }
   updateEducationButtonState();
 }
 
@@ -111,6 +150,7 @@ function normalizeNoticeBody(notice) {
     .replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/&lt;\/p&gt;/gi, '\n').replace(/&lt;p&gt;/gi, '')
     .replace(/&lt;[^&]*&gt;/g, '')
     .replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
+  raw = stripYouTubeUrls(raw);
   return raw.trim().replace(/\n\s*\n/g, '\n').replace(/\n/g, '<br>');
 }
 
@@ -170,6 +210,10 @@ export async function loadNotices() {
 
 // ─── 필터 ────────────────────────────────────────────────────────
 export function filterNotice(category, btnElement) {
+  if (document.getElementById('notice-detail')?.classList.contains('active')) {
+    closeNoticeDetail();
+  }
+
   if (_currentNoticeFilter === category) {
     _currentNoticeFilter = '';
     btnElement = null;
@@ -188,6 +232,8 @@ export function filterNotice(category, btnElement) {
     btnElement.style.border     = 'none';
   }
   renderNoticeList();
+  const listEl = document.getElementById('notice-list');
+  if (listEl) listEl.scrollTop = 0;
 }
 
 // ─── 목록 렌더 ───────────────────────────────────────────────────
@@ -243,11 +289,12 @@ export function openNotice(id) {
   }
   const mediaEl = document.getElementById('notice-detail-media');
   if (mediaEl) {
+    const completed = n.category === '안전교육' && isEducationCompleted(n.id);
     const completeBtn = n.category === '안전교육'
-      ? `<button id="education-complete-btn" class="btn btn-primary" style="width:100%;margin-top:12px;background:#ef4444;" onclick="App.completeSafetyEducation('${n.id}')" disabled>자료 확인 후 이수 가능</button>`
+      ? `<button id="education-complete-btn" class="btn btn-primary" style="width:100%;margin-top:12px;background:${completed ? '#059669' : '#ef4444'};" onclick="App.completeSafetyEducation('${n.id}')" disabled>${completed ? '이수완료' : `자료 확인 중 ${EDUCATION_FALLBACK_SECONDS}초`}</button>`
       : '';
     mediaEl.innerHTML = `${renderEducationMedia(n)}${completeBtn}`;
-    if (n.category === '안전교육') setTimeout(bindEducationProgress, 0);
+    if (n.category === '안전교육') setTimeout(() => bindEducationProgress(n.id), 0);
   }
 
   document.getElementById('notice-list').style.display = 'none';
@@ -271,6 +318,11 @@ export function confirmEducationRead() {
 
 export async function completeSafetyEducation(id) {
   const n = _notices.find(x => String(x.id) === String(id));
+  if (isEducationCompleted(id)) {
+    showToast('이미 이수 완료된 교육입니다.');
+    updateEducationButtonState();
+    return;
+  }
   const trip = State.trip || {};
   try {
     const res = await smartFetch(`${BASE_URL}/api/vehicle-tracking/education/complete`, {
@@ -291,6 +343,8 @@ export async function completeSafetyEducation(id) {
     const saved = await res.json().catch(() => ({}));
     const completedAt = saved.completed_at || new Date().toISOString();
     setEducationCompleted(id, { completed_at: completedAt, trip_id: saved.trip_id || trip.id || null, title: n.title });
+    if (_currentEducationProgress) _currentEducationProgress.completed = true;
+    updateEducationButtonState();
     renderNoticeList();
     showToast('안전교육 이수 기록 저장 완료');
   } catch (e) {
@@ -299,6 +353,8 @@ export async function completeSafetyEducation(id) {
 }
 
 export function closeNoticeDetail() {
+  if (_currentEducationProgress?.timer) clearInterval(_currentEducationProgress.timer);
+  _currentEducationProgress = null;
   document.getElementById('notice-detail').classList.remove('active');
   document.getElementById('notice-list').style.display = '';
 }

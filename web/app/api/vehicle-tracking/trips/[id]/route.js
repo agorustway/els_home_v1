@@ -39,6 +39,11 @@ async function syncDriverContact(supabase, trip) {
         last_seal_number: trip.seal_number,
         last_container_type: trip.container_type,
         last_container_kind: trip.container_kind,
+        cargo_type: trip.cargo_type || 'container',
+        map_visibility: trip.map_visibility || 'own',
+        general_vehicle_type: trip.general_vehicle_type || null,
+        general_payload: trip.general_payload || null,
+        general_body_type: trip.general_body_type || null,
         last_trip_started_at: trip.started_at,
         last_trip_completed_at: trip.completed_at || new Date().toISOString(),
     };
@@ -106,7 +111,13 @@ export async function PATCH(request, { params }) {
     try {
         const body = await request.json();
         // ... (이하 동일)
-        const { action, photos, special_notes, container_number, seal_number, container_type, container_kind, transport_type, billing_amount, work_site, vehicle_id, driver_name, driver_phone, vehicle_number, source, admin_edit } = body;
+        const {
+            action, photos, special_notes, container_number, seal_number, container_type, container_kind,
+            transport_type, billing_amount, work_site, vehicle_id, driver_name, driver_phone,
+            vehicle_number, source, admin_edit, cargo_type, cargo_item, cargo_order_number,
+            cargo_weight, general_vehicle_type, general_payload, general_body_type,
+            map_visibility, driver_contract_type,
+        } = body;
 
         // 기존 데이터 조회 (로그용)
         const { data: oldData } = await supabase
@@ -142,6 +153,15 @@ export async function PATCH(request, { params }) {
         if (transport_type !== undefined) updates.transport_type = transport_type;
         if (billing_amount !== undefined) updates.billing_amount = billing_amount;
         if (work_site !== undefined) updates.work_site = work_site;
+        if (cargo_type !== undefined) updates.cargo_type = cargo_type;
+        if (cargo_item !== undefined) updates.cargo_item = cargo_item;
+        if (cargo_order_number !== undefined) updates.cargo_order_number = cargo_order_number;
+        if (cargo_weight !== undefined) updates.cargo_weight = cargo_weight;
+        if (general_vehicle_type !== undefined) updates.general_vehicle_type = general_vehicle_type;
+        if (general_payload !== undefined) updates.general_payload = general_payload;
+        if (general_body_type !== undefined) updates.general_body_type = general_body_type;
+        if (map_visibility !== undefined) updates.map_visibility = map_visibility;
+        if (driver_contract_type !== undefined) updates.driver_contract_type = driver_contract_type;
         if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
         // [v5.10.42] admin_edit 시 driver_name 보존 (기사명이 '마감담당자'로 바뀌지 않도록)
         if (driver_name !== undefined && !admin_edit) updates.driver_name = driver_name;
@@ -151,7 +171,7 @@ export async function PATCH(request, { params }) {
         // [v5.10.42] 관리자 수정 필드 추적: admin_edited_fields에 수정된 필드 누적
         if (admin_edit && oldData) {
             const prevAdminFields = oldData.admin_edited_fields || [];
-            const editedFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'transport_type', 'billing_amount', 'work_site', 'special_notes']
+            const editedFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'transport_type', 'billing_amount', 'work_site', 'special_notes', 'cargo_item', 'cargo_order_number', 'cargo_weight', 'general_vehicle_type', 'general_payload', 'general_body_type']
                 .filter(f => updates[f] !== undefined && updates[f] !== oldData[f]);
             const merged = [...new Set([...prevAdminFields, ...editedFields])];
             updates.admin_edited_fields = merged;
@@ -194,7 +214,7 @@ export async function PATCH(request, { params }) {
         // 수정 로그 기록 (수정 모드일 경우)
         if (oldData && !action) {
             const logEntries = [];
-            const checkFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'transport_type', 'billing_amount', 'work_site', 'is_closed', 'special_notes'];
+            const checkFields = ['container_number', 'seal_number', 'container_type', 'container_kind', 'transport_type', 'billing_amount', 'work_site', 'is_closed', 'special_notes', 'cargo_item', 'cargo_order_number', 'cargo_weight', 'general_vehicle_type', 'general_payload', 'general_body_type'];
             checkFields.forEach(f => {
                 if (updates[f] !== undefined && updates[f] !== oldData[f]) {
                     logEntries.push({

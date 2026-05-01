@@ -11,6 +11,7 @@ import { smartFetch, remoteLog } from './bridge.js?v=5140';
 import { showToast } from './utils.js?v=5140';
 import { showScreen } from './nav.js?v=5140';
 import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5140';
+import { filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5140';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -26,6 +27,10 @@ let _endMarker   = null;           // 경로 현재위치 마커
 let _trips       = [];             // 최신 운행 데이터
 let _mapPollTimer = null;          // 폴링 타이머
 let _sdkReady    = false;          // SDK 로드 완료 여부
+
+function getVisibleTrips(trips, includeCompleted = false) {
+  return filterTripsForMapVisibility(prepareLiveTrips(trips), State.profile, includeCompleted);
+}
 
 // ─── SDK 동적 로드 (openMap 시점에 lazy) ───────────────────────────
 function loadNaverSDK() {
@@ -154,8 +159,7 @@ function makeWaypointIcon(color) {
 function updateVehicleMarkers(trips) {
   if (!_map) return;
 
-  const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
-  const visible    = prepareLiveTrips(trips).filter(t => t.lastLocation && (contracted || isMyTrip(t)));
+  const visible = getVisibleTrips(trips, true);
   const visibleIds = new Set(visible.map(t => t.id));
 
   // 사라진 마커 제거
@@ -246,11 +250,11 @@ function drawPolyline(path, options = {}) {
 
 // ─── 하단 차량 목록 렌더링 ───────────────────────────────────────────
 function renderTripList(trips) {
-  const contracted = (State.profile.driverId || '').toUpperCase().startsWith('ELSS');
-  const visible    = prepareLiveTrips(trips).filter(t => t.status !== 'completed' && (contracted || isMyTrip(t)));
+  const visible = getVisibleTrips(trips, false);
 
   const countEl = document.getElementById('map-panel-count');
-  if (countEl) countEl.textContent = visible.length > 0 ? `${visible.length}대 운행 중` : '운행 차량 없음';
+  const cargoLabel = (State.profile.cargoType || 'container') === 'general' ? '일반화물' : '컨테이너';
+  if (countEl) countEl.textContent = visible.length > 0 ? `${cargoLabel} ${visible.length}대 운행 중` : `${cargoLabel} 운행 차량 없음`;
 
   const container = document.getElementById('map-trip-items');
   if (!container) return;
@@ -269,7 +273,7 @@ function renderTripList(trips) {
          onclick="App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
       <div style="font-weight:800;">${trip.vehicle_number || '-'}</div>
       <div style="font-size:12px;color:#64748b;">
-        ${trip.lastLocation?.address || '위치 정보 없음'}
+        ${trip.driver_name || '-'} · ${(trip.driver_contract_type || trip.contract_type) === 'contracted' ? '계약' : '미계약'} · ${trip.lastLocation?.address || '위치 정보 없음'}
       </div>
     </div>
   `).join('');
@@ -277,9 +281,7 @@ function renderTripList(trips) {
 
 // ─── 유틸 ───────────────────────────────────────────────────────────
 function isMyTrip(trip) {
-  const myV = (State.profile.vehicleNo || '').replace(/\s/g, '').toUpperCase();
-  const tV  = (trip.vehicle_number  || '').replace(/\s/g, '').toUpperCase();
-  return tV && tV === myV;
+  return isOwnVehicleTrip(trip, State.profile);
 }
 
 function normalizeSpeed(value) {
@@ -412,6 +414,25 @@ export function centerMyLocation() {
     },
     () => showToast('위치 정보를 가져올 수 없습니다.')
   );
+}
+
+/** 현재 공개범위 내 전체 차량 보기 */
+export function showAllMapVehicles() {
+  if (!_map) return;
+  const visible = getVisibleTrips(_trips, true);
+  if (!visible.length) {
+    showToast('현재 공개범위에 표시할 차량이 없습니다.');
+    return;
+  }
+  try {
+    const bounds = new naver.maps.LatLngBounds();
+    visible.forEach(t => bounds.extend(new naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng)));
+    _map.fitBounds(bounds, { top: 70, right: 35, bottom: 240, left: 35 });
+  } catch {
+    const first = visible[0].lastLocation;
+    _map.setCenter(new naver.maps.LatLng(first.lat, first.lng));
+    _map.setZoom(12, true);
+  }
 }
 
 /** 특정 차량의 경로를 지도 위에 표시 */

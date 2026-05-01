@@ -34,6 +34,8 @@
 **실시간 차량 위치 목록 조회**
 - **Usage**: 대시보드에서 모든 운전원의 최신 위치와 상태를 한눈에 파악.
 - **Response**: `Array<VehicleObject>` (24시간 내 데이터 및 최신 위치 병합)
+- **v5.10.42 Metadata**: `driver_contacts` 조인 결과를 반영해 `cargo_type`, `driver_contract_type`, `map_visibility`, `general_vehicle_type`, `general_payload`, `general_body_type`을 함께 반환합니다.
+- **Filtering Policy**: 웹은 업무유형(`container`/`general`) 1차 필터와 계약상태(`contracted`/`uncontracted`) 2차 필터를 적용합니다. 드라이버 앱 지도는 운전원 차량설정의 `cargo_type` 및 `map_visibility` 기준으로 자기차량/계약차량/전체운행차량을 선별합니다.
 
 ### [GET] `/api/vehicle-tracking/trips/[id]/locations`
 **특정 트립의 이동 경로 기록 조회**

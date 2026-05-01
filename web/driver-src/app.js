@@ -18,13 +18,14 @@ import {
 // 프로필
 import {
   saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
+  onCargoTypeChange, updateCargoProfileUI,
 } from './modules/profile.js?v=5140';
 
 // 운행 + 오버레이
 import {
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist, checkChecklistValid,
-  startOverlayService, updateOverlayStatus, stopOverlayService,
+  startOverlayService, updateOverlayStatus, stopOverlayService, updateTripCargoUI,
 } from './modules/trip.js?v=5140';
 
 // GPS
@@ -59,7 +60,7 @@ import { checkUpdate } from './modules/update.js?v=5140';
 // 지도
 import {
   openMap, closeMap, refreshMapData, centerMyLocation,
-  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
+  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles,
 } from './modules/map.js?v=5140';
 
 // 초기화
@@ -90,10 +91,11 @@ window.App = {
 
   // 프로필
   saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
+  onCargoTypeChange, updateCargoProfileUI,
 
   // 운행
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
-  openChecklist, closeChecklist, saveChecklist, checkChecklistValid,
+  openChecklist, closeChecklist, saveChecklist, checkChecklistValid, updateTripCargoUI,
 
   // GPS / 실시간
   startRealtimeMode, stopRealtimeMode, updateTripStatusLine,
@@ -119,7 +121,7 @@ window.App = {
 
   // 지도
   openMap, closeMap, refreshMapData, centerMyLocation,
-  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute,
+  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles,
 
   // 앱 종료
   exitApp,

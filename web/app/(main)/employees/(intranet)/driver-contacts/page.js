@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
 import ContactFilterBar from '@/components/ContactFilterBar';
 import { useUserRole } from '@/hooks/useUserRole';
+import { cargoTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../intranet.module.css';
 
 export default function DriverContactsPage() {
@@ -14,6 +15,8 @@ export default function DriverContactsPage() {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchKeyword, setSearchKeyword] = useState('');
+    const [cargoFilter, setCargoFilter] = useState('all');
+    const [contractFilter, setContractFilter] = useState('all');
 
     const formatPhone = (val) => {
         if (!val) return '-';
@@ -41,6 +44,8 @@ export default function DriverContactsPage() {
     if (!role) return null;
 
     const filteredList = list.filter(item => {
+        if (cargoFilter !== 'all' && (item.cargo_type || 'container') !== cargoFilter) return false;
+        if (contractFilter !== 'all' && (item.contract_type || 'uncontracted') !== contractFilter) return false;
         if (searchKeyword) {
             const q = searchKeyword.toLowerCase();
             return (
@@ -69,6 +74,18 @@ export default function DriverContactsPage() {
                 searchKeyword={searchKeyword} 
                 setSearchKeyword={setSearchKeyword} 
             />
+            <div style={{ display: 'flex', gap: 8, margin: '0 0 12px', flexWrap: 'wrap' }}>
+                <select value={cargoFilter} onChange={e => setCargoFilter(e.target.value)} className={styles.input} style={{ width: 160, height: 38 }}>
+                    <option value="all">전체 업무유형</option>
+                    <option value="container">컨테이너</option>
+                    <option value="general">일반화물</option>
+                </select>
+                <select value={contractFilter} onChange={e => setContractFilter(e.target.value)} className={styles.input} style={{ width: 160, height: 38 }}>
+                    <option value="all">전체 계약상태</option>
+                    <option value="contracted">계약차량</option>
+                    <option value="uncontracted">미계약차량</option>
+                </select>
+            </div>
 
             {/* ── 모바일 카드 뷰 (768px 이하) ── */}
             <div className={styles.mobileList}>
@@ -86,7 +103,7 @@ export default function DriverContactsPage() {
                                 ) : (
                                     <div style={{ width: 38, height: 38, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1rem', flexShrink: 0 }}>👤</div>
                                 )}
-                                <span className={styles.cardName}>{item.name}</span>
+                            <span className={styles.cardName}>{item.name}</span>
                             </div>
                             <span className={styles.cardBadge} style={{
                                 background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
@@ -109,6 +126,7 @@ export default function DriverContactsPage() {
                         )}
                         {(item.vehicle_number || item.vehicle_id) && (
                             <div className={styles.cardMeta}>
+                                <span>{cargoTypeLabel(item.cargo_type || 'container')}</span><span>·</span>
                                 {item.vehicle_number && <span>차량: {item.vehicle_number}</span>}
                                 {item.vehicle_id && <><span>·</span><span>{item.vehicle_id}</span></>}
                             </div>
@@ -125,13 +143,14 @@ export default function DriverContactsPage() {
                             <tr>
                                 <th style={{ width: '60px', textAlign: 'center' }}>사진</th>
                                 <th style={{ whiteSpace: 'nowrap', textAlign: 'center', padding: '12px 16px' }}>계약</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>업무유형</th>
                                 <th className={styles.colTitle} style={{ minWidth: '100px' }}>이름</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량번호</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량ID</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>마지막 컨테이너</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>타입</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>종류</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량/제원</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>앱 지도범위</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>마지막 운행</th>
                                 <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
                             </tr>
@@ -156,13 +175,14 @@ export default function DriverContactsPage() {
                                             {item.contract_type === 'contracted' ? '계약' : '미계약'}
                                         </span>
                                     </td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '12px 16px', fontWeight: 700, color: (item.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>{cargoTypeLabel(item.cargo_type || 'container')}</td>
                                     <td className={styles.colTitle} style={{ whiteSpace: 'nowrap' }}>{item.name}</td>
                                     <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{formatPhone(item.phone)}</a> : '—'}</td>
                                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_number || '-'}</td>
                                     <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_id || '-'}</td>
                                     <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_number || '-'}</td>
-                                    <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_type || '-'}</td>
-                                    <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_kind || '-'}</td>
+                                    <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '12px 16px' }}>{(item.cargo_type || 'container') === 'general' ? `${item.general_vehicle_type || '-'} / ${item.general_payload || '-'} / ${item.general_body_type || '-'}` : `${item.last_container_type || '-'} / ${item.last_container_kind || '-'}`}</td>
+                                    <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{mapVisibilityLabel(item.map_visibility || 'own')}</td>
                                     <td style={{ fontSize: '0.85rem', color: '#94a3b8', whiteSpace: 'nowrap', padding: '12px 16px' }}>
                                         {item.last_trip_started_at ? new Date(item.last_trip_started_at).toLocaleDateString() : '-'}
                                     </td>
@@ -170,7 +190,7 @@ export default function DriverContactsPage() {
                                 </tr>
                             ))}
                             {filteredList.length === 0 && (
-                                <tr><td colSpan="11" className={styles.empty}>검색 결과가 없습니다.</td></tr>
+                                <tr><td colSpan="12" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                             )}
                         </tbody>
                     </table>

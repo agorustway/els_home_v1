@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { cargoTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../intranet.module.css';
 
 export default function DriverContactsDetailPage() {
@@ -129,6 +130,14 @@ export default function DriverContactsDetailPage() {
                             </div>
                         </div>
                         <div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>업무유형</label>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: (item.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>{cargoTypeLabel(item.cargo_type || 'container')}</div>
+                        </div>
+                        <div>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>앱 지도 공개범위</label>
+                            <div>{mapVisibilityLabel(item.map_visibility || 'own')}</div>
+                        </div>
+                        <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>연락처</label>
                             <div style={{ fontSize: '1.2rem', color: '#2563eb', fontWeight: 600 }}>{formatPhone(item.phone)}</div>
                         </div>
@@ -138,14 +147,20 @@ export default function DriverContactsDetailPage() {
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량아이디</label>
-                            <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || '-'}</div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차종</label>
-                            <div>{item.vehicle_type || '-'}</div>
+                            <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || ((item.cargo_type || 'container') === 'general' ? '일반화물일시 생략가능' : '-')}</div>
                         </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>샤시종류</label>
-                            <div>{item.chassis_type || '-'}</div>
-                        </div>
+                        {(item.cargo_type || 'container') === 'general' ? (
+                            <>
+                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량종류</label><div>{item.general_vehicle_type || '-'}</div></div>
+                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>적재중량</label><div>{item.general_payload || '-'}</div></div>
+                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>특장구분</label><div>{item.general_body_type || '-'}</div></div>
+                            </>
+                        ) : (
+                            <>
+                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차종</label><div>{item.vehicle_type || '-'}</div></div>
+                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>샤시종류</label><div>{item.chassis_type || '-'}</div></div>
+                            </>
+                        )}
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>소속지점</label>
                             <div style={{ color: '#10b981', fontWeight: 600 }}>{item.branch || '-'}</div>

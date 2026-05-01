@@ -33,8 +33,9 @@ export function openSettings() {
 
 export function switchTab(tab) {
   // 프로필 미완성이면 탭 전환 차단
+  const isGeneralCargo = State.profile.cargoType === 'general';
   const profileDone = State.profile.name?.trim() && State.profile.phone?.trim()
-    && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
+    && State.profile.vehicleNo?.trim() && (isGeneralCargo || State.profile.driverId?.trim());
   if (!profileDone) {
     window.App?.showToast('차량 정보를 먼저 저장해 주세요.');
     return;
@@ -151,8 +152,9 @@ export async function init() {
     }
 
     // 프로필 완성도 검사 (빈 값 제외, 업데이트 후 부실 데이터 방지)
+    const isGeneralCargo = State.profile.cargoType === 'general';
     const hasProfile = State.profile.name?.trim() && State.profile.phone?.trim()
-      && State.profile.vehicleNo?.trim() && State.profile.driverId?.trim();
+      && State.profile.vehicleNo?.trim() && (isGeneralCargo || State.profile.driverId?.trim());
 
     if (!hasProfile) {
       openSettings();

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { CARGO_TYPES, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../../intranet.module.css';
 
 export default function DriverContactsEditPage() {
@@ -17,6 +18,8 @@ export default function DriverContactsEditPage() {
     const [formData, setFormData] = useState({
         branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
         contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '', photo_driver: '',
+        cargo_type: 'container', map_visibility: 'own',
+        general_vehicle_type: '트럭', general_payload: '5ton', general_body_type: '일반',
     });
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -40,13 +43,18 @@ export default function DriverContactsEditPage() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.item) {
-                        const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, vehicle_number, vehicle_id, photo_driver } = data.item;
+                        const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, vehicle_number, vehicle_id, photo_driver, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type } = data.item;
                         setFormData({ 
                             branch: branch || '', name, phone: formatPhone(phone), vehicle_type, chassis_type, photo_url, 
                             contract_type: contract_type || 'uncontracted', 
                             vehicle_number: vehicle_number || '', 
                             vehicle_id: vehicle_id || '',
-                            photo_driver: photo_driver || ''
+                            photo_driver: photo_driver || '',
+                            cargo_type: cargo_type || 'container',
+                            map_visibility: map_visibility || 'own',
+                            general_vehicle_type: general_vehicle_type || '트럭',
+                            general_payload: general_payload || '5ton',
+                            general_body_type: general_body_type || '일반',
                         });
                         setAttachments(additional_docs || []);
                     }
@@ -143,6 +151,18 @@ export default function DriverContactsEditPage() {
                             </select>
                         </div>
                         <div className={styles.formGroup}>
+                            <label className={styles.label}>업무유형</label>
+                            <select className={styles.input} value={formData.cargo_type} onChange={(e) => setFormData({ ...formData, cargo_type: e.target.value })} style={{ height: '42px' }}>
+                                {CARGO_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>앱 지도 공개범위</label>
+                            <select className={styles.input} value={formData.map_visibility} onChange={(e) => setFormData({ ...formData, map_visibility: e.target.value })} style={{ height: '42px' }}>
+                                {MAP_VISIBILITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
                             <input name="phone" className={styles.input} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} />
                         </div>
@@ -159,16 +179,41 @@ export default function DriverContactsEditPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>차량아이디</label>
-                            <input className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value.toUpperCase() })} placeholder="ABCD1234" maxLength={8} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
+                            <input className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value.toUpperCase() })} placeholder={formData.cargo_type === 'general' ? '일반화물일시 생략가능' : 'ABCD1234'} maxLength={20} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
                         </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>차종</label>
-                            <input className={styles.input} value={formData.vehicle_type} onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })} />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>샤시종류</label>
-                            <input className={styles.input} value={formData.chassis_type} onChange={(e) => setFormData({ ...formData, chassis_type: e.target.value })} />
-                        </div>
+                        {formData.cargo_type === 'general' ? (
+                            <>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>차량종류</label>
+                                    <select className={styles.input} value={formData.general_vehicle_type} onChange={(e) => setFormData({ ...formData, general_vehicle_type: e.target.value })} style={{ height: '42px' }}>
+                                        {GENERAL_VEHICLE_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>적재중량</label>
+                                    <select className={styles.input} value={formData.general_payload} onChange={(e) => setFormData({ ...formData, general_payload: e.target.value })} style={{ height: '42px' }}>
+                                        {GENERAL_PAYLOADS.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>특장구분</label>
+                                    <select className={styles.input} value={formData.general_body_type} onChange={(e) => setFormData({ ...formData, general_body_type: e.target.value })} style={{ height: '42px' }}>
+                                        {GENERAL_BODY_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>차종</label>
+                                    <input className={styles.input} value={formData.vehicle_type} onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })} />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>샤시종류</label>
+                                    <input className={styles.input} value={formData.chassis_type} onChange={(e) => setFormData({ ...formData, chassis_type: e.target.value })} />
+                                </div>
+                            </>
+                        )}
                     </div>
                     
                     <div className={styles.formGroup} style={{ marginTop: 30 }}>

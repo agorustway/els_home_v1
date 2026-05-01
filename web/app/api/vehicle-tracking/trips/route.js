@@ -25,6 +25,29 @@ export async function OPTIONS() {
   });
 }
 
+async function attachDriverMeta(supabase, trips = []) {
+    const vehicleNumbers = [...new Set((trips || []).map(t => t.vehicle_number).filter(Boolean))];
+    if (vehicleNumbers.length === 0) return trips;
+    const { data: drivers } = await supabase
+        .from('driver_contacts')
+        .select('vehicle_number, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type')
+        .in('vehicle_number', vehicleNumbers);
+    const map = {};
+    (drivers || []).forEach(d => { if (d.vehicle_number) map[d.vehicle_number] = d; });
+    return trips.map(t => {
+        const d = map[t.vehicle_number] || {};
+        return {
+            ...t,
+            cargo_type: t.cargo_type || d.cargo_type || 'container',
+            driver_contract_type: t.driver_contract_type || d.contract_type || 'uncontracted',
+            map_visibility: t.map_visibility || d.map_visibility || 'own',
+            general_vehicle_type: t.general_vehicle_type || d.general_vehicle_type || null,
+            general_payload: t.general_payload || d.general_payload || null,
+            general_body_type: t.general_body_type || d.general_body_type || null,
+        };
+    });
+}
+
 export async function GET(request) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
@@ -93,7 +116,8 @@ export async function GET(request) {
             const locationMap = {};
             locations.forEach(l => { locationMap[l.trip_id] = l; });
 
-            const merged = prepareLiveTrips(data.map(trip => ({
+            const enriched = await attachDriverMeta(supabase, data);
+            const merged = prepareLiveTrips(enriched.map(trip => ({
                 ...trip,
                 lastLocation: locationMap[trip.id] || null,
                 last_location_address: locationMap[trip.id]?.address || null,
@@ -202,7 +226,8 @@ export async function GET(request) {
                 }
             }
 
-            return NextResponse.json({ trips: data, total: data.length });
+            const enriched = await attachDriverMeta(supabase, data);
+            return NextResponse.json({ trips: enriched, total: enriched.length });
         }
 
         // ─── mode=my: 본인 기록 ───
@@ -250,9 +275,10 @@ export async function GET(request) {
 
             const { data, error } = await query;
             if (error) throw error;
+            const enriched = await attachDriverMeta(supabase, data || []);
 
-            if (data && data.length > 0) {
-                const tripIds = data.map(t => t.id);
+            if (enriched && enriched.length > 0) {
+                const tripIds = enriched.map(t => t.id);
                 const { data: logs } = await supabase
                     .from('vehicle_trip_logs')
                     .select('trip_id, field_name')
@@ -265,13 +291,13 @@ export async function GET(request) {
                         if (!logMap[log.trip_id]) logMap[log.trip_id] = {};
                         logMap[log.trip_id][log.field_name] = true;
                     });
-                    data.forEach(t => {
+                    enriched.forEach(t => {
                         t.admin_modified_fields = logMap[t.id] || {};
                     });
                 }
             }
 
-            return NextResponse.json({ trips: data });
+            return NextResponse.json({ trips: enriched });
         }
 
         return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
@@ -318,11 +344,22 @@ export async function POST(request) {
             billing_amount = null,
             work_site = '',
             special_notes = '',
+            cargo_type = 'container',
+            cargo_item = '',
+            cargo_order_number = '',
+            cargo_weight = '',
+            general_vehicle_type = null,
+            general_payload = null,
+            general_body_type = null,
+            map_visibility = 'own',
+            driver_contract_type = 'uncontracted',
         } = body;
 
         // 45FT 등 DB 체크 제약조건 회피용 매핑
         const allowedTypes = ['20FT', '40FT', '40FT_HQ'];
-        if (!allowedTypes.includes(container_type)) {
+        if (cargo_type === 'general' && !allowedTypes.includes(container_type)) {
+            container_type = '40FT';
+        } else if (!allowedTypes.includes(container_type)) {
             special_notes = `[원래사이즈:${container_type}] ` + special_notes;
             container_type = '40FT_HQ';
         }
@@ -355,6 +392,15 @@ export async function POST(request) {
                 work_site:        work_site || undefined,
                 special_notes:    special_notes || undefined,
                 vehicle_id:       vehicle_id || undefined,
+                cargo_type:       cargo_type || undefined,
+                cargo_item:       cargo_item || undefined,
+                cargo_order_number: cargo_order_number || undefined,
+                cargo_weight:     cargo_weight || undefined,
+                general_vehicle_type: general_vehicle_type || undefined,
+                general_payload:  general_payload || undefined,
+                general_body_type: general_body_type || undefined,
+                map_visibility:   map_visibility || undefined,
+                driver_contract_type: driver_contract_type || undefined,
                 chk_brake:        body.chk_brake  !== undefined ? body.chk_brake : undefined,
                 chk_tire:         body.chk_tire   !== undefined ? body.chk_tire  : undefined,
                 chk_lamp:         body.chk_lamp   !== undefined ? body.chk_lamp  : undefined,
@@ -394,6 +440,15 @@ export async function POST(request) {
                 driver_phone,
                 vehicle_number,
                 vehicle_id: vehicle_id || null,
+                cargo_type,
+                cargo_item: cargo_item || '',
+                cargo_order_number: cargo_order_number || '',
+                cargo_weight: cargo_weight || '',
+                general_vehicle_type,
+                general_payload,
+                general_body_type,
+                map_visibility,
+                driver_contract_type,
                 container_number: container_number || '',
                 seal_number:      seal_number || '',
                 container_type,

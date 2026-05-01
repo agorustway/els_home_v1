@@ -31,13 +31,13 @@ export async function POST(request) {
 
     const { data: existing } = await supabase
       .from('vehicle_trip_logs')
-      .select('id')
+      .select('id, created_at')
       .eq('trip_id', resolvedTripId)
       .eq('field_name', 'safety_education')
       .like('new_value', `${notice_id}%`)
       .maybeSingle();
     const completedAt = new Date().toISOString();
-    if (existing?.id) return NextResponse.json({ completed: true, duplicated: true, trip_id: resolvedTripId });
+    if (existing?.id) return NextResponse.json({ completed: true, duplicated: true, trip_id: resolvedTripId, completed_at: existing.created_at || completedAt });
 
     const { error } = await supabase.from('vehicle_trip_logs').insert({
       trip_id: resolvedTripId,

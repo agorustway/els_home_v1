@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styles from './driver.module.css';
 import { GPS_INTERVALS, GPS_OPTIONS, CONTAINER_TYPES, CONTAINER_KINDS } from '@/constants/vehicleTracking';
 import { Capacitor } from '@capacitor/core';
-import { extractYouTubeUrls, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
+import { extractYouTubeUrls, stripYouTubeUrls, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
 
 // Native Plugins
 let Haptics, StatusBar, App;
@@ -53,6 +53,13 @@ const renderNoticeAttachments = (notice) => {
     const source = `${notice?.education_url || ''}\n${notice?.content || ''}\n${attachments.map(a => `${a.url || ''} ${a.name || ''}`).join('\n')}`;
     const videos = [...new Set(extractYouTubeUrls(source))];
     return { attachments, videos };
+};
+
+const renderNoticeBody = (notice) => {
+    const source = notice?.content || notice?.body || notice?.message || '';
+    return stripYouTubeUrls(source)
+        .replace(/<p>\s*<\/p>/gi, '')
+        .replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>');
 };
 
 // ─── 이미지 압축 및 리사이징 (Vercel 4.5MB 제한 및 속도 최적화) ───
@@ -1345,7 +1352,7 @@ export default function DriverAppPage() {
                                 ))}
                                 <div 
                                     style={{ fontSize: '0.95rem', color: '#334155', lineHeight: 1.6 }}
-                                    dangerouslySetInnerHTML={{ __html: selectedNotice.content }} 
+                                    dangerouslySetInnerHTML={{ __html: renderNoticeBody(selectedNotice) }} 
                                 />
                                 
                                 {renderNoticeAttachments(selectedNotice).attachments?.length > 0 && (

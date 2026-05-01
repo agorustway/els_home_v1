@@ -12,6 +12,7 @@ import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTrack
 import { createClient } from '@/utils/supabase/client';
 import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
 import { extractYouTubeUrls, parseEducationLogTitle, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
+import { cargoTypeLabel } from '@/utils/vehicleCargoOptions.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
@@ -53,6 +54,8 @@ export default function VehicleTrackingPage() {
     const [realtimeTarget, setRealtimeTarget] = useState(null); // 실시간 추적 대상 trip ID
     const [realtimeCountdown, setRealtimeCountdown] = useState(0); // 남은 초
     const [liveSearchKeyword, setLiveSearchKeyword] = useState(''); // [신규] 실시간 관제 검색어
+    const [cargoGroupFilter, setCargoGroupFilter] = useState('all');
+    const [contractGroupFilter, setContractGroupFilter] = useState('all');
 
     // [신규] 공지사항/긴급 페이징 상태
     const [noticePage, setNoticePage] = useState(1);
@@ -657,7 +660,16 @@ export default function VehicleTrackingPage() {
         liveMarkersRef.current = [];
         if (infoWindowRef.current) infoWindowRef.current.close();
 
-        const tripsWithLocation = prepareLiveTrips(liveTrips).filter(t => t.lastLocation);
+        const tripsWithLocation = prepareLiveTrips(liveTrips).filter(t => (
+            t.lastLocation &&
+            (cargoGroupFilter === 'all' || (t.cargo_type || 'container') === cargoGroupFilter) &&
+            (contractGroupFilter === 'all' || (t.driver_contract_type || t.contract_type || 'uncontracted') === contractGroupFilter) &&
+            (!liveSearchKeyword ||
+                (t.vehicle_number || '').includes(liveSearchKeyword) ||
+                (t.driver_name || '').includes(liveSearchKeyword) ||
+                (t.container_number || '').includes(liveSearchKeyword) ||
+                (t.cargo_item || '').includes(liveSearchKeyword))
+        ));
         if (tripsWithLocation.length === 0) return;
 
         const bounds = new naver.maps.LatLngBounds();
@@ -743,7 +755,7 @@ export default function VehicleTrackingPage() {
             });
             liveMarkersRef.current.push(marker);
         });
-    }, [liveTrips, mapReady, activeTab]);
+    }, [liveTrips, mapReady, activeTab, cargoGroupFilter, contractGroupFilter, liveSearchKeyword]);
 
     // 운행 기록 검색
     const fetchRecords = useCallback(async () => {
@@ -995,13 +1007,23 @@ export default function VehicleTrackingPage() {
     const activeCount = (liveTrips || []).filter(t => t && t.status === 'driving').length;
     const pausedCount = (liveTrips || []).filter(t => t && t.status === 'paused').length;
 
+    const matchesGroup = (t) => {
+        if (!t) return false;
+        if (cargoGroupFilter !== 'all' && (t.cargo_type || 'container') !== cargoGroupFilter) return false;
+        if (contractGroupFilter !== 'all' && (t.driver_contract_type || t.contract_type || 'uncontracted') !== contractGroupFilter) return false;
+        return true;
+    };
+
     const filteredLiveTrips = prepareLiveTrips(liveTrips || []).filter(t =>
-        t && (
+        matchesGroup(t) && (
+            !liveSearchKeyword ||
             (t.vehicle_number || '').includes(liveSearchKeyword) ||
             (t.driver_name || '').includes(liveSearchKeyword) ||
-            (t.container_number || '').includes(liveSearchKeyword)
+            (t.container_number || '').includes(liveSearchKeyword) ||
+            (t.cargo_item || '').includes(liveSearchKeyword)
         )
     );
+    const filteredRecords = records.filter(matchesGroup);
 
     // [v4.5.31] 안전한 페이징 연산 (undefined 방지)
     const safeNotices = Array.isArray(notices) ? notices : [];
@@ -1111,8 +1133,14 @@ export default function VehicleTrackingPage() {
                 </div>
 
                 <div className={styles.filterBar} style={{ marginBottom: 10, marginTop: 15 }}>
-                    <input className={styles.filterInput} placeholder="현재 운행 기사명/차량/컨테이너 검색" value={liveSearchKeyword} onChange={e => setLiveSearchKeyword(e.target.value)} style={{ flex: 1 }} />
-                    <button className={styles.filterResetBtn} onClick={() => setLiveSearchKeyword('')}>초기화</button>
+                    <select className={styles.filterSelect} value={cargoGroupFilter} onChange={e => setCargoGroupFilter(e.target.value)}>
+                        <option value="all">전체 업무유형</option><option value="container">컨테이너</option><option value="general">일반화물</option>
+                    </select>
+                    <select className={styles.filterSelect} value={contractGroupFilter} onChange={e => setContractGroupFilter(e.target.value)}>
+                        <option value="all">전체 계약상태</option><option value="contracted">계약차량</option><option value="uncontracted">미계약차량</option>
+                    </select>
+                    <input className={styles.filterInput} placeholder="현재 운행 기사명/차량/컨테이너/화물명 검색" value={liveSearchKeyword} onChange={e => setLiveSearchKeyword(e.target.value)} style={{ flex: 1 }} />
+                    <button className={styles.filterResetBtn} onClick={() => { setLiveSearchKeyword(''); setCargoGroupFilter('all'); setContractGroupFilter('all'); }}>초기화</button>
                 </div>
 
                 <button className={styles.tableSectionMobileBtn} onClick={() => setIsMobileListOpen(true)}>
@@ -1127,7 +1155,7 @@ export default function VehicleTrackingPage() {
                         <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
                     </div>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>기사명</th><th>차량번호</th><th>컨테이너</th><th>속도/운행시간</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>구분</th><th>기사명</th><th>차량번호</th><th>컨테이너/화물</th><th>속도/운행시간</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {filteredLiveTrips.map(trip => (
                                 <tr key={trip.id} onClick={(e) => {
@@ -1136,9 +1164,10 @@ export default function VehicleTrackingPage() {
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }} style={{ ...(realtimeTarget === trip.id ? { background: '#10b98110' } : {}), cursor: 'pointer' }}>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
+                                    <td>{cargoTypeLabel(trip.cargo_type || 'container')} · {(trip.driver_contract_type || trip.contract_type) === 'contracted' ? '계약' : '미계약'}</td>
                                     <td><strong>{trip.driver_name}</strong></td>
                                     <td>{trip.vehicle_number}</td>
-                                    <td>{trip.container_number || '-'}</td>
+                                    <td>{(trip.cargo_type || 'container') === 'general' ? (trip.cargo_item || trip.container_number || '-') : (trip.container_number || '-')}</td>
                                     <td>
                                         <div style={{ fontWeight: 800, color: '#2563eb' }}>{displaySpeedKmh(trip.lastLocation?.speed)} km/h</div>
                                         <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: 2 }}>{getElapsedTimeString(trip.started_at, trip.completed_at)}</div>
@@ -1210,10 +1239,11 @@ export default function VehicleTrackingPage() {
                             <tr>
                                 <th><input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length} onChange={toggleSelectAll} /></th>
                                 <th>상태</th>
+                                <th>구분</th>
                                 <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명/차량 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th style={{ minWidth: '130px' }}>컨테이너/씰넘버</th>
-                                <th>규격/종류</th>
-                                <th>점검여부(브/타/램/적/기)</th>
+                                <th style={{ minWidth: '130px' }}>컨테이너/화물</th>
+                                <th style={{ width: '160px', minWidth: '160px' }}>규격/제원</th>
+                                <th style={{ width: '150px', minWidth: '150px' }}>점검여부(브/타/램/적/기)</th>
                                 <th style={{ maxWidth: '160px' }}>일보/메모</th>
                                 <th style={{ width: '60px' }}>사진</th>
                                 <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{ width: '130px' }}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
@@ -1222,28 +1252,38 @@ export default function VehicleTrackingPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {records.map(trip => (
+                            {filteredRecords.map(trip => (
                                 <Fragment key={`trip-row-${trip.id}`}>
                                 <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''} onClick={(e) => { if (selectedTrip) handleSelectTrip(trip); }} style={{ cursor: selectedTrip ? 'pointer' : 'default' }}>
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
+                                    <td style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>
+                                        {cargoTypeLabel(trip.cargo_type || 'container')}<br />{(trip.driver_contract_type || trip.contract_type) === 'contracted' ? '계약' : '미계약'}
+                                    </td>
                                     <td>
                                         <div><strong>{trip.driver_name}</strong></div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div>
                                     </td>
                                     <td onClick={(e) => e.stopPropagation()}>
-                                        <div><input defaultValue={trip.container_number || ''} placeholder="컨테이너" onBlur={(e) => { if (e.target.value !== (trip.container_number || '')) saveTripField(trip, 'container_number', e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontWeight: 600, color: (trip.admin_edited_fields || []).includes('container_number') ? '#2563eb' : '#1e293b' }} /></div>
-                                        <div style={{ marginTop: 2 }}><input defaultValue={trip.seal_number || ''} placeholder="씰넘버" onBlur={(e) => { if (e.target.value !== (trip.seal_number || '')) saveTripField(trip, 'seal_number', e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', color: (trip.admin_edited_fields || []).includes('seal_number') ? '#2563eb' : '#64748b' }} /></div>
+                                        <div><input defaultValue={(trip.cargo_type || 'container') === 'general' ? (trip.cargo_item || trip.container_number || '') : (trip.container_number || '')} placeholder={(trip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'} onBlur={(e) => saveTripField(trip, (trip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontWeight: 600, color: (trip.admin_edited_fields || []).includes('container_number') ? '#2563eb' : '#1e293b' }} /></div>
+                                        <div style={{ marginTop: 2 }}><input defaultValue={(trip.cargo_type || 'container') === 'general' ? (trip.cargo_order_number || trip.seal_number || '') : (trip.seal_number || '')} placeholder={(trip.cargo_type || 'container') === 'general' ? '오더번호' : '씰넘버'} onBlur={(e) => saveTripField(trip, (trip.cargo_type || 'container') === 'general' ? 'cargo_order_number' : 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', color: (trip.admin_edited_fields || []).includes('seal_number') ? '#2563eb' : '#64748b' }} /></div>
                                     </td>
-                                    <td style={{ fontSize: '0.85rem' }} onClick={(e) => e.stopPropagation()}>
+                                    <td className={styles.containerSpecCell} onClick={(e) => e.stopPropagation()}>
+                                        {(trip.cargo_type || 'container') === 'general' ? (
+                                            <div style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
+                                                <div>{trip.general_vehicle_type || '-'}</div>
+                                                <div style={{ color: '#64748b' }}>{trip.general_payload || trip.cargo_weight || '-'} / {trip.general_body_type || '-'}</div>
+                                            </div>
+                                        ) : (<>
                                         <select defaultValue={trip.container_type || '40FT'} onChange={(e) => saveTripField(trip, 'container_type', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.8rem', color: (trip.admin_edited_fields || []).includes('container_type') ? '#2563eb' : '#1e293b', fontWeight: (trip.admin_edited_fields || []).includes('container_type') ? 700 : 400 }}>
                                             <option value="20FT">20FT</option><option value="40FT">40FT</option>
                                         </select>
                                         <select defaultValue={trip.container_kind || 'DRY'} onChange={(e) => saveTripField(trip, 'container_kind', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', marginTop: 2, color: (trip.admin_edited_fields || []).includes('container_kind') ? '#2563eb' : '#64748b' }}>
                                             <option value="DRY">DRY</option><option value="REEFER">REEFER</option><option value="TANK">TANK</option><option value="OPEN_TOP">OPEN TOP</option><option value="FLAT">FLAT RACK</option>
                                         </select>
+                                        </>)}
                                     </td>
-                                    <td style={{ fontSize: '12px', letterSpacing: '-0.5px' }}>
+                                    <td className={styles.checkCell}>
                                         <span title="브레이크" style={{ marginRight: 2 }}>{trip.chk_brake ? '✅' : '❌'}</span>
                                         <span title="타이어" style={{ marginRight: 2 }}>{trip.chk_tire ? '✅' : '❌'}</span>
                                         <span title="경광등/램프" style={{ marginRight: 2 }}>{trip.chk_lamp ? '✅' : '❌'}</span>
@@ -1345,15 +1385,20 @@ export default function VehicleTrackingPage() {
                             <div className={styles.detailInfoGrid}>
                                 <div><div className={styles.infoLabel}>드라이버</div><div className={styles.infoValue}>{selectedTrip.driver_name}</div></div>
                                 <div><div className={styles.infoLabel}>차량번호</div><div className={styles.infoValue}>{selectedTrip.vehicle_number}</div></div>
-                                <div><div className={styles.infoLabel}>컨테이너</div><div className={styles.infoValue}><input defaultValue={selectedTrip.container_number || ''} placeholder="컨테이너 번호" onBlur={(e) => saveTripField(selectedTrip, 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
-                                <div><div className={styles.infoLabel}>씰 넘버</div><div className={styles.infoValue}><input defaultValue={selectedTrip.seal_number || ''} placeholder="씰 넘버" onBlur={(e) => saveTripField(selectedTrip, 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
+                                <div><div className={styles.infoLabel}>업무유형</div><div className={styles.infoValue}>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {(selectedTrip.driver_contract_type || selectedTrip.contract_type) === 'contracted' ? '계약' : '미계약'}</div></div>
+                                <div><div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'}</div><div className={styles.infoValue}><input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_item || selectedTrip.container_number || '') : (selectedTrip.container_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 번호'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
+                                <div><div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '오더/관리번호' : '씰 넘버'}</div><div className={styles.infoValue}><input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_order_number || selectedTrip.seal_number || '') : (selectedTrip.seal_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '오더번호' : '씰 넘버'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_order_number' : 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>규격/타입</div><div className={styles.infoValue}>
+                                    {(selectedTrip.cargo_type || 'container') === 'general' ? (
+                                        <div>{selectedTrip.general_vehicle_type || '-'} / {selectedTrip.general_payload || selectedTrip.cargo_weight || '-'} / {selectedTrip.general_body_type || '-'}</div>
+                                    ) : (<>
                                     <select defaultValue={selectedTrip.container_type || '40FT'} onChange={(e) => saveTripField(selectedTrip, 'container_type', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem', marginBottom: '4px' }}>
                                         <option value="20FT">20FT</option><option value="40FT">40FT</option>
                                     </select>
                                     <select defaultValue={selectedTrip.container_kind || 'DRY'} onChange={(e) => saveTripField(selectedTrip, 'container_kind', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }}>
                                         <option value="DRY">DRY</option><option value="REEFER">REEFER</option><option value="TANK">TANK</option><option value="OPEN_TOP">OPEN TOP</option><option value="FLAT">FLAT RACK</option>
                                     </select>
+                                    </>)}
                                 </div></div>
                                 <div><div className={styles.infoLabel}>운송구분</div><div className={styles.infoValue}>
                                     <select defaultValue={selectedTrip.transport_type || '왕복'} onChange={(e) => saveTripField(selectedTrip, 'transport_type', e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }}>

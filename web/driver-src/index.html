@@ -146,26 +146,26 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; overflow:hidden;">
             <div class="field" style="margin-bottom:0;">
               <label style="display:flex; justify-content:space-between; align-items:center;">
-                <span>컨테이너 번호</span>
+                <span id="trip-container-label">컨테이너 번호</span>
                 <span id="container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
               <input type="text" id="container-no" placeholder="ABCD1234567" maxlength="20" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
             <div class="field" style="margin-bottom:0; min-width:0;">
-              <label>씰 번호</label>
+              <label id="trip-seal-label">씰 번호</label>
               <input type="text" id="seal-no" placeholder="씰번호" maxlength="30" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
           </div>
           <div class="trip-row" style="gap:6px;">
             <div class="field">
-              <label>타입</label>
+              <label id="trip-type-label">타입</label>
               <select id="container-type" onchange="App.onTripFieldChange()" style="height:44px;font-size:14px;">
                 <option value="20FT">20FT</option>
                 <option value="40FT" selected>40FT</option>
               </select>
             </div>
             <div class="field">
-              <label>종류</label>
+              <label id="trip-kind-label">종류</label>
               <select id="container-kind" onchange="App.onTripFieldChange()" style="height:44px;font-size:14px;">
                 <option value="DRY" selected>DRY</option>
                 <option value="REEFER">REEFER</option>
@@ -246,13 +246,13 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
             <div class="field">
               <label style="display:flex; justify-content:space-between; align-items:center;">
-                <span>컨테이너 번호</span>
+                <span id="log-container-label">컨테이너 번호</span>
                 <span id="log-container-check-msg" style="font-size:10px; color:var(--accent); font-weight:700;"></span>
               </label>
               <input type="text" id="log-edit-container" maxlength="20" oninput="App.onLogFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
             <div class="field">
-              <label>씰 번호</label>
+              <label id="log-seal-label">씰 번호</label>
               <input type="text" id="log-edit-seal" maxlength="30" oninput="App.onLogFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
             </div>
           </div>
@@ -262,7 +262,7 @@
           </div>
           <div class="field"><label>작업지</label><input type="text" id="log-edit-work-site" maxlength="100" style="width:100% !important;height:44px;font-size:14px;"></div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>
-          <button class="btn btn-primary btn-sm btn-full" onclick="App.saveLogEdit()" style="margin-top:8px; flex-shrink:0; min-height:32px; height:32px;">기록 수정 저장</button>
+          <button class="btn btn-primary btn-sm btn-full" onclick="App.saveLogEdit()" style="margin-top:8px; flex-shrink:0; min-height:44px; height:44px; font-size:14px;">기록 수정 저장</button>
         </div>
       </div>
     </div><!-- /탭 콘텐츠 -->
@@ -300,6 +300,19 @@
            <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 14px;height:38px;">번호조회</button>
         </div>
       </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; flex-shrink:0;">
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>업무유형</label>
+          <select id="s-cargo-type" onchange="App.onCargoTypeChange()" style="height:38px;font-size:13px;">
+            <option value="container">컨테이너</option>
+            <option value="general">일반화물</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>지도 공개범위</label>
+          <select id="s-map-visibility" style="height:38px;font-size:13px;"></select>
+        </div>
+      </div>
       <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:6px; width:100%; flex-shrink:0;">
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>이름</label>
@@ -310,8 +323,23 @@
           <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" style="padding:0 8px; font-size:13px;height:38px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
-          <label>차량 ID</label>
+          <label id="s-id-label">차량 ID</label>
           <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:38px;">
+          <span id="s-id-hint" style="font-size:10px;color:#94a3b8;font-weight:700;margin-top:2px;"></span>
+        </div>
+      </div>
+      <div id="s-general-cargo-box" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:6px; width:100%; flex-shrink:0;">
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>차량종류</label>
+          <select id="s-general-vehicle-type" style="height:38px;font-size:13px;"></select>
+        </div>
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>적재중량</label>
+          <select id="s-general-payload" style="height:38px;font-size:13px;"></select>
+        </div>
+        <div class="field" style="margin-bottom:0; min-width:0;">
+          <label>특장구분</label>
+          <select id="s-general-body-type" style="height:38px;font-size:13px;"></select>
         </div>
       </div>
       <button class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:38px; font-size:14px; margin-top:4px;">정보 저장</button>
@@ -342,6 +370,7 @@
   <div id="screen-map" class="screen">
     <div id="driver-map" class="driver-map-container"></div>
     <button class="map-close-overlay-btn" onclick="App.closeMap()">✕ 닫기</button>
+    <button class="map-all-overlay-btn" onclick="App.showAllMapVehicles()">전체보기</button>
     <button class="map-myloc-btn" id="btn-map-myloc" onclick="App.centerMyLocation()">📍</button>
     <div id="map-bottom-panel" class="map-bottom-panel">
       <div class="map-panel-header" onclick="App.toggleMapPanel()">

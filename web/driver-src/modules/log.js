@@ -101,7 +101,7 @@ export async function loadLogs() {
       return `
         <div class="log-item" onclick="App.openLog('${t.id}')">
           <div class="log-item-header">
-            <span class="log-item-container">${escHtml(t.container_number || '컨테이너 미입력')}</span>
+            <span class="log-item-container">${escHtml((t.cargo_type === 'general' ? (t.cargo_item || t.container_number || '화물명 미입력') : (t.container_number || '컨테이너 미입력')))}</span>
             <span class="log-item-status" style="color:${statusColor[t.status] || 'var(--text-muted)'};border-color:${statusColor[t.status] || 'var(--text-muted)'};">${statusLabel[t.status] || t.status}</span>
           </div>
           <div class="log-item-meta" style="display:flex; justify-content:space-between; align-items:center;">
@@ -132,6 +132,15 @@ export async function openLog(id) {
     document.getElementById('log-edit-transport-type').value = data.transport_type || '왕복';
     document.getElementById('log-edit-billing-amount').value = formatBillingAmount(data.billing_amount);
     document.getElementById('log-edit-work-site').value = data.work_site || '';
+    const isGeneral = data.cargo_type === 'general';
+    const cLabel = document.getElementById('log-container-label');
+    const sLabel = document.getElementById('log-seal-label');
+    const cInput = document.getElementById('log-edit-container');
+    const sInput = document.getElementById('log-edit-seal');
+    if (cLabel) cLabel.textContent = isGeneral ? '화물명' : '컨테이너 번호';
+    if (sLabel) sLabel.textContent = isGeneral ? '오더/관리번호' : '씰 번호';
+    if (cInput) cInput.placeholder = isGeneral ? '화물명' : '컨테이너 번호';
+    if (sInput) sInput.placeholder = isGeneral ? '오더번호' : '씰 번호';
 
     // [v5.10.42] 관리자 수정 필드 감지: admin_edited_fields 또는 로그 |admin 플래그
     const adminEdited = {};
@@ -188,7 +197,7 @@ export async function openLog(id) {
         ${endedAt ? `<div class="log-detail-info-row"><span class="log-detail-info-label">운행 종료</span><span style="font-weight:700;color:var(--danger);">${formatDate(new Date(endedAt))}</span></div>` : ''}
         <div class="log-detail-info-row">
           <span class="log-detail-info-label">제원 / 점검</span>
-          <span>${data.container_type || '—'} / ${data.container_kind || '—'}
+          <span>${isGeneral ? `${data.general_payload || data.cargo_weight || '—'} / ${data.general_body_type || '—'}` : `${data.container_type || '—'} / ${data.container_kind || '—'}`}
             <span style="color:#cbd5e1;margin:0 4px;">|</span>
             <span style="color:${isAllChecked ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${isAllChecked ? '점검완료' : '미점검'}</span>
           </span>
@@ -236,8 +245,9 @@ export function onLogFieldChange() {
   const sEl  = document.getElementById('log-edit-seal');
   if (!cEl || !sEl) return;
 
-  cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-  sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+  const isGeneral = _currentLogData?.cargo_type === 'general';
+  cEl.value = isGeneral ? cEl.value.trim() : cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+  sEl.value = isGeneral ? sEl.value.trim() : sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
   const billingEl = document.getElementById('log-edit-billing-amount');
   if (billingEl) billingEl.value = formatBillingAmount(billingEl.value);
 
@@ -245,7 +255,7 @@ export function onLogFieldChange() {
   if (errEl) errEl.textContent = '';
 
   const val = cEl.value;
-  if (val.length >= 4 && errEl) {
+  if (!isGeneral && val.length >= 4 && errEl) {
     const match = val.match(/^([A-Z]{4})(\d{0,7})$/);
     if (match) {
       if (val.length === 11) {
@@ -276,6 +286,9 @@ export async function saveLogEdit() {
       body: JSON.stringify({
         container_number: cEl?.value || '',
         seal_number:      sEl?.value || '',
+        cargo_type:       _currentLogData?.cargo_type || State.profile.cargoType || 'container',
+        cargo_item:       (_currentLogData?.cargo_type === 'general') ? (cEl?.value || '') : '',
+        cargo_order_number: (_currentLogData?.cargo_type === 'general') ? (sEl?.value || '') : '',
         transport_type:   document.getElementById('log-edit-transport-type')?.value || '왕복',
         billing_amount:   parseBillingAmount(document.getElementById('log-edit-billing-amount')?.value),
         work_site:        document.getElementById('log-edit-work-site')?.value.trim() || '',

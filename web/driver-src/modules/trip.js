@@ -7,6 +7,7 @@ import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
 } from './gps.js?v=5140';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5140';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -24,7 +25,17 @@ function formatBillingAmount(value) {
 function getTripExtraFields() {
   const billingEl = document.getElementById('billing-amount');
   if (billingEl) billingEl.value = formatBillingAmount(billingEl.value);
+  const isGeneral = (State.profile.cargoType || 'container') === 'general';
   return {
+    cargo_type: State.profile.cargoType || 'container',
+    map_visibility: State.profile.mapVisibility || 'own',
+    driver_contract_type: State.profile.contractType || 'uncontracted',
+    cargo_item: isGeneral ? document.getElementById('container-no')?.value.trim() || '' : '',
+    cargo_order_number: isGeneral ? document.getElementById('seal-no')?.value.trim() || '' : '',
+    cargo_weight: isGeneral ? (State.profile.generalPayload || '') : '',
+    general_vehicle_type: isGeneral ? (State.profile.generalVehicleType || '') : '',
+    general_payload: isGeneral ? (State.profile.generalPayload || '') : '',
+    general_body_type: isGeneral ? (State.profile.generalBodyType || '') : '',
     transport_type: document.getElementById('transport-type')?.value || '왕복',
     billing_amount: parseBillingAmount(billingEl?.value),
     work_site: document.getElementById('work-site')?.value.trim() || '',
@@ -38,6 +49,54 @@ function setTripExtraFields(data = {}) {
   if (transportEl) transportEl.value = data.transport_type || '왕복';
   if (billingEl) billingEl.value = formatBillingAmount(data.billing_amount);
   if (workSiteEl) workSiteEl.value = data.work_site || '';
+}
+
+export function updateTripCargoUI() {
+  const isGeneral = (State.profile.cargoType || 'container') === 'general';
+  const containerLabel = document.getElementById('trip-container-label');
+  const sealLabel = document.getElementById('trip-seal-label');
+  const typeLabel = document.getElementById('trip-type-label');
+  const kindLabel = document.getElementById('trip-kind-label');
+  const containerInput = document.getElementById('container-no');
+  const sealInput = document.getElementById('seal-no');
+  const typeSelect = document.getElementById('container-type');
+  const kindSelect = document.getElementById('container-kind');
+  const transportSelect = document.getElementById('transport-type');
+  if (containerLabel) containerLabel.textContent = isGeneral ? '화물명' : '컨테이너 번호';
+  if (sealLabel) sealLabel.textContent = isGeneral ? '오더/관리번호' : '씰 번호';
+  if (typeLabel) typeLabel.textContent = isGeneral ? '적재중량' : '타입';
+  if (kindLabel) kindLabel.textContent = isGeneral ? '특장구분' : '종류';
+  if (containerInput) {
+    containerInput.placeholder = isGeneral ? '예: 파렛트, 기계, 일반잡화' : 'ABCD1234567';
+    containerInput.maxLength = isGeneral ? 60 : 20;
+  }
+  if (sealInput) {
+    sealInput.placeholder = isGeneral ? '오더번호' : '씰번호';
+    sealInput.maxLength = isGeneral ? 60 : 30;
+  }
+  if (typeSelect) {
+    if (isGeneral) {
+      typeSelect.innerHTML = `<option value="${State.profile.generalPayload || '5ton'}">${State.profile.generalPayload || '5ton'}</option>`;
+    } else {
+      typeSelect.innerHTML = '<option value="20FT">20FT</option><option value="40FT" selected>40FT</option>';
+    }
+  }
+  if (kindSelect) {
+    if (isGeneral) {
+      kindSelect.innerHTML = `<option value="${State.profile.generalBodyType || '일반'}">${State.profile.generalBodyType || '일반'}</option>`;
+    } else {
+      kindSelect.innerHTML = '<option value="DRY" selected>DRY</option><option value="REEFER">REEFER</option><option value="TANK">TANK</option><option value="OPEN_TOP">OPEN TOP</option><option value="FLAT">FLAT RACK</option>';
+    }
+  }
+  if (transportSelect && isGeneral) {
+    const current = transportSelect.value || '편도';
+    transportSelect.innerHTML = GENERAL_TRANSPORT_TYPES.map(v => `<option value="${v}">${v}</option>`).join('');
+    transportSelect.value = GENERAL_TRANSPORT_TYPES.includes(current) ? current : '편도';
+  } else if (transportSelect) {
+    const current = transportSelect.value || '왕복';
+    transportSelect.innerHTML = '<option value="왕복">왕복</option><option value="편도">편도</option><option value="복화">복화</option><option value="기타">기타</option>';
+    transportSelect.value = ['왕복', '편도', '복화', '기타'].includes(current) ? current : '왕복';
+  }
 }
 
 // ─── 운행 전 점검 체크리스트 ──────────────────────────────────────
@@ -130,14 +189,20 @@ export function onTripFieldChange() {
   const sEl   = document.getElementById('seal-no');
   const errEl = document.getElementById('container-check-msg');
 
-  cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-  sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+  const isGeneral = (State.profile.cargoType || 'container') === 'general';
+  if (isGeneral) {
+    cEl.value = cEl.value.trim();
+    sEl.value = sEl.value.trim();
+  } else {
+    cEl.value = cEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+    sEl.value = sEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+  }
   State.trip.containerNo = cEl.value;
   State.trip.sealNo      = sEl.value;
   const extras = getTripExtraFields();
 
   if (errEl) errEl.textContent = '';
-  if (cEl.value.length >= 4) {
+  if (!isGeneral && cEl.value.length >= 4) {
     const match = cEl.value.match(/^([A-Z]{4})(\d{0,7})$/);
     if (match) {
       if (cEl.value.length === 11) {
@@ -165,8 +230,8 @@ export function onTripFieldChange() {
         body: JSON.stringify({
           container_number: cEl.value || '',
           seal_number:      sEl.value || '',
-          container_type:   cType,
-          container_kind:   cKind,
+          container_type:   isGeneral ? '40FT' : cType,
+          container_kind:   isGeneral ? 'DRY' : cKind,
           ...extras,
           source:           'driver_app',
         }),
@@ -196,6 +261,8 @@ export async function loadCurrentTrip() {
       document.getElementById('container-kind').value  = data.container_kind || 'DRY';
       document.getElementById('trip-memo').value       = data.special_notes || '';
       setTripExtraFields(data);
+      State.profile.cargoType = data.cargo_type || State.profile.cargoType || 'container';
+      updateTripCargoUI();
 
       let photos = [];
       try {
@@ -228,7 +295,7 @@ export async function loadCurrentTrip() {
 // ─── 운행 시작 ───────────────────────────────────────────────────
 export async function startTrip() {
   if (!State.profile.name || !State.profile.phone
-    || !State.profile.vehicleNo || !State.profile.driverId) {
+    || !State.profile.vehicleNo || (State.profile.cargoType !== 'general' && !State.profile.driverId)) {
     showToast('차량 정보를 먼저 모두 입력해 주세요.');
     window.App?.openSettings();
     return;
@@ -243,6 +310,7 @@ export async function startTrip() {
   const sealNo      = document.getElementById('seal-no').value.trim();
   const cType       = document.getElementById('container-type').value;
   const cKind       = document.getElementById('container-kind').value;
+  const isGeneral   = (State.profile.cargoType || 'container') === 'general';
   const memo        = document.getElementById('trip-memo').value;
   const extras      = getTripExtraFields();
 
@@ -254,10 +322,16 @@ export async function startTrip() {
         driver_phone:     State.profile.phone,
         vehicle_number:   State.profile.vehicleNo,
         vehicle_id:       State.profile.driverId,
+        cargo_type:       State.profile.cargoType || 'container',
+        map_visibility:   State.profile.mapVisibility || 'own',
+        driver_contract_type: State.profile.contractType || 'uncontracted',
+        general_vehicle_type: State.profile.generalVehicleType || null,
+        general_payload:      State.profile.generalPayload || null,
+        general_body_type:    State.profile.generalBodyType || null,
         container_number: containerNo,
         seal_number:      sealNo,
-        container_type:   cType,
-        container_kind:   cKind,
+        container_type:   isGeneral ? '40FT' : cType,
+        container_kind:   isGeneral ? 'DRY' : cKind,
         ...extras,
         special_notes:    memo,
         chk_brake:  State.preTripDone.chk_brake  || false,

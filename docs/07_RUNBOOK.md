@@ -11,7 +11,7 @@
 # ║  - /NAS_ENTWARE_INSTALL.md                                      ║
 # ╚══════════════════════════════════════════════════════════════════╝
 #
-# 마지막 업데이트: 2026-02-23
+# 마지막 업데이트: 2026-05-01
 
 ---
 
@@ -170,6 +170,67 @@ sudo docker logs -f els-gateway # 접속 분배 로그
    - 생성된 APK(`app-debug.apk`)를 `web/public/apk/els_driver.apk`로 복사.
    - `docs/01_MISSION_CONTROL.md` 최상단에 배포 정보 갱신.
    - 테스트: 앱 내 [설정 > 업데이트 확인]을 통해 정상 작동 확인.
+
+---
+
+## 3-5. 차량 업무유형/일반화물 배포 체크리스트 (v5.10.42)
+
+컨테이너 전용 관제에서 `컨테이너`/`일반화물` 혼합 관제로 확장되는 변경입니다. DB 스키마, 웹 관제, NAS 관제 API, 드라이버 앱 APK가 같은 규격을 사용하므로 아래 순서를 지켜야 합니다.
+
+### 3-5-1. 사전 DB 마이그레이션
+1. Supabase SQL Editor 또는 운영 배포 절차에서 다음 파일을 먼저 적용합니다.
+   ```sql
+   -- web/supabase_sql/20260501_vehicle_cargo_type_visibility.sql
+   ```
+2. 적용 후 `driver_contacts`에 아래 컬럼이 있는지 확인합니다.
+   - `cargo_type`
+   - `driver_contract_type`
+   - `map_visibility`
+   - `general_vehicle_type`
+   - `general_payload`
+   - `general_body_type`
+3. `vehicle_trips`에 `cargo_type`, `driver_contract_type`, 일반화물 제원/운행구분 컬럼이 있는지 확인합니다.
+
+### 3-5-2. 웹/NAS/API 배포 순서
+1. Vercel 웹 배포: 운전원정보, 웹 관제 필터, 일반화물 운행기록 UI를 반영합니다.
+2. NAS core 배포: `docker/els-backend/app.py`, `app_core.py`가 운전원 메타를 조인해 `/api/vehicle-tracking` 응답에 업무유형/계약상태/지도공개범위를 포함합니다.
+3. 웹 환경에서 `ELS_BACKEND_URL` 또는 `NEXT_PUBLIC_ELS_BACKEND_URL`이 NAS core로 연결된 경우, NAS 배포 누락 시 앱 지도 그룹 필터가 오래된 데이터로 보일 수 있습니다.
+
+### 3-5-3. 드라이버 앱 APK 배포
+드라이버 앱 소스는 `web/driver-src/`가 단일 진실 소스입니다. APK 반영은 아래 스크립트만 사용합니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1
+```
+
+단독 `npx cap sync`는 캐시버스터와 버전 파일 자동 갱신을 우회하므로 금지합니다.
+
+### 3-5-4. 배포 후 스모크 테스트
+1. 운전원정보 신규 등록: 컨테이너 차량은 기존 차량 ID/컨테이너 기준 입력이 정상 저장되는지 확인합니다.
+2. 운전원정보 신규 등록: 일반화물은 차량 ID 공란 저장이 가능하고 차량종류/적재중량/특장구분의 마지막 `기타` 옵션이 보이는지 확인합니다.
+3. 운전원정보 목록/상세: 업무유형 1차 필터와 계약차량/미계약차량 2차 필터가 함께 동작하는지 확인합니다.
+4. 드라이버 앱 차량설정: 일반화물 선택 시 차량 ID는 선택 입력으로 표시되고, 지도 공개범위가 `자기차량만`/`계약차량`/`전체운행차량`으로 저장되는지 확인합니다.
+5. 드라이버 앱 지도: 상단 `전체보기` 버튼이 보이고, 차량설정의 업무유형 및 지도 공개범위에 맞는 그룹 차량만 노출되는지 확인합니다.
+6. 웹 관제: 컨테이너/일반화물 1차 필터와 계약/미계약 2차 필터가 지도와 리스트에 동일하게 적용되는지 확인합니다.
+7. 운행기록: 일반화물 운행은 컨테이너 번호/씰번호 중심이 아니라 화물명/오더·관리번호, 차량종류/적재중량/특장구분 중심으로 보이는지 확인합니다.
+
+### 3-5-5. 검증 기록
+- TDD 임시 테스트는 `.tmp_test/vehicle_cargo_policy_test.mjs`로 실행 후 삭제합니다.
+- 기본 검증 명령:
+  ```powershell
+  cd web
+  npm.cmd run lint
+  cd ..
+  node --check web\driver-src\modules\profile.js
+  node --check web\driver-src\modules\trip.js
+  node --check web\driver-src\modules\map.js
+  node --check web\driver-src\modules\log.js
+  node --check web\driver-src\modules\cargoOptions.js
+  node --check web\app\api\vehicle-tracking\trips\route.js
+  node --check web\app\api\vehicle-tracking\trips\[id]\route.js
+  node --check web\app\api\vehicle-tracking\drivers\route.js
+  ```
+- 현재 로컬 Codex 실행 환경에서는 `npm.cmd run build`가 compile 성공 후 Next.js type worker 생성 단계에서 `spawn EPERM`으로 멈출 수 있습니다. 운영 CI 또는 권한이 정상인 로컬 PowerShell에서 재확인합니다.
 
 ---
 

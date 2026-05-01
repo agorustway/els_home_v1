@@ -38,7 +38,11 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { name, phone, vehicle_number, vehicle_id, photo_driver, photo_vehicle, photo_chassis } = body;
+        const {
+            name, phone, vehicle_number, vehicle_id, photo_driver, photo_vehicle, photo_chassis,
+            cargo_type = 'container', map_visibility = 'own',
+            general_vehicle_type = null, general_payload = null, general_body_type = null,
+        } = body;
 
         if (!phone || !name) {
             return NextResponse.json({ error: '이름과 전화번호는 필수입니다.' }, { status: 400 });
@@ -66,6 +70,11 @@ export async function POST(request) {
                     name: name || existingData.name,
                     vehicle_number: vehicle_number || existingData.vehicle_number,
                     vehicle_id: vehicle_id || existingData.vehicle_id,
+                    cargo_type,
+                    map_visibility,
+                    general_vehicle_type,
+                    general_payload,
+                    general_body_type,
                     photo_driver: photo_driver || existingData.photo_driver,
                     photo_vehicle: photo_vehicle || existingData.photo_vehicle,
                     photo_chassis: photo_chassis || existingData.photo_chassis,
@@ -85,6 +94,11 @@ export async function POST(request) {
                     phone: cleanPhone,
                     vehicle_number,
                     vehicle_id,
+                    cargo_type,
+                    map_visibility,
+                    general_vehicle_type,
+                    general_payload,
+                    general_body_type,
                     photo_driver,
                     photo_vehicle,
                     photo_chassis,

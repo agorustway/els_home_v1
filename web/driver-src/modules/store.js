@@ -29,7 +29,15 @@ export const Store = {
 
 // ─── 앱 공유 상태 ──────────────────────────────────────────────────
 export const State = {
-  profile:  { name: '', phone: '', vehicleNo: '', driverId: '' },
+  profile:  {
+    name: '', phone: '', vehicleNo: '', driverId: '',
+    cargoType: 'container',
+    mapVisibility: 'own',
+    generalVehicleType: '트럭',
+    generalPayload: '5ton',
+    generalBodyType: '일반',
+    contractType: 'uncontracted',
+  },
   trip:     { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '', isRealtime: false },
   photos:   [],  // { dataUrl, uploaded, serverUrl }
   notices:  [],

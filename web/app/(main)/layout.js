@@ -26,9 +26,6 @@ export const metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'ELS SOLUTION',
-    startupImage: [
-      '/splash.jpg'
-    ],
   },
 };
 
@@ -43,7 +40,6 @@ export const viewport = {
 import { Suspense } from 'react';
 import ActivityLogger from "@/components/ActivityLogger";
 import SiteLayout from "@/components/SiteLayout";
-import SplashScreen from "@/components/SplashScreen";
 import BrowserGuard from "@/components/BrowserGuard";
 
 export default function RootLayout({ children }) {
@@ -53,7 +49,6 @@ export default function RootLayout({ children }) {
         <Suspense fallback={null}>
           <BrowserGuard />
           <ActivityLogger />
-          <SplashScreen />
         </Suspense>
         <SiteLayout>{children}</SiteLayout>
         <Script id="register-sw" strategy="afterInteractive">
