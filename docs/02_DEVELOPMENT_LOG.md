@@ -3,9 +3,13 @@
 ## [2026-05-01] 컨테이너/일반화물 업무유형 및 지도 공개범위 확장 (v5.10.42)
 ### 🚀 Achievement
 - **업무유형 1차 분류 도입**: 운전원정보와 관제 화면에 `컨테이너`/`일반화물` 구분을 추가하고, 계약차량/미계약차량 2차 선별 필터를 구성했습니다.
-- **앱 차량설정 확장**: 차량설정에 업무유형, 지도 공개범위(단독 자기차량만/계약차량끼리/전체 운행차량), 일반화물 차량종류·적재중량·특장구분 선택 항목을 추가했습니다. 일반화물은 차량 ID를 생략 가능하도록 처리했습니다.
+- **앱 차량설정 확장**: 차량설정에 업무유형과 일반화물 차량종류·적재중량·특장구분 선택 항목을 추가했습니다. 일반화물은 차량 ID 입력칸 placeholder로만 `생략가능`을 안내합니다.
 - **일반화물 운행 UI 전환**: 앱 운행 입력과 일지 상세에서 일반화물 차량은 컨테이너 번호/씰번호 대신 화물명/오더·관리번호 중심으로 표시되며, 제원은 차량종류·적재중량·특장구분으로 표시됩니다.
-- **지도 노출 정책 보강**: 앱 지도는 차량설정의 업무유형과 공개범위에 맞춰 같은 그룹 차량만 표시하고, 지도 상단에 전체보기 버튼을 추가했습니다. 웹 관제 지도/리스트도 업무유형 및 계약상태 필터를 반영합니다.
+- **지도 노출 정책 보강**: 앱 지도는 웹 관리자가 운전원정보에서 지정한 공개범위 정책을 조회해 같은 그룹 차량만 표시하고, 지도 상단에 전체보기 버튼을 추가했습니다. 웹 관제 지도/리스트도 업무유형 및 계약상태 필터를 반영합니다.
+- **정책 위치 재정리**: 지도 공개범위 선택은 기사 앱에서 제거하고, 운전원정보 웹에서 관제 관리자가 관리하는 정책으로 정리했습니다. 앱은 관리자가 지정한 정책을 조회해 내부 필터에만 사용합니다.
+- **협력사 대비 사전 작업**: 계약상태를 계약차량/미계약차량/협력사 3단계로 확장하고, 향후 협력사별 관제 분리를 위해 `partner_company` 필드를 추가했습니다.
+- **전체화면 지도 UX 보강**: 웹 지도 전체화면 상단에 전체보기/컨테이너/일반화물 및 계약/미계약/협력사 그룹 버튼을 배치하고, 우측 압축 운행현황 패널에서 현재위치·운행시간·속도를 보며 차량을 클릭 추적할 수 있게 구성했습니다.
+- **월간 통계 보정**: 실시간 관제 상단의 `{월}월 전체 운행` 수치가 4월+5월 누적처럼 보이지 않도록 현재 연월 기준 운행건수로 계산합니다.
 
 ### 🛠 Technical Changes
 - `web/utils/vehicleCargoOptions.mjs`, `web/driver-src/modules/cargoOptions.js`: 업무유형, 지도 공개범위, 일반화물 차량종류/적재중량/특장구분 옵션 상수화.
@@ -14,11 +18,15 @@
 - `web/app/(main)/employees/vehicle-tracking/page.js`, `tracking.module.css`: 웹 관제/운행기록에 업무유형·계약상태 필터 및 일반화물 표시 보강.
 - `web/app/api/vehicle-tracking/trips/*`, `web/app/api/vehicle-tracking/drivers/route.js`, `docker/els-backend/app.py`, `app_core.py`: 운행/지도 응답에 업무유형, 계약상태, 지도 공개범위, 일반화물 제원 메타를 포함하도록 확장.
 - `web/supabase_sql/20260501_vehicle_cargo_type_visibility.sql`: 운영 DB 적용용 컬럼/인덱스 마이그레이션 추가.
+- `web/driver-src/index.html`, `modules/profile.js`, `modules/trip.js`: 앱 설정 화면에서 지도 공개범위 선택 제거, 업무유형을 전화번호 왼쪽으로 이동, 일반화물 차량 ID 안내는 placeholder `생략가능`으로만 표시.
+- `web/app/(main)/employees/vehicle-tracking/page.js`: 전체화면 지도용 그룹 버튼/우측 운행현황 패널, 협력사 필터, 지점/계약상태 표시, 현재월 운행건수 계산 추가.
+- `web/utils/vehicleCargoOptions.mjs`: `CONTRACT_TYPE_OPTIONS`, `contractTypeLabel()` 추가.
 
 ### ✅ TDD / Verification
 - `.tmp_test/vehicle_cargo_policy_test.mjs`: 업무유형 옵션 순서, 지도 공개범위 정책값, 일반화물 선택지의 `기타` fallback, 앱 지도 공개범위 필터(`own`/`contracted`/`all`/`includeCompleted`), 안전교육 본문 YouTube URL 숨김, Supabase 마이그레이션 핵심 컬럼 포함 여부를 검증하고 통과 후 삭제했습니다.
+- `.tmp_test/vehicle_web_policy_regression.mjs`: 앱 내 지도 공개범위 UI/payload 제거, 업무유형-전화번호 배치, 일반화물 차량 ID placeholder, 계약/미계약/협력사 옵션, `partner_company` 마이그레이션, 전체화면 지도 그룹/운행현황 패널 구성을 검증하고 통과 후 삭제했습니다.
 - `web`: `npm.cmd run lint` 통과.
-- `node --check`: `web/driver-src/modules/profile.js`, `trip.js`, `map.js`, `log.js`, `cargoOptions.js`, `web/app/api/vehicle-tracking/trips/route.js`, `trips/[id]/route.js`, `drivers/route.js` 문법검사 통과.
+- `node --check`: `web/driver-src/modules/profile.js`, `trip.js`, `map.js`, `log.js`, `cargoOptions.js`, `web/utils/vehicleCargoOptions.mjs`, `web/app/api/vehicle-tracking/trips/route.js`, `trips/[id]/route.js`, `drivers/route.js` 문법검사 통과.
 - `web`: `npm.cmd run build`는 Next.js production compile까지 성공했으나, 타입 검사용 child process 생성 단계에서 현재 로컬 실행 환경의 `spawn EPERM`으로 중단되었습니다. 코드 컴파일 실패가 아닌 워커 프로세스 권한 이슈로 분리 기록합니다.
 - `python`/`py` 명령이 현재 PATH에 없어 NAS Flask 파일 `py_compile` 검증은 실행하지 못했습니다. NAS 배포 전 Python 3.11 환경에서 `docker/els-backend/app.py`, `app_core.py` 구문 확인이 필요합니다.
 

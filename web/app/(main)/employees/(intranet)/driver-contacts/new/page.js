@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
-import { CARGO_TYPES, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
+import { CARGO_TYPES, CONTRACT_TYPE_OPTIONS, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../intranet.module.css';
 
 export default function DriverContactsNewPage() {
@@ -22,7 +22,7 @@ export default function DriverContactsNewPage() {
 
     const [formData, setFormData] = useState({
         branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
-        contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '',
+        contract_type: 'uncontracted', partner_company: '', vehicle_number: '', vehicle_id: '',
         cargo_type: 'container', map_visibility: 'own',
         general_vehicle_type: '트럭', general_payload: '5ton', general_body_type: '일반',
     });
@@ -148,8 +148,7 @@ export default function DriverContactsNewPage() {
                         <div className={styles.formGroup}>
                             <label className={styles.label}>계약유형</label>
                             <select name="contract_type" className={styles.input} value={formData.contract_type} onChange={handleInputChange} style={{ height: '42px' }}>
-                                <option value="contracted">계약차량</option>
-                                <option value="uncontracted">미계약차량</option>
+                                {CONTRACT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
                         <div className={styles.formGroup}>
@@ -159,11 +158,17 @@ export default function DriverContactsNewPage() {
                             </select>
                         </div>
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>앱 지도 공개범위</label>
+                            <label className={styles.label}>지도 공개범위</label>
                             <select name="map_visibility" className={styles.input} value={formData.map_visibility} onChange={handleInputChange} style={{ height: '42px' }}>
                                 {MAP_VISIBILITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
+                        {formData.contract_type === 'partner' && (
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>협력사명</label>
+                                <input name="partner_company" className={styles.input} value={formData.partner_company} onChange={handleInputChange} placeholder="협력사/운송사명" />
+                            </div>
+                        )}
                         <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
                             <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="전화번호" />
@@ -181,7 +186,7 @@ export default function DriverContactsNewPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>차량 아이디</label>
-                            <input name="vehicle_id" className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value.toUpperCase() }))} placeholder={formData.cargo_type === 'general' ? '일반화물일시 생략가능' : 'ABCD1234'} maxLength={20} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
+                            <input name="vehicle_id" className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value.toUpperCase() }))} placeholder={formData.cargo_type === 'general' ? '생략가능' : 'ABCD1234'} maxLength={20} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
                         </div>
                         {formData.cargo_type === 'general' ? (
                             <>

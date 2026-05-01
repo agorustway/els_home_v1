@@ -28,8 +28,6 @@ function getTripExtraFields() {
   const isGeneral = (State.profile.cargoType || 'container') === 'general';
   return {
     cargo_type: State.profile.cargoType || 'container',
-    map_visibility: State.profile.mapVisibility || 'own',
-    driver_contract_type: State.profile.contractType || 'uncontracted',
     cargo_item: isGeneral ? document.getElementById('container-no')?.value.trim() || '' : '',
     cargo_order_number: isGeneral ? document.getElementById('seal-no')?.value.trim() || '' : '',
     cargo_weight: isGeneral ? (State.profile.generalPayload || '') : '',
@@ -323,8 +321,6 @@ export async function startTrip() {
         vehicle_number:   State.profile.vehicleNo,
         vehicle_id:       State.profile.driverId,
         cargo_type:       State.profile.cargoType || 'container',
-        map_visibility:   State.profile.mapVisibility || 'own',
-        driver_contract_type: State.profile.contractType || 'uncontracted',
         general_vehicle_type: State.profile.generalVehicleType || null,
         general_payload:      State.profile.generalPayload || null,
         general_body_type:    State.profile.generalBodyType || null,

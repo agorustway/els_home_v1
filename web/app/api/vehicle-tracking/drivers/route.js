@@ -40,7 +40,7 @@ export async function POST(request) {
         const body = await request.json();
         const {
             name, phone, vehicle_number, vehicle_id, photo_driver, photo_vehicle, photo_chassis,
-            cargo_type = 'container', map_visibility = 'own',
+            cargo_type = 'container',
             general_vehicle_type = null, general_payload = null, general_body_type = null,
         } = body;
 
@@ -71,7 +71,6 @@ export async function POST(request) {
                     vehicle_number: vehicle_number || existingData.vehicle_number,
                     vehicle_id: vehicle_id || existingData.vehicle_id,
                     cargo_type,
-                    map_visibility,
                     general_vehicle_type,
                     general_payload,
                     general_body_type,
@@ -95,7 +94,7 @@ export async function POST(request) {
                     vehicle_number,
                     vehicle_id,
                     cargo_type,
-                    map_visibility,
+                    map_visibility: 'own',
                     general_vehicle_type,
                     general_payload,
                     general_body_type,

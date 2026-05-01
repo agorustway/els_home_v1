@@ -12,7 +12,7 @@ import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTrack
 import { createClient } from '@/utils/supabase/client';
 import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
 import { extractYouTubeUrls, parseEducationLogTitle, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
-import { cargoTypeLabel } from '@/utils/vehicleCargoOptions.mjs';
+import { cargoTypeLabel, contractTypeLabel } from '@/utils/vehicleCargoOptions.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
@@ -56,6 +56,7 @@ export default function VehicleTrackingPage() {
     const [liveSearchKeyword, setLiveSearchKeyword] = useState(''); // [신규] 실시간 관제 검색어
     const [cargoGroupFilter, setCargoGroupFilter] = useState('all');
     const [contractGroupFilter, setContractGroupFilter] = useState('all');
+    const [partnerCompanyFilter, setPartnerCompanyFilter] = useState('all');
 
     // [신규] 공지사항/긴급 페이징 상태
     const [noticePage, setNoticePage] = useState(1);
@@ -664,6 +665,7 @@ export default function VehicleTrackingPage() {
             t.lastLocation &&
             (cargoGroupFilter === 'all' || (t.cargo_type || 'container') === cargoGroupFilter) &&
             (contractGroupFilter === 'all' || (t.driver_contract_type || t.contract_type || 'uncontracted') === contractGroupFilter) &&
+            (contractGroupFilter !== 'partner' || partnerCompanyFilter === 'all' || (t.partner_company || '') === partnerCompanyFilter) &&
             (!liveSearchKeyword ||
                 (t.vehicle_number || '').includes(liveSearchKeyword) ||
                 (t.driver_name || '').includes(liveSearchKeyword) ||
@@ -679,6 +681,7 @@ export default function VehicleTrackingPage() {
                     <div>
                         <div style="font-size:16px; font-weight:800; color:#1e293b; margin-bottom:2px;">${trip.driver_name}</div>
                         <div style="font-size:11px; font-weight:600; color:#64748b;">${trip.vehicle_number}</div>
+                        <div style="font-size:11px; font-weight:700; color:#0284c7; margin-top:2px;">${trip.branch || trip.partner_company || '-'} · ${contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}</div>
                     </div>
                     <span style="font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; background:${markerColor}15; color:${markerColor}; border:1px solid ${markerColor}40;">${TRIP_STATUS_LABELS[trip.status]}</span>
                 </div>
@@ -755,7 +758,7 @@ export default function VehicleTrackingPage() {
             });
             liveMarkersRef.current.push(marker);
         });
-    }, [liveTrips, mapReady, activeTab, cargoGroupFilter, contractGroupFilter, liveSearchKeyword]);
+    }, [liveTrips, mapReady, activeTab, cargoGroupFilter, contractGroupFilter, partnerCompanyFilter, liveSearchKeyword]);
 
     // 운행 기록 검색
     const fetchRecords = useCallback(async () => {
@@ -1011,6 +1014,7 @@ export default function VehicleTrackingPage() {
         if (!t) return false;
         if (cargoGroupFilter !== 'all' && (t.cargo_type || 'container') !== cargoGroupFilter) return false;
         if (contractGroupFilter !== 'all' && (t.driver_contract_type || t.contract_type || 'uncontracted') !== contractGroupFilter) return false;
+        if (contractGroupFilter === 'partner' && partnerCompanyFilter !== 'all' && (t.partner_company || '') !== partnerCompanyFilter) return false;
         return true;
     };
 
@@ -1024,6 +1028,32 @@ export default function VehicleTrackingPage() {
         )
     );
     const filteredRecords = records.filter(matchesGroup);
+    const partnerCompanyOptions = Array.from(new Set([...(liveTrips || []), ...(records || [])].map(t => t.partner_company).filter(Boolean))).sort();
+    const now = new Date();
+    const currentMonthRecords = records.filter(t => {
+        const d = new Date(t.started_at || t.created_at);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    });
+
+    const GroupButton = ({ active, onClick, children }) => (
+        <button
+            type="button"
+            onClick={onClick}
+            style={{
+                height: 34,
+                padding: '0 14px',
+                borderRadius: 8,
+                border: active ? '1px solid #2563eb' : '1px solid #dbe3ef',
+                background: active ? '#2563eb' : '#fff',
+                color: active ? '#fff' : '#334155',
+                fontWeight: 800,
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+            }}
+        >
+            {children}
+        </button>
+    );
 
     // [v4.5.31] 안전한 페이징 연산 (undefined 방지)
     const safeNotices = Array.isArray(notices) ? notices : [];
@@ -1054,13 +1084,82 @@ export default function VehicleTrackingPage() {
                 <div className={styles.missionDashboard} style={{ gap: '10px', marginBottom: '15px' }}>
                     <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>실시간 운행차량</div><div className={styles.statValue} style={{ color: '#10b981', fontSize: '2rem' }}>{activeCount} <span className={styles.statUnit}>대</span></div></div>
                     <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>일시정지</div><div className={styles.statValue} style={{ color: '#f59e0b', fontSize: '2rem' }}>{pausedCount} <span className={styles.statUnit}>대</span></div></div>
-                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>{new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue} style={{ fontSize: '2rem' }}>{recordsTotal} <span className={styles.statUnit}>건</span></div></div>
+                    <div className={styles.statCard} style={{ padding: '1rem' }}><div className={styles.statLabel}>{new Date().getMonth() + 1}월 전체 운행</div><div className={styles.statValue} style={{ fontSize: '2rem' }}>{currentMonthRecords.length} <span className={styles.statUnit}>건</span></div></div>
+                </div>
+
+                <div className={styles.filterBar} style={{ marginBottom: 12, alignItems: 'center', background: '#fff' }}>
+                    <span className={styles.filterLabel} style={{ borderRight: 'none', paddingRight: 0 }}>관제 그룹</span>
+                    <GroupButton active={cargoGroupFilter === 'all'} onClick={() => setCargoGroupFilter('all')}>전체</GroupButton>
+                    <GroupButton active={cargoGroupFilter === 'container'} onClick={() => setCargoGroupFilter('container')}>컨테이너</GroupButton>
+                    <GroupButton active={cargoGroupFilter === 'general'} onClick={() => setCargoGroupFilter('general')}>일반화물</GroupButton>
+                    <span style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 2px' }} />
+                    <GroupButton active={contractGroupFilter === 'all'} onClick={() => setContractGroupFilter('all')}>전체</GroupButton>
+                    <GroupButton active={contractGroupFilter === 'contracted'} onClick={() => setContractGroupFilter('contracted')}>계약</GroupButton>
+                    <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>미계약</GroupButton>
+                    <GroupButton active={contractGroupFilter === 'partner'} onClick={() => setContractGroupFilter('partner')}>협력사</GroupButton>
+                    {contractGroupFilter === 'partner' && (
+                        <select className={styles.filterSelect} value={partnerCompanyFilter} onChange={e => setPartnerCompanyFilter(e.target.value)}>
+                            <option value="all">전체 협력사</option>
+                            {partnerCompanyOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                    )}
+                    <input className={styles.filterInput} placeholder="현재 운행 기사명/차량/컨테이너/화물명 검색" value={liveSearchKeyword} onChange={e => setLiveSearchKeyword(e.target.value)} style={{ flex: 1, minWidth: 260 }} />
+                    <button className={styles.filterResetBtn} onClick={() => { setLiveSearchKeyword(''); setCargoGroupFilter('all'); setContractGroupFilter('all'); setPartnerCompanyFilter('all'); }}>초기화</button>
                 </div>
 
                 <div className={styles.liveGrid}>
                     <div className={styles.liveGridRight}>
                         <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{ height: '100%', margin: 0, borderRadius: '12px' }}>
                             <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '전체화면 해제' : '지도 전체화면'}</button>
+                            {isFullscreen && (
+                                <>
+                                    <div style={{ position: 'absolute', top: 12, left: 150, right: 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
+                                        <GroupButton active={cargoGroupFilter === 'all'} onClick={() => setCargoGroupFilter('all')}>전체보기</GroupButton>
+                                        <GroupButton active={cargoGroupFilter === 'container'} onClick={() => setCargoGroupFilter('container')}>컨테이너</GroupButton>
+                                        <GroupButton active={cargoGroupFilter === 'general'} onClick={() => setCargoGroupFilter('general')}>일반화물</GroupButton>
+                                        <span style={{ width: 1, height: 20, background: '#e2e8f0' }} />
+                                        <GroupButton active={contractGroupFilter === 'all'} onClick={() => setContractGroupFilter('all')}>전체</GroupButton>
+                                        <GroupButton active={contractGroupFilter === 'contracted'} onClick={() => setContractGroupFilter('contracted')}>계약</GroupButton>
+                                        <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>미계약</GroupButton>
+                                        <GroupButton active={contractGroupFilter === 'partner'} onClick={() => setContractGroupFilter('partner')}>협력사</GroupButton>
+                                        {contractGroupFilter === 'partner' && (
+                                            <select className={styles.filterSelect} value={partnerCompanyFilter} onChange={e => setPartnerCompanyFilter(e.target.value)} style={{ height: 34 }}>
+                                                <option value="all">전체 협력사</option>
+                                                {partnerCompanyOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                                            </select>
+                                        )}
+                                    </div>
+                                    <div style={{ position: 'absolute', top: 12, right: 12, bottom: 12, width: 360, zIndex: 2002, background: 'rgba(255,255,255,0.97)', border: '1px solid #dbe3ef', borderRadius: 12, boxShadow: '0 12px 28px rgba(15,23,42,0.16)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                        <div style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ fontSize: '0.92rem', fontWeight: 900, color: '#0f172a' }}>운행현황</div>
+                                            <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#2563eb' }}>{filteredLiveTrips.length}대</div>
+                                        </div>
+                                        <div style={{ padding: 10, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {filteredLiveTrips.length === 0 ? (
+                                                <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontWeight: 700 }}>표시할 차량이 없습니다.</div>
+                                            ) : filteredLiveTrips.map(trip => (
+                                                <button
+                                                    key={`fs-${trip.id}`}
+                                                    type="button"
+                                                    onClick={() => { handleZoomToLiveTrip(trip); handleSelectTrip(trip); }}
+                                                    style={{ textAlign: 'left', background: realtimeTarget === trip.id ? '#ecfdf5' : '#fff', border: realtimeTarget === trip.id ? '1px solid #86efac' : '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                                                        <strong style={{ color: '#0f172a' }}>{trip.vehicle_number || '-'}</strong>
+                                                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 800 }}>{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}</span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.78rem', color: '#334155', fontWeight: 800 }}>{trip.driver_name || '-'} · {cargoTypeLabel(trip.cargo_type || 'container')}</div>
+                                                    <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: '0.74rem', color: '#64748b' }}>
+                                                        <span>속도 <b style={{ color: '#2563eb' }}>{displaySpeedKmh(trip.lastLocation?.speed)}km/h</b></span>
+                                                        <span>시간 <b style={{ color: '#0f172a' }}>{getElapsedTimeString(trip.started_at, trip.completed_at)}</b></span>
+                                                    </div>
+                                                    <div style={{ marginTop: 6, fontSize: '0.72rem', color: '#64748b', lineHeight: 1.35 }}>{trip.lastLocation?.address || '위치 정보 없음'}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                             <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
                             {!mapReady && <div className={styles.mapLoading}>지도를 불러오는 중...</div>}
                         </div>
@@ -1070,7 +1169,7 @@ export default function VehicleTrackingPage() {
                         {/* 긴급 알림 섹션 */}
                         <div className={styles.noticeSection} style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 0 }}>
                             <div className={styles.noticeHeader} style={{ marginBottom: '10px' }}>
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', fontSize: '1rem' }}>긴급 알림</h3>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', fontSize: '0.95rem' }}>긴급 알림</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>{emergencyPage} / {totalEmPages}</div>
                                     <button onClick={() => setEmergencyPage(p => Math.max(1, p - 1))} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>◀</button>
@@ -1102,7 +1201,7 @@ export default function VehicleTrackingPage() {
                         {/* 공지사항 섹션 */}
                         <div className={styles.noticeSection} style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 0 }}>
                             <div className={styles.noticeHeader} style={{ marginBottom: '10px' }}>
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem' }}>공지사항</h3>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>공지사항</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>{noticePage} / {totalNoticePages}</div>
                                     <button onClick={() => setNoticePage(p => Math.max(1, p - 1))} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>◀</button>
@@ -1132,17 +1231,6 @@ export default function VehicleTrackingPage() {
                     </div>
                 </div>
 
-                <div className={styles.filterBar} style={{ marginBottom: 10, marginTop: 15 }}>
-                    <select className={styles.filterSelect} value={cargoGroupFilter} onChange={e => setCargoGroupFilter(e.target.value)}>
-                        <option value="all">전체 업무유형</option><option value="container">컨테이너</option><option value="general">일반화물</option>
-                    </select>
-                    <select className={styles.filterSelect} value={contractGroupFilter} onChange={e => setContractGroupFilter(e.target.value)}>
-                        <option value="all">전체 계약상태</option><option value="contracted">계약차량</option><option value="uncontracted">미계약차량</option>
-                    </select>
-                    <input className={styles.filterInput} placeholder="현재 운행 기사명/차량/컨테이너/화물명 검색" value={liveSearchKeyword} onChange={e => setLiveSearchKeyword(e.target.value)} style={{ flex: 1 }} />
-                    <button className={styles.filterResetBtn} onClick={() => { setLiveSearchKeyword(''); setCargoGroupFilter('all'); setContractGroupFilter('all'); }}>초기화</button>
-                </div>
-
                 <button className={styles.tableSectionMobileBtn} onClick={() => setIsMobileListOpen(true)}>
                     운행 현황 목록 ({filteredLiveTrips.length}건)
                 </button>
@@ -1155,7 +1243,7 @@ export default function VehicleTrackingPage() {
                         <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
                     </div>
                     <table className={styles.tripTable}>
-                        <thead><tr><th>상태</th><th>구분</th><th>기사명</th><th>차량번호</th><th>컨테이너/화물</th><th>속도/운행시간</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
+                        <thead><tr><th>상태</th><th>구분</th><th>기사명</th><th>소속/계약</th><th>차량번호</th><th>컨테이너/화물</th><th>속도/운행시간</th><th>마지막 수신위치</th><th>관리</th></tr></thead>
                         <tbody>
                             {filteredLiveTrips.map(trip => (
                                 <tr key={trip.id} onClick={(e) => {
@@ -1164,8 +1252,12 @@ export default function VehicleTrackingPage() {
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }} style={{ ...(realtimeTarget === trip.id ? { background: '#10b98110' } : {}), cursor: 'pointer' }}>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
-                                    <td>{cargoTypeLabel(trip.cargo_type || 'container')} · {(trip.driver_contract_type || trip.contract_type) === 'contracted' ? '계약' : '미계약'}</td>
+                                    <td>{cargoTypeLabel(trip.cargo_type || 'container')}</td>
                                     <td><strong>{trip.driver_name}</strong></td>
+                                    <td>
+                                        <div style={{ fontWeight: 800 }}>{trip.branch || trip.partner_company || '-'}</div>
+                                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}</div>
+                                    </td>
                                     <td>{trip.vehicle_number}</td>
                                     <td>{(trip.cargo_type || 'container') === 'general' ? (trip.cargo_item || trip.container_number || '-') : (trip.container_number || '-')}</td>
                                     <td>
@@ -1193,6 +1285,22 @@ export default function VehicleTrackingPage() {
                         <select className={styles.filterSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                             <option value="all">전체</option><option value="driving">운행 중</option><option value="paused">일시중지</option><option value="completed">운행 완료</option>
                         </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <GroupButton active={cargoGroupFilter === 'all'} onClick={() => setCargoGroupFilter('all')}>전체</GroupButton>
+                        <GroupButton active={cargoGroupFilter === 'container'} onClick={() => setCargoGroupFilter('container')}>컨테이너</GroupButton>
+                        <GroupButton active={cargoGroupFilter === 'general'} onClick={() => setCargoGroupFilter('general')}>일반화물</GroupButton>
+                        <span style={{ width: 1, height: 20, background: '#e2e8f0' }} />
+                        <GroupButton active={contractGroupFilter === 'all'} onClick={() => setContractGroupFilter('all')}>전체계약</GroupButton>
+                        <GroupButton active={contractGroupFilter === 'contracted'} onClick={() => setContractGroupFilter('contracted')}>계약</GroupButton>
+                        <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>미계약</GroupButton>
+                        <GroupButton active={contractGroupFilter === 'partner'} onClick={() => setContractGroupFilter('partner')}>협력사</GroupButton>
+                        {contractGroupFilter === 'partner' && (
+                            <select className={styles.filterSelect} value={partnerCompanyFilter} onChange={e => setPartnerCompanyFilter(e.target.value)}>
+                                <option value="all">전체 협력사</option>
+                                {partnerCompanyOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                            </select>
+                        )}
                     </div>
                     <div className={styles.filterGroup}>
                         <span className={styles.filterLabel}>기간</span>
@@ -1258,11 +1366,12 @@ export default function VehicleTrackingPage() {
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>
-                                        {cargoTypeLabel(trip.cargo_type || 'container')}<br />{(trip.driver_contract_type || trip.contract_type) === 'contracted' ? '계약' : '미계약'}
+                                        {cargoTypeLabel(trip.cargo_type || 'container')}<br />{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}
                                     </td>
                                     <td>
                                         <div><strong>{trip.driver_name}</strong></div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div>
+                                        <div style={{ fontSize: '0.72rem', color: '#0284c7', marginTop: 2 }}>{trip.branch || trip.partner_company || '-'} · {contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}</div>
                                     </td>
                                     <td onClick={(e) => e.stopPropagation()}>
                                         <div><input defaultValue={(trip.cargo_type || 'container') === 'general' ? (trip.cargo_item || trip.container_number || '') : (trip.container_number || '')} placeholder={(trip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'} onBlur={(e) => saveTripField(trip, (trip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontWeight: 600, color: (trip.admin_edited_fields || []).includes('container_number') ? '#2563eb' : '#1e293b' }} /></div>
@@ -1385,7 +1494,7 @@ export default function VehicleTrackingPage() {
                             <div className={styles.detailInfoGrid}>
                                 <div><div className={styles.infoLabel}>드라이버</div><div className={styles.infoValue}>{selectedTrip.driver_name}</div></div>
                                 <div><div className={styles.infoLabel}>차량번호</div><div className={styles.infoValue}>{selectedTrip.vehicle_number}</div></div>
-                                <div><div className={styles.infoLabel}>업무유형</div><div className={styles.infoValue}>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {(selectedTrip.driver_contract_type || selectedTrip.contract_type) === 'contracted' ? '계약' : '미계약'}</div></div>
+                                <div><div className={styles.infoLabel}>업무유형</div><div className={styles.infoValue}>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {contractTypeLabel(selectedTrip.driver_contract_type || selectedTrip.contract_type || 'uncontracted')}</div></div>
                                 <div><div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'}</div><div className={styles.infoValue}><input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_item || selectedTrip.container_number || '') : (selectedTrip.container_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 번호'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '오더/관리번호' : '씰 넘버'}</div><div className={styles.infoValue}><input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_order_number || selectedTrip.seal_number || '') : (selectedTrip.seal_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '오더번호' : '씰 넘버'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_order_number' : 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>규격/타입</div><div className={styles.infoValue}>

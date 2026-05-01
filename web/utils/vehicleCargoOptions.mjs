@@ -9,6 +9,12 @@ export const MAP_VISIBILITY_OPTIONS = [
   { value: 'all', label: '전체 운행차량' },
 ];
 
+export const CONTRACT_TYPE_OPTIONS = [
+  { value: 'contracted', label: '계약차량' },
+  { value: 'uncontracted', label: '미계약차량' },
+  { value: 'partner', label: '협력사' },
+];
+
 export const GENERAL_VEHICLE_TYPES = ['트럭', '카고', '윙바디', '탑차', '츄레라', '트랙터', '덤프', '기타'];
 
 export const GENERAL_PAYLOADS = [
@@ -27,4 +33,8 @@ export function cargoTypeLabel(value) {
 
 export function mapVisibilityLabel(value) {
   return MAP_VISIBILITY_OPTIONS.find(o => o.value === value)?.label || '단독 자기차량만';
+}
+
+export function contractTypeLabel(value) {
+  return CONTRACT_TYPE_OPTIONS.find(o => o.value === value)?.label || '미계약차량';
 }

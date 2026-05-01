@@ -6,7 +6,7 @@ import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
 import ContactFilterBar from '@/components/ContactFilterBar';
 import { useUserRole } from '@/hooks/useUserRole';
-import { cargoTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
+import { cargoTypeLabel, contractTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../intranet.module.css';
 
 export default function DriverContactsPage() {
@@ -84,6 +84,7 @@ export default function DriverContactsPage() {
                     <option value="all">전체 계약상태</option>
                     <option value="contracted">계약차량</option>
                     <option value="uncontracted">미계약차량</option>
+                    <option value="partner">협력사</option>
                 </select>
             </div>
 
@@ -106,11 +107,11 @@ export default function DriverContactsPage() {
                             <span className={styles.cardName}>{item.name}</span>
                             </div>
                             <span className={styles.cardBadge} style={{
-                                background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
-                                color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
-                                borderColor: item.contract_type === 'contracted' ? '#bbf7d0' : '#e2e8f0',
+                                background: item.contract_type === 'contracted' ? '#dcfce7' : item.contract_type === 'partner' ? '#e0f2fe' : '#f1f5f9',
+                                color: item.contract_type === 'contracted' ? '#16a34a' : item.contract_type === 'partner' ? '#0284c7' : '#94a3b8',
+                                borderColor: item.contract_type === 'contracted' ? '#bbf7d0' : item.contract_type === 'partner' ? '#bae6fd' : '#e2e8f0',
                             }}>
-                                {item.contract_type === 'contracted' ? '계약' : '미계약'}
+                                {contractTypeLabel(item.contract_type || 'uncontracted')}
                             </span>
                         </div>
                         {item.phone && (
@@ -146,11 +147,12 @@ export default function DriverContactsPage() {
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>업무유형</th>
                                 <th className={styles.colTitle} style={{ minWidth: '100px' }}>이름</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>전화번호</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>소속지점</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량번호</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량ID</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>마지막 컨테이너</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>차량/제원</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>앱 지도범위</th>
+                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>지도범위</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>마지막 운행</th>
                                 <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
                             </tr>
@@ -168,16 +170,18 @@ export default function DriverContactsPage() {
                                     <td style={{ textAlign: 'center' }}>
                                         <span style={{
                                             display: 'inline-block', padding: '3px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600,
-                                            background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
-                                            color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
+                                            background: item.contract_type === 'contracted' ? '#dcfce7' : item.contract_type === 'partner' ? '#e0f2fe' : '#f1f5f9',
+                                            color: item.contract_type === 'contracted' ? '#16a34a' : item.contract_type === 'partner' ? '#0284c7' : '#94a3b8',
                                             whiteSpace: 'nowrap'
                                         }}>
-                                            {item.contract_type === 'contracted' ? '계약' : '미계약'}
+                                            {contractTypeLabel(item.contract_type || 'uncontracted')}
                                         </span>
+                                        {item.partner_company && <div style={{ fontSize: '0.72rem', color: '#0284c7', marginTop: 4 }}>{item.partner_company}</div>}
                                     </td>
                                     <td style={{ whiteSpace: 'nowrap', padding: '12px 16px', fontWeight: 700, color: (item.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>{cargoTypeLabel(item.cargo_type || 'container')}</td>
                                     <td className={styles.colTitle} style={{ whiteSpace: 'nowrap' }}>{item.name}</td>
                                     <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.phone ? <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{formatPhone(item.phone)}</a> : '—'}</td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '12px 16px', color: '#475569', fontWeight: 700 }}>{item.branch || item.partner_company || '-'}</td>
                                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_number || '-'}</td>
                                     <td style={{ color: '#64748b', fontSize: '0.85rem', letterSpacing: '0.5px', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.vehicle_id || '-'}</td>
                                     <td style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.last_container_number || '-'}</td>
@@ -190,7 +194,7 @@ export default function DriverContactsPage() {
                                 </tr>
                             ))}
                             {filteredList.length === 0 && (
-                                <tr><td colSpan="12" className={styles.empty}>검색 결과가 없습니다.</td></tr>
+                                <tr><td colSpan="13" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                             )}
                         </tbody>
                     </table>

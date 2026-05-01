@@ -30,7 +30,7 @@ async function attachDriverMeta(supabase, trips = []) {
     if (vehicleNumbers.length === 0) return trips;
     const { data: drivers } = await supabase
         .from('driver_contacts')
-        .select('vehicle_number, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type')
+        .select('vehicle_number, branch, partner_company, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type')
         .in('vehicle_number', vehicleNumbers);
     const map = {};
     (drivers || []).forEach(d => { if (d.vehicle_number) map[d.vehicle_number] = d; });
@@ -41,6 +41,8 @@ async function attachDriverMeta(supabase, trips = []) {
             cargo_type: t.cargo_type || d.cargo_type || 'container',
             driver_contract_type: t.driver_contract_type || d.contract_type || 'uncontracted',
             map_visibility: t.map_visibility || d.map_visibility || 'own',
+            branch: t.branch || d.branch || null,
+            partner_company: t.partner_company || d.partner_company || null,
             general_vehicle_type: t.general_vehicle_type || d.general_vehicle_type || null,
             general_payload: t.general_payload || d.general_payload || null,
             general_body_type: t.general_body_type || d.general_body_type || null,
@@ -351,9 +353,27 @@ export async function POST(request) {
             general_vehicle_type = null,
             general_payload = null,
             general_body_type = null,
-            map_visibility = 'own',
-            driver_contract_type = 'uncontracted',
+            map_visibility,
+            driver_contract_type,
         } = body;
+
+        let driverMeta = null;
+        if (vehicle_number || driver_phone) {
+            let metaQuery = supabase
+                .from('driver_contacts')
+                .select('vehicle_number, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type, branch, partner_company')
+                .limit(1);
+            if (vehicle_number) metaQuery = metaQuery.eq('vehicle_number', vehicle_number);
+            else metaQuery = metaQuery.eq('phone', String(driver_phone || '').replace(/[^0-9]/g, ''));
+            const { data: metaRows } = await metaQuery;
+            driverMeta = metaRows?.[0] || null;
+        }
+        map_visibility = driverMeta?.map_visibility || map_visibility || 'own';
+        driver_contract_type = driverMeta?.contract_type || driver_contract_type || 'uncontracted';
+        cargo_type = cargo_type || driverMeta?.cargo_type || 'container';
+        general_vehicle_type = general_vehicle_type || driverMeta?.general_vehicle_type || null;
+        general_payload = general_payload || driverMeta?.general_payload || null;
+        general_body_type = general_body_type || driverMeta?.general_body_type || null;
 
         // 45FT 등 DB 체크 제약조건 회피용 매핑
         const allowedTypes = ['20FT', '40FT', '40FT_HQ'];

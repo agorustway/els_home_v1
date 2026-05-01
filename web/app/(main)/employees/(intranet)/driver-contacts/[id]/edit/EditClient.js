@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
-import { CARGO_TYPES, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
+import { CARGO_TYPES, CONTRACT_TYPE_OPTIONS, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../../intranet.module.css';
 
 export default function DriverContactsEditPage() {
@@ -17,7 +17,7 @@ export default function DriverContactsEditPage() {
 
     const [formData, setFormData] = useState({
         branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
-        contract_type: 'uncontracted', vehicle_number: '', vehicle_id: '', photo_driver: '',
+        contract_type: 'uncontracted', partner_company: '', vehicle_number: '', vehicle_id: '', photo_driver: '',
         cargo_type: 'container', map_visibility: 'own',
         general_vehicle_type: '트럭', general_payload: '5ton', general_body_type: '일반',
     });
@@ -43,10 +43,11 @@ export default function DriverContactsEditPage() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.item) {
-                        const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, vehicle_number, vehicle_id, photo_driver, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type } = data.item;
+                        const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, partner_company, vehicle_number, vehicle_id, photo_driver, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type } = data.item;
                         setFormData({ 
                             branch: branch || '', name, phone: formatPhone(phone), vehicle_type, chassis_type, photo_url, 
                             contract_type: contract_type || 'uncontracted', 
+                            partner_company: partner_company || '',
                             vehicle_number: vehicle_number || '', 
                             vehicle_id: vehicle_id || '',
                             photo_driver: photo_driver || '',
@@ -146,8 +147,7 @@ export default function DriverContactsEditPage() {
                         <div className={styles.formGroup}>
                             <label className={styles.label}>계약유형</label>
                             <select className={styles.input} value={formData.contract_type} onChange={(e) => setFormData({ ...formData, contract_type: e.target.value })} style={{ height: '42px' }}>
-                                <option value="contracted">계약차량</option>
-                                <option value="uncontracted">미계약차량</option>
+                                {CONTRACT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
                         <div className={styles.formGroup}>
@@ -157,11 +157,17 @@ export default function DriverContactsEditPage() {
                             </select>
                         </div>
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>앱 지도 공개범위</label>
+                            <label className={styles.label}>지도 공개범위</label>
                             <select className={styles.input} value={formData.map_visibility} onChange={(e) => setFormData({ ...formData, map_visibility: e.target.value })} style={{ height: '42px' }}>
                                 {MAP_VISIBILITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
+                        {formData.contract_type === 'partner' && (
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>협력사명</label>
+                                <input className={styles.input} value={formData.partner_company} onChange={(e) => setFormData({ ...formData, partner_company: e.target.value })} placeholder="협력사/운송사명" />
+                            </div>
+                        )}
                         <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
                             <input name="phone" className={styles.input} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} />
@@ -179,7 +185,7 @@ export default function DriverContactsEditPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>차량아이디</label>
-                            <input className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value.toUpperCase() })} placeholder={formData.cargo_type === 'general' ? '일반화물일시 생략가능' : 'ABCD1234'} maxLength={20} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
+                            <input className={styles.input} value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value.toUpperCase() })} placeholder={formData.cargo_type === 'general' ? '생략가능' : 'ABCD1234'} maxLength={20} style={{ textTransform: 'uppercase', letterSpacing: '1px' }} />
                         </div>
                         {formData.cargo_type === 'general' ? (
                             <>

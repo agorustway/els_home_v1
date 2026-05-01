@@ -11,7 +11,7 @@ import { smartFetch, remoteLog } from './bridge.js?v=5142';
 import { showToast } from './utils.js?v=5142';
 import { showScreen } from './nav.js?v=5142';
 import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5142';
-import { filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5142';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5142';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -273,7 +273,7 @@ function renderTripList(trips) {
          onclick="App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
       <div style="font-weight:800;">${trip.vehicle_number || '-'}</div>
       <div style="font-size:12px;color:#64748b;">
-        ${trip.driver_name || '-'} · ${(trip.driver_contract_type || trip.contract_type) === 'contracted' ? '계약' : '미계약'} · ${trip.lastLocation?.address || '위치 정보 없음'}
+        ${trip.driver_name || '-'} · ${contractTypeLabel(trip.driver_contract_type || trip.contract_type)} · ${trip.lastLocation?.address || '위치 정보 없음'}
       </div>
     </div>
   `).join('');

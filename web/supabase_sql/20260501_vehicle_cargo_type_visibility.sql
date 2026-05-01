@@ -1,8 +1,9 @@
--- 차량 업무유형/일반화물/앱 지도 공개범위 확장
+-- 차량 업무유형/일반화물/웹 관제 지도 공개범위 확장
 
 ALTER TABLE driver_contacts
   ADD COLUMN IF NOT EXISTS cargo_type TEXT DEFAULT 'container',
   ADD COLUMN IF NOT EXISTS map_visibility TEXT DEFAULT 'own',
+  ADD COLUMN IF NOT EXISTS partner_company TEXT,
   ADD COLUMN IF NOT EXISTS general_vehicle_type TEXT,
   ADD COLUMN IF NOT EXISTS general_payload TEXT,
   ADD COLUMN IF NOT EXISTS general_body_type TEXT;

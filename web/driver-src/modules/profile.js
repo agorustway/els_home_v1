@@ -4,7 +4,7 @@
 import { Store, State, BASE_URL } from './store.js?v=5142';
 import { smartFetch } from './bridge.js?v=5142';
 import {
-  GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS,
+  GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES,
 } from './cargoOptions.js?v=5142';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
@@ -33,19 +33,16 @@ export function updateCargoProfileUI() {
   const idLabel = document.getElementById('s-id-label');
   const idInput = document.getElementById('s-id');
   const generalBox = document.getElementById('s-general-cargo-box');
-  const hint = document.getElementById('s-id-hint');
   if (idLabel) idLabel.textContent = cargoType === 'general' ? '차량 ID' : '차량 ID';
   if (idInput) {
-    idInput.placeholder = cargoType === 'general' ? '일반화물일시 생략가능' : 'ELSS0000';
+    idInput.placeholder = cargoType === 'general' ? '생략가능' : 'ELSS0000';
     idInput.required = cargoType !== 'general';
   }
-  if (hint) hint.textContent = cargoType === 'general' ? '일반화물일시 생략가능' : '';
   if (generalBox) generalBox.style.display = cargoType === 'general' ? 'grid' : 'none';
 }
 
 // ─── 프로필 UI 반영 ──────────────────────────────────────────────
 export function applyProfileToUI() {
-  setSelectOptions('s-map-visibility', MAP_VISIBILITY_OPTIONS, State.profile.mapVisibility || 'own');
   setSelectOptions('s-general-vehicle-type', GENERAL_VEHICLE_TYPES, State.profile.generalVehicleType || '트럭');
   setSelectOptions('s-general-payload', GENERAL_PAYLOADS, State.profile.generalPayload || '5ton');
   setSelectOptions('s-general-body-type', GENERAL_BODY_TYPES, State.profile.generalBodyType || '일반');
@@ -56,8 +53,6 @@ export function applyProfileToUI() {
   document.getElementById('s-id').value      = State.profile.driverId;
   const cargoTypeEl = document.getElementById('s-cargo-type');
   if (cargoTypeEl) cargoTypeEl.value = State.profile.cargoType || 'container';
-  const visibilityEl = document.getElementById('s-map-visibility');
-  if (visibilityEl) visibilityEl.value = State.profile.mapVisibility || 'own';
   const vehicleTypeEl = document.getElementById('s-general-vehicle-type');
   if (vehicleTypeEl) vehicleTypeEl.value = State.profile.generalVehicleType || '트럭';
   const payloadEl = document.getElementById('s-general-payload');
@@ -102,7 +97,6 @@ export function saveProfile() {
   const vehicleNo = document.getElementById('s-vehicle').value.trim();
   const driverId  = document.getElementById('s-id').value.trim().toUpperCase();
   const cargoType = document.getElementById('s-cargo-type')?.value || 'container';
-  const mapVisibility = document.getElementById('s-map-visibility')?.value || 'own';
   const generalVehicleType = document.getElementById('s-general-vehicle-type')?.value || '트럭';
   const generalPayload = document.getElementById('s-general-payload')?.value || '5ton';
   const generalBodyType = document.getElementById('s-general-body-type')?.value || '일반';
@@ -120,7 +114,6 @@ export function saveProfile() {
     ...State.profile,
     name, phone, vehicleNo, driverId,
     cargoType,
-    mapVisibility,
     generalVehicleType,
     generalPayload,
     generalBodyType,
@@ -148,7 +141,6 @@ export async function upsertDriverContact() {
         vehicle_number: State.profile.vehicleNo,
         vehicle_id:     State.profile.driverId,
         cargo_type:     State.profile.cargoType || 'container',
-        map_visibility: State.profile.mapVisibility || 'own',
         general_vehicle_type: State.profile.generalVehicleType || null,
         general_payload: State.profile.generalPayload || null,
         general_body_type: State.profile.generalBodyType || null,

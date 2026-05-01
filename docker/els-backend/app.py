@@ -459,7 +459,7 @@ def get_vehicle_tracking():
         if vehicle_numbers:
             try:
                 driver_res = supabase.from_("driver_contacts") \
-                    .select("vehicle_number, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type") \
+                    .select("vehicle_number, branch, partner_company, contract_type, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type") \
                     .in_("vehicle_number", vehicle_numbers) \
                     .execute()
                 for d in (driver_res.data or []):
@@ -474,6 +474,8 @@ def get_vehicle_tracking():
             t["cargo_type"] = t.get("cargo_type") or d.get("cargo_type") or "container"
             t["driver_contract_type"] = t.get("driver_contract_type") or d.get("contract_type") or "uncontracted"
             t["map_visibility"] = t.get("map_visibility") or d.get("map_visibility") or "own"
+            t["branch"] = t.get("branch") or d.get("branch")
+            t["partner_company"] = t.get("partner_company") or d.get("partner_company")
             t["general_vehicle_type"] = t.get("general_vehicle_type") or d.get("general_vehicle_type")
             t["general_payload"] = t.get("general_payload") or d.get("general_payload")
             t["general_body_type"] = t.get("general_body_type") or d.get("general_body_type")

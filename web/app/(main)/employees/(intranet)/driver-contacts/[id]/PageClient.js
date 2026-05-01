@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
-import { cargoTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
+import { cargoTypeLabel, contractTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../intranet.module.css';
 
 export default function DriverContactsDetailPage() {
@@ -122,11 +122,12 @@ export default function DriverContactsDetailPage() {
                             <div>
                                 <span style={{
                                     display: 'inline-block', padding: '3px 12px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600,
-                                    background: item.contract_type === 'contracted' ? '#dcfce7' : '#f1f5f9',
-                                    color: item.contract_type === 'contracted' ? '#16a34a' : '#94a3b8',
+                                    background: item.contract_type === 'contracted' ? '#dcfce7' : item.contract_type === 'partner' ? '#e0f2fe' : '#f1f5f9',
+                                    color: item.contract_type === 'contracted' ? '#16a34a' : item.contract_type === 'partner' ? '#0284c7' : '#94a3b8',
                                 }}>
-                                    {item.contract_type === 'contracted' ? '계약차량' : '미계약차량'}
+                                    {contractTypeLabel(item.contract_type || 'uncontracted')}
                                 </span>
+                                {item.partner_company && <div style={{ marginTop: 6, color: '#0284c7', fontWeight: 700 }}>{item.partner_company}</div>}
                             </div>
                         </div>
                         <div>
@@ -134,7 +135,7 @@ export default function DriverContactsDetailPage() {
                             <div style={{ fontSize: '1.05rem', fontWeight: 800, color: (item.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>{cargoTypeLabel(item.cargo_type || 'container')}</div>
                         </div>
                         <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>앱 지도 공개범위</label>
+                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>지도 공개범위</label>
                             <div>{mapVisibilityLabel(item.map_visibility || 'own')}</div>
                         </div>
                         <div>
@@ -147,7 +148,7 @@ export default function DriverContactsDetailPage() {
                         </div>
                         <div>
                             <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량아이디</label>
-                            <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || ((item.cargo_type || 'container') === 'general' ? '일반화물일시 생략가능' : '-')}</div>
+                            <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || '-'}</div>
                         </div>
                         {(item.cargo_type || 'container') === 'general' ? (
                             <>

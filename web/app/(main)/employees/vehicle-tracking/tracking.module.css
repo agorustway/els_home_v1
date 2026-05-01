@@ -1305,6 +1305,23 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
+    align-items: start;
+}
+
+.detailInfoGrid input,
+.detailInfoGrid select {
+    width: 100%;
+    height: 34px;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 0 10px;
+    font-size: 0.85rem;
+    background: #fff;
+}
+
+.detailInfoGrid select + select {
+    margin-top: 6px;
 }
 
 .infoLabel {
@@ -1317,6 +1334,10 @@
     font-size: 0.9rem;
     font-weight: 700;
     color: #1e293b;
+    min-height: 34px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 /* 사진 목록 */
