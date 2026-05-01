@@ -1,11 +1,11 @@
 /**
  * profile.js — 프로필 UI, 저장, 기사 조회, 프로필 사진 3종
  */
-import { Store, State, BASE_URL } from './store.js?v=5140';
-import { smartFetch } from './bridge.js?v=5140';
+import { Store, State, BASE_URL } from './store.js?v=5142';
+import { smartFetch } from './bridge.js?v=5142';
 import {
   GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS,
-} from './cargoOptions.js?v=5140';
+} from './cargoOptions.js?v=5142';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
 
