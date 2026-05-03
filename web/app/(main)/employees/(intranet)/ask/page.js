@@ -209,7 +209,7 @@ export default function AskPage() {
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
-        content: '안녕하세요! **더 똑똑해진 ELS AI 엘스(v5.10.0)**입니다.\n\n이제 사외 데이터(실시간 날씨, 미세먼지, 유가, KBO/K리그)와 사내 데이터(NAS 문서 수만 권, 이트랜스 이력, 차량 관제)를 통합하여 답변해 드립니다.\n\n사내 지식이나 실시간 현황에 대해 무엇이든 물어보세요!',
+        content: '안녕하세요! **더 똑똑해진 ELS AI 엘스(v5.11.0)**입니다.\n\n이제 사외 데이터(실시간 날씨, 미세먼지, 유가, K-Law 법령)와 사내 데이터(사내 웹 문서, 이트랜스 이력, 차량 관제)를 통합하여 답변해 드립니다.\n\n사내 지식이나 실시간 현황에 대해 무엇이든 물어보세요!',
         timestamp: new Date().toISOString()
     };
 
