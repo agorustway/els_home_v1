@@ -852,8 +852,16 @@ function ContainerHistoryInner() {
                                     </div>
                                     <div className={styles.inputGroup}>
                                         <div className={styles.loginRow}>
-                                            <input type="text" placeholder="아이디" value={userId} onChange={e => setUserId(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
-                                            <input type={showPassword ? "text" : "password"} placeholder="비밀번호" value={userPw} onChange={e => setUserPw(e.target.value)} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
+                                            <input type="text" placeholder="아이디" value={userId} onChange={e => {
+                                                setUserId(e.target.value);
+                                                if (failCount > 0) setFailCount(0); // 아이디 변경 시 차단 해제
+                                                if (isSaveChecked) sessionStorage.setItem('els_creds_backup', JSON.stringify({ id: e.target.value, pw: userPw }));
+                                            }} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
+                                            <input type={showPassword ? "text" : "password"} placeholder="비밀번호" value={userPw} onChange={e => {
+                                                setUserPw(e.target.value);
+                                                if (failCount > 0) setFailCount(0); // 비밀번호 변경 시 차단 해제
+                                                if (isSaveChecked) sessionStorage.setItem('els_creds_backup', JSON.stringify({ id: userId, pw: e.target.value }));
+                                            }} onKeyDown={e => handleKeyDown(e, 'login')} className={styles.input} />
                                         </div>
                                         <div className={styles.loginActionRow}>
                                             <button
@@ -872,13 +880,19 @@ function ContainerHistoryInner() {
                                                         onChange={async (e) => {
                                                             const checked = e.target.checked;
                                                             setIsSaveChecked(checked);
-                                                            if (!checked) {
-                                                                // [중요] 저장 체크 해제 시 즉시 데몬 중지
+                                                            if (checked) {
+                                                                if (userId && userPw) {
+                                                                    handleSaveCreds(userId, userPw);
+                                                                    setLogLines(prev => [...prev, '✓ 로그인 계정 정보가 저장되었습니다.'].slice(-100));
+                                                                }
+                                                            } else {
+                                                                // [중요] 저장 체크 해제 시 즉시 데몬 중지 및 임시저장 삭제
                                                                 try {
                                                                     await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
                                                                     setLogLines(prev => [...prev, '✓ 자동 로그인 연동이 해제되고 세션이 종료되었습니다.']);
                                                                     setLoginSuccess(false);
                                                                     sessionStorage.removeItem('els_login_success');
+                                                                    sessionStorage.removeItem('els_creds_backup');
                                                                     setFailCount(0); // 정지하면 카운트도 초기화
                                                                 } catch (err) { console.error(err); }
                                                             }
