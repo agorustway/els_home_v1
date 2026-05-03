@@ -256,31 +256,7 @@ def nas_sync_scheduler():
     """매일 새벽 01:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다. (자료실 제외)"""
     app.logger.info("[스케줄러] NAS AI 지식 자동 동기화 스케줄러 대기 중 (01:30 실행)")
     
-    # 스캔 대상 목록 (도커 내부 경로 기준)
-    scan_targets = [
-        {"path": "/app/volume1/서울본사", "branch": "본사"},
-        {"path": "/app/volume2/아산지점", "branch": "아산"},
-        {"path": "/app/volume2/당진지점", "branch": "당진"},
-        {"path": "/app/volume2/중부지점", "branch": "중부"},
-        {"path": "/app/volume2/예산지점", "branch": "예산"}
-    ]
-    
-    while True:
-        try:
-            now = datetime.now(KST)
-            # 매일 새벽 01:30에 실행
-            if now.hour == 1 and now.minute == 30:
-                app.logger.info(f"[스케줄러] NAS 정기 스캔 시작 (대상: {len(scan_targets)}개 구역)")
-                for target in scan_targets:
-                    if not supabase: break
-                    try:
-                        # 동기 함수로 직접 호출
-                        res = process_nas_directory(supabase, target["path"], target["branch"])
-                        app.logger.info(f"✅ {target['branch']} 동기화 완료: {res}")
-                    except Exception as e:
-                        app.logger.error(f"❌ {target['branch']} 동기화 실패: {e}")
-                
-                # [v5.9.3] 웹 게시판 첨부파일 정기 동기화 추가
+                # NAS 폴더 스캔 기능은 부하 문제로 해제됨 (WEB 게시판 첨부파일만 동기화)
                 try:
                     app.logger.info("🚀 [스케줄러] 웹 게시판 첨부파일 동기화 시작...")
                     init_web_supabase(supabase)
@@ -460,7 +436,6 @@ def handle_nas_files():
     rel = request.args.get("path")
     return send_file(str(Path("/app/data") / rel.strip("/")), as_attachment=True)
 
-from nas_vectorizer import process_nas_directory
 from web_vectorizer import process_web_attachments, init_supabase as init_web_supabase
 
 # --- 벡터화 작업 상태 추적 (NAS/Web 공유) ---
@@ -516,25 +491,7 @@ def force_unlock_nas_vectorize():
 
 @app.route('/api/vectorize/nas', methods=['POST'])
 def trigger_nas_vectorize():
-    """NAS 폴더 크롤링 및 벡터화 트리거 (Phase 5)."""
-    if not supabase:
-        return jsonify({"error": "Supabase client not initialized"}), 500
-
-    data = request.json or {}
-    raw_dir = data.get("directory", "/app/data/work-docs")
-    branch_name = data.get("branch", "NAS자료")
-
-    busy, resp = _check_vect_busy()
-    if busy:
-        return resp, 429
-
-    threading.Thread(
-        target=_run_vect_task,
-        args=(branch_name, lambda: process_nas_directory(supabase, raw_dir, branch_name)),
-        daemon=True
-    ).start()
-
-    return jsonify({"status": "processing", "message": f"Started vectorization for {branch_name} in background."}), 202
+    return jsonify({"status": "disabled", "message": "NAS vectorization is disabled due to system load."}), 400
 
 @app.route('/api/vectorize/web', methods=['POST'])
 def trigger_web_vectorize():

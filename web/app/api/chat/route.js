@@ -740,53 +740,7 @@ export async function POST(req) {
                 } catch (e) { console.error('ETRANS 조회 오류:', e); }
             }
 
-            // 2-1. NAS 지능형 현황 브리핑 엔진 (v5.8.0 - 파싱 %, 개수, 확장자, 상태 통합)
-            if (userKwd.includes('문서') || userKwd.includes('파일') || userKwd.includes('갯수') || userKwd.includes('개수') || userKwd.includes('파싱') || userKwd.includes('진행') || userKwd.includes('상태') || userKwd.includes('목록')) {
-                try {
-                    const { data: allStats, error: statError } = await supabase.from('nas_file_index').select('branch, is_indexed, extension');
-                    if (!statError && allStats?.length > 0) {
-                        const branches = {};
-                        const extensions = {};
-                        allStats.forEach(s => {
-                            const b = s.branch || '미분류';
-                            if (!branches[b]) branches[b] = { total: 0, indexed: 0 };
-                            branches[b].total++;
-                            if (s.is_indexed) branches[b].indexed++;
-                            
-                            const ext = (s.extension || 'unknown').toLowerCase().replace('.', '');
-                            extensions[ext] = (extensions[ext] || 0) + 1;
-                        });
 
-                        let statsReport = `\n\n## 📂 실시간 NAS 인덱싱(파싱) 현황 리포트\n`;
-                        statsReport += `AI가 사내 NAS의 모든 문서를 실시간으로 모니터링 중입니다. 현재 지점별 파싱 진행도는 다음과 같습니다:\n\n`;
-                        
-                        let totalFiles = 0;
-                        let totalIndexed = 0;
-
-                        Object.entries(branches).forEach(([name, s]) => {
-                            const percent = ((s.indexed / s.total) * 100).toFixed(1);
-                            const statusEmoji = s.indexed === s.total ? '✅' : '🔄';
-                            statsReport += `- **${name}**: ${percent}% (${s.indexed}/${s.total}개) ${statusEmoji}\n`;
-                            totalFiles += s.total;
-                            totalIndexed += s.indexed;
-                        });
-
-                        const totalPercent = ((totalIndexed / totalFiles) * 100).toFixed(1);
-                        statsReport += `\n- **전체 요약**: 총 ${totalFiles}개 파일 중 ${totalIndexed}개 파싱 완료 (**전체 진행률: ${totalPercent}%**)\n`;
-                        
-                        // 확장자별 통계 추가
-                        const topExts = Object.entries(extensions)
-                            .sort((a, b) => b[1] - a[1])
-                            .slice(0, 5)
-                            .map(([ext, count]) => `${ext.toUpperCase()}(${count})`)
-                            .join(', ');
-                        statsReport += `- **주요 파일**: ${topExts} 등 다양한 형식 지원 중\n`;
-                        statsReport += `- **참고**: 파싱이 완료된 문서는 즉시 검색 및 질문 답변이 가능합니다.\n`;
-                        
-                        recentPostsText += statsReport;
-                    }
-                } catch (e) { console.error('NAS 지능형 통계 오류:', e); }
-            }
 
             // 3. 안전운임표 단가 + 이력 + 할증 계산 엔진 + 역방향 조회 (Omni-Agent Phase 1)
             const sfKeywords = ['안전운임', '운임', '단가', '요금', '부산', '의왕', '인천', '광양', '편도', '왕복', '신항', '북항', '여객터미널', '인천여객', '인천국제여객', '인천신항', '인천항', '울산항', '울산신항', '평택항', '포항항', '군산항', '마산항', '대산항', '인상', '변동', '비교', '추이', '이전', '할증', '냉동', '냉장', '플렉시', '탱크', '험로', '덤프', '공휴일', '울산', '평택', '마산', '포항', '군산', '대산', '대기료', '부대조항', '추가요금', '반납', '도착', '밥테일', '온그라운드', '복화', '공차', '취소료', 'X-ray', '검색기', '대형교량'];
@@ -1333,7 +1287,7 @@ export async function POST(req) {
                 // ━━━ STEP A: Precision Query (차량번호+날짜+파일명 타겟 검색) ━━━
                 if (vehicleNums.length > 0 && (datePatterns.length > 0 || fileKeywords.length > 0)) {
                     const contentFilters = vehicleNums.map(v => `content.ilike.%${v}%`).join(',');
-                    let query = supabase.from('document_chunks').select('content, metadata, source_type').or(contentFilters).in('source_type', ['nas_file', 'web_attachment']);
+                    let query = supabase.from('document_chunks').select('content, metadata, source_type').or(contentFilters).in('source_type', ['web_attachment']);
                     if (datePatterns.length > 0) query = query.ilike('metadata->>sheet_name', `%${datePatterns[0]}%`);
                     if (fileKeywords.length > 0) query = query.ilike('metadata->>filename', `%${fileKeywords[0]}%`);
                     const { data: precisionDocs } = await query.limit(12);
@@ -1356,7 +1310,7 @@ export async function POST(req) {
                     let query = supabase.from('document_chunks').select('content, metadata, source_type')
                         .ilike('metadata->>filename', `%${fileKeywords[0]}%`)
                         .ilike('metadata->>sheet_name', `%${datePatterns[0]}%`)
-                        .in('source_type', ['nas_file', 'web_attachment']).limit(10);
+                        .in('source_type', ['web_attachment']).limit(10);
                     const { data: fileDocs } = await query;
                     if (fileDocs && fileDocs.length > 0) {
                         let nasText = `\n\n## 사내 NAS 자료실 문서 (파일: ${fileKeywords[0]} / 시트: ${datePatterns[0]})\n`;
@@ -1377,7 +1331,7 @@ export async function POST(req) {
                         .from('document_chunks')
                         .select('content, metadata, source_type')
                         .or(contentFilters)
-                        .in('source_type', ['nas_file', 'web_attachment'])
+                        .in('source_type', ['web_attachment'])
                         .order('metadata->>sheet_name', { ascending: false })
                         .limit(8);
 
@@ -1398,13 +1352,7 @@ export async function POST(req) {
                 const vector = await getEmbedding(lastUserText);
 
                 if (vector) {
-                    const [nasRes, webRes] = await Promise.all([
-                        supabase.rpc('match_documents', {
-                            query_embedding: vector,
-                            match_threshold: 0.40,  // [v5.9.4] 더 넓은 후보 확보를 위해 0.45→0.40
-                            match_count: 15,
-                            filter_source_type: 'nas_file'
-                        }),
+                    const [webRes] = await Promise.all([
                         supabase.rpc('match_documents', {
                             query_embedding: vector,
                             match_threshold: 0.40,
@@ -1413,8 +1361,8 @@ export async function POST(req) {
                         })
                     ]);
 
-                    const docs = [...(nasRes.data || []), ...(webRes.data || [])];
-                    const error = nasRes.error || webRes.error;
+                    const docs = [...(webRes.data || [])];
+                    const error = webRes.error;
 
                     if (!error && docs.length > 0) {
                         const currentYear = new Date().getFullYear();
@@ -1475,7 +1423,7 @@ export async function POST(req) {
                             .from('document_chunks')
                             .select('content, metadata, source_type')
                             .or(allConditions)
-                            .in('source_type', ['nas_file', 'web_attachment'])
+                            .in('source_type', ['web_attachment'])
                             .limit(8);
 
                         if (kwDocs && kwDocs.length > 0) {

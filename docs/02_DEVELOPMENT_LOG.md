@@ -1,5 +1,17 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-03] NAS 문서 벡터화 기능 전면 해제 (v5.11.0)
+### 🚀 Achievement
+- **서버 부하 완화**: 잦은 백그라운드 크롤링 및 파싱으로 NAS 환경에 과부하를 유발하던 `nas_vectorizer` 전체 스케줄링을 중단했습니다.
+- **AI 검색 최적화**: AI 어시스턴트에서 무거운 NAS 문서를 제외하고, 웹 게시판 첨부파일(WEB 데이터) 전용으로 RAG(검색 증강 생성) 시스템을 슬림화했습니다.
+- **불필요한 가이드 제거**: 사내 NAS 문서 인덱싱(파싱) 진행률 브리핑 로직을 제거하고 관련 UI를 간소화했습니다.
+
+### 🛠 Technical Changes
+- `docker/els-backend/app_core.py`: `nas_sync_scheduler`에서 NAS 폴더 스캔 로직 제거 (웹 게시판 첨부파일 동기화는 유지).
+- `docker/els-backend/app.py`, `app_core.py`: `/api/vectorize/nas` 엔드포인트 비활성화(400 에러 반환).
+- `web/app/api/chat/route.js`: `document_chunks` 검색 시 `nas_file` 소스 타입 필터 제거 및 NAS 파싱 통계 UI 제거.
+- `web/app/(main)/employees/(intranet)/ask/page.js`: 사내 문서 검색(NAS) 가이드에서 파싱 상태 브리핑 문구 삭제.
+- `docs/01_MISSION_CONTROL.md`, `docs/04_MASTER_ARCHITECTURE.md`: 자동화 지표에서 NAS 제거 및 아키텍처 문서 최신화.
 ## [2026-05-01] 컨테이너/일반화물 업무유형 및 지도 공개범위 확장 (v5.10.42)
 ### 🚀 Achievement
 - **업무유형 1차 분류 도입**: 운전원정보와 관제 화면에 `컨테이너`/`일반화물` 구분을 추가하고, 계약차량/미계약차량 2차 선별 필터를 구성했습니다.

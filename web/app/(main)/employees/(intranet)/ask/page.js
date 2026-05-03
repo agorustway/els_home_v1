@@ -640,7 +640,6 @@ export default function AskPage() {
                     <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <li>&quot;안전운임 고시 문서에서 대기료 규정 찾아줘&quot;</li>
                         <li>&quot;아산지점 최근 업무보고 내용 요약해줘&quot;</li>
-                        <li>&quot;현재 NAS 자료실 파싱 진행 상태 알려줘&quot;</li>
                     </ul>
                 </div>
             </div>
