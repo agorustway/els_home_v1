@@ -156,6 +156,22 @@ function makeWaypointIcon(color) {
   return { content: html, anchor: new naver.maps.Point(10, 10) };
 }
 
+// ─── 마커 부드러운 이동 애니메이션 ───────────────────────────────────
+function animateMarker(marker, fromLat, fromLng, toLat, toLng, duration = 500) {
+  const start = performance.now();
+  const step = (now) => {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    // easeOutCubic
+    const ease = 1 - Math.pow(1 - t, 3);
+    const lat = fromLat + (toLat - fromLat) * ease;
+    const lng = fromLng + (toLng - fromLng) * ease;
+    marker.setPosition(new naver.maps.LatLng(lat, lng));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 // ─── 마커 갱신 ──────────────────────────────────────────────────────
 function updateVehicleMarkers(trips) {
   if (!_map) return;
@@ -182,7 +198,21 @@ function updateVehicleMarkers(trips) {
 
     if (_markers.has(trip.id)) {
       const m = _markers.get(trip.id);
-      m.setPosition(pos);
+      // 부드러운 마커 이동 (이전 위치 → 새 위치)
+      const prev = m.getPosition();
+      if (prev) {
+        const pLat = prev.lat();
+        const pLng = prev.lng();
+        const dist = Math.abs(pLat - lat) + Math.abs(pLng - lng);
+        if (dist > 0.00001 && dist < 0.5) {
+          // 적당한 거리면 애니메이션, 너무 멀면 즉시 이동
+          animateMarker(m, pLat, pLng, lat, lng, 600);
+        } else {
+          m.setPosition(pos);
+        }
+      } else {
+        m.setPosition(pos);
+      }
       m.setIcon(makeVehicleIcon(label, color));
     } else {
       const m = new naver.maps.Marker({
