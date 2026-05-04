@@ -156,8 +156,19 @@ def sync_asan_dispatch_python(force=False):
             
             app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
             
+            # 네트워크 파일 행(Hang) 방지를 위해 로컬 임시 파일로 복사
+            import tempfile, shutil
+            temp_path = tempfile.mktemp(suffix=".xlsx")
+            
+            try:
+                shutil.copy2(full_path, temp_path)
+                app.logger.info(f"[자동동기화] {dtype} 로컬 임시 파일 복사 완료: {temp_path}")
+            except Exception as e:
+                app.logger.error(f"[자동동기화] {dtype} 로컬 임시 파일 복사 실패: {e}")
+                continue
+            
             # 엑셀 읽기
-            xl = pd.ExcelFile(full_path)
+            xl = pd.ExcelFile(temp_path)
             sync_count = 0
             
             # 숫자 형태의 시트 이름 필터링 (최신 날짜 우선)
@@ -196,7 +207,7 @@ def sync_asan_dispatch_python(force=False):
             try:
                 import openpyxl
                 import gc
-                wb = openpyxl.load_workbook(full_path, data_only=True, read_only=True)
+                wb = openpyxl.load_workbook(temp_path, data_only=True, read_only=True)
             except Exception as e:
                 app.logger.warning(f"[자동동기화] openpyxl 로드 실패: {e}")
 
@@ -312,6 +323,14 @@ def sync_asan_dispatch_python(force=False):
 
             last_mtime_cache[dtype] = mtime
             
+            # 임시 파일 삭제
+            try:
+                import os
+                if 'temp_path' in locals() and os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except Exception as e:
+                app.logger.warning(f"[자동동기화] {dtype} 임시 파일 삭제 실패: {e}")
+                
     except Exception as e:
         app.logger.error(f"[자동동기화] 치명적 오류: {e}")
 

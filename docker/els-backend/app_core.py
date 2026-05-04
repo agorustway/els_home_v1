@@ -57,15 +57,25 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 last_mtime_cache = {}
 last_sheet_hash_cache = {}  # [v5.10.14] 시트별 데이터 해시 캐시 — 변경된 시트만 Supabase upsert
 asan_sync_lock = threading.Lock()
+asan_sync_start_time = 0
 
 def sync_asan_dispatch_python(force=False):
-    global last_mtime_cache, last_sheet_hash_cache
+    global last_mtime_cache, last_sheet_hash_cache, asan_sync_start_time
     if not supabase: return
     
-    # 중복 실행 방지
+    import time
+    # 중복 실행 방지 및 좀비 락 해제 (30분 초과 시)
+    if asan_sync_lock.locked():
+        if time.time() - asan_sync_start_time > 1800:
+            app.logger.warning("[자동동기화] 이전 동기화가 30분 이상 지연되어 락을 강제 해제합니다.")
+            try: asan_sync_lock.release()
+            except: pass
+
     if not asan_sync_lock.acquire(blocking=False):
         app.logger.warning("[자동동기화] 이미 동기화가 진행 중입니다. 이번 요청은 건너뜁니다.")
         return
+
+    asan_sync_start_time = time.time()
 
     try:
         app.logger.info("[자동동기화] 아산 배차판 동기화 프로세스 시작 (Force=%s)...", force)
@@ -101,13 +111,24 @@ def sync_asan_dispatch_python(force=False):
             
             app.logger.info(f"[자동동기화] {dtype} 데이터 추출 시작... (파일수정됨/강제)")
             
+            # 네트워크 파일 행(Hang) 방지를 위해 로컬 임시 파일로 복사
+            import tempfile, shutil
+            temp_path = tempfile.mktemp(suffix=".xlsx")
+            
+            try:
+                shutil.copy2(full_path, temp_path)
+                app.logger.info(f"[자동동기화] {dtype} 로컬 임시 파일 복사 완료: {temp_path}")
+            except Exception as e:
+                app.logger.error(f"[자동동기화] {dtype} 로컬 임시 파일 복사 실패: {e}")
+                continue
+            
             # [v5.10.19] 삭제된 시트 추적용 리스트
             valid_dates = []
             
             # 엑셀 읽기
             try:
                 # [v5.10.6] 엔진 명시 및 최적화
-                xl = pd.ExcelFile(full_path, engine='openpyxl')
+                xl = pd.ExcelFile(temp_path, engine='openpyxl')
                 sync_count = 0
                 app.logger.info(f"[자동동기화] {dtype} 엑셀 로드 완료. 시트수: {len(xl.sheet_names)}")
                 
@@ -115,7 +136,7 @@ def sync_asan_dispatch_python(force=False):
                 import openpyxl as _openpyxl
                 wb_comments = None
                 try:
-                    wb_comments = _openpyxl.load_workbook(full_path, data_only=True, keep_vba=False)
+                    wb_comments = _openpyxl.load_workbook(temp_path, data_only=True, keep_vba=False)
                 except Exception as e:
                     app.logger.warning(f"[자동동기화] {dtype} 메모 워크북 로드 실패: {e}")
                 
@@ -232,6 +253,14 @@ def sync_asan_dispatch_python(force=False):
                     except: pass
             except Exception as e:
                 app.logger.error(f"[자동동기화] {dtype} 엑셀 처리 중 에러: {e}")
+            finally:
+                # 임시 파일 삭제
+                try:
+                    import os
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception as e:
+                    app.logger.warning(f"[자동동기화] {dtype} 임시 파일 삭제 실패: {e}")
 
     except Exception as e:
         app.logger.error(f"[자동동기화] 전체 프로세스 에러: {e}", exc_info=True)
