@@ -1122,34 +1122,40 @@ export default function VehicleTrackingPage() {
                 <div className={styles.liveGrid}>
                     <div className={styles.liveGridRight}>
                         <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{ height: '100%', margin: 0, borderRadius: '12px' }}>
-                            <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 100, display: 'flex', flexDirection: 'row', gap: 8 }}>
-                                <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '6px 12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsFullscreen(!isFullscreen)}>
-                                    {isFullscreen ? '전체화면 해제' : '지도 전체화면'}
-                                </button>
-                                {isFullscreen && (
-                                    <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '6px 12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
-                                        if (!mapInstanceRef.current) return;
-                                        if (realtimeTarget || selectedTrip) {
-                                            const trip = liveTrips.find(t => t.id === (realtimeTarget || selectedTrip?.id));
-                                            if (trip && trip.lastLocation) {
-                                                mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng));
-                                                mapInstanceRef.current.setZoom(13);
-                                            }
-                                        } else {
-                                            const bounds = new window.naver.maps.LatLngBounds();
-                                            filteredLiveTrips.forEach(t => {
-                                                if (t.lastLocation) bounds.extend(new window.naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng));
-                                            });
-                                            if (!bounds.isEmpty()) {
-                                                mapInstanceRef.current.fitBounds(bounds, { top: 30, right: 380, bottom: 30, left: 30 });
-                                            }
-                                        }
-                                    }}>현위치</button>
-                                )}
-                            </div>
+                            {!isFullscreen && (
+                                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 100, display: 'flex', flexDirection: 'row', gap: 8 }}>
+                                    <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '6px 12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} onClick={() => setIsFullscreen(true)}>
+                                        지도 전체화면
+                                    </button>
+                                </div>
+                            )}
                             {isFullscreen && (
                                 <>
-                                    <div style={{ position: 'absolute', top: 12, left: 150, right: 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
+                                    <div style={{ position: 'absolute', top: 12, left: 12, right: 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
+                                        <button className={styles.fullscreenBtn} style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsFullscreen(false)}>
+                                            X 전체화면 닫기
+                                        </button>
+                                        <button className={styles.fullscreenBtn} style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
+                                            if (!mapInstanceRef.current) return;
+                                            if (realtimeTarget || selectedTrip) {
+                                                const trip = liveTrips.find(t => t.id === (realtimeTarget || selectedTrip?.id));
+                                                if (trip && trip.lastLocation) {
+                                                    mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng));
+                                                    mapInstanceRef.current.setZoom(13);
+                                                }
+                                            } else {
+                                                const bounds = new window.naver.maps.LatLngBounds();
+                                                filteredLiveTrips.forEach(t => {
+                                                    if (t.lastLocation) bounds.extend(new window.naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng));
+                                                });
+                                                if (!bounds.isEmpty()) {
+                                                    mapInstanceRef.current.fitBounds(bounds, { top: 30, right: 380, bottom: 30, left: 30 });
+                                                }
+                                            }
+                                        }}>
+                                            📍 포커스 맞추기
+                                        </button>
+                                        <span style={{ width: 1, height: 20, background: '#cbd5e1', margin: '0 4px' }} />
                                         <GroupButton active={cargoGroupFilter === 'all'} onClick={() => setCargoGroupFilter('all')}>전체보기</GroupButton>
                                         <GroupButton active={cargoGroupFilter === 'container'} onClick={() => setCargoGroupFilter('container')}>컨테이너</GroupButton>
                                         <GroupButton active={cargoGroupFilter === 'general'} onClick={() => setCargoGroupFilter('general')}>일반화물</GroupButton>
