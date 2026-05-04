@@ -477,6 +477,17 @@ export default function ArchiveBrowser() {
                 <div className={styles.headerControls}>
                     {selectionMode ? (
                         <div className={styles.selectionToolbar}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={files.length > 0 && selectedPaths.size === files.length}
+                                    onChange={(e) => {
+                                        if (e.target.checked) setSelectedPaths(new Set(files.map(f => f.path)));
+                                        else setSelectedPaths(new Set());
+                                    }}
+                                />
+                                전체선택
+                            </label>
                             <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
                             {selectedPaths.size === 1 && files.find(f => f.path === Array.from(selectedPaths)[0])?.type !== 'directory' ? (
                                 <button onClick={() => handleDownloadFile(files.find(f => f.path === Array.from(selectedPaths)[0]))} className={`${styles.btn} ${styles.btnPoint}`}>💾 다운로드</button>
@@ -491,6 +502,7 @@ export default function ArchiveBrowser() {
                                 <button onClick={() => setViewMode('list')} className={`${styles.viewBtn} ${viewMode === 'list' ? styles.activeView : ''}`}>리스트</button>
                                 <button onClick={() => setViewMode('grid')} className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.activeView : ''}`}>아이콘</button>
                             </div>
+                            <button onClick={() => setSelectionMode(true)} className={styles.btn}>선택</button>
                             <button onClick={handleCreateFolder} className={styles.btn}>새 폴더</button>
                             <label className={`${styles.btn} ${styles.btnPoint}`} style={{ margin: 0, cursor: 'pointer' }}>
                                 {uploading ? '업로드 중...' : '파일 업로드'}
@@ -520,7 +532,18 @@ export default function ArchiveBrowser() {
                     <table className={styles.table}>
                         <thead>
                             <tr>
-                                {selectionMode && <th style={{ width: '40px' }}></th>}
+                                {selectionMode && (
+                                    <th style={{ width: '40px', textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={files.length > 0 && selectedPaths.size === files.length}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelectedPaths(new Set(files.map(f => f.path)));
+                                                else setSelectedPaths(new Set());
+                                            }}
+                                        />
+                                    </th>
+                                )}
                                 <th onClick={() => setSortConfig({ key: 'name', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>이름</th>
                                 <th className={styles.hideMobile}>날짜</th>
                                 <th className={styles.hideMobile}>크기</th>
@@ -556,9 +579,8 @@ export default function ArchiveBrowser() {
                                         if (selectionMode) toggleSelect(file.path);
                                         else if (file.type === 'directory') handleNavigate(file.name);
                                         else {
-                                            // 일반 클릭 시 다운로드/미리보기 대신 파일 선택 상태로 전환
-                                            setSelectionMode(true);
-                                            setSelectedPaths(new Set([file.path]));
+                                            // 상시 파일이름 클릭 시 파일 열기(다운로드)
+                                            handleDownloadFile(file);
                                         }
                                     }}>
                                         <span className={styles.icon}>{file.type === 'directory' ? '📁' : '📄'}</span>
@@ -605,9 +627,8 @@ export default function ArchiveBrowser() {
                                     if (selectionMode) toggleSelect(file.path);
                                     else if (file.type === 'directory') handleNavigate(file.name);
                                     else {
-                                        // 일반 클릭 시 다운로드/미리보기 대신 파일 선택 상태로 전환
-                                        setSelectionMode(true);
-                                        setSelectedPaths(new Set([file.path]));
+                                        // 상시 파일이름 클릭 시 파일 열기(다운로드)
+                                        handleDownloadFile(file);
                                     }
                                 }}
                             >
@@ -648,9 +669,9 @@ export default function ArchiveBrowser() {
                             <>
                                 <div className={styles.contextItem} onClick={() => {
                                     if (contextMenu.file.type === 'directory') handleNavigate(contextMenu.file.name);
-                                    else window.open(`/api/nas/preview?path=${encodeURIComponent(contextMenu.file.path)}`);
+                                    else handleDownloadFile(contextMenu.file);
                                 }}>
-                                    📁 {contextMenu.file.type === 'directory' ? '열기' : '미리보기'}
+                                    📁 {contextMenu.file.type === 'directory' ? '열기' : '파일열기'}
                                 </div>
 
                                 {/* Selection Mode Context Actions */}
