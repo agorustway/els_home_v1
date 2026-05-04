@@ -13,6 +13,11 @@ export default function AdminLogsPage() {
     const [endDate, setEndDate] = useState('');
     const [error, setError] = useState(null);
     const [isTableMissing, setIsTableMissing] = useState(false);
+    
+    // Checkbox & Modal State
+    const [selectedLogs, setSelectedLogs] = useState(new Set());
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedLogData, setSelectedLogData] = useState(null);
 
     // Filter Trigger
     const [activeEmail, setActiveEmail] = useState('');
@@ -47,6 +52,7 @@ export default function AdminLogsPage() {
             if (res.ok && data.logs) {
                 setLogs(data.logs);
                 setPagination(data.pagination);
+                setSelectedLogs(new Set()); // 페이지 이동 시 선택 초기화
             } else if (!res.ok) {
                 setError(data.error || '데이터를 불러오지 못했습니다.');
             }
@@ -108,6 +114,78 @@ export default function AdminLogsPage() {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
             setPagination(prev => ({ ...prev, page: newPage }));
         }
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedLogs(new Set(logs.map(log => log.id)));
+        } else {
+            setSelectedLogs(new Set());
+        }
+    };
+
+    const toggleSelect = (id) => {
+        const newSet = new Set(selectedLogs);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedLogs(newSet);
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedLogs.size === 0) return alert('삭제할 로그를 선택하세요.');
+        if (!confirm(`선택한 ${selectedLogs.size}개의 로그를 삭제하시겠습니까?`)) return;
+
+        try {
+            const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+            const res = await fetch(`${baseUrl}/api/logs`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deleteType: 'IDS', logIds: Array.from(selectedLogs) }),
+            });
+            if (res.ok) {
+                alert('선택한 로그가 삭제되었습니다.');
+                fetchLogs();
+            } else {
+                alert('삭제 실패');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('오류 발생');
+        }
+    };
+
+    const handleDownloadSelected = () => {
+        if (selectedLogs.size === 0) return alert('다운로드할 로그를 선택하세요.');
+        
+        const selectedData = logs.filter(log => selectedLogs.has(log.id));
+        
+        // CSV 생성
+        const headers = ['발생일시(KST)', '이메일', '활동유형', '경로(URL)', '상세정보'];
+        const csvRows = [headers.join(',')];
+        
+        for (const log of selectedData) {
+            const logDate = new Date(log.created_at).toLocaleString('ko-KR').replace(/,/g, '');
+            const email = log.user_email || 'anonymous';
+            const action = log.action_type || '';
+            const path = log.path || '';
+            const metaStr = JSON.stringify(log.metadata || {}).replace(/"/g, '""'); // CSV escape
+            
+            csvRows.push(`${logDate},${email},${action},${path},"${metaStr}"`);
+        }
+        
+        const csvString = '\uFEFF' + csvRows.join('\n'); // BOM for Excel
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const openMetaModal = (log) => {
+        setSelectedLogData(log);
+        setIsModalOpen(true);
     };
 
     const renderMetadata = (meta) => {
@@ -191,6 +269,13 @@ export default function AdminLogsPage() {
                     </form>
 
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {selectedLogs.size > 0 && (
+                            <>
+                                <button onClick={handleDownloadSelected} className={styles.btn} style={{ color: '#047857', border: '1px solid #10b981' }}>⬇️ 선택 다운로드</button>
+                                <button onClick={handleDeleteSelected} className={styles.btn} style={{ color: '#dc2626', border: '1px solid #ef4444' }}>🗑️ 선택 삭제</button>
+                                <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 4px' }} />
+                            </>
+                        )}
                         <button onClick={() => handleClearLogs('1MONTH')} className={styles.btn} style={{ color: '#dc2626' }}>1달 이전 삭제</button>
                         <button onClick={() => handleClearLogs('1YEAR')} className={styles.btn} style={{ color: '#dc2626' }}>1년 이전 삭제</button>
                         <button onClick={() => handleClearLogs('ALL')} className={styles.btn} style={{ background: '#ef4444', color: 'white' }}>전체 삭제</button>
@@ -206,14 +291,17 @@ export default function AdminLogsPage() {
                 {/* Desktop Table View */}
                 <div className={styles.tableWrapper} style={{ backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden', marginBottom: '20px' }}>
                     <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px', tableLayout: 'fixed' }}>
                             <thead>
                                 <tr style={{ backgroundColor: '#f1f5f9' }}>
-                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '160px' }}>발생 일시(KST)</th>
-                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '160px' }}>이메일</th>
+                                    <th style={{ padding: '14px 16px', width: '50px', textAlign: 'center' }}>
+                                        <input type="checkbox" onChange={handleSelectAll} checked={logs.length > 0 && selectedLogs.size === logs.length} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                                    </th>
+                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '150px' }}>발생 일시(KST)</th>
+                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '220px' }}>이메일 / 접근IP</th>
                                     <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '120px' }}>활동 유형</th>
-                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>경로 (URL)</th>
-                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '300px' }}>상세 정보(meta)</th>
+                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '25%' }}>경로 (URL)</th>
+                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>상세 정보 (meta)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -224,9 +312,12 @@ export default function AdminLogsPage() {
                                 ) : logs.map((log) => {
                                     const logDate = new Date(log.created_at).toLocaleString('ko-KR');
                                     return (
-                                        <tr key={log.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.9rem' }}>{logDate}</td>
-                                            <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: '500' }}>{log.user_email}</td>
+                                        <tr key={log.id} style={{ borderTop: '1px solid #f1f5f9', backgroundColor: selectedLogs.has(log.id) ? '#f0fdf4' : 'transparent' }}>
+                                            <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                                <input type="checkbox" checked={selectedLogs.has(log.id)} onChange={() => toggleSelect(log.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                                            </td>
+                                            <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.85rem' }}>{logDate}</td>
+                                            <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: '500', fontSize: '0.85rem', wordBreak: 'break-all' }}>{log.user_email}</td>
                                             <td style={{ padding: '14px 16px' }}>
                                                 <span style={{
                                                     padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold',
@@ -236,9 +327,17 @@ export default function AdminLogsPage() {
                                                     {log.action_type}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '14px 16px', color: '#334155', fontSize: '0.9rem', wordBreak: 'break-all' }}>{log.path}</td>
-                                            <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }} title={renderMetadata(log.metadata)}>
-                                                {renderMetadata(log.metadata)}
+                                            <td style={{ padding: '14px 16px', color: '#334155', fontSize: '0.85rem', wordBreak: 'break-all' }}>{log.path}</td>
+                                            <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.8rem' }}>
+                                                <div 
+                                                    onClick={() => openMetaModal(log)}
+                                                    style={{ 
+                                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', 
+                                                        cursor: 'pointer', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' 
+                                                    }} 
+                                                    title="클릭하여 상세 데이터 보기">
+                                                    {renderMetadata(log.metadata)}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -259,6 +358,24 @@ export default function AdminLogsPage() {
                     </span>
                 </div>
             </div>
+
+            {/* Meta Data Modal */}
+            {isModalOpen && selectedLogData && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsModalOpen(false)}>
+                    <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', color: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>상세 정보 (Metadata)</span>
+                            <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+                        </h3>
+                        <div style={{ marginBottom: '12px', fontSize: '0.9rem', color: '#475569' }}>
+                            <strong>경로:</strong> {selectedLogData.path}
+                        </div>
+                        <pre style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', overflowX: 'auto', fontSize: '0.85rem', color: '#334155', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                            {JSON.stringify(selectedLogData.metadata, null, 2)}
+                        </pre>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

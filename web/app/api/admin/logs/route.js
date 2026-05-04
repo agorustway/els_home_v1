@@ -92,12 +92,14 @@ export async function DELETE(request) {
 
     try {
         const body = await request.json();
-        const { dateBefore, deleteType } = body;
+        const { dateBefore, deleteType, logIds } = body;
 
         let query = supabase.from('user_activity_logs').delete();
 
         if (deleteType === 'ALL') {
             query = query.neq('id', '00000000-0000-0000-0000-000000000000'); // Delete everything visually (UUID not null)
+        } else if (deleteType === 'IDS' && logIds && logIds.length > 0) {
+            query = query.in('id', logIds);
         } else if (dateBefore) {
             // Delete older than DateBefore
             query = query.lt('created_at', dateBefore);

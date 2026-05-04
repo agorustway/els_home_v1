@@ -90,9 +90,21 @@ def post_log():
         data = request.get_json(silent=True) or {}
         # Next.js의 로그 수집 형식 그대로 수용
         metadata = data.get("metadata", {})
+        
+        # [신규] 클라이언트 IP 수집 (anonymous 접근 등 식별용)
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if client_ip:
+            # 쉼표로 구분된 다중 IP일 경우 첫 번째(원래 클라이언트) IP 선택
+            metadata["ip"] = client_ip.split(',')[0].strip()
+            
+        # user_email이 anonymous일 경우 IP를 식별자로 병기
+        user_email = data.get("user_email") or data.get("email", "anonymous")
+        if user_email == "anonymous" and client_ip:
+            user_email = f"anonymous ({metadata['ip']})"
+            
         log_entry = {
             "user_id": metadata.get("user_id"), # metadata에서 id 추출
-            "user_email": data.get("user_email") or data.get("email", "anonymous"),
+            "user_email": user_email,
             "action_type": data.get("action_type") or data.get("type", "PAGE_VIEW"),
             "path": data.get("path", "/"),
             "metadata": metadata
