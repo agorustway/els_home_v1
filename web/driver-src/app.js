@@ -60,7 +60,7 @@ import { checkUpdate } from './modules/update.js?v=5142';
 // 지도
 import {
   openMap, closeMap, refreshMapData, centerMyLocation,
-  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles,
+  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles, focusVehicleOnMap
 } from './modules/map.js?v=5142';
 
 // 초기화
@@ -121,7 +121,7 @@ window.App = {
 
   // 지도
   openMap, closeMap, refreshMapData, centerMyLocation,
-  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles,
+  toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles, focusVehicleOnMap,
 
   // 앱 종료
   exitApp,
@@ -131,9 +131,21 @@ window.App = {
 };
 
 // ─── 앱 시작 ─────────────────────────────────────────────────────
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { init(); initPinchZoom(); });
-} else {
+function initAppWithSplash() {
   init();
   initPinchZoom();
+  // Splash hide after 1.5s
+  setTimeout(() => {
+    const splash = document.getElementById('web-splash');
+    if (splash) {
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 300);
+    }
+  }, 1000);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAppWithSplash);
+} else {
+  initAppWithSplash();
 }

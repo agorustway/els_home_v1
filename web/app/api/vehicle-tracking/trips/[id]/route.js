@@ -211,6 +211,20 @@ export async function PATCH(request, { params }) {
             error = result1.error;
         }
 
+        // [v5.11.2] map_visibility 변경 시 driver_contacts 에도 즉시 반영하여 앱 로그인 시 적용되도록 함
+        if (map_visibility !== undefined && data) {
+            try {
+                const phone = (data.driver_phone || '').replace(/[^0-9]/g, '');
+                if (phone) {
+                    await supabase.from('driver_contacts').update({ map_visibility }).ilike('phone', `%${phone.slice(-8)}%`);
+                } else if (data.vehicle_number) {
+                    await supabase.from('driver_contacts').update({ map_visibility }).eq('vehicle_number', data.vehicle_number);
+                }
+            } catch (err) {
+                console.error('driver_contacts map_visibility update failed:', err);
+            }
+        }
+
         // 수정 로그 기록 (수정 모드일 경우)
         if (oldData && !action) {
             const logEntries = [];

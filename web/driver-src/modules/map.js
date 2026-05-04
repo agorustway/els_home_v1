@@ -191,8 +191,8 @@ function updateVehicleMarkers(trips) {
         title    : label,
         zIndex   : 100,
       });
-      // 클릭 시 경로 조회
-      naver.maps.Event.addListener(m, 'click', () => showTripRouteOnMap(trip));
+      // 클릭 시 위치 집중 (경로는 상세보기 버튼을 통해 조회)
+      naver.maps.Event.addListener(m, 'click', () => focusVehicleOnMap(trip));
       _markers.set(trip.id, m);
     }
   }
@@ -270,10 +270,13 @@ function renderTripList(trips) {
 
   container.innerHTML = visible.map(trip => `
     <div class="map-trip-item"
-         onclick="App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
-      <div style="font-weight:800;">${trip.vehicle_number || '-'}</div>
-      <div style="font-size:12px;color:#64748b;">
+         onclick="App.focusVehicleOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
+      <div style="font-weight:800;color:#0f172a;">${trip.vehicle_number || '-'}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:2px;">
         ${trip.driver_name || '-'} · ${contractTypeLabel(trip.driver_contract_type || trip.contract_type)} · ${trip.lastLocation?.address || '위치 정보 없음'}
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 10px;height:24px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;" onclick="event.stopPropagation(); App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">상세보기</button>
       </div>
     </div>
   `).join('');
@@ -433,6 +436,15 @@ export function showAllMapVehicles() {
     _map.setCenter(new naver.maps.LatLng(first.lat, first.lng));
     _map.setZoom(12, true);
   }
+}
+
+/** 특정 차량의 위치로 이동 및 줌 레벨 조정 */
+export function focusVehicleOnMap(trip) {
+  if (!_map || !trip.lastLocation) return;
+  const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
+  _map.setCenter(pos);
+  _map.setZoom(13, true); // 레벨 조금 줄여줌
+  showToast(`${trip.vehicle_number} 차량 위치로 이동했습니다.`);
 }
 
 /** 특정 차량의 경로를 지도 위에 표시 */

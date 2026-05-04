@@ -1110,7 +1110,29 @@ export default function VehicleTrackingPage() {
                 <div className={styles.liveGrid}>
                     <div className={styles.liveGridRight}>
                         <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{ height: '100%', margin: 0, borderRadius: '12px' }}>
-                            <button className={styles.fullscreenBtn} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '전체화면 해제' : '지도 전체화면'}</button>
+                            <div style={{ position: 'absolute', top: 12, right: isFullscreen ? 385 : 12, zIndex: 2002, display: 'flex', gap: 8 }}>
+                                {isFullscreen && (
+                                    <button className={styles.fullscreenBtn} style={{ position: 'relative', top: 'auto', right: 'auto', background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1' }} onClick={() => {
+                                        if (!mapInstanceRef.current) return;
+                                        if (realtimeTarget || selectedTrip) {
+                                            const trip = liveTrips.find(t => t.id === (realtimeTarget || selectedTrip?.id));
+                                            if (trip && trip.lastLocation) {
+                                                mapInstanceRef.current.setCenter(new window.naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng));
+                                                mapInstanceRef.current.setZoom(13);
+                                            }
+                                        } else {
+                                            const bounds = new window.naver.maps.LatLngBounds();
+                                            filteredLiveTrips.forEach(t => {
+                                                if (t.lastLocation) bounds.extend(new window.naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng));
+                                            });
+                                            if (!bounds.isEmpty()) {
+                                                mapInstanceRef.current.fitBounds(bounds, { top: 30, right: 380, bottom: 30, left: 30 });
+                                            }
+                                        }
+                                    }}>현위치</button>
+                                )}
+                                <button className={styles.fullscreenBtn} style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsFullscreen(!isFullscreen)}>{isFullscreen ? '전체화면 해제' : '지도 전체화면'}</button>
+                            </div>
                             {isFullscreen && (
                                 <>
                                     <div style={{ position: 'absolute', top: 12, left: 150, right: 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
@@ -1141,7 +1163,7 @@ export default function VehicleTrackingPage() {
                                                 <button
                                                     key={`fs-${trip.id}`}
                                                     type="button"
-                                                    onClick={() => { handleZoomToLiveTrip(trip); handleSelectTrip(trip); }}
+                                                    onClick={() => { handleZoomToLiveTrip(trip); setRealtimeTarget(trip.id); }}
                                                     style={{ textAlign: 'left', background: realtimeTarget === trip.id ? '#ecfdf5' : '#fff', border: realtimeTarget === trip.id ? '1px solid #86efac' : '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
                                                 >
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
@@ -1154,6 +1176,9 @@ export default function VehicleTrackingPage() {
                                                         <span>시간 <b style={{ color: '#0f172a' }}>{getElapsedTimeString(trip.started_at, trip.completed_at)}</b></span>
                                                     </div>
                                                     <div style={{ marginTop: 6, fontSize: '0.72rem', color: '#64748b', lineHeight: 1.35 }}>{trip.lastLocation?.address || '위치 정보 없음'}</div>
+                                                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                                                        <span onClick={(e) => { e.stopPropagation(); handleSelectTrip(trip); }} style={{ padding: '4px 12px', fontSize: '0.72rem', border: '1px solid #cbd5e1', borderRadius: 4, background: '#f8fafc', color: '#334155', fontWeight: 800 }}>상세보기</span>
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -1365,8 +1390,13 @@ export default function VehicleTrackingPage() {
                                 <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''} onClick={(e) => { if (selectedTrip) handleSelectTrip(trip); }} style={{ cursor: selectedTrip ? 'pointer' : 'default' }}>
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
-                                    <td style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>
+                                    <td style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }} onClick={(e) => e.stopPropagation()}>
                                         {cargoTypeLabel(trip.cargo_type || 'container')}<br />{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}
+                                        <select defaultValue={trip.map_visibility || 'own'} onChange={(e) => saveTripField(trip, 'map_visibility', e.target.value)} style={{ display: 'block', marginTop: 4, width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', color: (trip.admin_edited_fields || []).includes('map_visibility') ? '#2563eb' : '#64748b' }}>
+                                            <option value="own">지도: 자기차량</option>
+                                            <option value="contracted">지도: 계약차량</option>
+                                            <option value="all">지도: 전체운행</option>
+                                        </select>
                                     </td>
                                     <td>
                                         <div><strong>{trip.driver_name}</strong></div>
@@ -1494,7 +1524,17 @@ export default function VehicleTrackingPage() {
                             <div className={styles.detailInfoGrid}>
                                 <div><div className={styles.infoLabel}>드라이버</div><div className={styles.infoValue}>{selectedTrip.driver_name}</div></div>
                                 <div><div className={styles.infoLabel}>차량번호</div><div className={styles.infoValue}>{selectedTrip.vehicle_number}</div></div>
-                                <div><div className={styles.infoLabel}>업무유형</div><div className={styles.infoValue}>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {contractTypeLabel(selectedTrip.driver_contract_type || selectedTrip.contract_type || 'uncontracted')}</div></div>
+                                <div>
+                                    <div className={styles.infoLabel}>업무유형 / 지도공개</div>
+                                    <div className={styles.infoValue} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <span>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {contractTypeLabel(selectedTrip.driver_contract_type || selectedTrip.contract_type || 'uncontracted')}</span>
+                                        <select defaultValue={selectedTrip.map_visibility || 'own'} onChange={(e) => { saveTripField(selectedTrip, 'map_visibility', e.target.value); setSelectedTrip(prev => ({...prev, map_visibility: e.target.value})); }} style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 6px', fontSize: '0.8rem', background: '#f8fafc', color: '#334155' }}>
+                                            <option value="own">자기차량</option>
+                                            <option value="contracted">계약차량</option>
+                                            <option value="all">전체운행</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div><div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'}</div><div className={styles.infoValue}><input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_item || selectedTrip.container_number || '') : (selectedTrip.container_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 번호'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '오더/관리번호' : '씰 넘버'}</div><div className={styles.infoValue}><input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_order_number || selectedTrip.seal_number || '') : (selectedTrip.seal_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '오더번호' : '씰 넘버'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_order_number' : 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>규격/타입</div><div className={styles.infoValue}>
