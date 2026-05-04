@@ -65,21 +65,35 @@ graph TD
 
 ---
 
-## 7. 운영 가이드라인 (Operational Guardrails)
-1. **APK 빌드**: 반드시 `scripts/build_driver_apk.ps1`을 경유해야 버전 자동화가 보장됨.
-2. **봇 로그인**: ETrans 자동화 작업 중 수동 로그인 시 세션 충돌 주의.
+## 7. 관제 시스템 고도화 (Tracking Advanced)
+### 7-1. 네비게이션 모드 (v5.11.3)
+- **핵심**: 실시간 추적 시 `panTo` 기반의 부드러운 카메라 추적 기술 적용.
+- **동적 마커 애니메이션**: `animateMarker` (easeOutCubic) 헬퍼를 통해 마커가 GPS 갱신 시 순간이동하지 않고 부드럽게 미끄러지듯 이동.
+- **마커 재활용 (Map)**: 웹 관제 시 `Map<tripId, Marker>` 구조를 사용하여 데이터 갱신 시 발생하는 UI 깜빡임(Destruction/Re-creation) 근본적 차단.
+
+### 7-2. 중앙 집중형 권한 통제 (v5.11.2)
+- **정책**: 앱 기사의 지도 공개범위 설정을 제거하고, 웹 관리자 페이지(`driver-contacts`)에서만 통제 가능하도록 단일 진실 소스(Single Source of Truth) 일원화.
+- **데이터 흐름**: `driver_contacts` 테이블의 `map_visibility` 필드 값을 기준으로 기사 앱의 지도 렌더링 범위(`own`/`contracted`/`all`) 결정.
+
+---
+
+## 8. 운영 가이드라인 (Operational Guardrails)
+1. **APK 빌드**: 반드시 `scripts/build_driver_apk.ps1`을 경유해야 버전 자동화 및 웹 에셋 동기화가 보장됨. (수동 `cap sync` 금지)
+2. **배포 정책**: 형(사용자)의 명시적 요청 시에만 `git push`를 수행하며, 모든 기술적 대화는 한국어로 진행.
 3. **NAS 메모리**: 대형 엑셀 처리 시 `read_only` 모드와 `gc.collect()` 필수 유지.
 4. **포트 관리**: Core(2930), Bot(2931) 포트 준수 (Docker 환경).
 
 ---
 
-## 8. 비활성화 및 유산 페이지 (Legacy/Hidden Pages)
+## 9. 비활성화 및 유산 페이지 (Legacy/Hidden Pages)
 관리자 요청 또는 운영 정책에 따라 UI에서 제거되었으나, 코드는 유지 중인 페이지 목록입니다.
 - **랜덤게임 (Random Game)**:
   - **경로**: `/employees/random-game`
   - **제거일**: 2026-04-23 (v5.5.16)
   - **사유**: 관리자 요청 (불필요한 기능 제거 및 업무 집중도 향상)
-  - **복구 방법**: `web/constants/intranetMenu.js` 및 `web/components/Header.js`에 다시 추가.
+- **NAS 벡터화 스케줄러**:
+  - **상태**: 비활성화 (v5.11.0)
+  - **사유**: NAS 부하 경감 및 WEB 데이터 중심 RAG 재편.
 
 ---
-*최종 갱신일: 2026-04-27 (by Antigravity | v5.9.3 Web Attachment RAG & Refactor)*
+*최종 갱신일: 2026-05-04 (by Antigravity | v5.11.3 Navigation Tracking Architecture)*
