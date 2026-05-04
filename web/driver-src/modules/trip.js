@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5144';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5144';
+import { Store, State, BASE_URL } from './store.js?v=5145';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5145';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5144';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5144';
+} from './gps.js?v=5145';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5145';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }

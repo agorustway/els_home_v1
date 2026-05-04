@@ -6,12 +6,12 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5144';
-import { smartFetch, remoteLog } from './bridge.js?v=5144';
-import { showToast } from './utils.js?v=5144';
-import { showScreen } from './nav.js?v=5144';
-import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5144';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5144';
+import { State, BASE_URL } from './store.js?v=5145';
+import { smartFetch, remoteLog } from './bridge.js?v=5145';
+import { showToast } from './utils.js?v=5145';
+import { showScreen } from './nav.js?v=5145';
+import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5145';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5145';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -222,8 +222,8 @@ function updateVehicleMarkers(trips) {
         title    : label,
         zIndex   : 100,
       });
-      // 클릭 시 위치 집중 (경로는 상세보기 버튼을 통해 조회)
-      naver.maps.Event.addListener(m, 'click', () => focusVehicleOnMap(trip));
+      // 클릭 시 경로/상세보기 조회
+      naver.maps.Event.addListener(m, 'click', () => showTripRouteOnMap(trip));
       _markers.set(trip.id, m);
     }
   }
@@ -415,7 +415,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5144');
+    const { loadCurrentTrip } = await import('./trip.js?v=5145');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -493,6 +493,7 @@ export function focusVehicleOnMap(trip) {
 
 /** 특정 차량의 경로를 지도 위에 표시 */
 export async function showTripRouteOnMap(trip) {
+  _autoFollow = false; // 경로 상세 정보 볼 때는 자동추적 끄기
   remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
 
   let path = [];
