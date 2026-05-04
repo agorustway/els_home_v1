@@ -2,69 +2,69 @@
  * ELS Driver App — 모듈 엔트리 포인트
  * ES Modules 방식으로 각 기능 모듈을 import하여 window.App 조립
  */
-import { AppConfig } from './modules/store.js?v=5143';
-import { remoteLog } from './modules/bridge.js?v=5143';
-import { showToast, formatDate, escHtml, loadSafeImage } from './modules/utils.js?v=5143';
-import { showScreen } from './modules/nav.js?v=5143';
-import { smartFetch } from './modules/bridge.js?v=5143';
+import { AppConfig } from './modules/store.js?v=5144';
+import { remoteLog } from './modules/bridge.js?v=5144';
+import { showToast, formatDate, escHtml, loadSafeImage } from './modules/utils.js?v=5144';
+import { showScreen } from './modules/nav.js?v=5144';
+import { smartFetch } from './modules/bridge.js?v=5144';
 
 // 권한
 import {
   requestPerm, requestAllPerms, updatePermStatuses, manualRefreshPerms,
   finishPermSetup, openPermissionSetup, clearCache, settingsBack, resetApp,
   showTerms, closeTerms,
-} from './modules/permissions.js?v=5143';
+} from './modules/permissions.js?v=5144';
 
 // 프로필
 import {
   saveProfile, lookupDriver, pickProfilePhoto, handleProfilePhotoClick,
   onCargoTypeChange, updateCargoProfileUI,
-} from './modules/profile.js?v=5143';
+} from './modules/profile.js?v=5144';
 
 // 운행 + 오버레이
 import {
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist, checkChecklistValid,
   startOverlayService, updateOverlayStatus, stopOverlayService, updateTripCargoUI,
-} from './modules/trip.js?v=5143';
+} from './modules/trip.js?v=5144';
 
 // GPS
 import {
   startGPS, stopGPS, onGpsUpdate, updateTripStatusLine,
   startRealtimeMode, stopRealtimeMode,
   gpsWatchId, lastGpsTimestamp,
-} from './modules/gps.js?v=5143';
+} from './modules/gps.js?v=5144';
 
 // 공지
-import { loadNotices, filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation, confirmEducationRead } from './modules/notice.js?v=5143';
+import { loadNotices, filterNotice, openNotice, closeNoticeDetail, completeSafetyEducation, confirmEducationRead } from './modules/notice.js?v=5144';
 
 // 사진
 import {
   addPhoto, onFileSelected, renderPhotoThumbs, uploadPendingPhotos,
   openPhotoViewer, openLogPhoto, closePhotoViewer, prevPhoto, nextPhoto,
   deleteCurrentPhoto, initPinchZoom,
-} from './modules/photos.js?v=5143';
+} from './modules/photos.js?v=5144';
 
 // 일지
 import {
   loadLogs, openLog, onLogFieldChange, saveLogEdit, deleteLog,
   forceCompleteLog, closeLogDetail, addLogPhoto, onLogFileSelected,
-} from './modules/log.js?v=5143';
+} from './modules/log.js?v=5144';
 
 // 긴급알림
-import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=5143';
+import { startEmergencyPoll, pollEmergency, closeEmergency } from './modules/emergency.js?v=5144';
 
 // 업데이트
-import { checkUpdate } from './modules/update.js?v=5143';
+import { checkUpdate } from './modules/update.js?v=5144';
 
 // 지도
 import {
   openMap, closeMap, refreshMapData, centerMyLocation,
   toggleMapPanel, toggleMapTripList, showTripRouteOnMap, clearMapRoute, showAllMapVehicles, focusVehicleOnMap
-} from './modules/map.js?v=5143';
+} from './modules/map.js?v=5144';
 
 // 초기화
-import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=5143';
+import { init, showMain, openSettings, switchTab, exitApp } from './modules/init.js?v=5144';
 
 // ─── window.App 조립 ─────────────────────────────────────────────
 // index.html의 모든 onclick="App.xxx()" 호출의 단일 진입점

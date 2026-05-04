@@ -1,10 +1,10 @@
 /**
  * log.js — 운행 일지 목록, 상세, 수정, 삭제, 사진 추가
  */
-import { State, BASE_URL } from './store.js?v=5143';
-import { smartFetch } from './bridge.js?v=5143';
-import { formatDate, escHtml, showToast } from './utils.js?v=5143';
-import { validateISO6346 } from './trip.js?v=5143';
+import { State, BASE_URL } from './store.js?v=5144';
+import { smartFetch } from './bridge.js?v=5144';
+import { formatDate, escHtml, showToast } from './utils.js?v=5144';
+import { validateISO6346 } from './trip.js?v=5144';
 
 let _currentLogData = null;
 

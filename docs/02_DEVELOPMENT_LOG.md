@@ -1,5 +1,31 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-04] 차량관제 네비게이션 모드 및 UI 안정화 (v5.11.3)
+### 🚀 Achievement
+- **네비게이션 스타일 추적 도입**: 웹 관제와 기사 앱 모두 실시간 추적 시 지도가 차량을 중앙에 두고 부드럽게 이동하는 `panTo` 기반 네비게이션 모드를 구현했습니다.
+- **마커 깜빡임 제거 (웹)**: 데이터 갱신 시 모든 마커를 파괴 후 재생성하던 방식을 `Map` 객체 기반 재활용 방식으로 변경하여, 30초/3초 갱신 시 발생하는 UI 깜빡임을 근본적으로 해결했습니다.
+- **마커 슬라이딩 애니메이션 (앱)**: 앱 지도에서 차량 위치가 바뀔 때 마커가 순간이동하지 않고 `animateMarker` (easeOutCubic)를 통해 부드럽게 미끄러지듯 이동하도록 개선했습니다.
+- **관제 모달 레이아웃 최적화**: 차량 상세 모달에서 데이터가 긴 `컨테이너/씰 넘버`를 1행 전체 너비로 배치하고, 상대적으로 짧은 `운송구분/규격`을 하단 2열로 컴팩트하게 재배치하여 가독성을 높였습니다.
+- **로그 및 관리 화면 가시성 보강**: 활동 로그 관리의 발생일시 컬럼 폭을 넓혀 줄바꿈을 방지하고, 운전원정보 일괄 변경 버튼의 텍스트가 잘리지 않도록 UI 스타일을 조정했습니다.
+- **앱 지도 제어 직관화**: 앱 지도 상단에 `내 위치`(내 차량 센터링)와 `전체보기`(전체 차량 바운드) 버튼을 분리 배치하여 조작 편의성을 강화했습니다.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/vehicle-tracking/page.js`: `liveMarkersRef`를 `Map`으로 전환, 마커 업데이트 로직 최적화, `panTo` 네비게이션 추적 구현.
+- `web/driver-src/modules/map.js`: `animateMarker` 헬퍼 추가, GPS 갱신 시 마커 애니메이션 적용, `_autoFollow` 플래그를 통한 자동 추적 모드 제어.
+- `web/app/(main)/employees/vehicle-tracking/page.js`: 상세 모달 그리드 레이아웃(Container/Seal 1행 배치) 수정.
+- `web/app/(main)/admin/logs/page.js`: 타임스탬프 컬럼 너비 상향(200px) 및 `whiteSpace: nowrap` 적용.
+- `web/app/(main)/employees/(intranet)/driver-contacts/page.js`: 일괄 변경 버튼 `nowrap` 및 패딩 조정.
+- `web/driver-src/index.html`, `style.css`: 앱 지도 버튼 레이아웃(내 위치/전체보기) 및 스타일 추가.
+- `web/android/app/build.gradle`: versionCode 5144, versionName "5.11.3" 상향.
+
+### ✅ TDD / Verification
+- **웹 관제 테스트**: 실시간 추적 클릭 시 지도가 부드럽게 이동하며 마커가 깜빡이지 않는지 확인.
+- **앱 지도 테스트**: GPS 수신 시 내 차량 마커가 애니메이션으로 이동하고 지도가 중앙을 유지하는지 확인.
+- **레이아웃 검증**: 상세 모달 및 로그 관리 화면에서 텍스트 잘림 및 겹침 현상 해결 확인.
+- **빌드 검증**: `scripts/build_driver_apk.ps1`을 통한 APK v5.11.3 빌드 및 version.json 갱신 확인.
+
+---
+
 ## [2026-05-03] NAS 문서 벡터화 기능 전면 해제 (v5.11.0)
 ### 🚀 Achievement
 - **서버 부하 완화**: 잦은 백그라운드 크롤링 및 파싱으로 NAS 환경에 과부하를 유발하던 `nas_vectorizer` 전체 스케줄링을 중단했습니다.
