@@ -18,6 +18,12 @@ export default function DriverContactsPage() {
     const [cargoFilter, setCargoFilter] = useState('all');
     const [contractFilter, setContractFilter] = useState('all');
 
+    // 일괄 설정 상태
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [bulkModalOpen, setBulkModalOpen] = useState(false);
+    const [bulkVisibility, setBulkVisibility] = useState('own');
+    const [bulkUpdating, setBulkUpdating] = useState(false);
+
     const formatPhone = (val) => {
         if (!val) return '-';
         const num = val.replace(/[^0-9]/g, '');
@@ -30,13 +36,21 @@ export default function DriverContactsPage() {
         if (!authLoading && !role) router.replace('/login?next=/employees/driver-contacts');
     }, [role, authLoading, router]);
 
+    const fetchList = () => {
+        setLoading(true);
+        fetch('/api/driver-contacts')
+            .then((res) => res.json())
+            .then((data) => { 
+                if (data.list) setList(data.list); 
+                setSelectedIds(new Set()); // 데이터 새로고침 시 선택 초기화
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    };
+
     useEffect(() => {
         if (role) {
-            fetch('/api/driver-contacts')
-                .then((res) => res.json())
-                .then((data) => { if (data.list) setList(data.list); })
-                .catch(console.error)
-                .finally(() => setLoading(false));
+            fetchList();
         }
     }, [role]);
 
@@ -58,14 +72,62 @@ export default function DriverContactsPage() {
         return true;
     });
 
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(filteredList.map(item => item.id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+
+    const toggleSelect = (id, e) => {
+        e.stopPropagation();
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
+
+    const handleBulkUpdate = async () => {
+        if (selectedIds.size === 0) return alert('선택된 항목이 없습니다.');
+        setBulkUpdating(true);
+        try {
+            const res = await fetch('/api/driver-contacts/bulk', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ids: Array.from(selectedIds),
+                    updates: { map_visibility: bulkVisibility }
+                })
+            });
+            if (res.ok) {
+                alert(`선택한 ${selectedIds.size}명의 권한이 변경되었습니다.`);
+                setBulkModalOpen(false);
+                fetchList();
+            } else {
+                alert('일괄 변경에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('오류가 발생했습니다.');
+        } finally {
+            setBulkUpdating(false);
+        }
+    };
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>운전원정보</h1>
                 <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
                     <div className={styles.desktopOnlyBtns}>
-                        <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="driver_contacts" />
+                        <ExcelButtonGroup onUploadSuccess={fetchList} tableName="driver_contacts" />
                     </div>
+                    {selectedIds.size > 0 && (
+                        <button onClick={() => setBulkModalOpen(true)} className={styles.btnSecondary} style={{ color: '#0f172a', border: '1px solid #94a3b8' }}>
+                            ✓ {selectedIds.size}명 선택됨 (지도권한 일괄변경)
+                        </button>
+                    )}
                     <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>등록</Link>
                 </div>
             </div>
@@ -142,6 +204,14 @@ export default function DriverContactsPage() {
                     <table className={styles.table}>
                         <thead>
                             <tr>
+                                <th style={{ width: '40px', textAlign: 'center', padding: '12px 10px' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        onChange={handleSelectAll} 
+                                        checked={filteredList.length > 0 && selectedIds.size === filteredList.length} 
+                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                    />
+                                </th>
                                 <th style={{ width: '60px', textAlign: 'center' }}>사진</th>
                                 <th style={{ whiteSpace: 'nowrap', textAlign: 'center', padding: '12px 16px' }}>계약</th>
                                 <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>업무유형</th>
@@ -159,7 +229,16 @@ export default function DriverContactsPage() {
                         </thead>
                         <tbody>
                             {filteredList.map((item) => (
-                                <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/driver-contacts/' + item.id)}>
+                                <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/driver-contacts/' + item.id)} style={{ backgroundColor: selectedIds.has(item.id) ? '#f0fdf4' : 'transparent' }}>
+                                    <td style={{ textAlign: 'center', padding: '12px 10px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedIds.has(item.id)} 
+                                            onChange={(e) => toggleSelect(item.id, e)} 
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                        />
+                                    </td>
                                     <td style={{ textAlign: 'center' }}>
                                         {item.photo_driver || item.photo_url ? (
                                             <img src={item.photo_driver || item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '50%', border: '2px solid #f1f5f9' }} />
@@ -200,6 +279,34 @@ export default function DriverContactsPage() {
                     </table>
                 </div>
             </div>
+
+            {/* 일괄 변경 모달 */}
+            {bulkModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setBulkModalOpen(false)}>
+                    <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#0f172a' }}>지도 공개범위 일괄 설정</h3>
+                        <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '20px' }}>선택된 {selectedIds.size}명의 기사에게 앱 지도 노출 권한을 일괄 적용합니다.</p>
+                        
+                        <select 
+                            value={bulkVisibility} 
+                            onChange={(e) => setBulkVisibility(e.target.value)} 
+                            className={styles.input} 
+                            style={{ height: '44px', width: '100%', marginBottom: '24px' }}
+                        >
+                            <option value="own">단독 자기차량만</option>
+                            <option value="contracted">소속/계약차량 전체</option>
+                            <option value="all">전체운행차량</option>
+                        </select>
+
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setBulkModalOpen(false)} className={styles.btnSecondary} style={{ width: '100px', height: '40px' }}>취소</button>
+                            <button onClick={handleBulkUpdate} disabled={bulkUpdating} className={styles.btnPrimary} style={{ width: '100px', height: '40px' }}>
+                                {bulkUpdating ? '적용 중...' : '적용하기'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
