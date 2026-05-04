@@ -284,7 +284,11 @@ threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 def nas_sync_scheduler():
     """매일 새벽 01:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다. (자료실 제외)"""
     app.logger.info("[스케줄러] NAS AI 지식 자동 동기화 스케줄러 대기 중 (01:30 실행)")
-    
+    while True:
+        try:
+            now = datetime.now(KST)
+            # 매일 새벽 1시 30분에 한 번만 실행
+            if now.hour == 1 and now.minute == 30:
                 # NAS 폴더 스캔 기능은 부하 문제로 해제됨 (WEB 게시판 첨부파일만 동기화)
                 try:
                     app.logger.info("🚀 [스케줄러] 웹 게시판 첨부파일 동기화 시작...")
