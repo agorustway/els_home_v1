@@ -1132,10 +1132,10 @@ export default function VehicleTrackingPage() {
                             {isFullscreen && (
                                 <>
                                     <div style={{ position: 'absolute', top: 12, left: 12, right: 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
-                                        <button className={styles.fullscreenBtn} style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsFullscreen(false)}>
+                                        <button className={styles.fullscreenBtn} style={{ position: 'relative', top: 'auto', left: 'auto', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsFullscreen(false)}>
                                             X 전체화면 닫기
                                         </button>
-                                        <button className={styles.fullscreenBtn} style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
+                                        <button className={styles.fullscreenBtn} style={{ position: 'relative', top: 'auto', left: 'auto', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                                             if (!mapInstanceRef.current) return;
                                             if (realtimeTarget || selectedTrip) {
                                                 const trip = liveTrips.find(t => t.id === (realtimeTarget || selectedTrip?.id));
