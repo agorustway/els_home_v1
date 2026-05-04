@@ -413,6 +413,15 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
 }
 .map-all-overlay-btn:active { background: #1d4ed8; }
 
+.map-showall-overlay-btn {
+  position: absolute; top: 12px; left: 180px; z-index: 35;
+  background: #475569; color: #fff; border: none;
+  border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 800;
+  box-shadow: 0 2px 8px rgba(71,85,105,0.25);
+  cursor: pointer;
+}
+.map-showall-overlay-btn:active { background: #334155; }
+
 
 /* 내위치 아이콘 버튼 */
 .map-myloc-btn {

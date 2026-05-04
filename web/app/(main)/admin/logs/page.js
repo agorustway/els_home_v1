@@ -297,7 +297,7 @@ export default function AdminLogsPage() {
                                     <th style={{ padding: '14px 16px', width: '50px', textAlign: 'center' }}>
                                         <input type="checkbox" onChange={handleSelectAll} checked={logs.length > 0 && selectedLogs.size === logs.length} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                                     </th>
-                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '150px' }}>발생 일시(KST)</th>
+                                    <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '200px' }}>발생 일시(KST)</th>
                                     <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '220px' }}>이메일 / 접근IP</th>
                                     <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '120px' }}>활동 유형</th>
                                     <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', width: '25%' }}>경로 (URL)</th>
@@ -306,9 +306,9 @@ export default function AdminLogsPage() {
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>데이터 로딩 중...</td></tr>
+                                    <tr><td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>데이터 로딩 중...</td></tr>
                                 ) : logs.length === 0 ? (
-                                    <tr><td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>{isTableMissing ? '저장된 활동 로그가 없습니다.' : '조건에 맞는 검색 결과가 없습니다.'}</td></tr>
+                                    <tr><td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>{isTableMissing ? '저장된 활동 로그가 없습니다.' : '조건에 맞는 검색 결과가 없습니다.'}</td></tr>
                                 ) : logs.map((log) => {
                                     const logDate = new Date(log.created_at).toLocaleString('ko-KR');
                                     return (
@@ -316,7 +316,7 @@ export default function AdminLogsPage() {
                                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                                                 <input type="checkbox" checked={selectedLogs.has(log.id)} onChange={() => toggleSelect(log.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                                             </td>
-                                            <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.85rem' }}>{logDate}</td>
+                                            <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{logDate}</td>
                                             <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: '500', fontSize: '0.85rem', wordBreak: 'break-all' }}>{log.user_email}</td>
                                             <td style={{ padding: '14px 16px' }}>
                                                 <span style={{

@@ -27,6 +27,7 @@ let _endMarker   = null;           // 경로 현재위치 마커
 let _trips       = [];             // 최신 운행 데이터
 let _mapPollTimer = null;          // 폴링 타이머
 let _sdkReady    = false;          // SDK 로드 완료 여부
+let _autoFollow  = true;           // 내 차량 자동 추적 (네비 모드)
 
 function getVisibleTrips(trips, includeCompleted = false) {
   return filterTripsForMapVisibility(prepareLiveTrips(trips), State.profile, includeCompleted);
@@ -196,6 +197,15 @@ function updateVehicleMarkers(trips) {
       _markers.set(trip.id, m);
     }
   }
+
+  // 자동 추적 모드: 내 차량이 있으면 부드럽게 지도 이동 (네비게이션 스타일)
+  if (_autoFollow) {
+    const myTrip = visible.find(t => isMyTrip(t));
+    if (myTrip?.lastLocation) {
+      const pos = new naver.maps.LatLng(myTrip.lastLocation.lat, myTrip.lastLocation.lng);
+      _map.panTo(pos, { duration: 500, easing: 'easeOutCubic' });
+    }
+  }
 }
 
 // ─── 경로(Polyline) 그리기 ───────────────────────────────────────────
@@ -337,6 +347,7 @@ function buildRouteStats(trip, points) {
  */
 export async function openMap() {
   showScreen('map');
+  _autoFollow = true;  // 지도 열 때 자동추적 모드 ON
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-btn-map')?.classList.add('active');
 
@@ -394,6 +405,7 @@ export async function refreshMapData() {
 
 /** 내 위치로 이동 */
 export function centerMyLocation() {
+  _autoFollow = true;  // 내 위치 버튼 누르면 자동추적 ON
   navigator.geolocation.getCurrentPosition(
     pos => {
       if (!_map) return;
@@ -411,8 +423,8 @@ export function centerMyLocation() {
         });
       }
 
-      _map.setCenter(position);
-      _map.setZoom(15, true);
+      _map.panTo(position, { duration: 400, easing: 'easeOutCubic' });
+      _map.setZoom(13, true);
       showToast('내 위치로 이동했습니다.');
     },
     () => showToast('위치 정보를 가져올 수 없습니다.')
@@ -422,6 +434,7 @@ export function centerMyLocation() {
 /** 현재 공개범위 내 전체 차량 보기 */
 export function showAllMapVehicles() {
   if (!_map) return;
+  _autoFollow = false;  // 전체보기 누르면 자동추적 OFF
   const visible = getVisibleTrips(_trips, true);
   if (!visible.length) {
     showToast('현재 공개범위에 표시할 차량이 없습니다.');
@@ -441,9 +454,10 @@ export function showAllMapVehicles() {
 /** 특정 차량의 위치로 이동 및 줌 레벨 조정 */
 export function focusVehicleOnMap(trip) {
   if (!_map || !trip.lastLocation) return;
+  _autoFollow = false;  // 수동 이동 시 자동추적 OFF
   const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
-  _map.setCenter(pos);
-  _map.setZoom(13, true); // 레벨 조금 줄여줌
+  _map.panTo(pos, { duration: 400, easing: 'easeOutCubic' });
+  _map.setZoom(12, true);
   showToast(`${trip.vehicle_number} 차량 위치로 이동했습니다.`);
 }
 

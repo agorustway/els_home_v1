@@ -124,7 +124,7 @@ export default function DriverContactsPage() {
                         <ExcelButtonGroup onUploadSuccess={fetchList} tableName="driver_contacts" />
                     </div>
                     {selectedIds.size > 0 && (
-                        <button onClick={() => setBulkModalOpen(true)} className={styles.btnSecondary} style={{ color: '#0f172a', border: '1px solid #94a3b8' }}>
+                        <button onClick={() => setBulkModalOpen(true)} className={styles.btnSecondary} style={{ color: '#0f172a', border: '1px solid #94a3b8', whiteSpace: 'nowrap', fontSize: '0.82rem', padding: '6px 14px' }}>
                             ✓ {selectedIds.size}명 선택됨 (지도권한 일괄변경)
                         </button>
                     )}
