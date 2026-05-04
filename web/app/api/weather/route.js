@@ -71,7 +71,6 @@ function buildAdvisoryText(weatherCode, apparentTemp) {
     return lines.length > 0 ? lines.join(' ') : null;
 }
 
-/** 오늘 일별·시간별 데이터로 짧은 날씨 예보 + 생활 예보 문장 생성 */
 function buildDailySummary(daily, hourlyWithApparent) {
     if (!daily?.time?.[0]) return null;
     const dateObj = new Date(daily.time[0]);
@@ -91,12 +90,35 @@ function buildDailySummary(daily, hourlyWithApparent) {
     if (condition) parts.push(condition === '맑음' ? '맑은 날씨가 예상됩니다' : `${condition} 양상을 보이겠습니다`);
 
     if (parts.length === 0) return null;
-    let summary = parts.join('를 보이며 ') + '. 기상 상황을 수시로 확인하여 안전 사고에 대비하시기 바랍니다.';
+    let summary = '- ' + parts.join('를 보이며 ') + '.';
+
+    // 내일 예보 추가
+    if (daily.time?.[1]) {
+        const dateObjTomorrow = new Date(daily.time[1]);
+        const dayStrTomorrow = days[dateObjTomorrow.getDay()];
+        const maxTomorrow = daily.temperature_2m_max?.[1];
+        const minTomorrow = daily.temperature_2m_min?.[1];
+        const codeTomorrow = daily.weathercode?.[1];
+        const conditionTomorrow = weatherCodeToLabel(codeTomorrow);
+
+        const partsTomorrow = [];
+        if (maxTomorrow != null && minTomorrow != null) partsTomorrow.push(`내일(${dayStrTomorrow})은 낮 최고 ${Math.round(maxTomorrow)}도, 아침 최저 ${Math.round(minTomorrow)}도`);
+        else if (maxTomorrow != null) partsTomorrow.push(`내일(${dayStrTomorrow})은 최고 ${Math.round(maxTomorrow)}도`);
+        else if (minTomorrow != null) partsTomorrow.push(`내일(${dayStrTomorrow})은 최저 ${Math.round(minTomorrow)}도`);
+
+        if (conditionTomorrow) partsTomorrow.push(conditionTomorrow === '맑음' ? '맑은 날씨가 예상됩니다' : `${conditionTomorrow} 양상을 보이겠습니다`);
+
+        if (partsTomorrow.length > 0) {
+            summary += '\n- ' + partsTomorrow.join('를 보이며 ') + '.';
+        }
+    }
+
+    summary += '\n※ 기상 상황을 수시로 확인하여 안전 사고에 대비하시기 바랍니다.';
 
     const apparentTemps = (hourlyWithApparent || []).map((h) => h.apparent_temperature).filter((v) => v != null);
     const apparentMin = apparentTemps.length > 0 ? Math.min(...apparentTemps) : null;
     const advisory = buildAdvisoryText(code, apparentMin);
-    if (advisory) summary += ' ' + advisory;
+    if (advisory) summary += '\n💡 ' + advisory;
 
     return summary;
 }

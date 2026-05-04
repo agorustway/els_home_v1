@@ -677,35 +677,41 @@ export async function POST(req) {
                 
                 if (trips?.length > 0) {
                     const tripIds = trips.map(t => t.id);
-                    // 완료된 트립: 마지막 기록 위치 (address 우선, 없으면 좌표)
-                    const { data: locs } = await supabase
-                        .from('vehicle_locations')
-                        .select('trip_id, address, latitude, longitude, recorded_at')
-                        .in('trip_id', tripIds)
-                        .order('recorded_at', { ascending: false });
                     
                     const locMap = {};
-                    locs?.forEach(l => {
-                        if (!locMap[l.trip_id]) locMap[l.trip_id] = l;
-                    });
+                    const startLocMap = {};
+                    
+                    // 각 트립별로 출발지(가장 오래된 기록)와 현재/종료지(가장 최신 기록)를 병렬 조회
+                    await Promise.all(tripIds.map(async (tripId) => {
+                        const [latestRes, oldestRes] = await Promise.all([
+                            supabase.from('vehicle_locations').select('address, latitude, longitude, recorded_at').eq('trip_id', tripId).order('recorded_at', { ascending: false }).limit(1).single(),
+                            supabase.from('vehicle_locations').select('address, latitude, longitude, recorded_at').eq('trip_id', tripId).order('recorded_at', { ascending: true }).limit(1).single()
+                        ]);
+                        if (latestRes.data) locMap[tripId] = latestRes.data;
+                        if (oldestRes.data) startLocMap[tripId] = oldestRes.data;
+                    }));
 
-                    let trackText = isPast ? '\n\n## 차량 운행 이력 및 종료 위치 (내부 DB)\n' : '\n\n## 실시간 운행차량 위치 (내부 DB)\n';
+                    let trackText = isPast ? '\n\n## 차량 운행 이력 및 시작/종료 위치 (내부 DB)\n' : '\n\n## 실시간 운행차량 위치 (내부 DB)\n';
                     trips.forEach(t => {
                         const lastLoc = locMap[t.id];
-                        let addr = '알 수 없음';
-                        if (lastLoc?.address) {
-                            addr = lastLoc.address;
-                        } else if (lastLoc?.latitude && lastLoc?.longitude) {
-                            addr = `위도 ${lastLoc.latitude.toFixed(5)}, 경도 ${lastLoc.longitude.toFixed(5)} (주소 미등록)`;
-                        }
+                        const startLoc = startLocMap[t.id];
+                        
+                        let startAddr = '알 수 없음';
+                        if (startLoc?.address) startAddr = startLoc.address;
+                        else if (startLoc?.latitude) startAddr = `위도 ${startLoc.latitude.toFixed(5)}, 경도 ${startLoc.longitude.toFixed(5)}`;
+                        
+                        let endAddr = '알 수 없음';
+                        if (lastLoc?.address) endAddr = lastLoc.address;
+                        else if (lastLoc?.latitude) endAddr = `위도 ${lastLoc.latitude.toFixed(5)}, 경도 ${lastLoc.longitude.toFixed(5)}`;
+                        
                         const recTime = lastLoc ? new Date(lastLoc.recorded_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
                         const completedTime = t.completed_at ? new Date(t.completed_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
                         
                         if (t.status === 'completed') {
-                            trackText += `- 화물차(${t.vehicle_number}): 운행 종료 | 종료시각: ${completedTime} | 최종 GPS 기록위치(${recTime}): [${addr}]\n`;
-                            trackText += `  ※ 최종 GPS 기록 위치가 실제 하차·도착지와 다를 수 있습니다. 정확한 위치는 [차량 위치 관제](/employees/vehicle-tracking)에서 확인하세요.\n`;
+                            trackText += `- 화물차(${t.vehicle_number}): 운행 종료 | 종료시각: ${completedTime} | 출발지: [${startAddr}] ➔ 최종도착지(${recTime}): [${endAddr}]\n`;
+                            trackText += `  ※ 기지국 사정상 기록 위치가 실제 하차·도착지와 다를 수 있습니다. 정확한 위치는 [차량 위치 관제](/employees/vehicle-tracking)에서 확인하세요.\n`;
                         } else {
-                            trackText += `- 화물차(${t.vehicle_number}): 현재 운행 중 (${recTime}) | 현재위치: [${addr}]\n`;
+                            trackText += `- 화물차(${t.vehicle_number}): 현재 운행 중 (${recTime}) | 출발지: [${startAddr}] ➔ 현재위치: [${endAddr}]\n`;
                         }
                     });
                     recentPostsText += trackText;
