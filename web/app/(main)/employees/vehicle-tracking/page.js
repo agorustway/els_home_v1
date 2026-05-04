@@ -1095,7 +1095,7 @@ export default function VehicleTrackingPage() {
                     <span style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 2px' }} />
                     <GroupButton active={contractGroupFilter === 'all'} onClick={() => setContractGroupFilter('all')}>전체</GroupButton>
                     <GroupButton active={contractGroupFilter === 'contracted'} onClick={() => setContractGroupFilter('contracted')}>계약</GroupButton>
-                    <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>자기차량</GroupButton>
+                    <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>미계약</GroupButton>
                     <GroupButton active={contractGroupFilter === 'partner'} onClick={() => setContractGroupFilter('partner')}>협력사</GroupButton>
                     {contractGroupFilter === 'partner' && (
                         <select className={styles.filterSelect} value={partnerCompanyFilter} onChange={e => setPartnerCompanyFilter(e.target.value)}>
@@ -1110,12 +1110,12 @@ export default function VehicleTrackingPage() {
                 <div className={styles.liveGrid}>
                     <div className={styles.liveGridRight}>
                         <div className={`${styles.mapContainer} ${isFullscreen ? styles.mapFullscreen : ''}`} style={{ height: '100%', margin: 0, borderRadius: '12px' }}>
-                            <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 100, display: 'flex', gap: 8 }}>
-                                <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1' }} onClick={() => setIsFullscreen(!isFullscreen)}>
+                            <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 100, display: 'flex', flexDirection: 'row', gap: 8 }}>
+                                <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '6px 12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsFullscreen(!isFullscreen)}>
                                     {isFullscreen ? '전체화면 해제' : '지도 전체화면'}
                                 </button>
                                 {isFullscreen && (
-                                    <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1' }} onClick={() => {
+                                    <button className={styles.fullscreenBtn} style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '6px 12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                                         if (!mapInstanceRef.current) return;
                                         if (realtimeTarget || selectedTrip) {
                                             const trip = liveTrips.find(t => t.id === (realtimeTarget || selectedTrip?.id));
@@ -1144,7 +1144,7 @@ export default function VehicleTrackingPage() {
                                         <span style={{ width: 1, height: 20, background: '#e2e8f0' }} />
                                         <GroupButton active={contractGroupFilter === 'all'} onClick={() => setContractGroupFilter('all')}>전체</GroupButton>
                                         <GroupButton active={contractGroupFilter === 'contracted'} onClick={() => setContractGroupFilter('contracted')}>계약</GroupButton>
-                                        <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>자기차량</GroupButton>
+                                        <GroupButton active={contractGroupFilter === 'uncontracted'} onClick={() => setContractGroupFilter('uncontracted')}>미계약</GroupButton>
                                         <GroupButton active={contractGroupFilter === 'partner'} onClick={() => setContractGroupFilter('partner')}>협력사</GroupButton>
                                         {contractGroupFilter === 'partner' && (
                                             <select className={styles.filterSelect} value={partnerCompanyFilter} onChange={e => setPartnerCompanyFilter(e.target.value)} style={{ height: 34 }}>
@@ -1530,10 +1530,10 @@ export default function VehicleTrackingPage() {
                                 
                                 <div>
                                     <div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 / 씰 넘버'}</div>
-                                    <div className={styles.infoValue} style={{ display: 'flex', gap: 4 }}>
-                                        <input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_item || selectedTrip.container_number || '') : (selectedTrip.container_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 번호'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} />
+                                    <div className={styles.infoValue} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                                        <input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_item || selectedTrip.container_number || '') : (selectedTrip.container_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} />
                                         {(selectedTrip.cargo_type || 'container') !== 'general' && (
-                                            <input defaultValue={selectedTrip.seal_number || ''} placeholder="씰 넘버" onBlur={(e) => saveTripField(selectedTrip, 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} />
+                                            <input defaultValue={selectedTrip.seal_number || ''} placeholder="씰 넘버" onBlur={(e) => saveTripField(selectedTrip, 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', fontSize: '0.85rem' }} />
                                         )}
                                     </div>
                                 </div>

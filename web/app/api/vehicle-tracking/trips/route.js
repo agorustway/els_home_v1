@@ -38,14 +38,14 @@ async function attachDriverMeta(supabase, trips = []) {
         const d = map[t.vehicle_number] || {};
         return {
             ...t,
-            cargo_type: t.cargo_type || d.cargo_type || 'container',
-            driver_contract_type: t.driver_contract_type || d.contract_type || 'uncontracted',
-            map_visibility: t.map_visibility || d.map_visibility || 'own',
-            branch: t.branch || d.branch || null,
-            partner_company: t.partner_company || d.partner_company || null,
-            general_vehicle_type: t.general_vehicle_type || d.general_vehicle_type || null,
-            general_payload: t.general_payload || d.general_payload || null,
-            general_body_type: t.general_body_type || d.general_body_type || null,
+            cargo_type: d.cargo_type || t.cargo_type || 'container',
+            driver_contract_type: d.contract_type || t.driver_contract_type || 'uncontracted',
+            map_visibility: d.map_visibility || t.map_visibility || 'own',
+            branch: d.branch || t.branch || null,
+            partner_company: d.partner_company || t.partner_company || null,
+            general_vehicle_type: d.general_vehicle_type || t.general_vehicle_type || null,
+            general_payload: d.general_payload || t.general_payload || null,
+            general_body_type: d.general_body_type || t.general_body_type || null,
         };
     });
 }
