@@ -145,6 +145,8 @@ export function trimEndpointOutliers(points = []) {
     const shouldDropFirst = () => {
         if (list.length < 3) return false;
         const [a, b, c] = list;
+        // TRIP_START 등 명시적 마커는 절대 드롭 안함
+        if (a.marker_type) return false;
         const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
         const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
         const timeSec = Math.max(1, (getPointTime(b) - getPointTime(a)) / 1000);
@@ -157,6 +159,8 @@ export function trimEndpointOutliers(points = []) {
         const a = list[list.length - 3];
         const b = list[list.length - 2];
         const c = list[list.length - 1];
+        // TRIP_END 등 명시적 마커는 절대 드롭 안함
+        if (c.marker_type) return false;
         const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
         const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
         const timeSec = Math.max(1, (getPointTime(c) - getPointTime(b)) / 1000);

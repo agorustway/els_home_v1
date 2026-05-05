@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5145';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5145';
+import { Store, State, BASE_URL } from './store.js?v=5146';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5146';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5145';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5145';
+} from './gps.js?v=5146';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5146';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -419,6 +419,56 @@ export async function togglePause() {
 }
 
 // ─── 운행 종료 ───────────────────────────────────────────────────
+
+/**
+ * TRIP_END 마커를 GPS와 함께 기록.
+ * 지하주차장 등 GPS 불량 환경에서도 반드시 종료 포인트가 남도록:
+ *   1) 고정밀 GPS 최대 4초 대기
+ *   2) 실패 시 저정밀(Wi-Fi/셀) 2초 재시도
+ *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
+ */
+async function _recordTripEndMarker(tripId) {
+  const gpsModule = await import('./gps.js?v=5146');
+  const { onGpsUpdate: _onGpsUpdate } = gpsModule;
+
+  const tryGps = (highAccuracy, timeoutMs) =>
+    new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve(false); return; }
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          try { await _onGpsUpdate(pos, true, tripId, 'TRIP_END'); } catch (_) {}
+          resolve(true);
+        },
+        () => resolve(false),
+        { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 0 }
+      );
+    });
+
+  const ok = await tryGps(true, 4000);
+  if (!ok) {
+    const ok2 = await tryGps(false, 2000);
+    if (!ok2) {
+      // 최후 수단: 마지막 알려진 위치로 TRIP_END 강제 기록 (accuracy 높아도 허용)
+      remoteLog('[TRIP] 종료 GPS 취득 실패 — 마지막 위치로 TRIP_END 강제 기록', 'GPS_END_FALLBACK');
+      const lat = State._lastLat;
+      const lng = State._lastLng;
+      if (lat && lng) {
+        smartFetch(BASE_URL + '/api/vehicle-tracking/location', {
+          method: 'POST',
+          body: JSON.stringify({
+            trip_id: tripId,
+            lat, lng,
+            accuracy: 9999,
+            speed: 0,
+            marker_type: 'TRIP_END',
+            source: 'native_forced',
+          }),
+        }).catch(() => {});
+      }
+    }
+  }
+}
+
 export async function endTrip() {
   if (!State.trip.id) return;
 
@@ -429,14 +479,9 @@ export async function endTrip() {
     if (!confirm('운행을 종료하시겠습니까?')) return;
   }
 
-  if (navigator.geolocation) {
-    const closingTripId = State.trip.id;
-    navigator.geolocation.getCurrentPosition(
-      pos => onGpsUpdate(pos, true, closingTripId, 'TRIP_END').catch?.(() => { }),
-      null,
-      { enableHighAccuracy: true }
-    );
-  }
+  // TRIP_END 마커 기록 (지하주차장 GPS 불량 대응: 최대 6초 대기)
+  const closingTripId = State.trip.id;
+  await _recordTripEndMarker(closingTripId);
 
   try {
     await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${State.trip.id}`, {

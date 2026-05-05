@@ -62,6 +62,7 @@ export async function POST(request) {
         const decision = shouldAcceptLocation({
             current: { lat, lng, accuracy, speed: speedKmh, recorded_at: new Date().toISOString(), marker_type },
             previous: previousLocations?.[0] || null,
+            // marker_type(TRIP_START/END/PAUSE/RESUME)이 있으면 accuracy 무관 강제 허용
             forced: Boolean(marker_type) || source === 'native_forced',
         });
 

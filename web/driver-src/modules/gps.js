@@ -7,8 +7,8 @@
  * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
  * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
-import { State, BASE_URL } from './store.js?v=5145';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5145';
+import { State, BASE_URL } from './store.js?v=5146';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5146';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)
@@ -414,6 +414,12 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const speedKph = (speed || 0) * 3.6;
   _currentSpeedKph = speedKph > 160 ? 0 : speedKph;
   lastGpsTimestamp = Date.now();
+
+  // 마지막 알려진 위치 저장 (endTrip fallback용)
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    State._lastLat = lat;
+    State._lastLng = lng;
+  }
 
   // 정확도 필터: 500m 초과만 스킵 (기존 200m → 완화)
   if (!isForced && accuracy && accuracy > 500) {
