@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 import path from 'path';
 import fs from 'fs';
@@ -1511,7 +1511,7 @@ export async function POST(req) {
 
                 // 배차 데이터를 파싱하여 AI에 주입할 텍스트 생성 함수
                 const buildDispatchText = (type, dispatchRecord) => {
-                    if (!dispatchRecord?.data || !dispatchRecord?.headers) return '';
+                    if (!dispatchRecord?.data || !dispatchRecord?.headers) return { text: '', availableHours: [], totalCount: 0, allText: '' };
                     const { headers, data: rows, comments } = dispatchRecord;
 
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
@@ -1581,11 +1581,34 @@ export async function POST(req) {
                     // 결과 텍스트 생성
                     let resultText = '';
                     let totalCount = 0;
+                    const availableHours = Object.keys(timeSlotMap).sort();
+
+                    // 전체 배차 요약 (특정 시간 검색 실패 시 fallback용)
+                    let allText = '';
+                    let allTotal = 0;
+                    if (Object.keys(regionSummary).length > 0) {
+                        const allLines = [];
+                        Object.entries(regionSummary).forEach(([region, carriers]) => {
+                            const parts = Object.entries(carriers).map(([n, c]) => `${n} ${c}대`);
+                            const regionTotal = Object.values(carriers).reduce((a, b) => a + b, 0);
+                            allTotal += regionTotal;
+                            allLines.push(`  - ${region}: ${parts.join(', ')} (소계 ${regionTotal}대)`);
+                        });
+                        const timeLines = availableHours.map(t => {
+                            const tTotal = Object.values(timeSlotMap[t]).flatMap(c => Object.values(c)).reduce((a,b)=>a+b,0);
+                            return `${parseInt(t)}시 ${tTotal}대`;
+                        });
+                        allText = `\n### [${type.toUpperCase()}] 전체 배차 — ${allTotal}대\n${allLines.join('\n')}`;
+                        if (timeLines.length > 0) allText += `\n  [시간대별] ${timeLines.join(' / ')}`;
+                    }
 
                     if (filterHour) {
                         // ── 특정 시간 조회 ──
                         const slotData = timeSlotMap[filterHour];
-                        if (!slotData || Object.keys(slotData).length === 0) return '';
+                        if (!slotData || Object.keys(slotData).length === 0) {
+                            // 해당 시간 메모 없음 → 빈 text, availableHours와 allText는 채워서 반환
+                            return { text: '', availableHours, totalCount: allTotal, allText };
+                        }
                         const lines = [];
                         Object.entries(slotData).forEach(([region, carriers]) => {
                             const parts = Object.entries(carriers).map(([n, c]) => `${n} ${c}대`);
@@ -1596,43 +1619,46 @@ export async function POST(req) {
                         resultText = `\n### [${type.toUpperCase()}] ${parseInt(filterHour)}시 도착 배차 — 총 ${totalCount}대\n${lines.join('\n')}`;
                     } else {
                         // ── 전체 조회 ──
-                        if (Object.keys(regionSummary).length === 0) return '';
-                        const lines = [];
-                        Object.entries(regionSummary).forEach(([region, carriers]) => {
-                            const parts = Object.entries(carriers).map(([n, c]) => `${n} ${c}대`);
-                            const regionTotal = Object.values(carriers).reduce((a, b) => a + b, 0);
-                            totalCount += regionTotal;
-                            lines.push(`  - ${region}: ${parts.join(', ')} (소계 ${regionTotal}대)`);
-                        });
-                        // 시간대별 요약도 추가
-                        const timeLines = Object.entries(timeSlotMap).sort(([a],[b])=>a.localeCompare(b)).map(([t, regions]) => {
-                            const tTotal = Object.values(regions).flatMap(c => Object.values(c)).reduce((a,b)=>a+b,0);
-                            return `  - ${parseInt(t)}시: ${tTotal}대`;
-                        });
-                        resultText = `\n### [${type.toUpperCase()}] 오늘 배차 전체 — 총 ${totalCount}대\n${lines.join('\n')}`;
-                        if (timeLines.length > 0) resultText += `\n  [시간대별] ${timeLines.join(' / ')}`;
+                        resultText = allText;
+                        totalCount = allTotal;
                     }
-                    return resultText;
+                    return { text: resultText, availableHours, totalCount, allText };
                 };
 
                 let dispatchText = '';
+                // ★ buildDispatchText는 이제 { text, availableHours, totalCount } 반환
                 const g = buildDispatchText('glovis', glovisRes.data);
                 const m = buildDispatchText('mobis', mobisRes.data);
 
-                if (g || m) {
+                const hasDbData = glovisRes.data !== null || mobisRes.data !== null;
+                const hasResult = g.text || m.text;
+
+                if (hasResult) {
                     const dateLabel = isDispatchYesterday ? '어제' : '오늘';
                     dispatchText = `\n\n## 아산지점 배차판 (${dateLabel} ${dispatchDate})\n`;
-                    dispatchText += '> 아래는 사내 DB에서 실시간 조회한 배차 현황입니다. 메모(셀 주석)에 기록된 도착 시간이 포함됩니다.\n';
-                    if (g) dispatchText += g;
-                    if (m) dispatchText += m;
-                    if (!g && !m) {
-                        dispatchText += `- ${dispatchDate} 날짜의 배차 데이터가 DB에 없습니다. NAS 동기화가 완료되지 않았을 수 있습니다.`;
-                    }
+                    dispatchText += '> 아래는 사내 DB 실시간 조회 결과입니다. 셀 메모에 기록된 도착 시간 기준으로 집계합니다.\n';
+                    if (g.text) dispatchText += g.text;
+                    if (m.text) dispatchText += m.text;
                     dispatchText += `\n\n[아산지점 배차판 바로가기](/employees/branches/asan)`;
                     recentPostsText += dispatchText;
                     apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
-                } else if (glovisRes.data === null && mobisRes.data === null) {
-                    recentPostsText += `\n\n## 아산지점 배차판 (${dispatchDate})\n- 해당 날짜의 배차 데이터가 아직 DB에 동기화되지 않았습니다. NAS 엑셀 파일을 저장하거나 [배차판](/employees/branches/asan)에서 동기화를 확인해 주세요.`;
+                } else if (hasDbData && filterHour) {
+                    // 데이터는 있지만 해당 시간 메모 없음 → 가용 시간대 + 전체 현황 fallback
+                    const allHours = [...new Set([...(g.availableHours || []), ...(m.availableHours || [])])].sort();
+                    const totalG = g.totalCount || 0;
+                    const totalM = m.totalCount || 0;
+                    const hoursInfo = allHours.length > 0
+                        ? `메모에 기록된 도착 시간: ${allHours.map(h => parseInt(h) + '시').join(', ')}`
+                        : '도착 시간 메모가 기록된 배차 없음';
+                    recentPostsText += `\n\n## 아산지점 배차판 (${dispatchDate})\n`;
+                    recentPostsText += `> ${parseInt(filterHour)}시 도착 메모가 기록된 배차는 없습니다. (${hoursInfo})\n`;
+                    recentPostsText += `> 오늘 전체 배차: GLOVIS ${totalG}대, MOBIS ${totalM}대\n`;
+                    if (g.allText) recentPostsText += g.allText;
+                    if (m.allText) recentPostsText += m.allText;
+                    recentPostsText += `\n[아산지점 배차판 바로가기](/employees/branches/asan)`;
+                    apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                } else if (!hasDbData) {
+                    recentPostsText += `\n\n## 아산지점 배차판 (${dispatchDate})\n- 해당 날짜 배차 데이터가 DB에 없습니다. NAS 엑셀 저장 후 동기화를 확인해 주세요. [배차판](/employees/branches/asan)`;
                 }
             } catch (e) {
                 console.error('[ELS-AI] 아산 배차판 RAG 오류:', e);
@@ -1802,5 +1828,7 @@ export async function POST(req) {
         },
     });
 }
+
+
 
 
