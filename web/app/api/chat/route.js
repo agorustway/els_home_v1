@@ -1508,21 +1508,22 @@ export async function POST(req) {
                 // ★ Supabase 직접 쿼리 (미들웨어 인증 우회 — 서비스 롤 키 사용)
                 // /api/branches/asan/dispatch는 인증 필요하므로 내부 호출 불가 (401)
                 const [glovisRes, mobisRes] = await Promise.all([
-                    supabase.from(''branch_dispatch'').select(''headers, data, comments'')
-                        .eq(''branch_id'', ''asan'').eq(''type'', ''glovis'').eq(''target_date'', dispatchDate).maybeSingle(),
-                    supabase.from(''branch_dispatch'').select(''headers, data, comments'')
-                        .eq(''branch_id'', ''asan'').eq(''type'', ''mobis'').eq(''target_date'', dispatchDate).maybeSingle(),
+                    supabase.from('branch_dispatch').select('headers, data, comments')
+                        .eq('branch_id', 'asan').eq('type', 'glovis').eq('target_date', dispatchDate).maybeSingle(),
+                    supabase.from('branch_dispatch').select('headers, data, comments')
+                        .eq('branch_id', 'asan').eq('type', 'mobis').eq('target_date', dispatchDate).maybeSingle(),
                 ]);
 
-                // [v5.10.20] 호환: col_12 → ''T'' (glovis TYPE 컬럼 복구)
+                // [v5.10.20] 호환: col_12 → 'T' (glovis TYPE 컬럼 복구)
                 if (glovisRes.data?.headers) {
-                    const idx = glovisRes.data.headers.indexOf(''col_12'');
-                    if (idx >= 0) glovisRes.data.headers[idx] = ''T'';
+                    const idx = glovisRes.data.headers.indexOf('col_12');
+                    if (idx >= 0) glovisRes.data.headers[idx] = 'T';
                 }
                 if (mobisRes.data?.headers) {
-                    const idx = mobisRes.data.headers.indexOf(''col_15'');
-                    if (idx >= 0) mobisRes.data.headers[idx] = ''TYPE'';
+                    const idx = mobisRes.data.headers.indexOf('col_15');
+                    if (idx >= 0) mobisRes.data.headers[idx] = 'TYPE';
                 }
+
 
                 // 배차 데이터를 파싱하여 AI에 주입할 텍스트 생성 함수
                 const buildDispatchText = (type, dispatchRecord) => {
