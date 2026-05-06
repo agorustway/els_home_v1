@@ -38,7 +38,7 @@ export async function GET() {
         };
     } catch (e1) {
         result.sfData = { status: '⚠️ Webpack require 실패: ' + e1.message, method: 'require_failed' };
-        
+
         // 파일시스템 폴백 테스트
         const paths = [
             path.join(process.cwd(), 'public', 'data', 'safe-freight.json'),
@@ -66,8 +66,8 @@ export async function GET() {
         if (result.sfData.method === 'require_failed') {
             try {
                 const res = await fetch(`${SITE_URL}/data/safe-freight.json`, { signal: AbortSignal.timeout(10000) });
-                result.sfData.selfFetch = res.ok 
-                    ? `✅ HTTP ${res.status} (Content-Length: ${res.headers.get('content-length')})` 
+                result.sfData.selfFetch = res.ok
+                    ? `✅ HTTP ${res.status} (Content-Length: ${res.headers.get('content-length')})`
                     : `❌ HTTP ${res.status}`;
             } catch (e3) {
                 result.sfData.selfFetch = '❌ ' + e3.message;
@@ -95,7 +95,7 @@ export async function GET() {
         const targetUri = 'https://k-skill-proxy.nomadamas.org/v1/fine-dust/report?regionHint=%EC%95%84%EC%82%B0%20%EB%AA%A8%EC%A2%85%EB%8F%99';
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
-        const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), { 
+        const res = await fetch(kskillProxyBase + encodeURIComponent(targetUri), {
             signal: controller.signal,
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36ELS/1.0)' }
         });
@@ -110,26 +110,45 @@ export async function GET() {
         result.kskill = { status: '❌ 연결 실패: ' + e.message };
     }
 
-    // 4. 배차판 데이터 구조 확인 — Supabase 직접 쿼리 (fetch 401 문제 해결)
+    // 4. 배차판 데이터 구조 확인 — Supabase 직접 쿼리
     try {
         const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const supabase = await createAdminClient();
-        const { data: glovisRec, error: gErr } = await supabase
+        const supabase2 = await createAdminClient();
+        const { data: glovisRecs, error: gErr } = await supabase2
             .from('branch_dispatch')
             .select('headers, data, comments, target_date')
             .eq('branch_id', 'asan').eq('type', 'glovis')
             .order('target_date', { ascending: false })
             .limit(5);
+
+        const todayRec = (glovisRecs || []).find(d => d.target_date === today);
+        const REGION_IDXS = [15, 16, 17, 18, 19, 20, 21, 22]; // 기타/철송~인천
+
+        // 지역 컬럼에 값 있는 행 최대 5개 샘플
+        const regionRows = [];
+        if (todayRec?.data) {
+            for (let ri = 0; ri < todayRec.data.length && regionRows.length < 5; ri++) {
+                const row = todayRec.data[ri];
+                const hasRegion = REGION_IDXS.some(i => row[i] && row[i].trim() && row[i] !== '0' && row[i] !== 'nan');
+                if (hasRegion) {
+                    const rowComments = Object.entries(todayRec.comments || {})
+                        .filter(([k]) => parseInt(k.split(':')[0]) === ri)
+                        .map(([k, v]) => ({ cell: k, val: v }));
+                    regionRows.push({ ri, regionCells: REGION_IDXS.map(i => ({ idx: i, val: row[i] })).filter(c => c.val && c.val !== '0' && c.val !== 'nan'), comments: rowComments });
+                }
+            }
+        }
+
         result.dispatch = {
             status: gErr ? '❌ ' + gErr.message : '✅ Supabase 직접 쿼리 성공',
             today,
-            availableDates: (glovisRec || []).map(d => d.target_date),
-            todayFound: (glovisRec || []).some(d => d.target_date === today),
-            headers: glovisRec?.[0]?.headers || null,
-            data_row0: glovisRec?.[0]?.data?.[0] || null,
-            data_row1: glovisRec?.[0]?.data?.[1] || null,
-            comments_sample: glovisRec?.[0] ? Object.entries(glovisRec[0].comments || {}).slice(0, 5) : null,
-            total_rows: glovisRec?.[0]?.data?.length || 0,
+            availableDates: (glovisRecs || []).map(d => d.target_date),
+            todayFound: !!todayRec,
+            headers: todayRec?.headers || null,
+            data_row0: todayRec?.data?.[0] || null,
+            comments_sample: todayRec ? Object.entries(todayRec.comments || {}).slice(0, 5) : null,
+            total_rows: todayRec?.data?.length || 0,
+            region_rows_sample: regionRows,
         };
     } catch (e) {
         result.dispatch = { status: '❌ 오류: ' + e.message };
