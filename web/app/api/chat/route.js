@@ -1505,13 +1505,27 @@ export async function POST(req) {
                     : kstNow;
                 const dispatchDate = targetKst.toISOString().split('T')[0]; // "2026-05-06"
 
-                // glovis + mobis 두 배차판 동시 조회
-                const [glovisRes, mobisRes] = await Promise.all([
-                    supabase.from('branch_dispatch').select('headers, data, comments')
-                        .eq('branch_id', 'asan').eq('type', 'glovis').eq('target_date', dispatchDate).maybeSingle(),
-                    supabase.from('branch_dispatch').select('headers, data, comments')
-                        .eq('branch_id', 'asan').eq('type', 'mobis').eq('target_date', dispatchDate).maybeSingle(),
+                // ★ 배차판 UI API 재사용 (이미 컬럼매핑/필터링 완료된 가공 데이터 사용)
+                // Supabase 직접 쿼리 대신 /api/branches/asan/dispatch 내부 호출
+                const baseUrl = process.env.VERCEL_URL
+                    ? `https://${process.env.VERCEL_URL}`
+                    : `http://localhost:${process.env.PORT || 3000}`;
+
+                const [glovisApiRes, mobisApiRes] = await Promise.all([
+                    fetch(`${baseUrl}/api/branches/asan/dispatch?type=glovis`, { headers: { 'x-internal-call': '1' } }).catch(() => null),
+                    fetch(`${baseUrl}/api/branches/asan/dispatch?type=mobis`, { headers: { 'x-internal-call': '1' } }).catch(() => null),
                 ]);
+
+                const glovisAll = glovisApiRes?.ok ? (await glovisApiRes.json()).data : [];
+                const mobisAll  = mobisApiRes?.ok  ? (await mobisApiRes.json()).data  : [];
+
+                // 오늘(또는 어제) 날짜 필터
+                const glovisRecord = (glovisAll || []).find(d => d.target_date === dispatchDate) || null;
+                const mobisRecord  = (mobisAll  || []).find(d => d.target_date === dispatchDate) || null;
+
+                // 기존 glovisRes/mobisRes 인터페이스 호환
+                const glovisRes = { data: glovisRecord };
+                const mobisRes  = { data: mobisRecord };
 
                 // 배차 데이터를 파싱하여 AI에 주입할 텍스트 생성 함수
                 const buildDispatchText = (type, dispatchRecord) => {
@@ -1775,6 +1789,7 @@ export async function POST(req) {
         },
     });
 }
+
 
 
 
