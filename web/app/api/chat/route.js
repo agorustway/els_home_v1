@@ -1514,31 +1514,33 @@ export async function POST(req) {
                     if (!dispatchRecord?.data || !dispatchRecord?.headers) return '';
                     const { headers, data: rows, comments } = dispatchRecord;
 
-                    // 시간 필터: "8시" → '08' 매칭
-                    const filterHour = timeQueryMatch
-                        ? timeQueryMatch[1].padStart(2, '0')  // '8' → '08'
-                        : null;
+                    const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
 
-                    // ★ 구분 컬럼(40FT/20FT) 인덱스 탐지
-                    // 배차판 헤더 예: ["구분", "기타", "아산", "부산", "평택", "인천", ...]
-                    const typeColIdx = headers.findIndex(h => {
-                        const hh = h.replace(/\s/g, '');
-                        return hh === '구분' || hh === 'T' || hh === 'TYPE' || hh === '타입';
-                    });
+                    // ★ 지역 컬럼 화이트리스트 (실제 배차판 헤더에 있는 지역명만 인정)
+                    // 엑셀 헤더: ["구분", "기타", "아산", "부산", "경남", "경북", "충남", "경수", "인천", ...]
+                    const REGION_COLS = ['기타', '아산', '부산', '경남', '경북', '충남', '충북', '경수', '인천', '광양', '울산', '평택', '당진', '서울', '수도권', '강원', '전북', '전남', '제주'];
+                    const isRegionCol = (h) => REGION_COLS.some(r => h.trim().includes(r));
 
-                    // 지역 컬럼 판단: col_ 형태나 빈 헤더 제외, 나머지는 모두 지역 컬럼으로 간주
-                    const isRegionCol = (h) => {
-                        const hh = h.trim();
-                        if (!hh || hh.startsWith('col_') || hh === '구분' || hh === 'T' || hh === 'TYPE') return false;
-                        return true;
+                    // 지역 필터 (사용자가 "부산"이라고 하면 부산 컬럼만)
+                    const filterDest = REGION_COLS.find(k => userKwd.includes(k)) || null;
+
+                    // ★ 셀 값 파싱: "자차5,대신2" → [{name:"자차", count:5}, {name:"대신", count:2}]
+                    const parseCarriers = (val) => {
+                        if (!val || val === 'nan' || val === '0' || val.trim() === '') return [];
+                        // 쉼표/슬래시/공백으로 분리
+                        return val.split(/[,\/\s]+/).map(s => s.trim()).filter(Boolean).map(part => {
+                            const m = part.match(/^(.+?)(\d+)$/);
+                            if (m) return { name: m[1].trim(), count: parseInt(m[2]) };
+                            const numOnly = part.match(/^\d+$/);
+                            if (numOnly) return { name: '기타', count: parseInt(part) };
+                            return { name: part, count: 1 };
+                        });
                     };
 
-                    // 목적지 필터 (헤더 이름 기준으로 적용)
-                    const DEST_FILTER_KEYWORDS = ['부산', '인천', '광양', '울산', '평택', '아산', '당진', '기타'];
-                    const filterDest = DEST_FILTER_KEYWORDS.find(k => userKwd.includes(k)) || null;
+                    // 배차판 전체 요약 집계 (지역별 업체별 합산)
+                    const regionSummary = {}; // { "부산": { "자차": 5, "대신": 2 }, ... }
+                    const timeSlotMap  = {};  // { "08": { "부산": { "자차": 3 } } }
 
-                    // 각 행의 메모(시간 정보)와 셀 값 파싱
-                    const results = [];
                     rows.forEach((row, rowIdx) => {
                         // 이 행의 메모에서 시간 정보 추출
                         const rowTimes = new Set();
@@ -1550,33 +1552,67 @@ export async function POST(req) {
                             }
                         });
 
-                        // 시간 필터 적용
-                        if (filterHour && !rowTimes.has(filterHour)) return;
+                        headers.forEach((h, i) => {
+                            if (!isRegionCol(h)) return;
+                            const region = h.trim();
+                            if (filterDest && !region.includes(filterDest)) return;
 
-                        // ★ 핵심: headers[i] ↔ row[i] 매핑 → "지역→업체명" 구조 생성
-                        const typeVal = (typeColIdx >= 0 && row[typeColIdx]) ? row[typeColIdx].trim() : '';
-                        const regionParts = headers.map((h, i) => {
-                            if (i === typeColIdx) return null; // 구분 컬럼 제외
-                            if (!isRegionCol(h)) return null;  // 지역 컬럼이 아닌 경우 제외
-                            const val = (row[i] || '').trim();
-                            if (!val || val === 'nan' || val === '0') return null;
-                            if (filterDest && !h.includes(filterDest)) return null; // 지역 필터
-                            return `${h.trim()}→${val}`;
-                        }).filter(Boolean);
+                            const cellVal = (row[i] || '').trim();
+                            const carriers = parseCarriers(cellVal);
+                            if (carriers.length === 0) return;
 
-                        if (regionParts.length === 0) return;
+                            // 전체 집계
+                            if (!regionSummary[region]) regionSummary[region] = {};
+                            carriers.forEach(({ name, count }) => {
+                                regionSummary[region][name] = (regionSummary[region][name] || 0) + count;
+                            });
 
-                        const timeStr = rowTimes.size > 0
-                            ? `[도착: ${[...rowTimes].sort().map(t => `${parseInt(t)}시`).join(', ')}]`
-                            : '';
-                        const typeTag = typeVal ? `[${typeVal}] ` : '';
-                        results.push(`- ${typeTag}${regionParts.join(', ')} ${timeStr}`);
+                            // 시간대별 집계
+                            rowTimes.forEach(t => {
+                                if (!timeSlotMap[t]) timeSlotMap[t] = {};
+                                if (!timeSlotMap[t][region]) timeSlotMap[t][region] = {};
+                                carriers.forEach(({ name, count }) => {
+                                    timeSlotMap[t][region][name] = (timeSlotMap[t][region][name] || 0) + count;
+                                });
+                            });
+                        });
                     });
 
-                    if (results.length === 0) return '';
-                    const label = filterHour ? `${parseInt(filterHour)}시 도착` : '전체';
-                    const destLabel2 = filterDest ? ` (${filterDest})` : '';
-                    return `\n### [${type.toUpperCase()}] ${label} 배차${destLabel2} — 전체 ${results.length}대\n${results.join('\n')}`;
+                    // 결과 텍스트 생성
+                    let resultText = '';
+                    let totalCount = 0;
+
+                    if (filterHour) {
+                        // ── 특정 시간 조회 ──
+                        const slotData = timeSlotMap[filterHour];
+                        if (!slotData || Object.keys(slotData).length === 0) return '';
+                        const lines = [];
+                        Object.entries(slotData).forEach(([region, carriers]) => {
+                            const parts = Object.entries(carriers).map(([n, c]) => `${n} ${c}대`);
+                            const regionTotal = Object.values(carriers).reduce((a, b) => a + b, 0);
+                            totalCount += regionTotal;
+                            lines.push(`  - ${region}: ${parts.join(', ')} (소계 ${regionTotal}대)`);
+                        });
+                        resultText = `\n### [${type.toUpperCase()}] ${parseInt(filterHour)}시 도착 배차 — 총 ${totalCount}대\n${lines.join('\n')}`;
+                    } else {
+                        // ── 전체 조회 ──
+                        if (Object.keys(regionSummary).length === 0) return '';
+                        const lines = [];
+                        Object.entries(regionSummary).forEach(([region, carriers]) => {
+                            const parts = Object.entries(carriers).map(([n, c]) => `${n} ${c}대`);
+                            const regionTotal = Object.values(carriers).reduce((a, b) => a + b, 0);
+                            totalCount += regionTotal;
+                            lines.push(`  - ${region}: ${parts.join(', ')} (소계 ${regionTotal}대)`);
+                        });
+                        // 시간대별 요약도 추가
+                        const timeLines = Object.entries(timeSlotMap).sort(([a],[b])=>a.localeCompare(b)).map(([t, regions]) => {
+                            const tTotal = Object.values(regions).flatMap(c => Object.values(c)).reduce((a,b)=>a+b,0);
+                            return `  - ${parseInt(t)}시: ${tTotal}대`;
+                        });
+                        resultText = `\n### [${type.toUpperCase()}] 오늘 배차 전체 — 총 ${totalCount}대\n${lines.join('\n')}`;
+                        if (timeLines.length > 0) resultText += `\n  [시간대별] ${timeLines.join(' / ')}`;
+                    }
+                    return resultText;
                 };
 
                 let dispatchText = '';
@@ -1766,4 +1802,5 @@ export async function POST(req) {
         },
     });
 }
+
 
