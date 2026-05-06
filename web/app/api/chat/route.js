@@ -1552,20 +1552,31 @@ export async function POST(req) {
                             }
                         });
                         if (filterHour && !rowTimes.has(filterHour)) return;
-                        const regions = {};
+                        // ★ 셀값 파싱: "이지3" → {name:"이지", count:3} / "신승" → {name:"신승", count:1}
+                        const parseCellCarrier = (val) => {
+                            const m2 = val.match(/^([^0-9]+)(\d+)$/);
+                            if (m2) return { name: m2[1].trim(), count: parseInt(m2[2]) };
+                            return { name: val, count: 1 };
+                        };
+                        const regions = {}; // { hName: [{name, count}, ...] }
+                        let rowTotal = 0;
                         Object.entries(regionIdxMap).forEach(([i, hName]) => {
                             if (filterDest && !hName.includes(filterDest)) return;
                             const val = (row[i] || '').trim();
-                            if (val && val !== 'nan' && val !== '0') regions[hName] = val;
+                            if (!val || val === 'nan' || val === '0') return;
+                            // 콤마/슬래시로 분리 후 각 파싱
+                            const carriers = val.split(/[,\/]/).map(s => s.trim()).filter(Boolean).map(parseCellCarrier);
+                            regions[hName] = carriers;
+                            rowTotal += carriers.reduce((s, c) => s + c.count, 0);
                         });
                         if (Object.keys(regions).length === 0) {
                             // 지역 컬럼 없음 → 행 전체를 raw로 수집 (AI가 직접 분석)
                             const cm = Object.entries(comments || {}).filter(([k]) => parseInt(k.split(':')[0]) === rowIdx).map(([, v]) => v).join('/');
                             const rowRaw = row.filter(c => c && c.trim() && c !== 'nan' && c !== '0').join(' | ');
-                            if (rowRaw) parsedRows.push({ times: [...rowTimes].sort(), regions: null, raw: `${rowRaw}${cm ? ` [메모:${cm}]` : ''}` });
+                            if (rowRaw) parsedRows.push({ times: [...rowTimes].sort(), regions: null, raw: `${rowRaw}${cm ? ` [메모:${cm}]` : ''}`, rowTotal: 0 });
                             return;
                         }
-                        parsedRows.push({ times: [...rowTimes].sort(), regions, raw: null });
+                        parsedRows.push({ times: [...rowTimes].sort(), regions, raw: null, rowTotal });
 
                     });
 
@@ -1580,21 +1591,26 @@ export async function POST(req) {
                         return { text: '', rawText };
                     }
 
-                    // 텍스트 생성
-                    const lines = parsedRows.map(({ times, regions, raw }) => {
+                    // 텍스트 생성 (지역별 업체+대수 명확히 표시)
+                    let grandTotal = 0;
+                    const lines = parsedRows.map(({ times, regions, raw, rowTotal }) => {
+                        grandTotal += (rowTotal || 0);
                         const timeTag = times.length > 0 ? `[${times.map(t => parseInt(t) + '시').join('/')} 도착] ` : '';
                         if (raw) return `  - ${timeTag}[원본] ${raw}`;
-                        const regionStr = Object.entries(regions).map(([r, v]) => `${r}: ${v}`).join(', ');
+                        const regionStr = Object.entries(regions).map(([r, carriers]) => {
+                            const cStr = carriers.map(({ name, count }) => `${name} ${count}대`).join(', ');
+                            const rTotal = carriers.reduce((s, c) => s + c.count, 0);
+                            return `${r}: ${cStr} (소계 ${rTotal}대)`;
+                        }).join(' / ');
                         return `  - ${timeTag}${regionStr}`;
                     });
                     const label = filterHour ? `${parseInt(filterHour)}시 도착 ` : '전체 ';
-                    const text = `\n### [${type.toUpperCase()}] ${label}배차 — ${parsedRows.length}건\n${lines.join('\n')}`;
+                    const text = `\n### [${type.toUpperCase()}] ${label}배차 — 총 ${grandTotal}대\n${lines.join('\n')}`;
                     return { text, rawText: '' };
                 };
 
-                let dispatchText
                 let dispatchText = '';
-                // ★ buildDispatchText는 이제 { text, availableHours, totalCount } 반환
+                // ★ buildDispatchText: { text, rawText } 반환
                 const g = buildDispatchText('glovis', glovisRes.data);
                 const m = buildDispatchText('mobis', mobisRes.data);
 
