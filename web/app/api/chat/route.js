@@ -1505,40 +1505,48 @@ export async function POST(req) {
                     : kstNow;
                 const dispatchDate = targetKst.toISOString().split('T')[0]; // "2026-05-06"
 
-                // ★ 배차판 UI API 재사용 (이미 컬럼매핑/필터링 완료된 가공 데이터 사용)
-                // Supabase 직접 쿼리 대신 /api/branches/asan/dispatch 내부 호출
-                const baseUrl = process.env.VERCEL_URL
-                    ? `https://${process.env.VERCEL_URL}`
-                    : `http://localhost:${process.env.PORT || 3000}`;
-
-                const [glovisApiRes, mobisApiRes] = await Promise.all([
-                    fetch(`${baseUrl}/api/branches/asan/dispatch?type=glovis`, { headers: { 'x-internal-call': '1' } }).catch(() => null),
-                    fetch(`${baseUrl}/api/branches/asan/dispatch?type=mobis`, { headers: { 'x-internal-call': '1' } }).catch(() => null),
+                // ★ Supabase 직접 쿼리 (미들웨어 인증 우회 — 서비스 롤 키 사용)
+                // /api/branches/asan/dispatch는 인증 필요하므로 내부 호출 불가 (401)
+                const [glovisRes, mobisRes] = await Promise.all([
+                    supabase.from(''branch_dispatch'').select(''headers, data, comments'')
+                        .eq(''branch_id'', ''asan'').eq(''type'', ''glovis'').eq(''target_date'', dispatchDate).maybeSingle(),
+                    supabase.from(''branch_dispatch'').select(''headers, data, comments'')
+                        .eq(''branch_id'', ''asan'').eq(''type'', ''mobis'').eq(''target_date'', dispatchDate).maybeSingle(),
                 ]);
 
-                const glovisAll = glovisApiRes?.ok ? (await glovisApiRes.json()).data : [];
-                const mobisAll  = mobisApiRes?.ok  ? (await mobisApiRes.json()).data  : [];
-
-                // 오늘(또는 어제) 날짜 필터
-                const glovisRecord = (glovisAll || []).find(d => d.target_date === dispatchDate) || null;
-                const mobisRecord  = (mobisAll  || []).find(d => d.target_date === dispatchDate) || null;
-
-                // 기존 glovisRes/mobisRes 인터페이스 호환
-                const glovisRes = { data: glovisRecord };
-                const mobisRes  = { data: mobisRecord };
+                // [v5.10.20] 호환: col_12 → ''T'' (glovis TYPE 컬럼 복구)
+                if (glovisRes.data?.headers) {
+                    const idx = glovisRes.data.headers.indexOf(''col_12'');
+                    if (idx >= 0) glovisRes.data.headers[idx] = ''T'';
+                }
+                if (mobisRes.data?.headers) {
+                    const idx = mobisRes.data.headers.indexOf(''col_15'');
+                    if (idx >= 0) mobisRes.data.headers[idx] = ''TYPE'';
+                }
 
                 // 배차 데이터를 파싱하여 AI에 주입할 텍스트 생성 함수
                 const buildDispatchText = (type, dispatchRecord) => {
                     if (!dispatchRecord?.data || !dispatchRecord?.headers) return { text: '', rawText: '' };
                     const { headers, data: rows, comments } = dispatchRecord;
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
-                    const REGION_COLS = ['기타','아산','부산','경남','경북','충남','충북','경수','인천','광양','울산','평택','당진','서울','수도권'];
+                    const REGION_COLS = ['기타','아산','부산','경남','경북','충남','충북','경수','인천','광양','울산','평택','당진','서울','수도권','중부','부곡'];
                     const filterDest = REGION_COLS.find(k => userKwd.includes(k)) || null;
 
+                    // ★ getCol() 방식: 완전일치 우선, 부분일치 보조 (dispatch API와 동일 로직)
+                    const getRegionIdx = (regionName) => {
+                        // 1. 완전일치
+                        let idx = headers.findIndex(h => h.replace(/\s+/g, '') === regionName.replace(/\s+/g, ''));
+                        if (idx >= 0) return idx;
+                        // 2. 부분일치
+                        idx = headers.findIndex(h => h.replace(/\s+/g, '').includes(regionName.replace(/\s+/g, '')));
+                        return idx;
+                    };
+
                     // 지역 컬럼 인덱스 추출
-                    const regionIdxMap = {}; // { colIdx: headerName }
-                    headers.forEach((h, i) => {
-                        if (REGION_COLS.some(r => h.trim().includes(r))) regionIdxMap[i] = h.trim();
+                    const regionIdxMap = {}; // { colIdx: regionName }
+                    REGION_COLS.forEach(r => {
+                        const idx = getRegionIdx(r);
+                        if (idx >= 0 && !(idx in regionIdxMap)) regionIdxMap[idx] = r;
                     });
 
                     // 행별 파싱: 시간메모 + 지역별 값
@@ -1810,6 +1818,7 @@ export async function POST(req) {
         },
     });
 }
+
 
 
 

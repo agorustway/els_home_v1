@@ -110,30 +110,27 @@ export async function GET() {
         result.kskill = { status: '❌ 연결 실패: ' + e.message };
     }
 
-    // 4. 배차판 데이터 구조 확인 (지역 컬럼 실제 값 파악용)
+    // 4. 배차판 데이터 구조 확인 — Supabase 직접 쿼리 (fetch 401 문제 해결)
     try {
         const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const dispatchUrl = `${SITE_URL}/api/branches/asan/dispatch?type=glovis`;
-        const dispatchRes = await fetch(dispatchUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
-        if (dispatchRes?.ok) {
-            const dispatchData = await dispatchRes.json();
-            const allRecords = dispatchData.data || [];
-            const todayRecord = allRecords.find(d => d.target_date === today);
-            result.dispatch = {
-                status: '✅ API 호출 성공',
-                today,
-                totalRecords: allRecords.length,
-                availableDates: allRecords.map(d => d.target_date),
-                todayFound: !!todayRecord,
-                headers: todayRecord?.headers || null,
-                data_row0: todayRecord?.data?.[0] || null,
-                data_row1: todayRecord?.data?.[1] || null,
-                comments_sample: todayRecord ? Object.entries(todayRecord.comments || {}).slice(0, 3) : null,
-                total_rows: todayRecord?.data?.length || 0,
-            };
-        } else {
-            result.dispatch = { status: `❌ API 실패: HTTP ${dispatchRes?.status}`, url: dispatchUrl };
-        }
+        const supabase = await createAdminClient();
+        const { data: glovisRec, error: gErr } = await supabase
+            .from('branch_dispatch')
+            .select('headers, data, comments, target_date')
+            .eq('branch_id', 'asan').eq('type', 'glovis')
+            .order('target_date', { ascending: false })
+            .limit(5);
+        result.dispatch = {
+            status: gErr ? '❌ ' + gErr.message : '✅ Supabase 직접 쿼리 성공',
+            today,
+            availableDates: (glovisRec || []).map(d => d.target_date),
+            todayFound: (glovisRec || []).some(d => d.target_date === today),
+            headers: glovisRec?.[0]?.headers || null,
+            data_row0: glovisRec?.[0]?.data?.[0] || null,
+            data_row1: glovisRec?.[0]?.data?.[1] || null,
+            comments_sample: glovisRec?.[0] ? Object.entries(glovisRec[0].comments || {}).slice(0, 5) : null,
+            total_rows: glovisRec?.[0]?.data?.length || 0,
+        };
     } catch (e) {
         result.dispatch = { status: '❌ 오류: ' + e.message };
     }
