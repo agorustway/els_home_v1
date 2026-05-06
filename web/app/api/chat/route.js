@@ -1610,7 +1610,12 @@ export async function POST(req) {
                 };
 
                 let dispatchText = '';
-                // ★ buildDispatchText: { text, rawText } 반환
+                // ★ [DEBUG] 실제 glovis 데이터 구조 확인 (Vercel 로그에서 확인)
+                if (glovisRes.data) {
+                    console.error('[ELS-DISPATCH-DEBUG] headers:', JSON.stringify(glovisRes.data.headers));
+                    console.error('[ELS-DISPATCH-DEBUG] data[0]:', JSON.stringify(glovisRes.data.data?.[0]));
+                    console.error('[ELS-DISPATCH-DEBUG] comments:', JSON.stringify(Object.entries(glovisRes.data.comments || {}).slice(0, 5)));
+                }
                 const g = buildDispatchText('glovis', glovisRes.data);
                 const m = buildDispatchText('mobis', mobisRes.data);
 
