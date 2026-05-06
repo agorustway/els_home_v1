@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 import path from 'path';
 import fs from 'fs';
@@ -1519,29 +1519,32 @@ export async function POST(req) {
                         ? timeQueryMatch[1].padStart(2, '0')  // '8' → '08'
                         : null;
 
-                    // 헤더 인덱스 파악 (구분, 목적지 등 핵심 컬럼)
-                    const hIdx = {
-                        type: headers.findIndex(h => h.includes('구분') || h.includes('TYPE') || h.includes('T')),
-                        dest: headers.findIndex(h => h.includes('부산') || h.includes('인천') || h.includes('행선') || h.includes('목적지')),
-                        carrier: headers.findIndex(h => h.includes('업체') || h.includes('운송') || h.includes('회사')),
+                    // ★ 구분 컬럼(40FT/20FT) 인덱스 탐지
+                    // 배차판 헤더 예: ["구분", "기타", "아산", "부산", "평택", "인천", ...]
+                    const typeColIdx = headers.findIndex(h => {
+                        const hh = h.replace(/\s/g, '');
+                        return hh === '구분' || hh === 'T' || hh === 'TYPE' || hh === '타입';
+                    });
+
+                    // 지역 컬럼 판단: col_ 형태나 빈 헤더 제외, 나머지는 모두 지역 컬럼으로 간주
+                    const isRegionCol = (h) => {
+                        const hh = h.trim();
+                        if (!hh || hh.startsWith('col_') || hh === '구분' || hh === 'T' || hh === 'TYPE') return false;
+                        return true;
                     };
 
-                    // 목적지 키워드 필터 추출
-                    const destKeywords = ['부산', '인천', '광양', '울산', '평택'];
-                    const filterDest = destKeywords.find(k => userKwd.includes(k)) || null;
+                    // 목적지 필터 (헤더 이름 기준으로 적용)
+                    const DEST_FILTER_KEYWORDS = ['부산', '인천', '광양', '울산', '평택', '아산', '당진', '기타'];
+                    const filterDest = DEST_FILTER_KEYWORDS.find(k => userKwd.includes(k)) || null;
 
                     // 각 행의 메모(시간 정보)와 셀 값 파싱
                     const results = [];
                     rows.forEach((row, rowIdx) => {
-                        // row: ["이지3", "부곡CSS", "동원", ...]
-                        // comments: { "0:2": "08 13 16", ... } → 행:열 인덱스로 시간 메모
-
-                        // 이 행에 연결된 모든 메모에서 시간 정보 추출
+                        // 이 행의 메모에서 시간 정보 추출
                         const rowTimes = new Set();
                         Object.entries(comments || {}).forEach(([key, val]) => {
                             const [cRow] = key.split(':').map(Number);
                             if (cRow === rowIdx) {
-                                // 메모에서 시간 숫자 추출 (예: "08 13 16" → ['08','13','16'])
                                 const times = String(val).match(/\b(\d{1,2})\b/g) || [];
                                 times.forEach(t => rowTimes.add(t.padStart(2, '0')));
                             }
@@ -1550,24 +1553,30 @@ export async function POST(req) {
                         // 시간 필터 적용
                         if (filterHour && !rowTimes.has(filterHour)) return;
 
-                        // 목적지 필터 적용 (셀 전체에서 키워드 검색)
-                        const rowText = row.join(' ');
-                        if (filterDest && !rowText.includes(filterDest)) return;
+                        // ★ 핵심: headers[i] ↔ row[i] 매핑 → "지역→업체명" 구조 생성
+                        const typeVal = (typeColIdx >= 0 && row[typeColIdx]) ? row[typeColIdx].trim() : '';
+                        const regionParts = headers.map((h, i) => {
+                            if (i === typeColIdx) return null; // 구분 컬럼 제외
+                            if (!isRegionCol(h)) return null;  // 지역 컬럼이 아닌 경우 제외
+                            const val = (row[i] || '').trim();
+                            if (!val || val === 'nan' || val === '0') return null;
+                            if (filterDest && !h.includes(filterDest)) return null; // 지역 필터
+                            return `${h.trim()}→${val}`;
+                        }).filter(Boolean);
 
-                        // 유효 데이터 행인지 확인 (3개 이상 셀이 비지 않아야 함)
-                        const validCells = row.filter(c => c && c.trim() && c !== 'nan' && c !== '0');
-                        if (validCells.length < 2) return;
+                        if (regionParts.length === 0) return;
 
                         const timeStr = rowTimes.size > 0
                             ? `[도착: ${[...rowTimes].sort().map(t => `${parseInt(t)}시`).join(', ')}]`
                             : '';
-                        results.push(`- ${row.filter(c => c && c.trim() && c !== 'nan').join(' | ')} ${timeStr}`);
+                        const typeTag = typeVal ? `[${typeVal}] ` : '';
+                        results.push(`- ${typeTag}${regionParts.join(', ')} ${timeStr}`);
                     });
 
                     if (results.length === 0) return '';
                     const label = filterHour ? `${parseInt(filterHour)}시 도착` : '전체';
-                    const destLabel = filterDest ? ` (${filterDest} 행선)` : '';
-                    return `\n### [${type.toUpperCase()}] ${label} 배차${destLabel} — 총 ${results.length}대\n${results.join('\n')}`;
+                    const destLabel2 = filterDest ? ` (${filterDest})` : '';
+                    return `\n### [${type.toUpperCase()}] ${label} 배차${destLabel2} — 전체 ${results.length}대\n${results.join('\n')}`;
                 };
 
                 let dispatchText = '';
@@ -1757,3 +1766,4 @@ export async function POST(req) {
         },
     });
 }
+
