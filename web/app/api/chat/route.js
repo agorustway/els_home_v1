@@ -648,11 +648,20 @@ export async function POST(req) {
                 return num >= 100 && !(num >= 2024 && num <= 2030);
             }) : [];
 
+            // 배차판 트리거 선언 (차량 쿼리와 충돌 방지를 위해 먼저 선언)
+            const _dispatchKwds = ['\ubc30\ucc28', '\ubc30\ucc28\ud310', '\uc774\uc9c0', '\uc2e0\uc2b9', '\ubd80\uace1', 'css', '\ub3d9\uc6d0', '\uae00\ub85c\ube44\uc2a4', '\ubaa8\ube44\uc2a4', '\uc544\uc0b0\ubc30\ucc28', '\uc624\ub298\ubc30\ucc28', '\ubc30\ucc28\ud310', '\ubd80\uc0b0\uce78', '\uc778\uccad\uce78', '\uc6b8\uc0b0\uce78', '\uad11\uc591\uce78'];
+            const _timeQueryMatch = lastUserText.match(/(\d{1,2})\s*\uc2dc/);
+            const _isDispatchContext = _dispatchKwds.some(k => userKwd.includes(k)) || Boolean(_timeQueryMatch);
+
             const isVehicleQuery = (
-                userKwd.includes('차량') || userKwd.includes('위치') || userKwd.includes('어디') ||
-                userKwd.includes('운행') || userKwd.includes('도착') || userKwd.includes('종료') ||
-                userKwd.includes('도착지') || userKwd.includes('종착') || userKwd.includes('위치관제') ||
-                userKwd.includes('어디서') || userKwd.includes('어디에') || userKwd.includes('기사') ||
+                // 배차판 질문일 때는 '도착'/'어디' 트리거 제외
+                !_isDispatchContext && (
+                    userKwd.includes('\ucc28\ub7c9') || userKwd.includes('\uc704\uce58') || userKwd.includes('\uc5b4\ub514') ||
+                    userKwd.includes('\uc6b4\ud589') || userKwd.includes('\ub3c4\ucc29') || userKwd.includes('\uc885\ub8cc') ||
+                    userKwd.includes('\ub3c4\ucc29\uc9c0') || userKwd.includes('\uc885\ucc29') || userKwd.includes('\uc704\uce58\uad00\uc81c') ||
+                    userKwd.includes('\uc5b4\ub514\uc11c') || userKwd.includes('\uc5b4\ub514\uc5d0') || userKwd.includes('\uae30\uc0ac')
+                ) ||
+                // 차량 번호(3~4자리) 포함되면 배차 콘텍스트에서도 차량 RAG 실행
                 targetVNumsGlobal.length > 0
             );
 
@@ -1478,9 +1487,9 @@ export async function POST(req) {
             '아산배차', '아산 배차', '오늘배차', '오늘 배차',
             '몇대', '몇 대', '대예정', '대 예정',
         ];
-        // 숫자+시 패턴 (예: "8시", "08시", "13시") 감지
-        const timeQueryMatch = lastUserText.match(/(\d{1,2})\s*시/);
-        const isDispatchQuery = dispatchKeywords.some(k => userKwd.includes(k)) || Boolean(timeQueryMatch);
+        // 숙자+시 패턴 (예: "8시", "08시", "13시") 감지 — 위에서 선언한 _timeQueryMatch 재활용
+        const timeQueryMatch = _timeQueryMatch;
+        const isDispatchQuery = _dispatchKwds.some(k => userKwd.includes(k)) || Boolean(timeQueryMatch);
 
         if (isDispatchQuery) {
             try {
