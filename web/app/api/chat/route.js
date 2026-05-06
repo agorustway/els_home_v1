@@ -1553,11 +1553,21 @@ export async function POST(req) {
                     // 행별 파싱: 시간메모 + 지역별 값
                     const parsedRows = [];
                     rows.forEach((row, rowIdx) => {
+                        // ★ 시간 메모 파싱: 해당 행의 모든 셀 메모에서 도착 시간 추출
+                        // 조건: 1~23 범위 숫자, 메모 전체가 숫자 조합인 경우만 허용 (날짜/텍스트 메모 오염 방지)
                         const rowTimes = new Set();
                         Object.entries(comments || {}).forEach(([key, val]) => {
                             const [cRow] = key.split(':').map(Number);
-                            if (cRow === rowIdx) {
-                                (String(val).match(/\b(\d{1,2})\b/g) || []).forEach(t => rowTimes.add(t.padStart(2, '0')));
+                            if (cRow !== rowIdx) return;
+                            const strVal = String(val).trim();
+                            // 줄바꿈이나 한글 포함된 메모는 텍스트 메모 → 시간 파싱 제외
+                            if (/[\uAC00-\uD7A3]/.test(strVal) || strVal.includes('\n')) return;
+                            // 숫자와 공백/슬래시/콤마만 있는 경우 시간 파싱
+                            if (/^[\d\s,/:.]+$/.test(strVal)) {
+                                (strVal.match(/\b(\d{1,2})\b/g) || []).forEach(t => {
+                                    const n = parseInt(t);
+                                    if (n >= 1 && n <= 23) rowTimes.add(t.padStart(2, '0'));
+                                });
                             }
                         });
                         if (filterHour && !rowTimes.has(filterHour)) return;
