@@ -1544,8 +1544,15 @@ export async function POST(req) {
                             const val = (row[i] || '').trim();
                             if (val && val !== 'nan' && val !== '0') regions[hName] = val;
                         });
-                        if (Object.keys(regions).length === 0) return;
-                        parsedRows.push({ times: [...rowTimes].sort(), regions });
+                        if (Object.keys(regions).length === 0) {
+                            // 지역 컬럼 없음 → 행 전체를 raw로 수집 (AI가 직접 분석)
+                            const cm = Object.entries(comments || {}).filter(([k]) => parseInt(k.split(':')[0]) === rowIdx).map(([, v]) => v).join('/');
+                            const rowRaw = row.filter(c => c && c.trim() && c !== 'nan' && c !== '0').join(' | ');
+                            if (rowRaw) parsedRows.push({ times: [...rowTimes].sort(), regions: null, raw: `${rowRaw}${cm ? ` [메모:${cm}]` : ''}` });
+                            return;
+                        }
+                        parsedRows.push({ times: [...rowTimes].sort(), regions, raw: null });
+
                     });
 
                     if (parsedRows.length === 0) {
@@ -1560,8 +1567,9 @@ export async function POST(req) {
                     }
 
                     // 텍스트 생성
-                    const lines = parsedRows.map(({ times, regions }) => {
+                    const lines = parsedRows.map(({ times, regions, raw }) => {
                         const timeTag = times.length > 0 ? `[${times.map(t => parseInt(t) + '시').join('/')} 도착] ` : '';
+                        if (raw) return `  - ${timeTag}[원본] ${raw}`;
                         const regionStr = Object.entries(regions).map(([r, v]) => `${r}: ${v}`).join(', ');
                         return `  - ${timeTag}${regionStr}`;
                     });
