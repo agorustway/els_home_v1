@@ -70,7 +70,7 @@ export const SIDEBAR_ITEMS = {
     contacts: [
         { label: '사내연락망', path: '/employees/internal-contacts' },
         { label: '외부연락처', path: '/employees/external-contacts' },
-        { label: '고객사정보', path: '/employees/work-sites' },
+        { label: '작업지정보', path: '/employees/work-sites' },
         { label: '협력사정보', path: '/employees/partner-contacts' },
         { label: '운전원정보', path: '/employees/driver-contacts' },
     ],

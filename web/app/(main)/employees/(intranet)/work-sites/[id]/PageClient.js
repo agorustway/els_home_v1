@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -88,6 +87,17 @@ export default function WorkSiteDetailPage() {
 
     const managers = item.managers || [];
 
+    let workProcess = {};
+    try {
+        if (item.work_method && item.work_method.trim().startsWith('{')) {
+            workProcess = JSON.parse(item.work_method);
+        } else {
+            workProcess = { notes: item.work_method };
+        }
+    } catch(e) {
+        workProcess = { notes: item.work_method };
+    }
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
@@ -99,60 +109,105 @@ export default function WorkSiteDetailPage() {
             </div>
             </div>
             <div className={styles.card}>
-                <div style={{ marginBottom: 32 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '0.9rem', marginBottom: 8, fontWeight: 600 }}>
-                        📍 작업지명 및 위치
+                
+                {item.site_name && (
+                    <h2 className={styles.detailTitle} style={{ margin: '0 0 16px 0', color: '#1e40af', fontSize: '1.4rem' }}>{item.site_name}</h2>
+                )}
+
+                <div style={{ borderTop: '2px solid #3b82f6', borderBottom: '1px solid #cbd5e1', fontSize: '0.95rem', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: 32 }}>
+                    
+                    {/* 담당자 */}
+                    <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                        <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>담당자</div>
+                        <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                            {managers.length > 0 ? managers.map((m, i) => (
+                                <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 600, color: '#1e293b' }}>{m.name} {m.role}</span>
+                                    <span style={{ color: '#0f172a', fontWeight: 700 }}>{m.phone}</span>
+                                </div>
+                            )) : <span style={{ color: '#94a3b8' }}>등록된 담당자가 없습니다.</span>}
+                        </div>
                     </div>
-                    {item.site_name && (
-                        <h2 className={styles.detailTitle} style={{ margin: '0 0 8px 0', color: '#1e40af' }}>{item.site_name}</h2>
+
+                    {/* 주소 */}
+                    <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                        <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>주소</div>
+                        <div style={{ flex: 1, padding: '16px 20px', fontWeight: 600, color: '#334155' }}>
+                            {item.address}
+                        </div>
+                    </div>
+
+                    {/* 주의사항 */}
+                    {(workProcess.precautions || workProcess.notes) && (
+                        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                            <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>주의사항</div>
+                            <div style={{ flex: 1, padding: '16px 20px', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                {workProcess.precautions || workProcess.notes}
+                            </div>
+                        </div>
                     )}
-                    <h3 style={{ margin: 0, color: '#475569', fontSize: '1.1rem', fontWeight: 600 }}>{item.address}</h3>
+
+                    {/* 입차 */}
+                    {workProcess.entryProcess && (
+                        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                            <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>입차</div>
+                            <div style={{ flex: 1, padding: '16px 20px', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                {workProcess.entryProcess}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 접수 */}
+                    {workProcess.receptionProcess && (
+                        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                            <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>접수</div>
+                            <div style={{ flex: 1, padding: '16px 20px', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                {workProcess.receptionProcess}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 적입 */}
+                    {workProcess.loadingProcess && (
+                        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                            <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>적입</div>
+                            <div style={{ flex: 1, padding: '16px 20px', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                {workProcess.loadingProcess}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 출차 */}
+                    {workProcess.exitProcess && (
+                        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                            <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>출차</div>
+                            <div style={{ flex: 1, padding: '16px 20px', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                {workProcess.exitProcess}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 약도 (첨부파일 중 이미지 렌더링) */}
+                    <div style={{ display: 'flex', background: '#fff' }}>
+                        <div style={{ width: '120px', minWidth: '120px', background: '#4b89dc', color: 'white', padding: '16px 12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>약도</div>
+                        <div style={{ flex: 1, padding: '16px 20px' }}>
+                            {item.attachments && item.attachments.filter(f => f.name.match(/\.(jpeg|jpg|gif|png)$/i)).length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    {item.attachments.filter(f => f.name.match(/\.(jpeg|jpg|gif|png)$/i)).map((img, idx) => (
+                                        <img key={idx} src={img.url || \`/api/s3/files?key=\${encodeURIComponent(img.key)}&name=\${encodeURIComponent(img.name)}\`} alt="약도" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <span style={{ color: '#94a3b8' }}>등록된 약도 이미지가 없습니다.</span>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, marginBottom: 32 }}>
-                    <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9' }}>
-                        <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            👥 담당자 정보
-                        </div>
-                        {managers.length > 0 ? (
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                {managers.map((m, i) => (
-                                    <li key={i} style={{ padding: '8px 0', borderBottom: i === managers.length - 1 ? 'none' : '1px dashed #e2e8f0' }}>
-                                        <div style={{ fontWeight: 700, color: '#334155' }}>
-                                            {m.name} <span style={{ color: '#94a3b8', fontWeight: 500, fontSize: '0.85rem' }}>{m.role}</span>
-                                        </div>
-                                        <div style={{ color: '#2563eb', fontSize: '0.9rem', fontWeight: 600, marginTop: 2 }}>{m.phone || '—'}</div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>등록된 담당자가 없습니다.</p>
-                        )}
-                    </div>
-
-                    <div style={{ background: '#fcfdfe', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9' }}>
-                        <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            ⚙️ 작업 방식 및 연락처
-                        </div>
-                        {item.contact && (
-                            <div style={{ marginBottom: 12 }}>
-                                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>대표 연락처</span>
-                                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#334155' }}>{item.contact}</div>
-                            </div>
-                        )}
-                        {item.work_method && (
-                            <div>
-                                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>작업 방식</span>
-                                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#334155', whiteSpace: 'pre-wrap' }}>{item.work_method}</div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div style={{ marginTop: 24 }}>
-                    <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem' }}>💡 참고사항</div>
-                    <div className={styles.contentBody} style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9', minHeight: 100 }}>
-                        {item.notes || <span style={{ color: '#94a3b8' }}>(참고 사항 없음)</span>}
+                <div style={{ marginTop: 24, marginBottom: 40 }}>
+                    <div style={{ fontWeight: 800, color: '#1e293b', marginBottom: 12, fontSize: '0.95rem' }}>💡 특이사항 (기타 참고사항)</div>
+                    <div className={styles.contentBody} style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #f1f5f9', minHeight: 100, whiteSpace: 'pre-wrap' }}>
+                        {item.notes || <span style={{ color: '#94a3b8' }}>(특이사항 없음)</span>}
                     </div>
                 </div>
 
@@ -174,7 +229,7 @@ export default function WorkSiteDetailPage() {
                                                 <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.9rem' }}>{file.name || '파일'}</span>
                                             </div>
                                             <a
-                                                href={file.url || file.path || `/api/s3/files?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`}
+                                                href={file.url || file.path || \`/api/s3/files?key=\${encodeURIComponent(file.key)}&name=\${encodeURIComponent(file.name)}\`}
                                                 className={styles.btnSecondary}
                                                 style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                                                 download

@@ -196,7 +196,10 @@
           </div>
           <div class="field" style="margin-bottom:0;">
             <label>작업지</label>
-            <input type="text" id="work-site" placeholder="작업지 이름 기입" maxlength="100" oninput="App.onTripFieldChange()" style="width:100% !important;height:44px;font-size:14px;">
+            <div style="display:flex;gap:4px;">
+              <input type="text" id="work-site" placeholder="작업지 이름 기입" maxlength="100" oninput="App.onTripFieldChange()" style="flex:1;min-width:0;height:44px;font-size:14px;">
+              <button class="btn btn-black" onclick="App.lookupWorkSite('trip')" style="white-space:nowrap;padding:0 12px;height:44px;">상세조회</button>
+            </div>
           </div>
           <div id="trip-actions">
             <div id="trip-start-row" class="trip-action-row">
@@ -264,7 +267,13 @@
             <div class="field"><label>운송구분</label><select id="log-edit-transport-type" style="width:100% !important;height:44px;font-size:14px;"><option value="왕복">왕복</option><option value="편도">편도</option><option value="복화">복화</option><option value="기타">기타</option></select></div>
             <div class="field"><label>청구금액</label><input type="text" id="log-edit-billing-amount" inputmode="numeric" style="width:100% !important;text-align:right;height:44px;font-size:14px;"></div>
           </div>
-          <div class="field"><label>작업지</label><input type="text" id="log-edit-work-site" maxlength="100" style="width:100% !important;height:44px;font-size:14px;"></div>
+          <div class="field">
+            <label>작업지</label>
+            <div style="display:flex;gap:4px;">
+              <input type="text" id="log-edit-work-site" maxlength="100" oninput="App.onLogFieldChange && App.onLogFieldChange()" style="flex:1;min-width:0;height:44px;font-size:14px;">
+              <button class="btn btn-black" onclick="App.lookupWorkSite('log')" style="white-space:nowrap;padding:0 12px;height:44px;">상세조회</button>
+            </div>
+          </div>
           <div class="field"><label>메모</label><textarea id="log-edit-memo" rows="3"></textarea></div>
           <button class="btn btn-primary btn-sm btn-full" onclick="App.saveLogEdit()" style="margin-top:8px; flex-shrink:0; min-height:44px; height:44px; font-size:14px;">기록 수정 저장</button>
         </div>
@@ -476,6 +485,19 @@
       <p><strong>4. 제3자 제공</strong><br>수집된 정보는 법령에 근거한 경우를 제외하고 제3자에게 제공되지 않습니다.</p>
       <p><strong>5. 이용약관</strong><br>본 앱은 업무용 차량 관제 시스템으로, 허가된 사용자만 이용 가능합니다. 수집된 데이터는 회사 정책에 따라 관리됩니다.</p>
       <p style="color:#94a3b8;font-size:11px;margin-top:12px;">문의: ELS Solution 관리자</p>
+    </div>
+  </div>
+</div>
+
+<!-- 작업지 상세조회 모달 -->
+<div id="modal-work-site" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);align-items:flex-end;">
+  <div style="background:#fff;border-radius:16px 16px 0 0;padding:20px 18px 32px;max-height:85vh;overflow-y:auto;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:16px;font-weight:800;margin:0;" id="work-site-modal-title">작업지 정보</h3>
+      <button onclick="document.getElementById('modal-work-site').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;">✕</button>
+    </div>
+    <div id="work-site-modal-content" style="font-size:13px;color:#374151;line-height:1.6;">
+       <!-- 내용 렌더링 -->
     </div>
   </div>
 </div>

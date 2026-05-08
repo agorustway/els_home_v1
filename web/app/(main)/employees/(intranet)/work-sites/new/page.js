@@ -12,7 +12,14 @@ export default function WorkSitesNewPage() {
     const [siteName, setSiteName] = useState('');
     const [address, setAddress] = useState('');
     const [contact, setContact] = useState('');
-    const [workMethod, setWorkMethod] = useState('');
+    
+    // 세부 작업 프로세스 (JSON으로 work_method에 저장)
+    const [precautions, setPrecautions] = useState('');
+    const [entryProcess, setEntryProcess] = useState('');
+    const [receptionProcess, setReceptionProcess] = useState('');
+    const [loadingProcess, setLoadingProcess] = useState('');
+    const [exitProcess, setExitProcess] = useState('');
+    
     const [notes, setNotes] = useState('');
     const [managers, setManagers] = useState([{ name: '', phone: '', role: '' }]);
     const [attachments, setAttachments] = useState([]);
@@ -100,6 +107,15 @@ export default function WorkSitesNewPage() {
         e.preventDefault();
         if (!address.trim()) return;
         setSubmitting(true);
+        
+        const workMethodObj = {
+            precautions,
+            entryProcess,
+            receptionProcess,
+            loadingProcess,
+            exitProcess
+        };
+        
         try {
             const res = await fetch('/api/work-sites', {
                 method: 'POST',
@@ -108,7 +124,7 @@ export default function WorkSitesNewPage() {
                     site_name: siteName.trim(),
                     address: address.trim(),
                     contact,
-                    work_method: workMethod,
+                    work_method: JSON.stringify(workMethodObj),
                     notes,
                     attachments: attachments,
                     managers: managers.filter((m) => m.name && m.name.trim()),
@@ -161,17 +177,40 @@ export default function WorkSitesNewPage() {
                         ))}
                         <button type="button" onClick={addManager} className={styles.btnSecondary} style={{ marginTop: 8 }}>담당자 추가</button>
                     </div>
+                    
+                    <hr style={{ margin: '24px 0', borderColor: '#e2e8f0' }} />
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', color: '#1e293b' }}>작업 프로세스 및 주의사항</h3>
+
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>작업방식</label>
-                        <input className={styles.input} value={workMethod} onChange={(e) => setWorkMethod(e.target.value)} placeholder="작업방식" />
+                        <label className={styles.label}>주의사항</label>
+                        <textarea className={styles.textarea} value={precautions} onChange={(e) => setPrecautions(e.target.value)} placeholder="영내 20km 미만 서행, 쓰레기 무단투기 금지 등" style={{ minHeight: 60 }} />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>참고사항</label>
-                        <textarea className={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="참고사항" style={{ minHeight: 100 }} />
+                        <label className={styles.label}>입차</label>
+                        <textarea className={styles.textarea} value={entryProcess} onChange={(e) => setEntryProcess(e.target.value)} placeholder="경비실에서 차량등록 후 진입 등" style={{ minHeight: 60 }} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>접수</label>
+                        <textarea className={styles.textarea} value={receptionProcess} onChange={(e) => setReceptionProcess(e.target.value)} placeholder="차량번호/전화번호 기재, 도어 오픈 등" style={{ minHeight: 60 }} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>적입</label>
+                        <textarea className={styles.textarea} value={loadingProcess} onChange={(e) => setLoadingProcess(e.target.value)} placeholder="도크 진입, 고임목 설치 등" style={{ minHeight: 60 }} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>출차</label>
+                        <textarea className={styles.textarea} value={exitProcess} onChange={(e) => setExitProcess(e.target.value)} placeholder="씰 채결 확인, 반출증 전달 후 출차 등" style={{ minHeight: 60 }} />
+                    </div>
+
+                    <hr style={{ margin: '24px 0', borderColor: '#e2e8f0' }} />
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>특이사항 (하단)</label>
+                        <textarea className={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="기타 특이사항" style={{ minHeight: 100 }} />
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>📎 관련 서류 및 사진 업로드</label>
+                        <label className={styles.label}>📍 약도 및 관련 서류 업로드</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
                             onDragOver={handleDragOver}
@@ -181,7 +220,7 @@ export default function WorkSitesNewPage() {
                         >
                             <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
-                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
+                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요 (약도 이미지 포함)
                             </label>
 
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>

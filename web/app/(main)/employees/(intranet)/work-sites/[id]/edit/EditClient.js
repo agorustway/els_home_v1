@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -14,7 +13,14 @@ export default function WorkSiteEditPage() {
     const [siteName, setSiteName] = useState('');
     const [address, setAddress] = useState('');
     const [contact, setContact] = useState('');
-    const [workMethod, setWorkMethod] = useState('');
+    
+    // 세부 작업 프로세스 (JSON으로 work_method에 저장)
+    const [precautions, setPrecautions] = useState('');
+    const [entryProcess, setEntryProcess] = useState('');
+    const [receptionProcess, setReceptionProcess] = useState('');
+    const [loadingProcess, setLoadingProcess] = useState('');
+    const [exitProcess, setExitProcess] = useState('');
+    
     const [notes, setNotes] = useState('');
     const [managers, setManagers] = useState([{ name: '', phone: '', role: '' }]);
     const [loading, setLoading] = useState(true);
@@ -33,7 +39,24 @@ export default function WorkSiteEditPage() {
                         setSiteName(data.item.site_name ?? '');
                         setAddress(data.item.address);
                         setContact(data.item.contact ?? '');
-                        setWorkMethod(data.item.work_method ?? '');
+                        
+                        let wp = {};
+                        try {
+                            if (data.item.work_method && data.item.work_method.trim().startsWith('{')) {
+                                wp = JSON.parse(data.item.work_method);
+                            } else {
+                                wp = { precautions: data.item.work_method };
+                            }
+                        } catch(e) {
+                            wp = { precautions: data.item.work_method };
+                        }
+                        
+                        setPrecautions(wp.precautions || '');
+                        setEntryProcess(wp.entryProcess || '');
+                        setReceptionProcess(wp.receptionProcess || '');
+                        setLoadingProcess(wp.loadingProcess || '');
+                        setExitProcess(wp.exitProcess || '');
+                        
                         setNotes(data.item.notes ?? '');
                         const m = data.item.managers || [];
                         setManagers(m.length ? m.map((x) => ({ name: x.name || '', phone: x.phone || '', role: x.role || '' })) : [{ name: '', phone: '', role: '' }]);
@@ -55,6 +78,15 @@ export default function WorkSiteEditPage() {
         e.preventDefault();
         if (!address.trim()) return;
         setSubmitting(true);
+        
+        const workMethodObj = {
+            precautions,
+            entryProcess,
+            receptionProcess,
+            loadingProcess,
+            exitProcess
+        };
+        
         try {
             const res = await fetch('/api/work-sites/' + id, {
                 method: 'PATCH',
@@ -63,7 +95,7 @@ export default function WorkSiteEditPage() {
                     site_name: siteName.trim(),
                     address: address.trim(),
                     contact,
-                    work_method: workMethod,
+                    work_method: JSON.stringify(workMethodObj),
                     notes,
                     managers: managers.filter((m) => m.name?.trim()),
                 }),
@@ -109,14 +141,38 @@ export default function WorkSiteEditPage() {
                         ))}
                         <button type="button" onClick={addManager} className={styles.btnSecondary} style={{ marginTop: 8 }}>담당자 추가</button>
                     </div>
+                    
+                    <hr style={{ margin: '24px 0', borderColor: '#e2e8f0' }} />
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', color: '#1e293b' }}>작업 프로세스 및 주의사항</h3>
+
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>작업방식</label>
-                        <input className={styles.input} value={workMethod} onChange={(e) => setWorkMethod(e.target.value)} />
+                        <label className={styles.label}>주의사항</label>
+                        <textarea className={styles.textarea} value={precautions} onChange={(e) => setPrecautions(e.target.value)} style={{ minHeight: 60 }} />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>참고사항</label>
+                        <label className={styles.label}>입차</label>
+                        <textarea className={styles.textarea} value={entryProcess} onChange={(e) => setEntryProcess(e.target.value)} style={{ minHeight: 60 }} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>접수</label>
+                        <textarea className={styles.textarea} value={receptionProcess} onChange={(e) => setReceptionProcess(e.target.value)} style={{ minHeight: 60 }} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>적입</label>
+                        <textarea className={styles.textarea} value={loadingProcess} onChange={(e) => setLoadingProcess(e.target.value)} style={{ minHeight: 60 }} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>출차</label>
+                        <textarea className={styles.textarea} value={exitProcess} onChange={(e) => setExitProcess(e.target.value)} style={{ minHeight: 60 }} />
+                    </div>
+
+                    <hr style={{ margin: '24px 0', borderColor: '#e2e8f0' }} />
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>특이사항 (하단)</label>
                         <textarea className={styles.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} style={{ minHeight: 100 }} />
                     </div>
+                    
                     <div className={styles.actions}>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting}>{submitting ? '저장 중...' : '저장'}</button>
                         <Link href={'/employees/work-sites/' + id} className={styles.btnSecondary}>취소</Link>

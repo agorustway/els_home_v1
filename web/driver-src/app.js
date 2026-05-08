@@ -26,6 +26,7 @@ import {
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist, checkChecklistValid,
   startOverlayService, updateOverlayStatus, stopOverlayService, updateTripCargoUI,
+  lookupWorkSite,
 } from './modules/trip.js?v=5146';
 
 // GPS
@@ -96,6 +97,7 @@ window.App = {
   // 운행
   onTripFieldChange, startTrip, togglePause, endTrip, saveMemo, clearTripData,
   openChecklist, closeChecklist, saveChecklist, checkChecklistValid, updateTripCargoUI,
+  lookupWorkSite,
 
   // GPS / 실시간
   startRealtimeMode, stopRealtimeMode, updateTripStatusLine,
