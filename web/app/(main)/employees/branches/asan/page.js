@@ -144,35 +144,57 @@ function calcSummary(headers, data, viewType) {
 }
 function doSearch(data, headers, term) {
     if (!term || !data) return { indices: null, summary: '' };
-    const t = term.toLowerCase();
+    const terms = term.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (terms.length === 0) return { indices: null, summary: '' };
+
     const branchCols = [];
     headers.forEach((h, i) => { if (BRANCH_NAMES.includes(h.trim())) branchCols.push({ i, name: h.trim() }); });
-    const indices = []; const breakdown = {}; let total = 0;
+    
+    let orderColIdx = findCol(headers, '계');
+    if (orderColIdx === -1) orderColIdx = findCol(headers, '수량');
+    if (orderColIdx === -1) orderColIdx = findCol(headers, '오더(계)');
+    if (orderColIdx === -1) orderColIdx = findCol(headers, '오더');
+
+    const indices = []; 
+    let totalOrderCount = 0;
+    const breakdown = {}; let totalBranchExtracted = 0;
+
     data.forEach((row, ri) => {
-        if (!row.some(c => c && String(c).toLowerCase().includes(t))) return;
+        const matchedTerms = terms.filter(t => row.some(c => c && String(c).toLowerCase().includes(t)));
+        if (matchedTerms.length === 0) return;
+        
         indices.push(ri);
+
+        if (orderColIdx !== -1) {
+            const val = parseInt(row[orderColIdx], 10);
+            if (!isNaN(val)) totalOrderCount += val;
+        }
+
         branchCols.forEach(({ i, name }) => {
             const cell = String(row[i] || '').toLowerCase();
-            if (cell.includes(t)) {
-                // 검색어(t) 뒤에 나오는 숫자를 추출 (정규식: 한글/영문 등이 아닌 문자 또는 바로 뒤에 붙은 숫자)
-                const escapedT = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escapedT + '[^가-힣a-zA-Z\\d]*(\\d+)', 'g');
-                let cellTotal = 0;
-                let match;
-                while ((match = regex.exec(cell)) !== null) {
-                    cellTotal += parseInt(match[1], 10);
+            matchedTerms.forEach(t => {
+                if (cell.includes(t)) {
+                    const escapedT = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedT + '[^가-힣a-zA-Z\\d]*(\\d+)', 'g');
+                    let cellTotal = 0;
+                    let match;
+                    while ((match = regex.exec(cell)) !== null) {
+                        cellTotal += parseInt(match[1], 10);
+                    }
+                    if (cellTotal === 0) cellTotal = 1;
+                    
+                    totalBranchExtracted += cellTotal; 
+                    breakdown[name] = (breakdown[name] || 0) + cellTotal; 
                 }
-                // 매칭된 숫자가 없으면 기본값 1
-                if (cellTotal === 0) cellTotal = 1;
-                
-                total += cellTotal; 
-                breakdown[name] = (breakdown[name] || 0) + cellTotal; 
-            }
+            });
         });
     });
+
     if (indices.length === 0) return { indices, summary: `"${term}" 검색 결과 없음` };
+    
     const parts = Object.entries(breakdown).filter(([, v]) => v > 0).map(([k, v]) => `${k} ${v}`).join(', ');
-    return { indices, summary: `${term} ${total}대${parts ? ` (${parts})` : ''}`, total };
+    
+    return { indices, summary: `"${term}" 오더 ${totalOrderCount}대${parts ? ` (${parts})` : ''}`, total: totalOrderCount };
 }
 
 // localStorage
