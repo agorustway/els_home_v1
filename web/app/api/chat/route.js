@@ -1498,168 +1498,129 @@ export async function POST(req) {
         if (isDispatchQuery) {
             try {
                 const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-                // 날짜 지정: "어제" 지원, 기본값은 오늘
-                const isDispatchYesterday = userKwd.includes('어제');
-                const targetKst = isDispatchYesterday
-                    ? new Date(kstNow.getTime() - 86400000)
-                    : kstNow;
-                const dispatchDate = targetKst.toISOString().split('T')[0]; // "2026-05-06"
+                const curYear = kstNow.getFullYear();
+                
+                let targetDates = [];
+                let isMonthQuery = false;
+                let dateLabel = '오늘';
 
-                // ★ Supabase 직접 쿼리 (미들웨어 인증 우회 — 서비스 롤 키 사용)
-                // /api/branches/asan/dispatch는 인증 필요하므로 내부 호출 불가 (401)
-                const [glovisRes, mobisRes] = await Promise.all([
-                    supabase.from('branch_dispatch').select('headers, data, comments')
-                        .eq('branch_id', 'asan').eq('type', 'glovis').eq('target_date', dispatchDate).maybeSingle(),
-                    supabase.from('branch_dispatch').select('headers, data, comments')
-                        .eq('branch_id', 'asan').eq('type', 'mobis').eq('target_date', dispatchDate).maybeSingle(),
-                ]);
+                const dateMatch = lastUserText.match(/(\d{1,2})[\/.월\s]+(\d{1,2})일?/);
+                const monthMatch = lastUserText.match(/(\d{1,2})월/);
 
-                // [v5.10.20] 호환: col_12 → 'T' (glovis TYPE 컬럼 복구)
-                if (glovisRes.data?.headers) {
-                    const idx = glovisRes.data.headers.indexOf('col_12');
-                    if (idx >= 0) glovisRes.data.headers[idx] = 'T';
+                if (dateMatch) {
+                    const m = dateMatch[1].padStart(2, '0');
+                    const d = dateMatch[2].padStart(2, '0');
+                    targetDates.push(`${curYear}-${m}-${d}`);
+                    dateLabel = `${m}월 ${d}일`;
+                } else if (monthMatch) {
+                    const m = monthMatch[1].padStart(2, '0');
+                    isMonthQuery = true;
+                    dateLabel = `${m}월 전체`;
+                } else if (userKwd.includes('어제')) {
+                    targetDates.push(new Date(kstNow.getTime() - 86400000).toISOString().split('T')[0]);
+                    dateLabel = '어제';
+                } else {
+                    targetDates.push(kstNow.toISOString().split('T')[0]);
                 }
-                if (mobisRes.data?.headers) {
-                    const idx = mobisRes.data.headers.indexOf('col_15');
-                    if (idx >= 0) mobisRes.data.headers[idx] = 'TYPE';
+
+                let dbQuery = supabase.from('branch_dispatch').select('target_date, type, headers, data, comments').eq('branch_id', 'asan');
+
+                if (isMonthQuery) {
+                    const m = monthMatch[1].padStart(2, '0');
+                    dbQuery = dbQuery.like('target_date', `${curYear}-${m}-%`);
+                } else {
+                    dbQuery = dbQuery.eq('target_date', targetDates[0]);
                 }
 
+                const { data: dispatchRecords, error } = await dbQuery;
 
-                // 배차 데이터를 파싱하여 AI에 주입할 텍스트 생성 함수
-                const buildDispatchText = (type, dispatchRecord) => {
-                    if (!dispatchRecord?.data || !dispatchRecord?.headers) return { text: '', rawText: '' };
-                    const { headers, data: rows, comments } = dispatchRecord;
+                if (!error && dispatchRecords && dispatchRecords.length > 0) {
+                    // 키워드 추출 (날짜/배차 관련 단어 제외)
+                    const ignoreWords = ['배차', '배차판', '도착', '시간', '몇시', '몇대', '주차별', '오더', '개수', '알려줘', '어디야', '정보'];
+                    const specificKwds = searchTerms.filter(t => t.length >= 2 && !ignoreWords.includes(t));
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
-                    const REGION_COLS = ['기타','아산','부산','경남','경북','충남','충북','경수','인천','광양','울산','평택','당진','서울','수도권','중부','부곡'];
-                    const filterDest = REGION_COLS.find(k => userKwd.includes(k)) || null;
 
-                    // ★ getCol() 방식: 완전일치 우선, 부분일치 보조 (dispatch API와 동일 로직)
-                    const getRegionIdx = (regionName) => {
-                        // 1. 완전일치
-                        let idx = headers.findIndex(h => h.replace(/\s+/g, '') === regionName.replace(/\s+/g, ''));
-                        if (idx >= 0) return idx;
-                        // 2. 부분일치
-                        idx = headers.findIndex(h => h.replace(/\s+/g, '').includes(regionName.replace(/\s+/g, '')));
-                        return idx;
-                    };
+                    let dispatchText = `\n\n## 아산지점 배차판 (${dateLabel})\n`;
+                    dispatchText += '> [중요] 아래 표기된 원본 데이터(행 번호, 컬럼명, 셀 값, 메모)를 바탕으로 사용자의 질문에 답변하라. 각 행의 [메모]에는 차량의 배차 시간(예: 08, 09 등)과 업체명, 특이사항 등이 기록되어 있다. 메모의 숫자와 업체를 매칭하여 답변하라.\n';
 
-                    // 지역 컬럼 인덱스 추출
-                    const regionIdxMap = {}; // { colIdx: regionName }
-                    REGION_COLS.forEach(r => {
-                        const idx = getRegionIdx(r);
-                        if (idx >= 0 && !(idx in regionIdxMap)) regionIdxMap[idx] = r;
-                    });
+                    // 날짜 오름차순 정렬
+                    dispatchRecords.sort((a, b) => a.target_date.localeCompare(b.target_date));
 
-                    // 행별 파싱: 시간메모 + 지역별 값
-                    const parsedRows = [];
-                    rows.forEach((row, rowIdx) => {
-                        // ★ 시간 메모 파싱: 해당 행의 모든 셀 메모에서 도착 시간 추출
-                        // 조건: 1~23 범위 숫자, 메모 전체가 숫자 조합인 경우만 허용 (날짜/텍스트 메모 오염 방지)
-                        const rowTimes = new Set();
-                        Object.entries(comments || {}).forEach(([key, val]) => {
-                            const [cRow] = key.split(':').map(Number);
-                            if (cRow !== rowIdx) return;
-                            const strVal = String(val).trim();
-                            // 줄바꿈이나 한글 포함된 메모는 텍스트 메모 → 시간 파싱 제외
-                            if (/[\uAC00-\uD7A3]/.test(strVal) || strVal.includes('\n')) return;
-                            // 숫자와 공백/슬래시/콤마만 있는 경우 시간 파싱
-                            if (/^[\d\s,/:.]+$/.test(strVal)) {
-                                (strVal.match(/\b(\d{1,2})\b/g) || []).forEach(t => {
-                                    const n = parseInt(t);
-                                    if (n >= 1 && n <= 23) rowTimes.add(t.padStart(2, '0'));
+                    let totalRowsAdded = 0;
+
+                    dispatchRecords.forEach(record => {
+                        const { target_date, type, headers, data: rows, comments } = record;
+                        if (!rows || rows.length === 0) return;
+
+                        // 호환성 처리
+                        if (type === 'glovis') {
+                            const idx = headers.indexOf('col_12');
+                            if (idx >= 0) headers[idx] = 'T';
+                        }
+                        if (type === 'mobis') {
+                            const idx = headers.indexOf('col_15');
+                            if (idx >= 0) headers[idx] = 'TYPE';
+                        }
+
+                        let filteredRows = [];
+                        
+                        rows.forEach((row, ri) => {
+                            // 필터 1: 특정 시간 필터 (filterHour)
+                            let hasTimeMatch = false;
+                            if (filterHour) {
+                                Object.entries(comments || {}).forEach(([key, val]) => {
+                                    if (key.startsWith(`${ri}:`)) {
+                                        const strVal = String(val).trim();
+                                        if (strVal.includes(filterHour)) hasTimeMatch = true;
+                                    }
                                 });
                             }
-                        });
-                        if (filterHour && !rowTimes.has(filterHour)) return;
-                        // ★ 셀값 파싱: "이지3" → {name:"이지", count:3} / "신승" → {name:"신승", count:1}
-                        const parseCellCarrier = (val) => {
-                            const m2 = val.match(/^([^0-9]+)(\d+)$/);
-                            if (m2) return { name: m2[1].trim(), count: parseInt(m2[2]) };
-                            return { name: val, count: 1 };
-                        };
-                        const regions = {}; // { hName: [{name, count}, ...] }
-                        let rowTotal = 0;
-                        Object.entries(regionIdxMap).forEach(([i, hName]) => {
-                            if (filterDest && !hName.includes(filterDest)) return;
-                            const val = (row[i] || '').trim();
-                            if (!val || val === 'nan' || val === '0') return;
-                            // 콤마/슬래시로 분리 후 각 파싱
-                            const carriers = val.split(/[,\/]/).map(s => s.trim()).filter(Boolean).map(parseCellCarrier);
-                            regions[hName] = carriers;
-                            rowTotal += carriers.reduce((s, c) => s + c.count, 0);
-                        });
-                        if (Object.keys(regions).length === 0) {
-                            // 지역 컬럼 없음 → 행 전체를 raw로 수집 (AI가 직접 분석)
-                            const cm = Object.entries(comments || {}).filter(([k]) => parseInt(k.split(':')[0]) === rowIdx).map(([, v]) => v).join('/');
-                            const rowRaw = row.filter(c => c && c.trim() && c !== 'nan' && c !== '0').join(' | ');
-                            if (rowRaw) parsedRows.push({ times: [...rowTimes].sort(), regions: null, raw: `${rowRaw}${cm ? ` [메모:${cm}]` : ''}`, rowTotal: 0 });
-                            return;
-                        }
-                        parsedRows.push({ times: [...rowTimes].sort(), regions, raw: null, rowTotal });
 
+                            // 필터 2: 특정 키워드 필터
+                            let hasKwdMatch = false;
+                            if (specificKwds.length > 0) {
+                                hasKwdMatch = specificKwds.some(k => row.some(c => String(c).toLowerCase().includes(k.toLowerCase())));
+                            }
+
+                            const shouldInclude = (isMonthQuery) 
+                                ? (hasKwdMatch && (!filterHour || hasTimeMatch))
+                                : (specificKwds.length > 0 ? hasKwdMatch : true) && (!filterHour || hasTimeMatch);
+
+                            if (shouldInclude) {
+                                filteredRows.push({ row, ri });
+                            }
+                        });
+
+                        if (filteredRows.length === 0) return;
+
+                        dispatchText += `\n### [${target_date}] ${type.toUpperCase()} 배차 (헤더: ${headers.join(' | ')})\n`;
+                        
+                        filteredRows.forEach(({ row, ri }) => {
+                            if (totalRowsAdded > 200) return; // 최대 200행 제한 (토큰 보호)
+                            
+                            const rowData = row.map((c, ci) => {
+                                if (!c || c === 'nan' || c === '0') return null;
+                                const hName = headers[ci];
+                                const ck = `${ri}:${ci}`;
+                                const comment = comments?.[ck] ? ` (메모: ${comments[ck].replace(/\n/g, ' ')})` : '';
+                                return `[${hName}] ${c}${comment}`;
+                            }).filter(Boolean).join(' | ');
+                            
+                            dispatchText += `- 행${ri}: ${rowData}\n`;
+                            totalRowsAdded++;
+                        });
                     });
 
-                    if (parsedRows.length === 0) {
-                        // 파싱 실패 → raw 원본 일부 주입 (AI가 직접 분석)
-                        const headerLine = `헤더: ${headers.join(' | ')}`;
-                        const rawLines = rows.slice(0, 20).map((row, ri) => {
-                            const cm = Object.entries(comments || {}).filter(([k]) => parseInt(k.split(':')[0]) === ri).map(([, v]) => v).join('/');
-                            return `  행${ri}: ${row.filter(c => c && c.trim() && c !== 'nan' && c !== '0').join(' | ')}${cm ? ` [메모:${cm}]` : ''}`;
-                        }).filter(Boolean);
-                        const rawText = `\n### [${type.toUpperCase()}] 배차판 원본 데이터 (AI 직접 분석 요청)\n${headerLine}\n${rawLines.join('\n')}`;
-                        return { text: '', rawText };
+                    if (totalRowsAdded > 0) {
+                        dispatchText += `\n[아산지점 배차판 바로가기](/employees/branches/asan)`;
+                        recentPostsText += dispatchText;
+                        apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+                    } else {
+                        recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [데이터 없음] 조건에 맞는 배차 데이터나 메모가 없습니다. AI는 이 사실만 전달하고 창작하지 마라. [배차판](/employees/branches/asan)`;
                     }
 
-                    // 텍스트 생성 (지역별 업체+대수 명확히 표시)
-                    let grandTotal = 0;
-                    const lines = parsedRows.map(({ times, regions, raw, rowTotal }) => {
-                        grandTotal += (rowTotal || 0);
-                        const timeTag = times.length > 0 ? `[${times.map(t => parseInt(t) + '시').join('/')} 도착] ` : '';
-                        if (raw) return `  - ${timeTag}[원본] ${raw}`;
-                        const regionStr = Object.entries(regions).map(([r, carriers]) => {
-                            const cStr = carriers.map(({ name, count }) => `${name} ${count}대`).join(', ');
-                            const rTotal = carriers.reduce((s, c) => s + c.count, 0);
-                            return `${r}: ${cStr} (소계 ${rTotal}대)`;
-                        }).join(' / ');
-                        return `  - ${timeTag}${regionStr}`;
-                    });
-                    const label = filterHour ? `${parseInt(filterHour)}시 도착 ` : '전체 ';
-                    const text = `\n### [${type.toUpperCase()}] ${label}배차 — 총 ${grandTotal}대\n${lines.join('\n')}`;
-                    return { text, rawText: '' };
-                };
-
-                let dispatchText = '';
-                // ★ [DEBUG] 실제 glovis 데이터 구조 확인 (Vercel 로그에서 확인)
-                if (glovisRes.data) {
-                    console.error('[ELS-DISPATCH-DEBUG] headers:', JSON.stringify(glovisRes.data.headers));
-                    console.error('[ELS-DISPATCH-DEBUG] data[0]:', JSON.stringify(glovisRes.data.data?.[0]));
-                    console.error('[ELS-DISPATCH-DEBUG] comments:', JSON.stringify(Object.entries(glovisRes.data.comments || {}).slice(0, 5)));
-                }
-                const g = buildDispatchText('glovis', glovisRes.data);
-                const m = buildDispatchText('mobis', mobisRes.data);
-
-                const hasDbData = glovisRes.data !== null || mobisRes.data !== null;
-                const hasResult = g.text || m.text;
-                const hasRaw = g.rawText || m.rawText;
-
-                if (hasResult || hasRaw) {
-                    const dateLabel = isDispatchYesterday ? '어제' : '오늘';
-                    dispatchText = `\n\n## 아산지점 배차판 (${dateLabel} ${dispatchDate})\n`;
-                    dispatchText += '> [중요] 아래 데이터만 근거로 답변하라. 목록에 없는 지역·업체·수량은 절대 창작하지 마라.\n';
-                    if (g.text) dispatchText += g.text;
-                    if (m.text) dispatchText += m.text;
-                    // 파싱 실패 시 raw 원본 주입 (AI 직접 분석)
-                    if (!g.text && g.rawText) dispatchText += g.rawText;
-                    if (!m.text && m.rawText) dispatchText += m.rawText;
-                    dispatchText += `\n\n[아산지점 배차판 바로가기](/employees/branches/asan)`;
-                    recentPostsText += dispatchText;
-                    apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
-                } else if (hasDbData) {
-                    // DB에 데이터는 있지만 필터 결과 없음
-                    recentPostsText += `\n\n## 아산지점 배차판 (${dispatchDate})\n> [데이터 없음] ${filterHour ? parseInt(filterHour)+'시' : '해당'} 배차 메모가 없습니다. AI는 이 사실만 전달하고 절대 창작하지 마라.\n[배차판 직접 확인](/employees/branches/asan)`;
-                    apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
                 } else {
-                    recentPostsText += `\n\n## 아산지점 배차판 (${dispatchDate})\n> [DB 미동기화] 해당 날짜 배차 데이터 없음. 창작 금지. [배차판](/employees/branches/asan)`;
+                    recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [DB 미동기화] 해당 날짜/조건 배차 데이터 없음. 창작 금지. [배차판](/employees/branches/asan)`;
                 }
             } catch (e) {
                 console.error('[ELS-AI] 아산 배차판 RAG 오류:', e);
