@@ -194,7 +194,7 @@ export default function WorkSiteDetailPage() {
                             {item.attachments && item.attachments.filter(f => f.name.match(/\.(jpeg|jpg|gif|png)$/i)).length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                     {item.attachments.filter(f => f.name.match(/\.(jpeg|jpg|gif|png)$/i)).map((img, idx) => (
-                                        <img key={idx} src={img.url || \`/api/s3/files?key=\${encodeURIComponent(img.key)}&name=\${encodeURIComponent(img.name)}\`} alt="약도" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                                        <img key={idx} src={img.url || `/api/s3/files?key=${encodeURIComponent(img.key)}&name=${encodeURIComponent(img.name)}`} alt="약도" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #e2e8f0' }} />
                                     ))}
                                 </div>
                             ) : (
