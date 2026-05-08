@@ -229,7 +229,7 @@ export default function WorkSiteDetailPage() {
                                                 <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.9rem' }}>{file.name || '파일'}</span>
                                             </div>
                                             <a
-                                                href={file.url || file.path || \`/api/s3/files?key=\${encodeURIComponent(file.key)}&name=\${encodeURIComponent(file.name)}\`}
+                                                href={file.url || file.path || `/api/s3/files?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`}
                                                 className={styles.btnSecondary}
                                                 style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                                                 download
