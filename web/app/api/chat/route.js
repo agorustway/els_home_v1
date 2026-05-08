@@ -1574,6 +1574,11 @@ export async function POST(req) {
                                         if (strVal.includes(filterHour)) hasTimeMatch = true;
                                     }
                                 });
+                                const dispatchInfoIdx = headers.findIndex(h => h && h.trim() === '배차정보');
+                                if (dispatchInfoIdx >= 0) {
+                                    const cellVal = String(row[dispatchInfoIdx] || '').trim();
+                                    if (cellVal.includes(filterHour)) hasTimeMatch = true;
+                                }
                             }
 
                             // 필터 2: 특정 키워드 필터
@@ -1582,9 +1587,9 @@ export async function POST(req) {
                                 hasKwdMatch = specificKwds.some(k => row.some(c => String(c).toLowerCase().includes(k.toLowerCase())));
                             }
 
-                            const shouldInclude = (isMonthQuery) 
+                            const shouldInclude = isMonthQuery 
                                 ? (hasKwdMatch && (!filterHour || hasTimeMatch))
-                                : (specificKwds.length > 0 ? hasKwdMatch : true) && (!filterHour || hasTimeMatch);
+                                : (!filterHour || hasTimeMatch);
 
                             if (shouldInclude) {
                                 filteredRows.push({ row, ri });
@@ -1614,10 +1619,11 @@ export async function POST(req) {
                     if (totalRowsAdded > 0) {
                         dispatchText += `\n[아산지점 배차판 바로가기](/employees/branches/asan)`;
                         recentPostsText += dispatchText;
-                        apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
                     } else {
-                        recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [데이터 없음] 조건에 맞는 배차 데이터나 메모가 없습니다. AI는 이 사실만 전달하고 창작하지 마라. [배차판](/employees/branches/asan)`;
+                        recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [조회 완료] ${filterHour ? filterHour+'시 관련 ' : ''}조건에 일치하는 배차 내역이나 메모가 없습니다. 시스템 조회 결과 실제 일치하는 데이터가 없는 것이므로 창작하지 마세요. [배차판](/employees/branches/asan)`;
                     }
+                    // 성공적으로 데이터를 불러와서 필터링까지 마쳤으므로 타임스탬프 기록 (조회 실패로 뜨지 않게)
+                    apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
 
                 } else {
                     recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [DB 미동기화] 해당 날짜/조건 배차 데이터 없음. 창작 금지. [배차판](/employees/branches/asan)`;
