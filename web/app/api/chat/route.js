@@ -1565,7 +1565,19 @@ export async function POST(req) {
 
                         let filteredRows = [];
                         
+                        let orderIdx = headers.findIndex(h => h && h.trim() === '오더');
+                        if (orderIdx < 0) orderIdx = headers.findIndex(h => h && h.trim() === '수량');
+                        if (orderIdx < 0) orderIdx = headers.findIndex(h => h && h.trim() === '계');
+
                         rows.forEach((row, ri) => {
+                            // 필터 0: 템플릿 행(수량이 0이거나 없는 행) 사전 제외
+                            if (orderIdx >= 0) {
+                                const orderVal = String(row[orderIdx] || '').trim();
+                                if (!orderVal || orderVal === '0' || orderVal === 'nan') {
+                                    return; // 템플릿(빈 양식) 행 건너뛰기
+                                }
+                            }
+
                             // 필터 1: 특정 시간 필터 (filterHour)
                             let hasTimeMatch = false;
                             if (filterHour) {
