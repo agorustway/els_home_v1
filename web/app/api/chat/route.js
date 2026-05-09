@@ -1549,26 +1549,35 @@ export async function POST(req) {
                     const specificKwds = searchTerms.filter(t => t.length >= 2 && !ignoreWords.includes(t));
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
 
-                    // [v5.10.22] 서버사이드 요약 전처리 (Structured RAG)
-                    // AI가 직접 수천 개의 셀을 합산하며 실수하지 않도록 서버에서 미리 집계하여 제공
+                    // [v5.10.23] 최고관리자 지침 반영: 고도화된 서버사이드 전처리 (Structured RAG)
                     let totalSummary = {
                         totalOrders: 0,
                         byType: { mobis: 0, glovis: 0 },
-                        byCarrier: {}, // { '이지': 3, '자차': 5, ... }
+                        byCarrier: {}, // { '이지': 8, '자차': 5, ... }
                         byRegion: {},  // { '부산': 10, '인천': 5, ... }
-                        byTime: {}     // { '08': 5, '13': 5, ... }
+                        byTime: { order: {}, completion: {} } // { '08': 5 }
                     };
 
-                    const carrierKwds = ['자차', '대신', '이지', '신승', '부곡', '칸', '유니코', '동원', '삼익', '네슬리'];
-                    const regionCols = ['부산', '인천', '울산', '광양', '평택', '중부', '부곡'];
+                    const carrierKwds = ['자차', '대신', '이지', '신승', '부곡', '칸', '유니코', '동원', '삼익', '네슬리', '보승', '선진', '천일', '경평'];
+                    const regionCols = ['부산', '인천', '울산', '광양', '평택', '중부', '부곡', '아산', '기타', '세종', '천안'];
 
                     dispatchRecords.forEach(record => {
                         const { type, headers, data: rows } = record;
-                        const orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '수량' || h.trim() === '계'));
-                        const memoIdx = headers.findIndex(h => h && (h === '배차정보' || h === '비고'));
+                        
+                        // 화주별 유효 오더 컬럼 설정 (글로비스=오더, 모비스=계)
+                        let orderIdx = -1;
+                        if (type === 'glovis') {
+                            orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '오더(계)'));
+                        } else if (type === 'mobis') {
+                            orderIdx = headers.findIndex(h => h && h.trim() === '계');
+                        }
+                        // 폴백
+                        if (orderIdx < 0) orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '수량' || h.trim() === '계'));
+
+                        const memoIdx = headers.findIndex(h => h && (h === '배차정보' || h === '비고' || h === '특이사항'));
 
                         rows.forEach(row => {
-                            // 유효 행 검증 (필터링 로직과 동일하게 적용)
+                            // 1. 유효 행 검증
                             const mIdx = headers.findIndex(h => h && (h === '담당자' || h === '운송사' || h === '화주' || h === '당당자'));
                             const wIdx = headers.findIndex(h => h && (h === '작업지' || h === '운송지' || h === '보관소'));
                             if (mIdx >= 0 && wIdx >= 0) {
@@ -1578,56 +1587,72 @@ export async function POST(req) {
                                 if (mVal.includes('문자수신') || mVal.includes('차량번호')) return;
                             }
 
-                            // 오더 대수 합산
+                            // 2. 오더 대수 합산 (글로비스/모비스 구분)
+                            let rowCount = 0;
                             if (orderIdx >= 0) {
-                                const val = parseInt(String(row[orderIdx]).replace(/[^0-9]/g, '')) || 0;
-                                if (val > 0) {
-                                    totalSummary.totalOrders += val;
-                                    totalSummary.byType[type] = (totalSummary.byType[type] || 0) + val;
+                                const valStr = String(row[orderIdx] || '').trim();
+                                if (valStr.includes('캔슬')) return; // 캔슬 행 제외
+                                rowCount = parseInt(valStr.replace(/[^0-9]/g, '')) || 0;
+                                if (rowCount > 0) {
+                                    totalSummary.totalOrders += rowCount;
+                                    totalSummary.byType[type] = (totalSummary.byType[type] || 0) + rowCount;
                                 }
                             }
 
-                            // 운송사별/지역별 합산 (컬럼 순회)
+                            // 3. 지역/운송사별 정밀 파싱 (이지3=3대, 자차1,대신2 처리)
                             headers.forEach((h, hi) => {
                                 if (!h) return;
                                 const cell = String(row[hi] || '').trim();
-                                if (!cell || cell === '0' || cell === 'nan') return;
+                                if (!cell || cell === '0' || cell === 'nan' || cell.includes('캔슬')) return;
 
-                                // 지역 컬럼 (부산, 인천 등) 내 운송사 수량 추출 (예: 자차1 -> 자차 1대)
                                 if (regionCols.some(r => h.includes(r))) {
                                     const region = regionCols.find(r => h.includes(r));
-                                    carrierKwds.forEach(k => {
-                                        if (cell.includes(k)) {
-                                            const count = parseInt(cell.replace(/[^0-9]/g, '')) || 1;
-                                            totalSummary.byCarrier[k] = (totalSummary.byCarrier[k] || 0) + count;
-                                            totalSummary.byRegion[region] = (totalSummary.byRegion[region] || 0) + count;
-                                        }
+                                    // 콤마로 구분된 여러 업체 처리
+                                    const parts = cell.split(/[,,/]/);
+                                    parts.forEach(p => {
+                                        const part = p.trim();
+                                        carrierKwds.forEach(k => {
+                                            if (part.includes(k)) {
+                                                // 업체명 뒤의 숫자를 추출 (예: 이지3 -> 3, 자차1 -> 1)
+                                                let count = parseInt(part.replace(k, '').replace(/[^0-9]/g, ''));
+                                                if (isNaN(count)) count = 1; // 숫자 없으면 1대로 간주
+                                                
+                                                totalSummary.byCarrier[k] = (totalSummary.byCarrier[k] || 0) + count;
+                                                totalSummary.byRegion[region] = (totalSummary.byRegion[region] || 0) + count;
+                                            }
+                                        });
                                     });
                                 }
 
-                                // 시간 정보 (08:00 등)
-                                if (hi === memoIdx || h.includes('도착')) {
-                                    const timeMatch = cell.match(/(\d{2})[:시]?/);
-                                    if (timeMatch) {
-                                        const hour = timeMatch[1];
-                                        const count = orderIdx >= 0 ? (parseInt(String(row[orderIdx]).replace(/[^0-9]/g, '')) || 1) : 1;
-                                        totalSummary.byTime[hour] = (totalSummary.byTime[hour] || 0) + count;
+                                // 4. 시간 데이터 이원화 (오더수신 vs 배차완료)
+                                if (hi === memoIdx || h.includes('도착') || h.includes('배차정보')) {
+                                    const timeMatches = cell.matchAll(/(\d{1,2})[:시]?(\d{2})?/g);
+                                    for (const match of timeMatches) {
+                                        const hour = match[1].padStart(2, '0');
+                                        // '착', '가이드', '추천' 등이 붙으면 '배차완료(메모)' 시간으로 간주
+                                        if (cell.includes('착') || cell.includes('가이드') || cell.includes('추천') || cell.includes('메모')) {
+                                            totalSummary.byTime.completion[hour] = (totalSummary.byTime.completion[hour] || 0) + (rowCount || 1);
+                                        } else {
+                                            totalSummary.byTime.order[hour] = (totalSummary.byTime.order[hour] || 0) + (rowCount || 1);
+                                        }
                                     }
                                 }
                             });
                         });
                     });
 
-                    let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 오늘 기준 과거 30일 ~ 미래 7일)\n`;
-                    dispatchText += `### 📊 [서버사이드 집계 요약 보고서]\n`;
-                    dispatchText += `- **총 배차 대수**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
-                    dispatchText += `- **운송사별**: ${Object.entries(totalSummary.byCarrier).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
-                    dispatchText += `- **지역별**: ${Object.entries(totalSummary.byRegion).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
-                    dispatchText += `- **시간대별(도착)**: ${Object.entries(totalSummary.byTime).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n\n`;
+                    let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 과거 30일 ~ 미래 7일)\n`;
+                    dispatchText += `### 📊 [실시간 배차 분석 보고서 - 최고관리자 규칙 적용]\n`;
+                    dispatchText += `- **총 유효 배차**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
+                    dispatchText += `- **운송사별 현황**: ${Object.entries(totalSummary.byCarrier).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
+                    dispatchText += `- **지역별 분포**: ${Object.entries(totalSummary.byRegion).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
+                    dispatchText += `- **배차 완료 시간(메모 기준)**: ${Object.entries(totalSummary.byTime.completion).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n`;
+                    dispatchText += `- **오더 수신 시간**: ${Object.entries(totalSummary.byTime.order).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n\n`;
 
-                    dispatchText += '> [🚨 중요: 데이터 신뢰도] 이미지(OCR)보다 위 "집계 요약 보고서"와 아래 `[사내 통합 DB]` 텍스트 데이터를 100% 우선하여 답변하라.\n';
-                    dispatchText += '> [중요] 질문이 위 조회 범위(과거 30일 ~ 미래 7일)를 벗어나는 경우, "해당 날짜는 AI 조회 범위를 벗어나 정확한 확인이 어려우니 배차판에서 직접 확인해달라"고 정중히 안내하라.\n';
-                    dispatchText += '> [중요] 대수 산정 시 위 요약 보고서의 숫자를 최종 정답으로 사용하라.\n';
+                    dispatchText += '> [🚨 핵심 지침] 이지3, 자차1 등 **업체명 옆의 숫자는 대수**를 의미한다. (예: 이지3 = 이지 업체 차량 3대)\n';
+                    dispatchText += '> [🚨 핵심 지침] 글로비스는 "오더" 컬럼, 모비스는 "계" 컬럼의 숫자가 실제 오더량이다. "캔슬"은 제외하라.\n';
+                    dispatchText += '> [🚨 핵심 지침] 배차정보 내 **메모의 시간(착, 가이드 등)**이 실제 작업 완료 시간이므로 분석 시 최우선하라.\n';
+                    dispatchText += '> [중요] 질문이 조회 범위를 벗어나면 배차판 메뉴 이동을 안내하라. 수치 산정 시 위 보고서를 100% 신뢰하라.\n';
                     dispatchText += '> [중요] 각 행의 [메모]에는 차량의 배차 시간(예: 08, 09 등)과 업체명, 특이사항 등이 기록되어 있다. 메모의 숫자와 업체를 매칭하여 답변하라.\n';
                     dispatchText += '> [주의] "자차", "대신", "칸", "이지", "신승" 등 배차 지역 컬럼에 기재된 운송사 명칭을 정확히 인용하라. 데이터에 없는 운송사(예: 이지3)를 임의로 창작하지 마라. "오더" 컬럼이 0이거나 비어있는 행은 절대 포함하지 마라.\n';
 
