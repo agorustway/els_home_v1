@@ -1554,6 +1554,7 @@ export async function POST(req) {
                     let totalSummary = {
                         totalOrders: 0,
                         byType: { mobis: 0, glovis: 0 },
+                        bySize: { '20FT': 0, '40FT': 0, '40HC': 0, '기타': 0 },
                         byCarrier: {}, // { '이지': 8, '자차': 5, ... }
                         byRegion: {},  // { '부산': 10, '인천': 5, ... }
                         byTime: { order: {}, completion: {} } // { '08': 5 }
@@ -1596,15 +1597,17 @@ export async function POST(req) {
                                 orderCount = parseInt(valStr.replace(/[^0-9]/g, '')) || 0;
                             }
 
-                            // 3. 지역/운송사별 정밀 파싱 (이지3=3대, 자차1,대신2 처리)
+                            // 3. 지역/운송사/규격별 정밀 파싱
                             let carrierTotalInRow = 0;
                             headers.forEach((h, hi) => {
                                 if (!h) return;
+                                const hName = h.trim();
                                 const cell = String(row[hi] || '').trim();
                                 if (!cell || cell === '0' || cell === 'nan' || cell.includes('캔슬')) return;
 
-                                if (regionCols.some(r => h.includes(r))) {
-                                    const region = regionCols.find(r => h.includes(r));
+                                // 운송사 및 지역 파싱 (헤더 기반)
+                                if (regionCols.some(r => hName.includes(r))) {
+                                    const region = regionCols.find(r => hName.includes(r));
                                     const parts = cell.split(/[,,/]/);
                                     parts.forEach(p => {
                                         const part = p.trim();
@@ -1612,13 +1615,32 @@ export async function POST(req) {
                                             if (part.includes(k)) {
                                                 let count = parseInt(part.replace(k, '').replace(/[^0-9]/g, ''));
                                                 if (isNaN(count)) count = 1;
-                                                
                                                 totalSummary.byCarrier[k] = (totalSummary.byCarrier[k] || 0) + count;
                                                 totalSummary.byRegion[region] = (totalSummary.byRegion[region] || 0) + count;
                                                 carrierTotalInRow += count;
                                             }
                                         });
                                     });
+                                }
+
+                                // 지역 파싱 (셀 데이터 기반 - 포트/도착지 등)
+                                if (hName.includes('포트') || hName.includes('도착') || hName.includes('작업지')) {
+                                    regionCols.forEach(r => {
+                                        if (cell.includes(r)) {
+                                            totalSummary.byRegion[r] = (totalSummary.byRegion[r] || 0) + (effectiveCount || 1);
+                                        }
+                                    });
+                                }
+
+                                // 규격 파싱 (20FT/40FT/40HC)
+                                if (hName === 'T' || hName === 'TYPE' || hName === '규격' || hName === '유형') {
+                                    if (cell.includes('20')) totalSummary.bySize['20FT'] += (effectiveCount || 1);
+                                    else if (cell.includes('40')) {
+                                        if (cell.includes('H')) totalSummary.bySize['40HC'] += (effectiveCount || 1);
+                                        else totalSummary.bySize['40FT'] += (effectiveCount || 1);
+                                    } else {
+                                        totalSummary.bySize['기타'] += (effectiveCount || 1);
+                                    }
                                 }
                             });
 
@@ -1670,6 +1692,7 @@ export async function POST(req) {
                     let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 과거 30일 ~ 미래 7일)\n`;
                     dispatchText += `### 📊 [실시간 배차 분석 보고서 - 최고관리자 규칙 적용]\n`;
                     dispatchText += `- **총 유효 배차**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
+                    dispatchText += `- **규격별 현황**: 20FT(${totalSummary.bySize['20FT']}대), 40FT(${totalSummary.bySize['40FT']}대), 40HC(${totalSummary.bySize['40HC']}대), 기타(${totalSummary.bySize['기타']}대)\n`;
                     dispatchText += `- **운송사별 현황**: ${Object.entries(totalSummary.byCarrier).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
                     dispatchText += `- **지역별 분포**: ${Object.entries(totalSummary.byRegion).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
                     dispatchText += `- **배차 완료 시간(메모 기준)**: ${Object.entries(totalSummary.byTime.completion).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n`;
