@@ -1549,10 +1549,85 @@ export async function POST(req) {
                     const specificKwds = searchTerms.filter(t => t.length >= 2 && !ignoreWords.includes(t));
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
 
+                    // [v5.10.22] 서버사이드 요약 전처리 (Structured RAG)
+                    // AI가 직접 수천 개의 셀을 합산하며 실수하지 않도록 서버에서 미리 집계하여 제공
+                    let totalSummary = {
+                        totalOrders: 0,
+                        byType: { mobis: 0, glovis: 0 },
+                        byCarrier: {}, // { '이지': 3, '자차': 5, ... }
+                        byRegion: {},  // { '부산': 10, '인천': 5, ... }
+                        byTime: {}     // { '08': 5, '13': 5, ... }
+                    };
+
+                    const carrierKwds = ['자차', '대신', '이지', '신승', '부곡', '칸', '유니코', '동원', '삼익', '네슬리'];
+                    const regionCols = ['부산', '인천', '울산', '광양', '평택', '중부', '부곡'];
+
+                    dispatchRecords.forEach(record => {
+                        const { type, headers, data: rows } = record;
+                        const orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '수량' || h.trim() === '계'));
+                        const memoIdx = headers.findIndex(h => h && (h === '배차정보' || h === '비고'));
+
+                        rows.forEach(row => {
+                            // 유효 행 검증 (필터링 로직과 동일하게 적용)
+                            const mIdx = headers.findIndex(h => h && (h === '담당자' || h === '운송사' || h === '화주' || h === '당당자'));
+                            const wIdx = headers.findIndex(h => h && (h === '작업지' || h === '운송지' || h === '보관소'));
+                            if (mIdx >= 0 && wIdx >= 0) {
+                                const mVal = String(row[mIdx] || '').trim();
+                                const wVal = String(row[wIdx] || '').trim();
+                                if (!mVal || !wVal || mVal === 'nan' || wVal === 'nan') return;
+                                if (mVal.includes('문자수신') || mVal.includes('차량번호')) return;
+                            }
+
+                            // 오더 대수 합산
+                            if (orderIdx >= 0) {
+                                const val = parseInt(String(row[orderIdx]).replace(/[^0-9]/g, '')) || 0;
+                                if (val > 0) {
+                                    totalSummary.totalOrders += val;
+                                    totalSummary.byType[type] = (totalSummary.byType[type] || 0) + val;
+                                }
+                            }
+
+                            // 운송사별/지역별 합산 (컬럼 순회)
+                            headers.forEach((h, hi) => {
+                                if (!h) return;
+                                const cell = String(row[hi] || '').trim();
+                                if (!cell || cell === '0' || cell === 'nan') return;
+
+                                // 지역 컬럼 (부산, 인천 등) 내 운송사 수량 추출 (예: 자차1 -> 자차 1대)
+                                if (regionCols.some(r => h.includes(r))) {
+                                    const region = regionCols.find(r => h.includes(r));
+                                    carrierKwds.forEach(k => {
+                                        if (cell.includes(k)) {
+                                            const count = parseInt(cell.replace(/[^0-9]/g, '')) || 1;
+                                            totalSummary.byCarrier[k] = (totalSummary.byCarrier[k] || 0) + count;
+                                            totalSummary.byRegion[region] = (totalSummary.byRegion[region] || 0) + count;
+                                        }
+                                    });
+                                }
+
+                                // 시간 정보 (08:00 등)
+                                if (hi === memoIdx || h.includes('도착')) {
+                                    const timeMatch = cell.match(/(\d{2})[:시]?/);
+                                    if (timeMatch) {
+                                        const hour = timeMatch[1];
+                                        const count = orderIdx >= 0 ? (parseInt(String(row[orderIdx]).replace(/[^0-9]/g, '')) || 1) : 1;
+                                        totalSummary.byTime[hour] = (totalSummary.byTime[hour] || 0) + count;
+                                    }
+                                }
+                            });
+                        });
+                    });
+
                     let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 오늘 기준 과거 30일 ~ 미래 7일)\n`;
-                    dispatchText += '> [🚨 중요: 데이터 신뢰도] 이미지(OCR)보다 아래 제공된 `[사내 통합 DB]` 텍스트 데이터를 100% 우선하여 답변하라. 이미지의 오타(자차->자자 등)에 주의하라.\n';
+                    dispatchText += `### 📊 [서버사이드 집계 요약 보고서]\n`;
+                    dispatchText += `- **총 배차 대수**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
+                    dispatchText += `- **운송사별**: ${Object.entries(totalSummary.byCarrier).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
+                    dispatchText += `- **지역별**: ${Object.entries(totalSummary.byRegion).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
+                    dispatchText += `- **시간대별(도착)**: ${Object.entries(totalSummary.byTime).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n\n`;
+
+                    dispatchText += '> [🚨 중요: 데이터 신뢰도] 이미지(OCR)보다 위 "집계 요약 보고서"와 아래 `[사내 통합 DB]` 텍스트 데이터를 100% 우선하여 답변하라.\n';
                     dispatchText += '> [중요] 질문이 위 조회 범위(과거 30일 ~ 미래 7일)를 벗어나는 경우, "해당 날짜는 AI 조회 범위를 벗어나 정확한 확인이 어려우니 배차판에서 직접 확인해달라"고 정중히 안내하라.\n';
-                    dispatchText += '> [중요] 각 행의 대수(대)를 산정할 때는 데이터에 기재된 **`[배차]` 컬럼의 숫자**를 그대로 인용하라.\n';
+                    dispatchText += '> [중요] 대수 산정 시 위 요약 보고서의 숫자를 최종 정답으로 사용하라.\n';
                     dispatchText += '> [중요] 각 행의 [메모]에는 차량의 배차 시간(예: 08, 09 등)과 업체명, 특이사항 등이 기록되어 있다. 메모의 숫자와 업체를 매칭하여 답변하라.\n';
                     dispatchText += '> [주의] "자차", "대신", "칸", "이지", "신승" 등 배차 지역 컬럼에 기재된 운송사 명칭을 정확히 인용하라. 데이터에 없는 운송사(예: 이지3)를 임의로 창작하지 마라. "오더" 컬럼이 0이거나 비어있는 행은 절대 포함하지 마라.\n';
 
