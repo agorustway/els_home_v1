@@ -1542,6 +1542,7 @@ export async function POST(req) {
 
                     let dispatchText = `\n\n## 아산지점 배차판 (${dateLabel})\n`;
                     dispatchText += '> [중요] 아래 표기된 원본 데이터(행 번호, 컬럼명, 셀 값, 메모)를 바탕으로 사용자의 질문에 답변하라. 각 행의 [메모]에는 차량의 배차 시간(예: 08, 09 등)과 업체명, 특이사항 등이 기록되어 있다. 메모의 숫자와 업체를 매칭하여 답변하라.\n';
+                    dispatchText += '> [주의] "오더" 컬럼이 0이거나 비어있는 행은 배차 예정이 없는 기본 템플릿(빈 양식)이므로 절대 포함해서 카운트하지 마라. 배차 지역(부산, 인천 등)에 "자차1", "대신2" 등 수량이 명시된 행만 실제 배차로 간주하라.\n';
 
                     // 날짜 오름차순 정렬
                     dispatchRecords.sort((a, b) => a.target_date.localeCompare(b.target_date));
@@ -1601,7 +1602,7 @@ export async function POST(req) {
                         dispatchText += `\n### [${target_date}] ${type.toUpperCase()} 배차 (헤더: ${headers.join(' | ')})\n`;
                         
                         filteredRows.forEach(({ row, ri }) => {
-                            if (totalRowsAdded > 200) return; // 최대 200행 제한 (토큰 보호)
+                            if (totalRowsAdded > 2000) return; // 최대 2000행 제한 (모비스 데이터 누락 방지)
                             
                             const rowData = row.map((c, ci) => {
                                 if (!c || c === 'nan' || c === '0') return null;
