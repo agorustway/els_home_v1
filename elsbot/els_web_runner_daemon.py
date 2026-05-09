@@ -558,14 +558,85 @@ def session_keeper():
                 # 정상적인 드라이버면 다시 큐에 넣음
                 pool.available_queue.put(driver)
 
+def daily_reset_scheduler():
+    """매일 새벽 5시 드라이버 풀 완전 초기화 + 자동 재로그인 (세션 장기 만료 방지)"""
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    last_reset_date = None
+
+    while True:
+        time.sleep(30)  # 30초마다 시각 체크
+        try:
+            now = datetime.now(KST)
+            today = now.date()
+
+            # 새벽 5:00 ~ 5:02 사이에 오늘 아직 리셋 안 했으면 실행
+            if now.hour == 5 and now.minute < 2 and last_reset_date != today:
+                last_reset_date = today
+                pool.add_log("⏰ [일일리셋] 새벽 5시 자동 드라이버 풀 초기화 시작...")
+
+                with pool.lock:
+                    saved_user = dict(pool.current_user) if pool.current_user else None
+                    pool.clear()
+
+                if not saved_user or not saved_user.get("id"):
+                    pool.add_log("⚠️ [일일리셋] 저장된 사용자 정보 없음 → 수동 로그인 필요.")
+                    continue
+
+                # 자동 재로그인
+                pool.add_log(f"🔄 [일일리셋] '{saved_user['id']}' 계정으로 자동 재로그인 시도...")
+                with pool.lock:
+                    pool.current_user = saved_user
+                    pool.is_logging_in = True
+                    pool.active_init_threads = pool.max_drivers
+                    pool.consecutive_login_failures = 0
+
+                def _do_reset_login(idx, _user=saved_user):
+                    try:
+                        if idx > 0:
+                            time.sleep(idx * 60)
+                        target_port = 32000 + idx
+                        pool.cleanup_lingering_chrome(target_port)
+                        res = login_and_prepare(
+                            _user["id"], _user["pw"],
+                            log_callback=pool.add_log,
+                            show_browser=_user.get("show_browser", False),
+                            port=target_port
+                        )
+                        if res[0]:
+                            res[0].used_port = target_port
+                            with pool.lock:
+                                pool.consecutive_login_failures = 0
+                                pool.add_driver(res[0])
+                            pool.add_log(f"✅ [일일리셋] 브라우저 #{idx+1} 재시작 완료 (포트:{target_port})")
+                        else:
+                            pool.add_log(f"❌ [일일리셋] 브라우저 #{idx+1} 재시작 실패: {res[1]}")
+                    finally:
+                        with pool.lock:
+                            pool.active_init_threads -= 1
+                            if pool.active_init_threads == 0:
+                                pool.is_logging_in = False
+                                pool.add_log("⏰ [일일리셋] 자동 리셋 완료!")
+
+                for i in range(pool.max_drivers):
+                    threading.Thread(target=_do_reset_login, args=(i,), daemon=True).start()
+
+        except Exception as e:
+            pool.add_log(f"❌ [일일리셋] 스케줄러 오류: {e}")
+
 if __name__ == '__main__':
     print("========================================")
     print("   ELS NAS STABLE DAEMON STARTED")
     print("   SESSION AUTO-RECOVERY ENABLED")
+    print("   DAILY RESET @ 05:00 KST ENABLED")
     print("========================================")
     
     # 세션 관리기 백그라운드 스레드 시작
     keeper = threading.Thread(target=session_keeper, daemon=True)
     keeper.start()
+
+    # 일일 리셋 스케줄러 시작 (새벽 5시)
+    resetter = threading.Thread(target=daily_reset_scheduler, daemon=True)
+    resetter.start()
     
-    app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)
