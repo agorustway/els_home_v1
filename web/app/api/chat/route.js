@@ -1588,16 +1588,12 @@ export async function POST(req) {
                                 if (mVal.includes('문자수신') || mVal.includes('차량번호')) return;
                             }
 
-                            // 2. 오더 대수 합산 (글로비스/모비스 구분)
-                            let rowCount = 0;
+                            // 2. 오더 대수 추출 (글로비스/모비스 구분)
+                            let orderCount = 0;
                             if (orderIdx >= 0) {
                                 const valStr = String(row[orderIdx] || '').trim();
                                 if (valStr.includes('캔슬')) return; // 캔슬 행 제외
-                                rowCount = parseInt(valStr.replace(/[^0-9]/g, '')) || 0;
-                                if (rowCount > 0) {
-                                    totalSummary.totalOrders += rowCount;
-                                    totalSummary.byType[type] = (totalSummary.byType[type] || 0) + rowCount;
-                                }
+                                orderCount = parseInt(valStr.replace(/[^0-9]/g, '')) || 0;
                             }
 
                             // 3. 지역/운송사별 정밀 파싱 (이지3=3대, 자차1,대신2 처리)
@@ -1626,16 +1622,29 @@ export async function POST(req) {
                                 }
                             });
 
-                            // [v5.11.4] 오더 컬럼이 0이어도 지역 셀에 수량이 있으면 이를 유효 수량으로 인정 (이지3 대응)
-                            if (rowCount === 0 && carrierTotalInRow > 0) {
-                                rowCount = carrierTotalInRow;
-                                totalSummary.totalOrders += rowCount;
-                                totalSummary.byType[type] = (totalSummary.byType[type] || 0) + rowCount;
+                            // [v5.11.5] 최종 유효 수량 결정: 오더 컬럼과 셀 내 명시 수량(이지3 등) 중 큰 값을 선택
+                            const effectiveCount = Math.max(orderCount, carrierTotalInRow);
+
+                            // 유효 행 검증: 수량이 있거나, 담당자/작업지 정보가 있는 경우만 포함
+                            if (effectiveCount <= 0) {
+                                const mIdx = headers.findIndex(h => h && (h === '담당자' || h === '운송사' || h === '화주' || h === '당당자'));
+                                const wIdx = headers.findIndex(h => h && (h === '작업지' || h === '운송지' || h === '보관소'));
+                                if (mIdx >= 0 && wIdx >= 0) {
+                                    const mVal = String(row[mIdx] || '').trim();
+                                    const wVal = String(row[wIdx] || '').trim();
+                                    if (!mVal || !wVal || mVal === 'nan' || wVal === 'nan') return;
+                                } else {
+                                    return; // 수량도 없고 정보도 없으면 무시
+                                }
                             }
 
+                            // 통계 반영
+                            totalSummary.totalOrders += effectiveCount;
+                            totalSummary.byType[type] = (totalSummary.byType[type] || 0) + effectiveCount;
+
                             // 4. 시간 데이터 이원화 (오더수신 vs 배차완료)
-                            // 수량이 있는 유효 행만 시간 집계에 포함 (템플릿 행 제외)
-                            if (rowCount > 0) {
+                            if (effectiveCount > 0) {
+                                const seenHours = new Set();
                                 headers.forEach((h, hi) => {
                                     if (!h) return;
                                     const cell = String(row[hi] || '').trim();
@@ -1643,10 +1652,13 @@ export async function POST(req) {
                                         const timeMatches = cell.matchAll(/(\d{1,2})[:시]?(\d{2})?/g);
                                         for (const match of timeMatches) {
                                             const hour = match[1].padStart(2, '0');
+                                            if (seenHours.has(hour + (cell.includes('착') ? 'C' : 'O'))) continue;
+                                            seenHours.add(hour + (cell.includes('착') ? 'C' : 'O'));
+
                                             if (cell.includes('착') || cell.includes('가이드') || cell.includes('추천') || cell.includes('메모')) {
-                                                totalSummary.byTime.completion[hour] = (totalSummary.byTime.completion[hour] || 0) + rowCount;
+                                                totalSummary.byTime.completion[hour] = (totalSummary.byTime.completion[hour] || 0) + effectiveCount;
                                             } else {
-                                                totalSummary.byTime.order[hour] = (totalSummary.byTime.order[hour] || 0) + rowCount;
+                                                totalSummary.byTime.order[hour] = (totalSummary.byTime.order[hour] || 0) + effectiveCount;
                                             }
                                         }
                                     }
