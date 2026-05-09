@@ -1571,7 +1571,7 @@ export async function POST(req) {
                         if (type === 'glovis') {
                             orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '오더(계)'));
                         } else if (type === 'mobis') {
-                            orderIdx = headers.findIndex(h => h && h.trim() === '계');
+                            orderIdx = headers.findIndex(h => h && (h.trim() === '계' || h.trim() === '오더(계)' || h.trim() === '수량'));
                         }
                         // 폴백
                         if (orderIdx < 0) orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '수량' || h.trim() === '계'));
@@ -1579,26 +1579,15 @@ export async function POST(req) {
                         const memoIdx = headers.findIndex(h => h && (h === '배차정보' || h === '비고' || h === '특이사항'));
 
                         rows.forEach(row => {
-                            // [v5.11.8] 최상단 필터: 오더(계) 수량이 없으면 하단 요약표나 노이즈로 간주하여 즉시 제외
+                            // [v5.11.9] 1. 오더 컬럼 수량 추출
                             let orderCount = 0;
                             if (orderIdx >= 0) {
                                 const valStr = String(row[orderIdx] || '').trim();
                                 if (valStr.includes('캔슬')) return;
                                 orderCount = parseInt(valStr.replace(/[^0-9]/g, '')) || 0;
                             }
-                            if (orderCount <= 0) return; // 오더가 0인 행은 분석 대상에서 제외
 
-                            // 1. 유효 행 검증 (담당자/작업지 최소 정보 확인)
-                            const mIdx = headers.findIndex(h => h && (h === '담당자' || h === '운송사' || h === '화주' || h === '당당자'));
-                            const wIdx = headers.findIndex(h => h && (h === '작업지' || h === '운송지' || h === '보관소'));
-                            if (mIdx >= 0 && wIdx >= 0) {
-                                const mVal = String(row[mIdx] || '').trim();
-                                const wVal = String(row[wIdx] || '').trim();
-                                if (!mVal || !wVal || mVal === 'nan' || wVal === 'nan') return;
-                                if (mVal.includes('문자수신') || mVal.includes('차량번호')) return;
-                            }
-
-                            // 3. 지역/운송사/규격별 정밀 파싱
+                            // [v5.11.9] 2. 셀 내 명시 수량(이지3 등) 추출
                             let carrierTotalInRow = 0;
                             headers.forEach((h, hi) => {
                                 if (!h) return;
@@ -1623,30 +1612,56 @@ export async function POST(req) {
                                         });
                                     });
                                 }
+                            });
 
-                                // 지역 파싱 (셀 데이터 기반 - 포트/도착지 등)
+                            const effectiveCount = Math.max(orderCount, carrierTotalInRow);
+                            if (effectiveCount <= 0) return; // 수량이 전혀 없으면 무시
+
+                            // [v5.11.9] 3. 유효 행 검증 (하단 요약표 제외용)
+                            // 실제 배차 행은 담당자, 작업지, 포트 중 하나라도 정보가 있어야 함
+                            const mIdx = headers.findIndex(h => h && (h === '담당자' || h === '운송사' || h === '화주' || h === '당당자'));
+                            const wIdx = headers.findIndex(h => h && (h === '작업지' || h === '운송지' || h === '보관소'));
+                            const pIdx = headers.findIndex(h => h && (h === '포트' || h === '도착지' || h === '국가'));
+                            
+                            const mVal = mIdx >= 0 ? String(row[mIdx] || '').trim() : '';
+                            const wVal = wIdx >= 0 ? String(row[wIdx] || '').trim() : '';
+                            const pVal = pIdx >= 0 ? String(row[pIdx] || '').trim() : '';
+
+                            // 하단 요약표(746번 이후)는 보통 담당자/작업지가 비어있고 지역명만 있음
+                            if (!mVal && !wVal && !pVal) return;
+                            if (mVal.includes('문자수신') || mVal.includes('차량번호')) return;
+
+                            // 통계 반영
+                            totalSummary.totalOrders += effectiveCount;
+                            totalSummary.byType[type] = (totalSummary.byType[type] || 0) + effectiveCount;
+
+                            // 4. 지역(셀 기반) 및 규격 파싱
+                            headers.forEach((h, hi) => {
+                                if (!h) return;
+                                const hName = h.trim();
+                                const cell = String(row[hi] || '').trim();
+                                if (!cell || cell === '0' || cell === 'nan') return;
+
+                                // 지역 파싱 (셀 데이터 기반)
                                 if (hName.includes('포트') || hName.includes('도착') || hName.includes('작업지')) {
                                     regionCols.forEach(r => {
                                         if (cell.includes(r)) {
-                                            totalSummary.byRegion[r] = (totalSummary.byRegion[r] || 0) + (orderCount || 1);
+                                            totalSummary.byRegion[r] = (totalSummary.byRegion[r] || 0) + effectiveCount;
                                         }
                                     });
                                 }
 
-                                // 규격 파싱 (20FT/40FT/40HC)
+                                // 규격 파싱
                                 if (hName === 'T' || hName === 'TYPE' || hName === '규격' || hName === '유형') {
-                                    if (cell.includes('20')) totalSummary.bySize['20FT'] += (orderCount || 1);
+                                    if (cell.includes('20')) totalSummary.bySize['20FT'] += effectiveCount;
                                     else if (cell.includes('40')) {
-                                        if (cell.includes('H')) totalSummary.bySize['40HC'] += (orderCount || 1);
-                                        else totalSummary.bySize['40FT'] += (orderCount || 1);
+                                        if (cell.includes('H')) totalSummary.bySize['40HC'] += effectiveCount;
+                                        else totalSummary.bySize['40FT'] += effectiveCount;
                                     } else {
-                                        totalSummary.bySize['기타'] += (orderCount || 1);
+                                        totalSummary.bySize['기타'] += effectiveCount;
                                     }
                                 }
                             });
-
-                            // [v5.11.8] 최종 유효 수량은 오더 컬럼 수량을 절대 원칙으로 하되, 셀 내 수량(이지3 등)이 더 클 경우 보정
-                            const effectiveCount = Math.max(orderCount, carrierTotalInRow);
 
                             // 통계 반영
                             totalSummary.totalOrders += effectiveCount;
