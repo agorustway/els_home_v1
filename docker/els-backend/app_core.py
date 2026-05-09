@@ -171,6 +171,14 @@ def sync_asan_dispatch_python(force=False):
                     headers = [h if h else f"col_{i+1}" for i, h in enumerate(headers)]
                     data_df = df.iloc[header_idx + 1:]
                     
+                    # [v5.10.20] 방법 B: 오더/계/수량 컬럼 인덱스 사전 파악 (템플릿 행 필터용)
+                    order_col_idx = -1
+                    for _oi, _oh in enumerate(headers):
+                        if _oh.strip() in ['오더', '계', '수량']:
+                            order_col_idx = _oi
+                            break
+                    app.logger.info(f"[자동동기화] {dtype} 시트 '{sheet_name}' 오더 컬럼 인덱스: {order_col_idx} (헤더: {headers[order_col_idx] if order_col_idx >= 0 else 'N/A'})")
+                    
                     rows = []
                     comments_dict = {}
                     
@@ -188,6 +196,15 @@ def sync_asan_dispatch_python(force=False):
                         valid_cells = [c for c in row if str(c).strip() not in ['', '0', 'nan', 'None']]
                         if len(valid_cells) < 3:
                             continue
+                        
+                        # [v5.10.20] 방법 B: 오더/계/수량 컬럼이 0이거나 없으면 빈 양식(템플릿) → 저장 제외
+                        if order_col_idx >= 0:
+                            try:
+                                order_val = str(row.iloc[order_col_idx]).strip()
+                                if not order_val or order_val in ['0', 'nan', 'None', '']:
+                                    continue  # 템플릿(빈 양식) 행 건너뛰기
+                            except Exception:
+                                pass
                         
                         rows.append(row.fillna('').astype(str).tolist())
                         
