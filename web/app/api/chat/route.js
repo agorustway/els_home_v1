@@ -1542,7 +1542,7 @@ export async function POST(req) {
 
                     let dispatchText = `\n\n## 아산지점 배차판 (${dateLabel})\n`;
                     dispatchText += '> [중요] 아래 표기된 원본 데이터(행 번호, 컬럼명, 셀 값, 메모)를 바탕으로 사용자의 질문에 답변하라. 각 행의 [메모]에는 차량의 배차 시간(예: 08, 09 등)과 업체명, 특이사항 등이 기록되어 있다. 메모의 숫자와 업체를 매칭하여 답변하라.\n';
-                    dispatchText += '> [주의] "오더" 컬럼이 0이거나 비어있는 행은 배차 예정이 없는 기본 템플릿(빈 양식)이므로 절대 포함해서 카운트하지 마라. 배차 지역(부산, 인천 등)에 "자차1", "대신2" 등 수량이 명시된 행만 실제 배차로 간주하라.\n';
+                    dispatchText += '> [주의] "자차", "대신", "칸", "이지", "신승" 등 배차 지역 컬럼에 기재된 운송사 명칭을 정확히 인용하라. 데이터에 없는 운송사(예: 이지3)를 임의로 창작하지 마라. "오더" 컬럼이 0이거나 비어있는 행은 절대 포함하지 마라.\n';
 
                     // 날짜 오름차순 정렬
                     dispatchRecords.sort((a, b) => a.target_date.localeCompare(b.target_date));
@@ -1578,14 +1578,18 @@ export async function POST(req) {
                                 }
                             }
 
-                            // [v5.10.20] 유효 배차 행 검증: 담당자(운송사) 또는 작업지 중 최소 하나는 데이터가 있어야 함
-                            // (단순 요약행이나 번호만 있는 노이즈 행 제외)
-                            const managerIdx = headers.findIndex(h => h && (h.includes('담당자') || h.includes('운송사') || h.includes('화주')));
-                            const worksiteIdx = headers.findIndex(h => h && h.includes('작업지'));
+                            // [v5.10.21] 유효 배차 행 검증 강화: 담당자(운송사) AND 작업지 정보가 모두 있어야 실제 배차 행으로 간주
+                            // 이를 통해 하단의 요약 테이블이나 공지사항 메모 행을 원천 배제함
+                            const managerIdx = headers.findIndex(h => h && (h === '담당자' || h === '운송사' || h === '화주' || h === '당당자'));
+                            const worksiteIdx = headers.findIndex(h => h && (h === '작업지' || h === '운송지' || h === '보관소'));
+                            
                             if (managerIdx >= 0 && worksiteIdx >= 0) {
-                                if (!String(row[managerIdx] || '').trim() && !String(row[worksiteIdx] || '').trim()) {
-                                    return;
-                                }
+                                const mVal = String(row[managerIdx] || '').trim();
+                                const wVal = String(row[worksiteIdx] || '').trim();
+                                // 둘 중 하나라도 없으면 실제 배차 데이터가 아닐 확률이 높음 (메모나 요약행)
+                                if (!mVal || !wVal || mVal === 'nan' || wVal === 'nan') return;
+                                // 화주 컬럼에 '문자수신' 등이 들어간 노이즈행 추가 필터링
+                                if (mVal.includes('문자수신') || mVal.includes('차량번호')) return;
                             }
 
                             // 필터 1: 특정 시간 필터 (filterHour)
@@ -1642,7 +1646,8 @@ export async function POST(req) {
                                 return `[${hName}] ${c}${comment}`;
                             }).filter(Boolean).join(' | ');
                             
-                            dispatchText += `- 행${ri}: ${rowData}\n`;
+                            const typeLabel = type === 'mobis' ? '[모비스] ' : (type === 'glovis' ? '[글로비스] ' : '');
+                            dispatchText += `- ${typeLabel}행${ri}: ${rowData}\n`;
                             totalRowsAdded++;
                         });
                     });
