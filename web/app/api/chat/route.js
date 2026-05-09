@@ -1601,6 +1601,7 @@ export async function POST(req) {
                             }
 
                             // 3. 지역/운송사별 정밀 파싱 (이지3=3대, 자차1,대신2 처리)
+                            let carrierTotalInRow = 0;
                             headers.forEach((h, hi) => {
                                 if (!h) return;
                                 const cell = String(row[hi] || '').trim();
@@ -1608,37 +1609,49 @@ export async function POST(req) {
 
                                 if (regionCols.some(r => h.includes(r))) {
                                     const region = regionCols.find(r => h.includes(r));
-                                    // 콤마로 구분된 여러 업체 처리
                                     const parts = cell.split(/[,,/]/);
                                     parts.forEach(p => {
                                         const part = p.trim();
                                         carrierKwds.forEach(k => {
                                             if (part.includes(k)) {
-                                                // 업체명 뒤의 숫자를 추출 (예: 이지3 -> 3, 자차1 -> 1)
                                                 let count = parseInt(part.replace(k, '').replace(/[^0-9]/g, ''));
-                                                if (isNaN(count)) count = 1; // 숫자 없으면 1대로 간주
+                                                if (isNaN(count)) count = 1;
                                                 
                                                 totalSummary.byCarrier[k] = (totalSummary.byCarrier[k] || 0) + count;
                                                 totalSummary.byRegion[region] = (totalSummary.byRegion[region] || 0) + count;
+                                                carrierTotalInRow += count;
                                             }
                                         });
                                     });
                                 }
+                            });
 
-                                // 4. 시간 데이터 이원화 (오더수신 vs 배차완료)
-                                if (hi === memoIdx || h.includes('도착') || h.includes('배차정보')) {
-                                    const timeMatches = cell.matchAll(/(\d{1,2})[:시]?(\d{2})?/g);
-                                    for (const match of timeMatches) {
-                                        const hour = match[1].padStart(2, '0');
-                                        // '착', '가이드', '추천' 등이 붙으면 '배차완료(메모)' 시간으로 간주
-                                        if (cell.includes('착') || cell.includes('가이드') || cell.includes('추천') || cell.includes('메모')) {
-                                            totalSummary.byTime.completion[hour] = (totalSummary.byTime.completion[hour] || 0) + (rowCount || 1);
-                                        } else {
-                                            totalSummary.byTime.order[hour] = (totalSummary.byTime.order[hour] || 0) + (rowCount || 1);
+                            // [v5.11.4] 오더 컬럼이 0이어도 지역 셀에 수량이 있으면 이를 유효 수량으로 인정 (이지3 대응)
+                            if (rowCount === 0 && carrierTotalInRow > 0) {
+                                rowCount = carrierTotalInRow;
+                                totalSummary.totalOrders += rowCount;
+                                totalSummary.byType[type] = (totalSummary.byType[type] || 0) + rowCount;
+                            }
+
+                            // 4. 시간 데이터 이원화 (오더수신 vs 배차완료)
+                            // 수량이 있는 유효 행만 시간 집계에 포함 (템플릿 행 제외)
+                            if (rowCount > 0) {
+                                headers.forEach((h, hi) => {
+                                    if (!h) return;
+                                    const cell = String(row[hi] || '').trim();
+                                    if (hi === memoIdx || h.includes('도착') || h.includes('배차정보')) {
+                                        const timeMatches = cell.matchAll(/(\d{1,2})[:시]?(\d{2})?/g);
+                                        for (const match of timeMatches) {
+                                            const hour = match[1].padStart(2, '0');
+                                            if (cell.includes('착') || cell.includes('가이드') || cell.includes('추천') || cell.includes('메모')) {
+                                                totalSummary.byTime.completion[hour] = (totalSummary.byTime.completion[hour] || 0) + rowCount;
+                                            } else {
+                                                totalSummary.byTime.order[hour] = (totalSummary.byTime.order[hour] || 0) + rowCount;
+                                            }
                                         }
                                     }
-                                }
-                            });
+                                });
+                            }
                         });
                     });
 
