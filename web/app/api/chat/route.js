@@ -1727,9 +1727,11 @@ export async function POST(req) {
                                 hasKwdMatch = specificKwds.some(k => row.some(c => String(c).toLowerCase().includes(k.toLowerCase())));
                             }
 
-                            const shouldInclude = isMonthQuery 
-                                ? (hasKwdMatch && (!filterHour || hasTimeMatch))
-                                : (!filterHour || hasTimeMatch);
+                            // [v5.11.3] 검색 범용성 강화: 키워드나 시간 필터가 있으면 해당 조건에 맞는 행만 추출 (하드코딩이 아닌 동적 필터링)
+                            const hasFilters = specificKwds.length > 0 || !!filterHour;
+                            const shouldInclude = hasFilters
+                                ? ((specificKwds.length === 0 || hasKwdMatch) && (!filterHour || hasTimeMatch))
+                                : true; // 필터가 전혀 없으면 전체 데이터 제공
 
                             if (shouldInclude) {
                                 filteredRows.push({ row, ri });
