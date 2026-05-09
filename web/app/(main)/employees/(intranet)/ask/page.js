@@ -620,26 +620,16 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h2 className={styles.guideTitle} style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '8px' }}>ELS AI 가이드 (v5.10.0)</h2>
+            <h2 className={styles.guideTitle} style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '8px' }}>ELS AI 가이드 (v5.11.0)</h2>
             
             <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
                 <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>배차 및 마감자료 분석</span>
                 <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    엑셀 배차판과 실적 데이터를 정밀 검색합니다.
+                    아산 배차판과 실적 데이터를 정밀 분석합니다.
                     <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <li>&quot;오늘 모비스 배차 총 몇 대야?&quot;</li>
                         <li>&quot;1145 차량 4월 13일 작업지 어디야?&quot;</li>
                         <li>&quot;8163 수출리스트보고 3월 내역 찾아줘&quot;</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>사내 문서 검색 (NAS)</span>
-                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    NAS에 저장된 방대한 문서를 검색하고 요약합니다.
-                    <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li>&quot;안전운임 고시 문서에서 대기료 규정 찾아줘&quot;</li>
-                        <li>&quot;아산지점 최근 업무보고 내용 요약해줘&quot;</li>
                     </ul>
                 </div>
             </div>
@@ -772,7 +762,7 @@ export default function AskPage() {
                             </div>
                         </button>
                         <div>
-                            <h1 className={styles.headerTitle}>ELS AI 엘스 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.10.0</span></h1>
+                            <h1 className={styles.headerTitle}>ELS AI 엘스 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.11.0</span></h1>
                             <p className={styles.headerSub}>Omni-Agent Infrastructure · Knowledge Link System</p>
                         </div>
                     </div>
