@@ -1535,9 +1535,9 @@ export async function POST(req) {
                     const end = new Date(new Date(d).getTime() + 86400000 * 2).toISOString().split('T')[0];
                     dbQuery = dbQuery.gte('target_date', start).lte('target_date', end);
                 } else {
-                    // 일반 질문 시 오늘 기준 전후 10일치 데이터를 제공하여 '이번 주', '내일' 등 광범위 질문 대응
-                    const start = new Date(kstNow.getTime() - 86400000 * 3).toISOString().split('T')[0];
-                    const end = new Date(kstNow.getTime() + 86400000 * 14).toISOString().split('T')[0];
+                    // 일반 질문 시 오늘 기준 과거 30일 ~ 미래 7일치 데이터를 제공
+                    const start = new Date(kstNow.getTime() - 86400000 * 30).toISOString().split('T')[0];
+                    const end = new Date(kstNow.getTime() + 86400000 * 7).toISOString().split('T')[0];
                     dbQuery = dbQuery.gte('target_date', start).lte('target_date', end);
                 }
 
@@ -1549,9 +1549,10 @@ export async function POST(req) {
                     const specificKwds = searchTerms.filter(t => t.length >= 2 && !ignoreWords.includes(t));
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
 
-                    let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: ${dateLabel} 및 전후 기간)\n`;
-                    dispatchText += '> [🚨 중요: 데이터 신뢰도] 사용자가 보낸 이미지(OCR)에는 "자차"를 "자자"로, "천일중부"를 "선진공부"로 읽는 등 오타가 매우 많다. **이미지의 텍스트보다 아래 제공된 `[사내 통합 DB]`의 텍스트 데이터를 100% 우선하여 답변하라.**\n';
-                    dispatchText += '> [중요] 각 행의 대수(대)를 산정할 때는 임의로 계산하지 말고, 데이터에 기재된 **`[배차]` 컬럼의 숫자**를 그대로 인용하라. (예: [배차] 1 이면 1대)\n';
+                    let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 오늘 기준 과거 30일 ~ 미래 7일)\n`;
+                    dispatchText += '> [🚨 중요: 데이터 신뢰도] 이미지(OCR)보다 아래 제공된 `[사내 통합 DB]` 텍스트 데이터를 100% 우선하여 답변하라. 이미지의 오타(자차->자자 등)에 주의하라.\n';
+                    dispatchText += '> [중요] 질문이 위 조회 범위(과거 30일 ~ 미래 7일)를 벗어나는 경우, "해당 날짜는 AI 조회 범위를 벗어나 정확한 확인이 어려우니 배차판에서 직접 확인해달라"고 정중히 안내하라.\n';
+                    dispatchText += '> [중요] 각 행의 대수(대)를 산정할 때는 데이터에 기재된 **`[배차]` 컬럼의 숫자**를 그대로 인용하라.\n';
                     dispatchText += '> [중요] 각 행의 [메모]에는 차량의 배차 시간(예: 08, 09 등)과 업체명, 특이사항 등이 기록되어 있다. 메모의 숫자와 업체를 매칭하여 답변하라.\n';
                     dispatchText += '> [주의] "자차", "대신", "칸", "이지", "신승" 등 배차 지역 컬럼에 기재된 운송사 명칭을 정확히 인용하라. 데이터에 없는 운송사(예: 이지3)를 임의로 창작하지 마라. "오더" 컬럼이 0이거나 비어있는 행은 절대 포함하지 마라.\n';
 
@@ -1673,7 +1674,7 @@ export async function POST(req) {
                     apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
 
                 } else {
-                    recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [DB 미동기화] 해당 날짜/조건 배차 데이터 없음. 창작 금지. [배차판](/employees/branches/asan)`;
+                    recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [조회 범위 제한] 해당 날짜의 배차 데이터가 DB에 없거나 검색 범위를 벗어났습니다. (현재 AI 조회 범위: 과거 30일 ~ 미래 7일)\n> 상세한 배차 내역이나 과거 데이터는 [아산 배차판](/employees/branches/asan)에서 직접 확인해 주시기 바랍니다.`;
                 }
             } catch (e) {
                 console.error('[ELS-AI] 아산 배차판 RAG 오류:', e);
