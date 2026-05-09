@@ -1578,6 +1578,16 @@ export async function POST(req) {
                                 }
                             }
 
+                            // [v5.10.20] 유효 배차 행 검증: 담당자(운송사) 또는 작업지 중 최소 하나는 데이터가 있어야 함
+                            // (단순 요약행이나 번호만 있는 노이즈 행 제외)
+                            const managerIdx = headers.findIndex(h => h && (h.includes('담당자') || h.includes('운송사') || h.includes('화주')));
+                            const worksiteIdx = headers.findIndex(h => h && h.includes('작업지'));
+                            if (managerIdx >= 0 && worksiteIdx >= 0) {
+                                if (!String(row[managerIdx] || '').trim() && !String(row[worksiteIdx] || '').trim()) {
+                                    return;
+                                }
+                            }
+
                             // 필터 1: 특정 시간 필터 (filterHour)
                             let hasTimeMatch = false;
                             if (filterHour) {
@@ -1618,7 +1628,15 @@ export async function POST(req) {
                             
                             const rowData = row.map((c, ci) => {
                                 if (!c || c === 'nan' || c === '0') return null;
-                                const hName = headers[ci];
+                                const hName = (headers[ci] || '').trim();
+                                
+                                // [v5.10.20] AI 컨텍스트 최적화: 불필요한 분석용/익명 컬럼 제외
+                                const isJunk = /^(col_\d+)$/i.test(hName) || ['A', 'B', '함축'].includes(hName);
+                                // 단, 사용자가 요청한 BKG, TARGET 관련 컬럼은 보존
+                                const isTargetCol = hName.includes('BKG') || hName.includes('TARGET');
+                                
+                                if (isJunk && !isTargetCol) return null;
+
                                 const ck = `${ri}:${ci}`;
                                 const comment = comments?.[ck] ? ` (메모: ${comments[ck].replace(/\n/g, ' ')})` : '';
                                 return `[${hName}] ${c}${comment}`;

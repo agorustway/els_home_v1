@@ -307,7 +307,13 @@ export default function AsanDispatchPage() {
     // localStorage 로드
     useEffect(() => {
         const p = loadPrefs(viewType);
-        setHiddenCols(new Set(p.hiddenCols || []));
+        if (p.hiddenCols) {
+            setHiddenCols(new Set(p.hiddenCols));
+        } else {
+            // [v5.10.20] 기본 숨김 컬럼: 모비스의 맨 오른쪽 빈 분석용 컬럼(A, B 등) 제외
+            const defaultHidden = viewType === 'mobis' ? new Set(['A', 'B', '함축', 'col_35', 'col_36']) : new Set();
+            setHiddenCols(defaultHidden);
+        }
         setColWidths(p.colWidths || {});
     }, [viewType]);
     // localStorage 저장 (디바운스)
@@ -448,7 +454,13 @@ export default function AsanDispatchPage() {
     const searchResult = useMemo(() => doSearch(processedData, headers, searchTerm), [processedData, headers, searchTerm]);
 
     // 보이는 컬럼 인덱스
-    const visibleCols = useMemo(() => headers.map((h, i) => i).filter(i => !hiddenCols.has(headers[i])), [headers, hiddenCols]);
+    const visibleCols = useMemo(() => headers.map((h, i) => i).filter(i => {
+        const h = headers[i];
+        if (hiddenCols.has(h)) return false;
+        // [v5.10.20] col_NN 형식(의미없는 익명 컬럼)은 자동 숨김
+        if (/^col_\d+$/.test(h)) return false;
+        return true;
+    }), [headers, hiddenCols]);
 
     // 필터 적용된 행 (Set으로 검색 최적화)
     const displayRows = useMemo(() => {

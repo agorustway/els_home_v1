@@ -31,7 +31,7 @@ export async function GET(request) {
         const unifiedHeaders = [
             "구분", "화주", "담당자", "작업지", "고객사(국가)", "포트(도착항)", "특이사항(Nomi,구간)",
             "라인(선사명)", "TYPE", "배차정보", "오더(계)", "배차예정", "기타", "아산", "부산",
-            "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "비고"
+            "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "BKG1", "BKG2", "BKG3", "TARGET VESSEL", "비고"
         ];
 
         const byDate = {};
@@ -112,6 +112,10 @@ export async function GET(request) {
                 "인천": getCol(["인천"]),
                 "배차": getCol(["배차"]),
                 "검증": getCol(["검증"]),
+                "BKG1": getCol(["BKG1"]),
+                "BKG2": getCol(["BKG2"]),
+                "BKG3": getCol(["BKG3"]),
+                "TARGET VESSEL": getCol(["TARGET VESSEL", "TARGETVESSEL"]),
                 "비고": getCol(["비고"])
             };
 
@@ -159,7 +163,9 @@ export async function GET(request) {
             const validIndices = [];
             const newHeaders = item.headers.filter((h, i) => {
                 const trimmed = (h || '').trim();
-                const isJunk = /^(col_\d+)$/i.test(trimmed) || trimmed === '함축'; // [v5.10.16] 'T' 컬럼 필터링 방지
+                // [v5.10.20] A, B, 함축 및 col_N 형식 컬럼은 제외하되, 사용자가 요청한 BKG/TARGET은 보존
+                const isJunk = (/^(col_\d+)$/i.test(trimmed) || ['A', 'B', '함축'].includes(trimmed)) && 
+                               !(trimmed.includes('BKG') || trimmed.includes('TARGET'));
                 if (!isJunk) validIndices.push(i);
                 return !isJunk;
             });

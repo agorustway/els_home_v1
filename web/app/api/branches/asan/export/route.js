@@ -37,7 +37,7 @@ export async function GET(request) {
         headers = [
             "구분", "화주", "담당자", "작업지", "고객사(국가)", "포트(도착항)", "특이사항(Nomi,구간)",
             "라인(선사명)", "TYPE", "배차정보", "오더(계)", "배차예정", "기타", "아산", "부산",
-            "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "비고"
+            "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "BKG1", "BKG2", "BKG3", "TARGET VESSEL", "비고"
         ];
 
         const byDate = {};
@@ -78,10 +78,21 @@ export async function GET(request) {
                 "인천": getCol(["인천"]),
                 "배차": getCol(["배차"]),
                 "검증": getCol(["검증"]),
+                "BKG1": getCol(["BKG1"]),
+                "BKG2": getCol(["BKG2"]),
+                "BKG3": getCol(["BKG3"]),
+                "TARGET VESSEL": getCol(["TARGET VESSEL", "TARGETVESSEL"]),
                 "비고": getCol(["비고"])
             };
 
-            const dayRows = (item.data || []).map(row => {
+            const dayRows = (item.data || []).filter(row => {
+                const cIdxForOrder = mapCols['오더(계)'];
+                if (cIdxForOrder >= 0) {
+                    const orderVal = String(row[cIdxForOrder] || '').trim();
+                    if (!orderVal || orderVal === '0' || orderVal === 'nan' || orderVal === 'None') return false;
+                }
+                return true;
+            }).map(row => {
                 return headers.map(h => {
                     const cIdx = mapCols[h];
                     return cIdx >= 0 ? row[cIdx] : '';
@@ -108,8 +119,17 @@ export async function GET(request) {
         }
 
     } else {
-        // 단일 타입 (glovis or mobis)
-        headers = rawData[0]?.headers || [];
+        // 단일 타입 (glovis or mobis) - Junk 컬럼 필터링 (A, B, col_N 등)
+        const item0 = rawData[0];
+        const validIndices = [];
+        headers = (item0?.headers || []).filter((h, i) => {
+            const trimmed = (h || '').trim();
+            const isJunk = (/^(col_\d+)$/i.test(trimmed) || ['A', 'B', '함축'].includes(trimmed)) && 
+                           !(trimmed.includes('BKG') || trimmed.includes('TARGET'));
+            if (!isJunk) validIndices.push(i);
+            return !isJunk;
+        });
+
         if (date === 'all') {
             const finalHeaders = ['날짜', ...headers];
             const finalRows = [];
@@ -119,12 +139,34 @@ export async function GET(request) {
                 const d = new Date(item.target_date + 'T00:00:00');
                 const days = ['일', '월', '화', '수', '목', '금', '토'];
                 const label = `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
-                (item.data || []).forEach(r => finalRows.push([label, ...r]));
+                let orderIdx = item.headers.findIndex(h => h && h.trim() === '오더');
+                if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '수량');
+                if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '계');
+
+                (item.data || []).forEach(r => {
+                    if (orderIdx >= 0) {
+                        const val = String(r[orderIdx] || '').trim();
+                        if (!val || val === '0' || val === 'nan' || val === 'None') return;
+                    }
+                    const rowData = validIndices.map(vi => r[vi]);
+                    finalRows.push([label, ...rowData]);
+                });
             });
             processedData = [{ sheetName: type === 'glovis' ? '글로비스_전체' : '모비스_전체', headers: finalHeaders, rows: finalRows }];
         } else {
             const item = rawData[0];
-            processedData = [{ sheetName: item.target_date, headers: headers, rows: item.data || [] }];
+            let orderIdx = item.headers.findIndex(h => h && h.trim() === '오더');
+            if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '수량');
+            if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '계');
+
+            const finalData = (item.data || []).filter(r => {
+                if (orderIdx >= 0) {
+                    const val = String(r[orderIdx] || '').trim();
+                    if (!val || val === '0' || val === 'nan' || val === 'None') return false;
+                }
+                return true;
+            }).map(r => validIndices.map(vi => r[vi]));
+            processedData = [{ sheetName: item.target_date, headers: headers, rows: finalData }];
         }
     }
 
