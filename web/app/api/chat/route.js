@@ -1704,13 +1704,23 @@ export async function POST(req) {
     dataFreshness += `\n※ 답변 말미에 위 데이터 출처(대괄호 포함) 중 "실제로 인용한 항목"만 깔끔하게 한 줄로 요약하여 출처를 밝히세요.`;
 
     const finalSystemInstruction = BASE_SYSTEM_INSTRUCTION + customRules + nasUpdates + recentPostsText + safeFreightText + dataFreshness;
-    const contents = messages.map((m) => ({
+    const rawContents = messages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: m.parts.map(p => {
             if (p.inline_data) return p; // 이미지 데이터 그대로 통과
             return { text: p.text || '' }; // 텍스트 처리
         }),
     }));
+
+    // Gemini API는 user와 model 역할이 번갈아 나와야 하므로(동일 역할 연속 불가), 연속된 역할을 하나로 병합
+    const contents = [];
+    rawContents.forEach(content => {
+        if (contents.length > 0 && contents[contents.length - 1].role === content.role) {
+            contents[contents.length - 1].parts.push(...content.parts);
+        } else {
+            contents.push(content);
+        }
+    });
 
     const geminiPayload = {
         system_instruction: {
