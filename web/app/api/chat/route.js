@@ -1745,7 +1745,7 @@ export async function POST(req) {
     if (!geminiRes.ok) {
         const errText = await geminiRes.text();
         console.error('Gemini API Error:', geminiRes.status, errText);
-        return NextResponse.json({ error: 'Gemini API 오류' }, { status: geminiRes.status });
+        return NextResponse.json({ error: `Gemini API 오류 (${geminiRes.status}): ${errText}` }, { status: geminiRes.status });
     }
 
     const { readable, writable } = new TransformStream();
