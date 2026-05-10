@@ -6,12 +6,12 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5146';
-import { smartFetch, remoteLog } from './bridge.js?v=5146';
-import { showToast } from './utils.js?v=5146';
-import { showScreen } from './nav.js?v=5146';
-import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5146';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5146';
+import { State, BASE_URL } from './store.js?v=5147';
+import { smartFetch, remoteLog } from './bridge.js?v=5147';
+import { showToast } from './utils.js?v=5147';
+import { showScreen } from './nav.js?v=5147';
+import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5147';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5147';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -415,7 +415,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5146');
+    const { loadCurrentTrip } = await import('./trip.js?v=5147');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
