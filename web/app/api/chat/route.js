@@ -1551,8 +1551,18 @@ export async function POST(req) {
 
                 if (!dispatchError && dispatchRecords && dispatchRecords.length > 0) {
                     // 키워드 추출 (날짜/배차 관련 단어 제외)
-                    const ignoreWords = ['배차', '배차판', '도착', '시간', '몇시', '몇대', '주차별', '오더', '개수', '알려줘', '어디야', '정보'];
-                    const specificKwds = searchTerms.filter(t => t.length >= 2 && !ignoreWords.includes(t));
+                    const ignoreWords = ['배차', '배차판', '도착', '시간', '몇시', '몇대', '주차별', '오더', '개수', '알려줘', '어디야', '정보',
+                        '총대수', '대수', '합계', '전체', '수량', '현황', '총', '몇',
+                        '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+                    // [v5.11.11 Fix] 날짜 패턴·숫자+대 패턴도 제외 — "5월9일","15대" 등이 배차 행 키워드 필터를 막는 버그 수정
+                    const specificKwds = searchTerms.filter(t => {
+                        if (t.length < 2) return false;
+                        if (ignoreWords.includes(t)) return false;
+                        if (/^\d{1,2}월\d{0,2}일?$/.test(t)) return false; // "5월9일", "5월" 등 날짜 패턴
+                        if (/^\d+대$/.test(t)) return false;               // "15대", "21대" 등
+                        if (/^\d{1,2}[월일]$/.test(t)) return false;       // "5월", "9일" 단독
+                        return true;
+                    });
                     const filterHour = timeQueryMatch ? timeQueryMatch[1].padStart(2, '0') : null;
 
                     // [v5.10.23] 최고관리자 지침 반영: 고도화된 서버사이드 전처리 (Structured RAG)
@@ -1560,16 +1570,17 @@ export async function POST(req) {
                         totalOrders: 0,
                         byType: { mobis: 0, glovis: 0 },
                         bySize: { '20FT': 0, '40FT': 0, '40HC': 0, '기타': 0 },
-                        byCarrier: {}, // { '이지': 8, '자차': 5, ... }
-                        byRegion: {},  // { '부산': 10, '인천': 5, ... }
-                        byTime: { order: {}, completion: {} } // { '08': 5 }
+                        byCarrier: {},
+                        byRegion: {},
+                        byTime: { order: {}, completion: {} },
+                        byDate: {} // [v5.11.11] 날짜별 소계 { '2026-05-10': { totalOrders, byType } }
                     };
 
                     const carrierKwds = ['자차', '대신', '이지', '신승', '부곡', '칸', '유니코', '동원', '삼익', '네슬리', '보승', '선진', '천일', '경평'];
                     const regionCols = ['부산', '인천', '울산', '광양', '평택', '중부', '부곡', '아산', '기타', '세종', '천안'];
 
                     dispatchRecords.forEach(record => {
-                        const { type, headers, data: rows } = record;
+                        const { target_date: rec_date, type, headers, data: rows } = record;
                         
                         // 화주별 유효 오더 컬럼 설정 (글로비스=오더, 모비스=계)
                         let orderIdx = -1;
@@ -1639,6 +1650,10 @@ export async function POST(req) {
                             // 통계 반영
                             totalSummary.totalOrders += effectiveCount;
                             totalSummary.byType[type] = (totalSummary.byType[type] || 0) + effectiveCount;
+                            // [v5.11.11] 날짜별 소계
+                            if (!totalSummary.byDate[rec_date]) totalSummary.byDate[rec_date] = { totalOrders: 0, byType: {} };
+                            totalSummary.byDate[rec_date].totalOrders += effectiveCount;
+                            totalSummary.byDate[rec_date].byType[type] = (totalSummary.byDate[rec_date].byType[type] || 0) + effectiveCount;
 
                             // 4. 지역(셀 기반) 및 규격 파싱
                             headers.forEach((h, hi) => {
@@ -1695,15 +1710,21 @@ export async function POST(req) {
                         });
                     });
 
-                    let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 과거 60일 ~ 미래 7일)\n`;
-                    dispatchText += `[시스템 로그: 'asan' 지점 레코드 ${dispatchRecords.length}개 로드 완료]\n`;
-                    dispatchText += `### 📊 [실시간 배차 분석 보고서 - 최고관리자 규칙 적용]\n`;
-                    dispatchText += `- **총 유효 배차**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
-                    dispatchText += `- **규격별 현황**: 20FT(${totalSummary.bySize['20FT']}대), 40FT(${totalSummary.bySize['40FT']}대), 40HC(${totalSummary.bySize['40HC']}대), 기타(${totalSummary.bySize['기타']}대)\n`;
-                    dispatchText += `- **운송사별 현황**: ${Object.entries(totalSummary.byCarrier).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
-                    dispatchText += `- **지역별 분포**: ${Object.entries(totalSummary.byRegion).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
-                    dispatchText += `- **배차 완료 시간(메모 기준)**: ${Object.entries(totalSummary.byTime.completion).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n`;
-                    dispatchText += `- **오더 수신 시간**: ${Object.entries(totalSummary.byTime.order).sort().map(([k, v]) => `${k}시(${v}대)`).join(', ')}\n\n`;
+                    // [v5.11.11] 실제 조회된 날짜 목록 생성
+                    const loadedDates = [...new Set(dispatchRecords.map(r => r.target_date))].sort();
+                    let dispatchText = `\n\n## 아산지점 배차판\n`;
+                    dispatchText += `[시스템: asan 레코드 ${dispatchRecords.length}개 | 실제 조회 날짜: ${loadedDates.join(', ')}]\n`;
+                    dispatchText += `### [날짜별 배차 현황 — 날짜를 구분하여 답변하라]\n`;
+                    loadedDates.forEach(d => {
+                        const ds = totalSummary.byDate[d];
+                        if (ds && ds.totalOrders > 0) {
+                            dispatchText += `- **${d}**: 총 ${ds.totalOrders}대 (글로비스 ${ds.byType.glovis || 0}대 / 모비스 ${ds.byType.mobis || 0}대)\n`;
+                        }
+                    });
+                    dispatchText += `- **전체 합계**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
+                    dispatchText += `- **규격별**: 20FT(${totalSummary.bySize['20FT']}대), 40FT(${totalSummary.bySize['40FT']}대), 40HC(${totalSummary.bySize['40HC']}대)\n`;
+                    dispatchText += `- **운송사별**: ${Object.entries(totalSummary.byCarrier).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n`;
+                    dispatchText += `- **지역별**: ${Object.entries(totalSummary.byRegion).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `${k}(${v}대)`).join(', ')}\n\n`;
 
                     dispatchText += '> [🚨 핵심 지침] 이지3, 자차1 등 **업체명 옆의 숫자는 대수**를 의미한다. (예: 이지3 = 이지 업체 차량 3대)\n';
                     dispatchText += '> [🚨 핵심 지침] 글로비스는 "오더" 컬럼, 모비스는 "계" 컬럼의 숫자가 실제 오더량이다. "캔슬"은 제외하라.\n';
