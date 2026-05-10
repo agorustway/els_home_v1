@@ -1606,8 +1606,8 @@ export async function POST(req) {
                     };
 
                     // [v5.11.17 Fix] 하드코딩된 협력사(운송사) 및 지역명 제거 -> 배차판 헤더/셀 동적 추출
-                    const nonRegionHeaders = ['순번', '담당자', '당당자', '운송사', '화주', '작업지', '운송지', '보관소', '포트', '도착지', '국가', '오더', '오더(계)', '계', '수량', '배차정보', '비고', '특이사항', 't', 'type', '규격', '유형'];
-                    const nonCarrierWords = ['캔슬', '완료', '미정', '착', '가이드', '추천', '메모', '문자수신', '차량번호', '미배차', '확인', 'nan'];
+                    const nonRegionHeaders = ['순번', '담당자', '당당자', '운송사', '화주', '작업지', '운송지', '보관소', '포트', '도착지', '국가', '오더', '오더(계)', '계', '수량', '배차정보', '비고', '특이사항', 't', 'type', '규격', '유형', '구분', '작업', '고객사', '선적', '라인', '배차예정', '배차', '검증', 'bkg1', 'bkg2', 'bkg3', 'target vessel', '차량번호', '기타/철송'];
+                    const nonCarrierWords = ['캔슬', '완료', '미정', '착', '가이드', '추천', '메모', '문자수신', '차량번호', '미배차', '확인', 'nan', '수출', '수입', '로컬', '포장', '분해'];
 
                     dispatchRecords.forEach(record => {
                         const { target_date: rec_date, type, headers, data: rows } = record;
@@ -1691,8 +1691,14 @@ export async function POST(req) {
                             totalSummary.totalDispatchCount = (totalSummary.totalDispatchCount || 0) + carrierTotalInRow;
 
                             // 날짜별 소계 (오더/배차 완전 분리)
-                            if (!totalSummary.byDate[rec_date]) totalSummary.byDate[rec_date] = { orderCount: 0, dispatchCount: 0, byTypeOrders: {}, byTypeDispatches: {}, byCarrier: {} };
+                            if (!totalSummary.byDate[rec_date]) {
+                                totalSummary.byDate[rec_date] = { orderCount: 0, dispatchCount: 0, byTypeOrders: {}, byTypeDispatches: {}, byCarrier: {}, timeLogs: [] };
+                            }
                             totalSummary.byDate[rec_date].orderCount += orderCount;
+                            totalSummary.byDate[rec_date].dispatchCount += carrierTotalInRow;
+                            totalSummary.byDate[rec_date].byTypeOrders[type] = (totalSummary.byDate[rec_date].byTypeOrders[type] || 0) + orderCount;
+                            totalSummary.byDate[rec_date].byTypeDispatches[type] = (totalSummary.byDate[rec_date].byTypeDispatches[type] || 0) + carrierTotalInRow;
+
                             // 4. 시간대 타임라인 추출 (timeLogs)
                             if (carrierTotalInRow > 0 && rowCarriers.length > 0) {
                                 let rowTimeStrs = [];
