@@ -1492,9 +1492,10 @@ export async function POST(req) {
             '아산배차', '아산 배차', '오늘배차', '오늘 배차',
             '몇대', '몇 대', '대예정', '대 예정',
         ];
-        // 숙자+시 패턴 (예: "8시", "08시", "13시") 감지 — 위에서 선언한 _timeQueryMatch 재활용
+        // 숫자+시 패턴 (예: "8시", "08시", "13시") 감지 — 위에서 선언한 _timeQueryMatch 재활용
         const timeQueryMatch = _timeQueryMatch;
-        const isDispatchQuery = _dispatchKwds.some(k => userKwd.includes(k)) || Boolean(timeQueryMatch);
+        // [v5.11.10 Fix] dispatchKeywords(L1488) 전체 사용 — '몇대','몇 대','오늘 배차' 등 _dispatchKwds 누락 키워드 보완
+        const isDispatchQuery = dispatchKeywords.some(k => userKwd.includes(k)) || Boolean(timeQueryMatch);
 
         if (isDispatchQuery) {
             try {
@@ -1524,7 +1525,11 @@ export async function POST(req) {
                     targetDates.push(kstNow.toISOString().split('T')[0]);
                 }
 
-                let dbQuery = supabase.from('branch_dispatch').select('target_date, type, headers, data, comments').eq('branch_id', 'asan');
+                let dbQuery = supabase.from('branch_dispatch')
+                    .select('target_date, type, headers, data, comments')
+                    .eq('branch_id', 'asan')
+                    .order('target_date', { ascending: false })
+                    .limit(5000);
 
                 if (isMonthQuery) {
                     const m = monthMatch[1].padStart(2, '0');
@@ -1536,15 +1541,15 @@ export async function POST(req) {
                     const end = new Date(new Date(d).getTime() + 86400000 * 7).toISOString().split('T')[0];
                     dbQuery = dbQuery.gte('target_date', start).lte('target_date', end);
                 } else {
-                    // 일반 질문 시 오늘 기준 과거 60일(지난달 포함) ~ 미래 7일치 데이터를 제공
-                    const start = new Date(kstNow.getTime() - 86400000 * 60).toISOString().split('T')[0];
-                    const end = new Date(kstNow.getTime() + 86400000 * 7).toISOString().split('T')[0];
+                    // [v5.11.10 Fix] 일반 질문 시 오늘 기준 ±3일 (60일→3일 축소: Context 오염 및 토큰 초과 방지)
+                    const start = new Date(kstNow.getTime() - 86400000 * 3).toISOString().split('T')[0];
+                    const end = new Date(kstNow.getTime() + 86400000 * 3).toISOString().split('T')[0];
                     dbQuery = dbQuery.gte('target_date', start).lte('target_date', end);
                 }
 
-                const { data: dispatchRecords, error } = await dbQuery;
+                const { data: dispatchRecords, error: dispatchError } = await dbQuery;
 
-                if (!error && dispatchRecords && dispatchRecords.length > 0) {
+                if (!dispatchError && dispatchRecords && dispatchRecords.length > 0) {
                     // 키워드 추출 (날짜/배차 관련 단어 제외)
                     const ignoreWords = ['배차', '배차판', '도착', '시간', '몇시', '몇대', '주차별', '오더', '개수', '알려줘', '어디야', '정보'];
                     const specificKwds = searchTerms.filter(t => t.length >= 2 && !ignoreWords.includes(t));
@@ -1663,9 +1668,7 @@ export async function POST(req) {
                                 }
                             });
 
-                            // 통계 반영
-                            totalSummary.totalOrders += effectiveCount;
-                            totalSummary.byType[type] = (totalSummary.byType[type] || 0) + effectiveCount;
+                            // [v5.11.10 Fix] 이중 합산 제거 — L1638에서 이미 totalOrders/byType 반영 완료
 
                             // 4. 시간 데이터 이원화 (오더수신 vs 배차완료)
                             if (effectiveCount > 0) {
@@ -1693,7 +1696,7 @@ export async function POST(req) {
                     });
 
                     let dispatchText = `\n\n## 아산지점 배차판 (조회 범위: 과거 60일 ~ 미래 7일)\n`;
-                    dispatchText += `[시스템 로그: ${dispatchRecords.length}개 레코드 조회됨]\n`;
+                    dispatchText += `[시스템 로그: 'asan' 지점 레코드 ${dispatchRecords.length}개 로드 완료]\n`;
                     dispatchText += `### 📊 [실시간 배차 분석 보고서 - 최고관리자 규칙 적용]\n`;
                     dispatchText += `- **총 유효 배차**: ${totalSummary.totalOrders}대 (글로비스 ${totalSummary.byType.glovis || 0}대 / 모비스 ${totalSummary.byType.mobis || 0}대)\n`;
                     dispatchText += `- **규격별 현황**: 20FT(${totalSummary.bySize['20FT']}대), 40FT(${totalSummary.bySize['40FT']}대), 40HC(${totalSummary.bySize['40HC']}대), 기타(${totalSummary.bySize['기타']}대)\n`;
@@ -1730,9 +1733,14 @@ export async function POST(req) {
 
                         let filteredRows = [];
                         
-                        let orderIdx = headers.findIndex(h => h && h.trim() === '오더');
-                        if (orderIdx < 0) orderIdx = headers.findIndex(h => h && h.trim() === '수량');
-                        if (orderIdx < 0) orderIdx = headers.findIndex(h => h && h.trim() === '계');
+                        // [v5.11.10 Fix] 화주별 오더 컬럼 우선 탐지 (통계 루프와 동일 로직 적용)
+                        let orderIdx = -1;
+                        if (type === 'glovis') {
+                            orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '오더(계)'));
+                        } else if (type === 'mobis') {
+                            orderIdx = headers.findIndex(h => h && (h.trim() === '계' || h.trim() === '수량'));
+                        }
+                        if (orderIdx < 0) orderIdx = headers.findIndex(h => h && (h.trim() === '오더' || h.trim() === '수량' || h.trim() === '계'));
 
                         rows.forEach((row, ri) => {
                             // 필터 0: 템플릿 행(수량이 0이거나 없는 행) 사전 제외
@@ -1820,7 +1828,7 @@ export async function POST(req) {
                     });
 
                     if (totalRowsAdded > 0) {
-                        dispatchText += `\n[아산지점 배차판 바로가기](/employees/branches/asan)`;
+                        dispatchText += `\n> ※ 위 데이터는 오늘 기준 ±3일 범위의 배차 현황입니다. 더 넓은 범위의 상세 내역은 [아산지점 배차판](/employees/branches/asan)에서 직접 확인해 주세요.`;
                         recentPostsText += dispatchText;
                     } else {
                         recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [조회 완료] ${filterHour ? filterHour+'시 관련 ' : ''}조건에 일치하는 배차 내역이나 메모가 없습니다. 시스템 조회 결과 실제 일치하는 데이터가 없는 것이므로 창작하지 마세요. [배차판](/employees/branches/asan)`;
@@ -1829,7 +1837,9 @@ export async function POST(req) {
                     apiTimestamps.dispatch = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
 
                 } else {
-                    recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [조회 범위 제한] 해당 날짜의 배차 데이터가 DB에 없거나 검색 범위를 벗어났습니다. (현재 AI 조회 범위: 과거 30일 ~ 미래 7일)\n> 상세한 배차 내역이나 과거 데이터는 [아산 배차판](/employees/branches/asan)에서 직접 확인해 주시기 바랍니다.`;
+                    const errorDetail = dispatchError ? `(에러: ${dispatchError.code} - ${dispatchError.message})` : '(DB 미동기화/데이터 없음)';
+                    recentPostsText += `\n\n## 아산지점 배차판 (${dateLabel})\n> [조회 실패] ${errorDetail}\n> 해당 날짜의 배차 데이터가 DB에 없거나 검색 범위를 벗어났습니다. (현재 AI 조회 범위: 과거 60일 ~ 미래 7일)\n> 상세 내역은 [아산 배차판](/employees/branches/asan)에서 직접 확인해 주시기 바랍니다.`;
+                    usedRAGs.push('아산 배차판 (조회 실패)');
                 }
             } catch (e) {
                 console.error('[ELS-AI] 아산 배차판 RAG 오류:', e);
