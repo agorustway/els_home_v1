@@ -103,7 +103,9 @@ export async function init() {
             pollEmergency().catch(() => { });
 
             if (State.trip.status === 'driving') {
-              if (!window.App?._gpsWatchId) {
+              // [v5.11.13 Fix] window.App._gpsWatchId는 항상 undefined → import된 gpsWatchId로 정확히 체크
+              const { gpsWatchId: currentWatchId } = await import('./gps.js?v=5146');
+              if (!currentWatchId) {
                 remoteLog('포그라운드 복귀: GPS watcher 미존재 — 재기동', 'GPS_RESUME');
                 stopGPS();
                 startGPS();

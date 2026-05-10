@@ -138,7 +138,7 @@ export async function startGPS() {
         backgroundTitle: 'ELS 위치 관제',
         requestPermissions: true,
         stale: false,
-        distanceFilter: 5,
+        distanceFilter: 15,  // [v5.11.13] 5m→15m: 오차 범위 내 소이동 좌표 튐 방지
       },
       (location, error) => {
         if (error) {
@@ -421,9 +421,9 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     State._lastLng = lng;
   }
 
-  // 정확도 필터: 500m 초과만 스킵 (기존 200m → 완화)
-  if (!isForced && accuracy && accuracy > 500) {
-    remoteLog(`GPS 정확도 낮음: ${accuracy.toFixed(0)}m - 전송 스킵`, 'GPS_ACCURACY');
+  // [v5.11.13] 정확도 필터 강화: 500m→100m (GPS 튐 이상치 제거), isForced 제외
+  if (!isForced && accuracy && accuracy > 100) {
+    remoteLog(`GPS 정확도 낮음 스킵: ${accuracy.toFixed(0)}m (기준 100m)`, 'GPS_ACCURACY');
     updateTripStatusLine();
     return;
   }
