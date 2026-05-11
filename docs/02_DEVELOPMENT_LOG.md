@@ -1,6 +1,16 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 아산 선적관리 UI 고도화 — 헤더 고정 및 동적 제목 반영 (v5.12.4)
+### 🚀 Achievement
+- **테이블 헤더 고정 (Sticky Header)**: 스크롤 시에도 컬럼 제목이 상단에 유지되도록 `position: sticky` 방해 요소를 제거하여 사용성 개선.
+- **동적 컬럼 제목 반영**: NAS 엑셀 원본에서 컬럼 제목을 수정하더라도, 사용자가 저장한 기존 컬럼 순서와 설정을 유지하면서 새로운 제목이 자동으로 UI에 반영되도록 인덱스 기반 매칭 로직 도입.
+- **사용자별 프리셋 격리 확인**: P1/P2 프리셋이 로그인한 사용자별로 독립적으로 저장됨을 코드로 재검증 및 확인.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`: `<th>` 태그의 인라인 스타일 제거 및 `sourceHeaders` 기반 컬럼명 화해(Reconciliation) 로직 구현.
+- `web/app/(main)/employees/branches/asan/shipping.module.css`: `position: sticky` 및 `z-index` 설정 확인.
+
 ## [2026-05-11] 안정화 및 모바일 UI 최적화 — P1/P2 저장 수정 및 갤S24 대응 (v5.12.3)
 ### 🚀 Achievement
 - **저장 로직 안정화**: `/api/user/prefs` 라우트의 `await createClient()` 누락을 수정하여 P1/P2 프리셋 저장이 불가능하던 이슈 해결.

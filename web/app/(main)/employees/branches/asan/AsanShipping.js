@@ -152,8 +152,45 @@ export default function AsanShipping() {
                 const res = await fetch('/api/user/prefs?page_key=asan_shipping_default');
                 const { data: prefs } = await res.json();
                 if (prefs && prefs.colOrder && prefs.colOrder.length > 0) {
-                    setColOrder(prefs.colOrder);
-                    if (prefs.hiddenCols) setHiddenCols(new Set(prefs.hiddenCols));
+                    let finalOrder = prefs.colOrder;
+                    let finalHidden = new Set(prefs.hiddenCols || []);
+
+                    // [v5.12.4] Dynamic Header Reconciliation: Excel 제목 수정 반영
+                    if (prefs.sourceHeaders && data.headers) {
+                        const currentHeaders = data.headers;
+                        const sourceHeaders = prefs.sourceHeaders;
+                        
+                        // 1. colOrder 보정
+                        finalOrder = prefs.colOrder.map(name => {
+                            if (currentHeaders.includes(name)) return name;
+                            // 이름이 바뀌었다면 index로 매칭 시도
+                            const oldIdx = sourceHeaders.indexOf(name);
+                            if (oldIdx !== -1 && currentHeaders[oldIdx]) return currentHeaders[oldIdx];
+                            return null;
+                        }).filter(Boolean);
+
+                        // 2. hiddenCols 보정
+                        const newHidden = new Set();
+                        (prefs.hiddenCols || []).forEach(name => {
+                            if (currentHeaders.includes(name)) {
+                                newHidden.add(name);
+                            } else {
+                                const oldIdx = sourceHeaders.indexOf(name);
+                                if (oldIdx !== -1 && currentHeaders[oldIdx]) newHidden.add(currentHeaders[oldIdx]);
+                            }
+                        });
+                        finalHidden = newHidden;
+
+                        // 3. 신규 추가된 컬럼 반영
+                        currentHeaders.forEach(h => {
+                            if (!finalOrder.includes(h) && !finalHidden.has(h)) {
+                                finalOrder.push(h);
+                            }
+                        });
+                    }
+
+                    setColOrder(finalOrder);
+                    setHiddenCols(finalHidden);
                     if (prefs.sortConfig) setSortConfig(prefs.sortConfig);
                     return;
                 }
@@ -170,9 +207,14 @@ export default function AsanShipping() {
 
     // Auto-save layout to DB (debounced 1.5s)
     useEffect(() => {
-        if (colOrder.length === 0) return;
+        if (colOrder.length === 0 || !data?.headers) return;
         const t = setTimeout(() => {
-            const settings = { colOrder, hiddenCols: Array.from(hiddenCols), sortConfig };
+            const settings = { 
+                colOrder, 
+                hiddenCols: Array.from(hiddenCols), 
+                sortConfig,
+                sourceHeaders: data.headers // [v5.12.4] 제목 수정 추적용 원본 헤더 저장
+            };
             fetch('/api/user/prefs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -181,7 +223,7 @@ export default function AsanShipping() {
             localStorage.setItem(PREFS_KEY, JSON.stringify({ colOrder }));
         }, 1500);
         return () => clearTimeout(t);
-    }, [colOrder, hiddenCols, sortConfig]);
+    }, [colOrder, hiddenCols, sortConfig, data?.headers]);
 
     const handleSort = (colName) => {
         let direction = 'asc';
@@ -290,7 +332,12 @@ export default function AsanShipping() {
     };
 
     const savePreset = async (num) => {
-        const settings = { colOrder, hiddenCols: Array.from(hiddenCols), sortConfig };
+        const settings = { 
+            colOrder, 
+            hiddenCols: Array.from(hiddenCols), 
+            sortConfig,
+            sourceHeaders: data.headers 
+        };
         try {
             const res = await fetch('/api/user/prefs', {
                 method: 'POST',
@@ -308,8 +355,41 @@ export default function AsanShipping() {
             const res = await fetch(`/api/user/prefs?page_key=asan_shipping_preset_${num}`);
             const { data: prefs } = await res.json();
             if (prefs && prefs.colOrder) {
-                setColOrder(prefs.colOrder);
-                setHiddenCols(new Set(prefs.hiddenCols || []));
+                let finalOrder = prefs.colOrder;
+                let finalHidden = new Set(prefs.hiddenCols || []);
+
+                // [v5.12.4] 프리셋 로드 시에도 제목 수정 반영
+                if (prefs.sourceHeaders && data.headers) {
+                    const currentHeaders = data.headers;
+                    const sourceHeaders = prefs.sourceHeaders;
+                    
+                    finalOrder = prefs.colOrder.map(name => {
+                        if (currentHeaders.includes(name)) return name;
+                        const oldIdx = sourceHeaders.indexOf(name);
+                        if (oldIdx !== -1 && currentHeaders[oldIdx]) return currentHeaders[oldIdx];
+                        return null;
+                    }).filter(Boolean);
+
+                    const newHidden = new Set();
+                    (prefs.hiddenCols || []).forEach(name => {
+                        if (currentHeaders.includes(name)) {
+                            newHidden.add(name);
+                        } else {
+                            const oldIdx = sourceHeaders.indexOf(name);
+                            if (oldIdx !== -1 && currentHeaders[oldIdx]) newHidden.add(currentHeaders[oldIdx]);
+                        }
+                    });
+                    finalHidden = newHidden;
+
+                    currentHeaders.forEach(h => {
+                        if (!finalOrder.includes(h) && !finalHidden.has(h)) {
+                            finalOrder.push(h);
+                        }
+                    });
+                }
+
+                setColOrder(finalOrder);
+                setHiddenCols(finalHidden);
                 setSortConfig(prefs.sortConfig || { key: null, direction: 'asc' });
                 alert(`프리셋 ${num}번 로드 완료!`);
             } else {
@@ -597,7 +677,6 @@ export default function AsanShipping() {
                                         onDragOver={(e) => handleDragOver(e, col)}
                                         onDrop={(e) => handleDrop(e, col)}
                                         className={isDragOver ? styles.dragOver : ''}
-                                        style={{ position: 'relative' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span onClick={() => handleSort(col)} style={{ cursor: 'pointer', flexGrow: 1, textAlign: 'center' }}>
