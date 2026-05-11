@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
@@ -18,6 +19,9 @@ export default function AsanShipping() {
     const [colOrder, setColOrder] = useState([]);
     const [draggedCol, setDraggedCol] = useState(null);
     const [dragOverCol, setDragOverCol] = useState(null);
+
+    // Column Filters
+    const [columnFilters, setColumnFilters] = useState({});
 
     // File Browser
     const [showSettings, setShowSettings] = useState(false);
@@ -147,9 +151,38 @@ export default function AsanShipping() {
         setDraggedCol(null);
     };
 
+    const exportToExcel = () => {
+        if (!processedData || processedData.length === 0) {
+            alert('다운로드할 데이터가 없습니다.');
+            return;
+        }
+        
+        // Use colOrder to get the correctly ordered and filtered headers
+        const exportHeaders = colOrder;
+        
+        // Map rows based on colOrder
+        const exportRows = processedData.map(row => {
+            const mappedRow = {};
+            exportHeaders.forEach(col => {
+                const colIdx = data.headers.indexOf(col);
+                mappedRow[col] = colIdx >= 0 ? row[colIdx] : '';
+            });
+            return mappedRow;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(exportRows, { header: exportHeaders });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "선적관리");
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        XLSX.writeFile(wb, `선적관리_${timestamp}.xlsx`);
+    };
+
     const resetLayout = () => {
         setColOrder(headers);
         setSortConfig({ key: null, direction: 'asc' });
+        setColumnFilters({});
+        setSearchTerm('');
         localStorage.removeItem(PREFS_KEY);
     };
 
@@ -175,6 +208,22 @@ export default function AsanShipping() {
                 });
             }
         }
+
+        // 1.5 Column Specific Filters
+        Object.entries(columnFilters).forEach(([col, filterText]) => {
+            if (filterText && filterText.trim()) {
+                const colIdx = data.headers.indexOf(col);
+                if (colIdx >= 0) {
+                    const terms = filterText.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                    if (terms.length > 0) {
+                        rows = rows.filter(row => {
+                            const cell = String(row[colIdx] || '').toLowerCase();
+                            return terms.some(t => cell.includes(t));
+                        });
+                    }
+                }
+            }
+        });
 
         // 2. Sorting (User clicked column)
         if (sortConfig.key) {
@@ -235,8 +284,9 @@ export default function AsanShipping() {
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
+                    <button className={styles.exportBtn} onClick={exportToExcel} style={{ backgroundColor: '#10b981', color: 'white' }}>엑셀 다운로드</button>
                     <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>설정</button>
-                    <button className={styles.resetBtn} onClick={resetLayout}>정렬 초기화</button>
+                    <button className={styles.resetBtn} onClick={resetLayout} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#ef4444' }}>정렬 초기화</button>
                     <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
                         {syncing ? '동기화 중...' : 'NAS 동기화'}
                     </button>
@@ -252,19 +302,31 @@ export default function AsanShipping() {
                                 return (
                                     <th 
                                         key={col}
-                                        draggable="true"
+                                        draggable
                                         onDragStart={(e) => handleDragStart(e, col)}
                                         onDragOver={(e) => handleDragOver(e, col)}
                                         onDrop={(e) => handleDrop(e, col)}
-                                        onClick={() => handleSort(col)}
                                         className={isDragOver ? styles.dragOver : ''}
                                     >
-                                        {col}
-                                        {sortConfig.key === col && (
-                                            <span className={styles.sortIcon}>
-                                                {sortConfig.direction === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                        )}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <div onClick={() => handleSort(col)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>{col}</span>
+                                                {sortConfig.key === col && (
+                                                    <span className={styles.sortIcon}>
+                                                        {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <input 
+                                                type="text" 
+                                                className={styles.colFilterInput} 
+                                                placeholder="필터..." 
+                                                value={columnFilters[col] || ''}
+                                                onChange={e => setColumnFilters(prev => ({ ...prev, [col]: e.target.value }))}
+                                                onClick={e => e.stopPropagation()}
+                                                style={{ width: '100%', padding: '2px 4px', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }}
+                                            />
+                                        </div>
                                     </th>
                                 );
                             })}
