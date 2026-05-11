@@ -23,8 +23,9 @@ export default function AsanShipping() {
     const [dragOverCol, setDragOverCol] = useState(null);
     const [isDragOverHidden, setIsDragOverHidden] = useState(false);
 
-    // Column Filters
+    // Column Filters (Excel-like)
     const [columnFilters, setColumnFilters] = useState({});
+    const [filterDropdown, setFilterDropdown] = useState(null);
 
     // File Browser
     const [showSettings, setShowSettings] = useState(false);
@@ -264,18 +265,16 @@ export default function AsanShipping() {
             }
         }
 
-        // 1.5 Column Specific Filters
-        Object.entries(columnFilters).forEach(([col, filterText]) => {
-            if (filterText && filterText.trim()) {
+        // 1.5 Column Specific Filters (Excel-like multi-select)
+        Object.entries(columnFilters).forEach(([col, selectedSet]) => {
+            if (selectedSet && selectedSet.size > 0) {
                 const colIdx = data.headers.indexOf(col);
                 if (colIdx >= 0) {
-                    const terms = filterText.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-                    if (terms.length > 0) {
-                        rows = rows.filter(row => {
-                            const cell = String(row[colIdx] || '').toLowerCase();
-                            return terms.some(t => cell.includes(t));
-                        });
-                    }
+                    rows = rows.filter(row => {
+                        const cell = String(row[colIdx] || '').trim();
+                        // Handle empty strings
+                        return selectedSet.has(cell);
+                    });
                 }
             }
         });
@@ -313,15 +312,75 @@ export default function AsanShipping() {
         }
 
         return rows;
-    }, [data, searchTerm, sortConfig, headers]);
+    }, [data, searchTerm, sortConfig, headers, columnFilters]);
 
     if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
 
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
 
+    // Extract unique values for the currently opened dropdown
+    const getUniqueValues = (col) => {
+        if (!data || !data.data) return [];
+        const colIdx = data.headers.indexOf(col);
+        if (colIdx === -1) return [];
+        
+        // Filter rows based on OTHER column filters first (to cascade filters)
+        let rows = [...data.data];
+        if (searchTerm.trim()) {
+            const terms = searchTerm.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            if (terms.length > 0) {
+                rows = rows.filter(row => terms.some(t => row.some(cell => String(cell || '').toLowerCase().includes(t))));
+            }
+        }
+        Object.entries(columnFilters).forEach(([c, selectedSet]) => {
+            if (c !== col && selectedSet && selectedSet.size > 0) {
+                const cIdx = data.headers.indexOf(c);
+                if (cIdx >= 0) rows = rows.filter(row => selectedSet.has(String(row[cIdx] || '').trim()));
+            }
+        });
+
+        const unique = new Set();
+        rows.forEach(row => unique.add(String(row[colIdx] || '').trim()));
+        return Array.from(unique).sort();
+    };
+
+    const toggleFilterValue = (col, val) => {
+        setColumnFilters(prev => {
+            const newFilters = { ...prev };
+            const currentSet = newFilters[col] ? new Set(newFilters[col]) : new Set();
+            if (currentSet.has(val)) {
+                currentSet.delete(val);
+            } else {
+                currentSet.add(val);
+            }
+            if (currentSet.size === 0) {
+                delete newFilters[col];
+            } else {
+                newFilters[col] = currentSet;
+            }
+            return newFilters;
+        });
+    };
+
+    const selectAllFilter = (col, uniqueVals) => {
+        setColumnFilters(prev => {
+            const newFilters = { ...prev };
+            newFilters[col] = new Set(uniqueVals);
+            return newFilters;
+        });
+    };
+
+    const clearFilter = (col) => {
+        setColumnFilters(prev => {
+            const newFilters = { ...prev };
+            delete newFilters[col];
+            return newFilters;
+        });
+    };
+
     return (
-        <div className={styles.container}>
+        <div className={styles.container} onClick={() => setFilterDropdown(null)}>
             <div className={styles.topBar}>
                 <div className={styles.leftControls}>
                     <h2 className={styles.title}>선적관리 리스트</h2>
@@ -334,16 +393,16 @@ export default function AsanShipping() {
                 <div className={styles.rightControls}>
                     <input 
                         type="text" 
-                        placeholder="전체 컬럼 검색 (콤마 구분)" 
+                        placeholder="전체 검색 (콤마 구분)" 
                         className={styles.searchInput}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
-                    <button className={styles.exportBtn} onClick={exportToExcel} style={{ backgroundColor: '#10b981', color: 'white' }}>엑셀 다운로드</button>
-                    <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>설정</button>
-                    <button className={styles.resetBtn} onClick={resetLayout} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#ef4444' }}>정렬 초기화</button>
+                    <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
+                    <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                    <button className={styles.resetBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
                     <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
-                        {syncing ? '동기화 중...' : 'NAS 동기화'}
+                        {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
                     </button>
                 </div>
             </div>
@@ -404,26 +463,48 @@ export default function AsanShipping() {
                                         onDragOver={(e) => handleDragOver(e, col)}
                                         onDrop={(e) => handleDrop(e, col)}
                                         className={isDragOver ? styles.dragOver : ''}
+                                        style={{ position: 'relative' }}
                                     >
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                            <div onClick={() => handleSort(col)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span>{col}</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span onClick={() => handleSort(col)} style={{ cursor: 'pointer', flexGrow: 1, textAlign: 'center' }}>
+                                                {col}
                                                 {sortConfig.key === col && (
                                                     <span className={styles.sortIcon}>
                                                         {sortConfig.direction === 'asc' ? '▲' : '▼'}
                                                     </span>
                                                 )}
-                                            </div>
-                                            <input 
-                                                type="text" 
-                                                className={styles.colFilterInput} 
-                                                placeholder="필터..." 
-                                                value={columnFilters[col] || ''}
-                                                onChange={e => setColumnFilters(prev => ({ ...prev, [col]: e.target.value }))}
-                                                onClick={e => e.stopPropagation()}
-                                                style={{ width: '100%', padding: '2px 4px', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }}
-                                            />
+                                            </span>
+                                            <span 
+                                                onClick={(e) => { e.stopPropagation(); setFilterDropdown(filterDropdown === col ? null : col); }}
+                                                style={{ cursor: 'pointer', padding: '0 4px', color: columnFilters[col] ? '#3b82f6' : '#94a3b8' }}
+                                            >
+                                                ▼
+                                            </span>
                                         </div>
+                                        {filterDropdown === col && (
+                                            <div 
+                                                className={styles.dropdown} 
+                                                onClick={e => e.stopPropagation()}
+                                                style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '8px', minWidth: '150px', maxHeight: '300px', display: 'flex', flexDirection: 'column' }}
+                                            >
+                                                <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                                                    <button onClick={() => selectAllFilter(col, getUniqueValues(col))} style={{ flex: 1, padding: '4px', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>전체 선택</button>
+                                                    <button onClick={() => clearFilter(col)} style={{ flex: 1, padding: '4px', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>초기화</button>
+                                                </div>
+                                                <div style={{ overflowY: 'auto', flex: 1 }}>
+                                                    {getUniqueValues(col).map(val => (
+                                                        <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={columnFilters[col]?.has(val) || false}
+                                                                onChange={() => toggleFilterValue(col, val)}
+                                                            />
+                                                            {val || '(빈 값)'}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </th>
                                 );
                             })}
