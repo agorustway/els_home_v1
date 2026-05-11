@@ -5,7 +5,7 @@
     background: #f8fafc;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 250px);
     overflow: hidden;
 }
 
@@ -1323,6 +1323,7 @@
     .container {
         padding: 2px 4px;
         /* Minimize padding for mobile */
+        height: calc(100vh - 180px);
     }
 
     .compactHeader {
