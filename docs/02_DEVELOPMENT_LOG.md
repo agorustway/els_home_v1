@@ -1,6 +1,23 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 선적관리 고도화 — DB 레이아웃 저장 및 엑셀형 필터 시스템 (v5.12.2)
+### 🚀 Achievement
+- **엑셀형 컬럼 필터**: 텍스트 입력 필터를 제거하고, 각 컬럼 헤더의 ▼ 아이콘 클릭 시 해당 컬럼의 고유값 목록이 체크박스 드롭다운으로 표시되어 다중 선택 필터링 가능.
+- **DB 기반 사용자별 레이아웃 영구 저장**: `user_ui_prefs` Supabase 테이블을 신설하고, `/api/user/prefs` API 라우트를 통해 로그인 계정별 컬럼 순서/숨기기/정렬 설정을 자동 저장·복원.
+- **프리셋 2슬롯 시스템**: P1/P2 저장·로드 버튼으로 자주 사용하는 레이아웃을 즉시 전환 가능.
+- **컬럼 드래그 숨기기 (항목 보관함)**: 테이블 위 보관함 영역에 컬럼을 드래그하면 해당 컬럼이 표에서 사라지고, 보관함 내 버튼 클릭으로 즉시 복구.
+- **저장 경과시간 카운터**: 배차판과 동일한 `+HH:MM:SS` 형태로 파일 저장 후 경과 시간을 실시간 표시.
+- **필터 배지 시스템**: 활성 필터가 표 상단에 배지 형태로 노출되어 현재 적용된 필터 상태를 한눈에 파악하고 개별/전체 해제 가능.
+- **버튼 톤 앤 매너 통일**: 모든 상단 버튼을 동일한 스타일(`resetBtn`)로 통일하여 시각적 일관성 확보.
+- **모바일 반응형**: topBar 세로 전환, 검색창 full-width, 버튼/셀 축소 등 768px 이하 대응 CSS 추가.
+
+### 🛠 Technical Changes
+- `web/app/api/user/prefs/route.js`: 사용자별 UI 설정 CRUD API (GET/POST, Supabase `user_ui_prefs` upsert).
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`: DB 연동 레이아웃 저장/로드, 엑셀형 필터 드롭다운, 프리셋, 필터 배지 시스템 전면 리팩토링.
+- `web/app/(main)/employees/branches/asan/shipping.module.css`: 오버레이/모달, 필터 배지, 모바일 미디어쿼리 스타일 대폭 추가.
+- Supabase SQL: `user_ui_prefs` 테이블 생성 (`user_id + page_key` PK, JSONB settings, RLS 적용).
+
 ## [2026-05-11] 선적관리 파서 버그 수정 및 UI 고도화 (v5.12.1)
 ### 🚀 Achievement
 - **백엔드 엔드포인트 누락 수정**: `els-core` 컨테이너가 참조하는 `app_core.py`에 선적관리 파서 API를 누락하여 발생했던 `404 Not Found` 이슈를 해결했습니다.
