@@ -68,6 +68,18 @@
 }
 .syncBtn:hover { background: #dbeafe; }
 
+.dangerBtn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1px solid #fca5a5;
+    background: #fef2f2;
+    color: #dc2626;
+}
+.dangerBtn:hover { background: #fee2e2; }
+
 .tableWrap {
     background: #fff;
     border-radius: 10px;

@@ -497,8 +497,8 @@ export default function AsanShipping() {
                     <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">💾 P2 저장</button>
                     <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">📂 P2 로드</button>
                     <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
+                    <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
                     <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
-                    <button className={styles.resetBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
                     <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
                         {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
                     </button>
