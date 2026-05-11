@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { proxyToBackend } from '../../els/proxyToBackend';
+import { proxyToBackend } from '../../../els/proxyToBackend';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
