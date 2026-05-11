@@ -1,4 +1,34 @@
+
 # 📜 DEVELOPMENT LOG (개발 역사)
+
+## [2026-05-11] 선적관리 파서 버그 수정 및 UI 고도화 (v5.12.1)
+### 🚀 Achievement
+- **백엔드 엔드포인트 누락 수정**: `els-core` 컨테이너가 참조하는 `app_core.py`에 선적관리 파서 API를 누락하여 발생했던 `404 Not Found` 이슈를 해결했습니다.
+- **헤더 레이아웃 최적화**: 상황판 제목과 탭 버튼을 동일 선상(Flex Row)에 배치하여 불필요한 수직 공간 낭비를 줄였습니다.
+
+### 🛠 Technical Changes
+- `docker/els-backend/app_core.py`: 선적관리 파서 API(`get_asan_shipping`) 추가 및 캐싱 로직 적용.
+- `web/app/(main)/employees/branches/asan/page.js`: 헤더 래퍼 스타일 수정 (Flex Row 적용 및 탭 버튼 위치 조정).
+
+## [2026-05-11] 아산지점 선적관리 탭 추가 및 종합상황판 레이아웃 개편 (v5.12.0)
+### 🚀 Achievement
+- **선적관리 전용 탭 신설**: 아산지점 페이지에 `2026_자체보관리스트.xlsx`와 연동되는 '선적관리' 탭을 추가했습니다. `CONTAINER` 컬럼(O열) 유무를 기준으로 실시간 데이터를 필터링하여 제공합니다.
+- **종합상황판 레이아웃 최적화**: 아산지점의 정체성을 보여주는 와이드 헤더를 최상단에 배치하고, 배차판의 내부 헤더 아이템들을 조작 툴바(`topBar`)로 통합하여 수직 공간 효율성을 극대화했습니다.
+- **고성능 엑셀 파이프라인**: NAS 백엔드에 파일 수정 시간(mtime) 기반의 인메모리 캐싱 파서를 구축하여, 엑셀 저장 즉시 웹에서 CSV급 속도로 데이터를 조회할 수 있게 했습니다.
+- **사용자 중심 데이터 그리드**: 
+  - **DnD 컬럼 재정렬**: 헤더를 드래그하여 원하는 순서로 배치할 수 있으며, 이 설정은 `localStorage`에 저장되어 유지됩니다.
+  - **스마트 멀티 검색**: 콤마(`,`)를 이용한 다중 키워드 검색을 지원하여 복잡한 리스트에서도 원하는 행을 즉시 찾을 수 있습니다.
+  - **모선 기반 자동 정렬**: AD, AE, AF 컬럼(선적확정모선)의 값 유무를 판단하여 관리 대상 행들을 최상단으로 자동 정렬합니다.
+- **데이터 안정성 강화**: `#N/A` 및 `nan` 문자열을 공란으로 완벽 처리하고, 네트워크 파일 읽기 안정성을 위해 임시 파일 복사 파싱 로직을 적용했습니다.
+
+### 🛠 Technical Changes
+- `docker/els-backend/app.py`: `/api/branches/asan/shipping` 엔드포인트 및 mtime 기반 캐싱 파서 로직 추가.
+- `web/app/api/branches/asan/shipping/route.js`: Next.js 서버사이드 프록시 라우트 신설.
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`: 선적관리 그리드 컴포넌트 신규 개발.
+- `web/app/(main)/employees/branches/asan/shipping.module.css`: 선적관리 전용 스타일링 추가.
+- `web/app/(main)/employees/branches/asan/page.js`: `AsanBranchPage` 탭 래퍼 도입 및 `AsanDispatchContent` 헤더 통합 리팩토링.
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`: 레이아웃 변경에 따른 스타일 보정.
+
 
 ## [2026-05-11] 차량정보 불러오기 입력폼 초기화 버그 수정 및 UX 개선 (v5.11.21)
 ### 🚀 Achievement

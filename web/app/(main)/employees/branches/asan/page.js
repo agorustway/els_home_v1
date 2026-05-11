@@ -854,12 +854,12 @@ export default function AsanBranchPage() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px' }}>
             {/* 전역 아산지점 헤더 */}
-            <div style={{ background: '#fff', padding: '16px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', background: '#fff', padding: '16px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ borderLeft: '4px solid #2563eb', paddingLeft: '12px' }}>아산지점 종합상황판</span>
                 </h1>
                 
-                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                     <button 
                         style={{ 
                             padding: '8px 24px', 
