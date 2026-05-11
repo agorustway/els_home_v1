@@ -134,3 +134,163 @@
     color: #64748b;
     font-weight: 600;
 }
+
+/* Filter Active Badges */
+.filterBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 0;
+}
+
+.filterBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: #1d4ed8;
+}
+
+.filterBadge button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ef4444;
+    font-weight: bold;
+    padding: 0 2px;
+}
+
+/* Overlay + Modal */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+}
+
+.modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+.modal h2 {
+    margin: 0 0 16px;
+    font-size: 1.1rem;
+}
+
+.formGroup { margin-bottom: 16px; }
+.formGroup label { font-weight: 700; font-size: 0.85rem; color: #475569; display: block; margin-bottom: 6px; }
+
+.pathRow {
+    display: flex;
+    gap: 8px;
+}
+
+.pathInput {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: #f8fafc;
+}
+
+.browseBtn, .saveBtn, .cancelBtn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+}
+
+.browseBtn { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.saveBtn { background: #10b981; color: white; border-color: #10b981; }
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.browserPath {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0 0 10px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
+.browserList {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+}
+
+.browserItem {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.9rem;
+}
+
+.browserItem:hover {
+    background: #f1f5f9;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+    .topBar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .rightControls {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .searchInput {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .resetBtn, .syncBtn {
+        font-size: 0.75rem;
+        padding: 5px 8px;
+    }
+
+    .title {
+        font-size: 1rem;
+    }
+
+    .fileMod {
+        font-size: 0.7rem;
+    }
+
+    .table th, .table td {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+    }
+
+    .tableWrap {
+        max-height: calc(100vh - 300px);
+    }
+}

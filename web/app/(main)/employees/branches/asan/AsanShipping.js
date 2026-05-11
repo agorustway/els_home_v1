@@ -118,28 +118,44 @@ export default function AsanShipping() {
         }
     };
 
-    // Load preferences
+    // Load preferences from DB (fallback to localStorage)
     useEffect(() => {
-        if (headers.length > 0) {
+        if (headers.length === 0) return;
+        const loadDbPrefs = async () => {
             try {
-                const prefs = JSON.parse(localStorage.getItem(PREFS_KEY));
-                if (prefs && prefs.colOrder && prefs.colOrder.length === headers.length) {
+                const res = await fetch('/api/user/prefs?page_key=asan_shipping_default');
+                const { data: prefs } = await res.json();
+                if (prefs && prefs.colOrder && prefs.colOrder.length > 0) {
                     setColOrder(prefs.colOrder);
-                } else {
-                    setColOrder(headers);
+                    if (prefs.hiddenCols) setHiddenCols(new Set(prefs.hiddenCols));
+                    if (prefs.sortConfig) setSortConfig(prefs.sortConfig);
+                    return;
                 }
-            } catch {
-                setColOrder(headers);
-            }
-        }
+            } catch { /* ignore */ }
+            // Fallback: localStorage
+            try {
+                const cached = JSON.parse(localStorage.getItem(PREFS_KEY));
+                if (cached?.colOrder?.length > 0) { setColOrder(cached.colOrder); return; }
+            } catch { /* ignore */ }
+            setColOrder(headers);
+        };
+        loadDbPrefs();
     }, [headers]);
 
-    // Save preferences
+    // Auto-save layout to DB (debounced 1.5s)
     useEffect(() => {
-        if (colOrder.length > 0) {
+        if (colOrder.length === 0) return;
+        const t = setTimeout(() => {
+            const settings = { colOrder, hiddenCols: Array.from(hiddenCols), sortConfig };
+            fetch('/api/user/prefs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ page_key: 'asan_shipping_default', settings })
+            }).catch(() => {});
             localStorage.setItem(PREFS_KEY, JSON.stringify({ colOrder }));
-        }
-    }, [colOrder]);
+        }, 1500);
+        return () => clearTimeout(t);
+    }, [colOrder, hiddenCols, sortConfig]);
 
     const handleSort = (colName) => {
         let direction = 'asc';
@@ -240,6 +256,42 @@ export default function AsanShipping() {
         setColumnFilters({});
         setSearchTerm('');
         localStorage.removeItem(PREFS_KEY);
+        fetch('/api/user/prefs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ page_key: 'asan_shipping_default', settings: {} })
+        }).catch(() => {});
+    };
+
+    const savePreset = async (num) => {
+        const settings = { colOrder, hiddenCols: Array.from(hiddenCols), sortConfig };
+        try {
+            const res = await fetch('/api/user/prefs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ page_key: `asan_shipping_preset_${num}`, settings })
+            });
+            if (res.ok) alert(`프리셋 ${num}번 저장 완료!`);
+        } catch {
+            alert('저장 실패');
+        }
+    };
+
+    const loadPreset = async (num) => {
+        try {
+            const res = await fetch(`/api/user/prefs?page_key=asan_shipping_preset_${num}`);
+            const { data: prefs } = await res.json();
+            if (prefs && prefs.colOrder) {
+                setColOrder(prefs.colOrder);
+                setHiddenCols(new Set(prefs.hiddenCols || []));
+                setSortConfig(prefs.sortConfig || { key: null, direction: 'asc' });
+                alert(`프리셋 ${num}번 로드 완료!`);
+            } else {
+                alert(`저장된 프리셋 ${num}번이 없습니다.`);
+            }
+        } catch {
+            alert('로드 실패');
+        }
     };
 
     const handleSync = async () => {
@@ -398,6 +450,10 @@ export default function AsanShipping() {
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
+                    <button className={styles.resetBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">💾 P1 저장</button>
+                    <button className={styles.resetBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">📂 P1 로드</button>
+                    <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">💾 P2 저장</button>
+                    <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">📂 P2 로드</button>
                     <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
                     <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
                     <button className={styles.resetBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
@@ -448,6 +504,21 @@ export default function AsanShipping() {
                     </button>
                 ))}
             </div>
+
+            {/* Active Filter Badges */}
+            {Object.keys(columnFilters).length > 0 && (
+                <div className={styles.filterBadges}>
+                    {Object.entries(columnFilters).map(([col, selectedSet]) => (
+                        <span key={col} className={styles.filterBadge}>
+                            {col}: {selectedSet.size}개 선택
+                            <button onClick={() => clearFilter(col)}>✕</button>
+                        </span>
+                    ))}
+                    <button className={styles.filterBadge} style={{ background: '#fee2e2', borderColor: '#fecaca', color: '#dc2626', cursor: 'pointer' }} onClick={() => setColumnFilters({})}>
+                        전체 필터 초기화
+                    </button>
+                </div>
+            )}
 
             <div className={styles.tableWrap}>
                 <table className={styles.table}>
