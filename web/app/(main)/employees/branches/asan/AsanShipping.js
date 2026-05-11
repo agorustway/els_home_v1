@@ -19,10 +19,26 @@ export default function AsanShipping() {
     const [draggedCol, setDraggedCol] = useState(null);
     const [dragOverCol, setDragOverCol] = useState(null);
 
-    const fetchData = async () => {
+    // File Browser
+    const [showSettings, setShowSettings] = useState(false);
+    const [showBrowser, setShowBrowser] = useState(false);
+    const [browserPath, setBrowserPath] = useState('/아산지점');
+    const [browserFiles, setBrowserFiles] = useState([]);
+    const [browserLoading, setBrowserLoading] = useState(false);
+    const [selectedPath, setSelectedPath] = useState('');
+
+    useEffect(() => {
+        const saved = localStorage.getItem('asan_shipping_file') || '/아산지점/2026_자체보관리스트.xlsx';
+        setSelectedPath(saved);
+    }, []);
+
+    const fetchData = async (pathOverride) => {
+        const path = pathOverride || selectedPath;
+        if (!path) return;
+        
         setLoading(true);
         try {
-            const r = await fetch('/api/branches/asan/shipping');
+            const r = await fetch(`/api/branches/asan/shipping?path=${encodeURIComponent(path)}`);
             // 백엔드에서 Python NaN이 JSON에 섞여 나올 수 있어 text로 받아서 치환 후 파싱
             const text = await r.text();
             const safeText = text.replace(/\bNaN\b/g, 'null');
@@ -30,7 +46,8 @@ export default function AsanShipping() {
             if (j.data) {
                 setData(j.data);
                 if (j.data.headers) {
-                    setHeaders(j.data.headers);
+                    const filteredHeaders = j.data.headers.filter(h => h !== 'col_1');
+                    setHeaders(filteredHeaders);
                 }
             }
         } catch (e) {
@@ -41,8 +58,38 @@ export default function AsanShipping() {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (selectedPath) fetchData();
+    }, [selectedPath]);
+
+    const loadNasFolder = async (path) => {
+        setBrowserLoading(true);
+        try {
+            const r = await fetch(`/api/nas/files?path=${encodeURIComponent(path)}`);
+            const j = await r.json();
+            if (j.files) setBrowserFiles(j.files);
+            setBrowserPath(path);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setBrowserLoading(false);
+        }
+    };
+
+    const openBrowser = () => {
+        loadNasFolder('/아산지점');
+        setShowSettings(false);
+        setShowBrowser(true);
+    };
+
+    const selectFile = (file) => {
+        if (file.type === 'directory') {
+            loadNasFolder(file.path);
+        } else if (file.name.match(/\.xls[mx]$/i)) {
+            localStorage.setItem('asan_shipping_file', file.path);
+            setSelectedPath(file.path);
+            setShowBrowser(false);
+        }
+    };
 
     // Load preferences
     useEffect(() => {
@@ -131,7 +178,7 @@ export default function AsanShipping() {
 
         // 2. Sorting (User clicked column)
         if (sortConfig.key) {
-            const colIdx = headers.indexOf(sortConfig.key);
+            const colIdx = data.headers.indexOf(sortConfig.key);
             if (colIdx >= 0) {
                 rows.sort((a, b) => {
                     const valA = String(a[colIdx] || '');
@@ -188,6 +235,7 @@ export default function AsanShipping() {
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
+                    <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>설정</button>
                     <button className={styles.resetBtn} onClick={resetLayout}>정렬 초기화</button>
                     <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
                         {syncing ? '동기화 중...' : 'NAS 동기화'}
@@ -226,7 +274,7 @@ export default function AsanShipping() {
                         {processedData.map((row, ri) => (
                             <tr key={ri} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
                                 {colOrder.map(col => {
-                                    const colIdx = headers.indexOf(col);
+                                    const colIdx = data.headers.indexOf(col);
                                     const val = colIdx >= 0 ? row[colIdx] : '';
                                     return <td key={col}>{val}</td>;
                                 })}
@@ -235,6 +283,48 @@ export default function AsanShipping() {
                     </tbody>
                 </table>
             </div>
+
+            {/* 설정 모달 */}
+            {showSettings && (
+                <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
+                    <div className={styles.modal}>
+                        <h2>선적관리 파일 설정</h2>
+                        <div className={styles.formGroup}>
+                            <label>엑셀 파일 경로</label>
+                            <div className={styles.pathRow}>
+                                <input value={selectedPath} readOnly className={styles.pathInput} />
+                                <button onClick={openBrowser} className={styles.browseBtn}>찾기</button>
+                            </div>
+                        </div>
+                        <div className={styles.modalFooter}>
+                            <button onClick={() => setShowSettings(false)} className={styles.saveBtn}>닫기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 파일 브라우저 모달 */}
+            {showBrowser && (
+                <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) { setShowBrowser(false); setShowSettings(true); } }}>
+                    <div className={styles.modal} style={{ maxWidth: 600 }}>
+                        <h2>NAS 파일 선택</h2>
+                        <p className={styles.browserPath}>{browserPath}</p>
+                        <div className={styles.browserList}>
+                            {browserLoading ? <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>불러오는 중...</div> : <>
+                                {browserPath !== '/' && <div className={styles.browserItem} onClick={() => loadNasFolder(browserPath.split('/').slice(0, -1).join('/') || '/')}>📁 ..</div>}
+                                {browserFiles.map((f, i) => (
+                                    <div key={i} className={styles.browserItem} onClick={() => selectFile(f)}>
+                                        {f.type === 'directory' ? '📁' : '📄'} {f.name}
+                                    </div>
+                                ))}
+                            </>}
+                        </div>
+                        <div className={styles.modalFooter}>
+                            <button onClick={() => { setShowBrowser(false); setShowSettings(true); }} className={styles.cancelBtn}>닫기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
