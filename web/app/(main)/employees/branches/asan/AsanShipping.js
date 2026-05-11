@@ -5,6 +5,30 @@ import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
 
+// 날짜 관련 컬럼 키워드
+const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
+
+// 20260508.0 → 2026-05-08 변환
+function formatCellValue(val, colName) {
+    if (val == null || val === '') return '';
+    const s = String(val);
+    // 20260508.0 or 20260508 패턴 감지
+    const m = s.match(/^(\d{4})(\d{2})(\d{2})(\.0)?$/);
+    if (m) {
+        const [, y, mo, d] = m;
+        if (parseInt(mo) >= 1 && parseInt(mo) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31) {
+            return `${y}-${mo}-${d}`;
+        }
+    }
+    return s;
+}
+
+// 컬럼이 날짜 계열인지 판별
+function isDateColumn(colName) {
+    const lower = (colName || '').toLowerCase();
+    return DATE_COL_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 export default function AsanShipping() {
     const [data, setData] = useState(null);
     const [headers, setHeaders] = useState([]);
@@ -25,6 +49,8 @@ export default function AsanShipping() {
 
     // Column Filters (Excel-like)
     const [columnFilters, setColumnFilters] = useState({});
+    // Date Range Filter
+    const [dateFilter, setDateFilter] = useState({ col: '', from: '', to: '' });
     const [filterDropdown, setFilterDropdown] = useState(null);
 
     // File Browser
@@ -323,13 +349,26 @@ export default function AsanShipping() {
                 const colIdx = data.headers.indexOf(col);
                 if (colIdx >= 0) {
                     rows = rows.filter(row => {
-                        const cell = String(row[colIdx] || '').trim();
-                        // Handle empty strings
+                        const cell = formatCellValue(row[colIdx], col).trim();
                         return selectedSet.has(cell);
                     });
                 }
             }
         });
+
+        // 1.6 Date Range Filter
+        if (dateFilter.col && (dateFilter.from || dateFilter.to)) {
+            const dateColIdx = data.headers.indexOf(dateFilter.col);
+            if (dateColIdx >= 0) {
+                rows = rows.filter(row => {
+                    const raw = formatCellValue(row[dateColIdx], dateFilter.col);
+                    if (!raw) return false;
+                    if (dateFilter.from && raw < dateFilter.from) return false;
+                    if (dateFilter.to && raw > dateFilter.to) return false;
+                    return true;
+                });
+            }
+        }
 
         // 2. Sorting (User clicked column)
         if (sortConfig.key) {
@@ -364,12 +403,15 @@ export default function AsanShipping() {
         }
 
         return rows;
-    }, [data, searchTerm, sortConfig, headers, columnFilters]);
+    }, [data, searchTerm, sortConfig, headers, columnFilters, dateFilter]);
 
     if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
 
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
+
+    // Detect date-type columns
+    const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
 
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {
@@ -393,7 +435,7 @@ export default function AsanShipping() {
         });
 
         const unique = new Set();
-        rows.forEach(row => unique.add(String(row[colIdx] || '').trim()));
+        rows.forEach(row => unique.add(formatCellValue(row[colIdx], col).trim()));
         return Array.from(unique).sort();
     };
 
@@ -505,6 +547,27 @@ export default function AsanShipping() {
                 ))}
             </div>
 
+            {/* Date Range Filter */}
+            {dateColumns.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', padding: '8px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#475569' }}>📅 날짜 필터</span>
+                    <select 
+                        value={dateFilter.col} 
+                        onChange={e => setDateFilter(p => ({ ...p, col: e.target.value }))}
+                        style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }}
+                    >
+                        <option value="">컬럼 선택</option>
+                        {dateColumns.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input type="date" value={dateFilter.from} onChange={e => setDateFilter(p => ({ ...p, from: e.target.value }))} style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
+                    <span style={{ color: '#94a3b8' }}>~</span>
+                    <input type="date" value={dateFilter.to} onChange={e => setDateFilter(p => ({ ...p, to: e.target.value }))} style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
+                    {(dateFilter.from || dateFilter.to) && (
+                        <button onClick={() => setDateFilter({ col: '', from: '', to: '' })} style={{ padding: '4px 8px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer', color: '#dc2626' }}>초기화</button>
+                    )}
+                </div>
+            )}
+
             {/* Active Filter Badges */}
             {Object.keys(columnFilters).length > 0 && (
                 <div className={styles.filterBadges}>
@@ -556,7 +619,7 @@ export default function AsanShipping() {
                                             <div 
                                                 className={styles.dropdown} 
                                                 onClick={e => e.stopPropagation()}
-                                                style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '8px', minWidth: '150px', maxHeight: '300px', display: 'flex', flexDirection: 'column' }}
+                                                style={{ position: 'absolute', top: '100%', left: colOrder.indexOf(col) < 2 ? 0 : 'auto', right: colOrder.indexOf(col) < 2 ? 'auto' : 0, zIndex: 100, background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '8px', minWidth: '150px', maxHeight: '300px', display: 'flex', flexDirection: 'column' }}
                                             >
                                                 <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
                                                     <button onClick={() => selectAllFilter(col, getUniqueValues(col))} style={{ flex: 1, padding: '4px', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>전체 선택</button>
@@ -586,7 +649,8 @@ export default function AsanShipping() {
                             <tr key={ri} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
                                 {colOrder.map(col => {
                                     const colIdx = data.headers.indexOf(col);
-                                    const val = colIdx >= 0 ? row[colIdx] : '';
+                                    const raw = colIdx >= 0 ? row[colIdx] : '';
+                                    const val = formatCellValue(raw, col);
                                     return <td key={col}>{val}</td>;
                                 })}
                             </tr>

@@ -72,8 +72,9 @@
     border: 1px solid #e2e8f0;
     overflow-x: auto;
     overflow-y: auto;
-    max-height: calc(100vh - 250px);
+    max-height: calc(100vh - 310px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    position: relative;
 }
 
 .table {
