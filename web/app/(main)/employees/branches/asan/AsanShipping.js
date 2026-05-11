@@ -11,6 +11,7 @@ export default function AsanShipping() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [syncing, setSyncing] = useState(false);
+    const [elapsed, setElapsed] = useState('');
     
     // Sort Config
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -64,6 +65,25 @@ export default function AsanShipping() {
     useEffect(() => {
         if (selectedPath) fetchData();
     }, [selectedPath]);
+
+    useEffect(() => {
+        if (!data || !data.file_modified_at) {
+            setElapsed('');
+            return;
+        }
+        const fileTs = data.file_modified_at;
+        const update = () => {
+            const diff = Math.max(0, Date.now() - new Date(fileTs).getTime());
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            setElapsed(`+${d > 0 ? d + 'd ' : ''}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+        };
+        update();
+        const iv = setInterval(update, 1000);
+        return () => clearInterval(iv);
+    }, [data]);
 
     const loadNasFolder = async (path) => {
         setBrowserLoading(true);
@@ -272,7 +292,7 @@ export default function AsanShipping() {
                     <h2 className={styles.title}>선적관리 리스트</h2>
                     {fileTimeStr && (
                         <div className={styles.fileMod}>
-                            저장: {fileTimeStr}
+                            저장: {fileTimeStr} <span style={{ marginLeft: '8px', padding: '2px 6px', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>{elapsed}</span>
                         </div>
                     )}
                 </div>
