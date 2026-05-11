@@ -1,6 +1,16 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 아산 배차판 PC 높이 최적화 — 하단 스크롤바 가시성 개선 (v5.12.6)
+### 🚀 Achievement
+- **PC 레이아웃 동적 높이 적용**: 배차판의 최상위 컨테이너를 브라우저 창 높이(`100vh`)에 맞추고 Flexbox를 적용하여, 데이터 양에 관계없이 하단 가로 스크롤바가 브라우저 하단에 항상 고정되어 보이도록 개선했습니다.
+- **독립 스크롤 시스템**: 페이지 전체 스크롤을 막고 표 내부(`.tableScroll`)에서만 스크롤이 발생하도록 구조를 변경하여 데이터 탐색 편의성을 극대화했습니다.
+- **현황판(Dashboard) 호환성 확보**: 상황판 뷰에서도 높이 제한 내에서 정상적으로 스크롤되도록 `flex: 1` 및 `overflow-y: auto`를 적용했습니다.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`: `.container`, `.tableWrap`, `.tableScroll`에 Flexbox 및 `100vh` 기반 동적 높이 로직 적용.
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`: `.dashboard`에 `flex: 1`, `min-height: 0`, `overflow-y: auto` 추가.
+
 ## [2026-05-11] 아산 종합상황판 모바일 UI 최적화 — 메뉴 정렬 및 차트 여백 축소 (v5.12.5)
 ### 🚀 Achievement
 - **모바일 메뉴바 단정화**: 현황판/배차판 및 통합현황/글로비스/모비스 버튼군이 모바일 화면에서 줄바꿈 없이 균등하게 배치(`flex: 1`)되도록 CSS를 수정하여 시각적 완성도를 높였습니다.

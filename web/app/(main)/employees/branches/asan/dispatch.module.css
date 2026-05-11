@@ -1,9 +1,12 @@
 .container {
     padding: 6px;
-    /* 인트라넷 기준: 초타이트 여백 */
     width: 100%;
     margin: 0 auto;
     background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    overflow: hidden;
 }
 
 /* ===== 페이지 헤더 (클린 스타일) ===== */
@@ -940,13 +943,16 @@
     border-top: none;
     border-radius: 0 0 8px 8px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 .tableScroll {
-    overflow-x: auto;
-    max-height: calc(100vh - 320px);
-    min-height: 300px;
-    overflow-y: auto;
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .table {
