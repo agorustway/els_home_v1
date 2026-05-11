@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5148';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5148';
+import { Store, State, BASE_URL } from './store.js?v=5149';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5149';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5148';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5148';
+} from './gps.js?v=5149';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5149';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -428,7 +428,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5148');
+  const gpsModule = await import('./gps.js?v=5149');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>

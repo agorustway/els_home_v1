@@ -317,7 +317,7 @@
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>전화번호</label>
           <div style="display:flex;gap:4px;">
-             <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" style="flex:1;min-width:0;height:38px;">
+             <input type="tel" id="s-phone" placeholder="01012345678" maxlength="11" oninput="App.checkProfileForm && App.checkProfileForm()" style="flex:1;min-width:0;height:38px;">
              <button class="btn btn-black" id="btn-lookup-driver" onclick="App.lookupDriver()" style="white-space:nowrap;padding:0 12px;height:38px;">번호조회</button>
           </div>
         </div>
@@ -325,15 +325,15 @@
       <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:6px; width:100%; flex-shrink:0;">
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>이름</label>
-          <input type="text" id="s-name" placeholder="홍길동" maxlength="20" style="padding:0 8px; font-size:13px;height:38px;">
+          <input type="text" id="s-name" placeholder="홍길동" maxlength="20" oninput="App.checkProfileForm && App.checkProfileForm()" style="padding:0 8px; font-size:13px;height:38px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label>차량번호</label>
-          <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" style="padding:0 8px; font-size:13px;height:38px;">
+          <input type="text" id="s-vehicle" placeholder="12가3456" maxlength="10" oninput="App.checkProfileForm && App.checkProfileForm()" style="padding:0 8px; font-size:13px;height:38px;">
         </div>
         <div class="field" style="margin-bottom:0; min-width:0;">
           <label id="s-id-label">차량 ID</label>
-          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:38px;">
+          <input type="text" id="s-id" placeholder="ELSS0000" maxlength="20" oninput="App.checkProfileForm && App.checkProfileForm()" style="text-transform:uppercase; padding:0 8px; font-size:13px;height:38px;">
         </div>
       </div>
       <div id="s-general-cargo-box" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:6px; width:100%; flex-shrink:0;">
@@ -350,7 +350,7 @@
           <select id="s-general-body-type" style="height:38px;font-size:13px;"></select>
         </div>
       </div>
-      <button class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:38px; font-size:14px; margin-top:4px;">정보 저장</button>
+      <button id="btn-save-profile" class="btn btn-black btn-full" onclick="App.saveProfile()" style="flex-shrink:0; height:38px; font-size:14px; margin-top:4px;">정보 저장</button>
       <hr class="divider" style="margin:4px 0;">
       <div class="field" style="margin-top:2px;">
         <label>설정</label>
@@ -504,6 +504,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=5148"></script>
+  <script type="module" src="app.js?v=5149"></script>
 </body>
 </html>

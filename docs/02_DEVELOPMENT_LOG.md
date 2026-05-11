@@ -1,5 +1,20 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 차량정보 불러오기 입력폼 초기화 버그 수정 및 UX 개선 (v5.11.21)
+### 🚀 Achievement
+- **입력폼 초기화 버그 수정**: 기사 앱 설정 화면에서 전화번호로 '차량정보 불러오기'를 실행할 때, 서버에서 받아온 정보를 DOM에만 적용하고 `State.profile` 상태 객체를 갱신하지 않은 채 UI 렌더링 함수를 호출하여 폼 전체가 빈 값으로 덮어써지던 치명적인 버그를 수정했습니다. 이제 입력한 전화번호와 불러온 차량 정보가 정확히 유지됩니다.
+- **실시간 저장 버튼 활성화**: 앱 설정 화면의 모든 입력 필드(이름, 전화번호, 차량번호, ID 등)에 `oninput` 이벤트를 바인딩(`checkProfileForm`)하여, 사용자가 직접 정보를 입력하거나 정보를 불러왔을 때 필수 항목이 모두 채워지면 즉시 정보저장 버튼이 파란색으로 변하도록 개선했습니다.
+- **저장 버튼 UX 직관성 강화**: 기존에는 항상 검은색이었고, 비활성화 상태에서 클릭 시 에러 토스트만 띄우던 버튼에 명확한 상태 변화를 주었습니다. 모든 조건이 충족되지 않으면 회색(`#9ca3af`)으로 표시되며 클릭이 원천 차단(`pointer-events: none`)되고, 모든 정보가 기입되어 완벽할 때만 파란색(`#2563eb`)으로 활성화되어 클릭할 수 있습니다.
+- **강제 업데이트 배포**: 변경된 사항을 기사님들이 즉시 반영받으실 수 있도록 `forceUpdate: true`를 적용한 APK v5.11.8 버전을 긴급 배포했습니다.
+
+### 🛠 Technical Changes
+- `web/driver-src/modules/profile.js`: `lookupDriver`에서 `State.profile` 속성 갱신 로직 추가. `checkProfileForm` 함수 신규 구현 및 `updateSettingsButtonState` 버튼 색상(회색/파란색) 제어 로직 보강.
+- `web/driver-src/index.html`: `btn-save-profile` ID 부여 및 각 input 태그에 `oninput="App.checkProfileForm()"` 이벤트 바인딩 추가.
+- `web/driver-src/app.js`: `checkProfileForm`을 `window.App` 네임스페이스로 익스포트.
+- `web/android/app/build.gradle`: versionCode 5149, versionName "5.11.8" 증분.
+- `scripts/build_driver_apk.ps1`: 신규 버전 빌드 및 강제 배포.
+
+
 ## [2026-05-11] 스플래시 화면 프리징 해결 및 GPS 수집 정교화 (v5.11.20)
 ### 🚀 Achievement
 - **스플래시 프리징 핫픽스 (Critical)**: `web/driver-src/modules/init.js`의 `appStateChange` 이벤트 리스너 내부에서 `await import`를 사용하면서 정작 함수에는 `async` 키워드가 누락되어 발생하던 자바스크립트 구문 오류(Syntax Error)를 수정했습니다. 이로 인해 앱 구동 시 스플래시 화면에서 멈추던 현상이 완벽히 해결되었습니다.

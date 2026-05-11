@@ -1,11 +1,11 @@
 /**
  * profile.js — 프로필 UI, 저장, 기사 조회, 프로필 사진 3종
  */
-import { Store, State, BASE_URL } from './store.js?v=5148';
-import { smartFetch } from './bridge.js?v=5148';
+import { Store, State, BASE_URL } from './store.js?v=5149';
+import { smartFetch } from './bridge.js?v=5149';
 import {
   GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES,
-} from './cargoOptions.js?v=5148';
+} from './cargoOptions.js?v=5149';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
 
@@ -76,10 +76,10 @@ export function applyProfileToUI() {
 export function updateSettingsButtonState(enabled) {
   const saveBtn = document.getElementById('btn-save-profile');
   if (saveBtn) {
-    saveBtn.style.background = enabled ? '#2563eb' : '#ef4444';
+    saveBtn.style.background = enabled ? '#2563eb' : '#9ca3af';
     saveBtn.style.color = '#ffffff';
     saveBtn.style.opacity = '1';
-    saveBtn.style.pointerEvents = 'auto';
+    saveBtn.style.pointerEvents = enabled ? 'auto' : 'none';
     saveBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
   }
   // 부가 버튼 (lookup 버튼 제외)
@@ -88,6 +88,17 @@ export function updateSettingsButtonState(enabled) {
     btn.style.opacity = enabled ? '1' : '0.7';
     btn.style.pointerEvents = enabled ? 'auto' : 'none';
   });
+}
+
+export function checkProfileForm() {
+  const name      = document.getElementById('s-name')?.value.trim();
+  const phone     = document.getElementById('s-phone')?.value.replace(/[^0-9]/g, '');
+  const vehicleNo = document.getElementById('s-vehicle')?.value.trim();
+  const driverId  = document.getElementById('s-id')?.value.trim();
+  const cargoType = document.getElementById('s-cargo-type')?.value || 'container';
+
+  const hasProfile = name && phone && vehicleNo && (cargoType === 'general' || driverId);
+  updateSettingsButtonState(hasProfile);
 }
 
 // ─── 프로필 저장 ─────────────────────────────────────────────────
@@ -162,15 +173,17 @@ export async function lookupDriver() {
     const data = await res.json();
     if (data && data.driver) {
       const d = data.driver;
-      document.getElementById('s-name').value    = d.name || '';
-      document.getElementById('s-vehicle').value = d.vehicle_number || d.business_number || '';
-      document.getElementById('s-id').value      = d.vehicle_id || d.driver_id || '';
+      State.profile.name = d.name || '';
+      State.profile.phone = phone;
+      State.profile.vehicleNo = d.vehicle_number || d.business_number || '';
+      State.profile.driverId = d.vehicle_id || d.driver_id || '';
       State.profile.cargoType = d.cargo_type || 'container';
       State.profile.mapVisibility = d.map_visibility || 'own';
       State.profile.contractType = d.contract_type || 'uncontracted';
       State.profile.generalVehicleType = d.general_vehicle_type || '트럭';
       State.profile.generalPayload = d.general_payload || '5ton';
       State.profile.generalBodyType = d.general_body_type || '일반';
+
       applyProfileToUI();
 
       updateProfilePhoto('p-photo-driver',  d.photo_driver,  '기사');
