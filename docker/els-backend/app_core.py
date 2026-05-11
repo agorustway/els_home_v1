@@ -524,6 +524,13 @@ def get_asan_shipping():
         headers = df.columns.tolist()
         data_rows = df.values.tolist()
         
+        # tolist() 후에도 float('nan')이 남을 수 있어 최종 정리
+        import math
+        data_rows = [
+            [("" if (isinstance(v, float) and math.isnan(v)) or v is None else v) for v in row]
+            for row in data_rows
+        ]
+        
         res = {
             "headers": headers,
             "data": data_rows,

@@ -23,7 +23,10 @@ export default function AsanShipping() {
         setLoading(true);
         try {
             const r = await fetch('/api/branches/asan/shipping');
-            const j = await r.json();
+            // 백엔드에서 Python NaN이 JSON에 섞여 나올 수 있어 text로 받아서 치환 후 파싱
+            const text = await r.text();
+            const safeText = text.replace(/\bNaN\b/g, 'null');
+            const j = JSON.parse(safeText);
             if (j.data) {
                 setData(j.data);
                 if (j.data.headers) {
