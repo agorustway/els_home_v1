@@ -234,6 +234,27 @@ function AsanDispatchContent() {
     const [displayLimit, setDisplayLimit] = useState(100);
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const tabsRef = useRef(null);
+    const containerRef = useRef(null);
+    const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
+
+    useEffect(() => {
+        const updateHeight = () => {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const remaining = window.innerHeight - rect.top - 24; // 24px bottom margin
+                setDynamicHeight(`${Math.max(400, remaining)}px`);
+            }
+        };
+        // Run once on mount and every time window resizes
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        // Also run after a short delay to ensure layout is settled
+        const timer = setTimeout(updateHeight, 300);
+        return () => {
+            window.removeEventListener('resize', updateHeight);
+            clearTimeout(timer);
+        };
+    }, [mainView, activeTab]); // Recalculate if views change affecting headers
 
     // ===== 데이터 fetch =====
     const fetchSettings = async () => { try { const r = await fetch('/api/branches/asan/settings'); const j = await r.json(); if (j.data) setSettings(j.data); } catch { } };
@@ -552,7 +573,7 @@ function AsanDispatchContent() {
 
     // ===== 렌더링 =====
     return (
-        <div className={styles.container} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
+        <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
             {/* 상단 바: 뷰전환 + 검색 + 기존 헤더 기능 병합 */}
             <div className={styles.topBar} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px', background: '#fff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

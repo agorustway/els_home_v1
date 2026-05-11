@@ -205,6 +205,26 @@ export default function AsanShipping() {
         loadDbPrefs();
     }, [headers]);
 
+    const containerRef = useRef(null);
+    const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
+
+    useEffect(() => {
+        const updateHeight = () => {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const remaining = window.innerHeight - rect.top - 24; // 24px bottom margin
+                setDynamicHeight(`${Math.max(400, remaining)}px`);
+            }
+        };
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        const timer = setTimeout(updateHeight, 300);
+        return () => {
+            window.removeEventListener('resize', updateHeight);
+            clearTimeout(timer);
+        };
+    }, []);
+
     // Auto-save layout to DB (debounced 1.5s)
     useEffect(() => {
         if (colOrder.length === 0 || !data?.headers) return;
@@ -554,7 +574,7 @@ export default function AsanShipping() {
     };
 
     return (
-        <div className={styles.container} onClick={() => setFilterDropdown(null)}>
+        <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => setFilterDropdown(null)}>
             <div className={styles.topBar}>
                 <div className={styles.leftControls}>
                     <h2 className={styles.title}>선적관리 리스트</h2>
