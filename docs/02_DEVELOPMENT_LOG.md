@@ -1,5 +1,18 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 스플래시 화면 프리징 해결 및 GPS 수집 정교화 (v5.11.20)
+### 🚀 Achievement
+- **스플래시 프리징 핫픽스 (Critical)**: `web/driver-src/modules/init.js`의 `appStateChange` 이벤트 리스너 내부에서 `await import`를 사용하면서 정작 함수에는 `async` 키워드가 누락되어 발생하던 자바스크립트 구문 오류(Syntax Error)를 수정했습니다. 이로 인해 앱 구동 시 스플래시 화면에서 멈추던 현상이 완벽히 해결되었습니다.
+- **GPS 궤적 품질 개선**: 정차 중이나 지하/빌딩 숲 등에서 좌표가 사방으로 튀는 현상을 억제하기 위해 `distanceFilter`(5m → 15m)를 상향하고, 오차가 큰 좌표(`accuracy` > 100m)를 원천 차단하는 필터를 강화했습니다.
+- **강제 업데이트 배포**: 구문 오류로 인한 앱 사용 불가 상태를 즉시 해소하기 위해 `forceUpdate: true`를 적용한 APK v5.11.7 버전을 긴급 배포했습니다.
+
+### 🛠 Technical Changes
+- `web/driver-src/modules/init.js`: `appStateChange` 콜백에 `async` 키워드 추가.
+- `web/driver-src/modules/gps.js`: `distanceFilter` 15m 상향, `accuracy` 100m 필터 적용.
+- `web/android/app/build.gradle`: versionCode 5148, versionName "5.11.7" 증분.
+- `scripts/build_driver_apk.ps1`: 신규 버전 빌드 및 배포 완료.
+
+
 ## [2026-05-11] 통계 합산 버그 핫픽스 및 동적 파싱 정교화 (v5.11.19)
 ### 🚀 Achievement
 - **통계 무결성 확보**: 요약 데이터(`totalSummary`)를 생성하는 루프에서 화주별 오더/배차 수량(`byTypeOrders`, `byTypeDispatches`) 가산 로직이 누락되어 AI에게 "글로비스 0대, 모비스 0대"로 전달되던 치명적 버그를 수정했습니다. 이제 AI가 88대 등 전체 수량을 정확히 인지합니다.
