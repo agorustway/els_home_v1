@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
+import AsanShipping from './AsanShipping';
 
 // ===== 상수 =====
 // ===== 공휴일 계산기 (v4.4.40) =====
@@ -205,8 +206,7 @@ function savePrefs(vt, p) {
     try { localStorage.setItem(`${PREFS_KEY}_${vt}`, JSON.stringify(p)); } catch { }
 }
 
-// ===== 컴포넌트 =====
-export default function AsanDispatchPage() {
+function AsanDispatchContent() {
     const [viewType, setViewType] = useState('integrated');
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -553,65 +553,60 @@ export default function AsanDispatchPage() {
     // ===== 렌더링 =====
     return (
         <div className={styles.container} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
-            {/* 헤더 섹션: 기존 구조를 유지하되 톤앤매너를 위해 배경색 적용 */}
-            <header className={styles.compactHeader}>
-                <div className={styles.headerTitleArea}>
-                    <h1 className={styles.pageTitle}>아산지점 배차판</h1>
-                    {dateInfo && (
-                        <div className={`${styles.headerBadge} ${dateInfo.isRed ? styles.headerBadgeRed : ''}`}>
-                            {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
-                        </div>
-                    )}
-                </div>
-
-                <div className={styles.headerStatusArea}>
-                    <div className={styles.statusInfo}>
-                        {(dateInfo?.fileModStr || elapsed) && (
-                            <div className={styles.fileMod}>
-                                <span className={styles.label}>저장:</span>
-                                <span className={styles.time}>{dateInfo?.fileModStr}</span>
-                                {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
-                            </div>
-                        )}
-                        {syncStatus && (
-                            <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
-                                {syncStatus.isError ? '❌' : '✅'} {syncStatus.message}
-                            </div>
-                        )}
-                    </div>
-                    <div className={styles.headerButtons}>
-                        <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>
-                        <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
-                        <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncing}>
-                            {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-
-            {/* 상단 바: 뷰전환 + 검색 */}
-            <div className={styles.topBar}>
-                <div className={styles.topBarLeft}>
-                    <div className={styles.viewSwitch}>
-                        <button className={`${styles.funcBtn} ${mainView === 'dashboard' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('dashboard')}>
-                            📊 현황판
-                        </button>
-                        <button className={`${styles.funcBtn} ${mainView === 'grid' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('grid')}>
-                            📋 배차판
-                        </button>
-                    </div>
-                    <div className={styles.viewDivider} />
-                    <div className={styles.viewSwitch}>
-                        {['integrated', 'glovis', 'mobis'].map(t => (
-                            <button key={t} className={`${styles.viewBtn} ${viewType === t ? styles.viewBtnActive : ''}`} onClick={() => setViewType(t)}>
-                                {t === 'integrated' ? '통합현황' : t === 'glovis' ? '글로비스 KD 외' : '모비스 AS'}
+            {/* 상단 바: 뷰전환 + 검색 + 기존 헤더 기능 병합 */}
+            <div className={styles.topBar} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px', background: '#fff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div className={styles.topBarLeft}>
+                        <div className={styles.viewSwitch}>
+                            <button className={`${styles.funcBtn} ${mainView === 'dashboard' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('dashboard')}>
+                                📊 현황판
                             </button>
-                        ))}
+                            <button className={`${styles.funcBtn} ${mainView === 'grid' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('grid')}>
+                                📋 배차판
+                            </button>
+                        </div>
+                        <div className={styles.viewDivider} />
+                        <div className={styles.viewSwitch}>
+                            {['integrated', 'glovis', 'mobis'].map(t => (
+                                <button key={t} className={`${styles.viewBtn} ${viewType === t ? styles.viewBtnActive : ''}`} onClick={() => setViewType(t)}>
+                                    {t === 'integrated' ? '통합현황' : t === 'glovis' ? '글로비스 KD 외' : '모비스 AS'}
+                                </button>
+                            ))}
+                        </div>
+                        {dateInfo && (
+                            <div className={`${styles.headerBadge} ${dateInfo.isRed ? styles.headerBadgeRed : ''}`} style={{ marginLeft: '8px' }}>
+                                {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className={styles.headerStatusArea}>
+                        <div className={styles.statusInfo}>
+                            {(dateInfo?.fileModStr || elapsed) && (
+                                <div className={styles.fileMod}>
+                                    <span className={styles.label}>저장:</span>
+                                    <span className={styles.time}>{dateInfo?.fileModStr}</span>
+                                    {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
+                                </div>
+                            )}
+                            {syncStatus && (
+                                <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
+                                    {syncStatus.isError ? '❌' : '✅'} {syncStatus.message}
+                                </div>
+                            )}
+                        </div>
+                        <div className={styles.headerButtons}>
+                            <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>
+                            <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                            <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncing}>
+                                {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
+                            </button>
+                        </div>
                     </div>
                 </div>
+
                 {mainView === 'grid' && (
-                    <div className={styles.searchWrap}>
+                    <div className={styles.searchWrap} style={{ alignSelf: 'flex-start' }}>
                         <input className={styles.searchInput} placeholder="업체명 검색 (예: 이지, 대신)" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
                         {searchInput && <button className={styles.searchClear} onClick={() => { setSearchInput(''); setSearchTerm(''); }}>✕</button>}
                     </div>
@@ -849,6 +844,64 @@ export default function AsanDispatchPage() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+export default function AsanBranchPage() {
+    const [activeMainTab, setActiveMainTab] = useState('dispatch');
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px' }}>
+            {/* 전역 아산지점 헤더 */}
+            <div style={{ background: '#fff', padding: '16px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ borderLeft: '4px solid #2563eb', paddingLeft: '12px' }}>아산지점 종합상황판</span>
+                </h1>
+                
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                    <button 
+                        style={{ 
+                            padding: '8px 24px', 
+                            borderRadius: '8px', 
+                            border: '1px solid',
+                            borderColor: activeMainTab === 'dispatch' ? '#1d4ed8' : '#e2e8f0',
+                            background: activeMainTab === 'dispatch' ? '#2563eb' : '#f8fafc', 
+                            color: activeMainTab === 'dispatch' ? '#fff' : '#64748b', 
+                            fontWeight: 800, 
+                            cursor: 'pointer', 
+                            transition: 'all 0.2s',
+                            boxShadow: activeMainTab === 'dispatch' ? '0 2px 4px rgba(37,99,235,0.2)' : 'none'
+                        }}
+                        onClick={() => setActiveMainTab('dispatch')}
+                    >
+                        배차판
+                    </button>
+                    <button 
+                        style={{ 
+                            padding: '8px 24px', 
+                            borderRadius: '8px', 
+                            border: '1px solid',
+                            borderColor: activeMainTab === 'shipping' ? '#1d4ed8' : '#e2e8f0',
+                            background: activeMainTab === 'shipping' ? '#2563eb' : '#f8fafc', 
+                            color: activeMainTab === 'shipping' ? '#fff' : '#64748b', 
+                            fontWeight: 800, 
+                            cursor: 'pointer', 
+                            transition: 'all 0.2s',
+                            boxShadow: activeMainTab === 'shipping' ? '0 2px 4px rgba(37,99,235,0.2)' : 'none'
+                        }}
+                        onClick={() => setActiveMainTab('shipping')}
+                    >
+                        선적관리
+                    </button>
+                </div>
+            </div>
+            
+            {/* 탭 내용 영역 */}
+            <div style={{ flex: 1 }}>
+                {activeMainTab === 'dispatch' && <AsanDispatchContent />}
+                {activeMainTab === 'shipping' && <AsanShipping />}
+            </div>
         </div>
     );
 }

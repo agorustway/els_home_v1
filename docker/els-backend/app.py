@@ -626,6 +626,86 @@ def export_excel_all():
     except Exception as e:
         return str(e), 500
 
+shipping_cache = {"mtime": 0, "data": None}
+
+@app.route("/api/branches/asan/shipping", methods=["GET"])
+def get_asan_shipping():
+    """아산지점 선적관리 엑셀 파싱 및 반환 (인메모리 캐시)"""
+    try:
+        # NAS 경로 (Windows/Mac 로컬 개발 환경과 실제 배포 환경 경로 호환성)
+        file_path = Path("/app/data/아산지점/2026_자체보관리스트.xlsx")
+        if not file_path.exists():
+            # Fallback for local dev
+            file_path = Path("C:/Els/아산지점/2026_자체보관리스트.xlsx") if os.name == "nt" else Path("/Volumes/Els/아산지점/2026_자체보관리스트.xlsx")
+            if not file_path.exists():
+                return jsonify({"error": "선적관리 엑셀 파일을 찾을 수 없습니다."}), 404
+        
+        mtime = file_path.stat().st_mtime
+        if shipping_cache["mtime"] == mtime and shipping_cache["data"]:
+            return jsonify({"data": shipping_cache["data"]})
+            
+        app.logger.info(f"선적관리 엑셀 파싱 시작 (mtime={mtime})")
+        # 네트워크 파일 안정성을 위해 로컬 임시 파일로 복사
+        import shutil, tempfile as _tf
+        temp_path = _tf.mktemp(suffix=".xlsx")
+        try:
+            shutil.copy2(str(file_path), temp_path)
+        except Exception as cp_err:
+            app.logger.error(f"선적관리 임시복사 실패: {cp_err}")
+            return jsonify({"error": f"파일 복사 실패: {cp_err}"}), 500
+        
+        try:
+            # 3행이 헤더 (index 2)
+            df = pd.read_excel(temp_path, sheet_name=0, header=2)
+        finally:
+            try: os.remove(temp_path)
+            except: pass
+        
+        # 컬럼 이름의 개행 제거 및 빈 이름 정리
+        raw_cols = [str(c).replace('\n', ' ').strip() for c in df.columns]
+        # 중복 컬럼명 처리 (Unnamed: 등 pandas 자동 생성 포함)
+        seen = {}
+        clean_cols = []
+        for c in raw_cols:
+            if c.startswith('Unnamed') or c == '':
+                c = f'col_{len(clean_cols)+1}'
+            if c in seen:
+                seen[c] += 1
+                c = f'{c}_{seen[c]}'
+            else:
+                seen[c] = 0
+            clean_cols.append(c)
+        df.columns = clean_cols
+        
+        # NaN, #N/A, None, nan 등을 모두 빈 문자열로 통일
+        df = df.fillna("")
+        # astype(str) 후에도 'nan', 'None', '#N/A' 문자열이 남을 수 있으므로 명시 치환
+        df = df.astype(str).replace(['nan', 'None', '#N/A', 'NaT'], '')
+        
+        # 필터링: CONTAINER 값이 있는 것만
+        container_cols = [c for c in df.columns if 'CONTAINER' in c.upper()]
+        if container_cols:
+            c_col = container_cols[0]
+            df = df[df[c_col].str.strip() != ""]
+        
+        headers = df.columns.tolist()
+        data_rows = df.values.tolist()
+        
+        res = {
+            "headers": headers,
+            "data": data_rows,
+            "file_modified_at": datetime.fromtimestamp(mtime, tz=KST).isoformat()
+        }
+        
+        shipping_cache["mtime"] = mtime
+        shipping_cache["data"] = res
+        return jsonify({"data": res})
+        
+    except Exception as e:
+        app.logger.error(f"선적관리 파싱 오류: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/vehicle-tracking/export/zip", methods=["GET"])
 def export_zip_photos():
     """선택한 트립들의 사진 ZIP 압축 다운로드"""
