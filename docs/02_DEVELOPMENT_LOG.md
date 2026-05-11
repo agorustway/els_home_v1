@@ -1,6 +1,18 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 안정화 및 모바일 UI 최적화 — P1/P2 저장 수정 및 갤S24 대응 (v5.12.3)
+### 🚀 Achievement
+- **저장 로직 안정화**: `/api/user/prefs` 라우트의 `await createClient()` 누락을 수정하여 P1/P2 프리셋 저장이 불가능하던 이슈 해결.
+- **모바일 여백 최소화 (갤S24 대응)**: 배차판 및 선적관리 페이지의 `container` 패딩을 `2px 4px`로 대폭 축소하고, 헤더 및 버튼 레이아웃을 좁은 화면에 꽉 차게 재배치.
+- **레이아웃 구조화**: `page.js`의 인라인 스타일을 CSS 클래스로 리팩토링하여 모바일 가독성 및 유지보수성 향상.
+
+### 🛠 Technical Changes
+- `web/app/api/user/prefs/route.js`: `createClient` 호출 시 비동기 처리(`await`) 보강.
+- `web/app/(main)/employees/branches/asan/page.js`: 인라인 스타일 제거 및 `styles.pageWrapper` 클래스 도입.
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`: 최상위 래퍼 및 모바일 여백 극소화 스타일 추가.
+- `web/app/(main)/employees/branches/asan/shipping.module.css`: 모바일 그리드 레이아웃 및 패딩 조정.
+
 ## [2026-05-11] 선적관리 고도화 — DB 레이아웃 저장 및 엑셀형 필터 시스템 (v5.12.2)
 ### 🚀 Achievement
 - **엑셀형 컬럼 필터**: 텍스트 입력 필터를 제거하고, 각 컬럼 헤더의 ▼ 아이콘 클릭 시 해당 컬럼의 고유값 목록이 체크박스 드롭다운으로 표시되어 다중 선택 필터링 가능.

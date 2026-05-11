@@ -7,7 +7,7 @@ export async function GET(req) {
         const pageKey = searchParams.get('page_key');
         if (!pageKey) return NextResponse.json({ error: 'page_key is required' }, { status: 400 });
 
-        const supabase = createClient();
+        const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -34,7 +34,7 @@ export async function POST(req) {
         const { page_key, settings } = body;
         if (!page_key) return NextResponse.json({ error: 'page_key is required' }, { status: 400 });
 
-        const supabase = createClient();
+        const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -55,3 +55,4 @@ export async function POST(req) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+

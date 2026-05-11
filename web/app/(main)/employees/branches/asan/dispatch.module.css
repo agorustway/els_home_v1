@@ -1315,64 +1315,67 @@
 /* ===== 모바일 반응형 (Galaxy S24 등) ===== */
 @media (max-width: 768px) {
     .container {
-        padding: 6px 8px;
-        /* Tighter padding for mobile */
+        padding: 2px 4px;
+        /* Minimize padding for mobile */
     }
 
     .compactHeader {
         flex-direction: column;
         align-items: stretch;
-        padding: 10px 14px;
-        gap: 12px;
-        border-radius: 10px;
+        padding: 6px 8px;
+        gap: 8px;
+        border-radius: 6px;
+        margin-bottom: 4px;
     }
 
     .headerTitleArea {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
     }
 
     .pageTitle {
-        font-size: 1.15rem;
+        font-size: 1.05rem;
+        padding-left: 8px;
     }
 
     .headerBadge {
-        font-size: 0.75rem;
-        padding: 3px 10px;
+        font-size: 0.7rem;
+        padding: 2px 6px;
     }
 
     .headerStatusArea {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
     }
 
     .statusInfo {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-        font-size: 0.7rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.65rem;
     }
 
     .headerButtons {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 6px;
+        grid-template-columns: 1fr 1fr 1.2fr;
+        gap: 4px;
     }
 
     .headerBtn {
-        padding: 8px 4px;
-        font-size: 0.72rem;
-        text-align: center;
-        justify-content: center;
+        padding: 6px 2px;
+        font-size: 0.68rem;
     }
 
     .topBar {
         flex-direction: column;
-        gap: 8px;
-        padding: 8px;
-        margin-bottom: 6px;
+        gap: 6px;
+        padding: 6px;
+        margin-bottom: 4px;
+        border-radius: 6px;
     }
 
     .topBarLeft {
@@ -1384,7 +1387,12 @@
     .viewSwitch {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 4px;
+        gap: 3px;
+    }
+
+    .viewBtn {
+        padding: 4px 6px;
+        font-size: 0.75rem;
     }
 
     .viewDivider {
@@ -1494,4 +1502,88 @@
         font-size: 0.75rem;
         padding: 4px 10px;
     }
+
+    .pageWrapper {
+        padding: 4px !important;
+        gap: 6px !important;
+    }
+
+    .mainHeader {
+        padding: 8px 12px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .mainTitle {
+        font-size: 1.2rem !important;
+    }
+
+    .mainTabBtn {
+        padding: 6px 16px !important;
+        font-size: 0.85rem !important;
+        flex: 1;
+    }
+}
+
+/* ===== 전역 페이지 스타일 (Page Wrapper) ===== */
+.pageWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 6px;
+    background: #f8fafc;
+    min-height: 100vh;
+}
+
+.mainHeader {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: #fff;
+    padding: 16px 20px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.mainTitle {
+    margin: 0;
+    font-size: 1.5rem;
+    fontWeight: 900;
+    color: #0f172a;
+}
+
+.mainTitle span {
+    border-left: 4px solid #2563eb;
+    padding-left: 12px;
+}
+
+.mainTabGroup {
+    display: flex;
+    gap: 8px;
+}
+
+.mainTabBtn {
+    padding: 8px 24px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mainTabBtnActive {
+    border-color: #1d4ed8;
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+}
+
+.contentArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
