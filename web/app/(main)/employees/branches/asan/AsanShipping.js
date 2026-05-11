@@ -16,10 +16,12 @@ export default function AsanShipping() {
     // Sort Config
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     
-    // Column Order
+    // Column Order & Hiding
     const [colOrder, setColOrder] = useState([]);
+    const [hiddenCols, setHiddenCols] = useState(new Set());
     const [draggedCol, setDraggedCol] = useState(null);
     const [dragOverCol, setDragOverCol] = useState(null);
+    const [isDragOverHidden, setIsDragOverHidden] = useState(false);
 
     // Column Filters
     const [columnFilters, setColumnFilters] = useState({});
@@ -163,12 +165,44 @@ export default function AsanShipping() {
 
         const newOrder = [...colOrder];
         const draggedIdx = newOrder.indexOf(draggedCol);
-        const targetIdx = newOrder.indexOf(targetCol);
         
-        newOrder.splice(draggedIdx, 1);
-        newOrder.splice(targetIdx, 0, draggedCol);
-        setColOrder(newOrder);
+        if (draggedIdx === -1) {
+            // Dragged from hidden, insert at target
+            const targetIdx = newOrder.indexOf(targetCol);
+            newOrder.splice(targetIdx, 0, draggedCol);
+            setColOrder(newOrder);
+            setHiddenCols(prev => {
+                const n = new Set(prev);
+                n.delete(draggedCol);
+                return n;
+            });
+        } else {
+            // Reorder inside table
+            const targetIdx = newOrder.indexOf(targetCol);
+            newOrder.splice(draggedIdx, 1);
+            newOrder.splice(targetIdx, 0, draggedCol);
+            setColOrder(newOrder);
+        }
         setDraggedCol(null);
+    };
+
+    const handleDropToHidden = (e) => {
+        e.preventDefault();
+        setIsDragOverHidden(false);
+        if (draggedCol && colOrder.includes(draggedCol)) {
+            setColOrder(colOrder.filter(c => c !== draggedCol));
+            setHiddenCols(prev => new Set(prev).add(draggedCol));
+        }
+        setDraggedCol(null);
+    };
+
+    const handleRestoreCol = (col) => {
+        setHiddenCols(prev => {
+            const n = new Set(prev);
+            n.delete(col);
+            return n;
+        });
+        setColOrder([...colOrder, col]);
     };
 
     const exportToExcel = () => {
@@ -200,6 +234,7 @@ export default function AsanShipping() {
 
     const resetLayout = () => {
         setColOrder(headers);
+        setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
         setSearchTerm('');
@@ -311,6 +346,48 @@ export default function AsanShipping() {
                         {syncing ? '동기화 중...' : 'NAS 동기화'}
                     </button>
                 </div>
+            </div>
+
+            <div 
+                className={styles.hiddenColsZone}
+                style={{ 
+                    padding: '10px', 
+                    marginBottom: '10px', 
+                    border: isDragOverHidden ? '2px dashed #3b82f6' : '2px dashed #cbd5e1', 
+                    borderRadius: '8px', 
+                    minHeight: '40px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    alignItems: 'center',
+                    backgroundColor: isDragOverHidden ? '#eff6ff' : '#f8fafc',
+                    transition: 'all 0.2s'
+                }}
+                onDragOver={(e) => { e.preventDefault(); setIsDragOverHidden(true); }}
+                onDragLeave={() => setIsDragOverHidden(false)}
+                onDrop={handleDropToHidden}
+            >
+                <span style={{ color: '#64748b', fontSize: '0.9rem', marginRight: '10px' }}>
+                    {hiddenCols.size === 0 ? '이곳에 컬럼을 드래그하여 숨길 수 있습니다' : '숨긴 컬럼 (클릭하거나 드래그해서 표로 복구)'}
+                </span>
+                {Array.from(hiddenCols).map(col => (
+                    <button 
+                        key={col}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, col)}
+                        onClick={() => handleRestoreCol(col)}
+                        style={{ 
+                            padding: '4px 10px', 
+                            backgroundColor: '#e2e8f0', 
+                            border: '1px solid #cbd5e1', 
+                            borderRadius: '16px', 
+                            fontSize: '0.85rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {col} +
+                    </button>
+                ))}
             </div>
 
             <div className={styles.tableWrap}>
