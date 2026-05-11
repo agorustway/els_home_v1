@@ -328,6 +328,9 @@ export default function AsanShipping() {
         setSyncing(false);
     };
 
+    // Detect date-type columns
+    const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
+
     // Processed Data (Search, Sort, Target Filtering)
     const processedData = useMemo(() => {
         if (!data || !data.data) return [];
@@ -409,9 +412,6 @@ export default function AsanShipping() {
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
 
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
-
-    // Detect date-type columns
-    const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
 
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {
