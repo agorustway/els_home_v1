@@ -501,8 +501,8 @@
 /* ===== 모바일 전용 UI 최적화 ===== */
 @media (max-width: 768px) {
     .dashboard {
-        padding: 8px;
-        gap: 10px;
+        padding: 4px;
+        gap: 8px;
     }
 
     .dashHeader {
@@ -550,8 +550,8 @@
     }
 
     .pieCard {
-        padding: 14px;
-        border-radius: 10px;
+        padding: 10px 8px;
+        border-radius: 8px;
     }
 
     .pieTitle {

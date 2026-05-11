@@ -1,6 +1,16 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-11] 아산 종합상황판 모바일 UI 최적화 — 메뉴 정렬 및 차트 여백 축소 (v5.12.5)
+### 🚀 Achievement
+- **모바일 메뉴바 단정화**: 현황판/배차판 및 통합현황/글로비스/모비스 버튼군이 모바일 화면에서 줄바꿈 없이 균등하게 배치(`flex: 1`)되도록 CSS를 수정하여 시각적 완성도를 높였습니다.
+- **날짜 뱃지 재배치**: 공간을 많이 차지하던 날짜 뱃지를 모바일에서 하단 중앙 전역 배치로 변경하여 가독성을 개선했습니다.
+- **차트 카드 여백 축소**: 화주(고객사) 점유율 파이 차트 모듈의 내부 패딩(`14px` -> `8px`)과 대시보드 래퍼 패딩(`8px` -> `4px`)을 축소하여 모바일 화면 활용도를 극대화했습니다.
+
+### 🛠 Technical Changes
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`: `@media (max-width: 768px)` 내 `.viewSwitch`, `.viewBtn`, `.funcBtn`, `.headerBadge` 스타일 최적화.
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`: 모바일 환경에서의 `.dashboard` 패딩 및 `.pieCard` 내부 여백 축소.
+
 ## [2026-05-11] 아산 선적관리 UI 고도화 — 헤더 고정 및 동적 제목 반영 (v5.12.4)
 ### 🚀 Achievement
 - **테이블 헤더 고정 (Sticky Header)**: 스크롤 시에도 컬럼 제목이 상단에 유지되도록 `position: sticky` 방해 요소를 제거하여 사용성 개선.
