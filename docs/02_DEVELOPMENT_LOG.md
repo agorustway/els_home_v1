@@ -1,6 +1,10 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-12] 핫픽스: 선적관리 탭 크래시 해결 (v5.12.9)
+### 🚀 Achievement
+- **런타임 에러 수정**: v5.12.8에서 높이 계산 로직을 추가하며 `AsanShipping.js` 컴포넌트에 `useRef` Hook을 사용했으나, 상단 `import` 문에 `useRef`가 누락되어 발생한 React 렌더링 오류(흰 화면)를 긴급 수정했습니다.
+
 ## [2026-05-12] 브라우저 확대/축소 완벽 대응 (v5.12.8)
 ### 🚀 Achievement
 - **동적 JS 높이 계산**: CSS `calc()`의 한계를 넘어, 브라우저 화면을 확대(Zoom)하거나 축소해도 항상 표의 하단 가로 스크롤바가 화면 맨 아래에 정확히 고정되도록 JavaScript의 `getBoundingClientRect()` 기반 실시간 높이 계산 로직을 도입했습니다.
