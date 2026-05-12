@@ -1,20 +1,6 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
-## [2026-05-12] 아산 PWA 모바일 저장일시 레이아웃 안정화 (v5.12.18)
-### 🚀 Achievement
-- **배차판 모바일 헤더 보정**: 저장일시/경과시간 영역이 상단 탭 옆에서 가로 폭을 밀어내지 않도록 모바일에서만 세로 배치와 말줄임 처리를 적용했습니다.
-- **선적관리 동일 형식 적용**: 선적관리 리스트도 같은 저장일시 메타 구조로 정리해 배차판과 형식이 어긋나지 않도록 맞췄습니다.
-- **PC 영향 차단**: 핵심 레이아웃 변경은 `@media (max-width: 768px)` 안에 제한하고, 선적관리의 저장일시 인라인 배지만 CSS 클래스로 이동했습니다.
-- **검증**: `web`에서 `npm.cmd run lint`, `npm.cmd run build` 통과. 인앱 브라우저 모바일 시각 검증은 AppData 접근 권한 오류로 실행되지 않았으며, 빌드 중 외부 NAS fetch는 샌드박스 네트워크 차단 로그만 출력되고 빌드는 정상 완료됐습니다.
-### 📁 변경 파일
-- `web/app/(main)/employees/branches/asan/page.js`
-- `web/app/(main)/employees/branches/asan/AsanShipping.js`
-- `web/app/(main)/employees/branches/asan/dispatch.module.css`
-- `web/app/(main)/employees/branches/asan/shipping.module.css`
-- `docs/01_MISSION_CONTROL.md`
-- `docs/02_DEVELOPMENT_LOG.md`
-
 ## [2026-05-12] 드라이버 앱 작업지 자유입력 복구 (v5.12.17 / APK v5.11.10)
 ### 🚀 Achievement
 - **상세조회 버튼 제거**: 운행 시작 화면과 일지 수정 화면의 `작업지` 입력칸 옆에 노출되던 승인되지 않은 `상세조회` 버튼을 제거하고, 입력칸을 전체 폭 자유입력 필드로 복구했습니다.

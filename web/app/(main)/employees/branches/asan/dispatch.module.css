@@ -1356,53 +1356,23 @@
     }
 
     .headerStatusArea {
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: stretch;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
         gap: 6px;
-        width: 100%;
     }
 
     .statusInfo {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
         gap: 6px;
         font-size: 0.65rem;
-        width: 100%;
-        min-width: 0;
-    }
-
-    .fileMod {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        align-items: center;
-        width: 100%;
-        min-width: 0;
-        gap: 4px;
-        padding: 4px 6px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        font-size: 0.62rem;
-    }
-
-    .fileMod .time {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .fileMod .elapsed {
-        padding: 1px 5px;
-        font-size: 0.62rem;
-        white-space: nowrap;
     }
 
     .headerButtons {
         display: grid;
         grid-template-columns: 1fr 1fr 1.2fr;
         gap: 4px;
-        width: 100%;
     }
 
     .headerBtn {
@@ -1422,13 +1392,6 @@
         flex-direction: column;
         align-items: stretch;
         width: 100%;
-        min-width: 0;
-    }
-
-    .mobileTopBarRow {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 6px;
     }
 
     .viewSwitch {

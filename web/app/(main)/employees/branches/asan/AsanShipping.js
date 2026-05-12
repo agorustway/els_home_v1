@@ -591,9 +591,7 @@ export default function AsanShipping() {
                     <h2 className={styles.title}>선적관리 리스트</h2>
                     {fileTimeStr && (
                         <div className={styles.fileMod}>
-                            <span className={styles.fileModLabel}>저장:</span>
-                            <span className={styles.fileModTime}>{fileTimeStr}</span>
-                            <span className={styles.fileModElapsed}>{elapsed}</span>
+                            저장: {fileTimeStr} <span style={{ marginLeft: '8px', padding: '2px 6px', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>{elapsed}</span>
                         </div>
                     )}
                 </div>
