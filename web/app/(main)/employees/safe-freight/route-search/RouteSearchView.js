@@ -1082,15 +1082,21 @@ export default function RouteSearchView({ options, period, onBack }) {
         }
 
         // 할증/부대비용 적용 (SurchargePanel에서 전달)
-        if (surchargeInfo) {
-            const mult = surchargeInfo.totalPctMult || 1;
-            f40위탁 *= mult;
-            f40운수자 *= mult;
-            f40안전 *= mult;
-            f20위탁 *= mult;
-            f20운수자 *= mult;
-            f20안전 *= mult;
-        }
+        // 요약 배율(totalPctMult)만 믿지 않고 실제 적용 목록으로 재계산해 체크 상태와 금액 불일치를 방지한다.
+        const pctApplied = Array.isArray(surchargeInfo?.pctApplied) ? surchargeInfo.pctApplied : [];
+        const totalPct = pctApplied.reduce((sum, item) => {
+            const pct = Number(item?.pct) || 0;
+            const effective = Number(item?.effective ?? 100);
+            return sum + (pct * effective) / 100;
+        }, 0);
+        const pctMult = totalPct > 0 ? 1 + totalPct / 100 : Number(surchargeInfo?.totalPctMult || 1);
+
+        f40위탁 *= pctMult;
+        f40운수자 *= pctMult;
+        f40안전 *= pctMult;
+        f20위탁 *= pctMult;
+        f20운수자 *= pctMult;
+        f20안전 *= pctMult;
 
         const round10 = (val) => Math.round(val / 10) * 10;
 
@@ -1102,13 +1108,16 @@ export default function RouteSearchView({ options, period, onBack }) {
         let r20안전 = round10(f20안전);
 
         // 고정 금액(실비: X-RAY, 공컨 반납비 등) 추가
-        if (surchargeInfo?.fixedAdd) {
-            r40위탁 += surchargeInfo.fixedAdd;
-            r40운수자 += surchargeInfo.fixedAdd;
-            r40안전 += surchargeInfo.fixedAdd;
-            r20위탁 += surchargeInfo.fixedAdd;
-            r20운수자 += surchargeInfo.fixedAdd;
-            r20안전 += surchargeInfo.fixedAdd;
+        const fixedApplied = Array.isArray(surchargeInfo?.fixedApplied) ? surchargeInfo.fixedApplied : [];
+        const fixedAddFromItems = fixedApplied.reduce((sum, item) => sum + (Number(item?.fixed) || 0), 0);
+        const fixedAdd = fixedApplied.length > 0 ? fixedAddFromItems : Number(surchargeInfo?.fixedAdd || 0);
+        if (fixedAdd) {
+            r40위탁 += fixedAdd;
+            r40운수자 += fixedAdd;
+            r40안전 += fixedAdd;
+            r20위탁 += fixedAdd;
+            r20운수자 += fixedAdd;
+            r20안전 += fixedAdd;
         }
 
         return {
@@ -1117,6 +1126,8 @@ export default function RouteSearchView({ options, period, onBack }) {
             f20위탁: r20위탁, f20운수자: r20운수자, f20안전: r20안전,
             appliedRegionalPct: regionalPct,
             appliedRegionalLabel: regionalOverride?.label ?? regionalBaseSurcharge.label,
+            appliedSurcharges: surchargeInfo?.appliedLabels || [],
+            excludedSurcharges: surchargeInfo?.pctExcluded || [],
         };
     }, [tripMode, regionalBaseSurchargePct, regionalBaseSurcharge.label, surchargeInfo]);
 
@@ -1139,6 +1150,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                 f20안전: row.f20안전 || 0,
                 appliedRegionalPct: row.appliedRegionalPct || 0,
                 appliedRegionalLabel: row.appliedRegionalLabel || '',
+                appliedSurcharges: row.appliedSurcharges || [],
+                excludedSurcharges: row.excludedSurcharges || [],
             });
         }
     }, [rawDistRow, applySurchargesToRow]);
@@ -1157,6 +1170,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                 f20위탁: row.f20위탁 || 0,
                 f20운수자: row.f20운수자 || 0,
                 f20안전: row.f20안전 || 0,
+                appliedSurcharges: row.appliedSurcharges || [],
+                excludedSurcharges: row.excludedSurcharges || [],
             };
         });
         setSectionFareResults(next);
@@ -1176,6 +1191,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                 f20위탁: row.f20위탁 || 0,
                 f20운수자: row.f20운수자 || 0,
                 f20안전: row.f20안전 || 0,
+                appliedSurcharges: row.appliedSurcharges || [],
+                excludedSurcharges: row.excludedSurcharges || [],
             };
         });
         setSectionFareOneWayResults(next);
@@ -1400,6 +1417,8 @@ export default function RouteSearchView({ options, period, onBack }) {
             fuelCost: Number(sel?.fuelCost || 0),
             duration: Number(sel?.duration || 0),
             totalCost: Number(sel?.totalCost || 0),
+            appliedSurcharges: fare.appliedSurcharges || surchargeInfo?.appliedLabels || [],
+            excludedSurcharges: fare.excludedSurcharges || surchargeInfo?.pctExcluded || [],
         });
 
         const newEntries = [];

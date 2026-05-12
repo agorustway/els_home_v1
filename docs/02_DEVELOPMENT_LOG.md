@@ -1,6 +1,16 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-12] 안전운임 구간조회 할증/부대비용 계산 보강 (v5.12.15)
+### 🚀 Achievement
+- **체크 상태-결과 금액 정합성 보강**: 구간조회 `SurchargePanel`이 전달하는 요약 배율(`totalPctMult`)만 사용하지 않고, 실제 적용 목록(`pctApplied`, `fixedApplied`)을 기준으로 퍼센트 할증과 부대비용을 재계산하도록 수정했습니다.
+- **저장 내역 할증 정보 보존**: 저장 결과에 적용/제외 할증 목록을 함께 담아, 화면·저장·엑셀 흐름에서 선택한 할증 정보가 유실되지 않도록 보강했습니다.
+- **검증**: `web`에서 `npm.cmd run lint`, `npm.cmd run build` 통과. PowerShell 실행 정책상 `npm run lint`는 `npm.ps1` 로드 차단으로 실패하여 `npm.cmd`로 대체 실행했습니다. 빌드 중 외부/NAS fetch는 샌드박스 네트워크 차단으로 `EACCES` 로그가 출력됐지만 Next 빌드는 정상 완료됐습니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-12] 안전운임 할증/부대비용 동적 재계산 로직 구현 (v5.12.14)
 ### 🚀 Achievement
 - **조회 결과 리액티브 구조 개선**: `SurchargePanel`에서 할증/부대비용을 변경할 때, 이미 화면에 표시된 거리별/구간별 운임 결과가 실시간으로 재계산되어 반영되도록 개선했습니다.
