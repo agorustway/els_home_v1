@@ -1,0 +1,220 @@
+/* ═══════════════════════════════════════════
+   SurchargePanel — 할증/부대비용 선택 패널 CSS
+   구간조회 전용, 컴팩트 디자인 (B안)
+   ═══════════════════════════════════════════ */
+
+.panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    animation: fadeSlideUp 0.25s ease-out;
+}
+
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.panelHeader:hover {
+    background: #f1f5f9;
+}
+
+.panelTitle {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.activeBadge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 12px;
+}
+
+.panelToggle {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.panelBody {
+    padding: 10px 14px 14px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ── 그룹 ── */
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.groupTitle {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.02em;
+    padding-bottom: 2px;
+}
+
+.optionsGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+.checkLabel {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    color: #334155;
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.checkLabel input[type="checkbox"] {
+    accent-color: #2563eb;
+    width: 14px;
+    height: 14px;
+}
+
+.roughRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pctInput {
+    width: 42px;
+    padding: 2px 4px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    text-align: center;
+    color: #1e293b;
+}
+
+.pctInput:focus {
+    border-color: #3b82f6;
+    outline: none;
+}
+
+/* ── 그룹 드롭다운 행 ── */
+.groupRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.groupSelect {
+    padding: 4px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    color: #1e293b;
+    background: #fff;
+    min-width: 90px;
+    max-width: 180px;
+}
+
+.groupSelect:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.groupSelect:focus {
+    border-color: #3b82f6;
+    outline: none;
+}
+
+/* ── 적용 요약 ── */
+.summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    padding: 8px 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    font-size: 0.75rem;
+}
+
+.summaryLabel {
+    font-weight: 700;
+    color: #1e40af;
+    margin-right: 4px;
+}
+
+.summaryTag {
+    padding: 2px 6px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+
+.excluded {
+    width: 100%;
+    margin-top: 4px;
+    color: #b45309;
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+
+.excludedReason {
+    color: #92400e;
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+/* ── 모바일 ── */
+@media (max-width: 768px) {
+    .panelBody {
+        padding: 8px 10px 12px;
+    }
+
+    .optionsGrid {
+        gap: 4px 10px;
+    }
+
+    .checkLabel {
+        font-size: 0.74rem;
+    }
+
+    .groupRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .groupSelect {
+        width: 100%;
+        max-width: 100%;
+    }
+}

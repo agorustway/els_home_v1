@@ -6,6 +6,7 @@ import Script from 'next/script';
 import styles from './route-search.module.css';
 import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
 import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
+import SurchargePanel from './SurchargePanel';
 
 /* ═══════════════════════════════════════════════════
    상수 정의
@@ -206,6 +207,9 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [sectionFareResults, setSectionFareResults] = useState([]); // 구간별운임 리스트
     const [sectionFareOneWayResults, setSectionFareOneWayResults] = useState([]); // 수도권 편도 리스트
     const [terminalInfo, setTerminalInfo] = useState({ origin: null, dest: null });
+
+    // ── 할증/부대비용 상태 ────
+    const [surchargeInfo, setSurchargeInfo] = useState(null);
 
     // ── UI 상태 ────
     const [loading, setLoading] = useState(false);
@@ -1005,21 +1009,18 @@ export default function RouteSearchView({ options, period, onBack }) {
             const tDest = findTerminalInfo(resolvedDest.text, destination.text);
             setTerminalInfo({ origin: tOrigin, dest: tDest });
 
-            // 전체 경로 지도에 표시 + 법규에 따른 최적 경로 자동 선택 (#1)
-            // 법규: '최적(추천)'과 '큰길 우선' 중 짧은 거리 선택
+            // 전체 경로 지도에 표시 + 모든 경로 중 최단거리 자동 선택
             const routeKeys = Object.keys(fullResult.route || {});
             if (routeKeys.length > 0) {
-                // 추천 로직: traoptimal(최적)과 tracomfort(큰길우선) 중 더 짧은 것 찾기
+                // 모든 경로 옵션 중 가장 짧은 거리(편도 기준)를 기본 선택
                 let bestKey = routeKeys[0];
-                const optDist = fullResult.route['traoptimal']?.[0]?.summary?.distance ?? Infinity;
-                const comDist = fullResult.route['tracomfort']?.[0]?.summary?.distance ?? Infinity;
-                
-                if (fullResult.route['traoptimal'] && fullResult.route['tracomfort']) {
-                    bestKey = optDist <= comDist ? 'traoptimal' : 'tracomfort';
-                } else if (fullResult.route['traoptimal']) {
-                    bestKey = 'traoptimal';
-                } else if (fullResult.route['tracomfort']) {
-                    bestKey = 'tracomfort';
+                let bestDist = Infinity;
+                for (const key of routeKeys) {
+                    const dist = fullResult.route[key]?.[0]?.summary?.distance ?? Infinity;
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestKey = key;
+                    }
                 }
 
                 setSelectedRouteKey(bestKey);
@@ -1078,15 +1079,44 @@ export default function RouteSearchView({ options, period, onBack }) {
             f20안전 *= regMult;
         }
 
+        // 할증/부대비용 적용 (SurchargePanel에서 전달)
+        if (surchargeInfo) {
+            const mult = surchargeInfo.totalPctMult || 1;
+            f40위탁 *= mult;
+            f40운수자 *= mult;
+            f40안전 *= mult;
+            f20위탁 *= mult;
+            f20운수자 *= mult;
+            f20안전 *= mult;
+        }
+
         const round10 = (val) => Math.round(val / 10) * 10;
+
+        let r40위탁 = round10(f40위탁);
+        let r40운수자 = round10(f40운수자);
+        let r40안전 = round10(f40안전);
+        let r20위탁 = round10(f20위탁);
+        let r20운수자 = round10(f20운수자);
+        let r20안전 = round10(f20안전);
+
+        // 고정 금액(실비: X-RAY, 공컨 반납비 등) 추가
+        if (surchargeInfo?.fixedAdd) {
+            r40위탁 += surchargeInfo.fixedAdd;
+            r40운수자 += surchargeInfo.fixedAdd;
+            r40안전 += surchargeInfo.fixedAdd;
+            r20위탁 += surchargeInfo.fixedAdd;
+            r20운수자 += surchargeInfo.fixedAdd;
+            r20안전 += surchargeInfo.fixedAdd;
+        }
+
         return {
             ...row,
-            f40위탁: round10(f40위탁), f40운수자: round10(f40운수자), f40안전: round10(f40안전),
-            f20위탁: round10(f20위탁), f20운수자: round10(f20운수자), f20안전: round10(f20안전),
+            f40위탁: r40위탁, f40운수자: r40운수자, f40안전: r40안전,
+            f20위탁: r20위탁, f20운수자: r20운수자, f20안전: r20안전,
             appliedRegionalPct: regionalPct,
             appliedRegionalLabel: regionalOverride?.label ?? regionalBaseSurcharge.label,
         };
-    }, [tripMode, regionalBaseSurchargePct, regionalBaseSurcharge.label]);
+    }, [tripMode, regionalBaseSurchargePct, regionalBaseSurcharge.label, surchargeInfo]);
 
     const lookupFare = async (distanceMeters, resolvedOrigin, resolvedDest) => {
         const totalKm = metersToKm(distanceMeters);
@@ -1850,6 +1880,16 @@ export default function RouteSearchView({ options, period, onBack }) {
                         </div>
                     )}
 
+                    {/* ── 할증/부대비용 패널 (경로 아래 위치) ── */}
+                    {parsedRoutes.length > 0 && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            <SurchargePanel
+                                options={options}
+                                onChange={setSurchargeInfo}
+                            />
+                        </div>
+                    )}
+
                     {/* 우: 운임 결과 */}
                     <div className={styles.resultFare}>
                         <p className={styles.sectionLabel}>안전운임 조회 결과</p>
@@ -1937,58 +1977,6 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                             return (
                                 <>
-                                    {/* ── 거리별운임 (항상 표시) ── */}
-                        {distFareResult && (
-                            <>
-                                <div className={styles.fareSectionHeader}>
-                                    <span className={styles.fareSectionBadge} style={{ background: '#2563eb' }}>거리별</span>
-                                    거리별운임 ({distFareResult.matchedKm}km 기준)
-                                </div>
-                                <div className={styles.distanceSummary}>
-                                    <div className={styles.distRow}>
-                                        <span>구간거리 (네이버 지도)</span>
-                                        <strong>{distFareResult.routeKm}km</strong>
-                                    </div>
-                                    <div className={`${styles.distRow} ${styles.distTotal}`}>
-                                        <span>적용 구간거리 (고시 제32·33조 기준)</span>
-                                        <strong>{distFareResult.matchedKm}km</strong>
-                                    </div>
-                                    <div className={styles.distRow}>
-                                        <span>적용 왕복거리 (고시 매칭)</span>
-                                        <strong>{formatSafeFreightKm(distFareResult.matchedKm * 2)}km</strong>
-                                    </div>
-                                    <div className={styles.distRow}>
-                                        <span>적용 기간</span>
-                                        <strong>{distFareResult.period}</strong>
-                                    </div>
-                                </div>
-                                {distFareResult.appliedRegionalPct > 0 && (
-                                    <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
-                                        <strong>지역별 기점 할증 적용:</strong> {distFareResult.appliedRegionalLabel} 기점 {distFareResult.appliedRegionalPct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
-                                    </div>
-                                )}
-                                <table className={styles.fareTable}>
-                                    <thead>
-                                        <tr><th></th><th>위탁</th><th>운수자</th><th>안전</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td className={styles.fareRowLabel}>🚛 40FT</td>
-                                            <td>{renderFareValue(distFareResult.f40위탁)}</td>
-                                            <td>{renderFareValue(distFareResult.f40운수자)}</td>
-                                            <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f40안전)}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className={styles.fareRowLabel}>🚚 20FT</td>
-                                            <td>{renderFareValue(distFareResult.f20위탁)}</td>
-                                            <td>{renderFareValue(distFareResult.f20운수자)}</td>
-                                            <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f20안전)}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </>
-                        )}
-
                         {/* ── 구간별운임 (있으면 리스트 매핑) ── */}
                         {sectionFareResults.map((fare, fIdx) => (
                             <div key={`section-${fIdx}`}>
@@ -2074,6 +2062,70 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 </table>
                             </div>
                         ))}
+
+                                    {/* ── 거리별운임 (항상 표시) ── */}
+                        {distFareResult && (
+                            <>
+                                <div className={styles.fareSectionHeader}>
+                                    <span className={styles.fareSectionBadge} style={{ background: '#2563eb' }}>거리별</span>
+                                    거리별운임 ({distFareResult.matchedKm}km 기준)
+                                </div>
+                                <div className={styles.distanceSummary}>
+                                    <div className={styles.distRow}>
+                                        <span>구간거리 (네이버 지도)</span>
+                                        <strong>{distFareResult.routeKm}km</strong>
+                                    </div>
+                                    <div className={`${styles.distRow} ${styles.distTotal}`}>
+                                        <span>적용 구간거리 (고시 제32·33조 기준)</span>
+                                        <strong>{distFareResult.matchedKm}km</strong>
+                                    </div>
+                                    <div className={styles.distRow}>
+                                        <span>적용 왕복거리 (고시 매칭)</span>
+                                        <strong>{formatSafeFreightKm(distFareResult.matchedKm * 2)}km</strong>
+                                    </div>
+                                    <div className={styles.distRow}>
+                                        <span>적용 기간</span>
+                                        <strong>{distFareResult.period}</strong>
+                                    </div>
+                                </div>
+                                {distFareResult.appliedRegionalPct > 0 && (
+                                    <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
+                                        <strong>지역별 기점 할증 적용:</strong> {distFareResult.appliedRegionalLabel} 기점 {distFareResult.appliedRegionalPct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
+                                    </div>
+                                )}
+                                <table className={styles.fareTable}>
+                                    <thead>
+                                        <tr><th></th><th>위탁</th><th>운수자</th><th>안전</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td className={styles.fareRowLabel}>🚛 40FT</td>
+                                            <td>{renderFareValue(distFareResult.f40위탁)}</td>
+                                            <td>{renderFareValue(distFareResult.f40운수자)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f40안전)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className={styles.fareRowLabel}>🚚 20FT</td>
+                                            <td>{renderFareValue(distFareResult.f20위탁)}</td>
+                                            <td>{renderFareValue(distFareResult.f20운수자)}</td>
+                                            <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f20안전)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
+
+                        {/* 할증 적용 안내 */}
+                        {surchargeInfo && surchargeInfo.appliedLabels?.length > 0 && (
+                            <div style={{ padding: '8px 10px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.75rem', color: '#1e40af' }}>
+                                <strong>할증 적용:</strong> {surchargeInfo.appliedLabels.join(', ')} — 위 운임에 반영됨
+                                {surchargeInfo.pctExcluded?.length > 0 && (
+                                    <div style={{ marginTop: '4px', color: '#b45309' }}>
+                                        ⚠️ 적용 제외: {surchargeInfo.pctExcluded.map(s => s.label).join(', ')} (고시 제22조)
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* 구간별운임 미존재 안내 */}
                         {sectionFareResults.length === 0 && distFareResult && (

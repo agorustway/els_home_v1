@@ -1,6 +1,16 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-12] 구간조회 할증패널 통합 + UX 개선 (v5.12.11)
+### 🚀 Achievement
+- **할증/부대비용 패널 분리 컴포넌트화 (SurchargePanel.js)**: 기존 `page.js`에만 있던 할증 선택 UI를 독립 컴포넌트로 분리하여 구간조회(RouteSearchView) 내 경로 결과 아래에 배치. 할증 선택 시 운임 결과에 실시간 반영. 고시 변경 시 `options.surcharges` JSON 데이터만 수정하면 UI 자동 반영되도록 설계.
+- **최단거리 자동 선택**: 경로 탐색 결과에서 기존 `traoptimal/tracomfort` 2개만 비교하던 로직을 모든 경로(trafast 포함) 중 가장 짧은 거리를 기본 선택하도록 개선.
+- **결과 표시 순서 최적화**: 안전운임 조회 결과 표시 순서를 `구간별운임 → 편도구간 → 거리별운임` 순으로 변경하여 구간별 편도 거리 우선 노출.
+### 📁 변경 파일
+- `web/app/(main)/employees/safe-freight/route-search/SurchargePanel.js` (신규)
+- `web/app/(main)/employees/safe-freight/route-search/surcharge-panel.module.css` (신규)
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`
+
 ## [2026-05-12] 선적관리 배차시간 포맷 최적화 (v5.12.10)
 ### 🚀 Achievement
 - **시간 데이터 표시 형식 개선**: 아산지점 선적관리 탭에서 엑셀에서 가져온 원본 `HH:mm:ss` 형식의 배차시간 데이터를 가독성을 위해 초(seconds) 단위를 잘라내고 `HH:mm` 형식(예: `09:00`)으로 일괄 포맷팅하여 보여주도록 `formatCellValue` 로직을 업데이트했습니다.
