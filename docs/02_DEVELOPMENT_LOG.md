@@ -1,6 +1,23 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-12] 안전운임 할증/부대비용 동적 재계산 로직 구현 (v5.12.14)
+### 🚀 Achievement
+- **조회 결과 리액티브 구조 개선**: `SurchargePanel`에서 할증/부대비용을 변경할 때, 이미 화면에 표시된 거리별/구간별 운임 결과가 실시간으로 재계산되어 반영되도록 개선했습니다.
+- **원본 데이터(Raw Data) 상태 관리**: API로부터 받은 가공 전 원본 데이터를 별도 상태(`rawDistRow`, `rawSectionRows` 등)로 저장하고, `surchargeInfo`가 변경될 때마다 `applySurchargesToRow`를 통해 최종 운임을 도출하는 파이프라인을 구축했습니다.
+- **저장 정합성 확보**: 할증이 실시간으로 적용된 최종 상태의 운임 데이터가 `저장` 버튼 클릭 시 정확히 기록되도록 보장했습니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`
+
+## [2026-05-12] 아산 배차판 소수 수량 집계 보정 (v5.12.13)
+### 🚀 Achievement
+- **글로비스 KD 외 합계 누락 해결**: 오늘 글로비스 자료에 `0.9`, `0.1` 분할 오더가 포함된 경우 `parseInt()`가 둘 다 0으로 잘라 웹 합계가 66건이 아닌 65건으로 표시되던 문제를 수정했습니다.
+- **집계 경로 일괄 보정**: 배차판 상단 합계, 종합현황판 피벗/차트, AI 배차 RAG 요약 모두 소수 수량을 `Number` 기반으로 파싱해 정확히 합산하도록 변경했습니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/api/chat/route.js`
+
 ## [2026-05-12] 구간조회 결과 영역 레이아웃 정렬 및 가로폭 최적화 (v5.12.12)
 ### 🚀 Achievement
 - **결과 영역 2열 그리드 밸런스 조정**: 좌측(탐색된 경로 + 할증 패널)과 우측(운임 결과)이 50:50(1fr 1fr) 비율로 완벽하게 정렬되도록 레이아웃 구조 개선.

@@ -207,6 +207,11 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [sectionFareResults, setSectionFareResults] = useState([]); // 구간별운임 리스트
     const [sectionFareOneWayResults, setSectionFareOneWayResults] = useState([]); // 수도권 편도 리스트
     const [terminalInfo, setTerminalInfo] = useState({ origin: null, dest: null });
+    
+    // ── 원본 데이터 (할증 재계산용) ──
+    const [rawDistRow, setRawDistRow] = useState(null);
+    const [rawSectionRows, setRawSectionRows] = useState([]);
+    const [rawOneWayRows, setRawOneWayRows] = useState([]);
 
     // ── 할증/부대비용 상태 ────
     const [surchargeInfo, setSurchargeInfo] = useState(null);
@@ -1052,9 +1057,6 @@ export default function RouteSearchView({ options, period, onBack }) {
         await lookupFare(route.summary.distance, origin, destination);
     };
 
-    /* ═══════════════════════════════════════════════
-       운임 조회 — 거리별(항상) + 구간별(있으면)
-       ═══════════════════════════════════════════════ */
     const applySurchargesToRow = useCallback((row, isSection = false, regionalOverride = null) => {
         if (!row) return row;
         // 편도 모드일 때 50% 적용 (거리제/이외구간 전용)
@@ -1118,6 +1120,67 @@ export default function RouteSearchView({ options, period, onBack }) {
         };
     }, [tripMode, regionalBaseSurchargePct, regionalBaseSurcharge.label, surchargeInfo]);
 
+    // ── 할증 동적 적용 (원본 데이터가 바뀌거나 할증 정보가 바뀔 때 실행) ──
+    useEffect(() => {
+        if (!rawDistRow) {
+            setDistFareResult(null);
+        } else {
+            const row = applySurchargesToRow(rawDistRow.row, false, rawDistRow.regionalOverride);
+            setDistFareResult({
+                totalKm: rawDistRow.totalKm,
+                routeKm: rawDistRow.totalKm,
+                period: row.period,
+                matchedKm: row.km,
+                f40위탁: row.f40위탁 || 0,
+                f40운수자: row.f40운수자 || 0,
+                f40안전: row.f40안전 || 0,
+                f20위탁: row.f20위탁 || 0,
+                f20운수자: row.f20운수자 || 0,
+                f20안전: row.f20안전 || 0,
+                appliedRegionalPct: row.appliedRegionalPct || 0,
+                appliedRegionalLabel: row.appliedRegionalLabel || '',
+            });
+        }
+    }, [rawDistRow, applySurchargesToRow]);
+
+    useEffect(() => {
+        const next = rawSectionRows.map(raw => {
+            const row = applySurchargesToRow(raw.row, true);
+            return {
+                origin: raw.origin,
+                destination: raw.destination,
+                period: row.period,
+                km: row.km,
+                f40위탁: row.f40위탁 || 0,
+                f40운수자: row.f40운수자 || 0,
+                f40안전: row.f40안전 || 0,
+                f20위탁: row.f20위탁 || 0,
+                f20운수자: row.f20운수자 || 0,
+                f20안전: row.f20안전 || 0,
+            };
+        });
+        setSectionFareResults(next);
+    }, [rawSectionRows, applySurchargesToRow]);
+
+    useEffect(() => {
+        const next = rawOneWayRows.map(raw => {
+            const row = applySurchargesToRow(raw.row, true);
+            return {
+                origin: raw.origin,
+                destination: raw.destination,
+                period: row.period,
+                km: row.km,
+                f40위탁: row.f40위탁 || 0,
+                f40운수자: row.f40운수자 || 0,
+                f40안전: row.f40안전 || 0,
+                f20위탁: row.f20위탁 || 0,
+                f20운수자: row.f20운수자 || 0,
+                f20안전: row.f20안전 || 0,
+            };
+        });
+        setSectionFareOneWayResults(next);
+    }, [rawOneWayRows, applySurchargesToRow]);
+
     const lookupFare = async (distanceMeters, resolvedOrigin, resolvedDest) => {
         const totalKm = metersToKm(distanceMeters);
         
@@ -1143,32 +1206,23 @@ export default function RouteSearchView({ options, period, onBack }) {
                     tripMode,
                     queryType: 'distance',
                 });
-                const row = applySurchargesToRow(data.rows[0], false, routeRegionalBaseSurcharge);
-                setDistFareResult({
+                // 원본 데이터 저장 (할증은 useEffect에서 자동 적용)
+                setRawDistRow({
                     totalKm,
-                    routeKm: totalKm,
-                    period: row.period,
-                    matchedKm: row.km,
-                    f40위탁: row.f40위탁 || 0,
-                    f40운수자: row.f40운수자 || 0,
-                    f40안전: row.f40안전 || 0,
-                    f20위탁: row.f20위탁 || 0,
-                    f20운수자: row.f20운수자 || 0,
-                    f20안전: row.f20안전 || 0,
-                    appliedRegionalPct: row.appliedRegionalPct || 0,
-                    appliedRegionalLabel: row.appliedRegionalLabel || '',
+                    row: data.rows[0],
+                    regionalOverride: routeRegionalBaseSurcharge
                 });
             } else {
-                setDistFareResult(null);
+                setRawDistRow(null);
             }
         } catch (err) {
             console.error('Distance fare lookup error:', err);
-            setDistFareResult(null);
+            setRawDistRow(null);
         }
 
         // ── 2) 구간별운임 — 모든 거점(출발/도착/경유) 중 터미널 기점과 매칭되는 구간을 모두 찾음 ──
-        setSectionFareResults([]);
-        setSectionFareOneWayResults([]);
+        setRawSectionRows([]);
+        setRawOneWayRows([]);
 
         // 기점(Terminal) 찾기 (라우트 내 모든 위치 확인)
         const routeLocs = [useOrigin, ...waypoints, useDest].filter(p => !!p);
@@ -1233,12 +1287,10 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     if (sRes.ok) {
                                         const sData = await sRes.json();
                                         if (sData.rows?.length > 0) {
-                                            const sRow = applySurchargesToRow(sData.rows[0], true);
                                             tempSections.push({
-                                                origin: matchedOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                                period: sRow.period, km: sRow.km,
-                                                f40위탁: sRow.f40위탁 || 0, f40운수자: sRow.f40운수자 || 0, f40안전: sRow.f40안전 || 0,
-                                                f20위탁: sRow.f20위탁 || 0, f20운수자: sRow.f20운수자 || 0, f20안전: sRow.f20안전 || 0,
+                                                origin: matchedOrigin.id,
+                                                destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                                row: sData.rows[0]
                                             });
                                         }
                                     }
@@ -1288,12 +1340,10 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     if (owRes.ok) {
                                         const owData = await owRes.json();
                                         if (owData.rows?.length > 0) {
-                                            const owRow = applySurchargesToRow(owData.rows[0], true);
                                             tempOneWays.push({
-                                                origin: oneWayOrigin.id, destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                                period: owRow.period, km: owRow.km,
-                                                f40위탁: owRow.f40위탁 || 0, f40운수자: owRow.f40운수자 || 0, f40안전: owRow.f40안전 || 0,
-                                                f20위탁: owRow.f20위탁 || 0, f20운수자: owRow.f20운수자 || 0, f20안전: owRow.f20안전 || 0,
+                                                origin: oneWayOrigin.id,
+                                                destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                                row: owData.rows[0]
                                             });
                                         }
                                     }
@@ -1305,8 +1355,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                 }
             }
         }
-        setSectionFareResults(tempSections);
-        setSectionFareOneWayResults(tempOneWays);
+        setRawSectionRows(tempSections);
+        setRawOneWayRows(tempOneWays);
     };
 
     /* ─── 결과 저장 ─── */

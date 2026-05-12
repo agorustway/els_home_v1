@@ -1634,7 +1634,8 @@ export async function POST(req) {
                             if (orderIdx >= 0) {
                                 const valStr = String(row[orderIdx] || '').trim();
                                 if (valStr.includes('캔슬')) return;
-                                orderCount = parseInt(valStr.replace(/[^0-9]/g, '')) || 0;
+                                const orderMatch = valStr.replace(/,/g, '').match(/\d+(?:\.\d+)?/);
+                                orderCount = orderMatch ? Number(orderMatch[0]) || 0 : 0;
                             }
 
                             // 2. 동적 운송사 추출 및 배차 수량 집계
@@ -1651,9 +1652,9 @@ export async function POST(req) {
                                     if (!part || nonCarrierWords.some(w => part.includes(w))) return;
 
                                     // 숫자(대수)와 문자(업체명) 분리 (예: '이지4' -> carrier: '이지', count: 4)
-                                    const countMatch = part.match(/\d+/);
-                                    const count = countMatch ? parseInt(countMatch[0]) : 1;
-                                    const carrier = part.replace(/[0-9\s]/g, '').trim();
+                                    const countMatch = part.replace(/,/g, '').match(/\d+(?:\.\d+)?/);
+                                    const count = countMatch ? Number(countMatch[0]) || 0 : 1;
+                                    const carrier = part.replace(/[0-9.\s]/g, '').trim();
 
                                     if (carrier && carrier.length > 0) {
                                         totalSummary.byCarrier[carrier] = (totalSummary.byCarrier[carrier] || 0) + count;
@@ -2060,7 +2061,6 @@ export async function POST(req) {
         },
     });
 }
-
 
 
 

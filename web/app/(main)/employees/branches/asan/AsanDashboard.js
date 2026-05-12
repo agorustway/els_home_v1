@@ -4,6 +4,10 @@ import styles from './dashboard.module.css';
 
 // 헬퍼: 테이블 헤더에서 특정 열 인덱스 찾기
 const findCol = (headers, name) => headers.findIndex(h => h && h.trim() === name);
+const parseQty = (value) => {
+    const match = String(value ?? '').replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) || 0 : 0;
+};
 
 // 헬퍼: 트리 피벗 순회
 function buildPivot(data, groupKeysInfo, valueExtractor) {
@@ -164,7 +168,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
 
         if (viewMode === 'customer') {
             data.forEach(row => {
-                const weight = ['glovis', 'integrated'].includes(viewType) ? (parseInt(row[hOrder]) || 0) : (parseInt(row[hQty]) || 0);
+                const weight = ['glovis', 'integrated'].includes(viewType) ? parseQty(row[hOrder]) : parseQty(row[hQty]);
                 if (weight > 0) {
                     const hw = row[hHwaju] || '미분류';
                     const gb = row[hGubun] || '미분류';
@@ -187,7 +191,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
             });
 
             const groupKeysInfo = customerGroups.map(k => ({ name: k, idx: colMap[k] })).filter(x => x.idx >= 0);
-            const root = buildPivot(data, groupKeysInfo, (row) => ['glovis', 'integrated'].includes(viewType) ? (parseInt(row[hOrder]) || 0) : (parseInt(row[hQty]) || 0));
+            const root = buildPivot(data, groupKeysInfo, (row) => ['glovis', 'integrated'].includes(viewType) ? parseQty(row[hOrder]) : parseQty(row[hQty]));
             return { root, chartAggs, type: 'customer', headers, groups: currentGroups, pieAggs };
         } else {
             const dispatchRecords = [];
@@ -195,10 +199,10 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 dispatchRegions.forEach(region => {
                     const text = row[region.idx];
                     if (!text) return;
-                    const matches = String(text).matchAll(/([가-힣a-zA-Z]+)\s*(\d+)/g);
+                    const matches = String(text).matchAll(/([가-힣a-zA-Z]+)\s*(\d+(?:\.\d+)?)/g);
                     for (const match of matches) {
                         const company = match[1];
-                        const count = parseInt(match[2]) || 0;
+                        const count = parseQty(match[2]);
                         if (count > 0) {
                             dispatchRecords.push({
                                 ...row, // 원본 row 복제 (가상 컬럼 주입용)
@@ -286,7 +290,7 @@ export default function AsanDashboard({ data, headers, viewType }) {
                 const key = (isGlovis || isIntegrated) && f3 ? `${f1} / ${f2} / ${f3}` : `${f1} / ${f2}`;
 
                 if (!aggs[key]) aggs[key] = 0;
-                aggs[key] += (parseInt(row[hVal]) || 0);
+                aggs[key] += parseQty(row[hVal]);
             });
 
             return Object.entries(aggs).map(([k, v]) => (

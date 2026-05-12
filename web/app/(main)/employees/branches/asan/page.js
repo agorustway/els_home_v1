@@ -95,6 +95,16 @@ function formatTabLabel(dateStr) {
     return { mm: d.getMonth() + 1, dd: d.getDate(), day: ['일', '월', '화', '수', '목', '금', '토'][d.getDay()] };
 }
 function findCol(headers, name) { return headers.findIndex(h => h.trim() === name); }
+function parseQty(value) {
+    const match = String(value ?? '').replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) || 0 : 0;
+}
+function roundQty(value) {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+function roundMapQty(map) {
+    return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, roundQty(v)]));
+}
 function fmtTs(dt) {
     if (!dt) return '';
     const t = new Date(dt);
@@ -108,39 +118,39 @@ function calcSummary(headers, data, viewType) {
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
-            const o = parseInt(row[oC]) || 0; order += o;
+            const o = parseQty(row[oC]); order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
-            disp += parseInt(row[dC]) || 0;
+            disp += parseQty(row[dC]);
             const t = parseInt(row[tC]) || 0;
             if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
-        return { order, cats, disp, unmatch: order - disp, ft40, ft20 };
+        return { order: roundQty(order), cats: roundMapQty(cats), disp: roundQty(disp), unmatch: roundQty(order - disp), ft40: roundQty(ft40), ft20: roundQty(ft20) };
     } else if (viewType === 'mobis') {
         const qC = findCol(headers, '계') >= 0 ? findCol(headers, '계') : findCol(headers, '수량');
         const dC = findCol(headers, '배차'), gC = findCol(headers, '구분'), tC = findCol(headers, 'TYPE');
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
-            const o = parseInt(row[qC]) || 0; order += o;
+            const o = parseQty(row[qC]); order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
-            disp += parseInt(row[dC]) || 0;
+            disp += parseQty(row[dC]);
             const t = parseInt(row[tC]) || 0;
             if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
-        return { order, cats, disp, unmatch: order - disp, ft40, ft20 };
+        return { order: roundQty(order), cats: roundMapQty(cats), disp: roundQty(disp), unmatch: roundQty(order - disp), ft40: roundQty(ft40), ft20: roundQty(ft20) };
     } else {
         // integrated
         const oC = findCol(headers, '오더(계)'), dC = findCol(headers, '배차'), tC = findCol(headers, 'TYPE'), gC = findCol(headers, '구분');
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
-            const o = parseInt(row[oC]) || 0; order += o;
+            const o = parseQty(row[oC]); order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
-            disp += parseInt(row[dC]) || 0;
+            disp += parseQty(row[dC]);
             const t = parseInt(row[tC]) || 0;
             if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
-        return { order, cats, disp, unmatch: order - disp, ft40, ft20 };
+        return { order: roundQty(order), cats: roundMapQty(cats), disp: roundQty(disp), unmatch: roundQty(order - disp), ft40: roundQty(ft40), ft20: roundQty(ft20) };
     }
 }
 function doSearch(data, headers, term) {
@@ -167,7 +177,7 @@ function doSearch(data, headers, term) {
         indices.push(ri);
 
         if (orderColIdx !== -1) {
-            const val = parseInt(row[orderColIdx], 10);
+            const val = parseQty(row[orderColIdx]);
             if (!isNaN(val)) totalOrderCount += val;
         }
 
@@ -176,11 +186,11 @@ function doSearch(data, headers, term) {
             matchedTerms.forEach(t => {
                 if (cell.includes(t)) {
                     const escapedT = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(escapedT + '[^가-힣a-zA-Z\\d]*(\\d+)', 'g');
+                    const regex = new RegExp(escapedT + '[^가-힣a-zA-Z\\d]*(\\d+(?:\\.\\d+)?)', 'g');
                     let cellTotal = 0;
                     let match;
                     while ((match = regex.exec(cell)) !== null) {
-                        cellTotal += parseInt(match[1], 10);
+                        cellTotal += parseQty(match[1]);
                     }
                     if (cellTotal === 0) cellTotal = 1;
                     
@@ -502,7 +512,7 @@ function AsanDispatchContent() {
                 if (row.some(c => String(c || '').includes('?'))) {
                     status = 'warn';
                 } else {
-                    const getVal = (name) => parseInt(row[findCol(headers, name)]) || 0;
+                    const getVal = (name) => parseQty(row[findCol(headers, name)]);
                     let o = 0, d = 0;
                     if (viewType === 'glovis') { o = getVal('오더'); d = getVal('배차'); }
                     else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getVal('배차'); }
