@@ -12,7 +12,8 @@ const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적'
 function formatCellValue(val, colName) {
     if (val == null || val === '') return '';
     const s = String(val);
-    // 20260508.0 or 20260508 패턴 감지
+    
+    // 날짜 패턴 감지: 20260508.0 or 20260508
     const m = s.match(/^(\d{4})(\d{2})(\d{2})(\.0)?$/);
     if (m) {
         const [, y, mo, d] = m;
@@ -20,6 +21,16 @@ function formatCellValue(val, colName) {
             return `${y}-${mo}-${d}`;
         }
     }
+    
+    // 시간 패턴 감지: 09:00:00 -> 09:00
+    if (colName && colName.includes('시간')) {
+        const timeMatch = s.match(/^(\d{1,2}):(\d{2}):(\d{2})(?:\.\d+)?$/);
+        if (timeMatch) {
+            const h = timeMatch[1].padStart(2, '0');
+            return `${h}:${timeMatch[2]}`;
+        }
+    }
+
     return s;
 }
 
