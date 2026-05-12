@@ -1,6 +1,13 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-12] 구간조회 결과 영역 레이아웃 정렬 및 가로폭 최적화 (v5.12.12)
+### 🚀 Achievement
+- **결과 영역 2열 그리드 밸런스 조정**: 좌측(탐색된 경로 + 할증 패널)과 우측(운임 결과)이 50:50(1fr 1fr) 비율로 완벽하게 정렬되도록 레이아웃 구조 개선.
+- **컴포넌트 그룹화**: `[탐색된 경로]`와 `[할증/부대비용]`을 하나의 좌측 컬럼 wrapper로 묶어 가로폭이 제각각으로 보이던 문제 해결.
+### 📁 변경 파일
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`
+
 ## [2026-05-12] 구간조회 할증패널 통합 + UX 개선 (v5.12.11)
 ### 🚀 Achievement
 - **할증/부대비용 패널 분리 컴포넌트화 (SurchargePanel.js)**: 기존 `page.js`에만 있던 할증 선택 UI를 독립 컴포넌트로 분리하여 구간조회(RouteSearchView) 내 경로 결과 아래에 배치. 할증 선택 시 운임 결과에 실시간 반영. 고시 변경 시 `options.surcharges` JSON 데이터만 수정하면 UI 자동 반영되도록 설계.

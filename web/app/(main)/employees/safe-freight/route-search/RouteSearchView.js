@@ -1828,9 +1828,11 @@ export default function RouteSearchView({ options, period, onBack }) {
             {/* ━━━ ROW 3: 결과 영역 (풀와이드 2열) ━━━ */}
             {(parsedRoutes.length > 0 || distFareResult) && (
                 <div className={styles.resultSection}>
-                    {/* 좌: 경로 대안 카드 */}
-                    {parsedRoutes.length > 0 && (
-                        <div className={styles.resultRoutes}>
+                    {/* 좌측: 탐색된 경로 + 할증/부대비용 패널 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        {/* 좌: 경로 대안 카드 */}
+                        {parsedRoutes.length > 0 && (
+                            <div className={styles.resultRoutes}>
                             <p className={styles.sectionLabel}>
                                 탐색된 경로 ({parsedRoutes.length}건)
                                 {currentFuelPrice > 0 && (
@@ -1878,17 +1880,18 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 );
                             })}
                         </div>
-                    )}
+                        )}
 
-                    {/* ── 할증/부대비용 패널 (경로 아래 위치) ── */}
-                    {parsedRoutes.length > 0 && (
-                        <div style={{ gridColumn: '1 / -1' }}>
-                            <SurchargePanel
-                                options={options}
-                                onChange={setSurchargeInfo}
-                            />
-                        </div>
-                    )}
+                        {/* ── 할증/부대비용 패널 (경로 아래 위치) ── */}
+                        {parsedRoutes.length > 0 && (
+                            <div>
+                                <SurchargePanel
+                                    options={options}
+                                    onChange={setSurchargeInfo}
+                                />
+                            </div>
+                        )}
+                    </div>
 
                     {/* 우: 운임 결과 */}
                     <div className={styles.resultFare}>
