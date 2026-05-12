@@ -586,7 +586,7 @@ function AsanDispatchContent() {
         <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
             {/* 상단 바: 뷰전환 + 검색 + 기존 헤더 기능 병합 */}
             <div className={styles.topBar} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px', background: '#fff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div className={styles.mobileTopBarRow} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div className={styles.topBarLeft}>
                         <div className={styles.viewSwitch}>
                             <button className={`${styles.funcBtn} ${mainView === 'dashboard' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('dashboard')}>

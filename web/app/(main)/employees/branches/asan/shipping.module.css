@@ -31,9 +31,28 @@
 }
 
 .fileMod {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.75rem;
     color: #64748b;
     font-weight: 600;
+    min-width: 0;
+}
+
+.fileModTime {
+    color: #334155;
+    font-weight: 700;
+}
+
+.fileModElapsed {
+    padding: 2px 6px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
 }
 
 .rightControls {
@@ -289,10 +308,13 @@
         justify-content: space-between;
         align-items: center;
         width: 100%;
+        gap: 8px;
+        min-width: 0;
     }
 
     .title {
         font-size: 0.95rem;
+        flex: 0 0 auto;
     }
 
     .rightControls {
@@ -318,7 +340,28 @@
     }
 
     .fileMod {
-        font-size: 0.65rem;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+        gap: 4px;
+        padding: 4px 6px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.62rem;
+    }
+
+    .fileModTime {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .fileModElapsed {
+        padding: 1px 5px;
+        font-size: 0.62rem;
     }
 
     .table th, .table td {
