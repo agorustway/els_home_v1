@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5149';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5149';
+import { Store, State, BASE_URL } from './store.js?v=5151';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5151';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5149';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5149';
+} from './gps.js?v=5151';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5151';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -428,7 +428,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5149');
+  const gpsModule = await import('./gps.js?v=5151');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>
@@ -595,7 +595,6 @@ export function registerBackHandler() {
   window.isTripActive = () => State.trip.status === 'driving' || State.trip.status === 'paused';
   window.handleBackButton = () => {
     const App = window.App;
-    if (document.getElementById('modal-work-site')?.style.display === 'flex') { document.getElementById('modal-work-site').style.display='none'; return true; }
     if (document.getElementById('photo-viewer')?.classList.contains('active'))    { App?.closePhotoViewer(); return true; }
     if (document.getElementById('emergency-popup')?.classList.contains('active')) { App?.closeEmergency();   return true; }
     if (document.getElementById('notice-detail')?.classList.contains('active'))   { App?.closeNoticeDetail(); return true; }
@@ -634,96 +633,4 @@ export function registerBackHandler() {
     }
     return false;
   };
-}
-
-// ─── 작업지 상세정보 조회 ─────────────────────────────────────────
-export async function lookupWorkSite(source) {
-    const inputId = source === 'log' ? 'log-edit-work-site' : 'work-site';
-    const siteName = document.getElementById(inputId).value.trim();
-    if (!siteName) {
-        showToast('작업지 이름을 먼저 입력하세요.');
-        return;
-    }
-    
-    document.getElementById('work-site-modal-content').innerHTML = '<div style="text-align:center;padding:20px;">정보를 불러오는 중...</div>';
-    document.getElementById('modal-work-site').style.display = 'flex';
-    document.getElementById('work-site-modal-title').textContent = `${siteName} 검색 중...`;
-    
-    try {
-        const res = await smartFetch(BASE_URL + '/api/work-sites');
-        if (!res.ok) throw new Error('조회 실패');
-        const data = await res.json();
-        const sites = data.items || [];
-        
-        const exact = sites.find(s => s.site_name === siteName);
-        const partials = sites.filter(s => s.site_name.includes(siteName) || siteName.includes(s.site_name));
-        
-        const target = exact || (partials.length > 0 ? partials[0] : null);
-        
-        if (!target) {
-            document.getElementById('work-site-modal-content').innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;">등록된 [${siteName}] 정보를 찾을 수 없습니다.</div>`;
-            return;
-        }
-        
-        document.getElementById('work-site-modal-title').textContent = target.site_name;
-        
-        let wp = {};
-        try { 
-            if (target.work_method && target.work_method.trim().startsWith('{')) {
-                wp = JSON.parse(target.work_method); 
-            } else {
-                wp = { precautions: target.work_method };
-            }
-        } catch(e) { wp = { precautions: target.work_method }; }
-        
-        const managersHtml = (target.managers || []).map(m => `<div style="margin-bottom:4px;"><b>${m.name}</b> <span style="color:#64748b;font-size:0.9em;">${m.role}</span> <span style="color:#2563eb">${m.phone}</span></div>`).join('');
-        const attachmentsHtml = (target.attachments || []).filter(f => f.name.match(/\.(jpeg|jpg|gif|png)$/i)).map(img => `
-            <img src="${img.url || (BASE_URL + '/api/s3/files?key=' + encodeURIComponent(img.key))}" style="width:100%; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px;" alt="약도"/>
-        `).join('');
-        
-        const renderRow = (label, value) => {
-            if (!value) return '';
-            return `
-                <div style="display:flex; border-bottom:1px solid #e2e8f0;">
-                    <div style="width:80px; min-width:80px; background:#4b89dc; color:#fff; padding:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; text-align:center;">${label}</div>
-                    <div style="flex:1; padding:10px; white-space:pre-wrap;">${value}</div>
-                </div>
-            `;
-        };
-        
-        const html = `
-            <div style="border-top:2px solid #3b82f6; border-bottom:1px solid #cbd5e1; border-radius:4px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                ${managersHtml ? `
-                <div style="display:flex; border-bottom:1px solid #e2e8f0;">
-                    <div style="width:80px; min-width:80px; background:#4b89dc; color:#fff; padding:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; text-align:center;">담당자</div>
-                    <div style="flex:1; padding:10px;">${managersHtml}</div>
-                </div>
-                ` : ''}
-                ${renderRow('주소', target.address)}
-                ${renderRow('대표연락처', target.contact)}
-                ${renderRow('주의사항', wp.precautions || wp.notes)}
-                ${renderRow('입차', wp.entryProcess)}
-                ${renderRow('접수', wp.receptionProcess)}
-                ${renderRow('적입', wp.loadingProcess)}
-                ${renderRow('출차', wp.exitProcess)}
-                ${attachmentsHtml ? `
-                <div style="display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
-                    <div style="width:80px; min-width:80px; background:#4b89dc; color:#fff; padding:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; text-align:center;">약도</div>
-                    <div style="flex:1; padding:10px;">${attachmentsHtml}</div>
-                </div>
-                ` : ''}
-            </div>
-            ${target.notes ? `
-            <div style="margin-top:16px;">
-                <div style="font-weight:bold; margin-bottom:8px; color:#1e293b;">💡 특이사항</div>
-                <div style="background:#f1f5f9; padding:12px; border-radius:8px; white-space:pre-wrap;">${target.notes}</div>
-            </div>
-            ` : ''}
-            <button class="btn btn-black btn-full" onclick="document.getElementById('${inputId}').value = '${target.site_name}'; document.getElementById('modal-work-site').style.display='none'; window.App?.onTripFieldChange?.(); window.App?.onLogFieldChange?.();" style="margin-top:16px; height:44px;">이 작업지로 설정</button>
-        `;
-        document.getElementById('work-site-modal-content').innerHTML = html;
-        
-    } catch(err) {
-        document.getElementById('work-site-modal-content').innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;">오류가 발생했습니다.<br>${err.message}</div>`;
-    }
 }

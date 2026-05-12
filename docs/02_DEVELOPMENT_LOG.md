@@ -1,6 +1,41 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-12] 드라이버 앱 작업지 자유입력 복구 (v5.12.17 / APK v5.11.10)
+### 🚀 Achievement
+- **상세조회 버튼 제거**: 운행 시작 화면과 일지 수정 화면의 `작업지` 입력칸 옆에 노출되던 승인되지 않은 `상세조회` 버튼을 제거하고, 입력칸을 전체 폭 자유입력 필드로 복구했습니다.
+- **조회 기능 잔여물 제거**: `App.lookupWorkSite` 노출, 작업지 상세조회 모달, 뒤로가기 모달 처리, 조회 함수 본문을 함께 제거해 앱 안에서 해당 기능이 다시 호출되지 않도록 정리했습니다.
+- **APK 캐시버스터 갱신**: `versionCode 5151`, `versionName 5.11.10`으로 올리고 공식 `scripts/build_driver_apk.ps1`로 `driver-src` 캐시버스터, Capacitor sync, APK 빌드 및 `web/public/apk/els_driver.apk` 반영을 완료했습니다.
+- **검증**: `driver-src`와 Android assets에서 `상세조회/lookupWorkSite/modal-work-site/work-site-modal` 잔여 검색 0건 확인, `npm.cmd run lint` 통과, APK 내부 버전 `v5.11.10` 확인.
+### 📁 변경 파일
+- `web/driver-src/index.html`
+- `web/driver-src/app.js`
+- `web/driver-src/modules/trip.js`
+- `web/android/app/build.gradle`
+- `web/driver-src/modules/*.js`
+- `web/public/apk/version.json`
+- `web/public/apk/els_driver.apk`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-12] 드라이버 앱 지도 GPS 샘플링 및 현재 운행 우선 표시 보강 (v5.12.16 / APK v5.11.9)
+### 🚀 Achievement
+- **현재 운행 우선 대표 선택**: 같은 차량의 `completed` 운행이 `updated_at/completed_at` 때문에 현재 `driving` 운행보다 최신으로 잡히던 케이스를 막기 위해, 앱 지도용 운행 정렬을 `driving > paused > completed` 우선순위로 보정했습니다.
+- **완료 운행 지도 기본 제외**: 앱 지도 마커/전체보기 기본 대상에서 완료 운행을 제외해, 운행 중 마커를 눌렀는데 완료 경로의 마지막 위치를 현재 운행처럼 보는 오인을 차단했습니다.
+- **지도 화면 1초 GPS 샘플링**: 지도 화면이 열려 있고 운행 중일 때만 스마트폰 전경 GPS를 1초마다 확인합니다. 화면 마커와 내 차량 추적은 이 샘플로 부드럽게 움직이고, 서버 전송은 기존 `onGpsUpdate`의 정확도/간격/필수 포인트 필터를 그대로 유지합니다.
+- **APK 캐시버스터 갱신**: `versionCode 5150`, `versionName 5.11.9`로 올리고 공식 `scripts/build_driver_apk.ps1`로 `driver-src` 캐시버스터, Capacitor sync, APK 빌드 및 `web/public/apk/els_driver.apk` 반영을 완료했습니다.
+- **검증**: `web`에서 `npm.cmd run lint`, `npm.cmd run build` 통과. 첫 APK 빌드는 샌드박스 네트워크 차단으로 Gradle wrapper 다운로드가 막혀 내부 버전 불일치가 났고, 권한 승인 후 재실행하여 새 APK 산출물 시간과 `version.json` 5150 반영을 확인했습니다.
+### 📁 변경 파일
+- `web/driver-src/modules/gps.js`
+- `web/driver-src/modules/map.js`
+- `web/driver-src/modules/locationFilter.js`
+- `web/android/app/build.gradle`
+- `web/driver-src/app.js`, `web/driver-src/index.html`, `web/driver-src/modules/*.js`
+- `web/public/apk/version.json`
+- `web/public/apk/els_driver.apk`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-12] 안전운임 구간조회 할증/부대비용 계산 보강 (v5.12.15)
 ### 🚀 Achievement
 - **체크 상태-결과 금액 정합성 보강**: 구간조회 `SurchargePanel`이 전달하는 요약 배율(`totalPctMult`)만 사용하지 않고, 실제 적용 목록(`pctApplied`, `fixedApplied`)을 기준으로 퍼센트 할증과 부대비용을 재계산하도록 수정했습니다.

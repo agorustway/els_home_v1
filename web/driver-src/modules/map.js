@@ -6,12 +6,13 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5149';
-import { smartFetch, remoteLog } from './bridge.js?v=5149';
-import { showToast } from './utils.js?v=5149';
-import { showScreen } from './nav.js?v=5149';
-import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5149';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5149';
+import { State, BASE_URL } from './store.js?v=5151';
+import { smartFetch, remoteLog } from './bridge.js?v=5151';
+import { showToast } from './utils.js?v=5151';
+import { showScreen } from './nav.js?v=5151';
+import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5151';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5151';
+import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5151';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -28,6 +29,8 @@ let _trips       = [];             // 최신 운행 데이터
 let _mapPollTimer = null;          // 폴링 타이머
 let _sdkReady    = false;          // SDK 로드 완료 여부
 let _autoFollow  = true;           // 내 차량 자동 추적 (네비 모드)
+let _routeTripId  = null;          // 현재 상세 경로 표시 중인 tripId
+let _gpsSampleHandler = null;      // 지도 전경 GPS 샘플 핸들러
 
 function getVisibleTrips(trips, includeCompleted = false) {
   return filterTripsForMapVisibility(prepareLiveTrips(trips), State.profile, includeCompleted);
@@ -172,11 +175,73 @@ function animateMarker(marker, fromLat, fromLng, toLat, toLng, duration = 500) {
   requestAnimationFrame(step);
 }
 
+function setMarkerPositionSmooth(marker, lat, lng, duration = 700) {
+  if (!marker || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const pos = new naver.maps.LatLng(lat, lng);
+  const prev = marker.getPosition?.();
+  if (prev) {
+    const pLat = prev.lat();
+    const pLng = prev.lng();
+    const dist = Math.abs(pLat - lat) + Math.abs(pLng - lng);
+    if (dist > 0.000001 && dist < 0.5) animateMarker(marker, pLat, pLng, lat, lng, duration);
+    else marker.setPosition(pos);
+  } else {
+    marker.setPosition(pos);
+  }
+}
+
+function handleForegroundGpsSample(event) {
+  if (!_map || !window.naver?.maps || State.trip.status !== 'driving' || !State.trip.id) return;
+  const { lat, lng } = event.detail || {};
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  const pos = new naver.maps.LatLng(lat, lng);
+  const marker = _markers.get(State.trip.id);
+  if (marker) {
+    setMarkerPositionSmooth(marker, lat, lng, 900);
+  } else {
+    const label = State.profile.vehicleNo ? State.profile.vehicleNo.slice(-4) : '내 차량';
+    _markers.set(State.trip.id, new naver.maps.Marker({
+      position: pos,
+      map: _map,
+      icon: makeVehicleIcon(label, '#10b981'),
+      title: label,
+      zIndex: 120,
+    }));
+  }
+
+  if (_routeTripId && String(_routeTripId) === String(State.trip.id) && _endMarker) {
+    setMarkerPositionSmooth(_endMarker, lat, lng, 900);
+  }
+
+  _trips = _trips.map(t => String(t.id) === String(State.trip.id)
+    ? { ...t, lastLocation: { ...(t.lastLocation || {}), lat, lng, recorded_at: new Date().toISOString() } }
+    : t);
+
+  if (_autoFollow) _map.panTo(pos, { duration: 900, easing: 'easeOutCubic' });
+}
+
+function startMapGpsSampling() {
+  if (!_gpsSampleHandler) {
+    _gpsSampleHandler = handleForegroundGpsSample;
+    window.addEventListener('els:gps-sample', _gpsSampleHandler);
+  }
+  startMapForegroundTracking();
+}
+
+function stopMapGpsSampling() {
+  stopMapForegroundTracking();
+  if (_gpsSampleHandler) {
+    window.removeEventListener('els:gps-sample', _gpsSampleHandler);
+    _gpsSampleHandler = null;
+  }
+}
+
 // ─── 마커 갱신 ──────────────────────────────────────────────────────
 function updateVehicleMarkers(trips) {
   if (!_map) return;
 
-  const visible = getVisibleTrips(trips, true);
+  const visible = getVisibleTrips(trips, false);
   const visibleIds = new Set(visible.map(t => t.id));
 
   // 사라진 마커 제거
@@ -378,6 +443,7 @@ function buildRouteStats(trip, points) {
 export async function openMap() {
   showScreen('map');
   _autoFollow = true;  // 지도 열 때 자동추적 모드 ON
+  _routeTripId = null;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-btn-map')?.classList.add('active');
 
@@ -395,6 +461,7 @@ export async function openMap() {
     requestAnimationFrame(() => {
       initNaverMap();
       refreshMapData();
+      startMapGpsSampling();
     });
   });
 
@@ -408,6 +475,8 @@ export async function openMap() {
 /** 지도 화면 닫기 */
 export async function closeMap() {
   if (_mapPollTimer) { clearInterval(_mapPollTimer); _mapPollTimer = null; }
+  stopMapGpsSampling();
+  _routeTripId = null;
   showScreen('main');
   // trip 탭 활성화 및 데이터 로드
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -415,7 +484,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5149');
+    const { loadCurrentTrip } = await import('./trip.js?v=5151');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -465,7 +534,7 @@ export function centerMyLocation() {
 export function showAllMapVehicles() {
   if (!_map) return;
   _autoFollow = false;  // 전체보기 누르면 자동추적 OFF
-  const visible = getVisibleTrips(_trips, true);
+  const visible = getVisibleTrips(_trips, false);
   if (!visible.length) {
     showToast('현재 공개범위에 표시할 차량이 없습니다.');
     return;
@@ -493,7 +562,9 @@ export function focusVehicleOnMap(trip) {
 
 /** 특정 차량의 경로를 지도 위에 표시 */
 export async function showTripRouteOnMap(trip) {
-  _autoFollow = false; // 경로 상세 정보 볼 때는 자동추적 끄기
+  const isActiveMyTrip = isMyTrip(trip) && (trip.status === 'driving' || trip.status === 'paused');
+  _autoFollow = isActiveMyTrip; // 내 현재 운행 경로는 네비처럼 계속 따라가고, 타 차량/완료 경로는 수동 조회
+  _routeTripId = trip.id;
   remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
 
   let path = [];
@@ -553,6 +624,7 @@ export function clearMapRoute() {
   if (_polyline)    { _polyline.setMap(null);    _polyline    = null; }
   if (_startMarker) { _startMarker.setMap(null); _startMarker = null; }
   if (_endMarker)   { _endMarker.setMap(null);   _endMarker   = null; }
+  _routeTripId = null;
   document.getElementById('map-route-panel')?.classList.add('hidden');
 }
 

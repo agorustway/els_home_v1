@@ -7,8 +7,8 @@
  * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
  * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
-import { State, BASE_URL } from './store.js?v=5149';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5149';
+import { State, BASE_URL } from './store.js?v=5151';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5151';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)
@@ -20,6 +20,8 @@ export let realtimeExpireAt  = 0;
 let _lastSentMotion = null;
 let _currentSpeedKph = 0;
 let _motionBurstUntil = 0;
+let _mapForegroundTimer = null;
+let _mapForegroundBusy = false;
 
 // ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
@@ -89,6 +91,54 @@ function _syncRealtimeModeToNative(isRealtime) {
   const overlay = Overlay();
   if (!overlay) return;
   overlay.updateStatus({ status: State.trip.status, isRealtime }).catch(() => { });
+}
+
+function emitGpsSample(pos, source = 'gps') {
+  const c = pos?.coords || {};
+  const lat = Number(c.latitude);
+  const lng = Number(c.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  window.dispatchEvent(new CustomEvent('els:gps-sample', {
+    detail: {
+      lat,
+      lng,
+      speed: Number(c.speed || 0) * 3.6,
+      accuracy: Number(c.accuracy || 0),
+      heading: typeof c.heading === 'number' ? c.heading : null,
+      source,
+      recordedAt: Date.now(),
+    },
+  }));
+}
+
+async function pollMapForegroundPosition() {
+  if (_mapForegroundBusy || !navigator.geolocation) return;
+  if (State.trip.status !== 'driving' || !State.trip.id) return;
+  _mapForegroundBusy = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _mapForegroundBusy = false;
+      onGpsUpdate(pos, false, State.trip.id, null, { source: 'map_foreground' }).catch?.(() => { });
+    },
+    () => { _mapForegroundBusy = false; },
+    { enableHighAccuracy: true, timeout: 900, maximumAge: 0 }
+  );
+}
+
+export function startMapForegroundTracking() {
+  if (_mapForegroundTimer) return;
+  pollMapForegroundPosition();
+  _mapForegroundTimer = setInterval(pollMapForegroundPosition, 1000);
+  remoteLog('지도 전경 GPS 샘플링 시작 (1초, 서버 전송 필터 유지)', 'GPS_MAP');
+}
+
+export function stopMapForegroundTracking() {
+  if (_mapForegroundTimer) {
+    clearInterval(_mapForegroundTimer);
+    _mapForegroundTimer = null;
+  }
+  _mapForegroundBusy = false;
+  remoteLog('지도 전경 GPS 샘플링 종료', 'GPS_MAP');
 }
 
 // ─── BackgroundGeolocation 플러그인 접근 ──────────────────────────
@@ -397,7 +447,7 @@ export function updateTripStatusLine() {
 // ─── GPS 수신 처리 (서버 전송) ────────────────────────────────────
 let lastEmergencyPollMs = 0;
 
-export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, markerType = null) {
+export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, markerType = null, options = {}) {
   const targetId = forcedTripId || State.trip.id;
   if (!targetId) return;
 
@@ -414,6 +464,7 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const speedKph = (speed || 0) * 3.6;
   _currentSpeedKph = speedKph > 160 ? 0 : speedKph;
   lastGpsTimestamp = Date.now();
+  emitGpsSample(pos, options.source || (isForced ? 'forced' : 'native_bg'));
 
   // 마지막 알려진 위치 저장 (endTrip fallback용)
   if (Number.isFinite(lat) && Number.isFinite(lng)) {

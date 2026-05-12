@@ -105,13 +105,22 @@ function tripTime(trip) {
 
 export function prepareLiveTrips(trips = []) {
   const latest = new Map();
+  const rank = { driving: 0, paused: 1, completed: 2 };
   for (const trip of trips) {
     const key = String(trip?.vehicle_number || trip?.vehicle_id || trip?.id || '').replace(/\s/g, '').toUpperCase();
     if (!key) continue;
-    if (!latest.has(key) || tripTime(trip) > tripTime(latest.get(key))) latest.set(key, trip);
+    const prev = latest.get(key);
+    if (!prev) {
+      latest.set(key, trip);
+      continue;
+    }
+    const prevRank = rank[prev?.status] ?? 9;
+    const nextRank = rank[trip?.status] ?? 9;
+    if (nextRank < prevRank || (nextRank === prevRank && tripTime(trip) > tripTime(prev))) {
+      latest.set(key, trip);
+    }
   }
 
-  const rank = { driving: 0, paused: 1, completed: 2 };
   return trips
     .filter(trip => {
       const key = String(trip?.vehicle_number || trip?.vehicle_id || trip?.id || '').replace(/\s/g, '').toUpperCase();
