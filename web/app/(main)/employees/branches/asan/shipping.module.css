@@ -103,6 +103,8 @@
     border-right: 1px solid #f1f5f9;
     border-bottom: 1px solid #f1f5f9;
     white-space: nowrap;
+    height: 34px;
+    box-sizing: border-box;
 }
 
 .table th {
@@ -131,6 +133,13 @@
 
 .table tr:hover td {
     background: #f1f5f9;
+}
+
+.virtualSpacer td {
+    padding: 0 !important;
+    border: 0 !important;
+    height: auto;
+    background: transparent !important;
 }
 
 .dragOver {

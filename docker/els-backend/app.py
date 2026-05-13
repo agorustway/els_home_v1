@@ -626,86 +626,233 @@ def export_excel_all():
     except Exception as e:
         return str(e), 500
 
-shipping_cache = {"mtime": 0, "data": None}
+DEFAULT_ASAN_SHIPPING_PATH = "/아산지점/2026_자체보관리스트.xlsx"
+shipping_cache = {}
+shipping_db_available = True
+
+def resolve_asan_shipping_file(rel_path=None):
+    rel_path = (rel_path or DEFAULT_ASAN_SHIPPING_PATH).replace("\\", "/").strip()
+    if not rel_path.startswith("/"):
+        rel_path = f"/{rel_path}"
+
+    file_path = Path("/app/data") / rel_path.lstrip("/")
+    if file_path.exists():
+        return file_path, rel_path
+
+    fallback_root = Path("C:/Els") if os.name == "nt" else Path("/Volumes/Els")
+    file_path = fallback_root / rel_path.lstrip("/")
+    if file_path.exists():
+        return file_path, rel_path
+
+    return file_path, rel_path
+
+def parse_asan_shipping_excel(file_path):
+    app.logger.info(f"선적관리 엑셀 파싱 시작: {file_path}")
+    import shutil, tempfile as _tf
+    temp_path = _tf.mktemp(suffix=".xlsx")
+    try:
+        shutil.copy2(str(file_path), temp_path)
+    except Exception as cp_err:
+        app.logger.error(f"선적관리 임시복사 실패: {cp_err}")
+        raise RuntimeError(f"파일 복사 실패: {cp_err}")
+
+    try:
+        df = pd.read_excel(temp_path, sheet_name=0, header=2)
+    finally:
+        try: os.remove(temp_path)
+        except: pass
+
+    raw_cols = [str(c).replace('\n', ' ').strip() for c in df.columns]
+    seen = {}
+    clean_cols = []
+    for c in raw_cols:
+        if c.startswith('Unnamed') or c == '':
+            c = f'col_{len(clean_cols)+1}'
+        if c in seen:
+            seen[c] += 1
+            c = f'{c}_{seen[c]}'
+        else:
+            seen[c] = 0
+        clean_cols.append(c)
+    df.columns = clean_cols
+
+    df = df.fillna("")
+    df = df.astype(str).replace(['nan', 'None', '#N/A', 'NaT'], '')
+
+    container_cols = [c for c in df.columns if 'CONTAINER' in c.upper()]
+    if container_cols:
+        c_col = container_cols[0]
+        df = df[df[c_col].str.strip() != ""]
+
+    headers = df.columns.tolist()
+    data_rows = df.values.tolist()
+
+    data_rows = [
+        [("" if (isinstance(v, float) and math.isnan(v)) or v is None else v) for v in row]
+        for row in data_rows
+    ]
+
+    return {"headers": headers, "data": data_rows}
+
+def _shipping_value(headers, row, keywords):
+    for i, header in enumerate(headers):
+        normalized = str(header or "").replace(" ", "").upper()
+        if any(keyword.replace(" ", "").upper() in normalized for keyword in keywords):
+            return str(row[i] if i < len(row) else "").strip()
+    return ""
+
+def sync_asan_shipping_python(force=False, rel_path=None):
+    global shipping_db_available
+    if not supabase or not shipping_db_available:
+        return None
+
+    file_path, normalized_path = resolve_asan_shipping_file(rel_path)
+    if not file_path.exists():
+        app.logger.warning(f"[선적관리DB] 파일을 찾을 수 없음: {file_path}")
+        return None
+
+    mtime_ts = file_path.stat().st_mtime
+    file_modified_at = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
+
+    try:
+        meta_res = supabase.from_("branch_shipping_files").select("file_modified_at").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+        current_meta = meta_res.data[0] if meta_res.data else None
+        if not force and current_meta and current_meta.get("file_modified_at"):
+            try:
+                db_mtime = datetime.fromisoformat(current_meta["file_modified_at"].replace("Z", "+00:00")).timestamp()
+                if abs(db_mtime - mtime_ts) < 1:
+                    return current_meta
+            except Exception:
+                pass
+
+        parsed = parse_asan_shipping_excel(file_path)
+        headers = parsed["headers"]
+        rows = parsed["data"]
+
+        payload = []
+        for row_index, row in enumerate(rows):
+            row_data = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
+            search_text = " ".join(str(v) for v in row if v)
+            payload.append({
+                "branch_id": "asan",
+                "file_path": normalized_path,
+                "row_index": row_index,
+                "row_values": row,
+                "row_data": row_data,
+                "container_no": _shipping_value(headers, row, ["CONTAINER"]),
+                "vessel_name": _shipping_value(headers, row, ["선적확정모선", "모선", "VESSEL"]),
+                "search_text": search_text[:8000],
+                "file_modified_at": file_modified_at,
+                "updated_at": datetime.now(KST).isoformat()
+            })
+
+        supabase.from_("branch_shipping_rows").delete().eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+        for i in range(0, len(payload), 500):
+            supabase.from_("branch_shipping_rows").insert(payload[i:i + 500]).execute()
+
+        supabase.from_("branch_shipping_files").upsert({
+            "branch_id": "asan",
+            "file_path": normalized_path,
+            "headers": headers,
+            "row_count": len(rows),
+            "file_modified_at": file_modified_at,
+            "synced_at": datetime.now(KST).isoformat()
+        }, on_conflict="branch_id,file_path").execute()
+
+        shipping_cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "file_modified_at": file_modified_at}}
+        app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행)")
+        return {"file_modified_at": file_modified_at}
+    except Exception as e:
+        if "branch_shipping_" in str(e) or "relation" in str(e).lower():
+            shipping_db_available = False
+            app.logger.warning("[선적관리DB] Supabase 테이블이 없어 DB 동기화를 비활성화합니다. migration 적용 후 컨테이너를 재시작하세요.")
+        else:
+            app.logger.error(f"[선적관리DB] 동기화 실패: {e}", exc_info=True)
+        return None
+
+def query_asan_shipping_db(rel_path, page=1, page_size=5000, search=""):
+    if not supabase or not shipping_db_available:
+        return None
+
+    normalized_path = (rel_path or DEFAULT_ASAN_SHIPPING_PATH).replace("\\", "/").strip()
+    if not normalized_path.startswith("/"):
+        normalized_path = f"/{normalized_path}"
+
+    meta_res = supabase.from_("branch_shipping_files").select("*").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+    meta = meta_res.data[0] if meta_res.data else None
+    if not meta:
+        return None
+
+    page = max(1, int(page or 1))
+    page_size = max(1, min(10000, int(page_size or 5000)))
+    start = (page - 1) * page_size
+    end = start + page_size - 1
+
+    q = supabase.from_("branch_shipping_rows").select("row_values", count="exact").eq("branch_id", "asan").eq("file_path", normalized_path)
+    if search:
+        q = q.ilike("search_text", f"%{search}%")
+    rows_res = q.order("row_index", desc=False).range(start, end).execute()
+
+    return {
+        "headers": meta.get("headers") or [],
+        "data": [r.get("row_values") for r in (rows_res.data or [])],
+        "file_modified_at": meta.get("file_modified_at"),
+        "synced_at": meta.get("synced_at"),
+        "total": rows_res.count if rows_res.count is not None else meta.get("row_count", 0),
+        "page": page,
+        "page_size": page_size,
+        "source": "supabase"
+    }
+
+def asan_shipping_sync_scheduler():
+    app.logger.info("[스케줄러] 아산 선적관리 DB 동기화 스케줄러 시작")
+    while True:
+        try:
+            now = datetime.now(KST)
+            if 6 <= now.hour <= 23:
+                sync_asan_shipping_python()
+            time.sleep(120)
+        except Exception as e:
+            app.logger.error(f"[선적관리DB 스케줄러] 에러: {e}")
+            time.sleep(120)
+
+threading.Thread(target=asan_shipping_sync_scheduler, daemon=True).start()
 
 @app.route("/api/branches/asan/shipping", methods=["GET"])
 def get_asan_shipping():
-    """아산지점 선적관리 엑셀 파싱 및 반환 (인메모리 캐시)"""
+    """아산지점 선적관리 조회. 기본은 Supabase DB, 미준비 시 엑셀 캐시로 폴백."""
     try:
-        # NAS 경로 (Windows/Mac 로컬 개발 환경과 실제 배포 환경 경로 호환성)
-        file_path = Path("/app/data/아산지점/2026_자체보관리스트.xlsx")
+        rel_path = request.args.get("path") or DEFAULT_ASAN_SHIPPING_PATH
+        source = request.args.get("source", "auto")
+        force = request.args.get("force") in ("1", "true", "yes")
+        page = request.args.get("page", 1)
+        page_size = request.args.get("page_size", 5000)
+        search = (request.args.get("search") or "").strip()
+
+        if source != "excel" and supabase and shipping_db_available:
+            sync_asan_shipping_python(force=force, rel_path=rel_path)
+            db_data = query_asan_shipping_db(rel_path, page=page, page_size=page_size, search=search)
+            if db_data:
+                return jsonify({"data": db_data})
+
+        file_path, normalized_path = resolve_asan_shipping_file(rel_path)
         if not file_path.exists():
-            # Fallback for local dev
-            file_path = Path("C:/Els/아산지점/2026_자체보관리스트.xlsx") if os.name == "nt" else Path("/Volumes/Els/아산지점/2026_자체보관리스트.xlsx")
-            if not file_path.exists():
-                return jsonify({"error": "선적관리 엑셀 파일을 찾을 수 없습니다."}), 404
-        
+            return jsonify({"error": "선적관리 엑셀 파일을 찾을 수 없습니다."}), 404
+
         mtime = file_path.stat().st_mtime
-        if shipping_cache["mtime"] == mtime and shipping_cache["data"]:
-            return jsonify({"data": shipping_cache["data"]})
-            
-        app.logger.info(f"선적관리 엑셀 파싱 시작 (mtime={mtime})")
-        # 네트워크 파일 안정성을 위해 로컬 임시 파일로 복사
-        import shutil, tempfile as _tf
-        temp_path = _tf.mktemp(suffix=".xlsx")
-        try:
-            shutil.copy2(str(file_path), temp_path)
-        except Exception as cp_err:
-            app.logger.error(f"선적관리 임시복사 실패: {cp_err}")
-            return jsonify({"error": f"파일 복사 실패: {cp_err}"}), 500
-        
-        try:
-            # 3행이 헤더 (index 2)
-            df = pd.read_excel(temp_path, sheet_name=0, header=2)
-        finally:
-            try: os.remove(temp_path)
-            except: pass
-        
-        # 컬럼 이름의 개행 제거 및 빈 이름 정리
-        raw_cols = [str(c).replace('\n', ' ').strip() for c in df.columns]
-        # 중복 컬럼명 처리 (Unnamed: 등 pandas 자동 생성 포함)
-        seen = {}
-        clean_cols = []
-        for c in raw_cols:
-            if c.startswith('Unnamed') or c == '':
-                c = f'col_{len(clean_cols)+1}'
-            if c in seen:
-                seen[c] += 1
-                c = f'{c}_{seen[c]}'
-            else:
-                seen[c] = 0
-            clean_cols.append(c)
-        df.columns = clean_cols
-        
-        # NaN, #N/A, None, nan 등을 모두 빈 문자열로 통일
-        df = df.fillna("")
-        # astype(str) 후에도 'nan', 'None', '#N/A' 문자열이 남을 수 있으므로 명시 치환
-        df = df.astype(str).replace(['nan', 'None', '#N/A', 'NaT'], '')
-        
-        # 필터링: CONTAINER 값이 있는 것만
-        container_cols = [c for c in df.columns if 'CONTAINER' in c.upper()]
-        if container_cols:
-            c_col = container_cols[0]
-            df = df[df[c_col].str.strip() != ""]
-        
-        headers = df.columns.tolist()
-        data_rows = df.values.tolist()
-        
-        # tolist() 후에도 float('nan')이 남을 수 있어 최종 정리
-        import math
-        data_rows = [
-            [("" if (isinstance(v, float) and math.isnan(v)) or v is None else v) for v in row]
-            for row in data_rows
-        ]
+        cached = shipping_cache.get(normalized_path)
+        if cached and cached["mtime"] == mtime and cached["data"]:
+            return jsonify({"data": {**cached["data"], "source": "excel-cache"}})
+
+        parsed = parse_asan_shipping_excel(file_path)
         
         res = {
-            "headers": headers,
-            "data": data_rows,
-            "file_modified_at": datetime.fromtimestamp(mtime, tz=KST).isoformat()
+            **parsed,
+            "file_modified_at": datetime.fromtimestamp(mtime, tz=KST).isoformat(),
+            "source": "excel-cache"
         }
         
-        shipping_cache["mtime"] = mtime
-        shipping_cache["data"] = res
+        shipping_cache[normalized_path] = {"mtime": mtime, "data": res}
         return jsonify({"data": res})
         
     except Exception as e:

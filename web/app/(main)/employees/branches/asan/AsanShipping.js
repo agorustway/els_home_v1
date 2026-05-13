@@ -4,6 +4,8 @@ import * as XLSX from 'xlsx';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
+const ROW_HEIGHT = 34;
+const VIRTUAL_OVERSCAN = 12;
 
 // 날짜 관련 컬럼 키워드
 const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
@@ -217,7 +219,10 @@ export default function AsanShipping() {
     }, [headers]);
 
     const containerRef = useRef(null);
+    const tableWrapRef = useRef(null);
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
+    const [tableScrollTop, setTableScrollTop] = useState(0);
+    const [tableViewportHeight, setTableViewportHeight] = useState(480);
 
     useEffect(() => {
         const updateHeight = () => {
@@ -235,6 +240,23 @@ export default function AsanShipping() {
             clearTimeout(timer);
         };
     }, []);
+
+    useEffect(() => {
+        const wrap = tableWrapRef.current;
+        if (!wrap) return;
+
+        const updateViewport = () => setTableViewportHeight(wrap.clientHeight || 480);
+        updateViewport();
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', updateViewport);
+            return () => window.removeEventListener('resize', updateViewport);
+        }
+
+        const observer = new ResizeObserver(updateViewport);
+        observer.observe(wrap);
+        return () => observer.disconnect();
+    }, [dynamicHeight]);
 
     // Auto-save layout to DB (debounced 1.5s)
     useEffect(() => {
@@ -519,10 +541,23 @@ export default function AsanShipping() {
         return rows;
     }, [data, searchTerm, sortConfig, headers, columnFilters, dateFilter]);
 
+    useEffect(() => {
+        setTableScrollTop(0);
+        if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
+    }, [searchTerm, sortConfig, columnFilters, dateFilter]);
+
     if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
 
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
+
+    const totalRows = processedData.length;
+    const visibleStart = Math.max(0, Math.floor(tableScrollTop / ROW_HEIGHT) - VIRTUAL_OVERSCAN);
+    const visibleCount = Math.ceil(tableViewportHeight / ROW_HEIGHT) + (VIRTUAL_OVERSCAN * 2);
+    const visibleEnd = Math.min(totalRows, visibleStart + visibleCount);
+    const visibleRows = processedData.slice(visibleStart, visibleEnd);
+    const topSpacerHeight = visibleStart * ROW_HEIGHT;
+    const bottomSpacerHeight = Math.max(0, (totalRows - visibleEnd) * ROW_HEIGHT);
 
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {
@@ -694,7 +729,11 @@ export default function AsanShipping() {
                 </div>
             )}
 
-            <div className={styles.tableWrap}>
+            <div
+                className={styles.tableWrap}
+                ref={tableWrapRef}
+                onScroll={e => setTableScrollTop(e.currentTarget.scrollTop)}
+            >
                 <table className={styles.table}>
                     <thead>
                         <tr>
@@ -755,7 +794,14 @@ export default function AsanShipping() {
                         </tr>
                     </thead>
                     <tbody>
-                        {processedData.map((row, ri) => (
+                        {topSpacerHeight > 0 && (
+                            <tr className={styles.virtualSpacer} aria-hidden="true">
+                                <td colSpan={Math.max(colOrder.length, 1)} style={{ height: topSpacerHeight }} />
+                            </tr>
+                        )}
+                        {visibleRows.map((row, vi) => {
+                            const ri = visibleStart + vi;
+                            return (
                             <tr key={ri} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
                                 {colOrder.map(col => {
                                     const colIdx = data.headers.indexOf(col);
@@ -764,7 +810,13 @@ export default function AsanShipping() {
                                     return <td key={col}>{val}</td>;
                                 })}
                             </tr>
-                        ))}
+                            );
+                        })}
+                        {bottomSpacerHeight > 0 && (
+                            <tr className={styles.virtualSpacer} aria-hidden="true">
+                                <td colSpan={Math.max(colOrder.length, 1)} style={{ height: bottomSpacerHeight }} />
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

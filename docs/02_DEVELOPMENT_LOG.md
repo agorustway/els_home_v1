@@ -1,6 +1,21 @@
 
 # 📜 DEVELOPMENT LOG (개발 역사)
 
+## [2026-05-13] 아산 선적관리 경량화 및 Supabase 전환 기반 (v5.12.18)
+### 🚀 Achievement
+- **가상 스크롤 적용**: 선적관리 표가 전체 행을 한 번에 DOM에 렌더링하지 않고, 현재 보이는 구간과 여유 행만 그리도록 변경해 대량 행 스크롤 부담을 줄였습니다.
+- **DB 전환 스키마 추가**: `branch_shipping_files`, `branch_shipping_rows` 테이블 마이그레이션을 추가해 NAS 엑셀 데이터를 행 단위 JSONB로 저장하고 검색/페이징 기반으로 확장할 수 있게 했습니다.
+- **NAS 백엔드 동기화 경로 추가**: `app_core.py`와 로컬/이미지용 `app.py`에 선적관리 mtime 감지, Supabase 동기화, DB 조회, 엑셀 캐시 폴백 로직을 추가했습니다. 테이블 미적용 상태에서는 기존 엑셀 캐시 방식으로 안전하게 폴백합니다.
+- **검증**: 번들 Python으로 `app_core.py/app.py` 문법 컴파일 통과, `AsanShipping.js` 대상 ESLint 0 errors 확인. 기존 Hook dependency warning 2건은 잔존.
+### 📁 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `docker/els-backend/app_core.py`
+- `docker/els-backend/app.py`
+- `web/supabase_sql/20260513_asan_shipping.sql`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-12] 드라이버 앱 작업지 자유입력 복구 (v5.12.17 / APK v5.11.10)
 ### 🚀 Achievement
 - **상세조회 버튼 제거**: 운행 시작 화면과 일지 수정 화면의 `작업지` 입력칸 옆에 노출되던 승인되지 않은 `상세조회` 버튼을 제거하고, 입력칸을 전체 폭 자유입력 필드로 복구했습니다.
