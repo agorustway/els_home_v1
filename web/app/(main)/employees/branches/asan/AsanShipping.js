@@ -226,6 +226,10 @@ export default function AsanShipping() {
 
     useEffect(() => {
         const updateHeight = () => {
+            if (window.innerWidth <= 768) {
+                setDynamicHeight('auto');
+                return;
+            }
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
                 const remaining = window.innerHeight - rect.top - 24; // 24px bottom margin

@@ -282,7 +282,8 @@
 @media (max-width: 768px) {
     .container {
         padding: 2px 4px;
-        height: calc(100vh - 180px);
+        height: auto !important; /* Allow natural scroll on mobile */
+        overflow: visible;
     }
 
     .topBar {
@@ -294,14 +295,22 @@
     }
 
     .leftControls {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
+        display: contents;
     }
 
     .title {
         font-size: 0.95rem;
+        order: 1;
+    }
+
+    .fileMod {
+        font-size: 0.65rem;
+        order: 3;
+        background: #f8fafc;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        margin-top: 4px;
     }
 
     .rightControls {
@@ -309,6 +318,7 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 4px;
         width: 100%;
+        order: 2;
     }
 
     .searchInput {
@@ -326,9 +336,6 @@
         width: 100%;
     }
 
-    .fileMod {
-        font-size: 0.65rem;
-    }
 
     .table th, .table td {
         padding: 4px 6px;

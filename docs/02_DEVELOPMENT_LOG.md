@@ -2,6 +2,20 @@
 # 📜 DEVELOPMENT LOG (개발 역사)
 
 
+
+## [2026-05-14] 아산지점 모바일 UI 최적화 및 레이아웃 수정 (v5.12.20)
+### 🚀 Achievement
+- **모바일 고정 높이 해제**: 데스크탑 환경을 위해 설정했던 `height: 100vh` 제약을 모바일(768px 이하)에서 해제하여, 페이지가 잘리지 않고 아래로 자유롭게 스크롤되도록 개선했습니다.
+- **저장시간 레이아웃 보강**: 모바일에서 '데이터 저장 시간' 표시가 상단 버튼과 겹쳐 메뉴가 깨지던 현상을 해결했습니다. CSS `order`와 `display: contents`를 활용해 저장 시간을 버튼 하단으로 배치하고, 전역 스타일을 입혀 가독성을 높였습니다.
+- **JS/CSS 동기화**: React의 `dynamicHeight` 로직과 CSS 미디어 쿼리를 동기화하여 모든 모바일 브라우저에서 일관된 스크롤 경험을 제공합니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-14] 이력조회 세션 연장 안정화 및 관리 지능 보강 (v5.12.19)
 ### 🚀 Achievement
 - **세션 연장 로직 강화**: WebSquare 특유의 버튼 ID 오타(`sessinExtension`)를 재확인하고, `find_ele_globally`를 통해 프레임 컨텍스트에 관계없이 버튼을 찾아낼 수 있도록 개선했습니다. 또한 물리 클릭 실패 시 JS 직접 실행(`by_js=True`)을 병행하여 클릭 안정성을 확보했습니다.
