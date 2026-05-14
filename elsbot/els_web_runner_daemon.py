@@ -488,23 +488,28 @@ def session_keeper():
             needs_refresh = False
             reason = ""
             try:
-                last_ac = getattr(driver, 'last_activity', getattr(driver, 'login_time', time.time()))
+                # [개선] 무활동 시간뿐만 아니라 마지막 연장 시점(또는 로그인 시점) 기준으로도 연장 수행
+                last_ac = getattr(driver, 'last_activity', time.time())
+                last_ext = getattr(driver, 'last_extension', getattr(driver, 'login_time', last_ac))
                 elapsed_active = time.time() - last_ac
+                elapsed_ext = time.time() - last_ext
                 
                 if not is_session_valid(driver):
                     needs_refresh = True
                     reason = "세션 만료 감지"
-                elif elapsed_active >= 1200: # 20분(1200초) 이상 활동이 없으면 세션 연장
+                elif elapsed_active >= 1200 or elapsed_ext >= 1800: # 20분 무활동 OR 마지막 연장 후 30분 경과
                     try:
-                        # [v4.5.3] 페이지 이동 대신 연장 버튼 클릭 (스크린샷2 방식 - 60분 타이머 초기화)
+                        # [v4.12.1] 세션 연장 시도 (활동 중이라도 30분마다 안전하게 연장)
                         extended = extend_session(driver, log_callback=pool.add_log)
                         if extended:
-                            pool.add_log(f"--- [백그라운드] 20분 무활동. 연장 버튼 클릭으로 세션 갱신 완료 (60분 초기화). ---")
+                            pool.add_log(f"--- [백그라운드] 세션 자동 갱신 완료 (무활동:{int(elapsed_active)}s, 마지막연장:{int(elapsed_ext)}s). ---")
+                            driver.last_extension = time.time()
                             driver.last_activity = time.time()
                         else:
-                            # [v4.5.7] 폴백 main.do 이동 제거 — 화면 보존 우선
-                            pool.add_log(f"--- [백그라운드] 연장 버튼 없음. 화면 보존 유지 (폴백 이동 스킵). ---")
-                            driver.page_ready = False  # 안전하게 재진입 하도록
+                            pool.add_log(f"--- [백그라운드] 연장 버튼 클릭 실패. 다음 주기 재시도. ---")
+                            # 여기서 needs_refresh = True로 만들면 강제 재로그인으로 복구 시도 가능
+                            # 하지만 화면 보존을 위해 일단 유지
+                            driver.page_ready = False 
                             driver.last_activity = time.time()
                     except Exception as e:
                         needs_refresh = True

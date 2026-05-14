@@ -572,6 +572,7 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         # 3. 메뉴 진입
         if open_els_menu(page, _log):
             _log("✅ 모든 준비 완료 (로그인 + 메뉴 진입)")
+            page.login_time = time.time() # [v4.12.1] 세션 관리를 위한 로그인 시점 기록
             return (page, None)
         
         page.quit()
@@ -635,17 +636,50 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
 
 
 def extend_session(page, log_callback=None):
-    """세션 연장 버튼(상단 연장) 클릭 (v4.4.39)"""
+    """세션 연장 버튼(상단 연장) 클릭 (v4.12.1)
+    
+    [개선] 
+    1. find_ele_globally를 사용하여 프레임 컨텍스트에 상관없이 버튼 수색
+    2. 물리 클릭이 실패할 경우를 대비해 by_js=True 병행
+    3. 버튼 클릭 후 타이머(tbx_sessionTime) 변화를 확인하여 성공 여부 반환
+    """
     try:
-        # WebSquare 연장 버튼 ID: mf_wfm_top_btn_sessinExtension
-        ext_btn = page.ele('#mf_wfm_top_btn_sessinExtension', timeout=3) or \
-                  page.ele('text:연장', timeout=1)
+        # WebSquare 연장 버튼 ID: mf_wfm_top_btn_sessinExtension (오타 주의!)
+        # [v4.12.1] 전역 수색으로 변경
+        ext_btn = find_ele_globally(page, '#mf_wfm_top_btn_sessinExtension', timeout=3) or \
+                  find_ele_globally(page, 'text:연장', timeout=1)
+        
         if ext_btn:
-            ext_btn.click()
-            if log_callback: log_callback("⏳ 세션 연장 버튼 클릭 완료 (60분 초기화)")
+            # 클릭 전 타이머 값 확인 (디버그용)
+            try:
+                timer = find_ele_globally(page, '[id*="sessionTime"]', timeout=0.5)
+                if timer:
+                    before_time = timer.text
+                    if log_callback: log_callback(f"⏳ 연장 전 세션 시간: {before_time}")
+            except: pass
+
+            # 버튼 클릭 (JS 클릭이 더 확실함)
+            try:
+                ext_btn.click(by_js=True)
+            except:
+                ext_btn.click()
+            
+            if log_callback: log_callback("⏳ 세션 연장 버튼 클릭 완료 (60분 초기화 시도)")
+            
+            # 클릭 후 잠깐 대기하며 타이머 변화 확인
+            time.sleep(1)
+            try:
+                timer = find_ele_globally(page, '[id*="sessionTime"]', timeout=0.5)
+                if timer:
+                    after_time = timer.text
+                    if log_callback: log_callback(f"✅ 연장 후 세션 시간: {after_time}")
+            except: pass
+            
             return True
         else:
-            if log_callback: log_callback("⚠️ 세션 연장 버튼을 찾을 수 없습니다.")
+            if log_callback: log_callback("⚠️ 세션 연장 버튼을 찾을 수 없습니다. (ID: mf_wfm_top_btn_sessinExtension)")
+            # [v4.12.1] 버튼을 못 찾을 경우 스크린샷 저장하여 원인 파악
+            save_screenshot(page, "extend_session_fail")
             return False
     except Exception as e:
         if log_callback: log_callback(f"⚠️ 세션 연장 중 오류: {e}")
