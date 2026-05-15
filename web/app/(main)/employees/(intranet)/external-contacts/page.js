@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
 import ContactFilterBar from '@/components/ContactFilterBar';
+import IntranetDataTable, { DataBadge, PhoneLink } from '@/components/IntranetDataTable';
 import { useUserRole } from '@/hooks/useUserRole';
+import { formatPhoneNumber } from '@/utils/contactDisplay';
 import styles from '../intranet.module.css';
 
 export default function ExternalContactsPage() {
@@ -13,7 +15,6 @@ export default function ExternalContactsPage() {
     const router = useRouter();
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
-    
     const [searchKeyword, setSearchKeyword] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
 
@@ -34,84 +35,108 @@ export default function ExternalContactsPage() {
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
 
-    const filteredList = list.filter(item => {
+    const filteredList = list.filter((item) => {
         if (categoryFilter && item.contact_type !== categoryFilter) return false;
-        if (searchKeyword) {
-            const q = searchKeyword.toLowerCase();
-            return (
-                item.company_name?.toLowerCase().includes(q) || 
-                item.contact_person?.toLowerCase().includes(q) || 
-                item.phone?.toLowerCase().includes(q) || 
-                item.contact_person_phone?.toLowerCase().includes(q) ||
-                item.email?.toLowerCase().includes(q) ||
-                item.memo?.toLowerCase().includes(q)
-            );
-        }
-        return true;
+        if (!searchKeyword) return true;
+        const q = searchKeyword.toLowerCase();
+        return (
+            item.company_name?.toLowerCase().includes(q) ||
+            item.contact_person?.toLowerCase().includes(q) ||
+            item.phone?.toLowerCase().includes(q) ||
+            item.contact_person_phone?.toLowerCase().includes(q) ||
+            item.email?.toLowerCase().includes(q) ||
+            item.memo?.toLowerCase().includes(q)
+        );
     });
 
-    const uniqueCategories = Array.from(new Set(list.map(item => item.contact_type).filter(Boolean)));
+    const uniqueCategories = Array.from(new Set(list.map((item) => item.contact_type).filter(Boolean)));
+    const openDetail = (item) => router.push('/employees/external-contacts/' + item.id);
+
+    const columns = [
+        {
+            key: 'company_name',
+            header: '회사명',
+            colClassName: styles.colNameFixed,
+            cellClassName: styles.primaryCell,
+            render: (item) => item.company_name || '-',
+        },
+        {
+            key: 'contact_type',
+            header: '구분',
+            colClassName: styles.colTypeFixed,
+            render: (item) => <DataBadge>{item.contact_type || '미분류'}</DataBadge>,
+        },
+        {
+            key: 'phone',
+            header: '대표 연락처',
+            colClassName: styles.colPhoneFixed,
+            render: (item) => <PhoneLink value={item.phone}>{formatPhoneNumber(item.phone)}</PhoneLink>,
+        },
+        {
+            key: 'contact_person',
+            header: '담당자',
+            colClassName: styles.colPersonFixed,
+            cellClassName: styles.secondaryCell,
+            render: (item) => item.contact_person || '-',
+        },
+        {
+            key: 'contact_person_phone',
+            header: '담당자 연락처',
+            colClassName: styles.colPhoneFixed,
+            render: (item) => <PhoneLink value={item.contact_person_phone}>{formatPhoneNumber(item.contact_person_phone)}</PhoneLink>,
+        },
+        {
+            key: 'email',
+            header: '이메일',
+            colClassName: styles.colMetaFixed,
+            cellClassName: styles.truncateCell,
+            render: (item) => item.email || '-',
+        },
+        {
+            key: 'memo',
+            header: '비고',
+            colClassName: styles.colNoteFluid,
+            cellClassName: styles.truncateCell,
+            render: (item) => item.memo || item.address || '-',
+        },
+    ];
 
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>외부연락처</h1>
-                <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                    {/* PC 전용: 엑셀 버튼 */}
+                <div className={styles.controls}>
                     <div className={styles.desktopOnlyBtns}>
                         <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="external_contacts" />
                     </div>
                     <Link href="/employees/external-contacts/new" className={styles.btnPrimary}>등록</Link>
                 </div>
             </div>
-            <ContactFilterBar 
-                searchKeyword={searchKeyword} 
-                setSearchKeyword={setSearchKeyword} 
-                categoryFilter={categoryFilter} 
-                setCategoryFilter={setCategoryFilter} 
+
+            <ContactFilterBar
+                searchKeyword={searchKeyword}
+                setSearchKeyword={setSearchKeyword}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
                 categoryOptions={uniqueCategories}
             />
-            
-            {/* ── 모바일 카드 뷰 (768px 이하) ── */}
+
             <div className={styles.mobileList}>
-                {filteredList.length === 0 && (
-                    <div className={styles.empty}>검색 결과가 없습니다.</div>
-                )}
+                {filteredList.length === 0 && <div className={styles.empty}>검색 결과가 없습니다.</div>}
                 {filteredList.map((item) => (
-                    <div
-                        key={item.id}
-                        className={styles.contactCard}
-                        onClick={() => router.push('/employees/external-contacts/' + item.id)}
-                    >
+                    <div key={item.id} className={styles.contactCard} onClick={() => openDetail(item)}>
                         <div className={styles.cardRow}>
-                            <span className={styles.cardName}>{item.company_name}</span>
+                            <span className={styles.cardName}>{item.company_name || '-'}</span>
                             {item.contact_type && <span className={styles.cardBadge}>{item.contact_type}</span>}
                         </div>
-                        {item.phone && (
-                            <div>
-                                <a
-                                    href={'tel:' + item.phone}
-                                    onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(item.phone); }}
-                                    className={styles.cardPhone}
-                                >
-                                    {item.phone}
-                                </a>
-                            </div>
-                        )}
+                        {item.phone && <PhoneLink value={item.phone}>{formatPhoneNumber(item.phone)}</PhoneLink>}
                         {(item.contact_person || item.contact_person_phone) && (
                             <div className={styles.cardMeta}>
                                 <span>담당: {item.contact_person || '-'}</span>
                                 {item.contact_person_phone && (
                                     <>
                                         <span>·</span>
-                                        <a
-                                            href={'tel:' + item.contact_person_phone}
-                                            onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(item.contact_person_phone); }}
-                                            className={styles.cardPhone}
-                                            style={{ fontSize: '0.88rem' }}
-                                        >
-                                            {item.contact_person_phone}
-                                        </a>
+                                        <PhoneLink value={item.contact_person_phone}>{formatPhoneNumber(item.contact_person_phone)}</PhoneLink>
                                     </>
                                 )}
                             </div>
@@ -121,51 +146,13 @@ export default function ExternalContactsPage() {
                 ))}
             </div>
 
-            {/* ── 데스크탑 테이블 뷰 (768px 초과) ── */}
             <div className={styles.desktopTable}>
-                <div className={styles.card}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr style={{ fontSize: '0.9rem' }}>
-                                <th className={styles.colTitle} style={{ width: '150px', minWidth: '150px' }}>회사명</th>
-                                <th className={styles.colCategory} style={{ whiteSpace: 'nowrap', width: '100px' }}>구분</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', width: '150px' }}>대표 연락처</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', width: '110px' }}>담당자</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', width: '150px' }}>담당자 연락처</th>
-                                <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', maxWidth: '200px' }}>이메일</th>
-                                <th style={{ width: '100%', padding: '12px 16px' }}>비고</th>
-                            </tr>
-                        </thead>
-                        <tbody style={{ fontSize: '0.9rem' }}>
-                            {filteredList.map((item) => (
-                                <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/external-contacts/' + item.id)}>
-                                    <td className={styles.colTitle} style={{ color: '#1e293b', fontSize: '0.95rem', fontWeight: 600 }}>{item.company_name}</td>
-                                    <td className={styles.colCategory} style={{ whiteSpace: 'nowrap' }}>
-                                        <span style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: 4, fontSize: '0.85rem', fontWeight: 600 }}>
-                                            {item.contact_type || '—'}
-                                        </span>
-                                    </td>
-                                    <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>
-                                        {item.phone ? (
-                                            <a href={'tel:' + item.phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.phone}</a>
-                                        ) : '—'}
-                                    </td>
-                                    <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.contact_person}</td>
-                                    <td style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>
-                                        {item.contact_person_phone ? (
-                                            <a href={'tel:' + item.contact_person_phone} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.contact_person_phone).then(()=>alert('전화번호가 복사되었습니다.')); }} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>{item.contact_person_phone}</a>
-                                        ) : '—'}
-                                    </td>
-                                    <td style={{ color: '#94a3b8', fontSize: '0.85rem', whiteSpace: 'nowrap', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', padding: '12px 16px' }} title={item.email}>{item.email}</td>
-                                    <td style={{ width: '100%', color: '#64748b', fontSize: '0.85rem', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '12px 16px' }} title={item.memo}>{item.memo || '-'}</td>
-                                </tr>
-                            ))}
-                            {filteredList.length === 0 && (
-                                <tr><td colSpan="7" className={styles.empty}>검색 결과가 없습니다.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <IntranetDataTable
+                    columns={columns}
+                    rows={filteredList}
+                    onRowClick={openDetail}
+                    ariaLabel="외부연락처 목록"
+                />
             </div>
         </div>
     );

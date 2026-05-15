@@ -91,7 +91,7 @@ export default function ReportDetailPage() {
             <div className={styles.detailCard}>
                 <div className={styles.detailHeader}>
                     <div style={{ marginBottom: '15px' }}>
-                        <span style={{ background: '#eff6ff', color: '#2563eb', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '800' }}>
+                        <span className={`${styles.badge} ${styles.badgeBlue}`}>
                             {getRoleLabel(post.branch_tag)}
                         </span>
                     </div>
@@ -104,62 +104,57 @@ export default function ReportDetailPage() {
                 </div>
 
                 <div className={styles.contentBody}>
-                    <div style={{ minHeight: '300px', whiteSpace: 'pre-wrap' }}>
+                    <div className={styles.detailText}>
                         {post.content}
                     </div>
 
                     {/* Attachments Display */}
                     {post.attachments && post.attachments.length > 0 && (
-                        <div style={{ marginTop: '50px', borderTop: '1px solid #f1f5f9', paddingTop: '30px' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#1e293b', fontWeight: '700' }}>첨부파일</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {post.attachments.map((file, idx) => {
-                                    const getSafeUrl = (file) => {
-                                        let url = file.path || '';
-                                        // Ensure name parameter for correct filename display
-                                        const nameParam = `&name=${encodeURIComponent(file.name || '첨부파일')}`;
+                        <div className={styles.attachmentSection}>
+                            <h4 className={styles.attachmentTitle}>첨부파일</h4>
+                            <table className={styles.attachmentTable}>
+                                <thead>
+                                    <tr>
+                                        <th>파일명</th>
+                                        <th style={{ width: 120, textAlign: 'center' }}>작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {post.attachments.map((file, idx) => {
+                                        const getSafeUrl = (file) => {
+                                            let url = file.path || '';
+                                            const nameParam = `&name=${encodeURIComponent(file.name || '첨부파일')}`;
 
-                                        // Fix: Strip external domain if any
-                                        if (url.startsWith('http')) {
-                                            try {
-                                                const parsed = new URL(url);
-                                                url = parsed.pathname + parsed.search;
-                                            } catch (e) { }
-                                        }
+                                            if (url.startsWith('http')) {
+                                                try {
+                                                    const parsed = new URL(url);
+                                                    url = parsed.pathname + parsed.search;
+                                                } catch (e) { }
+                                            }
 
-                                        if (file.type === 's3') {
-                                            const key = url.includes('key=') ? url.split('key=')[1].split('&')[0] : url;
-                                            return `/api/s3/files?key=${encodeURIComponent(key)}${nameParam}`;
-                                        }
-                                        const path = url.includes('path=') ? url.split('path=')[1].split('&')[0] : url;
-                                        return `/api/nas/files?path=${encodeURIComponent(path)}&download=true${nameParam}`;
-                                    };
+                                            if (file.type === 's3') {
+                                                const key = url.includes('key=') ? url.split('key=')[1].split('&')[0] : url;
+                                                return `/api/s3/files?key=${encodeURIComponent(key)}${nameParam}`;
+                                            }
+                                            const path = url.includes('path=') ? url.split('path=')[1].split('&')[0] : url;
+                                            return `/api/nas/files?path=${encodeURIComponent(path)}&download=true${nameParam}`;
+                                        };
 
-                                    const downloadUrl = getSafeUrl(file);
+                                        const downloadUrl = getSafeUrl(file);
 
-                                    return (
-                                        <a
-                                            key={idx}
-                                            href={downloadUrl}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                padding: '12px 16px',
-                                                background: '#f8fafc',
-                                                borderRadius: '8px',
-                                                color: '#2563eb',
-                                                textDecoration: 'none',
-                                                fontSize: '0.95rem',
-                                                width: 'fit-content',
-                                                border: '1px solid #e2e8f0'
-                                            }}
-                                        >
-                                            📎 {file.name}
-                                        </a>
-                                    );
-                                })}
-                            </div>
+                                        return (
+                                            <tr key={idx}>
+                                                <td>{file.name}</td>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <a href={downloadUrl} className={styles.attachmentLink}>
+                                                        내려받기
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
@@ -168,7 +163,7 @@ export default function ReportDetailPage() {
                     <button onClick={() => router.push('/employees/reports')} className={styles.btnSecondary}>
                         목록으로
                     </button>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div className={styles.actionGroup}>
                         {canManage && (
                             <>
                                 <button onClick={() => router.push(`/employees/reports/${id}/edit`)} className={styles.btnPrimary}>

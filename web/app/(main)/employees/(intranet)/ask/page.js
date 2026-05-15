@@ -14,6 +14,24 @@ const QUICK_PROMPTS = [
     { label: '부산 신항 40ft 안전운임', icon: null },
 ];
 
+const LS_KEY = 'els_ai_sessions';
+
+function optimizeSessionsForStorage(data) {
+    return data.map(s => ({
+        ...s,
+        messages: s.messages.map(m => {
+            if (m.attachments && m.attachments.length > 0) {
+                return { ...m, attachments: m.attachments.map(att => ({ ...att, data: undefined })) };
+            }
+            return m;
+        })
+    }));
+}
+
+function hasUserConversation(data) {
+    return data.some(s => s.messages?.some(m => m.role === 'user'));
+}
+
 function TypingIndicator() {
     return (
         <div className={styles.typingIndicator}>
@@ -206,6 +224,8 @@ export default function AskPage() {
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
     const abortRef = useRef(null);
+    const saveTimerRef = useRef(null);
+    const sessionsRef = useRef(sessions);
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
@@ -213,52 +233,63 @@ export default function AskPage() {
         timestamp: new Date().toISOString()
     };
 
+    const createDefaultSession = () => ({
+        id: Date.now().toString(),
+        title: '새로운 대화',
+        messages: [{ ...DEFAULT_INIT_MSG, timestamp: new Date().toISOString() }]
+    });
+
     const createNewSession = () => {
-        const id = Date.now().toString();
-        setSessions(prev => [{ id, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }, ...prev].slice(0, 30));
-        setActiveId(id);
+        const nextSession = createDefaultSession();
+        setSessions(prev => [nextSession, ...prev].slice(0, 30));
+        setActiveId(nextSession.id);
     };
 
-    const deleteSession = (id) => {
+    const deleteSession = async (id) => {
         if (!window.confirm('이 대화 기록을 삭제하시겠습니까?')) return;
-        setSessions(prev => {
-            const next = prev.filter(s => s.id !== id);
-            if (next.length === 0) {
-                const newId = Date.now().toString();
-                next.push({ id: newId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] });
-                setActiveId(newId);
-            } else if (activeId === id) {
-                setActiveId(next[0].id);
-            }
-            return next;
-        });
+        const remaining = sessions.filter(s => s.id !== id);
+        const nextSessions = remaining.length > 0 ? remaining : [createDefaultSession()];
+        const nextActiveId = activeId === id ? nextSessions[0].id : activeId;
+
+        clearPendingMemorySave();
+        sessionsRef.current = nextSessions;
+        setSessions(nextSessions);
+        setActiveId(nextActiveId);
+        saveToLocal(nextSessions);
+
+        try {
+            await replaceMemoryWithSessions(nextSessions);
+        } catch (e) {
+            alert(`대화 삭제를 DB에 반영하지 못했습니다.\n${e.message}`);
+        }
     };
 
     const clearAllHistory = async () => {
         if (!window.confirm('모든 대화 기록을 일괄 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+        clearPendingMemorySave();
         try {
-            await fetch('/api/chat/memory', { method: 'DELETE' });
-        } catch(e) {}
+            const res = await fetch('/api/chat/memory', { method: 'DELETE', cache: 'no-store' });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || `삭제 실패 (${res.status})`);
+            }
+        } catch(e) {
+            alert(`DB 대화 기록 삭제에 실패했습니다.\n${e.message}`);
+            return;
+        }
         try { localStorage.removeItem(LS_KEY); } catch {}
-        const newId = Date.now().toString();
-        setSessions([{ id: newId, title: '새로운 대화', messages: [DEFAULT_INIT_MSG] }]);
-        setActiveId(newId);
+        const nextSessions = [createDefaultSession()];
+        sessionsRef.current = nextSessions;
+        setSessions(nextSessions);
+        setActiveId(nextSessions[0].id);
+        saveToLocal(nextSessions);
     };
 
     // ─── localStorage 헬퍼 (동기적 · 즉시 · 확실) ────────────────────
-    const LS_KEY = 'els_ai_sessions';
     const saveToLocal = useCallback((data) => {
         try {
             // [v5.7.2] 대용량 첨부파일 데이터(Base64) 제거 후 저장
-            const optimized = data.map(s => ({
-                ...s,
-                messages: s.messages.map(m => {
-                    if (m.attachments && m.attachments.length > 0) {
-                        return { ...m, attachments: m.attachments.map(att => ({ ...att, data: undefined })) };
-                    }
-                    return m;
-                })
-            }));
+            const optimized = optimizeSessionsForStorage(data);
             localStorage.setItem(LS_KEY, JSON.stringify(optimized));
         } catch (e) { console.error('[ELS-AI] localStorage 저장 실패:', e); }
     }, []);
@@ -271,6 +302,37 @@ export default function AskPage() {
             }
         } catch {}
         return null;
+    }, []);
+
+    const clearPendingMemorySave = useCallback(() => {
+        if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
+    }, []);
+
+    const replaceMemoryWithSessions = useCallback(async (nextSessions) => {
+        const optimized = optimizeSessionsForStorage(nextSessions);
+
+        if (!hasUserConversation(optimized)) {
+            const res = await fetch('/api/chat/memory', { method: 'DELETE', cache: 'no-store' });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || `삭제 실패 (${res.status})`);
+            }
+            return;
+        }
+
+        const res = await fetch('/api/chat/memory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: optimized })
+        });
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `저장 실패 (${res.status})`);
+        }
     }, []);
 
     // ─── 세션 로드: DB 우선 → localStorage 폴백 → 빈 세션 ──────────
@@ -339,8 +401,6 @@ export default function AskPage() {
     }, []);
 
     // ─── 세션 저장: localStorage 즉시 + DB 디바운스 ──────────────────
-    const saveTimerRef = useRef(null);
-    const sessionsRef = useRef(sessions);
     sessionsRef.current = sessions;
 
     useEffect(() => {
@@ -348,19 +408,15 @@ export default function AskPage() {
         
         // localStorage는 즉시 저장 (동기적 — 절대 유실 안 됨)
         saveToLocal(sessions);
+
+        if (!hasUserConversation(sessions)) {
+            return;
+        }
         
         // DB는 디바운스 저장 (네트워크 의존적 + 데이터 다이어트)
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
-            const optimized = sessions.map(s => ({
-                ...s,
-                messages: s.messages.map(m => {
-                    if (m.attachments && m.attachments.length > 0) {
-                        return { ...m, attachments: m.attachments.map(att => ({ ...att, data: undefined })) };
-                    }
-                    return m;
-                })
-            }));
+            const optimized = optimizeSessionsForStorage(sessions);
             fetch('/api/chat/memory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -375,8 +431,10 @@ export default function AskPage() {
     useEffect(() => {
         const saveBeforeLeave = () => {
             if (!isLoaded || sessionsRef.current.length === 0) return;
-            saveToLocal(sessionsRef.current); // localStorage 확실히
-            const payload = JSON.stringify({ messages: sessionsRef.current });
+            const optimized = optimizeSessionsForStorage(sessionsRef.current);
+            saveToLocal(optimized); // localStorage 확실히
+            if (!hasUserConversation(optimized)) return;
+            const payload = JSON.stringify({ messages: optimized });
             if (navigator.sendBeacon) {
                 navigator.sendBeacon('/api/chat/memory', new Blob([payload], { type: 'application/json' }));
             }
@@ -612,7 +670,20 @@ export default function AskPage() {
 
     const clearHistory = async () => {
         if(confirm('현재 대화 내용을 지우시겠습니까?')) {
-            setMessages([DEFAULT_INIT_MSG]);
+            const nextSessions = sessions.map(s => (
+                s.id === activeId
+                    ? { ...s, title: '새로운 대화', messages: [{ ...DEFAULT_INIT_MSG, timestamp: new Date().toISOString() }] }
+                    : s
+            ));
+            clearPendingMemorySave();
+            sessionsRef.current = nextSessions;
+            setSessions(nextSessions);
+            saveToLocal(nextSessions);
+            try {
+                await replaceMemoryWithSessions(nextSessions);
+            } catch (e) {
+                alert(`현재 대화 비우기를 DB에 반영하지 못했습니다.\n${e.message}`);
+            }
         }
     };
 

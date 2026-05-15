@@ -81,16 +81,17 @@ export async function DELETE(request) {
         }
 
         const admin = await createAdminClient();
-        const { error } = await admin
+        const { data, error } = await admin
             .from('ai_chat_memory')
             .delete()
-            .eq('email', user.email);
+            .eq('email', user.email)
+            .select('email');
 
         if (error) throw error;
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, deleted: data?.length || 0 });
     } catch (e) {
         console.error('[/api/chat/memory] DELETE 에러:', e);
-        return NextResponse.json({ error: '데이터 삭제 실패' }, { status: 500 });
+        return NextResponse.json({ error: '데이터 삭제 실패', detail: e.message || String(e) }, { status: 500 });
     }
 }

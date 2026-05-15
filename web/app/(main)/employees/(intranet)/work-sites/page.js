@@ -5,8 +5,28 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ExcelButtonGroup from '@/components/ExcelButtonGroup';
 import ContactFilterBar from '@/components/ContactFilterBar';
+import IntranetDataTable, { PhoneLink } from '@/components/IntranetDataTable';
 import { useUserRole } from '@/hooks/useUserRole';
+import { formatDate, formatPhoneNumber } from '@/utils/contactDisplay';
 import styles from '../intranet.module.css';
+
+function getWorkProcess(item) {
+    try {
+        if (item.work_method && item.work_method.trim().startsWith('{')) {
+            return JSON.parse(item.work_method);
+        }
+    } catch {
+        return {};
+    }
+    return { precautions: item.work_method };
+}
+
+function summarizeText(value, fallback = '-') {
+    if (!value) return fallback;
+    const text = String(value).replace(/\s+/g, ' ').trim();
+    if (!text) return fallback;
+    return text.length > 42 ? `${text.slice(0, 42)}...` : text;
+}
 
 export default function WorkSitesPage() {
     const { role, loading: authLoading } = useUserRole();
@@ -32,67 +52,128 @@ export default function WorkSitesPage() {
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!role) return null;
 
-    const filteredList = list.filter(item => {
-        if (searchKeyword) {
-            const q = searchKeyword.toLowerCase();
-            const managerNames = (item.managers || []).map(m => m.name).join(' ');
-            return (
-                item.site_name?.toLowerCase().includes(q) || 
-                item.address?.toLowerCase().includes(q) || 
-                managerNames.toLowerCase().includes(q) || 
-                item.contact?.toLowerCase().includes(q)
-            );
-        }
-        return true;
+    const filteredList = list.filter((item) => {
+        if (!searchKeyword) return true;
+        const q = searchKeyword.toLowerCase();
+        const managerNames = (item.managers || []).map((manager) => manager.name).join(' ');
+        return (
+            item.site_name?.toLowerCase().includes(q) ||
+            item.address?.toLowerCase().includes(q) ||
+            managerNames.toLowerCase().includes(q) ||
+            item.contact?.toLowerCase().includes(q)
+        );
     });
+
+    const managerText = (item) => (item.managers || []).map((manager) => manager.name).filter(Boolean).join(', ') || '-';
+    const primaryContact = (item) => item.contact || item.managers?.[0]?.phone || '';
+    const precautionsText = (item) => summarizeText(getWorkProcess(item).precautions || getWorkProcess(item).notes);
+    const notesText = (item) => summarizeText(item.notes);
+    const openDetail = (item) => router.push('/employees/work-sites/' + item.id);
+
+    const columns = [
+        {
+            key: 'no',
+            header: 'No',
+            colClassName: styles.colNoFixed,
+            align: 'center',
+            cellClassName: styles.mutedCell,
+            render: (_item, index) => filteredList.length - index,
+        },
+        {
+            key: 'site_name',
+            header: '작업지명',
+            colClassName: styles.colNameFixed,
+            cellClassName: styles.primaryCell,
+            render: (item) => item.site_name || '-',
+        },
+        {
+            key: 'address',
+            header: '작업지 주소',
+            colClassName: styles.colAddressFixed,
+            cellClassName: styles.truncateCell,
+            render: (item) => item.address || '-',
+        },
+        {
+            key: 'precautions',
+            header: '주의사항',
+            colClassName: styles.colSummaryFixed,
+            cellClassName: styles.truncateCell,
+            render: precautionsText,
+        },
+        {
+            key: 'notes',
+            header: '특이사항',
+            colClassName: styles.colSummaryFixed,
+            cellClassName: styles.truncateCell,
+            render: notesText,
+        },
+        {
+            key: 'managers',
+            header: '담당자',
+            colClassName: styles.colPersonFixed,
+            cellClassName: styles.secondaryCell,
+            render: managerText,
+        },
+        {
+            key: 'contact',
+            header: '연락처',
+            colClassName: styles.colPhoneFixed,
+            render: (item) => <PhoneLink value={primaryContact(item)}>{formatPhoneNumber(primaryContact(item))}</PhoneLink>,
+        },
+        {
+            key: 'created_at',
+            header: '등록일',
+            colClassName: styles.colDateFixed,
+            cellClassName: styles.mutedCell,
+            render: (item) => formatDate(item.created_at),
+        },
+    ];
 
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
                 <h1 className={styles.title}>작업지정보</h1>
-                <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
-                    <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="work_sites" />
-                    <Link href="/employees/work-sites/new" className={styles.btnPrimary}>단건 등록</Link>
+                <div className={styles.controls}>
+                    <div className={styles.desktopOnlyBtns}>
+                        <ExcelButtonGroup onUploadSuccess={() => window.location.reload()} tableName="work_sites" />
+                    </div>
+                    <Link href="/employees/work-sites/new" className={styles.btnPrimary}>등록</Link>
                 </div>
             </div>
-            
-            <ContactFilterBar 
-                searchKeyword={searchKeyword} 
-                setSearchKeyword={setSearchKeyword} 
-            />
 
-            <div className={styles.card}>
-                <table className={styles.table}>
-                    <thead>
-                        <tr style={{ fontSize: '0.9rem' }}>
-                            <th className={styles.colNo} style={{ width: '60px' }}>No</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px', minWidth: '150px' }}>작업지명</th>
-                            <th className={styles.colTitle} style={{ width: '100%' }}>작업지 주소</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>담당자</th>
-                            <th className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>연락처</th>
-                            <th className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>등록일</th>
-                        </tr>
-                    </thead>
-                    <tbody style={{ fontSize: '0.9rem' }}>
-                        {filteredList.map((item, i) => (
-                            <tr key={item.id} className={styles.row} onClick={() => router.push('/employees/work-sites/' + item.id)}>
-                                <td className={styles.colNo}>{filteredList.length - i}</td>
-                                <td style={{ fontWeight: 600, whiteSpace: 'nowrap', padding: '12px 16px' }}>{item.site_name || '—'}</td>
-                                <td className={styles.colTitle} style={{ minWidth: '200px', wordBreak: 'break-all' }}>{item.address}</td>
-                                <td style={{ fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', padding: '12px 16px' }}>
-                                    {(item.managers || []).map((m) => m.name).filter(Boolean).join(', ') || '—'}
-                                </td>
-                                <td className={styles.colAuthor} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>
-                                    {item.contact || (item.managers && item.managers[0]?.phone) || '—'}
-                                </td>
-                                <td className={styles.colDate} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
-                            </tr>
-                        ))}
-                        {filteredList.length === 0 && (
-                            <tr><td colSpan="6" className={styles.empty}>검색 결과가 없습니다.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+            <ContactFilterBar searchKeyword={searchKeyword} setSearchKeyword={setSearchKeyword} />
+
+            <div className={styles.mobileList}>
+                {filteredList.length === 0 && <div className={styles.empty}>검색 결과가 없습니다.</div>}
+                {filteredList.map((item) => (
+                    <div key={item.id} className={styles.contactCard} onClick={() => openDetail(item)}>
+                        <div className={styles.cardRow}>
+                            <span className={styles.cardName}>{item.site_name || '작업지명 미등록'}</span>
+                            <span className={styles.cardBadge}>{formatDate(item.created_at)}</span>
+                        </div>
+                        <div className={styles.cardMeta}>{item.address || '-'}</div>
+                        <div className={styles.cardMemo}>주의: {precautionsText(item)}</div>
+                        <div className={styles.cardMemo}>특이: {notesText(item)}</div>
+                        <div className={styles.cardMeta}>
+                            <span>담당: {managerText(item)}</span>
+                            {primaryContact(item) && (
+                                <>
+                                    <span>·</span>
+                                    <PhoneLink value={primaryContact(item)}>{formatPhoneNumber(primaryContact(item))}</PhoneLink>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className={styles.desktopTable}>
+                <IntranetDataTable
+                    columns={columns}
+                    rows={filteredList}
+                    onRowClick={openDetail}
+                    ariaLabel="작업지정보 목록"
+                />
             </div>
         </div>
     );

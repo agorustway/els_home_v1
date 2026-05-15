@@ -81,11 +81,11 @@ export default function WorkReportsPage() {
                             >
                                 <td className={styles.colNum}>{posts.length - index}</td>
                                 <td className={styles.colBranch}>
-                                    <span style={{ fontSize: '0.75rem', background: post.report_kind === 'daily' ? '#f0fdf4' : post.report_kind === 'monthly' ? '#fef3c7' : '#f3f4f6', color: post.report_kind === 'daily' ? '#16a34a' : post.report_kind === 'monthly' ? '#d97706' : '#6b7280', padding: '4px 8px', borderRadius: '4px', whiteSpace: 'nowrap', fontWeight: '700' }}>
+                                    <span className={`${styles.badge} ${post.report_kind === 'daily' ? styles.badgeGreen : post.report_kind === 'monthly' ? styles.badgeAmber : styles.badgeGray}`}>
                                         {post.report_kind === 'daily' ? '일일' : post.report_kind === 'monthly' ? '월간' : '기타'}
                                     </span>
                                 </td>
-                                <td className={styles.colBranch}><span style={{ fontSize: '0.8rem', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: '4px', whiteSpace: 'nowrap', fontWeight: '700' }}>{getRoleLabel(post.branch_tag)}</span></td>
+                                <td className={styles.colBranch}><span className={`${styles.badge} ${styles.badgeBlue}`}>{getRoleLabel(post.branch_tag)}</span></td>
                                 <td className={styles.colTitle}>
                                     <span className={styles.postTitle}>
                                         {post.title}

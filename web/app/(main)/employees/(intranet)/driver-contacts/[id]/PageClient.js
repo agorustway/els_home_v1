@@ -1,12 +1,22 @@
 'use client';
 
-
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { AttachmentList, DetailField, DetailGrid, DetailHero, DetailSection } from '@/components/IntranetRecordDetail';
+import { DataBadge, InitialAvatar, PhoneLink } from '@/components/IntranetDataTable';
 import { cargoTypeLabel, contractTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
+import { formatDateTime, formatPhoneNumber, getSafeFileUrl, joinDefined } from '@/utils/contactDisplay';
 import styles from '../../intranet.module.css';
+
+const contractTone = (value) => {
+    if (value === 'contracted') return 'green';
+    if (value === 'partner') return 'cyan';
+    return 'gray';
+};
+
+const cargoTone = (value) => ((value || 'container') === 'general' ? 'purple' : 'blue');
 
 export default function DriverContactsDetailPage() {
     const { role, loading: authLoading } = useUserRole();
@@ -15,26 +25,6 @@ export default function DriverContactsDetailPage() {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(null);
-
-    const getSafeUrl = (url, name) => {
-        if (!url) return '';
-        let target = url;
-        if (target.startsWith('http')) {
-            try {
-                const parsed = new URL(target);
-                target = parsed.pathname + parsed.search;
-            } catch (e) { }
-        }
-
-        // Add name parameter if it's an API call and name is provided
-        if (name && (target.includes('/api/s3/files') || target.includes('/api/nas/files'))) {
-            if (!target.includes('name=')) {
-                const connector = target.includes('?') ? '&' : '?';
-                target = `${target}${connector}name=${encodeURIComponent(name)}`;
-            }
-        }
-        return target;
-    };
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/driver-contacts/' + params.id);
@@ -57,21 +47,22 @@ export default function DriverContactsDetailPage() {
         else alert('삭제 실패');
     };
 
-    const formatPhone = (val) => {
-        if (!val) return '-';
-        const num = val.replace(/[^0-9]/g, '');
-        if (num.length <= 3) return num;
-        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    };
-
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!item) return <div className={styles.empty}>항목을 찾을 수 없습니다.</div>;
+
+    const driverPhoto = getSafeFileUrl(item.photo_driver || item.photo_url);
+    const vehiclePhoto = getSafeFileUrl(item.photo_vehicle);
+    const chassisPhoto = getSafeFileUrl(item.photo_chassis);
+    const isGeneral = (item.cargo_type || 'container') === 'general';
+    const docFiles = (item.additional_docs || []).map((file) => ({
+        ...file,
+        href: getSafeFileUrl(file.url, file.name),
+    }));
 
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
-                <h1 className={styles.title}>운전원정보 · 상세</h1>
+                <h1 className={styles.title}>운전원정보</h1>
                 <div className={styles.controls}>
                     <Link href={`/employees/driver-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
                     <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
@@ -80,146 +71,88 @@ export default function DriverContactsDetailPage() {
             </div>
 
             <div className={styles.card}>
-                <div style={{ display: 'flex', gap: '40px', marginBottom: '30px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div style={{ width: 140, height: 140, borderRadius: '20px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }} title="클릭하여 원본 사진 보기 및 다운로드">
-                            {item.photo_driver || item.photo_url ? (
-                                <div onClick={() => setSelectedImage(getSafeUrl(item.photo_driver || item.photo_url))} style={{width: '100%', height: '100%', display: 'block', cursor: 'pointer'}}>
-                                    <img src={getSafeUrl(item.photo_driver || item.photo_url)} alt="운전원" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-                            ) : (
-                                <span style={{ fontSize: '3rem' }}>👤</span>
-                            )}
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="클릭하여 원본 사진 보기">
-                                {item.photo_vehicle ? (
-                                    <div onClick={() => setSelectedImage(getSafeUrl(item.photo_vehicle))} style={{width: '100%', height: '100%', display: 'block', cursor: 'pointer'}}>
-                                        <img src={getSafeUrl(item.photo_vehicle)} alt="차량" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                ) : (
-                                    <span style={{ fontSize: '1.2rem', color: '#cbd5e1' }}>🚛</span>
-                                )}
-                            </div>
-                            <div style={{ width: 65, height: 65, borderRadius: '10px', background: '#f8fafc', overflow: 'hidden', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="클릭하여 원본 사진 보기">
-                                {item.photo_chassis ? (
-                                    <div onClick={() => setSelectedImage(getSafeUrl(item.photo_chassis))} style={{width: '100%', height: '100%', display: 'block', cursor: 'pointer'}}>
-                                        <img src={getSafeUrl(item.photo_chassis)} alt="샤시" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                ) : (
-                                    <span style={{ fontSize: '1.2rem', color: '#cbd5e1' }}>🚚</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>이름</label>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>{item.name}</div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>계약유형</label>
-                            <div>
-                                <span style={{
-                                    display: 'inline-block', padding: '3px 12px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600,
-                                    background: item.contract_type === 'contracted' ? '#dcfce7' : item.contract_type === 'partner' ? '#e0f2fe' : '#f1f5f9',
-                                    color: item.contract_type === 'contracted' ? '#16a34a' : item.contract_type === 'partner' ? '#0284c7' : '#94a3b8',
-                                }}>
-                                    {contractTypeLabel(item.contract_type || 'uncontracted')}
-                                </span>
-                                {item.partner_company && <div style={{ marginTop: 6, color: '#0284c7', fontWeight: 700 }}>{item.partner_company}</div>}
-                            </div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>업무유형</label>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: (item.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }}>{cargoTypeLabel(item.cargo_type || 'container')}</div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>지도 공개범위</label>
-                            <div>{mapVisibilityLabel(item.map_visibility || 'own')}</div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>연락처</label>
-                            <div style={{ fontSize: '1.2rem', color: '#2563eb', fontWeight: 600 }}>{formatPhone(item.phone)}</div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량번호</label>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.vehicle_number || '-'}</div>
-                        </div>
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량아이디</label>
-                            <div style={{ color: '#64748b', letterSpacing: '1px' }}>{item.vehicle_id || '-'}</div>
-                        </div>
-                        {(item.cargo_type || 'container') === 'general' ? (
-                            <>
-                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차량종류</label><div>{item.general_vehicle_type || '-'}</div></div>
-                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>적재중량</label><div>{item.general_payload || '-'}</div></div>
-                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>특장구분</label><div>{item.general_body_type || '-'}</div></div>
-                            </>
-                        ) : (
-                            <>
-                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>차종</label><div>{item.vehicle_type || '-'}</div></div>
-                                <div><label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>샤시종류</label><div>{item.chassis_type || '-'}</div></div>
-                            </>
-                        )}
-                        <div>
-                            <label style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.85rem' }}>소속지점</label>
-                            <div style={{ color: '#10b981', fontWeight: 600 }}>{item.branch || '-'}</div>
-                        </div>
-                    </div>
-                </div>
+                <DetailHero
+                    title={item.name}
+                    subtitle={joinDefined([item.branch, item.partner_company], ' / ') || '운전원'}
+                    badges={[
+                        contractTypeLabel(item.contract_type || 'uncontracted'),
+                        cargoTypeLabel(item.cargo_type || 'container'),
+                        mapVisibilityLabel(item.map_visibility || 'own'),
+                    ]}
+                    avatar={
+                        <button className={styles.photoThumb} onClick={() => driverPhoto && setSelectedImage(driverPhoto)} title="운전원 사진 보기">
+                            {driverPhoto ? <img src={driverPhoto} alt="운전원" /> : <InitialAvatar name={item.name} size="lg" />}
+                        </button>
+                    }
+                />
 
-                {/* 마지막 운행 정보 */}
-                {item.last_container_number && (
-                    <div style={{ marginTop: '20px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.9rem', marginBottom: '10px' }}>🚛 마지막 운행 정보</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.5fr)', gap: '16px' }}>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>컨테이너</div>
-                                <div style={{ fontWeight: 600 }}>{item.last_container_number}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>씰넘버</div>
-                                <div>{item.last_seal_number || '-'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>타입</div>
-                                <div>{item.last_container_type || '-'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>종류</div>
-                                <div>{item.last_container_kind || '-'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>운행시작</div>
-                                <div style={{ fontSize: '0.85rem' }}>{item.last_trip_started_at ? new Date(item.last_trip_started_at).toLocaleString() : '-'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>운행종료</div>
-                                <div style={{ fontSize: '0.85rem' }}>{item.last_trip_completed_at ? new Date(item.last_trip_completed_at).toLocaleString() : '-'}</div>
-                            </div>
-                        </div>
+                <DetailGrid>
+                    <DetailField label="계약유형">
+                        <DataBadge tone={contractTone(item.contract_type || 'uncontracted')}>
+                            {contractTypeLabel(item.contract_type || 'uncontracted')}
+                        </DataBadge>
+                    </DetailField>
+                    <DetailField label="업무유형">
+                        <DataBadge tone={cargoTone(item.cargo_type)}>{cargoTypeLabel(item.cargo_type || 'container')}</DataBadge>
+                    </DetailField>
+                    <DetailField label="연락처" tone="blue">
+                        <PhoneLink value={item.phone}>{formatPhoneNumber(item.phone)}</PhoneLink>
+                    </DetailField>
+                    <DetailField label="지도 공개범위" value={mapVisibilityLabel(item.map_visibility || 'own')} />
+                    <DetailField label="소속지점" value={item.branch || '-'} />
+                    <DetailField label="협력사" value={item.partner_company || '-'} />
+                    <DetailField label="차량번호" value={item.vehicle_number || '-'} />
+                    <DetailField label="차량아이디" value={item.vehicle_id || '-'} />
+                    {isGeneral ? (
+                        <>
+                            <DetailField label="차량종류" value={item.general_vehicle_type || '-'} />
+                            <DetailField label="적재중량" value={item.general_payload || '-'} />
+                            <DetailField label="특장구분" value={item.general_body_type || '-'} />
+                        </>
+                    ) : (
+                        <>
+                            <DetailField label="차종" value={item.vehicle_type || '-'} />
+                            <DetailField label="샤시종류" value={item.chassis_type || '-'} />
+                        </>
+                    )}
+                </DetailGrid>
+
+                <DetailSection title="사진 자료">
+                    <div className={styles.imagePreviewGrid}>
+                        <button className={styles.photoThumb} onClick={() => driverPhoto && setSelectedImage(driverPhoto)}>
+                            {driverPhoto ? <img src={driverPhoto} alt="운전원" /> : '운전원'}
+                        </button>
+                        <button className={styles.photoThumb} onClick={() => vehiclePhoto && setSelectedImage(vehiclePhoto)}>
+                            {vehiclePhoto ? <img src={vehiclePhoto} alt="차량" /> : '차량'}
+                        </button>
+                        <button className={styles.photoThumb} onClick={() => chassisPhoto && setSelectedImage(chassisPhoto)}>
+                            {chassisPhoto ? <img src={chassisPhoto} alt="샤시" /> : '샤시'}
+                        </button>
                     </div>
+                </DetailSection>
+
+                {item.last_container_number && (
+                    <DetailSection title="마지막 운행 정보" muted>
+                        <DetailGrid columns={3}>
+                            <DetailField label="컨테이너" value={item.last_container_number} />
+                            <DetailField label="씰넘버" value={item.last_seal_number || '-'} />
+                            <DetailField label="타입" value={item.last_container_type || '-'} />
+                            <DetailField label="종류" value={item.last_container_kind || '-'} />
+                            <DetailField label="운행시작" value={formatDateTime(item.last_trip_started_at)} />
+                            <DetailField label="운행종료" value={formatDateTime(item.last_trip_completed_at)} />
+                        </DetailGrid>
+                    </DetailSection>
                 )}
 
-                <div className={styles.detailItem} style={{ marginTop: '30px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                    <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>📎 추가 서류 (최대 10개)</label>
-                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {(item.additional_docs || []).map((file, idx) => (
-                            <a key={idx} href={getSafeUrl(file.url, file.name)} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#334155', border: '1px solid #e2e8f0' }}>
-                                <span>📎 {file.name}</span>
-                                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>📥 다운로드</span>
-                            </a>
-                        ))}
-                        {(item.additional_docs || []).length === 0 && <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>첨부된 서류가 없습니다.</div>}
-                    </div>
-                </div>
+                <DetailSection title="추가 서류">
+                    <AttachmentList files={docFiles} emptyText="첨부된 서류가 없습니다." />
+                </DetailSection>
             </div>
 
             {selectedImage && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, cursor: 'pointer' }} onClick={() => setSelectedImage(null)}>
-                    <img src={selectedImage} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', cursor: 'default' }} onClick={(e) => e.stopPropagation()} />
-                    <button onClick={() => setSelectedImage(null)} style={{ position: 'absolute', top: '20px', right: '30px', background: 'none', border: 'none', color: 'white', fontSize: '3rem', cursor: 'pointer', padding: '10px' }}>&times;</button>
+                <div className={styles.modalBackdrop} onClick={() => setSelectedImage(null)}>
+                    <img src={selectedImage} className={styles.modalImage} alt="원본 사진" onClick={(event) => event.stopPropagation()} />
+                    <button className={styles.modalClose} onClick={() => setSelectedImage(null)} aria-label="닫기">×</button>
                 </div>
             )}
         </div>

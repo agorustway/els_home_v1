@@ -49,10 +49,10 @@ export default function MyReportsPage() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.headerBanner} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className={styles.headerBanner}>
                 <h1 className={styles.title}>내 업무보고</h1>
-                <Link href="/employees/reports/new" className={styles.btnPrimary} style={{ backgroundColor: '#fff', color: '#1e3a8a' }}>
-                    ✍️ 새 보고서 작성
+                <Link href="/employees/reports/new" className={styles.btnPrimary}>
+                    새 보고서 작성
                 </Link>
             </div>
 
@@ -74,7 +74,7 @@ export default function MyReportsPage() {
                                 onClick={() => router.push(`/employees/reports/${post.id}`)}
                             >
                                 <td className={styles.colNum}>{posts.length - index}</td>
-                                <td className={styles.colBranch}><span style={{ fontSize: '0.8rem', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{getRoleLabel(post.branch_tag)}</span></td>
+                                <td className={styles.colBranch}><span className={`${styles.badge} ${styles.badgeBlue}`}>{getRoleLabel(post.branch_tag)}</span></td>
                                 <td className={styles.colTitle}>
                                     <span className={styles.postTitle}>{post.title}</span>
                                 </td>

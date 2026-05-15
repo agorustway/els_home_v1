@@ -104,3 +104,89 @@
         padding: 6px 4px 24px !important;
     }
 }
+
+/* v5.13 인트라넷 전역 밀도 기준
+   CSS module이 다른 페이지도 같은 타이포 리듬을 따르도록 상위 레이아웃에서 보정한다. */
+.bodyWrap .mainContent {
+    --intra-title-size: 1.12rem;
+    --intra-detail-title-size: 1.35rem;
+    --intra-section-title-size: 0.9rem;
+    --intra-body-size: 0.84rem;
+    --intra-label-size: 0.74rem;
+    --intra-button-height: 32px;
+}
+
+.bodyWrap .mainContent :global(h1),
+.bodyWrap .mainContent :global([class*="title"]) {
+    letter-spacing: 0 !important;
+}
+
+.bodyWrap .mainContent :global([class*="headerBanner"]) :global([class*="title"]) {
+    font-size: var(--intra-title-size) !important;
+    line-height: 1.2 !important;
+}
+
+.bodyWrap .mainContent :global([class*="detailTitle"]),
+.bodyWrap .mainContent :global([class*="headlineTitle"]) {
+    font-size: var(--intra-detail-title-size) !important;
+    line-height: 1.25 !important;
+}
+
+.bodyWrap .mainContent :global([class*="sectionTitle"]),
+.bodyWrap .mainContent :global([class*="detailSectionTitle"]) {
+    font-size: var(--intra-section-title-size) !important;
+    line-height: 1.3 !important;
+}
+
+.bodyWrap .mainContent :global([class*="contentBody"]),
+.bodyWrap .mainContent :global([class*="detailSectionBody"]),
+.bodyWrap .mainContent :global([class*="postTitle"]),
+.bodyWrap .mainContent :global([class*="newsTitle"]),
+.bodyWrap .mainContent :global([class*="fileName"]) {
+    font-size: var(--intra-body-size) !important;
+}
+
+.bodyWrap .mainContent :global([class*="detailMeta"]),
+.bodyWrap .mainContent :global([class*="postMeta"]),
+.bodyWrap .mainContent :global([class*="newsMeta"]),
+.bodyWrap .mainContent :global([class*="label"]) {
+    font-size: var(--intra-label-size) !important;
+}
+
+.bodyWrap .mainContent :global([class*="btnPrimary"]),
+.bodyWrap .mainContent :global([class*="btnSecondary"]),
+.bodyWrap .mainContent :global([class*="btnDelete"]) {
+    min-height: var(--intra-button-height) !important;
+    height: var(--intra-button-height) !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0 !important;
+}
+
+.bodyWrap .mainContent :global(table) {
+    font-size: 0.8rem;
+}
+
+.bodyWrap .mainContent :global(th),
+.bodyWrap .mainContent :global(td) {
+    font-size: 0.8rem;
+    line-height: 1.25;
+}
+
+@media (max-width: 768px) {
+    .bodyWrap .mainContent {
+        --intra-title-size: 0.98rem;
+        --intra-detail-title-size: 1.05rem;
+        --intra-section-title-size: 0.84rem;
+        --intra-body-size: 0.78rem;
+        --intra-label-size: 0.72rem;
+        --intra-button-height: 30px;
+    }
+}
+
+@media (max-width: 420px) {
+    .bodyWrap .mainContent {
+        --intra-title-size: 0.92rem;
+        --intra-button-height: 29px;
+    }
+}

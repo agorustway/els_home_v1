@@ -1,4 +1,97 @@
 
+## [2026-05-15] 업무보고/아산지점 테이블 밀도 표준화 (v5.13.3)
+### 🚀 Achievement
+- **업무보고 목록 표준화**: 전체/일일/월간/내 업무보고 목록의 테이블 제목행을 연락처형 페이지와 같은 짙은 블루 헤더로 통일하고, 셀 폰트와 행 여백을 고밀도 업무 화면 기준으로 축소했습니다.
+- **업무보고 하위페이지 보정**: 작성/수정/상세 화면의 제목 영역, 입력 라벨, 본문 크기, 첨부파일 표시를 같은 톤으로 정리했습니다.
+- **아산 배차판 보정**: 배차판 테이블 헤더 색상, 폰트 크기, 셀 여백을 인트라넷 표준에 맞췄고 상단 탭/헤더 간격도 줄였습니다.
+- **아산 선적관리 보정**: 선적관리 가상 스크롤 행 높이를 34px에서 28px로 낮추고 테이블 셀 padding/font를 축소해 큰 여백을 줄였습니다.
+### 🧪 검증
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- 빌드 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/(intranet)/reports/*`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-15] AI 어시스턴트 대화 삭제 DB 동기화 보강 (v5.13.2)
+### 🚀 Achievement
+- **전체 삭제 레이스 차단**: 전체 삭제 버튼 실행 전에 예약된 DB 자동저장 타이머를 먼저 취소하여, 삭제 직후 기존 대화 목록이 다시 `POST`되는 문제를 막았습니다.
+- **삭제 즉시 반영**: 개별 대화 삭제와 현재 대화 비우기도 로컬 상태 변경 후 DB에 즉시 치환/삭제되도록 보강했습니다.
+- **빈 대화 DB 재생성 방지**: 사용자 메시지가 없는 기본 대화만 남은 경우에는 `ai_chat_memory`를 다시 upsert하지 않고 삭제 상태를 유지합니다.
+- **삭제 API 응답 보강**: `/api/chat/memory`의 `DELETE` 응답에 삭제 건수와 상세 오류 메시지를 포함해 실패가 조용히 묻히지 않도록 했습니다.
+### 🧪 검증
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- 빌드 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/app/api/chat/memory/route.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-15] 이스터에그 복구 및 인트라넷 전체 폰트/자료실 상세 보정 (v5.13.1)
+### 🚀 Achievement
+- **이스터에그 복구**: 공식 메뉴에 노출되지 않는 숨은 기능인 랜덤게임 라우트를 복구하고, AI 어시스턴트 하단 빌드 문구 링크로 진입 가능하게 유지했습니다. 송미관 모달은 뉴스 페이지 이스터에그로 명시하고 버튼 타입/접근성 라벨을 보강했습니다.
+- **작업지정보 컬럼 보정**: 작업지 주소가 과도하게 긴 유동 폭을 차지하던 구성을 줄이고, `주의사항`과 `특이사항` 축약 컬럼을 추가했습니다.
+- **업무자료실 상세 정리**: 상세 화면을 공통 상세 구조로 재구성하고, 첨부파일을 카드형 박스 대신 게시목록형 테이블로 정리했습니다.
+- **인트라넷 전체 폰트 기준 보정**: CSS 모듈이 다른 인트라넷 페이지도 제목/상세제목/본문/라벨/버튼 높이 기준을 따라가도록 `SiteLayout.module.css` 상위 보정 레이어를 추가했습니다.
+### 🧪 검증
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- `contactDisplay` 빠른 케이스 검증 통과
+- 빌드 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/app/(main)/employees/(intranet)/random-game/*`
+- `web/app/(main)/employees/news/page.js`
+- `web/app/(main)/employees/(intranet)/work-sites/page.js`
+- `web/app/(main)/employees/(intranet)/work-docs/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/intranet.module.css`
+- `web/components/SiteLayout.module.css`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+- `docs/04_MASTER_ARCHITECTURE.md`
+- `docs/05_DESIGN_SYSTEM.md`
+- `docs/10_INTRANET_UI_REFACTOR_20260515.md`
+
+## [2026-05-15] 인트라넷 연락처형 페이지 UI 파이프라인 리팩토링 (v5.13.0)
+### 🚀 Achievement
+- **목록 구조 통일**: 사내연락망/외부연락처/협력사정보/운전원정보/작업지정보 목록을 `IntranetDataTable` 기반으로 재구성했습니다. 컬럼 폭, 테이블 헤더, 전화 링크, 상태 배지, 비고/주소 유동 컬럼 기준을 통일했습니다.
+- **상세 화면 표준화**: 연락처 상세 페이지들을 `DetailHero → DetailGrid → DetailSection` 흐름으로 정리하여 이름/회사/작업지 중심 정보, 주요 필드, 메모/첨부 영역을 같은 리듬으로 배치했습니다.
+- **모바일 밀도 개선**: Galaxy S24 360px 뷰포트 기준으로 카드 패딩, 버튼 높이, 본문 여백, 폰트 크기를 줄여 작은 화면에서 가로 공간을 효율적으로 쓰도록 조정했습니다.
+- **공통 유틸 추가**: 전화번호/날짜 포맷, 파일 URL 안정화, 이미지 판별, 값 조합 유틸을 `contactDisplay.js`로 분리했습니다.
+- **이스터에그 정책 확인 전 임시 정리**: 랜덤게임을 비활성 유산 페이지로 판단해 정리했으나, v5.13.1에서 형의 정책에 맞춰 공식 메뉴 미노출 이스터에그로 복구했습니다.
+### 🧪 검증
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- `contactDisplay` 빠른 케이스 검증 통과
+- 빌드 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/(intranet)/intranet.module.css`
+- `web/components/IntranetDataTable.js`
+- `web/components/IntranetRecordDetail.js`
+- `web/components/ContactFilterBar.js`
+- `web/utils/contactDisplay.js`
+- `web/app/(main)/employees/(intranet)/internal-contacts/page.js`
+- `web/app/(main)/employees/(intranet)/internal-contacts/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/external-contacts/page.js`
+- `web/app/(main)/employees/(intranet)/external-contacts/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/partner-contacts/page.js`
+- `web/app/(main)/employees/(intranet)/partner-contacts/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/driver-contacts/page.js`
+- `web/app/(main)/employees/(intranet)/driver-contacts/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/work-sites/page.js`
+- `web/app/(main)/employees/(intranet)/work-sites/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/app/(main)/employees/(intranet)/random-game/*` (v5.13.1에서 이스터에그로 복구)
+- `docs/01_MISSION_CONTROL.md`
+- `docs/10_INTRANET_UI_REFACTOR_20260515.md`
+
 ## [2026-05-15] 이트랜스 '데이터가 없음' 키워드 및 그리드 초기화 객체 보강 (v5.12.22)
 ### 🚀 Achievement
 - **키워드 탐지 강화**: 이트랜스의 `"데이터가 없음"`, `"데이터가없음"` 등 변종 문구를 탐지 리스트에 추가하여 내역 없음 상황을 정확히 인지하도록 개선했습니다.

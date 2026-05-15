@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
-const ROW_HEIGHT = 34;
+const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
 
 // 날짜 관련 컬럼 키워드

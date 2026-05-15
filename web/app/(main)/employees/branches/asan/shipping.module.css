@@ -1,7 +1,7 @@
 .container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     height: calc(100vh - 250px);
     overflow: hidden;
 }
@@ -11,8 +11,8 @@
     justify-content: space-between;
     align-items: center;
     background: #fff;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
@@ -24,14 +24,14 @@
 }
 
 .title {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: #1e293b;
     margin: 0;
 }
 
 .fileMod {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #64748b;
     font-weight: 600;
 }
@@ -43,18 +43,20 @@
 }
 
 .searchInput {
-    padding: 6px 12px;
+    height: 30px;
+    padding: 0 10px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     width: 250px;
 }
 
 .syncBtn, .resetBtn {
-    padding: 6px 12px;
+    min-height: 30px;
+    padding: 0 10px;
     border-radius: 6px;
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     cursor: pointer;
     border: 1px solid #cbd5e1;
     background: #fff;
@@ -69,10 +71,11 @@
 .syncBtn:hover { background: #dbeafe; }
 
 .dangerBtn {
-    padding: 6px 12px;
+    min-height: 30px;
+    padding: 0 10px;
     border-radius: 6px;
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     cursor: pointer;
     border: 1px solid #fca5a5;
     background: #fef2f2;
@@ -82,8 +85,8 @@
 
 .tableWrap {
     background: #fff;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
     overflow: auto;
     flex: 1;
     min-height: 0;
@@ -93,31 +96,33 @@
 
 .table {
     width: 100%;
-    border-collapse: separate;
+    border-collapse: collapse;
     border-spacing: 0;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
 }
 
 .table th, .table td {
-    padding: 8px 12px;
-    border-right: 1px solid #f1f5f9;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 4px 7px;
+    border-right: 1px solid #d9e2ec;
+    border-bottom: 1px solid #e5ebf2;
     white-space: nowrap;
-    height: 34px;
+    height: 28px;
     box-sizing: border-box;
+    line-height: 1.2;
 }
 
 .table th {
-    background: #f8fafc;
+    background: #315f8c;
     position: sticky;
     top: 0;
     z-index: 10;
-    color: #475569;
+    color: #fff;
     font-weight: 800;
     text-align: left;
     cursor: pointer;
     user-select: none;
-    box-shadow: 0 1px 0 #e2e8f0;
+    box-shadow: 0 1px 0 #244c73;
+    font-size: 0.74rem;
 }
 
 .table th[draggable="true"] {
@@ -129,10 +134,10 @@
 }
 
 .table tr.oddRow td { background: #fff; }
-.table tr.evenRow td { background: #fafafa; }
+.table tr.evenRow td { background: #f8fafc; }
 
 .table tr:hover td {
-    background: #f1f5f9;
+    background: #f4f8fc;
 }
 
 .virtualSpacer td {
@@ -175,7 +180,7 @@
     background: #eff6ff;
     border: 1px solid #bfdbfe;
     border-radius: 12px;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     color: #1d4ed8;
 }
 
@@ -210,11 +215,11 @@
 
 .modal h2 {
     margin: 0 0 16px;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
 
-.formGroup { margin-bottom: 16px; }
-.formGroup label { font-weight: 700; font-size: 0.85rem; color: #475569; display: block; margin-bottom: 6px; }
+.formGroup { margin-bottom: 14px; }
+.formGroup label { font-weight: 700; font-size: 0.78rem; color: #475569; display: block; margin-bottom: 6px; }
 
 .pathRow {
     display: flex;
@@ -226,7 +231,7 @@
     padding: 8px 12px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     background: #f8fafc;
 }
 
@@ -234,7 +239,7 @@
     padding: 8px 16px;
     border-radius: 6px;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     cursor: pointer;
     border: 1px solid #cbd5e1;
     background: #fff;
@@ -252,7 +257,7 @@
 }
 
 .browserPath {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     color: #64748b;
     margin: 0 0 10px;
     padding: 6px 10px;
@@ -268,10 +273,10 @@
 }
 
 .browserItem {
-    padding: 10px 14px;
+    padding: 8px 12px;
     cursor: pointer;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .browserItem:hover {

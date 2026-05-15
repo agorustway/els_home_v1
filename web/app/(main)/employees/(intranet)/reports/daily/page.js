@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getRoleLabel } from '@/utils/roles';
@@ -71,7 +70,7 @@ export default function DailyReportsPage() {
                                 onClick={() => router.push(`/employees/reports/${post.id}`)}
                             >
                                 <td className={styles.colNum}>{posts.length - index}</td>
-                                <td className={styles.colBranch}><span style={{ fontSize: '0.8rem', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: '4px', whiteSpace: 'nowrap', fontWeight: '700' }}>{getRoleLabel(post.branch_tag)}</span></td>
+                                <td className={styles.colBranch}><span className={`${styles.badge} ${styles.badgeBlue}`}>{getRoleLabel(post.branch_tag)}</span></td>
                                 <td className={styles.colTitle}>
                                     <span className={styles.postTitle}>{post.title}</span>
                                 </td>

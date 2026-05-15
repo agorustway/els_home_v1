@@ -15,8 +15,8 @@
     justify-content: space-between;
     align-items: center;
     background: #fff;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
     margin-bottom: 8px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -29,7 +29,7 @@
 }
 
 .pageTitle {
-    font-size: 1.25rem;
+    font-size: 1.12rem;
     font-weight: 900;
     color: #0f172a;
     margin: 0;
@@ -593,7 +593,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 16px;
+    padding: 7px 12px;
     margin-bottom: 10px;
     background: linear-gradient(135deg, #f8fafc, #f1f5f9);
     border: 1px solid #e2e8f0;
@@ -646,7 +646,7 @@
 }
 
 .summaryItem {
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     color: #334155;
     display: flex;
     align-items: center;
@@ -738,13 +738,13 @@
 }
 
 .dateTab {
-    padding: 6px 14px;
+    padding: 5px 12px;
     border: 1px solid #e2e8f0;
     border-bottom: none;
     border-radius: 8px 8px 0 0;
     cursor: pointer;
     white-space: nowrap;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 700;
     transition: all 0.15s;
     display: flex;
@@ -962,18 +962,18 @@
 }
 
 .table th {
-    background: #f0f4f8;
-    padding: 3px 6px;
+    background: #315f8c;
+    padding: 4px 7px;
     font-weight: 700;
-    color: #334155;
-    border-bottom: 2px solid #94a3b8;
-    border-right: 1px solid #cbd5e1;
+    color: #fff;
+    border-bottom: 1px solid #244c73;
+    border-right: 1px solid rgba(255, 255, 255, 0.18);
     white-space: nowrap;
     position: sticky;
     top: 0;
     z-index: 5;
     text-align: left;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     user-select: none;
 }
 
@@ -988,7 +988,7 @@
 }
 
 .table th:hover {
-    background: #e2e8f0;
+    background: #284f77;
 }
 
 /* 컨럼 너비 조절 핸들 */
@@ -1009,8 +1009,8 @@
 }
 
 .filteredHeader {
-    background: #e0e7ff !important;
-    color: #3730a3 !important;
+    background: #244f85 !important;
+    color: #fff !important;
 }
 
 .filterIcon {
@@ -1020,7 +1020,7 @@
 }
 
 .table td {
-    padding: 3px 6px;
+    padding: 4px 7px;
     border-bottom: 1px solid #cbd5e1;
     border-right: 1px solid #d1d5db;
     color: #334155;
@@ -1567,7 +1567,7 @@
 .pageWrapper {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     padding: 6px;
     background: #f8fafc;
     min-height: 100vh;
@@ -1576,18 +1576,18 @@
 .mainHeader {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 18px;
     background: #fff;
-    padding: 16px 20px;
-    border-radius: 10px;
+    padding: 10px 14px;
+    border-radius: 6px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .mainTitle {
     margin: 0;
-    font-size: 1.5rem;
-    fontWeight: 900;
+    font-size: 1.18rem;
+    font-weight: 900;
     color: #0f172a;
 }
 
@@ -1602,12 +1602,13 @@
 }
 
 .mainTabBtn {
-    padding: 8px 24px;
-    border-radius: 8px;
+    padding: 6px 18px;
+    border-radius: 6px;
     border: 1px solid #e2e8f0;
     background: #f8fafc;
     color: #64748b;
     font-weight: 800;
+    font-size: 0.82rem;
     cursor: pointer;
     transition: all 0.2s;
 }

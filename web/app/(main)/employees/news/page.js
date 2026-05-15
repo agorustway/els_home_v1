@@ -121,9 +121,10 @@ export default function NewsPage() {
                 </div>
             )}
 
-            {/* 이스터에그 트리거 영역 (티 안 나게 투명한 글씨로 처리) */}
+            {/* 공식 메뉴에 노출하지 않는 송미관 이스터에그: 운영 페이지 목록에는 포함하지 않는다. */}
             <div
                 onClick={() => setEasterEggOpen(true)}
+                aria-label="송미관 이스터에그"
                 style={{ height: '30px', marginTop: '20px', cursor: 'default', color: 'transparent', userSelect: 'none', textAlign: 'center' }}
             >
                 송미관
@@ -136,12 +137,12 @@ export default function NewsPage() {
                         {/* 모달 헤더 */}
                         <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
                             <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>✨ 송미관</h2>
-                            <button onClick={() => setEasterEggOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+                            <button type="button" onClick={() => setEasterEggOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
                         </div>
                         {/* 탭 메뉴 */}
                         <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
-                            <button onClick={() => setEggTab(1)} style={{ flex: 1, padding: '12px', background: eggTab === 1 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 1 ? '3px solid #2563eb' : '3px solid transparent', fontWeight: eggTab === 1 ? 800 : 600, color: eggTab === 1 ? '#2563eb' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>네이트판</button>
-                            <button onClick={() => setEggTab(2)} style={{ flex: 1, padding: '12px', background: eggTab === 2 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 2 ? '3px solid #059669' : '3px solid transparent', fontWeight: eggTab === 2 ? 800 : 600, color: eggTab === 2 ? '#059669' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>YES24티켓</button>
+                            <button type="button" onClick={() => setEggTab(1)} style={{ flex: 1, padding: '12px', background: eggTab === 1 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 1 ? '3px solid #2563eb' : '3px solid transparent', fontWeight: eggTab === 1 ? 800 : 600, color: eggTab === 1 ? '#2563eb' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>네이트판</button>
+                            <button type="button" onClick={() => setEggTab(2)} style={{ flex: 1, padding: '12px', background: eggTab === 2 ? '#fff' : '#f8fafc', border: 'none', borderBottom: eggTab === 2 ? '3px solid #059669' : '3px solid transparent', fontWeight: eggTab === 2 ? 800 : 600, color: eggTab === 2 ? '#059669' : '#64748b', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }}>YES24티켓</button>
                         </div>
                         {/* 본문 콘텐츠 */}
                         <div style={{ flex: 1, overflow: 'hidden', background: '#f1f5f9', position: 'relative' }}>

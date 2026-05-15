@@ -9,8 +9,8 @@
 # ║  🔗 관련 파일: SiteLayout.module.css, EmployeeHeader.module.css║
 # ╚══════════════════════════════════════════════════════════════════╝
 #
-# 마지막 업데이트: 2026-03-02
-# 업데이트한 사람: Antigravity Agent
+# 마지막 업데이트: 2026-05-15
+# 업데이트한 사람: Codex
 
 ---
 
@@ -26,6 +26,7 @@
 
 > **⚠️ 핵심**: 데스크탑 레이아웃은 **1092px 너비** 기준으로 설계한다.
 > 사이드바(약 240px) + 브라우저 스크롤바(약 17px)를 제외한 실제 콘텐츠 영역.
+> 데이터 목록은 형이 첨부한 eTrans 화면처럼 표 헤더와 컬럼 폭이 안정적인 고밀도 업무 화면을 기준으로 삼는다.
 
 ### 📱 모바일 (기준)
 
@@ -86,6 +87,16 @@
 | **본문** | `0.82rem` | `500~600` | `#475569` | 일반 텍스트 |
 | **캡션/라벨** | `0.75rem` | `600~700` | `#64748b` | 보조 정보 |
 | **미니텍스트** | `0.7rem` | `600` | `#94a3b8` | 타임스탬프, 주석 |
+
+### 연락처형 페이지 v5.13 기준
+
+| 역할 | 데스크탑 | 모바일 |
+|------|----------|--------|
+| 목록 셀 | `0.8rem` | 카드 본문 `0.72~0.88rem` |
+| 상세 제목 | `1.35rem` | `1.05rem` |
+| 버튼 높이 | `32px` | `29~30px` |
+| 카드 radius | `8px` | `6px` |
+| 표 헤더 | `#315f8c`, white text | 모바일 카드로 대체 |
 
 ### letter-spacing
 
@@ -255,10 +266,11 @@
 | 게시판 | `board.module.css` | ✅ 완료 |
 | 업무보고 | `reports.module.css` | ✅ 완료 |
 | NAS 자료실 | `archive.module.css` | ✅ 완료 |
-| 사내/외부/운전원/협력사 연락처 | `intranet.module.css` | ✅ 완료 |
-| 템플릿/작업지안내 | `intranet.module.css` | ✅ 완료 |
+| 사내/외부/운전원/협력사 연락처 | `intranet.module.css`, `IntranetDataTable.js`, `IntranetRecordDetail.js` | ✅ v5.13 재정렬 |
+| 템플릿/작업지안내 | `intranet.module.css`, `IntranetDataTable.js`, `IntranetRecordDetail.js` | ✅ v5.13 재정렬 |
 | 마이페이지 | `mypage.module.css` | ⬜ 대기 |
-| 랜덤게임 | `random-game.module.css` | ⬜ 대기 |
+| 랜덤게임 | `random-game.module.css` | 🥚 공식 메뉴 미노출 이스터에그 |
+| 송미관 | `employees/news/page.js` | 🥚 공식 메뉴 미노출 이스터에그 |
 | 웹진 | `webzine.module.css` | ⬜ 대기 |
 
 ---

@@ -1,10 +1,12 @@
 'use client';
 
-
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { AttachmentList, DetailField, DetailGrid, DetailHero, DetailSection } from '@/components/IntranetRecordDetail';
+import { PhoneLink } from '@/components/IntranetDataTable';
+import { formatPhoneNumber, getSafeFileUrl } from '@/utils/contactDisplay';
 import styles from '../../intranet.module.css';
 
 export default function PartnerContactsDetailPage() {
@@ -13,26 +15,6 @@ export default function PartnerContactsDetailPage() {
     const params = useParams();
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    const getSafeUrl = (url, name) => {
-        if (!url) return '';
-        let target = url;
-        if (target.startsWith('http')) {
-            try {
-                const parsed = new URL(target);
-                target = parsed.pathname + parsed.search;
-            } catch (e) { }
-        }
-
-        // Add name parameter if it's an API call and name is provided
-        if (name && (target.includes('/api/s3/files') || target.includes('/api/nas/files'))) {
-            if (!target.includes('name=')) {
-                const connector = target.includes('?') ? '&' : '?';
-                target = `${target}${connector}name=${encodeURIComponent(name)}`;
-            }
-        }
-        return target;
-    };
 
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/partner-contacts/' + params.id);
@@ -58,10 +40,15 @@ export default function PartnerContactsDetailPage() {
     if (authLoading || loading) return <div className={styles.loading}>로딩 중...</div>;
     if (!item) return <div className={styles.empty}>항목을 찾을 수 없습니다.</div>;
 
+    const files = (item.attachments || []).map((file) => ({
+        ...file,
+        href: getSafeFileUrl(file.url, file.name),
+    }));
+
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
-                <h1 className={styles.title}>협력사정보 · 상세</h1>
+                <h1 className={styles.title}>협력사정보</h1>
                 <div className={styles.controls}>
                     <Link href={`/employees/partner-contacts/${params.id}/edit`} className={styles.btnSecondary}>수정</Link>
                     <button onClick={handleDelete} className={styles.btnDelete}>삭제</button>
@@ -70,50 +57,27 @@ export default function PartnerContactsDetailPage() {
             </div>
 
             <div className={styles.card}>
-                <div className={styles.detailGrid} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-                    <div className={styles.detailItem}>
-                        <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>회사명</label>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#1e293b', marginTop: '5px' }}>{item.company_name}</div>
-                    </div>
-                    <div className={styles.detailItem}>
-                        <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>대표자</label>
-                        <div style={{ marginTop: '5px' }}>{item.ceo_name}</div>
-                    </div>
-                    <div className={styles.detailItem}>
-                        <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>회사 전화번호</label>
-                        <div style={{ marginTop: '5px' }}>{item.phone}</div>
-                    </div>
-                    <div className={styles.detailItem}>
-                        <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>소재지</label>
-                        <div style={{ marginTop: '5px' }}>{item.address}</div>
-                    </div>
-                    <div className={styles.detailItem}>
-                        <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>담당자명</label>
-                        <div style={{ marginTop: '5px', fontWeight: 600 }}>{item.manager_name}</div>
-                    </div>
-                    <div className={styles.detailItem}>
-                        <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>담당자 연락처</label>
-                        <div style={{ marginTop: '5px', color: '#2563eb', fontWeight: 600 }}>{item.manager_phone}</div>
-                    </div>
-                </div>
+                <DetailHero title={item.company_name} subtitle="협력사 상세" />
 
-                <div className={styles.detailItem} style={{ marginTop: '30px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                    <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>비고 (메모)</label>
-                    <div style={{ marginTop: '10px', whiteSpace: 'pre-wrap', color: '#334155' }}>{item.memo || '(내용 없음)'}</div>
-                </div>
+                <DetailGrid>
+                    <DetailField label="대표자" value={item.ceo_name || '-'} />
+                    <DetailField label="회사 전화번호" tone="blue">
+                        <PhoneLink value={item.phone}>{formatPhoneNumber(item.phone)}</PhoneLink>
+                    </DetailField>
+                    <DetailField label="담당자명" value={item.manager_name || '-'} />
+                    <DetailField label="담당자 연락처">
+                        <PhoneLink value={item.manager_phone}>{formatPhoneNumber(item.manager_phone)}</PhoneLink>
+                    </DetailField>
+                    <DetailField label="소재지" value={item.address || '-'} wide />
+                </DetailGrid>
 
-                <div className={styles.detailItem} style={{ marginTop: '30px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                    <label className={styles.detailLabel} style={{ fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem' }}>📎 첨부 서류</label>
-                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {(item.attachments || []).map((file, idx) => (
-                            <a key={idx} href={getSafeUrl(file.url, file.name)} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', textDecoration: 'none', color: '#334155', border: '1px solid #e2e8f0' }}>
-                                <span><span style={{ fontWeight: 'bold', color: '#2563eb', marginRight: '10px' }}>[{file.category}]</span> {file.name}</span>
-                                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>📥 다운로드</span>
-                            </a>
-                        ))}
-                        {(item.attachments || []).length === 0 && <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>첨부된 서류가 없습니다.</div>}
-                    </div>
-                </div>
+                <DetailSection title="비고 및 메모" muted>
+                    {item.memo || '등록된 메모가 없습니다.'}
+                </DetailSection>
+
+                <DetailSection title="첨부 서류">
+                    <AttachmentList files={files} emptyText="첨부된 서류가 없습니다." />
+                </DetailSection>
             </div>
         </div>
     );

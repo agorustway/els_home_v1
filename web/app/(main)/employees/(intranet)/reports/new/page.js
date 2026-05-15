@@ -115,7 +115,7 @@ export default function NewReportPage() {
 
             <div className={styles.editorCard}>
                 <form onSubmit={handleSubmit}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '20px' }}>
+                    <div className={styles.metaGridWide}>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>보고 종류</label>
                             <select value={reportKind} onChange={(e) => setReportKind(e.target.value)} className={styles.input} required>
@@ -161,13 +161,13 @@ export default function NewReportPage() {
                     
                     <div className={styles.formGroup}>
                         <label className={styles.label}>첨부파일</label>
-                        <input type="file" onChange={handleFileUpload} disabled={uploading} className={styles.input} />
+                        <input type="file" onChange={handleFileUpload} disabled={uploading} className={`${styles.input} ${styles.fileInputCompact}`} />
                         {uploading && <span className={styles.hint}>업로드 중...</span>}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '15px' }}>
+                        <div className={styles.attachmentList}>
                             {attachments.map((file, i) => (
-                                <div key={i} style={{ background: '#f1f5f9', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #e2e8f0' }}>
-                                    📎 {file.name}
-                                    <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+                                <div key={i} className={styles.attachmentChip}>
+                                    {file.name}
+                                    <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} className={styles.attachmentRemove}>×</button>
                                 </div>
                             ))}
                         </div>
