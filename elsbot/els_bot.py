@@ -254,7 +254,7 @@ def solve_input_and_search(page, container_no, log_callback=None):
         try: input_ele.click(timeout=1)
         except: input_ele.click(by_js=True)
         
-        # [v4.12.2] 조회 전 그리드 데이터 강제 초기화 (데이터 누수/잔상 방지)
+        # [v4.12.5] 조회 전 그리드 데이터 강제 초기화 (WebSquare 객체 직접 타격)
         page.run_js("""
             var gridIds = [
                 'mf_tac_layout_contents_602_body_gridView', 
@@ -263,17 +263,20 @@ def solve_input_and_search(page, container_no, log_callback=None):
             ];
             gridIds.forEach(function(id) {
                 try {
-                    var el = document.getElementById(id);
-                    if (el && typeof el.setData === 'function') {
-                        el.setData([]); 
-                    } else if (el) {
-                        var tb = el.querySelector('tbody');
-                        if(tb) tb.innerHTML = '';
+                    var obj = window[id] || (window.scwin && window.scwin[id]);
+                    if (obj && typeof obj.setData === 'function') {
+                        obj.setData([]); 
+                    } else {
+                        var el = document.getElementById(id);
+                        if (el) {
+                            var tb = el.querySelector('tbody');
+                            if(tb) tb.innerHTML = '';
+                        }
                     }
                 } catch(e) {}
             });
         """)
-        time.sleep(0.3)
+        time.sleep(0.5)
 
         input_ele.run_js(f"this.value = '{container_no}';")
         input_ele.input(container_no, clear=True)
@@ -292,12 +295,13 @@ def solve_input_and_search(page, container_no, log_callback=None):
                 
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
             
-            # [v4.12.4] 조회 클릭 직후 '데이터 없음' 팝업이 뜨는지 짧게 확인 (초고속 대응)
-            for _ in range(5):
+            # [v4.12.6] '데이터가 없음' 등 변종 키워드 대응 강화
+            no_data_msgs = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다"]
+            for _ in range(6):
                 time.sleep(0.3)
                 inner_text = page.run_js("return document.body.innerText || ''")
-                if any(msg in inner_text for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]):
-                    if log_callback: log_callback("✅ [검증] 내역 없음 팝업 확인됨")
+                if any(msg in inner_text for msg in no_data_msgs):
+                    if log_callback: log_callback("✅ [검증] 내역 없음 확인됨")
                     return "내역없음확인"
             
             return True
@@ -480,7 +484,8 @@ def scrape_hyper_verify(page, search_no):
         try:
             # page.html 보다 page.run_js 가 더 빠르고 정확할 수 있음
             inner_text = page.run_js("return document.body.innerText || ''")
-            for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]:
+            no_data_msgs = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다"]
+            for msg in no_data_msgs:
                 if msg in inner_text:
                     return "내역없음확인"
         except: pass
@@ -490,7 +495,8 @@ def scrape_hyper_verify(page, search_no):
     # 데이터 없음 확인 (최종 fallback)
     try:
         full_text = page.html
-        for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]:
+        no_data_msgs = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다"]
+        for msg in no_data_msgs:
             if msg in full_text:
                 return "내역없음확인"
     except: pass
