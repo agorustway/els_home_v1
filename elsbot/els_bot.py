@@ -254,6 +254,27 @@ def solve_input_and_search(page, container_no, log_callback=None):
         try: input_ele.click(timeout=1)
         except: input_ele.click(by_js=True)
         
+        # [v4.12.2] 조회 전 그리드 데이터 강제 초기화 (데이터 누수/잔상 방지)
+        page.run_js("""
+            var gridIds = [
+                'mf_tac_layout_contents_602_body_gridView', 
+                'mf_tac_layout_contents_602_body_grd_list', 
+                'mf_tac_layout_contents_602_body_grid'
+            ];
+            gridIds.forEach(function(id) {
+                try {
+                    var el = document.getElementById(id);
+                    if (el && typeof el.setData === 'function') {
+                        el.setData([]); 
+                    } else if (el) {
+                        var tb = el.querySelector('tbody');
+                        if(tb) tb.innerHTML = '';
+                    }
+                } catch(e) {}
+            });
+        """)
+        time.sleep(0.3)
+
         input_ele.run_js(f"this.value = '{container_no}';")
         input_ele.input(container_no, clear=True)
         if log_callback: log_callback(f"[{container_no}] 입력 완료")
@@ -270,8 +291,15 @@ def solve_input_and_search(page, container_no, log_callback=None):
                 search_btn.click(by_js=True)
                 
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
-            # [v4.5.3] 조회 후 대기 1.5s로 단축 (WebSquare 그리드 렌더링 충분)
-            time.sleep(1.5)
+            
+            # [v4.12.4] 조회 클릭 직후 '데이터 없음' 팝업이 뜨는지 짧게 확인 (초고속 대응)
+            for _ in range(5):
+                time.sleep(0.3)
+                inner_text = page.run_js("return document.body.innerText || ''")
+                if any(msg in inner_text for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]):
+                    if log_callback: log_callback("✅ [검증] 내역 없음 팝업 확인됨")
+                    return "내역없음확인"
+            
             return True
         
         if log_callback: log_callback("❌ 조회 버튼을 찾을 수 없습니다.")
@@ -448,9 +476,18 @@ def scrape_hyper_verify(page, search_no):
                     return res
             except: pass
         
+        # [v4.12.3] 데이터 없음 메시지 조기 감지 (지연 방지 및 잔상 제거)
+        try:
+            # page.html 보다 page.run_js 가 더 빠르고 정확할 수 있음
+            inner_text = page.run_js("return document.body.innerText || ''")
+            for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]:
+                if msg in inner_text:
+                    return "내역없음확인"
+        except: pass
+        
         time.sleep(0.5)
         
-    # 데이터 없음 확인
+    # 데이터 없음 확인 (최종 fallback)
     try:
         full_text = page.html
         for msg in ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다"]:
@@ -601,8 +638,12 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
         item_log("조회 분석 시작")
         status = solve_input_and_search(page, cn, item_log)
         
-        if status is True:
-            grid_text = scrape_hyper_verify(page, cn)
+        if status is True or status == "내역없음확인":
+            if status == "내역없음확인":
+                grid_text = "내역없음확인"
+            else:
+                grid_text = scrape_hyper_verify(page, cn)
+                
             if grid_text:
                 # [v4.9.9] WebSquare API NODATA 응답 처리
                 if grid_text in ["NODATA_GRID_EMPTY", "내역없음확인"]:
