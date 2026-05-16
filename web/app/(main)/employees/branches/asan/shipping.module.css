@@ -95,8 +95,9 @@
     justify-content: flex-end;
     align-items: center;
     gap: 8px;
-    flex: 1 1 250px;
-    min-width: 220px;
+    flex: 0 1 360px;
+    min-width: 260px;
+    max-width: 420px;
 }
 
 .actionRow {
@@ -132,12 +133,16 @@
 }
 
 .searchStatus {
-    min-width: 54px;
+    flex: 0 0 54px;
     color: #64748b;
     font-size: 0.72rem;
     font-weight: 800;
     text-align: right;
     white-space: nowrap;
+}
+
+.searchStatusHidden {
+    visibility: hidden;
 }
 
 .syncBtn, .resetBtn {
@@ -417,6 +422,33 @@
     background: #f4f8fc;
 }
 
+.table tr.signalStrongRow td {
+    color: #0f172a;
+    font-weight: 800;
+}
+
+.table tr.signalStrongRow td.lookupCell {
+    background: #dcfce7;
+    color: #064e3b;
+    font-weight: 900;
+}
+
+.table tr.signalDimRow td {
+    color: #a8b3c2;
+    font-weight: 500;
+}
+
+.table tr.signalDimRow td.lookupCell {
+    background: #f8fafc;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.table tr.signalDimRow:hover td,
+.table tr.signalDimRow:hover td.lookupCell {
+    background: #f8fafc;
+}
+
 .virtualSpacer td {
     padding: 0 !important;
     border: 0 !important;
@@ -613,6 +645,9 @@
 
     .searchRow {
         justify-content: stretch;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
     }
 
     .actionRow {

@@ -7,6 +7,13 @@ import {
     getContainerLookupValue,
     isContainerLookupColumn,
 } from '@/utils/containerHistoryResults.mjs';
+import {
+    areArraysEqual,
+    areSetsEqual,
+    getShippingSignalTone,
+    getVisibleShippingColumns,
+    normalizeShippingColumnOrder,
+} from '@/utils/asanShippingView.mjs';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
@@ -54,29 +61,6 @@ function isDateColumn(colName) {
     return DATE_COL_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-function normalizeShippingColumnOrder(order, currentHeaders) {
-    const seen = new Set();
-    const normalized = [];
-
-    (order || []).forEach(col => {
-        if (!currentHeaders.includes(col) || seen.has(col)) return;
-        seen.add(col);
-        normalized.push(col);
-    });
-
-    currentHeaders.forEach(col => {
-        if (seen.has(col)) return;
-        seen.add(col);
-        normalized.push(col);
-    });
-
-    const excelCols = normalized.filter(col => !isContainerLookupColumn(col));
-    const lookupCols = LOOKUP_HEADERS.filter(col => normalized.includes(col));
-    const extraLookupCols = normalized.filter(col => isContainerLookupColumn(col) && !lookupCols.includes(col));
-
-    return [...excelCols, ...lookupCols, ...extraLookupCols];
-}
-
 function getHiddenChipLabel(col) {
     return isContainerLookupColumn(col) ? String(col).replace(/^이력\s*/, '') : col;
 }
@@ -89,6 +73,10 @@ function getServerSortParams(config) {
         sortKey: config.key,
         sortDir: config.direction === 'desc' ? 'desc' : 'asc',
     };
+}
+
+function isSortConfigEqual(a, b) {
+    return (a?.key || null) === (b?.key || null) && (a?.direction || 'asc') === (b?.direction || 'asc');
 }
 
 export default function AsanShipping() {
@@ -132,6 +120,7 @@ export default function AsanShipping() {
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
     const lastLoadedPathRef = useRef('');
     const fetchRequestIdRef = useRef(0);
+    const layoutPrefsLoadedRef = useRef('');
 
     useEffect(() => {
         const saved = localStorage.getItem('asan_shipping_file') || '/아산지점/2026_자체보관리스트.xlsx';
@@ -225,8 +214,8 @@ export default function AsanShipping() {
     }, [hiddenCols]);
 
     const orderedVisibleColumns = useMemo(() => (
-        normalizeShippingColumnOrder(colOrder, allHeaders)
-    ), [colOrder, allHeaders]);
+        getVisibleShippingColumns(colOrder, allHeaders, hiddenCols)
+    ), [colOrder, allHeaders, hiddenCols]);
 
     const getRowContainerNo = useCallback((row) => {
         if (!data?.headers) return '';
@@ -345,13 +334,26 @@ export default function AsanShipping() {
     // Load preferences from DB (fallback to localStorage)
     useEffect(() => {
         if (headers.length === 0 || allHeaders.length === 0) return;
+        const prefsSignature = `${selectedPath}::${allHeaders.join('|')}`;
+        if (layoutPrefsLoadedRef.current === prefsSignature) return;
+        layoutPrefsLoadedRef.current = prefsSignature;
+
+        const applyLayoutPrefs = (nextOrder, nextHidden, nextSortConfig) => {
+            const normalizedOrder = normalizeShippingColumnOrder(nextOrder, allHeaders);
+            setColOrder(prev => areArraysEqual(prev, normalizedOrder) ? prev : normalizedOrder);
+            setHiddenCols(prev => areSetsEqual(prev, nextHidden) ? prev : nextHidden);
+            if (nextSortConfig) {
+                setSortConfig(prev => isSortConfigEqual(prev, nextSortConfig) ? prev : nextSortConfig);
+            }
+        };
+
         const loadDbPrefs = async () => {
             try {
                 const res = await fetch('/api/user/prefs?page_key=asan_shipping_default');
                 const { data: prefs } = await res.json();
                 if (prefs && prefs.colOrder && prefs.colOrder.length > 0) {
                     let finalOrder = prefs.colOrder;
-                    let finalHidden = new Set(prefs.hiddenCols || []);
+                    let finalHidden = new Set((prefs.hiddenCols || []).filter(name => allHeaders.includes(name)));
 
                     // [v5.12.4] Dynamic Header Reconciliation: Excel 제목 수정 반영
                     if (prefs.sourceHeaders && allHeaders) {
@@ -381,15 +383,13 @@ export default function AsanShipping() {
 
                         // 3. 신규 추가된 컬럼 반영
                         currentHeaders.forEach(h => {
-                            if (!finalOrder.includes(h) && !finalHidden.has(h)) {
+                            if (!finalOrder.includes(h)) {
                                 finalOrder.push(h);
                             }
                         });
                     }
 
-                    setColOrder(normalizeShippingColumnOrder(finalOrder, allHeaders));
-                    setHiddenCols(finalHidden);
-                    if (prefs.sortConfig) setSortConfig(prefs.sortConfig);
+                    applyLayoutPrefs(finalOrder, finalHidden, prefs.sortConfig);
                     return;
                 }
             } catch { /* ignore */ }
@@ -397,14 +397,14 @@ export default function AsanShipping() {
             try {
                 const cached = JSON.parse(localStorage.getItem(PREFS_KEY));
                 if (cached?.colOrder?.length > 0) {
-                    setColOrder(normalizeShippingColumnOrder(cached.colOrder, allHeaders));
+                    applyLayoutPrefs(cached.colOrder, new Set(), null);
                     return;
                 }
             } catch { /* ignore */ }
-            setColOrder(normalizeShippingColumnOrder(allHeaders, allHeaders));
+            applyLayoutPrefs(allHeaders, new Set(), null);
         };
         loadDbPrefs();
-    }, [allHeaders, headers.length]);
+    }, [allHeaders, headers.length, selectedPath]);
 
     const containerRef = useRef(null);
     const tableWrapRef = useRef(null);
@@ -492,36 +492,38 @@ export default function AsanShipping() {
     const handleDrop = (e, targetCol) => {
         e.preventDefault();
         setDragOverCol(null);
+        if (!draggedCol) return;
         if (draggedCol === targetCol) return;
 
         const newOrder = [...colOrder];
         const draggedIdx = newOrder.indexOf(draggedCol);
+        const targetIdx = newOrder.indexOf(targetCol);
         
         if (draggedIdx === -1) {
             // Dragged from hidden, insert at target
-            const targetIdx = newOrder.indexOf(targetCol);
-            newOrder.splice(targetIdx, 0, draggedCol);
+            newOrder.splice(Math.max(0, targetIdx), 0, draggedCol);
             setColOrder(normalizeShippingColumnOrder(newOrder, allHeaders));
-            setHiddenCols(prev => {
-                const n = new Set(prev);
-                n.delete(draggedCol);
-                return n;
-            });
         } else {
             // Reorder inside table
-            const targetIdx = newOrder.indexOf(targetCol);
             newOrder.splice(draggedIdx, 1);
-            newOrder.splice(targetIdx, 0, draggedCol);
+            const adjustedTargetIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
+            newOrder.splice(Math.max(0, adjustedTargetIdx), 0, draggedCol);
             setColOrder(normalizeShippingColumnOrder(newOrder, allHeaders));
         }
+        setHiddenCols(prev => {
+            if (!prev.has(draggedCol)) return prev;
+            const n = new Set(prev);
+            n.delete(draggedCol);
+            return n;
+        });
         setDraggedCol(null);
     };
 
     const handleDropToHidden = (e) => {
         e.preventDefault();
         setIsDragOverHidden(false);
-        if (draggedCol && colOrder.includes(draggedCol)) {
-            setColOrder(normalizeShippingColumnOrder(colOrder.filter(c => c !== draggedCol), allHeaders));
+        if (draggedCol && allHeaders.includes(draggedCol)) {
+            setColOrder(prev => normalizeShippingColumnOrder(prev.length ? prev : allHeaders, allHeaders));
             setHiddenCols(prev => new Set(prev).add(draggedCol));
         }
         setDraggedCol(null);
@@ -533,7 +535,7 @@ export default function AsanShipping() {
             n.delete(col);
             return n;
         });
-        setColOrder(normalizeShippingColumnOrder([...colOrder, col], allHeaders));
+        setColOrder(prev => normalizeShippingColumnOrder(prev.includes(col) ? prev : [...prev, col], allHeaders));
     };
 
     const exportToExcel = async () => {
@@ -603,7 +605,7 @@ export default function AsanShipping() {
             const { data: prefs } = await res.json();
             if (prefs && prefs.colOrder) {
                 let finalOrder = prefs.colOrder;
-                let finalHidden = new Set(prefs.hiddenCols || []);
+                let finalHidden = new Set((prefs.hiddenCols || []).filter(name => allHeaders.includes(name)));
 
                 // [v5.12.4] 프리셋 로드 시에도 제목 수정 반영
                 if (prefs.sourceHeaders && allHeaders) {
@@ -629,7 +631,7 @@ export default function AsanShipping() {
                     finalHidden = newHidden;
 
                     currentHeaders.forEach(h => {
-                        if (!finalOrder.includes(h) && !finalHidden.has(h)) {
+                        if (!finalOrder.includes(h)) {
                             finalOrder.push(h);
                         }
                     });
@@ -885,6 +887,9 @@ export default function AsanShipping() {
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
     const dbSyncedTimeStr = data.synced_at ? new Date(data.synced_at).toLocaleString() : '';
     const searchPending = searchInput !== searchTerm;
+    const hasSearchQuery = Boolean(searchInput.trim() || searchTerm.trim());
+    const shouldShowSearchRefreshing = Boolean(showSearchRefreshing && hasSearchQuery);
+    const searchStatusText = searchPending ? '입력 대기' : (shouldShowSearchRefreshing ? '검색 중' : '');
 
     const totalRows = processedData.length;
     const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
@@ -997,11 +1002,9 @@ export default function AsanShipping() {
                                 if (e.key === 'Enter') setSearchTerm(searchInput);
                             }}
                         />
-                        {(searchPending || showSearchRefreshing) && (
-                            <span className={styles.searchStatus}>
-                                {searchPending ? '입력 대기' : '검색 중'}
-                            </span>
-                        )}
+                        <span className={`${styles.searchStatus} ${searchStatusText ? '' : styles.searchStatusHidden}`}>
+                            {searchStatusText || '검색 중'}
+                        </span>
                     </div>
                     <div className={styles.actionRow}>
                         <div className={styles.actionGroup}>
@@ -1169,8 +1172,15 @@ export default function AsanShipping() {
                         )}
                         {visibleRows.map((row, vi) => {
                             const ri = visibleStart + vi;
+                            const containerNo = getRowContainerNo(row);
+                            const signalTone = getShippingSignalTone(data?.headers || [], row, containerLookupResults[containerNo]);
+                            const rowToneClass = signalTone === 'strong'
+                                ? styles.signalStrongRow
+                                : signalTone === 'dim'
+                                    ? styles.signalDimRow
+                                    : '';
                             return (
-                            <tr key={ri} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
+                            <tr key={ri} className={`${ri % 2 === 0 ? styles.evenRow : styles.oddRow} ${rowToneClass}`}>
                                 {orderedVisibleColumns.map(col => {
                                     const raw = getDisplayCellRawValue(row, col);
                                     const val = formatCellValue(raw, col);

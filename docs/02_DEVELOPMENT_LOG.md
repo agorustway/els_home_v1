@@ -1,4 +1,21 @@
 
+## [2026-05-16] 아산 선적관리 리스트 UI 안정화 (v5.13.30)
+### 핵심
+- 검색 상태 문구를 고정 폭 슬롯으로 유지하고, 검색어가 없을 때의 조용한 갱신에서는 `검색 중`을 숨겨 입력창 폭이 줄었다 늘어나는 현상을 막았습니다.
+- 엑셀 컬럼과 `이력 ...` 컬럼의 정렬 순서와 숨김 상태를 분리해, DB 프리셋에 저장된 숨김 컬럼이 실제 렌더링 목록에서 빠지도록 수정했습니다.
+- 같은 DB 프리셋/정렬값을 새 객체로 반복 적용하지 않게 해 테이블 세로 스크롤이 위로 튀는 원인을 줄였습니다.
+- 선적여부 확인이 쉽도록 작업일자 포함 이후의 `반입/양하/적하` 이력만 진하게 표시하고, 비교 가능한 나머지 이력 행은 흐린 회색 톤으로 낮췄습니다.
+### 검증
+- `node --test web/tests/containerInput.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (18개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+- Browser: `http://localhost:3000/employees/branches/asan` 실제 데이터 로드, 검색 상태 슬롯 54px 고정/숨김, 테이블 내부 스크롤 유지 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 원점 복구 (v5.13.29)
 ### 핵심
 - ETrans 화면 상태를 건드리던 WebSquare 그리드 강제 초기화를 기본 OFF로 돌려, 조회 버튼 클릭 후 실제 그리드/무자료 문구를 관찰하는 단순 흐름으로 복구했습니다.
