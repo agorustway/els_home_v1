@@ -103,17 +103,19 @@ export function findWorkDateColumnIndex(headers = []) {
   });
 }
 
-export function getShippingSignalTone(headers = [], row = [], lookupRecord = null, referenceDate = new Date()) {
+export function getShippingSignalTone(headers = [], row = [], lookupRecord = null) {
   if (!lookupRecord?.mainRow) return 'neutral';
   if (!Array.isArray(headers) || !Array.isArray(row)) return 'neutral';
 
-  const today = normalizeDateOnly(referenceDate);
+  const workDateIdx = findWorkDateColumnIndex(headers);
+  const workDate = normalizeDateOnly(workDateIdx >= 0 ? row[workDateIdx] : '');
   const moveDate = normalizeDateOnly(lookupRecord.mainRow?.[5]);
-  if (!today || !moveDate) return 'neutral';
+  if (!workDate || !moveDate) return 'neutral';
 
   const eventType = String(lookupRecord.mainRow?.[3] || '').trim();
   const isTargetType = SHIPPING_SIGNAL_TYPES.has(eventType);
-  const isOnOrAfterToday = moveDate >= today;
+  const isOnOrAfterWorkDate = moveDate >= workDate;
 
-  return isTargetType && isOnOrAfterToday ? 'completed' : 'open';
+  if (!isOnOrAfterWorkDate) return 'open';
+  return isTargetType ? 'completed' : 'unshipped';
 }

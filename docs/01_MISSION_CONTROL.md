@@ -1,32 +1,25 @@
-# ELS MISSION CONTROL (v5.13.36 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.37 / APK v5.11.12)
 
-> 최신 업데이트: 차량위치관제 운행기록 Excel export 라우트를 동적 API로 고정해 Next 빌드 중 정적 렌더 오류 로그를 제거했습니다.
+> 최신 업데이트: 아산 선적관리 미선적 기준을 작업일 포함 이후 `이력 MOVE TIME` + `이력구분` 기준으로 재정의하고, 컨테이너 조회 결과를 기존값 위에 누적하지 않고 최신 결과로 덮어쓰게 했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.36
+- **웹 버전**: v5.13.37
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 차량위치관제 운행기록 행의 지도범위 선택 UI를 제거하고, 운전원정보 `map_visibility`만 관제/앱 공개범위 기준으로 사용.
-  - 컨테이너 이력조회는 3개 워커만 사용하고, `reserveSingle=false` 배치에서 #1 워커까지 실제 병렬 사용. WebSquare 그리드 강제 초기화와 성공행 2차 재조회는 기본 OFF로 돌려, 조회 후 실제 화면에 나온 이력 행만 확정.
-  - 운전원정보 목록에 `지도범위 일괄설정` 버튼을 항상 노출해 선택 운전원에게 일괄 적용.
-  - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀 삭제 이력은 365일, 컨테이너 조회 이력은 180일 초과분만 정리.
-  - 선적관리 검색 상태 슬롯을 고정해 입력창 폭 흔들림을 막고, 엑셀/이력 컬럼 숨김을 DB 프리셋과 실제 렌더링에 일관 적용.
-  - 선적관리 컨테이너 조회 완료 행은 오늘 포함 이후의 `반입/적하` 이력을 기준으로 전체 회색 처리하고, 미완료 행은 일반 배경/폰트를 유지.
-  - 선적관리 컬럼 필터는 전체 로드 기준 후보를 만들고 빈값을 한 항목으로 묶으며, `미선적/자체보관` 빠른 필터와 자동 더보기 스크롤을 지원.
-  - 선적관리 컨테이너 조회 결과는 브라우저 후속 저장 호출이 아니라 서버 측 조회 스트림에서 부분/최종 결과를 직접 저장.
-  - 차량위치관제 운행기록 Excel export 라우트는 `force-dynamic`을 선언해 빌드 중 `request.url` 정적 렌더 오류 로그가 찍히지 않도록 고정.
-  - 배차판/선적관리 NAS 엑셀 저장 감지는 mtime+size 안정화 후 Supabase DB 동기화로 처리해 부분저장 파싱과 중복 파싱을 줄임.
-  - 컨테이너 이력조회는 조회 전 잔상 제거, 무자료 조기 확정 금지, 준비상태 기반 후행 워커 기동을 적용.
+  - 아산 선적관리 `미선적` 빠른 필터는 행의 `작업일자` 포함 이후 `이력 MOVE TIME`이 있고, `이력 구분`이 `반입/적하`가 아닌 경우만 표시.
+  - 같은 기준에서 `반입/적하`는 완료로 판정해 전 행 회색 음영/회색 글씨를 유지.
+  - 필터 상태에서 `컨테이너 조회`를 다시 누르면 기존 DB 조회 결과를 삭제한 뒤 최신 조회 결과를 저장해 `이력 조회시각`과 표시값이 새 데이터 기준으로 교체됨.
+  - 컨테이너 조회 최종 결과가 비면 기존 표시값도 되살아나지 않도록 해당 컨테이너의 저장값을 비움.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
-| Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
-| NAS 백엔드 | 정상 | 배차판/선적관리 저부하 파일감지, 컨테이너 부분 결과 즉시 스트림 |
-| ELS Bot | 정상 | 3워커 운용, 실제 가용 워커 기반 배치, 워커 중복 대여 방지, 화면 실데이터 중심 확정 |
-| Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
+| Next.js 웹 | 정상 | 선적관리 회귀 테스트 및 ESLint 통과 |
+| Supabase 인증/DB | 정상 | 선적관리 조회 결과는 최신 조회 기준으로 교체 저장 |
+| NAS 백엔드 | 정상 | 배차판/선적관리 저부하 파일감지 유지 |
+| ELS Bot | 정상 | 3워커 운용, 서버 측 조회 스트림 저장 유지 |
+| Android 드라이버 앱 | 정상 | APK v5.11.12 유지 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 폭 컬럼 + 마지막 비고/주소 컬럼 유동 폭, 헤더는 짙은 블루 계열.
@@ -42,74 +35,26 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
-- **v5.13.36**: 차량위치관제 운행기록 Excel export 라우트가 `request.url`을 사용하는데 `force-dynamic` 선언이 없어, Next 빌드 중 정적 렌더 시도 경로에서 `Vehicle tracking export error: Dynamic server usage` 로그가 발생하던 문제를 수정. ZIP export와 같은 동적 API 정책으로 맞추고 회귀 테스트를 추가.
-- **v5.13.35**: 아산 선적관리 컨테이너 조회 결과 저장 누락 가능성을 조사해, 기존 구조가 `/api/els/run` 조회 완료 후 브라우저에서 별도 저장 POST를 호출하는 방식이라 페이지 이탈 시 저장 단계가 끊길 수 있음을 확인. 선적관리 전용 `/api/branches/asan/shipping/container-lookup` 스트림 라우트를 추가해 부분 결과와 최종 결과를 서버 측에서 즉시 `branch_shipping_container_lookups`에 저장하도록 변경하고, 기존 저장 로직을 공통 store 모듈로 분리.
-- **v5.13.34**: 아산 선적관리 날짜 필터 바에 `미선적`, `자체보관` 빠른 필터 버튼을 추가. 미선적은 오늘 포함 이후 `반입/적하` 완료 상태가 아닌 행만 남기고, 자체보관은 보관소가 자체보관인 행만 남김. 버튼 활성화 시 문구는 `필터해제`로 전환되며 전체 로드 기준 필터 계산을 유지.
-- **v5.13.33**: 아산 선적관리 컬럼 필터를 열거나 필터/날짜필터를 적용할 때 Supabase 현재 100행이 아닌 전체 로드 기준으로 후보를 만들도록 보강. 보이지 않는 빈 문자들을 실제 빈값 하나로 정규화해 `(빈 값)`이 중복/공란으로 보이지 않게 했고, 서버 정렬 오름차순에서는 빈값을 먼저 보여주도록 변경. 리스트 하단 근처로 세로 스크롤하면 `더 보기` 버튼을 누르기 전에 다음 100행을 자동 로드.
-- **v5.13.32**: 아산 선적관리 컨테이너 조회 결과에서 오늘 날짜 포함 이후의 `반입/적하` 이력을 완료로 보고, 이력 컬럼뿐 아니라 앞쪽 엑셀 원장 컬럼까지 전체 행을 회색 음영/회색 글씨로 표시. 미완료 행은 일반 톤을 유지하고, 행 hover는 앞쪽 컬럼과 이력 컬럼 모두 동일한 초록색으로 통일.
-- **v5.13.31**: 아산 배차판/선적관리 NAS 엑셀 동기화를 `mtime+size` 안정화 게이트로 보강. 배차판은 15초, 선적관리는 30초 간격으로 가벼운 변경 체크만 수행하고, 파일 저장 후 8초 안정화된 경우에만 엑셀 파싱/DB upsert를 실행. 실패한 동일 파일은 재시도 간격을 둬 BOT과 NAS CPU/RAM 부담을 줄임.
-- **v5.13.30**: 아산 선적관리 검색 상태 표시를 고정 폭 슬롯으로 바꿔 `검색 중` 문구가 입력 전 깜빡이며 레이아웃을 흔드는 현상을 차단. 숨김 컬럼 계산을 `hiddenCols` 기준으로 실제 표시 목록에서 제외하도록 분리해 엑셀 컬럼과 `이력 ...` DB 컬럼 모두 숨김/복구가 가능하게 수정. DB 프리셋 동일값 재적용을 막아 정렬 상태가 반복 변경되며 테이블 스크롤이 위로 복귀하는 문제를 줄이고, 작업일자 이후 `반입/양하/적하` 이력만 강조하는 행 톤을 추가.
-- **v5.13.29**: 컨테이너 이력조회를 원점 기준으로 재정리. WebSquare 내부 그리드 강제 초기화와 배치 성공행 2차 재조회를 기본 OFF로 바꾸고, 조회 화면 준비 판정을 입력창+조회 버튼 기준으로 강화. `reserveSingle=false`가 데몬 워커 선택에도 반영되게 해 #1~#3 워커를 모두 배치에 사용하며, 재로그인 중 새 드라이버가 큐에 중복 대여되는 레이스를 차단. 아산 선적관리 저장은 숫자 No.가 있는 실제 이력 행만 저장/표시.
-- **v5.13.28**: NAS 부하를 고려해 컨테이너 이력조회 워커를 4개에서 3개로 낮춤. 배치 조회 시작 시 부족 워커를 새로 띄우지 않고 현재 가용 워커만 사용하며, 성공행 2차 검증 실패는 워커 재기동이 아니라 결과 폐기로 처리.
-- **v5.13.27**: 아산 선적관리 검색 완료 후 `검색 중`이 순간적으로 떴다 사라지는 불안정 표시를 줄이기 위해 350ms 이상 걸리는 조용한 갱신에만 상태를 표시. 검색/정렬 요청 ID를 관리해 늦게 돌아온 이전 응답이 최신 화면을 덮지 않도록 차단.
-- **v5.13.26**: 컨테이너 이력조회에서 `total_drivers`가 아니라 `available_drivers+현재 배치 점유` 기준으로 병렬도를 산정. 메뉴 진입 실패 워커는 같은 큐로 되돌리지 않고 격리/재기동하며, 배치 성공행은 깨끗한 화면에서 2차 조회가 일치해야 확정. 로그의 `[D#1]` 표기는 제거.
-- **v5.13.25**: 지도 공개범위를 운행 데이터가 아닌 운전원정보 마스터 설정으로 정리. 차량위치관제 기록 행의 지도 선택을 제거하고, 운전원정보 일괄 설정 버튼을 상시 노출.
-- **v5.13.24**: 아산 선적관리 엑셀 원장 컬럼 정렬을 `sort_key/sort_dir` DB 조회 조건으로 올려, 조회된 100행만이 아니라 전체 검색 결과를 정렬한 뒤 페이지 단위로 내려오게 변경. 컨테이너 이력 파생 컬럼은 현재 로드분 기준 정렬을 유지.
-- **v5.13.23**: NAS 봇 #3/#4가 고정 시간만 보고 뜨지 않고 #1/#2 실제 준비 완료 후 순차 기동하도록 보강. ETrans 로그인/메뉴 진입이 160~210초까지 늘어지는 날에도 Chrome remote-debugging 포트 충돌과 3회 연속 실패를 줄임.
-- **v5.13.22**: 컨테이너 이력조회에서 조회 전 WebSquare 그리드 컴포넌트/DOM 행/무자료 모달을 더 넓게 초기화하고, 조회 직후 `데이터가 없음` 문구를 즉시 NODATA로 확정하지 않도록 변경. 선적관리 툴바는 한 줄 고밀도 구조와 모바일 그리드로 정리하고, 검색 입력은 1초 지연/Enter 즉시 조회로 바꿔 입력 중 화면 리로드를 방지. 조회 이력은 180일 보존으로 조정하고 최신 조회/보존기간 인덱스를 추가. 이력 컬럼은 렌더링 단계에서 엑셀 원장 오른쪽으로 강제 고정하고 숨김 칩은 소형 말줄임/툴팁 형태로 단순화.
-- **v5.13.21**: 컨테이너 이력조회에서 새 조회 전후 그리드 원문 지문을 비교해, 이전 컨테이너 결과가 그대로 남아 다른 요청번호의 성공행으로 붙는 경우를 `이전 조회 결과 잔상 감지` 오류로 폐기하고 1회 재조회. NAS 봇 #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동해 Chrome remote-debugging 시작 충돌을 줄임. 선적관리 archive 이력은 365일 보존 후 정리하되 현재 원장은 삭제하지 않음.
-- **v5.13.20**: 아산 선적관리-컨테이너 이력조회 콜라보 1차. 엑셀 동기화 시 현재 원장은 엑셀 기준으로 교체하되, 사라진 행은 `branch_shipping_row_archive`에 `deleted_from_excel`로 보관. 선적관리 화면에 `컨테이너 조회` 버튼을 추가해 현재 필터 결과의 컨테이너를 `/api/els/run` 파이프라인으로 조회하고, No.1 메인 이력 행을 `이력 ...` 초록색 컬럼으로 노출. 조회 결과는 `branch_shipping_container_lookups`에 누적 저장하며 DB수정 시각을 화면에 표시.
-- **v5.13.19**: 컨테이너 이력조회 300초 스톱 원인을 보강. DrissionPage alert 기본 10초 대기 반복을 0.05초 즉시 확인으로 바꾸고, 빈 데몬 상태에서는 `/run`이 먼저 로그인 세션을 확보하도록 변경. 배치 중 워커가 추가로 살아나면 같은 조회 안에서 병렬도를 확장하며, `/api/els` NAS nginx 스트리밍 타임아웃/버퍼링과 Vercel route maxDuration을 보강. 클라이언트 연결이 끊기면 generator가 GeneratorExit를 삼키지 않고 데몬 stop을 호출.
-- **v5.13.18**: 아산 선적관리 첫 조회를 100행으로 줄여 운영 API 기준 42,992 bytes 응답을 확인하고, 500행 212,531 bytes 대비 초기 payload를 약 1/5로 축소. `xlsx`는 엑셀 다운로드 클릭 시 lazy import하고, 아산 메인 탭을 localStorage에 저장해 선적관리 사용자가 재방문할 때 불필요한 배차판 초기 fetch를 줄임. 운영/NAS/Core API 모두 `source=supabase`, 총 965건 조회를 확인.
-- **v5.13.17**: 컨테이너 이력조회 배치가 준비된 워커를 모두 쓰도록 `reserveSingle=false`를 전달하고, 백엔드는 완료된 행을 순서 대기 없이 즉시 스트리밍. ETrans 입력값은 JS 세팅/검증 우선, 조회 버튼은 JS 이벤트 우선으로 바꿔 80~90초 클릭 대기 병목을 줄이고 단계별 타이밍 로그를 추가.
-- **v5.13.16**: `nas-deploy.sh`에 Docker PATH를 sudo 환경변수로 주입하고 `set -e`를 추가해 docker-compose build가 `docker` 실행 파일을 못 찾거나 실패했을 때 즉시 중단되도록 보강.
-- **v5.13.15**: `nas-deploy.sh`의 Docker 호출을 NOPASSWD sudoers와 일치하는 절대경로/비대화형 sudo로 변경해 SSH 배포 중 비밀번호 프롬프트로 core/bot/gateway 빌드가 멈추는 문제를 방지.
-- **v5.13.14**: 컨테이너 이력조회 진행 중 버튼을 `조회 중지`로 전환하고 AbortController/stop-daemon을 연결. 백엔드는 배치 큐를 동적 제출로 바꿔 미제출 행을 `조회 중지됨` 오류 행으로 확정하고, 데몬은 stop 플래그와 세대 번호로 리셋 후 늦은 로그인/복구 워커가 다시 붙지 못하게 차단.
-- **v5.13.13**: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩으로 전환해 첫 요청을 500행으로 축소. 검색어는 서버 쿼리로 전달하고 콤마 구분 OR 검색을 지원. DB 전체 건수/로드 건수와 더보기 UI를 추가하고 Hook 경고를 제거.
-- **v5.13.12**: 아산 선적관리 일반 조회에서는 Supabase DB만 우선 조회하고 NAS 엑셀 동기화는 POST 수동/스케줄 경로로 분리. 웹 동기화 버튼은 POST를 호출하며, 회귀 테스트를 추가해 GET 경로에서 동기화 호출이 되살아나지 않게 방어.
-- **v5.13.11**: 서식자료실 상세의 다운로드 카드 UI를 제거하고 업무자료실과 같은 `IntranetDataTable` 첨부 목록 구조로 통일. 자료실 하위의 첨부파일 표시 경로를 재검토해 카드형 잔존 경로를 정리.
-- **v5.13.10**: 업무자료실/서식자료실 상세 본문 HTML 이미지와 표가 브라우저 축소 시 컨테이너 밖으로 튀어나가지 않도록 공통 본문/상세 섹션 반응형 가드를 추가. 연락처/작업지 상세가 공유하는 `DetailSection`에도 이미지·표·pre 폭 제한과 내부 가로 스크롤을 적용.
-- **v5.13.9**: 워커 1개 상황에서는 배치를 순차 처리하고, 2개 이상에서는 단건/AI용 1개를 남겨 세션 없음 폭주를 방지. 죽은 워커는 쿨다운을 두고 1개씩 재기동 시도.
-- **v5.13.8**: ETrans WebSquare 입력값 검증을 추가하고, `필수 입력 항목` 알림을 ERROR로 표기하도록 보강. 데이터 없음 판정 범위를 602 조회 영역/보이는 모달로 축소.
-- **v5.13.7**: 컨테이너 이력조회 화면에서 체크섬 오류 번호를 조용히 제외하지 않고, 입력 순서의 오류 행으로 표시하도록 파서와 테스트를 보강.
-- **v5.13.6**: 컨테이너 이력조회 stale 데이터 방어, 빈 그리드 오판 수정, 실패 1회 재조회, 입력순 결과 스트림, 봇 워커 4개 복구.
-- **v5.13.5 / APK v5.11.12**: 앱 로컬 GPS 후보/확정 포인트 분리, 중복 전송 큐 압축, 서버 저장 중복 방어, 운행 종료 후 Android 서비스 잔류 차단.
-- **v5.13.4 / APK v5.11.11**: 차량위치관제 GPS 이상치 필터 강화, 앱 지도 실시간 수집·경로 유지·상세 패널 겹침 해소, 웹 상세 패널/마커 줌 토글 정리.
-- **v5.13.3**: 업무보고 목록/작성/상세/첨부 UI를 고밀도 표준으로 보정하고, 아산 배차판/선적관리 테이블 헤더·폰트·행 높이를 축소.
-- **v5.13.2**: AI 어시스턴트 대화 삭제 전 예약 저장 타이머를 취소하고, 전체/개별/현재 대화 삭제를 DB에 즉시 반영.
-- **v5.13.1**: 작업지정보 주소 폭 축소 및 주의사항/특이사항 컬럼 추가, 업무자료실 상세/첨부 목록형 정리, 이스터에그 복구.
-- **v5.13.0**: 연락처형 페이지 공통 테이블/상세 컴포넌트화, 모바일 카드 뷰 재정렬.
-- **v5.12.22**: 이트랜스 "데이터가 없음" 키워드 및 그리드 초기화 객체 보강.
-- **v5.12.21**: 컨테이너 이력조회 데이터 누수 방지.
-- **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
+- **v5.13.37**: 아산 선적관리 미선적 정의를 `작업일자 <= 이력 MOVE TIME`인 비완료 이력(`반입/적하` 제외)으로 변경. 완료 음영도 같은 작업일 기준으로 맞췄고, 컨테이너 조회 최종 저장은 기존 file/container 조회값을 삭제 후 최신 결과로 교체.
+- **v5.13.36**: 차량위치관제 운행기록 Excel export 라우트에 `force-dynamic`을 선언해 Next 빌드 중 정적 렌더 오류 로그를 제거.
+- **v5.13.35**: 아산 선적관리 전용 `/container-lookup` 스트림 라우트를 추가해 부분/최종 컨테이너 조회 결과를 서버 측에서 즉시 저장.
+- **v5.13.34**: 선적관리 날짜 필터 바에 `미선적`, `자체보관` 빠른 필터를 추가.
+- **v5.13.33**: 선적관리 컬럼 필터 후보를 전체 로드 기준으로 만들고 빈값 정규화, 자동 더보기를 보강.
+- **v5.13.32**: 컨테이너 조회 완료 행을 전체 행 회색 음영/회색 글씨로 표시.
+- **v5.13.31**: 배차판/선적관리 NAS 엑셀 동기화를 mtime+size 안정화 게이트로 보강.
 
 ## VERIFICATION
-- `node --test web/tests/vehicleTrackingExport.test.mjs`: 1개 통과
-- `npm.cmd run lint -- "app/api/vehicle-tracking/export/excel/route.js"`: 0 errors
-- `npm.cmd run build`: 통과, `Vehicle tracking export error: Dynamic server usage` 로그 제거. 외부 HTTPS fetch EACCES 경고는 샌드박스 환경성 경고.
-- `node --test web/tests/asanShippingFlow.test.mjs`: 15개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/route.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"`: 0 errors
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app.py docker\els-backend\app_core.py`: 통과
-- Browser: `http://localhost:3000/employees/branches/asan`에서 `미선적/자체보관` 버튼 노출, 클릭 시 `필터해제` 전환 및 전체 로드 기준 필터 동작 확인
-- Browser: `http://localhost:3000/employees/branches/asan`에서 `반입일` 필터 후보 `(빈 값)` 표시 및 `965 / 965행` 전체 로드 확인, 테이블 하단 스크롤 시 `200 / 965행` 자동 추가 로드 확인
-- `python -m unittest docker/els-backend/tests/test_file_sync_gate.py`: 4개 통과
-- `python -m py_compile docker/els-backend/file_sync_gate.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
-- `node --test web/tests/containerInput.test.mjs web/tests/asanShippingFlow.test.mjs`: 18개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- Browser: `http://localhost:3000/employees/branches/asan` 실제 NAS 데이터 로드 확인, 검색 상태 슬롯 54px 고정/숨김 상태 확인, 테이블 내부 스크롤 2초 후 `scrollTop=700` 유지 확인
-- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic`: 32개 통과
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs`: 16개 통과
-- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/route.js" "utils/containerHistoryResults.mjs"`: 0 errors, 기존 warning 5개
-- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 17개 통과
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 28개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/store.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"`: 0 errors
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
-- 최근 전체 빌드/APK: `npm.cmd run build` 통과, APK v5.11.12 / versionCode 5153 빌드 완료. 외부 HTTPS fetch EACCES 경고는 샌드박스 환경성 경고.
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 랜덤게임. AI 어시스턴트 하단 빌드 문구를 통해 진입 가능.
 - `/employees/news` 송미관: 뉴스 페이지 하단의 숨은 트리거로 열리는 모달.
 
 ## IN-PROGRESS
-- 없음. 다음 작업자는 운영 NAS에 bot 배포 후 `/employees/container-history`에서 실제 ETrans 조회 3건 이상으로 #1~#3 워커 병렬 사용과 실제 이력 행만 저장되는지 확인.
+- 없음. 다음 작업자는 운영 NAS 배포 후 `/employees/branches/asan`에서 미선적 필터와 컨테이너 재조회 덮어쓰기 동작을 실제 데이터 3건 이상으로 확인.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

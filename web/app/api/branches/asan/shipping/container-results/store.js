@@ -40,12 +40,30 @@ export function isMissingTableError(error) {
     return message.includes(TABLE) || message.includes('relation') || error?.code === '42P01';
 }
 
+export async function deleteExistingContainerLookupRows({ filePath, containers, supabase = null }) {
+    const normalizedPath = normalizePath(filePath);
+    const targets = normalizeContainers(containers);
+    if (!targets.length) return { count: 0 };
+
+    const client = supabase || await createAdminClient();
+    const { error } = await client
+        .from(TABLE)
+        .delete()
+        .eq('branch_id', 'asan')
+        .eq('file_path', normalizedPath)
+        .in('container_no', targets);
+    if (error) throw error;
+
+    return { count: targets.length };
+}
+
 export async function saveContainerLookupRows({
     filePath,
     rows,
     containers,
     lookupSource = 'asan_shipping',
     lookedUpAt = new Date().toISOString(),
+    replaceExisting = true,
 }) {
     const normalizedPath = normalizePath(filePath);
     const targets = normalizeContainers(containers);
@@ -73,6 +91,15 @@ export async function saveContainerLookupRows({
         };
     }).filter(Boolean);
 
+    const supabase = await createAdminClient();
+    if (replaceExisting) {
+        await deleteExistingContainerLookupRows({
+            filePath: normalizedPath,
+            containers: targets,
+            supabase,
+        });
+    }
+
     if (!payload.length) {
         return {
             ok: true,
@@ -82,7 +109,6 @@ export async function saveContainerLookupRows({
         };
     }
 
-    const supabase = await createAdminClient();
     const { error } = await supabase.from(TABLE).insert(payload);
     if (error) throw error;
 

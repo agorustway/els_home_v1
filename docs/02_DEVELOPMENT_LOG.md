@@ -1,4 +1,24 @@
 
+## [2026-05-17] 아산 선적관리 미선적 기준 재정의 및 조회 덮어쓰기 (v5.13.37)
+### 핵심
+- 형 요청대로 `미선적` 빠른 필터를 오늘 기준이 아니라 행의 `작업일자` 기준으로 다시 정의했습니다.
+- `작업일자` 포함 이후의 `이력 MOVE TIME`이 있고 `이력 구분`이 `반입/적하`가 아니면 `unshipped`로 판정해 미선적 필터에 남깁니다.
+- 같은 작업일 기준에서 `반입/적하`이면 완료로 판정해 전체 행 회색 음영/회색 글씨를 유지합니다.
+- 필터 상태에서 `컨테이너 조회`를 누를 때 기존 저장값이 있어도 같은 파일/컨테이너의 이전 조회 결과를 삭제한 뒤 최신 최종 결과를 저장하도록 변경했습니다.
+- 최종 조회 결과가 빈 경우에도 예전 이력값이 다시 살아나지 않도록 화면 상태와 DB 조회값을 비우게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (17개)
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (28개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/store.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"` 0 errors
+- `git diff --check` 통과 (CRLF 치환 warning만 표시)
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/api/branches/asan/shipping/container-lookup/route.js`
+- `web/app/api/branches/asan/shipping/container-results/store.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 차량위치관제 Excel export 빌드 로그 정리 (v5.13.36)
 ### 핵심
 - `npm run build` 중 `/api/vehicle-tracking/export/excel` 라우트에서 `Vehicle tracking export error: Dynamic server usage` 로그가 발생하던 원인을 확인했습니다.

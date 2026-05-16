@@ -11,14 +11,15 @@ function getRunUrl(req) {
     return new URL('/api/els/run', req.url).toString();
 }
 
-async function saveRowsSafely({ filePath, rows, containers, lookupSource }) {
-    if (!Array.isArray(rows) || rows.length === 0) return { count: 0, data: {} };
+async function saveRowsSafely({ filePath, rows, containers, lookupSource, replaceExisting = true }) {
+    if ((!Array.isArray(rows) || rows.length === 0) && !replaceExisting) return { count: 0, data: {} };
     try {
         return await saveContainerLookupRows({
             filePath,
             rows,
             containers,
             lookupSource,
+            replaceExisting,
         });
     } catch (error) {
         return { count: 0, data: {}, error: error?.message || '컨테이너 조회 결과 저장 실패' };
@@ -91,6 +92,7 @@ export async function POST(req) {
                             rows,
                             containers,
                             lookupSource: 'asan_shipping_partial',
+                            replaceExisting: false,
                         });
                         if (saved.error) send(`LOG:컨테이너 조회 결과 일부 저장 실패: ${saved.error}\n`);
                         send(`RESULT_PARTIAL:${JSON.stringify({ ...payload, saved_count: saved.count, saved_data: saved.data })}\n`);
@@ -110,6 +112,7 @@ export async function POST(req) {
                             rows,
                             containers,
                             lookupSource: 'asan_shipping',
+                            replaceExisting: true,
                         });
                         if (saved.error) send(`LOG:컨테이너 조회 결과 저장 실패: ${saved.error}\n`);
                         send(`RESULT:${JSON.stringify({

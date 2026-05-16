@@ -788,7 +788,13 @@ export default function AsanShipping() {
                             finalRows = payload.result || [];
                             savedPayload = payload;
                             if (payload.saved_data) {
-                                setContainerLookupResults(prev => ({ ...prev, ...payload.saved_data }));
+                                setContainerLookupResults(prev => {
+                                    const next = { ...prev, ...payload.saved_data };
+                                    containers.forEach(containerNo => {
+                                        if (!payload.saved_data[containerNo]) delete next[containerNo];
+                                    });
+                                    return next;
+                                });
                             }
                         }
                         else throw new Error(payload.error || '컨테이너 조회 실패');
@@ -881,7 +887,7 @@ export default function AsanShipping() {
             rows = rows.filter(row => {
                 const containerNo = getRowContainerNo(row);
                 const signalTone = getShippingSignalTone(data?.headers || [], row, containerLookupResults[containerNo]);
-                return signalTone !== 'completed';
+                return signalTone === 'unshipped';
             });
         }
 
@@ -1171,7 +1177,7 @@ export default function AsanShipping() {
                         type="button"
                         className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}
                         onClick={() => setUnshippedOnly(prev => !prev)}
-                        title="오늘 포함 이후 반입/적하 완료 상태가 아닌 행만 표시합니다"
+                        title="작업일 포함 이후 MOVE TIME이 있고 이력구분이 반입/적하가 아닌 행만 표시합니다"
                     >
                         {unshippedOnly ? '필터해제' : '미선적'}
                     </button>
