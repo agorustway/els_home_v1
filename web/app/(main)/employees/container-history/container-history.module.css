@@ -336,6 +336,23 @@
     transform: translateY(-1px);
 }
 
+.buttonDanger {
+    padding: 12px 20px;
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.buttonDanger:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+}
+
 .buttonSecondary {
     padding: 10px 18px;
     background: #fff;

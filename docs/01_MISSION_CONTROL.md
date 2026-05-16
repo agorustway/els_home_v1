@@ -1,16 +1,16 @@
-# ELS MISSION CONTROL (v5.13.13 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.14 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩/서버 검색 구조로 확장했습니다.
+> 최신 업데이트: 컨테이너 이력조회 중지/데몬 리셋을 강제 취소 흐름으로 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.13
+- **웹 버전**: v5.13.14
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 아산 선적관리 첫 조회는 500행 단위로 받고 하단 `더 보기`로 추가 로드.
-  - 전체 검색은 Supabase 서버 검색으로 전송하고, 콤마 구분 검색은 OR 조건으로 처리.
-  - DB 적재 건수와 현재 로드 건수를 화면에 표시해 대량 데이터 상태를 확인 가능.
-  - NAS 동기화 버튼은 POST 강제 동기화 후 동일한 페이지 단위 데이터를 다시 수신.
+  - 컨테이너 조회 중 `실시간 이력 조회` 버튼을 `조회 중지`로 전환하고 프론트 fetch를 즉시 abort.
+  - `/api/els/stop-daemon`이 배치 큐와 데몬 워커 stop 플래그를 함께 올려 남은 행을 오류 행으로 유지.
+  - 데몬 리셋 후 늦게 살아나는 로그인/워커복구 스레드는 세대 번호로 무효화해 재유입 차단.
+  - 배치 작업은 전체 future 선등록 대신 살아있는 워커 수만큼 순차 제출해 중지 시 남은 작업 취소.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -18,7 +18,7 @@
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
 | NAS 백엔드 | 정상 | 아산 선적관리 DB 페이지 조회/서버 검색 적용 |
-| ELS Bot | 정상 | 이번 작업 영향 없음 |
+| ELS Bot | 정상 | 조회 중지/데몬 리셋 강제 취소, 워커 세대 무효화 적용 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
 ## INTRANET UI 기준
@@ -35,6 +35,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.14**: 컨테이너 이력조회 진행 중 버튼을 `조회 중지`로 전환하고 AbortController/stop-daemon을 연결. 백엔드는 배치 큐를 동적 제출로 바꿔 미제출 행을 `조회 중지됨` 오류 행으로 확정하고, 데몬은 stop 플래그와 세대 번호로 리셋 후 늦은 로그인/복구 워커가 다시 붙지 못하게 차단.
 - **v5.13.13**: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩으로 전환해 첫 요청을 500행으로 축소. 검색어는 서버 쿼리로 전달하고 콤마 구분 OR 검색을 지원. DB 전체 건수/로드 건수와 더보기 UI를 추가하고 Hook 경고를 제거.
 - **v5.13.12**: 아산 선적관리 일반 조회에서는 Supabase DB만 우선 조회하고 NAS 엑셀 동기화는 POST 수동/스케줄 경로로 분리. 웹 동기화 버튼은 POST를 호출하며, 회귀 테스트를 추가해 GET 경로에서 동기화 호출이 되살아나지 않게 방어.
 - **v5.13.11**: 서식자료실 상세의 다운로드 카드 UI를 제거하고 업무자료실과 같은 `IntranetDataTable` 첨부 목록 구조로 통일. 자료실 하위의 첨부파일 표시 경로를 재검토해 카드형 잔존 경로를 정리.
@@ -54,6 +55,11 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control`: 16개 통과 (번들 Python 사용)
+- `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_daemon_stop_control.py`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 0 errors, 기존 warning 5건
+- `node --test web/tests/containerInput.test.mjs`: 4개 통과
+- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 13개 통과
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js`: 0 errors

@@ -40,6 +40,8 @@ class DriverPool:
         self.restart_inflight = set()
         self.last_restart_attempt = {}
         self.restart_cooldown = 600
+        self.stop_requested = threading.Event()
+        self.generation = 0
 
     def add_log(self, msg):
         from datetime import datetime, timezone, timedelta
@@ -51,8 +53,13 @@ class DriverPool:
             self.log_buffer.append(formatted)
         print(formatted)
 
-    def clear(self):
+    def clear(self, mark_stopped=True):
         with self.lock:
+            self.generation += 1
+            if mark_stopped:
+                self.stop_requested.set()
+                self.is_logging_in = False
+                self.active_init_threads = 0
             while not self.available_queue.empty():
                 try: self.available_queue.get_nowait()
                 except: break
@@ -65,6 +72,21 @@ class DriverPool:
             self.last_restart_attempt.clear()
             self.log_buffer.clear()
             self.add_log("--- 드라이버 풀이 초기화되었습니다. ---")
+
+    def is_cancelled(self, generation=None):
+        with self.lock:
+            return self.stop_requested.is_set() or (generation is not None and generation != self.generation)
+
+    def wait_unless_cancelled(self, seconds, generation=None):
+        deadline = time.time() + max(0, seconds)
+        while time.time() < deadline:
+            if self.is_cancelled(generation):
+                return False
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.5, remaining))
+        return not self.is_cancelled(generation)
 
     def is_same_user(self, u_id, show_browser):
         if not self.current_user:
@@ -88,8 +110,15 @@ class DriverPool:
             pass
 
     def add_driver(self, driver):
+        if not driver:
+            return False
+        if self.stop_requested.is_set():
+            try: driver.quit()
+            except: pass
+            return False
         self.drivers.append(driver)
         self.available_queue.put(driver)
+        return True
 
     def _worker_id(self, driver):
         return getattr(driver, 'used_port', 32000) - 32000 + 1
@@ -102,6 +131,8 @@ class DriverPool:
         """
         deadline = time.time() + max(1, float(timeout or 30))
         while time.time() <= deadline:
+            if self.stop_requested.is_set():
+                return None
             chosen = None
             with self.lock:
                 items = []
@@ -131,7 +162,15 @@ class DriverPool:
         return None
 
     def return_driver(self, driver):
-        if driver and driver in self.drivers:
+        if not driver:
+            return
+        with self.lock:
+            if self.stop_requested.is_set() or driver not in self.drivers:
+                try: driver.quit()
+                except: pass
+                if driver in self.drivers:
+                    self.drivers.remove(driver)
+                return
             self.available_queue.put(driver)
 
     def ensure_capacity_async(self, reason="capacity-check"):
@@ -141,6 +180,8 @@ class DriverPool:
         now = time.time()
         with self.lock:
             if not self.current_user or not self.current_user.get("id") or not self.current_user.get("pw"):
+                return False
+            if self.stop_requested.is_set():
                 return False
             if self.is_logging_in or self.consecutive_login_failures >= 3:
                 return False
@@ -157,6 +198,7 @@ class DriverPool:
                     continue
                 target_idx = idx
                 saved_user = dict(self.current_user)
+                saved_generation = self.generation
                 self.restart_inflight.add(port)
                 self.last_restart_attempt[port] = now
                 break
@@ -166,16 +208,20 @@ class DriverPool:
 
         threading.Thread(
             target=self._restart_missing_driver,
-            args=(target_idx, saved_user, reason),
+            args=(target_idx, saved_user, saved_generation, reason),
             daemon=True,
         ).start()
         return True
 
-    def _restart_missing_driver(self, idx, saved_user, reason):
+    def _restart_missing_driver(self, idx, saved_user, generation, reason):
         port = 32000 + idx
         try:
+            if self.is_cancelled(generation):
+                return
             self.add_log(f"🔧 [워커복구] 브라우저 #{idx+1} 재기동 시도 ({reason})")
             self.cleanup_lingering_chrome(port)
+            if self.is_cancelled(generation):
+                return
             res = login_and_prepare(
                 saved_user["id"], saved_user["pw"],
                 log_callback=None,
@@ -183,9 +229,17 @@ class DriverPool:
                 port=port,
             )
             if res[0]:
+                if self.is_cancelled(generation):
+                    try: res[0].quit()
+                    except: pass
+                    return
                 res[0].used_port = port
                 res[0].last_activity = time.time()
                 with self.lock:
+                    if self.is_cancelled(generation):
+                        try: res[0].quit()
+                        except: pass
+                        return
                     self.consecutive_login_failures = 0
                     self.add_driver(res[0])
                 self.add_log(f"✅ [워커복구] 브라우저 #{idx+1} 재기동 완료")
@@ -267,27 +321,35 @@ def login():
             }), 202 # 202 Accepted
 
     with pool.lock:
-        pool.clear()
+        pool.clear(mark_stopped=False)
+        pool.stop_requested.clear()
         pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
         pool.is_logging_in = True
         pool.active_init_threads = pool.max_drivers
+        login_generation = pool.generation
 
     logs = []
 
-    def _do_login(idx):
+    def _do_login(idx, generation=login_generation):
         try:
             # [v4.4.60] 개별 브라우저별로 최대 3회 재시도 (다른 브라우저에 영향 없음)
             success = False
             for retry in range(1, 4):
                 try:
                     with pool.lock:
+                        if pool.is_cancelled(generation):
+                            return
                         if pool.consecutive_login_failures >= 5: # 누적 실패가 너무 많으면 중단 (보안)
                             pool.add_log(f"❌ [보안경고] 누적 로그인 실패 과다! 드라이버 #{idx+1} 초기화를 영구 취소합니다.")
                             return
 
                     # [NAS 최적화] CPU 부하 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
-                    if idx > 0 and retry == 1: time.sleep(idx * 60)
-                    elif retry > 1: time.sleep(10) # 재시도 간격 10초
+                    if idx > 0 and retry == 1:
+                        if not pool.wait_unless_cancelled(idx * 60, generation):
+                            return
+                    elif retry > 1:
+                        if not pool.wait_unless_cancelled(10, generation):
+                            return # 재시도 간격 10초
 
                     msg = f"브라우저 #{idx+1} 초기화 중... (시도 {retry}/3)"
                     pool.add_log(msg)
@@ -299,11 +361,21 @@ def login():
 
                     # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
                     pool.cleanup_lingering_chrome(target_port)
+                    if pool.is_cancelled(generation):
+                        return
 
                     res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
                     if res[0]:
+                        if pool.is_cancelled(generation):
+                            try: res[0].quit()
+                            except: pass
+                            return
                         res[0].used_port = target_port
                         with pool.lock:
+                            if pool.is_cancelled(generation):
+                                try: res[0].quit()
+                                except: pass
+                                return
                             pool.consecutive_login_failures = 0
                             pool.add_driver(res[0])
                         pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
@@ -318,9 +390,10 @@ def login():
                 pool.add_log(f"❌ 브라우저 #{idx+1} 최종 실패. (3회 시도 모두 실패)")
         finally:
             with pool.lock:
-                pool.active_init_threads -= 1
-                if pool.active_init_threads == 0:
-                    pool.is_logging_in = False
+                if generation == pool.generation:
+                    pool.active_init_threads = max(0, pool.active_init_threads - 1)
+                    if pool.active_init_threads == 0:
+                        pool.is_logging_in = False
 
     threads = []
     for i in range(pool.max_drivers):
@@ -332,6 +405,8 @@ def login():
     start_wait = time.time()
     # 백엔드(400s)보다 약간 짧게 잡아서 데몬이 먼저 응답을 주게 함 (Race Condition 방지)
     while time.time() - start_wait < 350:
+        if pool.is_cancelled(login_generation):
+            return jsonify({"ok": False, "error": "로그인 초기화가 중지되었습니다.", "log": list(pool.log_buffer)})
         if pool.available_queue.qsize() > 0:
              return jsonify({
                  "ok": True,
@@ -346,8 +421,8 @@ def login():
 
 @app.route('/stop', methods=['POST'])
 def stop():
+    pool.clear()
     with pool.lock:
-        pool.clear()
         pool.current_user = None
     return jsonify({"ok": True, "message": "데몬 세션이 즉시 종료되었습니다."})
 
@@ -378,12 +453,13 @@ def run():
     acquire_started = time.time()
     driver = pool.get_driver(timeout=acquire_timeout, purpose=request_purpose)
     if not driver:
+        message = "조회 중지됨" if pool.stop_requested.is_set() else f"워커 대기 시간 초과({int(acquire_timeout)}초)"
         return jsonify({
             "ok": True,
             "containerNo": cn,
             "worker_id": None,
             "daemon_id": pool.daemon_id,
-            "result": [make_status_row(cn, "ERROR", f"워커 대기 시간 초과({int(acquire_timeout)}초)")],
+            "result": [make_status_row(cn, "ERROR", message)],
             "elapsed": round(time.time() - request_started, 1),
             "log": list(pool.log_buffer)
         })
@@ -392,6 +468,17 @@ def run():
         pool.add_log(f"[{cn}] 워커 확보 대기 {acquire_elapsed:.1f}s")
 
     try:
+        if pool.stop_requested.is_set():
+            return jsonify({
+                "ok": True,
+                "containerNo": cn,
+                "worker_id": getattr(driver, 'used_port', 32000) - 32000 + 1,
+                "daemon_id": pool.daemon_id,
+                "result": [make_status_row(cn, "ERROR", "조회 중지됨")],
+                "elapsed": round(time.time() - request_started, 1),
+                "log": list(pool.log_buffer)
+            })
+
         # 🎯 [전면 수정] 세션 유효성 체크를 전담 함수에 맡김
         is_alive = False
         try:
@@ -406,6 +493,16 @@ def run():
         except: pass
 
         if not is_alive:
+            if pool.stop_requested.is_set():
+                return jsonify({
+                    "ok": True,
+                    "containerNo": cn,
+                    "worker_id": getattr(driver, 'used_port', 32000) - 32000 + 1,
+                    "daemon_id": pool.daemon_id,
+                    "result": [make_status_row(cn, "ERROR", "조회 중지됨")],
+                    "elapsed": round(time.time() - request_started, 1),
+                    "log": list(pool.log_buffer)
+                })
             driver.page_ready = False  # 세션이 죽었으면 화면도 초기화
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
 
@@ -440,14 +537,51 @@ def run():
 
             # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
             pool.cleanup_lingering_chrome(target_port)
+            if pool.stop_requested.is_set():
+                driver = None
+                return jsonify({
+                    "ok": True,
+                    "containerNo": cn,
+                    "worker_id": None,
+                    "daemon_id": pool.daemon_id,
+                    "result": [make_status_row(cn, "ERROR", "조회 중지됨")],
+                    "elapsed": round(time.time() - request_started, 1),
+                    "log": list(pool.log_buffer)
+                })
 
             res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
+                if pool.stop_requested.is_set():
+                    try: res[0].quit()
+                    except: pass
+                    driver = None
+                    return jsonify({
+                        "ok": True,
+                        "containerNo": cn,
+                        "worker_id": None,
+                        "daemon_id": pool.daemon_id,
+                        "result": [make_status_row(cn, "ERROR", "조회 중지됨")],
+                        "elapsed": round(time.time() - request_started, 1),
+                        "log": list(pool.log_buffer)
+                    })
                 with pool.lock:
+                    if pool.stop_requested.is_set():
+                        try: res[0].quit()
+                        except: pass
+                        driver = None
+                        return jsonify({
+                            "ok": True,
+                            "containerNo": cn,
+                            "worker_id": None,
+                            "daemon_id": pool.daemon_id,
+                            "result": [make_status_row(cn, "ERROR", "조회 중지됨")],
+                            "elapsed": round(time.time() - request_started, 1),
+                            "log": list(pool.log_buffer)
+                        })
                     pool.consecutive_login_failures = 0 # 성공 시 즉시 0으로 초기화 (아침에 살아날 수 있는 핵심)
                     driver = res[0]
                     driver.used_port = target_port
-                    pool.drivers.append(driver)
+                    pool.add_driver(driver)
                 pool.add_log(f"--- [세션 복구 성공] {cn} 조회를 계속합니다. ---")
             else:
                 with pool.lock:
@@ -472,6 +606,9 @@ def run():
         def _log_cb(msg): logs.append(msg)
 
         def _lookup_once():
+            if pool.stop_requested.is_set():
+                return [make_status_row(cn, "ERROR", "조회 중지됨")]
+
             grid_text = None
 
             # [v5.13.6] 로그인 직후 이미 조회 화면이면 첫 조회에서도 메뉴 재진입을 생략
@@ -545,12 +682,17 @@ def run():
 
         result_rows = []
         for attempt in range(1, 3):
+            if pool.stop_requested.is_set():
+                result_rows = [make_status_row(cn, "ERROR", "조회 중지됨")]
+                break
             result_rows = _lookup_once()
             if not is_retryable_result_rows(result_rows):
                 break
             if attempt < 2:
                 pool.add_log(f"[{cn}] 불확실 실패 감지 → 1회 재조회합니다. ({result_rows[0][2] if result_rows else '결과 없음'})")
-                time.sleep(1.2)
+                if not pool.wait_unless_cancelled(1.2):
+                    result_rows = [make_status_row(cn, "ERROR", "조회 중지됨")]
+                    break
 
         return jsonify({
             "ok": True,
@@ -620,10 +762,13 @@ def session_keeper():
         time.sleep(60) # 1분마다 순회
         with pool.lock:
             # 설정된 유저정보가 없고 드라이버가 없으면 패스
+            if pool.stop_requested.is_set():
+                continue
             if not pool.current_user or not pool.current_user.get("id"):
                 continue
             if pool.consecutive_login_failures >= 3:
                 continue
+            keeper_generation = pool.generation
         pool.ensure_capacity_async(reason="session_keeper")
 
         q_size = pool.available_queue.qsize()
@@ -632,6 +777,10 @@ def session_keeper():
                 driver = pool.available_queue.get_nowait()
             except Empty:
                 break
+            if pool.is_cancelled(keeper_generation):
+                try: driver.quit()
+                except: pass
+                continue
 
             needs_refresh = False
             reason = ""
@@ -670,6 +819,10 @@ def session_keeper():
                 pool.add_log(f"--- [백그라운드 세션관리] {reason} 사유로 재로그인을 시도합니다. ---")
 
                 with pool.lock:
+                    if pool.is_cancelled(keeper_generation):
+                        try: driver.quit()
+                        except: pass
+                        continue
                     if pool.consecutive_login_failures >= 3:
                         pool.add_log("❌ [백그라운드 세션관리] 연속 로그인 3회 실패 상태. 복구 시도 취소.")
                         try: driver.quit()
@@ -692,16 +845,25 @@ def session_keeper():
 
                 # [추가] 재로그인 전 찌꺼기 프로세스 청소
                 pool.cleanup_lingering_chrome(target_port)
+                if pool.is_cancelled(keeper_generation):
+                    continue
 
                 res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
                 if res[0]:
+                    if pool.is_cancelled(keeper_generation):
+                        try: res[0].quit()
+                        except: pass
+                        continue
                     with pool.lock:
+                        if pool.is_cancelled(keeper_generation):
+                            try: res[0].quit()
+                            except: pass
+                            continue
                         pool.consecutive_login_failures = 0
                         new_driver = res[0]
                         new_driver.used_port = target_port
                         new_driver.last_activity = time.time()
-                        pool.drivers.append(new_driver)
-                        pool.available_queue.put(new_driver)
+                        pool.add_driver(new_driver)
                     pool.add_log(f"--- [백그라운드 세션관리] 복구 성공! (포트: {target_port}) ---")
                 else:
                     with pool.lock:
@@ -709,7 +871,7 @@ def session_keeper():
                     pool.add_log(f"❌ [백그라운드 세션관리] 복구 실패({pool.consecutive_login_failures}/3): {res[1]}")
             else:
                 # 정상적인 드라이버면 다시 큐에 넣음
-                pool.available_queue.put(driver)
+                pool.return_driver(driver)
 
 def daily_reset_scheduler():
     """매일 새벽 5시 드라이버 풀 완전 초기화 + 자동 재로그인 (세션 장기 만료 방지)"""
@@ -739,17 +901,22 @@ def daily_reset_scheduler():
                 # 자동 재로그인
                 pool.add_log(f"🔄 [일일리셋] '{saved_user['id']}' 계정으로 자동 재로그인 시도...")
                 with pool.lock:
+                    pool.stop_requested.clear()
                     pool.current_user = saved_user
                     pool.is_logging_in = True
                     pool.active_init_threads = pool.max_drivers
                     pool.consecutive_login_failures = 0
+                    reset_generation = pool.generation
 
-                def _do_reset_login(idx, _user=saved_user):
+                def _do_reset_login(idx, _user=saved_user, generation=reset_generation):
                     try:
                         if idx > 0:
-                            time.sleep(idx * 60)
+                            if not pool.wait_unless_cancelled(idx * 60, generation):
+                                return
                         target_port = 32000 + idx
                         pool.cleanup_lingering_chrome(target_port)
+                        if pool.is_cancelled(generation):
+                            return
                         res = login_and_prepare(
                             _user["id"], _user["pw"],
                             log_callback=pool.add_log,
@@ -757,8 +924,16 @@ def daily_reset_scheduler():
                             port=target_port
                         )
                         if res[0]:
+                            if pool.is_cancelled(generation):
+                                try: res[0].quit()
+                                except: pass
+                                return
                             res[0].used_port = target_port
                             with pool.lock:
+                                if pool.is_cancelled(generation):
+                                    try: res[0].quit()
+                                    except: pass
+                                    return
                                 pool.consecutive_login_failures = 0
                                 pool.add_driver(res[0])
                             pool.add_log(f"✅ [일일리셋] 브라우저 #{idx+1} 재시작 완료 (포트:{target_port})")
@@ -766,10 +941,11 @@ def daily_reset_scheduler():
                             pool.add_log(f"❌ [일일리셋] 브라우저 #{idx+1} 재시작 실패: {res[1]}")
                     finally:
                         with pool.lock:
-                            pool.active_init_threads -= 1
-                            if pool.active_init_threads == 0:
-                                pool.is_logging_in = False
-                                pool.add_log("⏰ [일일리셋] 자동 리셋 완료!")
+                            if generation == pool.generation:
+                                pool.active_init_threads = max(0, pool.active_init_threads - 1)
+                                if pool.active_init_threads == 0:
+                                    pool.is_logging_in = False
+                                    pool.add_log("⏰ [일일리셋] 자동 리셋 완료!")
 
                 for i in range(pool.max_drivers):
                     threading.Thread(target=_do_reset_login, args=(i,), daemon=True).start()

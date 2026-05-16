@@ -56,6 +56,7 @@ file_store = {}
 global_progress = {"total": 0, "completed": 0, "is_running": False}
 # [v4.9.8] 유휴 감지용: 마지막으로 개별 컨테이너 조회가 완료된 시각
 global_last_activity_time = 0
+global_stop_requested = threading.Event()
 
 def _status_row(cn, code, message):
     return [str(cn or "").strip().upper(), code, message] + [""] * 12
@@ -217,6 +218,7 @@ def run():
     show_browser = data.get("showBrowser", False)
 
     global global_progress, global_last_activity_time
+    global_stop_requested.clear()
     global_progress = {"total": len(containers), "completed": 0, "is_running": True, "start_time": time.time()}
     global_last_activity_time = time.time()
 
@@ -230,6 +232,8 @@ def run():
             def fetch(index, cn):
                 last_error = None
                 for attempt in range(1, 3):
+                    if global_stop_requested.is_set():
+                        return index, {"ok": True, "result": [_status_row(cn, "ERROR", "조회 중지됨")]}, cn, attempt, "사용자 중지"
                     try:
                         body = json.dumps({
                             "userId": uid,
@@ -260,18 +264,56 @@ def run():
             daemon_health = _daemon_health(timeout=3)
             batch_workers = _effective_batch_workers(daemon_health, reserve_single=reserve_single)
             yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
-            with ThreadPoolExecutor(max_workers=batch_workers) as executor:
-                # [v5.13.6] 4개 워커까지 쓰되, 첫 파동은 1초 간격으로 띄워 NAS 피크를 낮춘다.
+            executor = ThreadPoolExecutor(max_workers=batch_workers)
+            try:
                 futures = {}
-                for i, cn in enumerate(containers):
-                    if 0 < i < batch_workers:
-                        time.sleep(1)
-                    futures[executor.submit(fetch, i, cn)] = i
-
                 pending_results = {}
                 next_emit_index = 0
+                next_submit_index = 0
+
+                def mark_stopped_from(start_index=0):
+                    for idx in range(start_index, len(containers)):
+                        if idx not in pending_results:
+                            pending_results[idx] = {
+                                "cn": containers[idx],
+                                "rows": [_status_row(containers[idx], "ERROR", "조회 중지됨")],
+                                "attempts": 1,
+                                "retry_reason": "사용자 중지",
+                                "error": "조회 중지됨",
+                            }
+
+                def submit_more():
+                    nonlocal next_submit_index
+                    while (
+                        next_submit_index < len(containers)
+                        and len(futures) < batch_workers
+                        and not global_stop_requested.is_set()
+                    ):
+                        if 0 < next_submit_index < batch_workers:
+                            time.sleep(1)
+                        idx = next_submit_index
+                        futures[executor.submit(fetch, idx, containers[idx])] = idx
+                        next_submit_index += 1
+
+                submit_more()
 
                 while futures:
+                    if global_stop_requested.is_set():
+                        for f, idx in list(futures.items()):
+                            if f.cancel():
+                                pending_results[idx] = {
+                                    "cn": containers[idx],
+                                    "rows": [_status_row(containers[idx], "ERROR", "조회 중지됨")],
+                                    "attempts": 1,
+                                    "retry_reason": "사용자 중지",
+                                    "error": "조회 중지됨",
+                                }
+                                del futures[f]
+                        mark_stopped_from(next_submit_index)
+                        yield "LOG:⏹️ 조회 중지 요청을 받아 남은 작업을 취소합니다.\n"
+                        if not futures:
+                            break
+
                     # 1. 태스크 완료 확인 및 결과 배출
                     done, _ = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
                     for f in done:
@@ -296,6 +338,8 @@ def run():
                             yield f"LOG:↻ [{item['cn']}] 1회 재조회 후 확정 ({item['retry_reason']})\n"
                         yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
 
+                    submit_more()
+
                     # 2. 로그 실시간 스트리밍 (루프 도중)
                     try:
                         l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
@@ -306,16 +350,26 @@ def run():
                                 sent_logs.add(line)
                     except: pass
 
-                # 3. [Fix] 모든 작업 완료 후 남아있는 로그 최종 스윕 (릴레이 지연 고려)
-                time.sleep(1)
-                try:
-                    l_req = urlopen(DAEMON_URL + "/logs", timeout=2)
-                    l_data = json.loads(l_req.read().decode("utf-8"))
-                    for line in l_data.get("log", []):
-                        if line not in sent_logs:
-                            yield f"LOG:{line}\n"
-                            sent_logs.add(line)
-                except: pass
+                ready_results, next_emit_index = _pop_ready_ordered_results(pending_results, next_emit_index)
+                for item in ready_results:
+                    rows = item["rows"]
+                    final_rows.extend(rows)
+                    global_progress["completed"] += 1
+                    global_last_activity_time = time.time()
+                    yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
+
+            # 3. [Fix] 모든 작업 완료 후 남아있는 로그 최종 스윕 (릴레이 지연 고려)
+            time.sleep(1)
+            try:
+                l_req = urlopen(DAEMON_URL + "/logs", timeout=2)
+                l_data = json.loads(l_req.read().decode("utf-8"))
+                for line in l_data.get("log", []):
+                    if line not in sent_logs:
+                        yield f"LOG:{line}\n"
+                        sent_logs.add(line)
+            except: pass
 
             # 엑셀 생성 (openpyxl - 2시트, 서식, 틀고정)
             if final_rows:
@@ -450,6 +504,7 @@ def download(token):
 def stop_daemon():
     """[v4.9.8] 데몬 세션 강제 종료 + 잠금 해제"""
     global global_progress, global_last_activity_time
+    global_stop_requested.set()
     if _daemon_available():
         try:
             req = Request(DAEMON_URL + "/stop", method="POST")

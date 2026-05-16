@@ -74,6 +74,8 @@ function ContainerHistoryInner() {
     const hasInitialized = useRef(false);
     const pendingSearchRef = useRef(null);
     const initialCreds = useRef({ id: '', pw: '' });
+    const searchAbortRef = useRef(null);
+    const currentTargetsRef = useRef([]);
 
     // 마운트 후 데이터 복구
     useEffect(() => {
@@ -365,8 +367,44 @@ function ContainerHistoryInner() {
         return tempGrouped;
     };
 
+    const markPendingRows = useCallback((message) => {
+        setResult(prev => {
+            if (!prev) return prev;
+            const next = { ...prev };
+            Object.keys(next).forEach(cn => {
+                const rows = next[cn] || [];
+                if (!rows.length || rows[0][2] === '조회 대기중' || rows[0][2] === '조회 진행중') {
+                    next[cn] = [[cn, 'ERROR', message, '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']];
+                }
+            });
+            return next;
+        });
+    }, []);
+
+    const stopSearch = useCallback(async (message = '조회 중지됨') => {
+        if (searchAbortRef.current) {
+            searchAbortRef.current.abort();
+            searchAbortRef.current = null;
+        }
+        pendingSearchRef.current = null;
+        setLogLines(prev => [...prev, `⏹ ${message}: 데몬 작업 중지 요청을 보냈습니다.`].slice(-100));
+        try {
+            await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: 'POST' });
+        } catch (err) {
+            console.error(err);
+            setLogLines(prev => [...prev, `![오류] 중지 요청 실패: ${err.message}`].slice(-100));
+        }
+        markPendingRows(message);
+        setLoading(false);
+        stopTimer();
+        setTotalElapsed(elapsedSecondsRef.current);
+    }, [BACKEND_BASE_URL, markPendingRows, stopTimer]);
+
     const executeSearch = async (targets, id, pw) => {
         setLoading(true); startTimer();
+        currentTargetsRef.current = targets;
+        const abortController = new AbortController();
+        searchAbortRef.current = abortController;
 
         // 검색 즉시 사용자가 입력한 순서대로 빈 슬롯을 만들기 위해 더미 데이터 셋업
         const initialResult = {};
@@ -381,7 +419,8 @@ function ContainerHistoryInner() {
             let retryCount = 0;
 
             while (isWaiting) {
-                const capRes = await fetch(`${BACKEND_BASE_URL}/api/els/capabilities`);
+                if (abortController.signal.aborted) throw new DOMException('조회 중지됨', 'AbortError');
+                const capRes = await fetch(`${BACKEND_BASE_URL}/api/els/capabilities`, { signal: abortController.signal });
                 const capData = await capRes.json();
                 
                 // 워커 상태 업데이트
@@ -403,7 +442,13 @@ function ContainerHistoryInner() {
                         return next.slice(-100); // [렉 방지]
                     });
                     retryCount++;
-                    await new Promise(r => setTimeout(r, 5000)); // 5초 대기 후 재시도
+                    await new Promise((resolve, reject) => {
+                        const t = setTimeout(resolve, 5000);
+                        abortController.signal.addEventListener('abort', () => {
+                            clearTimeout(t);
+                            reject(new DOMException('조회 중지됨', 'AbortError'));
+                        }, { once: true });
+                    }); // 5초 대기 후 재시도
                 } else {
                     isWaiting = false;
                     if (retryCount > 0) setLogLines(prev => [...prev, '✓ 데몬이 준비되었습니다. 조회를 시작합니다!'].slice(-100));
@@ -414,6 +459,7 @@ function ContainerHistoryInner() {
                     setLogLines(prev => [...prev, '![오류] 대기 시간이 너무 깁니다. (약 6분 경과) 데몬 리셋 후 다시 시도해 주세요.'].slice(-100));
                     setLoading(false); stopTimer();
                     await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: 'POST' }); // 자동 리셋 시도
+                    markPendingRows('대기 시간 초과');
                     return;
                 }
             }
@@ -422,6 +468,7 @@ function ContainerHistoryInner() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ containers: targets, showBrowser, userId: id || userId, userPw: pw || userPw }),
+                signal: abortController.signal,
             });
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
@@ -499,14 +546,32 @@ function ContainerHistoryInner() {
 
             // 총 소요시간 계산 (타이머)
             setTotalElapsed(elapsedSecondsRef.current);
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); stopTimer(); }
+        } catch (err) {
+            if (err?.name === 'AbortError') {
+                markPendingRows('조회 중지됨');
+            } else {
+                console.error(err);
+                setLogLines(prev => [...prev, `![오류] ${err.message}`].slice(-100));
+            }
+        }
+        finally {
+            if (searchAbortRef.current === abortController) searchAbortRef.current = null;
+            setLoading(false);
+            stopTimer();
+        }
     };
 
     const handleResetDaemon = async (e) => {
         if (e) e.stopPropagation();
         if (!confirm('백그라운드 봇의 세션을 강제로 닫고 다시 로그인 하시겠습니까?')) return;
         try {
+            if (loading) {
+                await stopSearch('데몬 리셋으로 조회 중지됨');
+                setLoginSuccess(false);
+                sessionStorage.removeItem('els_login_success');
+                setLogLines(prev => [...prev, '✓ 데몬 리셋: 진행 중 조회를 중지하고 모든 워커를 초기화했습니다.'].slice(-100));
+                return;
+            }
             await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
             setLogLines(prev => [...prev, '✓ 수동 초기화: 데몬 세션을 닫고 다시 로그인을 시도합니다...'].slice(-100));
             setLoginSuccess(false);
@@ -516,6 +581,10 @@ function ContainerHistoryInner() {
     };
 
     const runSearch = () => {
+        if (loading) {
+            stopSearch('사용자 중지');
+            return;
+        }
         const containers = parseContainerInput(containerInput);
         if (!containerInput.trim()) {
             return alert('컨테이너 번호를 입력하세요');
@@ -902,8 +971,13 @@ function ContainerHistoryInner() {
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <button onClick={() => fileInputRef.current.click()} className={styles.buttonSecondary} style={{ flex: 1 }}>엑셀 불러오기</button>
-                                        <button onClick={runSearch} disabled={loading} className={styles.button} style={{ flex: 2 }}>
-                                            {loading ? '데이터 추출 중...' : '실시간 이력 조회'}
+                                        <button
+                                            onClick={runSearch}
+                                            disabled={loginLoading}
+                                            className={loading ? styles.buttonDanger : styles.button}
+                                            style={{ flex: 2 }}
+                                        >
+                                            {loading ? '조회 중지' : '실시간 이력 조회'}
                                         </button>
                                     </div>
                                     <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileUpload} style={{ display: 'none' }} />

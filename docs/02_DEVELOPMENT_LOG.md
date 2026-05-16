@@ -1,4 +1,27 @@
 
+## [2026-05-16] 컨테이너 이력조회 중지/리셋 강제화 (v5.13.14)
+### 🚀 Achievement
+- **조회 중지 버튼 전환**: `실시간 이력 조회` 버튼이 진행 중에는 `조회 중지`로 바뀌고, 클릭 시 프론트 스트리밍 fetch를 즉시 Abort합니다.
+- **행 누락 없는 중지 처리**: 중지/대기 초과/데몬 리셋 시 아직 결과가 없는 컨테이너도 입력 순서를 유지한 `ERROR / 조회 중지됨` 행으로 남깁니다.
+- **배치 큐 강제 취소**: NAS 백엔드는 모든 컨테이너를 한 번에 future로 넣지 않고 살아있는 배치 워커 수만큼 순차 제출합니다. stop 신호가 오면 미제출/취소 가능 작업을 즉시 `조회 중지됨`으로 확정합니다.
+- **데몬 리셋 세대 무효화**: 봇 데몬에 stop 플래그와 generation을 추가해, 리셋 전에 예약된 로그인/워커복구/세션관리 스레드가 뒤늦게 성공해도 워커 풀에 다시 붙지 못하게 막았습니다.
+- **워커 재큐 방지**: stop 이후 반환되는 드라이버는 큐에 넣지 않고 종료해, 리셋 뒤 오래된 컨테이너 조회가 계속되는 경로를 차단했습니다.
+### 🧪 검증
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control` 통과 (16개, 번들 Python 사용)
+- `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_daemon_stop_control.py` 통과
+- `node --test web/tests/containerInput.test.mjs` 통과 (4개)
+- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"` 0 errors, 기존 warning 5건
+- `npm.cmd run build` 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+- `git diff --check` 통과
+### 📁 변경 파일
+- `docker/els-backend/app_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_daemon_stop_control.py`
+- `web/app/(main)/employees/container-history/page.js`
+- `web/app/(main)/employees/container-history/container-history.module.css`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 아산 선적관리 페이지 단위 DB 조회 완성 (v5.13.13)
 ### 🚀 Achievement
 - **초기 로딩 축소**: 선적관리 첫 조회가 전체 대량 행 대신 Supabase DB에서 500행 단위로 받아오도록 변경했습니다.
