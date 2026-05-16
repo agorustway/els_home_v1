@@ -1,4 +1,35 @@
 
+## [2026-05-16] 아산 선적관리 조회/동기화 분리 (v5.13.12)
+### 🚀 Achievement
+- **GET 조회 경량화**: 아산 선적관리 API의 일반 조회 경로에서 NAS 엑셀 동기화를 제거하고, Supabase에 이미 적재된 DB 조회를 우선하도록 분리했습니다.
+- **POST 강제 동기화**: 웹의 `NAS 동기화` 버튼은 같은 API의 POST를 호출해 사용자가 명시적으로 갱신할 때만 NAS 엑셀을 파싱하고 Supabase에 반영합니다.
+- **프록시 확장**: Next.js 선적관리 프록시 라우트가 GET뿐 아니라 POST도 NAS 백엔드로 전달하도록 보강했습니다.
+- **회귀 방어**: GET 경로에 `sync_asan_shipping_python()` 호출이 되살아나지 않도록 Node 회귀 테스트를 추가했습니다.
+### 🧪 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (12개)
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과 (번들 Python 사용)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js` 0 errors, 기존 Hook dependency warning 2건
+### 📁 변경 파일
+- `docker/els-backend/app.py`
+- `docker/els-backend/app_core.py`
+- `web/app/api/branches/asan/shipping/route.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-16] 자료실 첨부파일 목록형 재통일 (v5.13.11)
+### 🚀 Achievement
+- **서식자료실 다운로드 UI 통일**: 서식자료실 상세에 남아 있던 단일 카드형 다운로드 블록을 제거하고, 업무자료실과 같은 `IntranetDataTable` 기반 목록형으로 변경했습니다.
+- **자료실 하위 재검토**: 업무자료실/서식자료실 상세 첨부 표시 경로를 다시 훑어 카드형 `attachmentItem` 잔존 경로가 없도록 정리했습니다.
+- **열 구조 표준화**: `No / 파일명 / 크기 / 작업` 열과 `내려받기 / 주소 복사` 액션 구성을 동일하게 맞췄습니다.
+### 🧪 검증
+- `npm.cmd run lint` 통과
+### 📁 변경 파일
+- `web/app/(main)/employees/(intranet)/form-templates/[id]/PageClient.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 자료실/연락처 상세 이미지 반응형 보강 (v5.13.10)
 ### 🚀 Achievement
 - **자료실 본문 오버플로 방지**: 업무자료실 상세의 HTML 본문을 공통 `contentBody`로 감싸, 삽입 이미지와 넓은 표가 브라우저 축소 시 페이지 밖으로 밀려나지 않게 했습니다.

@@ -1,23 +1,23 @@
-# ELS MISSION CONTROL (v5.13.10 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.12 / APK v5.11.12)
 
-> 최신 업데이트: 자료실 상세 본문 이미지/표가 브라우저 축소 시 컨테이너 밖으로 튀어나가지 않도록 공통 반응형 가드를 보강했습니다.
+> 최신 업데이트: 아산 선적관리 조회(GET)와 NAS→Supabase 동기화(POST)를 분리해 일반 페이지 로딩 중 엑셀 파싱을 피하도록 정리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.10
+- **웹 버전**: v5.13.12
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 업무자료실 상세 HTML 본문을 공통 `contentBody`로 감싸 이미지/표 폭 제한을 적용.
-  - 서식자료실 상세의 마크다운 이미지 렌더도 동일한 본문 기준으로 통일.
-  - 연락처/작업지 상세가 공유하는 `DetailSection`에 이미지·표·pre 반응형 가드를 추가.
-  - 큰 표는 본문 안에서 가로 스크롤되고, 이미지는 컨테이너 너비에 맞춰 축소되도록 정리.
+  - 아산 선적관리 GET은 Supabase DB 조회를 우선하고 요청 중 NAS 엑셀 동기화를 수행하지 않음.
+  - NAS 동기화 버튼은 POST 강제 동기화로 분리해 사용자가 명시적으로 갱신할 때만 엑셀 파싱.
+  - Next.js 프록시 라우트도 POST를 지원해 웹→NAS 백엔드 동기화 흐름 유지.
+  - 회귀 테스트로 GET 조회 중 `sync_asan_shipping_python()` 재호출 방지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
-| NAS 백엔드 | 정상 | 차량 관제 최신 위치 응답에 GPS 보정 필터 반영 |
+| NAS 백엔드 | 정상 | 아산 선적관리 조회/동기화 경로 분리 |
 | ELS Bot | 정상 | 이번 작업 영향 없음 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
@@ -35,6 +35,8 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.12**: 아산 선적관리 일반 조회에서는 Supabase DB만 우선 조회하고 NAS 엑셀 동기화는 POST 수동/스케줄 경로로 분리. 웹 동기화 버튼은 POST를 호출하며, 회귀 테스트를 추가해 GET 경로에서 동기화 호출이 되살아나지 않게 방어.
+- **v5.13.11**: 서식자료실 상세의 다운로드 카드 UI를 제거하고 업무자료실과 같은 `IntranetDataTable` 첨부 목록 구조로 통일. 자료실 하위의 첨부파일 표시 경로를 재검토해 카드형 잔존 경로를 정리.
 - **v5.13.10**: 업무자료실/서식자료실 상세 본문 HTML 이미지와 표가 브라우저 축소 시 컨테이너 밖으로 튀어나가지 않도록 공통 본문/상세 섹션 반응형 가드를 추가. 연락처/작업지 상세가 공유하는 `DetailSection`에도 이미지·표·pre 폭 제한과 내부 가로 스크롤을 적용.
 - **v5.13.9**: 워커 1개 상황에서는 배치를 순차 처리하고, 2개 이상에서는 단건/AI용 1개를 남겨 세션 없음 폭주를 방지. 죽은 워커는 쿨다운을 두고 1개씩 재기동 시도.
 - **v5.13.8**: ETrans WebSquare 입력값 검증을 추가하고, `필수 입력 항목` 알림을 ERROR로 표기하도록 보강. 데이터 없음 판정 범위를 602 조회 영역/보이는 모달로 축소.
@@ -51,6 +53,9 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 12개 통과
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js`: 0 errors, 기존 Hook dependency warning 2건
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 14개 통과
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
 - `git diff --check`: 통과

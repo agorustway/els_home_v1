@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import IntranetDataTable from '@/components/IntranetDataTable';
 import styles from '../../intranet.module.css';
 
 export default function FormTemplateDetailPage() {
@@ -100,6 +101,59 @@ export default function FormTemplateDetailPage() {
     if (!item) return <div className={styles.loading}>서식을 찾을 수 없습니다.</div>;
 
     const dUrl = getDownloadUrl(item.file_url, item.file_path, item.file_name);
+    const fileRows = dUrl
+        ? [{
+            no: 1,
+            name: item.file_name || '파일 다운로드',
+            size: item.file_size || item.size || null,
+            downloadUrl: dUrl,
+        }]
+        : [];
+    const fileColumns = [
+        {
+            key: 'no',
+            header: 'No',
+            colClassName: styles.colNoFixed,
+            align: 'center',
+            cellClassName: styles.mutedCell,
+            render: (file) => file.no,
+        },
+        {
+            key: 'name',
+            header: '파일명',
+            colClassName: styles.colNoteFluid,
+            cellClassName: styles.primaryCell,
+            render: (file) => file.name,
+        },
+        {
+            key: 'size',
+            header: '크기',
+            colClassName: styles.colDateFixed,
+            cellClassName: styles.mutedCell,
+            render: (file) => (file.size ? `${(file.size / 1024).toFixed(1)} KB` : '-'),
+        },
+        {
+            key: 'actions',
+            header: '작업',
+            colClassName: styles.colMetaFixed,
+            align: 'center',
+            render: (file) => (
+                <div className={styles.controls}>
+                    <a href={file.downloadUrl} className={styles.btnPrimary}>내려받기</a>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            copyToClipboard(window.location.origin + file.downloadUrl);
+                        }}
+                        className={styles.btnSecondary}
+                    >
+                        주소 복사
+                    </button>
+                </div>
+            ),
+        },
+    ];
 
     return (
         <div className={styles.container}>
@@ -124,37 +178,20 @@ export default function FormTemplateDetailPage() {
                     {renderContent(item.description) || <span style={{ color: '#94a3b8' }}>(설명 없음)</span>}
                 </div>
 
-                {dUrl && (
-                    <div className={styles.attachmentSection} style={{ borderTop: '2px solid #f1f5f9', paddingTop: 30, marginTop: 40 }}>
-                        <div className={styles.attachmentLabel} style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '1.05rem', color: '#1e293b' }}>
-                            💾 서식 파일 다운로드
+                {fileRows.length > 0 && (
+                    <div className={styles.attachmentSection}>
+                        <button type="button" className={styles.attachmentToggle}>
+                            <span className={styles.attachmentLabel}>첨부파일</span>
+                            <span className={styles.attachmentCount}>{fileRows.length}</span>
+                        </button>
+                        <div style={{ marginTop: 8 }}>
+                            <IntranetDataTable
+                                columns={fileColumns}
+                                rows={fileRows}
+                                getRowKey={(file) => file.downloadUrl}
+                                ariaLabel="서식자료실 첨부파일 목록"
+                            />
                         </div>
-                        <ul className={styles.attachmentList} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-                            <li className={styles.attachmentItem} style={{ background: '#f8faff', borderRadius: 12, padding: 20, border: '1px solid #e0e7ff', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', width: '100%' }}>
-                                    <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>📄</span>
-                                    <a
-                                        href={dUrl}
-                                        style={{ fontWeight: 800, color: '#4f46e5', fontSize: '1rem', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', flex: 1, minWidth: 0 }}
-                                    >
-                                        {item.file_name || '파일 다운로드'}
-                                    </a>
-                                </div>
-                                <div style={{ display: 'flex', gap: 10 }}>
-                                    <a href={dUrl} className={styles.btnPrimary} style={{ flex: 1, height: '42px', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
-                                        내려받기
-                                    </a>
-                                    <button
-                                        type="button"
-                                        onClick={() => copyToClipboard(window.location.origin + dUrl)}
-                                        className={styles.btnSecondary}
-                                        style={{ height: '42px', fontSize: '0.9rem', padding: '0 16px', borderRadius: 12, border: '1px solid #c7d2fe', color: '#4338ca' }}
-                                    >
-                                        주소 복사
-                                    </button>
-                                </div>
-                            </li>
-                        </ul>
                     </div>
                 )}
             </div>
