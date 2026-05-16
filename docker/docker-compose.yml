@@ -32,6 +32,7 @@ services:
       - ELS_MAX_DRIVERS=4
       - ELS_BATCH_MAX_WORKERS=4
       - ELS_DRIVER_STAGGER_SEC=15
+      - ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105
     shm_size: 2gb
     volumes:
       - /volume2/아산지점:/app/data/아산지점

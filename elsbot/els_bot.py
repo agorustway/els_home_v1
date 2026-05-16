@@ -615,7 +615,29 @@ def parse_grid_text_to_rows(container_no, grid_text):
             seen_no.add(no)
     return result_rows
 
-def scrape_hyper_verify(page, search_no):
+def compact_grid_text(grid_text):
+    if not grid_text:
+        return ""
+    text = str(grid_text)
+    if text in ["NODATA_GRID_EMPTY", "내역없음확인", "NODATA_CONFIRMED", "GRID_EMPTY_PENDING", "STALE_GRID_UNCHANGED"]:
+        return ""
+    lines = []
+    for line in text.splitlines():
+        line = re.sub(r"\s+", " ", line.strip())
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+def is_stale_grid_text(search_no, grid_text, previous_grid_text=None, previous_container_no=None):
+    """새 조회 후 그리드 원문이 이전 조회와 그대로면 다른 컨테이너 결과로 보지 않는다."""
+    current = compact_grid_text(grid_text)
+    previous = compact_grid_text(previous_grid_text)
+    if not current or not previous or current != previous:
+        return False
+    prev_cn = normalize_container_no(previous_container_no)
+    return not prev_cn or prev_cn != normalize_container_no(search_no)
+
+def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_container_no=None, max_attempts=12, wait_interval=0.5):
     """[v4.9.9] WebSquare 그리드 API 또는 정밀 타겟팅 DOM 스크래핑으로 데이터 추출
     
     핵심 수정: 기존에는 페이지 전체의 모든 <tr>을 재귀적으로 긁어와서
@@ -761,12 +783,18 @@ def scrape_hyper_verify(page, search_no):
     """
     
     # [v4.9.9] 최대 6초(12회×0.5s) 대기 — 전략 1(WebSquare API) 우선
-    for attempt in range(12):
+    stale_seen = False
+    for attempt in range(max_attempts):
         try:
             res = page.run_js(ws_grid_script)
             if res and res == "GRID_EMPTY_PENDING":
                 pass
             if res and '|' in res and len(res.strip()) > 10:
+                if is_stale_grid_text(search_no, res, previous_grid_text, previous_container_no):
+                    stale_seen = True
+                    if wait_interval:
+                        time.sleep(wait_interval)
+                    continue
                 return res
         except: pass
         
@@ -775,6 +803,11 @@ def scrape_hyper_verify(page, search_no):
             try:
                 res = page.run_js(dom_targeted_script)
                 if res and '|' in res and len(res.strip()) > 10:
+                    if is_stale_grid_text(search_no, res, previous_grid_text, previous_container_no):
+                        stale_seen = True
+                        if wait_interval:
+                            time.sleep(wait_interval)
+                        continue
                     return res
             except: pass
         
@@ -786,7 +819,8 @@ def scrape_hyper_verify(page, search_no):
                 return "내역없음확인"
         except: pass
         
-        time.sleep(0.5)
+        if wait_interval:
+            time.sleep(wait_interval)
         
     # 데이터 없음 확인 (최종 fallback)
     try:
@@ -795,7 +829,7 @@ def scrape_hyper_verify(page, search_no):
             return "내역없음확인"
     except: pass
         
-    return None
+    return "STALE_GRID_UNCHANGED" if stale_seen else None
 
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=9222):
     if ChromiumOptions is None or ChromiumPage is None:

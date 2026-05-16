@@ -1,4 +1,18 @@
 
+## [2026-05-16] 컨테이너 이력조회 유령 데이터 방어 보강 (v5.13.21)
+### 핵심
+- `ONEU6027330`처럼 ISO 체크섬은 통과하지만 단독 조회 시 에러/무자료가 맞는 번호에서, 이전 컨테이너 그리드가 그대로 붙어 성공행처럼 보일 수 있는 위험을 확인했습니다.
+- 새 조회 버튼을 누르기 전 그리드 원문 지문을 저장하고, 조회 후에도 같은 원문이 다른 컨테이너 요청에 남아 있으면 `이전 조회 결과 잔상 감지` 오류행으로 폐기합니다.
+- 이 오류는 불확실 실패로 취급해 1회 재조회하며, 그래도 같은 잔상이면 성공 데이터로 쓰지 않습니다.
+- NAS Chrome #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동해 remote-debugging 시작 충돌을 완화합니다.
+### 검증
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py elsbot/tests/test_container_lookup_safety.py elsbot/tests/test_daemon_stop_control.py` 통과
+- `python -m unittest elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control elsbot.tests.test_els_bot_logic` 통과 (22개)
+### 변경 파일
+- `docker/docker-compose.yml`
+- `elsbot/els_bot.py`, `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_container_lookup_safety.py`, `elsbot/tests/test_daemon_stop_control.py`
+
 ## [2026-05-16] 아산 선적관리-컨테이너 이력조회 콜라보 1차 (v5.13.20)
 ### 핵심
 - 선적관리 엑셀 동기화는 현재 화면용 `branch_shipping_rows`를 엑셀 최신본 기준으로 교체하되, 엑셀에서 사라진 행은 `branch_shipping_row_archive`에 `deleted_from_excel`로 보관합니다.

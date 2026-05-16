@@ -28,6 +28,7 @@ def load_daemon_module():
         flask.request = types.SimpleNamespace(json={}, args={})
         flask.jsonify = lambda *args, **kwargs: {"args": args, "kwargs": kwargs}
         flask.Response = lambda *args, **kwargs: {"args": args, "kwargs": kwargs}
+        flask.send_file = lambda *args, **kwargs: {"args": args, "kwargs": kwargs}
         sys.modules["flask"] = flask
 
     if "flask_cors" not in sys.modules:
@@ -107,6 +108,16 @@ class TestDaemonStopControl(unittest.TestCase):
             pool = self.daemon.DriverPool()
 
         self.assertEqual(pool.init_stagger_sec, 12.5)
+
+    def test_driver_pool_uses_stagger_sequence_for_late_workers(self):
+        with patch.dict(os.environ, {"ELS_DRIVER_STAGGER_SEC": "12.5", "ELS_DRIVER_STAGGER_SEQUENCE": "0,15,75,105"}):
+            pool = self.daemon.DriverPool()
+
+        self.assertEqual(pool.init_delay_for_idx(0), 0)
+        self.assertEqual(pool.init_delay_for_idx(1), 15)
+        self.assertEqual(pool.init_delay_for_idx(2), 75)
+        self.assertEqual(pool.init_delay_for_idx(3), 105)
+        self.assertEqual(pool.init_delay_for_idx(4), 50)
 
 
 if __name__ == "__main__":

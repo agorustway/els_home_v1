@@ -14,6 +14,7 @@ from els_bot import (
     scrape_hyper_verify,
     make_status_row,
     is_retryable_result_rows,
+    is_stale_grid_text,
 )
 
 KNOWN_VALID_CONTAINERS = [
@@ -84,8 +85,30 @@ class TestContainerLookupSafety(unittest.TestCase):
             result = scrape_hyper_verify(page, "MSKU5071276")
         self.assertEqual(result, "내역없음확인")
 
+    def test_stale_grid_from_other_container_is_rejected(self):
+        stale = "1|수출|적하|인천신국제여객터미널|2026-05-16 10:00|VESSEL||||40|KRPUS|CNSHA|12가1234|"
+
+        self.assertTrue(is_stale_grid_text("ONEU6027330", stale, stale, "ONEU6027730"))
+        self.assertFalse(is_stale_grid_text("ONEU6027330", stale, stale, "ONEU6027330"))
+
+    def test_scraper_waits_out_unchanged_grid_before_accepting_rows(self):
+        stale = "1|수출|적하|인천신국제여객터미널|2026-05-16 10:00|VESSEL||||40|KRPUS|CNSHA|12가1234|"
+        page = FakePage([stale, stale])
+
+        result = scrape_hyper_verify(
+            page,
+            "ONEU6027330",
+            previous_grid_text=stale,
+            previous_container_no="ONEU6027730",
+            max_attempts=2,
+            wait_interval=0,
+        )
+
+        self.assertEqual(result, "STALE_GRID_UNCHANGED")
+
     def test_retry_policy_retries_uncertain_errors_only(self):
         self.assertTrue(is_retryable_result_rows([make_status_row("MSKU5071276", "ERROR", "데이터 추출 실패 (시간 초과)")]))
+        self.assertTrue(is_retryable_result_rows([make_status_row("ONEU6027330", "ERROR", "이전 조회 결과 잔상 감지")]))
         self.assertFalse(is_retryable_result_rows([make_status_row("MSKU5072276", "ERROR", "유효하지 않은 컨테이너 번호(ISO 6346 검증 실패)")]))
         self.assertFalse(is_retryable_result_rows([make_status_row("MSKU5071276", "NODATA", "내역 없음")]))
 

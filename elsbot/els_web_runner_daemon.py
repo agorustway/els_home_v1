@@ -15,6 +15,7 @@ from els_bot import (
     close_modals, is_session_valid, open_els_menu, extend_session,
     normalize_container_no, is_valid_container_no, make_status_row,
     parse_grid_text_to_rows, is_retryable_result_rows, is_no_data_text,
+    compact_grid_text,
 )
 import re
 import pandas as pd
@@ -31,6 +32,7 @@ class DriverPool:
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False
         self.init_stagger_sec = float(os.environ.get("ELS_DRIVER_STAGGER_SEC", 15))
+        self.init_stagger_sequence = self._parse_init_stagger_sequence()
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v5.13.6] NAS CPU 여유 확인 후 4개 워커 기본값 복구
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0
@@ -43,6 +45,24 @@ class DriverPool:
         self.restart_cooldown = 600
         self.stop_requested = threading.Event()
         self.generation = 0
+
+    def _parse_init_stagger_sequence(self):
+        raw = os.environ.get("ELS_DRIVER_STAGGER_SEQUENCE", "")
+        values = []
+        for part in raw.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                values.append(max(0, float(part)))
+            except ValueError:
+                return []
+        return values
+
+    def init_delay_for_idx(self, idx):
+        if 0 <= idx < len(self.init_stagger_sequence):
+            return self.init_stagger_sequence[idx]
+        return idx * self.init_stagger_sec
 
     def add_log(self, msg):
         from datetime import datetime, timezone, timedelta
@@ -296,6 +316,7 @@ def health():
             "is_logging_in": pool.is_logging_in,
             "active_init_threads": pool.active_init_threads,
             "init_stagger_sec": pool.init_stagger_sec,
+            "init_stagger_sequence": pool.init_stagger_sequence,
             "user_id": pool.current_user["id"] if pool.current_user else None,
             "workers": workers,
             "daemon_id": pool.daemon_id
@@ -349,7 +370,7 @@ def login():
 
                     # [NAS 최적화] CPU 부하 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
                     if idx > 0 and retry == 1:
-                        if not pool.wait_unless_cancelled(idx * pool.init_stagger_sec, generation):
+                        if not pool.wait_unless_cancelled(pool.init_delay_for_idx(idx), generation):
                             return
                     elif retry > 1:
                         if not pool.wait_unless_cancelled(10, generation):
@@ -634,6 +655,16 @@ def run():
                 driver.page_ready = False
                 return [make_status_row(cn, "ERROR", "INPUT_NOT_FOUND (메뉴 진입 실패)")]
 
+            previous_container_no = getattr(driver, 'last_query_container', None)
+            previous_grid_text = scrape_hyper_verify(
+                driver,
+                cn,
+                max_attempts=1,
+                wait_interval=0
+            )
+            if previous_grid_text in ["STALE_GRID_UNCHANGED", "GRID_EMPTY_PENDING", "내역없음확인"]:
+                previous_grid_text = None
+
             solve_started = time.time()
             status = solve_input_and_search(driver, cn, log_callback=_log_cb)
             solve_elapsed = time.time() - solve_started
@@ -662,23 +693,38 @@ def run():
             is_nodata = isinstance(status, str) and "내역없음확인" in status
 
             if is_nodata:
+                driver.last_query_container = cn
+                driver.last_grid_text = ""
                 return [make_status_row(cn, "NODATA", "내역 없음")]
 
             if is_success:
                 scrape_started = time.time()
-                grid_text = scrape_hyper_verify(driver, cn)
+                grid_text = scrape_hyper_verify(
+                    driver,
+                    cn,
+                    previous_grid_text=previous_grid_text,
+                    previous_container_no=previous_container_no
+                )
                 scrape_elapsed = time.time() - scrape_started
                 if scrape_elapsed >= 4:
                     pool.add_log(f"[{cn}] 그리드 추출 {scrape_elapsed:.1f}s")
 
+                if grid_text == "STALE_GRID_UNCHANGED":
+                    driver.page_ready = False
+                    return [make_status_row(cn, "ERROR", "이전 조회 결과 잔상 감지: 요청 컨테이너 결과로 확정할 수 없어 폐기")]
+
                 parsed_rows = parse_grid_text_to_rows(cn, grid_text)
                 if parsed_rows:
+                    driver.last_query_container = cn
+                    driver.last_grid_text = compact_grid_text(grid_text)
                     if not (len(parsed_rows) == 1 and parsed_rows[0][1] == "NODATA"):
                         pool.add_log(f"--- [DEBUG RAW TEXT: {cn}] ---")
                         pool.add_log(str(grid_text)[:200] + "...")
                     return parsed_rows
 
                 if grid_text and is_no_data_text(grid_text):
+                    driver.last_query_container = cn
+                    driver.last_grid_text = ""
                     return [make_status_row(cn, "NODATA", "내역 없음")]
                 return [make_status_row(cn, "ERROR", "데이터 추출 실패 (시간 초과)")]
 
@@ -917,7 +963,7 @@ def daily_reset_scheduler():
                 def _do_reset_login(idx, _user=saved_user, generation=reset_generation):
                     try:
                         if idx > 0:
-                            if not pool.wait_unless_cancelled(idx * pool.init_stagger_sec, generation):
+                            if not pool.wait_unless_cancelled(pool.init_delay_for_idx(idx), generation):
                                 return
                         target_port = 32000 + idx
                         pool.cleanup_lingering_chrome(target_port)
