@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.26 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.27 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 배치가 죽은 워커에 무한 대기하지 않고, 성공행을 2차 검증 후 확정하도록 보강했습니다.
+> 최신 업데이트: 아산 선적관리 검색 상태 표시를 지연 표시로 바꾸고 늦게 도착한 이전 조회 응답을 무시합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.26
+- **웹 버전**: v5.13.27
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -11,7 +11,7 @@
   - 컨테이너 이력조회는 실제 가용 워커 기준으로만 작업을 제출하고, 메뉴 실패 워커는 즉시 격리/재기동 예약하며 성공행은 2차 조회 검증 후 확정. 로그는 단일 데몬 표기를 제거하고 워커 흐름 중심으로 표시.
   - 운전원정보 목록에 `지도범위 일괄설정` 버튼을 항상 노출해 선택 운전원에게 일괄 적용.
   - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀 삭제 이력은 365일, 컨테이너 조회 이력은 180일 초과분만 정리.
-  - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 엑셀 원장 오른쪽 초록색 컬럼으로 강제 표시, 검색/정렬은 DB 전체 조건 기준 처리.
+  - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 엑셀 원장 오른쪽 초록색 컬럼으로 강제 표시, 검색/정렬은 DB 전체 조건 기준 처리하며 짧은 검색 갱신 표시는 숨김.
   - 컨테이너 이력조회는 조회 전 잔상 제거, 무자료 조기 확정 금지, 준비상태 기반 후행 워커 기동을 적용.
 
 ## ACTIVE SYSTEMS
@@ -37,6 +37,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.27**: 아산 선적관리 검색 완료 후 `검색 중`이 순간적으로 떴다 사라지는 불안정 표시를 줄이기 위해 350ms 이상 걸리는 조용한 갱신에만 상태를 표시. 검색/정렬 요청 ID를 관리해 늦게 돌아온 이전 응답이 최신 화면을 덮지 않도록 차단.
 - **v5.13.26**: 컨테이너 이력조회에서 `total_drivers`가 아니라 `available_drivers+현재 배치 점유` 기준으로 병렬도를 산정. 메뉴 진입 실패 워커는 같은 큐로 되돌리지 않고 격리/재기동하며, 배치 성공행은 깨끗한 화면에서 2차 조회가 일치해야 확정. 로그의 `[D#1]` 표기는 제거.
 - **v5.13.25**: 지도 공개범위를 운행 데이터가 아닌 운전원정보 마스터 설정으로 정리. 차량위치관제 기록 행의 지도 선택을 제거하고, 운전원정보 일괄 설정 버튼을 상시 노출.
 - **v5.13.24**: 아산 선적관리 엑셀 원장 컬럼 정렬을 `sort_key/sort_dir` DB 조회 조건으로 올려, 조회된 100행만이 아니라 전체 검색 결과를 정렬한 뒤 페이지 단위로 내려오게 변경. 컨테이너 이력 파생 컬럼은 현재 로드분 기준 정렬을 유지.
@@ -70,7 +71,7 @@
 
 ## VERIFICATION
 - `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic`: 워커 격리/가용 병렬도/유령 데이터 방어 회귀 26개 통과
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 선적관리 검색/정렬/이력 회귀 포함 통과
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 선적관리 검색 표시/정렬/이력 회귀 포함 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js`: 0 errors
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
 - `git diff --check`: 통과

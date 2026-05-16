@@ -239,11 +239,17 @@ test('선적관리 검색은 입력 완료 시간을 기다린 뒤 DB 전체 조
   );
 
   assert.match(source, /const SEARCH_DEBOUNCE_MS = 1000;/);
+  assert.match(source, /const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;/);
   assert.match(source, /const \[searchInput, setSearchInput\] = useState\(''\);/);
+  assert.match(source, /const \[showSearchRefreshing, setShowSearchRefreshing\] = useState\(false\);/);
+  assert.match(source, /const fetchRequestIdRef = useRef\(0\);/);
   assert.match(source, /if \(isComposingSearch\) return undefined;/);
   assert.match(source, /setTimeout\(\(\) => \{\s*setSearchTerm\(searchInput\);/);
+  assert.match(source, /setTimeout\(\(\) => \{\s*setShowSearchRefreshing\(true\);[\s\S]*SEARCH_BUSY_VISIBLE_DELAY_MS/);
+  assert.match(source, /if \(requestId !== fetchRequestIdRef\.current\) return;/);
   assert.match(source, /fetchData\(selectedPath, \{ page: 1, search: searchTerm, quiet, \.\.\.serverSortParams \}\)/);
   assert.match(source, /value=\{searchInput\}/);
+  assert.match(source, /\(searchPending \|\| showSearchRefreshing\)/);
   assert.match(source, /onKeyDown=\{e => \{[\s\S]*if \(e\.key === 'Enter'\) setSearchTerm\(searchInput\);/);
   assert.match(css, /\.searchStatus/);
 });

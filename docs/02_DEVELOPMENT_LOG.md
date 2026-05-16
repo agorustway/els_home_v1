@@ -1,4 +1,18 @@
 
+## [2026-05-16] 아산 선적관리 검색 상태 표시 안정화 (v5.13.27)
+### 핵심
+- 검색어 입력이 끝난 뒤 DB 조회가 아주 빠르게 끝나도 `검색 중`이 즉시 켜졌다 꺼져 불안정해 보이던 표시를 정리했습니다.
+- 조용한 검색 갱신은 350ms 이상 걸릴 때만 `검색 중`을 보여주고, 짧은 갱신은 화면 표시 없이 지나가게 했습니다.
+- 검색/정렬 요청 ID를 관리해 이전 요청 응답이 늦게 도착해도 최신 결과를 덮어쓰지 않도록 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js` 0 errors
+- `git diff --check` 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 워커 장애 격리·성공행 2차 검증 (v5.13.26)
 ### 핵심
 - 배치 병렬도 산정을 `total_drivers`가 아니라 실제 `available_drivers`와 현재 배치가 점유 중인 작업 수 기준으로 변경했습니다.

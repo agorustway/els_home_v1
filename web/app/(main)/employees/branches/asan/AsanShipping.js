@@ -15,6 +15,7 @@ const VIRTUAL_OVERSCAN = 12;
 const SHIPPING_PAGE_SIZE = 100;
 const SEARCH_DEBOUNCE_MS = 1000;
 const SEARCH_CLEAR_DEBOUNCE_MS = 250;
+const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;
 const EMPTY_HISTORY_ROW = ['-', '-', '조회 대기중', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'];
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
@@ -98,6 +99,7 @@ export default function AsanShipping() {
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchRefreshing, setSearchRefreshing] = useState(false);
+    const [showSearchRefreshing, setShowSearchRefreshing] = useState(false);
     const [isComposingSearch, setIsComposingSearch] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [elapsed, setElapsed] = useState('');
@@ -129,6 +131,7 @@ export default function AsanShipping() {
     const [containerLookupRunning, setContainerLookupRunning] = useState(false);
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
     const lastLoadedPathRef = useRef('');
+    const fetchRequestIdRef = useRef(0);
 
     useEffect(() => {
         const saved = localStorage.getItem('asan_shipping_file') || '/아산지점/2026_자체보관리스트.xlsx';
@@ -162,6 +165,8 @@ export default function AsanShipping() {
         const quiet = Boolean(options.quiet);
         const sortKey = (options.sortKey || '').trim();
         const sortDir = options.sortDir === 'desc' ? 'desc' : 'asc';
+        const requestId = append ? fetchRequestIdRef.current : fetchRequestIdRef.current + 1;
+        if (!append) fetchRequestIdRef.current = requestId;
 
         if (append) {
             setLoadingMore(true);
@@ -188,6 +193,7 @@ export default function AsanShipping() {
             const safeText = text.replace(/\bNaN\b/g, 'null');
             const j = JSON.parse(safeText);
             if (j.data) {
+                if (requestId !== fetchRequestIdRef.current) return;
                 applyShippingData(j.data, { append });
                 lastLoadedPathRef.current = path;
             }
@@ -196,6 +202,8 @@ export default function AsanShipping() {
         } finally {
             if (append) {
                 setLoadingMore(false);
+            } else if (requestId !== fetchRequestIdRef.current) {
+                return;
             } else if (options.quiet) {
                 setSearchRefreshing(false);
             } else {
@@ -263,9 +271,19 @@ export default function AsanShipping() {
     }, [searchInput, isComposingSearch]);
 
     useEffect(() => {
+        if (!searchRefreshing) {
+            setShowSearchRefreshing(false);
+            return undefined;
+        }
+        const timer = setTimeout(() => {
+            setShowSearchRefreshing(true);
+        }, SEARCH_BUSY_VISIBLE_DELAY_MS);
+        return () => clearTimeout(timer);
+    }, [searchRefreshing]);
+
+    useEffect(() => {
         if (!selectedPath) return;
         const quiet = lastLoadedPathRef.current === selectedPath;
-        if (quiet) setSearchRefreshing(true);
         fetchData(selectedPath, { page: 1, search: searchTerm, quiet, ...serverSortParams });
     }, [selectedPath, searchTerm, serverSortParams, fetchData]);
 
@@ -971,7 +989,7 @@ export default function AsanShipping() {
                                 if (e.key === 'Enter') setSearchTerm(searchInput);
                             }}
                         />
-                        {(searchPending || searchRefreshing) && (
+                        {(searchPending || showSearchRefreshing) && (
                             <span className={styles.searchStatus}>
                                 {searchPending ? '입력 대기' : '검색 중'}
                             </span>
