@@ -94,6 +94,46 @@ test('선적관리 엑셀 삭제 행은 현재 조회에서 지우기 전 archiv
   }
 });
 
+test('선적관리 삭제/조회 이력은 1년 보존 후 정리하고 현재 원장은 건드리지 않는다', () => {
+  for (const rel of backendFiles) {
+    const source = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
+
+    assert.match(source, /SHIPPING_HISTORY_RETENTION_DAYS = 365/);
+
+    const cleanupMatch = source.match(
+      /def cleanup_asan_shipping_history_retention[\s\S]*?def maybe_cleanup_asan_shipping_history/,
+    );
+    assert.ok(cleanupMatch, `${rel} should define history retention cleanup`);
+    const cleanupBlock = cleanupMatch[0];
+
+    assert.match(
+      cleanupBlock,
+      /from_\("branch_shipping_row_archive"\)\.delete\(\)\.lt\("archived_at", cutoff\)/,
+      `${rel} should delete old archived shipping rows by archived_at`,
+    );
+    assert.match(
+      cleanupBlock,
+      /from_\("branch_shipping_container_lookups"\)\.delete\(\)\.lt\("looked_up_at", cutoff\)/,
+      `${rel} should delete old container lookup rows by looked_up_at`,
+    );
+    assert.doesNotMatch(
+      cleanupBlock,
+      /from_\("branch_shipping_rows"\)\.delete\(\)/,
+      `${rel} retention cleanup must not delete current shipping rows`,
+    );
+
+    const schedulerMatch = source.match(
+      /def asan_shipping_sync_scheduler\(\):[\s\S]*?threading\.Thread/,
+    );
+    assert.ok(schedulerMatch, `${rel} should define the shipping sync scheduler`);
+    assert.match(
+      schedulerMatch[0],
+      /now = datetime\.now\(KST\)[\s\S]*maybe_cleanup_asan_shipping_history\(now\)[\s\S]*sync_asan_shipping_python\(\)/,
+      `${rel} should run retention cleanup from the scheduler before sync`,
+    );
+  }
+});
+
 test('선적관리 화면은 필터된 컨테이너 조회 결과를 초록색 이력 컬럼으로 붙인다', () => {
   const source = fs.readFileSync(
     path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanShipping.js'),

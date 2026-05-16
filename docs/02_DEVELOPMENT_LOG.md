@@ -1,4 +1,19 @@
 
+## [2026-05-16] 아산 선적관리 이력 1년 보존 정리 (v5.13.21)
+### 핵심
+- 선적관리 운영 원장 `branch_shipping_rows`는 계속 엑셀 최신본 기준으로 유지하고, 보존기간 정리 대상에서 제외했습니다.
+- 삭제 이력 `branch_shipping_row_archive`와 컨테이너 조회 이력 `branch_shipping_container_lookups`만 365일 초과분을 NAS core 스케줄러에서 하루 1회 정리하도록 했습니다.
+- 회귀 테스트로 1년 보존 상수, archive/lookup 삭제 조건, 현재 원장 미삭제 조건을 고정했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (18개)
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과 (번들 Python 사용)
+- `git diff --check` 통과
+- Supabase 운영 DB 확인: 365일 초과 archive/lookup 0건, 현재 선적관리 원장 965건.
+### 변경 파일
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 유령 데이터 방어 보강 (v5.13.21)
 ### 핵심
 - `ONEU6027330`처럼 ISO 체크섬은 통과하지만 단독 조회 시 에러/무자료가 맞는 번호에서, 이전 컨테이너 그리드가 그대로 붙어 성공행처럼 보일 수 있는 위험을 확인했습니다.

@@ -546,8 +546,10 @@ def get_branch_dispatch(branch_id):
 
 # 3-1. 아산지점 선적관리 엑셀 파싱/DB 동기화
 DEFAULT_ASAN_SHIPPING_PATH = "/아산지점/2026_자체보관리스트.xlsx"
+SHIPPING_HISTORY_RETENTION_DAYS = 365
 shipping_cache = {}
 shipping_db_available = True
+shipping_history_cleanup_last_date = None
 
 def resolve_asan_shipping_file(rel_path=None):
     rel_path = (rel_path or DEFAULT_ASAN_SHIPPING_PATH).replace("\\", "/").strip()
@@ -669,6 +671,42 @@ def _archive_removed_asan_shipping_rows(normalized_path, new_payload, removed_fi
         app.logger.warning(f"[선적관리DB] 삭제 이력 archive 건너뜀: {e}")
         return 0
 
+def cleanup_asan_shipping_history_retention(now=None, retention_days=SHIPPING_HISTORY_RETENTION_DAYS):
+    if not supabase or not shipping_db_available:
+        return None
+
+    now = now or datetime.now(KST)
+    cutoff = (now - timedelta(days=retention_days)).isoformat()
+    try:
+        archive_res = supabase.from_("branch_shipping_row_archive").delete().lt("archived_at", cutoff).execute()
+        lookup_res = supabase.from_("branch_shipping_container_lookups").delete().lt("looked_up_at", cutoff).execute()
+        archive_deleted = len(archive_res.data or [])
+        lookup_deleted = len(lookup_res.data or [])
+        app.logger.info(
+            f"[선적관리DB] 이력 보존기간 정리 완료: cutoff={cutoff}, "
+            f"archive={archive_deleted}, lookup={lookup_deleted}"
+        )
+        return {
+            "cutoff": cutoff,
+            "archive_deleted": archive_deleted,
+            "lookup_deleted": lookup_deleted,
+        }
+    except Exception as e:
+        app.logger.warning(f"[선적관리DB] 이력 보존기간 정리 실패: {e}")
+        return None
+
+def maybe_cleanup_asan_shipping_history(now=None):
+    global shipping_history_cleanup_last_date
+    now = now or datetime.now(KST)
+    today_key = now.date().isoformat()
+    if shipping_history_cleanup_last_date == today_key:
+        return None
+    if now.hour < 3:
+        return None
+
+    shipping_history_cleanup_last_date = today_key
+    return cleanup_asan_shipping_history_retention(now=now)
+
 def sync_asan_shipping_python(force=False, rel_path=None):
     global shipping_db_available
     if not supabase or not shipping_db_available:
@@ -782,6 +820,7 @@ def asan_shipping_sync_scheduler():
     while True:
         try:
             now = datetime.now(KST)
+            maybe_cleanup_asan_shipping_history(now)
             if 6 <= now.hour <= 23:
                 sync_asan_shipping_python()
             time.sleep(120)

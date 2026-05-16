@@ -1,13 +1,13 @@
 # ELS MISSION CONTROL (v5.13.21 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 유령 데이터 방어와 NAS 봇 워커 후행 기동을 보강했습니다.
+> 최신 업데이트: 컨테이너 이력조회 유령 데이터 방어와 선적관리 이력 1년 보존 정리를 보강했습니다.
 
 ## CURRENT STATUS
 - **웹 버전**: v5.13.21
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀에서 사라진 행은 archive 테이블에 보존.
+  - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀에서 사라진 행은 archive 테이블에 보존하며 삭제/조회 이력은 365일 초과분만 정리.
   - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 초록색 컬럼으로 표시.
   - 컨테이너 이력조회는 이전 그리드 원문 잔상이 다른 컨테이너 성공행으로 붙지 않도록 폐기/재조회.
 
@@ -34,7 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
-- **v5.13.21**: 컨테이너 이력조회에서 새 조회 전후 그리드 원문 지문을 비교해, 이전 컨테이너 결과가 그대로 남아 다른 요청번호의 성공행으로 붙는 경우를 `이전 조회 결과 잔상 감지` 오류로 폐기하고 1회 재조회. NAS 봇 #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동해 Chrome remote-debugging 시작 충돌을 줄임.
+- **v5.13.21**: 컨테이너 이력조회에서 새 조회 전후 그리드 원문 지문을 비교해, 이전 컨테이너 결과가 그대로 남아 다른 요청번호의 성공행으로 붙는 경우를 `이전 조회 결과 잔상 감지` 오류로 폐기하고 1회 재조회. NAS 봇 #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동해 Chrome remote-debugging 시작 충돌을 줄임. 선적관리 archive/lookup 이력은 365일 보존 후 정리하되 현재 원장은 삭제하지 않음.
 - **v5.13.20**: 아산 선적관리-컨테이너 이력조회 콜라보 1차. 엑셀 동기화 시 현재 원장은 엑셀 기준으로 교체하되, 사라진 행은 `branch_shipping_row_archive`에 `deleted_from_excel`로 보관. 선적관리 화면에 `컨테이너 조회` 버튼을 추가해 현재 필터 결과의 컨테이너를 `/api/els/run` 파이프라인으로 조회하고, No.1 메인 이력 행을 `이력 ...` 초록색 컬럼으로 노출. 조회 결과는 `branch_shipping_container_lookups`에 누적 저장하며 DB수정 시각을 화면에 표시.
 - **v5.13.19**: 컨테이너 이력조회 300초 스톱 원인을 보강. DrissionPage alert 기본 10초 대기 반복을 0.05초 즉시 확인으로 바꾸고, 빈 데몬 상태에서는 `/run`이 먼저 로그인 세션을 확보하도록 변경. 배치 중 워커가 추가로 살아나면 같은 조회 안에서 병렬도를 확장하며, `/api/els` NAS nginx 스트리밍 타임아웃/버퍼링과 Vercel route maxDuration을 보강. 클라이언트 연결이 끊기면 generator가 GeneratorExit를 삼키지 않고 데몬 stop을 호출.
 - **v5.13.18**: 아산 선적관리 첫 조회를 100행으로 줄여 운영 API 기준 42,992 bytes 응답을 확인하고, 500행 212,531 bytes 대비 초기 payload를 약 1/5로 축소. `xlsx`는 엑셀 다운로드 클릭 시 lazy import하고, 아산 메인 탭을 localStorage에 저장해 선적관리 사용자가 재방문할 때 불필요한 배차판 초기 fetch를 줄임. 운영/NAS/Core API 모두 `source=supabase`, 총 965건 조회를 확인.
@@ -74,7 +74,7 @@
 - 로컬 dev 서버 `/employees/branches/asan`: HTTP 200 확인(인증 보호로 로그인 페이지 응답)
 - Supabase 운영 DB 확인: `branch_shipping_files` 1건, `branch_shipping_rows` 965건 조회 성공
 - 운영 API 확인: `/api/branches/asan/shipping?page_size=100` `source=supabase`, 100/965건, 42,992 bytes. NAS gateway/core는 230ms대, Vercel 경유는 700ms대.
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 14개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 18개 통과, 선적관리 이력 365일 보존 회귀 포함
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js`: 0 errors
 - `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 14개 통과
