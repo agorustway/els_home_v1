@@ -242,11 +242,14 @@ export default function DriverContactsPage() {
                     <div className={styles.desktopOnlyBtns}>
                         <ExcelButtonGroup onUploadSuccess={fetchList} tableName="driver_contacts" />
                     </div>
-                    {selectedIds.size > 0 && (
-                        <button onClick={() => setBulkModalOpen(true)} className={styles.btnSecondary}>
-                            {selectedIds.size}명 선택됨
-                        </button>
-                    )}
+                    <button
+                        onClick={() => selectedIds.size > 0 && setBulkModalOpen(true)}
+                        className={styles.btnSecondary}
+                        disabled={selectedIds.size === 0}
+                        title={selectedIds.size === 0 ? '목록에서 운전원을 선택하면 일괄 설정할 수 있습니다.' : '선택 운전원의 지도 공개범위를 일괄 설정합니다.'}
+                    >
+                        지도범위 일괄설정{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                    </button>
                     <Link href="/employees/driver-contacts/new" className={styles.btnPrimary}>등록</Link>
                 </div>
             </div>

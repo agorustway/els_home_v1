@@ -40,7 +40,6 @@ async function syncDriverContact(supabase, trip) {
         last_container_type: trip.container_type,
         last_container_kind: trip.container_kind,
         cargo_type: trip.cargo_type || 'container',
-        map_visibility: trip.map_visibility || 'own',
         general_vehicle_type: trip.general_vehicle_type || null,
         general_payload: trip.general_payload || null,
         general_body_type: trip.general_body_type || null,
@@ -62,6 +61,7 @@ async function syncDriverContact(supabase, trip) {
                 name: trip.driver_name,
                 phone: trip.driver_phone,
                 contract_type: 'uncontracted',
+                map_visibility: 'own',
                 ...lastTripInfo,
             }]);
     }
@@ -116,7 +116,7 @@ export async function PATCH(request, { params }) {
             transport_type, billing_amount, work_site, vehicle_id, driver_name, driver_phone,
             vehicle_number, source, admin_edit, cargo_type, cargo_item, cargo_order_number,
             cargo_weight, general_vehicle_type, general_payload, general_body_type,
-            map_visibility, driver_contract_type,
+            driver_contract_type,
         } = body;
 
         // 기존 데이터 조회 (로그용)
@@ -160,7 +160,6 @@ export async function PATCH(request, { params }) {
         if (general_vehicle_type !== undefined) updates.general_vehicle_type = general_vehicle_type;
         if (general_payload !== undefined) updates.general_payload = general_payload;
         if (general_body_type !== undefined) updates.general_body_type = general_body_type;
-        if (map_visibility !== undefined) updates.map_visibility = map_visibility;
         if (driver_contract_type !== undefined) updates.driver_contract_type = driver_contract_type;
         if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
         // [v5.10.42] admin_edit 시 driver_name 보존 (기사명이 '마감담당자'로 바뀌지 않도록)
@@ -209,20 +208,6 @@ export async function PATCH(request, { params }) {
         } else {
             data = result1.data;
             error = result1.error;
-        }
-
-        // [v5.11.2] map_visibility 변경 시 driver_contacts 에도 즉시 반영하여 앱 로그인 시 적용되도록 함
-        if (map_visibility !== undefined && data) {
-            try {
-                const phone = (data.driver_phone || '').replace(/[^0-9]/g, '');
-                if (phone) {
-                    await supabase.from('driver_contacts').update({ map_visibility }).ilike('phone', `%${phone.slice(-8)}%`);
-                } else if (data.vehicle_number) {
-                    await supabase.from('driver_contacts').update({ map_visibility }).eq('vehicle_number', data.vehicle_number);
-                }
-            } catch (err) {
-                console.error('driver_contacts map_visibility update failed:', err);
-            }
         }
 
         // 수정 로그 기록 (수정 모드일 경우)

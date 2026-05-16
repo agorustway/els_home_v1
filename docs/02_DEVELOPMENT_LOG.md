@@ -1,4 +1,24 @@
 
+## [2026-05-16] 지도 공개범위 운전원정보 마스터화 (v5.13.25)
+### 핵심
+- 지도 공개범위는 운행 건별 편집 값이 아니라 `driver_contacts.map_visibility` 마스터 설정이라는 기준으로 정리했습니다.
+- 차량위치관제 운행기록 행의 `지도: 자기차량/계약차량/전체운행` 선택 UI를 제거했습니다.
+- 운전원정보 목록 상단에 `지도범위 일괄설정` 버튼을 항상 노출하고, 선택된 운전원에게 일괄 적용하도록 복구했습니다.
+- 차량위치관제 API는 운전원정보의 지도범위 값을 조회해 활용하고, 운행 생성/수정/완료 동기화 과정에서 운행 건에 `map_visibility`를 녹여 쓰지 않도록 정리했습니다.
+### 검증
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- `git diff --check` 통과
+- `npm.cmd run build` 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/(intranet)/driver-contacts/page.js`
+- `web/app/(main)/employees/(intranet)/intranet.module.css`
+- `web/app/api/vehicle-tracking/trips/route.js`
+- `web/app/api/vehicle-tracking/trips/[id]/route.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 아산 선적관리 DB 전체 기준 정렬 (v5.13.24)
 ### 핵심
 - 컬럼 헤더 정렬이 브라우저에 이미 내려온 100행만 재정렬하던 문제를 수정했습니다.

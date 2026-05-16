@@ -40,7 +40,7 @@ async function attachDriverMeta(supabase, trips = []) {
             ...t,
             cargo_type: d.cargo_type || t.cargo_type || 'container',
             driver_contract_type: d.contract_type || t.driver_contract_type || 'uncontracted',
-            map_visibility: d.map_visibility || t.map_visibility || 'own',
+            map_visibility: d.map_visibility || 'own',
             branch: d.branch || t.branch || null,
             partner_company: d.partner_company || t.partner_company || null,
             general_vehicle_type: d.general_vehicle_type || t.general_vehicle_type || null,
@@ -361,7 +361,6 @@ export async function POST(request) {
             general_vehicle_type = null,
             general_payload = null,
             general_body_type = null,
-            map_visibility,
             driver_contract_type,
         } = body;
 
@@ -376,7 +375,6 @@ export async function POST(request) {
             const { data: metaRows } = await metaQuery;
             driverMeta = metaRows?.[0] || null;
         }
-        map_visibility = driverMeta?.map_visibility || map_visibility || 'own';
         driver_contract_type = driverMeta?.contract_type || driver_contract_type || 'uncontracted';
         cargo_type = cargo_type || driverMeta?.cargo_type || 'container';
         general_vehicle_type = general_vehicle_type || driverMeta?.general_vehicle_type || null;
@@ -427,7 +425,6 @@ export async function POST(request) {
                 general_vehicle_type: general_vehicle_type || undefined,
                 general_payload:  general_payload || undefined,
                 general_body_type: general_body_type || undefined,
-                map_visibility:   map_visibility || undefined,
                 driver_contract_type: driver_contract_type || undefined,
                 chk_brake:        body.chk_brake  !== undefined ? body.chk_brake : undefined,
                 chk_tire:         body.chk_tire   !== undefined ? body.chk_tire  : undefined,
@@ -475,7 +472,6 @@ export async function POST(request) {
                 general_vehicle_type,
                 general_payload,
                 general_body_type,
-                map_visibility,
                 driver_contract_type,
                 container_number: container_number || '',
                 seal_number:      seal_number || '',

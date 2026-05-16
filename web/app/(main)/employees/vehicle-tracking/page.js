@@ -1471,11 +1471,6 @@ export default function VehicleTrackingPage() {
                                     <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }} onClick={(e) => e.stopPropagation()}>
                                         {cargoTypeLabel(trip.cargo_type || 'container')}<br />{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}
-                                        <select defaultValue={trip.map_visibility || 'own'} onChange={(e) => saveTripField(trip, 'map_visibility', e.target.value)} style={{ display: 'block', marginTop: 4, width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', color: (trip.admin_edited_fields || []).includes('map_visibility') ? '#2563eb' : '#64748b' }}>
-                                            <option value="own">지도: 자기차량</option>
-                                            <option value="contracted">지도: 계약차량</option>
-                                            <option value="all">지도: 전체운행</option>
-                                        </select>
                                     </td>
                                     <td>
                                         <div><strong>{trip.driver_name}</strong></div>
