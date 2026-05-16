@@ -1052,8 +1052,10 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         if open_els_menu(page, _log):
             _log("✅ 모든 준비 완료 (로그인 + 메뉴 진입)")
             page.login_time = time.time() # [v4.12.1] 세션 관리를 위한 로그인 시점 기록
+            page.last_extension = page.login_time
             page.last_activity = time.time()
             page.page_ready = True
+            sync_etrans_session_timer(page, extend_server=False, log_callback=_log)
             return (page, None)
         
         page.quit()
@@ -1110,6 +1112,125 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
     return {"ok": False, "error": "결과 없음", "total_elapsed": total_elapsed}
 
 
+def sync_etrans_session_timer(page, extend_server=False, log_callback=None):
+    """eTrans WebSquare 클라이언트 세션 타이머를 서버 세션 연장 상태와 동기화한다.
+
+    eTrans 타이머는 시각(HHMMSS) 차이만으로 남은 시간을 계산해서 자정이 지나면
+    음수 차이를 세션 종료로 오판할 수 있다. 서버 세션 연장 뒤 클라이언트 타이머도
+    다시 시작하고, 자정 롤오버 전에 같은 문제가 재발하지 않도록 가드를 설치한다.
+    """
+    extend_flag = "true" if extend_server else "false"
+    script = f"""
+        return (function(extendServer) {{
+            var windows = [];
+            function pushWindow(w) {{
+                if (w && windows.indexOf(w) === -1) windows.push(w);
+            }}
+            pushWindow(window);
+            try {{ pushWindow(window.top); }} catch(e) {{}}
+            try {{ pushWindow(window.parent); }} catch(e) {{}}
+            try {{
+                if (window.$p && $p.top && $p.top().wfm_top && $p.top().wfm_top.getWindow) {{
+                    pushWindow($p.top().wfm_top.getWindow());
+                }}
+            }} catch(e) {{}}
+            try {{
+                if (window.wfm_top && window.wfm_top.getWindow) {{
+                    pushWindow(window.wfm_top.getWindow());
+                }}
+            }} catch(e) {{}}
+
+            for (var i = 0; i < windows.length; i++) {{
+                var w = windows[i];
+                var sc = null;
+                try {{ sc = w.scwin; }} catch(e) {{}}
+                if (!sc || (typeof sc.sessionTimeInit !== 'function' && typeof sc.startSessionTimer !== 'function')) {{
+                    continue;
+                }}
+
+                var before = "";
+                var after = "";
+                var extended = false;
+                var restarted = false;
+
+                try {{ before = w.localStorage.getItem("scwin.startTimeObj") || ""; }} catch(e) {{}}
+
+                if (!sc.__elsMidnightGuarded && typeof sc.sessionTimer === 'function') {{
+                    var originalTimer = sc.sessionTimer;
+                    sc.sessionTimer = function() {{
+                        try {{
+                            var raw = w.localStorage.getItem("scwin.startTimeObj");
+                            if (raw && w.com && w.com.date && w.com.date.getDateObjInfo && w.com.date.getHMSNumber) {{
+                                var startObj = JSON.parse(raw);
+                                var curObj = w.com.date.getDateObjInfo(new Date());
+                                var startHms = Number(w.com.date.getHMSNumber(startObj));
+                                var curHms = Number(w.com.date.getHMSNumber(curObj));
+                                if (isFinite(startHms) && isFinite(curHms) && curHms < startHms) {{
+                                    try {{ if (typeof sc.setSessionExtension === 'function') sc.setSessionExtension(); }} catch(e) {{}}
+                                    try {{ if (typeof sc.sessionTimeInit === 'function') sc.sessionTimeInit(); }} catch(e) {{}}
+                                }}
+                            }}
+                        }} catch(e) {{}}
+                        return originalTimer.apply(this, arguments);
+                    }};
+                    sc.__elsMidnightGuarded = true;
+                }}
+
+                if (extendServer && typeof sc.setSessionExtension === 'function') {{
+                    try {{
+                        sc.setSessionExtension();
+                        extended = true;
+                    }} catch(e) {{}}
+                }}
+
+                try {{
+                    if (sc.sessionTimerId) {{
+                        w.clearInterval(sc.sessionTimerId);
+                        sc.sessionTimerId = null;
+                    }}
+                }} catch(e) {{}}
+
+                try {{
+                    if (typeof sc.startSessionTimer === 'function') {{
+                        sc.startSessionTimer();
+                        restarted = true;
+                    }} else if (typeof sc.sessionTimeInit === 'function') {{
+                        sc.sessionTimeInit();
+                        restarted = true;
+                    }}
+                }} catch(e) {{}}
+
+                try {{ after = w.localStorage.getItem("scwin.startTimeObj") || ""; }} catch(e) {{}}
+
+                return {{
+                    ok: true,
+                    extended: extended,
+                    restarted: restarted,
+                    guarded: !!sc.__elsMidnightGuarded,
+                    before: before,
+                    after: after
+                }};
+            }}
+
+            return {{ ok: false, reason: "top scwin timer not found" }};
+        }})({extend_flag});
+    """
+    try:
+        result = page.run_js(script)
+        if not isinstance(result, dict):
+            result = {"ok": bool(result), "raw": result}
+        if log_callback:
+            if result.get("ok"):
+                log_callback("✅ eTrans 클라이언트 세션 타이머 재동기화 완료")
+            else:
+                log_callback(f"⚠️ eTrans 세션 타이머 동기화 실패: {result.get('reason', 'unknown')}")
+        return result
+    except Exception as e:
+        if log_callback:
+            log_callback(f"⚠️ eTrans 세션 타이머 동기화 중 오류: {e}")
+        return {"ok": False, "reason": str(e)}
+
+
 def extend_session(page, log_callback=None):
     """세션 연장 버튼(상단 연장) 클릭 (v4.12.1)
     
@@ -1123,7 +1244,7 @@ def extend_session(page, log_callback=None):
         # [v4.12.1] 전역 수색으로 변경
         ext_btn = find_ele_globally(page, '#mf_wfm_top_btn_sessinExtension', timeout=3) or \
                   find_ele_globally(page, 'text:연장', timeout=1)
-        
+
         if ext_btn:
             # 클릭 전 타이머 값 확인 (디버그용)
             try:
@@ -1134,26 +1255,38 @@ def extend_session(page, log_callback=None):
             except: pass
 
             # 버튼 클릭 (JS 클릭이 더 확실함)
+            clicked = False
             try:
                 ext_btn.click(by_js=True)
-            except:
-                ext_btn.click()
-            
-            if log_callback: log_callback("⏳ 세션 연장 버튼 클릭 완료 (60분 초기화 시도)")
+                clicked = True
+            except Exception as js_click_error:
+                try:
+                    ext_btn.click()
+                    clicked = True
+                except Exception as click_error:
+                    if log_callback:
+                        log_callback(f"⚠️ 세션 연장 버튼 클릭 실패. 직접 연장으로 전환: {click_error or js_click_error}")
+
+            if clicked and log_callback:
+                log_callback("⏳ 세션 연장 버튼 클릭 완료 (60분 초기화 시도)")
             
             # 클릭 후 잠깐 대기하며 타이머 변화 확인
             time.sleep(1)
+            sync_result = sync_etrans_session_timer(page, extend_server=not clicked, log_callback=log_callback)
             try:
                 timer = find_ele_globally(page, '[id*="sessionTime"]', timeout=0.5)
                 if timer:
                     after_time = timer.text
                     if log_callback: log_callback(f"✅ 연장 후 세션 시간: {after_time}")
             except: pass
-            
-            return True
+
+            return bool(sync_result.get("ok"))
         else:
-            if log_callback: log_callback("⚠️ 세션 연장 버튼을 찾을 수 없습니다. (ID: mf_wfm_top_btn_sessinExtension)")
-            # [v4.12.1] 버튼을 못 찾을 경우 스크린샷 저장하여 원인 파악
+            if log_callback: log_callback("⚠️ 세션 연장 버튼을 찾을 수 없습니다. WebSquare 직접 연장으로 전환합니다.")
+            sync_result = sync_etrans_session_timer(page, extend_server=True, log_callback=log_callback)
+            if sync_result.get("ok"):
+                return True
+            # [v4.12.1] 버튼과 전역 함수 모두 실패할 경우 스크린샷 저장하여 원인 파악
             save_screenshot(page, "extend_session_fail")
             return False
     except Exception as e:

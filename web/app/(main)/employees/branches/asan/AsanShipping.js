@@ -11,8 +11,10 @@ import {
     areArraysEqual,
     areSetsEqual,
     compareShippingFilterValues,
+    getShippingVirtualWindow,
     getShippingSignalTone,
     getVisibleShippingColumns,
+    mergePendingContainerLookupResults,
     normalizeDateOnly,
     normalizeShippingFilterValue,
     normalizeShippingColumnOrder,
@@ -27,7 +29,6 @@ const FULL_FILTER_PAGE_SIZE = 10000;
 const SEARCH_DEBOUNCE_MS = 1000;
 const SEARCH_CLEAR_DEBOUNCE_MS = 250;
 const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;
-const EMPTY_HISTORY_ROW = ['-', '-', '조회 대기중', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'];
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
 // 날짜 관련 컬럼 키워드
@@ -729,16 +730,7 @@ export default function AsanShipping() {
 
         setContainerLookupRunning(true);
         setContainerLookupStatus(`${containers.length}건 조회 준비 중`);
-        const pendingMap = {};
-        containers.forEach(containerNo => {
-            pendingMap[containerNo] = {
-                containerNo,
-                resultRows: [[containerNo, ...EMPTY_HISTORY_ROW.slice(1)]],
-                mainRow: [containerNo, ...EMPTY_HISTORY_ROW.slice(1)],
-                lookedUpAt: null,
-            };
-        });
-        setContainerLookupResults(prev => ({ ...prev, ...pendingMap }));
+        setContainerLookupResults(prev => mergePendingContainerLookupResults(prev, containers));
 
         const receivedRows = [];
         let finalRows = null;
@@ -986,12 +978,19 @@ export default function AsanShipping() {
             loadNextPage();
         }
     };
-    const visibleStart = Math.max(0, Math.floor(tableScrollTop / ROW_HEIGHT) - VIRTUAL_OVERSCAN);
-    const visibleCount = Math.ceil(tableViewportHeight / ROW_HEIGHT) + (VIRTUAL_OVERSCAN * 2);
-    const visibleEnd = Math.min(totalRows, visibleStart + visibleCount);
+    const {
+        visibleStart,
+        visibleEnd,
+        topSpacerHeight,
+        bottomSpacerHeight,
+    } = getShippingVirtualWindow({
+        scrollTop: tableScrollTop,
+        rowHeight: ROW_HEIGHT,
+        viewportHeight: tableViewportHeight,
+        totalRows,
+        overscan: VIRTUAL_OVERSCAN,
+    });
     const visibleRows = processedData.slice(visibleStart, visibleEnd);
-    const topSpacerHeight = visibleStart * ROW_HEIGHT;
-    const bottomSpacerHeight = Math.max(0, (totalRows - visibleEnd) * ROW_HEIGHT);
 
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {

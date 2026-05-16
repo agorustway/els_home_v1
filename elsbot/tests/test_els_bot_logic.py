@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from els_bot import (
     find_ele_globally, open_els_menu, is_session_valid, close_modals,
     is_required_input_text, solve_input_and_search, close_required_input_alert,
-    should_clear_grid_before_search,
+    should_clear_grid_before_search, extend_session, sync_etrans_session_timer,
 )
 
 class TestElsBotLogic(unittest.TestCase):
@@ -179,6 +179,40 @@ class TestElsBotLogic(unittest.TestCase):
             self.assertFalse(should_clear_grid_before_search())
         with patch.dict(os.environ, {"ELS_CLEAR_GRID_BEFORE_SEARCH": "true"}):
             self.assertTrue(should_clear_grid_before_search())
+
+    def test_sync_session_timer_installs_midnight_guard(self):
+        self.mock_page.run_js.return_value = {"ok": True, "guarded": True, "restarted": True}
+
+        result = sync_etrans_session_timer(self.mock_page, extend_server=True)
+
+        self.assertTrue(result.get("ok"))
+        script = self.mock_page.run_js.call_args.args[0]
+        self.assertIn("curHms < startHms", script)
+        self.assertIn("setSessionExtension", script)
+        self.assertIn("startSessionTimer", script)
+
+    @patch('els_bot.sync_etrans_session_timer', return_value={"ok": True, "restarted": True})
+    @patch('els_bot.find_ele_globally')
+    @patch('els_bot.time.sleep', return_value=None)
+    def test_extend_session_resets_client_timer_after_button_click(self, _sleep, find_ele, sync_timer):
+        ext_btn = MagicMock()
+        timer = MagicMock()
+        timer.text = "15분 00초"
+        find_ele.side_effect = [ext_btn, timer, timer]
+
+        result = extend_session(self.mock_page)
+
+        self.assertTrue(result)
+        ext_btn.click.assert_called_with(by_js=True)
+        sync_timer.assert_called_with(self.mock_page, extend_server=False, log_callback=None)
+
+    @patch('els_bot.sync_etrans_session_timer', return_value={"ok": True, "extended": True, "restarted": True})
+    @patch('els_bot.find_ele_globally', return_value=None)
+    def test_extend_session_uses_direct_websquare_fallback_when_button_missing(self, _find_ele, sync_timer):
+        result = extend_session(self.mock_page)
+
+        self.assertTrue(result)
+        sync_timer.assert_called_with(self.mock_page, extend_server=True, log_callback=None)
 
     @patch('els_bot.time.sleep', return_value=None)
     def test_solve_input_required_alert_returns_error_status(self, _sleep):

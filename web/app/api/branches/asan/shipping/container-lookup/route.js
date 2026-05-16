@@ -106,6 +106,10 @@ export async function POST(req) {
                 if (line.startsWith('RESULT:')) {
                     try {
                         const payload = JSON.parse(line.substring(7));
+                        if (!payload.ok) {
+                            send(`${line}\n`);
+                            return;
+                        }
                         const rows = payload.ok && Array.isArray(payload.result) ? payload.result : [];
                         const saved = await saveRowsSafely({
                             filePath,

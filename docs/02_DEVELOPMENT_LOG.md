@@ -1,4 +1,39 @@
 
+## [2026-05-17] eTrans 이력조회 세션 연장/자정 롤오버 보강 (v5.13.39)
+### 핵심
+- 형이 제보한 “API 연동 조회 중 Session이 종료되었습니다” 팝업을 기준으로 eTrans 캐시 JS와 봇 세션 관리 흐름을 조사했습니다.
+- 연장 버튼 ID는 기존 분석대로 `btn_sessinExtension` 오타 ID가 맞고, 현재 봇도 해당 버튼을 찾고 있었습니다.
+- 다만 eTrans 자체 타이머가 `localStorage.scwin.startTimeObj`와 현재 시각의 `HHMMSS` 차이만 계산해, 23시대에 시작된 세션이 00시대로 넘어가면 `curHms < startHms`가 되어 남은 시간을 0으로 만들고 `logoutExpire.do` 흐름을 탈 수 있음을 확인했습니다.
+- `extend_session()`은 버튼 클릭 뒤 WebSquare 클라이언트 타이머를 재시작하도록 보강했고, 버튼이 보이지 않을 때는 `scwin.setSessionExtension()`/`startSessionTimer()` 직접 호출 fallback을 사용합니다.
+- 로그인 직후에도 타이머 동기화 스크립트를 설치해 자정 롤오버 시 자동으로 세션 연장과 `sessionTimeInit()`을 수행하게 했습니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py` 통과 (14개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py` 통과
+### 변경 파일
+- `elsbot/els_bot.py`
+- `elsbot/tests/test_els_bot_logic.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 선적관리 미선적 필터 표시 방어 (v5.13.38)
+### 핵심
+- 형이 제보한 “미선적 필터 상태에서 컨테이너 조회를 누른 뒤 조회는 도는 것 같은데 화면 행이 안 보이는” 증상을 코드 흐름으로 확인했습니다.
+- 컨테이너 조회 시작 시 화면 상태에 임시 `조회 대기중` 이력값을 넣으면서, 기존 미선적 판정(`작업일자 <= 이력 MOVE TIME` + `반입/적하` 제외)이 `neutral`로 바뀌어 필터에서 빠질 수 있었습니다.
+- 이제 조회 준비 상태는 기존 이력 판정이 있는 컨테이너를 덮어쓰지 않아, 새 조회값이 아직 없거나 세션 종료 오류로 결과가 안 들어와도 기존 미선적 화면을 유지합니다.
+- 필터 후 행 수가 줄었는데 기존 스크롤 위치가 큰 상태면 가상 스크롤이 행 범위 밖에서 시작해 빈 화면처럼 보일 수 있어, 시작점을 실제 행 수 안으로 보정했습니다.
+- 세션 종료 같은 실패 응답(`payload.ok === false`)은 저장 로직을 타지 않고 오류만 전달하게 막아, 실패한 조회가 기존 DB 이력값을 삭제하지 않도록 했습니다.
+- DB 저장 구조는 기존과 동일하게 `/api/branches/asan/shipping/container-lookup`이 성공 최종 결과를 서버 측에서 `branch_shipping_container_lookups`에 저장합니다. 다만 현재 컨테이너 이력조회 세션 종료 오류 원인 조사는 별도 스레드 범위로 뒀습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (20개)
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (31개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"` 0 errors
+- `git diff --check` 통과 (CRLF 치환 warning만 표시)
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/api/branches/asan/shipping/container-lookup/route.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 미선적 기준 재정의 및 조회 덮어쓰기 (v5.13.37)
 ### 핵심
 - 형 요청대로 `미선적` 빠른 필터를 오늘 기준이 아니라 행의 `작업일자` 기준으로 다시 정의했습니다.

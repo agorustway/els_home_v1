@@ -30,6 +30,50 @@ export function getVisibleShippingColumns(order = [], currentHeaders = [], hidde
   return normalizeShippingColumnOrder(order, currentHeaders).filter((col) => !hidden.has(col));
 }
 
+export function getShippingVirtualWindow({
+  scrollTop = 0,
+  rowHeight = 28,
+  viewportHeight = 480,
+  totalRows = 0,
+  overscan = 12,
+} = {}) {
+  const safeTotalRows = Math.max(0, Number(totalRows) || 0);
+  const safeRowHeight = Math.max(1, Number(rowHeight) || 1);
+  const safeViewportHeight = Math.max(0, Number(viewportHeight) || 0);
+  const safeOverscan = Math.max(0, Number(overscan) || 0);
+  const visibleCount = Math.ceil(safeViewportHeight / safeRowHeight) + (safeOverscan * 2);
+  const rawStart = Math.max(
+    0,
+    Math.floor(Math.max(0, Number(scrollTop) || 0) / safeRowHeight) - safeOverscan,
+  );
+  const maxStart = Math.max(0, safeTotalRows - visibleCount);
+  const visibleStart = Math.min(rawStart, maxStart);
+  const visibleEnd = Math.min(safeTotalRows, visibleStart + visibleCount);
+
+  return {
+    visibleStart,
+    visibleCount,
+    visibleEnd,
+    topSpacerHeight: visibleStart * safeRowHeight,
+    bottomSpacerHeight: Math.max(0, (safeTotalRows - visibleEnd) * safeRowHeight),
+  };
+}
+
+export function mergePendingContainerLookupResults(prevResults = {}, containers = []) {
+  const next = { ...(prevResults || {}) };
+  containers.forEach((containerNo) => {
+    if (!containerNo || next[containerNo]?.mainRow) return;
+    next[containerNo] = {
+      containerNo,
+      resultRows: [],
+      mainRow: null,
+      lookedUpAt: null,
+      pending: true,
+    };
+  });
+  return next;
+}
+
 export function areArraysEqual(a = [], b = []) {
   if (a.length !== b.length) return false;
   return a.every((item, idx) => item === b[idx]);
