@@ -14,6 +14,19 @@
 - `web/tests/asanShippingFlow.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
+## [2026-05-16] 컨테이너 이력조회 WebSquare 잔상/무자료 조기 확정 보강 (v5.13.22)
+### 핵심
+- `ONEU6027330` 유령 성공행과 `HPCU5082429` 무자료 오판 로그를 기준으로, 기존 방어가 같은 원문 잔상만 잡고 WebSquare 내부 상태/무자료 모달 잔상에는 약한 점을 확인했습니다.
+- 조회 전 WebSquare 그리드 컴포넌트, DOM 행, 일반 모달을 더 넓게 초기화합니다.
+- 조회 직후 `데이터가 없음` 문구를 바로 NODATA로 확정하지 않고, 최종 추출 단계에서 충분히 기다린 뒤 확정합니다.
+- 조회 버튼 클릭 직후 입력값을 다시 읽어 요청 컨테이너와 다르면 오류로 중단합니다.
+### 검증
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py elsbot/tests/test_container_lookup_safety.py elsbot/tests/test_els_bot_logic.py` 통과
+- `python -m unittest elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic elsbot.tests.test_daemon_stop_control` 통과 (23개)
+### 변경 파일
+- `elsbot/els_bot.py`
+- `elsbot/tests/test_els_bot_logic.py`
+
 ## [2026-05-16] 컨테이너 이력조회 유령 데이터 방어 보강 (v5.13.21)
 ### 핵심
 - `ONEU6027330`처럼 ISO 체크섬은 통과하지만 단독 조회 시 에러/무자료가 맞는 번호에서, 이전 컨테이너 그리드가 그대로 붙어 성공행처럼 보일 수 있는 위험을 확인했습니다.

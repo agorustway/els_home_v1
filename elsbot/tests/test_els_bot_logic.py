@@ -170,5 +170,36 @@ class TestElsBotLogic(unittest.TestCase):
 
         self.assertEqual(result, "INPUT_REQUIRED_MODAL")
 
+    @patch('els_bot.time.sleep', return_value=None)
+    def test_solve_input_does_not_confirm_nodata_before_scrape(self, _sleep):
+        input_ele = MagicMock()
+        input_ele.run_js.return_value = "HPCU5082429"
+        search_btn = MagicMock()
+
+        def ele_side_effect(selector, timeout=0.5):
+            if 'containerNo' in selector:
+                return input_ele
+            if 'btnSearch' in selector:
+                return search_btn
+            return None
+
+        def js_side_effect(script):
+            if 'vals' in script and 'containerNo' in script:
+                return ["HPCU5082429"]
+            if 'texts.join' in script:
+                return "데이터가 없음"
+            if 'w2modal' in script or 'role="dialog"' in script:
+                return ""
+            return None
+
+        self.mock_page.ele.side_effect = ele_side_effect
+        self.mock_page.run_js.side_effect = js_side_effect
+        self.mock_page.handle_alert.return_value = None
+        self.mock_page.html = ""
+
+        result = solve_input_and_search(self.mock_page, "HPCU5082429")
+
+        self.assertTrue(result)
+
 if __name__ == "__main__":
     unittest.main()

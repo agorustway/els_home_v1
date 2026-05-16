@@ -199,6 +199,119 @@ def read_result_scope_text(page):
     except:
         return ""
 
+def clear_container_result_state(page):
+    """새 조회 전에 WebSquare 그리드/무자료 모달 잔상을 최대한 비운다."""
+    try:
+        return page.run_js(r"""
+            return (function() {
+                var cleared = { components: 0, rows: 0, modals: 0 };
+                var roots = [];
+                var body = document.querySelector('[id*="602_body"]');
+                if (body) roots.push(body);
+                roots.push(document);
+
+                function pushUnique(arr, item) {
+                    if (item && arr.indexOf(item) === -1) arr.push(item);
+                }
+
+                function componentById(id) {
+                    var candidates = [];
+                    try { pushUnique(candidates, window[id]); } catch(e) {}
+                    try { if (window.scwin) pushUnique(candidates, window.scwin[id]); } catch(e) {}
+                    try { if (window.$p && $p.getComponentById) pushUnique(candidates, $p.getComponentById(id)); } catch(e) {}
+                    try { if (window.WebSquare && WebSquare.util && WebSquare.util.getComponentById) pushUnique(candidates, WebSquare.util.getComponentById(id)); } catch(e) {}
+                    try { pushUnique(candidates, document.getElementById(id)); } catch(e) {}
+                    return candidates;
+                }
+
+                function clearGridObject(obj) {
+                    if (!obj) return;
+                    var changed = false;
+                    ['removeAll', 'removeAllRows', 'deleteAllRows', 'clear'].forEach(function(method) {
+                        try {
+                            if (typeof obj[method] === 'function') {
+                                obj[method]();
+                                changed = true;
+                            }
+                        } catch(e) {}
+                    });
+                    ['setData', 'setGridData', 'setAllJSON', 'setJSON', 'setDataList'].forEach(function(method) {
+                        try {
+                            if (typeof obj[method] === 'function') {
+                                obj[method]([]);
+                                changed = true;
+                            }
+                        } catch(e) {}
+                    });
+                    try {
+                        if (typeof obj.getRowCount === 'function' && typeof obj.removeRow === 'function') {
+                            var guard = 0;
+                            while (obj.getRowCount() > 0 && guard < 200) {
+                                obj.removeRow(0);
+                                guard += 1;
+                                changed = true;
+                            }
+                        }
+                    } catch(e) {}
+                    if (changed) cleared.components += 1;
+                }
+
+                var ids = [
+                    'mf_tac_layout_contents_602_body_gridView',
+                    'mf_tac_layout_contents_602_body_grd_list',
+                    'mf_tac_layout_contents_602_body_grid'
+                ];
+                roots.forEach(function(root) {
+                    try {
+                        root.querySelectorAll('[id*="602"][id*="grid"], [id*="602"][id*="grd"], [id*="gridView"], [id*="grd"]').forEach(function(el) {
+                            if (el.id) ids.push(el.id);
+                        });
+                    } catch(e) {}
+                });
+                ids.filter(function(id, idx) { return id && ids.indexOf(id) === idx; }).forEach(function(id) {
+                    componentById(id).forEach(clearGridObject);
+                });
+
+                roots.forEach(function(root) {
+                    try {
+                        root.querySelectorAll('table.w2grid_table tbody, table[id*="body"] tbody').forEach(function(tb) {
+                            var rows = tb.querySelectorAll('tr');
+                            cleared.rows += rows.length;
+                            tb.innerHTML = '';
+                        });
+                    } catch(e) {}
+                });
+
+                document.querySelectorAll('.w2modal_popup, .w2modal_lay, [class*="w2modal"], [role="dialog"]').forEach(function(el) {
+                    try {
+                        var style = window.getComputedStyle(el);
+                        if (style && (style.display === 'none' || style.visibility === 'hidden')) return;
+                        var txt = (el.innerText || el.textContent || '').trim();
+                        if (!txt) return;
+                        if (txt.indexOf('비밀번호') !== -1 || txt.indexOf('아이디') !== -1 || txt.indexOf('로그인') !== -1) return;
+                        var buttons = el.querySelectorAll('button, input[type="button"], a, .w2modal_btn, [class*="btn"]');
+                        var clicked = false;
+                        for (var b = 0; b < buttons.length; b++) {
+                            var bt = buttons[b];
+                            var btxt = (bt.innerText || bt.value || bt.textContent || '').trim();
+                            if (btxt.indexOf('확인') !== -1 || btxt === 'OK' || btxt.indexOf('닫기') !== -1) {
+                                try { bt.click(); clicked = true; } catch(e) {}
+                                break;
+                            }
+                        }
+                        if (!clicked) {
+                            el.style.display = 'none';
+                            el.style.visibility = 'hidden';
+                        }
+                        cleared.modals += 1;
+                    } catch(e) {}
+                });
+                return cleared;
+            })();
+        """)
+    except:
+        return None
+
 def set_container_input_value(page, input_ele, container_no, log_callback=None):
     """WebSquare 컴포넌트 값과 실제 입력창 값을 맞춘 뒤 검증한다."""
     safe_cn = json.dumps(container_no)
@@ -481,47 +594,13 @@ def solve_input_and_search(page, container_no, log_callback=None):
         except: input_ele.click(by_js=True)
         log_phase("입력창 포커스", phase_started)
         
-        # [v4.12.5+] 조회 전 그리드 데이터 강제 초기화 (WebSquare 객체 + DOM 동시 타격)
+        # 조회 전 그리드/모달 잔상 제거. 이전 결과가 새 컨테이너 성공행으로 붙는 것을 막는다.
         phase_started = time.time()
-        page.run_js("""
-            var gridIds = [
-                'mf_tac_layout_contents_602_body_gridView', 
-                'mf_tac_layout_contents_602_body_grd_list', 
-                'mf_tac_layout_contents_602_body_grid'
-            ];
-            function findComponent(id) {
-                var candidates = [];
-                try { candidates.push(window[id]); } catch(e) {}
-                try { if (window.scwin) candidates.push(window.scwin[id]); } catch(e) {}
-                try { if (window.$p && $p.getComponentById) candidates.push($p.getComponentById(id)); } catch(e) {}
-                try { if (window.WebSquare && WebSquare.util && WebSquare.util.getComponentById) candidates.push(WebSquare.util.getComponentById(id)); } catch(e) {}
-                try { candidates.push(document.getElementById(id)); } catch(e) {}
-                return candidates.filter(Boolean);
-            }
-            function clearGridObject(obj) {
-                var methods = ['setData', 'setGridData', 'setAllJSON', 'removeAll', 'removeAllRows', 'deleteAllRows'];
-                methods.forEach(function(method) {
-                    try {
-                        if (obj && typeof obj[method] === 'function') obj[method]([]);
-                    } catch(e) {}
-                });
-                try {
-                    if (obj && typeof obj.setDataList === 'function') obj.setDataList([]);
-                } catch(e) {}
-            }
-            gridIds.forEach(function(id) {
-                try {
-                    findComponent(id).forEach(clearGridObject);
-                    var el = document.getElementById(id);
-                    if (el) {
-                        el.setAttribute('data-els-cleared-at', String(Date.now()));
-                        el.querySelectorAll('tbody').forEach(function(tb) { tb.innerHTML = ''; });
-                    }
-                } catch(e) {}
-            });
-        """)
+        clear_info = clear_container_result_state(page)
         time.sleep(0.5)
         log_phase("이전 그리드 초기화", phase_started)
+        if log_callback and isinstance(clear_info, dict) and (clear_info.get("components") or clear_info.get("rows") or clear_info.get("modals")):
+            log_callback(f"[{container_no}] 잔상 초기화 components={clear_info.get('components', 0)}, rows={clear_info.get('rows', 0)}, modals={clear_info.get('modals', 0)}")
 
         phase_started = time.time()
         if not set_container_input_value(page, input_ele, container_no, log_callback=log_callback):
@@ -551,6 +630,11 @@ def solve_input_and_search(page, container_no, log_callback=None):
                 
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
 
+            post_click_values = read_container_input_value(page, input_ele)
+            if container_no not in post_click_values:
+                if log_callback: log_callback(f"❌ 조회 직후 입력값 불일치: expected={container_no}, actual={post_click_values}")
+                return "INPUT_VALUE_CHANGED_AFTER_SEARCH"
+
             phase_started = time.time()
             required_msg = close_required_input_alert(page)
             log_phase("필수입력 알림 1차 확인", phase_started)
@@ -567,8 +651,8 @@ def solve_input_and_search(page, container_no, log_callback=None):
                     return "INPUT_REQUIRED_MODAL"
                 inner_text = read_result_scope_text(page)
                 if is_no_data_text(inner_text):
-                    if log_callback: log_callback("✅ [검증] 내역 없음 확인됨")
-                    return "내역없음확인"
+                    if log_callback: log_callback("ℹ️ [검증] 내역 없음 문구 감지됨 - 최종 추출 단계에서 재확인")
+                    break
             log_phase("조회 후 초기 판정", solve_started)
             
             return True
@@ -784,6 +868,7 @@ def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_conta
     
     # [v4.9.9] 최대 6초(12회×0.5s) 대기 — 전략 1(WebSquare API) 우선
     stale_seen = False
+    no_data_seen = False
     for attempt in range(max_attempts):
         try:
             res = page.run_js(ws_grid_script)
@@ -816,7 +901,7 @@ def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_conta
             # 전체 페이지가 아닌 602 결과 영역과 현재 보이는 모달만 검사한다.
             inner_text = read_result_scope_text(page)
             if is_no_data_text(inner_text):
-                return "내역없음확인"
+                no_data_seen = True
         except: pass
         
         if wait_interval:
@@ -829,6 +914,8 @@ def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_conta
             return "내역없음확인"
     except: pass
         
+    if no_data_seen:
+        return "내역없음확인"
     return "STALE_GRID_UNCHANGED" if stale_seen else None
 
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=9222):

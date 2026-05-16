@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.13.21 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.22 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 유령 데이터 방어와 선적관리 이력 1년 보존 정리를 보강했습니다.
+> 최신 업데이트: 컨테이너 이력조회 무자료 조기 확정과 WebSquare 잔상 방어를 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.21
+- **웹 버전**: v5.13.22
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
   - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀에서 사라진 행은 archive 테이블에 보존하며 삭제/조회 이력은 365일 초과분만 정리.
   - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 초록색 컬럼으로 표시.
-  - 컨테이너 이력조회는 이전 그리드 원문 잔상이 다른 컨테이너 성공행으로 붙지 않도록 폐기/재조회.
+  - 컨테이너 이력조회는 조회 전 WebSquare 결과/모달 잔상을 비우고 무자료 조기 확정을 금지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.22**: 컨테이너 이력조회에서 조회 전 WebSquare 그리드 컴포넌트/DOM 행/무자료 모달을 더 넓게 초기화하고, 조회 직후 `데이터가 없음` 문구를 즉시 NODATA로 확정하지 않도록 변경. 무자료는 최종 추출 단계에서 충분히 기다린 뒤 확정해 정상건을 놓칠 위험을 줄임.
 - **v5.13.21**: 컨테이너 이력조회에서 새 조회 전후 그리드 원문 지문을 비교해, 이전 컨테이너 결과가 그대로 남아 다른 요청번호의 성공행으로 붙는 경우를 `이전 조회 결과 잔상 감지` 오류로 폐기하고 1회 재조회. NAS 봇 #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동해 Chrome remote-debugging 시작 충돌을 줄임. 선적관리 archive/lookup 이력은 365일 보존 후 정리하되 현재 원장은 삭제하지 않음.
 - **v5.13.20**: 아산 선적관리-컨테이너 이력조회 콜라보 1차. 엑셀 동기화 시 현재 원장은 엑셀 기준으로 교체하되, 사라진 행은 `branch_shipping_row_archive`에 `deleted_from_excel`로 보관. 선적관리 화면에 `컨테이너 조회` 버튼을 추가해 현재 필터 결과의 컨테이너를 `/api/els/run` 파이프라인으로 조회하고, No.1 메인 이력 행을 `이력 ...` 초록색 컬럼으로 노출. 조회 결과는 `branch_shipping_container_lookups`에 누적 저장하며 DB수정 시각을 화면에 표시.
 - **v5.13.19**: 컨테이너 이력조회 300초 스톱 원인을 보강. DrissionPage alert 기본 10초 대기 반복을 0.05초 즉시 확인으로 바꾸고, 빈 데몬 상태에서는 `/run`이 먼저 로그인 세션을 확보하도록 변경. 배치 중 워커가 추가로 살아나면 같은 조회 안에서 병렬도를 확장하며, `/api/els` NAS nginx 스트리밍 타임아웃/버퍼링과 Vercel route maxDuration을 보강. 클라이언트 연결이 끊기면 generator가 GeneratorExit를 삼키지 않고 데몬 stop을 호출.
@@ -61,7 +62,7 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
-- `python -m unittest elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control elsbot.tests.test_els_bot_logic`: 22개 통과 (번들 Python 사용)
+- `python -m unittest elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic elsbot.tests.test_daemon_stop_control`: 23개 통과 (번들 Python 사용)
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py elsbot/tests/test_container_lookup_safety.py elsbot/tests/test_daemon_stop_control.py`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 0 errors, 기존 warning 5건
 - `node --test web/tests/containerInput.test.mjs`: 4개 통과
