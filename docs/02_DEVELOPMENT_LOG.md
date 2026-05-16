@@ -1,4 +1,20 @@
 
+## [2026-05-16] 아산 선적관리 DB 전체 기준 정렬 (v5.13.24)
+### 핵심
+- 컬럼 헤더 정렬이 브라우저에 이미 내려온 100행만 재정렬하던 문제를 수정했습니다.
+- 엑셀 원장 컬럼 정렬은 `sort_key/sort_dir`로 NAS 백엔드에 전달하고, Supabase 조건 결과 전체를 정렬한 뒤 요청 페이지를 잘라 내려오도록 변경했습니다.
+- 컨테이너 이력 컬럼은 웹에서 붙이는 파생 데이터라 기존처럼 현재 로드분 기준 정렬을 유지합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js` 0 errors
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과
+- `git diff --check` 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 후행 워커 준비상태 기반 기동 (v5.13.23)
 ### 핵심
 - 배포 직후 대기 상태에서도 #1/#2 로그인/메뉴 진입이 160~210초까지 늘어나 #3/#4가 고정 지연만 보고 먼저 뜨며 remote-debugging 연결 실패가 반복되는 로그를 확인했습니다.

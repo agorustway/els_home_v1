@@ -80,6 +80,16 @@ function getHiddenChipLabel(col) {
     return isContainerLookupColumn(col) ? String(col).replace(/^이력\s*/, '') : col;
 }
 
+function getServerSortParams(config) {
+    if (!config?.key || isContainerLookupColumn(config.key)) {
+        return { sortKey: '', sortDir: 'asc' };
+    }
+    return {
+        sortKey: config.key,
+        sortDir: config.direction === 'desc' ? 'desc' : 'asc',
+    };
+}
+
 export default function AsanShipping() {
     const [data, setData] = useState(null);
     const [headers, setHeaders] = useState([]);
@@ -150,6 +160,8 @@ export default function AsanShipping() {
         const search = (options.search || '').trim();
         const append = Boolean(options.append);
         const quiet = Boolean(options.quiet);
+        const sortKey = (options.sortKey || '').trim();
+        const sortDir = options.sortDir === 'desc' ? 'desc' : 'asc';
 
         if (append) {
             setLoadingMore(true);
@@ -165,6 +177,10 @@ export default function AsanShipping() {
                 page_size: String(pageSize)
             });
             if (search) params.set('search', search);
+            if (sortKey) {
+                params.set('sort_key', sortKey);
+                params.set('sort_dir', sortDir);
+            }
 
             const r = await fetch(`/api/branches/asan/shipping?${params.toString()}`);
             // 백엔드에서 Python NaN이 JSON에 섞여 나올 수 있어 text로 받아서 치환 후 파싱
@@ -218,6 +234,8 @@ export default function AsanShipping() {
         return colIdx >= 0 ? row[colIdx] : '';
     }, [containerLookupResults, data?.headers, getRowContainerNo]);
 
+    const serverSortParams = useMemo(() => getServerSortParams(sortConfig), [sortConfig]);
+
     const loadSavedContainerLookupResults = useCallback(async (containers) => {
         if (!selectedPath || !containers.length) return;
         try {
@@ -248,8 +266,8 @@ export default function AsanShipping() {
         if (!selectedPath) return;
         const quiet = lastLoadedPathRef.current === selectedPath;
         if (quiet) setSearchRefreshing(true);
-        fetchData(selectedPath, { page: 1, search: searchTerm, quiet });
-    }, [selectedPath, searchTerm, fetchData]);
+        fetchData(selectedPath, { page: 1, search: searchTerm, quiet, ...serverSortParams });
+    }, [selectedPath, searchTerm, serverSortParams, fetchData]);
 
     useEffect(() => {
         if (!data?.headers || !data?.data?.length) return;
@@ -622,7 +640,9 @@ export default function AsanShipping() {
                     force: true,
                     page: 1,
                     page_size: SHIPPING_PAGE_SIZE,
-                    search: searchTerm
+                    search: searchTerm,
+                    sort_key: serverSortParams.sortKey,
+                    sort_dir: serverSortParams.sortDir
                 })
             });
             const text = await r.text();
@@ -634,7 +654,7 @@ export default function AsanShipping() {
             if (j.data) {
                 applyShippingData(j.data);
             } else {
-                await fetchData();
+                await fetchData(selectedPath, { page: 1, search: searchTerm, ...serverSortParams });
             }
         } catch (e) {
             console.error('Failed to sync shipping data:', e);
@@ -763,6 +783,7 @@ export default function AsanShipping() {
         if (!data || !data.data) return [];
         let rows = [...data.data];
         const isServerPaged = data.source === 'supabase';
+        const isServerSort = isServerPaged && sortConfig.key && !isContainerLookupColumn(sortConfig.key);
 
         // 1. Search Filter (Multi-search support like: 'word1, word2')
         if (!isServerPaged && searchTerm.trim()) {
@@ -796,7 +817,7 @@ export default function AsanShipping() {
         }
 
         // 2. Sorting (User clicked column)
-        if (sortConfig.key) {
+        if (sortConfig.key && !isServerSort) {
             rows.sort((a, b) => {
                 const valA = String(getDisplayCellRawValue(a, sortConfig.key) || '');
                 const valB = String(getDisplayCellRawValue(b, sortConfig.key) || '');
@@ -1149,7 +1170,8 @@ export default function AsanShipping() {
                         onClick={() => fetchData(selectedPath, {
                             page: Number(data.page || 1) + 1,
                             search: searchTerm,
-                            append: true
+                            append: true,
+                            ...serverSortParams
                         })}
                         disabled={!canLoadMore || loadingMore}
                     >

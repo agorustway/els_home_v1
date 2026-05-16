@@ -796,6 +796,25 @@ def _shipping_search_terms(search):
 def _shipping_search_filter_value(term):
     return str(term).replace(",", " ").replace("\\", " ")
 
+def _shipping_sort_value(value):
+    s = str(value if value is not None else "").strip()
+    if not s:
+        return None
+
+    compact = s.replace(",", "")
+    if re.fullmatch(r"-?\d+(?:\.\d+)?", compact):
+        return (0, float(compact))
+
+    date_match = re.fullmatch(r"(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})(?:\.0)?", s)
+    if date_match:
+        return (1, tuple(int(part) for part in date_match.groups()))
+
+    time_match = re.fullmatch(r"(\d{1,2}):(\d{2})(?::\d{2})?(?:\.\d+)?", s)
+    if time_match:
+        return (2, int(time_match.group(1)), int(time_match.group(2)))
+
+    return (3, s.casefold())
+
 def _shipping_row_hash(row):
     return hashlib.sha256(json.dumps(row or [], ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
 
@@ -950,7 +969,7 @@ def sync_asan_shipping_python(force=False, rel_path=None):
             app.logger.error(f"[선적관리DB] 동기화 실패: {e}", exc_info=True)
         return None
 
-def query_asan_shipping_db(rel_path, page=1, page_size=5000, search=""):
+def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key="", sort_dir="asc"):
     if not supabase or not shipping_db_available:
         return None
 
@@ -968,23 +987,47 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search=""):
     start = (page - 1) * page_size
     end = start + page_size - 1
 
-    q = supabase.from_("branch_shipping_rows").select("row_values", count="exact").eq("branch_id", "asan").eq("file_path", normalized_path)
+    headers = meta.get("headers") or []
+    sort_key = str(sort_key or "").strip()
+    sort_desc = str(sort_dir or "asc").lower() == "desc"
+    sort_idx = headers.index(sort_key) if sort_key in headers else -1
+
+    q = supabase.from_("branch_shipping_rows").select("row_values,row_index", count="exact").eq("branch_id", "asan").eq("file_path", normalized_path)
     search_terms = _shipping_search_terms(search)
     if len(search_terms) == 1:
         q = q.ilike("search_text", f"%{_shipping_search_filter_value(search_terms[0])}%")
     elif search_terms:
         filters = ",".join(f"search_text.ilike.%{_shipping_search_filter_value(term)}%" for term in search_terms)
         q = q.or_(filters)
-    rows_res = q.order("row_index", desc=False).range(start, end).execute()
+
+    if sort_idx >= 0:
+        rows_res = q.order("row_index", desc=False).range(0, 9999).execute()
+        sortable = []
+        blanks = []
+        for item in (rows_res.data or []):
+            row = item.get("row_values") or []
+            sort_value = _shipping_sort_value(row[sort_idx] if sort_idx < len(row) else "")
+            if sort_value is None:
+                blanks.append(item)
+            else:
+                sortable.append((sort_value, item))
+        sortable.sort(key=lambda pair: pair[0], reverse=sort_desc)
+        ordered_rows = [item for _, item in sortable] + blanks
+        page_rows = ordered_rows[start:end + 1]
+    else:
+        rows_res = q.order("row_index", desc=False).range(start, end).execute()
+        page_rows = rows_res.data or []
 
     return {
-        "headers": meta.get("headers") or [],
-        "data": [r.get("row_values") for r in (rows_res.data or [])],
+        "headers": headers,
+        "data": [r.get("row_values") for r in page_rows],
         "file_modified_at": meta.get("file_modified_at"),
         "synced_at": meta.get("synced_at"),
         "total": rows_res.count if rows_res.count is not None else meta.get("row_count", 0),
         "page": page,
         "page_size": page_size,
+        "sort_key": sort_key if sort_idx >= 0 else "",
+        "sort_dir": "desc" if sort_desc else "asc",
         "source": "supabase"
     }
 
@@ -1029,16 +1072,34 @@ def get_asan_shipping():
             page = body.get("page") or request.args.get("page", 1)
             page_size = body.get("page_size") or request.args.get("page_size", 5000)
             search = (body.get("search") or request.args.get("search") or "").strip()
-            db_data = query_asan_shipping_db(rel_path, page=page, page_size=page_size, search=search)
+            sort_key = (body.get("sort_key") or request.args.get("sort_key") or "").strip()
+            sort_dir = body.get("sort_dir") or request.args.get("sort_dir") or "asc"
+            db_data = query_asan_shipping_db(
+                rel_path,
+                page=page,
+                page_size=page_size,
+                search=search,
+                sort_key=sort_key,
+                sort_dir=sort_dir
+            )
             return jsonify({"ok": True, "data": db_data or sync_result})
 
         source = request.args.get("source", "auto")
         page = request.args.get("page", 1)
         page_size = request.args.get("page_size", 5000)
         search = (request.args.get("search") or "").strip()
+        sort_key = (request.args.get("sort_key") or "").strip()
+        sort_dir = request.args.get("sort_dir") or "asc"
 
         if source != "excel" and supabase and shipping_db_available:
-            db_data = query_asan_shipping_db(rel_path, page=page, page_size=page_size, search=search)
+            db_data = query_asan_shipping_db(
+                rel_path,
+                page=page,
+                page_size=page_size,
+                search=search,
+                sort_key=sort_key,
+                sort_dir=sort_dir
+            )
             if db_data:
                 return jsonify({"data": db_data})
 

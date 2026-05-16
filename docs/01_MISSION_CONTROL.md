@@ -1,14 +1,14 @@
-# ELS MISSION CONTROL (v5.13.23 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.24 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 NAS 봇 후행 워커 기동을 준비상태 기반으로 보강했습니다.
+> 최신 업데이트: 아산 선적관리 컬럼 정렬을 화면 100행이 아니라 DB 전체 조건 결과 기준으로 처리합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.23
+- **웹 버전**: v5.13.24
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
   - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀 삭제 이력은 365일, 컨테이너 조회 이력은 180일 초과분만 정리.
-  - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 엑셀 원장 오른쪽 초록색 컬럼으로 강제 표시, 숨김 칩은 소형 툴팁형으로 압축.
+  - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 엑셀 원장 오른쪽 초록색 컬럼으로 강제 표시, 검색/정렬은 DB 전체 조건 기준 처리.
   - 컨테이너 이력조회는 조회 전 잔상 제거, 무자료 조기 확정 금지, 준비상태 기반 후행 워커 기동을 적용.
 
 ## ACTIVE SYSTEMS
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.24**: 아산 선적관리 엑셀 원장 컬럼 정렬을 `sort_key/sort_dir` DB 조회 조건으로 올려, 조회된 100행만이 아니라 전체 검색 결과를 정렬한 뒤 페이지 단위로 내려오게 변경. 컨테이너 이력 파생 컬럼은 현재 로드분 기준 정렬을 유지.
 - **v5.13.23**: NAS 봇 #3/#4가 고정 시간만 보고 뜨지 않고 #1/#2 실제 준비 완료 후 순차 기동하도록 보강. ETrans 로그인/메뉴 진입이 160~210초까지 늘어지는 날에도 Chrome remote-debugging 포트 충돌과 3회 연속 실패를 줄임.
 - **v5.13.22**: 컨테이너 이력조회에서 조회 전 WebSquare 그리드 컴포넌트/DOM 행/무자료 모달을 더 넓게 초기화하고, 조회 직후 `데이터가 없음` 문구를 즉시 NODATA로 확정하지 않도록 변경. 선적관리 툴바는 한 줄 고밀도 구조와 모바일 그리드로 정리하고, 검색 입력은 1초 지연/Enter 즉시 조회로 바꿔 입력 중 화면 리로드를 방지. 조회 이력은 180일 보존으로 조정하고 최신 조회/보존기간 인덱스를 추가. 이력 컬럼은 렌더링 단계에서 엑셀 원장 오른쪽으로 강제 고정하고 숨김 칩은 소형 말줄임/툴팁 형태로 단순화.
 - **v5.13.21**: 컨테이너 이력조회에서 새 조회 전후 그리드 원문 지문을 비교해, 이전 컨테이너 결과가 그대로 남아 다른 요청번호의 성공행으로 붙는 경우를 `이전 조회 결과 잔상 감지` 오류로 폐기하고 1회 재조회. NAS 봇 #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동해 Chrome remote-debugging 시작 충돌을 줄임. 선적관리 archive 이력은 365일 보존 후 정리하되 현재 원장은 삭제하지 않음.
@@ -63,37 +64,11 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
-- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic`: 24개 통과 (번들 Python 사용)
-- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py elsbot/tests/test_container_lookup_safety.py elsbot/tests/test_daemon_stop_control.py`: 통과
-- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 0 errors, 기존 warning 5건
-- `node --test web/tests/containerInput.test.mjs`: 4개 통과
-- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
-- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 13개 통과
-- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js`: 0 errors
-- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
-- 로컬 dev 서버 `/employees/branches/asan`: HTTP 200 확인(인증 보호로 로그인 페이지 응답)
-- Supabase 운영 DB 확인: `branch_shipping_files` 1건, `branch_shipping_rows` 965건 조회 성공
-- 운영 API 확인: `/api/branches/asan/shipping?page_size=100` `source=supabase`, 100/965건, 42,992 bytes. NAS gateway/core는 230ms대, Vercel 경유는 700ms대.
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 21개 통과, 검색 지연/이력 보존/반응형 액션바 회귀 포함
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js`: 0 errors
-- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
-- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 14개 통과
-- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
-- `git diff --check`: 통과
-- Supabase migration `asan_shipping_history_and_lookup`: 적용 성공. `branch_shipping_row_archive`, `branch_shipping_container_lookups` 생성 확인.
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 17개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 선적관리 검색/정렬/이력 회귀 포함 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js`: 0 errors
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
-- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
-- `node --test web/tests/containerInput.test.mjs`: 4개 통과
-- `node --test web/tests/vehicleLocation.test.mjs`: 6개 통과
-- `npm.cmd run lint`: 통과
-- `npm.cmd run build`: 통과
-- `scripts\build_driver_apk.ps1`: APK v5.11.12 / versionCode 5153 빌드 및 `web/public/apk/els_driver.apk` 반영
-- 브라우저 디버그 확인: `/employees/vehicle-tracking?debug=true` 화면 및 상세 패널 렌더링 확인
-- 빌드 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 EACCES 경고 발생. 빌드 종료 코드는 0.
+- `git diff --check`: 통과
+- 최근 전체 빌드/APK: `npm.cmd run build` 통과, APK v5.11.12 / versionCode 5153 빌드 완료. 외부 HTTPS fetch EACCES 경고는 샌드박스 환경성 경고.
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 랜덤게임. AI 어시스턴트 하단 빌드 문구를 통해 진입 가능.
