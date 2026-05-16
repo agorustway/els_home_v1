@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.13.17 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.18 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 워커 사용과 부분 결과 표시 병목을 보강했습니다.
+> 최신 업데이트: 아산 선적관리 체감 로딩을 줄이기 위해 첫 화면 payload와 불필요한 번들을 줄였습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.17
+- **웹 버전**: v5.13.18
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 컨테이너 이력조회 수동 배치는 준비된 워커를 모두 사용하고 AI/단건은 필요 시 대기.
-  - 부분 결과는 입력 순서 표를 유지하되 완료된 행부터 즉시 갱신해 2/10 정체처럼 보이는 현상 완화.
-  - ETrans 입력/조회 클릭은 JS 이벤트 우선으로 전환하고 단계별 타이밍 로그를 남김.
+  - 아산 선적관리 기본 조회를 100행으로 낮춰 첫 응답 payload를 약 43KB로 축소.
+  - 엑셀 다운로드 라이브러리 `xlsx`는 버튼 클릭 시 동적 import로만 로드.
+  - 아산 메인 탭을 기억해 선적관리 재방문 시 배차판 fetch가 먼저 돌지 않도록 보강.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.18**: 아산 선적관리 첫 조회를 100행으로 줄여 운영 API 기준 42,992 bytes 응답을 확인하고, 500행 212,531 bytes 대비 초기 payload를 약 1/5로 축소. `xlsx`는 엑셀 다운로드 클릭 시 lazy import하고, 아산 메인 탭을 localStorage에 저장해 선적관리 사용자가 재방문할 때 불필요한 배차판 초기 fetch를 줄임. 운영/NAS/Core API 모두 `source=supabase`, 총 965건 조회를 확인.
 - **v5.13.17**: 컨테이너 이력조회 배치가 준비된 워커를 모두 쓰도록 `reserveSingle=false`를 전달하고, 백엔드는 완료된 행을 순서 대기 없이 즉시 스트리밍. ETrans 입력값은 JS 세팅/검증 우선, 조회 버튼은 JS 이벤트 우선으로 바꿔 80~90초 클릭 대기 병목을 줄이고 단계별 타이밍 로그를 추가.
 - **v5.13.16**: `nas-deploy.sh`에 Docker PATH를 sudo 환경변수로 주입하고 `set -e`를 추가해 docker-compose build가 `docker` 실행 파일을 못 찾거나 실패했을 때 즉시 중단되도록 보강.
 - **v5.13.15**: `nas-deploy.sh`의 Docker 호출을 NOPASSWD sudoers와 일치하는 절대경로/비대화형 sudo로 변경해 SSH 배포 중 비밀번호 프롬프트로 core/bot/gateway 빌드가 멈추는 문제를 방지.
@@ -69,6 +70,10 @@
 - `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
 - 로컬 dev 서버 `/employees/branches/asan`: HTTP 200 확인(인증 보호로 로그인 페이지 응답)
 - Supabase 운영 DB 확인: `branch_shipping_files` 1건, `branch_shipping_rows` 965건 조회 성공
+- 운영 API 확인: `/api/branches/asan/shipping?page_size=100` `source=supabase`, 100/965건, 42,992 bytes. NAS gateway/core는 230ms대, Vercel 경유는 700ms대.
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 14개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js`: 0 errors
+- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 14개 통과
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
 - `git diff --check`: 통과

@@ -1,4 +1,22 @@
 
+## [2026-05-16] 아산 선적관리 초기 로딩 추가 최적화 (v5.13.18)
+### 🚀 Achievement
+- **초기 payload 축소**: 선적관리 기본 조회를 500행에서 100행으로 낮춰 첫 응답을 212,531 bytes에서 42,992 bytes 수준으로 줄였습니다.
+- **엑셀 번들 지연 로딩**: `xlsx`를 화면 진입 시 로드하지 않고 엑셀 다운로드 버튼 클릭 시 `import('xlsx')`로 가져오도록 변경했습니다.
+- **불필요한 기본 fetch 감소**: 아산 메인 탭 선택을 localStorage에 저장해 선적관리 사용자가 재방문할 때 배차판 fetch가 먼저 실행되지 않게 했습니다.
+- **운영 DB 경로 재확인**: Vercel/NAS gateway/NAS core 모두 `source=supabase`, 총 965건 기준으로 응답하는 것을 확인했습니다.
+### 🧪 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (14개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js` 0 errors
+- `npm.cmd run build` 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+- 운영 API: `page_size=100` 100/965건, 42,992 bytes, Vercel 경유 700ms대. NAS gateway/core 직접 호출은 230ms대.
+### 📁 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 워커/표시 병목 보강 (v5.13.17)
 ### 🚀 Achievement
 - **준비 워커 전체 사용**: 수동 컨테이너 이력조회 배치는 `reserveSingle=false`를 전달해 현재 준비된 워커를 모두 사용합니다. AI/단건 요청은 배치 중이면 큐에서 기다리는 쪽으로 둡니다.

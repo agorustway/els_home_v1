@@ -5,6 +5,8 @@ import AsanDashboard from './AsanDashboard';
 import AsanShipping from './AsanShipping';
 
 // ===== 상수 =====
+const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
+
 // ===== 공휴일 계산기 (v4.4.40) =====
 // 동적으로 공휴일/대체공휴일을 계산합니다. (하드코딩 지양)
 function getHolidays(year) {
@@ -388,11 +390,14 @@ function AsanDispatchContent() {
     }, [data, allTabMonth]);
 
     // ===== 현재 뷰 데이터 =====
-    const activeItem = isAllTab ? null : data[activeTab];
-    const currentView = isAllTab ? mergedView : (activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {} } : null);
-    const headers = currentView?.headers || [];
-    const allData = currentView?.data || [];
-    const comments = currentView?.comments || {};
+    const activeItem = useMemo(() => isAllTab ? null : data[activeTab], [isAllTab, data, activeTab]);
+    const currentView = useMemo(() => {
+        if (isAllTab) return mergedView;
+        return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {} } : null;
+    }, [activeItem, isAllTab, mergedView]);
+    const headers = useMemo(() => currentView?.headers || [], [currentView]);
+    const allData = useMemo(() => currentView?.data || [], [currentView]);
+    const comments = useMemo(() => currentView?.comments || {}, [currentView]);
 
     // 날짜 정보
     const dateInfo = useMemo(() => {
@@ -884,7 +889,23 @@ function AsanDispatchContent() {
 }
 
 export default function AsanBranchPage() {
-    const [activeMainTab, setActiveMainTab] = useState('dispatch');
+    const [activeMainTab, setActiveMainTab] = useState(null);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(ASAN_MAIN_TAB_KEY);
+            setActiveMainTab(saved === 'shipping' ? 'shipping' : 'dispatch');
+        } catch {
+            setActiveMainTab('dispatch');
+        }
+    }, []);
+
+    const switchMainTab = (tab) => {
+        setActiveMainTab(tab);
+        try {
+            localStorage.setItem(ASAN_MAIN_TAB_KEY, tab);
+        } catch { /* ignore */ }
+    };
 
     return (
         <div className={styles.pageWrapper}>
@@ -897,13 +918,13 @@ export default function AsanBranchPage() {
                 <div className={styles.mainTabGroup}>
                     <button 
                         className={`${styles.mainTabBtn} ${activeMainTab === 'dispatch' ? styles.mainTabBtnActive : ''}`}
-                        onClick={() => setActiveMainTab('dispatch')}
+                        onClick={() => switchMainTab('dispatch')}
                     >
                         배차판
                     </button>
                     <button 
                         className={`${styles.mainTabBtn} ${activeMainTab === 'shipping' ? styles.mainTabBtnActive : ''}`}
-                        onClick={() => setActiveMainTab('shipping')}
+                        onClick={() => switchMainTab('shipping')}
                     >
                         선적관리
                     </button>

@@ -1,12 +1,11 @@
 'use client';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
 const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
-const SHIPPING_PAGE_SIZE = 500;
+const SHIPPING_PAGE_SIZE = 100;
 
 // 날짜 관련 컬럼 키워드
 const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
@@ -386,11 +385,12 @@ export default function AsanShipping() {
         setColOrder([...colOrder, col]);
     };
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         if (!processedData || processedData.length === 0) {
             alert('다운로드할 데이터가 없습니다.');
             return;
         }
+        const XLSX = await import('xlsx');
         
         // Use colOrder to get the correctly ordered and filtered headers
         const exportHeaders = colOrder;
