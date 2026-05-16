@@ -10,7 +10,12 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 # 핵심 함수들 가져오기
-from els_bot import login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process, close_modals, is_session_valid, open_els_menu, extend_session
+from els_bot import (
+    login_and_prepare, solve_input_and_search, scrape_hyper_verify, run_els_process,
+    close_modals, is_session_valid, open_els_menu, extend_session,
+    normalize_container_no, is_valid_container_no, make_status_row,
+    parse_grid_text_to_rows, is_retryable_result_rows, is_no_data_text,
+)
 import re
 import pandas as pd
 
@@ -24,12 +29,12 @@ class DriverPool:
         self.lock = threading.RLock()
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
-        self.is_logging_in = False 
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 2)) # [v5.6.4] NAS 부하 방지를 위해 4 -> 2로 하향
+        self.is_logging_in = False
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v5.13.6] NAS CPU 여유 확인 후 4개 워커 기본값 복구
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
-        self.active_init_threads = 0 
+        self.active_init_threads = 0
         self.log_buffer = deque(maxlen=300)
-        self.consecutive_login_failures = 0 
+        self.consecutive_login_failures = 0
         self.last_failure_time = 0 # [추가] 마지막 로그인 실패 시점 기록
         self.fail_cooldown = 600 # [추가] 10분 쿨타임 (초)
 
@@ -70,7 +75,7 @@ class DriverPool:
             time.sleep(1)
             # 종료되지 않은 메인 프로세스와 자식들을 찾아 강제 종료 (-9)
             subprocess.run(["pkill", "-9", "-f", f"drission_port_{port}"], capture_output=True)
-            
+
             # [고아 프로세스(Zombie) 방지]: 부모를 잃은 렌더러 프로세스 등은 pkill -f chrome으로 주기적 정리
             # 단독 실행 중이 아닌 고아 렌더러만 안전하게 삭제하려면 os.system("pkill -9 -f '--type=renderer'") 등을 쓸 수 있음
             # 일단 여기서는 포트 기반으로만 정리
@@ -93,18 +98,26 @@ class DriverPool:
 
 pool = DriverPool()
 
+def is_query_screen_ready(driver, timeout=0.2):
+    try:
+        target = driver.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=timeout) or \
+                 driver.ele('css:input[id*="containerNo"]', timeout=0.1)
+        return bool(target)
+    except:
+        return False
+
 @app.route('/health', methods=['GET'])
 def health():
     with pool.lock:
         active_count = len(pool.drivers)
         available_count = pool.available_queue.qsize()
-        
+
         # 안전한 큐 스냅샷 복사본 생성 (데드락 및 런타임 에러 방지)
         try:
             available_drivers_list = list(pool.available_queue.queue)
         except:
             available_drivers_list = []
-            
+
         workers = []
         for d in pool.drivers:
             workers.append({
@@ -113,9 +126,9 @@ def health():
                 "last_activity": getattr(d, 'last_activity', 0),
                 "is_available": d in available_drivers_list
             })
-        
+
         return jsonify({
-            "status": "ok", 
+            "status": "ok",
             "driver_active": active_count > 0,
             "total_drivers": active_count,
             "max_drivers": pool.max_drivers,
@@ -132,19 +145,19 @@ def login():
     u_pw = data.get('userPw')
     # NAS 도커용 정비: 환경변수 또는 기본값(False)에 따라 브라우저 표시 여부 결정
     show_browser = os.environ.get("ELS_SHOW_BROWSER", "false").lower() == "true"
-    
+
     if pool.is_same_user(u_id, show_browser):
         # [수정] 풀이 꽉 차지 않았더라도 1개 이상의 브라우저가 살아있으면 불필요한 전체 초기화를 방지
         if len(pool.drivers) > 0:
             return jsonify({
-                "ok": True, 
-                "message": f"세션 유지 중 ({len(pool.drivers)}개 활성)", 
+                "ok": True,
+                "message": f"세션 유지 중 ({len(pool.drivers)}개 활성)",
                 "log": [f"[데몬] 이미 {u_id} 계정으로 세션이 존재하여 페이지 로드 시의 전체 초기화를 생략합니다."]
             })
         if pool.is_logging_in:
             return jsonify({
-                "ok": True, 
-                "message": "현재 로그인이 진행 중입니다. 잠시만 기다려주세요.", 
+                "ok": True,
+                "message": "현재 로그인이 진행 중입니다. 잠시만 기다려주세요.",
                 "log": ["[데몬] 이전 로그인 요청이 처리 중입니다. 중복 실행을 방지합니다."]
             }), 202 # 202 Accepted
 
@@ -153,9 +166,9 @@ def login():
         pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
         pool.is_logging_in = True
         pool.active_init_threads = pool.max_drivers
-        
+
     logs = []
-    
+
     def _do_login(idx):
         try:
             # [v4.4.60] 개별 브라우저별로 최대 3회 재시도 (다른 브라우저에 영향 없음)
@@ -170,21 +183,21 @@ def login():
                     # [NAS 최적화] CPU 부하 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
                     if idx > 0 and retry == 1: time.sleep(idx * 60)
                     elif retry > 1: time.sleep(10) # 재시도 간격 10초
-                    
+
                     msg = f"브라우저 #{idx+1} 초기화 중... (시도 {retry}/3)"
                     pool.add_log(msg)
-                    
+
                     def _inner_log(m):
                         pool.add_log(f"[B#{idx+1}] {m}")
 
                     target_port = 32000 + idx
-                    
+
                     # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
                     pool.cleanup_lingering_chrome(target_port)
 
                     res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
                     if res[0]:
-                        res[0].used_port = target_port 
+                        res[0].used_port = target_port
                         with pool.lock:
                             pool.consecutive_login_failures = 0
                             pool.add_driver(res[0])
@@ -209,15 +222,15 @@ def login():
         t = threading.Thread(target=_do_login, args=(i,), daemon=True)
         t.start()
         threads.append(t)
-    
+
     # [핵심] 첫 번째 드라이버가 준비될 때까지만 기다리고 즉시 응답 반환!
     start_wait = time.time()
     # 백엔드(400s)보다 약간 짧게 잡아서 데몬이 먼저 응답을 주게 함 (Race Condition 방지)
     while time.time() - start_wait < 350:
         if pool.available_queue.qsize() > 0:
              return jsonify({
-                 "ok": True, 
-                 "message": "첫 번째 세션이 준비되었습니다. 조회를 시작합니다. (동생이 뒤에서 나머지 세션도 마저 띄우는 중!)", 
+                 "ok": True,
+                 "message": "첫 번째 세션이 준비되었습니다. 조회를 시작합니다. (동생이 뒤에서 나머지 세션도 마저 띄우는 중!)",
                  "log": list(pool.log_buffer)
              })
         if pool.active_init_threads == 0: # 모든 쓰레드가 종료됨 (전부 실패한 경우)
@@ -236,27 +249,49 @@ def stop():
 @app.route('/run', methods=['POST'])
 def run():
     data = request.json
-    cn = data.get('containerNo')
+    cn = normalize_container_no(data.get('containerNo'))
     if not cn: return jsonify({"ok": False, "error": "번호 누락"})
+    if not is_valid_container_no(cn):
+        return jsonify({
+            "ok": True,
+            "containerNo": cn,
+            "worker_id": None,
+            "daemon_id": pool.daemon_id,
+            "result": [make_status_row(cn, "ERROR", "유효하지 않은 컨테이너 번호(ISO 6346 검증 실패)")],
+            "elapsed": 0,
+            "log": list(pool.log_buffer)
+        })
 
     # 조회가 동시에 몰려도 시작 시점을 약간씩 어긋나게 해서 릴레이 효과를 줌
-    time.sleep(random.uniform(0.1, 0.3))
+    request_started = time.time()
+    time.sleep(random.uniform(0.05, 0.15))
 
+    acquire_started = time.time()
     driver = pool.get_driver()
     if not driver:
         return jsonify({"ok": False, "error": "가용한 세션 없음"})
+    acquire_elapsed = time.time() - acquire_started
+    if acquire_elapsed >= 1:
+        pool.add_log(f"[{cn}] 워커 확보 대기 {acquire_elapsed:.1f}s")
 
     try:
         # 🎯 [전면 수정] 세션 유효성 체크를 전담 함수에 맡김
         is_alive = False
         try:
-            is_alive = is_session_valid(driver)
+            if getattr(driver, 'page_ready', False) and is_query_screen_ready(driver):
+                is_alive = True
+            else:
+                check_started = time.time()
+                is_alive = is_session_valid(driver)
+                check_elapsed = time.time() - check_started
+                if check_elapsed >= 1:
+                    pool.add_log(f"[{cn}] 세션 검사 {check_elapsed:.1f}s")
         except: pass
 
         if not is_alive:
             driver.page_ready = False  # 세션이 죽었으면 화면도 초기화
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
-            
+
             with pool.lock:
                 # 10분 지났으면 실패 횟수 초기화하고 다시 기회 주기
                 if pool.consecutive_login_failures >= 3:
@@ -273,18 +308,18 @@ def run():
             u_id = pool.current_user["id"]
             u_pw = pool.current_user["pw"]
             show_browser = pool.current_user["show_browser"]
-            
+
             # 현재 드라이버는 버리고 새로 만들기 (안정성)
             try: driver.quit()
             except: pass
-            
+
             with pool.lock:
                 if driver in pool.drivers:
                     pool.drivers.remove(driver)
-            
+
             # 원래 사용하던 포트 유지
             target_port = getattr(driver, 'used_port', 9222)
-            
+
             # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
             pool.cleanup_lingering_chrome(target_port)
 
@@ -300,111 +335,102 @@ def run():
                 with pool.lock:
                     pool.consecutive_login_failures += 1
                     pool.last_failure_time = time.time()
-                    
+
                     if pool.consecutive_login_failures >= 3:
                         pool.add_log("🛑 [보안 중단] 누적 로그인 3회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다. 비번을 확인하세요.")
                         return jsonify({"ok": False, "error": "로그인 3회 연속 실패로 보안 모드 발동. 비번 확인 후 수동으로 다시 시작해 주세요."})
-                        
+
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
 
-        # [초가속] 사이트 차단 방지 지연 시간을 0.2 ~ 0.5초로 추가 단축하여 성능 극대화 (사용자 요청)
-        time.sleep(random.uniform(0.2, 0.5))
-        
+        # 사이트 차단 방지를 위한 짧은 릴레이 지연
+        time.sleep(random.uniform(0.2, 0.45))
+
         start_time = time.time()
-        
+
         # [추가] 로그 수집
         logs = []
         def _log_cb(msg): logs.append(msg)
-        
-        # [v4.5.7] driver.page_ready가 True이면 이미 컨테이너 조회 화면 → 메뉴 재진입 스킵
-        if getattr(driver, 'page_ready', False):
-            _log_cb("⚡ [고속모드] 이미 조회 화면 대기 중. 메뉴 재진입 스킵!")
-            menu_opened = True
-        else:
-            menu_opened = open_els_menu(driver, log_callback=_log_cb)
-            if menu_opened:
-                driver.page_ready = True
 
-        if not menu_opened:
-            driver.page_ready = False
-            status = "INPUT_NOT_FOUND (메뉴 진입 실패)"
-        else:
-            # 조회 로직
-            status = solve_input_and_search(driver, cn, log_callback=_log_cb)
-        
-        # [v4.5.3] 조회 시도 후 모달 박스 확인 - 계정정보 전달하여 팝업 내 자동 로그인 지원
-        u_id_now = pool.current_user["id"] if pool.current_user else None
-        u_pw_now = pool.current_user["pw"]  if pool.current_user else None
-        modal_res = close_modals(driver, u_id=u_id_now, u_pw=u_pw_now)
-        if modal_res == "POPUP_LOGIN_DONE":
-            # 팝업 로그인 완료 → 메뉴 재진입 후 다시 조회
-            pool.add_log(f"[{cn}] 팝업 로그인 완료. 메뉴 재진입 후 재조회 시도...")
-            if open_els_menu(driver, log_callback=_log_cb):
-                status = solve_input_and_search(driver, cn, log_callback=_log_cb)
+        def _lookup_once():
+            grid_text = None
+
+            # [v5.13.6] 로그인 직후 이미 조회 화면이면 첫 조회에서도 메뉴 재진입을 생략
+            if getattr(driver, 'page_ready', False) and is_query_screen_ready(driver):
+                _log_cb("⚡ [고속모드] 이미 조회 화면 대기 중. 메뉴 재진입 스킵!")
+                menu_opened = True
             else:
-                status = "POPUP_LOGIN_메뉴재진입실패"
-        elif modal_res == "SESSION_EXPIRED":
-            status = "세션 만료 (로그인 모달 감지)"
+                menu_started = time.time()
+                menu_opened = open_els_menu(driver, log_callback=_log_cb)
+                if menu_opened:
+                    driver.page_ready = True
+                menu_elapsed = time.time() - menu_started
+                if menu_elapsed >= 2:
+                    pool.add_log(f"[{cn}] 메뉴 확인 {menu_elapsed:.1f}s")
+
+            if not menu_opened:
+                driver.page_ready = False
+                return [make_status_row(cn, "ERROR", "INPUT_NOT_FOUND (메뉴 진입 실패)")]
+
+            solve_started = time.time()
+            status = solve_input_and_search(driver, cn, log_callback=_log_cb)
+            solve_elapsed = time.time() - solve_started
+            if solve_elapsed >= 3:
+                pool.add_log(f"[{cn}] 입력/조회 클릭 {solve_elapsed:.1f}s")
+
+            # [v4.5.3] 조회 시도 후 모달 박스 확인 - 계정정보 전달하여 팝업 내 자동 로그인 지원
+            u_id_now = pool.current_user["id"] if pool.current_user else None
+            u_pw_now = pool.current_user["pw"]  if pool.current_user else None
+            modal_res = close_modals(driver, u_id=u_id_now, u_pw=u_pw_now)
+            if modal_res == "POPUP_LOGIN_DONE":
+                # 팝업 로그인 완료 → 메뉴 재진입 후 다시 조회
+                pool.add_log(f"[{cn}] 팝업 로그인 완료. 메뉴 재진입 후 재조회 시도...")
+                driver.page_ready = False
+                if open_els_menu(driver, log_callback=_log_cb):
+                    driver.page_ready = True
+                    status = solve_input_and_search(driver, cn, log_callback=_log_cb)
+                else:
+                    status = "POPUP_LOGIN_메뉴재진입실패"
+            elif modal_res == "SESSION_EXPIRED":
+                driver.page_ready = False
+                status = "세션 만료 (로그인 모달 감지)"
+
+            # [핵심 수정] status가 True(bool) 또는 문자열일 수 있음
+            is_success = (status is True) or (isinstance(status, str) and ("완료" in status or "조회시도완료" in status))
+            is_nodata = isinstance(status, str) and "내역없음확인" in status
+
+            if is_nodata:
+                return [make_status_row(cn, "NODATA", "내역 없음")]
+
+            if is_success:
+                scrape_started = time.time()
+                grid_text = scrape_hyper_verify(driver, cn)
+                scrape_elapsed = time.time() - scrape_started
+                if scrape_elapsed >= 4:
+                    pool.add_log(f"[{cn}] 그리드 추출 {scrape_elapsed:.1f}s")
+
+                parsed_rows = parse_grid_text_to_rows(cn, grid_text)
+                if parsed_rows:
+                    if not (len(parsed_rows) == 1 and parsed_rows[0][1] == "NODATA"):
+                        pool.add_log(f"--- [DEBUG RAW TEXT: {cn}] ---")
+                        pool.add_log(str(grid_text)[:200] + "...")
+                    return parsed_rows
+
+                if grid_text and is_no_data_text(grid_text):
+                    return [make_status_row(cn, "NODATA", "내역 없음")]
+                return [make_status_row(cn, "ERROR", "데이터 추출 실패 (시간 초과)")]
+
+            close_modals(driver)
+            driver.page_ready = False
+            return [make_status_row(cn, "ERROR", str(status))]
 
         result_rows = []
-        # [핵심 수정] status가 True(bool) 또는 문자열일 수 있음
-        is_success = (status is True) or (isinstance(status, str) and ("완료" in status or "조회시도완료" in status))
-        is_nodata = isinstance(status, str) and "내역없음확인" in status
-        
-        if is_success or is_nodata:
-            if is_nodata:
-                result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
-                grid_text = None
-            else:
-                grid_text = scrape_hyper_verify(driver, cn)
-            
-            if grid_text:
-                # [v4.9.9] WebSquare API에서 NODATA 응답 처리
-                if grid_text in ["NODATA_GRID_EMPTY", "내역없음확인"]:
-                    result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
-                    grid_text = None  # 아래 파싱 스킵
-                else:
-                    pool.add_log(f"--- [DEBUG RAW TEXT: {cn}] ---")
-                    pool.add_log(grid_text[:200] + "...") 
-                    
-                    temp_rows = []
-                    # 🎯 [끝판왕 파싱] 텍스트 전체에서 번호(1~100) + 상태 가 붙은 모든 조각을 찾아냄
-                    for line in grid_text.split('\n'):
-                        line = line.strip()
-                        if not line: continue
-                        if '|' in line:
-                            parts = line.split('|')
-                            if len(parts) >= 2:
-                                while len(parts) < 14: parts.append("")
-                                temp_rows.append([cn] + parts[:14])
-
-                    if not temp_rows:
-                        for line in grid_text.split('\n'):
-                            line = line.strip()
-                            if not line: continue
-                            if re.search(r'^\d+\s+', line):
-                                parts = re.split(r'\t|\s{2,}', line)
-                                if len(parts) >= 3:
-                                    while len(parts) < 14: parts.append("")
-                                    temp_rows.append([cn] + parts[:14])
-
-                    # No 기준 중복 제거 및 유효성 검사
-                    seen_no = set()
-                    for r in sorted(temp_rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
-                        if r[1] not in seen_no:
-                            if any(cell.strip() and cell.strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in r[2:14]):
-                                result_rows.append(r)
-                                seen_no.add(r[1])
-            
-            if not result_rows:
-                if grid_text == "NODATA_CONFIRMED" or grid_text == "NODATA_GRID_EMPTY" or grid_text == "내역없음확인" or \
-                   (grid_text and any(msg in grid_text for msg in ["데이터가 없습니다", "내역이 없습니다", "데이터가 존재하지 않습니다"])):
-                    result_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
-                else:
-                    result_rows.append([cn, "ERROR", "데이터 추출 실패 (시간 초과)"] + [""]*12)
-        else:
-            close_modals(driver)
-            result_rows.append([cn, "ERROR", status] + [""]*12)
+        for attempt in range(1, 3):
+            result_rows = _lookup_once()
+            if not is_retryable_result_rows(result_rows):
+                break
+            if attempt < 2:
+                pool.add_log(f"[{cn}] 불확실 실패 감지 → 1회 재조회합니다. ({result_rows[0][2] if result_rows else '결과 없음'})")
+                time.sleep(1.2)
 
         return jsonify({
             "ok": True,
@@ -412,7 +438,7 @@ def run():
             "worker_id": getattr(driver, 'used_port', 32000) - 32000 + 1,
             "daemon_id": pool.daemon_id, # [추가] 데몬 식별 ID 반환
             "result": result_rows,
-            "elapsed": round(time.time() - start_time, 1),
+            "elapsed": round(time.time() - request_started, 1),
             "log": list(pool.log_buffer) # 전체 로그 버퍼 반환
         })
     except Exception as e:
@@ -434,9 +460,9 @@ def get_screenshot():
         idx = int(idx_str)
     except:
         idx = 1
-        
+
     path = os.path.join(os.path.dirname(__file__), f"debug_screenshot_{idx}.png")
-    
+
     # [v4.5.11] 요청받은 인덱스(1~4)에 해당하는 드라이버 수색
     driver_for_shot = None
     with pool.lock:
@@ -446,11 +472,11 @@ def get_screenshot():
                 sorted_drivers = sorted(pool.drivers, key=lambda d: getattr(d, 'used_port', 9999))
                 if idx - 1 < len(sorted_drivers):
                     driver_for_shot = sorted_drivers[idx - 1]
-            
+
             # 지정된 인덱스 드라이버를 못 찾으면 첫 번째 가용 드라이버 사용 (Fallback)
             if not driver_for_shot:
                 driver_for_shot = pool.drivers[0]
-    
+
     if driver_for_shot:
         try:
             # DrissionPage의 get_screenshot 메서드 사용
@@ -484,7 +510,7 @@ def session_keeper():
                 driver = pool.available_queue.get_nowait()
             except Empty:
                 break
-                
+
             needs_refresh = False
             reason = ""
             try:
@@ -493,7 +519,7 @@ def session_keeper():
                 last_ext = getattr(driver, 'last_extension', getattr(driver, 'login_time', last_ac))
                 elapsed_active = time.time() - last_ac
                 elapsed_ext = time.time() - last_ext
-                
+
                 if not is_session_valid(driver):
                     needs_refresh = True
                     reason = "세션 만료 감지"
@@ -509,7 +535,7 @@ def session_keeper():
                             pool.add_log(f"--- [백그라운드] 연장 버튼 클릭 실패. 다음 주기 재시도. ---")
                             # 여기서 needs_refresh = True로 만들면 강제 재로그인으로 복구 시도 가능
                             # 하지만 화면 보존을 위해 일단 유지
-                            driver.page_ready = False 
+                            driver.page_ready = False
                             driver.last_activity = time.time()
                     except Exception as e:
                         needs_refresh = True
@@ -520,7 +546,7 @@ def session_keeper():
 
             if needs_refresh:
                 pool.add_log(f"--- [백그라운드 세션관리] {reason} 사유로 재로그인을 시도합니다. ---")
-                
+
                 with pool.lock:
                     if pool.consecutive_login_failures >= 3:
                         pool.add_log("❌ [백그라운드 세션관리] 연속 로그인 3회 실패 상태. 복구 시도 취소.")
@@ -534,14 +560,14 @@ def session_keeper():
                 u_pw = pool.current_user["pw"]
                 show_browser = pool.current_user["show_browser"]
                 target_port = getattr(driver, 'used_port', 9222)
-                
+
                 try: driver.quit()
                 except: pass
-                
+
                 with pool.lock:
                     if driver in pool.drivers:
                         pool.drivers.remove(driver)
-                        
+
                 # [추가] 재로그인 전 찌꺼기 프로세스 청소
                 pool.cleanup_lingering_chrome(target_port)
 
@@ -635,7 +661,7 @@ if __name__ == '__main__':
     print("   SESSION AUTO-RECOVERY ENABLED")
     print("   DAILY RESET @ 05:00 KST ENABLED")
     print("========================================")
-    
+
     # 세션 관리기 백그라운드 스레드 시작
     keeper = threading.Thread(target=session_keeper, daemon=True)
     keeper.start()
@@ -643,5 +669,5 @@ if __name__ == '__main__':
     # 일일 리셋 스케줄러 시작 (새벽 5시)
     resetter = threading.Thread(target=daily_reset_scheduler, daemon=True)
     resetter.start()
-    
-    app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)
+
+    app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)

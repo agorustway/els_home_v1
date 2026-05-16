@@ -43,27 +43,34 @@ class TestElsBotLogic(unittest.TestCase):
         with self.assertRaises(AttributeError):
              _ = self.mock_page.frames
 
-    def test_open_els_menu_triggers_mnu0024(self):
-        """MNU0024 자바스크립트 워프 로직이 실행되는지 테스트"""
-        # Given: 
+    def test_open_els_menu_triggers_602_warp(self):
+        """602 메뉴 워프 로직이 실행되는지 테스트"""
+        # Given:
         self.mock_page.run_js.return_value = None
-        self.mock_page.ele.return_value = MagicMock(states=MagicMock(is_displayed=True)) # 메뉴 진입 성공 가정
-        
+        target = MagicMock()
+
+        def ele_side_effect(selector, timeout=0.5):
+            if 'containerNo' in selector and self.mock_page.run_js.call_count > 0:
+                return target
+            return None
+
+        self.mock_page.ele.side_effect = ele_side_effect
+
         # When:
-        result = open_els_menu(self.mock_page)
+        with patch('els_bot.close_modals', return_value="OK"):
+            result = open_els_menu(self.mock_page)
         
         # Then:
         self.assertTrue(result)
-        # MNU0024 스크립트가 실행되었나?
-        calls = [c for c in self.mock_page.run_js.call_args_list if 'MNU0024' in str(c)]
+        calls = [c for c in self.mock_page.run_js.call_args_list if '_openMenu("602")' in str(c)]
         self.assertGreater(len(calls), 0)
 
     def test_is_session_valid_success(self):
         """세션이 유효할 때 (로그아웃 버튼 존재) True 반환 테스트"""
         # Given:
         self.mock_page.url = "https://etrans.klnet.co.kr/main.do"
-        self.mock_page.html = "<html>...</html>"
-        self.mock_page.ele.return_value = MagicMock() # 로그아웃 버튼 발견
+        self.mock_page.run_js.return_value = "홍길동님 로그아웃"
+        self.mock_page.ele.return_value = None
         
         # When:
         result = is_session_valid(self.mock_page)
@@ -74,7 +81,9 @@ class TestElsBotLogic(unittest.TestCase):
     def test_is_session_valid_expired(self):
         """세션 만료 텍스트 발견 시 False 반환 테스트"""
         # Given:
+        self.mock_page.url = "https://etrans.klnet.co.kr/main.do"
         self.mock_page.html = "Session이 종료되었습니다."
+        self.mock_page.run_js.return_value = "GUEST 로그인"
         self.mock_page.ele.return_value = None
         
         # When:

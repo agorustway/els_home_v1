@@ -29,6 +29,8 @@ services:
     environment:
       - PORT=2931
       - DAEMON_URL=http://127.0.0.1:31999
+      - ELS_MAX_DRIVERS=4
+      - ELS_BATCH_MAX_WORKERS=4
     shm_size: 2gb
     volumes:
       - /volume2/아산지점:/app/data/아산지점

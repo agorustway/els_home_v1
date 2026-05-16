@@ -1,4 +1,26 @@
 
+## [2026-05-16] 컨테이너 이력조회 정확도 방어 및 4워커 복구 (v5.13.6)
+### 🚀 Achievement
+- **유령 데이터 차단 강화**: NAS 봇 단에서 ISO 6346 체크섬 검증을 수행해 변형·비정상 컨테이너 번호는 외부 사이트 조회 전 `ERROR`로 확정하도록 했습니다.
+- **빈 그리드 오판 수정**: WebSquare 그리드 `rowCount=0`은 로딩 중 상태로 보고, 명시적인 `"데이터가 없음"` 계열 문구가 있거나 실제 이력 행이 추출될 때만 결과를 확정합니다.
+- **stale 데이터 방어**: 전체 페이지의 다른 그리드 fallback을 제거하고, 602 컨테이너이동현황 영역의 번호+상태 행만 파싱하도록 제한했습니다. 조회 전 WebSquare 객체와 DOM tbody를 함께 초기화합니다.
+- **실패 재조회**: `데이터 추출 실패`, 통신 예외 등 불확실 실패만 1회 재조회합니다. 검증된 `NODATA`와 체크섬 오류는 재조회하지 않아 가짜 성공으로 번지는 경로를 막았습니다.
+- **4워커 복구 및 순서 보장**: `ELS_MAX_DRIVERS=4`, `ELS_BATCH_MAX_WORKERS=4`를 Docker 환경에 명시하고, 병렬 내부 처리 결과는 사용자 입력 순서대로 스트리밍합니다.
+- **첫 조회 지연 원인 보정**: 로그인 직후 이미 컨테이너 조회 화면에 진입한 드라이버에 `page_ready=True`를 기록해 첫 단건 조회에서 불필요한 메뉴 재진입을 생략합니다.
+### 🧪 검증
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety` 통과 (10개)
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py` 통과
+- `git diff --check` 통과
+### 📁 변경 파일
+- `elsbot/els_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `docker/els-backend/app_bot.py`
+- `docker/docker-compose.yml`
+- `elsbot/tests/test_els_bot_logic.py`
+- `elsbot/tests/test_container_lookup_safety.py`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 앱 로컬 GPS 안정화/중복 전송 방어 및 종료 잔류 수정 (v5.13.5 / APK v5.11.12)
 ### 🚀 Achievement
 - **수신/반영 분리**: 앱 지도 화면은 1초 GPS 수신을 유지하되, 로컬 안정화 필터를 통과한 확정 포인트만 차량 마커·경로선·서버 전송에 사용하도록 변경했습니다.

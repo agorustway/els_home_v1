@@ -13,10 +13,33 @@ import io
 import math
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from flask import Flask, request, jsonify, Response, send_file
-from flask_cors import CORS
+try:
+    from flask import Flask, request, jsonify, Response, send_file
+    from flask_cors import CORS
+except ModuleNotFoundError:
+    class Flask:
+        def __init__(self, *args, **kwargs):
+            self.logger = type("Logger", (), {"warning": lambda *a, **k: None})()
+        def route(self, *args, **kwargs):
+            def deco(fn):
+                return fn
+            return deco
+        def run(self, *args, **kwargs):
+            return None
+    request = None
+    def jsonify(*args, **kwargs):
+        return args[0] if args else kwargs
+    class Response:
+        def __init__(self, *args, **kwargs):
+            pass
+    send_file = None
+    def CORS(*args, **kwargs):
+        return None
 from urllib.request import Request, urlopen
-import pandas as pd
+try:
+    import pandas as pd
+except ModuleNotFoundError:
+    pd = None
 
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
@@ -33,6 +56,27 @@ file_store = {}
 global_progress = {"total": 0, "completed": 0, "is_running": False}
 # [v4.9.8] 유휴 감지용: 마지막으로 개별 컨테이너 조회가 완료된 시각
 global_last_activity_time = 0
+
+def _status_row(cn, code, message):
+    return [str(cn or "").strip().upper(), code, message] + [""] * 12
+
+def _should_retry_rows(rows):
+    if not rows:
+        return True
+    first = rows[0] if isinstance(rows[0], (list, tuple)) else []
+    code = str(first[1] if len(first) > 1 else "")
+    message = str(first[2] if len(first) > 2 else "")
+    if code != "ERROR":
+        return False
+    non_retryable = ["유효하지 않은 컨테이너 번호", "비밀번호", "로그인 3회", "보안 모드"]
+    return not any(token in message for token in non_retryable)
+
+def _pop_ready_ordered_results(pending_results, next_index):
+    ready = []
+    while next_index in pending_results:
+        ready.append(pending_results.pop(next_index))
+        next_index += 1
+    return ready, next_index
 
 def _daemon_available():
     try:
@@ -154,34 +198,64 @@ def run():
             headers = ["컨테이너번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
             from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
             
-            def fetch(cn):
-                try:
-                    body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
-                    req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-                    r = urlopen(req, timeout=150)
-                    return json.loads(r.read().decode("utf-8")), cn
-                except Exception as e: return {"ok": False, "error": str(e)}, cn
+            def fetch(index, cn):
+                last_error = None
+                for attempt in range(1, 3):
+                    try:
+                        body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
+                        req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
+                        r = urlopen(req, timeout=170)
+                        data = json.loads(r.read().decode("utf-8"))
+                        rows = data.get("result") or []
+                        if _should_retry_rows(rows) and attempt < 2:
+                            last_error = rows[0][2] if rows and len(rows[0]) > 2 else data.get("error", "불확실 실패")
+                            time.sleep(1.2)
+                            continue
+                        return index, data, cn, attempt, last_error
+                    except Exception as e:
+                        last_error = str(e)
+                        if attempt < 2:
+                            time.sleep(1.2)
+                            continue
+                        return index, {"ok": False, "error": str(e), "result": [_status_row(cn, "ERROR", str(e))]}, cn, attempt, last_error
 
             sent_logs = set()
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                # [v4.5.12][Fix] Staggered Start 버그 수정
+            batch_workers = int(os.environ.get("ELS_BATCH_MAX_WORKERS", 4))
+            with ThreadPoolExecutor(max_workers=batch_workers) as executor:
+                # [v5.13.6] 4개 워커까지 쓰되, 첫 파동은 1초 간격으로 띄워 NAS 피크를 낮춘다.
                 futures = {}
                 for i, cn in enumerate(containers):
-                    if 0 < i < 4: # 2~4번째 워커만 1초 간격으로 시작 (CPU 분산)
+                    if 0 < i < batch_workers:
                         time.sleep(1)
-                    futures[executor.submit(fetch, cn)] = cn
+                    futures[executor.submit(fetch, i, cn)] = i
+
+                pending_results = {}
+                next_emit_index = 0
 
                 while futures:
                     # 1. 태스크 완료 확인 및 결과 배출
                     done, _ = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
                     for f in done:
-                        res, cn = f.result()
-                        rows = res.get("result", [[cn, "ERROR", res.get("error")] + [""]*12])
+                        index, res, cn, attempts, retry_reason = f.result()
+                        rows = res.get("result") or [_status_row(cn, "ERROR", res.get("error") or "조회 실패")]
+                        pending_results[index] = {
+                            "cn": cn,
+                            "rows": rows,
+                            "attempts": attempts,
+                            "retry_reason": retry_reason,
+                            "error": res.get("error"),
+                        }
+                        del futures[f]
+
+                    ready_results, next_emit_index = _pop_ready_ordered_results(pending_results, next_emit_index)
+                    for item in ready_results:
+                        rows = item["rows"]
                         final_rows.extend(rows)
                         global_progress["completed"] += 1
                         global_last_activity_time = time.time()  # [v4.9.8] 개별 조회 완료 시마다 갱신
+                        if item["attempts"] > 1:
+                            yield f"LOG:↻ [{item['cn']}] 1회 재조회 후 확정 ({item['retry_reason']})\n"
                         yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
-                        del futures[f]
 
                     # 2. 로그 실시간 스트리밍 (루프 도중)
                     try:

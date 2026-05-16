@@ -1,5 +1,9 @@
 import pandas as pd
-from DrissionPage import ChromiumPage, ChromiumOptions
+try:
+    from DrissionPage import ChromiumPage, ChromiumOptions
+except ModuleNotFoundError:
+    ChromiumPage = None
+    ChromiumOptions = None
 import time
 import json
 import os
@@ -9,6 +13,51 @@ import argparse
 from openpyxl.styles import PatternFill
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")
+NO_DATA_MESSAGES = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다", "데이터가 존재하지 않습니다"]
+HISTORY_KEYWORDS = ("수입", "수출", "반입", "반출", "양하", "적하")
+
+_ISO6346_CHAR_MAP = {
+    'A': 10, 'B': 12, 'C': 13, 'D': 14, 'E': 15, 'F': 16, 'G': 17, 'H': 18, 'I': 19, 'J': 20,
+    'K': 21, 'L': 23, 'M': 24, 'N': 25, 'O': 26, 'P': 27, 'Q': 28, 'R': 29, 'S': 30, 'T': 31,
+    'U': 32, 'V': 34, 'W': 35, 'X': 36, 'Y': 37, 'Z': 38,
+}
+
+def normalize_container_no(container_no):
+    return re.sub(r"\s+", "", str(container_no or "")).upper()
+
+def is_valid_container_no(container_no):
+    """ISO 6346 컨테이너 번호 체크섬 검증."""
+    cn = normalize_container_no(container_no)
+    if not re.fullmatch(r"[A-Z]{4}\d{7}", cn):
+        return False
+    total = 0
+    for idx, ch in enumerate(cn[:10]):
+        val = int(ch) if ch.isdigit() else _ISO6346_CHAR_MAP.get(ch)
+        if val is None:
+            return False
+        total += val * (2 ** idx)
+    check_digit = total % 11
+    if check_digit == 10:
+        check_digit = 0
+    return check_digit == int(cn[-1])
+
+def make_status_row(container_no, code, message):
+    return [normalize_container_no(container_no), code, message] + [""] * 12
+
+def is_no_data_text(text):
+    return any(msg in str(text or "") for msg in NO_DATA_MESSAGES)
+
+def is_retryable_result_rows(rows):
+    """조회 자체가 불확실한 실패인지 판단한다. 검증된 NODATA/번호 오류는 재조회하지 않는다."""
+    if not rows:
+        return True
+    first = rows[0] if isinstance(rows[0], (list, tuple)) else []
+    code = str(first[1] if len(first) > 1 else "")
+    message = str(first[2] if len(first) > 2 else "")
+    if code != "ERROR":
+        return False
+    non_retryable = ["유효하지 않은 컨테이너 번호", "비밀번호", "로그인 3회", "보안 모드"]
+    return not any(token in message for token in non_retryable)
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -254,32 +303,53 @@ def solve_input_and_search(page, container_no, log_callback=None):
         try: input_ele.click(timeout=1)
         except: input_ele.click(by_js=True)
         
-        # [v4.12.5] 조회 전 그리드 데이터 강제 초기화 (WebSquare 객체 직접 타격)
+        # [v4.12.5+] 조회 전 그리드 데이터 강제 초기화 (WebSquare 객체 + DOM 동시 타격)
         page.run_js("""
             var gridIds = [
                 'mf_tac_layout_contents_602_body_gridView', 
                 'mf_tac_layout_contents_602_body_grd_list', 
                 'mf_tac_layout_contents_602_body_grid'
             ];
+            function findComponent(id) {
+                var candidates = [];
+                try { candidates.push(window[id]); } catch(e) {}
+                try { if (window.scwin) candidates.push(window.scwin[id]); } catch(e) {}
+                try { if (window.$p && $p.getComponentById) candidates.push($p.getComponentById(id)); } catch(e) {}
+                try { if (window.WebSquare && WebSquare.util && WebSquare.util.getComponentById) candidates.push(WebSquare.util.getComponentById(id)); } catch(e) {}
+                try { candidates.push(document.getElementById(id)); } catch(e) {}
+                return candidates.filter(Boolean);
+            }
+            function clearGridObject(obj) {
+                var methods = ['setData', 'setGridData', 'setAllJSON', 'removeAll', 'removeAllRows', 'deleteAllRows'];
+                methods.forEach(function(method) {
+                    try {
+                        if (obj && typeof obj[method] === 'function') obj[method]([]);
+                    } catch(e) {}
+                });
+                try {
+                    if (obj && typeof obj.setDataList === 'function') obj.setDataList([]);
+                } catch(e) {}
+            }
             gridIds.forEach(function(id) {
                 try {
-                    var obj = window[id] || (window.scwin && window.scwin[id]);
-                    if (obj && typeof obj.setData === 'function') {
-                        obj.setData([]); 
-                    } else {
-                        var el = document.getElementById(id);
-                        if (el) {
-                            var tb = el.querySelector('tbody');
-                            if(tb) tb.innerHTML = '';
-                        }
+                    findComponent(id).forEach(clearGridObject);
+                    var el = document.getElementById(id);
+                    if (el) {
+                        el.setAttribute('data-els-cleared-at', String(Date.now()));
+                        el.querySelectorAll('tbody').forEach(function(tb) { tb.innerHTML = ''; });
                     }
                 } catch(e) {}
+            });
+            document.querySelectorAll('[id*="602_body"] table tbody').forEach(function(tb) {
+                try { tb.innerHTML = ''; } catch(e) {}
             });
         """)
         time.sleep(0.5)
 
-        input_ele.run_js(f"this.value = '{container_no}';")
+        safe_cn = json.dumps(container_no)
+        input_ele.run_js(f"this.value = {safe_cn}; this.dispatchEvent(new Event('input', {{ bubbles: true }})); this.dispatchEvent(new Event('change', {{ bubbles: true }}));")
         input_ele.input(container_no, clear=True)
+        input_ele.run_js(f"this.value = {safe_cn}; this.dispatchEvent(new Event('input', {{ bubbles: true }})); this.dispatchEvent(new Event('change', {{ bubbles: true }}));")
         if log_callback: log_callback(f"[{container_no}] 입력 완료")
         
         # 조회 버튼 찾기 (형님이 주신 이미지의 정확한 ID 우선 수색)
@@ -296,11 +366,10 @@ def solve_input_and_search(page, container_no, log_callback=None):
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
             
             # [v4.12.6] '데이터가 없음' 등 변종 키워드 대응 강화
-            no_data_msgs = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다"]
             for _ in range(6):
                 time.sleep(0.3)
                 inner_text = page.run_js("return document.body.innerText || ''")
-                if any(msg in inner_text for msg in no_data_msgs):
+                if is_no_data_text(inner_text):
                     if log_callback: log_callback("✅ [검증] 내역 없음 확인됨")
                     return "내역없음확인"
             
@@ -311,6 +380,42 @@ def solve_input_and_search(page, container_no, log_callback=None):
     except Exception as e:
         if log_callback: log_callback(f"❌ 조회 중 에러: {e}")
         return False
+
+def parse_grid_text_to_rows(container_no, grid_text):
+    """스크래핑 텍스트를 표준 결과 행으로 변환한다. 형식이 애매한 행은 버린다."""
+    if not grid_text:
+        return []
+    text = str(grid_text)
+    if text in ["NODATA_GRID_EMPTY", "내역없음확인", "NODATA_CONFIRMED"] or is_no_data_text(text):
+        return [make_status_row(container_no, "NODATA", "내역 없음")]
+
+    cn = normalize_container_no(container_no)
+    temp_rows = []
+    for line in text.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in line.split('|')] if '|' in line else re.split(r'\t|\s{2,}', line)
+        parts = [p.strip() for p in parts if p is not None]
+        if len(parts) < 3 or not str(parts[0]).isdigit():
+            continue
+        while len(parts) < 14:
+            parts.append("")
+        row = [cn] + parts[:14]
+        history_text = "|".join(str(cell) for cell in row[2:14])
+        if any(keyword in history_text for keyword in HISTORY_KEYWORDS):
+            temp_rows.append(row)
+
+    seen_no = set()
+    result_rows = []
+    for row in sorted(temp_rows, key=lambda x: int(x[1]) if str(x[1]).isdigit() else 999):
+        no = str(row[1])
+        if no in seen_no:
+            continue
+        if any(str(cell).strip() and str(cell).strip() not in ['-', '.', '?', '내역 없음', '데이터 없음'] for cell in row[2:14]):
+            result_rows.append(row)
+            seen_no.add(no)
+    return result_rows
 
 def scrape_hyper_verify(page, search_no):
     """[v4.9.9] WebSquare 그리드 API 또는 정밀 타겟팅 DOM 스크래핑으로 데이터 추출
@@ -357,20 +462,9 @@ def scrape_hyper_verify(page, search_no):
         }
     }
     
-    // 3단계: 최종 폴백 - 페이지 내 모든 WebSquare 그리드 중 데이터가 있는 것
-    if (!grid) {
-        var allGrids = document.querySelectorAll('[class*="w2grid"], [id*="gridView"], [id*="grd_list"]');
-        for (var a = 0; a < allGrids.length; a++) {
-            if (typeof allGrids[a].getRowCount === 'function' && allGrids[a].getRowCount() > 0) {
-                grid = allGrids[a];
-                break;
-            }
-        }
-    }
-    
     if (grid && typeof grid.getRowCount === 'function') {
         var rowCount = grid.getRowCount();
-        if (rowCount === 0) return "NODATA_GRID_EMPTY";
+        if (rowCount === 0) return "GRID_EMPTY_PENDING";
         
         // getAllJSON이 있으면 한방에 추출
         if (typeof grid.getAllJSON === 'function') {
@@ -381,7 +475,10 @@ def scrape_hyper_verify(page, search_no):
                     for (var r = 0; r < jsonData.length; r++) {
                         var row = jsonData[r];
                         var vals = Object.values(row);
-                        results.push(vals.join('|'));
+                        var line = vals.join('|');
+                        if (/^\s*\d+\|/.test(line) && /(수입|수출|반입|반출|양하|적하)/.test(line)) {
+                            results.push(line);
+                        }
                     }
                     if (results.length > 0) return results.join('\n');
                 }
@@ -403,7 +500,10 @@ def scrape_hyper_verify(page, search_no):
                         rowVals.push(String(val || '').trim());
                     } catch(e) { rowVals.push(''); }
                 }
-                results.push(rowVals.join('|'));
+                var cellLine = rowVals.join('|');
+                if (/^\s*\d+\|/.test(cellLine) && /(수입|수출|반입|반출|양하|적하)/.test(cellLine)) {
+                    results.push(cellLine);
+                }
             }
             if (results.length > 0) return results.join('\n');
         }
@@ -466,8 +566,8 @@ def scrape_hyper_verify(page, search_no):
     for attempt in range(12):
         try:
             res = page.run_js(ws_grid_script)
-            if res and res == "NODATA_GRID_EMPTY":
-                return "내역없음확인"
+            if res and res == "GRID_EMPTY_PENDING":
+                pass
             if res and '|' in res and len(res.strip()) > 10:
                 return res
         except: pass
@@ -484,10 +584,8 @@ def scrape_hyper_verify(page, search_no):
         try:
             # page.html 보다 page.run_js 가 더 빠르고 정확할 수 있음
             inner_text = page.run_js("return document.body.innerText || ''")
-            no_data_msgs = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다"]
-            for msg in no_data_msgs:
-                if msg in inner_text:
-                    return "내역없음확인"
+            if is_no_data_text(inner_text):
+                return "내역없음확인"
         except: pass
         
         time.sleep(0.5)
@@ -495,15 +593,16 @@ def scrape_hyper_verify(page, search_no):
     # 데이터 없음 확인 (최종 fallback)
     try:
         full_text = page.html
-        no_data_msgs = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다"]
-        for msg in no_data_msgs:
-            if msg in full_text:
-                return "내역없음확인"
+        if is_no_data_text(full_text):
+            return "내역없음확인"
     except: pass
         
     return None
 
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=9222):
+    if ChromiumOptions is None or ChromiumPage is None:
+        return (None, "DrissionPage 패키지가 설치되지 않았습니다.")
+
     start_time = time.time()
     def _log(msg):
         elapsed = time.time() - start_time
@@ -616,6 +715,8 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
         if open_els_menu(page, _log):
             _log("✅ 모든 준비 완료 (로그인 + 메뉴 진입)")
             page.login_time = time.time() # [v4.12.1] 세션 관리를 위한 로그인 시점 기록
+            page.last_activity = time.time()
+            page.page_ready = True
             return (page, None)
         
         page.quit()
@@ -646,28 +747,18 @@ def run_els_process(u_id, u_pw, c_list, log_callback=None, show_browser=False):
         
         if status is True or status == "내역없음확인":
             if status == "내역없음확인":
-                grid_text = "내역없음확인"
+                final_rows.append(make_status_row(cn, "NODATA", "내역 없음"))
+                continue
             else:
                 grid_text = scrape_hyper_verify(page, cn)
-                
-            if grid_text:
-                # [v4.9.9] WebSquare API NODATA 응답 처리
-                if grid_text in ["NODATA_GRID_EMPTY", "내역없음확인"]:
-                    final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
-                else:
-                    found_any = False
-                    for line in grid_text.split('\n'):
-                        row_data = line.strip().split('|')
-                        if row_data and row_data[0].isdigit():
-                            while len(row_data) < 15: row_data.append("")
-                            final_rows.append([cn] + row_data[:14])
-                            found_any = True
-                    if not found_any:
-                        final_rows.append([cn, "NODATA", "내역 없음"] + [""]*12)
+
+            parsed_rows = parse_grid_text_to_rows(cn, grid_text)
+            if parsed_rows:
+                final_rows.extend(parsed_rows)
             else:
-                final_rows.append([cn, "NODATA", "데이터 추출 실패"] + [""]*12)
+                final_rows.append(make_status_row(cn, "ERROR", "데이터 추출 실패"))
         else:
-            final_rows.append([cn, "ERROR", str(status)] + [""]*12)
+            final_rows.append(make_status_row(cn, "ERROR", str(status)))
 
     page.quit()
     total_elapsed = time.time() - start_time
