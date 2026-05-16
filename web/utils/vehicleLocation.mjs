@@ -149,6 +149,36 @@ export function shouldAcceptLocation({ current, previous, next = null, forced = 
     return { ok: true, reason: 'accepted' };
 }
 
+export function shouldStoreLocation({ current, previous, forced = false, fastMode = false }) {
+    if (forced || !previous) return { ok: true, reason: forced ? 'forced' : 'first' };
+
+    const lat = Number(current?.lat);
+    const lng = Number(current?.lng);
+    const prevLat = Number(previous?.lat);
+    const prevLng = Number(previous?.lng);
+    if (![lat, lng, prevLat, prevLng].every(Number.isFinite)) return { ok: true, reason: 'no_compare' };
+
+    const distKm = haversineKm(prevLat, prevLng, lat, lng);
+    const currTime = getPointTime(current) || Date.now();
+    const prevTime = getPointTime(previous) || currTime;
+    const elapsedMs = Math.max(0, currTime - prevTime);
+    const speed = normalizeSpeedKmh(current?.speed);
+
+    let minMoveKm;
+    if (fastMode) minMoveKm = speed < LOW_SPEED_KMH ? 0.025 : 0.015;
+    else if (speed <= STATIONARY_SPEED_KMH) minMoveKm = 0.06;
+    else if (speed < 45) minMoveKm = 0.05;
+    else minMoveKm = 0.08;
+
+    const heartbeatMs = fastMode ? 20 * 1000 : (speed <= STATIONARY_SPEED_KMH ? 90 * 1000 : 45 * 1000);
+
+    if (distKm < minMoveKm && elapsedMs < heartbeatMs) {
+        return { ok: false, reason: 'duplicate_location', distKm, minMoveKm, elapsedMs };
+    }
+
+    return { ok: true, reason: distKm >= minMoveKm ? 'moved' : 'heartbeat', distKm };
+}
+
 export function filterRouteLocations(locations = []) {
     let ordered = locations
         .filter(Boolean)

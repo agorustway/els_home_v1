@@ -77,4 +77,55 @@ scoop install git nodejs-lts python
 - **NAS (Synology)**: 고중량 API 처리, 엑셀/파일 서버, 봇 데몬 상시 구동
 
 ---
-*최종 갱신일: 2026-04-01 (by Antigravity)*
+
+## 🧰 6. AI 작업 권한/도구 요청
+
+AI 에이전트가 작업 중 아래 항목에서 막히면 우회하지 말고 형에게 필요한 권한이나 설치를 요청한다.
+
+### 6-1. 요청해야 하는 상황
+- **네트워크 접근**: Supabase/Vercel/GitHub/NAS/패키지 레지스트리 조회가 샌드박스에 막힐 때
+- **Git 쓰기 작업**: `.git/index.lock`, `git add`, `git commit`, `git push` 권한이 막힐 때
+- **Android/APK 빌드**: `scripts\build_driver_apk.ps1`, Gradle, Android SDK, 네트워크 다운로드가 필요할 때
+- **브라우저 검증**: Playwright/브라우저 설치 또는 로컬 dev server 실행 권한이 필요할 때
+- **OS 파일 권한**: `.config`, `.pytest_cache`, 빌드 캐시 등 권한 경고가 반복될 때
+- **추가 CLI 도구**: 현재 작업을 확실히 줄여주는 도구가 있을 때만 필수/선택을 나눠 제안
+
+### 6-2. 형에게 요청할 때 포함할 것
+```text
+형, [필요 권한/도구]가 필요해.
+이유: [현재 막힌 지점]
+실행/설치 명령: [명령어]
+영향 범위: [프로젝트/전역/네트워크/원격 저장소 등]
+주의점/되돌리기: [있으면 기재]
+```
+
+### 6-3. 권장 선택 도구
+```powershell
+# GitHub 원격/PR/Actions 확인이 잦을 때
+winget install --id GitHub.cli -e
+
+# Supabase 스키마/마이그레이션 확인이 잦을 때
+winget install --id Supabase.CLI -e
+
+# 로컬 UI 자동 검증이 필요할 때
+cd web
+npx playwright install chromium
+```
+
+### 6-4. Windows 권한 경고 정리 예시
+```powershell
+$account = "$env:USERDOMAIN\$env:USERNAME"
+
+icacls "$env:USERPROFILE\.config" /grant "${account}:(OI)(CI)F" /T
+icacls ".pytest_cache" /grant "${account}:(OI)(CI)F" /T
+icacls "docker\els-backend\.pytest_cache" /grant "${account}:(OI)(CI)F" /T
+```
+
+`.pytest_cache`는 테스트 캐시이므로 권한 부여 대신 삭제해도 된다.
+```powershell
+Remove-Item ".pytest_cache" -Recurse -Force
+Remove-Item "docker\els-backend\.pytest_cache" -Recurse -Force
+```
+
+---
+*최종 갱신일: 2026-05-16 (by Codex — AI 권한/도구 요청 기준 추가)*

@@ -4,6 +4,7 @@ import {
   filterRouteLocations,
   sanitizeRecordedAt,
   shouldAcceptLocation,
+  shouldStoreLocation,
 } from '../utils/vehicleLocation.mjs';
 
 const base = '2026-05-16T00:00:00.000Z';
@@ -45,4 +46,24 @@ test('클라이언트 수신시간은 정상 범위면 보존하고 과도한 �
   const nowMs = new Date(base).getTime();
   assert.equal(sanitizeRecordedAt(at(30), nowMs), at(30));
   assert.equal(sanitizeRecordedAt(at(600), nowMs), base);
+});
+
+test('서버 저장 전 같은 자리 반복 포인트는 heartbeat 전까지 중복 저장하지 않는다', () => {
+  const decision = shouldStoreLocation({
+    previous: { lat: 36.5000, lng: 127.0000, speed: 0, recorded_at: at(0) },
+    current: { lat: 36.5001, lng: 127.0000, speed: 0, accuracy: 8, recorded_at: at(20) },
+  });
+
+  assert.equal(decision.ok, false);
+  assert.equal(decision.reason, 'duplicate_location');
+});
+
+test('실시간 추적 모드에서는 작지만 의미 있는 이동을 저장한다', () => {
+  const decision = shouldStoreLocation({
+    previous: { lat: 36.5000, lng: 127.0000, speed: 20, recorded_at: at(0) },
+    current: { lat: 36.5002, lng: 127.0000, speed: 20, accuracy: 8, recorded_at: at(5) },
+    fastMode: true,
+  });
+
+  assert.equal(decision.ok, true);
 });

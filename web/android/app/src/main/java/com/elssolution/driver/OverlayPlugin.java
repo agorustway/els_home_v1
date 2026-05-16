@@ -32,6 +32,8 @@ import java.nio.charset.StandardCharsets;
 public class OverlayPlugin extends Plugin {
 
     private static final int REQ_OVERLAY = 2001;
+    private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
+    private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
 
     // JS → 오버레이 권한 확인
     @PluginMethod
@@ -127,9 +129,10 @@ public class OverlayPlugin extends Plugin {
     // JS → 서비스 종료
     @PluginMethod
     public void stopService(PluginCall call) {
+        getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().remove(KEY_TRIP_ID).apply();
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
-        intent.setAction("STOP_SERVICE");
-        getContext().startService(intent);
+        getContext().stopService(intent);
         call.resolve(new JSObject().put("stopped", true));
     }
 
@@ -137,6 +140,14 @@ public class OverlayPlugin extends Plugin {
     // JS → 앱 완전 강제 종료 (좀비 알림 사살용)
     @PluginMethod
     public void exitAppForce(PluginCall call) {
+        Context context = getContext();
+        context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+            .edit().putString("EXPLICIT_EXIT", "true").apply();
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().remove(KEY_TRIP_ID).apply();
+        try {
+            context.stopService(new Intent(context, FloatingWidgetService.class));
+        } catch (Exception ignored) {}
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
                 getActivity().finishAndRemoveTask();

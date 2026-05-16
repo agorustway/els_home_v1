@@ -17,6 +17,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 - **Python 인코딩**: Python 코드 작업 시 `PYTHONIOENCODING=utf-8` 환경 고려.
 - **PowerShell**: 파일 I/O 시 `-Encoding UTF8` 필수. 명령어 체인은 `&&` 대신 `;` 사용 (한글 깨짐·호환성 방지).
 - **PDCA**: 코드 변경은 계획(Plan)→실행(Do)→검증(Check)→적용(Act) 단계 준수.
+- **도구·권한 요청**: 작업 중 네트워크, Git, NAS, Supabase, Android/Gradle, 브라우저 자동화, OS 권한, 추가 CLI 도구가 필요하거나 막히면 우회하지 말고 형에게 필요한 항목·이유·명령어·영향 범위를 짧게 요청한다. 세부 기준은 `docs/08_ENVIRONMENT_SETUP.md`의 "AI 작업 권한/도구 요청" 섹션을 따른다.
 
 ## 명령어 트리거
 

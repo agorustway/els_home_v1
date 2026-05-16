@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
-import { sanitizeRecordedAt, shouldAcceptLocation } from '@/utils/vehicleLocation.mjs';
+import { sanitizeRecordedAt, shouldAcceptLocation, shouldStoreLocation } from '@/utils/vehicleLocation.mjs';
 
 /**
  * POST /api/vehicle-tracking/location
@@ -17,28 +17,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'trip_id, lat, lng는 필수입니다.' }, { status: 400 });
         }
 
-        // 역지오코딩 (카카오 Coord2Address API) — 주소는 보조용, 지도 표시는 lat/lng 사용
         let address = null;
-
-        try {
-            const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
-            if (kakaoKey) {
-                const kakaoRes = await fetch(
-                    `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}&input_coord=WGS84`,
-                    {
-                        headers: { 'Authorization': `KakaoAK ${kakaoKey}` },
-                        signal: AbortSignal.timeout(3000),
-                    }
-                );
-                const kakaoData = await kakaoRes.json();
-                const doc = kakaoData?.documents?.[0];
-                if (doc?.address) {
-                    address = doc.address.address_name;
-                } else if (doc?.road_address) {
-                    address = doc.road_address.address_name;
-                }
-            }
-        } catch (e) { console.error('[location] 카카오 geocode 오류:', e.message); }
 
         // 운행 상태 확인 (이미 종료된 경우 기록 안함)
         const { data: trip } = await supabase.from('vehicle_trips').select('status').eq('id', trip_id).single();
@@ -59,7 +38,7 @@ export async function POST(request) {
 
         const { data: previousLocations } = await supabase
             .from('vehicle_locations')
-            .select('lat,lng,accuracy,speed,recorded_at')
+            .select('lat,lng,accuracy,speed,address,recorded_at')
             .eq('trip_id', trip_id)
             .order('recorded_at', { ascending: false })
             .limit(2);
@@ -93,11 +72,51 @@ export async function POST(request) {
             return NextResponse.json({
                 skipped: true,
                 reason: decision.reason,
-                address,
+                address: latestLocation?.address || null,
             }, {
                 headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
+
+        const fastMode = sourceText === 'map_foreground'
+            || sourceText === 'realtime_tracking'
+            || body.realtime === true;
+        const storeDecision = shouldStoreLocation({
+            current: currentPoint,
+            previous: previousForDecision,
+            forced: Boolean(marker_type) || source === 'native_forced',
+            fastMode,
+        });
+        if (!storeDecision.ok) {
+            return NextResponse.json({
+                skipped: true,
+                reason: storeDecision.reason,
+                address: latestLocation?.address || null,
+            }, {
+                headers: { 'Access-Control-Allow-Origin': '*' }
+            });
+        }
+
+        // 역지오코딩은 저장할 포인트에만 수행해 API/서버 부하를 줄인다.
+        try {
+            const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
+            if (kakaoKey) {
+                const kakaoRes = await fetch(
+                    `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}&input_coord=WGS84`,
+                    {
+                        headers: { 'Authorization': `KakaoAK ${kakaoKey}` },
+                        signal: AbortSignal.timeout(3000),
+                    }
+                );
+                const kakaoData = await kakaoRes.json();
+                const doc = kakaoData?.documents?.[0];
+                if (doc?.address) {
+                    address = doc.address.address_name;
+                } else if (doc?.road_address) {
+                    address = doc.road_address.address_name;
+                }
+            }
+        } catch (e) { console.error('[location] 카카오 geocode 오류:', e.message); }
 
         const insertPayload = {
             trip_id,

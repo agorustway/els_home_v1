@@ -1,4 +1,45 @@
 
+## [2026-05-16] 앱 로컬 GPS 안정화/중복 전송 방어 및 종료 잔류 수정 (v5.13.5 / APK v5.11.12)
+### 🚀 Achievement
+- **수신/반영 분리**: 앱 지도 화면은 1초 GPS 수신을 유지하되, 로컬 안정화 필터를 통과한 확정 포인트만 차량 마커·경로선·서버 전송에 사용하도록 변경했습니다.
+- **정차/저속 흔들림 방어**: 실내·신호대기처럼 위치가 튀었다 돌아오는 값은 후보 포인트로 보류하고, 같은 위치/방향으로 연속 확인될 때만 확정점으로 승격합니다.
+- **배터리/서버 부하 조절**: 일반 운행은 12~45초 중심의 전략 전송, 앱 지도/웹 실시간 추적은 2초 고감도 전송으로 분리했습니다. 오프라인 큐도 같은 위치 반복 포인트를 압축합니다.
+- **서버 저장 중복 방어**: `/api/vehicle-tracking/location`에서 이동거리/heartbeat 기준 미달 포인트는 저장하지 않고, 저장 대상에만 역지오코딩을 수행해 DB/외부 API 부하를 줄였습니다.
+- **앱 종료 잔류 수정**: 운행 종료 후 뒤로가기 종료 시 Android `onPause()`가 오버레이 서비스를 다시 깨우지 않도록 active trip 기준을 추가하고, 명시 종료 시 서비스/알림을 함께 정리합니다.
+- **권한/도구 요청 문서화**: 다음 세션에서도 막히면 우회하지 않고 형에게 필요한 도구·권한을 요청하도록 `AGENTS.md`, `docs/03_RULES.md`, `docs/08_ENVIRONMENT_SETUP.md`를 보강했습니다.
+### 🧪 검증
+- `node --test web/tests/vehicleLocation.test.mjs` 통과 (6개)
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1` 통과, APK metadata `versionCode 5153` / `versionName 5.11.12` 확인
+- `npm.cmd run build` 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 📁 변경 파일
+- `web/driver-src/modules/gps.js`
+- `web/app/api/vehicle-tracking/location/route.js`
+- `web/utils/vehicleLocation.mjs`
+- `web/tests/vehicleLocation.test.mjs`
+- `web/android/app/src/main/java/com/elssolution/driver/*`
+- `web/android/app/build.gradle`
+- `web/public/apk/version.json`
+- `web/public/apk/els_driver.apk`
+- `AGENTS.md`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+- `docs/03_RULES.md`
+- `docs/08_ENVIRONMENT_SETUP.md`
+
+## [2026-05-16] AI 권한/도구 요청 기준 문서화
+### 🚀 Achievement
+- **요청 프로토콜 추가**: AI가 네트워크, Git, NAS/Supabase, Android/Gradle, 브라우저 자동화, OS 권한, 추가 CLI 도구에서 막히면 우회하지 않고 형에게 필요한 항목·이유·명령어·영향 범위를 요청하도록 규칙화했습니다.
+- **환경 가이드 보강**: 선택 도구(`gh`, Supabase CLI, Playwright Chromium)와 Windows 권한 경고 정리 예시를 `docs/08_ENVIRONMENT_SETUP.md`에 추가했습니다.
+### 🧪 검증
+- Markdown 문서 변경만 수행했습니다.
+### 📁 변경 파일
+- `AGENTS.md`
+- `docs/03_RULES.md`
+- `docs/08_ENVIRONMENT_SETUP.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 차량위치관제 GPS 품질/앱 지도 UX 리팩터링 (v5.13.4 / APK v5.11.11)
 ### 🚀 Achievement
 - **실제 운송 데이터 분석**: 최근 운행 GPS 표본 1,000개를 분석해 raw 97.6km가 보정 후 54.4km로 줄어드는 것을 확인했습니다. 정차/저속 중 좌표 점프 47건, spike-return 37건, 불가능 순간속도 10건이 핵심 원인이었습니다.

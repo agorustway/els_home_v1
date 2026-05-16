@@ -270,6 +270,14 @@ public class FloatingWidgetService extends Service {
                 return START_STICKY;
             }
             if ("SET_VISIBILITY".equals(action)) {
+                String savedTripId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_TRIP_ID, "");
+                if ((mTripId == null || mTripId.trim().isEmpty())
+                    && (savedTripId == null || savedTripId.trim().isEmpty())) {
+                    Log.d(TAG, "SET_VISIBILITY ignored — no active trip, stopping service");
+                    stopSelf();
+                    return START_NOT_STICKY;
+                }
+                if (mTripId == null || mTripId.trim().isEmpty()) mTripId = savedTripId;
                 boolean visible = intent.getBooleanExtra("visible", true);
                 if (mFloatingWidget != null) {
                     mFloatingWidget.setVisibility(visible ? View.VISIBLE : View.GONE);
@@ -320,7 +328,7 @@ public class FloatingWidgetService extends Service {
             startNativeTimer();
         }
 
-        return START_STICKY;
+        return (mTripId != null && !mTripId.trim().isEmpty()) ? START_STICKY : START_NOT_STICKY;
     }
 
     // ─── 오버레이 위젯 ────────────────────────────────────────────

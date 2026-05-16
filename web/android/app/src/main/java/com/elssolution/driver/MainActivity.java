@@ -19,6 +19,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class MainActivity extends BridgeActivity {
 
     private static final int REQ_PERMISSION_CODE = 101;
+    private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
+    private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -65,10 +67,27 @@ public class MainActivity extends BridgeActivity {
         builder.setMessage(message);
 
         if (!isTripActive) {
-            builder.setPositiveButton("종료", (d, w) -> finishAndRemoveTask());
+            builder.setPositiveButton("종료", (d, w) -> cleanExitApp());
         }
         builder.setNegativeButton("취소", (d, w) -> d.dismiss());
         builder.show();
+    }
+
+    private boolean hasActiveTripForService() {
+        String tripId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_TRIP_ID, "");
+        return tripId != null && !tripId.trim().isEmpty();
+    }
+
+    private void cleanExitApp() {
+        getSharedPreferences("CapacitorStorage", MODE_PRIVATE)
+            .edit().putString("EXPLICIT_EXIT", "true").apply();
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit().remove(KEY_TRIP_ID).apply();
+        try {
+            Intent stopIntent = new Intent(this, FloatingWidgetService.class);
+            stopService(stopIntent);
+        } catch (Exception ignored) {}
+        finishAndRemoveTask();
     }
 
     // ─── 배터리 최적화 제외 요청 (JS에서 호출) ────────────────────
@@ -112,7 +131,8 @@ public class MainActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         // [v4.3.01] 방어 코드: 위치 권한이 없는 상태에서 서비스를 시작하면 안드로이드 14+에서 즉시 크래시 발생
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (hasActiveTripForService()
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(this, FloatingWidgetService.class);
             intent.setAction("SET_VISIBILITY");
             intent.putExtra("visible", false);
@@ -124,7 +144,8 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         // [v4.3.01] 방어 코드: 위치 권한이 있을 때만 백그라운드 오버레이 전환 시도
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (hasActiveTripForService()
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(this, FloatingWidgetService.class);
             intent.setAction("SET_VISIBILITY");
             intent.putExtra("visible", true);

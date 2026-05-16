@@ -7,8 +7,9 @@
  * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
  * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
-import { State, BASE_URL } from './store.js?v=5152';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5152';
+import { State, BASE_URL } from './store.js?v=5153';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5153';
+import { haversineKm } from './locationFilter.js?v=5153';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)
@@ -24,6 +25,23 @@ let _mapForegroundTimer = null;
 let _mapForegroundBusy = false;
 let _appForegroundTimer = null;
 let _appForegroundBusy = false;
+let _lastAcceptedPoint = null;
+let _lastTransmittedPoint = null;
+let _pendingPoint = null;
+let _pendingCount = 0;
+let _lastFilterLogMs = 0;
+
+const ACCURACY_HARD_SKIP_M = 100;
+const ACCURACY_SUSPECT_M = 45;
+const STATIONARY_SPEED_KPH = 4;
+const LOW_SPEED_KPH = 12;
+
+function resetGpsStabilizer() {
+  _lastAcceptedPoint = null;
+  _lastTransmittedPoint = null;
+  _pendingPoint = null;
+  _pendingCount = 0;
+}
 
 // ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
@@ -33,10 +51,52 @@ const MAX_QUEUE_SIZE = 500;
 let _isFlushingQueue = false;
 
 function saveGpsQueue() {
+  _gpsOfflineQueue = compactGpsPayloads(_gpsOfflineQueue);
   if (_gpsOfflineQueue.length > MAX_QUEUE_SIZE) {
     _gpsOfflineQueue = _gpsOfflineQueue.slice(-MAX_QUEUE_SIZE);
   }
   localStorage.setItem('els_gps_queue', JSON.stringify(_gpsOfflineQueue));
+}
+
+function payloadDistanceKm(a, b) {
+  if (!a || !b) return Infinity;
+  const aLat = Number(a.lat);
+  const aLng = Number(a.lng);
+  const bLat = Number(b.lat);
+  const bLng = Number(b.lng);
+  if (![aLat, aLng, bLat, bLng].every(Number.isFinite)) return Infinity;
+  return haversineKm(aLat, aLng, bLat, bLng);
+}
+
+function payloadTimeMs(payload) {
+  const raw = payload?.recorded_at;
+  const ms = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function canCollapsePayload(prev, next) {
+  if (!prev || !next) return false;
+  if (prev.marker_type || next.marker_type) return false;
+  if (String(prev.trip_id) !== String(next.trip_id)) return false;
+  const dt = Math.abs(payloadTimeMs(next) - payloadTimeMs(prev));
+  return payloadDistanceKm(prev, next) < 0.03 && dt < 90_000;
+}
+
+function compactGpsPayloads(queue) {
+  const compacted = [];
+  for (const payload of queue || []) {
+    const prev = compacted[compacted.length - 1];
+    if (canCollapsePayload(prev, payload)) compacted[compacted.length - 1] = payload;
+    else compacted.push(payload);
+  }
+  return compacted;
+}
+
+function enqueueGpsPayload(payload) {
+  const last = _gpsOfflineQueue[_gpsOfflineQueue.length - 1];
+  if (canCollapsePayload(last, payload)) _gpsOfflineQueue[_gpsOfflineQueue.length - 1] = payload;
+  else _gpsOfflineQueue.push(payload);
+  saveGpsQueue();
 }
 
 /** 오프라인 큐를 순차적으로 서버에 전송 (동시 전송 방지) */
@@ -78,6 +138,7 @@ export function startRealtimeMode() {
   realtimeExpireAt = Date.now() + 60000;
   updateTripStatusLine();
   _syncRealtimeModeToNative(true);
+  pollAppForegroundPosition();
   remoteLog('실시간 고정밀 관제 모드 시작 (1분)', 'SYSTEM');
 }
 
@@ -95,22 +156,152 @@ function _syncRealtimeModeToNative(isRealtime) {
   overlay.updateStatus({ status: State.trip.status, isRealtime }).catch(() => { });
 }
 
-function emitGpsSample(pos, source = 'gps') {
-  const c = pos?.coords || {};
-  const lat = Number(c.latitude);
-  const lng = Number(c.longitude);
+function emitGpsSample(point, source = 'gps') {
+  const lat = Number(point?.lat);
+  const lng = Number(point?.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
   window.dispatchEvent(new CustomEvent('els:gps-sample', {
     detail: {
       lat,
       lng,
-      speed: Number(c.speed || 0) * 3.6,
-      accuracy: Number(c.accuracy || 0),
-      heading: typeof c.heading === 'number' ? c.heading : null,
+      speed: Number(point.speedKph || 0),
+      accuracy: Number(point.accuracy || 0),
+      heading: typeof point.heading === 'number' ? point.heading : null,
       source,
-      recordedAt: Date.now(),
+      recordedAt: new Date(point.recordedAtMs || Date.now()).toISOString(),
+      stable: true,
     },
   }));
+}
+
+function toGpsPoint(pos, source) {
+  const c = pos?.coords || {};
+  const lat = Number(c.latitude);
+  const lng = Number(c.longitude);
+  const rawSpeed = Number(c.speed || 0);
+  const recordedAtMs = Number.isFinite(pos?.timestamp) && pos.timestamp > 0 ? pos.timestamp : Date.now();
+  return {
+    lat,
+    lng,
+    accuracy: Number(c.accuracy || 0),
+    speedKph: Number.isFinite(rawSpeed) && rawSpeed > 0 ? rawSpeed * 3.6 : 0,
+    heading: typeof c.heading === 'number' && Number.isFinite(c.heading) ? c.heading : null,
+    recordedAtMs,
+    source,
+  };
+}
+
+function adaptiveLocalSpeedLimit(speedKph) {
+  if (speedKph <= STATIONARY_SPEED_KPH) return 45;
+  if (speedKph < LOW_SPEED_KPH) return 70;
+  return Math.min(145, Math.max(95, speedKph + 45));
+}
+
+function duplicateRadiusKm(point) {
+  const speed = Number(point?.speedKph || 0);
+  const accuracy = Number(point?.accuracy || 0);
+  if (speed <= STATIONARY_SPEED_KPH || accuracy >= ACCURACY_SUSPECT_M) return 0.025;
+  if (speed < LOW_SPEED_KPH) return 0.018;
+  return 0.012;
+}
+
+function shouldHoldCandidate(point, prev, distKm, impliedSpeed) {
+  const speed = Number(point.speedKph || 0);
+  const accuracy = Number(point.accuracy || 0);
+  if (speed <= STATIONARY_SPEED_KPH && distKm > 0.025 && impliedSpeed > 12) return true;
+  if (speed < LOW_SPEED_KPH && distKm > 0.04 && impliedSpeed > 25) return true;
+  if (accuracy >= ACCURACY_SUSPECT_M && distKm > 0.025) return true;
+  if (distKm > 0.05 && impliedSpeed > adaptiveLocalSpeedLimit(speed)) return true;
+  return false;
+}
+
+function acceptPendingCandidate(point, prev) {
+  if (!_pendingPoint || !prev) return false;
+  const pendingGapKm = haversineKm(_pendingPoint.lat, _pendingPoint.lng, point.lat, point.lng);
+  const pendingFromPrevKm = haversineKm(prev.lat, prev.lng, _pendingPoint.lat, _pendingPoint.lng);
+  const currentFromPrevKm = haversineKm(prev.lat, prev.lng, point.lat, point.lng);
+  const clusterKm = Math.max(0.025, ((point.accuracy || 0) + (_pendingPoint.accuracy || 0)) / 1000);
+  const sameCluster = pendingGapKm <= clusterKm;
+  const stillAway = currentFromPrevKm > duplicateRadiusKm(point);
+  const notRetreating = currentFromPrevKm >= Math.max(0.015, pendingFromPrevKm * 0.6);
+  return sameCluster && stillAway && notRetreating;
+}
+
+function stabilizeGpsPoint(point, { forced = false } = {}) {
+  if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) {
+    return { ok: false, reason: 'invalid_coord' };
+  }
+
+  if (!forced && point.accuracy > ACCURACY_HARD_SKIP_M) {
+    return { ok: false, reason: 'low_accuracy' };
+  }
+
+  if (forced || !_lastAcceptedPoint) {
+    _lastAcceptedPoint = point;
+    _pendingPoint = null;
+    _pendingCount = 0;
+    return { ok: true, point, reason: forced ? 'forced' : 'first' };
+  }
+
+  const prev = _lastAcceptedPoint;
+  const distKm = haversineKm(prev.lat, prev.lng, point.lat, point.lng);
+  const dtSec = Math.max(1, (point.recordedAtMs - prev.recordedAtMs) / 1000);
+  const impliedSpeed = distKm / (dtSec / 3600);
+
+  if (distKm <= duplicateRadiusKm(point)) {
+    _pendingPoint = null;
+    _pendingCount = 0;
+    return { ok: false, reason: 'duplicate_jitter', distKm, impliedSpeed };
+  }
+
+  if (shouldHoldCandidate(point, prev, distKm, impliedSpeed)) {
+    if (acceptPendingCandidate(point, prev)) {
+      _pendingCount += 1;
+      if (_pendingCount >= 2) {
+        _lastAcceptedPoint = point;
+        _pendingPoint = null;
+        _pendingCount = 0;
+        return { ok: true, point, reason: 'confirmed_candidate' };
+      }
+    } else {
+      _pendingPoint = point;
+      _pendingCount = 1;
+    }
+    return { ok: false, reason: 'pending_candidate', distKm, impliedSpeed };
+  }
+
+  _lastAcceptedPoint = point;
+  _pendingPoint = null;
+  _pendingCount = 0;
+  return { ok: true, point, reason: 'accepted' };
+}
+
+function shouldTransmitStablePoint(point, { forced = false, isTurningOrChangingSpeed = false } = {}) {
+  if (forced || !_lastTransmittedPoint) return { ok: true, reason: forced ? 'forced' : 'first' };
+
+  const distKm = haversineKm(_lastTransmittedPoint.lat, _lastTransmittedPoint.lng, point.lat, point.lng);
+  const elapsedMs = Math.max(0, point.recordedAtMs - _lastTransmittedPoint.recordedAtMs);
+  const fastMode = State.trip.isRealtime || point.source === 'map_foreground';
+  const speed = Number(point.speedKph || 0);
+
+  let minMoveKm;
+  if (fastMode) minMoveKm = speed < LOW_SPEED_KPH ? 0.025 : 0.015;
+  else if (isTurningOrChangingSpeed) minMoveKm = 0.025;
+  else if (speed <= STATIONARY_SPEED_KPH) minMoveKm = 0.06;
+  else if (speed < 45) minMoveKm = 0.05;
+  else minMoveKm = 0.08;
+
+  const heartbeatMs = fastMode ? 20_000 : (speed <= STATIONARY_SPEED_KPH ? 90_000 : 45_000);
+  if (distKm >= minMoveKm) return { ok: true, reason: 'moved', distKm };
+  if (elapsedMs >= heartbeatMs) return { ok: true, reason: 'heartbeat', distKm };
+  return { ok: false, reason: 'local_duplicate', distKm };
+}
+
+function logGpsFilter(reason, detail = '') {
+  const now = Date.now();
+  if (now - _lastFilterLogMs < 15_000) return;
+  _lastFilterLogMs = now;
+  remoteLog(`GPS 로컬필터: ${reason}${detail ? ` ${detail}` : ''}`, 'GPS_FILTER');
 }
 
 async function pollMapForegroundPosition() {
@@ -144,7 +335,7 @@ async function pollAppForegroundPosition() {
 
 function startAppForegroundTracking() {
   if (_appForegroundTimer) return;
-  _appForegroundTimer = setInterval(pollAppForegroundPosition, 4000);
+  _appForegroundTimer = setInterval(pollAppForegroundPosition, 10000);
   document.addEventListener('visibilitychange', pollAppForegroundPosition);
 }
 
@@ -161,7 +352,7 @@ export function startMapForegroundTracking() {
   if (_mapForegroundTimer) return;
   pollMapForegroundPosition();
   _mapForegroundTimer = setInterval(pollMapForegroundPosition, 1000);
-  remoteLog('지도 전경 GPS 샘플링 시작 (1초, 서버 전송 필터 유지)', 'GPS_MAP');
+  remoteLog('지도 전경 GPS 샘플링 시작 (1초 수신, 안정 포인트만 반영/전송)', 'GPS_MAP');
 }
 
 export function stopMapForegroundTracking() {
@@ -206,11 +397,13 @@ export async function startGPS() {
   if (!BgGeo) {
     // 네이티브 플러그인 없으면 (브라우저 개발 환경) 폴백
     remoteLog('BackgroundGeolocation 플러그인 없음 — 브라우저 폴백', 'GPS_FALLBACK');
+    resetGpsStabilizer();
     _startBrowserFallback();
     return;
   }
 
   remoteLog('startGPS() — 네이티브 BackgroundGeolocation.addWatcher 시작', 'GPS_INIT');
+  resetGpsStabilizer();
   startMotionBurstWatcher();
   startAppForegroundTracking();
 
@@ -221,7 +414,7 @@ export async function startGPS() {
         backgroundTitle: 'ELS 위치 관제',
         requestPermissions: true,
         stale: false,
-        distanceFilter: 10,  // 지도 전경/저속 회전 구간을 더 촘촘히 잡되 서버 필터로 튐 제거
+        distanceFilter: 20,  // 기본 주행은 배터리 보호, 지도/실시간은 전경 샘플러로 보강
       },
       (location, error) => {
         if (error) {
@@ -246,6 +439,7 @@ export async function startGPS() {
             heading:   location.bearing ?? location.heading ?? null,
             altitude:  location.altitude,
           },
+          timestamp: Date.now(),
         };
         onGpsUpdate(pos, false);
       }
@@ -493,27 +687,28 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   }
 
   if (State.trip.status !== 'driving' && !isForced) return;
-  const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
 
-  const speedKph = (speed || 0) * 3.6;
+  const source = options.source || (isForced ? (markerType || 'native_forced') : 'native_bg');
+  const rawPoint = toGpsPoint(pos, source);
+  const speedKph = rawPoint.speedKph;
   _currentSpeedKph = speedKph > 160 ? 0 : speedKph;
   lastGpsTimestamp = Date.now();
-  emitGpsSample(pos, options.source || (isForced ? 'forced' : 'native_bg'));
 
-  // 마지막 알려진 위치 저장 (endTrip fallback용)
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    State._lastLat = lat;
-    State._lastLng = lng;
-  }
-
-  // [v5.11.13] 정확도 필터 강화: 500m→100m (GPS 튐 이상치 제거), isForced 제외
-  if (!isForced && accuracy && accuracy > 100) {
-    remoteLog(`GPS 정확도 낮음 스킵: ${accuracy.toFixed(0)}m (기준 100m)`, 'GPS_ACCURACY');
+  const stable = stabilizeGpsPoint(rawPoint, { forced: isForced || Boolean(markerType) });
+  if (!stable.ok) {
+    logGpsFilter(stable.reason, stable.distKm ? `dist=${Math.round(stable.distKm * 1000)}m` : '');
     updateTripStatusLine();
     return;
   }
 
-  const heading = typeof pos.coords.heading === 'number' ? pos.coords.heading : null;
+  const point = stable.point;
+  const { lat, lng, accuracy, heading } = point;
+
+  // 마지막 확정 위치 저장 (endTrip fallback과 지도 표시 모두 raw가 아니라 안정 포인트 기준)
+  State._lastLat = lat;
+  State._lastLng = lng;
+  emitGpsSample(point, source);
+
   const lastMotion = _lastSentMotion;
   const speedDelta = lastMotion ? Math.abs(speedKph - lastMotion.speedKph) : 0;
   const headingDelta = (lastMotion && heading !== null && lastMotion.heading !== null)
@@ -522,21 +717,24 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const isMotionBurst = Date.now() < _motionBurstUntil;
   const isTurningOrChangingSpeed = isMotionBurst || speedDelta >= 10 || headingDelta >= 22;
 
-  // 내비게이션식 가변 전송 주기: 지도 전경/저속/회전/가감속은 촘촘히, 고속 안정 주행은 여유 있게.
+  // 센서 수신과 서버 전송을 분리한다. 지도/웹 실시간은 민감하게, 일반 운행은 배터리와 서버 부하를 우선한다.
   const isMapForeground = options.source === 'map_foreground';
-  let interval = 10_000;
+  const isAppForeground = options.source === 'app_foreground';
+  let interval = 18_000;
   if (State.trip.isRealtime || isMapForeground) {
     interval = 2_000;
-  } else if (isTurningOrChangingSpeed) {
-    interval = 2_500;
-  } else if (speedKph < 15) {
-    interval = 4_000;
-  } else if (speedKph < 45) {
-    interval = 6_000;
-  } else if (speedKph >= 80) {
+  } else if (speedKph <= STATIONARY_SPEED_KPH) {
+    interval = 45_000;
+  } else if (isAppForeground) {
     interval = 10_000;
-  } else {
-    interval = 8_000;
+  } else if (isTurningOrChangingSpeed) {
+    interval = 6_000;
+  } else if (speedKph < 15) {
+    interval = 12_000;
+  } else if (speedKph < 45) {
+    interval = 15_000;
+  } else if (speedKph >= 80) {
+    interval = 20_000;
   }
 
   if (interval !== currentGpsInterval) currentGpsInterval = interval;
@@ -547,7 +745,17 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const minInterval = (isForced || markerType) ? 0 : interval;
   if (!isForced && !markerType && curTime - lastGpsSend < minInterval) return;
 
+  const transmitDecision = shouldTransmitStablePoint(point, {
+    forced: isForced || Boolean(markerType),
+    isTurningOrChangingSpeed,
+  });
+  if (!transmitDecision.ok) {
+    logGpsFilter(transmitDecision.reason, transmitDecision.distKm ? `dist=${Math.round(transmitDecision.distKm * 1000)}m` : '');
+    return;
+  }
+
   lastGpsSend = curTime;
+  _lastTransmittedPoint = point;
 
   const payload = {
     trip_id:     targetId,
@@ -555,10 +763,9 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     speed:       speedKph,
     accuracy:    accuracy || 0,
     marker_type: markerType || null,
-    recorded_at: new Date(curTime).toISOString(),
-    source: options.source || (isForced
-      ? (markerType || 'native_forced')
-      : 'native_bg'),
+    recorded_at: new Date(point.recordedAtMs || curTime).toISOString(),
+    source,
+    realtime: Boolean(State.trip.isRealtime || isMapForeground),
   };
 
   try {
@@ -580,15 +787,14 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     }
     updateTripStatusLine();
     remoteLog(
-      `GPS전송[${markerType || 'normal'}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m`,
+      `GPS전송[${markerType || transmitDecision.reason}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m`,
       'GPS_OK'
     );
   } catch (e) {
     lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateTripStatusLine();
     remoteLog(`GPS 서버전송 실패 (오프라인 캐시): ${e.message}`, 'GPS_SEND_ERR');
-    _gpsOfflineQueue.push(payload);
-    saveGpsQueue();
+    enqueueGpsPayload(payload);
   }
 }
 
