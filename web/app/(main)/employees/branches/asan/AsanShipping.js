@@ -14,6 +14,7 @@ const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
 const SHIPPING_PAGE_SIZE = 100;
 const EMPTY_HISTORY_ROW = ['-', '-', '조회 대기중', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'];
+const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
 // 날짜 관련 컬럼 키워드
 const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
@@ -48,6 +49,29 @@ function formatCellValue(val, colName) {
 function isDateColumn(colName) {
     const lower = (colName || '').toLowerCase();
     return DATE_COL_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function normalizeShippingColumnOrder(order, currentHeaders) {
+    const seen = new Set();
+    const normalized = [];
+
+    (order || []).forEach(col => {
+        if (!currentHeaders.includes(col) || seen.has(col)) return;
+        seen.add(col);
+        normalized.push(col);
+    });
+
+    currentHeaders.forEach(col => {
+        if (seen.has(col)) return;
+        seen.add(col);
+        normalized.push(col);
+    });
+
+    const excelCols = normalized.filter(col => !isContainerLookupColumn(col));
+    const lookupCols = LOOKUP_HEADERS.filter(col => normalized.includes(col));
+    const extraLookupCols = normalized.filter(col => isContainerLookupColumn(col) && !lookupCols.includes(col));
+
+    return [...excelCols, ...lookupCols, ...extraLookupCols];
 }
 
 export default function AsanShipping() {
@@ -149,9 +173,16 @@ export default function AsanShipping() {
     }, [selectedPath, applyShippingData]);
 
     const allHeaders = useMemo(() => {
-        const lookupHeaders = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
-        return [...headers, ...lookupHeaders.filter(header => !headers.includes(header))];
+        return [...headers, ...LOOKUP_HEADERS.filter(header => !headers.includes(header))];
     }, [headers]);
+
+    const hiddenColumnList = useMemo(() => {
+        const cols = Array.from(hiddenCols);
+        return [
+            ...cols.filter(col => !isContainerLookupColumn(col)),
+            ...cols.filter(col => isContainerLookupColumn(col)),
+        ];
+    }, [hiddenCols]);
 
     const getRowContainerNo = useCallback((row) => {
         if (!data?.headers) return '';
@@ -293,7 +324,7 @@ export default function AsanShipping() {
                         });
                     }
 
-                    setColOrder(finalOrder);
+                    setColOrder(normalizeShippingColumnOrder(finalOrder, allHeaders));
                     setHiddenCols(finalHidden);
                     if (prefs.sortConfig) setSortConfig(prefs.sortConfig);
                     return;
@@ -302,9 +333,12 @@ export default function AsanShipping() {
             // Fallback: localStorage
             try {
                 const cached = JSON.parse(localStorage.getItem(PREFS_KEY));
-                if (cached?.colOrder?.length > 0) { setColOrder(cached.colOrder); return; }
+                if (cached?.colOrder?.length > 0) {
+                    setColOrder(normalizeShippingColumnOrder(cached.colOrder, allHeaders));
+                    return;
+                }
             } catch { /* ignore */ }
-            setColOrder(allHeaders);
+            setColOrder(normalizeShippingColumnOrder(allHeaders, allHeaders));
         };
         loadDbPrefs();
     }, [allHeaders]);
@@ -403,7 +437,7 @@ export default function AsanShipping() {
             // Dragged from hidden, insert at target
             const targetIdx = newOrder.indexOf(targetCol);
             newOrder.splice(targetIdx, 0, draggedCol);
-            setColOrder(newOrder);
+            setColOrder(normalizeShippingColumnOrder(newOrder, allHeaders));
             setHiddenCols(prev => {
                 const n = new Set(prev);
                 n.delete(draggedCol);
@@ -414,7 +448,7 @@ export default function AsanShipping() {
             const targetIdx = newOrder.indexOf(targetCol);
             newOrder.splice(draggedIdx, 1);
             newOrder.splice(targetIdx, 0, draggedCol);
-            setColOrder(newOrder);
+            setColOrder(normalizeShippingColumnOrder(newOrder, allHeaders));
         }
         setDraggedCol(null);
     };
@@ -435,7 +469,7 @@ export default function AsanShipping() {
             n.delete(col);
             return n;
         });
-        setColOrder([...colOrder, col]);
+        setColOrder(normalizeShippingColumnOrder([...colOrder, col], allHeaders));
     };
 
     const exportToExcel = async () => {
@@ -466,7 +500,7 @@ export default function AsanShipping() {
     };
 
     const resetLayout = () => {
-        setColOrder(allHeaders);
+        setColOrder(normalizeShippingColumnOrder(allHeaders, allHeaders));
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
@@ -536,7 +570,7 @@ export default function AsanShipping() {
                     });
                 }
 
-                setColOrder(finalOrder);
+                setColOrder(normalizeShippingColumnOrder(finalOrder, allHeaders));
                 setHiddenCols(finalHidden);
                 setSortConfig(prefs.sortConfig || { key: null, direction: 'asc' });
                 alert(`프리셋 ${num}번 로드 완료!`);
@@ -849,50 +883,60 @@ export default function AsanShipping() {
     return (
         <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => setFilterDropdown(null)}>
             <div className={styles.topBar}>
-                <div className={styles.leftControls}>
-                    <h2 className={styles.title}>선적관리 리스트</h2>
-                    {fileTimeStr && (
-                        <div className={styles.fileMod}>
-                            저장: {fileTimeStr} <span style={{ marginLeft: '8px', padding: '2px 6px', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>{elapsed}</span>
-                            {data.source === 'supabase' && (
-                                <span className={styles.dataMeta}>
-                                    DB {loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행
-                                </span>
-                            )}
-                            {dbSyncedTimeStr && (
-                                <span className={styles.syncMeta}>
-                                    DB수정 {dbSyncedTimeStr}
-                                </span>
-                            )}
-                        </div>
-                    )}
+                <div className={styles.topSummaryRow}>
+                    <div className={styles.leftControls}>
+                        <h2 className={styles.title}>선적관리 리스트</h2>
+                        {fileTimeStr && (
+                            <div className={styles.fileMod}>
+                                저장: {fileTimeStr} <span className={styles.elapsedBadge}>{elapsed}</span>
+                                {data.source === 'supabase' && (
+                                    <span className={styles.dataMeta}>
+                                        DB {loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행
+                                    </span>
+                                )}
+                                {dbSyncedTimeStr && (
+                                    <span className={styles.syncMeta}>
+                                        DB수정 {dbSyncedTimeStr}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className={styles.rightControls}>
-                    <input 
-                        type="text" 
-                        placeholder="전체 검색 (콤마 구분)" 
-                        className={styles.searchInput}
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                    <button className={styles.resetBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">💾 P1 저장</button>
-                    <button className={styles.resetBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">📂 P1 로드</button>
-                    <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">💾 P2 저장</button>
-                    <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">📂 P2 로드</button>
-                    <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
-                    <button
-                        className={styles.lookupBtn}
-                        onClick={handleContainerLookup}
-                        disabled={containerLookupRunning}
-                        title="현재 검색/필터 결과에 남아있는 컨테이너를 모두 이력조회합니다"
-                    >
-                        {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
-                    </button>
-                    <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
-                    <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
-                    <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
-                        {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
-                    </button>
+                    <div className={styles.searchRow}>
+                        <input
+                            type="text"
+                            placeholder="전체 검색 (콤마 구분)"
+                            className={styles.searchInput}
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className={styles.actionRow}>
+                        <div className={styles.actionGroup}>
+                            <button className={styles.resetBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">💾 P1 저장</button>
+                            <button className={styles.resetBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">📂 P1 로드</button>
+                            <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">💾 P2 저장</button>
+                            <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">📂 P2 로드</button>
+                            <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
+                        </div>
+                        <div className={`${styles.actionGroup} ${styles.primaryActions}`}>
+                            <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
+                            <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                            <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
+                                {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
+                            </button>
+                            <button
+                                className={styles.lookupBtn}
+                                onClick={handleContainerLookup}
+                                disabled={containerLookupRunning}
+                                title="현재 검색/필터 결과에 남아있는 컨테이너를 모두 이력조회합니다"
+                            >
+                                {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -902,42 +946,22 @@ export default function AsanShipping() {
                 </div>
             )}
 
-            <div 
-                className={styles.hiddenColsZone}
-                style={{ 
-                    padding: '10px', 
-                    marginBottom: '10px', 
-                    border: isDragOverHidden ? '2px dashed #3b82f6' : '2px dashed #cbd5e1', 
-                    borderRadius: '8px', 
-                    minHeight: '40px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    alignItems: 'center',
-                    backgroundColor: isDragOverHidden ? '#eff6ff' : '#f8fafc',
-                    transition: 'all 0.2s'
-                }}
+            <div
+                className={`${styles.hiddenColsZone} ${isDragOverHidden ? styles.hiddenColsZoneActive : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragOverHidden(true); }}
                 onDragLeave={() => setIsDragOverHidden(false)}
                 onDrop={handleDropToHidden}
             >
-                <span style={{ color: '#64748b', fontSize: '0.9rem', marginRight: '10px' }}>
+                <span className={styles.hiddenColsHint}>
                     {hiddenCols.size === 0 ? '이곳에 컬럼을 드래그하여 숨길 수 있습니다' : '숨긴 컬럼 (클릭하거나 드래그해서 표로 복구)'}
                 </span>
-                {Array.from(hiddenCols).map(col => (
-                    <button 
+                {hiddenColumnList.map(col => (
+                    <button
                         key={col}
                         draggable
                         onDragStart={(e) => handleDragStart(e, col)}
                         onClick={() => handleRestoreCol(col)}
-                        style={{ 
-                            padding: '4px 10px', 
-                            backgroundColor: '#e2e8f0', 
-                            border: '1px solid #cbd5e1', 
-                            borderRadius: '16px', 
-                            fontSize: '0.85rem',
-                            cursor: 'pointer'
-                        }}
+                        className={`${styles.hiddenChip} ${isContainerLookupColumn(col) ? styles.hiddenLookupChip : ''}`}
                     >
                         {col} +
                     </button>
@@ -946,21 +970,21 @@ export default function AsanShipping() {
 
             {/* Date Range Filter */}
             {dateColumns.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', padding: '8px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#475569' }}>📅 날짜 필터</span>
-                    <select 
-                        value={dateFilter.col} 
+                <div className={styles.dateFilterZone}>
+                    <span className={styles.dateFilterLabel}>📅 날짜 필터</span>
+                    <select
+                        value={dateFilter.col}
                         onChange={e => setDateFilter(p => ({ ...p, col: e.target.value }))}
-                        style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }}
+                        className={styles.dateSelect}
                     >
                         <option value="">컬럼 선택</option>
                         {dateColumns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input type="date" value={dateFilter.from} onChange={e => setDateFilter(p => ({ ...p, from: e.target.value }))} style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
-                    <span style={{ color: '#94a3b8' }}>~</span>
-                    <input type="date" value={dateFilter.to} onChange={e => setDateFilter(p => ({ ...p, to: e.target.value }))} style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
+                    <input type="date" value={dateFilter.from} onChange={e => setDateFilter(p => ({ ...p, from: e.target.value }))} className={styles.dateInput} />
+                    <span className={styles.dateSeparator}>~</span>
+                    <input type="date" value={dateFilter.to} onChange={e => setDateFilter(p => ({ ...p, to: e.target.value }))} className={styles.dateInput} />
                     {(dateFilter.from || dateFilter.to) && (
-                        <button onClick={() => setDateFilter({ col: '', from: '', to: '' })} style={{ padding: '4px 8px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer', color: '#dc2626' }}>초기화</button>
+                        <button onClick={() => setDateFilter({ col: '', from: '', to: '' })} className={styles.dateClearBtn}>초기화</button>
                     )}
                 </div>
             )}
