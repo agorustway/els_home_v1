@@ -106,6 +106,22 @@ class TestContainerLookupSafety(unittest.TestCase):
         self.assertEqual(next_index, 2)
         self.assertEqual(list(pending.keys()), [3])
 
+    def test_backend_batch_workers_follow_live_driver_count_and_reserve_single(self):
+        backend_dir = os.path.join(ROOT_DIR, "docker", "els-backend")
+        sys.path.append(backend_dir)
+        spec = importlib.util.spec_from_file_location("app_bot_for_worker_test", os.path.join(backend_dir, "app_bot.py"))
+        app_bot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(app_bot)
+
+        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 1, "max_drivers": 4}, configured_workers=4), 1)
+        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 2, "max_drivers": 4}, configured_workers=4), 1)
+        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 3, "max_drivers": 4}, configured_workers=4), 2)
+        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 4, "max_drivers": 4}, configured_workers=4), 3)
+        self.assertEqual(
+            app_bot._effective_batch_workers({"total_drivers": 4, "max_drivers": 4}, configured_workers=4, reserve_single=False),
+            4,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

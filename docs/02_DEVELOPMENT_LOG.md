@@ -1,4 +1,22 @@
 
+## [2026-05-16] 컨테이너 이력조회 워커 큐 안정화 (v5.13.9)
+### 🚀 Achievement
+- **활성 워커 기반 병렬도 조절**: 배치 조회가 `ELS_BATCH_MAX_WORKERS=4`를 무조건 쓰지 않고 현재 살아있는 데몬 워커 수에 맞춰 병렬도를 낮춥니다. 워커 1개 상태에서는 1개 순차 처리로 동작합니다.
+- **단건/AI 워커 예약**: 워커가 2개 이상 살아있으면 배치는 1번 워커를 피하고, 단건/AI 조회가 먼저 사용할 수 있게 예약합니다. 예약 기능은 `ELS_RESERVE_SINGLE_WORKER=false`로 끌 수 있습니다.
+- **큐 대기 강화**: 워커가 없을 때 즉시 실패하지 않고 최대 240초까지 대기하도록 배치/단건 요청에 `acquireTimeoutSec`를 전달합니다.
+- **죽은 워커 복구**: 저장된 로그인 세션이 있고 비밀번호 보호 모드가 아니면 누락된 워커를 쿨다운(10분) 기준으로 1개씩만 재기동합니다. 로그인 실패 횟수는 기존 보호 로직을 유지합니다.
+- **죽은 드라이버 재큐 방지**: 세션 복구 실패 후 이미 제거한 드라이버가 `finally`에서 다시 큐에 들어가는 경로를 차단했습니다.
+### 🧪 검증
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety` 통과 (14개)
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py` 통과
+- `node --test web/tests/containerInput.test.mjs` 통과 (4개)
+### 📁 변경 파일
+- `docker/els-backend/app_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_container_lookup_safety.py`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 WebSquare 입력 검증 보강 (v5.13.8)
 ### 🚀 Achievement
 - **필수입력 알림 방어**: ETrans가 `[컨테이너이동] 필수 입력 항목 입니다.` 알림을 띄우면 즉시 감지·닫고 `INPUT_REQUIRED_MODAL` 오류로 반환하도록 했습니다. 이제 모달에 갇혀 진행중 행만 남는 상황을 줄입니다.

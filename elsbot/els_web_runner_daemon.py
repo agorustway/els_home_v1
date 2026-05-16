@@ -37,6 +37,9 @@ class DriverPool:
         self.consecutive_login_failures = 0
         self.last_failure_time = 0 # [추가] 마지막 로그인 실패 시점 기록
         self.fail_cooldown = 600 # [추가] 10분 쿨타임 (초)
+        self.restart_inflight = set()
+        self.last_restart_attempt = {}
+        self.restart_cooldown = 600
 
     def add_log(self, msg):
         from datetime import datetime, timezone, timedelta
@@ -58,6 +61,8 @@ class DriverPool:
                 except: pass
             self.drivers = []
             self.consecutive_login_failures = 0
+            self.restart_inflight.clear()
+            self.last_restart_attempt.clear()
             self.log_buffer.clear()
             self.add_log("--- 드라이버 풀이 초기화되었습니다. ---")
 
@@ -86,15 +91,114 @@ class DriverPool:
         self.drivers.append(driver)
         self.available_queue.put(driver)
 
-    def get_driver(self, timeout=30):
-        try:
-            return self.available_queue.get(timeout=timeout)
-        except Empty:
-            return None
+    def _worker_id(self, driver):
+        return getattr(driver, 'used_port', 32000) - 32000 + 1
+
+    def get_driver(self, timeout=30, purpose="batch"):
+        """요청 목적에 맞는 워커를 큐에서 꺼낸다.
+
+        워커가 2개 이상이면 #1은 단건/AI 조회가 우선 사용하도록 배치 요청에서 피한다.
+        워커가 1개뿐이면 순차 배치도 그 1개로 처리한다.
+        """
+        deadline = time.time() + max(1, float(timeout or 30))
+        while time.time() <= deadline:
+            chosen = None
+            with self.lock:
+                items = []
+                while True:
+                    try:
+                        items.append(self.available_queue.get_nowait())
+                    except Empty:
+                        break
+
+                if items:
+                    active_count = len(self.drivers)
+                    if purpose in ("single", "ai", "realtime"):
+                        chosen = next((d for d in items if self._worker_id(d) == 1), None) or items[0]
+                    elif active_count > 1:
+                        chosen = next((d for d in items if self._worker_id(d) != 1), None)
+                    else:
+                        chosen = items[0]
+
+                    for d in items:
+                        if d is not chosen:
+                            self.available_queue.put(d)
+
+                    if chosen:
+                        return chosen
+
+            time.sleep(0.5)
+        return None
 
     def return_driver(self, driver):
-        if driver:
+        if driver and driver in self.drivers:
             self.available_queue.put(driver)
+
+    def ensure_capacity_async(self, reason="capacity-check"):
+        """죽은 워커가 있으면 한 번에 하나씩만 조심스럽게 재기동한다."""
+        target_idx = None
+        saved_user = None
+        now = time.time()
+        with self.lock:
+            if not self.current_user or not self.current_user.get("id") or not self.current_user.get("pw"):
+                return False
+            if self.is_logging_in or self.consecutive_login_failures >= 3:
+                return False
+
+            active_ports = {getattr(d, 'used_port', 0) for d in self.drivers}
+            if len(active_ports) + len(self.restart_inflight) >= self.max_drivers:
+                return False
+
+            for idx in range(self.max_drivers):
+                port = 32000 + idx
+                if port in active_ports or port in self.restart_inflight:
+                    continue
+                if now - self.last_restart_attempt.get(port, 0) < self.restart_cooldown:
+                    continue
+                target_idx = idx
+                saved_user = dict(self.current_user)
+                self.restart_inflight.add(port)
+                self.last_restart_attempt[port] = now
+                break
+
+        if target_idx is None:
+            return False
+
+        threading.Thread(
+            target=self._restart_missing_driver,
+            args=(target_idx, saved_user, reason),
+            daemon=True,
+        ).start()
+        return True
+
+    def _restart_missing_driver(self, idx, saved_user, reason):
+        port = 32000 + idx
+        try:
+            self.add_log(f"🔧 [워커복구] 브라우저 #{idx+1} 재기동 시도 ({reason})")
+            self.cleanup_lingering_chrome(port)
+            res = login_and_prepare(
+                saved_user["id"], saved_user["pw"],
+                log_callback=None,
+                show_browser=saved_user.get("show_browser", False),
+                port=port,
+            )
+            if res[0]:
+                res[0].used_port = port
+                res[0].last_activity = time.time()
+                with self.lock:
+                    self.consecutive_login_failures = 0
+                    self.add_driver(res[0])
+                self.add_log(f"✅ [워커복구] 브라우저 #{idx+1} 재기동 완료")
+            else:
+                msg = str(res[1])
+                with self.lock:
+                    if "비밀번호" in msg or "LOGIN" in msg.upper():
+                        self.consecutive_login_failures += 1
+                        self.last_failure_time = time.time()
+                self.add_log(f"⚠️ [워커복구] 브라우저 #{idx+1} 재기동 실패: {msg}")
+        finally:
+            with self.lock:
+                self.restart_inflight.discard(port)
 
 pool = DriverPool()
 
@@ -133,6 +237,7 @@ def health():
             "total_drivers": active_count,
             "max_drivers": pool.max_drivers,
             "available_drivers": available_count,
+            "restart_inflight": len(pool.restart_inflight),
             "user_id": pool.current_user["id"] if pool.current_user else None,
             "workers": workers,
             "daemon_id": pool.daemon_id
@@ -266,10 +371,22 @@ def run():
     request_started = time.time()
     time.sleep(random.uniform(0.05, 0.15))
 
+    request_purpose = str(data.get("requestPurpose") or "single").lower()
+    acquire_timeout = float(data.get("acquireTimeoutSec") or os.environ.get("ELS_WORKER_ACQUIRE_TIMEOUT_SEC", 180))
+    pool.ensure_capacity_async(reason=f"{request_purpose}:{cn}")
+
     acquire_started = time.time()
-    driver = pool.get_driver()
+    driver = pool.get_driver(timeout=acquire_timeout, purpose=request_purpose)
     if not driver:
-        return jsonify({"ok": False, "error": "가용한 세션 없음"})
+        return jsonify({
+            "ok": True,
+            "containerNo": cn,
+            "worker_id": None,
+            "daemon_id": pool.daemon_id,
+            "result": [make_status_row(cn, "ERROR", f"워커 대기 시간 초과({int(acquire_timeout)}초)")],
+            "elapsed": round(time.time() - request_started, 1),
+            "log": list(pool.log_buffer)
+        })
     acquire_elapsed = time.time() - acquire_started
     if acquire_elapsed >= 1:
         pool.add_log(f"[{cn}] 워커 확보 대기 {acquire_elapsed:.1f}s")
@@ -302,6 +419,7 @@ def run():
                         wait_min = int((pool.fail_cooldown - (time.time() - pool.last_failure_time)) / 60)
                         pool.add_log(f"🕒 [대기중] 연속 로그인 실패로 보호 모드 작동 중... ({wait_min}분 후 자동 재시도)")
                         pool.return_driver(driver)
+                        driver = None
                         return jsonify({"ok": False, "error": f"로그인 연속 실패 보호 모드. 약 {wait_min}분 후 자동 재시도됩니다."})
 
             # 세션이 죽었으면 다시 로그인 (pool에 저장된 계정 정보 사용)
@@ -338,8 +456,10 @@ def run():
 
                     if pool.consecutive_login_failures >= 3:
                         pool.add_log("🛑 [보안 중단] 누적 로그인 3회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다. 비번을 확인하세요.")
+                        driver = None
                         return jsonify({"ok": False, "error": "로그인 3회 연속 실패로 보안 모드 발동. 비번 확인 후 수동으로 다시 시작해 주세요."})
 
+                driver = None
                 return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
 
         # 사이트 차단 방지를 위한 짧은 릴레이 지연
@@ -444,8 +564,9 @@ def run():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
     finally:
-        driver.last_activity = time.time()
-        pool.return_driver(driver)
+        if driver:
+            driver.last_activity = time.time()
+            pool.return_driver(driver)
 
 @app.route('/quit', methods=['POST'])
 def quit_driver():
@@ -503,6 +624,7 @@ def session_keeper():
                 continue
             if pool.consecutive_login_failures >= 3:
                 continue
+        pool.ensure_capacity_async(reason="session_keeper")
 
         q_size = pool.available_queue.qsize()
         for _ in range(q_size):

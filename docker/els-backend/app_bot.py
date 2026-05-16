@@ -78,6 +78,26 @@ def _pop_ready_ordered_results(pending_results, next_index):
         next_index += 1
     return ready, next_index
 
+def _daemon_health(timeout=3):
+    try:
+        r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=timeout)
+        if r.getcode() == 200:
+            return json.loads(r.read().decode("utf-8"))
+    except:
+        pass
+    return {}
+
+def _effective_batch_workers(health, configured_workers=None, reserve_single=True):
+    """살아있는 워커 수에 맞춰 배치 병렬도를 낮춘다."""
+    configured = int(configured_workers or os.environ.get("ELS_BATCH_MAX_WORKERS", 4))
+    total = int(health.get("total_drivers") or 0)
+    max_drivers = int(health.get("max_drivers") or configured or 1)
+    active = total if total > 0 else max_drivers
+    if active <= 1:
+        return 1
+    usable = active - 1 if reserve_single else active
+    return max(1, min(configured, usable))
+
 def _daemon_available():
     try:
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=2)
@@ -90,17 +110,24 @@ def health(): return jsonify({"status": "ok", "service": "els-bot"})
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
     global global_progress, global_last_activity_time
-    daemon_status = {"available": False, "driver_active": False, "user_id": None, "workers": [], "max_drivers": 4}
-    try:
-        r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=3)
-        if r.getcode() == 200:
-            data = json.loads(r.read().decode("utf-8"))
-            daemon_status["available"] = True
-            daemon_status["driver_active"] = data.get("driver_active", False)
-            daemon_status["user_id"] = data.get("user_id")
-            daemon_status["workers"] = data.get("workers", [])
-            daemon_status["max_drivers"] = data.get("max_drivers", 4)
-    except: pass
+    daemon_status = {
+        "available": False,
+        "driver_active": False,
+        "user_id": None,
+        "workers": [],
+        "max_drivers": 4,
+        "total_drivers": 0,
+        "available_drivers": 0,
+    }
+    data = _daemon_health(timeout=3)
+    if data:
+        daemon_status["available"] = True
+        daemon_status["driver_active"] = data.get("driver_active", False)
+        daemon_status["user_id"] = data.get("user_id")
+        daemon_status["workers"] = data.get("workers", [])
+        daemon_status["max_drivers"] = data.get("max_drivers", 4)
+        daemon_status["total_drivers"] = data.get("total_drivers", 0)
+        daemon_status["available_drivers"] = data.get("available_drivers", 0)
 
     # [v4.9.8] 좀비 잠금 해제: 전체 작업 5분 초과 시 강제 종료
     if global_progress.get("is_running") and global_progress.get("start_time"):
@@ -125,6 +152,9 @@ def capabilities():
         "progress": global_progress,
         "workers": daemon_status["workers"],
         "max_drivers": daemon_status["max_drivers"],
+        "total_drivers": daemon_status["total_drivers"],
+        "available_drivers": daemon_status["available_drivers"],
+        "batch_workers": _effective_batch_workers(daemon_status),
         "parseAvailable": True
     })
 
@@ -202,9 +232,16 @@ def run():
                 last_error = None
                 for attempt in range(1, 3):
                     try:
-                        body = json.dumps({"userId": uid, "userPw": pw, "containerNo": cn, "showBrowser": show_browser}, ensure_ascii=False).encode("utf-8")
+                        body = json.dumps({
+                            "userId": uid,
+                            "userPw": pw,
+                            "containerNo": cn,
+                            "showBrowser": show_browser,
+                            "requestPurpose": "batch",
+                            "acquireTimeoutSec": 240,
+                        }, ensure_ascii=False).encode("utf-8")
                         req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-                        r = urlopen(req, timeout=170)
+                        r = urlopen(req, timeout=300)
                         data = json.loads(r.read().decode("utf-8"))
                         rows = data.get("result") or []
                         if _should_retry_rows(rows) and attempt < 2:
@@ -220,7 +257,10 @@ def run():
                         return index, {"ok": False, "error": str(e), "result": [_status_row(cn, "ERROR", str(e))]}, cn, attempt, last_error
 
             sent_logs = set()
-            batch_workers = int(os.environ.get("ELS_BATCH_MAX_WORKERS", 4))
+            reserve_single = os.environ.get("ELS_RESERVE_SINGLE_WORKER", "true").lower() != "false"
+            daemon_health = _daemon_health(timeout=3)
+            batch_workers = _effective_batch_workers(daemon_health, reserve_single=reserve_single)
+            yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
             with ThreadPoolExecutor(max_workers=batch_workers) as executor:
                 # [v5.13.6] 4개 워커까지 쓰되, 첫 파동은 1초 간격으로 띄워 NAS 피크를 낮춘다.
                 futures = {}
@@ -368,9 +408,13 @@ def container_tracking():
     
     # 봇 데몬에게 단일 조회 요청
     try:
-        body = json.dumps({"containerNo": cntr_no}, ensure_ascii=False).encode("utf-8")
+        body = json.dumps({
+            "containerNo": cntr_no,
+            "requestPurpose": "single",
+            "acquireTimeoutSec": 240,
+        }, ensure_ascii=False).encode("utf-8")
         req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-        r = urlopen(req, timeout=120) # AI 답변용이므로 2분 내외 타임아웃
+        r = urlopen(req, timeout=300)
         resp_data = json.loads(r.read().decode("utf-8"))
         
         if not resp_data.get("ok"):
