@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.35 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.36 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 컨테이너 조회 결과 저장을 서버 측 스트림 저장 구조로 보강했습니다.
+> 최신 업데이트: 차량위치관제 운행기록 Excel export 라우트를 동적 API로 고정해 Next 빌드 중 정적 렌더 오류 로그를 제거했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.35
+- **웹 버전**: v5.13.36
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -15,6 +15,7 @@
   - 선적관리 컨테이너 조회 완료 행은 오늘 포함 이후의 `반입/적하` 이력을 기준으로 전체 회색 처리하고, 미완료 행은 일반 배경/폰트를 유지.
   - 선적관리 컬럼 필터는 전체 로드 기준 후보를 만들고 빈값을 한 항목으로 묶으며, `미선적/자체보관` 빠른 필터와 자동 더보기 스크롤을 지원.
   - 선적관리 컨테이너 조회 결과는 브라우저 후속 저장 호출이 아니라 서버 측 조회 스트림에서 부분/최종 결과를 직접 저장.
+  - 차량위치관제 운행기록 Excel export 라우트는 `force-dynamic`을 선언해 빌드 중 `request.url` 정적 렌더 오류 로그가 찍히지 않도록 고정.
   - 배차판/선적관리 NAS 엑셀 저장 감지는 mtime+size 안정화 후 Supabase DB 동기화로 처리해 부분저장 파싱과 중복 파싱을 줄임.
   - 컨테이너 이력조회는 조회 전 잔상 제거, 무자료 조기 확정 금지, 준비상태 기반 후행 워커 기동을 적용.
 
@@ -41,6 +42,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.36**: 차량위치관제 운행기록 Excel export 라우트가 `request.url`을 사용하는데 `force-dynamic` 선언이 없어, Next 빌드 중 정적 렌더 시도 경로에서 `Vehicle tracking export error: Dynamic server usage` 로그가 발생하던 문제를 수정. ZIP export와 같은 동적 API 정책으로 맞추고 회귀 테스트를 추가.
 - **v5.13.35**: 아산 선적관리 컨테이너 조회 결과 저장 누락 가능성을 조사해, 기존 구조가 `/api/els/run` 조회 완료 후 브라우저에서 별도 저장 POST를 호출하는 방식이라 페이지 이탈 시 저장 단계가 끊길 수 있음을 확인. 선적관리 전용 `/api/branches/asan/shipping/container-lookup` 스트림 라우트를 추가해 부분 결과와 최종 결과를 서버 측에서 즉시 `branch_shipping_container_lookups`에 저장하도록 변경하고, 기존 저장 로직을 공통 store 모듈로 분리.
 - **v5.13.34**: 아산 선적관리 날짜 필터 바에 `미선적`, `자체보관` 빠른 필터 버튼을 추가. 미선적은 오늘 포함 이후 `반입/적하` 완료 상태가 아닌 행만 남기고, 자체보관은 보관소가 자체보관인 행만 남김. 버튼 활성화 시 문구는 `필터해제`로 전환되며 전체 로드 기준 필터 계산을 유지.
 - **v5.13.33**: 아산 선적관리 컬럼 필터를 열거나 필터/날짜필터를 적용할 때 Supabase 현재 100행이 아닌 전체 로드 기준으로 후보를 만들도록 보강. 보이지 않는 빈 문자들을 실제 빈값 하나로 정규화해 `(빈 값)`이 중복/공란으로 보이지 않게 했고, 서버 정렬 오름차순에서는 빈값을 먼저 보여주도록 변경. 리스트 하단 근처로 세로 스크롤하면 `더 보기` 버튼을 누르기 전에 다음 100행을 자동 로드.
@@ -82,6 +84,9 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
+- `node --test web/tests/vehicleTrackingExport.test.mjs`: 1개 통과
+- `npm.cmd run lint -- "app/api/vehicle-tracking/export/excel/route.js"`: 0 errors
+- `npm.cmd run build`: 통과, `Vehicle tracking export error: Dynamic server usage` 로그 제거. 외부 HTTPS fetch EACCES 경고는 샌드박스 환경성 경고.
 - `node --test web/tests/asanShippingFlow.test.mjs`: 15개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/route.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"`: 0 errors
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app.py docker\els-backend\app_core.py`: 통과

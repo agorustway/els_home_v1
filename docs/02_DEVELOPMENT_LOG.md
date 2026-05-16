@@ -1,4 +1,19 @@
 
+## [2026-05-16] 차량위치관제 Excel export 빌드 로그 정리 (v5.13.36)
+### 핵심
+- `npm run build` 중 `/api/vehicle-tracking/export/excel` 라우트에서 `Vehicle tracking export error: Dynamic server usage` 로그가 발생하던 원인을 확인했습니다.
+- 해당 라우트가 `request.url`을 사용하는 다운로드 API인데 동적 라우트 선언이 빠져 있어, Next가 빌드 중 정적 렌더 대상으로 한 번 건드리며 오류 로그가 찍혔습니다.
+- ZIP export 라우트와 동일하게 `export const dynamic = 'force-dynamic'`을 추가해 빌드 중 정적 렌더 대상에서 제외했습니다.
+- 회귀 테스트를 추가해 Excel export 라우트의 동적 선언이 빠지지 않도록 방어했습니다.
+### 검증
+- `node --test web/tests/vehicleTrackingExport.test.mjs` 통과 (1개)
+- `npm.cmd run lint -- "app/api/vehicle-tracking/export/excel/route.js"` 0 errors
+- `npm.cmd run build` 통과, `Vehicle tracking export error: Dynamic server usage` 로그 제거
+### 변경 파일
+- `web/app/api/vehicle-tracking/export/excel/route.js`
+- `web/tests/vehicleTrackingExport.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 아산 선적관리 컨테이너 조회 저장 서버화 (v5.13.35)
 ### 핵심
 - 형이 컨테이너 조회 중 다른 페이지로 이동했을 때 이력 저장이 누락된 사례를 조사했습니다.

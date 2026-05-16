@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { createClient } from '@/utils/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 const headers = [
     '상태', '기사명', '차량번호', '컨테이너', '씰넘버', '타입', '종류', '시작일시', '종료일시',
     '최고속도', '최종위치', '브레이크', '타이어', '램프', '적재물', '기사숙지', '메모'
