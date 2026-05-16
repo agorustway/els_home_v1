@@ -13,6 +13,8 @@ const PREFS_KEY = 'asan_shipping_prefs';
 const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
 const SHIPPING_PAGE_SIZE = 100;
+const SEARCH_DEBOUNCE_MS = 1000;
+const SEARCH_CLEAR_DEBOUNCE_MS = 250;
 const EMPTY_HISTORY_ROW = ['-', '-', '조회 대기중', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'];
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
@@ -79,7 +81,10 @@ export default function AsanShipping() {
     const [headers, setHeaders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchRefreshing, setSearchRefreshing] = useState(false);
+    const [isComposingSearch, setIsComposingSearch] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [elapsed, setElapsed] = useState('');
     
@@ -109,6 +114,7 @@ export default function AsanShipping() {
     const [containerLookupResults, setContainerLookupResults] = useState({});
     const [containerLookupRunning, setContainerLookupRunning] = useState(false);
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
+    const lastLoadedPathRef = useRef('');
 
     useEffect(() => {
         const saved = localStorage.getItem('asan_shipping_file') || '/아산지점/2026_자체보관리스트.xlsx';
@@ -139,9 +145,12 @@ export default function AsanShipping() {
         const pageSize = options.pageSize || SHIPPING_PAGE_SIZE;
         const search = (options.search || '').trim();
         const append = Boolean(options.append);
+        const quiet = Boolean(options.quiet);
 
         if (append) {
             setLoadingMore(true);
+        } else if (quiet) {
+            setSearchRefreshing(true);
         } else {
             setLoading(true);
         }
@@ -160,12 +169,15 @@ export default function AsanShipping() {
             const j = JSON.parse(safeText);
             if (j.data) {
                 applyShippingData(j.data, { append });
+                lastLoadedPathRef.current = path;
             }
         } catch (e) {
             console.error('Failed to fetch shipping data:', e);
         } finally {
             if (append) {
                 setLoadingMore(false);
+            } else if (options.quiet) {
+                setSearchRefreshing(false);
             } else {
                 setLoading(false);
             }
@@ -216,12 +228,19 @@ export default function AsanShipping() {
     }, [selectedPath]);
 
     useEffect(() => {
-        if (!selectedPath) return;
-        const delay = searchTerm.trim() ? 300 : 0;
+        if (isComposingSearch) return undefined;
+        const delay = searchInput.trim() ? SEARCH_DEBOUNCE_MS : SEARCH_CLEAR_DEBOUNCE_MS;
         const timer = setTimeout(() => {
-            fetchData(selectedPath, { page: 1, search: searchTerm });
+            setSearchTerm(searchInput);
         }, delay);
         return () => clearTimeout(timer);
+    }, [searchInput, isComposingSearch]);
+
+    useEffect(() => {
+        if (!selectedPath) return;
+        const quiet = lastLoadedPathRef.current === selectedPath;
+        if (quiet) setSearchRefreshing(true);
+        fetchData(selectedPath, { page: 1, search: searchTerm, quiet });
     }, [selectedPath, searchTerm, fetchData]);
 
     useEffect(() => {
@@ -504,6 +523,7 @@ export default function AsanShipping() {
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
+        setSearchInput('');
         setSearchTerm('');
         localStorage.removeItem(PREFS_KEY);
         fetch('/api/user/prefs', {
@@ -808,6 +828,7 @@ export default function AsanShipping() {
 
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
     const dbSyncedTimeStr = data.synced_at ? new Date(data.synced_at).toLocaleString() : '';
+    const searchPending = searchInput !== searchTerm;
 
     const totalRows = processedData.length;
     const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
@@ -909,9 +930,22 @@ export default function AsanShipping() {
                             type="text"
                             placeholder="전체 검색 (콤마 구분)"
                             className={styles.searchInput}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            value={searchInput}
+                            onChange={e => setSearchInput(e.target.value)}
+                            onCompositionStart={() => setIsComposingSearch(true)}
+                            onCompositionEnd={e => {
+                                setIsComposingSearch(false);
+                                setSearchInput(e.currentTarget.value);
+                            }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') setSearchTerm(searchInput);
+                            }}
                         />
+                        {(searchPending || searchRefreshing) && (
+                            <span className={styles.searchStatus}>
+                                {searchPending ? '입력 대기' : '검색 중'}
+                            </span>
+                        )}
                     </div>
                     <div className={styles.actionRow}>
                         <div className={styles.actionGroup}>

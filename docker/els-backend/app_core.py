@@ -546,7 +546,8 @@ def get_branch_dispatch(branch_id):
 
 # 3-1. 아산지점 선적관리 엑셀 파싱/DB 동기화
 DEFAULT_ASAN_SHIPPING_PATH = "/아산지점/2026_자체보관리스트.xlsx"
-SHIPPING_HISTORY_RETENTION_DAYS = 365
+SHIPPING_ARCHIVE_RETENTION_DAYS = 365
+SHIPPING_LOOKUP_RETENTION_DAYS = 180
 shipping_cache = {}
 shipping_db_available = True
 shipping_history_cleanup_last_date = None
@@ -671,23 +672,29 @@ def _archive_removed_asan_shipping_rows(normalized_path, new_payload, removed_fi
         app.logger.warning(f"[선적관리DB] 삭제 이력 archive 건너뜀: {e}")
         return 0
 
-def cleanup_asan_shipping_history_retention(now=None, retention_days=SHIPPING_HISTORY_RETENTION_DAYS):
+def cleanup_asan_shipping_history_retention(
+    now=None,
+    archive_retention_days=SHIPPING_ARCHIVE_RETENTION_DAYS,
+    lookup_retention_days=SHIPPING_LOOKUP_RETENTION_DAYS
+):
     if not supabase or not shipping_db_available:
         return None
 
     now = now or datetime.now(KST)
-    cutoff = (now - timedelta(days=retention_days)).isoformat()
+    archive_cutoff = (now - timedelta(days=archive_retention_days)).isoformat()
+    lookup_cutoff = (now - timedelta(days=lookup_retention_days)).isoformat()
     try:
-        archive_res = supabase.from_("branch_shipping_row_archive").delete().lt("archived_at", cutoff).execute()
-        lookup_res = supabase.from_("branch_shipping_container_lookups").delete().lt("looked_up_at", cutoff).execute()
+        archive_res = supabase.from_("branch_shipping_row_archive").delete().lt("archived_at", archive_cutoff).execute()
+        lookup_res = supabase.from_("branch_shipping_container_lookups").delete().lt("looked_up_at", lookup_cutoff).execute()
         archive_deleted = len(archive_res.data or [])
         lookup_deleted = len(lookup_res.data or [])
         app.logger.info(
-            f"[선적관리DB] 이력 보존기간 정리 완료: cutoff={cutoff}, "
+            f"[선적관리DB] 이력 보존기간 정리 완료: archive_cutoff={archive_cutoff}, lookup_cutoff={lookup_cutoff}, "
             f"archive={archive_deleted}, lookup={lookup_deleted}"
         )
         return {
-            "cutoff": cutoff,
+            "archive_cutoff": archive_cutoff,
+            "lookup_cutoff": lookup_cutoff,
             "archive_deleted": archive_deleted,
             "lookup_deleted": lookup_deleted,
         }

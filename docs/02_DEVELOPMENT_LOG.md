@@ -1,23 +1,29 @@
 
-## [2026-05-16] 아산 선적관리 툴바 반응형 정리 (v5.13.22)
+## [2026-05-16] 아산 선적관리 툴바/검색/보존기간 정리 (v5.13.22)
 ### 핵심
 - 선적관리 상단을 검색줄과 액션줄로 분리해 데스크톱 폭이 줄어도 버튼이 한 줄에서 깨지지 않도록 정리했습니다.
 - 모바일에서는 버튼 그룹을 3열/2열 그리드로 접어 검색, 프리셋, 엑셀, NAS 동기화, 컨테이너 조회가 겹치지 않게 했습니다.
 - 컨테이너 조회 버튼은 NAS 동기화 뒤쪽에 배치하고, 이력 컬럼과 숨김 이력 칩도 엑셀 원장 컬럼 뒤쪽으로 정렬되게 보정했습니다.
+- 검색 입력은 한글 조합 중 조회를 멈추고, 입력 종료 후 1초 뒤 DB 전체 조건 검색을 조용히 갱신하도록 변경했습니다. Enter는 즉시 검색합니다.
+- 삭제 archive는 365일, 컨테이너 lookup 조회 이력은 180일 보존으로 나누고 최신 lookup/보존기간 delete 인덱스를 추가했습니다.
 ### 검증
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (19개)
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (21개)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js` 0 errors
-- 로컬 dev 서버 `http://localhost:3001/employees/branches/asan`에서 데스크톱 화면 확인. 3000 포트는 기존 프로세스 점유로 3001 사용.
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과 (번들 Python 사용)
+- Supabase 운영 DB 확인: 현재 원장 965행/약 6.4MB, archive 0건, lookup 0건. 최신 lookup/보존기간 인덱스 3개 생성 확인.
+- 로컬 dev 서버 `http://localhost:3001/employees/branches/asan`에서 검색 입력 중 테이블 유지와 `입력 대기` 표시 확인. 3000 포트는 기존 프로세스 점유로 3001 사용.
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/AsanShipping.js`
 - `web/app/(main)/employees/branches/asan/shipping.module.css`
 - `web/tests/asanShippingFlow.test.mjs`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/supabase_sql/20260516_asan_shipping_lookup_retention_indexes.sql`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ## [2026-05-16] 아산 선적관리 이력 1년 보존 정리 (v5.13.21)
 ### 핵심
 - 선적관리 운영 원장 `branch_shipping_rows`는 계속 엑셀 최신본 기준으로 유지하고, 보존기간 정리 대상에서 제외했습니다.
-- 삭제 이력 `branch_shipping_row_archive`와 컨테이너 조회 이력 `branch_shipping_container_lookups`만 365일 초과분을 NAS core 스케줄러에서 하루 1회 정리하도록 했습니다.
+- 삭제 이력 `branch_shipping_row_archive`와 컨테이너 조회 이력 `branch_shipping_container_lookups`만 보존기간 초과분을 NAS core 스케줄러에서 하루 1회 정리하도록 했습니다. 이후 v5.13.22에서 archive 365일, lookup 180일로 분리했습니다.
 - 회귀 테스트로 1년 보존 상수, archive/lookup 삭제 조건, 현재 원장 미삭제 조건을 고정했습니다.
 ### 검증
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (18개)

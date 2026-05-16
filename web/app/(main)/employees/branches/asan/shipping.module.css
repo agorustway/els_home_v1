@@ -90,6 +90,8 @@
 .searchRow {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
     width: 100%;
 }
 
@@ -116,12 +118,22 @@
 }
 
 .searchInput {
+    flex: 0 1 360px;
     height: 30px;
     padding: 0 10px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     font-size: 0.78rem;
     width: min(360px, 100%);
+}
+
+.searchStatus {
+    min-width: 54px;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .syncBtn, .resetBtn {
@@ -602,10 +614,17 @@
     }
 
     .searchInput {
+        flex: 1 1 auto;
+        min-width: 0;
         width: 100%;
         height: 34px;
         padding: 6px 10px;
         font-size: 0.8rem;
+    }
+
+    .searchStatus {
+        min-width: 48px;
+        font-size: 0.66rem;
     }
 
     .resetBtn, .syncBtn, .dangerBtn, .lookupBtn {
