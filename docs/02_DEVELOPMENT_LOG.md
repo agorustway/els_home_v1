@@ -1,4 +1,21 @@
 
+## [2026-05-17] 아산 선적관리 조회/실패 건수 및 엑셀 헤더 동기화 (v5.13.43)
+### 핵심
+- 날짜 필터 바의 조회 건수를 `전체 N건 / 조회 N건`으로 바꿔, 서버 전체 969건 중 현재 화면 기준 100건처럼 구분되도록 했습니다.
+- 컨테이너 조회 상태를 카운트 기반으로 보강해 `컨테이너 조회건수 / 조회완료 / 조회실패`를 함께 표시하고, 실패 건수는 빨간색으로 드러나게 했습니다.
+- 조회 도중 에러가 나면 이미 받은 결과는 완료/실패로 집계하고, 남은 미처리 컨테이너는 실패로 포함합니다.
+- 저장된 컬럼 레이아웃은 엑셀 열 수가 같을 때만 제목 변경으로 보고 인덱스 매칭하며, 열 삭제/추가 시에는 현재 엑셀 헤더 기준으로 테이블 컬럼을 제거/추가합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (27개)
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (38개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 버튼 정렬 및 조회중 안내 (v5.13.42)
 ### 핵심
 - 형이 제보한 선적관리 날짜 필터 바의 버튼 글자 높낮이 차이를 기준으로 버튼류 높이와 line-height, inline-flex 정렬을 통일했습니다.

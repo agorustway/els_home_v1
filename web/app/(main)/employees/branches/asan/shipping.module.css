@@ -200,7 +200,9 @@
 .lookupStatus {
     min-height: 28px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    gap: 10px;
     padding: 4px 10px;
     border: 1px solid #bbf7d0;
     border-radius: 6px;
@@ -208,6 +210,17 @@
     color: #047857;
     font-size: 0.74rem;
     font-weight: 800;
+}
+
+.lookupStatusCounts {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.lookupStatusFailed {
+    color: #dc2626;
 }
 
 .pageBar {

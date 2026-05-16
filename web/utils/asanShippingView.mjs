@@ -30,6 +30,45 @@ export function getVisibleShippingColumns(order = [], currentHeaders = [], hidde
   return normalizeShippingColumnOrder(order, currentHeaders).filter((col) => !hidden.has(col));
 }
 
+export function reconcileShippingLayoutPrefs({
+  order = [],
+  hiddenCols = [],
+  sourceHeaders = [],
+  currentHeaders = [],
+} = {}) {
+  const current = Array.isArray(currentHeaders) ? currentHeaders : [];
+  const source = Array.isArray(sourceHeaders) ? sourceHeaders : [];
+  const sourceExcelHeaders = source.filter((col) => !isContainerLookupColumn(col));
+  const currentExcelHeaders = current.filter((col) => !isContainerLookupColumn(col));
+  const canTreatMissingNameAsRename = sourceExcelHeaders.length === currentExcelHeaders.length;
+
+  const mapColumn = (name) => {
+    if (current.includes(name)) return name;
+    if (isContainerLookupColumn(name)) return null;
+    if (!canTreatMissingNameAsRename) return null;
+
+    const oldIdx = sourceExcelHeaders.indexOf(name);
+    if (oldIdx >= 0 && currentExcelHeaders[oldIdx]) return currentExcelHeaders[oldIdx];
+    return null;
+  };
+
+  const mappedOrder = (order || []).map(mapColumn).filter(Boolean);
+  current.forEach((col) => {
+    if (!mappedOrder.includes(col)) mappedOrder.push(col);
+  });
+
+  const mappedHidden = new Set();
+  (hiddenCols || []).forEach((name) => {
+    const mapped = mapColumn(name);
+    if (mapped) mappedHidden.add(mapped);
+  });
+
+  return {
+    colOrder: normalizeShippingColumnOrder(mappedOrder, current),
+    hiddenCols: mappedHidden,
+  };
+}
+
 export function getShippingVirtualWindow({
   scrollTop = 0,
   rowHeight = 28,
