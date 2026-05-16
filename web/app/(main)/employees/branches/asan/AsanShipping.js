@@ -991,12 +991,14 @@ export default function AsanShipping() {
 
             <div
                 className={`${styles.hiddenColsZone} ${isDragOverHidden ? styles.hiddenColsZoneActive : ''}`}
+                title="숨긴 컬럼입니다. 칩을 클릭하거나 표로 드래그하면 다시 표시됩니다. 표 헤더를 이 영역으로 드래그하면 숨길 수 있습니다."
+                aria-label="숨긴 컬럼 영역"
                 onDragOver={(e) => { e.preventDefault(); setIsDragOverHidden(true); }}
                 onDragLeave={() => setIsDragOverHidden(false)}
                 onDrop={handleDropToHidden}
             >
                 <span className={styles.hiddenColsHint}>
-                    {hiddenCols.size === 0 ? '이곳에 컬럼을 드래그하여 숨길 수 있습니다' : '숨긴 컬럼 (클릭하거나 드래그해서 표로 복구)'}
+                    숨김
                 </span>
                 {hiddenColumnList.map(col => (
                     <button
