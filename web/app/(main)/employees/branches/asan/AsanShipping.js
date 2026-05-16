@@ -1006,6 +1006,7 @@ export default function AsanShipping() {
         overscan: VIRTUAL_OVERSCAN,
     });
     const visibleRows = processedData.slice(visibleStart, visibleEnd);
+    const tableIsRefreshing = Boolean(searchRefreshing || loadingMore || shouldLoadFullRowsForFilters);
 
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {
@@ -1203,7 +1204,7 @@ export default function AsanShipping() {
                     >
                         {storageOnly ? '필터해제' : '자체보관'}
                     </button>
-                    <span className={styles.resultCountBadge} title="현재 검색/필터 적용 후 화면 조회 건수">
+                    <span className={styles.resultCountText} title="현재 검색/필터 적용 후 화면 조회 건수">
                         조회 {totalRows.toLocaleString()}건
                     </span>
                 </div>
@@ -1309,6 +1310,13 @@ export default function AsanShipping() {
                             </tr>
                             );
                         })}
+                        {visibleRows.length === 0 && (
+                            <tr>
+                                <td className={styles.tableMessageCell} colSpan={Math.max(orderedVisibleColumns.length, 1)}>
+                                    {tableIsRefreshing ? '자료 조회중...' : '조건에 맞는 자료가 없습니다.'}
+                                </td>
+                            </tr>
+                        )}
                         {bottomSpacerHeight > 0 && (
                             <tr className={styles.virtualSpacer} aria-hidden="true">
                                 <td colSpan={Math.max(orderedVisibleColumns.length, 1)} style={{ height: bottomSpacerHeight }} />

@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.13.41 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.42 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 미선적 필터가 이력 데이터 없는 행도 노출하도록 보강하고, 필터 적용 후 조회 건수를 날짜 필터 바에 표시했습니다.
+> 최신 업데이트: 아산 선적관리 날짜 필터 바 버튼 글자 높이를 통일하고, 조회 건수는 버튼형 배경 없이 텍스트로 표시합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.41
+- **웹 버전**: v5.13.42
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 미선적 필터에서 컨테이너 이력 데이터가 없는 행을 제외하지 않고 노출해 사용자가 바로 컨테이너 조회로 확인 가능.
-  - 날짜 필터 바의 `미선적`/`자체보관` 옆에 현재 검색/필터 적용 후 조회 건수를 표시.
-  - 컨테이너 조회 시작 상태 문구에 현재 필터 행 수와 실제 조회 컨테이너 수를 함께 표시.
+  - 날짜 필터 바의 `초기화`/`미선적`/`자체보관` 버튼 높이와 글자 기준선을 통일.
+  - `조회 N건`은 버튼형 배경과 테두리를 제거하고 일반 텍스트로 표시.
+  - 필터/정렬 재조회 중 테이블 행이 비는 순간에는 `자료 조회중...` 안내를 표시.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.42**: 아산 선적관리 날짜 필터 바 버튼 글자 높이를 통일하고, 조회 건수를 일반 텍스트로 바꾸며, 필터/정렬 조회 중 빈 테이블에 `자료 조회중...` 안내를 추가.
 - **v5.13.41**: 아산 선적관리 미선적 필터가 이력 데이터 없는 행도 남기도록 보강하고, 필터 적용 조회 건수 배지와 컨테이너 조회 대상 상태 문구를 추가.
 - **v5.13.40**: 아산 선적관리 필터 드롭다운 글자색을 복구하고, 미선적 판정 기준일에 `반입일` fallback을 추가. 대량 컨테이너 이력 저장값은 150건씩 청크 조회.
 - **v5.13.39**: eTrans 세션 연장 후 클라이언트 타이머를 재시작하고 자정 날짜 변경 시 WebSquare 타이머가 세션 종료로 오판하지 않도록 롤오버 가드를 설치.
@@ -49,9 +50,9 @@
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 23개 통과
-- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 34개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
+- `node --test web/tests/asanShippingFlow.test.mjs`: 25개 통과
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 36개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js"`: 0 errors
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 
 ## EASTER EGGS

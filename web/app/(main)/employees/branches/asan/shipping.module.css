@@ -146,7 +146,7 @@
 }
 
 .syncBtn, .resetBtn {
-    min-height: 28px;
+    height: 28px;
     padding: 0 8px;
     border-radius: 6px;
     font-weight: 700;
@@ -159,7 +159,9 @@
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    line-height: 1.15;
+    line-height: 1;
+    vertical-align: middle;
+    font-family: inherit;
 }
 
 .syncBtn {
@@ -170,7 +172,7 @@
 .syncBtn:hover { background: #dbeafe; }
 
 .lookupBtn {
-    min-height: 28px;
+    height: 28px;
     padding: 0 8px;
     border-radius: 6px;
     font-weight: 800;
@@ -183,7 +185,9 @@
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    line-height: 1.15;
+    line-height: 1;
+    vertical-align: middle;
+    font-family: inherit;
 }
 
 .lookupBtn:hover { background: #d1fae5; }
@@ -219,7 +223,7 @@
 }
 
 .loadMoreBtn {
-    min-height: 28px;
+    height: 28px;
     padding: 0 12px;
     border: 1px solid #bfdbfe;
     border-radius: 6px;
@@ -228,6 +232,8 @@
     font-size: 0.74rem;
     font-weight: 800;
     cursor: pointer;
+    line-height: 1;
+    font-family: inherit;
 }
 
 .loadMoreBtn:disabled {
@@ -236,7 +242,7 @@
 }
 
 .dangerBtn {
-    min-height: 28px;
+    height: 28px;
     padding: 0 8px;
     border-radius: 6px;
     font-weight: 700;
@@ -249,7 +255,9 @@
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    line-height: 1.15;
+    line-height: 1;
+    vertical-align: middle;
+    font-family: inherit;
 }
 .dangerBtn:hover { background: #fee2e2; }
 
@@ -339,8 +347,8 @@
 }
 
 .dateClearBtn {
-    min-height: 28px;
-    padding: 4px 8px;
+    height: 28px;
+    padding: 0 8px;
     background: #fee2e2;
     border: 1px solid #fecaca;
     border-radius: 4px;
@@ -348,11 +356,16 @@
     font-weight: 700;
     cursor: pointer;
     color: #dc2626;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-family: inherit;
 }
 
 .quickFilterBtn {
-    min-height: 28px;
-    padding: 4px 10px;
+    height: 28px;
+    padding: 0 10px;
     background: #ecfdf5;
     border: 1px solid #86efac;
     border-radius: 4px;
@@ -360,6 +373,11 @@
     font-weight: 800;
     cursor: pointer;
     color: #166534;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-family: inherit;
 }
 
 .quickFilterBtn:hover {
@@ -376,15 +394,15 @@
     background: #fecaca;
 }
 
-.resultCountBadge {
+.resultCountText {
     min-height: 28px;
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
-    border: 1px solid #bfdbfe;
-    border-radius: 4px;
-    background: #eff6ff;
-    color: #1d4ed8;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #2563eb;
     font-size: 0.8rem;
     font-weight: 800;
     white-space: nowrap;
@@ -486,6 +504,15 @@
     border: 0 !important;
     height: auto;
     background: transparent !important;
+}
+
+.tableMessageCell {
+    height: 84px !important;
+    text-align: center;
+    color: #64748b;
+    background: #fff !important;
+    font-size: 0.86rem;
+    font-weight: 800;
 }
 
 .dragOver {

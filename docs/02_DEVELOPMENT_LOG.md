@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 선적관리 버튼 정렬 및 조회중 안내 (v5.13.42)
+### 핵심
+- 형이 제보한 선적관리 날짜 필터 바의 버튼 글자 높낮이 차이를 기준으로 버튼류 높이와 line-height, inline-flex 정렬을 통일했습니다.
+- `자체보관` 옆 `조회 N건`은 버튼이 아니므로 배경/테두리를 제거하고 일반 텍스트 형태로 표시하도록 바꿨습니다.
+- 필터/정렬 재조회나 추가 로드 중 가상 테이블에 표시 행이 비는 순간에는 `자료 조회중...`을 보여 사용자가 빈 화면으로 오해하지 않게 했습니다. 실제 결과가 없는 경우에는 `조건에 맞는 자료가 없습니다.`를 표시합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (25개)
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (36개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 미선적 이력 공백 노출 및 조회 건수 표시 (v5.13.41)
 ### 핵심
 - 형이 제보한 선적관리 데이터량 부족 현상을 기준으로 미선적 빠른 필터 흐름을 재점검했습니다.
