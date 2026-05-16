@@ -33,6 +33,9 @@ class DriverPool:
         self.is_logging_in = False
         self.init_stagger_sec = float(os.environ.get("ELS_DRIVER_STAGGER_SEC", 15))
         self.init_stagger_sequence = self._parse_init_stagger_sequence()
+        self.late_worker_min_ready = int(os.environ.get("ELS_LATE_WORKER_MIN_READY", 2))
+        self.late_worker_spacing_sec = float(os.environ.get("ELS_LATE_WORKER_SPACING_SEC", 45))
+        self.late_worker_ready_timeout_sec = float(os.environ.get("ELS_LATE_WORKER_READY_TIMEOUT_SEC", 420))
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v5.13.6] NAS CPU 여유 확인 후 4개 워커 기본값 복구
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0
@@ -63,6 +66,36 @@ class DriverPool:
         if 0 <= idx < len(self.init_stagger_sequence):
             return self.init_stagger_sequence[idx]
         return idx * self.init_stagger_sec
+
+    def ready_driver_count(self):
+        with self.lock:
+            return len(self.drivers)
+
+    def wait_for_init_slot(self, idx, generation):
+        base_delay = self.init_delay_for_idx(idx)
+        if base_delay > 0 and not self.wait_unless_cancelled(base_delay, generation):
+            return False
+
+        min_ready = max(0, min(self.late_worker_min_ready, self.max_drivers))
+        if idx < min_ready or min_ready <= 0:
+            return True
+
+        waited = 0.0
+        while self.ready_driver_count() < min_ready:
+            if waited >= self.late_worker_ready_timeout_sec:
+                self.add_log(f"[후행기동] 브라우저 #{idx+1} 대기 초과: 준비 {self.ready_driver_count()}/{min_ready}")
+                return True
+            step = min(5.0, self.late_worker_ready_timeout_sec - waited)
+            if not self.wait_unless_cancelled(step, generation):
+                return False
+            waited += step
+
+        late_offset = max(0, idx - min_ready) * self.late_worker_spacing_sec
+        if late_offset > 0:
+            self.add_log(f"[후행기동] 브라우저 #{idx+1} 간격 대기 {int(late_offset)}초")
+            if not self.wait_unless_cancelled(late_offset, generation):
+                return False
+        return True
 
     def add_log(self, msg):
         from datetime import datetime, timezone, timedelta
@@ -317,6 +350,9 @@ def health():
             "active_init_threads": pool.active_init_threads,
             "init_stagger_sec": pool.init_stagger_sec,
             "init_stagger_sequence": pool.init_stagger_sequence,
+            "late_worker_min_ready": pool.late_worker_min_ready,
+            "late_worker_spacing_sec": pool.late_worker_spacing_sec,
+            "late_worker_ready_timeout_sec": pool.late_worker_ready_timeout_sec,
             "user_id": pool.current_user["id"] if pool.current_user else None,
             "workers": workers,
             "daemon_id": pool.daemon_id
@@ -368,9 +404,10 @@ def login():
                             pool.add_log(f"❌ [보안경고] 누적 로그인 실패 과다! 드라이버 #{idx+1} 초기화를 영구 취소합니다.")
                             return
 
-                    # [NAS 최적화] CPU 부하 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
+                    # NAS Chrome 기동은 평균 CPU보다 순간 포트/프로필 경합이 중요하다.
+                    # 후행 워커는 선행 워커가 실제 준비된 뒤 순차 기동한다.
                     if idx > 0 and retry == 1:
-                        if not pool.wait_unless_cancelled(pool.init_delay_for_idx(idx), generation):
+                        if not pool.wait_for_init_slot(idx, generation):
                             return
                     elif retry > 1:
                         if not pool.wait_unless_cancelled(10, generation):
@@ -962,10 +999,10 @@ def daily_reset_scheduler():
 
                 def _do_reset_login(idx, _user=saved_user, generation=reset_generation):
                     try:
-                        if idx > 0:
-                            if not pool.wait_unless_cancelled(pool.init_delay_for_idx(idx), generation):
-                                return
                         target_port = 32000 + idx
+                        if idx > 0:
+                            if not pool.wait_for_init_slot(idx, generation):
+                                return
                         pool.cleanup_lingering_chrome(target_port)
                         if pool.is_cancelled(generation):
                             return

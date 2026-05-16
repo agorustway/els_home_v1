@@ -1,4 +1,17 @@
 
+## [2026-05-16] 컨테이너 이력조회 후행 워커 준비상태 기반 기동 (v5.13.23)
+### 핵심
+- 배포 직후 대기 상태에서도 #1/#2 로그인/메뉴 진입이 160~210초까지 늘어나 #3/#4가 고정 지연만 보고 먼저 뜨며 remote-debugging 연결 실패가 반복되는 로그를 확인했습니다.
+- #3/#4는 이제 #1/#2가 실제 준비 완료된 뒤 순차 기동합니다.
+- `ELS_DRIVER_STAGGER_SEQUENCE=0,45,120,180`, `ELS_LATE_WORKER_MIN_READY=2`, `ELS_LATE_WORKER_SPACING_SEC=45`를 추가해 NAS Chrome 기동 경합을 줄였습니다.
+### 검증
+- `python -m py_compile elsbot/els_web_runner_daemon.py elsbot/tests/test_daemon_stop_control.py` 통과
+- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic` 통과 (24개)
+### 변경 파일
+- `docker/docker-compose.yml`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_daemon_stop_control.py`
+
 ## [2026-05-16] 아산 선적관리 툴바/검색/보존기간 정리 (v5.13.22)
 ### 핵심
 - 선적관리 상단을 검색줄과 액션줄로 분리해 데스크톱 폭이 줄어도 버튼이 한 줄에서 깨지지 않도록 정리했습니다.
