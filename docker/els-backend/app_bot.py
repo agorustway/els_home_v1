@@ -112,10 +112,10 @@ def _daemon_health(timeout=3):
 
 def _configured_batch_workers(configured_workers=None):
     try:
-        raw = os.environ.get("ELS_BATCH_MAX_WORKERS", 4) if configured_workers is None else configured_workers
+        raw = os.environ.get("ELS_BATCH_MAX_WORKERS", 3) if configured_workers is None else configured_workers
         configured = int(raw)
     except (TypeError, ValueError):
-        configured = 4
+        configured = 3
     return max(1, configured)
 
 def _effective_batch_workers(health, configured_workers=None, reserve_single=True, in_flight=0):
@@ -168,7 +168,7 @@ def capabilities():
         "driver_active": False,
         "user_id": None,
         "workers": [],
-        "max_drivers": 4,
+        "max_drivers": 3,
         "total_drivers": 0,
         "available_drivers": 0,
         "is_logging_in": False,
@@ -300,6 +300,7 @@ def run():
                             "containerNo": cn,
                             "showBrowser": show_browser,
                             "requestPurpose": "batch",
+                            "reserveSingle": reserve_single,
                             "acquireTimeoutSec": 45,
                         }, ensure_ascii=False).encode("utf-8")
                         req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})

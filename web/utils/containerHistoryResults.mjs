@@ -53,9 +53,18 @@ export function extractUniqueContainerNos(headers = [], rows = []) {
   return containers;
 }
 
-export function groupContainerHistoryRows(rows = [], targets = []) {
+export function isActualContainerHistoryRow(row = []) {
+  const no = String(row?.[1] || '').trim();
+  if (!/^\d+$/.test(no)) return false;
+  const historyText = row.slice(2, 14).map((cell) => String(cell || '')).join('|');
+  return /(수입|수출|반입|반출|양하|적하)/.test(historyText);
+}
+
+export function groupContainerHistoryRows(rows = [], targets = [], options = {}) {
+  const actualOnly = options.actualOnly !== false;
   const grouped = {};
   rows.forEach((row) => {
+    if (actualOnly && !isActualContainerHistoryRow(row)) return;
     const containerNo = normalizeContainerNo(row?.[0]);
     if (!containerNo) return;
     if (!grouped[containerNo]) grouped[containerNo] = [];
@@ -87,30 +96,16 @@ export function groupContainerHistoryRows(rows = [], targets = []) {
 }
 
 export function selectMainContainerHistoryRow(rows = []) {
-  if (!rows.length) return null;
-  return rows.find((row) => String(row?.[1] || '').trim() === '1') || rows[0];
+  const actualRows = rows.filter(isActualContainerHistoryRow);
+  if (!actualRows.length) return null;
+  return actualRows.find((row) => String(row?.[1] || '').trim() === '1') || actualRows[0];
 }
 
 export function buildContainerLookupRecord(containerNo, rows = [], lookedUpAt = new Date().toISOString()) {
   const normalized = normalizeContainerNo(containerNo || rows?.[0]?.[0]);
-  const resultRows = Array.isArray(rows) ? rows : [];
-  const mainRow = selectMainContainerHistoryRow(resultRows) || [
-    normalized,
-    'ERROR',
-    '추출 내역 없음',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-  ];
+  const resultRows = Array.isArray(rows) ? rows.filter(isActualContainerHistoryRow) : [];
+  const mainRow = selectMainContainerHistoryRow(resultRows);
+  if (!mainRow) return null;
 
   return {
     containerNo: normalized,
@@ -124,7 +119,8 @@ export function buildContainerLookupMapFromRows(rows = [], targets = [], lookedU
   const grouped = groupContainerHistoryRows(rows, targets);
   const map = {};
   Object.entries(grouped).forEach(([containerNo, containerRows]) => {
-    map[containerNo] = buildContainerLookupRecord(containerNo, containerRows, lookedUpAt);
+    const record = buildContainerLookupRecord(containerNo, containerRows, lookedUpAt);
+    if (record) map[containerNo] = record;
   });
   return map;
 }

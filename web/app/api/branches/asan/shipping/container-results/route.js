@@ -102,6 +102,7 @@ export async function POST(req) {
 
     const payload = Object.entries(grouped).map(([containerNo, containerRows]) => {
         const record = buildContainerLookupRecord(containerNo, containerRows, lookedUpAt);
+        if (!record) return null;
         return {
             run_id: runId,
             branch_id: 'asan',
@@ -117,7 +118,16 @@ export async function POST(req) {
             looked_up_at: lookedUpAt,
             updated_at: lookedUpAt,
         };
-    });
+    }).filter(Boolean);
+
+    if (!payload.length) {
+        return NextResponse.json({
+            ok: true,
+            run_id: runId,
+            count: 0,
+            data: {},
+        });
+    }
 
     const supabase = await createAdminClient();
     const { error } = await supabase.from(TABLE).insert(payload);

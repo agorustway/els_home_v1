@@ -54,7 +54,7 @@ function ContainerHistoryInner() {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false); // [추가] 왼쪽 패널 접힘 상태 (기본값 열림)
     const [runHistory, setRunHistory] = useState([]); // [추가] 조회 이력 차수 관리
     const [workers, setWorkers] = useState([]); // [추가] 데몬 워커(브라우저)별 상태 관리
-    const [maxDrivers, setMaxDrivers] = useState(4); // [v4.5.11] 기본값 4로 상향 
+    const [maxDrivers, setMaxDrivers] = useState(3);
     
     // [추가] 디버그 모달 열려있을 때 3초마다 스크린샷 갱신
     useEffect(() => {
@@ -352,10 +352,8 @@ function ContainerHistoryInner() {
         if (targets && targets.length > 0) {
             const finalGrouped = {};
             targets.forEach(cn => {
-                if (tempGrouped[cn]) {
-                    finalGrouped[cn] = tempGrouped[cn];
-                    delete tempGrouped[cn];
-                }
+                finalGrouped[cn] = tempGrouped[cn] || [];
+                delete tempGrouped[cn];
             });
             // 요청 목록에 없는데 내려온 남은 항목들도 맨 뒤에 붙임
             Object.keys(tempGrouped).forEach(cn => {

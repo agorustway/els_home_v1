@@ -695,7 +695,15 @@ export default function AsanShipping() {
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || '컨테이너 조회 결과 저장 실패');
-        if (json.data) setContainerLookupResults(prev => ({ ...prev, ...json.data }));
+        if (json.data) {
+            setContainerLookupResults(prev => {
+                const next = { ...prev, ...json.data };
+                containers.forEach(containerNo => {
+                    if (!json.data[containerNo]) delete next[containerNo];
+                });
+                return next;
+            });
+        }
         return json;
     };
 
@@ -783,7 +791,7 @@ export default function AsanShipping() {
             const rowsToSave = finalRows || receivedRows;
             if (!rowsToSave.length) throw new Error('컨테이너 조회 결과가 비어 있습니다.');
             const saved = await saveContainerLookupResults(rowsToSave, containers);
-            setContainerLookupStatus(`조회/저장 완료: ${saved.count || containers.length}건`);
+            setContainerLookupStatus(`조회/저장 완료: ${saved.count || 0}건`);
         } catch (err) {
             console.error('컨테이너 조회 실패:', err);
             setContainerLookupStatus(`오류: ${err.message}`);

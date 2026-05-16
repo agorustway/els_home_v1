@@ -39,7 +39,7 @@ services:
       - ELS_BATCH_READY_WAIT_SEC=90
       - ELS_BATCH_MENU_MAX_ATTEMPTS=4
       - ELS_BATCH_FORCE_MENU_REOPEN=false
-      - ELS_VERIFY_SUCCESS_ROWS=true
+      - ELS_VERIFY_SUCCESS_ROWS=false
     shm_size: 2gb
     volumes:
       - /volume2/아산지점:/app/data/아산지점

@@ -120,6 +120,41 @@ class TestDaemonStopControl(unittest.TestCase):
             queued.append(pool.available_queue.get_nowait())
         self.assertEqual(queued, [good])
 
+    def test_return_driver_does_not_enqueue_duplicates(self):
+        pool = self.daemon.DriverPool()
+        driver = DummyDriver(32000)
+        self.assertTrue(pool.add_driver(driver))
+
+        pool.return_driver(driver)
+        pool.return_driver(driver)
+
+        self.assertEqual(pool.available_queue.qsize(), 1)
+
+    def test_relogin_driver_can_be_registered_without_available_queue(self):
+        pool = self.daemon.DriverPool()
+        driver = DummyDriver(32000)
+
+        self.assertTrue(pool.add_driver(driver, available=False))
+
+        self.assertEqual(pool.drivers, [driver])
+        self.assertEqual(pool.available_queue.qsize(), 0)
+
+    def test_batch_can_use_worker_one_when_single_reservation_is_disabled(self):
+        pool = self.daemon.DriverPool()
+        first = DummyDriver(32000)
+        second = DummyDriver(32001)
+        third = DummyDriver(32002)
+        pool.add_driver(first)
+        pool.add_driver(second)
+        pool.add_driver(third)
+
+        reserved = pool.get_driver(timeout=1, purpose="batch", reserve_single=True)
+        self.assertEqual(reserved, second)
+        pool.return_driver(reserved)
+
+        all_workers = pool.get_driver(timeout=1, purpose="batch", reserve_single=False)
+        self.assertEqual(all_workers, first)
+
     def test_driver_pool_uses_configurable_init_stagger(self):
         with patch.dict(os.environ, {"ELS_DRIVER_STAGGER_SEC": "12.5"}):
             pool = self.daemon.DriverPool()

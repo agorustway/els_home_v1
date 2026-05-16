@@ -15,7 +15,7 @@ from els_bot import (
     close_modals, is_session_valid, open_els_menu, extend_session,
     normalize_container_no, is_valid_container_no, make_status_row,
     parse_grid_text_to_rows, is_retryable_result_rows, is_no_data_text,
-    compact_grid_text,
+    compact_grid_text, is_container_query_screen_ready,
 )
 import re
 import pandas as pd
@@ -36,7 +36,7 @@ class DriverPool:
         self.late_worker_min_ready = int(os.environ.get("ELS_LATE_WORKER_MIN_READY", 2))
         self.late_worker_spacing_sec = float(os.environ.get("ELS_LATE_WORKER_SPACING_SEC", 45))
         self.late_worker_ready_timeout_sec = float(os.environ.get("ELS_LATE_WORKER_READY_TIMEOUT_SEC", 420))
-        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v5.13.6] NAS CPU 여유 확인 후 4개 워커 기본값 복구
+        self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0
         self.log_buffer = deque(maxlen=300)
@@ -162,24 +162,36 @@ class DriverPool:
         except:
             pass
 
-    def add_driver(self, driver):
+    def _is_queued_unlocked(self, driver):
+        try:
+            return any(item is driver for item in list(self.available_queue.queue))
+        except:
+            return False
+
+    def _queue_driver_unlocked(self, driver):
+        if not self._is_queued_unlocked(driver):
+            self.available_queue.put(driver)
+
+    def add_driver(self, driver, available=True):
         if not driver:
             return False
         if self.stop_requested.is_set():
             try: driver.quit()
             except: pass
             return False
-        self.drivers.append(driver)
-        self.available_queue.put(driver)
+        if driver not in self.drivers:
+            self.drivers.append(driver)
+        if available:
+            self._queue_driver_unlocked(driver)
         return True
 
     def _worker_id(self, driver):
         return getattr(driver, 'used_port', 32000) - 32000 + 1
 
-    def get_driver(self, timeout=30, purpose="batch"):
+    def get_driver(self, timeout=30, purpose="batch", reserve_single=True):
         """요청 목적에 맞는 워커를 큐에서 꺼낸다.
 
-        워커가 2개 이상이면 #1은 단건/AI 조회가 우선 사용하도록 배치 요청에서 피한다.
+        reserve_single=True인 배치 요청은 #1을 단건/AI 조회용으로 남긴다.
         워커가 1개뿐이면 순차 배치도 그 1개로 처리한다.
         """
         deadline = time.time() + max(1, float(timeout or 30))
@@ -191,7 +203,9 @@ class DriverPool:
                 items = []
                 while True:
                     try:
-                        items.append(self.available_queue.get_nowait())
+                        item = self.available_queue.get_nowait()
+                        if item not in items:
+                            items.append(item)
                     except Empty:
                         break
 
@@ -199,14 +213,14 @@ class DriverPool:
                     active_count = len(self.drivers)
                     if purpose in ("single", "ai", "realtime"):
                         chosen = next((d for d in items if self._worker_id(d) == 1), None) or items[0]
-                    elif active_count > 1:
+                    elif reserve_single and active_count > 1:
                         chosen = next((d for d in items if self._worker_id(d) != 1), None)
                     else:
                         chosen = items[0]
 
                     for d in items:
                         if d is not chosen:
-                            self.available_queue.put(d)
+                            self._queue_driver_unlocked(d)
 
                     if chosen:
                         return chosen
@@ -224,7 +238,7 @@ class DriverPool:
                 if driver in self.drivers:
                     self.drivers.remove(driver)
                 return
-            self.available_queue.put(driver)
+            self._queue_driver_unlocked(driver)
 
     def retire_driver(self, driver, reason="worker-unhealthy"):
         """문제가 난 워커를 큐에서 빼고 브라우저를 종료해 다음 조회가 같은 워커에 갇히지 않게 한다."""
@@ -339,12 +353,7 @@ class DriverPool:
 pool = DriverPool()
 
 def is_query_screen_ready(driver, timeout=0.2):
-    try:
-        target = driver.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=timeout) or \
-                 driver.ele('css:input[id*="containerNo"]', timeout=0.1)
-        return bool(target)
-    except:
-        return False
+    return is_container_query_screen_ready(driver, timeout=timeout)
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -537,6 +546,7 @@ def run():
     time.sleep(random.uniform(0.05, 0.15))
 
     request_purpose = str(data.get("requestPurpose") or "single").lower()
+    reserve_single = bool(data.get("reserveSingle", request_purpose == "batch"))
     acquire_timeout = float(data.get("acquireTimeoutSec") or os.environ.get("ELS_WORKER_ACQUIRE_TIMEOUT_SEC", 180))
     try:
         batch_menu_attempts = max(1, int(os.environ.get("ELS_BATCH_MENU_MAX_ATTEMPTS", 4)))
@@ -553,13 +563,13 @@ def run():
     )
     verify_success_rows = (
         request_purpose == "batch" and
-        os.environ.get("ELS_VERIFY_SUCCESS_ROWS", "true").lower() != "false"
+        os.environ.get("ELS_VERIFY_SUCCESS_ROWS", "false").lower() == "true"
     )
     if request_purpose != "batch" or os.environ.get("ELS_BATCH_ENSURE_CAPACITY_ON_REQUEST", "false").lower() == "true":
         pool.ensure_capacity_async(reason=f"{request_purpose}:{cn}")
 
     acquire_started = time.time()
-    driver = pool.get_driver(timeout=acquire_timeout, purpose=request_purpose)
+    driver = pool.get_driver(timeout=acquire_timeout, purpose=request_purpose, reserve_single=reserve_single)
     if not driver:
         message = "조회 중지됨" if pool.stop_requested.is_set() else f"워커 대기 시간 초과({int(acquire_timeout)}초)"
         return jsonify({
@@ -689,7 +699,7 @@ def run():
                     pool.consecutive_login_failures = 0 # 성공 시 즉시 0으로 초기화 (아침에 살아날 수 있는 핵심)
                     driver = res[0]
                     driver.used_port = target_port
-                    pool.add_driver(driver)
+                    pool.add_driver(driver, available=False)
                 pool.add_log(f"--- [세션 복구 성공] {cn} 조회를 계속합니다. ---")
             else:
                 with pool.lock:
@@ -808,8 +818,8 @@ def run():
             previous_grid_text = scrape_hyper_verify(
                 driver,
                 cn,
-                max_attempts=1,
-                wait_interval=0
+                max_attempts=3,
+                wait_interval=0.1
             )
             if previous_grid_text in ["STALE_GRID_UNCHANGED", "GRID_EMPTY_PENDING", "내역없음확인"]:
                 previous_grid_text = None

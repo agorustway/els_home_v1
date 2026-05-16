@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   buildContainerLookupMapFromRows,
   extractUniqueContainerNos,
+  isActualContainerHistoryRow,
 } from '../utils/containerHistoryResults.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -273,4 +274,19 @@ test('컨테이너 조회 유틸은 필터 결과의 컨테이너와 No 1 메인
   assert.equal(lookupMap.TCLU8300912.mainRow[1], '1');
   assert.equal(lookupMap.TCLU8300912.mainRow[4], 'HJNC');
   assert.equal(lookupMap.TCLU8300912.lookedUpAt, '2026-05-16T00:00:00.000Z');
+});
+
+test('컨테이너 조회 저장 유틸은 실제 이력 행만 결과로 인정한다', () => {
+  assert.equal(isActualContainerHistoryRow(['TCLU8300912', '1', '수출', '반입']), true);
+  assert.equal(isActualContainerHistoryRow(['TCLU8300912', 'ERROR', '워커 대기 시간 초과']), false);
+  assert.equal(isActualContainerHistoryRow(['TCLU8300912', 'NODATA', '내역 없음']), false);
+
+  const lookupMap = buildContainerLookupMapFromRows([
+    ['TCLU8300912', 'ERROR', '워커 대기 시간 초과'],
+    ['TRHU5191927', 'NODATA', '내역 없음'],
+    ['MSKU5071276', '1', '수입', '반출', '부산', '2026-05-16 10:00'],
+  ], ['TCLU8300912', 'TRHU5191927', 'MSKU5071276'], '2026-05-16T00:00:00.000Z');
+
+  assert.deepEqual(Object.keys(lookupMap), ['MSKU5071276']);
+  assert.equal(lookupMap.MSKU5071276.mainRow[1], '1');
 });

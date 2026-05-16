@@ -320,6 +320,10 @@ def clear_container_result_state(page):
     except:
         return None
 
+def should_clear_grid_before_search():
+    """사이트 내부 그리드 모델 강제 초기화는 명시적으로 켠 경우에만 수행한다."""
+    return os.environ.get("ELS_CLEAR_GRID_BEFORE_SEARCH", "false").lower() == "true"
+
 def set_container_input_value(page, input_ele, container_no, log_callback=None):
     """WebSquare 컴포넌트 값과 실제 입력창 값을 맞춘 뒤 검증한다."""
     safe_cn = json.dumps(container_no)
@@ -508,6 +512,20 @@ def find_ele_globally(page, selector, timeout=0.5):
         except: continue
     return None
 
+def is_container_query_screen_ready(page, timeout=0.5):
+    """컨테이너 조회 입력창과 조회 버튼이 함께 보일 때만 602 화면 준비로 본다."""
+    try:
+        input_ele = page.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=timeout) or \
+                    page.ele('css:input[id*="containerNo"]', timeout=0.1)
+        if not input_ele:
+            return False
+        search_btn = page.ele('css:#mf_tac_layout_contents_602_body_btnSearch', timeout=0.2) or \
+                     page.ele('text:조회(F5)', timeout=0.1) or \
+                     page.ele('css:[id*="btnSearch"]', timeout=0.1)
+        return bool(search_btn)
+    except:
+        return False
+
 def open_els_menu(page, log_callback=None, max_attempts=10, force_reopen=False):
     if log_callback: log_callback("🚀 WebSquare 안정화 메뉴 진입 (v4.4.38)")
     try:
@@ -518,17 +536,7 @@ def open_els_menu(page, log_callback=None, max_attempts=10, force_reopen=False):
     # 1. 팝업 정리
     close_modals(page)
 
-    # 0. 이미 해당 화면이 열려있는지 체크
-    def is_target_found():
-        try:
-            # 존재만 해도 성공으로 간주 (서브에이전트 확인 결과 iframe 없음)
-            target = page.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=0.5) or \
-                     page.ele('css:input[id*="containerNo"]', timeout=0.1)
-            if target: return True
-        except: pass
-        return False
-
-    if is_target_found() and not force_reopen:
+    if is_container_query_screen_ready(page) and not force_reopen:
         if log_callback: log_callback("✅ 이미 대상 화면(탭)이 로드되어 있습니다.")
         return True
 
@@ -536,7 +544,7 @@ def open_els_menu(page, log_callback=None, max_attempts=10, force_reopen=False):
     force_pending = bool(force_reopen)
     for attempt in range(attempts_limit):
         try:
-            if is_target_found() and not force_pending:
+            if is_container_query_screen_ready(page) and not force_pending:
                 if log_callback: log_callback("✅ 메뉴 진입 성공 확인!")
                 return True
             
@@ -547,7 +555,7 @@ def open_els_menu(page, log_callback=None, max_attempts=10, force_reopen=False):
             page.run_js('try { if(window.gcm && gcm.win && gcm.win._openMenu) { gcm.win._openMenu("602"); } } catch(e) {}')
             force_pending = False
             time.sleep(2)
-            if is_target_found(): return True
+            if is_container_query_screen_ready(page): return True
 
             # (B) 메뉴 트리 단계별 클릭 (JS 강제 클릭 적용 -> 물리클릭으로 전환하여 안정성 도모)
             # 1. 화물추적 (Main)
@@ -567,7 +575,7 @@ def open_els_menu(page, log_callback=None, max_attempts=10, force_reopen=False):
                 try: sub_menu.click()
                 except: sub_menu.click(by_js=True)
                 time.sleep(3)
-                if is_target_found(): return True
+                if is_container_query_screen_ready(page): return True
 
         except Exception as e:
             if log_callback: log_callback(f"  ⚠️ 시도 중 오류: {e}")
@@ -608,13 +616,14 @@ def solve_input_and_search(page, container_no, log_callback=None):
         except: input_ele.click(by_js=True)
         log_phase("입력창 포커스", phase_started)
         
-        # 조회 전 그리드/모달 잔상 제거. 이전 결과가 새 컨테이너 성공행으로 붙는 것을 막는다.
-        phase_started = time.time()
-        clear_info = clear_container_result_state(page)
-        time.sleep(0.5)
-        log_phase("이전 그리드 초기화", phase_started)
-        if log_callback and isinstance(clear_info, dict) and (clear_info.get("components") or clear_info.get("rows") or clear_info.get("modals")):
-            log_callback(f"[{container_no}] 잔상 초기화 components={clear_info.get('components', 0)}, rows={clear_info.get('rows', 0)}, modals={clear_info.get('modals', 0)}")
+        # WebSquare 내부 모델을 직접 비우면 사이트 상태가 꼬일 수 있어 기본 흐름에서는 건드리지 않는다.
+        if should_clear_grid_before_search():
+            phase_started = time.time()
+            clear_info = clear_container_result_state(page)
+            time.sleep(0.5)
+            log_phase("이전 그리드 초기화", phase_started)
+            if log_callback and isinstance(clear_info, dict) and (clear_info.get("components") or clear_info.get("rows") or clear_info.get("modals")):
+                log_callback(f"[{container_no}] 잔상 초기화 components={clear_info.get('components', 0)}, rows={clear_info.get('rows', 0)}, modals={clear_info.get('modals', 0)}")
 
         phase_started = time.time()
         if not set_container_input_value(page, input_ele, container_no, log_callback=log_callback):
@@ -735,7 +744,7 @@ def is_stale_grid_text(search_no, grid_text, previous_grid_text=None, previous_c
     prev_cn = normalize_container_no(previous_container_no)
     return not prev_cn or prev_cn != normalize_container_no(search_no)
 
-def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_container_no=None, max_attempts=12, wait_interval=0.5):
+def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_container_no=None, max_attempts=None, wait_interval=0.5):
     """[v4.9.9] WebSquare 그리드 API 또는 정밀 타겟팅 DOM 스크래핑으로 데이터 추출
     
     핵심 수정: 기존에는 페이지 전체의 모든 <tr>을 재귀적으로 긁어와서
@@ -880,9 +889,14 @@ def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_conta
     return results.length > 0 ? results.join('\n') : "";
     """
     
-    # [v4.9.9] 최대 6초(12회×0.5s) 대기 — 전략 1(WebSquare API) 우선
+    if max_attempts is None:
+        try:
+            max_attempts = max(1, int(os.environ.get("ELS_GRID_WAIT_ATTEMPTS", 50)))
+        except (TypeError, ValueError):
+            max_attempts = 50
+
+    # 전략 1(WebSquare API) 우선. 기본 25초(50회×0.5s) 동안 실제 화면 반영을 기다린다.
     stale_seen = False
-    no_data_seen = False
     for attempt in range(max_attempts):
         try:
             res = page.run_js(ws_grid_script)
@@ -910,14 +924,6 @@ def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_conta
                     return res
             except: pass
         
-        # [v4.12.3] 데이터 없음 메시지 조기 감지 (지연 방지 및 잔상 제거)
-        try:
-            # 전체 페이지가 아닌 602 결과 영역과 현재 보이는 모달만 검사한다.
-            inner_text = read_result_scope_text(page)
-            if is_no_data_text(inner_text):
-                no_data_seen = True
-        except: pass
-        
         if wait_interval:
             time.sleep(wait_interval)
         
@@ -928,8 +934,6 @@ def scrape_hyper_verify(page, search_no, previous_grid_text=None, previous_conta
             return "내역없음확인"
     except: pass
         
-    if no_data_seen:
-        return "내역없음확인"
     return "STALE_GRID_UNCHANGED" if stale_seen else None
 
 def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=9222):

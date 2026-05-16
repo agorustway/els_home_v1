@@ -1,4 +1,30 @@
 
+## [2026-05-16] 컨테이너 이력조회 원점 복구 (v5.13.29)
+### 핵심
+- ETrans 화면 상태를 건드리던 WebSquare 그리드 강제 초기화를 기본 OFF로 돌려, 조회 버튼 클릭 후 실제 그리드/무자료 문구를 관찰하는 단순 흐름으로 복구했습니다.
+- 배치 성공행 2차 재조회를 기본 OFF로 바꿔, 정상 데이터가 화면에 나오면 그 행을 바로 확정하고 조회 자체를 반복하지 않도록 했습니다.
+- `reserveSingle=false`가 데몬 워커 선택에도 반영되도록 해 3워커 배치에서 #1 워커가 놀지 않게 했고, 재로그인 성공 드라이버가 큐에 중복 대여되는 레이스를 차단했습니다.
+- 조회 화면 준비 판정을 컨테이너 입력창 단독이 아니라 입력창+조회 버튼 기준으로 강화했습니다.
+- 아산 선적관리 조회 결과 저장은 숫자 No.가 있는 실제 이력 행만 인정하고, `ERROR`/`NODATA` 상태 행은 저장/표시 데이터에서 제외했습니다.
+### 검증
+- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic` 통과 (32개)
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs` 통과 (16개)
+- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/route.js" "utils/containerHistoryResults.mjs"` 0 errors, 기존 warning 5개
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py` 통과
+- `git diff --check` 통과 (CRLF 치환 warning만 표시)
+### 변경 파일
+- `docker/docker-compose.yml`
+- `docker/els-backend/app_bot.py`
+- `elsbot/els_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `web/app/(main)/employees/container-history/page.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/api/branches/asan/shipping/container-results/route.js`
+- `web/utils/containerHistoryResults.mjs`
+- `elsbot/tests/test_container_lookup_safety.py`, `elsbot/tests/test_daemon_stop_control.py`, `elsbot/tests/test_els_bot_logic.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 3워커 운용·재기동 완화 (v5.13.28)
 ### 핵심
 - NAS Chrome 동시 기동 부담을 줄이기 위해 `ELS_MAX_DRIVERS`와 `ELS_BATCH_MAX_WORKERS`를 3으로 낮췄습니다.

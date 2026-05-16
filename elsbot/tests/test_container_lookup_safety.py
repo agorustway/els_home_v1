@@ -79,6 +79,16 @@ class TestContainerLookupSafety(unittest.TestCase):
             result = scrape_hyper_verify(page, "MSKU5071276")
         self.assertIn("1|수입|반입", result)
 
+    def test_scraper_default_waits_for_slow_real_grid_rows(self):
+        page = FakePage(
+            ["GRID_EMPTY_PENDING"] * 13 + [
+                "1|수입|반입|부산|2026-05-16 10:00|VESSEL||||40|KRPUS|CNSHA|12가1234|"
+            ]
+        )
+        with patch("els_bot.time.sleep", return_value=None):
+            result = scrape_hyper_verify(page, "MSKU5071276")
+        self.assertIn("1|수입|반입", result)
+
     def test_explicit_no_data_is_confirmed(self):
         page = FakePage(["GRID_EMPTY_PENDING"], inner_text="데이터가 없음")
         with patch("els_bot.time.sleep", return_value=None):
@@ -170,7 +180,7 @@ class TestContainerLookupSafety(unittest.TestCase):
         spec.loader.exec_module(app_bot)
 
         self.assertEqual(app_bot._configured_batch_workers(0), 1)
-        self.assertEqual(app_bot._configured_batch_workers("bad"), 4)
+        self.assertEqual(app_bot._configured_batch_workers("bad"), 3)
         self.assertEqual(app_bot._configured_batch_workers(3), 3)
 
     def test_backend_retries_only_worker_or_uncertain_failures(self):

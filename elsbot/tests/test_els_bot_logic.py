@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from els_bot import (
     find_ele_globally, open_els_menu, is_session_valid, close_modals,
     is_required_input_text, solve_input_and_search, close_required_input_alert,
+    should_clear_grid_before_search,
 )
 
 class TestElsBotLogic(unittest.TestCase):
@@ -53,7 +54,7 @@ class TestElsBotLogic(unittest.TestCase):
         target = MagicMock()
 
         def ele_side_effect(selector, timeout=0.5):
-            if 'containerNo' in selector and self.mock_page.run_js.call_count > 0:
+            if ('containerNo' in selector or 'btnSearch' in selector) and self.mock_page.run_js.call_count > 0:
                 return target
             return None
 
@@ -140,6 +141,44 @@ class TestElsBotLogic(unittest.TestCase):
         self.assertTrue(result)
         input_ele.input.assert_not_called()
         search_btn.run_js.assert_called()
+
+    @patch('els_bot.time.sleep', return_value=None)
+    def test_solve_input_does_not_clear_websquare_grid_by_default(self, _sleep):
+        input_ele = MagicMock()
+        input_ele.run_js.return_value = "MSKU5071276"
+        search_btn = MagicMock()
+
+        def ele_side_effect(selector, timeout=0.5):
+            if 'containerNo' in selector:
+                return input_ele
+            if 'btnSearch' in selector:
+                return search_btn
+            return None
+
+        def js_side_effect(script):
+            if 'vals' in script and 'containerNo' in script:
+                return ["MSKU5071276"]
+            if 'w2modal' in script or 'role="dialog"' in script:
+                return ""
+            return None
+
+        self.mock_page.ele.side_effect = ele_side_effect
+        self.mock_page.run_js.side_effect = js_side_effect
+        self.mock_page.handle_alert.return_value = None
+        self.mock_page.html = ""
+
+        with patch.dict(os.environ, {"ELS_CLEAR_GRID_BEFORE_SEARCH": "false"}):
+            with patch('els_bot.clear_container_result_state', return_value={}) as clear_grid:
+                result = solve_input_and_search(self.mock_page, "MSKU5071276")
+
+        self.assertTrue(result)
+        clear_grid.assert_not_called()
+
+    def test_clear_grid_before_search_is_explicit_opt_in(self):
+        with patch.dict(os.environ, {"ELS_CLEAR_GRID_BEFORE_SEARCH": "false"}):
+            self.assertFalse(should_clear_grid_before_search())
+        with patch.dict(os.environ, {"ELS_CLEAR_GRID_BEFORE_SEARCH": "true"}):
+            self.assertTrue(should_clear_grid_before_search())
 
     @patch('els_bot.time.sleep', return_value=None)
     def test_solve_input_required_alert_returns_error_status(self, _sleep):
