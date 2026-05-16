@@ -1,4 +1,19 @@
 
+## [2026-05-16] 컨테이너 이력조회 WebSquare 입력 검증 보강 (v5.13.8)
+### 🚀 Achievement
+- **필수입력 알림 방어**: ETrans가 `[컨테이너이동] 필수 입력 항목 입니다.` 알림을 띄우면 즉시 감지·닫고 `INPUT_REQUIRED_MODAL` 오류로 반환하도록 했습니다. 이제 모달에 갇혀 진행중 행만 남는 상황을 줄입니다.
+- **입력값 검증 추가**: 조회 버튼 클릭 전에 DOM 값과 WebSquare 컴포넌트 값을 모두 읽어 요청 컨테이너 번호가 실제 입력창에 반영됐는지 확인합니다. 마지막 동작은 기존 안정 흐름처럼 물리 입력으로 유지합니다.
+- **오판 축소**: `데이터 없음` 판정은 전체 `document.body`가 아니라 602 컨테이너 조회 결과 영역과 현재 보이는 모달만 검사합니다.
+### 🧪 검증
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety` 통과 (13개)
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py` 통과
+### 📁 변경 파일
+- `elsbot/els_bot.py`
+- `elsbot/tests/test_els_bot_logic.py`
+- `elsbot/tests/test_container_lookup_safety.py`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 오류 행 누락 방지 (v5.13.7)
 ### 🚀 Achievement
 - **입력 행 유지**: 화면 입력 파서가 ISO 6346 체크섬까지 통과한 번호만 남기던 동작을 바꿔, 컨테이너 번호 형식(영문4+숫자7)이 맞으면 체크섬 오류 번호도 조회 대상으로 유지합니다.

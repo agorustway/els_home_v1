@@ -40,6 +40,8 @@ class FakePage:
     def run_js(self, script):
         if "document.body.innerText" in script:
             return self.inner_text
+        if "texts.join" in script:
+            return self.inner_text
         if "gridContainer" in script:
             return ""
         if self.grid_responses:

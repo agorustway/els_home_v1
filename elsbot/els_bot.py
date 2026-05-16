@@ -15,6 +15,7 @@ from openpyxl.styles import PatternFill
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")
 NO_DATA_MESSAGES = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다", "데이터가 존재하지 않습니다"]
 HISTORY_KEYWORDS = ("수입", "수출", "반입", "반출", "양하", "적하")
+REQUIRED_INPUT_MESSAGES = ("필수 입력", "필수입력", "입력 항목", "입력항목")
 
 _ISO6346_CHAR_MAP = {
     'A': 10, 'B': 12, 'C': 13, 'D': 14, 'E': 15, 'F': 16, 'G': 17, 'H': 18, 'I': 19, 'J': 20,
@@ -46,6 +47,9 @@ def make_status_row(container_no, code, message):
 
 def is_no_data_text(text):
     return any(msg in str(text or "") for msg in NO_DATA_MESSAGES)
+
+def is_required_input_text(text):
+    return any(msg in str(text or "") for msg in REQUIRED_INPUT_MESSAGES)
 
 def is_retryable_result_rows(rows):
     """조회 자체가 불확실한 실패인지 판단한다. 검증된 NODATA/번호 오류는 재조회하지 않는다."""
@@ -89,9 +93,164 @@ def check_alert(page):
     except: pass
     return None
 
+def close_required_input_alert(page):
+    """WebSquare alert(필수 입력 항목)을 닫고 감지된 문구를 반환한다."""
+    try:
+        alert_text = page.handle_alert(accept=True)
+        if alert_text and is_required_input_text(alert_text):
+            return str(alert_text)
+    except:
+        pass
+
+    try:
+        text = page.run_js(r"""
+            return (function() {
+                var nodes = Array.prototype.slice.call(document.querySelectorAll(
+                    '.w2modal_popup, .w2modal_lay, [class*="w2modal"], [role="dialog"]'
+                ));
+                for (var i = 0; i < nodes.length; i++) {
+                    var el = nodes[i];
+                    var style = window.getComputedStyle(el);
+                    if (style && (style.display === 'none' || style.visibility === 'hidden')) continue;
+                    var txt = (el.innerText || el.textContent || '').trim();
+                    if (!txt || (txt.indexOf('필수 입력') === -1 && txt.indexOf('필수입력') === -1 &&
+                        txt.indexOf('입력 항목') === -1 && txt.indexOf('입력항목') === -1)) continue;
+                    var buttons = el.querySelectorAll('button, input[type="button"], a, .w2modal_btn, [class*="btn"]');
+                    for (var b = 0; b < buttons.length; b++) {
+                        var bt = buttons[b];
+                        var btxt = (bt.innerText || bt.value || bt.textContent || '').trim();
+                        if (btxt.indexOf('확인') !== -1 || btxt === 'OK') {
+                            try { bt.click(); } catch(e) {}
+                            break;
+                        }
+                    }
+                    return txt;
+                }
+                return '';
+            })();
+        """)
+        if text and is_required_input_text(text):
+            time.sleep(0.2)
+            return str(text)
+    except:
+        pass
+    return None
+
+def read_container_input_value(page, input_ele=None):
+    """DOM과 WebSquare 컴포넌트 양쪽에서 현재 컨테이너 입력값을 읽는다."""
+    script = r"""
+        return (function() {
+            var id = 'mf_tac_layout_contents_602_body_input_containerNo';
+            var vals = [];
+            function push(v) {
+                if (v === undefined || v === null) return;
+                vals.push(String(v).replace(/\s/g, '').toUpperCase());
+            }
+            var el = document.getElementById(id) || document.querySelector('input[id*="containerNo"]');
+            try { if (el) push(el.value); } catch(e) {}
+            var candidates = [];
+            try { candidates.push(window[id]); } catch(e) {}
+            try { if (window.scwin) candidates.push(window.scwin[id]); } catch(e) {}
+            try { if (window.$p && $p.getComponentById) candidates.push($p.getComponentById(id)); } catch(e) {}
+            try { if (window.WebSquare && WebSquare.util && WebSquare.util.getComponentById) candidates.push(WebSquare.util.getComponentById(id)); } catch(e) {}
+            candidates.forEach(function(obj) {
+                try { if (obj && typeof obj.getValue === 'function') push(obj.getValue()); } catch(e) {}
+                try { if (obj && typeof obj.getText === 'function') push(obj.getText()); } catch(e) {}
+            });
+            return vals;
+        })();
+    """
+    values = []
+    try:
+        result = page.run_js(script)
+        if isinstance(result, list):
+            values.extend(result)
+        elif result:
+            values.append(result)
+    except:
+        pass
+    if input_ele:
+        try:
+            value = input_ele.run_js("return String(this.value || '').replace(/\\s/g, '').toUpperCase();")
+            if value:
+                values.append(value)
+        except:
+            pass
+    return [str(v or "").replace(" ", "").upper() for v in values if str(v or "").strip()]
+
+def read_result_scope_text(page):
+    """컨테이너 조회 결과 영역과 현재 보이는 모달 텍스트만 읽는다."""
+    try:
+        return page.run_js(r"""
+            return (function() {
+                var texts = [];
+                var body = document.querySelector('[id*="602_body"]');
+                if (body) texts.push(body.innerText || body.textContent || '');
+                var modals = document.querySelectorAll('.w2modal_popup, .w2modal_lay, [class*="w2modal"], [role="dialog"]');
+                for (var i = 0; i < modals.length; i++) {
+                    var el = modals[i];
+                    var style = window.getComputedStyle(el);
+                    if (style && (style.display === 'none' || style.visibility === 'hidden')) continue;
+                    texts.push(el.innerText || el.textContent || '');
+                }
+                return texts.join('\n');
+            })();
+        """) or ""
+    except:
+        return ""
+
+def set_container_input_value(page, input_ele, container_no, log_callback=None):
+    """WebSquare 컴포넌트 값과 실제 입력창 값을 맞춘 뒤 검증한다."""
+    safe_cn = json.dumps(container_no)
+    page.run_js(f"""
+        (function() {{
+            var id = 'mf_tac_layout_contents_602_body_input_containerNo';
+            var value = {safe_cn};
+            function setObj(obj) {{
+                if (!obj) return;
+                try {{ if (typeof obj.setValue === 'function') obj.setValue(value); }} catch(e) {{}}
+                try {{ if (typeof obj.setText === 'function') obj.setText(value); }} catch(e) {{}}
+                try {{ if ('value' in obj) obj.value = value; }} catch(e) {{}}
+                try {{
+                    obj.dispatchEvent && obj.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    obj.dispatchEvent && obj.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    obj.dispatchEvent && obj.dispatchEvent(new KeyboardEvent('keyup', {{ bubbles: true }}));
+                }} catch(e) {{}}
+            }}
+            var el = document.getElementById(id) || document.querySelector('input[id*="containerNo"]');
+            setObj(el);
+            var candidates = [];
+            try {{ candidates.push(window[id]); }} catch(e) {{}}
+            try {{ if (window.scwin) candidates.push(window.scwin[id]); }} catch(e) {{}}
+            try {{ if (window.$p && $p.getComponentById) candidates.push($p.getComponentById(id)); }} catch(e) {{}}
+            try {{ if (window.WebSquare && WebSquare.util && WebSquare.util.getComponentById) candidates.push(WebSquare.util.getComponentById(id)); }} catch(e) {{}}
+            candidates.forEach(setObj);
+        }})();
+    """)
+    try:
+        input_ele.input(container_no, clear=True)
+    except:
+        try:
+            input_ele.click(by_js=True)
+            input_ele.input(container_no, clear=True)
+        except:
+            pass
+
+    for _ in range(5):
+        values = read_container_input_value(page, input_ele)
+        if container_no in values:
+            return True
+        time.sleep(0.2)
+    if log_callback:
+        log_callback(f"❌ 입력값 검증 실패: expected={container_no}, actual={read_container_input_value(page, input_ele)}")
+    return False
+
 def close_modals(page, u_id=None, u_pw=None):
     """이트랜스 공지사항 등 모달 창 닫기 (DrissionPage 버전)"""
     try:
+        if close_required_input_alert(page):
+            return "VALIDATION_ALERT_CLOSED"
+
         # 세션 종료 텍스트 확인
         html = page.html
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
@@ -299,7 +458,7 @@ def solve_input_and_search(page, container_no, log_callback=None):
         # 입력 전 팝업 정리
         close_modals(page)
         
-        # 값 입력 (JS와 물리 입력 병행)
+        # 값 입력 (WebSquare 컴포넌트 + 물리 입력 병행, 물리 입력을 마지막으로 유지)
         try: input_ele.click(timeout=1)
         except: input_ele.click(by_js=True)
         
@@ -340,16 +499,11 @@ def solve_input_and_search(page, container_no, log_callback=None):
                     }
                 } catch(e) {}
             });
-            document.querySelectorAll('[id*="602_body"] table tbody').forEach(function(tb) {
-                try { tb.innerHTML = ''; } catch(e) {}
-            });
         """)
         time.sleep(0.5)
 
-        safe_cn = json.dumps(container_no)
-        input_ele.run_js(f"this.value = {safe_cn}; this.dispatchEvent(new Event('input', {{ bubbles: true }})); this.dispatchEvent(new Event('change', {{ bubbles: true }}));")
-        input_ele.input(container_no, clear=True)
-        input_ele.run_js(f"this.value = {safe_cn}; this.dispatchEvent(new Event('input', {{ bubbles: true }})); this.dispatchEvent(new Event('change', {{ bubbles: true }}));")
+        if not set_container_input_value(page, input_ele, container_no, log_callback=log_callback):
+            return "INPUT_VALUE_NOT_SET"
         if log_callback: log_callback(f"[{container_no}] 입력 완료")
         
         # 조회 버튼 찾기 (형님이 주신 이미지의 정확한 ID 우선 수색)
@@ -364,11 +518,20 @@ def solve_input_and_search(page, container_no, log_callback=None):
                 search_btn.click(by_js=True)
                 
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
+
+            required_msg = close_required_input_alert(page)
+            if required_msg:
+                if log_callback: log_callback(f"❌ [검증] ETrans 필수 입력 알림 감지: {required_msg[:80]}")
+                return "INPUT_REQUIRED_MODAL"
             
             # [v4.12.6] '데이터가 없음' 등 변종 키워드 대응 강화
             for _ in range(6):
                 time.sleep(0.3)
-                inner_text = page.run_js("return document.body.innerText || ''")
+                required_msg = close_required_input_alert(page)
+                if required_msg:
+                    if log_callback: log_callback(f"❌ [검증] ETrans 필수 입력 알림 감지: {required_msg[:80]}")
+                    return "INPUT_REQUIRED_MODAL"
+                inner_text = read_result_scope_text(page)
                 if is_no_data_text(inner_text):
                     if log_callback: log_callback("✅ [검증] 내역 없음 확인됨")
                     return "내역없음확인"
@@ -582,8 +745,8 @@ def scrape_hyper_verify(page, search_no):
         
         # [v4.12.3] 데이터 없음 메시지 조기 감지 (지연 방지 및 잔상 제거)
         try:
-            # page.html 보다 page.run_js 가 더 빠르고 정확할 수 있음
-            inner_text = page.run_js("return document.body.innerText || ''")
+            # 전체 페이지가 아닌 602 결과 영역과 현재 보이는 모달만 검사한다.
+            inner_text = read_result_scope_text(page)
             if is_no_data_text(inner_text):
                 return "내역없음확인"
         except: pass
@@ -592,8 +755,8 @@ def scrape_hyper_verify(page, search_no):
         
     # 데이터 없음 확인 (최종 fallback)
     try:
-        full_text = page.html
-        if is_no_data_text(full_text):
+        scoped_text = read_result_scope_text(page)
+        if is_no_data_text(scoped_text):
             return "내역없음확인"
     except: pass
         

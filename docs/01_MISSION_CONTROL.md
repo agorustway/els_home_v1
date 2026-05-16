@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.7 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.8 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 입력 파서가 체크섬 오류 번호도 행으로 유지해 오류 사유를 표시합니다.
+> 최신 업데이트: 컨테이너 이력조회 WebSquare 입력 검증과 필수입력 알림 처리를 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.7
+- **웹 버전**: v5.13.8
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -13,6 +13,7 @@
   - 봇 워커 기본값과 Docker 환경을 4개로 복구하되, 로그인/조회 시작은 stagger로 분산.
   - 배치 결과는 내부 병렬 처리와 별개로 사용자 입력 순서대로 스트리밍.
   - 화면 입력 파서는 체크섬 오류 번호도 조회 대상으로 유지해 오류 행이 누락되지 않게 처리.
+  - ETrans 필수입력 알림은 즉시 닫고 ERROR로 반환하며, 데이터 없음 판정은 602 결과 영역만 확인.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -37,6 +38,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.8**: ETrans WebSquare 입력값 검증을 추가하고, `필수 입력 항목` 알림을 ERROR로 표기하도록 보강. 데이터 없음 판정 범위를 602 조회 영역/보이는 모달로 축소.
 - **v5.13.7**: 컨테이너 이력조회 화면에서 체크섬 오류 번호를 조용히 제외하지 않고, 입력 순서의 오류 행으로 표시하도록 파서와 테스트를 보강.
 - **v5.13.6**: 컨테이너 이력조회 stale 데이터 방어, 빈 그리드 오판 수정, 실패 1회 재조회, 입력순 결과 스트림, 봇 워커 4개 복구.
 - **v5.13.5 / APK v5.11.12**: 앱 로컬 GPS 후보/확정 포인트 분리, 중복 전송 큐 압축, 서버 저장 중복 방어, 운행 종료 후 Android 서비스 잔류 차단.
@@ -50,7 +52,7 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
-- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 10개 통과
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 13개 통과
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
 - `git diff --check`: 통과
 - `node --test web/tests/containerInput.test.mjs`: 4개 통과
