@@ -175,3 +175,8 @@ export function getShippingSignalTone(headers = [], row = [], lookupRecord = nul
   if (!isOnOrAfterWorkDate) return 'open';
   return isTargetType ? 'completed' : 'unshipped';
 }
+
+export function isShippingUnshippedCandidate(headers = [], row = [], lookupRecord = null) {
+  if (!lookupRecord?.mainRow) return true;
+  return getShippingSignalTone(headers, row, lookupRecord) === 'unshipped';
+}

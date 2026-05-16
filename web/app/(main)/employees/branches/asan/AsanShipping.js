@@ -14,6 +14,7 @@ import {
     getShippingVirtualWindow,
     getShippingSignalTone,
     getVisibleShippingColumns,
+    isShippingUnshippedCandidate,
     mergePendingContainerLookupResults,
     normalizeDateOnly,
     normalizeShippingFilterValue,
@@ -744,7 +745,7 @@ export default function AsanShipping() {
         }
 
         setContainerLookupRunning(true);
-        setContainerLookupStatus(`${containers.length}건 조회 준비 중`);
+        setContainerLookupStatus(`현재 필터 결과 ${processedData.length.toLocaleString()}행 중 컨테이너 ${containers.length.toLocaleString()}건 조회 준비 중`);
         setContainerLookupResults(prev => mergePendingContainerLookupResults(prev, containers));
 
         const receivedRows = [];
@@ -893,8 +894,7 @@ export default function AsanShipping() {
         if (unshippedOnly) {
             rows = rows.filter(row => {
                 const containerNo = getRowContainerNo(row);
-                const signalTone = getShippingSignalTone(data?.headers || [], row, containerLookupResults[containerNo]);
-                return signalTone === 'unshipped';
+                return isShippingUnshippedCandidate(data?.headers || [], row, containerLookupResults[containerNo]);
             });
         }
 
@@ -1191,7 +1191,7 @@ export default function AsanShipping() {
                         type="button"
                         className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}
                         onClick={() => setUnshippedOnly(prev => !prev)}
-                        title="작업일 포함 이후 MOVE TIME이 있고 이력구분이 반입/적하가 아닌 행만 표시합니다"
+                        title="이력 데이터가 없거나, 작업일 포함 이후 MOVE TIME이 있고 이력구분이 반입/적하가 아닌 행만 표시합니다"
                     >
                         {unshippedOnly ? '필터해제' : '미선적'}
                     </button>
@@ -1203,6 +1203,9 @@ export default function AsanShipping() {
                     >
                         {storageOnly ? '필터해제' : '자체보관'}
                     </button>
+                    <span className={styles.resultCountBadge} title="현재 검색/필터 적용 후 화면 조회 건수">
+                        조회 {totalRows.toLocaleString()}건
+                    </span>
                 </div>
             )}
 

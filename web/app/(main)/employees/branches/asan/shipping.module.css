@@ -376,6 +376,20 @@
     background: #fecaca;
 }
 
+.resultCountBadge {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
 .tableWrap {
     background: #fff;
     border-radius: 6px;
@@ -752,16 +766,22 @@
     .dateFilterLabel,
     .dateSelect,
     .dateClearBtn,
-    .quickFilterBtn {
+    .quickFilterBtn,
+    .resultCountBadge {
         grid-column: span 2;
     }
 
     .dateSelect,
     .dateInput,
     .dateClearBtn,
-    .quickFilterBtn {
+    .quickFilterBtn,
+    .resultCountBadge {
         width: 100%;
         font-size: 0.8rem;
+    }
+
+    .resultCountBadge {
+        justify-content: center;
     }
 
     .dateSeparator {

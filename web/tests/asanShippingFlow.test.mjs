@@ -14,6 +14,7 @@ import {
   getShippingVirtualWindow,
   getShippingSignalTone,
   getVisibleShippingColumns,
+  isShippingUnshippedCandidate,
   mergePendingContainerLookupResults,
   normalizeShippingFilterValue,
   normalizeShippingColumnOrder,
@@ -109,6 +110,8 @@ test('아산 선적관리 화면은 DB 조회를 페이지 단위로 가져온�
   assert.match(source, /const \[unshippedOnly, setUnshippedOnly\] = useState\(false\);/);
   assert.match(source, /const \[storageOnly, setStorageOnly\] = useState\(false\);/);
   assert.match(source, /getFilterCellValue\(row, '보관소'\)\.includes\('자체보관'\)/);
+  assert.match(source, /styles\.resultCountBadge/);
+  assert.match(source, /조회 \{totalRows\.toLocaleString\(\)\}건/);
   assert.match(source, /\{unshippedOnly \? '필터해제' : '미선적'\}/);
   assert.match(source, /\{storageOnly \? '필터해제' : '자체보관'\}/);
   assert.doesNotMatch(source, /import \* as XLSX from 'xlsx'/);
@@ -330,8 +333,15 @@ test('선적관리 미선적 빠른 필터는 작업일 이후 비완료 이력�
     'utf8',
   );
 
-  assert.match(source, /return signalTone === 'unshipped';/);
-  assert.match(source, /title="작업일 포함 이후 MOVE TIME이 있고 이력구분이 반입\/적하가 아닌 행만 표시합니다"/);
+  assert.match(source, /isShippingUnshippedCandidate\(data\?\.headers \|\| \[\], row, containerLookupResults\[containerNo\]\)/);
+  assert.match(source, /title="이력 데이터가 없거나, 작업일 포함 이후 MOVE TIME이 있고 이력구분이 반입\/적하가 아닌 행만 표시합니다"/);
+  assert.equal(isShippingUnshippedCandidate(['작업일자', 'CONTAINER'], ['2026-05-16', 'TCLU8300912'], null), true);
+  assert.equal(isShippingUnshippedCandidate(['작업일자', 'CONTAINER'], ['2026-05-16', 'TCLU8300912'], {
+    mainRow: ['TCLU8300912', '1', '수출', '반출', 'HJNC', '2026-05-16 09:00'],
+  }), true);
+  assert.equal(isShippingUnshippedCandidate(['작업일자', 'CONTAINER'], ['2026-05-16', 'TCLU8300912'], {
+    mainRow: ['TCLU8300912', '1', '수출', '적하', 'HJNC', '2026-05-16 09:00'],
+  }), false);
 });
 
 test('선적관리 컨테이너 조회 준비 상태는 기존 미선적 판정을 덮어쓰지 않는다', () => {

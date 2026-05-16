@@ -1,4 +1,21 @@
 
+## [2026-05-17] 아산 선적관리 미선적 이력 공백 노출 및 조회 건수 표시 (v5.13.41)
+### 핵심
+- 형이 제보한 선적관리 데이터량 부족 현상을 기준으로 미선적 빠른 필터 흐름을 재점검했습니다.
+- 컨테이너 이력 저장값이 없는 행은 기존에는 `neutral`로 판정되어 미선적 필터에서 빠졌습니다. 이제 이력 데이터가 없으면 미선적 후보로 남겨, 화면에서 바로 컨테이너 조회로 확인할 수 있게 했습니다.
+- 날짜 필터 바의 `미선적`/`자체보관` 옆에 현재 검색/필터 적용 후 조회 건수를 표시했습니다.
+- 컨테이너 조회 시작 상태 문구도 “현재 필터 결과 N행 중 컨테이너 M건”으로 바꿔, 조회 대상이 필터 적용 결과임을 화면에서 확인할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (23개)
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (34개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 필터/미선적 표시 복구 (v5.13.40)
 ### 핵심
 - 형이 제보한 “filter 항목이 안 뜨고, 미선적을 누르면 자료가 안 뜨는” 증상을 선적관리 화면 코드와 기존 회귀 테스트 기준으로 확인했습니다.
