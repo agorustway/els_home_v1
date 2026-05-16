@@ -1,4 +1,16 @@
 
+## [2026-05-16] NAS 전체 배포 sudo 경로 보강 (v5.13.15)
+### 🚀 Achievement
+- **비대화형 배포 복구**: `nas-deploy.sh`가 SSH 비대화형 세션에서도 sudo 비밀번호 프롬프트 없이 진행되도록 `sudo -n`을 사용합니다.
+- **sudoers 경로 일치**: Docker 호출을 `/usr/local/bin/docker-compose`, `/usr/local/bin/docker` 절대경로로 고정해 기존 NOPASSWD 규칙과 정확히 맞췄습니다.
+- **반복 장애 방지**: core/bot/gateway 전체 재빌드 중 sudo 프롬프트 때문에 배포가 중간에 멈추는 경로를 제거했습니다.
+### 🧪 검증
+- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh` 통과
+### 📁 변경 파일
+- `scripts/nas-deploy.sh`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 중지/리셋 강제화 (v5.13.14)
 ### 🚀 Achievement
 - **조회 중지 버튼 전환**: `실시간 이력 조회` 버튼이 진행 중에는 `조회 중지`로 바뀌고, 클릭 시 프론트 스트리밍 fetch를 즉시 Abort합니다.

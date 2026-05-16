@@ -1,23 +1,22 @@
-# ELS MISSION CONTROL (v5.13.14 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.15 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 중지/데몬 리셋을 강제 취소 흐름으로 보강했습니다.
+> 최신 업데이트: NAS 전체 배포 스크립트의 sudo 호출을 NOPASSWD 절대경로 기준으로 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.14
+- **웹 버전**: v5.13.15
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 컨테이너 조회 중 `실시간 이력 조회` 버튼을 `조회 중지`로 전환하고 프론트 fetch를 즉시 abort.
-  - `/api/els/stop-daemon`이 배치 큐와 데몬 워커 stop 플래그를 함께 올려 남은 행을 오류 행으로 유지.
-  - 데몬 리셋 후 늦게 살아나는 로그인/워커복구 스레드는 세대 번호로 무효화해 재유입 차단.
-  - 배치 작업은 전체 future 선등록 대신 살아있는 워커 수만큼 순차 제출해 중지 시 남은 작업 취소.
+  - `scripts/nas-deploy.sh`가 `sudo -n /usr/local/bin/docker-compose`, `sudo -n /usr/local/bin/docker`를 사용.
+  - SSH 비대화형 배포에서 sudo 비밀번호 프롬프트로 전체 배포가 중단되는 문제를 방지.
+  - 컨테이너 조회 중지/데몬 리셋 강제 취소 흐름은 v5.13.14 기준 유지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
-| NAS 백엔드 | 정상 | 아산 선적관리 DB 페이지 조회/서버 검색 적용 |
+| NAS 백엔드 | 정상 | 전체 배포 스크립트 sudo 절대경로 보강 |
 | ELS Bot | 정상 | 조회 중지/데몬 리셋 강제 취소, 워커 세대 무효화 적용 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
@@ -35,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.15**: `nas-deploy.sh`의 Docker 호출을 NOPASSWD sudoers와 일치하는 절대경로/비대화형 sudo로 변경해 SSH 배포 중 비밀번호 프롬프트로 core/bot/gateway 빌드가 멈추는 문제를 방지.
 - **v5.13.14**: 컨테이너 이력조회 진행 중 버튼을 `조회 중지`로 전환하고 AbortController/stop-daemon을 연결. 백엔드는 배치 큐를 동적 제출로 바꿔 미제출 행을 `조회 중지됨` 오류 행으로 확정하고, 데몬은 stop 플래그와 세대 번호로 리셋 후 늦은 로그인/복구 워커가 다시 붙지 못하게 차단.
 - **v5.13.13**: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩으로 전환해 첫 요청을 500행으로 축소. 검색어는 서버 쿼리로 전달하고 콤마 구분 OR 검색을 지원. DB 전체 건수/로드 건수와 더보기 UI를 추가하고 Hook 경고를 제거.
 - **v5.13.12**: 아산 선적관리 일반 조회에서는 Supabase DB만 우선 조회하고 NAS 엑셀 동기화는 POST 수동/스케줄 경로로 분리. 웹 동기화 버튼은 POST를 호출하며, 회귀 테스트를 추가해 GET 경로에서 동기화 호출이 되살아나지 않게 방어.
@@ -55,6 +55,7 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
+- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh`: 통과
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control`: 16개 통과 (번들 Python 사용)
 - `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_daemon_stop_control.py`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 0 errors, 기존 warning 5건
