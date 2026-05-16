@@ -136,7 +136,7 @@ class TestContainerLookupSafety(unittest.TestCase):
         app_bot = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(app_bot)
 
-        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 0, "max_drivers": 4}, configured_workers=4), 1)
+        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 0, "max_drivers": 4}, configured_workers=4), 0)
         self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 1, "max_drivers": 4}, configured_workers=4), 1)
         self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 2, "max_drivers": 4}, configured_workers=4), 1)
         self.assertEqual(
@@ -149,6 +149,18 @@ class TestContainerLookupSafety(unittest.TestCase):
             app_bot._effective_batch_workers({"total_drivers": 4, "max_drivers": 4}, configured_workers=4, reserve_single=False),
             4,
         )
+        self.assertEqual(
+            app_bot._effective_batch_workers({"total_drivers": 4, "available_drivers": 1, "max_drivers": 4}, configured_workers=4, reserve_single=False),
+            1,
+        )
+        self.assertEqual(
+            app_bot._effective_batch_workers({"total_drivers": 4, "available_drivers": 0, "max_drivers": 4}, configured_workers=4, reserve_single=False),
+            0,
+        )
+        self.assertEqual(
+            app_bot._effective_batch_workers({"total_drivers": 4, "available_drivers": 0, "max_drivers": 4}, configured_workers=4, reserve_single=False, in_flight=2),
+            2,
+        )
 
     def test_backend_batch_worker_config_is_bounded_to_at_least_one(self):
         backend_dir = os.path.join(ROOT_DIR, "docker", "els-backend")
@@ -160,6 +172,18 @@ class TestContainerLookupSafety(unittest.TestCase):
         self.assertEqual(app_bot._configured_batch_workers(0), 1)
         self.assertEqual(app_bot._configured_batch_workers("bad"), 4)
         self.assertEqual(app_bot._configured_batch_workers(3), 3)
+
+    def test_backend_retries_only_worker_or_uncertain_failures(self):
+        backend_dir = os.path.join(ROOT_DIR, "docker", "els-backend")
+        sys.path.append(backend_dir)
+        spec = importlib.util.spec_from_file_location("app_bot_for_retry_test", os.path.join(backend_dir, "app_bot.py"))
+        app_bot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(app_bot)
+
+        self.assertTrue(app_bot._should_retry_rows([make_status_row("HPCU5082429", "ERROR", "WORKER_RETIRED: 메뉴 진입 실패")]))
+        self.assertTrue(app_bot._should_retry_rows([make_status_row("HPCU5082429", "ERROR", "이전 조회 결과 잔상 감지")]))
+        self.assertFalse(app_bot._should_retry_rows([make_status_row("HPCU5082429", "ERROR", "INPUT_NOT_FOUND (메뉴 진입 실패)")]))
+        self.assertFalse(app_bot._should_retry_rows([make_status_row("MXXU7381060", "ERROR", "유효하지 않은 컨테이너 번호(ISO 6346 검증 실패)")]))
 
 
 if __name__ == "__main__":

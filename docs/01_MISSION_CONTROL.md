@@ -1,13 +1,14 @@
-# ELS MISSION CONTROL (v5.13.25 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.26 / APK v5.11.12)
 
-> 최신 업데이트: 지도 공개범위를 운행 건이 아니라 운전원정보 마스터 설정으로 정리했습니다.
+> 최신 업데이트: 컨테이너 이력조회 배치가 죽은 워커에 무한 대기하지 않고, 성공행을 2차 검증 후 확정하도록 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.25
+- **웹 버전**: v5.13.26
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
   - 차량위치관제 운행기록 행의 지도범위 선택 UI를 제거하고, 운전원정보 `map_visibility`만 관제/앱 공개범위 기준으로 사용.
+  - 컨테이너 이력조회는 실제 가용 워커 기준으로만 작업을 제출하고, 메뉴 실패 워커는 즉시 격리/재기동 예약하며 성공행은 2차 조회 검증 후 확정. 로그는 단일 데몬 표기를 제거하고 워커 흐름 중심으로 표시.
   - 운전원정보 목록에 `지도범위 일괄설정` 버튼을 항상 노출해 선택 운전원에게 일괄 적용.
   - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀 삭제 이력은 365일, 컨테이너 조회 이력은 180일 초과분만 정리.
   - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 엑셀 원장 오른쪽 초록색 컬럼으로 강제 표시, 검색/정렬은 DB 전체 조건 기준 처리.
@@ -19,7 +20,7 @@
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
 | NAS 백엔드 | 정상 | 컨테이너 부분 결과 즉시 스트림, 배포 스크립트 보강 |
-| ELS Bot | 정상 | JS 입력/조회 트리거, 단계별 병목 로그, 워커 세대 무효화, #3/#4 후행 기동 |
+| ELS Bot | 정상 | 가용 워커 기반 배치, 워커 장애 격리/재기동, 성공행 2차 검증 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
 ## INTRANET UI 기준
@@ -36,6 +37,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.26**: 컨테이너 이력조회에서 `total_drivers`가 아니라 `available_drivers+현재 배치 점유` 기준으로 병렬도를 산정. 메뉴 진입 실패 워커는 같은 큐로 되돌리지 않고 격리/재기동하며, 배치 성공행은 깨끗한 화면에서 2차 조회가 일치해야 확정. 로그의 `[D#1]` 표기는 제거.
 - **v5.13.25**: 지도 공개범위를 운행 데이터가 아닌 운전원정보 마스터 설정으로 정리. 차량위치관제 기록 행의 지도 선택을 제거하고, 운전원정보 일괄 설정 버튼을 상시 노출.
 - **v5.13.24**: 아산 선적관리 엑셀 원장 컬럼 정렬을 `sort_key/sort_dir` DB 조회 조건으로 올려, 조회된 100행만이 아니라 전체 검색 결과를 정렬한 뒤 페이지 단위로 내려오게 변경. 컨테이너 이력 파생 컬럼은 현재 로드분 기준 정렬을 유지.
 - **v5.13.23**: NAS 봇 #3/#4가 고정 시간만 보고 뜨지 않고 #1/#2 실제 준비 완료 후 순차 기동하도록 보강. ETrans 로그인/메뉴 진입이 160~210초까지 늘어지는 날에도 Chrome remote-debugging 포트 충돌과 3회 연속 실패를 줄임.
@@ -67,6 +69,7 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
+- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic`: 워커 격리/가용 병렬도/유령 데이터 방어 회귀 26개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 선적관리 검색/정렬/이력 회귀 포함 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js`: 0 errors
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)

@@ -69,8 +69,29 @@ def _should_retry_rows(rows):
     message = str(first[2] if len(first) > 2 else "")
     if code != "ERROR":
         return False
-    non_retryable = ["유효하지 않은 컨테이너 번호", "비밀번호", "로그인 3회", "보안 모드"]
-    return not any(token in message for token in non_retryable)
+    if "WORKER_RETIRED" in message or "WORKER_NOT_READY" in message:
+        return True
+    non_retryable = [
+        "유효하지 않은 컨테이너 번호",
+        "비밀번호",
+        "로그인 3회",
+        "보안 모드",
+        "조회 중지됨",
+        "INPUT_NOT_FOUND",
+        "메뉴 진입 실패",
+        "워커 대기 시간 초과",
+    ]
+    if any(token in message for token in non_retryable):
+        return False
+    retryable = [
+        "WORKER_RETIRED",
+        "WORKER_NOT_READY",
+        "이전 조회 결과 잔상 감지",
+        "데이터 추출 실패",
+        "timed out",
+        "timeout",
+    ]
+    return any(token in message for token in retryable)
 
 def _pop_ready_ordered_results(pending_results, next_index):
     ready = []
@@ -96,15 +117,28 @@ def _configured_batch_workers(configured_workers=None):
         configured = 4
     return max(1, configured)
 
-def _effective_batch_workers(health, configured_workers=None, reserve_single=True):
-    """살아있는 워커 수에 맞춰 배치 병렬도를 낮춘다."""
+def _effective_batch_workers(health, configured_workers=None, reserve_single=True, in_flight=0):
+    """실제로 비어 있거나 현재 배치가 점유 중인 워커 수만큼 배치 병렬도를 잡는다."""
     configured = _configured_batch_workers(configured_workers)
     total = int(health.get("total_drivers") or 0)
-    active = total
-    if active <= 1:
-        return 1
-    usable = active - 1 if reserve_single else active
-    return max(1, min(configured, usable))
+    if total <= 0:
+        return 0
+    try:
+        available = int(health.get("available_drivers"))
+    except (TypeError, ValueError):
+        available = total
+    try:
+        occupied_by_this_batch = max(0, int(in_flight or 0))
+    except (TypeError, ValueError):
+        occupied_by_this_batch = 0
+
+    max_batch_by_total = total
+    if reserve_single and total > 1:
+        max_batch_by_total = total - 1
+    live_window = max(0, available) + occupied_by_this_batch
+    if live_window <= 0:
+        return 0
+    return max(1, min(configured, max_batch_by_total, live_window))
 
 def _daemon_login_once(user_id, user_pw, show_browser=False, timeout=380):
     body = json.dumps({
@@ -265,7 +299,7 @@ def run():
                             "containerNo": cn,
                             "showBrowser": show_browser,
                             "requestPurpose": "batch",
-                            "acquireTimeoutSec": 240,
+                            "acquireTimeoutSec": 45,
                         }, ensure_ascii=False).encode("utf-8")
                         req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
                         r = urlopen(req, timeout=300)
@@ -325,7 +359,8 @@ def run():
             configured_workers = _configured_batch_workers()
             batch_workers = _effective_batch_workers(daemon_health, configured_workers=configured_workers, reserve_single=reserve_single)
             max_executor_workers = max(configured_workers, batch_workers)
-            yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
+            ready_wait_timeout = float(os.environ.get("ELS_BATCH_READY_WAIT_SEC", 90))
+            yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (가용 {daemon_health.get('available_drivers', 0)}/활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
             executor = ThreadPoolExecutor(max_workers=max_executor_workers)
             try:
                 futures = {}
@@ -333,6 +368,8 @@ def run():
                 emitted_indices = set()
                 next_submit_index = 0
                 last_worker_refresh = 0
+                ready_wait_started = time.time()
+                last_ready_wait_log = 0
 
                 def refresh_batch_workers(force=False):
                     nonlocal batch_workers, daemon_health, last_worker_refresh
@@ -344,7 +381,12 @@ def run():
                     if not latest:
                         return None
                     daemon_health = latest
-                    new_workers = _effective_batch_workers(latest, configured_workers=configured_workers, reserve_single=reserve_single)
+                    new_workers = _effective_batch_workers(
+                        latest,
+                        configured_workers=configured_workers,
+                        reserve_single=reserve_single,
+                        in_flight=len(futures),
+                    )
                     if new_workers != batch_workers:
                         old_workers = batch_workers
                         batch_workers = new_workers
@@ -377,7 +419,42 @@ def run():
 
                 submit_more()
 
-                while futures:
+                while futures or next_submit_index < len(containers):
+                    if not futures and next_submit_index < len(containers):
+                        worker_change = refresh_batch_workers(force=True)
+                        if worker_change:
+                            old_workers, new_workers, latest = worker_change
+                            yield f"LOG:[batch] worker window {old_workers}->{new_workers} (가용 {latest.get('available_drivers', 0)}/활성 {latest.get('total_drivers', 0)}/{latest.get('max_drivers', 4)})\n"
+                        submit_more()
+                        if not futures:
+                            now = time.time()
+                            if now - ready_wait_started > ready_wait_timeout:
+                                for idx in range(next_submit_index, len(containers)):
+                                    completed_results[idx] = {
+                                        "cn": containers[idx],
+                                        "rows": [_status_row(containers[idx], "ERROR", "워커 준비 대기 시간 초과")],
+                                        "attempts": 1,
+                                        "retry_reason": "워커 준비 대기 시간 초과",
+                                        "error": "워커 준비 대기 시간 초과",
+                                    }
+                                break
+                            if now - last_ready_wait_log >= 10:
+                                last_ready_wait_log = now
+                                yield f"LOG:가용 워커가 없어 남은 조회를 잠시 대기합니다. (가용 {daemon_health.get('available_drivers', 0)}/활성 {daemon_health.get('total_drivers', 0)})\n"
+                            try:
+                                l_req = urlopen(DAEMON_URL + "/logs", timeout=1)
+                                l_data = json.loads(l_req.read().decode("utf-8"))
+                                for line in l_data.get("log", []):
+                                    if line not in sent_logs:
+                                        yield f"LOG:{line}\n"
+                                        sent_logs.add(line)
+                            except Exception:
+                                pass
+                            time.sleep(0.5)
+                            continue
+                    else:
+                        ready_wait_started = time.time()
+
                     if global_stop_requested.is_set():
                         for f, idx in list(futures.items()):
                             if f.cancel():
@@ -397,7 +474,14 @@ def run():
                     # 1. 태스크 완료 확인 및 결과 배출
                     done, _ = wait(futures.keys(), timeout=0.5, return_when=FIRST_COMPLETED)
                     for f in done:
-                        index, res, cn, attempts, retry_reason = f.result()
+                        try:
+                            index, res, cn, attempts, retry_reason = f.result()
+                        except Exception as e:
+                            index = futures.get(f, 0)
+                            cn = containers[index] if index < len(containers) else ""
+                            attempts = 1
+                            retry_reason = str(e)
+                            res = {"ok": False, "error": str(e), "result": [_status_row(cn, "ERROR", str(e))]}
                         rows = res.get("result") or [_status_row(cn, "ERROR", res.get("error") or "조회 실패")]
                         completed_results[index] = {
                             "cn": cn,
@@ -419,7 +503,7 @@ def run():
                     worker_change = refresh_batch_workers()
                     if worker_change:
                         old_workers, new_workers, latest = worker_change
-                        yield f"LOG:[batch] worker window {old_workers}->{new_workers} (active {latest.get('total_drivers', 0)}/{latest.get('max_drivers', 4)})\n"
+                        yield f"LOG:[batch] worker window {old_workers}->{new_workers} (가용 {latest.get('available_drivers', 0)}/활성 {latest.get('total_drivers', 0)}/{latest.get('max_drivers', 4)})\n"
                     submit_more()
 
                     # 2. 로그 실시간 스트리밍 (루프 도중)

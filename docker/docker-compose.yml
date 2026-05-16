@@ -36,6 +36,10 @@ services:
       - ELS_LATE_WORKER_MIN_READY=2
       - ELS_LATE_WORKER_SPACING_SEC=45
       - ELS_LATE_WORKER_READY_TIMEOUT_SEC=420
+      - ELS_BATCH_READY_WAIT_SEC=90
+      - ELS_BATCH_MENU_MAX_ATTEMPTS=4
+      - ELS_BATCH_FORCE_MENU_REOPEN=true
+      - ELS_VERIFY_SUCCESS_ROWS=true
     shm_size: 2gb
     volumes:
       - /volume2/아산지점:/app/data/아산지점

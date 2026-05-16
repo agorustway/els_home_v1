@@ -1,4 +1,25 @@
 
+## [2026-05-16] 컨테이너 이력조회 워커 장애 격리·성공행 2차 검증 (v5.13.26)
+### 핵심
+- 배치 병렬도 산정을 `total_drivers`가 아니라 실제 `available_drivers`와 현재 배치가 점유 중인 작업 수 기준으로 변경했습니다.
+- 메뉴 진입 실패 워커는 같은 큐에 되돌리지 않고 즉시 격리한 뒤 1개씩 재기동 예약하도록 해, 한 워커 장애가 전체 조회를 500초 이상 붙잡는 상황을 차단했습니다.
+- 배치 성공행은 같은 컨테이너를 깨끗한 화면에서 한 번 더 조회해 1차/2차 이력 서명이 일치할 때만 확정합니다. 불일치하면 워커를 격리하고 재시도/오류 행으로 남겨 유령 성공을 막습니다.
+- 배치 중 가용 워커가 0이면 남은 작업을 무작정 제출하지 않고 최대 90초 대기 후 입력 행별 오류로 확정합니다.
+- 단일 데몬 운영 기준으로 로그의 `[D#1]` 표기를 제거해, `[B#n]` 워커 흐름이 더 잘 보이도록 정리했습니다.
+### 검증
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py` 통과
+- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic` 통과 (26개)
+- `git diff --check` 통과
+- `elsbot.tests.test_backend_api`는 로컬 번들 Python에 `requests` 패키지가 없어 실행하지 못했습니다.
+### 변경 파일
+- `docker/els-backend/app_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/els_bot.py`
+- `docker/docker-compose.yml`
+- `elsbot/tests/test_container_lookup_safety.py`
+- `elsbot/tests/test_daemon_stop_control.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 지도 공개범위 운전원정보 마스터화 (v5.13.25)
 ### 핵심
 - 지도 공개범위는 운행 건별 편집 값이 아니라 `driver_contacts.map_visibility` 마스터 설정이라는 기준으로 정리했습니다.

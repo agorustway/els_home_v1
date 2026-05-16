@@ -103,6 +103,23 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertEqual(pool.drivers, [])
         self.assertEqual(driver.quit_count, 1)
 
+    def test_retire_driver_removes_only_unhealthy_worker(self):
+        pool = self.daemon.DriverPool()
+        bad = DummyDriver(32000)
+        good = DummyDriver(32001)
+        self.assertTrue(pool.add_driver(bad))
+        self.assertTrue(pool.add_driver(good))
+
+        self.assertTrue(pool.retire_driver(bad, reason="test"))
+
+        self.assertEqual(pool.drivers, [good])
+        self.assertEqual(bad.quit_count, 1)
+        self.assertEqual(good.quit_count, 0)
+        queued = []
+        while not pool.available_queue.empty():
+            queued.append(pool.available_queue.get_nowait())
+        self.assertEqual(queued, [good])
+
     def test_driver_pool_uses_configurable_init_stagger(self):
         with patch.dict(os.environ, {"ELS_DRIVER_STAGGER_SEC": "12.5"}):
             pool = self.daemon.DriverPool()

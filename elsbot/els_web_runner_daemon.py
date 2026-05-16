@@ -101,8 +101,7 @@ class DriverPool:
         from datetime import datetime, timezone, timedelta
         kst = timezone(timedelta(hours=9))
         ts = datetime.now(kst).strftime("%H:%M:%S")
-        # [수정] 로그에 데몬 ID를 포함하여 여러 데몬 운영 시 원인 파악 용이하게 개선
-        formatted = f"[{ts}][D#{self.daemon_id}] {msg}"
+        formatted = f"[{ts}] {msg}"
         with self.lock:
             self.log_buffer.append(formatted)
         print(formatted)
@@ -226,6 +225,35 @@ class DriverPool:
                     self.drivers.remove(driver)
                 return
             self.available_queue.put(driver)
+
+    def retire_driver(self, driver, reason="worker-unhealthy"):
+        """문제가 난 워커를 큐에서 빼고 브라우저를 종료해 다음 조회가 같은 워커에 갇히지 않게 한다."""
+        if not driver:
+            return False
+        worker_id = self._worker_id(driver)
+        removed = False
+        with self.lock:
+            items = []
+            while True:
+                try:
+                    items.append(self.available_queue.get_nowait())
+                except Empty:
+                    break
+            for item in items:
+                if item is driver:
+                    removed = True
+                    continue
+                self.available_queue.put(item)
+            if driver in self.drivers:
+                self.drivers.remove(driver)
+                removed = True
+        try:
+            driver.quit()
+        except:
+            pass
+        if removed:
+            self.add_log(f"[워커격리] 브라우저 #{worker_id} 종료 ({reason})")
+        return removed
 
     def ensure_capacity_async(self, reason="capacity-check"):
         """죽은 워커가 있으면 한 번에 하나씩만 조심스럽게 재기동한다."""
@@ -510,6 +538,23 @@ def run():
 
     request_purpose = str(data.get("requestPurpose") or "single").lower()
     acquire_timeout = float(data.get("acquireTimeoutSec") or os.environ.get("ELS_WORKER_ACQUIRE_TIMEOUT_SEC", 180))
+    try:
+        batch_menu_attempts = max(1, int(os.environ.get("ELS_BATCH_MENU_MAX_ATTEMPTS", 4)))
+    except (TypeError, ValueError):
+        batch_menu_attempts = 4
+    try:
+        single_menu_attempts = max(1, int(os.environ.get("ELS_SINGLE_MENU_MAX_ATTEMPTS", 10)))
+    except (TypeError, ValueError):
+        single_menu_attempts = 10
+    menu_max_attempts = batch_menu_attempts if request_purpose == "batch" else single_menu_attempts
+    force_menu_reopen = (
+        request_purpose == "batch" and
+        os.environ.get("ELS_BATCH_FORCE_MENU_REOPEN", "true").lower() != "false"
+    )
+    verify_success_rows = (
+        request_purpose == "batch" and
+        os.environ.get("ELS_VERIFY_SUCCESS_ROWS", "true").lower() != "false"
+    )
     pool.ensure_capacity_async(reason=f"{request_purpose}:{cn}")
 
     acquire_started = time.time()
@@ -669,19 +714,93 @@ def run():
             logs.append(msg)
             pool.add_log(msg)
 
+        def _rows_signature(rows):
+            sig = []
+            for row in rows or []:
+                if not isinstance(row, (list, tuple)) or len(row) < 3:
+                    continue
+                if str(row[1]) in ("ERROR", "NODATA"):
+                    continue
+                sig.append("|".join(str(cell).strip() for cell in row[1:15]))
+            return sig
+
+        def _verify_success_once(expected_rows):
+            expected_sig = _rows_signature(expected_rows)
+            if not expected_sig:
+                return expected_rows
+
+            _log_cb(f"[{cn}] 성공행 2차 검증 시작")
+            driver.page_ready = False
+            menu_opened = open_els_menu(
+                driver,
+                log_callback=_log_cb,
+                max_attempts=menu_max_attempts,
+                force_reopen=True,
+            )
+            if not menu_opened:
+                driver.page_ready = False
+                pool.retire_driver(driver, reason=f"성공행 검증 메뉴 실패:{cn}")
+                pool.ensure_capacity_async(reason=f"verify-menu-fail:{cn}")
+                return [make_status_row(cn, "ERROR", "WORKER_RETIRED: 성공행 2차 검증 중 메뉴 진입 실패")]
+
+            driver.page_ready = True
+            status = solve_input_and_search(driver, cn, log_callback=_log_cb)
+            modal_res = close_modals(
+                driver,
+                u_id=pool.current_user["id"] if pool.current_user else None,
+                u_pw=pool.current_user["pw"] if pool.current_user else None,
+            )
+            if modal_res == "SESSION_EXPIRED":
+                driver.page_ready = False
+                pool.retire_driver(driver, reason=f"성공행 검증 세션 만료:{cn}")
+                pool.ensure_capacity_async(reason=f"verify-session-expired:{cn}")
+                return [make_status_row(cn, "ERROR", "WORKER_RETIRED: 성공행 2차 검증 중 세션 만료")]
+
+            is_success = (status is True) or (isinstance(status, str) and ("완료" in status or "조회시도완료" in status))
+            is_nodata = isinstance(status, str) and "내역없음확인" in status
+            if is_nodata:
+                pool.retire_driver(driver, reason=f"성공행 검증 내역없음:{cn}")
+                pool.ensure_capacity_async(reason=f"verify-nodata:{cn}")
+                return [make_status_row(cn, "ERROR", "WORKER_RETIRED: 성공행 2차 검증에서 내역 없음")]
+            if not is_success:
+                pool.retire_driver(driver, reason=f"성공행 검증 실패:{cn}")
+                pool.ensure_capacity_async(reason=f"verify-failed:{cn}")
+                return [make_status_row(cn, "ERROR", f"WORKER_RETIRED: 성공행 2차 검증 실패 ({status})")]
+
+            grid_text = scrape_hyper_verify(driver, cn)
+            parsed_rows = parse_grid_text_to_rows(cn, grid_text)
+            verified_sig = _rows_signature(parsed_rows)
+            if verified_sig and verified_sig == expected_sig:
+                _log_cb(f"[{cn}] 성공행 2차 검증 통과")
+                driver.last_query_container = cn
+                driver.last_grid_text = compact_grid_text(grid_text)
+                return parsed_rows
+            if grid_text and is_no_data_text(grid_text):
+                pool.retire_driver(driver, reason=f"성공행 검증 내역없음:{cn}")
+                pool.ensure_capacity_async(reason=f"verify-nodata:{cn}")
+                return [make_status_row(cn, "ERROR", "WORKER_RETIRED: 성공행 2차 검증에서 내역 없음")]
+            pool.retire_driver(driver, reason=f"성공행 검증 불일치:{cn}")
+            pool.ensure_capacity_async(reason=f"verify-mismatch:{cn}")
+            return [make_status_row(cn, "ERROR", "WORKER_RETIRED: 성공행 1차/2차 결과 불일치로 폐기")]
+
         def _lookup_once():
             if pool.stop_requested.is_set():
                 return [make_status_row(cn, "ERROR", "조회 중지됨")]
 
             grid_text = None
 
-            # [v5.13.6] 로그인 직후 이미 조회 화면이면 첫 조회에서도 메뉴 재진입을 생략
-            if getattr(driver, 'page_ready', False) and is_query_screen_ready(driver):
+            # 배치 조회는 유령 데이터 방지를 위해 같은 화면이어도 메뉴 워프/모달 정리를 한 번 거친다.
+            if not force_menu_reopen and getattr(driver, 'page_ready', False) and is_query_screen_ready(driver):
                 _log_cb("⚡ [고속모드] 이미 조회 화면 대기 중. 메뉴 재진입 스킵!")
                 menu_opened = True
             else:
                 menu_started = time.time()
-                menu_opened = open_els_menu(driver, log_callback=_log_cb)
+                menu_opened = open_els_menu(
+                    driver,
+                    log_callback=_log_cb,
+                    max_attempts=menu_max_attempts,
+                    force_reopen=force_menu_reopen,
+                )
                 if menu_opened:
                     driver.page_ready = True
                 menu_elapsed = time.time() - menu_started
@@ -690,7 +809,9 @@ def run():
 
             if not menu_opened:
                 driver.page_ready = False
-                return [make_status_row(cn, "ERROR", "INPUT_NOT_FOUND (메뉴 진입 실패)")]
+                pool.retire_driver(driver, reason=f"메뉴 진입 실패:{cn}")
+                pool.ensure_capacity_async(reason=f"menu-fail:{cn}")
+                return [make_status_row(cn, "ERROR", "WORKER_RETIRED: 메뉴 진입 실패로 해당 워커를 격리하고 재기동 예약")]
 
             previous_container_no = getattr(driver, 'last_query_container', None)
             previous_grid_text = scrape_hyper_verify(
@@ -716,7 +837,7 @@ def run():
                 # 팝업 로그인 완료 → 메뉴 재진입 후 다시 조회
                 pool.add_log(f"[{cn}] 팝업 로그인 완료. 메뉴 재진입 후 재조회 시도...")
                 driver.page_ready = False
-                if open_els_menu(driver, log_callback=_log_cb):
+                if open_els_menu(driver, log_callback=_log_cb, max_attempts=menu_max_attempts, force_reopen=True):
                     driver.page_ready = True
                     status = solve_input_and_search(driver, cn, log_callback=_log_cb)
                 else:
@@ -752,6 +873,12 @@ def run():
 
                 parsed_rows = parse_grid_text_to_rows(cn, grid_text)
                 if parsed_rows:
+                    if verify_success_rows and not (len(parsed_rows) == 1 and parsed_rows[0][1] == "NODATA"):
+                        parsed_rows = _verify_success_once(parsed_rows)
+                        if is_retryable_result_rows(parsed_rows) or (
+                            parsed_rows and len(parsed_rows[0]) > 2 and str(parsed_rows[0][1]) == "ERROR"
+                        ):
+                            return parsed_rows
                     driver.last_query_container = cn
                     driver.last_grid_text = compact_grid_text(grid_text)
                     if not (len(parsed_rows) == 1 and parsed_rows[0][1] == "NODATA"):

@@ -60,7 +60,17 @@ def is_retryable_result_rows(rows):
     message = str(first[2] if len(first) > 2 else "")
     if code != "ERROR":
         return False
-    non_retryable = ["유효하지 않은 컨테이너 번호", "비밀번호", "로그인 3회", "보안 모드"]
+    non_retryable = [
+        "유효하지 않은 컨테이너 번호",
+        "비밀번호",
+        "로그인 3회",
+        "보안 모드",
+        "조회 중지됨",
+        "WORKER_RETIRED",
+        "WORKER_NOT_READY",
+        "INPUT_NOT_FOUND",
+        "메뉴 진입 실패",
+    ]
     return not any(token in message for token in non_retryable)
 
 def load_config():
@@ -500,8 +510,12 @@ def find_ele_globally(page, selector, timeout=0.5):
         except: continue
     return None
 
-def open_els_menu(page, log_callback=None):
+def open_els_menu(page, log_callback=None, max_attempts=10, force_reopen=False):
     if log_callback: log_callback("🚀 WebSquare 안정화 메뉴 진입 (v4.4.38)")
+    try:
+        attempts_limit = max(1, int(max_attempts or 10))
+    except (TypeError, ValueError):
+        attempts_limit = 10
     
     # 1. 팝업 정리
     close_modals(page)
@@ -516,22 +530,24 @@ def open_els_menu(page, log_callback=None):
         except: pass
         return False
 
-    if is_target_found():
+    if is_target_found() and not force_reopen:
         if log_callback: log_callback("✅ 이미 대상 화면(탭)이 로드되어 있습니다.")
         return True
 
     # 2. 메뉴 네비게이션 루프
-    for attempt in range(10):
+    force_pending = bool(force_reopen)
+    for attempt in range(attempts_limit):
         try:
-            if is_target_found(): 
+            if is_target_found() and not force_pending:
                 if log_callback: log_callback("✅ 메뉴 진입 성공 확인!")
                 return True
             
-            if log_callback: log_callback(f"  [{attempt+1}/10] 메뉴 탐색 중...")
+            if log_callback: log_callback(f"  [{attempt+1}/{attempts_limit}] 메뉴 탐색 중...")
             
             # [Warp] WebSquare 내부 함수 직접 호출 (가장 빠르고 정확함)
             # subagent 검증 결과: 602가 컨테이너이동현황(국내)임
             page.run_js('try { if(window.gcm && gcm.win && gcm.win._openMenu) { gcm.win._openMenu("602"); } } catch(e) {}')
+            force_pending = False
             time.sleep(2)
             if is_target_found(): return True
 
