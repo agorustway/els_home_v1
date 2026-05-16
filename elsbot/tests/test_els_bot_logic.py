@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from els_bot import (
     find_ele_globally, open_els_menu, is_session_valid, close_modals,
-    is_required_input_text, solve_input_and_search,
+    is_required_input_text, solve_input_and_search, close_required_input_alert,
 )
 
 class TestElsBotLogic(unittest.TestCase):
@@ -98,6 +98,15 @@ class TestElsBotLogic(unittest.TestCase):
     def test_required_input_text_detection(self):
         self.assertTrue(is_required_input_text("[컨테이너이동] 필수 입력 항목 입니다."))
         self.assertFalse(is_required_input_text("데이터가 없습니다."))
+
+    def test_required_alert_check_does_not_wait_default_page_timeout(self):
+        page = MagicMock()
+        page.handle_alert.return_value = False
+        page.run_js.return_value = ""
+
+        close_required_input_alert(page)
+
+        page.handle_alert.assert_called_with(accept=True, timeout=0.05)
 
     @patch('els_bot.time.sleep', return_value=None)
     def test_solve_input_verifies_value_before_search(self, _sleep):

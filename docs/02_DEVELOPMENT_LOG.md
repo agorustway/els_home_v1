@@ -1,4 +1,21 @@
 
+## [2026-05-16] 컨테이너 이력조회 300초 스톱/alert 대기 보강 (v5.13.19)
+### 핵심
+- DrissionPage `handle_alert()` 기본 timeout 10초가 컨테이너마다 반복되어 `조회 후 초기 판정`이 83초대로 늘어나는 병목을 `timeout=0.05` 즉시 확인으로 수정.
+- 데몬 워커가 0개인 상태에서 `/run`이 바로 워커 대기/타임아웃으로 빠지지 않고 먼저 로그인 세션을 확보하도록 보강.
+- 배치 시작 후 워커가 2→3→4개로 살아나면 같은 조회 안에서 병렬도 창을 확장하도록 변경.
+- NAS nginx `/api/els` 스트리밍 타임아웃/버퍼링을 보강하고, Vercel route `maxDuration`을 늘려 300초 스톱 위험을 낮춤.
+- 클라이언트 연결이 끊기면 `GeneratorExit`를 삼키지 않고 데몬 stop을 호출해 보이지 않는 조회가 계속 도는 현상을 차단.
+### 검증
+- `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py ...` 통과
+- `python -m unittest elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control elsbot.tests.test_els_bot_logic` 통과 (19개)
+- `npx.cmd eslint "app/api/els/run/route.js" "app/(main)/employees/container-history/page.js"` 0 errors, 기존 warning 5개
+- `git diff --check` 통과
+### 변경 파일
+- `docker/els-backend/app_bot.py`, `docker/els-gateway/nginx.conf`, `docker/docker-compose.yml`
+- `elsbot/els_bot.py`, `elsbot/els_web_runner_daemon.py`, `elsbot/tests/*`
+- `web/app/api/els/run/route.js`
+
 ## [2026-05-16] 아산 선적관리 초기 로딩 추가 최적화 (v5.13.18)
 ### 🚀 Achievement
 - **초기 payload 축소**: 선적관리 기본 조회를 500행에서 100행으로 낮춰 첫 응답을 212,531 bytes에서 42,992 bytes 수준으로 줄였습니다.

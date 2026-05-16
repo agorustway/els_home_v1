@@ -30,6 +30,7 @@ class DriverPool:
         self.available_queue = Queue()
         self.current_user = {"id": None, "pw": None, "show_browser": False}
         self.is_logging_in = False
+        self.init_stagger_sec = float(os.environ.get("ELS_DRIVER_STAGGER_SEC", 15))
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 4)) # [v5.13.6] NAS CPU 여유 확인 후 4개 워커 기본값 복구
         self.daemon_id = os.environ.get("ELS_DAEMON_ID", "1") # [추가] 데몬 식별 ID (기본값 1)
         self.active_init_threads = 0
@@ -292,6 +293,9 @@ def health():
             "max_drivers": pool.max_drivers,
             "available_drivers": available_count,
             "restart_inflight": len(pool.restart_inflight),
+            "is_logging_in": pool.is_logging_in,
+            "active_init_threads": pool.active_init_threads,
+            "init_stagger_sec": pool.init_stagger_sec,
             "user_id": pool.current_user["id"] if pool.current_user else None,
             "workers": workers,
             "daemon_id": pool.daemon_id
@@ -345,7 +349,7 @@ def login():
 
                     # [NAS 최적화] CPU 부하 부하 분산을 위해 브라우저 간 부팅 간격을 60초로 연장
                     if idx > 0 and retry == 1:
-                        if not pool.wait_unless_cancelled(idx * 60, generation):
+                        if not pool.wait_unless_cancelled(idx * pool.init_stagger_sec, generation):
                             return
                     elif retry > 1:
                         if not pool.wait_unless_cancelled(10, generation):
@@ -913,7 +917,7 @@ def daily_reset_scheduler():
                 def _do_reset_login(idx, _user=saved_user, generation=reset_generation):
                     try:
                         if idx > 0:
-                            if not pool.wait_unless_cancelled(idx * 60, generation):
+                            if not pool.wait_unless_cancelled(idx * pool.init_stagger_sec, generation):
                                 return
                         target_port = 32000 + idx
                         pool.cleanup_lingering_chrome(target_port)

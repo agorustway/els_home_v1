@@ -127,6 +127,17 @@ class TestContainerLookupSafety(unittest.TestCase):
             4,
         )
 
+    def test_backend_batch_worker_config_is_bounded_to_at_least_one(self):
+        backend_dir = os.path.join(ROOT_DIR, "docker", "els-backend")
+        sys.path.append(backend_dir)
+        spec = importlib.util.spec_from_file_location("app_bot_for_config_test", os.path.join(backend_dir, "app_bot.py"))
+        app_bot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(app_bot)
+
+        self.assertEqual(app_bot._configured_batch_workers(0), 1)
+        self.assertEqual(app_bot._configured_batch_workers("bad"), 4)
+        self.assertEqual(app_bot._configured_batch_workers(3), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

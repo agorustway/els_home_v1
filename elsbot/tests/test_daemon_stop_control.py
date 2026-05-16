@@ -3,6 +3,7 @@ import os
 import sys
 import types
 import unittest
+from unittest.mock import patch
 
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -100,6 +101,12 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertEqual(pool.available_queue.qsize(), 0)
         self.assertEqual(pool.drivers, [])
         self.assertEqual(driver.quit_count, 1)
+
+    def test_driver_pool_uses_configurable_init_stagger(self):
+        with patch.dict(os.environ, {"ELS_DRIVER_STAGGER_SEC": "12.5"}):
+            pool = self.daemon.DriverPool()
+
+        self.assertEqual(pool.init_stagger_sec, 12.5)
 
 
 if __name__ == "__main__":

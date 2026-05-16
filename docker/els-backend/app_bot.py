@@ -84,13 +84,21 @@ def _daemon_health(timeout=3):
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=timeout)
         if r.getcode() == 200:
             return json.loads(r.read().decode("utf-8"))
-    except:
+    except Exception:
         pass
     return {}
 
+def _configured_batch_workers(configured_workers=None):
+    try:
+        raw = os.environ.get("ELS_BATCH_MAX_WORKERS", 4) if configured_workers is None else configured_workers
+        configured = int(raw)
+    except (TypeError, ValueError):
+        configured = 4
+    return max(1, configured)
+
 def _effective_batch_workers(health, configured_workers=None, reserve_single=True):
     """살아있는 워커 수에 맞춰 배치 병렬도를 낮춘다."""
-    configured = int(configured_workers or os.environ.get("ELS_BATCH_MAX_WORKERS", 4))
+    configured = _configured_batch_workers(configured_workers)
     total = int(health.get("total_drivers") or 0)
     active = total
     if active <= 1:
@@ -98,11 +106,21 @@ def _effective_batch_workers(health, configured_workers=None, reserve_single=Tru
     usable = active - 1 if reserve_single else active
     return max(1, min(configured, usable))
 
+def _daemon_login_once(user_id, user_pw, show_browser=False, timeout=380):
+    body = json.dumps({
+        "userId": user_id,
+        "userPw": user_pw,
+        "showBrowser": show_browser,
+    }, ensure_ascii=False).encode("utf-8")
+    req = Request(DAEMON_URL + "/login", data=body, method="POST", headers={"Content-Type": "application/json"})
+    r = urlopen(req, timeout=timeout)
+    return json.loads(r.read().decode("utf-8"))
+
 def _daemon_available():
     try:
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=2)
         return r.getcode() == 200
-    except: return False
+    except Exception: return False
 
 @app.route("/health", methods=["GET"])
 def health(): return jsonify({"status": "ok", "service": "els-bot"})
@@ -118,6 +136,8 @@ def capabilities():
         "max_drivers": 4,
         "total_drivers": 0,
         "available_drivers": 0,
+        "is_logging_in": False,
+        "active_init_threads": 0,
     }
     data = _daemon_health(timeout=3)
     if data:
@@ -128,6 +148,8 @@ def capabilities():
         daemon_status["max_drivers"] = data.get("max_drivers", 4)
         daemon_status["total_drivers"] = data.get("total_drivers", 0)
         daemon_status["available_drivers"] = data.get("available_drivers", 0)
+        daemon_status["is_logging_in"] = data.get("is_logging_in", False)
+        daemon_status["active_init_threads"] = data.get("active_init_threads", 0)
 
     # [v4.9.8] 좀비 잠금 해제: 전체 작업 5분 초과 시 강제 종료
     if global_progress.get("is_running") and global_progress.get("start_time"):
@@ -154,6 +176,8 @@ def capabilities():
         "max_drivers": daemon_status["max_drivers"],
         "total_drivers": daemon_status["total_drivers"],
         "available_drivers": daemon_status["available_drivers"],
+        "is_logging_in": daemon_status["is_logging_in"],
+        "active_init_threads": daemon_status["active_init_threads"],
         "batch_workers": _effective_batch_workers(daemon_status),
         "parseAvailable": True
     })
@@ -164,7 +188,7 @@ def logs():
         r = urlopen(Request(DAEMON_URL + "/logs", method="GET"), timeout=3)
         if r.getcode() == 200:
             return Response(r.read(), mimetype="application/json")
-    except: pass
+    except Exception: pass
     return jsonify({"ok": False, "log": []})
 
 @app.route("/api/els/login", methods=["POST"])
@@ -192,7 +216,7 @@ def login():
                     if line not in sent_logs:
                         yield f"LOG:{line}\n"
                         sent_logs.add(line)
-            except: pass
+            except Exception: pass
             time.sleep(1)
         t.join()
         
@@ -203,7 +227,7 @@ def login():
             for line in l_data.get("log", []):
                 if line not in sent_logs:
                     yield f"LOG:{line}\n"; sent_logs.add(line)
-        except: pass
+        except Exception: pass
         res = login_result.get('resp', {"ok": False, "error": login_result.get('error', 'Unknown')})
         yield "RESULT:" + json.dumps(res, ensure_ascii=False) + "\n"
 
@@ -266,14 +290,66 @@ def run():
             else:
                 reserve_single = bool(reserve_single)
             daemon_health = _daemon_health(timeout=3)
-            batch_workers = _effective_batch_workers(daemon_health, reserve_single=reserve_single)
+            if int(daemon_health.get("total_drivers") or 0) <= 0 and (not uid or not pw):
+                for cn in containers:
+                    rows = [_status_row(cn, "ERROR", "LOGIN_REQUIRED: saved login is not ready")]
+                    final_rows.extend(rows)
+                    global_progress["completed"] += 1
+                    yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
+                yield "RESULT:" + json.dumps({"ok": True, "result": final_rows}, ensure_ascii=False) + "\n"
+                return
+            if int(daemon_health.get("total_drivers") or 0) <= 0 and uid and pw:
+                yield "LOG:[session] no ready worker; starting daemon login before batch\n"
+                try:
+                    login_res = _daemon_login_once(uid, pw, show_browser=show_browser)
+                    for line in login_res.get("log", []):
+                        yield f"LOG:{line}\n"
+                    if not login_res.get("ok"):
+                        message = login_res.get("error") or login_res.get("message") or "login failed"
+                        for cn in containers:
+                            rows = [_status_row(cn, "ERROR", f"LOGIN_READY_FAILED: {message}")]
+                            final_rows.extend(rows)
+                            global_progress["completed"] += 1
+                            yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
+                        yield "RESULT:" + json.dumps({"ok": True, "result": final_rows}, ensure_ascii=False) + "\n"
+                        return
+                    daemon_health = _daemon_health(timeout=3)
+                except Exception as e:
+                    for cn in containers:
+                        rows = [_status_row(cn, "ERROR", f"LOGIN_READY_FAILED: {e}")]
+                        final_rows.extend(rows)
+                        global_progress["completed"] += 1
+                        yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
+                    yield "RESULT:" + json.dumps({"ok": True, "result": final_rows}, ensure_ascii=False) + "\n"
+                    return
+            configured_workers = _configured_batch_workers()
+            batch_workers = _effective_batch_workers(daemon_health, configured_workers=configured_workers, reserve_single=reserve_single)
+            max_executor_workers = max(configured_workers, batch_workers)
             yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
-            executor = ThreadPoolExecutor(max_workers=batch_workers)
+            executor = ThreadPoolExecutor(max_workers=max_executor_workers)
             try:
                 futures = {}
                 completed_results = {}
                 emitted_indices = set()
                 next_submit_index = 0
+                last_worker_refresh = 0
+
+                def refresh_batch_workers(force=False):
+                    nonlocal batch_workers, daemon_health, last_worker_refresh
+                    now = time.time()
+                    if not force and now - last_worker_refresh < 3:
+                        return None
+                    last_worker_refresh = now
+                    latest = _daemon_health(timeout=1)
+                    if not latest:
+                        return None
+                    daemon_health = latest
+                    new_workers = _effective_batch_workers(latest, configured_workers=configured_workers, reserve_single=reserve_single)
+                    if new_workers != batch_workers:
+                        old_workers = batch_workers
+                        batch_workers = new_workers
+                        return old_workers, new_workers, latest
+                    return None
 
                 def mark_stopped_from(start_index=0):
                     for idx in range(start_index, len(containers)):
@@ -340,6 +416,10 @@ def run():
                             yield f"LOG:↻ [{item['cn']}] 1회 재조회 후 확정 ({item['retry_reason']})\n"
                         yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
 
+                    worker_change = refresh_batch_workers()
+                    if worker_change:
+                        old_workers, new_workers, latest = worker_change
+                        yield f"LOG:[batch] worker window {old_workers}->{new_workers} (active {latest.get('total_drivers', 0)}/{latest.get('max_drivers', 4)})\n"
                     submit_more()
 
                     # 2. 로그 실시간 스트리밍 (루프 도중)
@@ -350,7 +430,7 @@ def run():
                             if line not in sent_logs:
                                 yield f"LOG:{line}\n"
                                 sent_logs.add(line)
-                    except: pass
+                    except Exception: pass
 
                 for index in sorted(completed_results):
                     if index in emitted_indices:
@@ -378,7 +458,7 @@ def run():
                     if line not in sent_logs:
                         yield f"LOG:{line}\n"
                         sent_logs.add(line)
-            except: pass
+            except Exception: pass
 
             # 엑셀 생성 (openpyxl - 2시트, 서식, 틀고정)
             if final_rows:
@@ -455,6 +535,14 @@ def run():
                 file_name = f"컨테이너이력조회_{now_kst.strftime('%Y%m%d%H%M%S')}.xlsx"
                 file_store[token] = {'data': out.read(), 'name': file_name}
                 yield "RESULT:" + json.dumps({"ok": True, "result": final_rows, "downloadToken": token, "fileName": file_name}, ensure_ascii=False) + "\n"
+        except GeneratorExit:
+            global_stop_requested.set()
+            try:
+                req = Request(DAEMON_URL + "/stop", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
+                urlopen(req, timeout=2)
+            except Exception:
+                pass
+            raise
         finally:
             # [v4.9.8] 핵심: 스트림 중단(스마트폰 창 내림 등)에도 반드시 잠금 해제
             global_progress["is_running"] = False
@@ -518,7 +606,7 @@ def stop_daemon():
         try:
             req = Request(DAEMON_URL + "/stop", method="POST")
             urlopen(req, timeout=5)
-        except: pass
+        except Exception: pass
     # 백엔드 잠금도 동시 해제
     global_progress["is_running"] = False
     global_progress["completed"] = global_progress.get("total", 0)
@@ -531,7 +619,7 @@ def screenshot():
     try:
         r = urlopen(DAEMON_URL + f"/screenshot?idx={idx}", timeout=5)
         return Response(r.read(), mimetype='image/png')
-    except: return "Screenshot fail", 404
+    except Exception: return "Screenshot fail", 404
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=2931, threaded=True)

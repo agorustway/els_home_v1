@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.18 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.19 / APK v5.11.12)
 
 > 최신 업데이트: 아산 선적관리 체감 로딩을 줄이기 위해 첫 화면 payload와 불필요한 번들을 줄였습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.18
+- **웹 버전**: v5.13.19
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.19**: 컨테이너 이력조회 300초 스톱 원인을 보강. DrissionPage alert 기본 10초 대기 반복을 0.05초 즉시 확인으로 바꾸고, 빈 데몬 상태에서는 `/run`이 먼저 로그인 세션을 확보하도록 변경. 배치 중 워커가 추가로 살아나면 같은 조회 안에서 병렬도를 확장하며, `/api/els` NAS nginx 스트리밍 타임아웃/버퍼링과 Vercel route maxDuration을 보강. 클라이언트 연결이 끊기면 generator가 GeneratorExit를 삼키지 않고 데몬 stop을 호출.
 - **v5.13.18**: 아산 선적관리 첫 조회를 100행으로 줄여 운영 API 기준 42,992 bytes 응답을 확인하고, 500행 212,531 bytes 대비 초기 payload를 약 1/5로 축소. `xlsx`는 엑셀 다운로드 클릭 시 lazy import하고, 아산 메인 탭을 localStorage에 저장해 선적관리 사용자가 재방문할 때 불필요한 배차판 초기 fetch를 줄임. 운영/NAS/Core API 모두 `source=supabase`, 총 965건 조회를 확인.
 - **v5.13.17**: 컨테이너 이력조회 배치가 준비된 워커를 모두 쓰도록 `reserveSingle=false`를 전달하고, 백엔드는 완료된 행을 순서 대기 없이 즉시 스트리밍. ETrans 입력값은 JS 세팅/검증 우선, 조회 버튼은 JS 이벤트 우선으로 바꿔 80~90초 클릭 대기 병목을 줄이고 단계별 타이밍 로그를 추가.
 - **v5.13.16**: `nas-deploy.sh`에 Docker PATH를 sudo 환경변수로 주입하고 `set -e`를 추가해 docker-compose build가 `docker` 실행 파일을 못 찾거나 실패했을 때 즉시 중단되도록 보강.
@@ -58,7 +59,7 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
-- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control`: 16개 통과 (번들 Python 사용)
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control`: 19개 통과 (번들 Python 사용)
 - `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_els_bot_logic.py`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 0 errors, 기존 warning 5건
 - `node --test web/tests/containerInput.test.mjs`: 4개 통과

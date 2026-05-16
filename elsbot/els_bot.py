@@ -88,7 +88,7 @@ def save_screenshot(page, name="debug"):
 def check_alert(page):
     """DrissionPage는 알람을 자동으로 처리하거나 확인할 수 있음"""
     try:
-        if page.handle_alert(accept=True):
+        if page.handle_alert(accept=True, timeout=0.05):
             return "Alert accepted"
     except: pass
     return None
@@ -96,7 +96,7 @@ def check_alert(page):
 def close_required_input_alert(page):
     """WebSquare alert(필수 입력 항목)을 닫고 감지된 문구를 반환한다."""
     try:
-        alert_text = page.handle_alert(accept=True)
+        alert_text = page.handle_alert(accept=True, timeout=0.05)
         if alert_text and is_required_input_text(alert_text):
             return str(alert_text)
     except:

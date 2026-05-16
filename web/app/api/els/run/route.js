@@ -7,6 +7,9 @@ import { ensureDaemon, getDaemonUrl } from '../daemon';
 import { proxyToBackend } from '../proxyToBackend';
 import { getUserElsCreds } from '../getUserElsCreds';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 800;
+
 const ELSBOT_DIR = path.join(process.cwd(), '..', 'elsbot');
 const RUNNER = path.join(ELSBOT_DIR, 'els_web_runner.py');
 
