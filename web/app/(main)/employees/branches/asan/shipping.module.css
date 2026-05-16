@@ -46,6 +46,17 @@
     font-weight: 800;
 }
 
+.syncMeta {
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
 .rightControls {
     display: flex;
     align-items: center;
@@ -79,6 +90,38 @@
     border-color: #bfdbfe;
 }
 .syncBtn:hover { background: #dbeafe; }
+
+.lookupBtn {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 0.76rem;
+    cursor: pointer;
+    border: 1px solid #86efac;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.lookupBtn:hover { background: #d1fae5; }
+
+.lookupBtn:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
+.lookupStatus {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    background: #f0fdf4;
+    color: #047857;
+    font-size: 0.74rem;
+    font-weight: 800;
+}
 
 .pageBar {
     display: flex;
@@ -162,6 +205,21 @@
     user-select: none;
     box-shadow: 0 1px 0 #244c73;
     font-size: 0.74rem;
+}
+
+.table th.lookupHeader {
+    background: #15803d;
+    box-shadow: 0 1px 0 #166534;
+}
+
+.table td.lookupCell {
+    background: #f0fdf4;
+    color: #14532d;
+    font-weight: 650;
+}
+
+.table tr:hover td.lookupCell {
+    background: #dcfce7;
 }
 
 .table th[draggable="true"] {
@@ -372,7 +430,7 @@
         font-size: 0.8rem;
     }
 
-    .resetBtn, .syncBtn, .dangerBtn {
+    .resetBtn, .syncBtn, .dangerBtn, .lookupBtn {
         font-size: 0.68rem;
         padding: 6px 2px;
         text-align: center;

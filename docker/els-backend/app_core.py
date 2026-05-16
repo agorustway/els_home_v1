@@ -627,6 +627,48 @@ def _shipping_search_terms(search):
 def _shipping_search_filter_value(term):
     return str(term).replace(",", " ").replace("\\", " ")
 
+def _shipping_row_hash(row):
+    return hashlib.sha256(json.dumps(row or [], ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
+
+def _archive_removed_asan_shipping_rows(normalized_path, new_payload, removed_file_modified_at):
+    try:
+        existing_res = supabase.from_("branch_shipping_rows").select(
+            "row_index,row_values,row_data,container_no,vessel_name,search_text,file_modified_at"
+        ).eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+        existing_rows = existing_res.data or []
+        if not existing_rows:
+            return 0
+
+        new_hashes = {_shipping_row_hash(item.get("row_values")) for item in new_payload}
+        archived_at = datetime.now(KST).isoformat()
+        archive_payload = []
+        for row in existing_rows:
+            row_hash = _shipping_row_hash(row.get("row_values") or [])
+            if row_hash in new_hashes:
+                continue
+            archive_payload.append({
+                "branch_id": "asan",
+                "file_path": normalized_path,
+                "row_index": row.get("row_index"),
+                "row_values": row.get("row_values") or [],
+                "row_data": row.get("row_data") or {},
+                "container_no": row.get("container_no") or "",
+                "vessel_name": row.get("vessel_name") or "",
+                "search_text": row.get("search_text") or "",
+                "source_row_hash": row_hash,
+                "original_file_modified_at": row.get("file_modified_at"),
+                "removed_file_modified_at": removed_file_modified_at,
+                "archive_reason": "deleted_from_excel",
+                "archived_at": archived_at,
+            })
+
+        for i in range(0, len(archive_payload), 500):
+            supabase.from_("branch_shipping_row_archive").insert(archive_payload[i:i + 500]).execute()
+        return len(archive_payload)
+    except Exception as e:
+        app.logger.warning(f"[선적관리DB] 삭제 이력 archive 건너뜀: {e}")
+        return 0
+
 def sync_asan_shipping_python(force=False, rel_path=None):
     global shipping_db_available
     if not supabase or not shipping_db_available:
@@ -672,6 +714,7 @@ def sync_asan_shipping_python(force=False, rel_path=None):
                 "updated_at": datetime.now(KST).isoformat()
             })
 
+        archived_count = _archive_removed_asan_shipping_rows(normalized_path, payload, file_modified_at)
         supabase.from_("branch_shipping_rows").delete().eq("branch_id", "asan").eq("file_path", normalized_path).execute()
         for i in range(0, len(payload), 500):
             supabase.from_("branch_shipping_rows").insert(payload[i:i + 500]).execute()
@@ -686,8 +729,8 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         }, on_conflict="branch_id,file_path").execute()
 
         shipping_cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "file_modified_at": file_modified_at}}
-        app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행)")
-        return {"file_modified_at": file_modified_at}
+        app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행, 삭제 archive {archived_count}행)")
+        return {"file_modified_at": file_modified_at, "archived_count": archived_count}
     except Exception as e:
         if "branch_shipping_" in str(e) or "relation" in str(e).lower():
             shipping_db_available = False

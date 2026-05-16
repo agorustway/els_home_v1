@@ -1,4 +1,37 @@
 
+## [2026-05-16] 아산 선적관리-컨테이너 이력조회 콜라보 1차 (v5.13.20)
+### 핵심
+- 선적관리 엑셀 동기화는 현재 화면용 `branch_shipping_rows`를 엑셀 최신본 기준으로 교체하되, 엑셀에서 사라진 행은 `branch_shipping_row_archive`에 `deleted_from_excel`로 보관합니다.
+- 선적관리 화면에 `컨테이너 조회` 버튼을 추가해 현재 검색/필터 결과의 컨테이너를 기존 `/api/els/run` 스트림 파이프라인으로 조회합니다.
+- 조회 결과의 No.1 메인 행을 `이력 ...` 초록색 컬럼으로 선적관리 표에 붙이고, 사용자는 기존 컬럼 숨김 기능으로 노출 여부를 조정할 수 있습니다.
+- 조회 결과는 `branch_shipping_container_lookups`에 run_id/컨테이너별로 누적 저장하며, 선적관리 화면에는 엑셀 저장 시각과 DB수정 시각을 분리해 표시합니다.
+### 검증
+- Supabase migration `asan_shipping_history_and_lookup` 적용 성공. archive/lookup 테이블 생성 확인.
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (17개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js` 0 errors
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과 (번들 Python 사용)
+- `npm.cmd run build` 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+### 변경 파일
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`, `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/app/api/branches/asan/shipping/container-results/route.js`
+- `web/utils/containerHistoryResults.mjs`
+- `web/supabase_sql/20260516_asan_shipping_history_and_lookup.sql`
+- `web/tests/asanShippingFlow.test.mjs`
+
+## [2026-05-16] 컨테이너 이력조회 워커 후행 기동 안정화 (v5.13.20)
+### 핵심
+- NAS에서 #3/#4 Chrome이 #1/#2 로그인/메뉴 진입 중 동시에 뜨며 remote-debugging 연결 실패가 나는 패턴을 확인했습니다.
+- 초기 2개 워커는 기존처럼 빠르게 띄우고, #3/#4는 `ELS_DRIVER_STAGGER_SEQUENCE=0,15,75,105`로 후행 기동하도록 조정했습니다.
+- 조회는 준비된 워커 수로 먼저 시작하고, 뒤 워커가 살아나면 기존 동적 배치 확장 로직으로 같은 조회 안에 투입됩니다.
+### 검증
+- `python -m py_compile elsbot/els_web_runner_daemon.py elsbot/tests/test_daemon_stop_control.py` 통과
+- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic` 통과 (20개)
+### 변경 파일
+- `docker/docker-compose.yml`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_daemon_stop_control.py`
+
 ## [2026-05-16] 컨테이너 이력조회 300초 스톱/alert 대기 보강 (v5.13.19)
 ### 핵심
 - DrissionPage `handle_alert()` 기본 timeout 10초가 컨테이너마다 반복되어 `조회 후 초기 판정`이 83초대로 늘어나는 병목을 `timeout=0.05` 즉시 확인으로 수정.

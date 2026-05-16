@@ -1,11 +1,19 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import {
+    buildContainerLookupMapFromRows,
+    CONTAINER_LOOKUP_DISPLAY_COLUMNS,
+    extractUniqueContainerNos,
+    getContainerLookupValue,
+    isContainerLookupColumn,
+} from '@/utils/containerHistoryResults.mjs';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
 const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
 const SHIPPING_PAGE_SIZE = 100;
+const EMPTY_HISTORY_ROW = ['-', '-', '조회 대기중', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'];
 
 // 날짜 관련 컬럼 키워드
 const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
@@ -74,6 +82,9 @@ export default function AsanShipping() {
     const [browserFiles, setBrowserFiles] = useState([]);
     const [browserLoading, setBrowserLoading] = useState(false);
     const [selectedPath, setSelectedPath] = useState('');
+    const [containerLookupResults, setContainerLookupResults] = useState({});
+    const [containerLookupRunning, setContainerLookupRunning] = useState(false);
+    const [containerLookupStatus, setContainerLookupStatus] = useState('');
 
     useEffect(() => {
         const saved = localStorage.getItem('asan_shipping_file') || '/아산지점/2026_자체보관리스트.xlsx';
@@ -137,6 +148,42 @@ export default function AsanShipping() {
         }
     }, [selectedPath, applyShippingData]);
 
+    const allHeaders = useMemo(() => {
+        const lookupHeaders = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
+        return [...headers, ...lookupHeaders.filter(header => !headers.includes(header))];
+    }, [headers]);
+
+    const getRowContainerNo = useCallback((row) => {
+        if (!data?.headers) return '';
+        return extractUniqueContainerNos(data.headers, [row])[0] || '';
+    }, [data?.headers]);
+
+    const getDisplayCellRawValue = useCallback((row, col) => {
+        if (isContainerLookupColumn(col)) {
+            const containerNo = getRowContainerNo(row);
+            return getContainerLookupValue(containerLookupResults[containerNo], col);
+        }
+        const colIdx = data?.headers?.indexOf(col) ?? -1;
+        return colIdx >= 0 ? row[colIdx] : '';
+    }, [containerLookupResults, data?.headers, getRowContainerNo]);
+
+    const loadSavedContainerLookupResults = useCallback(async (containers) => {
+        if (!selectedPath || !containers.length) return;
+        try {
+            const params = new URLSearchParams({
+                path: selectedPath,
+                containers: containers.join(',')
+            });
+            const res = await fetch(`/api/branches/asan/shipping/container-results?${params.toString()}`);
+            const json = await res.json();
+            if (json.data) {
+                setContainerLookupResults(prev => ({ ...prev, ...json.data }));
+            }
+        } catch (err) {
+            console.warn('Failed to load container lookup results:', err);
+        }
+    }, [selectedPath]);
+
     useEffect(() => {
         if (!selectedPath) return;
         const delay = searchTerm.trim() ? 300 : 0;
@@ -145,6 +192,12 @@ export default function AsanShipping() {
         }, delay);
         return () => clearTimeout(timer);
     }, [selectedPath, searchTerm, fetchData]);
+
+    useEffect(() => {
+        if (!data?.headers || !data?.data?.length) return;
+        const containers = extractUniqueContainerNos(data.headers, data.data);
+        loadSavedContainerLookupResults(containers);
+    }, [data?.headers, data?.data, loadSavedContainerLookupResults]);
 
     useEffect(() => {
         if (!data || !data.file_modified_at) {
@@ -197,7 +250,7 @@ export default function AsanShipping() {
 
     // Load preferences from DB (fallback to localStorage)
     useEffect(() => {
-        if (headers.length === 0) return;
+        if (allHeaders.length === 0) return;
         const loadDbPrefs = async () => {
             try {
                 const res = await fetch('/api/user/prefs?page_key=asan_shipping_default');
@@ -207,8 +260,8 @@ export default function AsanShipping() {
                     let finalHidden = new Set(prefs.hiddenCols || []);
 
                     // [v5.12.4] Dynamic Header Reconciliation: Excel 제목 수정 반영
-                    if (prefs.sourceHeaders && data.headers) {
-                        const currentHeaders = data.headers;
+                    if (prefs.sourceHeaders && allHeaders) {
+                        const currentHeaders = allHeaders;
                         const sourceHeaders = prefs.sourceHeaders;
                         
                         // 1. colOrder 보정
@@ -251,10 +304,10 @@ export default function AsanShipping() {
                 const cached = JSON.parse(localStorage.getItem(PREFS_KEY));
                 if (cached?.colOrder?.length > 0) { setColOrder(cached.colOrder); return; }
             } catch { /* ignore */ }
-            setColOrder(headers);
+            setColOrder(allHeaders);
         };
         loadDbPrefs();
-    }, [headers, data?.headers]);
+    }, [allHeaders]);
 
     const containerRef = useRef(null);
     const tableWrapRef = useRef(null);
@@ -302,13 +355,13 @@ export default function AsanShipping() {
 
     // Auto-save layout to DB (debounced 1.5s)
     useEffect(() => {
-        if (colOrder.length === 0 || !data?.headers) return;
+        if (colOrder.length === 0 || allHeaders.length === 0) return;
         const t = setTimeout(() => {
             const settings = { 
                 colOrder, 
                 hiddenCols: Array.from(hiddenCols), 
                 sortConfig,
-                sourceHeaders: data.headers // [v5.12.4] 제목 수정 추적용 원본 헤더 저장
+                sourceHeaders: allHeaders // [v5.12.4] 제목 수정 추적용 원본 헤더 저장
             };
             fetch('/api/user/prefs', {
                 method: 'POST',
@@ -318,7 +371,7 @@ export default function AsanShipping() {
             localStorage.setItem(PREFS_KEY, JSON.stringify({ colOrder }));
         }, 1500);
         return () => clearTimeout(t);
-    }, [colOrder, hiddenCols, sortConfig, data?.headers]);
+    }, [colOrder, hiddenCols, sortConfig, allHeaders]);
 
     const handleSort = (colName) => {
         let direction = 'asc';
@@ -399,8 +452,7 @@ export default function AsanShipping() {
         const exportRows = processedData.map(row => {
             const mappedRow = {};
             exportHeaders.forEach(col => {
-                const colIdx = data.headers.indexOf(col);
-                mappedRow[col] = colIdx >= 0 ? row[colIdx] : '';
+                mappedRow[col] = getDisplayCellRawValue(row, col);
             });
             return mappedRow;
         });
@@ -414,7 +466,7 @@ export default function AsanShipping() {
     };
 
     const resetLayout = () => {
-        setColOrder(headers);
+        setColOrder(allHeaders);
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
@@ -432,7 +484,7 @@ export default function AsanShipping() {
             colOrder, 
             hiddenCols: Array.from(hiddenCols), 
             sortConfig,
-            sourceHeaders: data.headers 
+            sourceHeaders: allHeaders
         };
         try {
             const res = await fetch('/api/user/prefs', {
@@ -455,8 +507,8 @@ export default function AsanShipping() {
                 let finalHidden = new Set(prefs.hiddenCols || []);
 
                 // [v5.12.4] 프리셋 로드 시에도 제목 수정 반영
-                if (prefs.sourceHeaders && data.headers) {
-                    const currentHeaders = data.headers;
+                if (prefs.sourceHeaders && allHeaders) {
+                    const currentHeaders = allHeaders;
                     const sourceHeaders = prefs.sourceHeaders;
                     
                     finalOrder = prefs.colOrder.map(name => {
@@ -529,6 +581,117 @@ export default function AsanShipping() {
         }
     };
 
+    const saveContainerLookupResults = async (rows, containers) => {
+        const res = await fetch('/api/branches/asan/shipping/container-results', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: selectedPath,
+                containers,
+                rows,
+                lookup_source: 'asan_shipping',
+            }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || '컨테이너 조회 결과 저장 실패');
+        if (json.data) setContainerLookupResults(prev => ({ ...prev, ...json.data }));
+        return json;
+    };
+
+    const handleContainerLookup = async () => {
+        if (containerLookupRunning) return;
+        const containers = extractUniqueContainerNos(data?.headers || [], processedData);
+        if (!containers.length) {
+            alert('현재 필터 결과에서 조회할 컨테이너 번호가 없습니다.');
+            return;
+        }
+
+        setContainerLookupRunning(true);
+        setContainerLookupStatus(`${containers.length}건 조회 준비 중`);
+        const pendingMap = {};
+        containers.forEach(containerNo => {
+            pendingMap[containerNo] = {
+                containerNo,
+                resultRows: [[containerNo, ...EMPTY_HISTORY_ROW.slice(1)]],
+                mainRow: [containerNo, ...EMPTY_HISTORY_ROW.slice(1)],
+                lookedUpAt: null,
+            };
+        });
+        setContainerLookupResults(prev => ({ ...prev, ...pendingMap }));
+
+        const receivedRows = [];
+        let finalRows = null;
+        try {
+            const res = await fetch('/api/els/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    containers,
+                    useSavedCreds: true,
+                    reserveSingle: false,
+                }),
+            });
+            if (!res.ok || !res.body) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `컨테이너 조회 요청 실패 (${res.status})`);
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            const processLine = (line) => {
+                if (line.startsWith('LOG:')) {
+                    setContainerLookupStatus(line.substring(4).trim());
+                    return;
+                }
+                if (line.startsWith('RESULT_PARTIAL:')) {
+                    try {
+                        const part = JSON.parse(line.substring(15));
+                        if (Array.isArray(part.result)) {
+                            receivedRows.push(...part.result);
+                            const partialMap = buildContainerLookupMapFromRows(receivedRows, containers);
+                            setContainerLookupResults(prev => ({ ...prev, ...partialMap }));
+                        }
+                    } catch (err) {
+                        console.warn('컨테이너 부분 결과 파싱 실패:', err);
+                    }
+                    return;
+                }
+                if (line.startsWith('RESULT:')) {
+                    try {
+                        const payload = JSON.parse(line.substring(7));
+                        if (payload.ok) finalRows = payload.result || [];
+                        else throw new Error(payload.error || '컨테이너 조회 실패');
+                    } catch (err) {
+                        throw err;
+                    }
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                lines.filter(Boolean).forEach(processLine);
+            }
+            if (buffer.trim()) processLine(buffer.trim());
+
+            const rowsToSave = finalRows || receivedRows;
+            if (!rowsToSave.length) throw new Error('컨테이너 조회 결과가 비어 있습니다.');
+            const saved = await saveContainerLookupResults(rowsToSave, containers);
+            setContainerLookupStatus(`조회/저장 완료: ${saved.count || containers.length}건`);
+        } catch (err) {
+            console.error('컨테이너 조회 실패:', err);
+            setContainerLookupStatus(`오류: ${err.message}`);
+            alert(err.message || '컨테이너 조회에 실패했습니다.');
+        } finally {
+            setContainerLookupRunning(false);
+        }
+    };
+
     // Detect date-type columns
     const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
 
@@ -551,47 +714,38 @@ export default function AsanShipping() {
         // 1.5 Column Specific Filters (Excel-like multi-select)
         Object.entries(columnFilters).forEach(([col, selectedSet]) => {
             if (selectedSet && selectedSet.size > 0) {
-                const colIdx = data.headers.indexOf(col);
-                if (colIdx >= 0) {
-                    rows = rows.filter(row => {
-                        const cell = formatCellValue(row[colIdx], col).trim();
-                        return selectedSet.has(cell);
-                    });
-                }
+                rows = rows.filter(row => {
+                    const cell = formatCellValue(getDisplayCellRawValue(row, col), col).trim();
+                    return selectedSet.has(cell);
+                });
             }
         });
 
         // 1.6 Date Range Filter
         if (dateFilter.col && (dateFilter.from || dateFilter.to)) {
-            const dateColIdx = data.headers.indexOf(dateFilter.col);
-            if (dateColIdx >= 0) {
-                rows = rows.filter(row => {
-                    const raw = formatCellValue(row[dateColIdx], dateFilter.col);
-                    if (!raw) return false;
-                    if (dateFilter.from && raw < dateFilter.from) return false;
-                    if (dateFilter.to && raw > dateFilter.to) return false;
-                    return true;
-                });
-            }
+            rows = rows.filter(row => {
+                const raw = formatCellValue(getDisplayCellRawValue(row, dateFilter.col), dateFilter.col);
+                if (!raw) return false;
+                if (dateFilter.from && raw < dateFilter.from) return false;
+                if (dateFilter.to && raw > dateFilter.to) return false;
+                return true;
+            });
         }
 
         // 2. Sorting (User clicked column)
         if (sortConfig.key) {
-            const colIdx = data.headers.indexOf(sortConfig.key);
-            if (colIdx >= 0) {
-                rows.sort((a, b) => {
-                    const valA = String(a[colIdx] || '');
-                    const valB = String(b[colIdx] || '');
-                    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-                    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-                    return 0;
-                });
-            }
+            rows.sort((a, b) => {
+                const valA = String(getDisplayCellRawValue(a, sortConfig.key) || '');
+                const valB = String(getDisplayCellRawValue(b, sortConfig.key) || '');
+                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
         } else {
             // Default Sort: AD, AE, AF values to top
             // Identify AD(29), AE(30), AF(31) roughly by headers like '선적확정모선' or directly by checking indices.
             const targetCols = [];
-            headers.forEach((h, i) => {
+            data.headers.forEach((h, i) => {
                 if (h.includes('선적확정모선')) {
                     targetCols.push(i);
                 }
@@ -608,7 +762,7 @@ export default function AsanShipping() {
         }
 
         return rows;
-    }, [data, searchTerm, sortConfig, headers, columnFilters, dateFilter]);
+    }, [data, searchTerm, sortConfig, columnFilters, dateFilter, getDisplayCellRawValue]);
 
     useEffect(() => {
         setTableScrollTop(0);
@@ -619,6 +773,7 @@ export default function AsanShipping() {
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
 
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
+    const dbSyncedTimeStr = data.synced_at ? new Date(data.synced_at).toLocaleString() : '';
 
     const totalRows = processedData.length;
     const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
@@ -634,8 +789,6 @@ export default function AsanShipping() {
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {
         if (!data || !data.data) return [];
-        const colIdx = data.headers.indexOf(col);
-        if (colIdx === -1) return [];
         
         // Filter rows based on OTHER column filters first (to cascade filters)
         let rows = [...data.data];
@@ -647,13 +800,15 @@ export default function AsanShipping() {
         }
         Object.entries(columnFilters).forEach(([c, selectedSet]) => {
             if (c !== col && selectedSet && selectedSet.size > 0) {
-                const cIdx = data.headers.indexOf(c);
-                if (cIdx >= 0) rows = rows.filter(row => selectedSet.has(String(row[cIdx] || '').trim()));
+                rows = rows.filter(row => {
+                    const cell = formatCellValue(getDisplayCellRawValue(row, c), c).trim();
+                    return selectedSet.has(cell);
+                });
             }
         });
 
         const unique = new Set();
-        rows.forEach(row => unique.add(formatCellValue(row[colIdx], col).trim()));
+        rows.forEach(row => unique.add(formatCellValue(getDisplayCellRawValue(row, col), col).trim()));
         return Array.from(unique).sort();
     };
 
@@ -704,6 +859,11 @@ export default function AsanShipping() {
                                     DB {loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행
                                 </span>
                             )}
+                            {dbSyncedTimeStr && (
+                                <span className={styles.syncMeta}>
+                                    DB수정 {dbSyncedTimeStr}
+                                </span>
+                            )}
                         </div>
                     )}
                 </div>
@@ -720,6 +880,14 @@ export default function AsanShipping() {
                     <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">💾 P2 저장</button>
                     <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">📂 P2 로드</button>
                     <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
+                    <button
+                        className={styles.lookupBtn}
+                        onClick={handleContainerLookup}
+                        disabled={containerLookupRunning}
+                        title="현재 검색/필터 결과에 남아있는 컨테이너를 모두 이력조회합니다"
+                    >
+                        {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                    </button>
                     <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
                     <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
                     <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
@@ -727,6 +895,12 @@ export default function AsanShipping() {
                     </button>
                 </div>
             </div>
+
+            {containerLookupStatus && (
+                <div className={styles.lookupStatus}>
+                    {containerLookupStatus}
+                </div>
+            )}
 
             <div 
                 className={styles.hiddenColsZone}
@@ -823,7 +997,7 @@ export default function AsanShipping() {
                                         onDragStart={(e) => handleDragStart(e, col)}
                                         onDragOver={(e) => handleDragOver(e, col)}
                                         onDrop={(e) => handleDrop(e, col)}
-                                        className={isDragOver ? styles.dragOver : ''}
+                                        className={`${isDragOver ? styles.dragOver : ''} ${isContainerLookupColumn(col) ? styles.lookupHeader : ''}`}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span onClick={() => handleSort(col)} style={{ cursor: 'pointer', flexGrow: 1, textAlign: 'center' }}>
@@ -881,10 +1055,9 @@ export default function AsanShipping() {
                             return (
                             <tr key={ri} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
                                 {colOrder.map(col => {
-                                    const colIdx = data.headers.indexOf(col);
-                                    const raw = colIdx >= 0 ? row[colIdx] : '';
+                                    const raw = getDisplayCellRawValue(row, col);
                                     const val = formatCellValue(raw, col);
-                                    return <td key={col}>{val}</td>;
+                                    return <td key={col} className={isContainerLookupColumn(col) ? styles.lookupCell : ''}>{val}</td>;
                                 })}
                             </tr>
                             );

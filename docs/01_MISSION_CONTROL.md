@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.13.19 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.20 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 체감 로딩을 줄이기 위해 첫 화면 payload와 불필요한 번들을 줄였습니다.
+> 최신 업데이트: 아산 선적관리와 컨테이너 이력조회 콜라보 1차 파이프라인을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.19
+- **웹 버전**: v5.13.20
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 아산 선적관리 기본 조회를 100행으로 낮춰 첫 응답 payload를 약 43KB로 축소.
-  - 엑셀 다운로드 라이브러리 `xlsx`는 버튼 클릭 시 동적 import로만 로드.
-  - 아산 메인 탭을 기억해 선적관리 재방문 시 배차판 fetch가 먼저 돌지 않도록 보강.
+  - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀에서 사라진 행은 archive 테이블에 보존.
+  - 선적관리 필터 결과의 컨테이너를 `/api/els/run`으로 조회해 No.1 메인 이력 행을 초록색 컬럼으로 표시.
+  - 컨테이너 이력조회 결과는 `branch_shipping_container_lookups`에 run 단위로 누적 저장.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.20**: 아산 선적관리-컨테이너 이력조회 콜라보 1차. 엑셀 동기화 시 현재 원장은 엑셀 기준으로 교체하되, 사라진 행은 `branch_shipping_row_archive`에 `deleted_from_excel`로 보관. 선적관리 화면에 `컨테이너 조회` 버튼을 추가해 현재 필터 결과의 컨테이너를 `/api/els/run` 파이프라인으로 조회하고, No.1 메인 이력 행을 `이력 ...` 초록색 컬럼으로 노출. 조회 결과는 `branch_shipping_container_lookups`에 누적 저장하며 DB수정 시각을 화면에 표시.
 - **v5.13.19**: 컨테이너 이력조회 300초 스톱 원인을 보강. DrissionPage alert 기본 10초 대기 반복을 0.05초 즉시 확인으로 바꾸고, 빈 데몬 상태에서는 `/run`이 먼저 로그인 세션을 확보하도록 변경. 배치 중 워커가 추가로 살아나면 같은 조회 안에서 병렬도를 확장하며, `/api/els` NAS nginx 스트리밍 타임아웃/버퍼링과 Vercel route maxDuration을 보강. 클라이언트 연결이 끊기면 generator가 GeneratorExit를 삼키지 않고 데몬 stop을 호출.
 - **v5.13.18**: 아산 선적관리 첫 조회를 100행으로 줄여 운영 API 기준 42,992 bytes 응답을 확인하고, 500행 212,531 bytes 대비 초기 payload를 약 1/5로 축소. `xlsx`는 엑셀 다운로드 클릭 시 lazy import하고, 아산 메인 탭을 localStorage에 저장해 선적관리 사용자가 재방문할 때 불필요한 배차판 초기 fetch를 줄임. 운영/NAS/Core API 모두 `source=supabase`, 총 965건 조회를 확인.
 - **v5.13.17**: 컨테이너 이력조회 배치가 준비된 워커를 모두 쓰도록 `reserveSingle=false`를 전달하고, 백엔드는 완료된 행을 순서 대기 없이 즉시 스트리밍. ETrans 입력값은 JS 세팅/검증 우선, 조회 버튼은 JS 이벤트 우선으로 바꿔 80~90초 클릭 대기 병목을 줄이고 단계별 타이밍 로그를 추가.
@@ -78,6 +79,11 @@
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 14개 통과
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
 - `git diff --check`: 통과
+- Supabase migration `asan_shipping_history_and_lookup`: 적용 성공. `branch_shipping_row_archive`, `branch_shipping_container_lookups` 생성 확인.
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 17개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js`: 0 errors
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
+- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
 - `node --test web/tests/containerInput.test.mjs`: 4개 통과
 - `node --test web/tests/vehicleLocation.test.mjs`: 6개 통과
 - `npm.cmd run lint`: 통과
