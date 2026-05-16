@@ -1,14 +1,14 @@
-# ELS MISSION CONTROL (v5.13.15 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.16 / APK v5.11.12)
 
-> 최신 업데이트: NAS 전체 배포 스크립트의 sudo 호출을 NOPASSWD 절대경로 기준으로 보강했습니다.
+> 최신 업데이트: NAS 전체 배포 스크립트에 Docker PATH 주입과 실패 즉시 중단을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.15
+- **웹 버전**: v5.13.16
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - `scripts/nas-deploy.sh`가 `sudo -n /usr/local/bin/docker-compose`, `sudo -n /usr/local/bin/docker`를 사용.
-  - SSH 비대화형 배포에서 sudo 비밀번호 프롬프트로 전체 배포가 중단되는 문제를 방지.
+  - `nas-deploy.sh`가 `docker-compose` 내부 build subprocess에서도 `docker`를 찾도록 PATH를 주입.
+  - `set -e`로 compose 실패 후 완료처럼 보이는 잘못된 배포 로그를 차단.
   - 컨테이너 조회 중지/데몬 리셋 강제 취소 흐름은 v5.13.14 기준 유지.
 
 ## ACTIVE SYSTEMS
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.16**: `nas-deploy.sh`에 Docker PATH를 sudo 환경변수로 주입하고 `set -e`를 추가해 docker-compose build가 `docker` 실행 파일을 못 찾거나 실패했을 때 즉시 중단되도록 보강.
 - **v5.13.15**: `nas-deploy.sh`의 Docker 호출을 NOPASSWD sudoers와 일치하는 절대경로/비대화형 sudo로 변경해 SSH 배포 중 비밀번호 프롬프트로 core/bot/gateway 빌드가 멈추는 문제를 방지.
 - **v5.13.14**: 컨테이너 이력조회 진행 중 버튼을 `조회 중지`로 전환하고 AbortController/stop-daemon을 연결. 백엔드는 배치 큐를 동적 제출로 바꿔 미제출 행을 `조회 중지됨` 오류 행으로 확정하고, 데몬은 stop 플래그와 세대 번호로 리셋 후 늦은 로그인/복구 워커가 다시 붙지 못하게 차단.
 - **v5.13.13**: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩으로 전환해 첫 요청을 500행으로 축소. 검색어는 서버 쿼리로 전달하고 콤마 구분 OR 검색을 지원. DB 전체 건수/로드 건수와 더보기 UI를 추가하고 Hook 경고를 제거.

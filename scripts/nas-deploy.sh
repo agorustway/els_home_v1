@@ -1,11 +1,13 @@
 #!/bin/bash
 # [v4.5.2] ELS Unified (Bot + Core + Gateway) 전체 배포 스크립트
+set -e
 cd "$(dirname "$0")/.."
 echo "--- 🚀 ELS 통합 백엔드 전체 재배포 시작 ---"
 
 DOCKER_BIN="${DOCKER_BIN:-/usr/local/bin/docker}"
 COMPOSE_BIN="${COMPOSE_BIN:-/usr/local/bin/docker-compose}"
 SUDO_BIN="${SUDO_BIN:-sudo -n}"
+DOCKER_PATH="${DOCKER_PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}}"
 
 # 1. 소스코드 동기화
 /opt/bin/git fetch origin main
@@ -52,10 +54,10 @@ EOF
 
 # 3. 전체 서비스 빌드 및 재실행
 echo ">>> 전 서비스 빌드 및 재가동..."
-$SUDO_BIN "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --build --force-recreate
+$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --build --force-recreate
 
 # 3. 정리
-$SUDO_BIN "$DOCKER_BIN" system prune -f
-$SUDO_BIN "$DOCKER_BIN" builder prune -f
+$SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" system prune -f
+$SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" builder prune -f
 echo "✅ 통합 배포 완료! (기존 포트 2929 게이트웨이 생존 확인)"
-$SUDO_BIN "$DOCKER_BIN" ps
+$SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" ps

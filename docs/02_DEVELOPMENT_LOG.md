@@ -1,4 +1,17 @@
 
+## [2026-05-16] NAS 배포 Docker PATH/실패 감지 보강 (v5.13.16)
+### 🚀 Achievement
+- **Docker PATH 주입**: Synology 비대화형 sudo 환경에서 `docker-compose build`가 내부적으로 호출하는 `docker` 실행 파일을 찾도록 `PATH=/usr/local/bin:...`을 명시 주입했습니다.
+- **거짓 완료 방지**: `set -e`를 추가해 compose/build/prune 중 하나라도 실패하면 스크립트가 즉시 실패하도록 바꿨습니다.
+- **sudoers 호환 유지**: 명령 자체는 `/usr/local/bin/docker-compose`, `/usr/local/bin/docker` 절대경로를 유지해 NOPASSWD 규칙과 계속 일치합니다.
+### 🧪 검증
+- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh` 통과
+- NAS에서 `sudo -n PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /usr/local/bin/docker-compose version` 통과
+### 📁 변경 파일
+- `scripts/nas-deploy.sh`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] NAS 전체 배포 sudo 경로 보강 (v5.13.15)
 ### 🚀 Achievement
 - **비대화형 배포 복구**: `nas-deploy.sh`가 SSH 비대화형 세션에서도 sudo 비밀번호 프롬프트 없이 진행되도록 `sudo -n`을 사용합니다.
