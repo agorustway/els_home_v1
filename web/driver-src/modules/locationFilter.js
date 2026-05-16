@@ -5,6 +5,12 @@ export function haversineKm(lat1, lng1, lat2, lng2) {
   return 12742 * Math.asin(Math.sqrt(a));
 }
 
+const HARD_TRUCK_SPEED_LIMIT_KMH = 145;
+const LOW_SPEED_KMH = 15;
+const STATIONARY_SPEED_KMH = 4;
+const LOW_SPEED_JUMP_KM = 0.08;
+const STATIONARY_JUMP_KM = 0.06;
+
 function pointTime(point) {
   const raw = point?.recorded_at || point?.timestamp || point?.created_at;
   const time = raw ? new Date(raw).getTime() : 0;
@@ -15,6 +21,19 @@ function speedKmh(speed) {
   const n = Number(speed);
   if (!Number.isFinite(n) || n < 0) return 0;
   return n;
+}
+
+function adaptiveSpeedLimit(sensorSpeed) {
+  if (sensorSpeed <= STATIONARY_SPEED_KMH) return 60;
+  if (sensorSpeed < LOW_SPEED_KMH) return 90;
+  return Math.min(HARD_TRUCK_SPEED_LIMIT_KMH, Math.max(105, sensorSpeed + 45));
+}
+
+function isLowSpeedJump({ distKm, implied, sensor, accuracy }) {
+  if (sensor <= STATIONARY_SPEED_KMH && distKm > STATIONARY_JUMP_KM && implied > 25) return true;
+  if (sensor < LOW_SPEED_KMH && distKm > LOW_SPEED_JUMP_KM && implied > 45) return true;
+  if (accuracy > 60 && sensor < LOW_SPEED_KMH && distKm > LOW_SPEED_JUMP_KM) return true;
+  return false;
 }
 
 function trimEndpointOutliers(points = []) {
@@ -74,17 +93,19 @@ export function filterRouteLocations(locations = []) {
     const timeSec = Math.max(1, (pointTime(curr) - pointTime(prev)) / 1000);
     const implied = distKm / (timeSec / 3600);
     const sensor = speedKmh(curr.speed);
-    if (distKm > 0.5 && implied > Math.max(135, sensor + 45)) continue;
+    if (pointTime(curr) + 1000 < pointTime(prev)) continue;
+    if (distKm > 0.05 && implied > adaptiveSpeedLimit(sensor)) continue;
+    if (isLowSpeedJump({ distKm, implied, sensor, accuracy: Number(curr.accuracy || 0) })) continue;
 
     const next = ordered[i + 1];
     if (next) {
       const nextDist = haversineKm(curr.lat, curr.lng, Number(next.lat), Number(next.lng));
       const bridgeDist = haversineKm(prev.lat, prev.lng, Number(next.lat), Number(next.lng));
-      if (sensor < 15 && distKm > 0.08 && nextDist > 0.08 && bridgeDist < Math.max(0.06, distKm * 0.45)) continue;
+      if (sensor < LOW_SPEED_KMH && distKm > LOW_SPEED_JUMP_KM && nextDist > LOW_SPEED_JUMP_KM && bridgeDist < Math.max(0.06, distKm * 0.45)) continue;
       if (distKm > 0.7 && nextDist > 0.7 && bridgeDist < Math.max(0.3, Math.min(distKm, nextDist) * 0.55)) continue;
     }
 
-    const minMoveKm = sensor < 10 ? 0.015 : sensor < 40 ? 0.025 : 0.05;
+    const minMoveKm = sensor < 10 ? 0.02 : sensor < 40 ? 0.035 : 0.06;
     if (distKm < minMoveKm && !curr.marker_type) continue;
     filtered.push(curr);
   }

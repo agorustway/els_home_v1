@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
-import { shouldAcceptLocation } from '@/utils/vehicleLocation.mjs';
+import { sanitizeRecordedAt, shouldAcceptLocation } from '@/utils/vehicleLocation.mjs';
 
 /**
  * POST /api/vehicle-tracking/location
@@ -11,7 +11,7 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { trip_id, lat, lng, accuracy, speed, method = 'GPS', source, marker_type, gyro } = body;
+        const { trip_id, lat, lng, accuracy, speed, method = 'GPS', source, marker_type, gyro, recorded_at } = body;
 
         if (!trip_id || lat === undefined || lng === undefined) {
             return NextResponse.json({ error: 'trip_id, lat, lng는 필수입니다.' }, { status: 400 });
@@ -48,20 +48,43 @@ export async function POST(request) {
 
         const speedNum = Number(speed || 0);
         const sourceText = String(source || '');
-        const speedKmh = sourceText.startsWith('native') || sourceText === 'standalone_app'
+        const speedKmh = sourceText.startsWith('native')
+            || sourceText === 'standalone_app'
+            || sourceText === 'map_foreground'
+            || sourceText === 'app_foreground'
+            || sourceText === 'webview_kmh'
             ? speedNum
             : (speedNum > 80 ? speedNum : speedNum * 3.6);
+        const recordedAt = sanitizeRecordedAt(recorded_at);
 
         const { data: previousLocations } = await supabase
             .from('vehicle_locations')
-            .select('lat,lng,accuracy,speed,recorded_at,marker_type')
+            .select('lat,lng,accuracy,speed,recorded_at')
             .eq('trip_id', trip_id)
             .order('recorded_at', { ascending: false })
-            .limit(1);
+            .limit(2);
+
+        const latestLocation = previousLocations?.[0] || null;
+        const olderLocation = previousLocations?.[1] || null;
+        const currentPoint = { lat, lng, accuracy, speed: speedKmh, recorded_at: recordedAt, marker_type };
+        let previousForDecision = latestLocation;
+
+        // 이미 저장된 직전 점이 튀었다가 현재 점이 원래 경로로 복귀한 상황이면,
+        // 현재 정상점을 버리지 않도록 그 이전 점을 기준으로 판정한다.
+        if (!marker_type && latestLocation && olderLocation) {
+            const latestDecision = shouldAcceptLocation({
+                current: latestLocation,
+                previous: olderLocation,
+                next: currentPoint,
+            });
+            if (!latestDecision.ok && latestDecision.reason === 'spike_return') {
+                previousForDecision = olderLocation;
+            }
+        }
 
         const decision = shouldAcceptLocation({
-            current: { lat, lng, accuracy, speed: speedKmh, recorded_at: new Date().toISOString(), marker_type },
-            previous: previousLocations?.[0] || null,
+            current: currentPoint,
+            previous: previousForDecision,
             // marker_type(TRIP_START/END/PAUSE/RESUME)이 있으면 accuracy 무관 강제 허용
             forced: Boolean(marker_type) || source === 'native_forced',
         });
@@ -76,23 +99,38 @@ export async function POST(request) {
             });
         }
 
-        const { data, error } = await supabase
+        const insertPayload = {
+            trip_id,
+            lat,
+            lng,
+            accuracy: accuracy || null,
+            speed: Number.isFinite(speedKmh) ? Math.max(0, Math.min(speedKmh, 160)) : null,
+            method: source || method,
+            address,
+            // 일부 운영 DB에는 marker_type/gyro 컬럼이 아직 없을 수 있어 실패 시 아래에서 재시도한다.
+            ...(marker_type ? { marker_type } : {}),
+            ...(gyro !== undefined ? { gyro } : {}),
+            recorded_at: recordedAt,
+        };
+
+        let { data, error } = await supabase
             .from('vehicle_locations')
-            .insert([{
-                trip_id,
-                lat,
-                lng,
-                accuracy: accuracy || null,
-                speed: Number.isFinite(speedKmh) ? Math.max(0, Math.min(speedKmh, 160)) : null,
-                method: source || method,
-                address,
-                // [v4.2.48] 이벤트 마커 & 자이로 데이터 저장 (DB 컬럼이 없으면 무시됨)
-                ...(marker_type ? { marker_type } : {}),
-                ...(gyro !== undefined ? { gyro } : {}),
-                recorded_at: new Date().toISOString(),
-            }])
+            .insert([insertPayload])
             .select()
             .single();
+
+        if (error && (error.code === '42703' || /marker_type|gyro|schema cache/i.test(error.message || ''))) {
+            const fallbackPayload = { ...insertPayload };
+            delete fallbackPayload.marker_type;
+            delete fallbackPayload.gyro;
+            const retry = await supabase
+                .from('vehicle_locations')
+                .insert([fallbackPayload])
+                .select()
+                .single();
+            data = retry.data;
+            error = retry.error;
+        }
 
         if (error) throw error;
         return NextResponse.json({ location: data, address }, {

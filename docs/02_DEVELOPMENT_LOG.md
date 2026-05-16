@@ -1,4 +1,38 @@
 
+## [2026-05-16] 차량위치관제 GPS 품질/앱 지도 UX 리팩터링 (v5.13.4 / APK v5.11.11)
+### 🚀 Achievement
+- **실제 운송 데이터 분석**: 최근 운행 GPS 표본 1,000개를 분석해 raw 97.6km가 보정 후 54.4km로 줄어드는 것을 확인했습니다. 정차/저속 중 좌표 점프 47건, spike-return 37건, 불가능 순간속도 10건이 핵심 원인이었습니다.
+- **GPS 판정 강화**: `shouldAcceptLocation()`에 저속 점프, 정차 중 이동거리, 적응형 화물차 속도 제한, 기록시간 역전 방지 기준을 추가했습니다. 서버 저장 시 클라이언트 수신시각을 보존해 오프라인 큐가 한 시각에 몰리며 순간이동처럼 보이는 문제를 줄였습니다.
+- **관제 응답 정제**: Vercel API와 NAS Flask 관제 API 모두 최신 위치를 raw 마지막 점이 아니라 보정 경로의 마지막 정상점으로 계산하도록 변경했습니다. 기록 탭의 최고/평균 속도도 보정 포인트 기준으로 계산합니다.
+- **앱 지도 개선**: 앱 전경/지도 화면에서 GPS 수집 주기를 단축하고, 지도 화면은 5초 폴링과 1초 전경 샘플링으로 부드럽게 갱신합니다. 선택 차량의 지나온 경로선은 현재 위치 샘플을 따라 계속 연장됩니다.
+- **UX 정리**: 앱 지도 상세보기 중 운행 목록 패널을 접어 겹침을 해소하고, 차량 마커 반복 클릭 시 13↔15 줌 토글이 되도록 했습니다. 내 위치/전체보기 버튼의 이모지를 제거했습니다. 웹 관제 상세 패널은 요약 헤더와 지표 스트립을 추가해 읽기 쉽게 정리했습니다.
+- **APK 반영**: 드라이버 앱 버전을 v5.11.11 / versionCode 5152로 올리고 공식 빌드 스크립트로 `web/public/apk/els_driver.apk`를 갱신했습니다.
+### 🧪 검증
+- `node --test web/tests/vehicleLocation.test.mjs` 통과
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1` 통과, APK metadata `versionCode 5152` / `versionName 5.11.11` 확인
+- 브라우저 확인: `http://localhost:3007/employees/vehicle-tracking?debug=true`에서 관제 화면과 상세 패널 렌더링 확인. 콘솔에는 위치 권한 경고만 확인됨.
+- `npm.cmd run build` 중 외부 HTTPS fetch 일부는 샌드박스 네트워크 제한으로 `EACCES` 경고가 발생했으나 빌드 종료 코드는 0입니다.
+### 📁 변경 파일
+- `web/utils/vehicleLocation.mjs`
+- `web/tests/vehicleLocation.test.mjs`
+- `web/app/api/vehicle-tracking/location/route.js`
+- `web/app/api/vehicle-tracking/trips/route.js`
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/constants/vehicleTracking.js`
+- `web/app/(standalone)/driver-app/page.js`
+- `web/driver-src/*`
+- `web/android/app/build.gradle`
+- `web/public/apk/version.json`
+- `web/public/apk/els_driver.apk`
+- `docker/els-backend/app.py`
+- `docker/els-backend/app_core.py`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-15] 업무보고/아산지점 테이블 밀도 표준화 (v5.13.3)
 ### 🚀 Achievement
 - **업무보고 목록 표준화**: 전체/일일/월간/내 업무보고 목록의 테이블 제목행을 연락처형 페이지와 같은 짙은 블루 헤더로 통일하고, 셀 폰트와 행 여백을 고밀도 업무 화면 기준으로 축소했습니다.

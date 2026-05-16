@@ -10,12 +10,43 @@ import 'react-quill/dist/quill.snow.css';
 import styles from './tracking.module.css';
 import { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from '@/constants/vehicleTracking';
 import { createClient } from '@/utils/supabase/client';
-import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
+import { displaySpeedKmh, filterRouteLocations, haversineKm, prepareLiveTrips, toTripTime } from '@/utils/vehicleLocation.mjs';
 import { extractYouTubeUrls, parseEducationLogTitle, toYouTubeEmbedUrl } from '@/utils/vehicleEducation.mjs';
 import { cargoTypeLabel, contractTypeLabel } from '@/utils/vehicleCargoOptions.mjs';
 
 const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
+const LIVE_DEFAULT_ZOOM = 13;
+const LIVE_FOCUS_ZOOM = 15;
+
+function animateMarker(marker, fromLat, fromLng, toLat, toLng, duration = 650) {
+    const start = performance.now();
+    const step = (now) => {
+        const elapsed = now - start;
+        const t = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        const lat = fromLat + (toLat - fromLat) * ease;
+        const lng = fromLng + (toLng - fromLng) * ease;
+        marker.setPosition(new naver.maps.LatLng(lat, lng));
+        if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+function setMarkerPositionSmooth(marker, pos, duration = 650) {
+    const prev = marker.getPosition?.();
+    if (!prev) {
+        marker.setPosition(pos);
+        return;
+    }
+    const prevLat = prev.lat();
+    const prevLng = prev.lng();
+    const nextLat = pos.lat();
+    const nextLng = pos.lng();
+    const dist = Math.abs(prevLat - nextLat) + Math.abs(prevLng - nextLng);
+    if (dist > 0.000001 && dist < 0.5) animateMarker(marker, prevLat, prevLng, nextLat, nextLng, duration);
+    else marker.setPosition(pos);
+}
 
 export default function VehicleTrackingPage() {
     // 탭 상태
@@ -42,6 +73,7 @@ export default function VehicleTrackingPage() {
     const mapInstanceRef = useRef(null);
     const markersRef = useRef([]); // 경로 상세용 마커
     const liveMarkersRef = useRef(new Map()); // 실시간 운영 차량 마커 (tripId → { marker, infoWindow })
+    const liveMarkerZoomRef = useRef({ tripId: null, zoomed: false });
     const polylineRef = useRef(null);
     const infoWindowRef = useRef(null);
     const intervalRef = useRef(null);
@@ -111,10 +143,14 @@ export default function VehicleTrackingPage() {
             if (typeof window !== 'undefined' && baseUrl.includes('localhost')) {
                 baseUrl = `http://${window.location.hostname}:2929`;
             }
-            const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
+            let res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
+            if (!res.ok && !baseUrl) {
+                res = await fetch('/api/vehicle-tracking/trips?mode=active');
+            }
             const data = await res.json();
-            if (data && Array.isArray(data.data)) {
-                setLiveTrips(prepareLiveTrips(data.data));
+            const rows = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.trips) ? data.trips : []);
+            if (rows.length > 0) {
+                setLiveTrips(prepareLiveTrips(rows));
             } else {
                 setLiveTrips([]); // [안전] 형식이 다르면 빈 배열로 초기화
             }
@@ -277,7 +313,7 @@ export default function VehicleTrackingPage() {
             
             // 시작과 끝 마커는 별도 처리, 중간 지점들만 주소 중복 체크
             if (!isStart && !isEnd) {
-                const distFromLast = lastMarkedPos ? haversine(lastMarkedPos.lat, lastMarkedPos.lng, l.lat, l.lng) : 999;
+                const distFromLast = lastMarkedPos ? haversineKm(lastMarkedPos.lat, lastMarkedPos.lng, l.lat, l.lng) : 999;
                 if (l.address === lastMarkedAddr && distFromLast < 3) return; // 동일 주소이거나 3km 이하면 스킵
             }
             
@@ -391,9 +427,13 @@ export default function VehicleTrackingPage() {
         realtimeIntervalRef.current = setInterval(async () => {
             try {
                 const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
-                const res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
+                let res = await fetch(`${baseUrl}/api/vehicle-tracking?mode=active`);
+                if (!res.ok && !baseUrl) {
+                    res = await fetch('/api/vehicle-tracking/trips?mode=active');
+                }
                 const data = await res.json();
-                if (data.data) setLiveTrips(data.data);
+                const rows = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.trips) ? data.trips : []);
+                setLiveTrips(prepareLiveTrips(rows));
 
                 // [추가] 상세보기와 동기화 (LIVE 동안 상세 지도의 경로와 위치 리스트 최신화)
                 if (tripId && window.location.pathname.includes('/vehicle-tracking')) {
@@ -723,9 +763,13 @@ export default function VehicleTrackingPage() {
             if (markerMap.has(trip.id)) {
                 // 기존 마커 재활용 — 위치만 부드럽게 이동
                 const entry = markerMap.get(trip.id);
-                entry.marker.setPosition(pos);
+                setMarkerPositionSmooth(entry.marker, pos);
                 entry.marker.setIcon({ content: iconHtml, anchor: new naver.maps.Point(22, 12) });
                 entry.marker.setZIndex(markerZIndex);
+                entry.infoWindow?.setContent(generateInfoWindowHtml(trip, loc, markerColor));
+                entry.trip = trip;
+                entry.loc = loc;
+                entry.markerColor = markerColor;
             } else {
                 // 신규 마커 생성
                 const marker = new naver.maps.Marker({
@@ -738,31 +782,45 @@ export default function VehicleTrackingPage() {
                     content: generateInfoWindowHtml(trip, loc, markerColor),
                     borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff'
                 });
+                const entry = { marker, infoWindow, trip, loc, markerColor };
 
                 naver.maps.Event.addListener(marker, 'click', () => {
+                    const currentTrip = entry.trip;
+                    const currentLoc = entry.loc;
+                    const currentMarkerColor = entry.markerColor;
+                    const currentPos = new naver.maps.LatLng(currentLoc.lat, currentLoc.lng);
                     if (infoWindowRef.current) infoWindowRef.current.close();
-                    handleSelectTrip(trip);
-                    if (trip.status === 'driving' || trip.status === 'paused') {
-                        startRealtimeTracking(trip.id);
+                    handleSelectTrip(currentTrip);
+                    if (currentTrip.status === 'driving' || currentTrip.status === 'paused') {
+                        startRealtimeTracking(currentTrip.id);
                     }
-                    if (!loc.address && window.naver?.maps?.Service) {
+                    if (!currentLoc.address && window.naver?.maps?.Service) {
                         naver.maps.Service.reverseGeocode({
-                            coords: new naver.maps.LatLng(loc.lat, loc.lng),
+                            coords: new naver.maps.LatLng(currentLoc.lat, currentLoc.lng),
                             orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(',')
                         }, (status, response) => {
                             if (status === naver.maps.Service.Status.OK) {
-                                loc.address = response.v2.address.jibunAddress || response.v2.address.roadAddress;
-                                infoWindow.setContent(generateInfoWindowHtml(trip, loc, markerColor));
+                                currentLoc.address = response.v2.address.jibunAddress || response.v2.address.roadAddress;
+                                infoWindow.setContent(generateInfoWindowHtml(currentTrip, currentLoc, currentMarkerColor));
                             }
                         });
                     }
                     infoWindow.open(map, marker);
                     infoWindowRef.current = infoWindow;
-                    map.setZoom(16);
-                    map.panTo(pos, { duration: 300, easing: 'easeOutCubic' });
+
+                    const prevZoomState = liveMarkerZoomRef.current;
+                    const isSameFocused = String(prevZoomState.tripId) === String(currentTrip.id) && prevZoomState.zoomed;
+                    if (isSameFocused) {
+                        map.setZoom(LIVE_DEFAULT_ZOOM);
+                        liveMarkerZoomRef.current = { tripId: currentTrip.id, zoomed: false };
+                    } else {
+                        map.setZoom(LIVE_FOCUS_ZOOM);
+                        liveMarkerZoomRef.current = { tripId: currentTrip.id, zoomed: true };
+                    }
+                    map.panTo(currentPos, { duration: 300, easing: 'easeOutCubic' });
                 });
 
-                markerMap.set(trip.id, { marker, infoWindow });
+                markerMap.set(trip.id, entry);
             }
 
             // 실시간 추적 중인 차량이면 지도 중심 부드럽게 따라감 (네비게이션 모드)
@@ -1014,8 +1072,9 @@ export default function VehicleTrackingPage() {
         if (!mapInstanceRef.current || !trip.lastLocation) return;
         const loc = trip.lastLocation;
         const pos = new window.naver.maps.LatLng(loc.lat, loc.lng);
-        mapInstanceRef.current.setCenter(pos);
-        mapInstanceRef.current.setZoom(16);
+        mapInstanceRef.current.panTo(pos, { duration: 350, easing: 'easeOutCubic' });
+        mapInstanceRef.current.setZoom(LIVE_FOCUS_ZOOM);
+        liveMarkerZoomRef.current = { tripId: trip.id, zoomed: true };
         window.scrollTo({ top: 0, behavior: 'smooth' }); // 상단 지도로 스크롤
     };
 
@@ -1153,7 +1212,7 @@ export default function VehicleTrackingPage() {
                                                 }
                                             }
                                         }}>
-                                            📍 포커스 맞추기
+                                            포커스 맞추기
                                         </button>
                                         <span style={{ width: 1, height: 20, background: '#cbd5e1', margin: '0 4px' }} />
                                         <GroupButton active={cargoGroupFilter === 'all'} onClick={() => setCargoGroupFilter('all')}>전체보기</GroupButton>
@@ -1539,6 +1598,18 @@ export default function VehicleTrackingPage() {
                         }}>✕</button>
                     </div>
                     <div className={styles.detailContent}>
+                        <div className={styles.detailHero}>
+                            <div>
+                                <div className={styles.detailKicker}>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {contractTypeLabel(selectedTrip.driver_contract_type || selectedTrip.contract_type || 'uncontracted')}</div>
+                                <div className={styles.detailHeroTitle}>{selectedTrip.vehicle_number || '-'} / {selectedTrip.driver_name || '-'}</div>
+                                <div className={styles.detailHeroMeta}>{selectedTrip.last_location_address || selectedTrip.lastLocation?.address || selectedTripLocations[selectedTripLocations.length - 1]?.address || '마지막 위치 확인 중'}</div>
+                            </div>
+                            <div className={styles.detailMetricStrip}>
+                                <div><span>상태</span><strong>{TRIP_STATUS_LABELS[selectedTrip.status] || '-'}</strong></div>
+                                <div><span>운행시간</span><strong>{getElapsedTimeString(selectedTrip.started_at, selectedTrip.completed_at)}</strong></div>
+                                <div><span>경로점</span><strong>{selectedTripLocations.length.toLocaleString('ko-KR')}</strong></div>
+                            </div>
+                        </div>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>기본 정보</div>
                             <div className={styles.detailInfoGrid}>

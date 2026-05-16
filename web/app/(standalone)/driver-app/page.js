@@ -196,12 +196,12 @@ export default function DriverAppPage() {
     };
 
     const getAdaptiveInterval = (speedKmh, isRealtime) => {
-        if (isRealtime) return 3000;
+        if (isRealtime) return 2000;
         const safeSpeed = displaySpeedKmh(speedKmh);
-        if (safeSpeed > 0 && safeSpeed < 20) return 5000;
-        if (safeSpeed < 45) return 7000;
-        if (safeSpeed < 75) return 12000;
-        return 15000;
+        if (safeSpeed > 0 && safeSpeed < 20) return 4000;
+        if (safeSpeed < 45) return 6000;
+        if (safeSpeed < 75) return 8000;
+        return 10000;
     };
 
     const formatIntervalLabel = (speedKmh, isRealtime = false) => {
@@ -226,7 +226,7 @@ export default function DriverAppPage() {
             await fetch('/api/vehicle-tracking/location', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed: speedKmh, source: 'standalone_app' }),
+                body: JSON.stringify({ trip_id: tripId, lat, lng, accuracy, speed: speedKmh, source: 'standalone_app', recorded_at: new Date().toISOString() }),
             });
             speedRef.current = speedKmh;
             setSendCount(prev => prev + 1);

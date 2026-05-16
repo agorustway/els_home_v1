@@ -7,8 +7,8 @@
  * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
  * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
-import { State, BASE_URL } from './store.js?v=5151';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5151';
+import { State, BASE_URL } from './store.js?v=5152';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5152';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)
@@ -22,6 +22,8 @@ let _currentSpeedKph = 0;
 let _motionBurstUntil = 0;
 let _mapForegroundTimer = null;
 let _mapForegroundBusy = false;
+let _appForegroundTimer = null;
+let _appForegroundBusy = false;
 
 // ─── 오프라인 큐 ────────────────────────────────────────────────
 export let _gpsOfflineQueue = [];
@@ -121,8 +123,38 @@ async function pollMapForegroundPosition() {
       onGpsUpdate(pos, false, State.trip.id, null, { source: 'map_foreground' }).catch?.(() => { });
     },
     () => { _mapForegroundBusy = false; },
-    { enableHighAccuracy: true, timeout: 900, maximumAge: 0 }
+    { enableHighAccuracy: true, timeout: 1200, maximumAge: 0 }
   );
+}
+
+async function pollAppForegroundPosition() {
+  if (_appForegroundBusy || _mapForegroundTimer || !navigator.geolocation) return;
+  if (document.visibilityState === 'hidden') return;
+  if (State.trip.status !== 'driving' || !State.trip.id) return;
+  _appForegroundBusy = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _appForegroundBusy = false;
+      onGpsUpdate(pos, false, State.trip.id, null, { source: 'app_foreground' }).catch?.(() => { });
+    },
+    () => { _appForegroundBusy = false; },
+    { enableHighAccuracy: true, timeout: 2000, maximumAge: 0 }
+  );
+}
+
+function startAppForegroundTracking() {
+  if (_appForegroundTimer) return;
+  _appForegroundTimer = setInterval(pollAppForegroundPosition, 4000);
+  document.addEventListener('visibilitychange', pollAppForegroundPosition);
+}
+
+function stopAppForegroundTracking() {
+  if (_appForegroundTimer) {
+    clearInterval(_appForegroundTimer);
+    _appForegroundTimer = null;
+  }
+  document.removeEventListener('visibilitychange', pollAppForegroundPosition);
+  _appForegroundBusy = false;
 }
 
 export function startMapForegroundTracking() {
@@ -180,6 +212,7 @@ export async function startGPS() {
 
   remoteLog('startGPS() — 네이티브 BackgroundGeolocation.addWatcher 시작', 'GPS_INIT');
   startMotionBurstWatcher();
+  startAppForegroundTracking();
 
   try {
     const watcherId = await BgGeo.addWatcher(
@@ -188,7 +221,7 @@ export async function startGPS() {
         backgroundTitle: 'ELS 위치 관제',
         requestPermissions: true,
         stale: false,
-        distanceFilter: 15,  // [v5.11.13] 5m→15m: 오차 범위 내 소이동 좌표 튐 방지
+        distanceFilter: 10,  // 지도 전경/저속 회전 구간을 더 촘촘히 잡되 서버 필터로 튐 제거
       },
       (location, error) => {
         if (error) {
@@ -258,6 +291,7 @@ export function stopGPS() {
     gpsWatchId = null;
   }
   lastGpsTimestamp = 0;
+  stopAppForegroundTracking();
 }
 
 // ─── 브라우저 폴백 (PC 개발/테스트용) ────────────────────────────
@@ -488,20 +522,21 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   const isMotionBurst = Date.now() < _motionBurstUntil;
   const isTurningOrChangingSpeed = isMotionBurst || speedDelta >= 10 || headingDelta >= 22;
 
-  // 내비게이션식 가변 전송 주기: 저속/회전/가감속은 촘촘히, 고속 안정 주행은 여유 있게.
-  let interval = 15_000;
-  if (State.trip.isRealtime) {
-    interval = 3_000;
+  // 내비게이션식 가변 전송 주기: 지도 전경/저속/회전/가감속은 촘촘히, 고속 안정 주행은 여유 있게.
+  const isMapForeground = options.source === 'map_foreground';
+  let interval = 10_000;
+  if (State.trip.isRealtime || isMapForeground) {
+    interval = 2_000;
   } else if (isTurningOrChangingSpeed) {
-    interval = 3_000;
+    interval = 2_500;
   } else if (speedKph < 15) {
-    interval = 6_000;
+    interval = 4_000;
   } else if (speedKph < 45) {
-    interval = 9_000;
+    interval = 6_000;
   } else if (speedKph >= 80) {
-    interval = 15_000;
+    interval = 10_000;
   } else {
-    interval = 12_000;
+    interval = 8_000;
   }
 
   if (interval !== currentGpsInterval) currentGpsInterval = interval;
@@ -520,9 +555,10 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     speed:       speedKph,
     accuracy:    accuracy || 0,
     marker_type: markerType || null,
-    source: isForced
+    recorded_at: new Date(curTime).toISOString(),
+    source: options.source || (isForced
       ? (markerType || 'native_forced')
-      : 'native_bg',
+      : 'native_bg'),
   };
 
   try {

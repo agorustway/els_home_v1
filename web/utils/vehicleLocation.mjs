@@ -5,6 +5,12 @@ const KOREA_BOUNDS = {
     maxLng: 132,
 };
 
+const HARD_TRUCK_SPEED_LIMIT_KMH = 145;
+const LOW_SPEED_KMH = 15;
+const STATIONARY_SPEED_KMH = 4;
+const LOW_SPEED_JUMP_KM = 0.08;
+const STATIONARY_JUMP_KM = 0.06;
+
 export function toTripTime(trip) {
     const raw = trip?.lastLocation?.recorded_at
         || trip?.lastLocation?.timestamp
@@ -74,6 +80,32 @@ export function getPointTime(point) {
     return Number.isFinite(time) ? time : 0;
 }
 
+export function sanitizeRecordedAt(value, nowMs = Date.now()) {
+    const parsed = value ? new Date(value).getTime() : nowMs;
+    if (!Number.isFinite(parsed)) return new Date(nowMs).toISOString();
+
+    // 클라이언트 시간이 크게 어긋나면 서버 시간을 사용한다.
+    const maxFutureMs = 2 * 60 * 1000;
+    const maxPastMs = 7 * 24 * 60 * 60 * 1000;
+    if (parsed > nowMs + maxFutureMs || parsed < nowMs - maxPastMs) {
+        return new Date(nowMs).toISOString();
+    }
+    return new Date(parsed).toISOString();
+}
+
+function adaptiveSpeedLimit(sensorSpeed) {
+    if (sensorSpeed <= STATIONARY_SPEED_KMH) return 60;
+    if (sensorSpeed < LOW_SPEED_KMH) return 90;
+    return Math.min(HARD_TRUCK_SPEED_LIMIT_KMH, Math.max(105, sensorSpeed + 45));
+}
+
+function isLowSpeedJump({ distKm, impliedSpeed, sensorSpeed, accuracy }) {
+    if (sensorSpeed <= STATIONARY_SPEED_KMH && distKm > STATIONARY_JUMP_KM && impliedSpeed > 25) return true;
+    if (sensorSpeed < LOW_SPEED_KMH && distKm > LOW_SPEED_JUMP_KM && impliedSpeed > 45) return true;
+    if (accuracy > 60 && sensorSpeed < LOW_SPEED_KMH && distKm > LOW_SPEED_JUMP_KM) return true;
+    return false;
+}
+
 export function shouldAcceptLocation({ current, previous, next = null, forced = false }) {
     const lat = Number(current?.lat);
     const lng = Number(current?.lng);
@@ -81,7 +113,7 @@ export function shouldAcceptLocation({ current, previous, next = null, forced = 
     if (!isCoordinateInKorea(lat, lng)) return { ok: false, reason: 'out_of_korea' };
 
     const accuracy = Number(current?.accuracy || 0);
-    if (!forced && accuracy > 300) return { ok: false, reason: 'low_accuracy' };
+    if (!forced && accuracy > 120) return { ok: false, reason: 'low_accuracy' };
     if (!previous) return { ok: true, reason: 'first' };
 
     const prevLat = Number(previous.lat);
@@ -92,16 +124,24 @@ export function shouldAcceptLocation({ current, previous, next = null, forced = 
     const distKm = haversineKm(prevLat, prevLng, lat, lng);
     const impliedSpeed = distKm / (timeSec / 3600);
     const sensorSpeed = normalizeSpeedKmh(current?.speed);
-    const speedLimit = Math.max(135, sensorSpeed + 45);
+    const speedLimit = adaptiveSpeedLimit(sensorSpeed);
 
-    if (!forced && distKm > 0.5 && impliedSpeed > speedLimit) {
-        return { ok: false, reason: 'impossible_speed', impliedSpeed };
+    if (!forced && currTime + 1000 < prevTime) {
+        return { ok: false, reason: 'out_of_order' };
+    }
+
+    if (!forced && distKm > 0.05 && impliedSpeed > speedLimit) {
+        return { ok: false, reason: 'impossible_speed', impliedSpeed, speedLimit };
+    }
+
+    if (!forced && isLowSpeedJump({ distKm, impliedSpeed, sensorSpeed, accuracy })) {
+        return { ok: false, reason: 'low_speed_jump', impliedSpeed };
     }
 
     if (!forced && next) {
         const nextDist = haversineKm(lat, lng, Number(next.lat), Number(next.lng));
         const bridgeDist = haversineKm(prevLat, prevLng, Number(next.lat), Number(next.lng));
-        const lowSpeedSpike = sensorSpeed < 15 && distKm > 0.08 && nextDist > 0.08 && bridgeDist < Math.max(0.06, distKm * 0.45);
+        const lowSpeedSpike = sensorSpeed < LOW_SPEED_KMH && distKm > LOW_SPEED_JUMP_KM && nextDist > LOW_SPEED_JUMP_KM && bridgeDist < Math.max(0.06, distKm * 0.45);
         const highSpeedSpike = distKm > 0.7 && nextDist > 0.7 && bridgeDist < Math.max(0.3, Math.min(distKm, nextDist) * 0.55);
         if (lowSpeedSpike || highSpeedSpike) return { ok: false, reason: 'spike_return' };
     }
@@ -129,7 +169,7 @@ export function filterRouteLocations(locations = []) {
         if (previous) {
             const distKm = haversineKm(previous.lat, previous.lng, current.lat, current.lng);
             const speedKmh = normalizeSpeedKmh(current.speed || previous.speed);
-            const minMoveKm = speedKmh < 10 ? 0.015 : speedKmh < 40 ? 0.025 : 0.05;
+            const minMoveKm = speedKmh < 10 ? 0.02 : speedKmh < 40 ? 0.035 : 0.06;
             if (distKm < minMoveKm && !current.marker_type) continue;
         }
 

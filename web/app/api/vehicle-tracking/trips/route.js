@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
-import { displaySpeedKmh, prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
+import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
 
 /**
  * GET /api/vehicle-tracking/trips
@@ -76,28 +76,19 @@ export async function GET(request) {
             const { data, error } = await query;
             if (error) throw error;
 
-            // 각 운행의 최신 위치도 함께 가져오기
+            // 각 운행의 최신 위치도 함께 가져오기. raw 최신점이 튀면 관제 지도 전체가 흔들리므로
+            // 운행별 최근 경로를 보정한 뒤 마지막 정상점을 사용한다.
             const tripIds = data.map(t => t.id);
             let locations = [];
             if (tripIds.length > 0) {
-                // rpc 또는 단건 조회
                 const { data: locData, error: locError } = await supabase
-                    .rpc('get_latest_vehicle_locations', { trip_ids: tripIds });
+                    .from('vehicle_locations')
+                    .select('trip_id, lat, lng, accuracy, speed, address, recorded_at')
+                    .in('trip_id', tripIds)
+                    .order('recorded_at', { ascending: true })
+                    .limit(10000);
 
-                if (!locError && locData) {
-                    locations = locData;
-                } else {
-                    for (const tripId of tripIds) {
-                        const { data: loc } = await supabase
-                            .from('vehicle_locations')
-                            .select('*')
-                            .eq('trip_id', tripId)
-                            .order('recorded_at', { ascending: false })
-                            .limit(1)
-                            .single();
-                        if (loc) locations.push(loc);
-                    }
-                }
+                if (!locError && locData) locations = locData;
 
                 const { data: logData, error: logError } = await supabase
                     .from('vehicle_trip_logs')
@@ -116,7 +107,15 @@ export async function GET(request) {
             }
 
             const locationMap = {};
-            locations.forEach(l => { locationMap[l.trip_id] = l; });
+            const groupedLocations = {};
+            locations.forEach(l => {
+                if (!groupedLocations[l.trip_id]) groupedLocations[l.trip_id] = [];
+                groupedLocations[l.trip_id].push(l);
+            });
+            Object.entries(groupedLocations).forEach(([tripId, list]) => {
+                const clean = filterRouteLocations(list);
+                locationMap[tripId] = clean[clean.length - 1] || list[list.length - 1] || null;
+            });
 
             const enriched = await attachDriverMeta(supabase, data);
             const merged = prepareLiveTrips(enriched.map(trip => ({
@@ -170,24 +169,33 @@ export async function GET(request) {
                     .from('vehicle_locations')
                     .select('trip_id, lat, lng, address, recorded_at, speed')
                     .in('trip_id', tripIds)
-                    .order('recorded_at', { ascending: false });
+                    .order('recorded_at', { ascending: true });
                 
                 if (!locError && locData) {
+                    const grouped = {};
+                    locData.forEach(l => {
+                        if (!grouped[l.trip_id]) grouped[l.trip_id] = [];
+                        grouped[l.trip_id].push(l);
+                    });
                     const locMap = {};
                     const maxSpeedMap = {};
                     const speedSumMap = {};
                     const speedCountMap = {};
-                    // 내림차순 정렬이므로 가장 먼저 만나는 것이 최신
-                    locData.forEach(l => {
-                        if (!locMap[l.trip_id]) locMap[l.trip_id] = l;
-                        const speed = displaySpeedKmh(l.speed);
-                        if (!maxSpeedMap[l.trip_id] || speed > maxSpeedMap[l.trip_id]) {
-                            maxSpeedMap[l.trip_id] = speed;
-                        }
-                        if (speed > 0) {
-                            speedSumMap[l.trip_id] = (speedSumMap[l.trip_id] || 0) + speed;
-                            speedCountMap[l.trip_id] = (speedCountMap[l.trip_id] || 0) + 1;
-                        }
+
+                    Object.entries(grouped).forEach(([tripId, list]) => {
+                        const clean = filterRouteLocations(list);
+                        const route = clean.length ? clean : list;
+                        locMap[tripId] = route[route.length - 1] || null;
+                        route.forEach(l => {
+                            const speed = displaySpeedKmh(l.speed);
+                            if (!maxSpeedMap[tripId] || speed > maxSpeedMap[tripId]) {
+                                maxSpeedMap[tripId] = speed;
+                            }
+                            if (speed > 0) {
+                                speedSumMap[tripId] = (speedSumMap[tripId] || 0) + speed;
+                                speedCountMap[tripId] = (speedCountMap[tripId] || 0) + 1;
+                            }
+                        });
                     });
                     data.forEach(t => {
                         t.lastLocation = locMap[t.id] || null;

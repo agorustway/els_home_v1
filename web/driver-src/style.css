@@ -407,16 +407,16 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
 .map-all-overlay-btn {
   position: absolute; top: 12px; left: 92px; z-index: 35;
   background: #2563eb; color: #fff; border: none;
-  border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 800;
+  border-radius: 20px; padding: 6px 13px; font-size: 13px; font-weight: 800;
   box-shadow: 0 2px 8px rgba(37,99,235,0.25);
   cursor: pointer;
 }
 .map-all-overlay-btn:active { background: #1d4ed8; }
 
 .map-showall-overlay-btn {
-  position: absolute; top: 12px; left: 180px; z-index: 35;
+  position: absolute; top: 12px; left: 164px; z-index: 35;
   background: #475569; color: #fff; border: none;
-  border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 800;
+  border-radius: 20px; padding: 6px 13px; font-size: 13px; font-weight: 800;
   box-shadow: 0 2px 8px rgba(71,85,105,0.25);
   cursor: pointer;
 }
@@ -506,12 +506,14 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
 /* 경로 정보 패널 */
 .map-route-panel {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 52px; left: 0; right: 0;
   background: #fff;
   border-top: 1px solid #e2e8f0;
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
   z-index: 40;
+  max-height: 38vh;
+  overflow: hidden;
   animation: panel-up 0.25s ease-out;
 }
 @keyframes panel-up {
@@ -531,4 +533,6 @@ body { padding-top: env(safe-area-inset-top); background: #111; }
 }
 .map-route-body {
   padding: 12px 16px 20px;
+  max-height: calc(38vh - 52px);
+  overflow-y: auto;
 }

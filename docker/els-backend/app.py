@@ -448,6 +448,89 @@ def delete_logs():
         app.logger.error(f"로그 삭제 실패: {e}")
         return jsonify({"error": str(e)}), 500
 
+def _vehicle_haversine_km(lat1, lng1, lat2, lng2):
+    p = math.pi / 180
+    a = (
+        0.5
+        - math.cos((lat2 - lat1) * p) / 2
+        + math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lng2 - lng1) * p)) / 2
+    )
+    return 12742 * math.asin(math.sqrt(max(0, a)))
+
+
+def _vehicle_point_ms(point):
+    raw = (point or {}).get("recorded_at") or (point or {}).get("timestamp") or (point or {}).get("created_at")
+    if not raw:
+        return 0
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).timestamp() * 1000
+    except Exception:
+        return 0
+
+
+def _vehicle_filter_locations(points):
+    ordered = []
+    for p in points or []:
+        try:
+            lat = float(p.get("lat"))
+            lng = float(p.get("lng"))
+        except Exception:
+            continue
+        if not (33 <= lat <= 39.5 and 124 <= lng <= 132):
+            continue
+        item = dict(p)
+        item["lat"] = lat
+        item["lng"] = lng
+        try:
+            item["speed"] = float(item.get("speed") or 0)
+        except Exception:
+            item["speed"] = 0
+        try:
+            item["accuracy"] = float(item.get("accuracy") or 0)
+        except Exception:
+            item["accuracy"] = 0
+        ordered.append(item)
+
+    ordered.sort(key=_vehicle_point_ms)
+    filtered = []
+    for idx, curr in enumerate(ordered):
+        if curr.get("accuracy", 0) > 120:
+            continue
+        prev = filtered[-1] if filtered else None
+        if not prev:
+            filtered.append(curr)
+            continue
+
+        time_sec = max(1, (_vehicle_point_ms(curr) - _vehicle_point_ms(prev)) / 1000)
+        if _vehicle_point_ms(curr) + 1000 < _vehicle_point_ms(prev):
+            continue
+        dist_km = _vehicle_haversine_km(prev["lat"], prev["lng"], curr["lat"], curr["lng"])
+        implied = dist_km / (time_sec / 3600)
+        sensor = max(0, curr.get("speed", 0))
+        speed_limit = 60 if sensor <= 4 else (90 if sensor < 15 else min(145, max(105, sensor + 45)))
+        if dist_km > 0.05 and implied > speed_limit:
+            continue
+        if sensor <= 4 and dist_km > 0.06 and implied > 25:
+            continue
+        if sensor < 15 and dist_km > 0.08 and implied > 45:
+            continue
+
+        nxt = ordered[idx + 1] if idx + 1 < len(ordered) else None
+        if nxt:
+            next_dist = _vehicle_haversine_km(curr["lat"], curr["lng"], float(nxt["lat"]), float(nxt["lng"]))
+            bridge_dist = _vehicle_haversine_km(prev["lat"], prev["lng"], float(nxt["lat"]), float(nxt["lng"]))
+            if sensor < 15 and dist_km > 0.08 and next_dist > 0.08 and bridge_dist < max(0.06, dist_km * 0.45):
+                continue
+            if dist_km > 0.7 and next_dist > 0.7 and bridge_dist < max(0.3, min(dist_km, next_dist) * 0.55):
+                continue
+
+        min_move_km = 0.02 if sensor < 10 else (0.035 if sensor < 40 else 0.06)
+        if dist_km < min_move_km and not curr.get("marker_type"):
+            continue
+        filtered.append(curr)
+    return filtered
+
+
 # --- 차량 관제 (Vehicle Tracking) ---
 @app.route("/api/vehicle-tracking", methods=["GET"])
 def get_vehicle_tracking():
@@ -479,11 +562,13 @@ def get_vehicle_tracking():
                 .order("recorded_at", desc=True) \
                 .execute()
         
-        loc_map = {}
+        loc_groups = {}
         for l in loc_res.data:
-            tid = l["trip_id"]
-            if tid not in loc_map:
-                loc_map[tid] = l
+            loc_groups.setdefault(l["trip_id"], []).append(l)
+        loc_map = {}
+        for tid, locs in loc_groups.items():
+            clean_locs = _vehicle_filter_locations(locs)
+            loc_map[tid] = (clean_locs[-1] if clean_locs else locs[0])
 
         driver_map = {}
         vehicle_numbers = list({t.get("vehicle_number") for t in trips if t.get("vehicle_number")})

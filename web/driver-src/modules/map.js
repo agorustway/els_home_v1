@@ -6,17 +6,19 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5151';
-import { smartFetch, remoteLog } from './bridge.js?v=5151';
-import { showToast } from './utils.js?v=5151';
-import { showScreen } from './nav.js?v=5151';
-import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5151';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5151';
-import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5151';
+import { State, BASE_URL } from './store.js?v=5152';
+import { smartFetch, remoteLog } from './bridge.js?v=5152';
+import { showToast } from './utils.js?v=5152';
+import { showScreen } from './nav.js?v=5152';
+import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5152';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5152';
+import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5152';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
 const SDK_SCRIPT_ID = 'naver-map-sdk';
+const MAP_DEFAULT_ZOOM = 13;
+const MAP_FOCUS_ZOOM = 15;
 
 // ─── 모듈 내부 상태 ────────────────────────────────────────────────
 let _map         = null;           // naver.maps.Map 인스턴스
@@ -31,6 +33,7 @@ let _sdkReady    = false;          // SDK 로드 완료 여부
 let _autoFollow  = true;           // 내 차량 자동 추적 (네비 모드)
 let _routeTripId  = null;          // 현재 상세 경로 표시 중인 tripId
 let _gpsSampleHandler = null;      // 지도 전경 GPS 샘플 핸들러
+let _zoomedTripId = null;          // 차량 마커 반복 클릭 줌 토글 상태
 
 function getVisibleTrips(trips, includeCompleted = false) {
   return filterTripsForMapVisibility(prepareLiveTrips(trips), State.profile, includeCompleted);
@@ -212,6 +215,13 @@ function handleForegroundGpsSample(event) {
 
   if (_routeTripId && String(_routeTripId) === String(State.trip.id) && _endMarker) {
     setMarkerPositionSmooth(_endMarker, lat, lng, 900);
+    try {
+      const path = _polyline?.getPath?.();
+      const lastIdx = path?.getLength?.() ? path.getLength() - 1 : -1;
+      const last = lastIdx >= 0 ? path.getAt(lastIdx) : null;
+      const moved = !last || Math.abs(last.lat() - lat) + Math.abs(last.lng() - lng) > 0.00015;
+      if (path && moved) path.push(pos);
+    } catch (_) { }
   }
 
   _trips = _trips.map(t => String(t.id) === String(State.trip.id)
@@ -287,8 +297,8 @@ function updateVehicleMarkers(trips) {
         title    : label,
         zIndex   : 100,
       });
-      // 클릭 시 경로/상세보기 조회
-      naver.maps.Event.addListener(m, 'click', () => showTripRouteOnMap(trip));
+      // 클릭 시 경로/상세보기 조회 + 줌 토글
+      naver.maps.Event.addListener(m, 'click', () => handleVehicleMarkerClick(trip));
       _markers.set(trip.id, m);
     }
   }
@@ -301,6 +311,10 @@ function updateVehicleMarkers(trips) {
       _map.panTo(pos, { duration: 500, easing: 'easeOutCubic' });
     }
   }
+}
+
+async function handleVehicleMarkerClick(trip) {
+  await showTripRouteOnMap(trip, { toggleZoom: true });
 }
 
 // ─── 경로(Polyline) 그리기 ───────────────────────────────────────────
@@ -367,7 +381,6 @@ function renderTripList(trips) {
   if (!visible.length) {
     container.innerHTML = `
       <div class="map-state-empty">
-        <span class="map-empty-icon">🚛</span>
         <span>운행 중인 차량이 없습니다.</span>
       </div>`;
     return;
@@ -465,9 +478,9 @@ export async function openMap() {
     });
   });
 
-  // 30초 폴링
+  // 지도 화면이 떠 있는 동안은 네비게이션처럼 짧게 폴링한다.
   if (_mapPollTimer) clearInterval(_mapPollTimer);
-  _mapPollTimer = setInterval(refreshMapData, 30000);
+  _mapPollTimer = setInterval(refreshMapData, 5000);
 
   remoteLog('[MAP] openMap 완료 (Dynamic SDK v3)', 'MAP_OPEN');
 }
@@ -484,7 +497,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5151');
+    const { loadCurrentTrip } = await import('./trip.js?v=5152');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -523,7 +536,8 @@ export function centerMyLocation() {
       }
 
       _map.panTo(position, { duration: 400, easing: 'easeOutCubic' });
-      _map.setZoom(13, true);
+      _map.setZoom(MAP_DEFAULT_ZOOM, true);
+      _zoomedTripId = null;
       showToast('내 위치로 이동했습니다.');
     },
     () => showToast('위치 정보를 가져올 수 없습니다.')
@@ -556,14 +570,23 @@ export function focusVehicleOnMap(trip) {
   _autoFollow = false;  // 수동 이동 시 자동추적 OFF
   const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
   _map.panTo(pos, { duration: 400, easing: 'easeOutCubic' });
-  _map.setZoom(12, true);
+  _map.setZoom(MAP_FOCUS_ZOOM, true);
+  _zoomedTripId = trip.id;
   showToast(`${trip.vehicle_number} 차량 위치로 이동했습니다.`);
 }
 
+function toggleVehicleZoom(trip) {
+  if (!_map || !trip?.lastLocation) return;
+  const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
+  const isSameZoomed = String(_zoomedTripId) === String(trip.id) && _map.getZoom() > MAP_DEFAULT_ZOOM;
+  _map.panTo(pos, { duration: 350, easing: 'easeOutCubic' });
+  _map.setZoom(isSameZoomed ? MAP_DEFAULT_ZOOM : MAP_FOCUS_ZOOM, true);
+  _zoomedTripId = isSameZoomed ? null : trip.id;
+}
+
 /** 특정 차량의 경로를 지도 위에 표시 */
-export async function showTripRouteOnMap(trip) {
-  const isActiveMyTrip = isMyTrip(trip) && (trip.status === 'driving' || trip.status === 'paused');
-  _autoFollow = isActiveMyTrip; // 내 현재 운행 경로는 네비처럼 계속 따라가고, 타 차량/완료 경로는 수동 조회
+export async function showTripRouteOnMap(trip, options = {}) {
+  _autoFollow = false; // 상세보기 중에는 지도 카메라를 고정한다.
   _routeTripId = trip.id;
   remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
 
@@ -584,10 +607,12 @@ export async function showTripRouteOnMap(trip) {
   if (!path.length) { showToast('경로 데이터가 없습니다.'); return; }
 
   drawPolyline(path, { alreadyMatched: path._matchedSource === 'naver-directions15' });
+  if (options.toggleZoom) toggleVehicleZoom(trip);
 
   // 경로 패널 표시
   const panel = document.getElementById('map-route-panel');
   if (panel) {
+    document.getElementById('map-bottom-panel')?.classList.add('collapsed');
     const titleEl = document.getElementById('map-route-title');
     if (titleEl) titleEl.textContent = trip.vehicle_number || '경로 정보';
     const countEl = document.getElementById('map-panel-count');
@@ -601,16 +626,16 @@ export async function showTripRouteOnMap(trip) {
       const stats = buildRouteStats(trip, rawLocations.length ? rawLocations : cleanPath);
 
       const statsHtml = [
-        `<div>⏱ <b>총운행시간</b>: ${stats.duration}</div>`,
-        `<div>⚡ <b>최고속도</b>: ${stats.maxSpeed} km/h</div>`,
-        `<div>📊 <b>평균속도</b>: ${stats.avgSpeed} km/h</div>`,
+        `<div><b>총운행시간</b>: ${stats.duration}</div>`,
+        `<div><b>최고속도</b>: ${stats.maxSpeed} km/h</div>`,
+        `<div><b>평균속도</b>: ${stats.avgSpeed} km/h</div>`,
       ].join('');
 
       bodyEl.innerHTML = `
         <div style="font-size:12px;color:#64748b;line-height:1.9;">
           <div><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:50%;margin-right:6px;"></span><b>입차</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
           <div><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:50%;margin-right:6px;"></span><b>마지막</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
-          <div>📊 <b>기록</b>: ${cleanPath.length}개 보정 포인트 / 원본 ${path.length}개</div>
+          <div><b>기록</b>: ${cleanPath.length}개 보정 포인트 / 원본 ${path.length}개</div>
           ${statsHtml}
         </div>`;
     }
@@ -625,7 +650,9 @@ export function clearMapRoute() {
   if (_startMarker) { _startMarker.setMap(null); _startMarker = null; }
   if (_endMarker)   { _endMarker.setMap(null);   _endMarker   = null; }
   _routeTripId = null;
+  _zoomedTripId = null;
   document.getElementById('map-route-panel')?.classList.add('hidden');
+  document.getElementById('map-bottom-panel')?.classList.remove('collapsed');
 }
 
 /** 하단 차량 목록 패널 토글 */

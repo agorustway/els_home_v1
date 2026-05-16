@@ -768,6 +768,7 @@
         right: 0;
         width: 100%;
         max-width: 100vw;
+        min-width: 0;
         box-sizing: border-box;
         overflow-x: hidden;
         height: 90dvh;
@@ -814,6 +815,24 @@
         box-sizing: border-box;
     }
 
+    .detailHero {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .detailMetricStrip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .detailMetricStrip div {
+        padding: 7px 6px;
+    }
+
+    .detailMetricStrip strong {
+        font-size: 0.72rem;
+    }
+
     .detailSection {
         padding: 12px;
         border-radius: 10px;
@@ -857,6 +876,7 @@
     .detailOverlay {
         width: 100% !important;
         max-width: 100vw;
+        min-width: 0;
     }
 
     .logChange {
@@ -1223,7 +1243,8 @@
     top: 0;
     right: 0;
     bottom: 0;
-    width: 500px;
+    width: min(620px, 44vw);
+    min-width: 520px;
     background: #fff;
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.15);
     z-index: 2100;
@@ -1250,6 +1271,9 @@
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .detailHeader h3 {
@@ -1275,18 +1299,78 @@
 .detailContent {
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 14px;
+    background: #f1f5f9;
+}
+
+.detailHero {
+    background: #fff;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+}
+
+.detailKicker {
+    font-size: 0.72rem;
+    font-weight: 900;
+    color: #2563eb;
+    margin-bottom: 4px;
+}
+
+.detailHeroTitle {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: 0;
+}
+
+.detailHeroMeta {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #64748b;
+    line-height: 1.35;
+}
+
+.detailMetricStrip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.detailMetricStrip div {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.detailMetricStrip span {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #94a3b8;
+    margin-bottom: 3px;
+}
+
+.detailMetricStrip strong {
+    display: block;
+    font-size: 0.84rem;
+    color: #0f172a;
+    white-space: nowrap;
 }
 
 /* 상세 섹션 카드 */
 .detailSection {
-    background: #f8fafc;
-    border-radius: 12px;
-    padding: 16px;
-    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid #dbe3ef;
 }
 
 .sectionTitle {
