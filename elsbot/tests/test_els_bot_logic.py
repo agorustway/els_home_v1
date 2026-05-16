@@ -129,8 +129,8 @@ class TestElsBotLogic(unittest.TestCase):
         result = solve_input_and_search(self.mock_page, "MSKU5071276")
 
         self.assertTrue(result)
-        input_ele.input.assert_called_with("MSKU5071276", clear=True)
-        search_btn.click.assert_called()
+        input_ele.input.assert_not_called()
+        search_btn.run_js.assert_called()
 
     @patch('els_bot.time.sleep', return_value=None)
     def test_solve_input_required_alert_returns_error_status(self, _sleep):

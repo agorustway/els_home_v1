@@ -467,7 +467,7 @@ function ContainerHistoryInner() {
             const res = await fetch(`${BACKEND_BASE_URL}/api/els/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ containers: targets, showBrowser, userId: id || userId, userPw: pw || userPw }),
+                body: JSON.stringify({ containers: targets, showBrowser, userId: id || userId, userPw: pw || userPw, reserveSingle: false }),
                 signal: abortController.signal,
             });
             const reader = res.body.getReader();

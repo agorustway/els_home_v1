@@ -260,21 +260,25 @@ def run():
                         return index, {"ok": False, "error": str(e), "result": [_status_row(cn, "ERROR", str(e))]}, cn, attempt, last_error
 
             sent_logs = set()
-            reserve_single = os.environ.get("ELS_RESERVE_SINGLE_WORKER", "true").lower() != "false"
+            reserve_single = data.get("reserveSingle")
+            if reserve_single is None:
+                reserve_single = os.environ.get("ELS_RESERVE_SINGLE_WORKER", "false").lower() == "true"
+            else:
+                reserve_single = bool(reserve_single)
             daemon_health = _daemon_health(timeout=3)
             batch_workers = _effective_batch_workers(daemon_health, reserve_single=reserve_single)
             yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
             executor = ThreadPoolExecutor(max_workers=batch_workers)
             try:
                 futures = {}
-                pending_results = {}
-                next_emit_index = 0
+                completed_results = {}
+                emitted_indices = set()
                 next_submit_index = 0
 
                 def mark_stopped_from(start_index=0):
                     for idx in range(start_index, len(containers)):
-                        if idx not in pending_results:
-                            pending_results[idx] = {
+                        if idx not in completed_results:
+                            completed_results[idx] = {
                                 "cn": containers[idx],
                                 "rows": [_status_row(containers[idx], "ERROR", "조회 중지됨")],
                                 "attempts": 1,
@@ -301,7 +305,7 @@ def run():
                     if global_stop_requested.is_set():
                         for f, idx in list(futures.items()):
                             if f.cancel():
-                                pending_results[idx] = {
+                                completed_results[idx] = {
                                     "cn": containers[idx],
                                     "rows": [_status_row(containers[idx], "ERROR", "조회 중지됨")],
                                     "attempts": 1,
@@ -319,7 +323,7 @@ def run():
                     for f in done:
                         index, res, cn, attempts, retry_reason = f.result()
                         rows = res.get("result") or [_status_row(cn, "ERROR", res.get("error") or "조회 실패")]
-                        pending_results[index] = {
+                        completed_results[index] = {
                             "cn": cn,
                             "rows": rows,
                             "attempts": attempts,
@@ -327,11 +331,9 @@ def run():
                             "error": res.get("error"),
                         }
                         del futures[f]
-
-                    ready_results, next_emit_index = _pop_ready_ordered_results(pending_results, next_emit_index)
-                    for item in ready_results:
+                        item = completed_results[index]
                         rows = item["rows"]
-                        final_rows.extend(rows)
+                        emitted_indices.add(index)
                         global_progress["completed"] += 1
                         global_last_activity_time = time.time()  # [v4.9.8] 개별 조회 완료 시마다 갱신
                         if item["attempts"] > 1:
@@ -350,13 +352,20 @@ def run():
                                 sent_logs.add(line)
                     except: pass
 
-                ready_results, next_emit_index = _pop_ready_ordered_results(pending_results, next_emit_index)
-                for item in ready_results:
+                for index in sorted(completed_results):
+                    if index in emitted_indices:
+                        continue
+                    item = completed_results[index]
                     rows = item["rows"]
-                    final_rows.extend(rows)
+                    emitted_indices.add(index)
                     global_progress["completed"] += 1
                     global_last_activity_time = time.time()
                     yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
+
+                for index in range(len(containers)):
+                    item = completed_results.get(index)
+                    if item:
+                        final_rows.extend(item["rows"])
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
 

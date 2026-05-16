@@ -227,6 +227,12 @@ def set_container_input_value(page, input_ele, container_no, log_callback=None):
             candidates.forEach(setObj);
         }})();
     """)
+    for _ in range(3):
+        values = read_container_input_value(page, input_ele)
+        if container_no in values:
+            return True
+        time.sleep(0.15)
+
     try:
         input_ele.input(container_no, clear=True)
     except:
@@ -448,21 +454,35 @@ def open_els_menu(page, log_callback=None):
 def solve_input_and_search(page, container_no, log_callback=None):
     """[전천후] 아이프레임 상관없이 입력창 찾아서 조회"""
     try:
+        solve_started = time.time()
+        def log_phase(name, started):
+            if log_callback:
+                elapsed = time.time() - started
+                if elapsed >= 1:
+                    log_callback(f"[{container_no}] {name} {elapsed:.1f}s")
+
         # 입력창 탐색 (서브에이전트 확인 결과 iframe 없음)
+        phase_started = time.time()
         input_ele = page.ele('css:#mf_tac_layout_contents_602_body_input_containerNo', timeout=5) or \
                     find_ele_globally(page, 'css:input[id*="containerNo"]', timeout=1)
+        log_phase("입력창 탐색", phase_started)
         if not input_ele:
             if log_callback: log_callback("❌ 입력창을 찾을 수 없습니다.")
             return "INPUT_NOT_FOUND"
         
         # 입력 전 팝업 정리
+        phase_started = time.time()
         close_modals(page)
+        log_phase("입력 전 모달 정리", phase_started)
         
-        # 값 입력 (WebSquare 컴포넌트 + 물리 입력 병행, 물리 입력을 마지막으로 유지)
+        # 값 입력 (WebSquare 컴포넌트 JS 우선, 검증 실패 시 물리 입력 fallback)
+        phase_started = time.time()
         try: input_ele.click(timeout=1)
         except: input_ele.click(by_js=True)
+        log_phase("입력창 포커스", phase_started)
         
         # [v4.12.5+] 조회 전 그리드 데이터 강제 초기화 (WebSquare 객체 + DOM 동시 타격)
+        phase_started = time.time()
         page.run_js("""
             var gridIds = [
                 'mf_tac_layout_contents_602_body_gridView', 
@@ -501,25 +521,39 @@ def solve_input_and_search(page, container_no, log_callback=None):
             });
         """)
         time.sleep(0.5)
+        log_phase("이전 그리드 초기화", phase_started)
 
+        phase_started = time.time()
         if not set_container_input_value(page, input_ele, container_no, log_callback=log_callback):
             return "INPUT_VALUE_NOT_SET"
+        log_phase("입력값 세팅/검증", phase_started)
         if log_callback: log_callback(f"[{container_no}] 입력 완료")
         
         # 조회 버튼 찾기 (형님이 주신 이미지의 정확한 ID 우선 수색)
+        phase_started = time.time()
         search_btn = page.ele('css:#mf_tac_layout_contents_602_body_btnSearch', timeout=2) or \
                      find_ele_globally(page, 'text:조회(F5)') or \
                      find_ele_globally(page, 'css:[id*="btnSearch"]')
+        log_phase("조회 버튼 탐색", phase_started)
         
         if search_btn:
+            phase_started = time.time()
             try:
-                search_btn.click(timeout=1)
-            except:
-                search_btn.click(by_js=True)
+                search_btn.run_js("""
+                    this.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                """)
+            except Exception:
+                try:
+                    search_btn.click(by_js=True)
+                except Exception:
+                    search_btn.click(timeout=1)
+            log_phase("조회 버튼 트리거", phase_started)
                 
             if log_callback: log_callback("🚀 조회 버튼 클릭 완료!")
 
+            phase_started = time.time()
             required_msg = close_required_input_alert(page)
+            log_phase("필수입력 알림 1차 확인", phase_started)
             if required_msg:
                 if log_callback: log_callback(f"❌ [검증] ETrans 필수 입력 알림 감지: {required_msg[:80]}")
                 return "INPUT_REQUIRED_MODAL"
@@ -535,6 +569,7 @@ def solve_input_and_search(page, container_no, log_callback=None):
                 if is_no_data_text(inner_text):
                     if log_callback: log_callback("✅ [검증] 내역 없음 확인됨")
                     return "내역없음확인"
+            log_phase("조회 후 초기 판정", solve_started)
             
             return True
         

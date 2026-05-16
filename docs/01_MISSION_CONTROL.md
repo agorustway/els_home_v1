@@ -1,23 +1,23 @@
-# ELS MISSION CONTROL (v5.13.16 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.17 / APK v5.11.12)
 
-> 최신 업데이트: NAS 전체 배포 스크립트에 Docker PATH 주입과 실패 즉시 중단을 추가했습니다.
+> 최신 업데이트: 컨테이너 이력조회 워커 사용과 부분 결과 표시 병목을 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.16
+- **웹 버전**: v5.13.17
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - `nas-deploy.sh`가 `docker-compose` 내부 build subprocess에서도 `docker`를 찾도록 PATH를 주입.
-  - `set -e`로 compose 실패 후 완료처럼 보이는 잘못된 배포 로그를 차단.
-  - 컨테이너 조회 중지/데몬 리셋 강제 취소 흐름은 v5.13.14 기준 유지.
+  - 컨테이너 이력조회 수동 배치는 준비된 워커를 모두 사용하고 AI/단건은 필요 시 대기.
+  - 부분 결과는 입력 순서 표를 유지하되 완료된 행부터 즉시 갱신해 2/10 정체처럼 보이는 현상 완화.
+  - ETrans 입력/조회 클릭은 JS 이벤트 우선으로 전환하고 단계별 타이밍 로그를 남김.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
-| NAS 백엔드 | 정상 | 전체 배포 스크립트 sudo 절대경로 보강 |
-| ELS Bot | 정상 | 조회 중지/데몬 리셋 강제 취소, 워커 세대 무효화 적용 |
+| NAS 백엔드 | 정상 | 컨테이너 부분 결과 즉시 스트림, 배포 스크립트 보강 |
+| ELS Bot | 정상 | JS 입력/조회 트리거, 단계별 병목 로그, 워커 세대 무효화 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
 ## INTRANET UI 기준
@@ -34,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.17**: 컨테이너 이력조회 배치가 준비된 워커를 모두 쓰도록 `reserveSingle=false`를 전달하고, 백엔드는 완료된 행을 순서 대기 없이 즉시 스트리밍. ETrans 입력값은 JS 세팅/검증 우선, 조회 버튼은 JS 이벤트 우선으로 바꿔 80~90초 클릭 대기 병목을 줄이고 단계별 타이밍 로그를 추가.
 - **v5.13.16**: `nas-deploy.sh`에 Docker PATH를 sudo 환경변수로 주입하고 `set -e`를 추가해 docker-compose build가 `docker` 실행 파일을 못 찾거나 실패했을 때 즉시 중단되도록 보강.
 - **v5.13.15**: `nas-deploy.sh`의 Docker 호출을 NOPASSWD sudoers와 일치하는 절대경로/비대화형 sudo로 변경해 SSH 배포 중 비밀번호 프롬프트로 core/bot/gateway 빌드가 멈추는 문제를 방지.
 - **v5.13.14**: 컨테이너 이력조회 진행 중 버튼을 `조회 중지`로 전환하고 AbortController/stop-daemon을 연결. 백엔드는 배치 큐를 동적 제출로 바꿔 미제출 행을 `조회 중지됨` 오류 행으로 확정하고, 데몬은 stop 플래그와 세대 번호로 리셋 후 늦은 로그인/복구 워커가 다시 붙지 못하게 차단.
@@ -56,12 +57,12 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
-- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh`: 통과
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control`: 16개 통과 (번들 Python 사용)
-- `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_daemon_stop_control.py`: 통과
+- `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_els_bot_logic.py`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 0 errors, 기존 warning 5건
 - `node --test web/tests/containerInput.test.mjs`: 4개 통과
 - `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh`: 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 13개 통과
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js`: 0 errors

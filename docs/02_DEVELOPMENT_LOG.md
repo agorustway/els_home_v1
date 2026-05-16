@@ -1,4 +1,27 @@
 
+## [2026-05-16] 컨테이너 이력조회 워커/표시 병목 보강 (v5.13.17)
+### 🚀 Achievement
+- **준비 워커 전체 사용**: 수동 컨테이너 이력조회 배치는 `reserveSingle=false`를 전달해 현재 준비된 워커를 모두 사용합니다. AI/단건 요청은 배치 중이면 큐에서 기다리는 쪽으로 둡니다.
+- **부분 결과 즉시 표시**: 백엔드 스트림은 입력 순서 앞 건을 기다리지 않고 완료된 컨테이너 행을 즉시 내려보냅니다. 프론트 테이블은 기존처럼 입력 순서를 유지하므로 뒤 결과도 제자리에서 먼저 갱신됩니다.
+- **클릭 병목 완화**: WebSquare 입력값은 JS 세팅/검증을 먼저 사용하고, 조회 버튼은 JS click 이벤트를 우선 트리거해 DrissionPage 물리 입력/클릭이 사이트 응답을 80~90초 붙잡는 경로를 줄였습니다.
+- **원인 추적 로그**: 입력창 탐색, 모달 정리, 입력값 세팅, 조회 버튼 트리거 등 단계별 1초 이상 지연을 로그로 남겨 다음 병목 위치를 바로 확인할 수 있게 했습니다.
+### 🧪 검증
+- `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety elsbot.tests.test_daemon_stop_control` 통과 (16개, 번들 Python 사용)
+- `python -m py_compile docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py elsbot/els_bot.py elsbot/tests/test_els_bot_logic.py` 통과
+- `node --test web/tests/containerInput.test.mjs` 통과 (4개)
+- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"` 0 errors, 기존 warning 5건
+- `npm.cmd run build` 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+- `git diff --check` 통과
+### 📁 변경 파일
+- `docker/els-backend/app_bot.py`
+- `elsbot/els_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_container_lookup_safety.py`
+- `elsbot/tests/test_els_bot_logic.py`
+- `web/app/(main)/employees/container-history/page.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] NAS 배포 Docker PATH/실패 감지 보강 (v5.13.16)
 ### 🚀 Achievement
 - **Docker PATH 주입**: Synology 비대화형 sudo 환경에서 `docker-compose build`가 내부적으로 호출하는 `docker` 실행 파일을 찾도록 `PATH=/usr/local/bin:...`을 명시 주입했습니다.

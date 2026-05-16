@@ -603,7 +603,9 @@ def run():
 
         # [추가] 로그 수집
         logs = []
-        def _log_cb(msg): logs.append(msg)
+        def _log_cb(msg):
+            logs.append(msg)
+            pool.add_log(msg)
 
         def _lookup_once():
             if pool.stop_requested.is_set():
