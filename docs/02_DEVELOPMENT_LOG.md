@@ -16,7 +16,8 @@
 ### 핵심
 - 선적관리 상단을 검색줄과 액션줄로 분리해 데스크톱 폭이 줄어도 버튼이 한 줄에서 깨지지 않도록 정리했습니다.
 - 모바일에서는 버튼 그룹을 3열/2열 그리드로 접어 검색, 프리셋, 엑셀, NAS 동기화, 컨테이너 조회가 겹치지 않게 했습니다.
-- 컨테이너 조회 버튼은 NAS 동기화 뒤쪽에 배치하고, 이력 컬럼과 숨김 이력 칩도 엑셀 원장 컬럼 뒤쪽으로 정렬되게 보정했습니다.
+- 컨테이너 조회 버튼은 NAS 동기화 뒤쪽에 배치하고, 이력 컬럼은 렌더링 단계에서 엑셀 원장 오른쪽으로 강제 고정했습니다.
+- 숨김 컬럼 칩은 `이력` 접두어를 줄이고 소형 고정 폭/말줄임 스타일로 단순화했습니다.
 - 검색 입력은 한글 조합 중 조회를 멈추고, 입력 종료 후 1초 뒤 DB 전체 조건 검색을 조용히 갱신하도록 변경했습니다. Enter는 즉시 검색합니다.
 - 삭제 archive는 365일, 컨테이너 lookup 조회 이력은 180일 보존으로 나누고 최신 lookup/보존기간 delete 인덱스를 추가했습니다.
 ### 검증
@@ -24,7 +25,7 @@
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/page.js" app/api/branches/asan/shipping/route.js app/api/branches/asan/shipping/container-results/route.js` 0 errors
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과 (번들 Python 사용)
 - Supabase 운영 DB 확인: 현재 원장 965행/약 6.4MB, archive 0건, lookup 0건. 최신 lookup/보존기간 인덱스 3개 생성 확인.
-- 로컬 dev 서버 `http://localhost:3001/employees/branches/asan`에서 검색 입력 중 테이블 유지와 `입력 대기` 표시 확인. 3000 포트는 기존 프로세스 점유로 3001 사용.
+- 로컬 dev 서버 `http://localhost:3001/employees/branches/asan`에서 검색 입력 중 테이블 유지, `입력 대기` 표시, 엑셀 컬럼 우선/이력 컬럼 우측 배치 확인. 3000 포트는 기존 프로세스 점유로 3001 사용.
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/AsanShipping.js`
 - `web/app/(main)/employees/branches/asan/shipping.module.css`

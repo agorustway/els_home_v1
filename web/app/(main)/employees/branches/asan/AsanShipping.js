@@ -76,6 +76,10 @@ function normalizeShippingColumnOrder(order, currentHeaders) {
     return [...excelCols, ...lookupCols, ...extraLookupCols];
 }
 
+function getHiddenChipLabel(col) {
+    return isContainerLookupColumn(col) ? String(col).replace(/^이력\s*/, '') : col;
+}
+
 export default function AsanShipping() {
     const [data, setData] = useState(null);
     const [headers, setHeaders] = useState([]);
@@ -196,6 +200,10 @@ export default function AsanShipping() {
         ];
     }, [hiddenCols]);
 
+    const orderedVisibleColumns = useMemo(() => (
+        normalizeShippingColumnOrder(colOrder, allHeaders)
+    ), [colOrder, allHeaders]);
+
     const getRowContainerNo = useCallback((row) => {
         if (!data?.headers) return '';
         return extractUniqueContainerNos(data.headers, [row])[0] || '';
@@ -300,7 +308,7 @@ export default function AsanShipping() {
 
     // Load preferences from DB (fallback to localStorage)
     useEffect(() => {
-        if (allHeaders.length === 0) return;
+        if (headers.length === 0 || allHeaders.length === 0) return;
         const loadDbPrefs = async () => {
             try {
                 const res = await fetch('/api/user/prefs?page_key=asan_shipping_default');
@@ -360,7 +368,7 @@ export default function AsanShipping() {
             setColOrder(normalizeShippingColumnOrder(allHeaders, allHeaders));
         };
         loadDbPrefs();
-    }, [allHeaders]);
+    }, [allHeaders, headers.length]);
 
     const containerRef = useRef(null);
     const tableWrapRef = useRef(null);
@@ -408,10 +416,11 @@ export default function AsanShipping() {
 
     // Auto-save layout to DB (debounced 1.5s)
     useEffect(() => {
-        if (colOrder.length === 0 || allHeaders.length === 0) return;
+        if (headers.length === 0 || colOrder.length === 0 || allHeaders.length === 0) return;
         const t = setTimeout(() => {
+            const normalizedOrder = normalizeShippingColumnOrder(colOrder, allHeaders);
             const settings = { 
-                colOrder, 
+                colOrder: normalizedOrder,
                 hiddenCols: Array.from(hiddenCols), 
                 sortConfig,
                 sourceHeaders: allHeaders // [v5.12.4] 제목 수정 추적용 원본 헤더 저장
@@ -421,10 +430,10 @@ export default function AsanShipping() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ page_key: 'asan_shipping_default', settings })
             }).catch(() => {});
-            localStorage.setItem(PREFS_KEY, JSON.stringify({ colOrder }));
+            localStorage.setItem(PREFS_KEY, JSON.stringify({ colOrder: normalizedOrder }));
         }, 1500);
         return () => clearTimeout(t);
-    }, [colOrder, hiddenCols, sortConfig, allHeaders]);
+    }, [colOrder, hiddenCols, sortConfig, allHeaders, headers.length]);
 
     const handleSort = (colName) => {
         let direction = 'asc';
@@ -476,7 +485,7 @@ export default function AsanShipping() {
         e.preventDefault();
         setIsDragOverHidden(false);
         if (draggedCol && colOrder.includes(draggedCol)) {
-            setColOrder(colOrder.filter(c => c !== draggedCol));
+            setColOrder(normalizeShippingColumnOrder(colOrder.filter(c => c !== draggedCol), allHeaders));
             setHiddenCols(prev => new Set(prev).add(draggedCol));
         }
         setDraggedCol(null);
@@ -498,8 +507,8 @@ export default function AsanShipping() {
         }
         const XLSX = await import('xlsx');
         
-        // Use colOrder to get the correctly ordered and filtered headers
-        const exportHeaders = colOrder;
+        // Use the rendered column order so container history stays at the right edge.
+        const exportHeaders = orderedVisibleColumns;
         
         // Map rows based on colOrder
         const exportRows = processedData.map(row => {
@@ -995,9 +1004,10 @@ export default function AsanShipping() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, col)}
                         onClick={() => handleRestoreCol(col)}
+                        title={`표로 복구: ${col}`}
                         className={`${styles.hiddenChip} ${isContainerLookupColumn(col) ? styles.hiddenLookupChip : ''}`}
                     >
-                        {col} +
+                        {getHiddenChipLabel(col)}
                     </button>
                 ))}
             </div>
@@ -1046,7 +1056,7 @@ export default function AsanShipping() {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            {colOrder.map(col => {
+                            {orderedVisibleColumns.map(col => {
                                 const isDragOver = dragOverCol === col;
                                 return (
                                     <th 
@@ -1077,7 +1087,7 @@ export default function AsanShipping() {
                                             <div 
                                                 className={styles.dropdown} 
                                                 onClick={e => e.stopPropagation()}
-                                                style={{ position: 'absolute', top: '100%', left: colOrder.indexOf(col) < 2 ? 0 : 'auto', right: colOrder.indexOf(col) < 2 ? 'auto' : 0, zIndex: 100, background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '8px', minWidth: '150px', maxHeight: '300px', display: 'flex', flexDirection: 'column' }}
+                                                style={{ position: 'absolute', top: '100%', left: orderedVisibleColumns.indexOf(col) < 2 ? 0 : 'auto', right: orderedVisibleColumns.indexOf(col) < 2 ? 'auto' : 0, zIndex: 100, background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '8px', minWidth: '150px', maxHeight: '300px', display: 'flex', flexDirection: 'column' }}
                                             >
                                                 <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
                                                     <button onClick={() => selectAllFilter(col, getUniqueValues(col))} style={{ flex: 1, padding: '4px', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>전체 선택</button>
@@ -1105,14 +1115,14 @@ export default function AsanShipping() {
                     <tbody>
                         {topSpacerHeight > 0 && (
                             <tr className={styles.virtualSpacer} aria-hidden="true">
-                                <td colSpan={Math.max(colOrder.length, 1)} style={{ height: topSpacerHeight }} />
+                                <td colSpan={Math.max(orderedVisibleColumns.length, 1)} style={{ height: topSpacerHeight }} />
                             </tr>
                         )}
                         {visibleRows.map((row, vi) => {
                             const ri = visibleStart + vi;
                             return (
                             <tr key={ri} className={ri % 2 === 0 ? styles.evenRow : styles.oddRow}>
-                                {colOrder.map(col => {
+                                {orderedVisibleColumns.map(col => {
                                     const raw = getDisplayCellRawValue(row, col);
                                     const val = formatCellValue(raw, col);
                                     return <td key={col} className={isContainerLookupColumn(col) ? styles.lookupCell : ''}>{val}</td>;
@@ -1122,7 +1132,7 @@ export default function AsanShipping() {
                         })}
                         {bottomSpacerHeight > 0 && (
                             <tr className={styles.virtualSpacer} aria-hidden="true">
-                                <td colSpan={Math.max(colOrder.length, 1)} style={{ height: bottomSpacerHeight }} />
+                                <td colSpan={Math.max(orderedVisibleColumns.length, 1)} style={{ height: bottomSpacerHeight }} />
                             </tr>
                         )}
                     </tbody>

@@ -247,13 +247,13 @@
 .hiddenColsZone {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 5px;
     align-items: center;
-    min-height: 40px;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 2px dashed #cbd5e1;
-    border-radius: 8px;
+    min-height: 34px;
+    padding: 7px 9px;
+    margin-bottom: 8px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
     background: #f8fafc;
     transition: border-color 0.2s, background 0.2s;
 }
@@ -265,24 +265,34 @@
 
 .hiddenColsHint {
     color: #64748b;
-    font-size: 0.86rem;
+    font-size: 0.74rem;
+    font-weight: 700;
     margin-right: 6px;
 }
 
 .hiddenChip {
-    padding: 4px 10px;
-    background: #e2e8f0;
-    border: 1px solid #cbd5e1;
-    border-radius: 16px;
-    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    max-width: 92px;
+    padding: 0 8px;
+    background: #edf2f7;
+    border: 1px solid #d7dee8;
+    border-radius: 5px;
+    font-size: 0.68rem;
     font-weight: 700;
     color: #334155;
     cursor: pointer;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .hiddenLookupChip {
-    background: #dcfce7;
-    border-color: #86efac;
+    background: #e8f7ee;
+    border-color: #a7d8b9;
     color: #166534;
 }
 
@@ -640,9 +650,9 @@
     }
 
     .hiddenColsZone {
-        padding: 8px;
-        gap: 6px;
-        margin-bottom: 8px;
+        padding: 6px;
+        gap: 4px;
+        margin-bottom: 7px;
     }
 
     .hiddenColsHint {
@@ -652,9 +662,10 @@
     }
 
     .hiddenChip {
-        font-size: 0.7rem;
-        padding: 4px 8px;
-        max-width: 100%;
+        height: 23px;
+        max-width: 82px;
+        padding: 0 7px;
+        font-size: 0.66rem;
     }
 
     .table th, .table td {
