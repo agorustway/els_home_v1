@@ -154,6 +154,32 @@ sudo docker logs -f els-bot     # 봇/셀레늄 로그
 sudo docker logs -f els-gateway # 접속 분배 로그
 ```
 
+### 3-4-1. 컨테이너 이력조회 워커풀/대기열 운영 메모
+컨테이너 이력조회는 Apache처럼 요청마다 작업자가 무한히 생기는 구조가 아니라, NAS의 `els-bot` 내부에서 **고정 Selenium 워커풀 + 블로킹 큐**로 처리합니다. 기술적으로는 `Worker Pool`, `Blocking Queue`, `Producer-Consumer` 패턴에 가깝습니다.
+
+핵심 구조:
+- 실제 ETrans 브라우저 워커는 `ELS_MAX_DRIVERS=3` 기준으로 3개입니다.
+- 본 조회(`/api/els/run`)는 `ThreadPoolExecutor`로 컨테이너별 작업을 제출하고, 각 작업은 데몬 `/run`에서 `DriverPool.available_queue`의 빈 워커를 빌립니다.
+- API 단건 조회(`/api/els/container/tracking`)도 같은 데몬 `/run`을 사용하며 `requestPurpose=single`, `acquireTimeoutSec=240`으로 빈 워커를 기다립니다.
+- 워커가 모두 사용 중이면 `get_driver()`가 0.5초 간격으로 대기하고, 작업이 끝난 워커는 `return_driver()`로 큐에 복귀합니다.
+- `reserveSingle=false` 배치에서는 #1~#3 워커를 모두 배치에 사용할 수 있습니다. `reserveSingle=true`일 때만 #1을 단건/API 우선용으로 남깁니다.
+
+안심 가능한 범위:
+- 본 조회와 API 조회가 동시에 들어와도 같은 브라우저 워커를 동시에 물지 않도록 큐에서 하나씩 대여합니다.
+- 큐 중복 삽입 방지로 같은 드라이버 객체가 두 요청에 동시에 잡히는 레이스를 막습니다.
+- 조회 결과 저장은 숫자 No.가 있는 실제 이력 행만 인정하며, `ERROR`/`NODATA` 상태 행은 아산 선적관리 이력 데이터로 저장하지 않습니다.
+
+주의할 한계:
+- 이 큐는 Celery/RabbitMQ 같은 영속 작업 큐가 아니라 **인메모리 큐**입니다. `els-bot` 컨테이너가 재시작되면 대기 중인 요청은 사라질 수 있습니다.
+- ETrans 사이트 지연, 세션 만료, Chrome 워커 기동 실패는 큐가 해결하는 문제가 아닙니다. 이 경우 조회는 대기하거나 입력 행별 오류로 끝날 수 있습니다.
+- 대량 조회 중 `stop-daemon` 또는 컨테이너 재시작을 하면 진행 중/대기 중 작업은 중단됩니다.
+
+꼬임 의심 시 대응 순서:
+1. `/employees/container-history?debug=true`에서 워커 #1~#3 상태와 시스템 로그를 확인합니다.
+2. NAS에서 `sudo docker logs els-bot --tail 120`으로 `워커 확보 대기`, `WORKER_RETIRED`, `세션 만료`, `이전 조회 결과 잔상 감지` 로그를 확인합니다.
+3. 워커가 모두 멈췄거나 같은 워커 로그만 반복되면 웹의 `데몬 리셋` 또는 NAS에서 `sudo docker restart els-bot`을 사용합니다.
+4. 코드 수정 후에는 `sh scripts/deploy-bot.sh`로 bot 전용 배포만 수행합니다. Core/관제 서비스는 유지됩니다.
+
 ### 3-4. 안드로이드 네이티브 앱 빌드 및 배포
 독립형 운전원 앱(Capacitor) 배포 과정:
 1. **AI 자동 배포 (권장)**:

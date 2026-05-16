@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.30 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.31 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 검색 상태/숨김 컬럼/스크롤 튐/선적여부 강조 표시를 안정화했습니다.
+> 최신 업데이트: 아산 배차판/선적관리 NAS 엑셀 저장 감지를 저부하 안정화 게이트로 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.30
+- **웹 버전**: v5.13.31
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -13,6 +13,7 @@
   - 선적관리 현재 화면은 엑셀 최신본 기준으로만 노출하고, 엑셀 삭제 이력은 365일, 컨테이너 조회 이력은 180일 초과분만 정리.
   - 선적관리 검색 상태 슬롯을 고정해 입력창 폭 흔들림을 막고, 엑셀/이력 컬럼 숨김을 DB 프리셋과 실제 렌더링에 일관 적용.
   - 선적관리 이력은 작업일자 포함 이후의 `반입/양하/적하` 건만 진하게, 나머지 비교 가능 이력은 흐린 회색으로 표시.
+  - 배차판/선적관리 NAS 엑셀 저장 감지는 mtime+size 안정화 후 Supabase DB 동기화로 처리해 부분저장 파싱과 중복 파싱을 줄임.
   - 컨테이너 이력조회는 조회 전 잔상 제거, 무자료 조기 확정 금지, 준비상태 기반 후행 워커 기동을 적용.
 
 ## ACTIVE SYSTEMS
@@ -20,7 +21,7 @@
 |---|---|---|
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
-| NAS 백엔드 | 정상 | 컨테이너 부분 결과 즉시 스트림, 배포 스크립트 보강 |
+| NAS 백엔드 | 정상 | 배차판/선적관리 저부하 파일감지, 컨테이너 부분 결과 즉시 스트림 |
 | ELS Bot | 정상 | 3워커 운용, 실제 가용 워커 기반 배치, 워커 중복 대여 방지, 화면 실데이터 중심 확정 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
@@ -38,6 +39,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.31**: 아산 배차판/선적관리 NAS 엑셀 동기화를 `mtime+size` 안정화 게이트로 보강. 배차판은 15초, 선적관리는 30초 간격으로 가벼운 변경 체크만 수행하고, 파일 저장 후 8초 안정화된 경우에만 엑셀 파싱/DB upsert를 실행. 실패한 동일 파일은 재시도 간격을 둬 BOT과 NAS CPU/RAM 부담을 줄임.
 - **v5.13.30**: 아산 선적관리 검색 상태 표시를 고정 폭 슬롯으로 바꿔 `검색 중` 문구가 입력 전 깜빡이며 레이아웃을 흔드는 현상을 차단. 숨김 컬럼 계산을 `hiddenCols` 기준으로 실제 표시 목록에서 제외하도록 분리해 엑셀 컬럼과 `이력 ...` DB 컬럼 모두 숨김/복구가 가능하게 수정. DB 프리셋 동일값 재적용을 막아 정렬 상태가 반복 변경되며 테이블 스크롤이 위로 복귀하는 문제를 줄이고, 작업일자 이후 `반입/양하/적하` 이력만 강조하는 행 톤을 추가.
 - **v5.13.29**: 컨테이너 이력조회를 원점 기준으로 재정리. WebSquare 내부 그리드 강제 초기화와 배치 성공행 2차 재조회를 기본 OFF로 바꾸고, 조회 화면 준비 판정을 입력창+조회 버튼 기준으로 강화. `reserveSingle=false`가 데몬 워커 선택에도 반영되게 해 #1~#3 워커를 모두 배치에 사용하며, 재로그인 중 새 드라이버가 큐에 중복 대여되는 레이스를 차단. 아산 선적관리 저장은 숫자 No.가 있는 실제 이력 행만 저장/표시.
 - **v5.13.28**: NAS 부하를 고려해 컨테이너 이력조회 워커를 4개에서 3개로 낮춤. 배치 조회 시작 시 부족 워커를 새로 띄우지 않고 현재 가용 워커만 사용하며, 성공행 2차 검증 실패는 워커 재기동이 아니라 결과 폐기로 처리.
@@ -74,6 +76,8 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
+- `python -m unittest docker/els-backend/tests/test_file_sync_gate.py`: 4개 통과
+- `python -m py_compile docker/els-backend/file_sync_gate.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `node --test web/tests/containerInput.test.mjs web/tests/asanShippingFlow.test.mjs`: 18개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
 - Browser: `http://localhost:3000/employees/branches/asan` 실제 NAS 데이터 로드 확인, 검색 상태 슬롯 54px 고정/숨김 상태 확인, 테이블 내부 스크롤 2초 후 `scrollTop=700` 유지 확인

@@ -27,6 +27,7 @@ from werkzeug.utils import secure_filename
 from openpyxl.styles import PatternFill
 from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
+from file_sync_gate import StableFileSyncGate
 
 # --- KST 설정 ---
 KST = timezone(timedelta(hours=9))
@@ -62,6 +63,28 @@ global_progress = {"total": 0, "completed": 0, "is_running": False}
 # [v4.9.8] 유휴 감지용: 마지막으로 개별 컨테이너 조회가 완료된 시각
 global_last_activity_time = 0
 LAST_RESULT_FILE = ELSBOT_DIR / "last_search_result.json"
+
+def _env_int(name, default, minimum=0):
+    try:
+        return max(minimum, int(os.environ.get(name, default)))
+    except (TypeError, ValueError):
+        return default
+
+ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 15, 5)
+ASAN_DISPATCH_SYNC_QUIET_SECONDS = _env_int("ASAN_DISPATCH_SYNC_QUIET_SECONDS", 8, 0)
+ASAN_DISPATCH_SYNC_RETRY_SECONDS = _env_int("ASAN_DISPATCH_SYNC_RETRY_SECONDS", 60, 10)
+ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 30, 10)
+ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
+ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
+
+dispatch_sync_gate = StableFileSyncGate(
+    quiet_seconds=ASAN_DISPATCH_SYNC_QUIET_SECONDS,
+    retry_seconds=ASAN_DISPATCH_SYNC_RETRY_SECONDS,
+)
+shipping_sync_gate = StableFileSyncGate(
+    quiet_seconds=ASAN_SHIPPING_SYNC_QUIET_SECONDS,
+    retry_seconds=ASAN_SHIPPING_SYNC_RETRY_SECONDS,
+)
 
 # --- 전역 에러 핸들러 ---
 @app.errorhandler(Exception)
@@ -157,14 +180,23 @@ def sync_asan_dispatch_python(force=False):
                 continue
             
             # 파일 수정 시간
-            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, tz=KST).isoformat()
+            file_stat = full_path.stat()
+            mtime_ts = file_stat.st_mtime
+            mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
             cached_mtime = last_mtime_cache.get(dtype)
+            file_signature = (mtime_ts, file_stat.st_size)
             
             app.logger.info(f"[자동동기화] {dtype} 체크: 현재={mtime}, 캐시={cached_mtime}")
             
             # 변경 감지 (force 옵션이 없으면 캐시 확인)
             if not force and cached_mtime == mtime:
                 app.logger.info(f"[자동동기화] {dtype} 변경 없음 (스킵)")
+                continue
+
+            decision = dispatch_sync_gate.check(f"dispatch:{dtype}", file_signature, force=force)
+            if not decision.ready:
+                if decision.reason in ("pending", "settling"):
+                    app.logger.info(f"[자동동기화] {dtype} 파일 저장 안정화 대기 중 ({decision.reason})")
                 continue
             
             app.logger.info(f"[자동동기화] 파일 변경 확인됨. 데이터 추출 시작... ({dtype})")
@@ -335,6 +367,7 @@ def sync_asan_dispatch_python(force=False):
             gc.collect()
 
             last_mtime_cache[dtype] = mtime
+            dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
             
             # 임시 파일 삭제
             try:
@@ -349,21 +382,23 @@ def sync_asan_dispatch_python(force=False):
 
 def asan_sync_scheduler():
     """배경에서 시간을 체크하여 동기화를 수행하는 스레드"""
-    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 (실시간 변경 감지 모드)")
+    app.logger.info(
+        f"[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 "
+        f"(poll={ASAN_DISPATCH_SYNC_POLL_SECONDS}s, quiet={ASAN_DISPATCH_SYNC_QUIET_SECONDS}s)"
+    )
     
     while True:
         try:
             now = datetime.now(KST)
             # 06:00 ~ 23:00 사이 (주말 포함 매일)
             if 6 <= now.hour <= 23:
-                # 매 루프(1분)마다 수정 여부를 체크하고, 수정된 경우만 동기화
+                # 매 루프마다 수정 여부를 체크하고, 수정된 경우만 동기화
                 sync_asan_dispatch_python()
             
-            # 매 60초마다 체크 (KST 기준)
-            time.sleep(60)
+            time.sleep(ASAN_DISPATCH_SYNC_POLL_SECONDS)
         except Exception as e:
             app.logger.error(f"[스케줄러] 루프 오류: {e}")
-            time.sleep(60)
+            time.sleep(ASAN_DISPATCH_SYNC_POLL_SECONDS)
 
 # 스케줄러 시작
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
@@ -909,8 +944,10 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         app.logger.warning(f"[선적관리DB] 파일을 찾을 수 없음: {file_path}")
         return None
 
-    mtime_ts = file_path.stat().st_mtime
+    file_stat = file_path.stat()
+    mtime_ts = file_stat.st_mtime
     file_modified_at = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
+    file_signature = (mtime_ts, file_stat.st_size)
 
     try:
         meta_res = supabase.from_("branch_shipping_files").select("file_modified_at").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
@@ -919,9 +956,16 @@ def sync_asan_shipping_python(force=False, rel_path=None):
             try:
                 db_mtime = datetime.fromisoformat(current_meta["file_modified_at"].replace("Z", "+00:00")).timestamp()
                 if abs(db_mtime - mtime_ts) < 1:
+                    shipping_sync_gate.mark_synced(normalized_path, file_signature)
                     return current_meta
             except Exception:
                 pass
+
+        decision = shipping_sync_gate.check(normalized_path, file_signature, force=force)
+        if not decision.ready:
+            if decision.reason in ("pending", "settling"):
+                app.logger.info(f"[선적관리DB] 파일 저장 안정화 대기 중: {normalized_path} ({decision.reason})")
+            return current_meta
 
         parsed = parse_asan_shipping_excel(file_path)
         headers = parsed["headers"]
@@ -959,6 +1003,7 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         }, on_conflict="branch_id,file_path").execute()
 
         shipping_cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "file_modified_at": file_modified_at}}
+        shipping_sync_gate.mark_synced(normalized_path, file_signature)
         app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행, 삭제 archive {archived_count}행)")
         return {"file_modified_at": file_modified_at, "archived_count": archived_count}
     except Exception as e:
@@ -1032,17 +1077,20 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
     }
 
 def asan_shipping_sync_scheduler():
-    app.logger.info("[스케줄러] 아산 선적관리 DB 동기화 스케줄러 시작")
+    app.logger.info(
+        f"[스케줄러] 아산 선적관리 DB 동기화 스케줄러 시작 "
+        f"(poll={ASAN_SHIPPING_SYNC_POLL_SECONDS}s, quiet={ASAN_SHIPPING_SYNC_QUIET_SECONDS}s)"
+    )
     while True:
         try:
             now = datetime.now(KST)
             maybe_cleanup_asan_shipping_history(now)
             if 6 <= now.hour <= 23:
                 sync_asan_shipping_python()
-            time.sleep(120)
+            time.sleep(ASAN_SHIPPING_SYNC_POLL_SECONDS)
         except Exception as e:
             app.logger.error(f"[선적관리DB 스케줄러] 에러: {e}")
-            time.sleep(120)
+            time.sleep(ASAN_SHIPPING_SYNC_POLL_SECONDS)
 
 threading.Thread(target=asan_shipping_sync_scheduler, daemon=True).start()
 

@@ -127,5 +127,68 @@ Remove-Item ".pytest_cache" -Recurse -Force
 Remove-Item "docker\els-backend\.pytest_cache" -Recurse -Force
 ```
 
+### 6-5. Codex Desktop 반복 권한/배포 이슈 표준 대응
+아래 항목은 Codex Desktop 샌드박스/Windows PowerShell 조합에서 반복 확인된 문제입니다. 같은 증상이 나오면 원인 분석을 길게 반복하지 말고, 표준 대응을 먼저 적용합니다.
+
+#### Git 인덱스 권한
+- 증상: `git add`, `git commit`, `git restore --staged`에서 `.git/index.lock: Permission denied` 또는 인덱스 쓰기 실패.
+- 원칙: 실제 `index.lock`이 있고 살아있는 git 프로세스가 있는지 먼저 확인합니다. 확인 없이 잠금 파일을 삭제하지 않습니다.
+- 표준 대응: `.git` 쓰기가 필요한 명령은 Codex에서 `require_escalated`로 재실행합니다.
+- 권장 escalated prefix: `git add`, `git commit`, `git restore --staged`, `git push`.
+
+#### GitHub/NAS/Supabase 네트워크
+- 증상: `git push`가 `Failed to connect to github.com:443`, Next API가 NAS/Supabase 접속 중 `EACCES`, 빌드/브라우저 검증 중 외부 fetch 실패.
+- 원칙: 코드 오류로 단정하지 않고 샌드박스 네트워크 제한 가능성을 먼저 봅니다.
+- 표준 대응: 실제 원격 접근이 필요한 명령은 같은 명령을 `require_escalated`로 재실행합니다.
+- 예: `git push origin main`, `npm.cmd run build`, 실제 NAS 데이터를 붙이는 로컬 dev server 실행/브라우저 검증.
+
+#### PowerShell `PATH/Path` 중복 키
+- 증상: `Start-Process`에서 `항목이 이미 추가되었습니다. 사전에 있는 키: 'Path' 추가되는 키: 'PATH'`.
+- 표준 대응: 백그라운드 프로세스를 띄우기 전 현재 세션의 중복 환경 키를 정리합니다.
+```powershell
+$pathValue = $env:Path
+Remove-Item Env:PATH -ErrorAction SilentlyContinue
+$env:Path = $pathValue
+```
+- 이후 `Start-Process -WindowStyle Hidden ...` 또는 직접 `node.exe node_modules/next/dist/bin/next dev -p 3000`을 사용합니다.
+
+#### PowerShell `Start-Job`/ScheduledJobs 권한
+- 증상: `Get-Job`/`Receive-Job`에서 `ScheduledJobs` 경로 접근 거부.
+- 표준 대응: dev server 로그 확인용으로 `Start-Job`을 쓰지 않습니다. `Start-Process` 로그 리다이렉트 또는 Codex Browser의 Node REPL 지속 프로세스를 사용합니다.
+
+#### 한글 커밋 메시지 BOM/깨짐
+- 증상: `Set-Content -Encoding UTF8 commit_msg.txt` 후 커밋 제목 앞에 보이지 않는 BOM 문자가 붙음.
+- 표준 대응: 커밋 메시지 파일은 UTF-8 without BOM으로 씁니다.
+```powershell
+[System.IO.File]::WriteAllText(
+  (Join-Path (Get-Location) 'commit_msg.txt'),
+  '커밋 메시지',
+  [System.Text.UTF8Encoding]::new($false)
+)
+git commit -F commit_msg.txt
+Remove-Item -LiteralPath commit_msg.txt -Force
+```
+
+#### 한글 포함 부분 스테이징
+- 증상: PowerShell heredoc/pipe로 `git apply --cached`를 호출하면 한글이 `??`로 깨질 수 있음.
+- 표준 대응: 한글 패치는 `apply_patch`로 `.tmp_test/*.patch` 파일을 만든 뒤 `git apply --cached --unidiff-zero .tmp_test/*.patch`를 사용합니다. 가능하면 파일 전체 스테이징을 우선하고, 다른 작업자의 변경이 섞인 파일만 부분 스테이징합니다.
+- 작업 후 `.tmp_test/`는 즉시 삭제합니다.
+
+#### NAS 배포 sudo/PATH
+- NAS 배포 스크립트는 이미 `sudo -n`과 Docker PATH 주입 기준으로 보강되어 있습니다.
+- 배포 중 sudo 비밀번호 프롬프트가 다시 뜨면 우회하지 말고 중단합니다. NAS sudoers/NOPASSWD 설정 문제로 보고 형에게 해당 명령과 영향 범위를 요청합니다.
+- 전체 NAS 배포가 필요 없고 core만 바뀐 경우 `sh scripts/deploy-core.sh`, bot만 바뀐 경우 `sh scripts/deploy-bot.sh`를 우선 사용합니다.
+
+#### Codex 컨텍스트에 넣을 요약
+```text
+반복 권한 이슈 표준 대응:
+- Git 인덱스 쓰기(`git add/commit/restore --staged`)와 `git push`는 샌드박스 권한/네트워크 실패 시 즉시 require_escalated로 재실행한다.
+- GitHub/NAS/Supabase/실제 dev server 검증 네트워크가 `EACCES` 또는 connect fail이면 같은 명령을 require_escalated로 재실행한다.
+- PowerShell Start-Process 전에 PATH/Path 중복 키 정리: `$pathValue=$env:Path; Remove-Item Env:PATH -ErrorAction SilentlyContinue; $env:Path=$pathValue`.
+- commit_msg.txt는 `[System.Text.UTF8Encoding]::new($false)`로 UTF-8 BOM 없이 작성하고 `git commit -F commit_msg.txt` 후 삭제한다.
+- 한글 포함 부분 스테이징은 PowerShell 파이프 대신 apply_patch로 UTF-8 patch 파일을 만든 뒤 `git apply --cached`한다.
+- Start-Job/Get-Job은 ScheduledJobs 권한 문제를 일으킬 수 있으니 dev server는 Start-Process 또는 Browser Node REPL 지속 프로세스로 띄운다.
+```
+
 ---
-*최종 갱신일: 2026-05-16 (by Codex — AI 권한/도구 요청 기준 추가)*
+*최종 갱신일: 2026-05-16 (by Codex — 반복 권한/배포 이슈 표준 대응 추가)*

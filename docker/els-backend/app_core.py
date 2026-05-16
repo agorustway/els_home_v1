@@ -25,6 +25,7 @@ import xml.etree.ElementTree as ET
 from urllib.parse import quote
 import requests
 import urllib3
+from file_sync_gate import StableFileSyncGate
 urllib3.disable_warnings()
 
 # --- KST 설정 ---
@@ -59,6 +60,28 @@ last_mtime_cache = {}
 last_sheet_hash_cache = {}  # [v5.10.14] 시트별 데이터 해시 캐시 — 변경된 시트만 Supabase upsert
 asan_sync_lock = threading.Lock()
 asan_sync_start_time = 0
+
+def _env_int(name, default, minimum=0):
+    try:
+        return max(minimum, int(os.environ.get(name, default)))
+    except (TypeError, ValueError):
+        return default
+
+ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 15, 5)
+ASAN_DISPATCH_SYNC_QUIET_SECONDS = _env_int("ASAN_DISPATCH_SYNC_QUIET_SECONDS", 8, 0)
+ASAN_DISPATCH_SYNC_RETRY_SECONDS = _env_int("ASAN_DISPATCH_SYNC_RETRY_SECONDS", 60, 10)
+ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 30, 10)
+ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
+ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
+
+dispatch_sync_gate = StableFileSyncGate(
+    quiet_seconds=ASAN_DISPATCH_SYNC_QUIET_SECONDS,
+    retry_seconds=ASAN_DISPATCH_SYNC_RETRY_SECONDS,
+)
+shipping_sync_gate = StableFileSyncGate(
+    quiet_seconds=ASAN_SHIPPING_SYNC_QUIET_SECONDS,
+    retry_seconds=ASAN_SHIPPING_SYNC_RETRY_SECONDS,
+)
 
 def sync_asan_dispatch_python(force=False):
     global last_mtime_cache, last_sheet_hash_cache, asan_sync_start_time
@@ -97,18 +120,23 @@ def sync_asan_dispatch_python(force=False):
                 continue
             
             # 파일 수정 시간 체크
-            mtime_ts = full_path.stat().st_mtime
+            file_stat = full_path.stat()
+            mtime_ts = file_stat.st_mtime
             mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
             cache_mtime = last_mtime_cache.get(dtype)
+            file_signature = (mtime_ts, file_stat.st_size)
             
             app.logger.info(f"[자동동기화] {dtype} 체크 - 경로: {full_path}, 파일수정일: {mtime}, 캐시: {cache_mtime}")
             
             if not force and cache_mtime == mtime:
                 # app.logger.info(f"[자동동기화] {dtype} 변경 없음.")
                 continue
-            
-            # 캐시 업데이트
-            last_mtime_cache[dtype] = mtime
+
+            decision = dispatch_sync_gate.check(f"dispatch:{dtype}", file_signature, force=force)
+            if not decision.ready:
+                if decision.reason in ("pending", "settling"):
+                    app.logger.info(f"[자동동기화] {dtype} 파일 저장 안정화 대기 중 ({decision.reason})")
+                continue
             
             app.logger.info(f"[자동동기화] {dtype} 데이터 추출 시작... (파일수정됨/강제)")
             
@@ -245,6 +273,8 @@ def sync_asan_dispatch_python(force=False):
                             app.logger.error(f"[자동동기화] {dtype} 시트 '{sheet_name}' 최종 저장 실패.")
                 
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+                last_mtime_cache[dtype] = mtime
+                dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
                 
                 # [v5.10.19] 엑셀에서 삭제된 시트는 DB에서도 제거
                 if valid_dates:
@@ -286,16 +316,19 @@ def sync_asan_dispatch_python(force=False):
         asan_sync_lock.release()
 
 def asan_sync_scheduler():
-    app.logger.info("[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작")
+    app.logger.info(
+        f"[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 "
+        f"(poll={ASAN_DISPATCH_SYNC_POLL_SECONDS}s, quiet={ASAN_DISPATCH_SYNC_QUIET_SECONDS}s)"
+    )
     while True:
         try:
             now = datetime.now(KST)
             if 6 <= now.hour <= 23:
                 sync_asan_dispatch_python()
-            time.sleep(60)
+            time.sleep(ASAN_DISPATCH_SYNC_POLL_SECONDS)
         except Exception as e:
             app.logger.error(f"[스케줄러] 에러: {e}")
-            time.sleep(60)
+            time.sleep(ASAN_DISPATCH_SYNC_POLL_SECONDS)
 
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
 
@@ -743,8 +776,10 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         app.logger.warning(f"[선적관리DB] 파일을 찾을 수 없음: {file_path}")
         return None
 
-    mtime_ts = file_path.stat().st_mtime
+    file_stat = file_path.stat()
+    mtime_ts = file_stat.st_mtime
     file_modified_at = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
+    file_signature = (mtime_ts, file_stat.st_size)
 
     try:
         meta_res = supabase.from_("branch_shipping_files").select("file_modified_at").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
@@ -753,9 +788,16 @@ def sync_asan_shipping_python(force=False, rel_path=None):
             try:
                 db_mtime = datetime.fromisoformat(current_meta["file_modified_at"].replace("Z", "+00:00")).timestamp()
                 if abs(db_mtime - mtime_ts) < 1:
+                    shipping_sync_gate.mark_synced(normalized_path, file_signature)
                     return current_meta
             except Exception:
                 pass
+
+        decision = shipping_sync_gate.check(normalized_path, file_signature, force=force)
+        if not decision.ready:
+            if decision.reason in ("pending", "settling"):
+                app.logger.info(f"[선적관리DB] 파일 저장 안정화 대기 중: {normalized_path} ({decision.reason})")
+            return current_meta
 
         parsed = parse_asan_shipping_excel(file_path)
         headers = parsed["headers"]
@@ -793,6 +835,7 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         }, on_conflict="branch_id,file_path").execute()
 
         shipping_cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "file_modified_at": file_modified_at}}
+        shipping_sync_gate.mark_synced(normalized_path, file_signature)
         app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행, 삭제 archive {archived_count}행)")
         return {"file_modified_at": file_modified_at, "archived_count": archived_count}
     except Exception as e:
@@ -866,17 +909,20 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
     }
 
 def asan_shipping_sync_scheduler():
-    app.logger.info("[스케줄러] 아산 선적관리 DB 동기화 스케줄러 시작")
+    app.logger.info(
+        f"[스케줄러] 아산 선적관리 DB 동기화 스케줄러 시작 "
+        f"(poll={ASAN_SHIPPING_SYNC_POLL_SECONDS}s, quiet={ASAN_SHIPPING_SYNC_QUIET_SECONDS}s)"
+    )
     while True:
         try:
             now = datetime.now(KST)
             maybe_cleanup_asan_shipping_history(now)
             if 6 <= now.hour <= 23:
                 sync_asan_shipping_python()
-            time.sleep(120)
+            time.sleep(ASAN_SHIPPING_SYNC_POLL_SECONDS)
         except Exception as e:
             app.logger.error(f"[선적관리DB 스케줄러] 에러: {e}")
-            time.sleep(120)
+            time.sleep(ASAN_SHIPPING_SYNC_POLL_SECONDS)
 
 threading.Thread(target=asan_shipping_sync_scheduler, daemon=True).start()
 

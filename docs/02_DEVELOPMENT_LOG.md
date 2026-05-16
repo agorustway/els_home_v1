@@ -1,4 +1,29 @@
 
+## [2026-05-16] Codex 반복 권한/배포 이슈 표준 대응 문서화
+### 핵심
+- `docs/08_ENVIRONMENT_SETUP.md`에 Codex Desktop/Windows에서 반복된 Git 인덱스 권한, GitHub/NAS 네트워크, PowerShell `PATH/Path` 중복, `Start-Job` 권한, 커밋 메시지 BOM, 한글 부분 스테이징 문제의 표준 대응을 추가했습니다.
+- 형이 AGENTS/환경 컨텍스트에 붙일 수 있는 짧은 요약 블록도 함께 남겼습니다.
+### 변경 파일
+- `docs/08_ENVIRONMENT_SETUP.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-16] 아산 배차판/선적관리 NAS 저장 감지 보강 (v5.13.31)
+### 핵심
+- 배차판/선적관리 엑셀 동기화에 공통 `StableFileSyncGate`를 추가해 파일 수정시각과 크기가 8초간 안정된 뒤에만 파싱하도록 했습니다.
+- 배차판은 15초, 선적관리는 30초 간격으로 가벼운 변경 체크를 수행하고, 실제 엑셀 파싱/DB upsert는 변경된 파일에만 실행해 NAS CPU/RAM 부담을 낮췄습니다.
+- 동일 파일 동기화 실패 시 재시도 간격을 둬 컨테이너 이력관리 BOT과 동시에 NAS 자원을 과도하게 쓰지 않도록 했습니다.
+- Core/통합 백엔드 Docker 이미지 모두 새 게이트 모듈을 포함하도록 Dockerfile 복사를 반영했습니다.
+### 검증
+- `python -m unittest docker/els-backend/tests/test_file_sync_gate.py` 통과 (4개)
+- `python -m py_compile docker/els-backend/file_sync_gate.py docker/els-backend/app_core.py docker/els-backend/app.py` 통과
+### 변경 파일
+- `docker/els-backend/file_sync_gate.py`
+- `docker/els-backend/tests/test_file_sync_gate.py`
+- `docker/els-backend/app_core.py`
+- `docker/els-backend/app.py`
+- `docker/els-backend/Dockerfile`, `docker/els-backend/Dockerfile.core`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 아산 선적관리 리스트 UI 안정화 (v5.13.30)
 ### 핵심
 - 검색 상태 문구를 고정 폭 슬롯으로 유지하고, 검색어가 없을 때의 조용한 갱신에서는 `검색 중`을 숨겨 입력창 폭이 줄었다 늘어나는 현상을 막았습니다.
@@ -15,6 +40,14 @@
 - `web/utils/asanShippingView.mjs`
 - `web/tests/asanShippingFlow.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-16] 컨테이너 이력조회 워커풀 운영 메모 문서화
+### 핵심
+- `docs/07_RUNBOOK.md`에 컨테이너 이력조회가 고정 Selenium 워커풀 + 블로킹 큐 구조로 동작한다는 운영 메모를 추가했습니다.
+- 본 조회/API 조회가 동시에 들어올 때의 대기 방식, `reserveSingle` 의미, 인메모리 큐 한계, 꼬임 의심 시 대응 순서를 정리했습니다.
+### 변경 파일
+- `docs/07_RUNBOOK.md`
+- `docs/02_DEVELOPMENT_LOG.md`
 
 ## [2026-05-16] 컨테이너 이력조회 원점 복구 (v5.13.29)
 ### 핵심

@@ -42,6 +42,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 3. 소스 코드 배달 (경로 딱 고정)
 COPY elsbot/ /app/elsbot/
 COPY docker/els-backend/dns_fix.py /app/dns_fix.py
+COPY docker/els-backend/file_sync_gate.py /app/file_sync_gate.py
 COPY docker/els-backend/app.py /app/app.py
 
 # 4. 환경 설정
