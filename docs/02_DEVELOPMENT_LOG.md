@@ -1,4 +1,72 @@
 
+## [2026-05-16] 아산 선적관리 컨테이너 조회 저장 서버화 (v5.13.35)
+### 핵심
+- 형이 컨테이너 조회 중 다른 페이지로 이동했을 때 이력 저장이 누락된 사례를 조사했습니다.
+- 기존 구조는 `/api/els/run` 조회 스트림이 끝난 뒤 브라우저가 `/container-results` 저장 API를 별도로 호출하는 방식이라, 페이지 이탈/라우트 전환 타이밍에 조회는 되었지만 저장 단계만 빠질 수 있었습니다.
+- 선적관리 전용 `/api/branches/asan/shipping/container-lookup` 스트림 라우트를 추가해 NAS 조회 스트림의 부분 결과와 최종 결과를 서버 측에서 즉시 저장하도록 변경했습니다.
+- 기존 `/container-results` POST와 새 스트림 라우트가 같은 저장 로직을 쓰도록 `container-results/store.js` 공통 모듈로 분리했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (15개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-results/route.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"` 0 errors
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app.py docker\els-backend\app_core.py` 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/api/branches/asan/shipping/container-lookup/route.js`
+- `web/app/api/branches/asan/shipping/container-results/route.js`
+- `web/app/api/branches/asan/shipping/container-results/store.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-16] 아산 선적관리 미선적·자체보관 빠른 필터 추가 (v5.13.34)
+### 핵심
+- 날짜 필터 바에 `미선적`, `자체보관` 빠른 필터 버튼을 추가했습니다.
+- `미선적`은 오늘 포함 이후 `반입/적하` 완료 상태가 아닌 행만 남기며, 활성화 시 버튼 문구가 `필터해제`로 바뀝니다.
+- `자체보관`은 `보관소` 컬럼 값에 자체보관이 포함된 행만 남기며, 활성화 시 버튼 문구가 `필터해제`로 바뀝니다.
+- 두 빠른 필터도 전체 로드 기준 필터 계산에 포함되도록 유지했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (15개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+- Browser: `http://localhost:3000/employees/branches/asan`에서 `미선적/자체보관` 버튼 노출, 클릭 시 `필터해제` 전환 및 전체 로드 기준 필터 동작 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-16] 아산 선적관리 필터 신뢰도·자동 더보기 보강 (v5.13.33)
+### 핵심
+- 컬럼 필터를 열거나 컬럼/날짜 필터가 적용되면 Supabase 현재 100행 샘플이 아니라 최대 1만 행 전체 로드 기준으로 필터 후보와 결과를 계산하도록 변경했습니다.
+- 보이지 않는 빈 문자(`zero-width`, BOM 등)를 실제 빈값 하나로 정규화해 드롭다운에 공란 체크박스가 여러 개 뜨지 않고 `(빈 값)` 한 항목으로 보이게 했습니다.
+- 서버 정렬 오름차순에서 빈값이 먼저 오도록 백엔드 정렬을 조정해 `반입일` 같은 컬럼에서 누락값을 바로 볼 수 있게 했습니다.
+- 선적관리 리스트를 아래로 스크롤해 끝에 가까워지면 `더 보기` 버튼을 누르기 전에 다음 100행을 자동으로 추가 로드합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (15개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app.py docker\els-backend\app_core.py` 통과
+- Browser: `http://localhost:3000/employees/branches/asan`에서 `반입일` 필터 후보 `(빈 값)` 표시 및 `965 / 965행` 전체 로드 확인, 테이블 하단 스크롤 시 `200 / 965행` 자동 추가 로드 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-16] 아산 선적관리 컨테이너 완료 행 톤 조정 (v5.13.32)
+### 핵심
+- 컨테이너 조회 결과의 `이력 MOVE TIME`이 오늘 날짜 이상이고 `이력 구분`이 `반입/적하`인 행을 완료 행으로 판정하도록 변경했습니다.
+- 완료 행은 이력 컬럼만이 아니라 앞쪽 엑셀 원장 컬럼까지 전체 행을 회색 음영/회색 글씨로 낮춰 표시합니다.
+- 미완료 행은 일반 배경/폰트를 유지하고, 행 hover 색상은 앞쪽 컬럼과 이력 컬럼 모두 동일한 초록색으로 통일했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (14개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+- Browser: `http://localhost:3000/employees/branches/asan` 로컬 개발 서버에서 아산 선적관리 화면 로드 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] Codex 반복 권한/배포 이슈 표준 대응 문서화
 ### 핵심
 - `docs/08_ENVIRONMENT_SETUP.md`에 Codex Desktop/Windows에서 반복된 Git 인덱스 권한, GitHub/NAS 네트워크, PowerShell `PATH/Path` 중복, `Start-Job` 권한, 커밋 메시지 BOM, 한글 부분 스테이징 문제의 표준 대응을 추가했습니다.

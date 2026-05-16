@@ -1,6 +1,6 @@
 import { isContainerLookupColumn } from './containerHistoryResults.mjs';
 
-export const SHIPPING_SIGNAL_TYPES = new Set(['반입', '양하', '적하']);
+export const SHIPPING_SIGNAL_TYPES = new Set(['반입', '적하']);
 
 export function normalizeShippingColumnOrder(order = [], currentHeaders = []) {
   const seen = new Set();
@@ -45,6 +45,14 @@ export function areSetsEqual(a = new Set(), b = new Set()) {
 
 export function normalizeDateOnly(value) {
   if (value == null || value === '') return '';
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return '';
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   const raw = String(value).trim();
   if (!raw) return '';
 
@@ -59,6 +67,32 @@ export function normalizeDateOnly(value) {
   return '';
 }
 
+export function normalizeShippingFilterValue(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .trim();
+}
+
+export function compareShippingFilterValues(a, b, direction = 'asc') {
+  const dir = direction === 'desc' ? -1 : 1;
+  const valueA = normalizeShippingFilterValue(a);
+  const valueB = normalizeShippingFilterValue(b);
+  const blankA = valueA === '';
+  const blankB = valueB === '';
+
+  if (blankA || blankB) {
+    if (blankA && blankB) return 0;
+    return blankA ? -1 * dir : 1 * dir;
+  }
+
+  return valueA.localeCompare(valueB, 'ko-KR', {
+    numeric: true,
+    sensitivity: 'base',
+  }) * dir;
+}
+
 export function findWorkDateColumnIndex(headers = []) {
   const exactIdx = headers.findIndex((header) => String(header || '').trim() === '작업일자');
   if (exactIdx >= 0) return exactIdx;
@@ -69,19 +103,17 @@ export function findWorkDateColumnIndex(headers = []) {
   });
 }
 
-export function getShippingSignalTone(headers = [], row = [], lookupRecord = null) {
+export function getShippingSignalTone(headers = [], row = [], lookupRecord = null, referenceDate = new Date()) {
   if (!lookupRecord?.mainRow) return 'neutral';
+  if (!Array.isArray(headers) || !Array.isArray(row)) return 'neutral';
 
-  const workDateIdx = findWorkDateColumnIndex(headers);
-  if (workDateIdx < 0) return 'neutral';
-
-  const workDate = normalizeDateOnly(row?.[workDateIdx]);
+  const today = normalizeDateOnly(referenceDate);
   const moveDate = normalizeDateOnly(lookupRecord.mainRow?.[5]);
-  if (!workDate || !moveDate) return 'neutral';
+  if (!today || !moveDate) return 'neutral';
 
   const eventType = String(lookupRecord.mainRow?.[3] || '').trim();
   const isTargetType = SHIPPING_SIGNAL_TYPES.has(eventType);
-  const isOnOrAfterWorkDate = moveDate >= workDate;
+  const isOnOrAfterToday = moveDate >= today;
 
-  return isTargetType && isOnOrAfterWorkDate ? 'strong' : 'dim';
+  return isTargetType && isOnOrAfterToday ? 'completed' : 'open';
 }

@@ -10,8 +10,11 @@ import {
 import {
     areArraysEqual,
     areSetsEqual,
+    compareShippingFilterValues,
     getShippingSignalTone,
     getVisibleShippingColumns,
+    normalizeDateOnly,
+    normalizeShippingFilterValue,
     normalizeShippingColumnOrder,
 } from '@/utils/asanShippingView.mjs';
 import styles from './shipping.module.css';
@@ -20,6 +23,7 @@ const PREFS_KEY = 'asan_shipping_prefs';
 const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
 const SHIPPING_PAGE_SIZE = 100;
+const FULL_FILTER_PAGE_SIZE = 10000;
 const SEARCH_DEBOUNCE_MS = 1000;
 const SEARCH_CLEAR_DEBOUNCE_MS = 250;
 const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;
@@ -106,6 +110,8 @@ export default function AsanShipping() {
     const [columnFilters, setColumnFilters] = useState({});
     // Date Range Filter
     const [dateFilter, setDateFilter] = useState({ col: '', from: '', to: '' });
+    const [unshippedOnly, setUnshippedOnly] = useState(false);
+    const [storageOnly, setStorageOnly] = useState(false);
     const [filterDropdown, setFilterDropdown] = useState(null);
 
     // File Browser
@@ -120,6 +126,7 @@ export default function AsanShipping() {
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
     const lastLoadedPathRef = useRef('');
     const fetchRequestIdRef = useRef(0);
+    const autoLoadMoreRef = useRef(false);
     const layoutPrefsLoadedRef = useRef('');
 
     useEffect(() => {
@@ -570,6 +577,9 @@ export default function AsanShipping() {
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
+        setDateFilter({ col: '', from: '', to: '' });
+        setUnshippedOnly(false);
+        setStorageOnly(false);
         setSearchInput('');
         setSearchTerm('');
         localStorage.removeItem(PREFS_KEY);
@@ -732,11 +742,13 @@ export default function AsanShipping() {
 
         const receivedRows = [];
         let finalRows = null;
+        let savedPayload = null;
         try {
-            const res = await fetch('/api/els/run', {
+            const res = await fetch('/api/branches/asan/shipping/container-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    path: selectedPath,
                     containers,
                     useSavedCreds: true,
                     reserveSingle: false,
@@ -761,7 +773,7 @@ export default function AsanShipping() {
                         const part = JSON.parse(line.substring(15));
                         if (Array.isArray(part.result)) {
                             receivedRows.push(...part.result);
-                            const partialMap = buildContainerLookupMapFromRows(receivedRows, containers);
+                            const partialMap = part.saved_data || buildContainerLookupMapFromRows(receivedRows, containers);
                             setContainerLookupResults(prev => ({ ...prev, ...partialMap }));
                         }
                     } catch (err) {
@@ -772,7 +784,13 @@ export default function AsanShipping() {
                 if (line.startsWith('RESULT:')) {
                     try {
                         const payload = JSON.parse(line.substring(7));
-                        if (payload.ok) finalRows = payload.result || [];
+                        if (payload.ok) {
+                            finalRows = payload.result || [];
+                            savedPayload = payload;
+                            if (payload.saved_data) {
+                                setContainerLookupResults(prev => ({ ...prev, ...payload.saved_data }));
+                            }
+                        }
                         else throw new Error(payload.error || '컨테이너 조회 실패');
                     } catch (err) {
                         throw err;
@@ -792,8 +810,15 @@ export default function AsanShipping() {
 
             const rowsToSave = finalRows || receivedRows;
             if (!rowsToSave.length) throw new Error('컨테이너 조회 결과가 비어 있습니다.');
-            const saved = await saveContainerLookupResults(rowsToSave, containers);
-            setContainerLookupStatus(`조회/저장 완료: ${saved.count || 0}건`);
+            if (savedPayload?.saved_error) {
+                throw new Error(`컨테이너 조회 결과 저장 실패: ${savedPayload.saved_error}`);
+            }
+            if (savedPayload?.saved_data) {
+                setContainerLookupStatus(`조회/저장 완료: ${savedPayload.saved_count || 0}건`);
+            } else {
+                const saved = await saveContainerLookupResults(rowsToSave, containers);
+                setContainerLookupStatus(`조회/저장 완료: ${saved.count || 0}건`);
+            }
         } catch (err) {
             console.error('컨테이너 조회 실패:', err);
             setContainerLookupStatus(`오류: ${err.message}`);
@@ -805,6 +830,10 @@ export default function AsanShipping() {
 
     // Detect date-type columns
     const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
+
+    const getFilterCellValue = useCallback((row, col) => {
+        return normalizeShippingFilterValue(formatCellValue(getDisplayCellRawValue(row, col), col));
+    }, [getDisplayCellRawValue]);
 
     // Processed Data (Search, Sort, Target Filtering)
     const processedData = useMemo(() => {
@@ -827,7 +856,7 @@ export default function AsanShipping() {
         Object.entries(columnFilters).forEach(([col, selectedSet]) => {
             if (selectedSet && selectedSet.size > 0) {
                 rows = rows.filter(row => {
-                    const cell = formatCellValue(getDisplayCellRawValue(row, col), col).trim();
+                    const cell = getFilterCellValue(row, col);
                     return selectedSet.has(cell);
                 });
             }
@@ -836,7 +865,7 @@ export default function AsanShipping() {
         // 1.6 Date Range Filter
         if (dateFilter.col && (dateFilter.from || dateFilter.to)) {
             rows = rows.filter(row => {
-                const raw = formatCellValue(getDisplayCellRawValue(row, dateFilter.col), dateFilter.col);
+                const raw = normalizeDateOnly(getFilterCellValue(row, dateFilter.col));
                 if (!raw) return false;
                 if (dateFilter.from && raw < dateFilter.from) return false;
                 if (dateFilter.to && raw > dateFilter.to) return false;
@@ -844,14 +873,26 @@ export default function AsanShipping() {
             });
         }
 
+        if (storageOnly) {
+            rows = rows.filter(row => getFilterCellValue(row, '보관소').includes('자체보관'));
+        }
+
+        if (unshippedOnly) {
+            rows = rows.filter(row => {
+                const containerNo = getRowContainerNo(row);
+                const signalTone = getShippingSignalTone(data?.headers || [], row, containerLookupResults[containerNo]);
+                return signalTone !== 'completed';
+            });
+        }
+
         // 2. Sorting (User clicked column)
         if (sortConfig.key && !isServerSort) {
             rows.sort((a, b) => {
-                const valA = String(getDisplayCellRawValue(a, sortConfig.key) || '');
-                const valB = String(getDisplayCellRawValue(b, sortConfig.key) || '');
-                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
+                return compareShippingFilterValues(
+                    getFilterCellValue(a, sortConfig.key),
+                    getFilterCellValue(b, sortConfig.key),
+                    sortConfig.direction,
+                );
             });
         } else {
             // Default Sort: AD, AE, AF values to top
@@ -874,12 +915,36 @@ export default function AsanShipping() {
         }
 
         return rows;
-    }, [data, searchTerm, sortConfig, columnFilters, dateFilter, getDisplayCellRawValue]);
+    }, [data, searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, unshippedOnly, getFilterCellValue, getRowContainerNo, containerLookupResults]);
+
+    const shouldLoadFullRowsForFilters = Boolean(
+        data?.source === 'supabase'
+        && Number(data?.total || 0) > (data?.data?.length || 0)
+        && (data?.data?.length || 0) < Math.min(Number(data?.total || 0), FULL_FILTER_PAGE_SIZE)
+        && (
+            filterDropdown
+            || Object.keys(columnFilters).length > 0
+            || Boolean(dateFilter.col && (dateFilter.from || dateFilter.to))
+            || storageOnly
+            || unshippedOnly
+        )
+    );
+
+    useEffect(() => {
+        if (!shouldLoadFullRowsForFilters || !selectedPath) return;
+        fetchData(selectedPath, {
+            page: 1,
+            pageSize: FULL_FILTER_PAGE_SIZE,
+            search: searchTerm,
+            quiet: true,
+            ...serverSortParams
+        });
+    }, [shouldLoadFullRowsForFilters, selectedPath, searchTerm, serverSortParams, fetchData]);
 
     useEffect(() => {
         setTableScrollTop(0);
         if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
-    }, [searchTerm, sortConfig, columnFilters, dateFilter]);
+    }, [searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, unshippedOnly]);
 
     if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
@@ -895,6 +960,26 @@ export default function AsanShipping() {
     const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
     const loadedRows = data.source === 'supabase' ? data.data.length : totalRows;
     const canLoadMore = data.source === 'supabase' && loadedRows < serverTotalRows;
+    const loadNextPage = () => {
+        if (!canLoadMore || loadingMore || autoLoadMoreRef.current) return;
+        autoLoadMoreRef.current = true;
+        fetchData(selectedPath, {
+            page: Number(data.page || 1) + 1,
+            search: searchTerm,
+            append: true,
+            ...serverSortParams
+        }).finally(() => {
+            autoLoadMoreRef.current = false;
+        });
+    };
+    const handleTableScroll = (e) => {
+        const target = e.currentTarget;
+        setTableScrollTop(target.scrollTop);
+        const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+        if (remaining < ROW_HEIGHT * 10) {
+            loadNextPage();
+        }
+    };
     const visibleStart = Math.max(0, Math.floor(tableScrollTop / ROW_HEIGHT) - VIRTUAL_OVERSCAN);
     const visibleCount = Math.ceil(tableViewportHeight / ROW_HEIGHT) + (VIRTUAL_OVERSCAN * 2);
     const visibleEnd = Math.min(totalRows, visibleStart + visibleCount);
@@ -917,15 +1002,15 @@ export default function AsanShipping() {
         Object.entries(columnFilters).forEach(([c, selectedSet]) => {
             if (c !== col && selectedSet && selectedSet.size > 0) {
                 rows = rows.filter(row => {
-                    const cell = formatCellValue(getDisplayCellRawValue(row, c), c).trim();
+                    const cell = getFilterCellValue(row, c);
                     return selectedSet.has(cell);
                 });
             }
         });
 
         const unique = new Set();
-        rows.forEach(row => unique.add(formatCellValue(getDisplayCellRawValue(row, col), col).trim()));
-        return Array.from(unique).sort();
+        rows.forEach(row => unique.add(getFilterCellValue(row, col)));
+        return Array.from(unique).sort((a, b) => compareShippingFilterValues(a, b, 'asc'));
     };
 
     const toggleFilterValue = (col, val) => {
@@ -1082,6 +1167,22 @@ export default function AsanShipping() {
                     {(dateFilter.from || dateFilter.to) && (
                         <button onClick={() => setDateFilter({ col: '', from: '', to: '' })} className={styles.dateClearBtn}>초기화</button>
                     )}
+                    <button
+                        type="button"
+                        className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}
+                        onClick={() => setUnshippedOnly(prev => !prev)}
+                        title="오늘 포함 이후 반입/적하 완료 상태가 아닌 행만 표시합니다"
+                    >
+                        {unshippedOnly ? '필터해제' : '미선적'}
+                    </button>
+                    <button
+                        type="button"
+                        className={`${styles.quickFilterBtn} ${storageOnly ? styles.quickFilterBtnActive : ''}`}
+                        onClick={() => setStorageOnly(prev => !prev)}
+                        title="보관소가 자체보관인 행만 표시합니다"
+                    >
+                        {storageOnly ? '필터해제' : '자체보관'}
+                    </button>
                 </div>
             )}
 
@@ -1103,7 +1204,7 @@ export default function AsanShipping() {
             <div
                 className={styles.tableWrap}
                 ref={tableWrapRef}
-                onScroll={e => setTableScrollTop(e.currentTarget.scrollTop)}
+                onScroll={handleTableScroll}
             >
                 <table className={styles.table}>
                     <thead>
@@ -1174,11 +1275,7 @@ export default function AsanShipping() {
                             const ri = visibleStart + vi;
                             const containerNo = getRowContainerNo(row);
                             const signalTone = getShippingSignalTone(data?.headers || [], row, containerLookupResults[containerNo]);
-                            const rowToneClass = signalTone === 'strong'
-                                ? styles.signalStrongRow
-                                : signalTone === 'dim'
-                                    ? styles.signalDimRow
-                                    : '';
+                            const rowToneClass = signalTone === 'completed' ? styles.completedRow : '';
                             return (
                             <tr key={ri} className={`${ri % 2 === 0 ? styles.evenRow : styles.oddRow} ${rowToneClass}`}>
                                 {orderedVisibleColumns.map(col => {
@@ -1203,12 +1300,7 @@ export default function AsanShipping() {
                     <span>{loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행</span>
                     <button
                         className={styles.loadMoreBtn}
-                        onClick={() => fetchData(selectedPath, {
-                            page: Number(data.page || 1) + 1,
-                            search: searchTerm,
-                            append: true,
-                            ...serverSortParams
-                        })}
+                        onClick={loadNextPage}
                         disabled={!canLoadMore || loadingMore}
                     >
                         {loadingMore ? '불러오는 중' : canLoadMore ? '더 보기' : '전체 로드됨'}

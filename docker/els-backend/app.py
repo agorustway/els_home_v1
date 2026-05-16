@@ -1057,7 +1057,7 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
             else:
                 sortable.append((sort_value, item))
         sortable.sort(key=lambda pair: pair[0], reverse=sort_desc)
-        ordered_rows = [item for _, item in sortable] + blanks
+        ordered_rows = ([item for _, item in sortable] + blanks) if sort_desc else (blanks + [item for _, item in sortable])
         page_rows = ordered_rows[start:end + 1]
     else:
         rows_res = q.order("row_index", desc=False).range(start, end).execute()

@@ -1,48 +1,16 @@
 import { NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/utils/supabase/server';
 import {
-    buildContainerLookupMapFromRows,
-    buildContainerLookupRecord,
-    groupContainerHistoryRows,
-} from '@/utils/containerHistoryResults.mjs';
+    isMissingTableError,
+    normalizeContainers,
+    normalizePath,
+    rowsFromBody,
+    saveContainerLookupRows,
+    TABLE,
+} from './store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const TABLE = 'branch_shipping_container_lookups';
-const DEFAULT_PATH = '/아산지점/2026_자체보관리스트.xlsx';
-
-function normalizePath(value) {
-    const path = String(value || DEFAULT_PATH).replace(/\\/g, '/').trim();
-    return path.startsWith('/') ? path : `/${path}`;
-}
-
-function normalizeContainers(value) {
-    if (Array.isArray(value)) return value.map(v => String(v || '').trim().toUpperCase()).filter(Boolean);
-    return String(value || '')
-        .split(',')
-        .map(v => v.trim().toUpperCase())
-        .filter(Boolean);
-}
-
-function rowsFromBody(body) {
-    if (Array.isArray(body?.rows)) return body.rows;
-    if (body?.results && typeof body.results === 'object') {
-        return Object.values(body.results).flatMap(record => {
-            if (Array.isArray(record)) return record;
-            if (Array.isArray(record?.resultRows)) return record.resultRows;
-            if (Array.isArray(record?.rows)) return record.rows;
-            return [];
-        });
-    }
-    return [];
-}
-
-function isMissingTableError(error) {
-    const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
-    return message.includes(TABLE) || message.includes('relation') || error?.code === '42P01';
-}
 
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
@@ -95,50 +63,20 @@ export async function POST(req) {
         return NextResponse.json({ error: '저장할 컨테이너 이력조회 결과가 없습니다.' }, { status: 400 });
     }
 
-    const lookedUpAt = new Date().toISOString();
-    const runId = randomUUID();
-    const grouped = groupContainerHistoryRows(rows, targets);
-    const resultMap = buildContainerLookupMapFromRows(rows, targets, lookedUpAt);
-
-    const payload = Object.entries(grouped).map(([containerNo, containerRows]) => {
-        const record = buildContainerLookupRecord(containerNo, containerRows, lookedUpAt);
-        if (!record) return null;
-        return {
-            run_id: runId,
-            branch_id: 'asan',
-            file_path: filePath,
-            container_no: containerNo,
-            result_rows: record.resultRows,
-            main_row: record.mainRow,
-            main_status: String(record.mainRow?.[2] || ''),
-            terminal: String(record.mainRow?.[4] || ''),
-            move_time: String(record.mainRow?.[5] || ''),
-            vehicle_no: String(record.mainRow?.[13] || ''),
-            lookup_source: body.lookup_source || 'asan_shipping',
-            looked_up_at: lookedUpAt,
-            updated_at: lookedUpAt,
-        };
-    }).filter(Boolean);
-
-    if (!payload.length) {
+    try {
+        const saved = await saveContainerLookupRows({
+            filePath,
+            rows,
+            containers: targets,
+            lookupSource: body.lookup_source || 'asan_shipping',
+        });
         return NextResponse.json({
             ok: true,
-            run_id: runId,
-            count: 0,
-            data: {},
+            run_id: saved.runId,
+            count: saved.count,
+            data: saved.data,
         });
-    }
-
-    const supabase = await createAdminClient();
-    const { error } = await supabase.from(TABLE).insert(payload);
-    if (error) {
+    } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    return NextResponse.json({
-        ok: true,
-        run_id: runId,
-        count: payload.length,
-        data: resultMap,
-    });
 }

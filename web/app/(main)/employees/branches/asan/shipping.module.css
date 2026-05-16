@@ -350,6 +350,32 @@
     color: #dc2626;
 }
 
+.quickFilterBtn {
+    min-height: 28px;
+    padding: 4px 10px;
+    background: #ecfdf5;
+    border: 1px solid #86efac;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #166534;
+}
+
+.quickFilterBtn:hover {
+    background: #dcfce7;
+}
+
+.quickFilterBtnActive {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.quickFilterBtnActive:hover {
+    background: #fecaca;
+}
+
 .tableWrap {
     background: #fff;
     border-radius: 6px;
@@ -398,13 +424,7 @@
 }
 
 .table td.lookupCell {
-    background: #f0fdf4;
-    color: #14532d;
     font-weight: 650;
-}
-
-.table tr:hover td.lookupCell {
-    background: #dcfce7;
 }
 
 .table th[draggable="true"] {
@@ -418,35 +438,24 @@
 .table tr.oddRow td { background: #fff; }
 .table tr.evenRow td { background: #f8fafc; }
 
-.table tr:hover td {
-    background: #f4f8fc;
-}
-
-.table tr.signalStrongRow td {
-    color: #0f172a;
-    font-weight: 800;
-}
-
-.table tr.signalStrongRow td.lookupCell {
-    background: #dcfce7;
-    color: #064e3b;
-    font-weight: 900;
-}
-
-.table tr.signalDimRow td {
-    color: #a8b3c2;
-    font-weight: 500;
-}
-
-.table tr.signalDimRow td.lookupCell {
-    background: #f8fafc;
+.table tr.completedRow td {
+    background: #f1f5f9;
     color: #94a3b8;
     font-weight: 500;
 }
 
-.table tr.signalDimRow:hover td,
-.table tr.signalDimRow:hover td.lookupCell {
-    background: #f8fafc;
+.table tr.completedRow td.lookupCell {
+    background: #e2e8f0;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.table tr:hover td,
+.table tr:hover td.lookupCell,
+.table tr.completedRow:hover td,
+.table tr.completedRow:hover td.lookupCell {
+    background: #dcfce7;
+    color: #064e3b;
 }
 
 .virtualSpacer td {
@@ -733,13 +742,15 @@
 
     .dateFilterLabel,
     .dateSelect,
-    .dateClearBtn {
+    .dateClearBtn,
+    .quickFilterBtn {
         grid-column: span 2;
     }
 
     .dateSelect,
     .dateInput,
-    .dateClearBtn {
+    .dateClearBtn,
+    .quickFilterBtn {
         width: 100%;
         font-size: 0.8rem;
     }
