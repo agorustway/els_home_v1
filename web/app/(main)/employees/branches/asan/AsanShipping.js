@@ -10,7 +10,9 @@ import {
 import {
     areArraysEqual,
     areSetsEqual,
+    buildRecentShippingMonthOptions,
     compareShippingFilterValues,
+    getDefaultShippingMonthKeys,
     getShippingVirtualWindow,
     getShippingSignalTone,
     getVisibleShippingColumns,
@@ -140,8 +142,11 @@ export default function AsanShipping() {
 
     // Column Filters (Excel-like)
     const [columnFilters, setColumnFilters] = useState({});
-    // Date Range Filter
-    const [dateFilter, setDateFilter] = useState({ col: '', from: '', to: '' });
+    // Date Month Filter
+    const [dateFilter, setDateFilter] = useState(() => ({
+        col: '',
+        months: getDefaultShippingMonthKeys(),
+    }));
     const [unshippedOnly, setUnshippedOnly] = useState(false);
     const [storageOnly, setStorageOnly] = useState(false);
     const [filterDropdown, setFilterDropdown] = useState(null);
@@ -602,7 +607,7 @@ export default function AsanShipping() {
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
-        setDateFilter({ col: '', from: '', to: '' });
+        setDateFilter({ col: dateColumns[0] || '', months: getDefaultShippingMonthKeys() });
         setUnshippedOnly(false);
         setStorageOnly(false);
         setSearchInput('');
@@ -846,6 +851,15 @@ export default function AsanShipping() {
 
     // Detect date-type columns
     const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
+    const recentMonthOptions = useMemo(() => buildRecentShippingMonthOptions(), []);
+
+    useEffect(() => {
+        if (dateColumns.length === 0) return;
+        setDateFilter(prev => {
+            if (dateColumns.includes(prev.col)) return prev;
+            return { ...prev, col: dateColumns[0] };
+        });
+    }, [dateColumns]);
 
     const getFilterCellValue = useCallback((row, col) => {
         return normalizeShippingFilterValue(formatCellValue(getDisplayCellRawValue(row, col), col));
@@ -878,14 +892,13 @@ export default function AsanShipping() {
             }
         });
 
-        // 1.6 Date Range Filter
-        if (dateFilter.col && (dateFilter.from || dateFilter.to)) {
+        // 1.6 Date Month Filter
+        if (dateFilter.col && dateFilter.months?.length > 0) {
+            const selectedMonths = new Set(dateFilter.months);
             rows = rows.filter(row => {
                 const raw = normalizeDateOnly(getFilterCellValue(row, dateFilter.col));
                 if (!raw) return false;
-                if (dateFilter.from && raw < dateFilter.from) return false;
-                if (dateFilter.to && raw > dateFilter.to) return false;
-                return true;
+                return selectedMonths.has(raw.slice(0, 7));
             });
         }
 
@@ -939,7 +952,7 @@ export default function AsanShipping() {
         && (
             filterDropdown
             || Object.keys(columnFilters).length > 0
-            || Boolean(dateFilter.col && (dateFilter.from || dateFilter.to))
+            || Boolean(dateFilter.col && dateFilter.months?.length > 0)
             || storageOnly
             || unshippedOnly
         )
@@ -975,6 +988,18 @@ export default function AsanShipping() {
     const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
     const loadedRows = data.source === 'supabase' ? data.data.length : totalRows;
     const canLoadMore = data.source === 'supabase' && loadedRows < serverTotalRows;
+    const selectedMonthSet = new Set(dateFilter.months || []);
+    const toggleMonthFilter = (monthKey) => {
+        setDateFilter(prev => {
+            const nextMonths = new Set(prev.months || []);
+            if (nextMonths.has(monthKey)) {
+                nextMonths.delete(monthKey);
+            } else {
+                nextMonths.add(monthKey);
+            }
+            return { ...prev, months: Array.from(nextMonths) };
+        });
+    };
     const loadNextPage = () => {
         if (!canLoadMore || loadingMore || autoLoadMoreRef.current) return;
         autoLoadMoreRef.current = true;
@@ -1181,7 +1206,7 @@ export default function AsanShipping() {
                 ))}
             </div>
 
-            {/* Date Range Filter */}
+            {/* Date Month Filter */}
             {dateColumns.length > 0 && (
                 <div className={styles.dateFilterZone}>
                     <span className={styles.dateFilterLabel}>📅 날짜 필터</span>
@@ -1193,12 +1218,27 @@ export default function AsanShipping() {
                         <option value="">컬럼 선택</option>
                         {dateColumns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input type="date" value={dateFilter.from} onChange={e => setDateFilter(p => ({ ...p, from: e.target.value }))} className={styles.dateInput} />
-                    <span className={styles.dateSeparator}>~</span>
-                    <input type="date" value={dateFilter.to} onChange={e => setDateFilter(p => ({ ...p, to: e.target.value }))} className={styles.dateInput} />
-                    {(dateFilter.from || dateFilter.to) && (
-                        <button onClick={() => setDateFilter({ col: '', from: '', to: '' })} className={styles.dateClearBtn}>초기화</button>
-                    )}
+                    <div className={styles.monthFilterGroup} aria-label="조회 월 선택">
+                        <button
+                            type="button"
+                            className={`${styles.monthFilterBtn} ${selectedMonthSet.size === 0 ? styles.monthFilterBtnActive : ''}`}
+                            onClick={() => setDateFilter(prev => ({ ...prev, months: [] }))}
+                            title="월 제한 없이 전체 데이터를 표시합니다"
+                        >
+                            전체
+                        </button>
+                        {recentMonthOptions.map(option => (
+                            <button
+                                key={option.key}
+                                type="button"
+                                className={`${styles.monthFilterBtn} ${selectedMonthSet.has(option.key) ? styles.monthFilterBtnActive : ''}`}
+                                onClick={() => toggleMonthFilter(option.key)}
+                                title={`${option.label} 자료를 조회 대상에 포함하거나 제외합니다`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                     <button
                         type="button"
                         className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}

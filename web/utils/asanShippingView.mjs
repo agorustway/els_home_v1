@@ -150,6 +150,28 @@ export function normalizeDateOnly(value) {
   return '';
 }
 
+export function buildRecentShippingMonthOptions(baseDate = new Date(), count = 6) {
+  const base = baseDate instanceof Date ? baseDate : new Date(baseDate);
+  if (Number.isNaN(base.getTime())) return [];
+
+  const safeCount = Math.max(0, Number(count) || 0);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+
+  return Array.from({ length: safeCount }, (_, idx) => {
+    const date = new Date(year, month - idx, 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    return {
+      key,
+      label: `${String(date.getFullYear()).slice(2)}년 ${date.getMonth() + 1}월`,
+    };
+  });
+}
+
+export function getDefaultShippingMonthKeys(baseDate = new Date(), count = 3) {
+  return buildRecentShippingMonthOptions(baseDate, count).map(option => option.key);
+}
+
 export function normalizeShippingFilterValue(value) {
   if (value == null) return '';
   return String(value)

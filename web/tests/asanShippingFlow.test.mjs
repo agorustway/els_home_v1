@@ -9,8 +9,10 @@ import {
   isActualContainerHistoryRow,
 } from '../utils/containerHistoryResults.mjs';
 import {
+  buildRecentShippingMonthOptions,
   compareShippingFilterValues,
   findWorkDateColumnIndex,
+  getDefaultShippingMonthKeys,
   getShippingVirtualWindow,
   getShippingSignalTone,
   getVisibleShippingColumns,
@@ -520,13 +522,47 @@ test('선적관리 검색은 입력 완료 시간을 기다린 뒤 DB 전체 조
   assert.match(css, /\.searchStatusHidden/);
 });
 
-test('선적관리 날짜 필터 바의 버튼 높이와 조회 건수 텍스트 표시를 정렬한다', () => {
+test('선적관리 월 필터는 오늘 기준 최근 6개월과 기본 3개월을 만든다', () => {
+  const options = buildRecentShippingMonthOptions(new Date(2026, 4, 17), 6);
+
+  assert.deepEqual(options.map(option => option.key), [
+    '2026-05',
+    '2026-04',
+    '2026-03',
+    '2026-02',
+    '2026-01',
+    '2025-12',
+  ]);
+  assert.deepEqual(options.map(option => option.label), [
+    '26년 5월',
+    '26년 4월',
+    '26년 3월',
+    '26년 2월',
+    '26년 1월',
+    '25년 12월',
+  ]);
+  assert.deepEqual(getDefaultShippingMonthKeys(new Date(2026, 4, 17)), [
+    '2026-05',
+    '2026-04',
+    '2026-03',
+  ]);
+});
+
+test('선적관리 날짜 필터 바는 월 다중선택 버튼과 조회 건수 텍스트를 정렬한다', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanShipping.js'),
+    'utf8',
+  );
   const css = fs.readFileSync(
     path.join(repoRoot, 'web/app/(main)/employees/branches/asan/shipping.module.css'),
     'utf8',
   );
 
-  assert.match(css, /\.dateClearBtn[\s\S]*height: 28px;[\s\S]*display: inline-flex;[\s\S]*align-items: center;/);
+  assert.match(source, /buildRecentShippingMonthOptions\(\)/);
+  assert.match(source, /getDefaultShippingMonthKeys\(\)/);
+  assert.match(source, /dateFilter\.months\?\.length > 0/);
+  assert.doesNotMatch(source, /type="date"/);
+  assert.match(css, /\.monthFilterBtn[\s\S]*height: 28px;[\s\S]*display: inline-flex;[\s\S]*align-items: center;/);
   assert.match(css, /\.quickFilterBtn[\s\S]*height: 28px;[\s\S]*display: inline-flex;[\s\S]*align-items: center;/);
   assert.match(css, /\.resultCountText[\s\S]*border: 0;[\s\S]*background: transparent;/);
 });

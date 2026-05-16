@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 선적관리 월 다중선택 필터 전환 (v5.13.44)
+### 핵심
+- 선적관리 날짜 필터의 시작일/종료일 입력 2칸을 제거하고, 월 단위 다중선택 버튼으로 교체했습니다.
+- 오늘(2026-05-17) 기준 현재월 포함 최근 6개월 버튼을 `전체 / 26년 5월 / 26년 4월 / 26년 3월 / 26년 2월 / 26년 1월 / 25년 12월` 순서로 표시합니다.
+- 기본 선택은 현재월부터 3개월(`26년 5월`, `26년 4월`, `26년 3월`)이며, `전체`는 월 제한 해제, 각 월 버튼은 중복 선택/해제를 지원합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (28개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 조회/실패 건수 및 엑셀 헤더 동기화 (v5.13.43)
 ### 핵심
 - 날짜 필터 바의 조회 건수를 `전체 N건 / 조회 N건`으로 바꿔, 서버 전체 969건 중 현재 화면 기준 100건처럼 구분되도록 했습니다.

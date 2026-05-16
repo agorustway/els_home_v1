@@ -346,8 +346,7 @@
     color: #475569;
 }
 
-.dateSelect,
-.dateInput {
+.dateSelect {
     min-height: 28px;
     padding: 4px 8px;
     border: 1px solid #cbd5e1;
@@ -355,25 +354,46 @@
     font-size: 0.85rem;
 }
 
-.dateSeparator {
-    color: #94a3b8;
+.monthFilterGroup {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
 }
 
-.dateClearBtn {
+.monthFilterBtn {
     height: 28px;
-    padding: 0 8px;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
+    padding: 0 9px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
     border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 700;
+    color: #475569;
     cursor: pointer;
-    color: #dc2626;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 800;
     line-height: 1;
+    white-space: nowrap;
     font-family: inherit;
+}
+
+.monthFilterBtn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.monthFilterBtnActive {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.monthFilterBtnActive:hover {
+    background: #dbeafe;
+    border-color: #60a5fa;
 }
 
 .quickFilterBtn {
@@ -805,27 +825,34 @@
 
     .dateFilterLabel,
     .dateSelect,
-    .dateClearBtn,
+    .monthFilterGroup,
     .quickFilterBtn,
-    .resultCountBadge {
+    .resultCountText {
         grid-column: span 2;
     }
 
     .dateSelect,
-    .dateInput,
-    .dateClearBtn,
+    .monthFilterGroup,
     .quickFilterBtn,
-    .resultCountBadge {
+    .resultCountText {
         width: 100%;
         font-size: 0.8rem;
     }
 
-    .resultCountBadge {
-        justify-content: center;
+    .monthFilterGroup {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
     }
 
-    .dateSeparator {
-        display: none;
+    .monthFilterBtn {
+        width: 100%;
+        padding: 0 6px;
+        font-size: 0.76rem;
+    }
+
+    .resultCountText {
+        justify-content: center;
     }
 }
 
