@@ -91,8 +91,7 @@ def _effective_batch_workers(health, configured_workers=None, reserve_single=Tru
     """살아있는 워커 수에 맞춰 배치 병렬도를 낮춘다."""
     configured = int(configured_workers or os.environ.get("ELS_BATCH_MAX_WORKERS", 4))
     total = int(health.get("total_drivers") or 0)
-    max_drivers = int(health.get("max_drivers") or configured or 1)
-    active = total if total > 0 else max_drivers
+    active = total
     if active <= 1:
         return 1
     usable = active - 1 if reserve_single else active

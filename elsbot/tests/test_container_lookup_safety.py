@@ -113,6 +113,7 @@ class TestContainerLookupSafety(unittest.TestCase):
         app_bot = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(app_bot)
 
+        self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 0, "max_drivers": 4}, configured_workers=4), 1)
         self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 1, "max_drivers": 4}, configured_workers=4), 1)
         self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 2, "max_drivers": 4}, configured_workers=4), 1)
         self.assertEqual(app_bot._effective_batch_workers({"total_drivers": 3, "max_drivers": 4}, configured_workers=4), 2)
