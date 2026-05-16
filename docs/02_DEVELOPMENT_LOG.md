@@ -1,4 +1,22 @@
 
+## [2026-05-17] 아산 선적관리 필터/미선적 표시 복구 (v5.13.40)
+### 핵심
+- 형이 제보한 “filter 항목이 안 뜨고, 미선적을 누르면 자료가 안 뜨는” 증상을 선적관리 화면 코드와 기존 회귀 테스트 기준으로 확인했습니다.
+- 컬럼 필터 드롭다운이 `th` 내부에서 렌더링되면서 헤더의 `color: #fff`를 상속해 흰 배경 위 흰 글씨가 되는 문제를 `.dropdown` 색상 명시로 복구했습니다.
+- 실제 선적관리 파일은 작업 기준 날짜가 `반입일`로 들어오는데, 미선적 판정 유틸이 `작업일자` 계열만 찾고 있어 전 행이 `neutral` 처리될 수 있었습니다. `반입일`/`반입일자`를 fallback 기준일로 추가했습니다.
+- 전체 로드 상태에서 컨테이너 저장 이력을 한 URL에 모두 담아 조회하면 길이 제한에 걸릴 수 있어, 저장 이력 조회를 150건 단위로 청크 처리했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (23개)
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (34개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+- `git diff --check` 통과 (CRLF 치환 warning만 표시)
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] eTrans 이력조회 세션 연장/자정 롤오버 보강 (v5.13.39)
 ### 핵심
 - 형이 제보한 “API 연동 조회 중 Session이 종료되었습니다” 팝업을 기준으로 eTrans 캐시 JS와 봇 세션 관리 흐름을 조사했습니다.

@@ -29,6 +29,7 @@ const FULL_FILTER_PAGE_SIZE = 10000;
 const SEARCH_DEBOUNCE_MS = 1000;
 const SEARCH_CLEAR_DEBOUNCE_MS = 250;
 const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;
+const CONTAINER_RESULTS_CHUNK_SIZE = 150;
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
 // 날짜 관련 컬럼 키워드
@@ -125,6 +126,7 @@ export default function AsanShipping() {
     const [containerLookupResults, setContainerLookupResults] = useState({});
     const [containerLookupRunning, setContainerLookupRunning] = useState(false);
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
+    const containerLookupResultsRef = useRef({});
     const lastLoadedPathRef = useRef('');
     const fetchRequestIdRef = useRef(0);
     const autoLoadMoreRef = useRef(false);
@@ -241,17 +243,30 @@ export default function AsanShipping() {
 
     const serverSortParams = useMemo(() => getServerSortParams(sortConfig), [sortConfig]);
 
+    useEffect(() => {
+        containerLookupResultsRef.current = containerLookupResults;
+    }, [containerLookupResults]);
+
     const loadSavedContainerLookupResults = useCallback(async (containers) => {
-        if (!selectedPath || !containers.length) return;
+        const missingContainers = Array.from(new Set(containers || []))
+            .filter(containerNo => containerNo && !containerLookupResultsRef.current?.[containerNo]?.mainRow);
+        if (!selectedPath || !missingContainers.length) return;
         try {
-            const params = new URLSearchParams({
-                path: selectedPath,
-                containers: containers.join(',')
-            });
-            const res = await fetch(`/api/branches/asan/shipping/container-results?${params.toString()}`);
-            const json = await res.json();
-            if (json.data) {
-                setContainerLookupResults(prev => ({ ...prev, ...json.data }));
+            for (let i = 0; i < missingContainers.length; i += CONTAINER_RESULTS_CHUNK_SIZE) {
+                const chunk = missingContainers.slice(i, i + CONTAINER_RESULTS_CHUNK_SIZE);
+                const params = new URLSearchParams({
+                    path: selectedPath,
+                    containers: chunk.join(',')
+                });
+                const res = await fetch(`/api/branches/asan/shipping/container-results?${params.toString()}`);
+                const json = await res.json();
+                if (json.data) {
+                    setContainerLookupResults(prev => {
+                        const next = { ...prev, ...json.data };
+                        containerLookupResultsRef.current = next;
+                        return next;
+                    });
+                }
             }
         } catch (err) {
             console.warn('Failed to load container lookup results:', err);

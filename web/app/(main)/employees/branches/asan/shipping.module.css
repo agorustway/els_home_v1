@@ -423,6 +423,15 @@
     box-shadow: 0 1px 0 #166534;
 }
 
+.dropdown {
+    color: #0f172a;
+    text-align: left;
+}
+
+.dropdown label {
+    color: #0f172a;
+}
+
 .table td.lookupCell {
     font-weight: 650;
 }

@@ -141,9 +141,21 @@ export function findWorkDateColumnIndex(headers = []) {
   const exactIdx = headers.findIndex((header) => String(header || '').trim() === '작업일자');
   if (exactIdx >= 0) return exactIdx;
 
-  return headers.findIndex((header) => {
+  const workIdx = headers.findIndex((header) => {
     const text = String(header || '').replace(/\s+/g, '').toLowerCase();
     return text.includes('작업') && (text.includes('일자') || text.includes('일'));
+  });
+  if (workIdx >= 0) return workIdx;
+
+  const fallbackLabels = ['반입일', '반입일자', '픽업일', '픽업일자'];
+  for (const label of fallbackLabels) {
+    const idx = headers.findIndex((header) => String(header || '').replace(/\s+/g, '') === label);
+    if (idx >= 0) return idx;
+  }
+
+  return headers.findIndex((header) => {
+    const text = String(header || '').replace(/\s+/g, '').toLowerCase();
+    return text.includes('반입') && (text.includes('일자') || text.includes('일') || text.includes('date'));
   });
 }
 

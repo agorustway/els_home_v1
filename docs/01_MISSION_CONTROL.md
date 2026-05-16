@@ -1,21 +1,20 @@
-# ELS MISSION CONTROL (v5.13.39 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.40 / APK v5.11.12)
 
-> 최신 업데이트: eTrans 컨테이너 이력조회 세션 연장 버튼 클릭 후 클라이언트 타이머를 재동기화하고, 자정 날짜 변경 시 타이머가 세션 종료로 오판하는 롤오버 가드를 추가했습니다.
+> 최신 업데이트: 아산 선적관리 컬럼 필터 드롭다운 글자색을 보정하고, 미선적 판정 기준일을 실제 파일의 `반입일`까지 인식하도록 복구했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.39
+- **웹 버전**: v5.13.40
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - eTrans 내부 타이머가 `HHMMSS` 차이만으로 남은 시간을 계산해 자정 이후 음수 차이를 세션 종료로 오판할 수 있음을 확인.
-  - 세션 연장 버튼 클릭 후 서버 연장뿐 아니라 WebSquare `startSessionTimer()`를 재시작해 `scwin.startTimeObj`를 현재 시각으로 갱신.
-  - 로그인 직후와 자동 연장 시 자정 롤오버 가드를 설치해 `curHms < startHms` 상황에서 자동으로 세션 연장/타이머 초기화를 수행.
-  - 연장 버튼을 못 찾는 경우에도 WebSquare 전역 함수 직접 호출로 연장과 타이머 재시작을 시도.
+  - 필터 드롭다운이 테이블 헤더의 흰 글자색을 상속해 항목이 안 보이던 문제를 CSS에서 명시 보정.
+  - 선적관리 파일의 실제 날짜 컬럼인 `반입일`을 작업 기준일 fallback으로 사용해 `미선적` 빠른 필터가 자료를 다시 표시.
+  - 전체 로드 시 컨테이너 이력 저장값 요청을 150건 단위로 나눠 URL 길이 제한으로 저장 이력이 누락되는 위험을 방지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 선적관리 회귀 테스트 및 ESLint 통과 |
+| Next.js 웹 | 정상 | 선적관리 필터/미선적 회귀 테스트 및 ESLint 통과 |
 | Supabase 인증/DB | 정상 | 선적관리 조회 결과는 최신 조회 기준으로 교체 저장 |
 | NAS 백엔드 | 정상 | 배차판/선적관리 저부하 파일감지 유지 |
 | ELS Bot | 정상 | eTrans 세션 연장/자정 롤오버 타이머 가드 보강 |
@@ -35,6 +34,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.40**: 아산 선적관리 필터 드롭다운 글자색을 복구하고, 미선적 판정 기준일에 `반입일` fallback을 추가. 대량 컨테이너 이력 저장값은 150건씩 청크 조회.
 - **v5.13.39**: eTrans 세션 연장 후 클라이언트 타이머를 재시작하고 자정 날짜 변경 시 WebSquare 타이머가 세션 종료로 오판하지 않도록 롤오버 가드를 설치.
 - **v5.13.38**: 미선적 필터 상태에서 컨테이너 조회 준비값이 기존 이력 판정을 지우지 않게 하고, 실패 응답은 DB 기존값을 삭제하지 않도록 보강. 가상 스크롤 시작점 클램프로 필터 후 빈 화면 표시도 방지.
 - **v5.13.37**: 아산 선적관리 미선적 정의를 `작업일자 <= 이력 MOVE TIME`인 비완료 이력(`반입/적하` 제외)으로 변경. 완료 음영도 같은 작업일 기준으로 맞췄고, 컨테이너 조회 최종 저장은 기존 file/container 조회값을 삭제 후 최신 결과로 교체.
@@ -48,9 +48,9 @@
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 20개 통과
-- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 31개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/route.js" "utils/asanShippingView.mjs"`: 0 errors
+- `node --test web/tests/asanShippingFlow.test.mjs`: 23개 통과
+- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 
 ## EASTER EGGS
