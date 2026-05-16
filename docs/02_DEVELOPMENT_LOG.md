@@ -1,4 +1,20 @@
 
+## [2026-05-16] 자료실/연락처 상세 이미지 반응형 보강 (v5.13.10)
+### 🚀 Achievement
+- **자료실 본문 오버플로 방지**: 업무자료실 상세의 HTML 본문을 공통 `contentBody`로 감싸, 삽입 이미지와 넓은 표가 브라우저 축소 시 페이지 밖으로 밀려나지 않게 했습니다.
+- **서식자료실 렌더 통일**: 서식자료실 상세의 마크다운 이미지 렌더 경로도 동일한 본문 규칙을 쓰도록 맞췄습니다.
+- **연락처/작업지 상세 공통 가드**: `DetailSection` 내부 이미지·표·pre에 `max-width`, 내부 가로 스크롤, 이미지 비율 유지 규칙을 추가해 연락처 상세 하위 페이지까지 같은 기준으로 동작합니다.
+### 🧪 검증
+- `npm.cmd run lint` 통과
+- `npm.cmd run build` 통과
+- 빌드 중 외부 HTTPS fetch EACCES와 차량 엑셀 export dynamic 경고는 기존 환경/라우트 경고이며 종료코드는 0입니다.
+### 📁 변경 파일
+- `web/app/(main)/employees/(intranet)/intranet.module.css`
+- `web/app/(main)/employees/(intranet)/work-docs/[id]/PageClient.js`
+- `web/app/(main)/employees/(intranet)/form-templates/[id]/PageClient.js`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 워커 큐 안정화 (v5.13.9)
 ### 🚀 Achievement
 - **활성 워커 기반 병렬도 조절**: 배치 조회가 `ELS_BATCH_MAX_WORKERS=4`를 무조건 쓰지 않고 현재 살아있는 데몬 워커 수에 맞춰 병렬도를 낮춥니다. 워커 1개 상태에서는 1개 순차 처리로 동작합니다.

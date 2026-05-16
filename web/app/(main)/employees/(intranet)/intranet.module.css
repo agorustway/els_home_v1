@@ -191,6 +191,8 @@
     border-radius: 16px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     border: 1px solid #edf2f7;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .table {
@@ -315,6 +317,9 @@
 }
 
 .contentBody {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
     white-space: pre-wrap;
     line-height: 1.8;
     color: #334155;
@@ -322,12 +327,40 @@
 }
 
 .contentBody img {
-    max-width: 100%;
-    height: auto;
+    display: block;
+    max-width: 100% !important;
+    width: auto;
+    height: auto !important;
+    object-fit: contain;
     border-radius: 12px;
     margin: 20px 0;
     border: 1px solid #f1f5f9;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.contentBody :global(img) {
+    display: block;
+    max-width: 100% !important;
+    width: auto;
+    height: auto !important;
+    object-fit: contain;
+}
+
+.contentBody :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.contentBody :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+.contentBody :global(p),
+.contentBody :global(div) {
+    max-width: 100%;
 }
 
 .actions {
@@ -1423,6 +1456,9 @@
 }
 
 .detailSection {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     margin-top: 12px;
     padding: 12px;
     border: 1px solid #e2e8f0;
@@ -1443,11 +1479,40 @@
 }
 
 .detailSectionBody {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
     color: #334155;
     font-size: 0.84rem;
     font-weight: 550;
     line-height: 1.6;
     white-space: pre-wrap;
+}
+
+.detailSectionBody :global(img) {
+    display: block;
+    max-width: 100% !important;
+    width: auto;
+    height: auto !important;
+    object-fit: contain;
+    margin: 8px 0;
+}
+
+.detailSectionBody :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.detailSectionBody :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+.detailSectionBody :global(p),
+.detailSectionBody :global(div) {
+    max-width: 100%;
 }
 
 .fileList {
@@ -1507,10 +1572,16 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .imagePreview {
     max-width: min(100%, 640px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
     border: 1px solid #dbe4ee;
     border-radius: 6px;
 }

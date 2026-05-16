@@ -48,10 +48,10 @@ export default function WorkDocDetailPage() {
                     );
                 }
             }
-            return <div>{elements}</div>;
+            return <div className={styles.contentBody}>{elements}</div>;
         }
 
-        return <div dangerouslySetInnerHTML={{ __html: content }} />;
+        return <div className={styles.contentBody} dangerouslySetInnerHTML={{ __html: content }} />;
     };
 
     const handleDelete = async () => {

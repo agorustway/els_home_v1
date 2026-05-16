@@ -45,7 +45,7 @@ export default function FormTemplateDetailPage() {
                     );
                 }
             }
-            return <div>{elements}</div>;
+            return <div className={styles.contentBody}>{elements}</div>;
         }
 
         return <div dangerouslySetInnerHTML={{ __html: content }} className={styles.contentBody} />;
