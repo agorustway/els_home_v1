@@ -87,6 +87,7 @@ def _should_retry_rows(rows):
         "WORKER_RETIRED",
         "WORKER_NOT_READY",
         "이전 조회 결과 잔상 감지",
+        "SUCCESS_VERIFY",
         "데이터 추출 실패",
         "timed out",
         "timeout",

@@ -68,8 +68,6 @@ def is_retryable_result_rows(rows):
         "조회 중지됨",
         "WORKER_RETIRED",
         "WORKER_NOT_READY",
-        "INPUT_NOT_FOUND",
-        "메뉴 진입 실패",
     ]
     return not any(token in message for token in non_retryable)
 

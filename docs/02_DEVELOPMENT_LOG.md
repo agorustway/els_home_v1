@@ -1,4 +1,21 @@
 
+## [2026-05-16] 컨테이너 이력조회 3워커 운용·재기동 완화 (v5.13.28)
+### 핵심
+- NAS Chrome 동시 기동 부담을 줄이기 위해 `ELS_MAX_DRIVERS`와 `ELS_BATCH_MAX_WORKERS`를 3으로 낮췄습니다.
+- 배치 조회 시작 시 부족한 워커를 새로 띄우지 않고, 이미 준비된 가용 워커만 사용하도록 했습니다.
+- 성공행 2차 검증 실패는 워커 재기동이 아니라 해당 결과 폐기/재조회 판정으로 처리해, 조회 시작이 곧 워커 재가동으로 이어지는 현상을 차단했습니다.
+- 배치 기본값에서 강제 메뉴 재진입을 끄고 현재 조회 화면을 유지해 검증 오버헤드를 줄였습니다.
+### 검증
+- `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py` 통과
+- `python -m unittest elsbot.tests.test_daemon_stop_control elsbot.tests.test_container_lookup_safety elsbot.tests.test_els_bot_logic` 통과 (26개)
+- `git diff --check` 통과
+### 변경 파일
+- `docker/docker-compose.yml`
+- `docker/els-backend/app_bot.py`
+- `elsbot/els_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 아산 선적관리 검색 상태 표시 안정화 (v5.13.27)
 ### 핵심
 - 검색어 입력이 끝난 뒤 DB 조회가 아주 빠르게 끝나도 `검색 중`이 즉시 켜졌다 꺼져 불안정해 보이던 표시를 정리했습니다.
