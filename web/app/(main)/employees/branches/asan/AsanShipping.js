@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import styles from './shipping.module.css';
 
 const PREFS_KEY = 'asan_shipping_prefs';
 const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
+const SHIPPING_PAGE_SIZE = 500;
 
 // 날짜 관련 컬럼 키워드
 const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
@@ -46,6 +47,7 @@ export default function AsanShipping() {
     const [data, setData] = useState(null);
     const [headers, setHeaders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [syncing, setSyncing] = useState(false);
     const [elapsed, setElapsed] = useState('');
@@ -79,34 +81,71 @@ export default function AsanShipping() {
         setSelectedPath(saved);
     }, []);
 
-    const fetchData = async (pathOverride) => {
+    const applyShippingData = useCallback((payload, options = {}) => {
+        if (!payload) return;
+        const append = Boolean(options.append);
+        setData(prev => {
+            if (!append || !prev?.data || !payload.data) return payload;
+            return {
+                ...payload,
+                data: [...prev.data, ...payload.data]
+            };
+        });
+        if (payload.headers) {
+            const filteredHeaders = payload.headers.filter(h => h !== 'col_1');
+            setHeaders(filteredHeaders);
+        }
+    }, []);
+
+    const fetchData = useCallback(async (pathOverride, options = {}) => {
         const path = pathOverride || selectedPath;
         if (!path) return;
-        
-        setLoading(true);
+
+        const page = options.page || 1;
+        const pageSize = options.pageSize || SHIPPING_PAGE_SIZE;
+        const search = (options.search || '').trim();
+        const append = Boolean(options.append);
+
+        if (append) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+        }
         try {
-            const r = await fetch(`/api/branches/asan/shipping?path=${encodeURIComponent(path)}`);
+            const params = new URLSearchParams({
+                path,
+                page: String(page),
+                page_size: String(pageSize)
+            });
+            if (search) params.set('search', search);
+
+            const r = await fetch(`/api/branches/asan/shipping?${params.toString()}`);
             // 백엔드에서 Python NaN이 JSON에 섞여 나올 수 있어 text로 받아서 치환 후 파싱
             const text = await r.text();
             const safeText = text.replace(/\bNaN\b/g, 'null');
             const j = JSON.parse(safeText);
             if (j.data) {
-                setData(j.data);
-                if (j.data.headers) {
-                    const filteredHeaders = j.data.headers.filter(h => h !== 'col_1');
-                    setHeaders(filteredHeaders);
-                }
+                applyShippingData(j.data, { append });
             }
         } catch (e) {
             console.error('Failed to fetch shipping data:', e);
         } finally {
-            setLoading(false);
+            if (append) {
+                setLoadingMore(false);
+            } else {
+                setLoading(false);
+            }
         }
-    };
+    }, [selectedPath, applyShippingData]);
 
     useEffect(() => {
-        if (selectedPath) fetchData();
-    }, [selectedPath]);
+        if (!selectedPath) return;
+        const delay = searchTerm.trim() ? 300 : 0;
+        const timer = setTimeout(() => {
+            fetchData(selectedPath, { page: 1, search: searchTerm });
+        }, delay);
+        return () => clearTimeout(timer);
+    }, [selectedPath, searchTerm, fetchData]);
 
     useEffect(() => {
         if (!data || !data.file_modified_at) {
@@ -216,7 +255,7 @@ export default function AsanShipping() {
             setColOrder(headers);
         };
         loadDbPrefs();
-    }, [headers]);
+    }, [headers, data?.headers]);
 
     const containerRef = useRef(null);
     const tableWrapRef = useRef(null);
@@ -459,10 +498,35 @@ export default function AsanShipping() {
 
     const handleSync = async () => {
         setSyncing(true);
-        // We just re-fetch, backend handles cache automatically or we can force by passing a timestamp.
-        // Wait, the backend currently caches by mtime. If the file is saved, mtime changes and it will reload.
-        await fetchData();
-        setSyncing(false);
+        try {
+            const r = await fetch('/api/branches/asan/shipping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path: selectedPath,
+                    force: true,
+                    page: 1,
+                    page_size: SHIPPING_PAGE_SIZE,
+                    search: searchTerm
+                })
+            });
+            const text = await r.text();
+            const safeText = text.replace(/\bNaN\b/g, 'null');
+            const j = JSON.parse(safeText);
+            if (!r.ok || j.error) {
+                throw new Error(j.error || 'NAS 동기화 실패');
+            }
+            if (j.data) {
+                applyShippingData(j.data);
+            } else {
+                await fetchData();
+            }
+        } catch (e) {
+            console.error('Failed to sync shipping data:', e);
+            alert(e.message || 'NAS 동기화에 실패했습니다.');
+        } finally {
+            setSyncing(false);
+        }
     };
 
     // Detect date-type columns
@@ -472,9 +536,10 @@ export default function AsanShipping() {
     const processedData = useMemo(() => {
         if (!data || !data.data) return [];
         let rows = [...data.data];
+        const isServerPaged = data.source === 'supabase';
 
         // 1. Search Filter (Multi-search support like: 'word1, word2')
-        if (searchTerm.trim()) {
+        if (!isServerPaged && searchTerm.trim()) {
             const terms = searchTerm.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
             if (terms.length > 0) {
                 rows = rows.filter(row => {
@@ -556,6 +621,9 @@ export default function AsanShipping() {
     const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
 
     const totalRows = processedData.length;
+    const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
+    const loadedRows = data.source === 'supabase' ? data.data.length : totalRows;
+    const canLoadMore = data.source === 'supabase' && loadedRows < serverTotalRows;
     const visibleStart = Math.max(0, Math.floor(tableScrollTop / ROW_HEIGHT) - VIRTUAL_OVERSCAN);
     const visibleCount = Math.ceil(tableViewportHeight / ROW_HEIGHT) + (VIRTUAL_OVERSCAN * 2);
     const visibleEnd = Math.min(totalRows, visibleStart + visibleCount);
@@ -571,7 +639,7 @@ export default function AsanShipping() {
         
         // Filter rows based on OTHER column filters first (to cascade filters)
         let rows = [...data.data];
-        if (searchTerm.trim()) {
+        if (data.source !== 'supabase' && searchTerm.trim()) {
             const terms = searchTerm.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
             if (terms.length > 0) {
                 rows = rows.filter(row => terms.some(t => row.some(cell => String(cell || '').toLowerCase().includes(t))));
@@ -631,6 +699,11 @@ export default function AsanShipping() {
                     {fileTimeStr && (
                         <div className={styles.fileMod}>
                             저장: {fileTimeStr} <span style={{ marginLeft: '8px', padding: '2px 6px', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>{elapsed}</span>
+                            {data.source === 'supabase' && (
+                                <span className={styles.dataMeta}>
+                                    DB {loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행
+                                </span>
+                            )}
                         </div>
                     )}
                 </div>
@@ -824,6 +897,23 @@ export default function AsanShipping() {
                     </tbody>
                 </table>
             </div>
+
+            {data.source === 'supabase' && (
+                <div className={styles.pageBar}>
+                    <span>{loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행</span>
+                    <button
+                        className={styles.loadMoreBtn}
+                        onClick={() => fetchData(selectedPath, {
+                            page: Number(data.page || 1) + 1,
+                            search: searchTerm,
+                            append: true
+                        })}
+                        disabled={!canLoadMore || loadingMore}
+                    >
+                        {loadingMore ? '불러오는 중' : canLoadMore ? '더 보기' : '전체 로드됨'}
+                    </button>
+                </div>
+            )}
 
             {/* 설정 모달 */}
             {showSettings && (

@@ -36,6 +36,16 @@
     font-weight: 600;
 }
 
+.dataMeta {
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
 .rightControls {
     display: flex;
     align-items: center;
@@ -69,6 +79,35 @@
     border-color: #bfdbfe;
 }
 .syncBtn:hover { background: #dbeafe; }
+
+.pageBar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    min-height: 30px;
+    padding: 4px 2px 0;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.loadMoreBtn {
+    min-height: 28px;
+    padding: 0 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 0.74rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.loadMoreBtn:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
 
 .dangerBtn {
     min-height: 30px;

@@ -786,6 +786,12 @@ def _shipping_value(headers, row, keywords):
             return str(row[i] if i < len(row) else "").strip()
     return ""
 
+def _shipping_search_terms(search):
+    return [term.strip() for term in str(search or "").split(",") if term.strip()]
+
+def _shipping_search_filter_value(term):
+    return str(term).replace(",", " ").replace("\\", " ")
+
 def sync_asan_shipping_python(force=False, rel_path=None):
     global shipping_db_available
     if not supabase or not shipping_db_available:
@@ -874,8 +880,12 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search=""):
     end = start + page_size - 1
 
     q = supabase.from_("branch_shipping_rows").select("row_values", count="exact").eq("branch_id", "asan").eq("file_path", normalized_path)
-    if search:
-        q = q.ilike("search_text", f"%{search}%")
+    search_terms = _shipping_search_terms(search)
+    if len(search_terms) == 1:
+        q = q.ilike("search_text", f"%{_shipping_search_filter_value(search_terms[0])}%")
+    elif search_terms:
+        filters = ",".join(f"search_text.ilike.%{_shipping_search_filter_value(term)}%" for term in search_terms)
+        q = q.or_(filters)
     rows_res = q.order("row_index", desc=False).range(start, end).execute()
 
     return {
@@ -903,19 +913,41 @@ def asan_shipping_sync_scheduler():
 
 threading.Thread(target=asan_shipping_sync_scheduler, daemon=True).start()
 
-@app.route("/api/branches/asan/shipping", methods=["GET"])
+@app.route("/api/branches/asan/shipping", methods=["GET", "POST"])
 def get_asan_shipping():
-    """아산지점 선적관리 조회. 기본은 Supabase DB, 미준비 시 엑셀 캐시로 폴백."""
+    """아산지점 선적관리 조회/동기화.
+
+    GET은 빠른 조회를 위해 Supabase DB를 먼저 읽고, 요청 중 엑셀 파싱/동기화를 하지 않는다.
+    POST는 사용자가 명시적으로 누른 NAS 동기화 버튼과 운영 스케줄러용 강제 동기화 경로다.
+    """
     try:
         rel_path = request.args.get("path") or DEFAULT_ASAN_SHIPPING_PATH
+        body = request.get_json(silent=True) or {}
+        if request.method == "POST":
+            rel_path = body.get("path") or rel_path
+            force = body.get("force", True)
+            if isinstance(force, str):
+                force = force.lower() in ("1", "true", "yes", "y")
+
+            if not supabase or not shipping_db_available:
+                return jsonify({"ok": False, "error": "선적관리 Supabase 동기화가 비활성화되어 있습니다."}), 503
+
+            sync_result = sync_asan_shipping_python(force=bool(force), rel_path=rel_path)
+            if not sync_result:
+                return jsonify({"ok": False, "error": "선적관리 NAS 동기화에 실패했습니다."}), 500
+
+            page = body.get("page") or request.args.get("page", 1)
+            page_size = body.get("page_size") or request.args.get("page_size", 5000)
+            search = (body.get("search") or request.args.get("search") or "").strip()
+            db_data = query_asan_shipping_db(rel_path, page=page, page_size=page_size, search=search)
+            return jsonify({"ok": True, "data": db_data or sync_result})
+
         source = request.args.get("source", "auto")
-        force = request.args.get("force") in ("1", "true", "yes")
         page = request.args.get("page", 1)
         page_size = request.args.get("page_size", 5000)
         search = (request.args.get("search") or "").strip()
 
         if source != "excel" and supabase and shipping_db_available:
-            sync_asan_shipping_python(force=force, rel_path=rel_path)
             db_data = query_asan_shipping_db(rel_path, page=page, page_size=page_size, search=search)
             if db_data:
                 return jsonify({"data": db_data})

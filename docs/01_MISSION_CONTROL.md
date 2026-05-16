@@ -1,23 +1,23 @@
-# ELS MISSION CONTROL (v5.13.12 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.13 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 조회(GET)와 NAS→Supabase 동기화(POST)를 분리해 일반 페이지 로딩 중 엑셀 파싱을 피하도록 정리했습니다.
+> 최신 업데이트: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩/서버 검색 구조로 확장했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.12
+- **웹 버전**: v5.13.13
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 아산 선적관리 GET은 Supabase DB 조회를 우선하고 요청 중 NAS 엑셀 동기화를 수행하지 않음.
-  - NAS 동기화 버튼은 POST 강제 동기화로 분리해 사용자가 명시적으로 갱신할 때만 엑셀 파싱.
-  - Next.js 프록시 라우트도 POST를 지원해 웹→NAS 백엔드 동기화 흐름 유지.
-  - 회귀 테스트로 GET 조회 중 `sync_asan_shipping_python()` 재호출 방지.
+  - 아산 선적관리 첫 조회는 500행 단위로 받고 하단 `더 보기`로 추가 로드.
+  - 전체 검색은 Supabase 서버 검색으로 전송하고, 콤마 구분 검색은 OR 조건으로 처리.
+  - DB 적재 건수와 현재 로드 건수를 화면에 표시해 대량 데이터 상태를 확인 가능.
+  - NAS 동기화 버튼은 POST 강제 동기화 후 동일한 페이지 단위 데이터를 다시 수신.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | `npm.cmd run lint`, `npm.cmd run build` 통과 |
 | Supabase 인증/DB | 정상 | `ai_chat_memory` 삭제/치환 동기화 보강 |
-| NAS 백엔드 | 정상 | 아산 선적관리 조회/동기화 경로 분리 |
+| NAS 백엔드 | 정상 | 아산 선적관리 DB 페이지 조회/서버 검색 적용 |
 | ELS Bot | 정상 | 이번 작업 영향 없음 |
 | Android 드라이버 앱 | 정상 | 앱 로컬 GPS 안정화/중복 전송 방어, APK v5.11.12 빌드 완료 |
 
@@ -35,6 +35,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.13**: 아산 선적관리 웹 조회를 Supabase 페이지 단위 로딩으로 전환해 첫 요청을 500행으로 축소. 검색어는 서버 쿼리로 전달하고 콤마 구분 OR 검색을 지원. DB 전체 건수/로드 건수와 더보기 UI를 추가하고 Hook 경고를 제거.
 - **v5.13.12**: 아산 선적관리 일반 조회에서는 Supabase DB만 우선 조회하고 NAS 엑셀 동기화는 POST 수동/스케줄 경로로 분리. 웹 동기화 버튼은 POST를 호출하며, 회귀 테스트를 추가해 GET 경로에서 동기화 호출이 되살아나지 않게 방어.
 - **v5.13.11**: 서식자료실 상세의 다운로드 카드 UI를 제거하고 업무자료실과 같은 `IntranetDataTable` 첨부 목록 구조로 통일. 자료실 하위의 첨부파일 표시 경로를 재검토해 카드형 잔존 경로를 정리.
 - **v5.13.10**: 업무자료실/서식자료실 상세 본문 HTML 이미지와 표가 브라우저 축소 시 컨테이너 밖으로 튀어나가지 않도록 공통 본문/상세 섹션 반응형 가드를 추가. 연락처/작업지 상세가 공유하는 `DetailSection`에도 이미지·표·pre 폭 제한과 내부 가로 스크롤을 적용.
@@ -53,9 +54,12 @@
 - **v5.12.20**: 아산 모바일 UI 높이/저장시간 겹침 수정.
 
 ## VERIFICATION
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 12개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs`: 13개 통과
 - `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과 (번들 Python 사용)
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js`: 0 errors, 기존 Hook dependency warning 2건
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js`: 0 errors
+- `npm.cmd run build`: 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+- 로컬 dev 서버 `/employees/branches/asan`: HTTP 200 확인(인증 보호로 로그인 페이지 응답)
+- Supabase 운영 DB 확인: `branch_shipping_files` 1건, `branch_shipping_rows` 965건 조회 성공
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 14개 통과
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
 - `git diff --check`: 통과

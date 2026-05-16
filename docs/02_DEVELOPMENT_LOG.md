@@ -1,4 +1,27 @@
 
+## [2026-05-16] 아산 선적관리 페이지 단위 DB 조회 완성 (v5.13.13)
+### 🚀 Achievement
+- **초기 로딩 축소**: 선적관리 첫 조회가 전체 대량 행 대신 Supabase DB에서 500행 단위로 받아오도록 변경했습니다.
+- **서버 검색 적용**: 전체 검색어를 API 쿼리로 전달하고, 백엔드에서 콤마 구분 검색을 OR 조건으로 처리하도록 보강했습니다.
+- **더보기 UX 추가**: DB 전체 건수와 현재 로드 건수를 표시하고, `더 보기` 버튼으로 다음 페이지를 이어 붙여 조회할 수 있게 했습니다.
+- **동기화 후 조회 일관화**: `NAS 동기화` POST 응답도 동일한 페이지 크기/검색 조건을 반영해 돌려받도록 맞췄습니다.
+- **Hook 경고 제거**: 선적관리 컴포넌트의 React Hook dependency 경고를 정리했습니다.
+### 🧪 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs` 통과 (13개)
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py` 통과 (번들 Python 사용)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" app/api/branches/asan/shipping/route.js` 0 errors
+- `npm.cmd run build` 통과. 외부 HTTPS fetch EACCES 및 차량 엑셀 export dynamic 경고는 기존 환경성 경고.
+- 로컬 dev 서버 `/employees/branches/asan` HTTP 200 확인(인증 보호로 로그인 페이지 응답)
+- Supabase 운영 DB 확인: `branch_shipping_files` 1건, `branch_shipping_rows` 965건 조회 성공
+### 📁 변경 파일
+- `docker/els-backend/app.py`
+- `docker/els-backend/app_core.py`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 아산 선적관리 조회/동기화 분리 (v5.13.12)
 ### 🚀 Achievement
 - **GET 조회 경량화**: 아산 선적관리 API의 일반 조회 경로에서 NAS 엑셀 동기화를 제거하고, Supabase에 이미 적재된 DB 조회를 우선하도록 분리했습니다.
