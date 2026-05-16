@@ -1,4 +1,17 @@
 
+## [2026-05-16] 컨테이너 이력조회 오류 행 누락 방지 (v5.13.7)
+### 🚀 Achievement
+- **입력 행 유지**: 화면 입력 파서가 ISO 6346 체크섬까지 통과한 번호만 남기던 동작을 바꿔, 컨테이너 번호 형식(영문4+숫자7)이 맞으면 체크섬 오류 번호도 조회 대상으로 유지합니다.
+- **오류 사유 표시 보장**: 체크섬 오류 번호는 NAS 봇 단 검증에서 `ERROR / 유효하지 않은 컨테이너 번호(ISO 6346 검증 실패)` 행으로 돌아오므로, 10건 요청 중 문제 있는 건도 말없이 빠지지 않고 순서에 맞춰 표시됩니다.
+### 🧪 검증
+- `node --test web/tests/containerInput.test.mjs` 통과 (4개)
+### 📁 변경 파일
+- `web/utils/containerInput.mjs`
+- `web/app/(main)/employees/container-history/page.js`
+- `web/tests/containerInput.test.mjs`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-16] 컨테이너 이력조회 정확도 방어 및 4워커 복구 (v5.13.6)
 ### 🚀 Achievement
 - **유령 데이터 차단 강화**: NAS 봇 단에서 ISO 6346 체크섬 검증을 수행해 변형·비정상 컨테이너 번호는 외부 사이트 조회 전 `ERROR`로 확정하도록 했습니다.

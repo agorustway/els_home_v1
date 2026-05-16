@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.6 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.7 / APK v5.11.12)
 
-> 최신 업데이트: 컨테이너 이력조회 정확도 방어를 강화하고 봇 워커를 4개로 복구했습니다.
+> 최신 업데이트: 컨테이너 이력조회 입력 파서가 체크섬 오류 번호도 행으로 유지해 오류 사유를 표시합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.6
+- **웹 버전**: v5.13.7
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -12,6 +12,7 @@
   - 조회 실패/타임아웃만 1회 재조회하고, 성공 데이터는 602 컨테이너 조회 그리드 행만 파싱.
   - 봇 워커 기본값과 Docker 환경을 4개로 복구하되, 로그인/조회 시작은 stagger로 분산.
   - 배치 결과는 내부 병렬 처리와 별개로 사용자 입력 순서대로 스트리밍.
+  - 화면 입력 파서는 체크섬 오류 번호도 조회 대상으로 유지해 오류 행이 누락되지 않게 처리.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -36,6 +37,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.7**: 컨테이너 이력조회 화면에서 체크섬 오류 번호를 조용히 제외하지 않고, 입력 순서의 오류 행으로 표시하도록 파서와 테스트를 보강.
 - **v5.13.6**: 컨테이너 이력조회 stale 데이터 방어, 빈 그리드 오판 수정, 실패 1회 재조회, 입력순 결과 스트림, 봇 워커 4개 복구.
 - **v5.13.5 / APK v5.11.12**: 앱 로컬 GPS 후보/확정 포인트 분리, 중복 전송 큐 압축, 서버 저장 중복 방어, 운행 종료 후 Android 서비스 잔류 차단.
 - **v5.13.4 / APK v5.11.11**: 차량위치관제 GPS 이상치 필터 강화, 앱 지도 실시간 수집·경로 유지·상세 패널 겹침 해소, 웹 상세 패널/마커 줌 토글 정리.
@@ -51,6 +53,7 @@
 - `python -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_container_lookup_safety`: 10개 통과
 - `python -m py_compile elsbot/els_bot.py elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
 - `git diff --check`: 통과
+- `node --test web/tests/containerInput.test.mjs`: 4개 통과
 - `node --test web/tests/vehicleLocation.test.mjs`: 6개 통과
 - `npm.cmd run lint`: 통과
 - `npm.cmd run build`: 통과

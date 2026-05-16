@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Script from 'next/script';
 import * as XLSX from 'xlsx-js-style';
+import { parseContainerInput } from '@/utils/containerInput.mjs';
 import styles from './container-history.module.css';
 
 const HEADERS = ['컨테이너번호', 'No', '수출입', '구분', '터미널', 'MOVE TIME', '모선', '항차', '선사', '적공', 'SIZE', 'POD', 'POL', '차량번호', 'RFID'];
@@ -21,33 +22,6 @@ function StatusBadge({ type, label }) {
     else className += ` ${styles.badgeEmpty}`;
 
     return <span className={className}>{label}</span>;
-}
-
-function parseContainerInput(text) {
-    if (!text || !text.trim()) return [];
-
-    // ISO 6346 체크섬 검증
-    const isValidCN = (cn) => {
-        if (!cn || cn.length !== 11) return false;
-        const charMap = {
-            'A': 10, 'B': 12, 'C': 13, 'D': 14, 'E': 15, 'F': 16, 'G': 17, 'H': 18, 'I': 19, 'J': 20,
-            'K': 21, 'L': 23, 'M': 24, 'N': 25, 'O': 26, 'P': 27, 'Q': 28, 'R': 29, 'S': 30, 'T': 31,
-            'U': 32, 'V': 34, 'W': 35, 'X': 36, 'Y': 37, 'Z': 38
-        };
-        let sum = 0;
-        for (let i = 0; i < 10; i++) {
-            const c = cn[i];
-            const val = (c >= '0' && c <= '9') ? parseInt(c, 10) : charMap[c];
-            if (val === undefined) return false;
-            sum += val * Math.pow(2, i);
-        }
-        const rem = sum % 11;
-        return (rem === 10 ? 0 : rem) === parseInt(cn[10], 10);
-    };
-
-    const raw = text.split(/[\n,;\s]+/).map(s => s.replace(/\s/g, '').toUpperCase()).filter(Boolean);
-    const valid = raw.filter(isValidCN);
-    return [...new Set(valid)];
 }
 
 function ContainerHistoryInner() {
@@ -547,7 +521,7 @@ function ContainerHistoryInner() {
             return alert('컨테이너 번호를 입력하세요');
         }
         if (!containers.length) {
-            return alert('입력된 컨테이너 번호 중 유효한 ISO 6346 규격의 번호가 없습니다.');
+            return alert('입력된 값 중 컨테이너 번호 형식(영문4+숫자7)에 맞는 번호가 없습니다.');
         }
         setTotalElapsed(null);
         if (!loginSuccess) {
