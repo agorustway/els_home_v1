@@ -520,6 +520,22 @@
     padding: 2px 0 0;
 }
 
+.mobileDateActionBar {
+    display: none;
+}
+
+.mobileDateActionBar button {
+    border: 1px solid #2563eb;
+    border-radius: 7px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.74rem;
+    font-weight: 950;
+    padding: 7px 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
+}
+
 .analysisRow {
     display: grid;
     grid-template-columns: minmax(0, 1.65fr) minmax(330px, 0.7fr);
@@ -1925,6 +1941,30 @@
 
     .dateBridge {
         gap: 4px;
+    }
+
+    .mobileDateActionBar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #eff6ff;
+    }
+
+    .mobileDateActionBar span {
+        min-width: 0;
+        color: #1e3a8a;
+        font-size: 0.68rem;
+        font-weight: 900;
+        line-height: 1.25;
+    }
+
+    .mobileDateActionBar button {
+        flex: 0 0 auto;
+        min-height: 34px;
     }
 
     .trendPanel {

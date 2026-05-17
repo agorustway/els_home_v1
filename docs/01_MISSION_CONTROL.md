@@ -1,12 +1,15 @@
-# ELS MISSION CONTROL (v5.13.89 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.90 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 10/11/12월이 1월로 합산되던 월 파싱 오류를 고치고, 운영 Supabase 월별 summary를 `마감월` 기준으로 복구했습니다.
+> 최신 업데이트: 아산 배차 요일별 월간 지표명을 `월기준 주간평균합`으로 정정하고 모바일 날짜탭 시작점에 배차판 검색 버튼을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.89
+- **웹 버전**: v5.13.90
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
+  - 요일별 작업지 비중의 월간 지표명을 `월기준 주간평균합`으로 정정해 월 누적/평균 기준 혼동을 줄임.
+  - 모바일 현황판 날짜탭 시작점에 `선택일 배차판 검색` 버튼을 추가해 상단까지 수동 이동하지 않고 상세 배차판 검색으로 전환.
+  - 모바일 전체 탭 주간 선택 버튼은 `5월 1주`처럼 짧은 라벨과 작은 폰트로 표시.
   - 연간실적 월 파서가 `2022-10`, `2022-11`, `2022-12`를 1월로 오인하던 정규식을 수정.
   - NAS Python 집계와 웹 표시 유틸 모두 `YYYY-MM`, `YYYYMM`, `YYYY-MM-DD`, `YYYYMMDD` 월 범위를 1~12로 엄격하게 파싱.
   - 운영 Supabase `branch_performance_files.summary.monthly`를 current snapshot의 `row_data->>'마감월'` 기준으로 재생성.
@@ -39,6 +42,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.90**: 아산 배차 요일별 월간 지표명을 `월기준 주간평균합`으로 정정하고 모바일 날짜탭 시작점 버튼과 짧은 주차 라벨 추가.
 - **v5.13.89**: 아산 연간실적 월 파싱을 보정하고 Supabase 월별 summary를 `마감월` 기준으로 복구. 월별 차트 금액 표시도 보강.
 - **v5.13.88**: 아산 연간실적 첫 화면에 최근 12개월 흐름을 올리고 연도별 차트를 압축해 공헌도 매트릭스 진입을 앞당김.
 - **v5.13.87**: 아산 연간실적 직접 주입의 마지막 `is_current` 대량 UPDATE를 기본 경로에서 제거하고 `currentSnapshotId` 기준 스냅샷 공개/조회로 전환.
@@ -52,6 +56,8 @@
 - **v5.13.79**: 연간실적 current 스냅샷 고정으로 중복 표시를 막고 월별/구분별 분석 패널을 확장.
 
 ## VERIFICATION
+- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js"`: 0 errors
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "utils/asanPerformanceView.mjs" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py`: 통과

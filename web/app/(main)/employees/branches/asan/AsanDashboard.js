@@ -57,6 +57,7 @@ export default function AsanDashboard({
     activeDate = '',
     selectedMonth = '',
     dateControlsSlot = null,
+    onOpenDailyGrid = null,
     onIssueSelect = null,
 }) {
     const [viewMode, setViewMode] = useState('customer');
@@ -197,6 +198,14 @@ export default function AsanDashboard({
 
             {dateControlsSlot && (
                 <div className={styles.dateBridge}>
+                    {onOpenDailyGrid && (
+                        <div className={styles.mobileDateActionBar}>
+                            <span>선택한 날짜의 상세 배차 자료를 바로 확인합니다.</span>
+                            <button type="button" onClick={onOpenDailyGrid}>
+                                선택일 배차판 검색
+                            </button>
+                        </div>
+                    )}
                     {dateControlsSlot}
                 </div>
             )}
@@ -764,7 +773,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
                     )}
                 </label>
                 <label className={`${styles.weekdayChooser} ${mode === 'month' ? styles.weekdayChooserActive : ''}`}>
-                    <span><b>{selectedMonthLabel}</b>월간 평균합 {formatDecimal(monthAverageTotal)} <small>누적 {formatQty(monthTotal)}</small></span>
+                    <span><b>{selectedMonthLabel}</b>월기준 주간평균합 {formatDecimal(monthAverageTotal)} <small>누적 {formatQty(monthTotal)}</small></span>
                     {monthOptions.length > 0 && (
                         <select
                             aria-label="요일별 작업지 비중 월 선택"

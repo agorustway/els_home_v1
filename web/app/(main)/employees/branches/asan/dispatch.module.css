@@ -941,6 +941,10 @@
     background: #047857;
 }
 
+.weekLabelShort {
+    display: none;
+}
+
 /* 전체 탭 (녹색) */
 .tab_all {
     background: #ecfdf5;
@@ -1458,6 +1462,40 @@
         padding: 6px 2px;
         font-size: 0.8rem;
         text-align: center;
+        white-space: nowrap;
+    }
+
+    .periodFilterPanel {
+        gap: 4px;
+    }
+
+    .monthFilter {
+        gap: 3px;
+    }
+
+    .periodFilterLabel {
+        min-width: 30px;
+        font-size: 0.66rem;
+    }
+
+    .monthBtn {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        line-height: 1.1;
+    }
+
+    .periodWeekBtn {
+        padding: 4px 7px;
+        font-size: 0.66rem;
+        min-width: 52px;
+    }
+
+    .weekLabelFull {
+        display: none;
+    }
+
+    .weekLabelShort {
+        display: inline;
         white-space: nowrap;
     }
 

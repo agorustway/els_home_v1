@@ -128,6 +128,7 @@ function getWeekFilterRange(dateStr) {
         return `${String(value.getMonth() + 1).padStart(2, '0')}월 ${weekNo}주차`;
     };
     const weekLabel = weekOfMonthLabel(end);
+    const shortWeekLabel = weekLabel.replace(/^0?(\d+)월\s+(\d+)주차$/, '$1월 $2주');
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     const label = `${start.getMonth() + 1}/${start.getDate()}(${days[start.getDay()]})~${end.getMonth() + 1}/${end.getDate()}(${days[end.getDay()]})`;
     return {
@@ -135,6 +136,7 @@ function getWeekFilterRange(dateStr) {
         start: toKey(start),
         end: toKey(end),
         label,
+        shortLabel: shortWeekLabel,
         fullLabel: `${label} (${weekLabel})`,
     };
 }
@@ -687,6 +689,14 @@ function AsanDispatchContent() {
         });
     }, [data]);
 
+    const handleOpenDailyGrid = useCallback(() => {
+        setMainView('grid');
+        setDisplayLimit(100);
+        requestAnimationFrame(() => {
+            containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }, []);
+
     const dateControls = (
         <>
             <div className={styles.dateTabs} ref={tabsRef}>
@@ -729,8 +739,15 @@ function AsanDispatchContent() {
                     <div className={styles.monthFilter}>
                         <span className={styles.periodFilterLabel}>주간</span>
                         {mergedView.weeks.map(week => (
-                            <button key={week.key} className={`${styles.monthBtn} ${allTabWeek?.key === week.key ? styles.monthBtnActive : ''}`}
-                                onClick={() => { setAllTabWeek(week); setAllTabMonth(null); setDisplayLimit(100); }}>{week.fullLabel || week.label}</button>
+                            <button
+                                key={week.key}
+                                className={`${styles.monthBtn} ${styles.periodWeekBtn} ${allTabWeek?.key === week.key ? styles.monthBtnActive : ''}`}
+                                title={week.fullLabel || week.label}
+                                onClick={() => { setAllTabWeek(week); setAllTabMonth(null); setDisplayLimit(100); }}
+                            >
+                                <span className={styles.weekLabelFull}>{week.fullLabel || week.label}</span>
+                                <span className={styles.weekLabelShort}>{week.shortLabel || week.weekLabel || week.label}</span>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -816,6 +833,7 @@ function AsanDispatchContent() {
                     activeDate={isAllTab ? '' : activeItem?.target_date || ''}
                     selectedMonth={isAllTab ? allTabMonth || '' : ''}
                     dateControlsSlot={dateControls}
+                    onOpenDailyGrid={handleOpenDailyGrid}
                     onIssueSelect={handleDashboardIssueSelect}
                 />
             ) : (

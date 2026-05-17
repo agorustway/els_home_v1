@@ -1,4 +1,21 @@
 
+## [2026-05-18] 아산 배차 월기준 주간평균합 표기 및 모바일 검색 진입 버튼 (v5.13.90)
+### 핵심
+- 요일별 작업지 비중의 월간 지표명을 `월기준 주간평균합`으로 정정했습니다.
+- 월 누적은 보조 텍스트로 유지해 평균 기준값과 누적 실적을 구분했습니다.
+- 모바일 현황판 날짜탭 시작점에 `선택일 배차판 검색` 버튼을 추가해, 아래쪽에서 바로 배차판 검색 시작점으로 전환할 수 있게 했습니다.
+- 모바일 전체 탭의 주간 선택 버튼은 `5월 1주`처럼 짧은 라벨과 작은 폰트로 표시해 두 줄 밀림을 줄였습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 월 파싱 및 월별 summary 복구 (v5.13.89)
 ### 핵심
 - 연간실적 분석에서 1월 금액이 과대 표시되던 원인을 확인했습니다. 기존 정규식이 `2022-10`, `2022-11`, `2022-12`의 월을 `1`로 먼저 매칭해 10~12월을 1월로 집계하고 있었습니다.

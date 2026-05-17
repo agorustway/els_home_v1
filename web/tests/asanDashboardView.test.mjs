@@ -397,7 +397,7 @@ test('아산 현황판 요일별 패널은 누적 줄에서 주간과 월간을 
   assert.match(source, /주간 실적/);
   assert.match(source, /월간 평균/);
   assert.match(source, /주간 실적 \{formatQty\(weekTotal\)\}/);
-  assert.match(source, /월간 평균합 \{formatDecimal\(monthAverageTotal\)\}/);
+  assert.match(source, /월기준 주간평균합 \{formatDecimal\(monthAverageTotal\)\}/);
   assert.match(source, /누적 \{formatQty\(monthTotal\)\}/);
   assert.match(source, /onSelect\?\.\('weekly', event\.target\.value\)/);
   assert.match(source, /onSelect\?\.\('monthly', event\.target\.value\)/);
@@ -405,9 +405,37 @@ test('아산 현황판 요일별 패널은 누적 줄에서 주간과 월간을 
   assert.match(css, /\.weekdayChooser small\s*{[\s\S]*color: #94a3b8;/);
 });
 
+test('아산 현황판 모바일 날짜 시작점은 배차판 검색 버튼을 제공한다', () => {
+  const dashboardSource = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/AsanDashboard.js'),
+    'utf8',
+  );
+  const pageSource = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const css = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/dashboard.module.css'),
+    'utf8',
+  );
+
+  assert.match(dashboardSource, /onOpenDailyGrid = null/);
+  assert.match(dashboardSource, /className=\{styles\.mobileDateActionBar\}/);
+  assert.match(dashboardSource, /선택일 배차판 검색/);
+  assert.match(pageSource, /const handleOpenDailyGrid = useCallback/);
+  assert.match(pageSource, /onOpenDailyGrid=\{handleOpenDailyGrid\}/);
+  assert.match(pageSource, /setMainView\('grid'\)/);
+  assert.match(css, /\.mobileDateActionBar\s*{[\s\S]*display: none;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.mobileDateActionBar\s*{[\s\S]*display: flex;/);
+});
+
 test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를 제외한다', () => {
   const source = fs.readFileSync(
     path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const css = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/dispatch.module.css'),
     'utf8',
   );
 
@@ -415,6 +443,15 @@ test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를
   assert.match(source, /const eligibleItems = data\.filter\(item => item\.target_date <= todayKey\);/);
   assert.match(source, /const months = \[\.\.\.new Set\(eligibleItems\.map/);
   assert.match(source, /eligibleItems\.forEach\(\(item\) =>/);
+  assert.match(source, /const shortWeekLabel = weekLabel\.replace/);
+  assert.match(source, /shortLabel: shortWeekLabel/);
+  assert.match(source, /className=\{`\$\{styles\.monthBtn\} \$\{styles\.periodWeekBtn\}/);
+  assert.match(source, /title=\{week\.fullLabel \|\| week\.label\}/);
+  assert.match(source, /className=\{styles\.weekLabelShort\}/);
+  assert.match(css, /\.weekLabelShort\s*{[\s\S]*display: none;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.periodWeekBtn\s*{[\s\S]*font-size: 0\.66rem;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.weekLabelFull\s*{[\s\S]*display: none;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.weekLabelShort\s*{[\s\S]*display: inline;/);
 });
 
 test('아산 현황판 추세 돋보기는 포인트 위치에 따라 위아래 배치를 바꾼다', () => {
