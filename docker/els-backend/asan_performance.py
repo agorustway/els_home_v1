@@ -524,11 +524,62 @@ def _search_filter_value(term):
 
 def register_asan_performance_routes(app, supabase, kst):
     cache = {}
-    state = {"db_available": True}
+    state = {"db_available": True, "last_sync_error": None}
     poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 120, 30)
     quiet_seconds = _env_int("ASAN_PERFORMANCE_SYNC_QUIET_SECONDS", 10, 0)
     retry_seconds = _env_int("ASAN_PERFORMANCE_SYNC_RETRY_SECONDS", 180, 30)
     sync_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
+    sync_state_lock = threading.Lock()
+    sync_state = {
+        "running": False,
+        "started_at": None,
+        "finished_at": None,
+        "last_error": None,
+        "last_result": None,
+    }
+
+    def _sync_status():
+        with sync_state_lock:
+            return dict(sync_state)
+
+    def _attach_sync_status(data):
+        payload = dict(data or {})
+        payload["sync_status"] = _sync_status()
+        return payload
+
+    def _start_background_sync(rel_path, sheet_name, header_row, force):
+        with sync_state_lock:
+            if sync_state["running"]:
+                return False
+            sync_state.update({
+                "running": True,
+                "started_at": datetime.now(kst).isoformat(),
+                "finished_at": None,
+                "last_error": None,
+                "last_result": None,
+            })
+
+        def runner():
+            result = None
+            error = None
+            try:
+                result = _sync(force=force, rel_path=rel_path, sheet_name=sheet_name, header_row=header_row)
+                if not result:
+                    error = state.get("last_sync_error") or "연간실적 NAS 동기화에 실패했습니다."
+            except Exception as exc:
+                error = str(exc)
+                app.logger.error(f"[연간실적DB] 백그라운드 동기화 실패: {exc}", exc_info=True)
+            finally:
+                with sync_state_lock:
+                    sync_state.update({
+                        "running": False,
+                        "finished_at": datetime.now(kst).isoformat(),
+                        "last_error": error,
+                        "last_result": result,
+                    })
+
+        threading.Thread(target=runner, daemon=True).start()
+        return True
 
     def _retire_rows(normalized_path, sheet_name, indices, status, now_iso):
         if not indices:
@@ -552,10 +603,12 @@ def register_asan_performance_routes(app, supabase, kst):
 
     def _sync(force=False, rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, header_row=None):
         if not supabase or not state["db_available"]:
+            state["last_sync_error"] = "Supabase 클라이언트가 없거나 연간실적 테이블이 비활성화되어 있습니다."
             return None
 
         file_path, normalized_path = _resolve_performance_file(rel_path)
         if not file_path.exists():
+            state["last_sync_error"] = f"연간실적 엑셀 파일을 찾을 수 없습니다: {file_path}"
             app.logger.info(f"[연간실적DB] 파일 미발견: {file_path}")
             return None
 
@@ -670,6 +723,7 @@ def register_asan_performance_routes(app, supabase, kst):
 
             cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "summary": summary, "file_modified_at": file_modified_at}}
             sync_gate.mark_synced(normalized_path, file_signature)
+            state["last_sync_error"] = None
             gc.collect()
             app.logger.info(
                 f"[연간실적DB] 동기화 완료: {normalized_path} "
@@ -690,8 +744,10 @@ def register_asan_performance_routes(app, supabase, kst):
         except Exception as exc:
             if "branch_performance_" in str(exc) or "relation" in str(exc).lower():
                 state["db_available"] = False
+                state["last_sync_error"] = "Supabase branch_performance 테이블을 찾을 수 없습니다. migration 적용 후 컨테이너를 재시작하세요."
                 app.logger.warning("[연간실적DB] Supabase 테이블이 없어 동기화를 비활성화합니다. migration 적용 후 컨테이너를 재시작하세요.")
             else:
+                state["last_sync_error"] = str(exc)
                 app.logger.error(f"[연간실적DB] 동기화 실패: {exc}", exc_info=True)
             return None
 
@@ -779,7 +835,12 @@ def register_asan_performance_routes(app, supabase, kst):
             try:
                 now = datetime.now(kst)
                 if 6 <= now.hour <= 23:
-                    _sync(force=False)
+                    _start_background_sync(
+                        DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH,
+                        DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET,
+                        None,
+                        False,
+                    )
                 time.sleep(poll_seconds)
             except Exception as exc:
                 app.logger.error(f"[연간실적DB 스케줄러] 에러: {exc}")
@@ -798,10 +859,38 @@ def register_asan_performance_routes(app, supabase, kst):
                 force = body.get("force", True)
                 if isinstance(force, str):
                     force = force.lower() in ("1", "true", "yes", "y")
+                run_async = body.get("async", False)
+                if isinstance(run_async, str):
+                    run_async = run_async.lower() in ("1", "true", "yes", "y")
+
+                if run_async:
+                    started = _start_background_sync(rel_path, sheet_name, header_row, bool(force))
+                    db_data = _query(
+                        rel_path=rel_path,
+                        sheet_name=sheet_name,
+                        page=body.get("page") or request.args.get("page", 1),
+                        page_size=body.get("page_size") or request.args.get("page_size", 500),
+                        search=(body.get("search") or request.args.get("search") or "").strip(),
+                        sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
+                        sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
+                    )
+                    data = db_data or _empty_supabase_data(
+                        rel_path=rel_path,
+                        sheet_name=sheet_name,
+                        page=body.get("page") or request.args.get("page", 1),
+                        page_size=body.get("page_size") or request.args.get("page_size", 500),
+                    )
+                    status = _sync_status()
+                    return jsonify({
+                        "ok": True,
+                        "status": "syncing" if status.get("running") else "idle",
+                        "message": "연간실적 NAS 동기화를 시작했습니다." if started else "연간실적 NAS 동기화가 이미 진행 중입니다.",
+                        "data": _attach_sync_status(data),
+                    }), 202 if status.get("running") else 200
 
                 sync_result = _sync(force=bool(force), rel_path=rel_path, sheet_name=sheet_name, header_row=header_row)
                 if not sync_result:
-                    return jsonify({"ok": False, "error": "연간실적 NAS 동기화에 실패했습니다."}), 500
+                    return jsonify({"ok": False, "error": state.get("last_sync_error") or "연간실적 NAS 동기화에 실패했습니다."}), 500
 
                 db_data = _query(
                     rel_path=rel_path,
@@ -812,7 +901,7 @@ def register_asan_performance_routes(app, supabase, kst):
                     sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
                     sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
                 )
-                return jsonify({"ok": True, "data": db_data or sync_result})
+                return jsonify({"ok": True, "data": _attach_sync_status(db_data or sync_result)})
 
             rel_path = request.args.get("path") or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH
             sheet_name = request.args.get("sheet_name") or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET
@@ -828,19 +917,19 @@ def register_asan_performance_routes(app, supabase, kst):
                     sort_dir=request.args.get("sort_dir") or "asc",
                 )
                 if db_data:
-                    return jsonify({"data": db_data})
+                    return jsonify({"data": _attach_sync_status(db_data)})
                 if not supabase or not state["db_available"]:
                     return jsonify({
                         "error": "연간실적 Supabase 연결 또는 테이블 상태를 확인할 수 없습니다.",
                         "source": "supabase-unavailable",
                     }), 503
                 return jsonify({
-                    "data": _empty_supabase_data(
+                    "data": _attach_sync_status(_empty_supabase_data(
                         rel_path=rel_path,
                         sheet_name=sheet_name,
                         page=request.args.get("page", 1),
                         page_size=request.args.get("page_size", 500),
-                    )
+                    ))
                 })
 
             file_path, normalized_path = _resolve_performance_file(rel_path)
@@ -854,7 +943,7 @@ def register_asan_performance_routes(app, supabase, kst):
             mtime = file_path.stat().st_mtime
             cached = cache.get(normalized_path)
             if cached and cached["mtime"] == mtime and cached["data"]:
-                return jsonify({"data": {**cached["data"], "source": "excel-cache"}})
+                return jsonify({"data": _attach_sync_status({**cached["data"], "source": "excel-cache"})})
 
             parsed = parse_asan_performance_excel(
                 file_path,
@@ -872,7 +961,7 @@ def register_asan_performance_routes(app, supabase, kst):
                 "page_size": len(parsed["data"]),
             }
             cache[normalized_path] = {"mtime": mtime, "data": data}
-            return jsonify({"data": data})
+            return jsonify({"data": _attach_sync_status(data)})
         except Exception as exc:
             app.logger.error(f"연간실적 처리 오류: {exc}", exc_info=True)
             return jsonify({"error": str(exc)}), 500

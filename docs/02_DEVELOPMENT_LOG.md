@@ -1,4 +1,23 @@
 
+## [2026-05-17] 아산 연간실적 최초 적재 타임아웃 회피 (v5.13.50)
+### 핵심
+- 운영 확인 결과 연간실적 GET은 `supabase-empty`로 응답해 DB 미적재 상태였고, 동기화 POST는 nginx 기본 60초 제한에 걸려 504 HTML 응답을 반환했습니다.
+- `NAS 동기화`를 요청-대기형에서 백그라운드 작업 시작 방식으로 전환하고, 화면은 5초 간격으로 Supabase 조회와 동기화 상태를 폴링하도록 변경했습니다.
+- gateway의 `/api/branches` 계열 timeout을 900초로 늘려 배차/선적/실적 계열 장시간 처리 여유를 맞췄습니다.
+### 검증
+- 운영 NAS GET: `/api/branches/asan/performance/annual?...source=supabase` 응답 `supabase-empty`, `needs_sync=true` 확인
+- 운영 NAS 기존 POST: 60초 후 `504 Gateway Time-out` 확인
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과 (9개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py` 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/api/branches/asan/performance/annual/route.js"` 0 errors
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `docker/els-gateway/nginx.conf`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 Supabase 조회 흐름 정리 (v5.13.49)
 ### 핵심
 - 화면 기본 조회를 `source=supabase`로 고정해 Supabase 원장만 읽도록 정리했습니다. NAS Excel 읽기는 `NAS 동기화` POST 또는 명시적 `source=excel` 프리뷰에서만 수행합니다.

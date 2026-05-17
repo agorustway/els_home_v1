@@ -82,6 +82,8 @@ export default function AsanAnnualPerformance() {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [syncing, setSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState(null);
+    const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('analytics');
     const [searchInput, setSearchInput] = useState('');
@@ -123,6 +125,13 @@ export default function AsanAnnualPerformance() {
 
     const applyPayload = useCallback((nextPayload, options = {}) => {
         if (!nextPayload) return;
+        if (nextPayload.sync_status) {
+            setSyncStatus(nextPayload.sync_status);
+            setSyncing(Boolean(nextPayload.sync_status.running));
+            if (!nextPayload.sync_status.running && nextPayload.sync_status.last_error) {
+                setError(nextPayload.sync_status.last_error);
+            }
+        }
         if (options.append) {
             setPayload(prev => ({
                 ...nextPayload,
@@ -158,6 +167,7 @@ export default function AsanAnnualPerformance() {
             setLoading(true);
         }
         setError('');
+        if (!append) setNotice('');
 
         try {
             const params = new URLSearchParams({
@@ -250,6 +260,7 @@ export default function AsanAnnualPerformance() {
                     sheet_name: sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET,
                     header_row: headerRow || null,
                     force: true,
+                    async: true,
                     page: 1,
                     page_size: PAGE_SIZE,
                     search: searchTerm,
@@ -259,13 +270,23 @@ export default function AsanAnnualPerformance() {
             });
             const json = await readPerformanceJson(res, '연간실적 동기화 실패');
             applyPayload(json.data);
-            persistPrefs({ sourceHeaders: json.data?.headers || [] });
+            setNotice(json.message || '연간실적 NAS 동기화를 시작했습니다.');
+            if (json.data?.headers?.length) {
+                persistPrefs({ sourceHeaders: json.data.headers });
+            }
         } catch (err) {
             setError(err.message || '연간실적 동기화 실패');
-        } finally {
             setSyncing(false);
         }
     };
+
+    useEffect(() => {
+        if (!syncing) return undefined;
+        const timer = setInterval(() => {
+            fetchData({ page: 1, quiet: true });
+        }, 5000);
+        return () => clearInterval(timer);
+    }, [syncing, fetchData]);
 
     const loadNextPage = () => {
         if (!canLoadMore || loadingMore) return;
@@ -350,6 +371,8 @@ export default function AsanAnnualPerformance() {
                         {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
                         <span>{payload?.source || '대기'}</span>
                         <span>{totalRows.toLocaleString()}행</span>
+                        {syncStatus?.running && <span className={styles.syncBadge}>동기화 진행중</span>}
+                        {syncStatus?.finished_at && !syncStatus.running && <span>동기화 {fmtTs(syncStatus.finished_at)}</span>}
                     </div>
                 </div>
                 <div className={styles.actions}>
@@ -363,6 +386,7 @@ export default function AsanAnnualPerformance() {
             </div>
 
             {error && <div className={styles.errorBox}>{error}</div>}
+            {notice && !error && <div className={styles.noticeBox}>{notice}</div>}
 
             {loading && !payload ? (
                 <div className={styles.emptyState}>연간실적 자료 조회중...</div>

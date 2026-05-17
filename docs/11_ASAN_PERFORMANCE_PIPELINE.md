@@ -13,7 +13,8 @@
 - Next API: `/api/branches/asan/performance/annual`
   - `GET`: 기본 `source=supabase`로 Supabase 현재 원장 페이지 조회
   - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰
-  - `POST`: NAS 엑셀 강제 동기화 후 조회
+  - `POST async=true`: NAS 엑셀 동기화를 백그라운드로 시작하고 현재 Supabase 조회값과 `sync_status` 반환
+  - `POST async=false`: 운영 점검용 동기 처리
 - NAS Core 모듈: `docker/els-backend/asan_performance.py`
 - 기본 파일 경로: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
 - NAS 경로 탐색 기준: 배차판/선적관리와 동일하게 `/app/data/아산지점/...`
@@ -36,6 +37,7 @@
 - 컬럼이 추가/삭제된 경우 저장된 숨김/순서 설정보다 현재 엑셀 헤더를 우선한다.
 - 화면 조회는 기본 300행 단위로 제한해 브라우저 메모리 부담을 낮춘다.
 - Supabase에 아직 적재 데이터가 없으면 `supabase-empty`와 `needs_sync=true`로 응답하며, 기본 조회가 Excel 파일을 직접 읽지 않는다.
+- 최초 적재처럼 60초를 넘길 수 있는 작업은 화면 요청을 붙잡지 않고 백그라운드 작업으로 돌린 뒤 폴링한다.
 
 ## 4. 월별실적 확장 계획
 - 같은 `branch_performance_files/rows` 테이블을 `dataset_type='monthly'`로 재사용한다.
@@ -45,7 +47,7 @@
 
 ## 5. TODO
 - Supabase 운영 DB에 `20260517_asan_annual_performance.sql` 적용. (완료)
-- NAS Core 배포 후 `/api/branches/asan/performance/annual` POST로 최초 동기화.
+- NAS Core/Gateway 배포 후 화면의 `NAS 동기화`로 최초 백그라운드 동기화.
 - 운영 NAS에서 `/app/data/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx` 존재 확인.
 - 실제 엑셀 샘플 기준으로 매출/매입/손익 컬럼 자동 추론 키워드 보정.
 - 월별실적 파일 위치와 마감자료 파일명 규칙 확정.
