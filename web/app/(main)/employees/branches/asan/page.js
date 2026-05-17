@@ -691,7 +691,7 @@ function AsanDispatchContent() {
             )}
 
             {loading ? (
-                <div className={styles.emptyState}>데이터 불러오는 중...</div>
+                <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : !currentView ? (
                 <div className={styles.emptyState}>데이터가 없습니다. 상단 &apos;🔄 NAS 동기화&apos; 버튼을 누르세요.</div>
             ) : mainView === 'dashboard' ? (

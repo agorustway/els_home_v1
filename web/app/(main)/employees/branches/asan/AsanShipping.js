@@ -1364,7 +1364,7 @@ export default function AsanShipping() {
                         {visibleRows.length === 0 && (
                             <tr>
                                 <td className={styles.tableMessageCell} colSpan={Math.max(orderedVisibleColumns.length, 1)}>
-                                    {tableIsRefreshing ? '자료 조회중...' : '조건에 맞는 자료가 없습니다.'}
+                                    {tableIsRefreshing ? '데이터를 불러오는 중입니다...' : '조건에 맞는 자료가 없습니다.'}
                                 </td>
                             </tr>
                         )}

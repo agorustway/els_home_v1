@@ -611,8 +611,44 @@ test('선적관리 테이블은 필터/정렬 조회 중 행이 비면 조회중
   );
 
   assert.match(source, /const tableIsRefreshing = Boolean\(searchRefreshing \|\| loadingMore \|\| shouldLoadFullRowsForFilters\);/);
-  assert.match(source, /visibleRows\.length === 0[\s\S]*tableIsRefreshing \? '자료 조회중\.\.\.' : '조건에 맞는 자료가 없습니다\.'/);
+  assert.match(source, /visibleRows\.length === 0[\s\S]*tableIsRefreshing \? '데이터를 불러오는 중입니다\.\.\.' : '조건에 맞는 자료가 없습니다\.'/);
   assert.match(css, /\.tableMessageCell/);
+});
+
+test('아산 페이지 로딩 메시지는 같은 문구와 폰트 기준을 사용한다', () => {
+  const page = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const shipping = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanShipping.js'),
+    'utf8',
+  );
+  const annual = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js'),
+    'utf8',
+  );
+  const dispatchCss = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/dispatch.module.css'),
+    'utf8',
+  );
+  const shippingCss = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/shipping.module.css'),
+    'utf8',
+  );
+  const annualCss = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/annualPerformance.module.css'),
+    'utf8',
+  );
+
+  for (const source of [page, shipping, annual]) {
+    assert.match(source, /데이터를 불러오는 중입니다\.\.\./);
+  }
+  for (const css of [dispatchCss, shippingCss, annualCss]) {
+    assert.match(css, /font-size: 0\.86rem/);
+    assert.match(css, /font-weight: 800/);
+    assert.match(css, /color: #64748b/);
+  }
 });
 
 test('컨테이너 조회 유틸은 필터 결과의 컨테이너와 No 1 메인 행을 고른다', () => {

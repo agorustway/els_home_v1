@@ -142,8 +142,9 @@
     justify-content: center;
     min-height: 120px;
     color: #64748b;
-    font-size: 0.82rem;
+    font-size: 0.86rem;
     font-weight: 800;
+    line-height: 1.5;
 }
 
 .analytics {
@@ -459,7 +460,9 @@
     height: 120px;
     text-align: center !important;
     color: #64748b !important;
-    font-weight: 900 !important;
+    font-size: 0.86rem !important;
+    font-weight: 800 !important;
+    line-height: 1.5 !important;
 }
 
 .pageBar {

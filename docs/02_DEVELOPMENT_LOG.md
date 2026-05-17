@@ -1,4 +1,23 @@
 
+## [2026-05-17] 아산지점 로딩 메시지 기준 통일 (v5.13.53)
+### 핵심
+- 아산지점 배차판/선적관리/실적관리 초기 로딩 문구를 `데이터를 불러오는 중입니다...`로 통일했습니다.
+- 로딩 메시지 폰트를 `0.86rem / 800 / #64748b` 기준으로 맞췄습니다.
+- 선적관리 필터/정렬 재조회 중 빈 테이블에 보이는 안내도 같은 문구로 정리했습니다.
+- `docs/01_MISSION_CONTROL.md`의 INTRANET UI 기준에 로딩 안내 규칙을 추가했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 실적관리 탭 구조 선반영 (v5.13.52)
 ### 핵심
 - 아산지점 메인 탭의 `연간실적` 자리를 `실적관리`로 변경했습니다.

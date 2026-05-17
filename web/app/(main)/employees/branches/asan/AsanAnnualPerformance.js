@@ -389,7 +389,7 @@ export default function AsanAnnualPerformance() {
             {notice && !error && <div className={styles.noticeBox}>{notice}</div>}
 
             {loading && !payload ? (
-                <div className={styles.emptyState}>연간실적 자료 조회중...</div>
+                <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
                 <div className={styles.analytics}>
                     <div className={styles.kpiGrid}>

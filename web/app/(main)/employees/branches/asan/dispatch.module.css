@@ -1180,9 +1180,10 @@
 .emptyState {
     padding: 60px 20px;
     text-align: center;
-    color: #94a3b8;
-    font-size: 0.95rem;
-    line-height: 1.8;
+    color: #64748b;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.5;
 }
 
 /* ===== 모달 ===== */
