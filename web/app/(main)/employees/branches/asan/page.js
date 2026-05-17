@@ -100,6 +100,10 @@ function formatTabLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return { mm: d.getMonth() + 1, dd: d.getDate(), day: ['일', '월', '화', '수', '목', '금', '토'][d.getDay()] };
 }
+function getTodayKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 function getWeekFilterRange(dateStr) {
     const date = new Date(dateStr + 'T00:00:00');
     if (Number.isNaN(date.getTime())) return null;
@@ -124,12 +128,14 @@ function getWeekFilterRange(dateStr) {
         return `${String(value.getMonth() + 1).padStart(2, '0')}월 ${weekNo}주차`;
     };
     const weekLabel = weekOfMonthLabel(end);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const label = `${start.getMonth() + 1}/${start.getDate()}(${days[start.getDay()]})~${end.getMonth() + 1}/${end.getDate()}(${days[end.getDay()]})`;
     return {
         key: `${toKey(start)}_${toKey(end)}`,
         start: toKey(start),
         end: toKey(end),
-        label: `${start.getMonth() + 1}/${start.getDate()}~${end.getMonth() + 1}/${end.getDate()}`,
-        fullLabel: `${start.getMonth() + 1}/${start.getDate()}~${end.getMonth() + 1}/${end.getDate()} (${weekLabel})`,
+        label,
+        fullLabel: `${label} (${weekLabel})`,
     };
 }
 function findCol(headers, name) { return headers.findIndex(h => h.trim() === name); }
@@ -398,6 +404,7 @@ function AsanDispatchContent() {
 
     // ===== "전체" 탭 데이터 (모든 날짜 합산, 내림차순) =====
     const isAllTab = activeTab === data.length;
+    const todayKey = useMemo(() => getTodayKey(), []);
 
     const mergedView = useMemo(() => {
         if (!data || data.length === 0) return null;
@@ -405,7 +412,8 @@ function AsanDispatchContent() {
         const mHeaders = ['날짜', ...baseHeaders];
         const mRows = [];
         const mComments = {};
-        const sorted = [...data].sort((a, b) => b.target_date.localeCompare(a.target_date));
+        const eligibleItems = data.filter(item => item.target_date <= todayKey);
+        const sorted = [...eligibleItems].sort((a, b) => b.target_date.localeCompare(a.target_date));
         sorted.forEach(item => {
             // 전체 탭 기간 필터: 월간/주간 중 하나만 적용
             const itemMonth = item.target_date.slice(5, 7);
@@ -423,15 +431,21 @@ function AsanDispatchContent() {
             });
         });
         // 사용할 수 있는 월/주 목록
-        const months = [...new Set(data.map(d => d.target_date.slice(5, 7)))].sort();
+        const months = [...new Set(eligibleItems.map(d => d.target_date.slice(5, 7)))].sort();
         const weekMap = new Map();
-        data.forEach((item) => {
+        eligibleItems.forEach((item) => {
             const week = getWeekFilterRange(item.target_date);
             if (week && !weekMap.has(week.key)) weekMap.set(week.key, week);
         });
         const weeks = [...weekMap.values()].sort((a, b) => a.start.localeCompare(b.start));
         return { headers: mHeaders, data: mRows, comments: mComments, months, weeks };
-    }, [data, allTabMonth, allTabWeek]);
+    }, [data, allTabMonth, allTabWeek, todayKey]);
+
+    useEffect(() => {
+        if (!isAllTab || !mergedView) return;
+        if (allTabWeek && !mergedView.weeks.some(week => week.key === allTabWeek.key)) setAllTabWeek(null);
+        if (allTabMonth && !mergedView.months.includes(allTabMonth)) setAllTabMonth(null);
+    }, [isAllTab, mergedView, allTabWeek, allTabMonth]);
 
     // ===== 현재 뷰 데이터 =====
     const activeItem = useMemo(() => isAllTab ? null : data[activeTab], [isAllTab, data, activeTab]);

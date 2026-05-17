@@ -1,4 +1,21 @@
 
+## [2026-05-17] 아산 배차 모바일 기간 선택 UX 정리 (v5.13.71)
+### 핵심
+- 모바일에서 일별/주별/월별 기간 카드가 2열로 찌그러지지 않도록 1열 세로 배치로 바꿨습니다.
+- 요일별 작업지 비중 패널의 `주간 누적`, `월 누적` 줄 자체를 선택 컨트롤로 만들어 모바일에서도 위 카드까지 이동하지 않고 주/월을 바꿀 수 있게 했습니다.
+- 전체 탭의 월간/주간 선택지는 오늘 이후 사전기입 날짜를 제외해 미래 주차 선택 시 대시보드가 빈 화면처럼 보이는 흐름을 막았습니다.
+- 주간 라벨을 `5/11(월)~5/17(일) (05월 3주차)` 형태로 보강했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 14개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (sandbox EACCES로 1회 실패 후 권한 경로에서 성공)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 점유율 카드 상차지 비율 추가 (v5.13.70)
 ### 핵심
 - 화주 점유율 오른쪽에 `상차지별 비율` 도넛 카드를 추가해 작업지/상차지 관점의 톱 항목 점유를 바로 볼 수 있게 했습니다.

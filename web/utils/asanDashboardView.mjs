@@ -213,12 +213,6 @@ function formatDateLabel(dateStr = '') {
   return `${date.getMonth() + 1}/${date.getDate()}(${WEEKDAYS[date.getDay()]})`;
 }
 
-function formatShortDate(dateStr = '') {
-  const date = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return dateStr;
-  return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
 function getKoreaTodayKey(now = new Date()) {
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
@@ -282,13 +276,14 @@ function getWeekRange(dateStr = '') {
   };
 
   const weekLabel = getWeekOfMonthLabel(toKey(sunday));
+  const label = `${monday.getMonth() + 1}/${monday.getDate()}(${WEEKDAYS[monday.getDay()]})~${sunday.getMonth() + 1}/${sunday.getDate()}(${WEEKDAYS[sunday.getDay()]})`;
 
   return {
     start: toKey(monday),
     end: toKey(sunday),
-    label: `${monday.getMonth() + 1}/${monday.getDate()}~${sunday.getMonth() + 1}/${sunday.getDate()}`,
+    label,
     weekLabel,
-    fullLabel: `${monday.getMonth() + 1}/${monday.getDate()}~${sunday.getMonth() + 1}/${sunday.getDate()} (${weekLabel})`,
+    fullLabel: `${label} (${weekLabel})`,
   };
 }
 
@@ -657,9 +652,9 @@ export function buildAsanDashboardWeekdayComparison({
   return {
     week: {
       key: weekKey,
-      label: weekRange ? `${formatShortDate(weekRange.start)}~${formatShortDate(weekRange.end)}` : '선택 주',
+      label: weekRange ? `${formatDateLabel(weekRange.start)}~${formatDateLabel(weekRange.end)}` : '선택 주',
       weekLabel: weekRange ? getWeekOfMonthLabel(weekRange.end) : '',
-      fullLabel: weekRange ? `${formatShortDate(weekRange.start)}~${formatShortDate(weekRange.end)}(${getWeekOfMonthLabel(weekRange.end)})` : '선택 주',
+      fullLabel: weekRange ? `${formatDateLabel(weekRange.start)}~${formatDateLabel(weekRange.end)} (${getWeekOfMonthLabel(weekRange.end)})` : '선택 주',
       buckets: summarizeWeekdayItems(weekItems, viewType),
     },
     month: {

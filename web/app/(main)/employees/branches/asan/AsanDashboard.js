@@ -28,6 +28,11 @@ function formatDecimal(value) {
     });
 }
 
+function getTodayKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 function getPct(value, total) {
     if (!total) return 0;
     return Math.round((value / total) * 100);
@@ -174,7 +179,11 @@ export default function AsanDashboard({
                     items={dashboardData.timeline}
                     title={viewMode === 'customer' ? '일자별 오더 추세' : '일자별 실행 배차 추세'}
                 />
-                <WeekdayOrderPanel data={dashboardData.weekdayComparison} />
+                <WeekdayOrderPanel
+                    data={dashboardData.weekdayComparison}
+                    periods={dashboardData.periods}
+                    onSelect={handlePeriodSelect}
+                />
             </div>
 
             {dateControlsSlot && (
@@ -557,16 +566,22 @@ function TrendPanel({ items, title }) {
     );
 }
 
-function WeekdayOrderPanel({ data }) {
+function WeekdayOrderPanel({ data, periods = [], onSelect }) {
     const [mode, setMode] = useState('week');
     if (!data?.month?.buckets && !data?.week?.buckets) return null;
 
+    const todayKey = getTodayKey();
+    const weeklyPeriod = periods.find((period) => period.key === 'weekly');
+    const monthlyPeriod = periods.find((period) => period.key === 'monthly');
+    const weekOptions = (weeklyPeriod?.options || []).filter((option) => !option.start || option.start <= todayKey);
+    const monthOptions = (monthlyPeriod?.options || []).filter((option) => !option.key || option.key <= todayKey.slice(0, 7));
     const active = mode === 'week' ? data.week : data.month;
     const metricKey = mode === 'week' ? 'total' : 'average';
     const maxValue = Math.max(1, ...active.buckets.map((bucket) => bucket[metricKey] || 0));
     const monthTotal = data.month.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
     const weekTotal = data.week.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
-    const selectedWeekLabel = data.week.fullLabel || data.week.label;
+    const selectedWeekLabel = weeklyPeriod?.title || data.week.fullLabel || data.week.label;
+    const selectedMonthLabel = monthlyPeriod?.title || data.month.label;
     const legendItems = toSortedMapEntries(
         active.buckets.reduce((acc, bucket) => {
             Object.entries(bucket.breakdown || {}).forEach(([name, value]) => {
@@ -600,13 +615,41 @@ function WeekdayOrderPanel({ data }) {
                 </div>
             </div>
 
-            <div className={styles.weekdaySelected}>
-                <b>선택 주간</b>{selectedWeekLabel}
-            </div>
-
             <div className={styles.weekdaySummary}>
-                <span><b>주간 누적</b>{formatDecimal(weekTotal)}</span>
-                <span><b>{data.month.label} 누적</b>{formatDecimal(monthTotal)}</span>
+                <label className={`${styles.weekdayChooser} ${mode === 'week' ? styles.weekdayChooserActive : ''}`}>
+                    <span><b>{selectedWeekLabel}</b>주간 누적 {formatDecimal(weekTotal)}</span>
+                    {weekOptions.length > 0 && (
+                        <select
+                            aria-label="요일별 작업지 비중 주간 선택"
+                            value={weeklyPeriod?.selectedKey || data.week.key || ''}
+                            onChange={(event) => {
+                                setMode('week');
+                                onSelect?.('weekly', event.target.value);
+                            }}
+                        >
+                            {weekOptions.map((option) => (
+                                <option key={option.key} value={option.key}>{option.label}</option>
+                            ))}
+                        </select>
+                    )}
+                </label>
+                <label className={`${styles.weekdayChooser} ${mode === 'month' ? styles.weekdayChooserActive : ''}`}>
+                    <span><b>{selectedMonthLabel}</b>누적 {formatDecimal(monthTotal)}</span>
+                    {monthOptions.length > 0 && (
+                        <select
+                            aria-label="요일별 작업지 비중 월 선택"
+                            value={monthlyPeriod?.selectedKey || data.month.key || ''}
+                            onChange={(event) => {
+                                setMode('month');
+                                onSelect?.('monthly', event.target.value);
+                            }}
+                        >
+                            {monthOptions.map((option) => (
+                                <option key={option.key} value={option.key}>{option.label}</option>
+                            ))}
+                        </select>
+                    )}
+                </label>
             </div>
 
             <div className={styles.weekdayBars}>
