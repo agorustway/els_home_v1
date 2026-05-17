@@ -310,7 +310,7 @@ async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = 
 function numericColumnIndices(headers, rows) {
   const sampleRows = rows.slice(0, 2000);
   const total = Math.max(1, sampleRows.length);
-  const excluded = ['년', '연도', '월', '일자', '날짜', '번호', '코드', '사업자', '전화', '차량'];
+  const excluded = ['년', '연도', '월', '일자', '날짜', '번호', '코드', '사업자', '전화', '차량', '작업지', '영업넘버', 'seal', 'booking', 'type', '비고'];
   const result = [];
 
   headers.forEach((header, idx) => {
@@ -367,7 +367,7 @@ function buildSummary(headers, rows) {
   const analysisRows = rows.filter(row => !isTotalRow(row));
   const numericCols = numericColumnIndices(headers, analysisRows);
   const salesWords = ['매출', '청구', '수입', '운송수입', '공급가', '운임'];
-  const purchaseWords = ['매입', '원가', '비용', '지급', '외주', '운송비', '정산'];
+  const purchaseWords = ['매입', '원가', '비용', '지급', '외주', '운송비', '정산', '하불'];
   const profitWords = ['손익', '이익', '마진', '차익', '수익'];
   const amountExcludes = ['처', '거래처', '업체', '부가세', 'vat', '세액', '번호', '코드'];
 

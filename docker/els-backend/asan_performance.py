@@ -285,7 +285,7 @@ def _numeric_column_indices(headers, rows):
     sample_rows = rows[:2000]
     total = max(1, len(sample_rows))
     result = []
-    excluded = ["년", "연도", "월", "일자", "날짜", "번호", "코드", "사업자", "전화", "차량"]
+    excluded = ["년", "연도", "월", "일자", "날짜", "번호", "코드", "사업자", "전화", "차량", "작업지", "영업넘버", "seal", "booking", "type", "비고"]
     for idx, header in enumerate(headers):
         if _has_keyword(header, excluded):
             continue
@@ -340,7 +340,7 @@ def _build_performance_summary(headers, rows):
     analysis_rows = [row for row in rows if not _is_total_row(row)]
     numeric_cols = _numeric_column_indices(headers, analysis_rows)
     sales_words = ["매출", "청구", "수입", "운송수입", "공급가", "운임"]
-    purchase_words = ["매입", "원가", "비용", "지급", "외주", "운송비", "정산"]
+    purchase_words = ["매입", "원가", "비용", "지급", "외주", "운송비", "정산", "하불"]
     profit_words = ["손익", "이익", "마진", "차익", "수익"]
     amount_excludes = ["처", "거래처", "업체", "부가세", "vat", "세액", "번호", "코드"]
 

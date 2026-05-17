@@ -109,8 +109,12 @@ test('아산 연간실적 숫자 컬럼 판정은 대용량 행 수가 아니라
   const backend = read('docker/els-backend/asan_performance.py');
   assert.match(script, /const sampleRows = rows\.slice\(0, 2000\)/);
   assert.match(script, /const total = Math\.max\(1, sampleRows\.length\)/);
+  assert.match(script, /'하불'/);
+  assert.match(script, /'booking'/);
   assert.match(backend, /sample_rows = rows\[:2000\]/);
   assert.match(backend, /total = max\(1, len\(sample_rows\)\)/);
+  assert.match(backend, /"하불"/);
+  assert.match(backend, /"booking"/);
 });
 
 test('아산 연간실적 화면은 분석/테이블 탭, 파일 선택, 제목행 설정을 제공한다', () => {
