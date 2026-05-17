@@ -143,6 +143,11 @@ function parseQty(value) {
     const match = String(value ?? '').replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
     return match ? Number(match[0]) || 0 : 0;
 }
+function parseOrderQty(value) {
+    const text = String(value ?? '').replace(/,/g, '').trim();
+    if (!/^-?\d+(?:\.\d+)?$/.test(text)) return 0;
+    return Number(text) || 0;
+}
 function roundQty(value) {
     return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -162,7 +167,7 @@ function calcSummary(headers, data, viewType) {
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
-            const o = parseQty(row[oC]); order += o;
+            const o = parseOrderQty(row[oC]); if (o <= 0) return; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
             disp += parseQty(row[dC]);
             const t = parseInt(row[tC]) || 0;
@@ -175,7 +180,7 @@ function calcSummary(headers, data, viewType) {
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
-            const o = parseQty(row[qC]); order += o;
+            const o = parseOrderQty(row[qC]); if (o <= 0) return; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
             disp += parseQty(row[dC]);
             const t = parseInt(row[tC]) || 0;
@@ -188,7 +193,7 @@ function calcSummary(headers, data, viewType) {
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
-            const o = parseQty(row[oC]); order += o;
+            const o = parseOrderQty(row[oC]); if (o <= 0) return; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
             disp += parseQty(row[dC]);
             const t = parseInt(row[tC]) || 0;
@@ -221,7 +226,7 @@ function doSearch(data, headers, term) {
         indices.push(row.origIdx ?? ri);
 
         if (orderColIdx !== -1) {
-            const val = parseQty(row[orderColIdx]);
+            const val = parseOrderQty(row[orderColIdx]);
             if (!isNaN(val)) totalOrderCount += val;
         }
 
@@ -589,11 +594,12 @@ function AsanDispatchContent() {
                 if (row.some(c => String(c || '').includes('?'))) {
                     status = 'warn';
                 } else {
-                    const getVal = (name) => parseQty(row[findCol(headers, name)]);
+                    const getVal = (name) => parseOrderQty(row[findCol(headers, name)]);
+                    const getDispatchVal = (name) => parseQty(row[findCol(headers, name)]);
                     let o = 0, d = 0;
-                    if (viewType === 'glovis') { o = getVal('오더'); d = getVal('배차'); }
-                    else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getVal('배차'); }
-                    else { o = getVal('오더(계)') || getVal('수량'); d = getVal('배차'); }
+                    if (viewType === 'glovis') { o = getVal('오더'); d = getDispatchVal('배차'); }
+                    else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getDispatchVal('배차'); }
+                    else { o = getVal('오더(계)') || getVal('수량'); d = getDispatchVal('배차'); }
                     if (o !== d) status = 'warn';
                 }
             }

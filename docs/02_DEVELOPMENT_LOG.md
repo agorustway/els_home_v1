@@ -1,4 +1,30 @@
 
+## [2026-05-17] 아산 배차 문자 오더 제외 및 기준차이 칩 색상 보정 (v5.13.83)
+### 핵심
+- `오더(계)`/`오더`/`계`/`수량`이 순수 숫자가 아닌 행은 필터 합계, 기간 카드, 기준차이, 실행사 기준 분석에서 제외했습니다.
+- 실행사 지역칸에 `보송1` 같은 값이 있어도 오더가 `오배차` 같은 문자면 기준차이 원인과 분석 집계에 반영하지 않도록 보정했습니다.
+- 기준차이 선택 칩의 활성 색상을 검정에서 차분한 파랑 계열로 변경했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 56개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 선적관리 빠른 필터 hover 설명 보강 (v5.13.82)
+### 핵심
+- `미선적`/`자체보관` 빠른 필터가 켜진 상태에서 버튼 문구가 `필터해제`만 보여 원래 필터명을 알기 어렵던 부분을 보정했습니다.
+- hover 설명에 각각 `미선적 필터 적용 중`, `자체보관 필터 적용 중`을 표시해 어떤 필터를 해제하는지 바로 확인할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 기본 로드/필터 로드 분리 (v5.13.80)
 ### 핵심
 - 선적관리 기본 진입에서 최근 3개월 월 필터가 자동 선택되어 전체 데이터가 바로 로드되던 흐름을 해제했습니다.

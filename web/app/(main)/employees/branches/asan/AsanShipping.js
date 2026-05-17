@@ -1259,7 +1259,7 @@ export default function AsanShipping() {
                         type="button"
                         className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}
                         onClick={() => setUnshippedOnly(prev => !prev)}
-                        title="이력 데이터가 없거나, 작업일 포함 이후 MOVE TIME이 있고 이력구분이 반입/적하가 아닌 행만 표시합니다"
+                        title={unshippedOnly ? '미선적 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '미선적 행만 표시합니다.'}
                     >
                         {unshippedOnly ? '필터해제' : '미선적'}
                     </button>
@@ -1267,7 +1267,7 @@ export default function AsanShipping() {
                         type="button"
                         className={`${styles.quickFilterBtn} ${storageOnly ? styles.quickFilterBtnActive : ''}`}
                         onClick={() => setStorageOnly(prev => !prev)}
-                        title="보관소가 자체보관인 행만 표시합니다"
+                        title={storageOnly ? '자체보관 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '자체보관 행만 표시합니다.'}
                     >
                         {storageOnly ? '필터해제' : '자체보관'}
                     </button>

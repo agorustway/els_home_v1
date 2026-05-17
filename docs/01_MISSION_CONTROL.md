@@ -1,21 +1,20 @@
-# ELS MISSION CONTROL (v5.13.81 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.83 / APK v5.11.12)
 
-> 최신 업데이트: 아산 배차 지역칸 점 구분자 파싱과 기준차이 기간 선택 UX를 보정했습니다.
+> 최신 업데이트: 아산 배차 문자/오류 오더 행을 분석 집계에서 제외하고 기준차이 선택 칩 색상을 안정화했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.81
+- **웹 버전**: v5.13.83
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
+  - `오더(계)`/`오더`/`계`/`수량`이 순수 숫자가 아닌 행은 필터 합계, 기간 카드, 기준차이, 실행사 기준 집계에서 제외.
+  - 실행사 지역칸에 `보송1` 같은 값이 있어도 오더가 `오배차` 같은 문자면 분석 원인에 반영하지 않음.
+  - 기준차이 선택 칩 활성 색상을 검정에서 차분한 파랑 계열로 변경.
+  - `필터해제`로 표시되는 미선적/자체보관 버튼의 hover 설명에 원래 필터명을 표시.
   - `자차3.이지5`처럼 점으로 이어진 지역칸 수량을 구분자로 인식.
   - 기준차이 패널은 일/주/月 칩 선택에 따라 해당 기간 원인만 표시.
-  - 기본 원인은 현재 선택일을 우선해 다른 날짜 원인과 혼동을 줄임.
-  - 선적관리 기본 진입은 월 선택 없이 100건 페이지 로드만 수행.
-  - 마우스 스크롤 시 다음 100건을 추가 로드하고, 월/미선적/자체보관/컬럼필터 때만 전체 기준 조회를 수행.
   - 연간실적 조회를 메타 summary의 `currentSnapshotId` 기준으로 고정해 중복 current 스냅샷 표시 차단.
   - 월별 추세, 건당 매출/손익, 매입률, 최고 손익월 패널 추가.
-  - 작업지·운송사·노선·구분·청구처·지급처 등 구분별 breakdown 집계 확장.
-  - 날짜/금액 표시 정규화 유지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -42,6 +41,8 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.83**: 아산 배차 문자/오류 오더 행을 필터 합계·분석·기준차이 원인에서 제외하고 기준차이 선택 칩 색상을 파랑 계열로 조정.
+- **v5.13.82**: 아산 선적관리 미선적/자체보관 빠른 필터가 `필터해제` 상태일 때 hover 설명에 원래 필터명을 표시.
 - **v5.13.81**: 아산 배차 지역칸 `자차3.이지5` 형태의 점 구분자 파싱을 보강하고 기준차이 원인 목록을 일/주/月 선택식으로 정리.
 - **v5.13.80**: 아산 선적관리 월 필터 기본값을 해제해 첫 진입은 100건 페이징만 유지하고, 필터 동작 시에만 전체 기준 로드를 수행.
 - **v5.13.79**: 연간실적 current 스냅샷 고정으로 중복 표시를 막고 월별/구분별 분석 패널을 확장.
@@ -66,27 +67,11 @@
 - **v5.13.59**: 연간실적 직접 주입에 `file_modified_at` 미변경 스킵, `--force`, 낮은 우선순위 NAS cron 래퍼를 추가.
 - **v5.13.58**: 연간실적 36만 행 dry-run 결과를 기준으로 직접 주입 대용량 보호, 배치 insert 메모리 완화, 숫자 컬럼 샘플 판정 보정을 추가.
 - **v5.13.57**: 연간실적 직접 주입 dry-run이 NAS 메모리를 크게 쓰지 않도록 Excel 통째 로딩을 제거하고 ExcelJS 스트리밍 파서와 진행 로그를 적용.
-- **v5.13.56**: 아산 연간실적 직접 주입 스크립트의 기본 파일 후보를 NAS 실제 경로 `/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`로 정정.
-- **v5.13.55**: 아산 연간실적 Excel을 Supabase `branch_performance_*` 원장으로 직접 주입하는 스크립트를 추가해 NAS 동기화 timeout을 우회 가능하게 함.
-- **v5.13.54**: 아산 선적관리/연간실적 GET 조회를 Next Supabase 직접 조회로 보강해 NAS Core 재기동 중 DB 원장 조회를 유지.
-- **v5.13.53**: 아산지점 배차/선적/연간실적 초기 로딩 문구와 폰트 기준을 통일하고 문서 UI 기준에 반영.
-- **v5.13.52**: 아산지점 `실적관리` 메인 탭과 `종합실적/월간실적/연간실적` 하위 탭 구조를 추가하고 기존 연간실적을 하위 연간실적으로 이동.
-- **v5.13.51**: 아산 배차/선적/연간실적 자동 파일 감지 주기를 완화하고 배차 설정 조회 5분 캐시, 반복 체크 로그 제거를 적용.
 
 ## VERIFICATION
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 33개 통과
-- `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 38개 통과
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 39개 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 56개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
 - `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 54개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/route.js" "utils/asanDashboardView.mjs"`: 0 errors
 - Browser: standalone 서버와 `?debug=true` 접근 확인, 로컬 Supabase role 조회 대기로 본문 hydrate 시각검증은 제한됨
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 

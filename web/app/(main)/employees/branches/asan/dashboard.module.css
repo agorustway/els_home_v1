@@ -127,14 +127,15 @@
 }
 
 .basisDiffChipActive {
-    background: #0f172a;
-    border-color: #0f172a;
-    color: #fff;
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    color: #075985;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
 }
 
 .basisDiffChipActive em,
 .basisDiffChipActive b {
-    color: #fff;
+    color: #075985;
 }
 
 .basisDiffChip em {

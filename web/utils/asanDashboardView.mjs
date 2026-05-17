@@ -19,6 +19,12 @@ export function parseDashboardQty(value) {
   return match ? Number(match[0]) || 0 : 0;
 }
 
+function parseDashboardOrderQty(value) {
+  const text = String(value ?? '').replace(/,/g, '').trim();
+  if (!/^-?\d+(?:\.\d+)?$/.test(text)) return 0;
+  return Number(text) || 0;
+}
+
 export function findDashboardCol(headers = [], ...names) {
   for (const name of names.flat()) {
     const idx = headers.findIndex((header) => String(header || '').trim() === name);
@@ -103,9 +109,9 @@ function getRowMeta(row = [], cols = {}, viewType = 'integrated') {
 }
 
 function getCustomerWeight(row = [], cols = {}, viewType = 'integrated') {
-  if (viewType === 'mobis') return parseDashboardQty(row[cols.qty]);
-  const order = parseDashboardQty(row[cols.order]);
-  return order > 0 ? order : parseDashboardQty(row[cols.qty]);
+  if (viewType === 'mobis') return parseDashboardOrderQty(row[cols.qty]);
+  const order = parseDashboardOrderQty(row[cols.order]);
+  return order > 0 ? order : parseDashboardOrderQty(row[cols.qty]);
 }
 
 function addPieAggs(scope, meta, amount) {
@@ -129,6 +135,7 @@ function addFeu(scope, container, amount) {
 
 function addBaseRowMetrics(scope, row, cols, viewType) {
   const order = getCustomerWeight(row, cols, viewType);
+  if (order <= 0) return;
   const dispatch = parseDashboardQty(row[cols.dispatch]);
   scope.rowCount += 1;
   scope.orderTotal += order;
@@ -191,6 +198,9 @@ function parseDispatchRecords(row = [], headers = []) {
 }
 
 function addDispatcherRow(scope, row, headers, cols, viewType) {
+  const amount = getCustomerWeight(row, cols, viewType);
+  if (amount <= 0) return;
+
   const meta = getRowMeta(row, cols, viewType);
   const records = parseDispatchRecords(row, headers);
   addRegionAggs(scope, records);
@@ -648,6 +658,7 @@ function buildBasisDiffIssues(items = [], viewType = 'integrated', limit = 4) {
     const cols = getCols(item.headers || []);
     (item.data || []).forEach((row, rowIndex) => {
       const customerTotal = getCustomerWeight(row, cols, viewType);
+      if (customerTotal <= 0) return;
       const records = parseDispatchRecords(row, item.headers || []);
       const dispatcherTotal = sumDispatchRecords(records);
       const diff = dispatcherTotal - customerTotal;
