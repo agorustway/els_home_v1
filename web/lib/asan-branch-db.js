@@ -93,7 +93,7 @@ function applySearch(query, search) {
     return query;
 }
 
-async function getPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows }) {
+async function getPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
@@ -122,11 +122,15 @@ async function getPagedRows({ query, headers, page, pageSize, sortKey, sortDir, 
         };
     }
 
-    const { data, count, error } = await query.order('row_index', { ascending: true }).range(start, end);
+    const { data, count, error } = await query.order('row_index', { ascending: true }).range(start, end + 1);
     if (error) throw new Error(error.message);
+    const rows = data || [];
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const loadedThrough = start + pageRows.length;
     return {
-        rows: data || [],
-        total: count ?? 0,
+        rows: pageRows,
+        total: count ?? Math.max(Number(fallbackTotal) || 0, loadedThrough + (hasMore ? 1 : 0)),
         sortKey: '',
         sortDir: sortDesc ? 'desc' : 'asc',
     };
@@ -170,6 +174,7 @@ export async function queryAsanShippingFromSupabase(searchParams) {
         sortKey,
         sortDir,
         maxSortRows: 9999,
+        fallbackTotal: meta.row_count || 0,
     });
 
     return {
@@ -258,7 +263,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
     const headers = Array.isArray(meta.headers) ? meta.headers : [];
     let query = supabase
         .from('branch_performance_rows')
-        .select('row_values,row_index', { count: 'exact' })
+        .select('row_values,row_index')
         .eq('branch_id', 'asan')
         .eq('dataset_type', 'annual')
         .eq('file_path', normalizedPath)
@@ -274,6 +279,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
         sortKey,
         sortDir,
         maxSortRows: 19999,
+        fallbackTotal: search ? 0 : meta.current_row_count || meta.row_count || 0,
     });
 
     return {
