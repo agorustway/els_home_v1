@@ -44,6 +44,20 @@
 - `web/tests/asanAnnualPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
 
+## [2026-05-17] 아산 배차 점 구분자 파싱 및 기준차이 기간 선택 보정 (v5.13.81)
+### 핵심
+- `자차3.이지5`처럼 점으로 이어진 지역칸 입력은 소수점이 아니라 업체 구분자로 해석해 실행사 합계에 반영합니다.
+- 기준차이 패널의 일/주/月 숫자 칩을 버튼으로 바꿔, 선택한 기간의 원인 행만 보여주도록 정리했습니다.
+- 기본 원인 목록은 선택일 기준을 우선해 월별 원인을 현재 날짜에서 찾는 혼동을 줄였습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (54개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 검색/필터 합계와 실행사 파싱 보정 (v5.13.77)
 ### 핵심
 - 통합현황 정렬 후 검색 결과가 정렬 인덱스와 원본 행 인덱스를 섞어 다른 행을 표시할 수 있던 문제를 원본 행 번호 기준으로 보정했습니다.

@@ -161,7 +161,9 @@ function addCustomerRow(scope, row, headers, cols, viewType) {
 
 function parseDispatchCell(text = '') {
   const records = [];
-  const normalized = String(text || '').replace(/[，、]/g, ',');
+  const normalized = String(text || '')
+    .replace(/[，、]/g, ',')
+    .replace(/(\d)\.(?=[^\d\s])/g, '$1,');
   const matches = normalized.matchAll(/([^,\s/]+?)\s*(-?\d+(?:\.\d+)?)(?=$|[,/\s])/g);
   for (const match of matches) {
     const company = normalizeLabel(match[1]);
@@ -731,22 +733,24 @@ export function buildAsanDashboardBasisDiffSummary({
   const weeklyKey = periods.find((period) => period.key === 'weekly')?.selectedKey || '';
   const monthlyKey = periods.find((period) => period.key === 'monthly')?.selectedKey || '';
   const dailyKey = periods.find((period) => period.key === 'daily')?.selectedKey || selectedDay;
-  const focusPeriod = periods.reduce((best, period) => (
-    Math.abs(period.diff) > Math.abs(best.diff) ? period : best
-  ), periods[0] || { key: 'monthly', diff: 0 });
   const items = normalizeSourceItems(sourceItems);
-  const focusItems = focusPeriod.key === 'daily'
-    ? items.filter((item) => item.target_date === dailyKey)
-    : focusPeriod.key === 'weekly'
-      ? items.filter((item) => inWeekRange(item, weeklyKey))
-      : monthlyKey
-        ? items.filter((item) => item.target_date.startsWith(monthlyKey))
-        : items;
-  const issueSource = focusItems.length > 0 ? focusItems : [{ target_date: selectedDay || '', headers: fallbackHeaders, data: fallbackRows }];
+  const fallbackItem = { target_date: selectedDay || dailyKey || '', headers: fallbackHeaders, data: fallbackRows };
+  const issueSources = {
+    daily: items.filter((item) => item.target_date === dailyKey),
+    weekly: weeklyKey ? items.filter((item) => inWeekRange(item, weeklyKey)) : [],
+    monthly: monthlyKey ? items.filter((item) => item.target_date.startsWith(monthlyKey)) : [],
+  };
+  issueSources.daily = issueSources.daily.length > 0 ? issueSources.daily : [fallbackItem];
+  issueSources.weekly = issueSources.weekly.length > 0 ? issueSources.weekly : issueSources.daily;
+  issueSources.monthly = issueSources.monthly.length > 0 ? issueSources.monthly : issueSources.weekly;
+  const issueGroups = Object.fromEntries(
+    Object.entries(issueSources).map(([key, source]) => [key, buildBasisDiffIssues(source, viewType, 4)]),
+  );
 
   return {
     periods,
-    issues: buildBasisDiffIssues(issueSource, viewType, 4),
+    issueGroups,
+    issues: issueGroups.daily,
   };
 }
 

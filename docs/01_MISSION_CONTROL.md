@@ -1,12 +1,15 @@
-# ELS MISSION CONTROL (v5.13.80 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.81 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 기본 진입은 월 필터 없이 100건만 로드하고, 스크롤/필터 상황을 분리합니다.
+> 최신 업데이트: 아산 배차 지역칸 점 구분자 파싱과 기준차이 기간 선택 UX를 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.80
+- **웹 버전**: v5.13.81
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
+  - `자차3.이지5`처럼 점으로 이어진 지역칸 수량을 구분자로 인식.
+  - 기준차이 패널은 일/주/月 칩 선택에 따라 해당 기간 원인만 표시.
+  - 기본 원인은 현재 선택일을 우선해 다른 날짜 원인과 혼동을 줄임.
   - 선적관리 기본 진입은 월 선택 없이 100건 페이지 로드만 수행.
   - 마우스 스크롤 시 다음 100건을 추가 로드하고, 월/미선적/자체보관/컬럼필터 때만 전체 기준 조회를 수행.
   - 연간실적 조회를 메타 summary의 `currentSnapshotId` 기준으로 고정해 중복 current 스냅샷 표시 차단.
@@ -39,6 +42,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.81**: 아산 배차 지역칸 `자차3.이지5` 형태의 점 구분자 파싱을 보강하고 기준차이 원인 목록을 일/주/月 선택식으로 정리.
 - **v5.13.80**: 아산 선적관리 월 필터 기본값을 해제해 첫 진입은 100건 페이징만 유지하고, 필터 동작 시에만 전체 기준 로드를 수행.
 - **v5.13.79**: 연간실적 current 스냅샷 고정으로 중복 표시를 막고 월별/구분별 분석 패널을 확장.
 - **v5.13.78**: 연간실적 마감월/작업일자 날짜 시리얼과 시간 문자열을 정규화하고 금액 컬럼 천단위 표시를 적용.
@@ -79,7 +83,7 @@
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 53개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 54개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/route.js" "utils/asanDashboardView.mjs"`: 0 errors

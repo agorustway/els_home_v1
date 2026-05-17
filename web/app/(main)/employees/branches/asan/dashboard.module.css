@@ -107,9 +107,10 @@
     flex-wrap: wrap;
 }
 
-.basisDiffStats span {
+.basisDiffChip {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     min-height: 24px;
     padding: 2px 7px;
@@ -117,16 +118,33 @@
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     font-variant-numeric: tabular-nums;
+    cursor: pointer;
 }
 
-.basisDiffStats em {
+.basisDiffChip:hover {
+    background: #eef6ff;
+    border-color: #bfdbfe;
+}
+
+.basisDiffChipActive {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #fff;
+}
+
+.basisDiffChipActive em,
+.basisDiffChipActive b {
+    color: #fff;
+}
+
+.basisDiffChip em {
     font-style: normal;
     font-size: 0.64rem;
     font-weight: 900;
     color: #64748b;
 }
 
-.basisDiffStats b {
+.basisDiffChip b {
     font-size: 0.72rem;
     font-weight: 950;
 }
@@ -1784,7 +1802,7 @@
         gap: 4px;
     }
 
-    .basisDiffStats span {
+    .basisDiffChip {
         justify-content: center;
         padding: 3px 4px;
     }

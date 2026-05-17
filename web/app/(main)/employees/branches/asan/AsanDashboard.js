@@ -265,11 +265,23 @@ function getDiffToneClass(value) {
 }
 
 function BasisDiffPanel({ data, onIssueSelect }) {
+    const [activePeriodKey, setActivePeriodKey] = useState('daily');
     const periods = (data?.periods || []).filter((period) => period.key !== 'total');
-    const issues = data?.issues || [];
+    const issueGroups = data?.issueGroups || {};
+    const defaultPeriod = periods.find((period) => Math.abs(period.diff) >= 0.01 && (issueGroups[period.key] || []).length > 0)
+        || periods.find((period) => Math.abs(period.diff) >= 0.01)
+        || periods[0];
+    const activePeriod = periods.find((period) => period.key === activePeriodKey) || defaultPeriod;
+    const issues = issueGroups[activePeriod?.key] || data?.issues || [];
+    const hasDiff = periods.some((period) => Math.abs(period.diff) >= 0.01);
+
+    useEffect(() => {
+        if (periods.some((period) => period.key === activePeriodKey)) return;
+        setActivePeriodKey(defaultPeriod?.key || 'daily');
+    }, [activePeriodKey, defaultPeriod?.key, periods]);
+
     if (periods.length === 0) return null;
 
-    const hasDiff = periods.some((period) => Math.abs(period.diff) >= 0.01);
     return (
         <div className={styles.basisDiffPanel}>
             <div className={styles.basisDiffHead}>
@@ -278,10 +290,16 @@ function BasisDiffPanel({ data, onIssueSelect }) {
             </div>
             <div className={styles.basisDiffStats}>
                 {periods.map((period) => (
-                    <span key={period.key} className={getDiffToneClass(period.diff)} title={`${period.title} 고객 ${formatQty(period.customerTotal)} / 실행 ${formatQty(period.dispatcherTotal)}`}>
+                    <button
+                        type="button"
+                        key={period.key}
+                        className={`${styles.basisDiffChip} ${activePeriod?.key === period.key ? styles.basisDiffChipActive : ''} ${getDiffToneClass(period.diff)}`}
+                        onClick={() => setActivePeriodKey(period.key)}
+                        title={`${period.title} 고객 ${formatQty(period.customerTotal)} / 실행 ${formatQty(period.dispatcherTotal)}`}
+                    >
                         <em>{period.label}</em>
                         <b>{formatSignedQty(period.diff)}</b>
-                    </span>
+                    </button>
                 ))}
             </div>
             {issues.length > 0 ? (
