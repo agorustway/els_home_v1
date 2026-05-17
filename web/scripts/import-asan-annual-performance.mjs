@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -178,27 +179,46 @@ function sheetNameFromWorkbook(workbook, preferred) {
   return sheets.find(sheet => preferred && sheet.includes(preferred)) || sheets[0];
 }
 
-function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = null) {
-  const workbook = XLSX.readFile(filePath, { cellDates: true, raw: false });
-  const actualSheet = sheetNameFromWorkbook(workbook, sheetName || DEFAULT_SHEET_NAME);
-  const sheet = workbook.Sheets[actualSheet];
-  const matrix = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: '',
-    blankrows: false,
-    raw: false,
-    dateNF: 'yyyy-mm-dd',
+function readWorkbookSheetNames(filePath, preferred) {
+  const workbook = XLSX.readFile(filePath, {
+    bookSheets: true,
+    bookProps: false,
+    bookFiles: false,
+    cellStyles: false,
   });
+  const actualSheet = sheetNameFromWorkbook(workbook, preferred || DEFAULT_SHEET_NAME);
+  return {
+    actualSheet,
+    targetSheetNo: Math.max(1, (workbook.SheetNames || []).indexOf(actualSheet) + 1),
+  };
+}
 
-  if (!matrix.length) {
-    return { headers: [], data: [], sheetName: actualSheet, headerRow: headerRow || 1 };
+function normalizeExcelJsCellValue(value) {
+  if (value == null) return '';
+  if (value instanceof Date) return value;
+  if (typeof value !== 'object') return value;
+  if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+  if (Object.prototype.hasOwnProperty.call(value, 'result')) return value.result;
+  if (Object.prototype.hasOwnProperty.call(value, 'text')) return value.text;
+  if (Object.prototype.hasOwnProperty.call(value, 'hyperlink')) return value.text || value.hyperlink;
+  return JSON.stringify(value);
+}
+
+function rowToArray(row) {
+  const values = row.values || [];
+  const result = [];
+  for (let idx = 1; idx < values.length; idx += 1) {
+    result.push(normalizeExcelJsCellValue(values[idx]));
   }
+  return result;
+}
 
-  const headerIdx = detectHeaderIndex(matrix, headerRow);
+function detectLastCol(matrix, headerIdx) {
   const rawHeader = matrix[headerIdx] || [];
   let lastCol = -1;
+  const maxCols = Math.max(...matrix.map(row => row.length), rawHeader.length, 1);
 
-  for (let colIdx = 0; colIdx < rawHeader.length; colIdx += 1) {
+  for (let colIdx = 0; colIdx < maxCols; colIdx += 1) {
     if (cleanCell(rawHeader[colIdx])) {
       lastCol = colIdx;
       continue;
@@ -206,22 +226,82 @@ function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = null) 
     const sample = matrix.slice(headerIdx + 1, headerIdx + 201).map(row => row[colIdx]);
     if (sample.some(value => cleanCell(value))) lastCol = colIdx;
   }
-  if (lastCol < 0) lastCol = Math.max(0, rawHeader.length - 1);
+  return lastCol < 0 ? Math.max(0, rawHeader.length - 1) : lastCol;
+}
 
-  const headers = cleanHeaders(rawHeader.slice(0, lastCol + 1));
+async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = null) {
+  const { actualSheet, targetSheetNo } = readWorkbookSheetNames(filePath, sheetName || DEFAULT_SHEET_NAME);
+  const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
+    sharedStrings: 'cache',
+    hyperlinks: 'ignore',
+    styles: 'ignore',
+    worksheets: 'emit',
+  });
+  workbookReader.model = { sheets: [] };
+
+  const warmupRows = [];
   const rows = [];
-  for (let rowIdx = headerIdx + 1; rowIdx < matrix.length; rowIdx += 1) {
-    const rawRow = matrix[rowIdx] || [];
-    const row = [];
-    for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) row.push(cleanCell(rawRow[colIdx]));
-    if (row.some(Boolean)) rows.push(row);
+  let headers = [];
+  let headerIdx = null;
+  let lastCol = null;
+  let foundSheet = false;
+  let rawRowCount = 0;
+
+  const finishWarmup = () => {
+    if (headerIdx != null) return;
+    if (!warmupRows.length) {
+      headerIdx = 0;
+      lastCol = 0;
+      headers = [];
+      return;
+    }
+
+    headerIdx = detectHeaderIndex(warmupRows, headerRow);
+    lastCol = detectLastCol(warmupRows, headerIdx);
+    headers = cleanHeaders((warmupRows[headerIdx] || []).slice(0, lastCol + 1));
+    for (let rowIdx = headerIdx + 1; rowIdx < warmupRows.length; rowIdx += 1) {
+      const rawRow = warmupRows[rowIdx] || [];
+      const row = [];
+      for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) row.push(cleanCell(rawRow[colIdx]));
+      if (row.some(Boolean)) rows.push(row);
+    }
+  };
+
+  for await (const worksheetReader of workbookReader) {
+    const worksheetId = Number(worksheetReader.id);
+    if (worksheetReader.name !== actualSheet && worksheetId !== targetSheetNo) continue;
+    const worksheetName = worksheetReader.name === `Sheet${worksheetId}` ? actualSheet : (worksheetReader.name || actualSheet);
+    foundSheet = true;
+    console.error(`[annual-performance-import] sheet="${worksheetName}" streaming parse start`);
+
+    for await (const row of worksheetReader) {
+      rawRowCount += 1;
+      const rawValues = rowToArray(row);
+      if (headerIdx == null) {
+        warmupRows.push(rawValues);
+        if (warmupRows.length < 240) continue;
+        finishWarmup();
+        continue;
+      }
+
+      const parsedRow = [];
+      for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) parsedRow.push(cleanCell(rawValues[colIdx]));
+      if (parsedRow.some(Boolean)) rows.push(parsedRow);
+      if (rows.length > 0 && rows.length % 1000 === 0) {
+        console.error(`[annual-performance-import] parsed rows=${rows.length}`);
+      }
+    }
   }
+
+  if (!foundSheet) throw new Error(`Excel sheet를 찾을 수 없습니다: ${actualSheet}`);
+  finishWarmup();
 
   return {
     headers,
     data: rows,
     sheetName: actualSheet,
-    headerRow: headerIdx + 1,
+    headerRow: (headerIdx || 0) + 1,
+    rawRowCount,
   };
 }
 
@@ -594,7 +674,7 @@ async function run() {
   const dbPath = normalizeDbPath(args['db-path'] || process.env.ASAN_ANNUAL_PERFORMANCE_DB_PATH || DEFAULT_DB_PATH);
   const preferredSheetName = args.sheet || process.env.ASAN_ANNUAL_PERFORMANCE_SHEET || DEFAULT_SHEET_NAME;
   const chunkSize = Math.max(20, Number.parseInt(args['chunk-size'] || DEFAULT_CHUNK_SIZE, 10) || DEFAULT_CHUNK_SIZE);
-  const parsed = parseExcel(filePath, preferredSheetName, args['header-row']);
+  const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
   const summary = buildSummary(parsed.headers, parsed.data);
   const fileStat = fs.statSync(filePath);
   const fileModifiedAt = fileStat.mtime.toISOString();

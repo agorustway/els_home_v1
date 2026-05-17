@@ -1,4 +1,17 @@
 
+## [2026-05-17] 아산 연간실적 직접 주입 메모리 사용량 완화 (v5.13.57)
+### 핵심
+- NAS에서 dry-run 중 `xlsx` 전체 워크북 로딩이 메모리를 크게 쓰는 현상을 확인했습니다.
+- 직접 주입 스크립트를 ExcelJS 스트리밍 파서로 변경해 대상 시트를 순차 읽고, 1,000행 단위 진행 로그를 출력하도록 보강했습니다.
+- 기존 원장 누적 정책과 `/volume2/아산지점/...` 기본 경로는 유지했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 직접 주입 NAS 경로 정정 (v5.13.56)
 ### 핵심
 - 직접 주입 스크립트의 기본 파일 후보 1순위를 NAS 실제 경로 `/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`로 정정했습니다.
