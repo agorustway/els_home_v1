@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.13.76 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.77 / APK v5.11.12)
 
-> 최신 업데이트: 아산 배차 고객사/실행사 기준 차이 추적 패널을 추가했습니다.
+> 최신 업데이트: 아산 배차 검색/필터 합계와 실행사 지역칸 파싱 오류를 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.76
+- **웹 버전**: v5.13.77
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 대시보드 기준 버튼 옆 빈 영역에 `기준차이` 패널 추가.
-  - 일/주/月 기준으로 실행사 합계와 고객사 오더의 차이를 표시.
-  - 차이 상위 행은 날짜·작업지·사유와 `보기` 링크로 표 검색까지 연결.
+  - 검색 합계가 실제 표시 행과 다른 문제를 원본 행 번호 기준으로 보정.
+  - 필터/검색 적용 시 상단 합계도 표시 행 기준 `필터 오더량`으로 계산.
+  - `대신10`, `자차3,칸1`처럼 업체명과 수량이 붙은 지역칸 파싱 보강.
   - 배차 도넛 범례/빈 날짜 탭/모비스 국가명 집계 보강 유지.
 
 ## ACTIVE SYSTEMS
@@ -37,6 +37,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.77**: 아산 배차 검색/필터 합계를 실제 표시 행 기준으로 맞추고, 실행사 지역칸의 붙은 수량 파싱을 보정.
 - **v5.13.76**: 아산 배차 고객사/실행사 기준 차이 패널을 추가하고, 차이 원인 행을 날짜 탭+검색 링크로 추적 가능하게 함.
 - **v5.13.75**: 연간실적 웹 조회에서 Supabase exact count를 제거하고 파일 메타 행 수를 사용해 화면 진입 timeout을 완화.
 - **v5.13.74**: 아산 배차 도넛 범례에 항목별 점유율을 붙이고, 데이터 없는 날짜 탭 비활성화와 모비스 국가명 고객사 집계를 적용.
@@ -80,7 +81,7 @@
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 51개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 53개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/route.js" "utils/asanDashboardView.mjs"`: 0 errors

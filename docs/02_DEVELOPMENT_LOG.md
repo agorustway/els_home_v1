@@ -1,4 +1,17 @@
 
+## [2026-05-17] 아산 배차 검색/필터 합계와 실행사 파싱 보정 (v5.13.77)
+### 핵심
+- 통합현황 정렬 후 검색 결과가 정렬 인덱스와 원본 행 인덱스를 섞어 다른 행을 표시할 수 있던 문제를 원본 행 번호 기준으로 보정했습니다.
+- 검색/필터가 적용된 상태에서는 상단 합계를 전체 선택일이 아니라 실제 표시 행 기준 `필터 오더량`으로 계산합니다.
+- 실행사 지역칸에서 `대신10`, `자차3,칸1`, `CSS1`처럼 업체명과 수량이 붙은 값도 정상 집계하도록 파싱을 보강했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (53개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 고객사/실행사 기준 차이 추적 패널 (v5.13.76)
 ### 핵심
 - 대시보드 기준 전환 버튼 옆 빈 영역에 `기준차이` 패널을 추가했습니다.

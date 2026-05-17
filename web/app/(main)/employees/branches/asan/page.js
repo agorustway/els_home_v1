@@ -218,7 +218,7 @@ function doSearch(data, headers, term) {
         const matchedTerms = terms.filter(t => row.some(c => c && String(c).toLowerCase().includes(t)));
         if (matchedTerms.length === 0) return;
         
-        indices.push(ri);
+        indices.push(row.origIdx ?? ri);
 
         if (orderColIdx !== -1) {
             const val = parseQty(row[orderColIdx]);
@@ -559,7 +559,6 @@ function AsanDispatchContent() {
         });
     }, [dataWithIndices, headers, viewType]);
 
-    const summary = useMemo(() => calcSummary(headers, processedData, viewType), [headers, processedData, viewType]);
     const searchResult = useMemo(() => doSearch(processedData, headers, searchTerm), [processedData, headers, searchTerm]);
 
     // 보이는 컬럼 인덱스
@@ -612,6 +611,11 @@ function AsanDispatchContent() {
         return rows;
     // [BUG FIX] processedData를 deps에 추가: integrated 뷰 정렬 후 row.origIdx가 올바르게 반영되어야 comments key가 일치함
     }, [processedData, headers, viewType, searchResult, columnFilters, colorFilter]);
+    const hasActiveFilter = searchResult.indices !== null || Object.keys(columnFilters).length > 0 || Boolean(colorFilter);
+    const summary = useMemo(() => {
+        const rows = hasActiveFilter ? displayRows.map((item) => item.row) : processedData;
+        return calcSummary(headers, rows, viewType);
+    }, [headers, processedData, displayRows, viewType, hasActiveFilter]);
 
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
@@ -815,7 +819,7 @@ function AsanDispatchContent() {
                         <div className={styles.summaryBar}>
                             <div className={styles.summaryLeft}>
                                 <span className={styles.summaryItem}>
-                                    <b>오더량</b> {summary.order}
+                                    <b>{hasActiveFilter ? '필터 오더량' : '오더량'}</b> {summary.order}
                                     <em>({Object.entries(summary.cats).map(([k, v]) => `${k}:${v}`).join(', ')})</em>
                                 </span>
                                 <span className={styles.summaryItem}><b>배차량</b> {summary.disp}</span>

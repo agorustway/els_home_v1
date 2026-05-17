@@ -123,6 +123,26 @@ test('아산 현황판 상차지별 비율은 지역 배차 칸을 집계한다'
   assert.deepEqual(scope.pieAggs.region, { 아산: 21, 부산: 4 });
 });
 
+test('아산 현황판 실행사 파싱은 업체명과 수량이 붙은 지역칸도 읽는다', () => {
+  const scope = buildAsanDashboardScope({
+    rows: [
+      ['수출', '글로비스', '글로비스1포장장', '고객A', 'HMM', '40HC', '14', '14', '대신10,자차3', 'CSS1'],
+    ],
+    headers,
+    viewType: 'integrated',
+    viewMode: 'dispatcher',
+  });
+
+  const companyRows = toSortedChartEntries(scope.chartAggs['업체명']);
+  assert.equal(scope.total, 14);
+  assert.equal(scope.pieAggs.region['아산'], 13);
+  assert.equal(scope.pieAggs.region['부산'], 1);
+  assert.equal(companyRows[0].name, '대신');
+  assert.equal(companyRows[0].total, 10);
+  assert.equal(scope.chartAggs['업체명'].자차.total, 3);
+  assert.equal(scope.chartAggs['업체명'].CSS.total, 1);
+});
+
 test('아산 현황판 실행사 기준은 지역 칸의 업체명과 대수를 읽는다', () => {
   const periods = buildAsanDashboardPeriods({
     sourceItems,
@@ -395,4 +415,16 @@ test('아산 배차 날짜 탭은 데이터 없는 날짜를 비활성화한다'
   assert.match(source, /title=\{!hasRows \? '데이터 없음' : undefined\}/);
   assert.match(source, /for \(let i = items\.length - 1; i >= 0; i -= 1\)/);
   assert.match(css, /\.dateTabDisabled,[\s\S]*cursor: not-allowed;/);
+});
+
+test('아산 배차 검색/필터 합계는 실제 표시 행 기준으로 맞춘다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+
+  assert.match(source, /indices\.push\(row\.origIdx \?\? ri\);/);
+  assert.match(source, /const hasActiveFilter = searchResult\.indices !== null/);
+  assert.match(source, /displayRows\.map\(\(item\) => item\.row\)/);
+  assert.match(source, /필터 오더량/);
 });

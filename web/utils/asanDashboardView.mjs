@@ -159,6 +159,18 @@ function addCustomerRow(scope, row, headers, cols, viewType) {
   addChart(scope.chartAggs, '고객사', meta.customer, amount, meta.workplace);
 }
 
+function parseDispatchCell(text = '') {
+  const records = [];
+  const normalized = String(text || '').replace(/[，、]/g, ',');
+  const matches = normalized.matchAll(/([^,\s/]+?)\s*(-?\d+(?:\.\d+)?)(?=$|[,/\s])/g);
+  for (const match of matches) {
+    const company = normalizeLabel(match[1]);
+    const count = parseDashboardQty(match[2]);
+    if (company && count > 0) records.push({ company, count });
+  }
+  return records;
+}
+
 function parseDispatchRecords(row = [], headers = []) {
   const regions = DISPATCH_REGIONS
     .map((name) => ({ name, idx: findDashboardCol(headers, name) }))
@@ -169,12 +181,9 @@ function parseDispatchRecords(row = [], headers = []) {
     const text = row[region.idx];
     if (!text) return;
 
-    const matches = String(text).matchAll(/([가-힣a-zA-Z0-9().&+_-]{1,28})\s*(\d+(?:\.\d+)?)/g);
-    for (const match of matches) {
-      const company = normalizeLabel(match[1]);
-      const count = parseDashboardQty(match[2]);
-      if (company && count > 0) records.push({ company, count, region: region.name, row });
-    }
+    parseDispatchCell(text).forEach((record) => {
+      records.push({ ...record, region: region.name, row });
+    });
   });
   return records;
 }
