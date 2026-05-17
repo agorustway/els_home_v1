@@ -231,7 +231,7 @@ function detectLastCol(matrix, headerIdx) {
   return lastCol < 0 ? Math.max(0, rawHeader.length - 1) : lastCol;
 }
 
-async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = null) {
+async function streamExcelRows(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = null, handlers = {}) {
   const { actualSheet, targetSheetNo } = readWorkbookSheetNames(filePath, sheetName || DEFAULT_SHEET_NAME);
   const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
     sharedStrings: 'cache',
@@ -242,30 +242,49 @@ async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = 
   workbookReader.model = { sheets: [] };
 
   const warmupRows = [];
-  const rows = [];
   let headers = [];
   let headerIdx = null;
   let lastCol = null;
   let foundSheet = false;
   let rawRowCount = 0;
+  let emittedRows = 0;
+  let readyCalled = false;
 
-  const finishWarmup = () => {
+  const emitDataRow = async rawRow => {
+    const parsedRow = [];
+    for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) parsedRow.push(cleanCell(rawRow[colIdx]));
+    if (!parsedRow.some(Boolean)) return;
+    await handlers.onRow?.(parsedRow, emittedRows);
+    emittedRows += 1;
+    if (emittedRows > 0 && emittedRows % 1000 === 0) {
+      console.error(`[annual-performance-import] parsed rows=${emittedRows}`);
+    }
+  };
+
+  const finishWarmup = async () => {
     if (headerIdx != null) return;
     if (!warmupRows.length) {
       headerIdx = 0;
       lastCol = 0;
       headers = [];
-      return;
+    } else {
+      headerIdx = detectHeaderIndex(warmupRows, headerRow);
+      lastCol = detectLastCol(warmupRows, headerIdx);
+      headers = cleanHeaders((warmupRows[headerIdx] || []).slice(0, lastCol + 1));
     }
 
-    headerIdx = detectHeaderIndex(warmupRows, headerRow);
-    lastCol = detectLastCol(warmupRows, headerIdx);
-    headers = cleanHeaders((warmupRows[headerIdx] || []).slice(0, lastCol + 1));
+    if (!readyCalled) {
+      readyCalled = true;
+      await handlers.onReady?.({
+        headers,
+        sheetName: actualSheet,
+        headerRow: (headerIdx || 0) + 1,
+      });
+    }
+
     for (let rowIdx = headerIdx + 1; rowIdx < warmupRows.length; rowIdx += 1) {
       const rawRow = warmupRows[rowIdx] || [];
-      const row = [];
-      for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) row.push(cleanCell(rawRow[colIdx]));
-      if (row.some(Boolean)) rows.push(row);
+      await emitDataRow(rawRow);
     }
   };
 
@@ -282,28 +301,39 @@ async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = 
       if (headerIdx == null) {
         warmupRows.push(rawValues);
         if (warmupRows.length < 240) continue;
-        finishWarmup();
+        await finishWarmup();
         continue;
       }
 
-      const parsedRow = [];
-      for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) parsedRow.push(cleanCell(rawValues[colIdx]));
-      if (parsedRow.some(Boolean)) rows.push(parsedRow);
-      if (rows.length > 0 && rows.length % 1000 === 0) {
-        console.error(`[annual-performance-import] parsed rows=${rows.length}`);
-      }
+      await emitDataRow(rawValues);
     }
   }
 
   if (!foundSheet) throw new Error(`Excel sheet를 찾을 수 없습니다: ${actualSheet}`);
-  finishWarmup();
+  await finishWarmup();
 
   return {
     headers,
-    data: rows,
     sheetName: actualSheet,
     headerRow: (headerIdx || 0) + 1,
+    rowCount: emittedRows,
     rawRowCount,
+  };
+}
+
+async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = null) {
+  const rows = [];
+  const parsed = await streamExcelRows(filePath, sheetName, headerRow, {
+    onRow(row) {
+      rows.push(row);
+    },
+  });
+  return {
+    headers: parsed.headers,
+    data: rows,
+    sheetName: parsed.sheetName,
+    headerRow: parsed.headerRow,
+    rawRowCount: parsed.rawRowCount,
   };
 }
 
@@ -499,6 +529,152 @@ function buildSummary(headers, rows) {
   };
 }
 
+function createSummaryAccumulator(headers, sampleRows) {
+  const analysisSampleRows = sampleRows.filter(row => !isTotalRow(row));
+  const numericCols = numericColumnIndices(headers, analysisSampleRows);
+  const salesWords = ['매출', '청구', '수입', '운송수입', '공급가', '운임'];
+  const purchaseWords = ['매입', '원가', '비용', '지급', '외주', '운송비', '정산', '하불'];
+  const profitWords = ['손익', '이익', '마진', '차익', '수익'];
+  const amountExcludes = ['처', '거래처', '업체', '부가세', 'vat', '세액', '번호', '코드'];
+  let revenueCols = numericCols.filter(idx => hasKeyword(headers[idx], salesWords) && !hasKeyword(headers[idx], amountExcludes));
+  const purchaseCols = numericCols.filter(idx => hasKeyword(headers[idx], purchaseWords) && !hasKeyword(headers[idx], amountExcludes));
+  const profitCols = numericCols.filter(idx => hasKeyword(headers[idx], profitWords) && !hasKeyword(headers[idx], amountExcludes));
+  if (!revenueCols.length) {
+    revenueCols = numericCols
+      .filter(idx => hasKeyword(headers[idx], ['금액', '합계', 'total']) && !hasKeyword(headers[idx], purchaseWords))
+      .slice(0, 1);
+  }
+  const groupCandidates = headers
+    .map((header, idx) => ({ header, idx }))
+    .filter(({ header, idx }) => !numericCols.includes(idx) && hasKeyword(header, ['거래처', '업체', '화주', '운송사', '구분', '품목', '노선', '작업지', '지점']))
+    .slice(0, 4)
+    .map(item => item.idx);
+  const yearCols = revenueCols.length || purchaseCols.length || profitCols.length
+    ? []
+    : numericCols.filter(idx => yearFromHeader(headers[idx]));
+  const labelCols = yearCols.length ? headers.map((_, idx) => idx).filter(idx => !yearCols.includes(idx)).slice(0, 4) : [];
+  const yearly = new Map();
+  const monthly = new Map();
+  const groups = new Map();
+  let totalRows = 0;
+  let analysisRows = 0;
+  let totalRevenue = 0;
+  let totalPurchase = 0;
+  let totalProfit = 0;
+
+  function add(row) {
+    totalRows += 1;
+    if (isTotalRow(row)) return;
+    analysisRows += 1;
+
+    if (revenueCols.length || purchaseCols.length || profitCols.length) {
+      const { year, month } = inferYearMonth(headers, row);
+      const revenue = revenueCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
+      const purchase = purchaseCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
+      const explicitProfit = profitCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
+      const profit = profitCols.length ? explicitProfit : revenue - purchase;
+      totalRevenue += revenue;
+      totalPurchase += purchase;
+      totalProfit += profit;
+
+      const yearKey = String(year || '미지정');
+      if (!yearly.has(yearKey)) yearly.set(yearKey, { year: yearKey, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+      const yearItem = yearly.get(yearKey);
+      yearItem.revenue += revenue;
+      yearItem.purchase += purchase;
+      yearItem.profit += profit;
+      yearItem.rowCount += 1;
+
+      if (year && month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!monthly.has(monthKey)) monthly.set(monthKey, { period: monthKey, year, month, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+        const monthItem = monthly.get(monthKey);
+        monthItem.revenue += revenue;
+        monthItem.purchase += purchase;
+        monthItem.profit += profit;
+        monthItem.rowCount += 1;
+      }
+
+      if (groupCandidates.length) {
+        const groupValue = groupCandidates.map(idx => row[idx]).find(Boolean) || '미분류';
+        if (!groups.has(groupValue)) groups.set(groupValue, { name: groupValue, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+        const groupItem = groups.get(groupValue);
+        groupItem.revenue += revenue;
+        groupItem.purchase += purchase;
+        groupItem.profit += profit;
+        groupItem.rowCount += 1;
+      }
+      return;
+    }
+
+    const label = labelCols.map(idx => row[idx]).filter(Boolean).join(' ');
+    const isRevenue = salesWords.some(word => label.includes(word)) || !purchaseWords.concat(profitWords).some(word => label.includes(word));
+    const isPurchase = purchaseWords.some(word => label.includes(word));
+    const isProfit = profitWords.some(word => label.includes(word));
+    for (const idx of yearCols) {
+      const year = yearFromHeader(headers[idx]);
+      const amount = parseAmount(row[idx] || '');
+      const yearKey = String(year);
+      if (!yearly.has(yearKey)) yearly.set(yearKey, { year: yearKey, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+      const item = yearly.get(yearKey);
+      if (isPurchase) {
+        item.purchase += amount;
+        totalPurchase += amount;
+      } else if (isProfit) {
+        item.profit += amount;
+        totalProfit += amount;
+      } else if (isRevenue) {
+        item.revenue += amount;
+        totalRevenue += amount;
+      }
+      item.rowCount += 1;
+    }
+  }
+
+  function finish() {
+    if (yearCols.length) {
+      for (const item of yearly.values()) {
+        if (!item.profit) item.profit = item.revenue - item.purchase;
+      }
+      totalProfit = totalProfit || totalRevenue - totalPurchase;
+    }
+
+    const roundItem = item => {
+      for (const key of ['revenue', 'purchase', 'profit']) {
+        if (key in item) item[key] = Math.round(Number(item[key]) * 100) / 100;
+      }
+      return item;
+    };
+    const yearlyList = Array.from(yearly.values()).map(roundItem);
+    yearlyList.sort((a, b) => (a.year === '미지정') - (b.year === '미지정') || String(a.year).localeCompare(String(b.year), 'ko-KR'));
+    const monthlyList = Array.from(monthly.values()).map(roundItem);
+    monthlyList.sort((a, b) => a.period.localeCompare(b.period));
+    const topGroups = Array.from(groups.values()).map(roundItem);
+    topGroups.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
+
+    return {
+      totalRows,
+      analysisRows,
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      totalPurchase: Math.round(totalPurchase * 100) / 100,
+      totalProfit: Math.round(totalProfit * 100) / 100,
+      profitRate: totalRevenue ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
+      yearly: yearlyList,
+      monthly: monthlyList.slice(0, 240),
+      topGroups: topGroups.slice(0, 15),
+      detected: {
+        numericColumns: numericCols.map(idx => headers[idx]),
+        revenueColumns: revenueCols.map(idx => headers[idx]),
+        purchaseColumns: purchaseCols.map(idx => headers[idx]),
+        profitColumns: profitCols.map(idx => headers[idx]),
+        groupColumns: groupCandidates.map(idx => headers[idx]),
+      },
+    };
+  }
+
+  return { add, finish };
+}
+
 function pythonJsonDumps(value) {
   if (Array.isArray(value)) return `[${value.map(pythonJsonDumps).join(', ')}]`;
   if (value && typeof value === 'object') {
@@ -679,6 +855,161 @@ function uuidV4() {
   });
 }
 
+async function importExcelStreaming({
+  filePath,
+  preferredSheetName,
+  headerRow,
+  supabase,
+  key,
+  chunkSize,
+  fileModifiedAt,
+  nowIso,
+}) {
+  const currentRows = await readCurrentRows(supabase, key);
+  const snapshotId = uuidV4();
+  const sampleRows = [];
+  let accumulator = null;
+  let ready = null;
+  let insertedCount = 0;
+  let unchangedCount = 0;
+  let supersededCount = 0;
+  let removedCount = 0;
+  let duplicateCount = 0;
+  let insertBatch = [];
+  let changedBatch = [];
+  let duplicateBatch = [];
+
+  const ensureAccumulator = () => {
+    if (accumulator) return;
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows);
+    for (const sampleRow of sampleRows) accumulator.add(sampleRow);
+  };
+
+  const flush = async () => {
+    if (duplicateBatch.length) {
+      duplicateCount += await updateRowsWithRetry({
+        supabase,
+        table: 'branch_performance_rows',
+        patch: {
+          is_current: false,
+          change_status: 'duplicate_current_retired',
+          replaced_at: nowIso,
+          last_seen_at: nowIso,
+        },
+        filter: query => query.eq('is_current', true),
+        values: duplicateBatch,
+        column: 'id',
+        chunkSize,
+      });
+      duplicateBatch = [];
+    }
+
+    if (changedBatch.length) {
+      supersededCount += await updateRowsWithRetry({
+        supabase,
+        table: 'branch_performance_rows',
+        patch: {
+          is_current: false,
+          change_status: 'superseded_by_excel',
+          replaced_at: nowIso,
+          last_seen_at: nowIso,
+        },
+        filter: query => rowIndexFilter(query, key),
+        values: changedBatch,
+        column: 'row_index',
+        chunkSize,
+      });
+      changedBatch = [];
+    }
+
+    if (insertBatch.length) {
+      insertedCount += await insertRowsWithRetry({ supabase, rows: insertBatch, chunkSize });
+      insertBatch = [];
+      if (insertedCount > 0 && insertedCount % 10000 === 0) {
+        console.error(`[annual-performance-import] inserted rows=${insertedCount}`);
+      }
+    }
+  };
+
+  const parsed = await streamExcelRows(filePath, preferredSheetName, headerRow, {
+    async onReady(meta) {
+      ready = meta;
+    },
+    async onRow(row, rowIndex) {
+      if (sampleRows.length < 2000) {
+        sampleRows.push(row);
+      } else {
+        ensureAccumulator();
+        accumulator.add(row);
+      }
+
+      const hash = rowHash(ready.headers, row);
+      const current = currentRows.get(rowIndex) || [];
+      const matchingIdx = current.findIndex(item => item.hash === hash);
+      if (matchingIdx >= 0) {
+        unchangedCount += 1;
+        current.forEach((item, idx) => {
+          if (idx !== matchingIdx) duplicateBatch.push(item.id);
+        });
+        currentRows.delete(rowIndex);
+      } else {
+        if (current.length) changedBatch.push(rowIndex);
+        insertBatch.push(buildRowPayload({
+          headers: ready.headers,
+          row,
+          rowIndex,
+          hash,
+          key,
+          snapshotId,
+          fileModifiedAt,
+          nowIso,
+        }));
+        currentRows.delete(rowIndex);
+      }
+
+      if (insertBatch.length >= chunkSize || changedBatch.length >= chunkSize || duplicateBatch.length >= chunkSize) {
+        await flush();
+      }
+    },
+  });
+
+  ensureAccumulator();
+  await flush();
+
+  const removedIndices = Array.from(currentRows.keys());
+  if (removedIndices.length) {
+    removedCount = await updateRowsWithRetry({
+      supabase,
+      table: 'branch_performance_rows',
+      patch: {
+        is_current: false,
+        change_status: 'removed_from_excel',
+        replaced_at: nowIso,
+        last_seen_at: nowIso,
+      },
+      filter: query => rowIndexFilter(query, key),
+      values: removedIndices,
+      column: 'row_index',
+      chunkSize,
+    });
+  }
+
+  const summary = accumulator.finish();
+  return {
+    headers: parsed.headers,
+    sheetName: parsed.sheetName,
+    headerRow: parsed.headerRow,
+    rowCount: parsed.rowCount,
+    summary,
+    insertedCount,
+    unchangedCount,
+    supersededCount,
+    removedCount,
+    duplicateCount,
+    snapshotId,
+  };
+}
+
 async function run() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -727,148 +1058,55 @@ async function run() {
     }
   }
 
-  const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
-  const summary = buildSummary(parsed.headers, parsed.data);
-  const key = {
-    ...requestedKey,
-    sheetName: parsed.sheetName,
-  };
+  if (args['dry-run']) {
+    const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
+    const summary = buildSummary(parsed.headers, parsed.data);
+    console.log(JSON.stringify({
+      mode: 'dry-run',
+      filePath,
+      dbPath,
+      sheetName: parsed.sheetName,
+      headerRow: parsed.headerRow,
+      rows: parsed.data.length,
+      headers: parsed.headers.length,
+      summary: {
+        totalRevenue: summary.totalRevenue,
+        totalPurchase: summary.totalPurchase,
+        totalProfit: summary.totalProfit,
+        yearly: summary.yearly.length,
+        detected: summary.detected,
+      },
+      headersPreview: parsed.headers,
+    }, null, 2));
+    return;
+  }
 
-  console.log(JSON.stringify({
-    mode: args['dry-run'] ? 'dry-run' : 'import',
-    filePath,
-    dbPath,
-    sheetName: parsed.sheetName,
-    headerRow: parsed.headerRow,
-    rows: parsed.data.length,
-    headers: parsed.headers.length,
-    summary: {
-      totalRevenue: summary.totalRevenue,
-      totalPurchase: summary.totalPurchase,
-      totalProfit: summary.totalProfit,
-      yearly: summary.yearly.length,
-      detected: summary.detected,
-    },
-    headersPreview: parsed.headers,
-  }, null, 2));
-
-  if (args['dry-run']) return;
-  if (parsed.data.length > 100000 && !args['confirm-large-import']) {
-    throw new Error(`대용량 주입 보호: ${parsed.data.length}행입니다. dry-run 결과를 확인한 뒤 --confirm-large-import 옵션을 붙여 다시 실행하세요.`);
+  if (!args['confirm-large-import']) {
+    throw new Error('실제 주입은 안전을 위해 --confirm-large-import 옵션이 필요합니다.');
   }
 
   supabase = supabase || createSupabaseClient();
-  const currentRows = await readCurrentRows(supabase, key);
-  const snapshotId = uuidV4();
-  const newHashByIndex = new Map();
-  const insertRowIndexes = [];
-  const rowHashes = new Map();
-  const changedIndices = [];
-  const removedIndices = [];
-  const duplicateIds = [];
-  let unchangedCount = 0;
-
-  for (let rowIndex = 0; rowIndex < parsed.data.length; rowIndex += 1) {
-    const row = parsed.data[rowIndex];
-    const hash = rowHash(parsed.headers, row);
-    newHashByIndex.set(rowIndex, hash);
-    rowHashes.set(rowIndex, hash);
-
-    const current = currentRows.get(rowIndex) || [];
-    const matchingIdx = current.findIndex(item => item.hash === hash);
-    if (matchingIdx >= 0) {
-      unchangedCount += 1;
-      current.forEach((item, idx) => {
-        if (idx !== matchingIdx) duplicateIds.push(item.id);
-      });
-      continue;
-    }
-    if (current.length) changedIndices.push(rowIndex);
-    insertRowIndexes.push(rowIndex);
-  }
-
-  for (const rowIndex of currentRows.keys()) {
-    if (!newHashByIndex.has(rowIndex)) removedIndices.push(rowIndex);
-  }
-
-  const basePatch = {
-    is_current: false,
-    replaced_at: nowIso,
-    last_seen_at: nowIso,
-  };
-
-  const duplicateCount = duplicateIds.length
-    ? await updateRowsWithRetry({
-      supabase,
-      table: 'branch_performance_rows',
-      patch: { ...basePatch, change_status: 'duplicate_current_retired' },
-      filter: query => query.eq('is_current', true),
-      values: duplicateIds,
-      column: 'id',
-      chunkSize,
-    })
-    : 0;
-
-  const supersededCount = changedIndices.length
-    ? await updateRowsWithRetry({
-      supabase,
-      table: 'branch_performance_rows',
-      patch: { ...basePatch, change_status: 'superseded_by_excel' },
-      filter: query => rowIndexFilter(query, key),
-      values: changedIndices,
-      column: 'row_index',
-      chunkSize,
-    })
-    : 0;
-
-  const removedCount = removedIndices.length
-    ? await updateRowsWithRetry({
-      supabase,
-      table: 'branch_performance_rows',
-      patch: { ...basePatch, change_status: 'removed_from_excel' },
-      filter: query => rowIndexFilter(query, key),
-      values: removedIndices,
-      column: 'row_index',
-      chunkSize,
-    })
-    : 0;
-
-  let insertedCount = 0;
-  let insertBatch = [];
-  for (const rowIndex of insertRowIndexes) {
-    const row = parsed.data[rowIndex];
-    insertBatch.push(buildRowPayload({
-      headers: parsed.headers,
-      row,
-      rowIndex,
-      hash: rowHashes.get(rowIndex),
-      key,
-      snapshotId,
-      fileModifiedAt,
-      nowIso,
-    }));
-    if (insertBatch.length >= chunkSize) {
-      insertedCount += await insertRowsWithRetry({ supabase, rows: insertBatch, chunkSize });
-      insertBatch = [];
-      if (insertedCount > 0 && insertedCount % 10000 === 0) {
-        console.error(`[annual-performance-import] inserted rows=${insertedCount}`);
-      }
-    }
-  }
-  if (insertBatch.length) {
-    insertedCount += await insertRowsWithRetry({ supabase, rows: insertBatch, chunkSize });
-  }
+  const result = await importExcelStreaming({
+    filePath,
+    preferredSheetName,
+    headerRow: args['header-row'],
+    supabase,
+    key: requestedKey,
+    chunkSize,
+    fileModifiedAt,
+    nowIso,
+  });
 
   const { error: metaError } = await supabase.from('branch_performance_files').upsert({
-    branch_id: key.branchId,
-    dataset_type: key.datasetType,
-    file_path: key.filePath,
-    sheet_name: key.sheetName,
-    header_row: parsed.headerRow,
-    headers: parsed.headers,
-    row_count: parsed.data.length,
-    current_row_count: parsed.data.length,
-    summary,
+    branch_id: requestedKey.branchId,
+    dataset_type: requestedKey.datasetType,
+    file_path: requestedKey.filePath,
+    sheet_name: result.sheetName,
+    header_row: result.headerRow,
+    headers: result.headers,
+    row_count: result.rowCount,
+    current_row_count: result.rowCount,
+    summary: result.summary,
     file_modified_at: fileModifiedAt,
     synced_at: nowIso,
   }, {
@@ -878,13 +1116,13 @@ async function run() {
 
   console.log(JSON.stringify({
     ok: true,
-    insertedCount,
-    unchangedCount,
-    supersededCount,
-    removedCount,
-    duplicateCount,
-    totalRows: parsed.data.length,
-    snapshotId,
+    insertedCount: result.insertedCount,
+    unchangedCount: result.unchangedCount,
+    supersededCount: result.supersededCount,
+    removedCount: result.removedCount,
+    duplicateCount: result.duplicateCount,
+    totalRows: result.rowCount,
+    snapshotId: result.snapshotId,
   }, null, 2));
 }
 

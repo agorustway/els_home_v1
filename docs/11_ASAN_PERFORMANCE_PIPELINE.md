@@ -19,7 +19,7 @@
 - NAS Core 모듈: `docker/els-backend/asan_performance.py`
 - 직접 주입 도구: `web/scripts/import-asan-annual-performance.mjs`
   - NAS 동기화가 statement timeout에 걸릴 때 로컬 Excel을 Supabase 원장으로 직접 적재한다.
-  - ExcelJS streaming reader로 대상 시트를 순차 파싱해 NAS 메모리 점유를 낮춘다.
+  - ExcelJS streaming reader로 대상 시트를 순차 파싱하고, 실제 주입은 읽는 중 100행 단위로 바로 반영해 NAS 메모리 점유를 낮춘다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`
   - 10만 행 초과 실제 주입은 dry-run 확인 후 `--confirm-large-import`를 붙여 실행한다.
   - 기본 실제 주입은 Supabase `file_modified_at`과 Excel mtime이 같으면 파싱 없이 스킵하며, 필요 시 `--force`로 강제한다.

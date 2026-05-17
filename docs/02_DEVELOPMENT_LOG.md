@@ -1,4 +1,17 @@
 
+## [2026-05-17] 아산 연간실적 직접 주입 스트리밍 삽입 전환 (v5.13.62)
+### 핵심
+- 실제 주입 단계도 엑셀 전체 행 배열을 만든 뒤 처리하지 않고, 스트리밍으로 읽는 중 변경/신규 행을 배치 삽입하도록 전환했습니다.
+- dry-run은 분석 확인을 위해 기존처럼 전체 요약을 계산하지만, 실제 import는 100행 단위 flush로 NAS 메모리 점유를 더 낮춥니다.
+- 기존 row hash 비교, `is_current=false` 전환, `removed_from_excel` 처리는 유지합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 배차 현황판 선택형 분석 대시보드 개편 (v5.13.60)
 ### 핵심
 - 거의 쓰지 않던 데이터 요약 트리 패널을 제거하고, 일별/주별/월별/전체 선택 카드로 총량 확인 흐름을 바꿨습니다.
