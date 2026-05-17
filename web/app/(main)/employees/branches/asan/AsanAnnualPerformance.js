@@ -75,6 +75,12 @@ function DataBar({ value, max, tone }) {
     );
 }
 
+function rate(numerator, denominator) {
+    const top = Number(numerator) || 0;
+    const bottom = Number(denominator) || 0;
+    return bottom ? Math.round((top / bottom) * 10000) / 100 : 0;
+}
+
 export default function AsanAnnualPerformance() {
     const [selectedPath, setSelectedPath] = useState(DEFAULT_ANNUAL_PERFORMANCE_PATH);
     const [sheetName, setSheetName] = useState(DEFAULT_ANNUAL_PERFORMANCE_SHEET);
@@ -246,8 +252,17 @@ export default function AsanAnnualPerformance() {
         return normalizePerformanceColumnOrder(colOrder, headers).filter(col => !hidden.has(col));
     }, [colOrder, headers, hiddenCols]);
     const yearly = Array.isArray(summary.yearly) ? summary.yearly : [];
+    const monthly = Array.isArray(summary.monthly) ? summary.monthly : [];
+    const monthlyTrend = monthly.slice(-18);
+    const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : [];
     const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : [];
     const chartMax = getPerformanceChartMax(yearly, ['revenue', 'purchase', 'profit']);
+    const monthChartMax = getPerformanceChartMax(monthlyTrend, ['revenue', 'purchase', 'profit']);
+    const analysisRows = Number(summary.analysisRows || totalRows || 0) || 0;
+    const avgRevenue = analysisRows ? (Number(summary.totalRevenue) || 0) / analysisRows : 0;
+    const avgProfit = analysisRows ? (Number(summary.totalProfit) || 0) / analysisRows : 0;
+    const purchaseRate = rate(summary.totalPurchase, summary.totalRevenue);
+    const bestProfitMonth = monthly.reduce((best, item) => (Number(item.profit) || 0) > (Number(best?.profit) || -Infinity) ? item : best, null);
 
     const syncNow = async () => {
         setSyncing(true);
@@ -414,6 +429,29 @@ export default function AsanAnnualPerformance() {
                         </div>
                     </div>
 
+                    <div className={styles.insightGrid}>
+                        <div className={styles.insightItem}>
+                            <span>분석 행수</span>
+                            <strong>{analysisRows.toLocaleString('ko-KR')}행</strong>
+                        </div>
+                        <div className={styles.insightItem}>
+                            <span>건당 매출</span>
+                            <strong>{formatPerformanceAmount(avgRevenue)}</strong>
+                        </div>
+                        <div className={styles.insightItem}>
+                            <span>건당 손익</span>
+                            <strong className={avgProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(avgProfit)}</strong>
+                        </div>
+                        <div className={styles.insightItem}>
+                            <span>매입률</span>
+                            <strong>{purchaseRate.toLocaleString('ko-KR')}%</strong>
+                        </div>
+                        <div className={styles.insightItem}>
+                            <span>최고 손익월</span>
+                            <strong>{bestProfitMonth?.period || '-'}</strong>
+                        </div>
+                    </div>
+
                     <div className={styles.analysisGrid}>
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
@@ -453,6 +491,46 @@ export default function AsanAnnualPerformance() {
                                 ))}
                             </div>
                         </section>
+                    </div>
+
+                    <div className={styles.detailGrid}>
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>월별 추세</h3>
+                                <span>최근 {monthlyTrend.length.toLocaleString()}개월</span>
+                            </div>
+                            <div className={styles.monthChart}>
+                                {monthlyTrend.length === 0 ? (
+                                    <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
+                                ) : monthlyTrend.map(item => (
+                                    <div className={styles.monthRow} key={item.period}>
+                                        <span>{item.period}</span>
+                                        <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
+                                        <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
+                                        <strong>{formatPerformanceAmount(item.profit)}</strong>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        {breakdowns.slice(0, 4).map(section => (
+                            <section className={styles.panel} key={section.column}>
+                                <div className={styles.panelHeader}>
+                                    <h3>{section.column}별 매출</h3>
+                                    <span>상위 {Math.min(10, section.items?.length || 0).toLocaleString()}개</span>
+                                </div>
+                                <div className={styles.breakdownList}>
+                                    {(section.items || []).slice(0, 8).map((item, idx) => (
+                                        <div className={styles.breakdownRow} key={`${section.column}-${item.name}-${idx}`}>
+                                            <span className={styles.rankNo}>{idx + 1}</span>
+                                            <span className={styles.rankName}>{item.name || '미분류'}</span>
+                                            <span>{Number(item.revenueShare || 0).toLocaleString('ko-KR')}%</span>
+                                            <strong>{formatPerformanceAmount(item.profit)}</strong>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
                     </div>
 
                     <section className={styles.detectPanel}>

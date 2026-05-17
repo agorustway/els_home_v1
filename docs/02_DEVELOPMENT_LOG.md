@@ -1,4 +1,20 @@
 
+## [2026-05-17] 아산 연간실적 현재 스냅샷 고정과 분석 확장 (v5.13.79)
+### 핵심
+- 연간실적 메타 summary에 `currentSnapshotId`를 저장하고 웹 조회는 해당 스냅샷만 읽도록 보강했습니다. 여러 current 스냅샷이 남아 같은 row_index가 반복 표시되는 상황을 차단합니다.
+- importer summary에 월별/구분별 breakdown을 확장해 작업지·운송사·노선·구분·청구처·지급처 등 주요 축별 매출/매입/손익 집계를 남기도록 했습니다.
+- 연간실적 분석 화면에 건당 매출/건당 손익/매입률/최고 손익월, 월별 추세, 구분별 상위 분석 패널을 추가했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs" "utils/asanPerformanceView.mjs" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 날짜·금액 표시 정규화 (v5.13.78)
 ### 핵심
 - 연간실적 importer가 `마감월`은 `YYYY-MM`, `작업일자`는 `YYYY-MM-DD`로 저장하도록 정규화했습니다.

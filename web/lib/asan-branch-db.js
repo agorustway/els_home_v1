@@ -261,6 +261,8 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
     }
 
     const headers = Array.isArray(meta.headers) ? meta.headers : [];
+    const summary = meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
+    const currentSnapshotId = summary.currentSnapshotId || summary.snapshotId || '';
     let query = supabase
         .from('branch_performance_rows')
         .select('row_values,row_index')
@@ -269,6 +271,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
         .eq('file_path', normalizedPath)
         .eq('sheet_name', meta.sheet_name || sheetName)
         .eq('is_current', true);
+    if (currentSnapshotId) query = query.eq('snapshot_id', currentSnapshotId);
     query = applySearch(query, search);
 
     const paged = await getPagedRows({
@@ -285,7 +288,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
     return {
         headers,
         data: paged.rows.map(row => row.row_values || []),
-        summary: meta.summary || {},
+        summary,
         file_path: meta.file_path,
         sheet_name: meta.sheet_name,
         header_row: meta.header_row,

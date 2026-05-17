@@ -185,6 +185,39 @@
     letter-spacing: 0;
 }
 
+.insightGrid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.insightItem {
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.insightItem span {
+    display: block;
+    margin-bottom: 3px;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 850;
+}
+
+.insightItem strong {
+    display: block;
+    min-width: 0;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .positive {
     color: #047857 !important;
 }
@@ -196,6 +229,12 @@
 .analysisGrid {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+    gap: 8px;
+}
+
+.detailGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -336,6 +375,59 @@
     color: #0f172a;
     font-size: 0.76rem;
     font-weight: 900;
+}
+
+.monthChart,
+.breakdownList {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px 10px;
+}
+
+.monthRow {
+    display: grid;
+    grid-template-columns: 74px minmax(80px, 1fr) minmax(80px, 1fr) 86px;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.monthRow:last-child,
+.breakdownRow:last-child {
+    border-bottom: 0;
+}
+
+.monthRow span,
+.monthRow strong {
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.monthRow strong {
+    text-align: right;
+}
+
+.breakdownRow {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) 52px 82px;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.breakdownRow span,
+.breakdownRow strong {
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.breakdownRow strong,
+.breakdownRow span:nth-child(3) {
+    text-align: right;
 }
 
 .detectPanel {
@@ -625,6 +717,8 @@
 
     .kpiGrid,
     .analysisGrid,
+    .detailGrid,
+    .insightGrid,
     .formGrid {
         grid-template-columns: 1fr;
     }

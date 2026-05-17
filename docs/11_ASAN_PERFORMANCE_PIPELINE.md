@@ -21,6 +21,7 @@
   - NAS 동기화가 statement timeout에 걸릴 때 로컬 Excel을 Supabase 원장으로 직접 적재한다.
   - ExcelJS streaming reader로 대상 시트를 순차 파싱하고, 실제 주입은 읽는 중 100행 단위로 바로 반영해 NAS 메모리 점유를 낮춘다.
   - `마감월`은 `YYYY-MM`, `작업일자`는 `YYYY-MM-DD`로 저장하고 Excel 날짜 시리얼/ISO 시간 문자열을 정규화한다. `청구`/`하불` 등 금액 컬럼은 천단위 구분 표시값으로 저장한다.
+  - summary에는 `currentSnapshotId`와 월별/구분별 breakdown을 저장한다. 웹 조회는 해당 snapshot만 읽어 중복 current 스냅샷 표시를 막는다.
   - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged/current 방식으로 반영한다. `file_modified_at`이 같으면 스킵하므로 일 1회 자동 실행 부담을 낮춘다.
   - 행별 hash 비교가 필요할 때만 `--diff-current`를 사용한다. 이 모드는 current 원장 조회 인덱스 상태에 민감하다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`
@@ -50,7 +51,7 @@
   - current 조회 timeout 완화 보조 인덱스: `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
-  - 분석 탭: 매출(`청구`), 매입(`하불`), 손익, 손익률, 연도별 그래프, 상위 거래처/구분
+  - 분석 탭: 매출(`청구`), 매입(`하불`), 손익, 손익률, 건당 매출/손익, 매입률, 최고 손익월, 연도별·월별 그래프, 구분별 breakdown
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
   - 테이블 표시는 importer와 같은 날짜/금액 정규화 유틸을 사용한다.
   - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count timeout을 피한다.

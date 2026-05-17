@@ -410,6 +410,46 @@ function yearFromHeader(header) {
   return match ? Number(match[1]) : null;
 }
 
+const BREAKDOWN_COLUMN_WORDS = ['매출', '지역', '작업지', '운송사', '구분', '노선', '픽업', '포트', '하차', '청구처', '지급처', '계약'];
+
+function breakdownColumnIndices(headers, numericCols) {
+  return headers
+    .map((header, idx) => ({ header, idx }))
+    .filter(({ header, idx }) => !numericCols.includes(idx) && hasKeyword(header, BREAKDOWN_COLUMN_WORDS))
+    .slice(0, 8)
+    .map(item => item.idx);
+}
+
+function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, profit) {
+  for (const idx of columnIndices) {
+    const value = row[idx] || '미분류';
+    if (!breakdowns.has(idx)) breakdowns.set(idx, new Map());
+    const bucket = breakdowns.get(idx);
+    if (!bucket.has(value)) bucket.set(value, { name: value, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+    const item = bucket.get(value);
+    item.revenue += revenue;
+    item.purchase += purchase;
+    item.profit += profit;
+    item.rowCount += 1;
+  }
+}
+
+function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, roundItem) {
+  return columnIndices.map((idx) => {
+    const items = Array.from((breakdowns.get(idx) || new Map()).values()).map((item) => {
+      const rounded = roundItem(item);
+      rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
+      rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
+      return rounded;
+    });
+    items.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
+    return {
+      column: headers[idx],
+      items: items.slice(0, 10),
+    };
+  }).filter(item => item.items.length);
+}
+
 function buildSummary(headers, rows) {
   const analysisRows = rows.filter(row => !isTotalRow(row));
   const numericCols = numericColumnIndices(headers, analysisRows);
@@ -432,10 +472,12 @@ function buildSummary(headers, rows) {
     .filter(({ header, idx }) => !numericCols.includes(idx) && hasKeyword(header, ['거래처', '업체', '화주', '운송사', '구분', '품목', '노선', '작업지', '지점']))
     .slice(0, 4)
     .map(item => item.idx);
+  const breakdownCandidates = breakdownColumnIndices(headers, numericCols);
 
   const yearly = new Map();
   const monthly = new Map();
   const groups = new Map();
+  const breakdowns = new Map();
   let totalRevenue = 0;
   let totalPurchase = 0;
   let totalProfit = 0;
@@ -478,6 +520,7 @@ function buildSummary(headers, rows) {
         groupItem.profit += profit;
         groupItem.rowCount += 1;
       }
+      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit);
     }
   } else {
     const yearCols = numericCols.filter(idx => yearFromHeader(headers[idx]));
@@ -536,6 +579,7 @@ function buildSummary(headers, rows) {
     yearly: yearlyList,
     monthly: monthlyList.slice(0, 240),
     topGroups: topGroups.slice(0, 15),
+    breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
     detected: {
       numericColumns: numericCols.map(idx => headers[idx]),
       revenueColumns: revenueCols.map(idx => headers[idx]),
@@ -566,6 +610,7 @@ function createSummaryAccumulator(headers, sampleRows) {
     .filter(({ header, idx }) => !numericCols.includes(idx) && hasKeyword(header, ['거래처', '업체', '화주', '운송사', '구분', '품목', '노선', '작업지', '지점']))
     .slice(0, 4)
     .map(item => item.idx);
+  const breakdownCandidates = breakdownColumnIndices(headers, numericCols);
   const yearCols = revenueCols.length || purchaseCols.length || profitCols.length
     ? []
     : numericCols.filter(idx => yearFromHeader(headers[idx]));
@@ -573,6 +618,7 @@ function createSummaryAccumulator(headers, sampleRows) {
   const yearly = new Map();
   const monthly = new Map();
   const groups = new Map();
+  const breakdowns = new Map();
   let totalRows = 0;
   let analysisRows = 0;
   let totalRevenue = 0;
@@ -621,6 +667,7 @@ function createSummaryAccumulator(headers, sampleRows) {
         groupItem.profit += profit;
         groupItem.rowCount += 1;
       }
+      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit);
       return;
     }
 
@@ -679,6 +726,7 @@ function createSummaryAccumulator(headers, sampleRows) {
       yearly: yearlyList,
       monthly: monthlyList.slice(0, 240),
       topGroups: topGroups.slice(0, 15),
+      breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
       detected: {
         numericColumns: numericCols.map(idx => headers[idx]),
         revenueColumns: revenueCols.map(idx => headers[idx]),
@@ -1054,6 +1102,8 @@ async function importExcelSnapshotStreaming({
   }
 
   const summary = accumulator.finish();
+  summary.currentSnapshotId = snapshotId;
+  summary.importMode = stageBeforeActivation ? 'snapshot-replace' : 'bootstrap-snapshot';
   return {
     mode: stageBeforeActivation ? 'snapshot-replace' : 'bootstrap-snapshot',
     headers: parsed.headers,
@@ -1211,6 +1261,8 @@ async function importExcelStreaming({
   }
 
   const summary = accumulator.finish();
+  summary.currentSnapshotId = snapshotId;
+  summary.importMode = 'diff-current';
   return {
     mode: 'diff-current',
     headers: parsed.headers,
