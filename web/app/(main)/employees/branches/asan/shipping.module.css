@@ -702,16 +702,24 @@
 
     .topSummaryRow {
         align-items: stretch;
+        flex: 0 0 auto;
+        width: 100%;
+        min-width: 0;
     }
 
     .leftControls {
         flex-direction: column;
         align-items: stretch;
         gap: 6px;
+        width: 100%;
     }
 
     .title {
         font-size: 0.95rem;
+        line-height: 1.2;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #e2e8f0;
+        width: 100%;
     }
 
     .fileMod {
@@ -721,6 +729,9 @@
         border-radius: 6px;
         border: 1px solid #e2e8f0;
         gap: 4px;
+        width: 100%;
+        align-items: center;
+        line-height: 1.35;
     }
 
     .elapsedBadge,
@@ -731,11 +742,15 @@
     }
 
     .rightControls {
+        flex: 0 0 auto;
+        width: 100%;
         min-width: 0;
         gap: 6px;
+        align-items: stretch;
     }
 
     .searchRow {
+        flex: 0 0 auto;
         justify-content: stretch;
         width: 100%;
         min-width: 0;
@@ -818,17 +833,22 @@
     .dateFilterZone {
         padding: 6px 8px;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 76px minmax(0, 1fr);
         gap: 6px;
         align-items: stretch;
     }
 
-    .dateFilterLabel,
-    .dateSelect,
     .monthFilterGroup,
-    .quickFilterBtn,
     .resultCountText {
         grid-column: span 2;
+    }
+
+    .dateFilterLabel {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        font-size: 0.76rem;
+        white-space: nowrap;
     }
 
     .dateSelect,
@@ -837,6 +857,11 @@
     .resultCountText {
         width: 100%;
         font-size: 0.8rem;
+    }
+
+    .dateSelect {
+        min-width: 0;
+        height: 32px;
     }
 
     .monthFilterGroup {

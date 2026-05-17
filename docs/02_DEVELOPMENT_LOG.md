@@ -1,4 +1,17 @@
 
+## [2026-05-17] 아산 선적관리 모바일 상단 정렬 정돈 (v5.13.45)
+### 핵심
+- 모바일 선적관리 화면에서 상단 제목/저장정보/검색/액션 영역이 데스크톱 flex 기준 폭을 끌고 와 밀릴 수 있던 부분을 100% 폭 기준으로 정리했습니다.
+- 날짜 필터 라벨과 컬럼 선택을 모바일에서 한 줄 그리드로 맞추고, 월 버튼/빠른 필터/조회 건수 텍스트가 안정적으로 줄바꿈되도록 보강했습니다.
+- 모바일 상단과 월 선택 영역 정렬을 확인하는 회귀 테스트를 추가했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (29개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 월 다중선택 필터 전환 (v5.13.44)
 ### 핵심
 - 선적관리 날짜 필터의 시작일/종료일 입력 2칸을 제거하고, 월 단위 다중선택 버튼으로 교체했습니다.

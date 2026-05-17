@@ -567,6 +567,19 @@ test('선적관리 날짜 필터 바는 월 다중선택 버튼과 조회 건수
   assert.match(css, /\.resultCountText[\s\S]*border: 0;[\s\S]*background: transparent;/);
 });
 
+test('선적관리 모바일 상단과 월 선택 영역은 한 화면 폭 안에서 정렬된다', () => {
+  const css = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/shipping.module.css'),
+    'utf8',
+  );
+
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.topSummaryRow[\s\S]*flex: 0 0 auto;[\s\S]*width: 100%;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.title[\s\S]*line-height: 1\.2;[\s\S]*border-bottom: 1px solid #e2e8f0;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.rightControls[\s\S]*flex: 0 0 auto;[\s\S]*width: 100%;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.dateFilterZone[\s\S]*grid-template-columns: 76px minmax\(0, 1fr\);/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.dateSelect[\s\S]*min-width: 0;[\s\S]*height: 32px;/);
+});
+
 test('선적관리 테이블은 필터/정렬 조회 중 행이 비면 조회중 안내를 표시한다', () => {
   const source = fs.readFileSync(
     path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanShipping.js'),
