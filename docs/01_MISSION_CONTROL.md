@@ -1,20 +1,20 @@
-# ELS MISSION CONTROL (v5.13.46 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.47 / APK v5.11.12)
 
-> 최신 업데이트: 아산지점 연간실적 페이지와 누적 원장형 엑셀→Supabase 파이프라인을 추가합니다.
+> 최신 업데이트: 아산 연간실적 NAS 경로 탐색 후보를 아산지점 공유 루트까지 확장합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.46
+- **웹 버전**: v5.13.47
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 아산지점 `연간실적` 탭 신설: 분석 인포그래픽 + 원장 테이블.
-  - `합계연간실적.xlsx` `합계` 탭을 누적 원장형 Supabase 테이블로 동기화하는 NAS Core 모듈 추가.
-  - 월별실적 확장용 파이프라인/TODO 문서 작성.
+  - 연간실적 기본 경로 `/B_총무/...`를 `/app/data/아산지점`, `/app/volume2/아산지점` 후보에서도 탐색.
+  - 파일 미발견 404 응답에 컨테이너가 실제 확인한 후보 경로 목록을 포함.
+  - NAS 공유 루트 매핑 TODO 보강.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 연간실적 탭 빌드 및 회귀 테스트 통과 |
+| Next.js 웹 | 정상 | 연간실적 경로 탐색 보강 테스트 통과 |
 | Supabase 인증/DB | 정상 | 연간실적 SQL 추가, 운영 DB 적용 필요 |
 | NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 유지 |
 | ELS Bot | 정상 | eTrans 세션 연장/자정 롤오버 타이머 가드 보강 |
@@ -35,6 +35,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.47**: 아산 연간실적 파일 탐색 후보에 `아산지점` 공유 루트를 추가하고, 404 응답에 확인 경로 목록을 포함.
 - **v5.13.46**: 아산 연간실적 페이지, 누적 원장형 `branch_performance_*` SQL, NAS Core 동기화 모듈, 파이프라인 문서를 추가.
 - **v5.13.45**: 아산 선적관리 모바일 상단 제목/저장정보/검색/월 선택 영역을 한 화면 폭 기준으로 정돈.
 - **v5.13.44**: 아산 선적관리 날짜 필터를 최근 6개월 월 다중선택 버튼으로 바꾸고, 기본값을 현재월 포함 3개월로 설정.
@@ -58,6 +59,7 @@
 - `node --test web/tests/asanShippingFlow.test.mjs`: 29개 통과
 - `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 38개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 7개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (샌드박스 외부 fetch EACCES 로그는 기존 외부 네트워크 제한)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
@@ -68,7 +70,7 @@
 - `/employees/news` 송미관: 뉴스 페이지 하단의 숨은 트리거로 열리는 모달.
 
 ## IN-PROGRESS
-- 아산 연간실적: 운영 DB에 `web/supabase_sql/20260517_asan_annual_performance.sql` 적용 후 NAS Core 배포 및 최초 동기화 필요. 세부 TODO는 `docs/11_ASAN_PERFORMANCE_PIPELINE.md`.
+- 아산 연간실적: 운영 DB SQL 적용 완료. NAS Core 재배포 후 최초 동기화 필요. 404가 계속 나면 응답의 `checked_paths`로 실제 NAS 매핑 확인.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

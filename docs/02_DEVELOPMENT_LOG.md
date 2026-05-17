@@ -1,4 +1,17 @@
 
+## [2026-05-17] 아산 연간실적 NAS 경로 탐색 후보 보강 (v5.13.47)
+### 핵심
+- 운영 로그의 `연간실적 엑셀 파일을 찾을 수 없습니다` 404를 기준으로, 컨테이너 내부 탐색 후보에 `/app/data/아산지점/...`, `/app/volume2/아산지점/...`, `/app/volume1/아산지점/...`를 추가했습니다.
+- `A:\B_총무\...`가 NAS에서 공유 루트 자체인지, `아산지점` 공유 폴더 안인지 애매한 상태를 코드가 둘 다 확인하도록 보강했습니다.
+- 404 응답에 `checked_paths`를 포함해 다음 운영 로그/브라우저 네트워크 탭에서 실제 확인 후보를 바로 볼 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과 (7개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py` 통과
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 페이지 및 누적 원장 파이프라인 구축 (v5.13.46)
 ### 핵심
 - 아산지점 화면에 `연간실적` 메인 탭을 추가하고, 분석 탭(매출/매입/손익 KPI, 연도별 그래프, 상위 거래처/구분)과 테이블 탭(검색/정렬/컬럼 숨김/더보기)을 구성했습니다.

@@ -14,8 +14,9 @@
   - `GET`: Supabase 현재 원장 페이지 조회
   - `POST`: NAS 엑셀 강제 동기화 후 조회
 - NAS Core 모듈: `docker/els-backend/asan_performance.py`
-  - 기본 파일 경로: `/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
-  - 기본 시트: `합계`
+- 기본 파일 경로: `/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
+- NAS 경로 탐색 후보: `/app/data`, `/app/data/아산지점`, `/app/volume2`, `/app/volume2/아산지점`, `/app/volume1`, `/app/volume1/아산지점`
+- 기본 시트: `합계`
   - 제목행: 자동 감지, 웹 설정에서 수동 지정 가능
   - 파일 안정화 게이트: 저장 후 quiet time 경과 시 파싱
 - Supabase SQL: `web/supabase_sql/20260517_asan_annual_performance.sql`
@@ -42,7 +43,7 @@
 ## 5. TODO
 - Supabase 운영 DB에 `20260517_asan_annual_performance.sql` 적용.
 - NAS Core 배포 후 `/api/branches/asan/performance/annual` POST로 최초 동기화.
-- 운영 NAS에서 `A:` 드라이브 원본이 `/volume2/B_총무/...`로 매핑되는지 확인.
+- 운영 NAS에서 `A:` 드라이브 원본이 `/volume2/B_총무/...` 또는 `/volume2/아산지점/B_총무/...` 중 어디로 매핑되는지 확인.
 - 실제 엑셀 샘플 기준으로 매출/매입/손익 컬럼 자동 추론 키워드 보정.
 - 월별실적 파일 위치와 마감자료 파일명 규칙 확정.
 - 월별실적 페이지 제작 후 연간실적과 합산 API 설계.

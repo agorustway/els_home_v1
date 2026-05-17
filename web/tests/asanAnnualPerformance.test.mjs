@@ -33,6 +33,13 @@ test('아산 연간실적 백엔드는 원장 행을 삭제하지 않고 current
   assert.doesNotMatch(source, /from_\("branch_performance_rows"\)\.delete\(/);
 });
 
+test('아산 연간실적 파일 탐색은 NAS 아산지점 공유 루트 후보까지 확인한다', () => {
+  const source = read('docker/els-backend/asan_performance.py');
+  assert.match(source, /ASAN_VOLUME_BRANCH_ROOTS = \("아산지점",\)/);
+  assert.match(source, /root \/ branch_root \/ normalized\.lstrip\("\/"\)/);
+  assert.match(source, /"checked_paths": _performance_candidate_paths\(rel_path\)/);
+});
+
 test('아산 연간실적 Supabase SQL은 누적 원장과 현재 조회 인덱스를 만든다', () => {
   const sql = read('web/supabase_sql/20260517_asan_annual_performance.sql');
   assert.match(sql, /CREATE TABLE IF NOT EXISTS branch_performance_files/);

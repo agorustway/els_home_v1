@@ -20,6 +20,7 @@ from file_sync_gate import StableFileSyncGate
 
 DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = "/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"
 DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET = "합계"
+ASAN_VOLUME_BRANCH_ROOTS = ("아산지점",)
 
 
 def _env_int(name, default, minimum=0):
@@ -54,10 +55,14 @@ def _resolve_performance_file(rel_path=None):
 
     for root in (Path("/app/data"), Path("/app/volume2"), Path("/app/volume1")):
         candidates.append(root / normalized.lstrip("/"))
+        for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+            candidates.append(root / branch_root / normalized.lstrip("/"))
 
     if os.name == "nt":
         for root in (Path("A:/"), Path("N:/"), Path("C:/Els")):
             candidates.append(root / normalized.lstrip("/"))
+            for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+                candidates.append(root / branch_root / normalized.lstrip("/"))
 
     for candidate in candidates:
         try:
@@ -67,6 +72,35 @@ def _resolve_performance_file(rel_path=None):
             continue
 
     return candidates[0] if candidates else Path(normalized), normalized
+
+
+def _performance_candidate_paths(rel_path=None):
+    normalized = _normalize_performance_path(rel_path)
+    raw = str(rel_path or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH).strip()
+    seen = set()
+    paths = []
+
+    def add(candidate):
+        text = str(candidate)
+        if text in seen:
+            return
+        seen.add(text)
+        paths.append(text)
+
+    if raw:
+        add(Path(raw))
+    for root in [p.strip() for p in os.environ.get("ASAN_PERFORMANCE_ROOTS", "").split(";") if p.strip()]:
+        add(Path(root) / normalized.lstrip("/"))
+    for root in (Path("/app/data"), Path("/app/volume2"), Path("/app/volume1")):
+        add(root / normalized.lstrip("/"))
+        for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+            add(root / branch_root / normalized.lstrip("/"))
+    if os.name == "nt":
+        for root in (Path("A:/"), Path("N:/"), Path("C:/Els")):
+            add(root / normalized.lstrip("/"))
+            for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+                add(root / branch_root / normalized.lstrip("/"))
+    return paths
 
 
 def _clean_cell(value):
@@ -763,7 +797,11 @@ def register_asan_performance_routes(app, supabase, kst):
 
             file_path, normalized_path = _resolve_performance_file(rel_path)
             if not file_path.exists():
-                return jsonify({"error": "연간실적 엑셀 파일을 찾을 수 없습니다.", "path": normalized_path}), 404
+                return jsonify({
+                    "error": "연간실적 엑셀 파일을 찾을 수 없습니다.",
+                    "path": normalized_path,
+                    "checked_paths": _performance_candidate_paths(rel_path),
+                }), 404
 
             mtime = file_path.stat().st_mtime
             cached = cache.get(normalized_path)
