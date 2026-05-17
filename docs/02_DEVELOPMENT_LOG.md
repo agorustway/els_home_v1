@@ -1,4 +1,27 @@
 
+## [2026-05-17] 아산 연간실적 월 파싱 및 월별 summary 복구 (v5.13.89)
+### 핵심
+- 연간실적 분석에서 1월 금액이 과대 표시되던 원인을 확인했습니다. 기존 정규식이 `2022-10`, `2022-11`, `2022-12`의 월을 `1`로 먼저 매칭해 10~12월을 1월로 집계하고 있었습니다.
+- 웹 표시 유틸과 NAS Python 집계 모듈의 월 파서를 모두 수정해 `YYYY-MM`, `YYYYMM`, `YYYY-MM-DD`, `YYYYMMDD`를 1~12월 범위로 엄격하게 파싱합니다.
+- 운영 Supabase `summary.monthly`는 current snapshot의 원본 `row_data->>'마감월'` 기준으로 재생성했습니다.
+- 형이 준 엑셀 샘플과 대조해 `2024-01` 매출 1,775,915,940 / 매입 1,543,857,480, `2025-01` 매출 1,701,698,800 / 매입 1,501,277,000이 일치함을 확인했습니다.
+- 월별 성과 흐름 UI에는 `마감월 기준`, 매출액, 손익액을 추가하고 연도별 차트에는 매출/매입/손익 범례를 붙였습니다.
+- Supabase 복구 쿼리는 `web/supabase_sql/20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`에 남겼습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "utils/asanPerformanceView.mjs" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `python -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+- Supabase 검증 SQL: `summary.monthlyBasis = 마감월`, 2024-01/2025-01 샘플 금액 일치
+### 변경 파일
+- `web/utils/asanPerformanceView.mjs`
+- `docker/els-backend/asan_performance.py`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `web/supabase_sql/20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 첫 화면 구성 압축 (v5.13.88)
 ### 핵심
 - 연간실적 분석 탭의 첫 화면에서 손익 구조 옆에 최근 12개월 성과 흐름을 배치해 현재 흐름을 바로 보게 했습니다.

@@ -505,6 +505,40 @@
     padding: 8px 10px;
 }
 
+.metricLegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 7px 10px 0;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.metricLegend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.metricLegend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+}
+
+.revenueDot {
+    background: #0f766e;
+}
+
+.purchaseDot {
+    background: #d97706;
+}
+
+.profitDot {
+    background: #2563eb;
+}
+
 .yearRow {
     display: grid;
     grid-template-columns: 58px minmax(0, 1fr);
@@ -616,11 +650,27 @@
     padding: 7px 9px 8px;
 }
 
+.monthHeaderRow,
 .monthRow {
     display: grid;
-    grid-template-columns: 62px minmax(70px, 1fr) minmax(48px, 0.55fr) 78px 48px;
+    grid-template-columns: 62px minmax(70px, 1fr) 78px minmax(48px, 0.55fr) 78px 48px;
     align-items: center;
     gap: 6px;
+}
+
+.monthHeaderRow {
+    min-height: 22px;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 950;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.monthHeaderRow span:nth-child(n+3) {
+    text-align: right;
+}
+
+.monthRow {
     min-height: 24px;
     border-bottom: 1px solid #f1f5f9;
 }
@@ -1169,8 +1219,9 @@
         grid-template-columns: minmax(64px, 1fr) 86px;
     }
 
+    .monthHeaderRow,
     .monthRow {
-        grid-template-columns: 58px minmax(58px, 1fr) minmax(42px, 0.5fr) 74px 46px;
+        grid-template-columns: 58px minmax(58px, 1fr) 74px minmax(42px, 0.5fr) 74px 46px;
     }
 
     .signalGrid {

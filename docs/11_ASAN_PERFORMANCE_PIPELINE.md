@@ -21,6 +21,7 @@
   - NAS 동기화가 statement timeout에 걸릴 때 로컬 Excel을 Supabase 원장으로 직접 적재한다.
   - ExcelJS streaming reader로 대상 시트를 순차 파싱하고, 실제 주입은 읽는 중 100행 단위로 바로 반영해 NAS 메모리 점유를 낮춘다.
   - `마감월`은 `YYYY-MM`, `작업일자`는 `YYYY-MM-DD`로 저장하고 Excel 날짜 시리얼/ISO 시간 문자열을 정규화한다. `청구`/`하불` 등 금액 컬럼은 천단위 구분 표시값으로 저장한다.
+  - 월 파서는 `YYYY-MM`, `YYYYMM`, `YYYY-MM-DD`, `YYYYMMDD`를 1~12월 범위로 엄격하게 읽는다. 특히 `2022-10/11/12`가 `2022-01`로 집계되지 않도록 월 정규식은 `1[0-2]|0?[1-9]` 순서를 유지한다.
   - summary에는 `currentSnapshotId`와 월별/구분별 breakdown을 저장한다. 웹 조회는 해당 snapshot만 읽어 중복 current 스냅샷 표시를 막는다.
   - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged 방식으로 insert한 뒤 메타 `currentSnapshotId`를 새 스냅샷으로 바꿔 공개한다. 이전 current 행 정리는 기본 성공 경로에서 제외해 statement timeout을 피한다.
   - 이전 current 행 정리가 필요할 때만 `--retire-previous-current`를 붙여 별도 수행한다.
@@ -54,11 +55,13 @@
   - current 조회 timeout 완화 보조 인덱스: `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
   - snapshot 조회 보조 인덱스: `web/supabase_sql/20260517_asan_performance_snapshot_row_index.sql`
   - 실패한 staged 스냅샷 빠른 공개 SQL: `web/supabase_sql/20260517_asan_performance_recover_staged_snapshot.sql`
+  - 월별 summary 복구 SQL: `web/supabase_sql/20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
   - 분석 탭: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 공헌도 매트릭스, 저마진/손실/고마진 포트폴리오
   - 회계 분석 축: 매출(`청구`), 매입(`하불`), 손익, 손익률, 매입률, 고객/작업지/운송사/노선/구분별 공헌도와 상위 집중도
   - 화면 분석은 Supabase summary/breakdown을 사용하며, 브라우저에서 36만 행 전체를 재집계하지 않는다.
+  - 월별 흐름은 `summary.monthlyBasis`를 표시하고, 현재 운영 기준은 원본 `마감월`이다.
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
   - 테이블 표시는 importer와 같은 날짜/금액 정규화 유틸을 사용한다.
   - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count timeout을 피한다.
@@ -74,6 +77,7 @@
 - Supabase에 아직 적재 데이터가 없으면 `supabase-empty`와 `needs_sync=true`로 응답하며, 기본 조회가 Excel 파일을 직접 읽지 않는다.
 - 최초 적재처럼 60초를 넘길 수 있는 작업은 화면 요청을 붙잡지 않고 백그라운드 작업으로 돌린 뒤 폴링한다.
 - 직접 주입이 마지막 previous current 정리 단계에서 timeout 나면 이미 insert된 `staged_current` snapshot을 `20260517_asan_performance_recover_staged_snapshot.sql`로 공개한 뒤, 최신 웹 코드가 `currentSnapshotId` 기준으로 조회하게 한다.
+- 월별 summary가 잘못 계산된 경우 원장 행을 재주입하지 않고 current snapshot의 `row_data->>'마감월'` 기준으로 `20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`을 실행해 복구한다.
 
 ## 4. 월별실적 확장 계획
 - 같은 `branch_performance_files/rows` 테이블을 `dataset_type='monthly'`로 재사용한다.
@@ -86,5 +90,6 @@
 - NAS Core/Gateway 배포 후 화면의 `NAS 동기화`로 최초 백그라운드 동기화. timeout 발생 시 직접 주입 스크립트로 우회.
 - 운영 NAS에서 `/app/data/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx` 존재 확인.
 - 실제 엑셀 샘플 기준으로 매출/매입/손익 컬럼 자동 추론 키워드 보정.
+- 연간실적 `year_value/month_value` 과거 오집계 행은 화면 summary에는 영향 없지만, 향후 DB 직접 분석용으로 별도 저부하 backfill SQL 검토.
 - 월별실적 파일 위치와 마감자료 파일명 규칙 확정.
 - 월별실적 페이지 제작 후 연간실적과 합산 API 설계.

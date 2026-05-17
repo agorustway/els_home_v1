@@ -533,6 +533,7 @@ export default function AsanAnnualPerformance() {
                             <div className={styles.commandMeta}>
                                 <span>기간 {getPeriodRange(monthly)}</span>
                                 <span>분석 {analysisRows.toLocaleString('ko-KR')}행</span>
+                                <span>월별 {summary.monthlyBasis || '마감월'} 기준</span>
                                 <span>현재 스냅샷 {summary.currentSnapshotId ? '고정' : '미확인'}</span>
                                 <span>{summary.importMode || 'supabase'}</span>
                             </div>
@@ -605,20 +606,33 @@ export default function AsanAnnualPerformance() {
                         <section className={`${styles.panel} ${styles.monthPanel}`}>
                             <div className={styles.panelHeader}>
                                 <h3>월별 성과 흐름</h3>
-                                <span>최근 {monthlyTrend.length.toLocaleString()}개월</span>
+                                <span>{summary.monthlyBasis || '마감월'} 기준 · 최근 {monthlyTrend.length.toLocaleString()}개월</span>
                             </div>
                             <div className={styles.monthChart}>
                                 {monthlyTrend.length === 0 ? (
                                     <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
-                                ) : monthlyTrend.map(item => (
-                                    <div className={styles.monthRow} key={item.period}>
-                                        <span>{item.period}</span>
-                                        <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
-                                        <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
-                                        <strong>{formatPerformanceAmount(item.profit)}</strong>
-                                        <em>{formatPercent(profitRateOf(item))}</em>
-                                    </div>
-                                ))}
+                                ) : (
+                                    <>
+                                        <div className={styles.monthHeaderRow}>
+                                            <span>월</span>
+                                            <span>매출</span>
+                                            <span>매출액</span>
+                                            <span>손익</span>
+                                            <span>손익액</span>
+                                            <span>률</span>
+                                        </div>
+                                        {monthlyTrend.map(item => (
+                                            <div className={styles.monthRow} key={item.period}>
+                                                <span>{item.period}</span>
+                                                <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
+                                                <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                                <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
+                                                <strong>{formatPerformanceAmount(item.profit)}</strong>
+                                                <em>{formatPercent(profitRateOf(item))}</em>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
                             </div>
                         </section>
                     </div>
@@ -628,6 +642,11 @@ export default function AsanAnnualPerformance() {
                             <div className={styles.panelHeader}>
                                 <h3>연도별 매출·매입·손익</h3>
                                 <span>{yearly.length.toLocaleString()}개 연도</span>
+                            </div>
+                            <div className={styles.metricLegend}>
+                                <span><i className={styles.revenueDot} />매출</span>
+                                <span><i className={styles.purchaseDot} />매입</span>
+                                <span><i className={styles.profitDot} />손익</span>
                             </div>
                             <div className={styles.yearChart}>
                                 {yearly.length === 0 ? (

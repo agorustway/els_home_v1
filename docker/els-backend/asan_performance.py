@@ -313,6 +313,12 @@ def _infer_year_month(headers, row):
     for idx, header in enumerate(headers):
         value = row[idx] if idx < len(row) else ""
         text = str(value or "")
+        compact_match = re.match(r"^(\d{4})(0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])?$", text.strip())
+        date_match = compact_match or re.match(r"^(\d{4})[-./년\s]+(1[0-2]|0?[1-9])(?:[-./월\s]+(3[01]|[12]\d|0?[1-9]))?", text.strip())
+        if _has_keyword(header, date_keywords) and date_match:
+            year = year or int(date_match.group(1))
+            month = month or int(date_match.group(2))
+            continue
         if year is None and _has_keyword(header, year_keywords):
             match = re.search(r"(20\d{2}|19\d{2})", text)
             if match:
@@ -321,12 +327,6 @@ def _infer_year_month(headers, row):
             match = re.search(r"\b(1[0-2]|0?[1-9])\b", text)
             if match:
                 month = int(match.group(1))
-        if _has_keyword(header, date_keywords):
-            match = re.search(r"(20\d{2}|19\d{2})[-./년\s]?(0?[1-9]|1[0-2])?", text)
-            if match:
-                year = year or int(match.group(1))
-                if match.group(2):
-                    month = month or int(match.group(2))
 
     return year, month
 

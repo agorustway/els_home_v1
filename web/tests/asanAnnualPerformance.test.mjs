@@ -9,6 +9,7 @@ import {
   formatPerformanceAmount,
   getPerformanceChartMax,
   normalizeAnnualPerformanceRow,
+  parsePerformanceDateParts,
   normalizePerformancePath,
   normalizePerformanceColumnOrder,
   reconcilePerformanceLayoutPrefs,
@@ -146,6 +147,8 @@ test('아산 연간실적 숫자 컬럼 판정은 대용량 행 수가 아니라
   assert.match(backend, /total = max\(1, len\(sample_rows\)\)/);
   assert.match(backend, /"하불"/);
   assert.match(backend, /"booking"/);
+  assert.match(backend, /date_match = compact_match or re\.match/);
+  assert.match(backend, /1\[0-2\]\|0\?\[1-9\]/);
 });
 
 test('아산 연간실적 화면은 분석/테이블 탭, 파일 선택, 제목행 설정을 제공한다', () => {
@@ -164,7 +167,10 @@ test('아산 연간실적 화면은 분석/테이블 탭, 파일 선택, 제목�
   assert.match(component, /연간 성과 리포트/);
   assert.match(component, /손익 구조/);
   assert.match(component, /monthly\.slice\(-12\)/);
+  assert.match(component, /monthlyBasis/);
   assert.match(component, /월별 성과 흐름/);
+  assert.match(component, /매출액/);
+  assert.match(component, /metricLegend/);
   assert.match(component, /공헌도 매트릭스/);
   assert.match(component, /activeItems\.slice\(0, 10\)/);
   assert.match(component, /저마진 주의/);
@@ -212,6 +218,10 @@ test('연간실적 표시 유틸은 금액 축약과 차트 최대값을 안정�
 test('연간실적 표시 유틸은 엑셀 날짜 시리얼과 금액 표시를 정규화한다', () => {
   assert.equal(formatPerformanceCellValue('마감월', '2015-01-01T00:00:00'), '2015-01');
   assert.equal(formatPerformanceCellValue('작업일자', '42006'), '2015-01-02');
+  assert.deepEqual(parsePerformanceDateParts('2022-10'), { year: 2022, month: 10, day: 1 });
+  assert.deepEqual(parsePerformanceDateParts('2022-11-15'), { year: 2022, month: 11, day: 15 });
+  assert.deepEqual(parsePerformanceDateParts('202512'), { year: 2025, month: 12, day: 1 });
+  assert.equal(parsePerformanceDateParts('202213'), null);
   assert.equal(formatPerformanceCellValue('청구', '440000'), '440,000');
   assert.deepEqual(
     normalizeAnnualPerformanceRow(['마감월', '작업일자', '청구', '하불'], ['42005', '2015-01-02T00:00:00', '440000', '420000']),

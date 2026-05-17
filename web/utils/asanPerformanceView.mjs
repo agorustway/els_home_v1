@@ -115,16 +115,7 @@ export function parsePerformanceDateParts(value) {
     return excelSerialToDateParts(Number(text));
   }
 
-  let match = text.match(/^(\d{4})[-/.년\s]*(0?[1-9]|1[0-2])(?:[-/.월\s]*(0?[1-9]|[12]\d|3[01]))?/);
-  if (match) {
-    return {
-      year: Number(match[1]),
-      month: Number(match[2]),
-      day: match[3] ? Number(match[3]) : 1,
-    };
-  }
-
-  match = text.match(/^(\d{4})(\d{2})(\d{2})$/);
+  let match = text.match(/^(\d{4})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/);
   if (match) {
     return {
       year: Number(match[1]),
@@ -133,12 +124,21 @@ export function parsePerformanceDateParts(value) {
     };
   }
 
-  match = text.match(/^(\d{4})(\d{2})$/);
+  match = text.match(/^(\d{4})(0[1-9]|1[0-2])$/);
   if (match) {
     return {
       year: Number(match[1]),
       month: Number(match[2]),
       day: 1,
+    };
+  }
+
+  match = text.match(/^(\d{4})[-/.년\s]+(1[0-2]|0?[1-9])(?:[-/.월\s]+(3[01]|[12]\d|0?[1-9]))?/);
+  if (match) {
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: match[3] ? Number(match[3]) : 1,
     };
   }
 
