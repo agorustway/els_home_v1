@@ -36,8 +36,9 @@ const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;
 const CONTAINER_RESULTS_CHUNK_SIZE = 150;
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
-// 날짜 관련 컬럼 키워드
-const DATE_COL_KEYWORDS = ['일', '날짜', 'date', '픽업', '반입', '선적', '입항', '출항'];
+// 날짜 관련 컬럼 키워드. 실제 날짜값 샘플 검증과 함께 사용한다.
+const DATE_COL_KEYWORDS = ['일자', '일', '날짜', 'date', '픽업', '반입', '입항', '출항', '접안'];
+const DATE_COLUMN_SAMPLE_SIZE = 200;
 
 // 20260508.0 → 2026-05-08 변환
 function formatCellValue(val, colName) {
@@ -66,9 +67,23 @@ function formatCellValue(val, colName) {
 }
 
 // 컬럼이 날짜 계열인지 판별
-function isDateColumn(colName) {
+function isDateColumn(colName, rows = [], colIdx = -1) {
     const lower = (colName || '').toLowerCase();
-    return DATE_COL_KEYWORDS.some(kw => lower.includes(kw));
+    if (!DATE_COL_KEYWORDS.some(kw => lower.includes(kw))) return false;
+    if (colIdx < 0) return false;
+
+    const sampleRows = (rows || []).slice(0, DATE_COLUMN_SAMPLE_SIZE);
+    let checked = 0;
+    let dateValues = 0;
+    sampleRows.forEach(row => {
+        const raw = normalizeShippingFilterValue(formatCellValue(row?.[colIdx], colName));
+        if (!raw) return;
+        checked += 1;
+        if (normalizeDateOnly(raw)) dateValues += 1;
+    });
+
+    if (checked === 0) return false;
+    return dateValues >= 2 || dateValues / checked >= 0.2;
 }
 
 function getHiddenChipLabel(col) {
@@ -850,7 +865,9 @@ export default function AsanShipping() {
     };
 
     // Detect date-type columns
-    const dateColumns = useMemo(() => headers.filter(h => isDateColumn(h)), [headers]);
+    const dateColumns = useMemo(() => (
+        headers.filter((h, idx) => isDateColumn(h, data?.data || [], idx))
+    ), [headers, data?.data]);
     const recentMonthOptions = useMemo(() => buildRecentShippingMonthOptions(), []);
 
     useEffect(() => {

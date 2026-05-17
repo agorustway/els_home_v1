@@ -596,6 +596,19 @@ test('선적관리 날짜 필터 바는 월 다중선택 버튼과 조회 건수
   assert.match(css, /\.resultCountText[\s\S]*border: 0;[\s\S]*background: transparent;/);
 });
 
+test('선적관리 날짜 필터 컬럼은 실제 날짜값이 있는 컬럼만 후보로 쓴다', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanShipping.js'),
+    'utf8',
+  );
+
+  assert.match(source, /const DATE_COLUMN_SAMPLE_SIZE = 200;/);
+  assert.match(source, /headers\.filter\(\(h, idx\) => isDateColumn\(h, data\?\.data \|\| \[\], idx\)\)/);
+  assert.match(source, /if \(checked === 0\) return false;/);
+  assert.match(source, /dateValues >= 2 \|\| dateValues \/ checked >= 0\.2/);
+  assert.doesNotMatch(source, /DATE_COL_KEYWORDS = \[[^\]]*'선적'/);
+});
+
 test('선적관리 모바일 상단과 월 선택 영역은 한 화면 폭 안에서 정렬된다', () => {
   const css = fs.readFileSync(
     path.join(repoRoot, 'web/app/(main)/employees/branches/asan/shipping.module.css'),
