@@ -835,7 +835,7 @@
     .dateFilterZone {
         padding: 6px 8px;
         display: grid;
-        grid-template-columns: 76px minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 6px;
         align-items: stretch;
     }
@@ -858,6 +858,7 @@
     .quickFilterBtn,
     .resultCountText {
         width: 100%;
+        min-width: 0;
         font-size: 0.8rem;
     }
 
