@@ -282,7 +282,8 @@ def parse_asan_performance_excel(file_path, sheet_name=DEFAULT_ASAN_ANNUAL_PERFO
 
 
 def _numeric_column_indices(headers, rows):
-    total = max(1, len(rows))
+    sample_rows = rows[:2000]
+    total = max(1, len(sample_rows))
     result = []
     excluded = ["년", "연도", "월", "일자", "날짜", "번호", "코드", "사업자", "전화", "차량"]
     for idx, header in enumerate(headers):
@@ -290,7 +291,7 @@ def _numeric_column_indices(headers, rows):
             continue
         parsed = 0
         amount_sum = 0.0
-        for row in rows[:2000]:
+        for row in sample_rows:
             value = row[idx] if idx < len(row) else ""
             if not _has_number(value):
                 continue

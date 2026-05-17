@@ -33,7 +33,7 @@ function parseArgs(argv) {
     const token = argv[idx];
     if (!token.startsWith('--')) continue;
     const key = token.slice(2);
-    if (key === 'dry-run' || key === 'help') {
+    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import') {
       args[key] = true;
       continue;
     }
@@ -55,6 +55,7 @@ function usage() {
     '  --header-row <n>     1-based title row override',
     '  --chunk-size <n>     Insert/update chunk size. Default: 200',
     '  --dry-run           Parse only; do not write Supabase',
+    '  --confirm-large-import  Required when importing more than 100,000 rows',
   ].join('\n');
 }
 
@@ -306,7 +307,8 @@ async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = 
 }
 
 function numericColumnIndices(headers, rows) {
-  const total = Math.max(1, rows.length);
+  const sampleRows = rows.slice(0, 2000);
+  const total = Math.max(1, sampleRows.length);
   const excluded = ['년', '연도', '월', '일자', '날짜', '번호', '코드', '사업자', '전화', '차량'];
   const result = [];
 
@@ -314,7 +316,7 @@ function numericColumnIndices(headers, rows) {
     if (hasKeyword(header, excluded)) return;
     let parsed = 0;
     let amountSum = 0;
-    for (const row of rows.slice(0, 2000)) {
+    for (const row of sampleRows) {
       const value = row[idx] || '';
       if (!hasNumber(value)) continue;
       parsed += 1;
@@ -618,36 +620,34 @@ async function insertRowsWithRetry({ supabase, rows, chunkSize, minChunkSize = 2
   return inserted;
 }
 
-function buildPayload({ headers, rows, key, snapshotId, fileModifiedAt, nowIso }) {
-  return rows.map((row, rowIndex) => {
-    const rowData = {};
-    headers.forEach((header, idx) => {
-      rowData[header] = row[idx] || '';
-    });
-    const { year, month } = inferYearMonth(headers, row);
-    return {
-      branch_id: key.branchId,
-      dataset_type: key.datasetType,
-      file_path: key.filePath,
-      sheet_name: key.sheetName,
-      snapshot_id: snapshotId,
-      row_index: rowIndex,
-      row_values: row,
-      row_data: rowData,
-      search_text: row.filter(Boolean).join(' ').slice(0, 8000),
-      source_row_hash: rowHash(headers, row),
-      year_value: year,
-      month_value: month,
-      revenue_amount: 0,
-      purchase_amount: 0,
-      profit_amount: 0,
-      is_current: true,
-      change_status: 'current',
-      file_modified_at: fileModifiedAt,
-      first_seen_at: nowIso,
-      last_seen_at: nowIso,
-    };
+function buildRowPayload({ headers, row, rowIndex, hash, key, snapshotId, fileModifiedAt, nowIso }) {
+  const rowData = {};
+  headers.forEach((header, idx) => {
+    rowData[header] = row[idx] || '';
   });
+  const { year, month } = inferYearMonth(headers, row);
+  return {
+    branch_id: key.branchId,
+    dataset_type: key.datasetType,
+    file_path: key.filePath,
+    sheet_name: key.sheetName,
+    snapshot_id: snapshotId,
+    row_index: rowIndex,
+    row_values: row,
+    row_data: rowData,
+    search_text: row.filter(Boolean).join(' ').slice(0, 8000),
+    source_row_hash: hash || rowHash(headers, row),
+    year_value: year,
+    month_value: month,
+    revenue_amount: 0,
+    purchase_amount: 0,
+    profit_amount: 0,
+    is_current: true,
+    change_status: 'current',
+    file_modified_at: fileModifiedAt,
+    first_seen_at: nowIso,
+    last_seen_at: nowIso,
+  };
 }
 
 function uuidV4() {
@@ -700,33 +700,35 @@ async function run() {
       totalPurchase: summary.totalPurchase,
       totalProfit: summary.totalProfit,
       yearly: summary.yearly.length,
+      detected: summary.detected,
     },
+    headersPreview: parsed.headers,
   }, null, 2));
 
   if (args['dry-run']) return;
+  if (parsed.data.length > 100000 && !args['confirm-large-import']) {
+    throw new Error(`대용량 주입 보호: ${parsed.data.length}행입니다. dry-run 결과를 확인한 뒤 --confirm-large-import 옵션을 붙여 다시 실행하세요.`);
+  }
 
   const supabase = createSupabaseClient();
   const currentRows = await readCurrentRows(supabase, key);
   const snapshotId = uuidV4();
-  const payload = buildPayload({
-    headers: parsed.headers,
-    rows: parsed.data,
-    key,
-    snapshotId,
-    fileModifiedAt,
-    nowIso,
-  });
-
-  const newHashByIndex = new Map(payload.map(row => [row.row_index, row.source_row_hash]));
-  const insertPayload = [];
+  const newHashByIndex = new Map();
+  const insertRowIndexes = [];
+  const rowHashes = new Map();
   const changedIndices = [];
   const removedIndices = [];
   const duplicateIds = [];
   let unchangedCount = 0;
 
-  for (const row of payload) {
-    const current = currentRows.get(row.row_index) || [];
-    const matchingIdx = current.findIndex(item => item.hash === row.source_row_hash);
+  for (let rowIndex = 0; rowIndex < parsed.data.length; rowIndex += 1) {
+    const row = parsed.data[rowIndex];
+    const hash = rowHash(parsed.headers, row);
+    newHashByIndex.set(rowIndex, hash);
+    rowHashes.set(rowIndex, hash);
+
+    const current = currentRows.get(rowIndex) || [];
+    const matchingIdx = current.findIndex(item => item.hash === hash);
     if (matchingIdx >= 0) {
       unchangedCount += 1;
       current.forEach((item, idx) => {
@@ -734,8 +736,8 @@ async function run() {
       });
       continue;
     }
-    if (current.length) changedIndices.push(row.row_index);
-    insertPayload.push(row);
+    if (current.length) changedIndices.push(rowIndex);
+    insertRowIndexes.push(rowIndex);
   }
 
   for (const rowIndex of currentRows.keys()) {
@@ -784,9 +786,31 @@ async function run() {
     })
     : 0;
 
-  const insertedCount = insertPayload.length
-    ? await insertRowsWithRetry({ supabase, rows: insertPayload, chunkSize })
-    : 0;
+  let insertedCount = 0;
+  let insertBatch = [];
+  for (const rowIndex of insertRowIndexes) {
+    const row = parsed.data[rowIndex];
+    insertBatch.push(buildRowPayload({
+      headers: parsed.headers,
+      row,
+      rowIndex,
+      hash: rowHashes.get(rowIndex),
+      key,
+      snapshotId,
+      fileModifiedAt,
+      nowIso,
+    }));
+    if (insertBatch.length >= chunkSize) {
+      insertedCount += await insertRowsWithRetry({ supabase, rows: insertBatch, chunkSize });
+      insertBatch = [];
+      if (insertedCount > 0 && insertedCount % 10000 === 0) {
+        console.error(`[annual-performance-import] inserted rows=${insertedCount}`);
+      }
+    }
+  }
+  if (insertBatch.length) {
+    insertedCount += await insertRowsWithRetry({ supabase, rows: insertBatch, chunkSize });
+  }
 
   const { error: metaError } = await supabase.from('branch_performance_files').upsert({
     branch_id: key.branchId,

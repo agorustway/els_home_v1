@@ -21,6 +21,7 @@
   - NAS 동기화가 statement timeout에 걸릴 때 로컬 Excel을 Supabase 원장으로 직접 적재한다.
   - ExcelJS streaming reader로 대상 시트를 순차 파싱해 NAS 메모리 점유를 낮춘다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`
+  - 10만 행 초과 실제 주입은 dry-run 확인 후 `--confirm-large-import`를 붙여 실행한다.
   - 사전 점검: 위 명령에 `--dry-run`을 붙여 파싱 행 수와 감지 컬럼을 확인한다.
 - 기본 파일 경로: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
 - NAS 경로 탐색 기준: 배차판/선적관리와 동일하게 `/app/data/아산지점/...`

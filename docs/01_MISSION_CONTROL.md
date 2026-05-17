@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.13.57 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.58 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 직접 주입 스크립트를 ExcelJS 스트리밍 파서로 바꿔 NAS 메모리 부담을 낮췄습니다.
+> 최신 업데이트: 아산 연간실적 대용량 직접 주입 보호와 숫자 컬럼 판정 보정을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.57
+- **웹 버전**: v5.13.58
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
   - 배차판처럼 선적관리/연간실적 GET도 Next 서버에서 Supabase 원장을 직접 조회.
   - NAS Core가 도커 빌드/재기동 중이어도 이미 DB에 적재된 조회 화면은 유지.
-  - 연간실적 최초 적재/타임아웃 우회용 직접 주입 스크립트는 NAS `/volume2/아산지점/...` 파일을 스트리밍으로 읽음.
+  - 연간실적 최초 적재/타임아웃 우회용 직접 주입 스크립트는 10만 행 초과 시 `--confirm-large-import` 확인 후 실행.
   - POST 동기화와 Excel 프리뷰(`source=excel`)는 계속 NAS Core 경유.
 
 ## ACTIVE SYSTEMS
@@ -37,6 +37,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.58**: 연간실적 36만 행 dry-run 결과를 기준으로 직접 주입 대용량 보호, 배치 insert 메모리 완화, 숫자 컬럼 샘플 판정 보정을 추가.
 - **v5.13.57**: 연간실적 직접 주입 dry-run이 NAS 메모리를 크게 쓰지 않도록 Excel 통째 로딩을 제거하고 ExcelJS 스트리밍 파서와 진행 로그를 적용.
 - **v5.13.56**: 아산 연간실적 직접 주입 스크립트의 기본 파일 후보를 NAS 실제 경로 `/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`로 정정.
 - **v5.13.55**: 아산 연간실적 Excel을 Supabase `branch_performance_*` 원장으로 직접 주입하는 스크립트를 추가해 NAS 동기화 timeout을 우회 가능하게 함.

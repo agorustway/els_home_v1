@@ -1,4 +1,20 @@
 
+## [2026-05-17] 아산 연간실적 대용량 주입 보호 및 숫자 컬럼 보정 (v5.13.58)
+### 핵심
+- NAS dry-run 결과 `368,617행 / 29컬럼`을 확인했습니다.
+- 실제 주입 시 insert payload를 한 번에 만들지 않고 row index 기준으로 배치 생성/삽입하도록 메모리 사용을 낮췄습니다.
+- 10만 행 초과 실제 주입은 `--confirm-large-import` 옵션을 요구해 실수로 NAS에 대용량 작업을 시작하지 않도록 보호했습니다.
+- 숫자 컬럼 판정이 전체 행 수가 아니라 최대 2,000행 샘플 수를 기준으로 계산되도록 보정해 대용량 파일의 매출/매입 후보가 탈락하지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+- `.tmp_test` 샘플 Excel dry-run 통과
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `docker/els-backend/asan_performance.py`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 직접 주입 메모리 사용량 완화 (v5.13.57)
 ### 핵심
 - NAS에서 dry-run 중 `xlsx` 전체 워크북 로딩이 메모리를 크게 쓰는 현상을 확인했습니다.
