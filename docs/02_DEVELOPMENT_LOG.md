@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 연간실적 current 조회 timeout 회피 (v5.13.65)
+### 핵심
+- 직접 주입 기본 모드를 current 원장 전체 조회(diff)에서 새 스냅샷 staged/current 반영 방식으로 바꿨습니다.
+- `file_modified_at` 미변경 스킵은 유지해 일 1회 자동 실행 시 파일이 그대로면 파싱/주입 없이 종료합니다.
+- 행별 hash 비교가 필요한 경우에만 `--diff-current` 옵션으로 기존 diff 모드를 사용하도록 분리했습니다.
+- Supabase current 조회용 covering index SQL을 추가해 diff 모드와 웹 조회 timeout 가능성을 낮췄습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 배차 주별/월별 기본 선택 보정 (v5.13.64)
 ### 핵심
 - 주별 카드의 기본 선택을 선택일이 속한 진행 중 주가 아니라 직전 주차로 잡도록 변경했습니다.

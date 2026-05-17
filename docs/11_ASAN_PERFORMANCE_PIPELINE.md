@@ -20,6 +20,8 @@
 - 직접 주입 도구: `web/scripts/import-asan-annual-performance.mjs`
   - NAS 동기화가 statement timeout에 걸릴 때 로컬 Excel을 Supabase 원장으로 직접 적재한다.
   - ExcelJS streaming reader로 대상 시트를 순차 파싱하고, 실제 주입은 읽는 중 100행 단위로 바로 반영해 NAS 메모리 점유를 낮춘다.
+  - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged/current 방식으로 반영한다. `file_modified_at`이 같으면 스킵하므로 일 1회 자동 실행 부담을 낮춘다.
+  - 행별 hash 비교가 필요할 때만 `--diff-current`를 사용한다. 이 모드는 current 원장 조회 인덱스 상태에 민감하다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`
   - 10만 행 초과 실제 주입은 dry-run 확인 후 `--confirm-large-import`를 붙여 실행한다.
   - 기본 실제 주입은 Supabase `file_modified_at`과 Excel mtime이 같으면 파싱 없이 스킵하며, 필요 시 `--force`로 강제한다.
@@ -44,6 +46,7 @@
   - `branch_performance_files`: 파일/헤더/요약 메타
   - `branch_performance_rows`: 누적 원장 행
   - `is_current=true`만 웹 현재 조회에 사용
+  - current 조회 timeout 완화 보조 인덱스: `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
   - 분석 탭: 매출(`청구`), 매입(`하불`), 손익, 손익률, 연도별 그래프, 상위 거래처/구분
@@ -51,8 +54,9 @@
 
 ## 3. 데이터 처리 원칙
 - 엑셀에서 행이 수정되면 기존 행은 `superseded_by_excel`로 종료하고 새 행을 추가한다.
-- 엑셀에서 행이 사라지면 기존 행은 `removed_from_excel`로 종료하되 삭제하지 않는다.
-- 직접 주입 스크립트도 동일하게 기존 원장을 물리 삭제하지 않고 `is_current`만 전환한다.
+- 엑셀에서 행이 사라져도 기존 행은 삭제하지 않는다. 기본 직접 주입은 파일 변경 시 새 스냅샷을 current로 올리고 직전 current 스냅샷을 종료한다.
+- 행별 변경/삭제 상태가 꼭 필요하면 `--diff-current`로 기존 hash 비교 모드를 사용한다.
+- 직접 주입 스크립트는 기존 원장을 물리 삭제하지 않고 `is_current`만 전환한다.
 - 엑셀 제목만 바뀐 경우 웹 컬럼 레이아웃은 같은 인덱스 기준으로 최대한 복구한다.
 - 컬럼이 추가/삭제된 경우 저장된 숨김/순서 설정보다 현재 엑셀 헤더를 우선한다.
 - 화면 조회는 기본 300행 단위로 제한해 브라우저 메모리 부담을 낮춘다.

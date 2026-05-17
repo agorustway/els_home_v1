@@ -33,7 +33,7 @@ function parseArgs(argv) {
     const token = argv[idx];
     if (!token.startsWith('--')) continue;
     const key = token.slice(2);
-    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force') {
+    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current') {
       args[key] = true;
       continue;
     }
@@ -57,6 +57,7 @@ function usage() {
     '  --dry-run           Parse only; do not write Supabase',
     '  --confirm-large-import  Required when importing more than 100,000 rows',
     '  --force             Import even when Supabase file_modified_at matches the Excel mtime',
+    '  --diff-current      Compare current rows by hash before insert. Slower; requires DB index health',
   ].join('\n');
 }
 
@@ -758,12 +759,16 @@ async function readCurrentRows(supabase, key) {
   return rowsByIndex;
 }
 
-function rowIndexFilter(query, key) {
+function keyFilter(query, key) {
   return query
     .eq('branch_id', key.branchId)
     .eq('dataset_type', key.datasetType)
     .eq('file_path', key.filePath)
-    .eq('sheet_name', key.sheetName)
+    .eq('sheet_name', key.sheetName);
+}
+
+function rowIndexFilter(query, key) {
+  return keyFilter(query, key)
     .eq('is_current', true);
 }
 
@@ -795,6 +800,71 @@ async function updateRowsWithRetry({ supabase, table, patch, filter, values, col
   return affected;
 }
 
+async function updateRowIndexRangeWithRetry({
+  supabase,
+  table,
+  patch,
+  filter,
+  rangeStart,
+  rangeEnd,
+  minChunkSize = 20,
+}) {
+  let query = supabase.from(table).update(patch);
+  query = filter(query).gte('row_index', rangeStart).lte('row_index', rangeEnd);
+  const { error } = await query;
+  if (!error) return rangeEnd - rangeStart + 1;
+
+  const size = rangeEnd - rangeStart + 1;
+  if ((error.code === '57014' || /timeout/i.test(error.message || '')) && size > minChunkSize) {
+    const middle = Math.floor((rangeStart + rangeEnd) / 2);
+    const left = await updateRowIndexRangeWithRetry({
+      supabase,
+      table,
+      patch,
+      filter,
+      rangeStart,
+      rangeEnd: middle,
+      minChunkSize,
+    });
+    const right = await updateRowIndexRangeWithRetry({
+      supabase,
+      table,
+      patch,
+      filter,
+      rangeStart: middle + 1,
+      rangeEnd,
+      minChunkSize,
+    });
+    return left + right;
+  }
+
+  throw new Error(error.message);
+}
+
+async function updateRowsByRowIndexRange({
+  supabase,
+  table,
+  patch,
+  filter,
+  rowCount,
+  chunkSize,
+  minChunkSize = 20,
+}) {
+  let affected = 0;
+  for (let start = 0; start < rowCount; start += chunkSize) {
+    affected += await updateRowIndexRangeWithRetry({
+      supabase,
+      table,
+      patch,
+      filter,
+      rangeStart: start,
+      rangeEnd: Math.min(rowCount - 1, start + chunkSize - 1),
+      minChunkSize,
+    });
+  }
+  return affected;
+}
+
 async function insertRowsWithRetry({ supabase, rows, chunkSize, minChunkSize = 20 }) {
   let inserted = 0;
   for (let start = 0; start < rows.length; start += chunkSize) {
@@ -817,7 +887,18 @@ async function insertRowsWithRetry({ supabase, rows, chunkSize, minChunkSize = 2
   return inserted;
 }
 
-function buildRowPayload({ headers, row, rowIndex, hash, key, snapshotId, fileModifiedAt, nowIso }) {
+function buildRowPayload({
+  headers,
+  row,
+  rowIndex,
+  hash,
+  key,
+  snapshotId,
+  fileModifiedAt,
+  nowIso,
+  isCurrent = true,
+  changeStatus = 'current',
+}) {
   const rowData = {};
   headers.forEach((header, idx) => {
     rowData[header] = row[idx] || '';
@@ -839,8 +920,8 @@ function buildRowPayload({ headers, row, rowIndex, hash, key, snapshotId, fileMo
     revenue_amount: 0,
     purchase_amount: 0,
     profit_amount: 0,
-    is_current: true,
-    change_status: 'current',
+    is_current: isCurrent,
+    change_status: changeStatus,
     file_modified_at: fileModifiedAt,
     first_seen_at: nowIso,
     last_seen_at: nowIso,
@@ -853,6 +934,125 @@ function uuidV4() {
     const value = marker === 'x' ? rand : (rand & 0x3) | 0x8;
     return value.toString(16);
   });
+}
+
+async function importExcelSnapshotStreaming({
+  filePath,
+  preferredSheetName,
+  headerRow,
+  supabase,
+  key,
+  chunkSize,
+  fileModifiedAt,
+  nowIso,
+  currentMeta,
+}) {
+  const snapshotId = uuidV4();
+  const previousCurrentCount = Math.max(0, Number(currentMeta?.current_row_count || currentMeta?.row_count || 0) || 0);
+  const stageBeforeActivation = previousCurrentCount > 0;
+  const sampleRows = [];
+  let accumulator = null;
+  let ready = null;
+  let insertedCount = 0;
+  let insertBatch = [];
+
+  const ensureAccumulator = () => {
+    if (accumulator) return;
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows);
+    for (const sampleRow of sampleRows) accumulator.add(sampleRow);
+  };
+
+  const flush = async () => {
+    if (!insertBatch.length) return;
+    insertedCount += await insertRowsWithRetry({ supabase, rows: insertBatch, chunkSize });
+    insertBatch = [];
+    if (insertedCount > 0 && insertedCount % 10000 === 0) {
+      console.error(`[annual-performance-import] inserted rows=${insertedCount}`);
+    }
+  };
+
+  const parsed = await streamExcelRows(filePath, preferredSheetName, headerRow, {
+    async onReady(meta) {
+      ready = meta;
+    },
+    async onRow(row, rowIndex) {
+      if (sampleRows.length < 2000) {
+        sampleRows.push(row);
+      } else {
+        ensureAccumulator();
+        accumulator.add(row);
+      }
+
+      const hash = rowHash(ready.headers, row);
+      insertBatch.push(buildRowPayload({
+        headers: ready.headers,
+        row,
+        rowIndex,
+        hash,
+        key,
+        snapshotId,
+        fileModifiedAt,
+        nowIso,
+        isCurrent: !stageBeforeActivation,
+        changeStatus: stageBeforeActivation ? 'staged_current' : 'current',
+      }));
+
+      if (insertBatch.length >= chunkSize) await flush();
+    },
+  });
+
+  ensureAccumulator();
+  await flush();
+
+  let activatedCount = 0;
+  let supersededCount = 0;
+  if (stageBeforeActivation) {
+    activatedCount = await updateRowsByRowIndexRange({
+      supabase,
+      table: 'branch_performance_rows',
+      patch: {
+        is_current: true,
+        change_status: 'current',
+        last_seen_at: nowIso,
+      },
+      filter: query => keyFilter(query, key)
+        .eq('snapshot_id', snapshotId)
+        .eq('is_current', false),
+      rowCount: parsed.rowCount,
+      chunkSize,
+    });
+
+    supersededCount = await updateRowsByRowIndexRange({
+      supabase,
+      table: 'branch_performance_rows',
+      patch: {
+        is_current: false,
+        change_status: 'superseded_by_excel',
+        replaced_at: nowIso,
+        last_seen_at: nowIso,
+      },
+      filter: query => rowIndexFilter(query, key).neq('snapshot_id', snapshotId),
+      rowCount: Math.max(previousCurrentCount, parsed.rowCount),
+      chunkSize,
+    });
+  }
+
+  const summary = accumulator.finish();
+  return {
+    mode: stageBeforeActivation ? 'snapshot-replace' : 'bootstrap-snapshot',
+    headers: parsed.headers,
+    sheetName: parsed.sheetName,
+    headerRow: parsed.headerRow,
+    rowCount: parsed.rowCount,
+    summary,
+    insertedCount,
+    activatedCount,
+    unchangedCount: 0,
+    supersededCount,
+    removedCount: 0,
+    duplicateCount: 0,
+    snapshotId,
+  };
 }
 
 async function importExcelStreaming({
@@ -996,6 +1196,7 @@ async function importExcelStreaming({
 
   const summary = accumulator.finish();
   return {
+    mode: 'diff-current',
     headers: parsed.headers,
     sheetName: parsed.sheetName,
     headerRow: parsed.headerRow,
@@ -1036,11 +1237,12 @@ async function run() {
     sheetName: preferredSheetName,
   };
   let supabase = null;
+  let currentMeta = null;
 
   if (!args['dry-run']) {
     supabase = createSupabaseClient();
     if (!args.force) {
-      const currentMeta = await readPerformanceMeta(supabase, requestedKey);
+      currentMeta = await readPerformanceMeta(supabase, requestedKey);
       if (currentMeta?.file_modified_at && timestampsClose(currentMeta.file_modified_at, fileModifiedAt)) {
         console.log(JSON.stringify({
           ok: true,
@@ -1055,6 +1257,8 @@ async function run() {
         }, null, 2));
         return;
       }
+    } else {
+      currentMeta = await readPerformanceMeta(supabase, requestedKey);
     }
   }
 
@@ -1086,7 +1290,8 @@ async function run() {
   }
 
   supabase = supabase || createSupabaseClient();
-  const result = await importExcelStreaming({
+  const importer = args['diff-current'] ? importExcelStreaming : importExcelSnapshotStreaming;
+  const result = await importer({
     filePath,
     preferredSheetName,
     headerRow: args['header-row'],
@@ -1095,6 +1300,7 @@ async function run() {
     chunkSize,
     fileModifiedAt,
     nowIso,
+    currentMeta,
   });
 
   const { error: metaError } = await supabase.from('branch_performance_files').upsert({
@@ -1116,7 +1322,9 @@ async function run() {
 
   console.log(JSON.stringify({
     ok: true,
+    mode: result.mode,
     insertedCount: result.insertedCount,
+    activatedCount: result.activatedCount || 0,
     unchangedCount: result.unchangedCount,
     supersededCount: result.supersededCount,
     removedCount: result.removedCount,
