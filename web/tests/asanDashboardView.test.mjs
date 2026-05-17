@@ -394,10 +394,15 @@ test('아산 현황판 요일별 패널은 누적 줄에서 주간과 월간을 
   assert.match(source, /aria-label="요일별 작업지 비중 주간 선택"/);
   assert.match(source, /aria-label="요일별 작업지 비중 월 선택"/);
   assert.match(source, /const valueFormatter = mode === 'week' \? formatQty : formatDecimal;/);
-  assert.match(source, /주간 누적 \{formatQty\(weekTotal\)\}/);
+  assert.match(source, /주간 실적/);
+  assert.match(source, /월간 평균/);
+  assert.match(source, /주간 실적 \{formatQty\(weekTotal\)\}/);
+  assert.match(source, /월간 평균합 \{formatDecimal\(monthAverageTotal\)\}/);
+  assert.match(source, /누적 \{formatQty\(monthTotal\)\}/);
   assert.match(source, /onSelect\?\.\('weekly', event\.target\.value\)/);
   assert.match(source, /onSelect\?\.\('monthly', event\.target\.value\)/);
   assert.match(css, /\.weekdayChooser select\s*{[\s\S]*opacity: 0;/);
+  assert.match(css, /\.weekdayChooser small\s*{[\s\S]*color: #94a3b8;/);
 });
 
 test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를 제외한다', () => {
@@ -425,7 +430,10 @@ test('아산 현황판 추세 돋보기는 포인트 위치에 따라 위아래 
   assert.match(source, /const getLensTransform = \(point\) =>/);
   assert.match(source, /point\.y < 105 \? '14px' : 'calc\(-100% - 16px\)'/);
   assert.match(source, /onPointerDown=\{handlePointerMove\}/);
-  assert.match(source, /transform: getLensTransform\(hoverPoint\)/);
+  assert.match(source, /cursorX: clampLensCoord\(x, padLeft, width - padRight\)/);
+  assert.match(source, /cursorY: clampLensCoord\(y, padTop, baselineY\)/);
+  assert.match(source, /hoverPoint\.cursorX \?\? hoverPoint\.x/);
+  assert.match(source, /transform: getLensTransform\(\{/);
   assert.match(source, /className=\{styles\.trendLensMetric\}/);
   assert.match(source, /className=\{getPointToneClass\(hoverPoint\)\}/);
   assert.match(css, /\.trendSvg\s*{[\s\S]*touch-action: none;/);

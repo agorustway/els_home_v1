@@ -1,12 +1,15 @@
-# ELS MISSION CONTROL (v5.13.84 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.85 / APK v5.11.12)
 
-> 최신 업데이트: 아산 선적관리 모바일 미선적/자체보관 버튼을 같은 2분할 그룹으로 고정했습니다.
+> 최신 업데이트: 아산 배차 요일별 작업지 비중 기준명과 추세 돋보기 위치 기준을 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.84
+- **웹 버전**: v5.13.85
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
+  - 요일별 작업지 비중 탭명을 `주간 실적`, `월간 평균`으로 변경.
+  - 월간 선택 줄은 `월간 평균합`을 주 지표로 표시하고, 월 누적은 보조 텍스트로 분리.
+  - 데스크톱 추세 돋보기 위치는 데이터 포인트가 아니라 마우스 좌표를 따라가고, 내부 데이터만 가장 가까운 포인트 기준으로 표시.
   - 모바일 선적관리의 미선적/자체보관 빠른 필터를 같은 2분할 그룹으로 묶어 가로폭 통일.
   - `오더(계)`/`오더`/`계`/`수량`이 순수 숫자가 아닌 행은 필터 합계, 기간 카드, 기준차이, 실행사 기준 집계에서 제외.
   - 실행사 지역칸에 `보송1` 같은 값이 있어도 오더가 `오배차` 같은 문자면 분석 원인에 반영하지 않음.
@@ -42,6 +45,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.85**: 아산 배차 요일별 작업지 비중 탭을 `주간 실적`/`월간 평균`으로 바꾸고, 추세 돋보기는 마우스 좌표를 따라가게 보정.
 - **v5.13.84**: 아산 선적관리 모바일 미선적/자체보관 버튼을 같은 2분할 그룹으로 묶어 가로폭을 동일하게 고정.
 - **v5.13.83**: 아산 배차 문자/오류 오더 행을 필터 합계·분석·기준차이 원인에서 제외하고 기준차이 선택 칩 색상을 파랑 계열로 조정.
 - **v5.13.82**: 아산 선적관리 미선적/자체보관 빠른 필터가 `필터해제` 상태일 때 hover 설명에 원래 필터명을 표시.
@@ -71,6 +75,8 @@
 - **v5.13.57**: 연간실적 직접 주입 dry-run이 NAS 메모리를 크게 쓰지 않도록 Excel 통째 로딩을 제거하고 ExcelJS 스트리밍 파서와 진행 로그를 적용.
 
 ## VERIFICATION
+- `node --test web/tests/asanDashboardView.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js"`: 0 errors
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js"`: 0 errors
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 56개 통과

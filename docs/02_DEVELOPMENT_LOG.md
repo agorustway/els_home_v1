@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 배차 요일별 실적/평균 라벨 및 돋보기 위치 보정 (v5.13.85)
+### 핵심
+- 요일별 작업지 비중의 탭명을 `주간 실적`, `월간 평균`으로 바꿔 기준 차이를 바로 알 수 있게 했습니다.
+- 주간 선택 줄은 선택 주차 실제 합계를 `주간 실적`으로 표시합니다.
+- 월간 선택 줄은 요일별 평균값 합계를 `월간 평균합`으로 표시하고, 월 누적은 보조 텍스트로 분리했습니다.
+- 데스크톱 추세 돋보기는 마우스 좌표를 따라가고, 내부 값만 가장 가까운 데이터 포인트 기준으로 표시하도록 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 모바일 빠른 필터 폭 고정 (v5.13.84)
 ### 핵심
 - 모바일 날짜 필터 영역에서 미선적/자체보관 버튼을 `quickFilterGroup`으로 묶었습니다.

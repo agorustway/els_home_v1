@@ -545,13 +545,19 @@ function TrendPanel({ items, title }) {
         const y = point.y < 105 ? '14px' : 'calc(-100% - 16px)';
         return `translate(${x}, ${y})`;
     };
+    const clampLensCoord = (value, min, max) => Math.min(max, Math.max(min, value));
     const handlePointerMove = (event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
+        const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * height;
         const nearest = points.reduce((best, point) => (
             Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best
         ), points[0]);
-        setHoverPoint(nearest);
+        setHoverPoint({
+            ...nearest,
+            cursorX: clampLensCoord(x, padLeft, width - padRight),
+            cursorY: clampLensCoord(y, padTop, baselineY),
+        });
     };
 
     return (
@@ -649,9 +655,12 @@ function TrendPanel({ items, title }) {
                     <div
                         className={styles.trendLens}
                         style={{
-                            left: `${(hoverPoint.x / width) * 100}%`,
-                            top: `${(hoverPoint.y / height) * 100}%`,
-                            transform: getLensTransform(hoverPoint),
+                            left: `${((hoverPoint.cursorX ?? hoverPoint.x) / width) * 100}%`,
+                            top: `${((hoverPoint.cursorY ?? hoverPoint.y) / height) * 100}%`,
+                            transform: getLensTransform({
+                                x: hoverPoint.cursorX ?? hoverPoint.x,
+                                y: hoverPoint.cursorY ?? hoverPoint.y,
+                            }),
                         }}
                     >
                         <strong>{hoverPoint.label}</strong>
@@ -699,6 +708,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
     const valueFormatter = mode === 'week' ? formatQty : formatDecimal;
     const maxValue = Math.max(1, ...active.buckets.map((bucket) => bucket[metricKey] || 0));
     const monthTotal = data.month.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
+    const monthAverageTotal = data.month.buckets.reduce((sum, bucket) => sum + bucket.average, 0);
     const weekTotal = data.week.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
     const selectedWeekLabel = weeklyPeriod?.title || data.week.fullLabel || data.week.label;
     const selectedMonthLabel = monthlyPeriod?.title || data.month.label;
@@ -724,20 +734,20 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
                         className={`${styles.weekdayTab} ${mode === 'week' ? styles.weekdayTabActive : ''}`}
                         onClick={() => setMode('week')}
                     >
-                        주간
+                        주간 실적
                     </button>
                     <button
                         className={`${styles.weekdayTab} ${mode === 'month' ? styles.weekdayTabActive : ''}`}
                         onClick={() => setMode('month')}
                     >
-                        월간
+                        월간 평균
                     </button>
                 </div>
             </div>
 
             <div className={styles.weekdaySummary}>
                 <label className={`${styles.weekdayChooser} ${mode === 'week' ? styles.weekdayChooserActive : ''}`}>
-                    <span><b>{selectedWeekLabel}</b>주간 누적 {formatQty(weekTotal)}</span>
+                    <span><b>{selectedWeekLabel}</b>주간 실적 {formatQty(weekTotal)}</span>
                     {weekOptions.length > 0 && (
                         <select
                             aria-label="요일별 작업지 비중 주간 선택"
@@ -754,7 +764,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
                     )}
                 </label>
                 <label className={`${styles.weekdayChooser} ${mode === 'month' ? styles.weekdayChooserActive : ''}`}>
-                    <span><b>{selectedMonthLabel}</b>누적 {formatDecimal(monthTotal)}</span>
+                    <span><b>{selectedMonthLabel}</b>월간 평균합 {formatDecimal(monthAverageTotal)} <small>누적 {formatQty(monthTotal)}</small></span>
                     {monthOptions.length > 0 && (
                         <select
                             aria-label="요일별 작업지 비중 월 선택"
