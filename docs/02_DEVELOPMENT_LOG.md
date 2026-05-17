@@ -1,4 +1,20 @@
 
+## [2026-05-17] 아산 DB 조회 NAS 재기동 내성 보강 (v5.13.54)
+### 핵심
+- 원인 확인: 배차판은 Next API가 Supabase를 직접 읽고, 선적관리/실적관리는 NAS Core 프록시로 GET 조회해 도커 빌드/재기동 중 조회가 끊겼습니다.
+- 선적관리 GET 조회를 Next 서버의 Supabase 직접 조회로 보강했습니다. POST 동기화와 `source=excel` 프리뷰는 계속 NAS Core를 경유합니다.
+- 연간실적 GET 조회도 같은 구조로 보강해 향후 실적관리 화면이 NAS Core 재기동에 덜 흔들리게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs` 통과 (40개)
+- `npm.cmd run lint -- "app/api/branches/asan/shipping/route.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js"` 0 errors
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/api/branches/asan/shipping/route.js`
+- `web/app/api/branches/asan/performance/annual/route.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산지점 로딩 메시지 기준 통일 (v5.13.53)
 ### 핵심
 - 아산지점 배차판/선적관리/실적관리 초기 로딩 문구를 `데이터를 불러오는 중입니다...`로 통일했습니다.

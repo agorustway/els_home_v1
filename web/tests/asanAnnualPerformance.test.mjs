@@ -21,8 +21,14 @@ function read(relPath) {
 
 test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', () => {
   const source = read('web/app/api/branches/asan/performance/annual/route.js');
+  const dbReader = read('web/lib/asan-branch-db.js');
+  assert.match(source, /queryAsanAnnualPerformanceFromSupabase/);
+  assert.match(source, /source !== 'excel'[\s\S]*queryAsanAnnualPerformanceFromSupabase\(url\.searchParams\)/);
   assert.match(source, /proxyToBackend\(req, '\/api\/branches\/asan\/performance\/annual'\)/);
   assert.match(source, /dynamic = 'force-dynamic'/);
+  assert.match(dbReader, /branch_performance_files/);
+  assert.match(dbReader, /branch_performance_rows/);
+  assert.match(dbReader, /source: 'supabase-empty'/);
 });
 
 test('아산 연간실적 백엔드는 원장 행을 삭제하지 않고 current 상태만 전환한다', () => {

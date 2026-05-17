@@ -12,8 +12,8 @@
 
 ## 2. 현재 구현
 - Next API: `/api/branches/asan/performance/annual`
-  - `GET`: 기본 `source=supabase`로 Supabase 현재 원장 페이지 조회
-  - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰
+  - `GET`: 기본 `source=supabase`로 Next 서버에서 Supabase 현재 원장 페이지 직접 조회
+  - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰, NAS Core 경유
   - `POST async=true`: NAS 엑셀 동기화를 백그라운드로 시작하고 현재 Supabase 조회값과 `sync_status` 반환
   - `POST async=false`: 운영 점검용 동기 처리
 - NAS Core 모듈: `docker/els-backend/asan_performance.py`
