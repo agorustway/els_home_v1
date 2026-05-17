@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 연간실적 일 1회 자동동기화 안전장치 (v5.13.59)
+### 핵심
+- 직접 주입 스크립트가 Supabase `file_modified_at`과 Excel mtime이 같으면 파싱 전에 스킵하도록 보강했습니다.
+- 수동 강제 갱신용 `--force` 옵션을 추가했습니다.
+- NAS cron용 `scripts/import-asan-annual-performance.sh`를 추가하고 중복 실행 lock, 기본 chunk size 100, `nice/ionice` 낮은 우선순위를 적용했습니다.
+- 파일이 바뀐 날에는 전체 엑셀을 스캔해 row hash를 비교하지만, DB insert는 신규/변경 행만 수행합니다. 최초 적재는 전체 행이 신규이므로 오래 걸릴 수 있습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `scripts/import-asan-annual-performance.sh`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 대용량 주입 보호 및 숫자 컬럼 보정 (v5.13.58)
 ### 핵심
 - NAS dry-run 결과 `368,617행 / 29컬럼`을 확인했습니다.

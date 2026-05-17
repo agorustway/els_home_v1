@@ -33,7 +33,7 @@ function parseArgs(argv) {
     const token = argv[idx];
     if (!token.startsWith('--')) continue;
     const key = token.slice(2);
-    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import') {
+    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force') {
       args[key] = true;
       continue;
     }
@@ -56,6 +56,7 @@ function usage() {
     '  --chunk-size <n>     Insert/update chunk size. Default: 200',
     '  --dry-run           Parse only; do not write Supabase',
     '  --confirm-large-import  Required when importing more than 100,000 rows',
+    '  --force             Import even when Supabase file_modified_at matches the Excel mtime',
   ].join('\n');
 }
 
@@ -528,6 +529,26 @@ function createSupabaseClient() {
   });
 }
 
+function timestampsClose(leftValue, rightValue) {
+  const left = new Date(leftValue).getTime();
+  const right = new Date(rightValue).getTime();
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+  return Math.abs(left - right) < 1000;
+}
+
+async function readPerformanceMeta(supabase, key) {
+  const { data, error } = await supabase
+    .from('branch_performance_files')
+    .select('file_modified_at,synced_at,row_count,current_row_count,header_row')
+    .eq('branch_id', key.branchId)
+    .eq('dataset_type', key.datasetType)
+    .eq('file_path', key.filePath)
+    .eq('sheet_name', key.sheetName)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data?.[0] || null;
+}
+
 async function readCurrentRows(supabase, key) {
   const rowsByIndex = new Map();
   let start = 0;
@@ -674,16 +695,42 @@ async function run() {
   const dbPath = normalizeDbPath(args['db-path'] || process.env.ASAN_ANNUAL_PERFORMANCE_DB_PATH || DEFAULT_DB_PATH);
   const preferredSheetName = args.sheet || process.env.ASAN_ANNUAL_PERFORMANCE_SHEET || DEFAULT_SHEET_NAME;
   const chunkSize = Math.max(20, Number.parseInt(args['chunk-size'] || DEFAULT_CHUNK_SIZE, 10) || DEFAULT_CHUNK_SIZE);
-  const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
-  const summary = buildSummary(parsed.headers, parsed.data);
   const fileStat = fs.statSync(filePath);
   const fileModifiedAt = fileStat.mtime.toISOString();
   const nowIso = new Date().toISOString();
-
-  const key = {
+  const requestedKey = {
     branchId: 'asan',
     datasetType: 'annual',
     filePath: dbPath,
+    sheetName: preferredSheetName,
+  };
+  let supabase = null;
+
+  if (!args['dry-run']) {
+    supabase = createSupabaseClient();
+    if (!args.force) {
+      const currentMeta = await readPerformanceMeta(supabase, requestedKey);
+      if (currentMeta?.file_modified_at && timestampsClose(currentMeta.file_modified_at, fileModifiedAt)) {
+        console.log(JSON.stringify({
+          ok: true,
+          skipped: true,
+          reason: 'file_modified_at_unchanged',
+          filePath,
+          dbPath,
+          sheetName: requestedKey.sheetName,
+          fileModifiedAt,
+          previousSyncedAt: currentMeta.synced_at,
+          rowCount: currentMeta.current_row_count || currentMeta.row_count || 0,
+        }, null, 2));
+        return;
+      }
+    }
+  }
+
+  const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
+  const summary = buildSummary(parsed.headers, parsed.data);
+  const key = {
+    ...requestedKey,
     sheetName: parsed.sheetName,
   };
 
@@ -710,7 +757,7 @@ async function run() {
     throw new Error(`대용량 주입 보호: ${parsed.data.length}행입니다. dry-run 결과를 확인한 뒤 --confirm-large-import 옵션을 붙여 다시 실행하세요.`);
   }
 
-  const supabase = createSupabaseClient();
+  supabase = supabase || createSupabaseClient();
   const currentRows = await readCurrentRows(supabase, key);
   const snapshotId = uuidV4();
   const newHashByIndex = new Map();

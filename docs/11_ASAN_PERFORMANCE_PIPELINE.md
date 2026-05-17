@@ -22,7 +22,13 @@
   - ExcelJS streaming reader로 대상 시트를 순차 파싱해 NAS 메모리 점유를 낮춘다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`
   - 10만 행 초과 실제 주입은 dry-run 확인 후 `--confirm-large-import`를 붙여 실행한다.
+  - 기본 실제 주입은 Supabase `file_modified_at`과 Excel mtime이 같으면 파싱 없이 스킵하며, 필요 시 `--force`로 강제한다.
   - 사전 점검: 위 명령에 `--dry-run`을 붙여 파싱 행 수와 감지 컬럼을 확인한다.
+- NAS 일 1회 자동동기화 래퍼: `scripts/import-asan-annual-performance.sh`
+  - 중복 실행 방지 lock을 잡고 직접 주입 스크립트를 호출한다.
+  - 기본 chunk size는 100, `nice=10`, `ionice=2/7`로 낮은 우선순위에서 실행한다.
+  - `ASAN_PERFORMANCE_CHUNK_SIZE`, `ASAN_PERFORMANCE_NICE`, `ASAN_PERFORMANCE_IONICE_CLASS`, `ASAN_PERFORMANCE_IONICE_LEVEL`로 조정 가능하다.
+  - cron 예시: `0 3 * * * cd /volume1/docker/els_home_v1 && bash scripts/import-asan-annual-performance.sh >> logs/asan-annual-performance-cron.log 2>&1`
 - 기본 파일 경로: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
 - NAS 경로 탐색 기준: 배차판/선적관리와 동일하게 `/app/data/아산지점/...`
 - 기존 `/B_총무/...` 저장값은 백엔드와 웹에서 `/아산지점/B_총무/...`로 자동 보정한다.
