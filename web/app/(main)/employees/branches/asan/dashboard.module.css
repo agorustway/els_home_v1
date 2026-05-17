@@ -66,7 +66,7 @@
 
 .periodGrid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
 }
 
@@ -218,12 +218,58 @@
     background: #e2e8f0;
     border-radius: 999px;
     display: flex;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .periodMeter span {
     height: 100%;
     min-width: 4px;
+}
+
+.periodMeterFill {
+    position: relative;
+    cursor: pointer;
+}
+
+.periodMeterFill:first-child {
+    border-top-left-radius: 999px;
+    border-bottom-left-radius: 999px;
+}
+
+.periodMeterFill:last-child {
+    border-top-right-radius: 999px;
+    border-bottom-right-radius: 999px;
+}
+
+.periodMeterFill:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    z-index: 30;
+    max-width: min(260px, calc(100vw - 48px));
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.94);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+}
+
+.periodMeterFill:first-child:hover::before {
+    left: 0;
+    transform: none;
+}
+
+.periodMeterFill:last-child:hover::before {
+    left: auto;
+    right: 0;
+    transform: none;
 }
 
 .periodRanks {
@@ -247,6 +293,20 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.periodRankName {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.periodRankName i {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
 }
 
 .periodRankRow b {
@@ -274,6 +334,141 @@
     display: grid;
     grid-template-columns: minmax(320px, 1.2fr) minmax(190px, 0.7fr) minmax(190px, 0.7fr);
     gap: 12px;
+}
+
+.dateBridge {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 2px 0 0;
+}
+
+.trendPanel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 13px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.trendHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.trendHeader > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.trendStats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(96px, auto));
+    gap: 6px;
+}
+
+.trendStats span {
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 0.76rem;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.trendStats b {
+    color: #94a3b8;
+    font-size: 0.62rem;
+    font-weight: 900;
+}
+
+.trendStatUp {
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+    background: #fff5f5 !important;
+}
+
+.trendStatDown {
+    color: #2563eb !important;
+    border-color: #bfdbfe !important;
+    background: #eff6ff !important;
+}
+
+.trendChartWrap {
+    width: 100%;
+    height: 190px;
+    padding-top: 10px;
+}
+
+.trendSvg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.trendAxis {
+    stroke: #e2e8f0;
+    stroke-width: 1;
+}
+
+.trendArea {
+    fill: url(#asanTrendFill);
+}
+
+.trendLine {
+    fill: none;
+    stroke: #2563eb;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 6px 10px rgba(37, 99, 235, 0.18));
+}
+
+.trendPointUp,
+.trendPointDown {
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.trendPointUp {
+    fill: #dc2626;
+}
+
+.trendPointDown {
+    fill: #2563eb;
+}
+
+.trendFooter {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    color: #475569;
+    font-size: 0.76rem;
+    font-weight: 850;
+}
+
+.trendFooter span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trendFooter b {
+    color: #94a3b8;
+    margin-right: 5px;
 }
 
 .shareCard,
@@ -665,7 +860,9 @@
 .insightName {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    max-width: min(280px, calc(100vw - 48px));
+    white-space: normal;
+    overflow-wrap: anywhere;
     font-weight: 800;
 }
 
@@ -1011,6 +1208,44 @@
     .mixModules {
         grid-template-columns: 1fr;
         gap: 8px;
+    }
+
+    .dateBridge {
+        gap: 4px;
+    }
+
+    .trendPanel {
+        padding: 10px;
+    }
+
+    .trendHeader {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .trendStats {
+        width: 100%;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .trendStats span {
+        padding: 5px;
+        font-size: 0.66rem;
+    }
+
+    .trendChartWrap {
+        height: 150px;
+    }
+
+    .trendFooter {
+        flex-direction: column;
+        font-size: 0.68rem;
+    }
+
+    .periodMeterFill:hover::before,
+    .barFill:hover::before {
+        font-size: 0.68rem;
+        max-width: calc(100vw - 32px);
     }
 
     .shareCard,

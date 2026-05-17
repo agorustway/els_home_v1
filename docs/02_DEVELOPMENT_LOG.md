@@ -1,4 +1,39 @@
 
+## [2026-05-17] 아산 배차 주별/월별 기본 선택 보정 (v5.13.64)
+### 핵심
+- 주별 카드의 기본 선택을 선택일이 속한 진행 중 주가 아니라 직전 주차로 잡도록 변경했습니다.
+- 월별 카드도 진행 중인 이번 달 대신 직전 월을 기본값으로 잡아, 월중 실적이 전월 대비 마이너스로 과장되어 보이는 흐름을 줄였습니다.
+- 사용자가 카드 select에서 직접 선택한 주/월 값은 기존처럼 우선 적용합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 6개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 48개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 배차 현황판 종합 카드/추세 UX 보강 (v5.13.63)
+### 핵심
+- 종합 카드 첫 줄에서 `전체` 카드를 제외하고 일별/주별/월별 카드만 남겨 매일 보는 총량 흐름을 더 또렷하게 정리했습니다.
+- 날짜 탭을 요약 카드 아래, 분석 영역 바로 위로 이동해 선택 날짜와 카드 분석 흐름이 같은 층에서 보이도록 조정했습니다.
+- 기간 카드 막대에 색상 범례형 상위 항목과 항목/수량/% 툴팁을 추가하고, 모바일에서 툴팁이 화면 밖으로 밀리지 않도록 보강했습니다.
+- 최초 적재일부터 최신일자까지 일자별 상승/하락폭을 보여주는 추세 그래프를 추가했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 47개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
+- `git diff --check`: 통과 (CRLF 치환 warning만 표시)
+- Browser: standalone 서버와 `?debug=true` 접근은 확인했으나, 로컬 Supabase role 조회 대기로 본문 hydrate 시각검증은 제한됨
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 직접 주입 스트리밍 삽입 전환 (v5.13.62)
 ### 핵심
 - 실제 주입 단계도 엑셀 전체 행 배열을 만든 뒤 처리하지 않고, 스트리밍으로 읽는 중 변경/신규 행을 배치 삽입하도록 전환했습니다.

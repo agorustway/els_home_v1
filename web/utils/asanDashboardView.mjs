@@ -319,6 +319,12 @@ function findWeekOptionForDate(weeks = [], dateKey = '') {
   return weeks.find((week) => dateKey >= week.start && dateKey <= week.end) || null;
 }
 
+function pickPreviousOptionKey(options = [], currentKey = '') {
+  const currentIndex = options.findIndex((option) => option.key === currentKey);
+  if (currentIndex > 0) return options[currentIndex - 1].key;
+  return currentKey || options[options.length - 1]?.key || '';
+}
+
 export function buildAsanDashboardPeriodOptions(sourceItems = []) {
   const items = normalizeSourceItems(sourceItems);
   const weekMap = new Map();
@@ -394,12 +400,15 @@ export function buildSelectableAsanDashboardPeriods({
   const dayItem = items.find((item) => item.target_date === dayKey);
   const dayIndex = options.dates.findIndex((option) => option.key === dayKey);
 
-  const defaultWeekKey = findWeekOptionForDate(options.weeks, dayKey)?.key || options.weeks[options.weeks.length - 1]?.key || '';
+  const currentWeekKey = findWeekOptionForDate(options.weeks, dayKey)?.key || options.weeks[options.weeks.length - 1]?.key || '';
+  const defaultWeekKey = pickPreviousOptionKey(options.weeks, currentWeekKey);
   const weekKey = resolveOptionKey(options.weeks, selectedWeek, defaultWeekKey);
   const weekOption = options.weeks.find((option) => option.key === weekKey);
   const weekIndex = options.weeks.findIndex((option) => option.key === weekKey);
 
-  const defaultMonthKey = dayKey ? dayKey.slice(0, 7) : options.months[options.months.length - 1]?.key || '';
+  const currentMonthKey = dayKey ? dayKey.slice(0, 7) : options.months[options.months.length - 1]?.key || '';
+  const currentMonthOptionKey = resolveOptionKey(options.months, currentMonthKey, options.months[options.months.length - 1]?.key || '');
+  const defaultMonthKey = pickPreviousOptionKey(options.months, currentMonthOptionKey);
   const monthKey = resolveOptionKey(options.months, selectedMonth, defaultMonthKey);
   const monthOption = options.months.find((option) => option.key === monthKey);
   const monthIndex = options.months.findIndex((option) => option.key === monthKey);
@@ -462,6 +471,33 @@ export function buildSelectableAsanDashboardPeriods({
       },
     ],
   };
+}
+
+export function buildAsanDashboardTimeline({
+  sourceItems = [],
+  viewType = 'integrated',
+  viewMode = 'customer',
+} = {}) {
+  const items = normalizeSourceItems(sourceItems);
+  let prevTotal = null;
+
+  return items.map((item) => {
+    const scope = buildScopeFromItems([item], viewType, viewMode);
+    const delta = prevTotal == null ? 0 : scope.total - prevTotal;
+    const deltaPct = prevTotal ? Math.round((delta / prevTotal) * 100) : 0;
+    prevTotal = scope.total;
+
+    return {
+      date: item.target_date,
+      label: formatDateLabel(item.target_date),
+      total: scope.total,
+      orderTotal: scope.orderTotal,
+      dispatchTotal: scope.sheetDispatchTotal || scope.total,
+      mismatchTotal: scope.mismatchTotal,
+      delta,
+      deltaPct,
+    };
+  });
 }
 
 export function toSortedChartEntries(chartAgg = {}, limit = 0) {

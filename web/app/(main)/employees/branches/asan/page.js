@@ -594,6 +594,41 @@ function AsanDispatchContent() {
 
     const showTooltip = (e, text) => { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ text, x: r.right + 4, y: r.top }); };
 
+    const dateControls = (
+        <>
+            <div className={styles.dateTabs} ref={tabsRef}>
+                {data.map((item, idx) => {
+                    const { mm, dd, day } = formatTabLabel(item.target_date);
+                    const tabType = getTabType(item.target_date);
+                    return (
+                        <button key={item.id} className={`${styles.dateTab} ${styles[`tab_${tabType}`]} ${activeTab === idx ? styles.dateTabActive : ''}`}
+                            onClick={() => { setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setDisplayLimit(100); }}>
+                            <span className={styles.tabMonth}>{mm}/{dd}</span>
+                            <span className={styles.tabDay}>({day})</span>
+                        </button>
+                    );
+                })}
+                {data.length > 0 && (
+                    <button className={`${styles.dateTab} ${styles.tab_all} ${isAllTab ? styles.dateTabActive : ''}`}
+                        onClick={() => { setActiveTab(data.length); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setDisplayLimit(100); }}>
+                        <span className={styles.tabMonth}>📊 전체</span>
+                    </button>
+                )}
+            </div>
+
+            {isAllTab && mergedView?.months && (
+                <div className={styles.monthFilter}>
+                    <button className={`${styles.monthBtn} ${allTabMonth === null ? styles.monthBtnActive : ''}`}
+                        onClick={() => { setAllTabMonth(null); setDisplayLimit(100); }}>전체</button>
+                    {mergedView.months.map(m => (
+                        <button key={m} className={`${styles.monthBtn} ${allTabMonth === m ? styles.monthBtnActive : ''}`}
+                            onClick={() => { setAllTabMonth(m); setDisplayLimit(100); }}>{parseInt(m)}월</button>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+
     // ===== 렌더링 =====
     return (
         <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
@@ -657,38 +692,7 @@ function AsanDispatchContent() {
                 )}
             </div>
 
-            {/* 날짜 탭 + 전체 탭 */}
-            <div className={styles.dateTabs} ref={tabsRef}>
-                {data.map((item, idx) => {
-                    const { mm, dd, day } = formatTabLabel(item.target_date);
-                    const tabType = getTabType(item.target_date);
-                    return (
-                        <button key={item.id} className={`${styles.dateTab} ${styles[`tab_${tabType}`]} ${activeTab === idx ? styles.dateTabActive : ''}`}
-                            onClick={() => { setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setDisplayLimit(100); }}>
-                            <span className={styles.tabMonth}>{mm}/{dd}</span>
-                            <span className={styles.tabDay}>({day})</span>
-                        </button>
-                    );
-                })}
-                {data.length > 0 && (
-                    <button className={`${styles.dateTab} ${styles.tab_all} ${isAllTab ? styles.dateTabActive : ''}`}
-                        onClick={() => { setActiveTab(data.length); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setDisplayLimit(100); }}>
-                        <span className={styles.tabMonth}>📊 전체</span>
-                    </button>
-                )}
-            </div>
-
-            {/* 월별 필터 (전체 탭 전용) */}
-            {isAllTab && mergedView?.months && (
-                <div className={styles.monthFilter}>
-                    <button className={`${styles.monthBtn} ${allTabMonth === null ? styles.monthBtnActive : ''}`}
-                        onClick={() => { setAllTabMonth(null); setDisplayLimit(100); }}>전체</button>
-                    {mergedView.months.map(m => (
-                        <button key={m} className={`${styles.monthBtn} ${allTabMonth === m ? styles.monthBtnActive : ''}`}
-                            onClick={() => { setAllTabMonth(m); setDisplayLimit(100); }}>{parseInt(m)}월</button>
-                    ))}
-                </div>
-            )}
+            {mainView === 'grid' && dateControls}
 
             {loading ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
@@ -702,6 +706,7 @@ function AsanDispatchContent() {
                     sourceItems={data}
                     activeDate={isAllTab ? '' : activeItem?.target_date || ''}
                     selectedMonth={isAllTab ? allTabMonth || '' : ''}
+                    dateControlsSlot={dateControls}
                 />
             ) : (
                 <>

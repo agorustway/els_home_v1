@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styles from './dashboard.module.css';
 import {
     ASAN_DASHBOARD_CHART_MODES,
+    buildAsanDashboardTimeline,
     buildAsanDashboardScope,
     buildSelectableAsanDashboardPeriods,
     toSortedChartEntries,
@@ -40,6 +41,7 @@ export default function AsanDashboard({
     sourceItems = [],
     activeDate = '',
     selectedMonth = '',
+    dateControlsSlot = null,
 }) {
     const [viewMode, setViewMode] = useState('customer');
     const [chartMode, setChartMode] = useState('작업지');
@@ -80,12 +82,17 @@ export default function AsanDashboard({
             selectedWeek: periodSelection.week,
             selectedMonth: periodSelection.month || selectedMonth,
         });
-        return { activeScope, periods: selectablePeriods.periods, periodOptions: selectablePeriods.options };
+        const timeline = buildAsanDashboardTimeline({ sourceItems, viewType, viewMode });
+        return { activeScope, periods: selectablePeriods.periods, periodOptions: selectablePeriods.options, timeline };
     }, [data, headers, viewType, viewMode, sourceItems, activeDate, selectedMonth, periodSelection]);
 
     const displayChartData = useMemo(() => {
         return toSortedChartEntries(dashboardData.activeScope.chartAggs[activeChartMode]);
     }, [dashboardData, activeChartMode]);
+    const summaryPeriods = useMemo(
+        () => dashboardData.periods.filter((period) => period.key !== 'total'),
+        [dashboardData.periods],
+    );
 
     const insightModes = viewMode === 'customer'
         ? ['고객사', '작업지', '라인/선사']
@@ -125,7 +132,7 @@ export default function AsanDashboard({
             </div>
 
             <div className={styles.periodGrid}>
-                {dashboardData.periods.map((period) => (
+                {summaryPeriods.map((period) => (
                     <PeriodCard
                         key={period.key}
                         period={period}
@@ -134,6 +141,17 @@ export default function AsanDashboard({
                     />
                 ))}
             </div>
+
+            {dateControlsSlot && (
+                <div className={styles.dateBridge}>
+                    {dateControlsSlot}
+                </div>
+            )}
+
+            <TrendPanel
+                items={dashboardData.timeline}
+                title={viewMode === 'customer' ? '일자별 오더 추세' : '일자별 실행 배차 추세'}
+            />
 
             <div className={styles.mixModules}>
                 <ShareDonut data={dashboardData.activeScope.pieAggs.shipper} title="화주 점유율" />
@@ -293,6 +311,8 @@ function PeriodCard({ period, chartMode, onSelect }) {
                 {entries.length > 0 ? entries.map((entry, idx) => (
                     <span
                         key={entry.name}
+                        className={styles.periodMeterFill}
+                        data-tooltip={`${entry.name} ${formatQty(entry.total)}대 (${getPct(entry.total, period.scope.total)}%)`}
                         style={{
                             width: `${Math.max(5, (entry.total / period.scope.total) * 100)}%`,
                             background: getHashColor(entry.name || idx),
@@ -304,7 +324,10 @@ function PeriodCard({ period, chartMode, onSelect }) {
             <div className={styles.periodRanks}>
                 {entries.slice(0, 3).map((entry) => (
                     <div key={entry.name} className={styles.periodRankRow}>
-                        <span title={entry.name}>{entry.name}</span>
+                        <span className={styles.periodRankName} title={entry.name}>
+                            <i style={{ background: getHashColor(entry.name) }} />
+                            {entry.name}
+                        </span>
                         <b>{formatQty(entry.total)}</b>
                     </div>
                 ))}
@@ -314,6 +337,86 @@ function PeriodCard({ period, chartMode, onSelect }) {
                 {direction && <span>{direction[0]} {formatQty(direction[1])}</span>}
                 {container && <span>{container[0]} {formatQty(container[1])}</span>}
                 {focusPct > 0 && <span>집중 {focusPct}%</span>}
+            </div>
+        </div>
+    );
+}
+
+function TrendPanel({ items, title }) {
+    const visibleItems = (items || []).filter((item) => item.total > 0);
+    if (visibleItems.length < 2) return null;
+
+    const width = 720;
+    const height = 176;
+    const padX = 18;
+    const padY = 20;
+    const totals = visibleItems.map((item) => item.total);
+    const min = Math.min(...totals);
+    const max = Math.max(...totals);
+    const range = Math.max(1, max - min);
+    const points = visibleItems.map((item, idx) => {
+        const x = padX + (idx * (width - padX * 2)) / Math.max(1, visibleItems.length - 1);
+        const y = padY + ((max - item.total) * (height - padY * 2)) / range;
+        return { ...item, x, y };
+    });
+    const linePath = points.map((point, idx) => `${idx === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+    const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${height - padY} L ${points[0].x.toFixed(1)} ${height - padY} Z`;
+    const first = visibleItems[0];
+    const last = visibleItems[visibleItems.length - 1];
+    const delta = last.total - first.total;
+    const deltaPct = first.total ? Math.round((delta / first.total) * 100) : 0;
+    const peak = visibleItems.reduce((best, item) => item.total > best.total ? item : best, visibleItems[0]);
+    const low = visibleItems.reduce((best, item) => item.total < best.total ? item : best, visibleItems[0]);
+    const recent = visibleItems.slice(-7);
+    const recentAvg = recent.reduce((sum, item) => sum + item.total, 0) / recent.length;
+
+    return (
+        <div className={styles.trendPanel}>
+            <div className={styles.trendHeader}>
+                <div>
+                    <h3 className={styles.panelTitle}>{title}</h3>
+                    <span className={styles.panelSub}>초기 적재일부터 현재까지 변동폭</span>
+                </div>
+                <div className={styles.trendStats}>
+                    <span><b>현재</b>{formatQty(last.total)}</span>
+                    <span className={delta >= 0 ? styles.trendStatUp : styles.trendStatDown}>
+                        <b>누적 변동</b>{delta >= 0 ? '+' : ''}{formatQty(delta)} ({deltaPct >= 0 ? '+' : ''}{deltaPct}%)
+                    </span>
+                    <span><b>최근 7일 평균</b>{formatQty(recentAvg)}</span>
+                </div>
+            </div>
+
+            <div className={styles.trendChartWrap}>
+                <svg className={styles.trendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+                    <defs>
+                        <linearGradient id="asanTrendFill" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.28" />
+                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+                        </linearGradient>
+                    </defs>
+                    <line x1={padX} y1={height - padY} x2={width - padX} y2={height - padY} className={styles.trendAxis} />
+                    <line x1={padX} y1={padY} x2={padX} y2={height - padY} className={styles.trendAxis} />
+                    <path d={areaPath} className={styles.trendArea} />
+                    <path d={linePath} className={styles.trendLine} />
+                    {points.map((point, idx) => (
+                        <g key={point.date}>
+                            <circle
+                                cx={point.x}
+                                cy={point.y}
+                                r={idx === points.length - 1 ? 4.8 : 3.3}
+                                className={point.delta >= 0 ? styles.trendPointUp : styles.trendPointDown}
+                            >
+                                <title>{`${point.label} ${formatQty(point.total)}대 (${point.delta >= 0 ? '+' : ''}${formatQty(point.delta)}, ${point.deltaPct >= 0 ? '+' : ''}${point.deltaPct}%)`}</title>
+                            </circle>
+                        </g>
+                    ))}
+                </svg>
+            </div>
+
+            <div className={styles.trendFooter}>
+                <span><b>최초</b>{first.label} · {formatQty(first.total)}</span>
+                <span><b>저점</b>{low.label} · {formatQty(low.total)}</span>
+                <span><b>고점</b>{peak.label} · {formatQty(peak.total)}</span>
             </div>
         </div>
     );

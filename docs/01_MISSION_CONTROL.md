@@ -1,21 +1,21 @@
-# ELS MISSION CONTROL (v5.13.62 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.64 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 실제 주입을 Excel 스트리밍 파싱 중 배치 반영하도록 전환해 NAS 메모리 점유를 낮췄습니다.
+> 최신 업데이트: 아산 배차 현황판 주별/월별 카드 기본 선택을 진행 중 기간이 아닌 지난주/지난달로 조정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.62
+- **웹 버전**: v5.13.64
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 연간실적 직접 주입의 실제 import도 전체 배열 적재 없이 스트리밍 파싱 중 batch insert/update 처리.
-  - `청구`는 매출, `하불`은 매입으로 분석되도록 금액 후보 판정을 보정.
-  - `file_modified_at` 미변경 스킵, 낮은 우선순위 실행, 원장 누적/삭제 없는 current 전환 유지.
-  - NAS 수동/일 1회 자동 동기화 시 시스템 부담을 줄이도록 문서와 테스트 보강.
+  - 아산 배차 주별 카드의 빈 기본 선택을 선택일 기준 직전 주차로 조정.
+  - 월별 카드의 빈 기본 선택을 선택일 기준 직전 월로 조정.
+  - 진행 중인 이번 주/이번 달 데이터가 전기간 대비 실적을 과도하게 마이너스로 보이게 하는 흐름 완화.
+  - 사용자가 카드에서 직접 고른 주/월 선택값은 기존처럼 우선 적용.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 아산 선적/실적 DB 직접 조회 fallback 테스트 통과 |
+| Next.js 웹 | 정상 | 아산 배차 분석 대시보드/선적/실적 테스트 통과 |
 | Supabase 인증/DB | 정상 | 연간실적 SQL 적용 완료, 직접 주입 스크립트 스트리밍 삽입 전환 |
 | NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 주기 적용 |
 | ELS Bot | 정상 | eTrans 세션 연장/자정 롤오버 타이머 가드 보강 |
@@ -37,6 +37,8 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.64**: 아산 배차 주별/월별 카드 기본값을 선택일 기준 지난주/지난달로 바꿔 진행 중 기간 비교 왜곡을 완화.
+- **v5.13.63**: 아산 배차 종합 카드에서 전체를 빼고 날짜 탭을 분석 영역 앞으로 내렸으며, 일자별 추세 그래프와 카드 색상 범례/툴팁을 보강.
 - **v5.13.62**: 연간실적 실제 주입도 Excel 스트리밍 파싱 중 변경/신규 행을 100행 단위로 바로 반영해 NAS 메모리 점유를 완화.
 - **v5.13.60**: 아산 배차 현황판을 일/주/月 선택 카드, 고객사별 비중 탭, 압축 지표형 분석 패널로 리팩토링.
 - **v5.13.59**: 연간실적 직접 주입에 `file_modified_at` 미변경 스킵, `--force`, 낮은 우선순위 NAS cron 래퍼를 추가.
@@ -64,8 +66,6 @@
 - **v5.13.37**: 아산 선적관리 미선적 정의를 `작업일자 <= 이력 MOVE TIME`인 비완료 이력(`반입/적하` 제외)으로 변경. 완료 음영도 같은 작업일 기준으로 맞췄고, 컨테이너 조회 최종 저장은 기존 file/container 조회값을 삭제 후 최신 결과로 교체.
 - **v5.13.36**: 차량위치관제 운행기록 Excel export 라우트에 `force-dynamic`을 선언해 Next 빌드 중 정적 렌더 오류 로그를 제거.
 - **v5.13.35**: 아산 선적관리 전용 `/container-lookup` 스트림 라우트를 추가해 부분/최종 컨테이너 조회 결과를 서버 측에서 즉시 저장.
-- **v5.13.34**: 선적관리 날짜 필터 바에 `미선적`, `자체보관` 빠른 필터를 추가.
-- **v5.13.33**: 선적관리 컬럼 필터 후보를 전체 로드 기준으로 만들고 빈값 정규화, 자동 더보기를 보강.
 
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
@@ -75,11 +75,11 @@
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 39개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
-- `npm.cmd run build`: 통과 (1차 sandbox Google Fonts EACCES 후 승인 실행)
+- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 46개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 48개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
-- Browser: 아산 배차 현황판 데스크톱/360px 모바일 카드·차트 노출 확인
+- Browser: standalone 서버와 `?debug=true` 접근 확인, 로컬 Supabase role 조회 대기로 본문 hydrate 시각검증은 제한됨
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 
 ## EASTER EGGS
